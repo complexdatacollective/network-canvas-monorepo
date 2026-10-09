@@ -19,7 +19,7 @@ type BinSummaryProps = {
 
 const BinSummary = ({ nodes, ref }: BinSummaryProps) => {
   // Shown beside a participant's name, so in the protocol's digits.
-  const { locale } = useContentFormat();
+  const contentFormat = useContentFormat();
   const firstNode = nodes[0];
   const label = useNodeLabel(firstNode);
   const otherCount = Math.max(0, nodes.length - 1);
@@ -31,9 +31,7 @@ const BinSummary = ({ nodes, ref }: BinSummaryProps) => {
       {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- A space, so the name and the count read as two words. */}{' '}
       {otherCount > 0 && (
         <span className="rounded-full bg-current/15 px-1.5">
-          {new Intl.NumberFormat(locale, { signDisplay: 'always' }).format(
-            otherCount,
-          )}
+          {contentFormat.formatSigned(otherCount)}
         </span>
       )}
     </Paragraph>

@@ -371,7 +371,7 @@ export const INTERFACE_TEXT_MESSAGES: readonly Readonly<{
 /**
  * The text Network Canvas writes for an entry in a protocol language: its
  * supplied wording there, or, in the default language when it supplies none,
- * the English wording, since every entry of a held group is required (the
+ * the English wording, since every entry the protocol holds is required (the
  * rule for every supplied setting; see `supplied-stage-text.ts`).
  */
 const writtenIn = (

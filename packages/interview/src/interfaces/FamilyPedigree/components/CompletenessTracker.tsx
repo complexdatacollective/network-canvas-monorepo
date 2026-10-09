@@ -48,7 +48,7 @@ type CompletenessTrackerProps = {
  * its middle, or a tick once complete. It fills its button to the edge. */
 function ProgressRing({ fraction }: { fraction: number }) {
   // Shown among the protocol's text, so in its digits.
-  const { locale } = useContentFormat();
+  const contentFormat = useContentFormat();
   const strokeWidth = 3.5;
   // The stroke's outer edge meets the edge of the 40-unit view box.
   const radius = 20 - strokeWidth / 2;
@@ -90,10 +90,7 @@ function ProgressRing({ fraction }: { fraction: number }) {
           aria-hidden
           className="absolute text-sm font-semibold tabular-nums"
         >
-          {new Intl.NumberFormat(locale, {
-            style: 'percent',
-            maximumFractionDigits: 0,
-          }).format(fraction)}
+          {contentFormat.formatPercent(fraction)}
         </span>
       )}
     </span>

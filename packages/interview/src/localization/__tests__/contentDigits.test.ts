@@ -6,12 +6,18 @@ import { describe, expect, it } from 'vitest';
 // A number a participant sees among the protocol's text is written in the
 // protocol's digits, through `useContentFormat`. Only the interview's own
 // navigation follows the browser's language, so only it may format a number
-// with the interface's `Intl`.
+// any other way.
 const SOURCE = resolve(__dirname, '../..');
 
 const NAVIGATION = ['components/StagesMenu.tsx'];
 
-const APP_LOCALE_NUMBER = /intl\.formatNumber\(|<FormattedNumber\b/;
+// The content formatter itself, which builds the protocol's `Intl` formats.
+const CONTENT_FORMAT = 'localization/contentFormat.ts';
+
+// The interface's `intl` (whatever it is named, across lines), a number
+// format built by hand, or the runtime's own.
+const OWN_NUMBER_FORMAT =
+  /\w*[iI]ntl\s*\.\s*formatNumber\(|\bformatNumber\s*[,}][^;]*=\s*use\w*Intl\(|<FormattedNumber\b|NumberFormat\(|\.toLocaleString\(/;
 
 const sourceFiles = (directory: string): string[] =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -28,8 +34,11 @@ const sourceFiles = (directory: string): string[] =>
 describe('numbers shown in an interview', () => {
   it('are formatted in the interface language only by its navigation', () => {
     const formatting = sourceFiles(SOURCE)
-      .filter((path) => APP_LOCALE_NUMBER.test(readFileSync(path, 'utf8')))
-      .map((path) => relative(SOURCE, path));
+      .map((path) => relative(SOURCE, path))
+      .filter((path) => path !== CONTENT_FORMAT)
+      .filter((path) =>
+        OWN_NUMBER_FORMAT.test(readFileSync(resolve(SOURCE, path), 'utf8')),
+      );
 
     expect(formatting).toEqual(NAVIGATION);
   });

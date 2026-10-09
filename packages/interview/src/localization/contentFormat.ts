@@ -40,6 +40,10 @@ export type ContentFormat = Readonly<{
   formatNumber: (value: number) => string;
   /** One coordinate, with at most four fraction digits. */
   formatCoordinate: (value: number) => string;
+  /** A count added to something shown, always signed: "+3". */
+  formatSigned: (value: number) => string;
+  /** A fraction as a whole percentage: 0.4 as "40%". */
+  formatPercent: (fraction: number) => string;
   /**
    * Items in the locale's list pattern: "a, b, and c", or, for a `unit`
    * list of measures or terms, "a, b, c".
@@ -63,6 +67,11 @@ function createContentFormat(locale: string): ContentFormat {
   const coordinate = new Intl.NumberFormat(locale, {
     maximumFractionDigits: COORDINATE_FRACTION_DIGITS,
   });
+  const signed = new Intl.NumberFormat(locale, { signDisplay: 'always' });
+  const percent = new Intl.NumberFormat(locale, {
+    style: 'percent',
+    maximumFractionDigits: 0,
+  });
   const lists = {
     conjunction: new Intl.ListFormat(locale, {
       type: 'conjunction',
@@ -80,6 +89,8 @@ function createContentFormat(locale: string): ContentFormat {
         String(value) as `${number}`,
       ),
     formatCoordinate: (value) => coordinate.format(value),
+    formatSigned: (value) => signed.format(value),
+    formatPercent: (fraction) => percent.format(fraction),
     formatList: (items, type = 'conjunction') => lists[type].format(items),
     collator: new Intl.Collator(locale),
   };
