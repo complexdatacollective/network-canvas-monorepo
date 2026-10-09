@@ -5,7 +5,7 @@ import type {
   PedigreeLayout,
   PedigreeEdgeType,
 } from './types';
-import { ancestor, layerConstraints } from './utils';
+import { areConsanguineous, layerConstraints } from './utils';
 
 type PartnerGroup = {
   members: number[];
@@ -1908,13 +1908,7 @@ function encodePedigreeLayout(
         continue;
       }
 
-      // Check consanguinity: do they share common ancestors?
-      const ancestorsA = ancestor(nodeA, ped.parents);
-      const ancestorsB = ancestor(nodeB, ped.parents);
-      const ancestorSetB = new Set(ancestorsB);
-      const isConsanguineous = ancestorsA.some((a) => ancestorSetB.has(a));
-
-      layerGroup.push(isConsanguineous ? 2 : 1);
+      layerGroup.push(areConsanguineous(nodeA, nodeB, ped.parents) ? 2 : 1);
     }
     group.push(layerGroup);
   }

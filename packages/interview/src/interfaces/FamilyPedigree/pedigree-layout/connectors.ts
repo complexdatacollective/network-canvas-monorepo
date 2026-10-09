@@ -12,7 +12,7 @@ import type {
   TwinIndicator,
   PedigreeEdgeType,
 } from './types';
-import { ancestor } from './utils';
+import { areConsanguineous } from './utils';
 
 const AUXILIARY_EDGE_TYPES = new Set<PedigreeEdgeType>(['donor', 'surrogate']);
 
@@ -217,9 +217,7 @@ export function computeConnectors(
           ? [left.x, right.x]
           : [Math.min(upper.x, laneX), Math.max(upper.x, laneX)];
 
-      const ancestorsLeft = ancestor(leftIndex, parents);
-      const ancestorsRight = new Set(ancestor(rightIndex, parents));
-      const isDouble = ancestorsLeft.some((value) => ancestorsRight.has(value));
+      const isDouble = areConsanguineous(leftIndex, rightIndex, parents);
       const connector: ParentGroupConnector = {
         type: 'parent-group',
         segment: {
