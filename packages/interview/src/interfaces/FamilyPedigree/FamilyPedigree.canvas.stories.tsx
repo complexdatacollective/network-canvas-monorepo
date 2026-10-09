@@ -695,39 +695,77 @@ const personPanel = (canvasElement: HTMLElement) =>
   );
 
 /**
- * The question of wording, which opens a moment after the stage loads, waits
- * while a person's panel is open, so the two never compete for focus: the
- * panel's fields can be reached from the keyboard, and the question opens
- * once the panel closes.
+ * Until the wording is chosen, the family cannot be used. Selecting someone
+ * before the question has opened asks it at once, and no panel opens. While
+ * the question is held open, every person and the connect tools are
+ * disabled. Once a wording is chosen, the family can be used again.
  */
-export const TheWordingQuestionWaitsForAnOpenPanel: Story = {
+export const TheFamilyWaitsForTheWording: Story = {
   render: () => (
     <CanvasStory family={threePeople} framing="participantPreference" />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await canvas.findByRole('button', { name: /^You/ });
-    await tabIntoFamily(canvasElement);
-    await userEvent.keyboard('{Enter}');
-    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
-    // Past the moment the question would open.
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    await expect(body.queryByText(FRAMING_TITLE)).toBeNull();
-    for (let press = 0; press < 3; press++) await userEvent.tab();
-    await expect(
-      personPanel(canvasElement)?.contains(focused(canvasElement)),
-    ).toBe(true);
+    // Selected before the question opens by itself, a person asks it.
+    await userEvent.click(await canvas.findByRole('button', { name: /^You/ }));
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 500 });
+    await expect(personPanel(canvasElement)).toBeNull();
 
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
+    for (const id of ['ego', 'mum', 'dad']) {
+      await expect(personSymbol(canvasElement, id)).toBeDisabled();
+    }
+    await expect(canvas.getByTestId('pedigree-tool-connect')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await userEvent.click(personSymbol(canvasElement, 'mum'), {
+      pointerEventsCheck: 0,
+    });
+    await expect(personPanel(canvasElement)).toBeNull();
+    await expect(canvas.queryByTestId('pedigree-menu-parent')).toBeNull();
+
+    await userEvent.click(
+      body.getByRole('option', { name: /Mother, father, sister, brother/ }),
+    );
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+    await expect(personSymbol(canvasElement, 'mum')).toBeEnabled();
+    await userEvent.click(personSymbol(canvasElement, 'mum'));
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+  },
+};
+
+/**
+ * Opened again once a wording is chosen, the question closes as any popover
+ * does when focus leaves it, and leaves the family usable while it is open.
+ */
+export const TheWordingOpenedAgainClosesOnFocusLoss: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+    await userEvent.click(
+      body.getByRole('option', { name: /Mother, father, sister, brother/ }),
+    );
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+
+    const trigger = canvas.getByRole('button', { name: 'Wording' });
+    await userEvent.click(trigger);
+    await body.findByText(FRAMING_TITLE);
+    await expect(personSymbol(canvasElement, 'mum')).toBeEnabled();
+    await userEvent.tab();
+    await userEvent.tab();
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   },
 };
 
 /**
  * Choosing the wording returns focus to its toolbar button, even after focus
- * has been away in the family while the question waited for an answer.
+ * has been away while the question waited for an answer.
  */
 export const ChoosingTheWordingReturnsFocusToItsButton: Story = {
   render: () => (
@@ -738,8 +776,8 @@ export const ChoosingTheWordingReturnsFocusToItsButton: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
     const trigger = canvas.getByRole('button', { name: 'Wording' });
-    // Out to the family, and back into the question.
-    await tabIntoFamily(canvasElement);
+    // Out to the rest of the toolbar, and back into the question.
+    canvas.getByRole('button', { name: 'Zoom in' }).focus();
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
     const [first] = body.getAllByRole('option');
     first?.focus();
