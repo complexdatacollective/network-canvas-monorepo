@@ -13,10 +13,13 @@ const ContentLocaleContext = createContext<string | null>(null);
  * date picker then names its months, and a scale writes its numbers, for the
  * language the surrounding text is in.
  *
- * It covers values, not sentences. Messages the interface itself speaks
- * ("Must be at least {min}") stay in the interface language with the numbers
- * and dates inside them, so a sentence is never half one language and half
- * another. Without a provider fields use the interface language.
+ * It covers values, not sentences: messages ("Must be on or after {min}")
+ * come from the formatter. A date written into a validation message follows
+ * the field's values, since a host that names a content language (the
+ * interview) holds those messages in that language too, so the sentence and
+ * its date read in one language. A number written into a message is formatted
+ * by the message itself. Without a provider fields use the interface
+ * language.
  */
 export function ContentLocaleProvider({
   locale,
