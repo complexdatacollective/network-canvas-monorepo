@@ -179,11 +179,12 @@ describe('Editing labels from the Codebook', () => {
       'href',
       '/protocol/codebook?entity=node&type=person',
     );
-    const table = screen.getByRole('table', {
-      name: /^Every text participants see/,
-    });
+    const person = screen
+      .getByRole('link', { name: 'Person' })
+      .closest('tbody');
+    if (person === null) throw new Error('The person type has no rows');
     // Each group's heading is a row header too, of its group of rows.
-    const texts = within(table)
+    const texts = within(person)
       .getAllByRole('rowheader')
       .filter((header) => header.getAttribute('scope') === 'row');
     expect(texts.map((header) => header.textContent)).toEqual([

@@ -61,6 +61,20 @@ const messages = defineMessages({
     description:
       'Names one visualization preset of a narrative stage where a text is listed without its translation. position is the preset’s place in the stage’s list of presets, counting from one.',
   },
+  interfaceTextGroup: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextGroup',
+    defaultMessage:
+      '{group, select, interview {Throughout the interview} passphrase {Passphrase} forms {Forms} other {{group}}}',
+    description:
+      'Names a group of the words the interview itself shows, such as its buttons and messages, where they are listed for translation. group is which: those shown throughout the interview, those shown when answers are protected by a passphrase, or those shown with forms.',
+  },
+  interfaceTextName: {
+    id: 'protocolBuilder.localizedTextNames.interfaceTextName',
+    defaultMessage:
+      '{key, select, exitInterview {Exit button} exitInterviewDescription {Exit explanation} stageError {Screen error message} itemUnavailable {Missing item message} back {Back button} continue {Continue button} cancel {Cancel button} done {Done button} delete {Delete button} genericError {General error message} passphrase {Passphrase field} choosePassphraseHelp {Passphrase advice} passphraseIncorrect {Wrong passphrase message} protectedAnswersLocked {Locked answers message} protectedAnswersNotSaved {Unsaved answers message} protectedAnswersUnavailable {Unavailable answers message} answerUnavailable {Unavailable answer label} answerUnavailableKept {Earlier answer message} confirmPassphrase {Confirm passphrase field} passphraseAccepted {Passphrase accepted message} discardChanges {Discard button} discardChangesTitle {Discard question} discardChangesDescription {Discard explanation} yes {Yes answer} no {No answer} submitFailed {Form error message} other {{key}}}',
+    description:
+      'Names one of the words the interview itself shows, where it is listed for translation: a button, a field label or a message, by what it is for. key says which.',
+  },
   diseasePosition: {
     id: 'protocolBuilder.localizedTextNames.diseasePosition',
     defaultMessage: 'Disease {position, number}',
@@ -604,8 +618,35 @@ type Located = Readonly<{
   rest: Path;
 }>;
 
+/** The interview's shared words: a group, then a text within it. */
+const INTERFACE_TEXT_RULES: readonly Rule[] = [
+  rule(
+    '*.*',
+    [
+      1,
+      ({ intl, at }) =>
+        intl.formatMessage(messages.interfaceTextGroup, {
+          group: keyOf(at[0]),
+        }),
+    ],
+    [
+      2,
+      ({ intl, at }) =>
+        intl.formatMessage(messages.interfaceTextName, { key: keyOf(at[1]) }),
+    ],
+  ),
+];
+
 const locate = (protocol: CurrentProtocol, path: Path): Located | undefined => {
   const [root, scope, ...inScope] = path;
+  if (root === 'interfaceText') {
+    if (!protocol.interfaceText) return undefined;
+    return {
+      place: protocol.interfaceText,
+      rules: INTERFACE_TEXT_RULES,
+      rest: path.slice(1),
+    };
+  }
   if (root === 'stages' && typeof scope === 'number') {
     const stage = protocol.stages[scope];
     if (!stage || !isStageType(stage.type)) return undefined;
@@ -632,7 +673,9 @@ const locate = (protocol: CurrentProtocol, path: Path): Located | undefined => {
 /**
  * Names a localized text by where the stage or codebook editor shows it: one
  * step per section, row and field leading to it, after the stage or codebook
- * entry it belongs to. Undefined for a path no editor shows.
+ * entry it belongs to. The interview's shared words, which no editor shows,
+ * are named by their group and what each is for. Undefined for any other
+ * path no editor shows.
  */
 export function nameLocalizedText(
   intl: IntlShape,

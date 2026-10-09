@@ -469,6 +469,7 @@
   "architect.localization.localizationAlert.showMissing": "Fehlende Übersetzungen anzeigen",
   "architect.localization.textPlaces.edgeType": "Kantentyp",
   "architect.localization.textPlaces.ego": "Ego",
+  "architect.localization.textPlaces.interface": "Interviewtext",
   "architect.localization.textPlaces.nodeType": "Knotentyp",
   "architect.localization.textPlaces.protocol": "Protokoll",
   "architect.localization.textPlaces.stagePosition": "Abschnitt {position, number}",

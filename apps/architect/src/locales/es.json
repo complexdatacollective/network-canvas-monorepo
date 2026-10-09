@@ -469,6 +469,7 @@
   "architect.localization.localizationAlert.showMissing": "Mostrar traducciones faltantes",
   "architect.localization.textPlaces.edgeType": "Tipo de vínculo",
   "architect.localization.textPlaces.ego": "Ego",
+  "architect.localization.textPlaces.interface": "Textos de la entrevista",
   "architect.localization.textPlaces.nodeType": "Tipo de nodo",
   "architect.localization.textPlaces.protocol": "Protocolo",
   "architect.localization.textPlaces.stagePosition": "Etapa {position, number}",

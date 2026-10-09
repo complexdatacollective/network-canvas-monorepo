@@ -122,7 +122,7 @@ describe('TranslationTable: texts with versions', () => {
     expect(getProtocol(store.getState())).toBe(before);
   });
 
-  it('saves on Enter, keeping the cell open when it is the last row', async () => {
+  it('saves on Enter, and moves to the next row', async () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('English'));
@@ -135,9 +135,14 @@ describe('TranslationTable: texts with versions', () => {
         en: '{isYou, select, true {Your brothers and sisters (all)} other {Brothers and sisters of {name}}}',
       }),
     );
-    expect(
-      screen.getByRole('group', { name: cellName('English') }),
-    ).toBeVisible();
+    // The interview's own words follow every text a stage holds.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', {
+          name: /Throughout the interview › Exit button English$/,
+        }),
+      ).toHaveFocus(),
+    );
   });
 
   it('puts back the saved versions on Escape', async () => {

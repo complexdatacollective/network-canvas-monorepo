@@ -1145,5 +1145,75 @@
       },
       "outcome": "completed"
     }
-  ]
+  ],
+  "interfaceText": {
+    "interview": {
+      "exitInterview": {
+        "en-US": "Exit interview",
+        "es": "Salir de la entrevista"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later.",
+        "es": "Tus respuestas hasta ahora se guardarán y podrás continuar más adelante."
+      },
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
+        "es": "Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Algunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Es posible que puedas continuar la entrevista pulsando la flecha de avance."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed.",
+        "es": "No se pudo mostrar este elemento."
+      },
+      "back": {
+        "en-US": "Back",
+        "es": "Volver"
+      },
+      "continue": {
+        "en-US": "Continue",
+        "es": "Continuar"
+      },
+      "cancel": {
+        "en-US": "Cancel",
+        "es": "Cancelar"
+      },
+      "done": {
+        "en-US": "Done",
+        "es": "Listo"
+      },
+      "delete": {
+        "en-US": "Delete",
+        "es": "Eliminar"
+      },
+      "genericError": {
+        "en-US": "Something went wrong.",
+        "es": "Se ha producido un error."
+      }
+    },
+    "forms": {
+      "discardChanges": {
+        "en-US": "Discard changes",
+        "es": "Descartar cambios"
+      },
+      "discardChangesTitle": {
+        "en-US": "Discard changes?",
+        "es": "¿Descartar los cambios?"
+      },
+      "discardChangesDescription": {
+        "en-US": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?",
+        "es": "Este formulario contiene datos que no son válidos y no se puede guardar. Si continúas, se restablecerá y se perderán los cambios. ¿Quieres descartar los cambios?"
+      },
+      "yes": {
+        "en-US": "Yes",
+        "es": "Sí"
+      },
+      "no": {
+        "en-US": "No",
+        "es": "No"
+      },
+      "submitFailed": {
+        "en-US": "An error occurred while submitting the form.",
+        "es": "Se ha producido un error al enviar el formulario."
+      }
+    }
+  }
 }

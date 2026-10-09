@@ -469,6 +469,7 @@
   "architect.localization.localizationAlert.showMissing": "Ontbrekende vertalingen tonen",
   "architect.localization.textPlaces.edgeType": "Relatietype",
   "architect.localization.textPlaces.ego": "Ego",
+  "architect.localization.textPlaces.interface": "Interviewtekst",
   "architect.localization.textPlaces.nodeType": "Knooppunttype",
   "architect.localization.textPlaces.protocol": "Protocol",
   "architect.localization.textPlaces.stagePosition": "Fase {position, number}",

@@ -469,6 +469,7 @@
   "architect.localization.localizationAlert.showMissing": "顯示缺少的翻譯",
   "architect.localization.textPlaces.edgeType": "關係類型",
   "architect.localization.textPlaces.ego": "自我",
+  "architect.localization.textPlaces.interface": "訪談文字",
   "architect.localization.textPlaces.nodeType": "節點類型",
   "architect.localization.textPlaces.protocol": "協定",
   "architect.localization.textPlaces.stagePosition": "階段 {position, number}",

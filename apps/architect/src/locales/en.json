@@ -1879,6 +1879,10 @@
     "defaultMessage": "Ego",
     "description": "Heading of the group of texts in the translation table that belong to the ego (the participant) in the codebook."
   },
+  "architect.localization.textPlaces.interface": {
+    "defaultMessage": "Interview text",
+    "description": "Heading of the group of texts in the translation table that the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry."
+  },
   "architect.localization.textPlaces.nodeType": {
     "defaultMessage": "Node type",
     "description": "Kind of codebook entry that holds a group of texts in the translation table, before the entry’s name: a node type."

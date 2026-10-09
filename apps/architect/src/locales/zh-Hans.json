@@ -469,6 +469,7 @@
   "architect.localization.localizationAlert.showMissing": "显示缺失的翻译",
   "architect.localization.textPlaces.edgeType": "关系类型",
   "architect.localization.textPlaces.ego": "自我",
+  "architect.localization.textPlaces.interface": "访谈文本",
   "architect.localization.textPlaces.nodeType": "节点类型",
   "architect.localization.textPlaces.protocol": "协议",
   "architect.localization.textPlaces.stagePosition": "阶段 {position, number}",

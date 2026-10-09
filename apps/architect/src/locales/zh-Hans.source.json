@@ -469,6 +469,7 @@
   "architect.localization.localizationAlert.showMissing": "Show missing translations",
   "architect.localization.textPlaces.edgeType": "Edge type",
   "architect.localization.textPlaces.ego": "Ego",
+  "architect.localization.textPlaces.interface": "Interview text",
   "architect.localization.textPlaces.nodeType": "Node type",
   "architect.localization.textPlaces.protocol": "Protocol",
   "architect.localization.textPlaces.stagePosition": "Stage {position, number}",

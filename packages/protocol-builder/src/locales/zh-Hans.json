@@ -613,6 +613,8 @@
   "protocolBuilder.localizedMessage.versionsBlank": "请填写此文字的每个版本，或将它们全部留空。",
   "protocolBuilder.localizedTextNames.diseasePosition": "疾病 {position, number}",
   "protocolBuilder.localizedTextNames.fieldPosition": "字段 {position, number}",
+  "protocolBuilder.localizedTextNames.interfaceTextGroup": "{group, select, interview {整个访谈} passphrase {密码短语} forms {表单} other {{group}}}",
+  "protocolBuilder.localizedTextNames.interfaceTextName": "{key, select, exitInterview {退出按钮} exitInterviewDescription {退出说明} stageError {页面错误消息} itemUnavailable {项目缺失消息} back {返回按钮} continue {继续按钮} cancel {取消按钮} done {完成按钮} delete {删除按钮} genericError {通用错误消息} passphrase {密码短语字段} choosePassphraseHelp {密码短语提示} passphraseIncorrect {密码短语错误消息} protectedAnswersLocked {回答已锁定消息} protectedAnswersNotSaved {回答未保存消息} protectedAnswersUnavailable {回答不可用消息} answerUnavailable {回答不可用标签} answerUnavailableKept {先前回答消息} confirmPassphrase {确认密码短语字段} passphraseAccepted {密码短语已接受消息} discardChanges {放弃按钮} discardChangesTitle {放弃确认问题} discardChangesDescription {放弃说明} yes {“是”选项} no {“否”选项} submitFailed {表单错误消息} other {{key}}}",
   "protocolBuilder.localizedTextNames.itemPosition": "项目 {position, number}",
   "protocolBuilder.localizedTextNames.panelPosition": "面板 {position, number}",
   "protocolBuilder.localizedTextNames.presetPosition": "预设 {position, number}",
