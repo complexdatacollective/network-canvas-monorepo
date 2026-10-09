@@ -23,9 +23,10 @@ export type SuppliedStageSetting = Readonly<{
   /**
    * A setting the stage shows only while it is configured a certain way,
    * such as the Family Pedigree's wording question, asked only when
-   * participants choose the wording. It is written while `when` holds, and
-   * kept afterwards, so switching back and forth loses no wording; the
-   * stage editor writes it when the configuration changes.
+   * participants choose the wording. A stage holds it only while `when`
+   * holds: saving a stage fills it with the supplied wording when the
+   * configuration is switched on and drops it when it is switched off (see
+   * `missingSuppliedStageText` and `inapplicableStageSettings`).
    */
   when?: (stage: Readonly<Record<string, unknown>>) => boolean;
 }>;
