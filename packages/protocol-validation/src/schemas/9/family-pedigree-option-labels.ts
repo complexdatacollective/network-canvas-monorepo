@@ -71,6 +71,9 @@ export const SUPPLIED_PEDIGREE_OPTION_LABELS = {
       social: 'Stief- oder sozialer Elternteil',
       donor: 'Eizell- oder Samenspender/in',
       surrogate: 'Leihmutter',
+      identicalTwin: 'Eineiiger Zwilling',
+      fraternalTwin: 'Zweieiiger Zwilling',
+      unknownZygosityTwin: 'Zwilling, unbekannt ob eineiig',
     },
   },
   'es': {
@@ -88,6 +91,9 @@ export const SUPPLIED_PEDIGREE_OPTION_LABELS = {
       social: 'Padrastro, madrastra o progenitor social',
       donor: 'Donante de óvulos o esperma',
       surrogate: 'Gestante subrogada',
+      identicalTwin: 'Gemelo idéntico',
+      fraternalTwin: 'Mellizo',
+      unknownZygosityTwin: 'Gemelo, sin saber si idéntico',
     },
   },
   'fr': {
@@ -105,6 +111,9 @@ export const SUPPLIED_PEDIGREE_OPTION_LABELS = {
       social: 'Beau-parent ou parent social',
       donor: 'Donneur ou donneuse d’ovule ou de sperme',
       surrogate: 'Mère porteuse',
+      identicalTwin: 'Jumeau ou jumelle monozygote',
+      fraternalTwin: 'Jumeau ou jumelle dizygote',
+      unknownZygosityTwin: 'Jumeau ou jumelle, sans savoir si monozygote',
     },
   },
   'it': {
@@ -122,6 +131,9 @@ export const SUPPLIED_PEDIGREE_OPTION_LABELS = {
       social: 'Genitore acquisito o sociale',
       donor: 'Donatore o donatrice di ovuli o sperma',
       surrogate: 'Gestante per altri',
+      identicalTwin: 'Gemello identico',
+      fraternalTwin: 'Gemello fraterno',
+      unknownZygosityTwin: 'Gemello, non si sa se identico',
     },
   },
   'nl': {
@@ -139,6 +151,9 @@ export const SUPPLIED_PEDIGREE_OPTION_LABELS = {
       social: 'Stiefouder of sociale ouder',
       donor: 'Eicel- of zaaddonor',
       surrogate: 'Draagmoeder',
+      identicalTwin: 'Eeneiige tweeling',
+      fraternalTwin: 'Twee-eiige tweeling',
+      unknownZygosityTwin: 'Tweeling, onbekend of eeneiig',
     },
   },
   'pt-BR': {
@@ -156,6 +171,9 @@ export const SUPPLIED_PEDIGREE_OPTION_LABELS = {
       social: 'Padrasto/madrasta ou pai/mãe socioafetivo(a)',
       donor: 'Doador(a) de óvulo ou esperma',
       surrogate: 'Gestante substituta',
+      identicalTwin: 'Gêmeo(a) idêntico(a)',
+      fraternalTwin: 'Gêmeo(a) fraterno(a)',
+      unknownZygosityTwin: 'Gêmeo(a), não se sabe se idêntico(a)',
     },
   },
   'zh-Hans': {
@@ -173,6 +191,9 @@ export const SUPPLIED_PEDIGREE_OPTION_LABELS = {
       social: '继父母或社会意义上的父母',
       donor: '卵子或精子捐赠者',
       surrogate: '代孕者',
+      identicalTwin: '同卵双胞胎',
+      fraternalTwin: '异卵双胞胎',
+      unknownZygosityTwin: '双胞胎，不知是否同卵',
     },
   },
   'zh-Hant': {
@@ -190,6 +211,9 @@ export const SUPPLIED_PEDIGREE_OPTION_LABELS = {
       social: '繼父母或社會意義上的父母',
       donor: '卵子或精子捐贈者',
       surrogate: '代理孕母',
+      identicalTwin: '同卵雙胞胎',
+      fraternalTwin: '異卵雙胞胎',
+      unknownZygosityTwin: '雙胞胎，不知是否同卵',
     },
   },
 } as const satisfies Readonly<Record<LocaleTag, SuppliedOptionLabels>>;

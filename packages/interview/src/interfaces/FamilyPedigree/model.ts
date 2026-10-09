@@ -5,12 +5,14 @@ import {
   PEDIGREE_RELATIONSHIP_KINDS,
   PEDIGREE_RELATIVES_NOT_RECORDED,
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  PEDIGREE_TWIN_KINDS,
   type FamilyPedigreeStageDefinition,
   type PedigreeGenderWords,
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
   type PedigreeRelativesNotRecorded,
   type PedigreeSexAssignedAtBirth,
+  type PedigreeTwinKind,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -117,22 +119,62 @@ export type Person = {
   attributes: NcNode[typeof entityAttributesProperty];
 };
 
+/** The kind of a parent or partner link: any relationship kind but a twin
+ * kind, since twins are recorded apart (`Family.twins`). */
+export type FamilyLinkKind = Exclude<
+  PedigreeRelationshipKind,
+  PedigreeTwinKind
+>;
+
 export type FamilyLink = {
   id: string;
   /** The parent, for a parent link; either partner, for a partner link. */
   source: string;
   /** The child, for a parent link; the other partner, for a partner link. */
   target: string;
-  kind: PedigreeRelationshipKind;
+  kind: FamilyLinkKind;
+  /** This parent carried the child's pregnancy. Any kind of parent may have
+   * (a surrogate always did); a child has at most one. */
   isGestationalCarrier: boolean;
   isCurrentPartner: boolean;
 };
+
+/** Whether twins are identical (monozygotic), fraternal (dizygotic), or not
+ * known to be either. */
+export type TwinZygosity = 'identical' | 'fraternal' | 'unknown';
+
+const ZYGOSITY_BY_KIND: Record<PedigreeTwinKind, TwinZygosity> = {
+  identicalTwin: 'identical',
+  fraternalTwin: 'fraternal',
+  unknownZygosityTwin: 'unknown',
+};
+
+/** The relationship kind that records twins of this zygosity. */
+export const TWIN_KIND_BY_ZYGOSITY: Record<TwinZygosity, PedigreeTwinKind> = {
+  identical: 'identicalTwin',
+  fraternal: 'fraternalTwin',
+  unknown: 'unknownZygosityTwin',
+};
+
+/** Two people recorded as twins, in either order. */
+export type TwinLink = {
+  id: string;
+  source: string;
+  target: string;
+  zygosity: TwinZygosity;
+};
+
+export const isTwinKind = (kind: string): kind is PedigreeTwinKind =>
+  PEDIGREE_TWIN_KINDS.some((twinKind) => twinKind === kind);
 
 export type Family = {
   /** In the order they were added. */
   people: Person[];
   byId: ReadonlyMap<string, Person>;
+  /** Parent and partner links. */
   links: FamilyLink[];
+  /** Pairs recorded as twins. */
+  twins: TwinLink[];
   egoId: string | undefined;
 };
 
@@ -272,6 +314,7 @@ export function readFamily(
   const byId = new Map(people.map((person) => [person.id, person]));
 
   const links: FamilyLink[] = [];
+  const twins: TwinLink[] = [];
   for (const edge of edges) {
     if (edge.type !== config.relationshipType) continue;
     if (!byId.has(edge.from) || !byId.has(edge.to)) continue;
@@ -282,6 +325,15 @@ export function readFamily(
       PEDIGREE_RELATIONSHIP_KINDS,
     );
     if (!kind) continue;
+    if (isTwinKind(kind)) {
+      twins.push({
+        id: edge[entityPrimaryKeyProperty],
+        source: edge.from,
+        target: edge.to,
+        zygosity: ZYGOSITY_BY_KIND[kind],
+      });
+      continue;
+    }
     links.push({
       id: edge[entityPrimaryKeyProperty],
       source: edge.from,
@@ -298,6 +350,7 @@ export function readFamily(
     people,
     byId,
     links,
+    twins,
     egoId: people.find((person) => person.isEgo)?.id,
   };
 }
@@ -1234,7 +1287,7 @@ export function availableParentChoices(
     !hasCarrier(family, childId) && couldCarryPregnancy(parentSex);
   const choices: ParentChoice[] = [];
   for (const kind of PEDIGREE_RELATIONSHIP_KINDS) {
-    if (kind === 'partner') continue;
+    if (kind === 'partner' || isTwinKind(kind)) continue;
     if (isGeneticKind(kind) && !canBeGenetic) continue;
     if (kind === 'surrogate' && !canCarry) continue;
     choices.push({ parentKind: kind, carriedPregnancy: kind === 'surrogate' });
