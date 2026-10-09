@@ -28,6 +28,7 @@ import { resolveContentLocale } from './contentFormat';
 import {
   createLocalizedMessageFormatter,
   type LocalizedMessageFormatter,
+  type LocalizedMessageValues,
 } from './messageFormatter';
 
 type ProtocolLocalizationState = Readonly<{
@@ -248,4 +249,32 @@ export function useLocalizedString(
 ): ResolvedLocalizedString {
   const resolve = useResolveLocalizedString();
   return useMemo(() => resolve(value), [resolve, value]);
+}
+
+/**
+ * `useResolveLocalizedString` for a localized message (see
+ * `localizedMessage`): the translation is chosen the same way, then
+ * formatted with `values` in the language it is written in, so its plural
+ * rules are that language's.
+ */
+export function useResolveLocalizedMessage(): (
+  value: LocalizedString,
+  values: LocalizedMessageValues,
+) => ResolvedLocalizedString {
+  const { localization, resolutionOrder, format } =
+    useProtocolLocalizationState();
+  return useCallback(
+    (value: LocalizedString, values: LocalizedMessageValues) => {
+      const resolved = resolveLocalizedString(
+        value,
+        localization,
+        resolutionOrder,
+      );
+      return {
+        ...resolved,
+        text: format(resolved.locale, resolved.text, values),
+      };
+    },
+    [localization, resolutionOrder, format],
+  );
 }

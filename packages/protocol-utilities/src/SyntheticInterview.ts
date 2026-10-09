@@ -17,6 +17,7 @@ import {
   type Experiments,
   type LocalizedString,
   messageText,
+  missingSuppliedStageText,
   type Stage,
   type StageType,
   type StructuralCodebook,
@@ -784,6 +785,7 @@ export class SyntheticInterview {
           options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
         }),
         egoAttribute: personVariable('isEgo', { type: 'boolean' }),
+        ...(opts?.nameField ? { nameField: opts.nameField } : {}),
         ...(opts?.recordRelationshipToParticipant
           ? {
               relationshipToParticipantAttribute: personVariable(
@@ -2544,6 +2546,15 @@ export class SyntheticInterview {
       : text;
   }
 
+  /** A message with arguments (see `localizedMessage`): a string is the
+   * default locale's ICU message as written, so its arguments stay
+   * arguments. */
+  private message(text: TextInput): LocalizedString {
+    return typeof text === 'string'
+      ? { [this.localization.defaultLocale]: text }
+      : text;
+  }
+
   // A scale's end labels are participant copy; every other parameter is
   // configuration and passes through unchanged.
   private localizedParameters(
@@ -2838,10 +2849,64 @@ export class SyntheticInterview {
       if (stage.prompt !== undefined) {
         config.prompt = this.localized(stage.prompt);
       }
-      config.nodeConfiguration = stage.nodeConfiguration;
+      if (stage.nodeConfiguration) {
+        const { nameField, ...attributes } = stage.nodeConfiguration;
+        config.nodeConfiguration = {
+          ...attributes,
+          ...(nameField && {
+            nameField: {
+              prompt: this.localized(nameField.prompt),
+              ...(nameField.hint !== undefined && {
+                hint: this.localized(nameField.hint),
+              }),
+            },
+          }),
+        };
+      }
       config.edgeConfiguration = stage.edgeConfiguration;
-      if (stage.completeness) config.completeness = stage.completeness;
+      if (stage.completeness) {
+        const { itemText, recommendedNote, ...requirement } =
+          stage.completeness;
+        config.completeness = {
+          ...requirement,
+          ...(itemText && {
+            itemText: Object.fromEntries(
+              Object.entries(itemText).map(([kind, wording]) => [
+                kind,
+                Object.fromEntries(
+                  Object.entries(wording ?? {}).flatMap(([key, text]) =>
+                    text === undefined ? [] : [[key, this.message(text)]],
+                  ),
+                ),
+              ]),
+            ),
+          }),
+          ...(recommendedNote !== undefined && {
+            recommendedNote: this.localized(recommendedNote),
+          }),
+        };
+      }
       if (stage.framing) config.framing = stage.framing;
+      // The stage's own wording, as Architect writes it into a new stage and
+      // a new completeness requirement: what Network Canvas supplies in the
+      // protocol's languages.
+      for (const { path, value } of missingSuppliedStageText(
+        { ...config, type: stage.type },
+        this.localization,
+      )) {
+        let container = config;
+        for (const key of path.slice(0, -1)) {
+          const child = container[key];
+          const copy: Record<string, unknown> =
+            typeof child === 'object' && child !== null
+              ? { ...(child as Record<string, unknown>) }
+              : {};
+          container[key] = copy;
+          container = copy;
+        }
+        const last = path.at(-1);
+        if (last !== undefined) container[last] = value;
+      }
       if (stage.nominationPrompts) {
         config.nominationPrompts = stage.nominationPrompts.map((prompt) => ({
           ...prompt,

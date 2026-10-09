@@ -968,6 +968,12 @@ describe('SyntheticInterview', () => {
       expect(config.prompt).toEqual({ 'en-US': expect.any(String) });
       expect(config.nodeConfiguration).toEqual({
         nameAttribute: stage.name,
+        nameField: {
+          prompt: { 'en-US': 'Name (optional)' },
+          hint: {
+            'en-US': expect.stringContaining('first name') as unknown as string,
+          },
+        },
         genderIdentity: {
           attribute: stage.genderIdentity,
           terms: [...PEDIGREE_DEFAULT_GENDER_IDENTITIES],
@@ -1052,6 +1058,57 @@ describe('SyntheticInterview', () => {
       expect(result.success).toBe(true);
     });
 
+    it("keeps a stage's own wording and supplies the rest", async () => {
+      const si = new SyntheticInterview();
+      si.addStage('FamilyPedigree', {
+        nameField: { prompt: 'What do you call them?' },
+        completeness: {
+          scope: 'firstDegree',
+          enforcement: 'recommended',
+          itemText: {
+            siblings: {
+              listItem:
+                '{isYou, select, true {Your brothers and sisters} other {{name}’s brothers and sisters}}',
+            },
+          },
+          recommendedNote: 'Next again skips these.',
+        },
+      });
+      const protocol = si.getProtocol();
+      const config = protocol.stages[0] as unknown as {
+        nodeConfiguration: { nameField: unknown };
+        completeness: {
+          itemText: Record<string, Record<string, unknown>>;
+          recommendedNote: unknown;
+        };
+      };
+      // A name question without a hint keeps none: the hint is the
+      // researcher's to remove.
+      expect(config.nodeConfiguration.nameField).toEqual({
+        prompt: { 'en-US': 'What do you call them?' },
+      });
+      // A message is written as given, its arguments intact.
+      expect(config.completeness.itemText.siblings!.listItem).toEqual({
+        'en-US':
+          '{isYou, select, true {Your brothers and sisters} other {{name}’s brothers and sisters}}',
+      });
+      expect(config.completeness.itemText.siblings!.noneButton).toEqual({
+        'en-US': expect.any(String) as unknown as string,
+      });
+      expect(Object.keys(config.completeness.itemText).toSorted()).toEqual([
+        'children',
+        'details',
+        'parents',
+        'siblings',
+      ]);
+      expect(config.completeness.recommendedNote).toEqual({
+        'en-US': 'Next again skips these.',
+      });
+      const result = await validateSynthetic(protocol);
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
+    });
+
     it('leaves gender identity out when the stage does not ask about it', async () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('FamilyPedigree', {
@@ -1064,6 +1121,12 @@ describe('SyntheticInterview', () => {
       };
       expect(config.nodeConfiguration).toEqual({
         nameAttribute: stage.name,
+        nameField: {
+          prompt: { 'en-US': 'Name (optional)' },
+          hint: {
+            'en-US': expect.stringContaining('first name') as unknown as string,
+          },
+        },
         sexAssignedAtBirthAttribute: stage.sexAssignedAtBirth,
         egoAttribute: stage.ego,
       });

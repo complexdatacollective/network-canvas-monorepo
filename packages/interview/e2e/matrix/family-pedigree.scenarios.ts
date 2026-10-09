@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type {
   FramingSetting,
-  PedigreeCompletenessScope,
   PedigreeGenderWords,
   PedigreeRelationshipKind,
   PedigreeSexAssignedAtBirth,
@@ -35,6 +34,10 @@ const NICKNAME = 'Nickname';
 const BEFORE_TITLE = 'Before your family';
 const AFTER_TITLE = 'After your family';
 
+type PedigreeStageInput = NonNullable<
+  Parameters<SyntheticInterview['addStage']>[1]
+>;
+
 type PedigreeOptions = {
   label?: string;
   interviewScript?: string;
@@ -45,10 +48,11 @@ type PedigreeOptions = {
     label: string;
     words?: PedigreeGenderWords;
   }[];
-  completeness?: {
-    scope: PedigreeCompletenessScope;
-    enforcement: 'required' | 'recommended';
-  };
+  /** The requirement, and any of the tracker's wording the researcher
+   * writes themselves. */
+  completeness?: PedigreeStageInput['completeness'];
+  /** The name question's wording, when the researcher writes it. */
+  nameField?: PedigreeStageInput['nameField'];
   nominationPrompts?: {
     text: string;
     variableName?: string;
@@ -117,6 +121,7 @@ function scaffold(options: PedigreeOptions = {}) {
     askGenderIdentity: options.askGenderIdentity,
     genderIdentities: options.genderIdentities,
     completeness: options.completeness,
+    nameField: options.nameField,
     nominationPrompts: options.nominationPrompts,
     recordRelationshipToParticipant: options.recordRelationshipToParticipant,
   });
@@ -1042,6 +1047,101 @@ function completenessFirstDegreeRecommended(): ScenarioDefinition {
 }
 
 /**
+ * The researcher writes the stage's wording: the name question, and what the
+ * tracker says about each item. The participant reads it as written, with
+ * the person and the number of missing parents filled in, and the stage's
+ * own note under a recommended list.
+ */
+function researcherWording(): ScenarioDefinition {
+  const { synth, person } = scaffold({
+    nameField: {
+      prompt: 'What do you call them?',
+      hint: 'A nickname will do.',
+    },
+    completeness: {
+      scope: 'firstDegree',
+      enforcement: 'recommended',
+      itemText: {
+        parents: {
+          listItem:
+            '{isYou, select, true {{missing, plural, one {One more parent to add} other {# parents to add}}} other {Parents of {name}}}',
+        },
+        siblings: {
+          listItem:
+            '{isYou, select, true {Your brothers and sisters} other {{name}’s brothers and sisters}}',
+          noneButton:
+            '{isYou, select, true {No brothers or sisters} other {None}}',
+          question:
+            '{isYou, select, true {Any brothers or sisters?} other {Does {name} have brothers or sisters?}}',
+        },
+        details: {
+          listItem:
+            '{isYou, select, true {Tell us about yourself} other {Tell us about {name}}}',
+        },
+      },
+      recommendedNote: 'Press Next again to skip these.',
+    },
+  });
+  person('ego', { isEgo: true });
+
+  return {
+    id: 'researcher-wording',
+    covers: [
+      'nodeConfiguration.nameField.prompt',
+      'nodeConfiguration.nameField.hint',
+      'completeness.itemText',
+      'completeness.recommendedNote',
+    ],
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page, interview }) => {
+      await interview.nextButton.click();
+      await expect(trackerList(page)).toBeVisible();
+      for (const item of [
+        '2 parents to add',
+        'Your brothers and sisters',
+        // The supplied wording fills what the researcher left out.
+        'Add your biological children, or say you have none',
+      ]) {
+        await expect(
+          trackerList(page).getByRole('button', { name: item, exact: true }),
+        ).toBeVisible();
+      }
+      await expect(
+        trackerList(page).getByRole('button', {
+          name: 'No brothers or sisters',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(
+        trackerList(page).getByText('Press Next again to skip these.'),
+      ).toBeVisible();
+
+      await trackerList(page)
+        .getByRole('button', { name: 'Tell us about yourself', exact: true })
+        .click();
+      await expect(
+        panel(page).getByRole('radiogroup', {
+          name: /^Any brothers or sisters\?/,
+        }),
+      ).toBeVisible();
+      await describe(page, { gender: 'Non-binary', sex: 'Intersex' });
+      await submitPanel(page, 'Save');
+
+      // The participant is not asked their own name; a relative is.
+      await trackerRing(page).click();
+      await trackerList(page)
+        .getByRole('button', { name: '2 parents to add', exact: true })
+        .click();
+      await expect(
+        panel(page).getByRole('textbox', { name: 'What do you call them?' }),
+      ).toBeVisible();
+      await expect(panel(page).getByText('A nickname will do.')).toBeVisible();
+    },
+  };
+}
+
+/**
  * Three generations are required. With the participant's own siblings and
  * children answered, the list asks for each parent's parents and siblings.
  * Answering in a parent's details that the participant doesn't know about
@@ -1762,6 +1862,7 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     genderIdentityTerms(),
     completenessParentsRequired(),
     completenessFirstDegreeRecommended(),
+    researcherWording(),
     completenessGrandparentsRequired(),
     extendedScope('secondDegree'),
     extendedScope('thirdDegree'),

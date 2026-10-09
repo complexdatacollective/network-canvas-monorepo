@@ -12,14 +12,25 @@ import {
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+import type { FamilyPedigreeStageDefinition } from '@codaco/protocol-validation';
 
+import {
+  useLocalizedString,
+  useResolveLocalizedMessage,
+} from '../../../localization/ProtocolLocalizationProvider';
 import type { CompletenessItem, CompletenessProgress } from '../completeness';
 import { messages } from '../messages';
 import type { Family } from '../model';
 
+/** The stage's completeness setting: its enforcement and its wording. */
+type TrackerCompleteness = Pick<
+  NonNullable<FamilyPedigreeStageDefinition['completeness']>,
+  'enforcement' | 'itemText' | 'recommendedNote'
+>;
+
 type CompletenessTrackerProps = {
   progress: CompletenessProgress;
-  enforcement: 'required' | 'recommended';
+  completeness: TrackerCompleteness;
   /** The list is pinned open, by a click on the ring or by pressing Next. */
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -31,13 +42,6 @@ type CompletenessTrackerProps = {
   onItemAnswer?: (item: CompletenessItem) => void;
   /** Forwarded to the ring, the toolbar's control. */
   ref?: Ref<HTMLButtonElement>;
-};
-
-const ITEM_MESSAGES = {
-  parents: messages.itemParents,
-  siblings: messages.itemSiblings,
-  children: messages.itemChildren,
-  details: messages.itemDetails,
 };
 
 /** A ring that fills as the family nears completion, with the percentage in
@@ -103,7 +107,7 @@ function ProgressRing({ fraction }: { fraction: number }) {
  */
 function CompletenessTracker({
   progress,
-  enforcement,
+  completeness,
   open,
   onOpenChange,
   family,
@@ -113,6 +117,10 @@ function CompletenessTracker({
   ref,
 }: CompletenessTrackerProps) {
   const intl = useAppIntl();
+  const resolveMessage = useResolveLocalizedMessage();
+  const { text: recommendedNote } = useLocalizedString(
+    completeness.recommendedNote,
+  );
   const titleId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -273,18 +281,17 @@ function CompletenessTracker({
           >
             <ul className="flex flex-col gap-2">
               {progress.items.map((item) => {
-                const args = {
+                const values = {
                   isYou: family.byId.get(item.personId)?.isEgo
                     ? 'true'
                     : 'false',
                   name: displayName(item.personId),
                 };
+                const wording = completeness.itemText[item.kind];
                 const noneAnswer =
-                  onItemAnswer && item.kind === 'siblings'
-                    ? messages.trackerNoSiblings
-                    : onItemAnswer && item.kind === 'children'
-                      ? messages.trackerNoChildren
-                      : null;
+                  onItemAnswer && 'noneButton' in wording
+                    ? wording.noneButton
+                    : null;
                 return (
                   <li
                     key={`${item.kind}:${item.personId}`}
@@ -300,14 +307,16 @@ function CompletenessTracker({
                         className="focusable text-left underline-offset-4 hover:underline"
                         onClick={() => onItemSelect(item)}
                       >
-                        {intl.formatMessage(ITEM_MESSAGES[item.kind], {
-                          ...args,
-                          missing: item.kind === 'parents' ? item.missing : 0,
-                        })}
+                        {
+                          resolveMessage(wording.listItem, {
+                            ...values,
+                            missing: item.kind === 'parents' ? item.missing : 0,
+                          }).text
+                        }
                       </button>
                       {noneAnswer && (
                         <Button size="sm" onClick={() => answer(item)}>
-                          {intl.formatMessage(noneAnswer, args)}
+                          {resolveMessage(noneAnswer, values).text}
                         </Button>
                       )}
                     </div>
@@ -315,10 +324,8 @@ function CompletenessTracker({
                 );
               })}
             </ul>
-            {enforcement === 'recommended' && (
-              <p className="text-sm opacity-80">
-                <AppMessage message={messages.trackerRecommendedNote} />
-              </p>
+            {completeness.enforcement === 'recommended' && (
+              <p className="text-sm opacity-80">{recommendedNote}</p>
             )}
           </div>
         )}

@@ -1831,7 +1831,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               {progress && completeness && !nomination && (
                 <CompletenessTracker
                   progress={progress}
-                  enforcement={completeness.enforcement}
+                  completeness={completeness}
                   open={trackerOpen}
                   onOpenChange={setTrackerOpen}
                   family={family}
@@ -1926,15 +1926,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             generatedLabels={generatedLabels}
             decryptedNames={decryptedNames}
             displayName={displayName}
+            nameField={stage.nodeConfiguration.nameField}
             askAbout={
-              panel.mode.kind === 'edit' && progress
+              panel.mode.kind === 'edit' && progress && completeness
                 ? {
                     ...relativesToAskAbout(
                       family,
                       progress,
                       panel.mode.person.id,
                     ),
-                    required: completeness?.enforcement === 'required',
+                    required: completeness.enforcement === 'required',
+                    questions: {
+                      siblings: completeness.itemText.siblings.question,
+                      children: completeness.itemText.children.question,
+                    },
                   }
                 : undefined
             }

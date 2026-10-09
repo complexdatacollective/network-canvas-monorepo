@@ -198,18 +198,6 @@ export const messages = defineMessages({
     description:
       'Heading above the study’s own additional questions about a family member, in the side panel for adding or editing them. On the participant’s own panel it addresses them.',
   },
-  nameLabel: {
-    id: 'interview.familyPedigree.nameLabel',
-    defaultMessage: 'Name (optional)',
-    description:
-      'Label of the field for a family member’s name, which the participant may not know.',
-  },
-  nameHint: {
-    id: 'interview.familyPedigree.nameHint',
-    defaultMessage:
-      'A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.',
-    description: 'Hint beneath the field for a family member’s name.',
-  },
   genderIdentityLabel: {
     id: 'interview.familyPedigree.genderIdentityLabel',
     defaultMessage: 'Gender identity',
@@ -431,66 +419,17 @@ export const messages = defineMessages({
     description:
       'Heading of the list of family members the participant still needs to add before moving on.',
   },
-  trackerRecommendedNote: {
-    id: 'interview.familyPedigree.trackerRecommendedNote',
-    defaultMessage:
-      'You can also continue without these by pressing Next again.',
-    description:
-      'Note beneath the list of family members still needed, when the study recommends rather than requires them.',
-  },
   trackerComplete: {
     id: 'interview.familyPedigree.trackerComplete',
     defaultMessage: 'Your family tree has everything needed. You can continue.',
     description:
       'Shown in the list of family members still needed once nothing more is needed.',
   },
-  itemParents: {
-    id: 'interview.familyPedigree.itemParents',
-    defaultMessage:
-      '{isYou, select, true {{missing, plural, one {Add your other biological parent} other {Add your biological parents}}} other {{missing, plural, one {Add another biological parent for “{name}”} other {Add biological parents for “{name}”}}}}',
-    description:
-      'Item in the list of family members still needed. missing is how many biological parents the person still needs (1 or 2). name is the person’s name or how they are related to the participant. Biological parents include an egg or sperm donor.',
-  },
-  itemSiblings: {
-    id: 'interview.familyPedigree.itemSiblings',
-    defaultMessage:
-      '{isYou, select, true {Add your biological brothers and sisters, or say you have none} other {Add biological brothers and sisters for “{name}”, or say they have none}}',
-    description:
-      'Item in the list of family members still needed: the person’s siblings (including half-siblings), or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant.',
-  },
-  itemChildren: {
-    id: 'interview.familyPedigree.itemChildren',
-    defaultMessage:
-      '{isYou, select, true {Add your biological children, or say you have none} other {Add biological children for “{name}”, or say they have none}}',
-    description:
-      'Item in the list of family members still needed: the person’s biological children, or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant.',
-  },
-  itemDetails: {
-    id: 'interview.familyPedigree.itemDetails',
-    defaultMessage:
-      '{isYou, select, true {Some details are missing about you} other {Some details are missing for “{name}”}}',
-    description:
-      'Item in the list of what is still needed before continuing: questions about this person that the study requires have not been answered. name is the person’s name or how they are related to the participant.',
-  },
   familySection: {
     id: 'interview.familyPedigree.familySection',
     defaultMessage: 'Their family',
     description:
       'Heading of the questions in a family member’s details about whether they have siblings or children.',
-  },
-  hasSiblingsQuestion: {
-    id: 'interview.familyPedigree.hasSiblingsQuestion',
-    defaultMessage:
-      '{isYou, select, true {Do you have any biological brothers or sisters, including half-brothers and half-sisters?} other {Does {name} have any biological brothers or sisters, including half-brothers and half-sisters?}}',
-    description:
-      'Question in a family member’s details. Answering yes means the participant will add them to the family tree. Includes half-siblings who share one biological parent.',
-  },
-  hasChildrenQuestion: {
-    id: 'interview.familyPedigree.hasChildrenQuestion',
-    defaultMessage:
-      '{isYou, select, true {Do you have any biological children?} other {Does {name} have any biological children?}}',
-    description:
-      'Question in a family member’s details. Answering yes means the participant will add them to the family tree.',
   },
   hasRelativesYes: {
     id: 'interview.familyPedigree.hasRelativesYes',
@@ -700,20 +639,6 @@ export const messages = defineMessages({
       '{firstIsYou, select, true {Both you and “{second}”} other {Both “{first}” and “{second}”}}',
     description:
       'Option: both parents of the new child are its biological parents. first and second are their names or how they are related to the participant.',
-  },
-  trackerNoSiblings: {
-    id: 'interview.familyPedigree.trackerNoSiblings',
-    defaultMessage:
-      '{isYou, select, true {I have no biological siblings} other {“{name}” has no biological siblings}}',
-    description:
-      'Button under an item in the list of family members still needed: records that the person has no siblings who share a biological parent. name is the person’s name or how they are related to the participant.',
-  },
-  trackerNoChildren: {
-    id: 'interview.familyPedigree.trackerNoChildren',
-    defaultMessage:
-      '{isYou, select, true {I have no biological children} other {“{name}” has no biological children}}',
-    description:
-      'Button under an item in the list of family members still needed: records that the person has no biological children. name is the person’s name or how they are related to the participant.',
   },
   siblingsAnsweredAnnouncement: {
     id: 'interview.familyPedigree.siblingsAnsweredAnnouncement',

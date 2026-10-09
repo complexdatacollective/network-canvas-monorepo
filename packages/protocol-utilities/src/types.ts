@@ -377,6 +377,33 @@ export type FamilyPedigreeNodeConfigurationEntry = {
   /** Present when the stage records each person's relationship to the
    * participant. */
   relationshipToParticipantAttribute?: string;
+  nameField?: FamilyPedigreeNameFieldEntry;
+};
+
+/** The question a FamilyPedigree stage asks each person's name with. Absent,
+ * the stage gets the wording Network Canvas supplies. */
+export type FamilyPedigreeNameFieldEntry = {
+  prompt: TextInput;
+  hint?: TextInput;
+};
+
+/** What a FamilyPedigree stage's tracker says about each kind of item. Each
+ * is a message (see `localizedMessage` in protocol-validation): a string is
+ * the default language's message as written, arguments and all. Any left out
+ * get the wording Network Canvas supplies. */
+export type FamilyPedigreeItemTextEntry = {
+  parents?: { listItem?: TextInput };
+  siblings?: {
+    listItem?: TextInput;
+    noneButton?: TextInput;
+    question?: TextInput;
+  };
+  children?: {
+    listItem?: TextInput;
+    noneButton?: TextInput;
+    question?: TextInput;
+  };
+  details?: { listItem?: TextInput };
 };
 
 /** A FamilyPedigree stage's completeness requirement. */
@@ -384,6 +411,8 @@ export type FamilyPedigreeCompletenessEntry = {
   scope: PedigreeCompletenessScope;
   enforcement: 'required' | 'recommended';
   relativesNotRecordedAttribute: string;
+  itemText?: FamilyPedigreeItemTextEntry;
+  recommendedNote?: TextInput;
 };
 
 /** A question asked of the drawn family, and the boolean person attribute
@@ -571,6 +600,8 @@ export type AddStageInput = {
    * relationship to the participant, and binds it, when true. Its options
    * are the interface's values, each labelled with its own value. */
   recordRelationshipToParticipant?: boolean;
+  /** The name question's wording, when not what Network Canvas supplies. */
+  nameField?: FamilyPedigreeNameFieldEntry;
   /** Creates the relatives-not-recorded attribute when set. */
   completeness?: Omit<
     FamilyPedigreeCompletenessEntry,

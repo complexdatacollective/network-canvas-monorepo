@@ -166,6 +166,10 @@ function renderPersonForm(
         generatedLabels={{}}
         decryptedNames={decryptedNames}
         displayName={(id) => id}
+        nameField={{
+          prompt: { en: 'Name (optional)' },
+          hint: { en: 'A first name or nickname is fine.' },
+        }}
         onSubmit={onSubmit}
       />
       <SubmitButton form={FORM_ID}>Save</SubmitButton>

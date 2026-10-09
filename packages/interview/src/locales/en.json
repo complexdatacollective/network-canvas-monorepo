@@ -251,33 +251,9 @@
     "defaultMessage": "{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}",
     "description": "Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Cousin”; name is the name of their brother or sister, or that sibling’s own kinship word, such as “Sam” or “Niece”. The first form is used when their sibling is the participant."
   },
-  "interview.familyPedigree.hasChildrenQuestion": {
-    "defaultMessage": "{isYou, select, true {Do you have any biological children?} other {Does {name} have any biological children?}}",
-    "description": "Question in a family member’s details. Answering yes means the participant will add them to the family tree."
-  },
   "interview.familyPedigree.hasRelativesYes": {
     "defaultMessage": "Yes — I’ll add them to the family tree",
     "description": "Answer to whether a family member has siblings or children: yes, and the participant will add them."
-  },
-  "interview.familyPedigree.hasSiblingsQuestion": {
-    "defaultMessage": "{isYou, select, true {Do you have any biological brothers or sisters, including half-brothers and half-sisters?} other {Does {name} have any biological brothers or sisters, including half-brothers and half-sisters?}}",
-    "description": "Question in a family member’s details. Answering yes means the participant will add them to the family tree. Includes half-siblings who share one biological parent."
-  },
-  "interview.familyPedigree.itemChildren": {
-    "defaultMessage": "{isYou, select, true {Add your biological children, or say you have none} other {Add biological children for “{name}”, or say they have none}}",
-    "description": "Item in the list of family members still needed: the person’s biological children, or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant."
-  },
-  "interview.familyPedigree.itemDetails": {
-    "defaultMessage": "{isYou, select, true {Some details are missing about you} other {Some details are missing for “{name}”}}",
-    "description": "Item in the list of what is still needed before continuing: questions about this person that the study requires have not been answered. name is the person’s name or how they are related to the participant."
-  },
-  "interview.familyPedigree.itemParents": {
-    "defaultMessage": "{isYou, select, true {{missing, plural, one {Add your other biological parent} other {Add your biological parents}}} other {{missing, plural, one {Add another biological parent for “{name}”} other {Add biological parents for “{name}”}}}}",
-    "description": "Item in the list of family members still needed. missing is how many biological parents the person still needs (1 or 2). name is the person’s name or how they are related to the participant. Biological parents include an egg or sperm donor."
-  },
-  "interview.familyPedigree.itemSiblings": {
-    "defaultMessage": "{isYou, select, true {Add your biological brothers and sisters, or say you have none} other {Add biological brothers and sisters for “{name}”, or say they have none}}",
-    "description": "Item in the list of family members still needed: the person’s siblings (including half-siblings), or an answer that they have none or that the participant does not know. name is the person’s name or how they are related to the participant."
   },
   "interview.familyPedigree.listedName": {
     "defaultMessage": "“{name}”",
@@ -294,14 +270,6 @@
   "interview.familyPedigree.moreAboutThisPerson": {
     "defaultMessage": "{isYou, select, true {More about you} other {More about this person}}",
     "description": "Heading above the study’s own additional questions about a family member, in the side panel for adding or editing them. On the participant’s own panel it addresses them."
-  },
-  "interview.familyPedigree.nameHint": {
-    "defaultMessage": "A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.",
-    "description": "Hint beneath the field for a family member’s name."
-  },
-  "interview.familyPedigree.nameLabel": {
-    "defaultMessage": "Name (optional)",
-    "description": "Label of the field for a family member’s name, which the participant may not know."
   },
   "interview.familyPedigree.numberedRelative": {
     "defaultMessage": "{label} {number, number}",
@@ -463,21 +431,9 @@
     "defaultMessage": "Your family tree has everything needed. You can continue.",
     "description": "Shown in the list of family members still needed once nothing more is needed."
   },
-  "interview.familyPedigree.trackerNoChildren": {
-    "defaultMessage": "{isYou, select, true {I have no biological children} other {“{name}” has no biological children}}",
-    "description": "Button under an item in the list of family members still needed: records that the person has no biological children. name is the person’s name or how they are related to the participant."
-  },
-  "interview.familyPedigree.trackerNoSiblings": {
-    "defaultMessage": "{isYou, select, true {I have no biological siblings} other {“{name}” has no biological siblings}}",
-    "description": "Button under an item in the list of family members still needed: records that the person has no siblings who share a biological parent. name is the person’s name or how they are related to the participant."
-  },
   "interview.familyPedigree.trackerProgressLabel": {
     "defaultMessage": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",
     "description": "Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1."
-  },
-  "interview.familyPedigree.trackerRecommendedNote": {
-    "defaultMessage": "You can also continue without these by pressing Next again.",
-    "description": "Note beneath the list of family members still needed, when the study recommends rather than requires them."
   },
   "interview.familyPedigree.trackerTitle": {
     "defaultMessage": "Before you continue, please complete the following:",

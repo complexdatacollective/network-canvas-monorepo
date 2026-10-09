@@ -30,6 +30,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type FormField,
   type FramingId,
+  type LocalizedString,
   type PedigreeParentKind,
   type PedigreeRelationshipKind,
 } from '@codaco/protocol-validation';
@@ -43,7 +44,10 @@ import PassphraseEntry from '../../../components/PassphraseEntry';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
-import { useResolveLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
+import {
+  useResolveLocalizedMessage,
+  useResolveLocalizedString,
+} from '../../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -164,6 +168,23 @@ export type GenderIdentityOption = {
   label: string;
 };
 
+/** The stage's wording for the name question (`nodeConfiguration.nameField`). */
+type NameFieldText = Readonly<{
+  prompt: LocalizedString;
+  hint?: LocalizedString;
+}>;
+
+/**
+ * Which of the person's relatives to ask about, whether an answer is
+ * required, and the stage's question for each (`completeness.itemText`).
+ */
+type RelativesQuestions = Readonly<{
+  siblings: boolean;
+  children: boolean;
+  required: boolean;
+  questions: Readonly<{ siblings: LocalizedString; children: LocalizedString }>;
+}>;
+
 type PersonFormProps = {
   formId: string;
   mode: PersonFormMode;
@@ -185,8 +206,10 @@ type PersonFormProps = {
   /** Each encrypted name the stage has decrypted, by person id. */
   decryptedNames: ReadonlyMap<string, string>;
   displayName: (personId: string) => string;
+  /** The stage's question asking the person's name, and its hint. */
+  nameField: NameFieldText;
   /** Edit only: ask whether the person has siblings, and children. */
-  askAbout?: { siblings: boolean; children: boolean; required: boolean };
+  askAbout?: RelativesQuestions;
   /** Add only: called with the person being added whenever the answers
    * that decide how they are drawn change. */
   onDraftChange?: (draft: PersonDraft) => void;
@@ -219,6 +242,7 @@ export default function PersonForm({
   generatedLabels,
   decryptedNames,
   displayName,
+  nameField,
   askAbout,
   onDraftChange,
   onSubmit,
@@ -437,8 +461,10 @@ export default function PersonForm({
               component={InputField}
               name={config.nameAttribute}
               nameMode="opaque"
-              label={intl.formatMessage(messages.nameLabel)}
-              hint={intl.formatMessage(messages.nameHint)}
+              label={resolve(nameField.prompt).text}
+              {...(nameField.hint === undefined
+                ? {}
+                : { hint: resolve(nameField.hint).text })}
               initialValue={person?.name}
               autoComplete="off"
               {...nameValidationProps}
@@ -541,11 +567,12 @@ function RelativesQuestions({
   displayName,
 }: {
   person: Person;
-  askAbout: { siblings: boolean; children: boolean; required: boolean };
+  askAbout: RelativesQuestions;
   displayName: (personId: string) => string;
 }) {
   const intl = useAppIntl();
-  const args = {
+  const resolveMessage = useResolveLocalizedMessage();
+  const values = {
     isYou: person.isEgo ? 'true' : 'false',
     name: displayName(person.id),
   };
@@ -570,7 +597,7 @@ function RelativesQuestions({
         <Field
           component={RadioGroupField}
           name={ROLE.hasSiblings}
-          label={intl.formatMessage(messages.hasSiblingsQuestion, args)}
+          label={resolveMessage(askAbout.questions.siblings, values).text}
           options={options}
           required={askAbout.required}
           initialValue={initial(RELATIVES_NOT_RECORDED.siblings)}
@@ -580,7 +607,7 @@ function RelativesQuestions({
         <Field
           component={RadioGroupField}
           name={ROLE.hasChildren}
-          label={intl.formatMessage(messages.hasChildrenQuestion, args)}
+          label={resolveMessage(askAbout.questions.children, values).text}
           options={options}
           required={askAbout.required}
           initialValue={initial(RELATIVES_NOT_RECORDED.children)}
