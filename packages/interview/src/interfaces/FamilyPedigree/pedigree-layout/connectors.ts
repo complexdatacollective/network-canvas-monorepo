@@ -57,8 +57,6 @@ export function computeConnectors(
   const auxiliaryLines: AuxiliaryConnector[] = [];
   const twinIndicators: TwinIndicator[] = [];
   const duplicateArcs: DuplicateArc[] = [];
-  // Maps "childLevel,famId" → sibling bar segment (populated during parent-child computation)
-  const familySiblingBar = new Map<string, LineSegment>();
   const renderedPartnerPairs = new Set<string>();
   const nodeLocation = new Map<
     number,
@@ -410,6 +408,27 @@ export function computeConnectors(
     }
   }
 
+  // Each drawn sibship, by key: its sibling bar, its size, and the children
+  // in it (keyed "level,column"). Auxiliary and direct lines from a parent of
+  // every child in a sibship join its bar; a child in no sibship is joined
+  // directly.
+  const sibshipOf = new Map<string, string>();
+  const sibshipSize = new Map<string, number>();
+  const sibshipBar = new Map<string, LineSegment>();
+  const joinSibship = (
+    key: string,
+    i: number,
+    columns: number[],
+    bar: LineSegment,
+  ) => {
+    sibshipBar.set(key, bar);
+    sibshipSize.set(key, columns.length);
+    for (const j of columns) sibshipOf.set(`${i},${j}`, key);
+  };
+  // The parents whose ties each child's line of descent draws (keyed
+  // "level,column"). Every other primary parent gets a line of their own.
+  const descentParentsOf = new Map<string, Set<number>>();
+
   // --- Parent-child lines ---
   for (let i = 1; i < maxlev; i++) {
     const familyIds = [...new Set(familyOf[i]!.filter((v) => v !== 0))];
@@ -418,7 +437,7 @@ export function computeConnectors(
       if (coupleless.has(fam)) {
         const whoIdx = familyOf[i]!.flatMap((f, j) => (f === fam ? [j] : []));
         const { uplines, siblingBar } = sibshipLines(i, whoIdx);
-        familySiblingBar.set(`${i},${fam}`, siblingBar);
+        joinSibship(`${i},${fam}`, i, whoIdx, siblingBar);
         const sibshipParents = (
           parents[layout.nid[i]![whoIdx[0]!]!] ?? []
         ).filter((p) => isPrimaryEdge(p.edgeType));
@@ -448,26 +467,56 @@ export function computeConnectors(
         i,
         fam,
       );
+      const coupleLeftId = layout.nid[i - 1]![coupleLeft]!;
+      const coupleRightId = layout.nid[i - 1]![coupleRight]!;
+      const leftPos = layout.pos[i - 1]![coupleLeft]!;
+      const rightPos = layout.pos[i - 1]![coupleRight]!;
+      const parentIdsForFamily = id
+        ? [
+            ...new Set(
+              [coupleLeftId, coupleRightId].map((idx) => id[idx] ?? ''),
+            ),
+          ]
+        : undefined;
+      const childIdOf = (j: number) => {
+        const personIndex = layout.nid[i]![j];
+        return id && personIndex !== undefined ? id[personIndex] : undefined;
+      };
 
-      // Determine descent point: genetic contributor or couple midpoint
-      const descentX = computeDescentX(
-        layout,
-        parents,
-        i,
-        fam,
-        coupleLeft,
-        coupleRight,
-      );
-
+      const descentOf = (j: number) =>
+        coupleDescent(
+          parents[layout.nid[i]![j]!] ?? [],
+          coupleLeftId,
+          coupleRightId,
+        );
+      const descentParents = (from: DescentSource) =>
+        new Set(
+          from === 'left'
+            ? [coupleLeftId]
+            : from === 'right'
+              ? [coupleRightId]
+              : [coupleLeftId, coupleRightId],
+        );
       // A single parent's children descend from the parent, not from a
       // partner line they may also be on.
-      const glKey = `${i - 1},${coupleLeft}`;
-      const glIdx = fam > 0 ? groupLineIndex.get(glKey) : undefined;
-      if (glIdx !== undefined) {
-        const gl = groupLines[glIdx]!;
-        gl.descentXPositions ??= [];
-        gl.descentXPositions.push(descentX);
-      }
+      const glIdx =
+        fam > 0 ? groupLineIndex.get(`${i - 1},${coupleLeft}`) : undefined;
+      const descentXOf = (from: DescentSource) => {
+        const descentX =
+          from === 'left'
+            ? leftPos
+            : from === 'right'
+              ? rightPos
+              : (leftPos + rightPos) / 2;
+        if (glIdx !== undefined) {
+          const gl = groupLines[glIdx]!;
+          gl.descentXPositions ??= [];
+          if (!gl.descentXPositions.includes(descentX)) {
+            gl.descentXPositions.push(descentX);
+          }
+        }
+        return descentX;
+      };
 
       const whoIdx: number[] = [];
       const marriedInIdx: number[] = [];
@@ -480,196 +529,128 @@ export function computeConnectors(
         }
       }
 
-      const firstIdx = whoIdx[0] ?? marriedInIdx[0]!;
-      const firstChildId = layout.nid[i]![firstIdx]!;
-      const childParents = parents[firstChildId] ?? [];
+      // Children whose descent starts at the same place share a sibling bar.
+      for (const [from, columns] of groupBy(whoIdx, (j) => descentOf(j).from)) {
+        const descentX = descentXOf(from);
+        const { uplines, siblingBar, minTarget, maxTarget } = sibshipLines(
+          i,
+          columns,
+        );
+        joinSibship(`${i},${fam},${from}`, i, columns, siblingBar);
+        for (const j of columns) {
+          descentParentsOf.set(`${i},${j}`, descentParents(from));
+        }
 
-      // Determine the edge type for the primary couple→child connector.
-      // Only consider edges from parents in this couple, and prefer
-      // biological over social so the connector style is deterministic.
-      const coupleLeftId = layout.nid[i - 1]![coupleLeft]!;
-      const coupleRightId =
-        coupleLeft !== coupleRight
-          ? layout.nid[i - 1]![coupleRight]!
-          : coupleLeftId;
-      const coupleEdges = childParents.filter(
-        (p) =>
-          p.parentIndex === coupleLeftId || p.parentIndex === coupleRightId,
-      );
-      const primaryEdgeType: PedigreeEdgeType =
-        coupleEdges.find((p) => p.edgeType === 'biological')?.edgeType ??
-        coupleEdges.find((p) => isPrimaryEdge(p.edgeType))?.edgeType ??
-        'biological';
+        // Where the parent link meets the sibling bar
+        const targetRange = maxTarget - minTarget;
+        const x1 =
+          targetRange < 2 * pconnect
+            ? (minTarget + maxTarget) / 2
+            : Math.max(
+                minTarget + pconnect,
+                Math.min(maxTarget - pconnect, descentX),
+              );
+        const parentLink = buildParentLink(x1, descentX, i, boxh, legh, branch);
 
-      const parentIdsForFamily = id
-        ? [
-            ...new Set(
-              [coupleLeftId, coupleRightId]
-                .filter((idx) => idx !== undefined)
-                .map((idx) => id[idx] ?? ''),
-            ),
-          ]
-        : undefined;
+        // Each child's own tie sets the style of the line to them. The
+        // parent link and the bar between it and the children of the first
+        // style (solid, when any child is a birth child) are drawn in that
+        // style; each other style continues the bar out to its own children.
+        const byStyle = groupBy(
+          columns.map((_, k) => k),
+          (k) => descentOf(columns[k]!).edgeType,
+        );
+        const [primaryStyle, primaryKs] = byStyle.has('biological')
+          ? (['biological', byStyle.get('biological')!] as const)
+          : [...byStyle][0]!;
+        const targetOf = (k: number) => uplines[k]!.x2;
+        const primaryTargets = primaryKs.map(targetOf);
+        const primaryMin = Math.min(x1, ...primaryTargets);
+        const primaryMax = Math.max(x1, ...primaryTargets);
+        const pushSibshipPart = (
+          edgeType: PedigreeEdgeType,
+          ks: number[],
+          barFrom: number,
+          barTo: number,
+          link: LineSegment[],
+        ) => {
+          parentChildLines.push({
+            type: 'parent-child',
+            edgeType,
+            uplines: ks.map((k) => uplines[k]!),
+            siblingBar: {
+              type: 'line',
+              x1: barFrom,
+              y1: siblingBar.y1,
+              x2: barTo,
+              y2: siblingBar.y1,
+            },
+            parentLink: link,
+            ...(id
+              ? {
+                  parentIds: parentIdsForFamily,
+                  uplineChildIds: ks.map((k) => childIdOf(columns[k]!)),
+                }
+              : {}),
+          });
+        };
+        pushSibshipPart(
+          primaryStyle,
+          primaryKs,
+          primaryMin,
+          primaryMax,
+          parentLink,
+        );
+        for (const [style, ks] of byStyle) {
+          if (style === primaryStyle) continue;
+          const toLeft = ks.filter((k) => targetOf(k) < primaryMin);
+          const toRight = ks.filter((k) => targetOf(k) > primaryMax);
+          const within = ks.filter(
+            (k) => !toLeft.includes(k) && !toRight.includes(k),
+          );
+          if (toLeft.length > 0) {
+            const reach = Math.min(...toLeft.map(targetOf));
+            pushSibshipPart(style, toLeft, reach, primaryMin, []);
+          }
+          if (toRight.length > 0) {
+            const reach = Math.max(...toRight.map(targetOf));
+            pushSibshipPart(style, toRight, primaryMax, reach, []);
+          }
+          if (within.length > 0) {
+            const at = targetOf(within[0]!);
+            pushSibshipPart(style, within, at, at, []);
+          }
+        }
+      }
 
-      if (whoIdx.length === 0) {
-        for (const j of marriedInIdx) {
-          const childX = layout.pos[i]![j]!;
-          const marriedInPersonIndex = layout.nid[i]![j]!;
-          const upline: LineSegment = {
-            type: 'line',
-            x1: childX,
-            y1: i + boxh / 2,
-            x2: childX,
-            y2: i - legh,
-          };
-          const bar: LineSegment = {
+      // A married-in member of the family descends on a line of their own.
+      for (const j of marriedInIdx) {
+        const { from, edgeType } = descentOf(j);
+        const descentX = descentXOf(from);
+        descentParentsOf.set(`${i},${j}`, descentParents(from));
+        const childX = layout.pos[i]![j]!;
+        parentChildLines.push({
+          type: 'parent-child',
+          edgeType,
+          uplines: [
+            {
+              type: 'line',
+              x1: childX,
+              y1: i + boxh / 2,
+              x2: childX,
+              y2: i - legh,
+            },
+          ],
+          siblingBar: {
             type: 'line',
             x1: childX,
             y1: i - legh,
             x2: childX,
             y2: i - legh,
-          };
-          const link = buildParentLink(childX, descentX, i, boxh, legh, branch);
-          parentChildLines.push({
-            type: 'parent-child',
-            edgeType: primaryEdgeType,
-            uplines: [upline],
-            siblingBar: bar,
-            parentLink: link,
-            ...(id
-              ? {
-                  parentIds: parentIdsForFamily,
-                  uplineChildIds: [id[marriedInPersonIndex]],
-                }
-              : {}),
-          });
-        }
-        continue;
-      }
-
-      const { uplines, siblingBar, minTarget, maxTarget } = sibshipLines(
-        i,
-        whoIdx,
-      );
-      familySiblingBar.set(`${i},${fam}`, siblingBar);
-
-      // Parent link
-      const targetRange = maxTarget - minTarget;
-      let x1: number;
-      if (targetRange < 2 * pconnect) {
-        x1 = (minTarget + maxTarget) / 2;
-      } else {
-        x1 = Math.max(
-          minTarget + pconnect,
-          Math.min(maxTarget - pconnect, descentX),
-        );
-      }
-
-      const y1 = i - legh;
-      const parentLink: LineSegment[] = [];
-
-      const parentCenterY = i - 1 + boxh / 2;
-      const parentBottomY = i - 1 + boxh;
-
-      const x2 = descentX;
-
-      if (branch === 0) {
-        parentLink.push(
-          {
-            type: 'line',
-            x1: x2,
-            y1: parentCenterY,
-            x2,
-            y2: parentBottomY,
           },
-          {
-            type: 'line',
-            x1: x2,
-            y1: parentBottomY,
-            x2: x1,
-            y2: y1,
-          },
-        );
-      } else {
-        const gapSpan = y1 - parentBottomY;
-        const ydelta = (gapSpan * branch) / 2;
-        parentLink.push(
-          {
-            type: 'line',
-            x1: x2,
-            y1: parentCenterY,
-            x2,
-            y2: parentBottomY,
-          },
-          {
-            type: 'line',
-            x1: x2,
-            y1: parentBottomY,
-            x2,
-            y2: parentBottomY + ydelta,
-          },
-          {
-            type: 'line',
-            x1: x2,
-            y1: parentBottomY + ydelta,
-            x2: x1,
-            y2: y1 - ydelta,
-          },
-          { type: 'line', x1, y1: y1 - ydelta, x2: x1, y2: y1 },
-        );
-      }
-
-      const uplineChildIdsForFamily = id
-        ? whoIdx.map((j) => {
-            const personIndex = layout.nid[i]![j];
-            return personIndex !== undefined ? id[personIndex] : undefined;
-          })
-        : undefined;
-
-      parentChildLines.push({
-        type: 'parent-child',
-        edgeType: primaryEdgeType,
-        uplines,
-        siblingBar,
-        parentLink,
-        ...(id
-          ? {
-              parentIds: parentIdsForFamily,
-              uplineChildIds: uplineChildIdsForFamily,
-            }
-          : {}),
-      });
-
-      // Render individual connectors for married-in group members
-      for (const j of marriedInIdx) {
-        const childX = layout.pos[i]![j]!;
-        const miPersonIndex = layout.nid[i]![j]!;
-        const miUpline: LineSegment = {
-          type: 'line',
-          x1: childX,
-          y1: i + boxh / 2,
-          x2: childX,
-          y2: i - legh,
-        };
-        const miBar: LineSegment = {
-          type: 'line',
-          x1: childX,
-          y1: i - legh,
-          x2: childX,
-          y2: i - legh,
-        };
-        const miLink = buildParentLink(childX, descentX, i, boxh, legh, branch);
-        parentChildLines.push({
-          type: 'parent-child',
-          edgeType: primaryEdgeType,
-          uplines: [miUpline],
-          siblingBar: miBar,
-          parentLink: miLink,
+          parentLink: buildParentLink(childX, descentX, i, boxh, legh, branch),
           ...(id
-            ? {
-                parentIds: parentIdsForFamily,
-                uplineChildIds: [id[miPersonIndex]],
-              }
+            ? { parentIds: parentIdsForFamily, uplineChildIds: [childIdOf(j)] }
             : {}),
         });
       }
@@ -677,7 +658,7 @@ export function computeConnectors(
   }
 
   // --- Auxiliary lines for donor/surrogate edges ---
-  // Group connections by (parentIndex, childLevel, famId), tracking which
+  // Group connections by (parentIndex, edgeType, sibship), tracking which
   // specific children each auxiliary parent connects to.
   const auxConnections = new Map<
     string,
@@ -685,32 +666,25 @@ export function computeConnectors(
       parentIndex: number;
       edgeType: 'donor' | 'surrogate';
       childLevel: number;
-      famId: number;
+      sibship: string;
       childColumns: number[];
     }
   >();
-
-  // Count total children per (level, famId) to compare against.
-  const familyChildCount = new Map<string, number>();
 
   for (let i = 0; i < maxlev; i++) {
     for (let j = 0; j < (layout.n[i] ?? 0); j++) {
       const childId = layout.nid[i]![j]!;
       if (childId < 0) continue;
-      // A child with neither a family nor a sibship has no sibling bar, so
-      // each of its donors and surrogates joins it directly.
-      const famId = familyOf[i]?.[j] ?? 0;
-      const famKey = `${i},${famId}`;
-      if (famId !== 0) {
-        familyChildCount.set(famKey, (familyChildCount.get(famKey) ?? 0) + 1);
-      }
+      // A child in no sibship has no sibling bar, so each of its donors and
+      // surrogates joins it directly.
+      const sibship = sibshipOf.get(`${i},${j}`) ?? `${i},none`;
 
       const childParents = parents[childId] ?? [];
       for (const pc of childParents) {
         if (pc.edgeType === 'donor' || pc.edgeType === 'surrogate') {
           // One line carries one relationship, so a person who is a donor to
           // one child and a surrogate to another is grouped twice.
-          const key = `${pc.parentIndex},${pc.edgeType},${i},${famId}`;
+          const key = `${pc.parentIndex},${pc.edgeType},${sibship}`;
           const existing = auxConnections.get(key);
           if (existing) {
             existing.childColumns.push(j);
@@ -719,7 +693,7 @@ export function computeConnectors(
               parentIndex: pc.parentIndex,
               edgeType: pc.edgeType,
               childLevel: i,
-              famId,
+              sibship,
               childColumns: [j],
             });
           }
@@ -743,9 +717,8 @@ export function computeConnectors(
     }
     if (parentX === undefined || parentY === undefined) continue;
 
-    const bar = familySiblingBar.get(`${conn.childLevel},${conn.famId}`);
-    const famKey = `${conn.childLevel},${conn.famId}`;
-    const totalChildren = familyChildCount.get(famKey) ?? 0;
+    const bar = sibshipBar.get(conn.sibship);
+    const totalChildren = sibshipSize.get(conn.sibship) ?? 0;
     const isParentOfAllSiblings = conn.childColumns.length >= totalChildren;
 
     const donorParentNodeId = id ? id[conn.parentIndex] : undefined;
@@ -809,7 +782,7 @@ export function computeConnectors(
     }
   }
 
-  // Group direct parent connections by (parentIndex, childLevel, famId) so
+  // Group direct parent connections by (parentIndex, edgeType, sibship) so
   // we can decide per-parent whether to connect to the sibling bar or
   // directly to individual children.
   const socialConnections = new Map<
@@ -818,7 +791,7 @@ export function computeConnectors(
       parentIndex: number;
       edgeType: PedigreeEdgeType;
       childLevel: number;
-      famId: number;
+      sibship: string;
       childColumns: number[];
     }
   >();
@@ -831,33 +804,22 @@ export function computeConnectors(
       const parentEdges = childParents.filter((pc) =>
         isPrimaryEdge(pc.edgeType),
       );
-      // Determine which parent pair the child is assigned to (primary family)
-      const childFam = layout.fam[i]?.[j] ?? 0;
-
-      // A child's family names the parents it descends from: its couple, or
-      // its single parent. Every other primary parent is joined to the child
-      // by a line of their own, whether or not they are anyone's partner.
-      const primaryFamilyIds = new Set<number>();
-      if (childFam !== 0) {
-        const { left, right } = familyParentColumns(layout, i, childFam);
-        for (const col of new Set([left, right])) {
-          const parentId = layout.nid[i - 1]?.[col];
-          if (parentId !== undefined) primaryFamilyIds.add(parentId);
-        }
-      }
-
-      const famId = familyOf[i]?.[j] ?? 0;
+      // A child's line of descent draws the ties of the parents it starts
+      // from. Every other primary parent is joined to the child by a line of
+      // their own, whether or not they are anyone's partner.
+      const descentParents = descentParentsOf.get(`${i},${j}`);
+      const sibship = sibshipOf.get(`${i},${j}`) ?? `${i},none`;
 
       for (const parentEdge of parentEdges) {
         const parentId = parentEdge.parentIndex;
-        if (primaryFamilyIds.has(parentId)) continue;
+        if (descentParents?.has(parentId)) continue;
 
         // Each line carries the parent's own relationship to the child.
         const { edgeType } = parentEdge;
 
         // One line carries one relationship: a parent who is biological to one
         // child and social to another is grouped once for each.
-        const key = `${parentId},${edgeType},${i},${famId}`;
+        const key = `${parentId},${edgeType},${sibship}`;
         const existing = socialConnections.get(key);
         if (existing) {
           existing.childColumns.push(j);
@@ -866,7 +828,7 @@ export function computeConnectors(
             parentIndex: parentId,
             edgeType,
             childLevel: i,
-            famId,
+            sibship,
             childColumns: [j],
           });
         }
@@ -880,9 +842,8 @@ export function computeConnectors(
 
     const socialParentNodeId = id ? id[conn.parentIndex] : undefined;
 
-    const bar = familySiblingBar.get(`${conn.childLevel},${conn.famId}`);
-    const famKey = `${conn.childLevel},${conn.famId}`;
-    const totalChildren = familyChildCount.get(famKey) ?? 0;
+    const bar = sibshipBar.get(conn.sibship);
+    const totalChildren = sibshipSize.get(conn.sibship) ?? 0;
     const isParentOfAllSiblings = conn.childColumns.length >= totalChildren;
 
     if (bar && isParentOfAllSiblings && totalChildren > 1) {
@@ -1005,58 +966,52 @@ function familyParentColumns(
   return { left, right: hasPartnerRight ? left + 1 : left };
 }
 
+type DescentSource = 'left' | 'right' | 'both';
+
 /**
- * Determine the x-coordinate for the line of descent from parents to children.
- *
- * When both parents in the couple have biological edges to the children,
- * descent is from the couple midpoint. When only one parent is a genetic
- * contributor (biological edge), descent is from that parent's node position.
+ * Where a child's line of descent from their family's parents starts, and the
+ * style it is drawn in. The descent draws a birth (biological) parent's tie
+ * solid: from the couple when both partners are birth parents, from the one
+ * who is when only one is (the other partner is then joined to the child by a
+ * line of their own). When neither is, it comes from the couple, dashed.
  */
-function computeDescentX(
-  layout: PedigreeLayout,
-  parents: ParentConnection[][],
-  childLevel: number,
-  famId: number,
-  coupleLeft: number,
-  coupleRight: number,
-): number {
-  const leftPos = layout.pos[childLevel - 1]![coupleLeft]!;
-  const rightPos = layout.pos[childLevel - 1]![coupleRight]!;
-
-  if (coupleLeft === coupleRight) {
-    return leftPos;
+function coupleDescent(
+  childParents: ParentConnection[],
+  leftId: number,
+  rightId: number,
+): { from: DescentSource; edgeType: PedigreeEdgeType } {
+  const tieTo = (parentId: number) =>
+    childParents.find(
+      (p) => p.parentIndex === parentId && isPrimaryEdge(p.edgeType),
+    )?.edgeType;
+  const left = tieTo(leftId);
+  if (leftId === rightId) {
+    return { from: 'both', edgeType: left ?? 'biological' };
   }
-
-  const leftId = layout.nid[childLevel - 1]![coupleLeft]!;
-  const rightId = layout.nid[childLevel - 1]![coupleRight]!;
-
-  // Check children in this family for their parent edge types
-  let leftIsBiological = false;
-  let rightIsBiological = false;
-
-  for (let j = 0; j < layout.fam[childLevel]!.length; j++) {
-    if (layout.fam[childLevel]![j] !== famId) continue;
-    const childId = layout.nid[childLevel]![j]!;
-    const childParents = parents[childId] ?? [];
-
-    for (const pc of childParents) {
-      if (pc.parentIndex === leftId && pc.edgeType === 'biological') {
-        leftIsBiological = true;
-      }
-      if (pc.parentIndex === rightId && pc.edgeType === 'biological') {
-        rightIsBiological = true;
-      }
-    }
+  const right = tieTo(rightId);
+  if (left === 'biological' && right === 'biological') {
+    return { from: 'both', edgeType: 'biological' };
   }
-
-  if (leftIsBiological && !rightIsBiological) {
-    return leftPos;
+  if (left === 'biological') return { from: 'left', edgeType: left };
+  if (right === 'biological') return { from: 'right', edgeType: right };
+  if (right === undefined) {
+    return { from: 'left', edgeType: left ?? 'biological' };
   }
-  if (rightIsBiological && !leftIsBiological) {
-    return rightPos;
-  }
+  if (left === undefined) return { from: 'right', edgeType: right };
+  return {
+    from: 'both',
+    edgeType: left === 'adoptive' || right === 'adoptive' ? 'adoptive' : left,
+  };
+}
 
-  return (leftPos + rightPos) / 2;
+/** The items in groups by key, each group and the groups in first-seen order. */
+function groupBy<T, K>(items: T[], keyOf: (item: T) => K): Map<K, T[]> {
+  const groups = new Map<K, T[]>();
+  for (const item of items) {
+    const key = keyOf(item);
+    groups.set(key, [...(groups.get(key) ?? []), item]);
+  }
+  return groups;
 }
 
 function buildParentLink(

@@ -933,7 +933,7 @@ describe('a participant with two partners', () => {
     expect(famOf(6)).toBe(coupleFam(2, 3));
   });
 
-  it('draws one line of descent per couple and a social line from You to Sky', () => {
+  it('draws one line of descent per couple and a social line from You to Sky and from Alex to Cleo', () => {
     const conn = computeConnectors(
       result,
       defaultScaling,
@@ -942,14 +942,18 @@ describe('a participant with two partners', () => {
       undefined,
       undefined,
       undefined,
-      undefined,
+      ped.id,
       new Set(['0,1', '0,2', '2,3']),
     );
     expect(conn.parentChildLines).toHaveLength(3);
-    const socialLines = conn.auxiliaryLines.filter(
-      (line) => line.edgeType === 'social',
-    );
-    expect(socialLines).toHaveLength(1);
+    // Cleo descends from You, her biological parent; Alex, the partner who
+    // raises her, is joined to her by a social line of his own.
+    const socialLines = conn.auxiliaryLines
+      .filter((line) => line.edgeType === 'social')
+      .map((line) => line.endpointIds?.join('→'));
+    expect(
+      socialLines.toSorted((a, b) => (a ?? '').localeCompare(b ?? '')),
+    ).toStrictEqual(['alex→cleo', 'you→sky']);
   });
 });
 
