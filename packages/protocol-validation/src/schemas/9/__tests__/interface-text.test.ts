@@ -75,10 +75,37 @@ describe('the interface text a protocol holds', () => {
       'forms',
     );
     expect(groups({ stages: [{ type: 'Anonymisation' }] })).toContain('forms');
-    // A roster's cards show answers as Yes and No.
-    expect(groups({ stages: [{ type: 'NameGeneratorRoster' }] })).toContain(
+    // A Dyad Census answers each pair with Yes or No.
+    expect(groups({ stages: [{ type: 'DyadCensus' }] })).toContain('forms');
+    // A roster's cards show the answers in the columns it lists, as Yes and
+    // No for a yes-or-no one; one that lists none shows only names.
+    expect(groups({ stages: [{ type: 'NameGeneratorRoster' }] })).not.toContain(
       'forms',
     );
+    expect(
+      groups({
+        stages: [
+          {
+            type: 'NameGeneratorRoster',
+            cardOptions: { additionalProperties: [] },
+          },
+        ],
+      }),
+    ).not.toContain('forms');
+    expect(
+      groups({
+        stages: [
+          {
+            type: 'NameGeneratorRoster',
+            cardOptions: {
+              additionalProperties: [
+                { label: { en: 'Smokes' }, variable: 'smokes' },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toContain('forms');
     // A Categorical Bin asks for its "other" answer in a form dialog.
     expect(
       groups({

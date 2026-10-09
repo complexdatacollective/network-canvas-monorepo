@@ -78,8 +78,8 @@ const usesPassphrase = (protocol: ProtocolDocument) =>
   ) || stagesOf(protocol).some((stage) => stage.type === 'Anonymisation');
 
 /**
- * Stage types that always show the form text: a form of their own, or, on a
- * roster's cards, the Yes and No a form writes answers in.
+ * Stage types that always show the form text: a form of their own, or a Dyad
+ * Census's Yes and No.
  */
 const FORM_STAGE_TYPES: ReadonlySet<string> = new Set([
   'EgoForm',
@@ -87,9 +87,19 @@ const FORM_STAGE_TYPES: ReadonlySet<string> = new Set([
   'AlterEdgeForm',
   'NameGenerator',
   'NameGeneratorQuickAdd',
-  'NameGeneratorRoster',
   'FamilyPedigree',
+  'DyadCensus',
 ]);
+
+/**
+ * A roster's cards show the answers in the columns it lists, a yes-or-no one
+ * as Yes or No; a roster that lists none shows only each person's name.
+ */
+const showsAnswersOnCards = (stage: Readonly<Record<string, unknown>>) =>
+  stage.type === 'NameGeneratorRoster' &&
+  isRecord(stage.cardOptions) &&
+  Array.isArray(stage.cardOptions.additionalProperties) &&
+  stage.cardOptions.additionalProperties.length > 0;
 
 /**
  * A Categorical Bin asks for the answer behind its "other" bin in a form
@@ -121,8 +131,8 @@ const holdsAForm = (value: unknown): boolean => {
 
 /**
  * Whether the interview shows the form text: a stage's own form, such as a
- * Network Composer's fields or a Categorical Bin's dialog, a roster's cards,
- * or the form that asks for a passphrase.
+ * Network Composer's fields or a Categorical Bin's dialog, a Dyad Census's
+ * Yes and No, a roster's cards, or the form that asks for a passphrase.
  */
 const usesForms = (protocol: ProtocolDocument) =>
   usesPassphrase(protocol) ||
@@ -130,6 +140,7 @@ const usesForms = (protocol: ProtocolDocument) =>
     (stage) =>
       (typeof stage.type === 'string' && FORM_STAGE_TYPES.has(stage.type)) ||
       asksInAFormDialog(stage) ||
+      showsAnswersOnCards(stage) ||
       holdsAForm(stage),
   );
 
