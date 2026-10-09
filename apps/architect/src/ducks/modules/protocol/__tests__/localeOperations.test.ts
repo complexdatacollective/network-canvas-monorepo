@@ -13,6 +13,7 @@ import {
   suppliedOptionLabel,
   suppliedOptionLabels,
   validateProtocol,
+  familyPedigreeWordingIn,
 } from '@codaco/protocol-validation';
 
 import {
@@ -217,6 +218,7 @@ const withPedigree = (
       {
         id: 'familyPedigree',
         type: 'FamilyPedigree',
+        wording: familyPedigreeWordingIn(),
         label: { en: 'Family' },
         subject: { entity: 'node', type: 'relative' },
         nodeConfiguration: { sexAssignedAtBirthAttribute: 'sex' },
