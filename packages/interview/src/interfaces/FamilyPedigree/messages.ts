@@ -196,7 +196,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}',
     description:
-      'Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
+      'Yes/no question in the details panel: whether this parent, of any kind but a surrogate (biological, adoptive, step or social, or a donor), was pregnant with the family member. {parent} is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant.',
   },
   moreAboutThisPerson: {
     id: 'interview.familyPedigree.moreAboutThisPerson',
@@ -278,14 +278,14 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.carriedPregnancyLabel',
     defaultMessage: 'Did this parent carry the pregnancy?',
     description:
-      'Yes/no question in the side panel for adding a biological parent: whether they were pregnant with the child.',
+      'Yes/no question in the side panel for adding a parent of any kind but a surrogate (biological, adoptive, step or social, or a donor): whether they were pregnant with the child.',
   },
   carriedSiblingsPregnancyLabel: {
     id: 'interview.familyPedigree.carriedSiblingsPregnancyLabel',
     defaultMessage:
       '{count, plural, =1 {{isYou, select, true {Was this parent pregnant with you?} other {Was this parent pregnant with “{name}”?}}} other {Was this parent pregnant with each of the # people chosen above who have nobody recorded as having carried them?}}',
     description:
-      'Yes/no question in the side panel for adding a biological parent. It is asked when the person the parent is added for already has someone recorded as having carried their pregnancy, about the people chosen in “Are they also the parent of…” who have nobody recorded yet. count is how many such people there are; name is the one person’s name, or how they are related to the participant when unnamed; isYou is true when that person is the participant. It may be left unanswered.',
+      'Yes/no question in the side panel for adding a parent of any kind but a surrogate. It is asked when the person the parent is added for already has someone recorded as having carried their pregnancy, about the people chosen in “Are they also the parent of…” who have nobody recorded yet. count is how many such people there are; name is the one person’s name, or how they are related to the participant when unnamed; isYou is true when that person is the participant. It may be left unanswered.',
   },
   parentPartnerLabel: {
     id: 'interview.familyPedigree.parentPartnerLabel',
@@ -397,7 +397,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.carrierLabel',
     defaultMessage: 'Who carried the pregnancy?',
     description:
-      'Question in the side panel for adding a biological child or a biological sibling. Options are the new person’s parents, by name or by how they are related to the participant, or someone else / not known.',
+      'Question in the side panel for adding a child or a sibling. Options are the new person’s parents of any kind (biological, adoptive, step or social, or a donor), by name or by how they are related to the participant, or someone else / not known.',
   },
   carrierUnknown: {
     id: 'interview.familyPedigree.carrierUnknown',
@@ -620,11 +620,18 @@ export const messages = defineMessages({
     description:
       'Option in the menu for connecting two people: they were a couple but are no longer together.',
   },
-  parentKindBiologicalCarrier: {
-    id: 'interview.familyPedigree.parentKind.biologicalCarrier',
+  parentKindCarrier: {
+    id: 'interview.familyPedigree.parentKind.carrier',
     defaultMessage: '{parentKind} (carried the pregnancy)',
     description:
-      'Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child. parentKind is the protocol’s wording for a biological parent (for example Biological parent); keep the qualifier separate from it, since the wording is the researcher’s.',
+      'Option in the menu for connecting a parent and child: a parent of this kind who was also pregnant with the child, such as a biological parent who gave birth, an adoptive or step parent who gave birth, or a donor who carried the pregnancy. parentKind is the protocol’s wording for the kind of parent (for example Biological parent, Adoptive parent); keep the qualifier separate from it, since the wording is the researcher’s.',
+  },
+  unavailableCarrierChoice: {
+    id: 'interview.familyPedigree.unavailableCarrierChoice',
+    defaultMessage:
+      '{who, select, carrierIsYou {You are recorded as having carried “{child}”, and only one person carries a pregnancy.} childIsYou {“{carrier}” is recorded as having carried you, and only one person carries a pregnancy.} other {“{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy.}}',
+    description:
+      'Reason shown under the unavailable choices in the menu that connects a parent and child that would record the parent as having carried the pregnancy: someone else is already recorded as having carried the child. {carrier} and {child} are names, or how the people are related to the participant when unnamed.',
   },
   disconnectTool: {
     id: 'interview.familyPedigree.disconnectTool',
@@ -712,7 +719,7 @@ export const messages = defineMessages({
     defaultMessage:
       '{who, select, carrierIsYou {Some answers are unavailable because you are recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how you are connected to “{child}”.} childIsYou {Some answers are unavailable because “{carrier}” is recorded as having carried you, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to you.} other {Some answers are unavailable because “{carrier}” is recorded as having carried “{child}”, and only one person carries a pregnancy. To choose one, first change how “{carrier}” is connected to “{child}”.}}',
     description:
-      'Hint under a question whose answers are partly unavailable: someone is already recorded as having carried the child’s pregnancy (a surrogate, or a biological parent who did), so nobody else can have.',
+      'Hint under a question whose answers are partly unavailable: someone is already recorded as having carried the child’s pregnancy (a surrogate, or a parent of another kind who did), so nobody else can have.',
   },
   unavailableCannotCarry: {
     id: 'interview.familyPedigree.unavailableCannotCarry',

@@ -172,4 +172,57 @@ describe('ConnectMenu', () => {
       /You and “Shannon” are already connected/,
     );
   });
+
+  // Ruling 21: a choice that would record a second carrier is unavailable,
+  // with a reason naming who carried the child.
+  it('says who carried the child under each choice that would record a second carrier', async () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { name: 'Mum' }),
+        person('amy', { name: 'Amy' }),
+      ],
+      [link('mum', 'ego', 'biological', { carrier: true })],
+      config,
+    );
+    const anchor = document.createElement('button');
+    document.body.append(anchor);
+    render(
+      <TestProtocolLocalization>
+        <ConnectMenu
+          pair={{ firstId: 'amy', secondId: 'ego' }}
+          family={family}
+          displayName={(id) =>
+            id === 'ego' ? 'You' : id === 'mum' ? 'Mum' : 'Amy'
+          }
+          parentKindLabels={PARENT_KIND_LABELS}
+          anchor={anchor}
+          onConnect={() => undefined}
+          onClose={() => undefined}
+        />
+      </TestProtocolLocalization>,
+    );
+    await userEvent.click(
+      await screen.findByTestId('pedigree-connect-parent-amy'),
+    );
+    for (const id of [
+      'biological-carrier',
+      'adoptive-carrier',
+      'social-carrier',
+      'donor-carrier',
+      'surrogate',
+    ]) {
+      const item = await screen.findByTestId(`pedigree-connect-kind-${id}`);
+      expect(item).toHaveAttribute('aria-disabled', 'true');
+      expect(item).toHaveAccessibleDescription(
+        '“Mum” is recorded as having carried you, and only one person carries a pregnancy.',
+      );
+    }
+    expect(
+      screen.getByTestId('pedigree-connect-kind-adoptive-carrier'),
+    ).toHaveTextContent('Adoptive parent (carried the pregnancy)');
+    expect(
+      screen.getByTestId('pedigree-connect-kind-adoptive'),
+    ).not.toHaveAttribute('aria-disabled', 'true');
+  });
 });

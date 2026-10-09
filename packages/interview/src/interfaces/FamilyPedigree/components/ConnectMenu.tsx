@@ -25,15 +25,21 @@ import {
   type Connection,
   type Family,
   type ParentChoice,
+  parentChoiceOptions,
   parentConnectionBlock,
 } from '../model';
 import type { OwnedOptionLabels } from '../options';
 
 export type ConnectPair = { firstId: string; secondId: string };
 
+/** A parent of any kind but a surrogate, who always carried, recorded as
+ * having carried the pregnancy. */
+const carriesBeyondKind = (choice: ParentChoice) =>
+  choice.parentKind !== 'surrogate' && choice.carriedPregnancy;
+
 const choiceId = (choice: ParentChoice) =>
-  choice.parentKind === 'biological' && choice.carriedPregnancy
-    ? 'biological-carrier'
+  carriesBeyondKind(choice)
+    ? `${choice.parentKind}-carrier`
     : choice.parentKind;
 
 type ConnectMenuProps = {
@@ -91,12 +97,12 @@ function connectionWords(
   parentKindLabels: OwnedOptionLabels['parentKind'],
 ) {
   const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
-  // Every kind is offered by the codebook's label; a biological parent who
-  // carried the pregnancy is its own choice, qualifying that label.
+  // Every kind is offered by the codebook's label; a parent who carried the
+  // pregnancy is its own choice, qualifying that label.
   const parentChoiceLabel = (choice: ParentChoice) =>
-    choice.parentKind === 'biological' && choice.carriedPregnancy
-      ? intl.formatMessage(messages.parentKindBiologicalCarrier, {
-          parentKind: parentKindLabels.biological,
+    carriesBeyondKind(choice)
+      ? intl.formatMessage(messages.parentKindCarrier, {
+          parentKind: parentKindLabels[choice.parentKind],
         })
       : parentKindLabels[choice.parentKind];
   const parentLabel = ({ parentId, childId }: ParentAndChild) =>
@@ -203,26 +209,50 @@ export default function ConnectMenu({
 
     if (parentChoice) {
       const label = parentLabel(parentChoice);
+      // A choice that would record a second carrier is unavailable; the
+      // reason, naming who carried the child, is shown once, under the first
+      // such choice, and describes each of them.
+      const carrierReasonId = `${reasonIdPrefix}-carrier`;
+      let carrierReasonShown = false;
       return (
         <DropdownMenuGroup>
           <DropdownMenuLabel>{label}</DropdownMenuLabel>
-          {availableParentChoices(
+          {parentChoiceOptions(
             family,
             parentChoice.parentId,
             parentChoice.childId,
-          ).map((option, index) => {
+          ).map(({ choice: option, unavailable }, index) => {
             const kindLabel = parentChoiceLabel(option);
             const id = choiceId(option);
+            const reason =
+              unavailable && !carrierReasonShown
+                ? intl.formatMessage(messages.unavailableCarrierChoice, {
+                    who: isYou(unavailable.carrierId)
+                      ? 'carrierIsYou'
+                      : isYou(parentChoice.childId)
+                        ? 'childIsYou'
+                        : 'other',
+                    carrier: displayName(unavailable.carrierId),
+                    child: displayName(parentChoice.childId),
+                  })
+                : undefined;
+            if (unavailable) carrierReasonShown = true;
             return (
               <DropdownMenuItem
                 key={id}
                 ref={index === 0 ? firstItemRef : undefined}
+                disabled={unavailable !== undefined}
+                aria-describedby={unavailable ? carrierReasonId : undefined}
                 data-testid={`pedigree-connect-kind-${id}`}
                 onClick={() =>
                   onConnect({ kind: 'parent', ...parentChoice, ...option })
                 }
               >
-                <RenderMarkdown>{kindLabel}</RenderMarkdown>
+                <ItemText
+                  label={<RenderMarkdown>{kindLabel}</RenderMarkdown>}
+                  reason={reason}
+                  reasonId={carrierReasonId}
+                />
               </DropdownMenuItem>
             );
           })}

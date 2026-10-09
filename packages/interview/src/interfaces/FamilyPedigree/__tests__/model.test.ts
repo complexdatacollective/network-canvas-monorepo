@@ -490,7 +490,8 @@ describe('planAddRelative', () => {
     ]);
   });
 
-  test('a donor is never partnered and never carries', () => {
+  // Ruling 19: a donor who carried the pregnancy is a traditional surrogate.
+  test('a donor is never partnered, and carries when they carried the pregnancy', () => {
     const family = readFamily(
       [person('ego', { isEgo: true }), person('mum', { sex: ['female'] })],
       [link('mum', 'ego', 'biological')],
@@ -509,7 +510,7 @@ describe('planAddRelative', () => {
         source: 'added',
         target: 'ego',
         kind: 'donor',
-        isGestationalCarrier: false,
+        isGestationalCarrier: true,
       },
     ]);
   });
@@ -765,7 +766,8 @@ describe('planAddRelative', () => {
       ]);
     });
 
-    test('nobody is recorded for a sibling who is not a biological child', () => {
+    // Ruling 19: any kind of parent may have carried the pregnancy.
+    test('the parent chosen is recorded for a sibling who is not a biological child', () => {
       const result = plan(parentsOfEgo(), 'ego', {
         relation: 'sibling',
         sharedParentIds: ['mum', 'dad'],
@@ -773,9 +775,11 @@ describe('planAddRelative', () => {
         parentKind: 'adoptive',
         carrier: 'mum',
       });
-      expect(result.links.some((planned) => planned.isGestationalCarrier)).toBe(
-        false,
-      );
+      expect(
+        result.links
+          .filter((planned) => planned.isGestationalCarrier)
+          .map((planned) => planned.source),
+      ).toEqual(['mum']);
     });
 
     test('an unnamed parent added for both can have carried it', () => {
@@ -938,7 +942,8 @@ describe('planAddRelative', () => {
     ]);
   });
 
-  test('a biological child of one partner is a social child of the other', () => {
+  // Ruling 19: the social parent may be the one who carried the pregnancy.
+  test('a biological child of one partner is a social child of the other, who may have carried them', () => {
     const result = plan(nuclearFamily(), 'mum', {
       relation: 'child',
       otherParent: 'dad',
@@ -951,7 +956,7 @@ describe('planAddRelative', () => {
         source: 'mum',
         target: 'added',
         kind: 'social',
-        isGestationalCarrier: false,
+        isGestationalCarrier: true,
       },
       {
         source: 'dad',
@@ -1100,7 +1105,8 @@ describe('planAddRelative', () => {
     ]);
   });
 
-  test('an adopted child records no carrier', () => {
+  // Ruling 19: an adoptive parent who carried the child is recorded as such.
+  test('an adopted child records the adoptive parent who carried them', () => {
     const result = plan(nuclearFamily(), 'mum', {
       relation: 'child',
       otherParent: null,
@@ -1113,7 +1119,7 @@ describe('planAddRelative', () => {
         source: 'mum',
         target: 'added',
         kind: 'adoptive',
-        isGestationalCarrier: false,
+        isGestationalCarrier: true,
       },
     ]);
   });

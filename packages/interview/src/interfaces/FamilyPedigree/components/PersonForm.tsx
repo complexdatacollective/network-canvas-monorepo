@@ -64,6 +64,7 @@ import {
   type PersonDetails,
   type Relation,
   carrierOf,
+  carriesAs,
   couldCarryPregnancy,
   fullSiblingsOf,
   geneticParentBlock,
@@ -73,6 +74,7 @@ import {
   hasCarrier,
   holdsGeneratedLabel,
   isGeneticKind,
+  mayHaveCarried,
   openGeneticParentSlots,
   otherParentChoices,
   sexesRuledOut,
@@ -727,9 +729,10 @@ function readLinkUpdates(
       (asString(values[linkField(link, 'kind')]) as
         | PedigreeParentKind
         | undefined) ?? link.kind;
-    const isGestationalCarrier =
-      kind === 'surrogate' ||
-      (kind === 'biological' && values[linkField(link, 'carrier')] === true);
+    const isGestationalCarrier = carriesAs(
+      kind,
+      values[linkField(link, 'carrier')] === true,
+    );
     if (
       kind !== link.kind ||
       isGestationalCarrier !== link.isGestationalCarrier
@@ -788,7 +791,7 @@ function ExistingRelationshipFields({
   const carries = (link: FamilyLink) => {
     const kind = kindOf(link);
     if (kind === 'surrogate') return true;
-    if (kind !== 'biological' || !canCarry(link)) return false;
+    if (!mayHaveCarried(kind) || !canCarry(link)) return false;
     const carrier = linkValues[linkField(link, 'carrier')];
     return carrier === undefined ? link.isGestationalCarrier : carrier === true;
   };
@@ -854,6 +857,14 @@ function ExistingRelationshipFields({
             carries={carries(link)}
             unavailableHint={unavailableHint}
             anotherCarries={anotherCarrier !== undefined}
+            carrierHint={
+              anotherCarrier &&
+              carrierRecordedReason(
+                reasonContext,
+                person.id,
+                anotherCarrier.source,
+              )
+            }
             personIsYou={isYou(person.id)}
             parentIsYou={isYou(link.source)}
             parentName={displayName(link.source)}
@@ -872,6 +883,7 @@ function ParentLinkFields({
   carries,
   unavailableHint,
   anotherCarries,
+  carrierHint,
   personIsYou,
   parentIsYou,
   parentName,
@@ -890,6 +902,8 @@ function ParentLinkFields({
   anotherCarries: boolean;
   /** Why the kinds of parent that are unavailable are. */
   unavailableHint: string | undefined;
+  /** Who else carried the pregnancy, while another parent did. */
+  carrierHint: string | undefined;
   personIsYou: string;
   parentIsYou: string;
   parentName: string;
@@ -920,7 +934,9 @@ function ParentLinkFields({
         hint={unavailableHint}
         initialValue={link.kind}
       />
-      {kind === 'biological' && canCarry && (carries || !anotherCarries) && (
+      {/* While another parent carried the pregnancy, the question is
+          unavailable, naming them: a child has one carrier at most. */}
+      {kind !== 'surrogate' && mayHaveCarried(kind) && canCarry && (
         <Field
           component={BooleanField}
           name={linkField(link, 'carrier')}
@@ -929,6 +945,8 @@ function ParentLinkFields({
             parentIsYou,
             parent: parentName,
           })}
+          disabled={!carries && anotherCarries}
+          hint={!carries && anotherCarries ? carrierHint : undefined}
           initialValue={link.isGestationalCarrier}
         />
       )}
@@ -1053,13 +1071,15 @@ function readRequest(
         biologicalAnswer === 'anchor' || biologicalAnswer === 'otherParent'
           ? biologicalAnswer
           : 'both';
-      // Only a biological parent carried the pregnancy, in this form.
-      const carrierBiological =
-        biologicalParent === 'both' || biologicalParent === answer;
+      const childKind =
+        (asString(values[ROLE.childKind]) as PedigreeParentKind | undefined) ??
+        'biological';
+      // Either parent may have carried the pregnancy, whatever kind of parent
+      // they are, except of a child the anchor carried as a surrogate.
       const carrier =
         (answer === 'anchor' || answer === 'otherParent') &&
         carrierCould &&
-        carrierBiological
+        childKind !== 'surrogate'
           ? answer
           : null;
       return {
@@ -1070,10 +1090,7 @@ function readRequest(
             : otherParent && otherParent !== NONE
               ? otherParent
               : null,
-        parentKind:
-          (asString(values[ROLE.childKind]) as
-            | PedigreeParentKind
-            | undefined) ?? 'biological',
+        parentKind: childKind,
         biologicalParent,
         carrier,
       };
@@ -1297,8 +1314,8 @@ function ParentFields({
     if (siblingsDropped) setFieldValue(ROLE.alsoParentOf, keptRef.current);
   }, [siblingsDropped, setFieldValue]);
 
-  // A new biological parent who could have carried a pregnancy is asked
-  // whether they did for everyone they are added as a parent of who has
+  // A new parent of any kind but a surrogate (who always did) who could have
+  // carried a pregnancy is asked whether they did for everyone they are added as a parent of who has
   // nobody recorded as carrying theirs: one question, whose answer is
   // recorded for each of them. It is about the anchor while the anchor has
   // nobody, and otherwise about the siblings chosen who have nobody. While
@@ -1307,7 +1324,8 @@ function ParentFields({
     (id) => !hasCarrier(family, id),
   );
   const asksCarried =
-    parentKind === 'biological' &&
+    parentKind !== 'surrogate' &&
+    mayHaveCarried(parentKind) &&
     couldCarryPregnancy(sexAssignedAtBirth) &&
     (!anchorHasCarrier || siblingsWithoutCarrier.length > 0);
   const carriedAnswered = values[ROLE.carriedPregnancy] !== undefined;
@@ -1317,6 +1335,24 @@ function ParentFields({
     }
   }, [asksCarried, carriedAnswered, setFieldValue]);
   const [onlySibling] = siblingsWithoutCarrier;
+  // With nobody left to ask about, because the anchor already has someone
+  // recorded as carrying them, the question is shown unavailable, naming
+  // them: a child has one carrier at most.
+  const carriedUnavailable =
+    !asksCarried &&
+    parentKind !== 'surrogate' &&
+    mayHaveCarried(parentKind) &&
+    couldCarryPregnancy(sexAssignedAtBirth) &&
+    anchorHasCarrier;
+  const carriedUnavailableField = carriedUnavailable && (
+    <Field
+      component={BooleanField}
+      name={ROLE.carriedPregnancy}
+      label={intl.formatMessage(messages.carriedPregnancyLabel)}
+      hint={carrierReason(anchor.id)}
+      disabled
+    />
+  );
   const carriedField = asksCarried && (
     <Field
       component={BooleanField}
@@ -1386,6 +1422,7 @@ function ParentFields({
         initialValue="biological"
       />
       {!anchorHasCarrier && carriedField}
+      {carriedUnavailableField}
       {raises && existingParents.length > 0 && (
         <Field
           component={RadioGroupField}
@@ -1553,23 +1590,17 @@ function ChildFields({
   useEffect(() => {
     if (bothImpossible) setFieldValue(ROLE.biologicalParent, undefined);
   }, [bothImpossible, setFieldValue]);
-  // Only a biological parent is offered as having carried the pregnancy,
-  // and not one recorded as male at birth; an unknown other parent might
-  // have.
-  const isBiological = (parent: 'anchor' | 'otherParent') =>
-    biologicalParent === undefined ||
-    biologicalParent === 'both' ||
-    biologicalParent === parent;
-  // A donor gave a gamete and did not carry the pregnancy; the other parent
-  // of a donor-conceived child is its biological parent, who may have.
+  // Either parent may be offered as having carried the pregnancy, whatever
+  // kind of parent they are (a donor who carried is a traditional
+  // surrogate), but not one recorded as male at birth; an unknown other
+  // parent might have. A surrogate carried the child they are the surrogate
+  // of, so is not asked.
+  const asksCarrier = childKind !== 'surrogate';
   const anchorCanCarry =
-    childKind === 'biological' &&
-    isBiological('anchor') &&
-    couldCarryPregnancy(anchor.sexAssignedAtBirth);
+    asksCarrier && couldCarryPregnancy(anchor.sexAssignedAtBirth);
   const otherParentCanCarry =
-    (childKind === 'biological' || childKind === 'donor') &&
+    asksCarrier &&
     hasOtherParent &&
-    isBiological('otherParent') &&
     (otherParent === UNKNOWN ||
       couldCarryPregnancy(family.byId.get(otherParent)?.sexAssignedAtBirth));
 
@@ -1735,19 +1766,30 @@ function SiblingFields({
     if (biologicalImpossible) setFieldValue(ROLE.siblingKind, undefined);
   }, [biologicalImpossible, setFieldValue]);
 
-  // A biological sibling is asked who carried the pregnancy, as a child is:
-  // each parent the sibling will have, as the answers stand, who could have
-  // carried it — the parents chosen, and any unnamed parent added for both
-  // of them — offered by the name they are shown by.
-  const carriers =
-    asString(values[ROLE.siblingKind]) === 'biological'
-      ? possibleCarriers(
+  // A sibling is asked who carried the pregnancy, as a child is: each parent
+  // the sibling will have, as the answers stand, who could have carried it —
+  // the parents chosen, and any unnamed parent added for both of them —
+  // offered by the name they are shown by, whatever kind of parent they are.
+  const siblingKind = asString(values[ROLE.siblingKind]);
+  const siblingPlan =
+    siblingKind === undefined || siblingKind === 'biological'
+      ? biologicalPlan
+      : planAdditionUnder(ids, {
           family,
-          biologicalPlan,
+          anchorId: anchor.id,
+          details: {},
+          request: readSiblingRequest(values),
+          sexAttribute: config.sexAssignedAtBirthAttribute,
+        });
+  const carriers =
+    siblingKind === undefined
+      ? []
+      : possibleCarriers(
+          family,
+          siblingPlan,
           ids[0] ?? '',
           config.sexAssignedAtBirthAttribute,
-        )
-      : [];
+        );
   // An answer a later one has taken away is asked again.
   const carrier = asString(values[ROLE.carrier]);
   const carrierImpossible =

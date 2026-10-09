@@ -46,7 +46,7 @@ describe('connecting two people', () => {
   const kinds = (choices: ReturnType<typeof availableParentChoices>) =>
     choices.map(
       (choice) =>
-        `${choice.parentKind}${choice.parentKind === 'biological' && choice.carriedPregnancy ? '+carried' : ''}`,
+        `${choice.parentKind}${choice.parentKind !== 'surrogate' && choice.carriedPregnancy ? '+carried' : ''}`,
     );
 
   test('parents: every kind for two unrelated people', () => {
@@ -56,8 +56,11 @@ describe('connecting two people', () => {
       'biological',
       'biological+carried',
       'adoptive',
+      'adoptive+carried',
       'social',
+      'social+carried',
       'donor',
+      'donor+carried',
       'surrogate',
     ]);
   });

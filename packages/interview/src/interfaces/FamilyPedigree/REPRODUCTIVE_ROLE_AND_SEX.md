@@ -24,6 +24,25 @@ The interface allows a child at most two genetic parents, at most one recorded
 female at birth and at most one recorded male, so the rule never meets two
 eggs or two sperm.
 
+## Who carried the pregnancy
+
+Carrying the pregnancy is recorded apart from the gamete, as a yes/no answer
+on a parent link (`isGestationalCarrier`), because it is independent of it.
+Any kind of parent may have carried the child:
+
+- a biological parent who gave birth;
+- an adoptive or social parent who did, such as a legal co-mother who carried
+  a child conceived with her partner's egg;
+- a donor who did, which makes them a traditional surrogate (Bennett et al.
+  2022 mark them S);
+- a surrogate, who always did. "Surrogate" means only a gestational carrier
+  with no genetic tie who does not raise the child (marked GC).
+
+A child has at most one carrier, and nobody recorded male at birth carried a
+pregnancy (`couldCarryPregnancy`). Every form and the connect menu offer
+"carried the pregnancy" for any kind of parent, and show an answer that would
+record a second carrier as unavailable, naming who carried the child.
+
 ## Why
 
 A separate gamete question (as schema 8 had, on each parent relationship) is a

@@ -552,3 +552,153 @@ describe('the missing details notice', () => {
     );
   });
 });
+
+// Ruling 19: "carried the pregnancy" is a yes/no answer about any kind of
+// parent — biological, adoptive, social or donor — and a surrogate always
+// carried.
+describe('a parent of any kind who carried the pregnancy', () => {
+  const yesTo = (question: RegExp) =>
+    within(screen.getByRole('radiogroup', { name: question })).getByRole(
+      'radio',
+      { name: 'Yes' },
+    );
+
+  it('asks whether a new adoptive parent carried the pregnancy', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [person('ego', { isEgo: true, sex: ['male'] })],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await user.click(screen.getByRole('radio', { name: 'Adoptive parent' }));
+    await user.click(yesTo(/^Did this parent carry the pregnancy\?/));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      parentKind: 'adoptive',
+      carriedPregnancy: true,
+    });
+  });
+
+  it('offers a new child’s social parent as having carried them', async () => {
+    const { onSubmit, user } = renderPersonForm('jo', {
+      nodes: [
+        person('jo', { isEgo: true, sex: ['female'] }),
+        person('amy', { sex: ['female'] }),
+      ],
+      edges: [link('jo', 'amy', 'partner')],
+      adding: 'child',
+    });
+    await user.click(
+      within(
+        screen.getByRole('radiogroup', {
+          name: /^Who is the child’s biological parent/,
+        }),
+      ).getByRole('radio', { name: 'jo' }),
+    );
+    await user.click(
+      within(
+        screen.getByRole('radiogroup', {
+          name: /^Who carried the pregnancy\?/,
+        }),
+      ).getByRole('radio', { name: 'amy' }),
+    );
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      biologicalParent: 'anchor',
+      carrier: 'otherParent',
+    });
+  });
+
+  it('offers a new adoptive sibling’s adoptive parent as having carried them', async () => {
+    const { user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('amy', { sex: ['female'] }),
+        person('rob', { sex: ['male'] }),
+      ],
+      edges: [link('amy', 'ego', 'adoptive'), link('rob', 'ego', 'adoptive')],
+      adding: 'sibling',
+    });
+    await user.click(screen.getByRole('radio', { name: 'An adopted child' }));
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('radiogroup', {
+            name: /^Who carried the pregnancy\?/,
+          }),
+        ).getByRole('radio', { name: 'amy' }),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it('records that an existing adoptive parent carried the pregnancy', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('amy', { sex: ['female'] }),
+      ],
+      edges: [link('amy', 'ego', 'adoptive')],
+    });
+    await user.click(yesTo(/^Did amy carry the pregnancy\?/));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].linkUpdates).toEqual([
+      {
+        linkId: 'amy-ego-adoptive',
+        kind: 'adoptive',
+        isGestationalCarrier: true,
+        isCurrentPartner: true,
+      },
+    ]);
+  });
+});
+
+// Ruling 21: an answer that would record a second carrier is unavailable,
+// with a reason naming who carried them.
+describe('a second carrier', () => {
+  it('shows an existing parent’s carrying question unavailable, naming who carried them', () => {
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+        person('amy', { sex: ['female'] }),
+      ],
+      edges: [
+        link('mum', 'ego', 'biological', { carrier: true }),
+        link('amy', 'ego', 'adoptive'),
+      ],
+    });
+    const question = screen.getByRole('radiogroup', {
+      name: /^Did amy carry the pregnancy\?/,
+    });
+    expect(within(question).getByRole('radio', { name: 'Yes' })).toBeDisabled();
+    expect(question).toHaveAccessibleDescription(
+      /“mum” is recorded as having carried you/,
+    );
+  });
+
+  it('shows a new parent’s carrying question unavailable, naming who carried them', async () => {
+    const { user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+      ],
+      edges: [link('mum', 'ego', 'biological', { carrier: true })],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await user.click(screen.getByRole('radio', { name: 'Adoptive parent' }));
+    const question = await screen.findByRole('radiogroup', {
+      name: /^Did this parent carry the pregnancy\?/,
+    });
+    expect(within(question).getByRole('radio', { name: 'Yes' })).toBeDisabled();
+    expect(question).toHaveAccessibleDescription(
+      /“mum” is recorded as having carried you/,
+    );
+  });
+});
