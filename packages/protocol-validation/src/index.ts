@@ -181,6 +181,14 @@ export {
   suppliedStageText,
   suppliedStageTextAfterLanguageChange,
 } from './schemas/9/supplied-stage-text.ts';
+// The interview's shared words a protocol holds in its own languages, written
+// and removed by the migration and Architect as the protocol uses them.
+export {
+  INTERFACE_TEXT_MESSAGES,
+  type InterfaceText,
+  interfaceTextAfterLanguageChange,
+  withInterfaceText,
+} from './schemas/9/interface-text.ts';
 // The finish stage text Network Canvas supplies, written into a protocol by
 // the v8 → v9 migration and by Architect.
 export {

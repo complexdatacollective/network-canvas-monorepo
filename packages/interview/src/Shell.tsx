@@ -63,13 +63,18 @@ import type { InterviewCatalog } from './i18n/catalog';
 import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
 import { navigationMessages } from './i18n/navigationMessages';
 import { CompletedInterview } from './interfaces/FinishSession/FinishSession';
+import { InterfaceTextOverlay } from './localization/InterfaceTextOverlay';
 import {
   ProtocolLocalizationProvider,
   useProtocolLocale,
 } from './localization/ProtocolLocalizationProvider';
 import { getLocalePreference, getRecordedLocale } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
-import { getProtocolLocalization, getStages } from './store/modules/protocol';
+import {
+  getInterfaceText,
+  getProtocolLocalization,
+  getStages,
+} from './store/modules/protocol';
 import { recordLocale, setLocalePreference } from './store/modules/session';
 import { store, useAppDispatch, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
@@ -478,6 +483,7 @@ function InterviewLocalization({
 }) {
   const dispatch = useAppDispatch();
   const localization = useSelector(getProtocolLocalization);
+  const interfaceText = useSelector(getInterfaceText);
   const localePreference = useSelector(getLocalePreference);
   const recordedLocale = useSelector(getRecordedLocale);
 
@@ -505,7 +511,9 @@ function InterviewLocalization({
         onLocalePreferenceChange={handleLocalePreferenceChange}
         onLocaleRecorded={handleLocaleRecorded}
       >
-        {children}
+        <InterfaceTextOverlay interfaceText={interfaceText}>
+          {children}
+        </InterfaceTextOverlay>
       </ProtocolLocalizationProvider>
     </InterviewI18nProvider>
   );
