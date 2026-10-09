@@ -157,6 +157,18 @@ export const networkComposerStage = baseStageSchema.extend({
     usage: 'unvalidatedAttribute',
   }).optional(),
   background: imageOrCirclesBackgroundSchema,
+  // The interview's own words on this stage, which Network Canvas supplies
+  // (`stage-wording/network-composer.ts`). `groupsHeading` and
+  // `tooltips.drawConnection` are required only while the stage has groups and
+  // edge types, which the protocol checks (`missingRequiredStageSettings`).
+  addNamePlaceholder: localizedString(nonBlankText(), 'plain'),
+  overtakenEditNotice: localizedString(nonBlankText(), 'plain'),
+  groupsHeading: localizedString(nonBlankText(), 'plain').optional(),
+  tooltips: z.strictObject({
+    addPerson: localizedString(nonBlankText(), 'plain'),
+    automaticLayout: localizedString(nonBlankText(), 'plain'),
+    drawConnection: localizedString(nonBlankText(), 'plain').optional(),
+  }),
   behaviours: z
     .strictObject({
       // Whether automatic (force-directed) layout is ON when the stage first

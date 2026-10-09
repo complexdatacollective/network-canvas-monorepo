@@ -14,6 +14,13 @@ const validStage = {
   layoutVariable: 'layoutPosition',
   background: { concentricCircles: 4 },
   edges: [{ id: 'edge-1', subject: { entity: 'edge', type: 'knows' } }],
+  addNamePlaceholder: localized('Type a name, then press Enter'),
+  overtakenEditNotice: localized('Your edit has not been saved.'),
+  tooltips: {
+    addPerson: localized('Add node'),
+    automaticLayout: localized('Automatic layout'),
+    drawConnection: localized('Draw edge'),
+  },
 };
 
 describe('networkComposerStage schema', () => {
@@ -153,6 +160,12 @@ const baseStageWithComponent = {
   layoutVariable: 'layout',
   background: { concentricCircles: 4 },
   edges: [],
+  addNamePlaceholder: localized('Type a name, then press Enter'),
+  overtakenEditNotice: localized('Your edit has not been saved.'),
+  tooltips: {
+    addPerson: localized('Add node'),
+    automaticLayout: localized('Automatic layout'),
+  },
 };
 
 describe('ComposerFormFieldSchema', () => {

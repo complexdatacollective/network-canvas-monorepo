@@ -4,6 +4,7 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
 import { atRiskStatuses } from './sections/atRiskStatuses.tsx';
 import { diseases } from './sections/diseases.tsx';
 import { sourcePedigree } from './sections/sourcePedigree.tsx';
+import { wording } from './sections/wording.tsx';
 
 /**
  * The stage that draws conditions onto a family the participant has already
@@ -30,6 +31,7 @@ export const narrativePedigreeStageEditor = defineStageEditor(
     sourcePedigree(),
     diseases(),
     atRiskStatuses(),
+    wording(),
     skipLogic(),
     interviewerGuidance(),
   ],

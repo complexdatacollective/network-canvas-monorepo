@@ -14,6 +14,12 @@ import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import PresetSwitcher from '../PresetSwitcher';
 
+const HEADINGS = {
+  attributes: 'Attributes',
+  links: 'Links',
+  groups: undefined,
+};
+
 const PRESETS: React.ComponentProps<typeof PresetSwitcher>['presets'] = [
   {
     id: 'preset',
@@ -46,6 +52,7 @@ describe('PresetSwitcher highlight legend', () => {
     render(
       <PresetSwitcher
         presets={PRESETS}
+        headings={HEADINGS}
         activePreset={0}
         highlightIndex={0}
         showHighlighting

@@ -12,6 +12,7 @@ import {
 import ProtocolSchemaV9 from '../schema.ts';
 import { getStageSubjectResolution } from '../stage-subject-resolution.ts';
 import { stageSchema } from '../stages/index.ts';
+import { narrativePedigreeWords } from './canvas-stage-words.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
@@ -50,6 +51,7 @@ const narrativePedigree = (attribute: string): Stage => ({
   label: localized('Narrative Pedigree'),
   type: 'NarrativePedigree',
   sourceStageId: 'fp1',
+  ...narrativePedigreeWords(),
   diseases: [
     {
       id: 'd1',

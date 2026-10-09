@@ -31,6 +31,7 @@ import type {
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import Inspector, { type InspectorProps } from '../Inspector';
 import NetworkComposer from '../NetworkComposer';
+import { composerWords, OVERTAKEN_EDIT_NOTICE } from './composerWords';
 
 beforeAll(() => {
   if (typeof window.ResizeObserver === 'undefined') {
@@ -112,6 +113,7 @@ const edgeForm = {
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
+  ...composerWords(),
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   layoutVariable: LAYOUT_VAR,
@@ -824,6 +826,7 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
                 <StageMetadataContext.Provider value={vi.fn()}>
                   <Inspector
                     entityId={NODE_A_ID}
+                    overtakenEditNotice={OVERTAKEN_EDIT_NOTICE}
                     // The fixture's loose stage shape, as the interface is given.
                     form={
                       twoQuestionStage.nodeForm as unknown as InspectorProps['form']

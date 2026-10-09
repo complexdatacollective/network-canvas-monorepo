@@ -63,6 +63,7 @@ import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import { findDuplicateDiseaseLabels } from './stages/narrative-pedigree.ts';
 import type { ComposerFormField } from './stages/network-composer.ts';
+import { missingRequiredStageSettings } from './supplied-stage-text.ts';
 import { findTimelineStructureProblems } from './timeline-structure.ts';
 import {
   ComponentTypes,
@@ -673,6 +674,19 @@ const ProtocolSchema = z
           path: [],
         });
       }
+
+      // A setting the interview shows on a stage is written there. The stage
+      // must hold it wherever its configuration shows it (see
+      // `missingRequiredStageSettings`).
+      stages.forEach((stage, index) => {
+        for (const path of missingRequiredStageSettings(stage)) {
+          ctx.addIssue({
+            code: 'custom' as const,
+            message: `The interview shows this stage's "${path.join('.')}" setting, so the stage must hold it.`,
+            path: [index, ...path],
+          });
+        }
+      });
 
       // Every route ends at a finish stage, every stage is on a route, and a
       // protocol has exactly one finish stage.

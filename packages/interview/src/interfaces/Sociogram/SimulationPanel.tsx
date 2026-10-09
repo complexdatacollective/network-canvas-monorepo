@@ -2,7 +2,6 @@
 
 import { Pause as PauseIcon, Play as PlayIcon } from 'lucide-react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import {
   Tooltip,
@@ -10,23 +9,19 @@ import {
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
 
-import { interfaceMessages } from '../messages';
-
 type SimulationPanelProps = {
+  /** The stage's words for the toggle (`stage-wording/sociogram.ts`). */
+  words: Readonly<{ pauseLayout: string; resumeLayout: string }>;
   simulationEnabled: boolean;
   onToggle: () => void;
 };
 
 export default function SimulationPanel({
+  words,
   simulationEnabled,
   onToggle,
 }: SimulationPanelProps) {
-  const intl = useAppIntl();
-  const label = intl.formatMessage(
-    simulationEnabled
-      ? interfaceMessages.pauseAutomaticLayout
-      : interfaceMessages.resumeAutomaticLayout,
-  );
+  const label = simulationEnabled ? words.pauseLayout : words.resumeLayout;
 
   return (
     <Tooltip>

@@ -116,7 +116,7 @@ describe('the narrative stage editor', () => {
    */
   it('offers automatic layout as a switch in the behaviours section', async () => {
     const harness = openFixture();
-    await waitFor(() => expect(harness.outline()).toHaveLength(7));
+    await waitFor(() => expect(harness.outline()).toHaveLength(8));
 
     expect(
       screen.queryByRole('listbox', { name: 'Layout mode' }),

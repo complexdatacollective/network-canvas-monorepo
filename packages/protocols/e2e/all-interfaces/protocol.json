@@ -539,6 +539,14 @@
     },
     {
       "id": "sociogram-1",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout"
+        }
+      },
       "type": "Sociogram",
       "label": {
         "en-US": "Sociogram"
@@ -779,6 +787,32 @@
     },
     {
       "id": "narrative-1",
+      "attributesHeading": {
+        "en-US": "Attributes"
+      },
+      "linksHeading": {
+        "en-US": "Links"
+      },
+      "groupsHeading": {
+        "en-US": "Groups"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations"
+        }
+      },
       "type": "Narrative",
       "label": {
         "en-US": "Narrative"
@@ -890,6 +924,45 @@
     },
     {
       "id": "narrative-pedigree-1",
+      "keyHeading": {
+        "en-US": "Key"
+      },
+      "tooltips": {
+        "clearFocus": {
+          "en-US": "Clear focus"
+        },
+        "saveSnapshot": {
+          "en-US": "Save snapshot"
+        }
+      },
+      "conditionText": {
+        "heading": {
+          "en-US": "Conditions"
+        },
+        "instruction": {
+          "en-US": "Select a condition to see who it affects."
+        },
+        "notation": {
+          "affected": {
+            "en-US": "Has this condition"
+          },
+          "obligateAffected": {
+            "en-US": "Will develop this condition"
+          },
+          "obligateCarrier": {
+            "en-US": "Carries this condition"
+          },
+          "unknown": {
+            "en-US": "Not known"
+          }
+        },
+        "snapshotCondition": {
+          "en-US": "{title}: {condition}"
+        },
+        "snapshotInheritance": {
+          "en-US": "{title}: {condition} — inheritance for {name}"
+        }
+      },
       "type": "NarrativePedigree",
       "label": {
         "en-US": "Narrative Pedigree"
@@ -909,6 +982,20 @@
     },
     {
       "id": "network-composer-1",
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter"
+      },
+      "overtakenEditNotice": {
+        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost."
+      },
+      "tooltips": {
+        "addPerson": {
+          "en-US": "Add node"
+        },
+        "automaticLayout": {
+          "en-US": "Automatic layout"
+        }
+      },
       "type": "NetworkComposer",
       "label": {
         "en-US": "Network Composer"

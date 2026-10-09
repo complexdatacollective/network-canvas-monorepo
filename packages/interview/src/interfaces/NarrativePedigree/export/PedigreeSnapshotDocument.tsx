@@ -2,13 +2,11 @@
 
 import { type CSSProperties, forwardRef, type ReactNode } from 'react';
 
-import { AppMessage } from '@codaco/app-i18n/react';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
-import { NotationKey } from '../components/NotationKey';
-import { messages } from '../messages';
+import { NotationKey, type NotationWords } from '../components/NotationKey';
 
 type PedigreeSnapshotDocumentProps = {
   title: string;
@@ -28,6 +26,9 @@ type PedigreeSnapshotDocumentProps = {
   glyphColour: string;
   keyShape: NodeShape;
   showAtRiskStatuses: boolean;
+  // The stage's words for the key's heading and its glyphs.
+  keyHeading: string;
+  notationWords: NotationWords;
   // The key only describes the status glyphs, which are drawn on the pedigree
   // only once a condition is chosen; omit it for the plain (no-condition) view.
   showKey: boolean;
@@ -61,6 +62,8 @@ export const PedigreeSnapshotDocument = forwardRef<
     glyphColour,
     keyShape,
     showAtRiskStatuses,
+    keyHeading,
+    notationWords,
     showKey,
   },
   ref,
@@ -129,10 +132,11 @@ export const PedigreeSnapshotDocument = forwardRef<
               fontWeight: 700,
             }}
           >
-            <AppMessage message={messages.key} />
+            {keyHeading}
           </h3>
           <div className="flex flex-col gap-2" style={{ maxWidth: '28rem' }}>
             <NotationKey
+              words={notationWords}
               glyphColour={glyphColour}
               shape={keyShape}
               showAtRiskStatuses={showAtRiskStatuses}

@@ -2683,6 +2683,86 @@
     "defaultMessage": "Messages",
     "description": "Heading of the section holding the words a name generator shows a participant about its limits, its side panels, its search and its quick-add field. A name generator is a stage that asks the participant to name people."
   },
+  "protocolBuilder.narrative.attributesHeadingHint": {
+    "defaultMessage": "Shown only when a preset highlights members.",
+    "description": "Hint under the attributes heading setting, saying when the setting is used."
+  },
+  "protocolBuilder.narrative.attributesHeadingLabel": {
+    "defaultMessage": "Attributes heading",
+    "description": "Label of the setting holding the heading of the panel that lists what a preset highlights."
+  },
+  "protocolBuilder.narrative.disableDrawingTooltipLabel": {
+    "defaultMessage": "Disable drawing tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that turns drawing off."
+  },
+  "protocolBuilder.narrative.drawingTooltipHint": {
+    "defaultMessage": "Shown only when drawing is turned on.",
+    "description": "Hint under the drawing tooltip settings, saying when they are used."
+  },
+  "protocolBuilder.narrative.enableDrawingTooltipLabel": {
+    "defaultMessage": "Enable drawing tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that turns drawing on."
+  },
+  "protocolBuilder.narrative.freezeAnnotationsTooltipLabel": {
+    "defaultMessage": "Freeze annotations tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that freezes the drawn annotations in place."
+  },
+  "protocolBuilder.narrative.groupsHeadingHint": {
+    "defaultMessage": "Shown only when a preset groups members.",
+    "description": "Hint under the groups heading setting, saying when the setting is used."
+  },
+  "protocolBuilder.narrative.groupsHeadingLabel": {
+    "defaultMessage": "Groups heading",
+    "description": "Label of the setting holding the heading of the panel that lists the groups a preset shows."
+  },
+  "protocolBuilder.narrative.layoutTooltipHint": {
+    "defaultMessage": "Shown only when automatic layout is turned on.",
+    "description": "Hint under the layout tooltip settings, saying when they are used."
+  },
+  "protocolBuilder.narrative.linksHeadingHint": {
+    "defaultMessage": "Shown only when a preset shows connections.",
+    "description": "Hint under the links heading setting, saying when the setting is used."
+  },
+  "protocolBuilder.narrative.linksHeadingLabel": {
+    "defaultMessage": "Links heading",
+    "description": "Label of the setting holding the heading of the panel that lists the connections a preset shows."
+  },
+  "protocolBuilder.narrative.pauseLayoutTooltipLabel": {
+    "defaultMessage": "Pause layout tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that pauses the automatic layout."
+  },
+  "protocolBuilder.narrative.resetAnnotationsTooltipLabel": {
+    "defaultMessage": "Reset annotations tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that removes every drawn annotation."
+  },
+  "protocolBuilder.narrative.resumeLayoutTooltipLabel": {
+    "defaultMessage": "Resume layout tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that resumes the automatic layout."
+  },
+  "protocolBuilder.narrative.unfreezeAnnotationsTooltipLabel": {
+    "defaultMessage": "Unfreeze annotations tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that lets the drawn annotations move again."
+  },
+  "protocolBuilder.narrative.wordingDescription": {
+    "defaultMessage": "The headings of the highlight, link and group panels, and the labels of the drawing and layout tools. These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the words section of a narrative canvas."
+  },
+  "protocolBuilder.narrative.wordingTitle": {
+    "defaultMessage": "Words on the canvas",
+    "description": "Heading of the section holding the words a participant reads on a narrative canvas: the headings of its panels and the labels of its tools. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.narrativePedigree.affectedNotationLabel": {
+    "defaultMessage": "Has this condition",
+    "description": "Label of the setting holding the key entry for a person who has the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.atRiskAffectedNotationLabel": {
+    "defaultMessage": "May develop this condition",
+    "description": "Label of the setting holding the key entry for a person who may develop the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.atRiskCarrierNotationLabel": {
+    "defaultMessage": "May carry this condition",
+    "description": "Label of the setting holding the key entry for a person who may carry the selected condition."
+  },
   "protocolBuilder.narrativePedigree.atRiskFieldHint": {
     "defaultMessage": "Optionally show <strong>possible</strong> (at-risk) statuses alongside the certain ones, inferred from family structure and inheritance patterns.",
     "description": "Guidance under the at-risk switch, saying what turning it on adds to the family tree. The <strong> tag marks the word separating an inferred status from a recorded one."
@@ -2690,6 +2770,10 @@
   "protocolBuilder.narrativePedigree.atRiskFieldLabel": {
     "defaultMessage": "Show possible (at-risk) statuses",
     "description": "Label of the switch turning inferred risk on. The bracketed words name what these are called on the family tree itself."
+  },
+  "protocolBuilder.narrativePedigree.atRiskHint": {
+    "defaultMessage": "Shown only when the pedigree shows at-risk statuses.",
+    "description": "Hint under the at-risk key settings, saying when they are used."
   },
   "protocolBuilder.narrativePedigree.atRiskHowConstrained": {
     "defaultMessage": "Two rules constrain how risk travels through a family. Only <em>biological</em> and <em>donor</em> relationships pass conditions on; social, adoptive, surrogate and partner links do not. And where a person’s biological sex is not known, sex-linked inheritance through that person is left uncertain rather than guessed.",
@@ -2718,6 +2802,18 @@
   "protocolBuilder.narrativePedigree.atRiskWhyOffHeading": {
     "defaultMessage": "Why this is off by default",
     "description": "Heading over the paragraph explaining why inferred risk is not shown unless a researcher asks for it."
+  },
+  "protocolBuilder.narrativePedigree.clearFocusTooltipLabel": {
+    "defaultMessage": "Clear focus tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that clears the selected focal person."
+  },
+  "protocolBuilder.narrativePedigree.conditionHeadingLabel": {
+    "defaultMessage": "Conditions heading",
+    "description": "Label of the setting holding the heading of the panel that lists the conditions."
+  },
+  "protocolBuilder.narrativePedigree.conditionInstructionLabel": {
+    "defaultMessage": "Condition instruction",
+    "description": "Label of the setting holding the sentence asking the participant to choose a condition."
   },
   "protocolBuilder.narrativePedigree.diseaseColorHint": {
     "defaultMessage": "Select a color for this disease.",
@@ -2887,6 +2983,38 @@
     "defaultMessage": "Y-linked",
     "description": "One choice in the inheritance-pattern list: a condition carried on the Y chromosome. Standard clinical genetics terminology; \"Y\" is the chromosome’s letter and is not translated."
   },
+  "protocolBuilder.narrativePedigree.keyHeadingLabel": {
+    "defaultMessage": "Key heading",
+    "description": "Label of the setting holding the heading of the key that explains the symbols on the pedigree."
+  },
+  "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": {
+    "defaultMessage": "Will develop this condition",
+    "description": "Label of the setting holding the key entry for a person who will develop the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": {
+    "defaultMessage": "Carries this condition",
+    "description": "Label of the setting holding the key entry for a person who carries the selected condition."
+  },
+  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": {
+    "defaultMessage": "Save snapshot tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that saves an image of the pedigree."
+  },
+  "protocolBuilder.narrativePedigree.snapshotConditionHint": {
+    "defaultMessage": "The pedigree title and the condition name are filled in where the two placeholders are.",
+    "description": "Hint under the snapshot title setting for one condition, explaining the placeholders."
+  },
+  "protocolBuilder.narrativePedigree.snapshotConditionLabel": {
+    "defaultMessage": "Snapshot title for a condition",
+    "description": "Label of the setting holding the title of a saved image of one condition."
+  },
+  "protocolBuilder.narrativePedigree.snapshotInheritanceHint": {
+    "defaultMessage": "The pedigree title, the condition name and the name of the person are filled in where the three placeholders are.",
+    "description": "Hint under the snapshot title setting for inheritance, explaining the placeholders."
+  },
+  "protocolBuilder.narrativePedigree.snapshotInheritanceLabel": {
+    "defaultMessage": "Snapshot title for inheritance",
+    "description": "Label of the setting holding the title of a saved image of how a condition is inherited."
+  },
   "protocolBuilder.narrativePedigree.sourceAfterThisStage": {
     "defaultMessage": "The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.",
     "description": "Shown when the stage this one draws its family from has been moved to run later in the interview, so the participant would not have built the family yet."
@@ -2954,6 +3082,18 @@
   "protocolBuilder.narrativePedigree.sourceUnusableOption": {
     "defaultMessage": "{stageName} — this stage can no longer be used",
     "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
+  },
+  "protocolBuilder.narrativePedigree.unknownNotationLabel": {
+    "defaultMessage": "Not known",
+    "description": "Label of the setting holding the key entry for a person whose status for the selected condition is not known."
+  },
+  "protocolBuilder.narrativePedigree.wordingDescription": {
+    "defaultMessage": "The key, the condition panel, the tooltips and the snapshot titles. These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the words section of a narrative pedigree."
+  },
+  "protocolBuilder.narrativePedigree.wordingTitle": {
+    "defaultMessage": "Words on the pedigree",
+    "description": "Heading of the section holding the words a participant reads on a narrative pedigree: its key, its condition panel, its tooltips and its snapshot titles. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
     "defaultMessage": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
@@ -3031,9 +3171,29 @@
     "defaultMessage": "Narrative behaviors",
     "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
   },
+  "protocolBuilder.networkCanvas.composerAddNamePlaceholderLabel": {
+    "defaultMessage": "Name box placeholder",
+    "description": "Label of the setting holding the placeholder shown in the box for adding a member to the network, until a name is typed."
+  },
+  "protocolBuilder.networkCanvas.composerAddNodeTooltipLabel": {
+    "defaultMessage": "Add node tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that adds a member to the network."
+  },
+  "protocolBuilder.networkCanvas.composerAutomaticLayoutTooltipLabel": {
+    "defaultMessage": "Automatic layout tooltip",
+    "description": "Label of the setting holding the tooltip of the automatic layout tool."
+  },
   "protocolBuilder.networkCanvas.composerCreateLayoutLabel": {
     "defaultMessage": "Create a new position attribute",
     "description": "Button that creates an attribute holding a position in the codebook and uses it for this stage."
+  },
+  "protocolBuilder.networkCanvas.composerDrawConnectionTooltipHint": {
+    "defaultMessage": "Shown only when the canvas has connection types.",
+    "description": "Hint under the draw connection tooltip setting, saying when the setting is used."
+  },
+  "protocolBuilder.networkCanvas.composerDrawConnectionTooltipLabel": {
+    "defaultMessage": "Draw connection tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that draws a connection between two members."
   },
   "protocolBuilder.networkCanvas.composerEdgeAddLabel": {
     "defaultMessage": "Add a connection type",
@@ -3091,6 +3251,14 @@
     "defaultMessage": "No connection type chosen",
     "description": "How a row of a network composer’s connection list reads before a kind of connection has been chosen for it."
   },
+  "protocolBuilder.networkCanvas.composerGroupsHeadingHint": {
+    "defaultMessage": "Shown only when the canvas groups members.",
+    "description": "Hint under the groups heading setting, saying when the setting is used."
+  },
+  "protocolBuilder.networkCanvas.composerGroupsHeadingLabel": {
+    "defaultMessage": "Groups heading",
+    "description": "Label of the setting holding the name of the groups tool and of the groups in the key."
+  },
   "protocolBuilder.networkCanvas.composerLayoutEmpty": {
     "defaultMessage": "This type has no position attributes yet. Create one to store where the participant puts each node.",
     "description": "Shown in place of the position-attribute list when the node type this stage builds has no attribute that can hold a position."
@@ -3110,6 +3278,18 @@
   "protocolBuilder.networkCanvas.composerNodeWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
     "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.composerOvertakenEditNoticeLabel": {
+    "defaultMessage": "Warning about an overtaken edit",
+    "description": "Label of the setting holding the warning a participant sees when an undo or redo has changed an answer they were editing, so their edit has not been saved."
+  },
+  "protocolBuilder.networkCanvas.composerWordingDescription": {
+    "defaultMessage": "The name box, the warning shown when an undo or redo changed an answer being edited, and the labels of the canvas tools. These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the words section of a composer canvas. A composer is the canvas where the participant builds their network."
+  },
+  "protocolBuilder.networkCanvas.composerWordingTitle": {
+    "defaultMessage": "Words on the canvas",
+    "description": "Heading of the section holding the words a participant reads while building the network on a composer canvas. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
     "defaultMessage": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
@@ -6414,6 +6594,26 @@
   "protocolBuilder.slotVariable.variableTypeChangedRefusal": {
     "defaultMessage": "\"{attributeName}\" is no longer the kind of attribute this control can use, because its type was changed somewhere else. Choose another attribute.",
     "description": "Refusal shown under an attribute control when the attribute it holds still exists but has been given a different type, so the interface can no longer write or read it. attributeName is the codebook name of the attribute, which is not translated."
+  },
+  "protocolBuilder.sociogram.layoutTooltipHint": {
+    "defaultMessage": "Shown only when automatic layout is turned on.",
+    "description": "Hint under the layout tooltip settings, saying when they are used."
+  },
+  "protocolBuilder.sociogram.pauseLayoutTooltipLabel": {
+    "defaultMessage": "Pause layout tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that pauses the automatic layout."
+  },
+  "protocolBuilder.sociogram.resumeLayoutTooltipLabel": {
+    "defaultMessage": "Resume layout tooltip",
+    "description": "Label of the setting holding the tooltip of the tool that resumes the automatic layout."
+  },
+  "protocolBuilder.sociogram.wordingDescription": {
+    "defaultMessage": "The labels of the layout tools. These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the words section of a sociogram canvas."
+  },
+  "protocolBuilder.sociogram.wordingTitle": {
+    "defaultMessage": "Words on the canvas",
+    "description": "Heading of the section holding the words a participant reads on a sociogram canvas. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.sortOptions.attributeColumn": {
     "defaultMessage": "Attribute",

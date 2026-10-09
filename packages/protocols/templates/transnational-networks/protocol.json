@@ -1056,6 +1056,18 @@
     },
     {
       "id": "sociogram-ties",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout",
+          "es": "Pausar la disposición automática",
+          "hu": "Automatikus elrendezés szüneteltetése"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout",
+          "es": "Reanudar la disposición automática",
+          "hu": "Automatikus elrendezés folytatása"
+        }
+      },
       "type": "Sociogram",
       "label": {
         "en-US": "How these people know each other",
@@ -1092,6 +1104,58 @@
     },
     {
       "id": "narrative-review",
+      "attributesHeading": {
+        "en-US": "Attributes",
+        "es": "Atributos",
+        "hu": "Attribútumok"
+      },
+      "linksHeading": {
+        "en-US": "Links",
+        "es": "Conexiones",
+        "hu": "Kapcsolatok"
+      },
+      "groupsHeading": {
+        "en-US": "Groups",
+        "es": "Grupos",
+        "hu": "Csoportok"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing",
+          "es": "Activar el dibujo",
+          "hu": "Rajzolás bekapcsolása"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing",
+          "es": "Desactivar el dibujo",
+          "hu": "Rajzolás kikapcsolása"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations",
+          "es": "Bloquear las anotaciones",
+          "hu": "Jegyzetek rögzítése"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations",
+          "es": "Desbloquear las anotaciones",
+          "hu": "Jegyzetek feloldása"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations",
+          "es": "Restablecer las anotaciones",
+          "hu": "Jegyzetek visszaállítása"
+        },
+        "pauseLayout": {
+          "en-US": "Pause automatic layout",
+          "es": "Pausar la disposición automática",
+          "hu": "Automatikus elrendezés szüneteltetése"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout",
+          "es": "Reanudar la disposición automática",
+          "hu": "Automatikus elrendezés folytatása"
+        }
+      },
       "type": "Narrative",
       "label": {
         "en-US": "Your network, here and abroad",

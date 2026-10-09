@@ -174,6 +174,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(5, 'prompts', 0, 'text'), 'markdown'),
 
   site(stage(6, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(6, 'tooltips', 'pauseLayout'), 'plain'),
+  site(stage(6, 'tooltips', 'resumeLayout'), 'plain'),
 
   // The composer's own scale end labels are separate sites from the codebook
   // scalar's, and override them.
@@ -191,6 +193,13 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   ),
   site(stage(7, 'nodeForm', 'fields', 1, 'label'), 'markdown'),
   site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), 'markdown'),
+  // The Network Composer's own words, which Network Canvas supplies.
+  site(stage(7, 'addNamePlaceholder'), 'plain'),
+  site(stage(7, 'overtakenEditNotice'), 'plain'),
+  site(stage(7, 'tooltips', 'addPerson'), 'plain'),
+  site(stage(7, 'tooltips', 'automaticLayout'), 'plain'),
+  site(stage(7, 'tooltips', 'drawConnection'), 'plain'),
+  site(stage(7, 'groupsHeading'), 'plain'),
 
   site(stage(8, 'introductionPanel', 'title'), 'plain'),
   site(stage(8, 'introductionPanel', 'text'), 'markdown'),
@@ -217,6 +226,16 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(14, 'presets', 0, 'label'), 'plain'),
   site(stage(14, 'presets', 0, 'highlight', 0, 'label'), 'plain'),
+  site(stage(14, 'attributesHeading'), 'plain'),
+  site(stage(14, 'linksHeading'), 'plain'),
+  site(stage(14, 'groupsHeading'), 'plain'),
+  site(stage(14, 'tooltips', 'enableDrawing'), 'plain'),
+  site(stage(14, 'tooltips', 'disableDrawing'), 'plain'),
+  site(stage(14, 'tooltips', 'freezeAnnotations'), 'plain'),
+  site(stage(14, 'tooltips', 'unfreezeAnnotations'), 'plain'),
+  site(stage(14, 'tooltips', 'resetAnnotations'), 'plain'),
+  site(stage(14, 'tooltips', 'pauseLayout'), 'plain'),
+  site(stage(14, 'tooltips', 'resumeLayout'), 'plain'),
 
   site(stage(15, 'explanationText', 'title'), 'plain'),
   site(stage(15, 'explanationText', 'body'), 'markdown'),
@@ -260,6 +279,27 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(18, 'nominationPrompts', 0, 'text'), 'markdown'),
 
   site(stage(19, 'diseases', 0, 'label'), 'plain'),
+  // The Narrative Pedigree's own words, which Network Canvas supplies.
+  site(stage(19, 'keyHeading'), 'plain'),
+  site(stage(19, 'tooltips', 'clearFocus'), 'plain'),
+  site(stage(19, 'tooltips', 'saveSnapshot'), 'plain'),
+  site(stage(19, 'conditionText', 'heading'), 'plain'),
+  site(stage(19, 'conditionText', 'instruction'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'affected'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'obligateAffected'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'obligateCarrier'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'atRiskAffected'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'atRiskCarrier'), 'plain'),
+  site(stage(19, 'conditionText', 'notation', 'unknown'), 'plain'),
+  messageSite(stage(19, 'conditionText', 'snapshotCondition'), {
+    title: { kind: 'text' },
+    condition: { kind: 'text' },
+  }),
+  messageSite(stage(19, 'conditionText', 'snapshotInheritance'), {
+    title: { kind: 'text' },
+    condition: { kind: 'text' },
+    name: { kind: 'text' },
+  }),
 
   // The finish stage's title and content are markdown, so a researcher can
   // emphasise a word in either.
@@ -280,9 +320,14 @@ const exampleFor = (declaration: MessageArguments | undefined): string => {
   const plural = Object.keys(declaration ?? {}).find(
     (name) => declaration?.[name]?.kind === 'plural',
   );
-  return plural === undefined
-    ? '{isYou, select, true {You} other {“{name}”}}'
-    : `{${plural}, plural, other {# items}}`;
+  if (plural !== undefined) return `{${plural}, plural, other {# items}}`;
+  // Text-only arguments are shown as they are; the others need a select.
+  return declaration !== undefined &&
+    Object.values(declaration).every(({ kind }) => kind === 'text')
+    ? Object.keys(declaration)
+        .map((name) => `{${name}}`)
+        .join(' ')
+    : '{isYou, select, true {You} other {“{name}”}}';
 };
 
 const pathKey = (path: readonly PropertyKey[]) =>

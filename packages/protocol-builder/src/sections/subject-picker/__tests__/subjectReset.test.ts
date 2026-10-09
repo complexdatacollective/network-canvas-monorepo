@@ -35,6 +35,14 @@ describe('what a subject change invalidates', () => {
       'offlineNotice',
       'mapUnavailable',
       'outsideAreasLabel',
+      'addNamePlaceholder',
+      'overtakenEditNotice',
+      'groupsHeading',
+      'attributesHeading',
+      'linksHeading',
+      'tooltips',
+      'keyHeading',
+      'conditionText',
     ]);
   });
 

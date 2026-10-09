@@ -1416,6 +1416,32 @@
     },
     {
       "id": "7fb3b540-330c-11eb-8982-61526ca14943",
+      "attributesHeading": {
+        "en-US": "Attributes"
+      },
+      "linksHeading": {
+        "en-US": "Links"
+      },
+      "groupsHeading": {
+        "en-US": "Groups"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations"
+        }
+      },
       "label": { "en-US": "Narrative Interface" },
       "type": "Narrative",
       "subject": {

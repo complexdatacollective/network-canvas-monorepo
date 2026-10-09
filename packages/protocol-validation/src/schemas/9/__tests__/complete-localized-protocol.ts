@@ -378,6 +378,11 @@ export const completeProtocol = () => ({
       label: localized('Sociogram'),
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 3 },
+      behaviours: { automaticLayout: true },
+      tooltips: {
+        pauseLayout: localized('Pause automatic layout'),
+        resumeLayout: localized('Resume automatic layout'),
+      },
       prompts: [
         {
           id: 'p1',
@@ -394,6 +399,15 @@ export const completeProtocol = () => ({
       quickAdd: 'name',
       layoutVariable: 'layoutPosition',
       background: { concentricCircles: 3 },
+      addNamePlaceholder: localized('Type a name, then press Enter'),
+      overtakenEditNotice: localized('Your edit has not been saved.'),
+      convexHullVariable: 'category',
+      groupsHeading: localized('Groups'),
+      tooltips: {
+        addPerson: localized('Add node'),
+        automaticLayout: localized('Automatic layout'),
+        drawConnection: localized('Draw edge'),
+      },
       nodeForm: {
         fields: [
           {
@@ -531,8 +545,23 @@ export const completeProtocol = () => ({
           label: localized('Preset'),
           layoutVariable: 'layoutPosition',
           highlight: [{ variable: 'flag', label: localized('Flagged') }],
+          edges: { display: ['knows'] },
+          groupVariable: 'category',
         },
       ],
+      behaviours: { automaticLayout: true, freeDraw: true },
+      attributesHeading: localized('Attributes'),
+      linksHeading: localized('Links'),
+      groupsHeading: localized('Groups'),
+      tooltips: {
+        enableDrawing: localized('Enable drawing'),
+        disableDrawing: localized('Disable drawing'),
+        freezeAnnotations: localized('Freeze annotations'),
+        unfreezeAnnotations: localized('Unfreeze annotations'),
+        resetAnnotations: localized('Reset annotations'),
+        pauseLayout: localized('Pause automatic layout'),
+        resumeLayout: localized('Resume automatic layout'),
+      },
     },
     {
       id: 'anonymisation',
@@ -643,6 +672,28 @@ export const completeProtocol = () => ({
           inheritancePattern: 'autosomalDominant',
         },
       ],
+      showAtRiskStatuses: true,
+      keyHeading: localized('Key'),
+      tooltips: {
+        clearFocus: localized('Clear focus'),
+        saveSnapshot: localized('Save snapshot'),
+      },
+      conditionText: {
+        heading: localized('Conditions'),
+        instruction: localized('Select a condition to see who it affects.'),
+        notation: {
+          affected: localized('Has this condition'),
+          obligateAffected: localized('Will develop this condition'),
+          obligateCarrier: localized('Carries this condition'),
+          atRiskAffected: localized('May develop this condition'),
+          atRiskCarrier: localized('May carry this condition'),
+          unknown: localized('Not known'),
+        },
+        snapshotCondition: localized('{title}: {condition}'),
+        snapshotInheritance: localized(
+          '{title}: {condition} — inheritance for {name}',
+        ),
+      },
     },
     // Schema 8 has no finish stage; the migration adds this one, with this
     // id and the supplied text.

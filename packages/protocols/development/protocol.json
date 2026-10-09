@@ -896,6 +896,16 @@
     },
     {
       "id": "sociogram",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout",
+          "es": "Pausar la disposición automática"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout",
+          "es": "Reanudar la disposición automática"
+        }
+      },
       "type": "Sociogram",
       "label": {
         "en-US": "Sociogram",
@@ -1442,6 +1452,40 @@
     },
     {
       "id": "narrative1",
+      "attributesHeading": {
+        "en-US": "Attributes",
+        "es": "Atributos"
+      },
+      "linksHeading": {
+        "en-US": "Links",
+        "es": "Conexiones"
+      },
+      "groupsHeading": {
+        "en-US": "Groups",
+        "es": "Grupos"
+      },
+      "tooltips": {
+        "enableDrawing": {
+          "en-US": "Enable drawing",
+          "es": "Activar el dibujo"
+        },
+        "disableDrawing": {
+          "en-US": "Disable drawing",
+          "es": "Desactivar el dibujo"
+        },
+        "freezeAnnotations": {
+          "en-US": "Freeze annotations",
+          "es": "Bloquear las anotaciones"
+        },
+        "unfreezeAnnotations": {
+          "en-US": "Unfreeze annotations",
+          "es": "Desbloquear las anotaciones"
+        },
+        "resetAnnotations": {
+          "en-US": "Reset annotations",
+          "es": "Restablecer las anotaciones"
+        }
+      },
       "type": "Narrative",
       "label": {
         "en-US": "Narrative",
@@ -1634,6 +1678,24 @@
     },
     {
       "id": "network-composer-dev",
+      "addNamePlaceholder": {
+        "en-US": "Type a name, then press Enter",
+        "es": "Escribe un nombre y pulsa Intro"
+      },
+      "overtakenEditNotice": {
+        "en-US": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
+        "es": "Deshacer o rehacer cambió una respuesta mientras la editabas, así que tu cambio no se ha guardado. Para conservarlo, vuelve a cambiar esa respuesta. Si continúas, se perderá tu cambio."
+      },
+      "tooltips": {
+        "addPerson": {
+          "en-US": "Add node",
+          "es": "Añadir un elemento"
+        },
+        "automaticLayout": {
+          "en-US": "Automatic layout",
+          "es": "Disposición automática"
+        }
+      },
       "type": "NetworkComposer",
       "label": {
         "en-US": "Network Composer",
@@ -1770,6 +1832,56 @@
     },
     {
       "id": "narrative-pedigree-dev",
+      "keyHeading": {
+        "en-US": "Key",
+        "es": "Leyenda"
+      },
+      "tooltips": {
+        "clearFocus": {
+          "en-US": "Clear focus",
+          "es": "Quitar el foco"
+        },
+        "saveSnapshot": {
+          "en-US": "Save snapshot",
+          "es": "Guardar imagen"
+        }
+      },
+      "conditionText": {
+        "heading": {
+          "en-US": "Conditions",
+          "es": "Afecciones"
+        },
+        "instruction": {
+          "en-US": "Select a condition to see who it affects.",
+          "es": "Selecciona una afección para ver a quién afecta."
+        },
+        "notation": {
+          "affected": {
+            "en-US": "Has this condition",
+            "es": "Tiene esta afección"
+          },
+          "obligateAffected": {
+            "en-US": "Will develop this condition",
+            "es": "Desarrollará esta afección"
+          },
+          "obligateCarrier": {
+            "en-US": "Carries this condition",
+            "es": "Es portador/a de esta afección"
+          },
+          "unknown": {
+            "en-US": "Not known",
+            "es": "No se sabe"
+          }
+        },
+        "snapshotCondition": {
+          "en-US": "{title}: {condition}",
+          "es": "{title}: {condition}"
+        },
+        "snapshotInheritance": {
+          "en-US": "{title}: {condition} — inheritance for {name}",
+          "es": "{title}: {condition} — herencia de {name}"
+        }
+      },
       "type": "NarrativePedigree",
       "label": {
         "en-US": "Narrative Pedigree",

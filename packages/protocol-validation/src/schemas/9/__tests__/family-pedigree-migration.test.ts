@@ -1115,6 +1115,29 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
       label: en('How it runs in the family'),
       sourceStageId: 'pedigree',
       showAtRiskStatuses: true,
+      // The wording Network Canvas supplies, written in the protocol's only
+      // language.
+      keyHeading: { en: 'Key' },
+      tooltips: {
+        clearFocus: { en: 'Clear focus' },
+        saveSnapshot: { en: 'Save snapshot' },
+      },
+      conditionText: {
+        heading: { en: 'Conditions' },
+        instruction: { en: 'Select a condition to see who it affects.' },
+        notation: {
+          affected: { en: 'Has this condition' },
+          obligateAffected: { en: 'Will develop this condition' },
+          obligateCarrier: { en: 'Carries this condition' },
+          atRiskAffected: { en: 'May develop this condition' },
+          atRiskCarrier: { en: 'May carry this condition' },
+          unknown: { en: 'Not known' },
+        },
+        snapshotCondition: { en: '{title}: {condition}' },
+        snapshotInheritance: {
+          en: '{title}: {condition} — inheritance for {name}',
+        },
+      },
       diseases: [
         {
           id: 'condition',

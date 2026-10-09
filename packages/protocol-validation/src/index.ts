@@ -175,12 +175,19 @@ export {
 } from './schemas/9/family-pedigree-option-labels.ts';
 // How text Network Canvas supplies follows a change to a protocol's languages.
 export { type LanguageChange } from './schemas/9/supplied-text.ts';
+// The arguments of the Narrative Pedigree's snapshot titles, which the stage
+// editor offers the same placeholders as the schema declares.
+export {
+  SNAPSHOT_CONDITION_ARGUMENTS,
+  SNAPSHOT_INHERITANCE_ARGUMENTS,
+} from './schemas/9/stages/narrative-pedigree.ts';
 // The stage settings whose wording Network Canvas supplies, written into a
 // stage by Architect when it is made and when a language is added.
 export {
   missingSuppliedStageText,
   type SuppliedStageText,
   suppliedStageText,
+  suppliedStageSettingApplies,
   suppliedStageTextAfterLanguageChange,
 } from './schemas/9/supplied-stage-text.ts';
 // The interview's shared words a protocol holds in its own languages, written

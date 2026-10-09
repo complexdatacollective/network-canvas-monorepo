@@ -37,6 +37,7 @@ import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
 import { decryptValue } from '../../Anonymisation/encryptionFormat';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import NetworkComposer from '../NetworkComposer';
+import { composerWords } from './composerWords';
 
 // Records when a list holding encrypted values has been decrypted, so a test
 // can wait for stored values to be readable before relying on them.
@@ -193,6 +194,7 @@ const uniqueNameVariables: Record<string, Variable> = {
 const stage: StageProps<'NetworkComposer'>['stage'] = {
   id: 'nc1',
   type: 'NetworkComposer',
+  ...composerWords(),
   label: { en: 'Network Composer' },
   subject: { entity: 'node', type: NODE_TYPE },
   layoutVariable: asEntityAttributeReference(LAYOUT_VAR),

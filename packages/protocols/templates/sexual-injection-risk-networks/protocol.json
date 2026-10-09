@@ -459,6 +459,14 @@
     },
     {
       "id": "sociogram-overlap",
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout"
+        }
+      },
       "type": "Sociogram",
       "label": { "en-US": "Connections between partners" },
       "subject": {

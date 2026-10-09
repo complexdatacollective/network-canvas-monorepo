@@ -1,7 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -30,6 +29,7 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import { encryptionFor } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { installEncryptionKey } from '../../Anonymisation/unlockEncryption';
 import { encryptedPerson } from '../../FamilyPedigree/__tests__/fixtures';
+import { narrativePedigreeWords } from './narrativePedigreeWords';
 
 const exportSnapshotMock =
   vi.fn<(element: HTMLElement, filename: string) => Promise<void>>();
@@ -213,6 +213,7 @@ function makeNarrativeStage(): NarrativeStage {
     label: { en: 'Disease Pedigree' },
     sourceStageId: SOURCE_STAGE_ID,
     showAtRiskStatuses: false,
+    ...narrativePedigreeWords(),
     diseases: [
       {
         id: 'da',
@@ -287,7 +288,7 @@ function makeStore({
     reducer: { protocol, session, ui },
     preloadedState: {
       protocol: {
-        localization: { defaultLocale: 'en', locales: ['en'] },
+        localization: { defaultLocale: 'en', locales: ['en', 'es'] },
         codebook: makeCodebook(encryption !== undefined),
         stages: [{ ...sourceStage, framing: sourceFraming }, narrativeStage],
         assets: [],
@@ -317,27 +318,29 @@ function renderView(options: StoreOptions = {}, locale = 'en') {
   const stage = options.narrativeStage ?? makeNarrativeStage();
   const store = makeStore({ ...options, narrativeStage: stage });
 
-  function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <Provider store={store}>
-        <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
-          <TestProtocolLocalization>{children}</TestProtocolLocalization>
-        </CurrentStepProvider>
-      </Provider>
-    );
-  }
-
-  const view = (requestedLocale: string) => (
-    <InterviewI18nProvider requestedLocale={requestedLocale}>
-      <NarrativePedigreeView stage={stage} />
-    </InterviewI18nProvider>
+  // The protocol declares English and Spanish, so the stage's own wording can
+  // be shown in either. The preference is passed on every render, so a locale
+  // change reaches the stage text as well as the interface catalogs.
+  const tree = (requestedLocale: string) => (
+    <Provider store={store}>
+      <CurrentStepProvider currentStep={1} onStepChange={() => undefined}>
+        <TestProtocolLocalization
+          localization={{ defaultLocale: 'en', locales: ['en', 'es'] }}
+          locale={requestedLocale}
+        >
+          <InterviewI18nProvider requestedLocale={requestedLocale}>
+            <NarrativePedigreeView stage={stage} />
+          </InterviewI18nProvider>
+        </TestProtocolLocalization>
+      </CurrentStepProvider>
+    </Provider>
   );
-  const rendered = render(view(locale), { wrapper: Wrapper });
+  const rendered = render(tree(locale));
   return {
     ...rendered,
     store,
     changeLocale: (requestedLocale: string) =>
-      rendered.rerender(view(requestedLocale)),
+      rendered.rerender(tree(requestedLocale)),
   };
 }
 
@@ -845,6 +848,7 @@ function renderCousinView(showAtRiskStatuses = true) {
       label: { en: 'Cousin Union Disease Pedigree' },
       sourceStageId: SOURCE_STAGE_ID,
       showAtRiskStatuses,
+      ...narrativePedigreeWords({ atRisk: showAtRiskStatuses }),
       diseases: [
         {
           id: 'ar',

@@ -4,6 +4,8 @@ import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { composerWords } from './composerWords';
+
 vi.mock('../../../hooks/useAssetUrl', () => ({
   useAssetUrl: vi.fn(),
 }));
@@ -74,6 +76,7 @@ const defaultBackground: TestBackground = {
 const stage = {
   id: 'nc1',
   type: 'NetworkComposer' as const,
+  ...composerWords(),
   label: { en: 'Network Composer' },
   subject: { entity: 'node' as const, type: NODE_TYPE },
   layoutVariable: asEntityAttributeReference(LAYOUT_VAR),
