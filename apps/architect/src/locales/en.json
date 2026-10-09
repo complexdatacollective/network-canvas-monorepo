@@ -2591,6 +2591,10 @@
     "defaultMessage": "Ego",
     "description": "Visible text in lib / ProtocolSummary / components / Contents."
   },
+  "architect.protocolSummary.contents.interfaceText": {
+    "defaultMessage": "Interview text",
+    "description": "Entry in the printable protocol summary’s contents that links to the section listing the words the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry."
+  },
   "architect.protocolSummary.contents.nodeTypes": {
     "defaultMessage": "Node types",
     "description": "Visible text in lib / ProtocolSummary / components / Contents."
@@ -2618,6 +2622,10 @@
   "architect.protocolSummary.entity.ego": {
     "defaultMessage": "Ego",
     "description": "Visible text in lib / ProtocolSummary / components / Entity."
+  },
+  "architect.protocolSummary.interfaceText.title": {
+    "defaultMessage": "Interview text",
+    "description": "Heading of the printable protocol summary section that lists the words the interview itself shows, such as its buttons and messages, rather than text written for a stage or codebook entry."
   },
   "architect.protocolSummary.protocolCard.lastModified": {
     "defaultMessage": "Last Modified: {value1}",
