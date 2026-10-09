@@ -379,9 +379,9 @@ export const messages = defineMessages({
   placeholderParentsNote: {
     id: 'interview.familyPedigree.placeholderParentsNote',
     defaultMessage:
-      '{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}',
+      '{shared, select, eggParent {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later. The sibling shares the egg parent, and is given a sperm parent of their own.} other {A biological mother and a biological father will be added for you to fill in later. The sibling shares the mother, and is given a biological father of their own.}}} spermParent {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later. The sibling shares the sperm parent, and is given an egg parent of their own.} other {A biological mother and a biological father will be added for you to fill in later. The sibling shares the father, and is given a biological mother of their own.}}} other {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}}}',
     description:
-      'Note in the side panel for adding a sibling, shown when the selected person has no parents yet.',
+      'Note in the side panel for adding a sibling, shown when the selected person has no parents yet. shared is the answer to which of those parents the sibling shares: both, only the egg parent (mother), or only the sperm parent (father); a sibling who shares one is given an unnamed parent of their own for the other.',
   },
   otherParentLabel: {
     id: 'interview.familyPedigree.otherParentLabel',
@@ -404,7 +404,20 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.siblingBiologicalParentLabel',
     defaultMessage: 'Which of them is the sibling’s biological parent?',
     description:
-      'Question in the side panel for adding a biological sibling, asked when the sibling shares two parents of whom only one could be their biological parent (for example two mothers, both recorded as female at birth). Options are those parents, by name or by how they are related to the participant.',
+      'Question in the side panel for adding a biological sibling, asked when the sibling shares parents not all of whom could be their biological parents (for example two mothers, both recorded as female at birth). Options are those parents, by name or by how they are related to the participant.',
+  },
+  siblingOtherBiologicalParentLabel: {
+    id: 'interview.familyPedigree.siblingOtherBiologicalParentLabel',
+    defaultMessage: 'Which of them is the sibling’s other biological parent?',
+    description:
+      'Question in the side panel for adding a biological sibling, asked after “Which of them is the sibling’s biological parent?” when the answer still leaves more than one parent who could be the sibling’s other biological parent (for example a mother and two fathers). Options are those parents, by name or by how they are related to the participant.',
+  },
+  otherParentBiologicalLabel: {
+    id: 'interview.familyPedigree.otherParentBiologicalLabel',
+    defaultMessage:
+      '{otherIsYou, select, true {Are you the child’s biological parent?} other {Is “{other}” the child’s biological parent?}}',
+    description:
+      'Yes/no question in the side panel for adding a step-child, or an adopted child, with someone already in the family tree as the other parent: whether that other parent is the child’s own biological parent (for example a partner’s child). other is that parent’s name or how they are related to the participant.',
   },
   sharedDonorsLabel: {
     id: 'interview.familyPedigree.sharedDonorsLabel',

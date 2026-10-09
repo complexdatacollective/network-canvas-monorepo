@@ -327,6 +327,10 @@
     "defaultMessage": "{label} {number, number}",
     "description": "Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added. Shown in the family tree, and saved as the name of an unnamed family member when nothing else tells them apart."
   },
+  "interview.familyPedigree.otherParentBiologicalLabel": {
+    "defaultMessage": "{otherIsYou, select, true {Are you the child’s biological parent?} other {Is “{other}” the child’s biological parent?}}",
+    "description": "Yes/no question in the side panel for adding a step-child, or an adopted child, with someone already in the family tree as the other parent: whether that other parent is the child’s own biological parent (for example a partner’s child). other is that parent’s name or how they are related to the participant."
+  },
   "interview.familyPedigree.otherParentLabel": {
     "defaultMessage": "Who is the child’s other parent?",
     "description": "Question in the side panel for adding a child. Options are the selected person’s partners, someone not in the family tree yet, or no other parent."
@@ -372,8 +376,8 @@
     "description": "Accessible name of a family member’s symbol in the family tree. {name} is the person’s name, exactly as the participant typed it, or, when it is not known, how they are related to the participant. The second part is read out when the person was adopted, which the tree shows by drawing brackets around their symbol. The third part is read out when required details about the person have not been given yet."
   },
   "interview.familyPedigree.placeholderParentsNote": {
-    "defaultMessage": "{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}",
-    "description": "Note in the side panel for adding a sibling, shown when the selected person has no parents yet."
+    "defaultMessage": "{shared, select, eggParent {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later. The sibling shares the egg parent, and is given a sperm parent of their own.} other {A biological mother and a biological father will be added for you to fill in later. The sibling shares the mother, and is given a biological father of their own.}}} spermParent {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later. The sibling shares the sperm parent, and is given an egg parent of their own.} other {A biological mother and a biological father will be added for you to fill in later. The sibling shares the father, and is given a biological mother of their own.}}} other {{framing, select, gamete {An egg parent and a sperm parent will be added for you to fill in later, so the family tree can show these siblings together.} other {A biological mother and a biological father will be added for you to fill in later, so the family tree can show these siblings together.}}}}",
+    "description": "Note in the side panel for adding a sibling, shown when the selected person has no parents yet. shared is the answer to which of those parents the sibling shares: both, only the egg parent (mother), or only the sperm parent (father); a sibling who shares one is given an unnamed parent of their own for the other."
   },
   "interview.familyPedigree.pointerTool": {
     "defaultMessage": "Add and edit",
@@ -457,7 +461,7 @@
   },
   "interview.familyPedigree.siblingBiologicalParentLabel": {
     "defaultMessage": "Which of them is the sibling’s biological parent?",
-    "description": "Question in the side panel for adding a biological sibling, asked when the sibling shares two parents of whom only one could be their biological parent (for example two mothers, both recorded as female at birth). Options are those parents, by name or by how they are related to the participant."
+    "description": "Question in the side panel for adding a biological sibling, asked when the sibling shares parents not all of whom could be their biological parents (for example two mothers, both recorded as female at birth). Options are those parents, by name or by how they are related to the participant."
   },
   "interview.familyPedigree.siblingKindHint": {
     "defaultMessage": "{isYou, select, true {This can differ from how you are related to them, for example if only one of you was adopted.} other {This can differ from how “{name}” is related to them, for example if only one of the two siblings was adopted.}}",
@@ -466,6 +470,10 @@
   "interview.familyPedigree.siblingKindLabel": {
     "defaultMessage": "To the parents they share, are they…",
     "description": "Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options \"A biological child\", \"An adopted child\", \"A step-child or other child they raise\"."
+  },
+  "interview.familyPedigree.siblingOtherBiologicalParentLabel": {
+    "defaultMessage": "Which of them is the sibling’s other biological parent?",
+    "description": "Question in the side panel for adding a biological sibling, asked after “Which of them is the sibling’s biological parent?” when the answer still leaves more than one parent who could be the sibling’s other biological parent (for example a mother and two fathers). Options are those parents, by name or by how they are related to the participant."
   },
   "interview.familyPedigree.siblingTwinFraternal": {
     "defaultMessage": "Yes, fraternal (non-identical) twins",

@@ -997,6 +997,48 @@ describe('planAddRelative', () => {
     ]);
   });
 
+  test('a step-child whose other parent is their biological parent is that parent’s biological child', () => {
+    const result = plan(nuclearFamily(), 'mum', {
+      relation: 'child',
+      otherParent: 'dad',
+      parentKind: 'social',
+      biologicalParent: 'otherParent',
+      carrier: null,
+    });
+    expect(result.links).toEqual([
+      {
+        source: 'mum',
+        target: 'added',
+        kind: 'social',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'dad',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+      // Ruling 25: a stand-in for the child's other genetic parent.
+      { source: 'new-1', target: 'added', kind: 'biological' },
+    ]);
+  });
+
+  test('a step-child whose other parent is not their biological parent is that parent’s step-child too', () => {
+    const result = plan(nuclearFamily(), 'mum', {
+      relation: 'child',
+      otherParent: 'dad',
+      parentKind: 'social',
+      biologicalParent: 'both',
+      carrier: null,
+    });
+    expect(
+      result.links.map((planned) => [planned.source, planned.kind]),
+    ).toEqual([
+      ['mum', 'social'],
+      ['dad', 'social'],
+    ]);
+  });
+
   test('a child conceived with a donor’s egg or sperm, with no other parent', () => {
     const family = readFamily(
       [person('ego'), person('donor', { sex: ['male'] })],

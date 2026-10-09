@@ -90,7 +90,7 @@ describe('a biological sibling of two mothers', () => {
       relation: 'sibling',
       sharedParentIds: ['ann', 'bea'],
       parentKind: 'biological',
-      biologicalParentId: 'bea',
+      biologicalParentIds: ['bea'],
       carrier: null,
     });
     expect(
@@ -102,6 +102,47 @@ describe('a biological sibling of two mothers', () => {
     ).toEqual([
       ['bea', 'biological'],
       ['ann', 'adoptive'],
+    ]);
+  });
+});
+
+// A biological sibling sharing three parents, two of whom could each be their
+// genetic father, is recorded with the genetic parents the participant
+// named, never one taken from the order the parents were recorded in.
+describe('a biological sibling of three shared parents', () => {
+  const threeParents = () =>
+    family(
+      [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sarah', { name: 'Sarah', sex: ['female'] }),
+        person('tom', { name: 'Tom', sex: ['male'] }),
+        person('raj', { name: 'Raj', sex: ['male'] }),
+      ],
+      [
+        link('sarah', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+        link('raj', 'ego', 'social'),
+        link('sarah', 'tom', 'partner', { current: false }),
+        link('sarah', 'raj', 'partner'),
+      ],
+    );
+
+  test('is the biological child of both parents named', () => {
+    const result = plan(threeParents(), {
+      relation: 'sibling',
+      sharedParentIds: ['sarah', 'tom', 'raj'],
+      parentKind: 'biological',
+      biologicalParentIds: ['sarah', 'raj'],
+      carrier: null,
+    });
+    expect(
+      result.links
+        .filter((planned) => planned.target === 'added')
+        .map((planned) => [planned.source, planned.kind]),
+    ).toEqual([
+      ['sarah', 'biological'],
+      ['raj', 'biological'],
+      ['tom', 'social'],
     ]);
   });
 });

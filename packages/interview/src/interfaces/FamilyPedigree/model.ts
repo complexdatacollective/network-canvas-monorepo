@@ -645,7 +645,10 @@ export type AddRelativeRequest =
        * surrogate, is the other parent's biological child. */
       parentKind: PedigreeParentKind;
       /** For a biological child with another parent, which of them is a
-       * biological parent; the other is a social parent. */
+       * biological parent; the other is a social parent. For a step or
+       * adopted child of the anchor, `'otherParent'` when the other parent
+       * is the child's biological parent (a partner's own child); otherwise
+       * the other parent is the same kind of parent as the anchor. */
       biologicalParent: 'both' | 'anchor' | 'otherParent';
       /** Which of the child's parents carried the pregnancy, whatever kind
        * of parent they are, or null when neither did or it is not known. A
@@ -669,12 +672,14 @@ export type AddRelativeRequest =
        * need not be the anchor's: one may be adopted and the other not. */
       parentKind: 'biological' | 'adoptive' | 'social';
       /**
-       * For a biological sibling, which of the parents they share is their
-       * biological parent, when only one of them could be (ruling 26): two
-       * mothers, say. Absent, the anchor's biological parents are taken
-       * first.
+       * For a biological sibling, which of the parents they share are their
+       * biological parents, in the order named, when not all of them could
+       * be (ruling 26): two mothers, say, or a mother and two fathers. The
+       * participant names one, and a second while the first leaves more
+       * than one who could be. Absent, the anchor's biological parents are
+       * taken first.
        */
-      biologicalParentId?: string;
+      biologicalParentIds?: readonly string[];
       /** The sibling is the anchor's twin, of this zygosity (ruling 16). */
       twin?: TwinZygosity;
       /**
@@ -829,6 +834,15 @@ export function planAddRelative({
         ) {
           return 'biological';
         }
+        // A step or adopted child of the anchor may be the other parent's
+        // own child, as the participant said.
+        if (
+          parent === 'otherParent' &&
+          (kind === 'social' || kind === 'adoptive') &&
+          request.biologicalParent === 'otherParent'
+        ) {
+          return 'biological';
+        }
         return kind === 'biological' &&
           request.biologicalParent !== 'both' &&
           request.biologicalParent !== parent
@@ -939,16 +953,20 @@ export function planAddRelative({
         ...(sharesNone ? anchorParents : shared),
         ...sharedPlaceholders,
       ];
-      const named = request.biologicalParentId;
+      const named = (request.biologicalParentIds ?? []).filter((id) =>
+        siblingParents.includes(id),
+      );
       const ordered =
         request.parentKind === 'biological'
           ? [
-              ...siblingParents.filter((id) => id === named),
+              ...named,
               ...siblingParents.filter(
-                (id) => id !== named && anchorKindOf(id) === 'biological',
+                (id) =>
+                  !named.includes(id) && anchorKindOf(id) === 'biological',
               ),
               ...siblingParents.filter(
-                (id) => id !== named && anchorKindOf(id) !== 'biological',
+                (id) =>
+                  !named.includes(id) && anchorKindOf(id) !== 'biological',
               ),
             ]
           : siblingParents;
