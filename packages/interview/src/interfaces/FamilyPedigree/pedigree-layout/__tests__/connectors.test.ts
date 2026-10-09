@@ -139,6 +139,81 @@ describe('computeConnectors', () => {
     }
   });
 
+  it('gives two families’ lines of descent between the same rows level runs at heights of their own', () => {
+    // Couples A–B and C–D; the A–B child sits under C–D and the C–D child
+    // under A–B, so the two runs overlap.
+    const crossed: PedigreeLayout = {
+      n: [4, 2],
+      nid: [
+        [0, 1, 2, 3],
+        [5, 4, 0, 0],
+      ],
+      pos: [
+        [0, 1, 2, 3],
+        [0, 3, 0, 0],
+      ],
+      fam: [
+        [0, 0, 0, 0],
+        [3, 1, 0, 0],
+      ],
+      group: [
+        [1, 0, 1, 0],
+        [0, 0, 0, 0],
+      ],
+      twins: null,
+      groupMember: [
+        [false, false, false, false],
+        [false, false, false, false],
+      ],
+    };
+    const bio = (parentIndex: number): ParentConnection => ({
+      parentIndex,
+      edgeType: 'biological',
+    });
+    const crossedParents: ParentConnection[][] = [
+      [],
+      [],
+      [],
+      [],
+      [bio(0), bio(1)],
+      [bio(2), bio(3)],
+    ];
+    const runYs = (l: PedigreeLayout) =>
+      computeConnectors(l, scaling, crossedParents, undefined, 0.6)
+        .parentChildLines.map(
+          (line) =>
+            line.parentLink.find((s) => s.y1 === s.y2 && s.x1 !== s.x2)?.y1,
+        )
+        .filter((y) => y !== undefined);
+    const [first, second] = runYs(crossed);
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+    expect(Math.abs(first! - second!)).toBeGreaterThan(0.01);
+    // Both still lie between the parents' row and the sibling bar.
+    for (const y of [first!, second!]) {
+      expect(y).toBeGreaterThan(0.5);
+      expect(y).toBeLessThan(0.75);
+    }
+
+    // Runs that do not overlap keep the usual height, halfway down.
+    const apart: PedigreeLayout = {
+      ...crossed,
+      nid: [
+        [0, 1, 2, 3],
+        [4, 5, 0, 0],
+      ],
+      pos: [
+        [0, 1, 2, 3],
+        [0, 3, 0, 0],
+      ],
+      fam: [
+        [0, 0, 0, 0],
+        [1, 3, 0, 0],
+      ],
+    };
+    expect(runYs(apart)).toEqual([0.625, 0.625]);
+  });
+
   it('produces 2 parent link segments, the shoulder diagonal, when branch = 0', () => {
     const connectors = computeConnectors(
       {

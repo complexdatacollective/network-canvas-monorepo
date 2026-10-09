@@ -1198,6 +1198,14 @@ function collectLayerEdges(
   return { edges, linesUnderPeople };
 }
 
+/**
+ * What two crossed lines of descent cost, against 1 for any crossing with an
+ * extra parent's line. Crossed lines of descent put each child under the
+ * other family's parents, where the drawing reads as the wrong parentage, so
+ * any number of extra parents' crossings short of this is preferred.
+ */
+const DESCENT_CROSSING_WEIGHT = 4;
+
 function countCrossings(
   layerOrdering: number[][],
   graph: PedigreeGraph,
@@ -1222,7 +1230,7 @@ function countCrossings(
         const [u1, v1, descent1] = edges[i]!;
         const [u2, v2, descent2] = edges[j]!;
         if ((u1 < u2 && v1 > v2) || (u1 > u2 && v1 < v2)) {
-          crossings += descent1 && descent2 ? 2 : 1;
+          crossings += descent1 && descent2 ? DESCENT_CROSSING_WEIGHT : 1;
         }
       }
     }
@@ -1249,12 +1257,20 @@ function barycentricSweep(
       const currentLayer = result[k]!;
       const blocks = buildConstraintBlocks(currentLayer, graph);
 
-      // Compute barycenters
+      // Compute barycenters. A child of a family unit is placed by its
+      // family's descent point (its parent group's midpoint), the point its
+      // line of descent comes from; anyone else by all their parents.
       for (const block of blocks) {
         let totalBarycenter = 0;
         let countWithParents = 0;
         for (const node of block.nodes) {
-          const parents = getParentsOf(node, graph);
+          const familyParents = (
+            graph.familyOf.get(node)?.parentGroup.members ?? []
+          ).filter((p) => fixedPos.has(p));
+          const parents =
+            familyParents.length > 0
+              ? familyParents
+              : getParentsOf(node, graph);
           const parentPositions = parents
             .filter((p) => fixedPos.has(p))
             .map((p) => fixedPos.get(p)!);

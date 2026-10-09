@@ -535,6 +535,15 @@ const defaultScaling: ScalingParams = {
   vScale: 1,
 };
 
+/** The scaling the interface draws with: symbols with gaps between them. */
+const drawnScaling: ScalingParams = {
+  boxWidth: 1 / 2.4,
+  boxHeight: 1 / 2.4,
+  legHeight: (1 - 1 / 2.4) / 2,
+  hScale: 1,
+  vScale: 1,
+};
+
 describe('traditional family regression', () => {
   it('nuclear family: parents and children on separate levels', () => {
     const result = alignPedigree(nuclearFamily, {
@@ -1307,12 +1316,12 @@ describe('a person with three partners', () => {
     }
   });
 
-  it('joins each parent of a couple that cannot sit together to the child', () => {
+  it('hangs the child of a couple that cannot sit together from their routed partnership line', () => {
     const result = alignPedigree(ped);
     const level = result.nid.findIndex((row) => row.includes(4));
     const conn = computeConnectors(
       result,
-      defaultScaling,
+      drawnScaling,
       ped.parents,
       new Set(['0,3']),
       undefined,
@@ -1329,12 +1338,29 @@ describe('a person with three partners', () => {
       if (result.fam[level]![col] !== 0) continue;
       withoutFamily++;
       const child = result.nid[level]![col]!;
+      // Neither parent has a line of their own to the child: one line of
+      // descent comes down from their partnership line.
       for (const { parentIndex } of ped.parents[child]!) {
-        expect(direct).toContain(`${ped.id[parentIndex]}→${ped.id[child]}`);
+        expect(direct).not.toContain(`${ped.id[parentIndex]}→${ped.id[child]}`);
       }
+      const descents = conn.parentChildLines.filter(
+        (line) =>
+          line.uplineChildIds?.includes(ped.id[child]!) &&
+          line.parentLink.length > 0,
+      );
+      expect(descents).toHaveLength(1);
+      const routed = conn.groupLines.find(
+        (line) =>
+          line.endpointSegments &&
+          line.partnerIds?.toSorted().join() ===
+            ped.parents[child]!.map((p) => ped.id[p.parentIndex]!)
+              .toSorted()
+              .join(),
+      )!;
+      expect(descents[0]!.parentLink[0]!.y1).toBeCloseTo(routed.segment.y1, 9);
     }
     // b and c each share two children with parent, so parent – a is the
-    // partnership left apart and its child is drawn this way.
+    // partnership left apart.
     expect(withoutFamily).toBe(1);
   });
 
@@ -1561,7 +1587,7 @@ describe('a person with three partners', () => {
       }
       const conn = computeConnectors(
         result,
-        defaultScaling,
+        drawnScaling,
         input.parents,
         new Set(['0,3']),
         undefined,
@@ -1573,7 +1599,8 @@ describe('a person with three partners', () => {
       expect(
         conn.twinIndicators.map((t) => [t.code, [...(t.twinIds ?? [])].sort()]),
       ).toStrictEqual([[code, ['kidA', 'kidA2']]]);
-      // The twins hang from one sibling bar, which each parent joins.
+      // The twins hang from one sibling bar, with one line of descent from
+      // their parents' routed partnership line.
       const bars = conn.parentChildLines.filter((line) =>
         line.uplineChildIds?.includes('kidA'),
       );
@@ -1581,10 +1608,8 @@ describe('a person with three partners', () => {
       expect(bars[0]!.uplineChildIds).toStrictEqual(
         expect.arrayContaining(['kidA', 'kidA2']),
       );
-      const toBar = conn.auxiliaryLines
-        .filter((line) => line.endpointIds?.[1] === undefined)
-        .map((line) => line.endpointIds?.[0]);
-      expect(toBar).toStrictEqual(expect.arrayContaining(['parent', 'a']));
+      expect(bars[0]!.parentLink.length).toBeGreaterThan(0);
+      expect(conn.auxiliaryLines).toEqual([]);
     },
   );
 

@@ -156,6 +156,18 @@ export function computeConnectors(
     }
   }
 
+  // Each recorded partnership routed above its partners' shared row, by pair
+  // key: the line a child of the couple descends from.
+  const routedCouples = new Map<
+    string,
+    {
+      connector: ParentGroupConnector;
+      layer: number;
+      /** The partners, left then right. */
+      members: [number, number];
+    }
+  >();
+
   // A node can be horizontally adjacent to at most two partners. Preserve any
   // additional recorded partnerships with a routed connector above the row,
   // rather than silently dropping the edge or connecting the two neighbouring
@@ -321,6 +333,13 @@ export function computeConnectors(
 
       groupLines.push(connector);
       renderedPartnerPairs.add(pairKey);
+      if (upper.layer === lower.layer) {
+        routedCouples.set(pairKey, {
+          connector,
+          layer: upper.layer,
+          members: [leftIndex, rightIndex],
+        });
+      }
     }
   }
 
@@ -443,16 +462,89 @@ export function computeConnectors(
     return { uplines, siblingBar, minTarget, maxTarget };
   };
 
+  // A point on a partnership line routed above the parents' row (`layer`)
+  // that a line of descent can drop from, near `target` but clear of
+  // everyone on the row and of every partnership line drawn between
+  // two people sitting side by side, where the drop would read as that
+  // couple's. Undefined when the routed line has no such point.
+  const routedDescentX = (
+    line: ParentGroupConnector,
+    layer: number,
+    target: number,
+  ): number | undefined => {
+    const from = Math.min(line.segment.x1, line.segment.x2);
+    const to = Math.max(line.segment.x1, line.segment.x2);
+    const row = (layout.pos[layer] ?? []).slice(0, layout.n[layer] ?? 0);
+    const clearance = boxw / 2 + 0.05;
+    const inCoupleGap = (x: number) =>
+      row.some(
+        (px, j) =>
+          j + 1 < row.length &&
+          (layout.group[layer]?.[j] ?? 0) > 0 &&
+          x > px &&
+          x < row[j + 1]!,
+      );
+    const isClear = (x: number) =>
+      x >= from - 1e-9 &&
+      x <= to + 1e-9 &&
+      row.every((px) => Math.abs(px - x) >= clearance - 1e-9) &&
+      !inCoupleGap(x);
+    // The point under the target if it is clear; failing that, the middle
+    // of a gap between two people; failing that, just clear of someone.
+    const nearest = (candidates: number[]) =>
+      candidates
+        .filter(isClear)
+        .toSorted((a, b) => Math.abs(a - target) - Math.abs(b - target))[0];
+    return (
+      nearest([Math.max(from, Math.min(to, target))]) ??
+      nearest(row.slice(1).map((px, j) => (row[j]! + px) / 2)) ??
+      nearest(row.flatMap((px) => [px - clearance, px + clearance]))
+    );
+  };
+
+  // The recorded partnership routed above `layer` that a child with these
+  // primary parents descends from: the one most strongly its parents (a
+  // social parent weighs less than a biological or adoptive one, as the
+  // layout weighs them), the first on a tie.
+  const routedCoupleOf = (primary: ParentConnection[], layer: number) => {
+    const weightOf = (person: number | undefined) => {
+      const edgeType = primary.find((p) => p.parentIndex === person)?.edgeType;
+      if (edgeType === undefined) return 0;
+      return edgeType === 'social' ? 1 : 2;
+    };
+    let best: string | undefined;
+    let bestWeight = 0;
+    for (const [pairKey, routed] of routedCouples) {
+      if (routed.layer !== layer) continue;
+      const [a, b] = pairKey.split(',').map(Number);
+      const weights = [weightOf(a), weightOf(b)];
+      if (weights.includes(0)) continue;
+      const weight = weights[0]! + weights[1]!;
+      if (weight > bestWeight) {
+        best = pairKey;
+        bestWeight = weight;
+      }
+    }
+    return best;
+  };
+
   // Children whose couple could not sit together have no family in the
-  // layout (fam 0). Those who share every primary parent, in the same roles,
-  // still form a sibship: a sibling bar with uplines and twin marks, though no
-  // line of descent comes down from a couple; each parent joins the bar with
-  // a line of its own. Each such sibship gets a key past every column, so it
-  // never meets a family's.
+  // layout (fam 0). When the couple's recorded partnership is routed above
+  // their row, the children are still one family, with one line of descent
+  // from that line. Otherwise (co-parents with no recorded partnership, or a
+  // routed line with no clear point to drop from), those who share every
+  // primary parent, in the same roles, still form a sibship: a sibling bar
+  // with uplines and twin marks, though no line of descent comes down from a
+  // couple; each parent joins the bar with a line of its own. Each such
+  // family or sibship gets a key past every column, so it never meets a
+  // family the layout named.
   const familyOf = layout.fam.map((row) => [...row]);
   const coupleless = new Set<number>();
+  const routedFamilies = new Map<number, { pairKey: string; x: number }>();
+  let nextFamilyKey = maxcol + 1;
   for (let i = 1; i < maxlev; i++) {
     const sibships = new Map<string, number[]>();
+    const routedSibships = new Map<string, number[]>();
     for (let j = 0; j < (layout.n[i] ?? 0); j++) {
       if ((layout.fam[i]?.[j] ?? 0) !== 0 || layout.groupMember[i]?.[j]) {
         continue;
@@ -461,15 +553,46 @@ export function computeConnectors(
         isPrimaryEdge(p.edgeType),
       );
       if (primary.length === 0) continue;
+      const couple = routedCoupleOf(primary, i - 1);
+      if (couple !== undefined) {
+        routedSibships.set(couple, [...(routedSibships.get(couple) ?? []), j]);
+        continue;
+      }
       const key = primary
         .map((p) => `${p.parentIndex}:${p.edgeType}`)
         .toSorted()
         .join(',');
       sibships.set(key, [...(sibships.get(key) ?? []), j]);
     }
+    for (const [pairKey, columns] of routedSibships) {
+      const target =
+        columns.reduce((sum, j) => sum + layout.pos[i]![j]!, 0) /
+        columns.length;
+      const x = routedDescentX(
+        routedCouples.get(pairKey)!.connector,
+        i - 1,
+        target,
+      );
+      if (x === undefined) {
+        for (const j of columns) {
+          const primary = (parents[layout.nid[i]![j]!] ?? []).filter((p) =>
+            isPrimaryEdge(p.edgeType),
+          );
+          const key = primary
+            .map((p) => `${p.parentIndex}:${p.edgeType}`)
+            .toSorted()
+            .join(',');
+          sibships.set(key, [...(sibships.get(key) ?? []), j]);
+        }
+        continue;
+      }
+      const famId = nextFamilyKey++;
+      routedFamilies.set(famId, { pairKey, x });
+      for (const j of columns) familyOf[i]![j] = famId;
+    }
     for (const columns of sibships.values()) {
       if (columns.length < 2) continue;
-      const famId = maxcol + 1 + coupleless.size;
+      const famId = nextFamilyKey++;
       coupleless.add(famId);
       for (const j of columns) familyOf[i]![j] = famId;
     }
@@ -499,6 +622,15 @@ export function computeConnectors(
   // The parents whose ties each child's line of descent draws (keyed
   // "level,column"). Every other primary parent gets a line of their own.
   const descentParentsOf = new Map<string, Set<number>>();
+  // Every line of descent with a level run, for the runs to be given heights
+  // of their own once all are known.
+  const descentLinks: {
+    level: number;
+    line: ParentChildConnector;
+    childX: number;
+    parentX: number;
+    startY: number;
+  }[] = [];
 
   // --- Parent-child lines ---
   for (let i = 1; i < maxlev; i++) {
@@ -539,15 +671,32 @@ export function computeConnectors(
         continue;
       }
 
-      const { left: coupleLeft, right: coupleRight } = familyParentColumns(
-        layout,
-        i,
-        fam,
-      );
-      const coupleLeftId = layout.nid[i - 1]![coupleLeft]!;
-      const coupleRightId = layout.nid[i - 1]![coupleRight]!;
-      const leftPos = layout.pos[i - 1]![coupleLeft]!;
-      const rightPos = layout.pos[i - 1]![coupleRight]!;
+      // The family's parents: a couple seated side by side (or a single
+      // parent), or a couple whose partnership is routed above their row.
+      const routed = routedFamilies.get(fam);
+      let coupleLeftId: number;
+      let coupleRightId: number;
+      let leftPos: number;
+      let rightPos: number;
+      let groupLine: ParentGroupConnector | undefined;
+      if (routed) {
+        const couple = routedCouples.get(routed.pairKey)!;
+        [coupleLeftId, coupleRightId] = couple.members;
+        leftPos = nodeLocation.get(coupleLeftId)!.x;
+        rightPos = nodeLocation.get(coupleRightId)!.x;
+        groupLine = couple.connector;
+      } else {
+        const { left, right } = familyParentColumns(layout, i, fam);
+        coupleLeftId = layout.nid[i - 1]![left]!;
+        coupleRightId = layout.nid[i - 1]![right]!;
+        leftPos = layout.pos[i - 1]![left]!;
+        rightPos = layout.pos[i - 1]![right]!;
+        // A single parent's children descend from the parent, not from a
+        // partner line they may also be on.
+        const glIdx =
+          fam > 0 ? groupLineIndex.get(`${i - 1},${left}`) : undefined;
+        groupLine = glIdx === undefined ? undefined : groupLines[glIdx];
+      }
       const parentIdsForFamily = id
         ? [
             ...new Set(
@@ -574,31 +723,36 @@ export function computeConnectors(
               ? [coupleRightId]
               : [coupleLeftId, coupleRightId],
         );
-      // A single parent's children descend from the parent, not from a
-      // partner line they may also be on.
-      const glIdx =
-        fam > 0 ? groupLineIndex.get(`${i - 1},${coupleLeft}`) : undefined;
       const descentXOf = (from: DescentSource) => {
         const descentX =
           from === 'left'
             ? leftPos
             : from === 'right'
               ? rightPos
-              : (leftPos + rightPos) / 2;
-        if (glIdx !== undefined) {
-          const gl = groupLines[glIdx]!;
-          gl.descentXPositions ??= [];
-          if (!gl.descentXPositions.includes(descentX)) {
-            gl.descentXPositions.push(descentX);
+              : routed
+                ? routed.x
+                : (leftPos + rightPos) / 2;
+        if (groupLine) {
+          groupLine.descentXPositions ??= [];
+          if (!groupLine.descentXPositions.includes(descentX)) {
+            groupLine.descentXPositions.push(descentX);
           }
         }
         return descentX;
       };
+      // A couple's line of descent starts on their partnership line (the
+      // lower rail of a double one); one parent's, at the parent.
+      const startYOf = (from: DescentSource) => {
+        if (from !== 'both' || !groupLine) return i - 1 + boxh / 2;
+        return groupLine.double && groupLine.doubleSegment
+          ? groupLine.doubleSegment.y1
+          : groupLine.segment.y1;
+      };
 
       const whoIdx: number[] = [];
       const marriedInIdx: number[] = [];
-      for (let j = 0; j < layout.fam[i]!.length; j++) {
-        if (layout.fam[i]![j] !== fam) continue;
+      for (let j = 0; j < (layout.n[i] ?? 0); j++) {
+        if (familyOf[i]![j] !== fam) continue;
         if (layout.groupMember[i]?.[j]) {
           marriedInIdx.push(j);
         } else {
@@ -606,24 +760,37 @@ export function computeConnectors(
         }
       }
 
-      // Children whose descent starts at the same place share a sibling bar.
-      for (const [from, columns] of groupBy(whoIdx, (j) => descentOf(j).from)) {
-        const descentX = descentXOf(from);
+      // The family's children form one sibship with one line of descent.
+      // It starts at the one parent every child descends from when there is
+      // one, and at the couple otherwise; a child's tie to a partner it does
+      // not descend from is drawn by a line of its own.
+      const sources = new Set(whoIdx.map((j) => descentOf(j).from));
+      const familyFrom: DescentSource =
+        sources.size === 1 ? [...sources][0]! : 'both';
+      if (whoIdx.length > 0) {
+        const columns = whoIdx;
+        const descentX = descentXOf(familyFrom);
+        const startY = startYOf(familyFrom);
         const { uplines, siblingBar, minTarget, maxTarget } = sibshipLines(
           i,
           columns,
         );
         for (const j of columns) {
-          descentParentsOf.set(`${i},${j}`, descentParents(from));
+          descentParentsOf.set(`${i},${j}`, descentParents(descentOf(j).from));
         }
 
-        // Where the parent link meets the sibling bar: below the descent
-        // where it can be, but never over someone on the children's row who
-        // has no line up from this bar (a partner sitting between two
-        // siblings), who would read as one of these children.
+        // Where the parent link meets the sibling bar: straight below the
+        // descent wherever that lies on the bar; otherwise, when the descent
+        // lies past the bar's end, part way in from that end. Never over
+        // someone on the children's row who has no line up from this bar (a
+        // partner sitting between two siblings), who would read as one of
+        // these children.
         const targetRange = maxTarget - minTarget;
-        const [footFrom, footTo] =
-          targetRange < 2 * pconnect
+        const onBar =
+          descentX >= minTarget - 1e-9 && descentX <= maxTarget + 1e-9;
+        const [footFrom, footTo] = onBar
+          ? [minTarget, maxTarget]
+          : targetRange < 2 * pconnect
             ? [(minTarget + maxTarget) / 2, (minTarget + maxTarget) / 2]
             : [minTarget + pconnect, maxTarget - pconnect];
         const notOfThisBar = Array.from(
@@ -640,12 +807,20 @@ export function computeConnectors(
           [footFrom, footTo],
           [minTarget, maxTarget],
         );
-        joinSibship(`${i},${fam},${from}`, i, columns, siblingBar, [
+        joinSibship(`${i},${fam}`, i, columns, siblingBar, [
           x1,
           ...uplines.map((upline) => upline.x2),
           ...notOfThisBar,
         ]);
-        const parentLink = buildParentLink(x1, descentX, i, boxh, legh, branch);
+        const parentLink = buildParentLink(
+          x1,
+          descentX,
+          startY,
+          i,
+          boxh,
+          legh,
+          branch,
+        );
 
         // Each child's own tie sets the style of the line to them. The
         // parent link and the bar between it and the children of the first
@@ -669,7 +844,7 @@ export function computeConnectors(
           barTo: number,
           link: LineSegment[],
         ) => {
-          parentChildLines.push({
+          const part: ParentChildConnector = {
             type: 'parent-child',
             edgeType,
             uplines: ks.map((k) => uplines[k]!),
@@ -691,15 +866,24 @@ export function computeConnectors(
                   uplineChildIds: ks.map((k) => childIdOf(columns[k]!)),
                 }
               : {}),
-          });
+          };
+          parentChildLines.push(part);
+          return part;
         };
-        pushSibshipPart(
+        const primaryPart = pushSibshipPart(
           primaryStyle,
           primaryKs,
           primaryMin,
           primaryMax,
           parentLink,
         );
+        descentLinks.push({
+          level: i,
+          line: primaryPart,
+          childX: x1,
+          parentX: descentX,
+          startY,
+        });
         for (const [style, ks] of byStyle) {
           if (style === primaryStyle) continue;
           const toLeft = ks.filter((k) => targetOf(k) < primaryMin);
@@ -726,9 +910,10 @@ export function computeConnectors(
       for (const j of marriedInIdx) {
         const { from, edgeType } = descentOf(j);
         const descentX = descentXOf(from);
+        const startY = startYOf(from);
         descentParentsOf.set(`${i},${j}`, descentParents(from));
         const childX = layout.pos[i]![j]!;
-        parentChildLines.push({
+        const line: ParentChildConnector = {
           type: 'parent-child',
           edgeType,
           uplines: [
@@ -740,10 +925,60 @@ export function computeConnectors(
               y2: i - legh,
             },
           ],
-          parentLink: buildParentLink(childX, descentX, i, boxh, legh, branch),
+          parentLink: buildParentLink(
+            childX,
+            descentX,
+            startY,
+            i,
+            boxh,
+            legh,
+            branch,
+          ),
           ...(id
             ? { parentIds: parentIdsForFamily, uplineChildIds: [childIdOf(j)] }
             : {}),
+        };
+        parentChildLines.push(line);
+        descentLinks.push({
+          level: i,
+          line,
+          childX,
+          parentX: descentX,
+          startY,
+        });
+      }
+    }
+  }
+
+  // Lines of descent into one row whose level runs overlap are given runs
+  // at heights of their own, so two families' lines never run along one
+  // another (where they would read as one), stacked in the order that
+  // crosses fewest of them.
+  if (branch !== 0) {
+    for (let i = 1; i < maxlev; i++) {
+      const runs = descentLinks.filter(
+        (link) =>
+          link.level === i && Math.abs(link.childX - link.parentX) >= 1e-9,
+      );
+      for (const group of overlappingRuns(runs)) {
+        if (group.length < 2) continue;
+        const order = leastCrossingStack(group);
+        const parentBottomY = i - 1 + boxh;
+        const barY = i - legh;
+        order.forEach((link, lane) => {
+          const runY =
+            parentBottomY +
+            ((barY - parentBottomY) * (lane + 1)) / (order.length + 1);
+          link.line.parentLink = buildParentLink(
+            link.childX,
+            link.parentX,
+            link.startY,
+            i,
+            boxh,
+            legh,
+            branch,
+            runY,
+          );
         });
       }
     }
@@ -1176,39 +1411,107 @@ function groupBy<T, K>(items: T[], keyOf: (item: T) => K): Map<K, T[]> {
 
 /**
  * The line of descent from a parent (or a couple's descent point) at
- * `parentx` down to where it meets the sibling bar, or a lone child's line up,
- * at `childX`. Right-angled (any `branch` but 0): a drop, a level run
- * halfway between the parent's row and the sibling bar, and a drop, or one
- * straight drop when the two are in line. With `branch` 0 the shoulder is a
- * diagonal.
+ * `parentx`, starting at `startY` (the parent's centre, or the couple's
+ * partnership line), down to where it meets the sibling bar, or a lone
+ * child's line up, at `childX`. Right-angled (any `branch` but 0): a drop, a
+ * level run at `runY` (by default halfway between the parent's row and the
+ * sibling bar), and a drop, or one straight drop when the two are in line.
+ * With `branch` 0 the shoulder is a diagonal.
  */
 function buildParentLink(
   childX: number,
   parentx: number,
+  startY: number,
   i: number,
   boxh: number,
   legh: number,
   branch: number,
+  runY?: number,
 ): LineSegment[] {
   const barY = i - legh;
-  const parentCenterY = i - 1 + boxh / 2;
   const parentBottomY = i - 1 + boxh;
   const line = (x1: number, y1: number, x2: number, y2: number) =>
     ({ type: 'line', x1, y1, x2, y2 }) satisfies LineSegment;
 
   if (Math.abs(childX - parentx) < 1e-9) {
-    return [line(parentx, parentCenterY, parentx, barY)];
+    return [line(parentx, startY, parentx, barY)];
   }
   if (branch === 0) {
     return [
-      line(parentx, parentCenterY, parentx, parentBottomY),
+      line(parentx, startY, parentx, parentBottomY),
       line(parentx, parentBottomY, childX, barY),
     ];
   }
-  const runY = parentBottomY + (barY - parentBottomY) / 2;
+  const levelY = runY ?? parentBottomY + (barY - parentBottomY) / 2;
   return [
-    line(parentx, parentCenterY, parentx, runY),
-    line(parentx, runY, childX, runY),
-    line(childX, runY, childX, barY),
+    line(parentx, startY, parentx, levelY),
+    line(parentx, levelY, childX, levelY),
+    line(childX, levelY, childX, barY),
   ];
+}
+
+type DescentRun = { childX: number; parentX: number };
+
+/** The runs in groups whose level spans overlap or meet, each in order. */
+function overlappingRuns<T extends DescentRun>(runs: T[]): T[][] {
+  const span = (run: T) =>
+    [
+      Math.min(run.childX, run.parentX),
+      Math.max(run.childX, run.parentX),
+    ] as const;
+  const sorted = runs.toSorted((a, b) => span(a)[0] - span(b)[0]);
+  const groups: T[][] = [];
+  let reach = -Infinity;
+  for (const run of sorted) {
+    const [from, to] = span(run);
+    if (groups.length === 0 || from > reach + 1e-9) {
+      groups.push([run]);
+      reach = to;
+    } else {
+      groups.at(-1)!.push(run);
+      reach = Math.max(reach, to);
+    }
+  }
+  return groups;
+}
+
+/**
+ * The runs stacked from the parents' row down in the order where the fewest
+ * pieces cross: a lower run's drop from its parents crosses every higher run
+ * it passes through, and a higher run's drop to its children every lower run.
+ * A drop meeting a run's end counts as a crossing, since it would join it.
+ * On a tie the given order is kept.
+ */
+function leastCrossingStack<T extends DescentRun>(runs: T[]): T[] {
+  const within = (x: number, run: T) =>
+    x >= Math.min(run.childX, run.parentX) - 1e-9 &&
+    x <= Math.max(run.childX, run.parentX) + 1e-9;
+  const crossings = (stack: T[]) => {
+    let count = 0;
+    for (let a = 0; a < stack.length; a++) {
+      for (let b = a + 1; b < stack.length; b++) {
+        if (within(stack[b]!.parentX, stack[a]!)) count++;
+        if (within(stack[a]!.childX, stack[b]!)) count++;
+      }
+    }
+    return count;
+  };
+  if (runs.length > 6) return runs;
+  let best = runs;
+  let bestCount = crossings(runs);
+  const permute = (prefix: T[], rest: T[]) => {
+    if (rest.length === 0) {
+      const count = crossings(prefix);
+      if (count < bestCount) {
+        best = prefix;
+        bestCount = count;
+      }
+      return;
+    }
+    rest.forEach((run, k) =>
+      permute([...prefix, run], [...rest.slice(0, k), ...rest.slice(k + 1)]),
+    );
+  };
+  permute([], runs);
+  return best;
 }

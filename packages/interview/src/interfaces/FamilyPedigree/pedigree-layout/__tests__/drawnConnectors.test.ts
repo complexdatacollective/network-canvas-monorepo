@@ -1013,3 +1013,262 @@ describe('a child with many parent ties beside their birth parents', () => {
     }
   });
 });
+
+/** The connectors with a line of descent (a non-empty parent link). */
+const withDescent = (lines: ParentChildConnector[]) =>
+  lines.filter((line) => line.parentLink.length > 0);
+
+/**
+ * The sibship the children are drawn in: every connector reaching any of
+ * them. The children share one sibling bar when those connectors' bars join
+ * into one run along one height, and one line of descent when only one of the
+ * connectors has a parent link.
+ */
+function sibshipOf(connectors: PedigreeConnectors, childIds: string[]) {
+  const lines = connectors.parentChildLines.filter((line) =>
+    childIds.some((id) => line.uplineChildIds?.includes(id)),
+  );
+  const bars = lines
+    .flatMap((line) => (line.siblingBar ? [line.siblingBar] : []))
+    .map((bar) => ({
+      y: bar.y1,
+      from: Math.min(bar.x1, bar.x2),
+      to: Math.max(bar.x1, bar.x2),
+    }))
+    .toSorted((a, b) => a.from - b.from);
+  let joined = bars.length > 0;
+  for (let k = 1; k < bars.length; k++) {
+    if (Math.abs(bars[k]!.y - bars[0]!.y) > 1e-6) joined = false;
+    if (bars[k]!.from > bars[k - 1]!.to + 1e-6) joined = false;
+  }
+  const reached = new Set(lines.flatMap((line) => line.uplineChildIds ?? []));
+  const covers = childIds.every((id) => {
+    if (!reached.has(id)) return false;
+    const { segment } = uplineOf(connectors, id);
+    return bars.some(
+      (bar) => segment.x2 >= bar.from - 1e-6 && segment.x2 <= bar.to + 1e-6,
+    );
+  });
+  return {
+    sharesOneBar: joined && covers,
+    descents: withDescent(lines),
+  };
+}
+
+/** Pairs of lines of descent, of different families, running along one another. */
+function overlappingDescents(connectors: PedigreeConnectors) {
+  const descents = withDescent(connectors.parentChildLines);
+  const found: string[] = [];
+  for (let a = 0; a < descents.length; a++) {
+    for (let b = a + 1; b < descents.length; b++) {
+      for (const sa of descents[a]!.parentLink) {
+        for (const sb of descents[b]!.parentLink) {
+          if (collinearOverlap(sa, sb) > 1) {
+            found.push(
+              `${descents[a]!.uplineChildIds?.join('+')} / ${descents[b]!.uplineChildIds?.join('+')}`,
+            );
+          }
+        }
+      }
+    }
+  }
+  return found;
+}
+
+describe('each child hangs from their own family’s single line of descent', () => {
+  it('joins a birth child and a stepchild of one couple by one sibling bar (confirm-r1-4)', () => {
+    // Karen is ego's birth mother; Steve, her partner, raises ego. Emily is
+    // Karen and Steve's own child. Ego's stand-in father is unnamed.
+    const { connectors } = draw(
+      ['ego', 'karen', 'steve', 'emily', 'egoFather'],
+      [
+        ['karen', 'biological', 'ego', { carrier: true }],
+        ['egoFather', 'biological', 'ego'],
+        ['steve', 'social', 'ego'],
+        ['karen', 'partner', 'steve'],
+        ['karen', 'biological', 'emily', { carrier: true }],
+        ['steve', 'biological', 'emily'],
+      ],
+    );
+    const sibship = sibshipOf(connectors, ['ego', 'emily']);
+    expect(sibship.sharesOneBar).toBe(true);
+    expect(sibship.descents).toHaveLength(1);
+    // Steve's tie to ego is still drawn, dashed, on a line of its own.
+    expect(
+      auxiliaryLinesFrom(connectors, 'steve').map((line) => [
+        line.edgeType,
+        line.endpointIds?.[1],
+      ]),
+    ).toEqual([['social', 'ego']]);
+    expect(uplineOf(connectors, 'ego').connector.edgeType).toBe('biological');
+  });
+
+  it('joins two co-mothers’ birth children by one sibling bar (confirm-r1-4, co-mothers)', () => {
+    const { connectors } = draw(
+      ['ego', 'hannah', 'kate', 'max', 'egoFather', 'maxFather'],
+      [
+        ['hannah', 'biological', 'ego', { carrier: true }],
+        ['egoFather', 'biological', 'ego'],
+        ['kate', 'social', 'ego'],
+        ['hannah', 'partner', 'kate'],
+        ['kate', 'biological', 'max', { carrier: true }],
+        ['maxFather', 'biological', 'max'],
+        ['hannah', 'social', 'max'],
+      ],
+    );
+    const sibship = sibshipOf(connectors, ['ego', 'max']);
+    expect(sibship.sharesOneBar).toBe(true);
+    expect(sibship.descents).toHaveLength(1);
+    expect(overlappingDescents(connectors)).toEqual([]);
+    const social = (from: string) =>
+      auxiliaryLinesFrom(connectors, from)
+        .filter((line) => line.edgeType === 'social')
+        .map((line) => line.endpointIds?.[1]);
+    expect(social('kate')).toEqual(['ego']);
+    expect(social('hannah')).toEqual(['max']);
+  });
+
+  it('joins the participant to their half-siblings once a parent becomes social (confirm-r1-112)', () => {
+    const { connectors } = draw(
+      ['ego', 'beth', 'carl', 'dana', 'evan', 'egoFather'],
+      [
+        ['beth', 'biological', 'ego', { carrier: true }],
+        ['carl', 'social', 'ego'],
+        ['egoFather', 'biological', 'ego'],
+        ['beth', 'partner', 'carl'],
+        ['beth', 'biological', 'dana', { carrier: true }],
+        ['carl', 'biological', 'dana'],
+        ['beth', 'biological', 'evan', { carrier: true }],
+        ['carl', 'biological', 'evan'],
+      ],
+    );
+    const sibship = sibshipOf(connectors, ['ego', 'dana', 'evan']);
+    expect(sibship.sharesOneBar).toBe(true);
+    expect(sibship.descents).toHaveLength(1);
+    expect(overlappingDescents(connectors)).toEqual([]);
+  });
+
+  it('keeps each child under their own couple when both are raised by the other couple too (confirm-r1-15)', () => {
+    const { connectors, centre } = draw(
+      ['ego', 'jess', 'sam', 'alex', 'robin'],
+      [
+        ['jess', 'biological', 'ego', { carrier: true }],
+        ['sam', 'biological', 'ego'],
+        ['jess', 'partner', 'sam'],
+        ['alex', 'social', 'ego'],
+        ['jess', 'partner', 'alex'],
+        ['jess', 'biological', 'robin', { carrier: true }],
+        ['alex', 'biological', 'robin'],
+        ['sam', 'partner', 'alex'],
+        ['sam', 'social', 'robin'],
+      ],
+    );
+    const mid = (a: string, b: string) => (centre(a).x + centre(b).x) / 2;
+    const egoCouple = mid('jess', 'sam');
+    const robinCouple = mid('jess', 'alex');
+    expect(Math.abs(centre('ego').x - egoCouple)).toBeLessThan(
+      Math.abs(centre('ego').x - robinCouple),
+    );
+    expect(Math.abs(centre('robin').x - robinCouple)).toBeLessThan(
+      Math.abs(centre('robin').x - egoCouple),
+    );
+    expect(overlappingDescents(connectors)).toEqual([]);
+  });
+
+  it('hangs a child of a couple that cannot sit together from their partnership line (confirm-r1-11)', () => {
+    const { connectors, centre } = draw(
+      ['ego', 'mark', 'dan', 'paul', 'ethan', 'noah', 'leo'],
+      [
+        ['ego', 'partner', 'mark', { former: true }],
+        ['ego', 'partner', 'dan', { former: true }],
+        ['ego', 'partner', 'paul'],
+        ['ego', 'biological', 'ethan', { carrier: true }],
+        ['mark', 'biological', 'ethan'],
+        ['ego', 'biological', 'noah', { carrier: true }],
+        ['dan', 'biological', 'noah'],
+        ['ego', 'biological', 'leo', { carrier: true }],
+        ['paul', 'biological', 'leo'],
+      ],
+    );
+    for (const child of ['ethan', 'noah', 'leo']) {
+      // No parent is joined to the child by a line of their own.
+      for (const parent of ['ego', 'mark', 'dan', 'paul']) {
+        expect(
+          auxiliaryLinesFrom(connectors, parent).filter(
+            (line) => line.endpointIds?.[1] === child,
+          ),
+          `${parent} → ${child}`,
+        ).toEqual([]);
+      }
+      expect(withDescent(descentsInto(connectors, child))).toHaveLength(1);
+    }
+    // Ethan's line of descent starts on the routed partnership line of his
+    // parents and passes clear of everyone on their row.
+    const routed = routedPartnerships(connectors).find(
+      (line) =>
+        line.partnerIds?.includes('mark') && line.partnerIds.includes('ego'),
+    )!;
+    expect(routed).toBeDefined();
+    const [top] = withDescent(descentsInto(connectors, 'ethan'))[0]!.parentLink;
+    expect(top!.y1).toBeCloseTo(routed.segment.y1, 6);
+    expect(top!.x1).toBeGreaterThanOrEqual(routed.segment.x1 - 1e-6);
+    expect(top!.x1).toBeLessThanOrEqual(routed.segment.x2 + 1e-6);
+    for (const person of ['ego', 'mark', 'dan', 'paul']) {
+      expect(Math.abs(top!.x1 - centre(person).x)).toBeGreaterThanOrEqual(
+        DIMENSIONS.nodeWidth / 2,
+      );
+    }
+    expect(overlappingDescents(connectors)).toEqual([]);
+  });
+
+  it('drops straight onto the sibling bar when the couple’s midpoint lies on it (confirm-r1-20)', () => {
+    const { connectors, centre } = draw(
+      ['ego', 'gary', 'linda', 'chris', 'priya', 'priyaMum', 'priyaDad'],
+      [
+        ['gary', 'biological', 'ego'],
+        ['linda', 'biological', 'ego', { carrier: true }],
+        ['gary', 'partner', 'linda'],
+        ['gary', 'biological', 'chris'],
+        ['linda', 'biological', 'chris', { carrier: true }],
+        ['chris', 'partner', 'priya'],
+        ['priyaMum', 'biological', 'priya', { carrier: true }],
+        ['priyaDad', 'biological', 'priya'],
+      ],
+    );
+    const midpoint = (centre('gary').x + centre('linda').x) / 2;
+    const { siblingBar, parentLink } = uplineOf(connectors, 'ego').connector;
+    const [from, to] = [
+      Math.min(siblingBar!.x1, siblingBar!.x2),
+      Math.max(siblingBar!.x1, siblingBar!.x2),
+    ];
+    // The fixture puts the midpoint on the bar, off its centre.
+    expect(midpoint).toBeGreaterThan(from);
+    expect(midpoint).toBeLessThan(to);
+    expect(parentLink).toHaveLength(1);
+    expect(parentLink[0]!.x1).toBeCloseTo(midpoint, 6);
+    expect(parentLink[0]!.x2).toBeCloseTo(midpoint, 6);
+  });
+
+  it('starts a double-bar couple’s line of descent on the lower rail (confirm-r1-65)', () => {
+    const { connectors } = draw(
+      ['ego', 'mary', 'frank', 'gran', 'maryDad', 'frankDad'],
+      [
+        ['mary', 'biological', 'ego', { carrier: true }],
+        ['frank', 'biological', 'ego'],
+        ['mary', 'partner', 'frank'],
+        ['gran', 'biological', 'mary', { carrier: true }],
+        ['maryDad', 'biological', 'mary'],
+        ['gran', 'biological', 'frank', { carrier: true }],
+        ['frankDad', 'biological', 'frank'],
+      ],
+    );
+    const couple = connectors.groupLines.find(
+      (line) =>
+        line.partnerIds?.includes('mary') && line.partnerIds.includes('frank'),
+    )!;
+    expect(couple.double).toBe(true);
+    const lowerRail = couple.doubleSegment!.y1;
+    const top = uplineOf(connectors, 'ego').connector.parentLink[0]!;
+    expect(Math.min(top.y1, top.y2)).toBeCloseTo(lowerRail, 6);
+  });
+});
