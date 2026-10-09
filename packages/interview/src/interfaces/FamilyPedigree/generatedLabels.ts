@@ -79,6 +79,7 @@ export function labelOfNoKind(
       ? { type: 'term', term }
       : {
           type: 'relativeOf',
+          ownerId: anchor.id,
           owner: { type: 'name', name: anchorLabel },
           term,
         },

@@ -1752,7 +1752,7 @@ export const FamilyInProgress: Story = {
     await expectPeople(6)(context);
     await expect(
       within(context.canvasElement).getByRole('button', {
-        name: /^Mia's biological father, some details missing/,
+        name: /^Mia’s biological father, some details missing/,
       }),
     ).toBeVisible();
   },
