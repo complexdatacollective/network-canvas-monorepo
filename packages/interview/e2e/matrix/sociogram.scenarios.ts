@@ -253,9 +253,9 @@ function buildManualBaseline(): ScenarioDefinition {
           '[data-zone-id="sociogram-canvas"] button[aria-label]',
         ),
       ).toHaveCount(3);
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '2 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^2 unplaced\b/ }),
+      ).toBeVisible();
 
       // behaviours.automaticLayout is absent, so SimulationPanel never mounts
       // (Sociogram.tsx only renders it when layoutMode === 'AUTOMATIC').
@@ -469,9 +469,9 @@ function buildManualDragPlaceAndReposition(): ScenarioDefinition {
 
       await dragNodeToCanvasPosition(page, 'Bea', { x: 0.7, y: 0.3 });
 
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '0 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^0 unplaced\b/ }),
+      ).toBeVisible();
       let state = await protocol.getNetworkState(interview.interviewId);
       const bea = asPoint(nodeAttribute(state, nameVarId, 'Bea', layoutVarId));
       expect(bea).not.toBeNull();
@@ -628,9 +628,9 @@ function buildUnplaceDragAndKeyboard(): ScenarioDefinition {
           hasText: 'Ash returned to the drawer.',
         }),
       ).toHaveCount(1);
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '1 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^1 unplaced\b/ }),
+      ).toBeVisible();
       let state = await protocol.getNetworkState(interview.interviewId);
       expect(
         nodeAttribute(state, nameVarId, 'Ash', layoutVarId),
@@ -638,9 +638,9 @@ function buildUnplaceDragAndKeyboard(): ScenarioDefinition {
 
       await unplaceNodeViaKeyboard(page, 'Bea');
 
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '2 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^2 unplaced\b/ }),
+      ).toBeVisible();
       state = await protocol.getNetworkState(interview.interviewId);
       expect(
         nodeAttribute(state, nameVarId, 'Bea', layoutVarId),
@@ -1379,9 +1379,9 @@ function buildSubjectFiltersToNodeType(): ScenarioDefinition {
       // (the plan's "drawer absent" is incorrect). All 3 Person nodes are
       // placed and the 2 Venue nodes are off-type, so the drawer shows
       // "0 unplaced" — filtering is by subject type, not node existence.
-      await expect(page.locator('[data-zone-id="node-drawer"]')).toContainText(
-        '0 unplaced',
-      );
+      await expect(
+        page.getByRole('button', { name: /^0 unplaced\b/ }),
+      ).toBeVisible();
 
       // All 5 nodes are retained in the network — filtering is display-only.
       const state = await protocol.getNetworkState(interview.interviewId);

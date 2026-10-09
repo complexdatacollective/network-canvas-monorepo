@@ -317,13 +317,14 @@ export const networkComposerScenarios: InterfaceScenarios = {
           page.getByRole('button', { name: 'Groups', exact: true }),
         ).toHaveCount(0);
 
-        // Selecting a node with no node form shows the empty state + Delete.
+        // Selecting a node with no node form shows the Delete control and no
+        // attribute form (the inspector panel only exists around a form).
         await composer.getNode('Eve').click();
-        await expect(page.getByText('No attributes to edit')).toBeVisible();
         await expect(composer.drawerDeleteButton).toBeVisible();
+        await expect(composer.inspectorPanel).toHaveCount(0);
         await composer.drawerDeleteButton.click();
         await expect.poll(nodeCount).toBe(2);
-        await expect(page.getByText('No attributes to edit')).not.toBeVisible();
+        await expect(composer.drawerDeleteButton).not.toBeVisible();
 
         // With no hull variable, dragging the background never draws a lasso.
         await composer.lassoSelect([
@@ -534,18 +535,25 @@ export const networkComposerScenarios: InterfaceScenarios = {
         }
 
         await page.setViewportSize({ width: 768, height: 1024 });
-        const toolbarBox = await page
-          .getByRole('toolbar', { name: 'Network composer tools' })
-          .boundingBox();
-        const membershipGroupBox = await membershipGroup.boundingBox();
-        if (toolbarBox === null || membershipGroupBox === null) {
-          throw new Error(
-            'Toolbar or group membership selector is not visible',
-          );
-        }
-        expect(membershipGroupBox.x).toBeGreaterThanOrEqual(
-          toolbarBox.x + toolbarBox.width,
-        );
+        // The group sits beside the toolbar, not over it, once the layout has
+        // settled at the narrower width: poll rather than measure the frame
+        // straight after the resize.
+        await expect
+          .poll(async () => {
+            const toolbarBox = await page
+              .getByRole('toolbar', { name: 'Network composer tools' })
+              .boundingBox();
+            const membershipGroupBox = await membershipGroup.boundingBox();
+            if (toolbarBox === null || membershipGroupBox === null) {
+              throw new Error(
+                'Toolbar or group membership selector is not visible',
+              );
+            }
+            return (
+              membershipGroupBox.x - (toolbarBox.x + toolbarBox.width) >= 0
+            );
+          })
+          .toBe(true);
         await page.setViewportSize(matrixViewport);
 
         await composer.getSelectionBarButton('Work').click();

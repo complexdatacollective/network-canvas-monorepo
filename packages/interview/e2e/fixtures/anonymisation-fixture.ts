@@ -4,17 +4,7 @@ import { FormFixture } from './stage-fixture.js';
 
 const RELEASE_KEY_DERIVATION_EVENT = 'e2e:release-key-derivation';
 
-const SUCCESS_MESSAGES = {
-  chosen: 'Passphrase set successfully! Click "Next" to continue.',
-  verified: 'Passphrase accepted! Click "Next" to continue.',
-  earlier:
-    'You have already entered your passphrase. Click "Next" to continue.',
-};
-
-type SuccessMode = keyof typeof SUCCESS_MESSAGES;
-
-const escapeRegExp = (text: string) =>
-  text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const SUCCESS_MESSAGE = 'Passphrase accepted! Click "Next" to continue.';
 
 /**
  * Fixture for Anonymisation stages and the passphrase prompter.
@@ -85,19 +75,12 @@ export class AnonymisationFixture {
   }
 
   /**
-   * The success alert shown once the interview's key is in force, worded for
-   * how it came into force: chosen on the stage, the passphrase chosen earlier
-   * entered again on it, or entered before the stage was reached. With no
-   * mode it matches whichever is shown.
+   * The success alert shown once the interview's key is in force. The stage
+   * says the same thing however the key came into force: chosen on the stage,
+   * entered again on it, or entered before the stage was reached.
    */
-  successAlert(mode?: SuccessMode): Locator {
-    return this.page.getByText(
-      mode === undefined
-        ? new RegExp(
-            Object.values(SUCCESS_MESSAGES).map(escapeRegExp).join('|'),
-          )
-        : SUCCESS_MESSAGES[mode],
-    );
+  successAlert(): Locator {
+    return this.page.getByText(SUCCESS_MESSAGE);
   }
 
   /**

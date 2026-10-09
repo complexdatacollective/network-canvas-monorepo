@@ -96,7 +96,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
 
         // Below minLength: field error visible, dialog stays open on submit.
         await stage.form.fillText('person-name', 'A');
-        await page.getByRole('button', { name: 'Finished' }).click();
+        await page.getByRole('button', { name: 'Done', exact: true }).click();
         await expect(stage.form.getFieldError('person-name')).toBeVisible();
         await expect(page.getByRole('dialog')).toBeVisible();
 
@@ -176,7 +176,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // A NEW node named 'Bob' is blocked by uniqueness.
         await stage.nameGenerator.openAddForm();
         await stage.form.fillText('person-name', 'Bob');
-        await page.getByRole('button', { name: 'Finished' }).click();
+        await page.getByRole('button', { name: 'Done', exact: true }).click();
         await expect(stage.form.getFieldError('person-name')).toBeVisible();
         await expect(page.getByRole('dialog')).toBeVisible();
         const afterDup = await protocol.getNetworkState(interview.interviewId);
@@ -215,7 +215,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // Above maxValue: submit blocked, no node created.
         await stage.nameGenerator.openAddForm();
         await stage.form.fillNumber('age', '200');
-        await page.getByRole('button', { name: 'Finished' }).click();
+        await page.getByRole('button', { name: 'Done', exact: true }).click();
         await expect(stage.form.getFieldError('age')).toBeVisible();
         const afterBlocked = await protocol.getNetworkState(
           interview.interviewId,
@@ -283,7 +283,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         // uniqueness rule has to treat them as the same ID.
         await stage.nameGenerator.openAddForm();
         await stage.form.fillNumber('alterId', '12');
-        await page.getByRole('button', { name: 'Finished' }).click();
+        await page.getByRole('button', { name: 'Done', exact: true }).click();
         await expect(stage.form.getFieldError('alterId')).toBeVisible();
         await expect(page.getByRole('dialog')).toBeVisible();
         const afterDuplicate = await protocol.getNetworkState(

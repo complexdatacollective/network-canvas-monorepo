@@ -943,10 +943,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         interview.interviewId = interviewId;
         await interview.goto(1);
 
+        // The stage cannot be drawn, so the task error boundary reports it.
         await expect(
-          page.getByText(
-            'This stage references a family pedigree that could not be found.',
-          ),
+          page.getByText(/this task could not be displayed/),
         ).toBeVisible();
         await expect(page.locator('[data-pedigree-member="true"]')).toHaveCount(
           0,

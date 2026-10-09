@@ -657,7 +657,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         await expect(roster.emptyState).toBeVisible();
         // The other half of the pair below: a genuine search miss must still
         // say so, and must not be reported as an exhausted roster.
-        await expect(roster.exhaustedState).toHaveCount(0);
+        await expect(roster.nothingLeftState).toHaveCount(0);
       },
     },
 
@@ -728,21 +728,21 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         await roster.addNode('Cara Chen');
         await roster.addNode('Amy Adams');
 
-        await expect(roster.exhaustedState).toBeVisible();
+        await expect(roster.nothingLeftState).toBeVisible();
         await expect(roster.emptyState).toHaveCount(0);
-        await expect(roster.emptyListState).toHaveCount(0);
 
         // Removing one puts the roster back to a normal, non-empty state — the
         // message is a report on the panel, not a latch.
         await roster.removeNode('Amy Adams');
-        await expect(roster.exhaustedState).toHaveCount(0);
+        await expect(roster.nothingLeftState).toHaveCount(0);
         await expect(roster.sourceListbox.getByRole('option')).toHaveCount(1);
 
         await interview.next();
 
-        // Stage B: an empty file is not an exhausted roster and not a search.
-        await expect(roster.emptyListState).toBeVisible();
-        await expect(roster.exhaustedState).toHaveCount(0);
+        // Stage B: an empty file says there is nothing to add, and is not a
+        // search (an empty file and an exhausted roster now share their words).
+        await expect(roster.nothingLeftState).toBeVisible();
+        await expect(roster.sourceListbox.getByRole('option')).toHaveCount(0);
         await expect(roster.emptyState).toHaveCount(0);
         await expect(roster.filterInput).toHaveCount(0);
       },

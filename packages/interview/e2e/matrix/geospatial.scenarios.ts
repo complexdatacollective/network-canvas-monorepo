@@ -1021,7 +1021,9 @@ function buildMapErrorOverlayScenario(): ScenarioDefinition {
       await expect(stage.geospatial.mapContainer).toBeVisible();
       await expect(page.getByTestId('map-error-overlay')).toBeVisible();
       await expect(
-        page.getByText('The map could not be displayed'),
+        page
+          .getByTestId('map-error-overlay')
+          .getByText(/does not support the features the map requires/),
       ).toBeVisible();
 
       // The stage did not crash to the error boundary and stays navigable.

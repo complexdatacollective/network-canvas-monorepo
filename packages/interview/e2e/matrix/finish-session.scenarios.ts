@@ -279,10 +279,12 @@ export const finishSessionScenarios: InterfaceScenarios = {
         const primary = dialog.getByTestId('dialog-primary');
         await primary.click();
 
-        // Pending: disabled, spinner, "Please wait..." — no fixed delay to
-        // wait out, the mock hangs until we call resolveManualFinish().
+        // Pending: disabled, busy, spinner, and "Please wait..." announced to
+        // screen readers — no fixed delay to wait out, the mock hangs until we
+        // call resolveManualFinish().
         await expect(primary).toBeDisabled();
-        await expect(primary).toHaveText('Please wait...');
+        await expect(primary).toHaveAttribute('aria-busy', 'true');
+        await expect(dialog.getByRole('status')).toHaveText('Please wait...');
         await expect(dialog.locator('svg.animate-spin')).toBeVisible();
 
         await page.evaluate(() => window.__test.resolveManualFinish());
@@ -362,7 +364,8 @@ export const finishSessionScenarios: InterfaceScenarios = {
         await primary.click();
 
         await expect(primary).toBeDisabled();
-        await expect(primary).toHaveText('Please wait...');
+        await expect(primary).toHaveAttribute('aria-busy', 'true');
+        await expect(dialog.getByRole('status')).toHaveText('Please wait...');
 
         // A host's finish runs to completion whatever happens to the dialog,
         // so it cannot be left while the finish is under way: Cancel is
