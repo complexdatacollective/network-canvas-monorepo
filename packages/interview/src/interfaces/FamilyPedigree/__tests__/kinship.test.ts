@@ -12,6 +12,7 @@ import {
 } from '../kinship';
 import { messages } from '../messages';
 import { readFamily, type PedigreeConfig } from '../model';
+import { relationshipsToParticipant } from '../relationshipToParticipant';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
 
 const intl = resolveInterviewIntl();
@@ -420,6 +421,115 @@ describe('labelFamily', () => {
       );
     }
   });
+});
+
+describe('siblings', () => {
+  /** Each person's canvas label and saved relationship to the participant,
+   * which must name the same tie. */
+  function siblingTiesOf(nodes: NcNode[], edges: NcEdge[]) {
+    const family = readFamily(nodes, edges, config);
+    const labels = labelFamily(family, 'gendered');
+    const relationships = relationshipsToParticipant(family);
+    return Object.fromEntries(
+      [...relationships].map(([id, relationship]) => [
+        id,
+        [formatPersonLabel(labels.get(id)!, intl), relationship],
+      ]),
+    );
+  }
+
+  const ego = person('ego', { isEgo: true });
+
+  test.each([
+    {
+      family: 'an adopted participant and their birth parents',
+      nodes: [ego, woman('shannon'), man('tom'), woman('karen'), man('bro')],
+      edges: [
+        link('shannon', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+        link('karen', 'ego', 'adoptive'),
+        link('shannon', 'bro', 'biological', { carrier: true }),
+        link('tom', 'bro', 'biological'),
+      ],
+      // An adoptive parent does not make a full biological brother a half
+      // brother.
+      expected: { bro: ['Brother', 'sibling'] },
+    },
+    {
+      family: 'an adopted participant with one birth parent recorded',
+      nodes: [ego, woman('shannon'), woman('karen'), man('dylan')],
+      edges: [
+        link('shannon', 'ego', 'biological', { carrier: true }),
+        link('karen', 'ego', 'adoptive'),
+        link('shannon', 'dylan', 'biological', { carrier: true }),
+      ],
+      expected: { dylan: ['Brother', 'sibling'] },
+    },
+    {
+      family: 'a donor and a birth mother',
+      nodes: [
+        ego,
+        woman('ann'),
+        person('lisa', { sex: ['female'] }),
+        man('mark'),
+        woman('zoe'),
+      ],
+      edges: [
+        link('ann', 'ego', 'biological', { carrier: true }),
+        link('lisa', 'ego', 'donor'),
+        link('lisa', 'zoe', 'biological', { carrier: true }),
+        link('mark', 'zoe', 'biological'),
+      ],
+      // A donor is a genetic parent, so their child is a half sibling.
+      expected: { zoe: ['Half-sister', 'halfSibling'] },
+    },
+    {
+      family: 'two partnered donors',
+      nodes: [
+        ego,
+        person('lisa', { sex: ['female'] }),
+        person('mark', { sex: ['male'] }),
+        woman('ella'),
+        woman('zoe'),
+      ],
+      edges: [
+        link('lisa', 'ego', 'donor'),
+        link('mark', 'ego', 'donor'),
+        link('lisa', 'mark', 'partner'),
+        link('lisa', 'ella', 'biological', { carrier: true }),
+        link('mark', 'ella', 'biological'),
+        link('lisa', 'zoe', 'biological', { carrier: true }),
+      ],
+      // Not step-siblings through the donor's partner.
+      expected: {
+        ella: ['Sister', 'sibling'],
+        zoe: ['Half-sister', 'halfSibling'],
+      },
+    },
+    {
+      family: 'children adopted by the same parent',
+      nodes: [ego, woman('karen'), woman('ruby')],
+      edges: [
+        link('karen', 'ego', 'adoptive'),
+        link('karen', 'ruby', 'adoptive'),
+      ],
+      expected: { ruby: ['Sister', 'adoptiveSibling'] },
+    },
+    {
+      family: "an adopted participant and their adoptive parent's birth child",
+      nodes: [ego, woman('karen'), man('jack')],
+      edges: [
+        link('karen', 'ego', 'adoptive'),
+        link('karen', 'jack', 'biological', { carrier: true }),
+      ],
+      expected: { jack: ['Brother', 'adoptiveSibling'] },
+    },
+  ])(
+    '$family: the label and the relationship agree',
+    ({ nodes, edges, expected }) => {
+      expect(siblingTiesOf(nodes, edges)).toMatchObject(expected);
+    },
+  );
 });
 
 describe('soft hyphens', () => {

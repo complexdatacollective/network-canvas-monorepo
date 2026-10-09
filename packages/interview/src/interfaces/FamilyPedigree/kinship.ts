@@ -6,7 +6,7 @@ import type {
 
 import { type Gamete, gameteLookup, inferGametes } from './gametes';
 import { messages } from './messages';
-import type { Family, Person } from './model';
+import { type Family, geneticParentsOf, type Person } from './model';
 
 /**
  * Every kinship word an unnamed person can be described by. The interview
@@ -152,7 +152,14 @@ type ParentKind = Exclude<PedigreeRelationshipKind, 'partner'>;
 export type Step =
   | { type: 'parent'; kind: ParentKind; to: string }
   | { type: 'child'; kind: ParentKind; to: string }
-  | { type: 'sibling'; half: boolean; to: string }
+  | {
+      type: 'sibling';
+      /** Not the same parents (`siblingTie`). */
+      half: boolean;
+      /** Sharing an adoptive parent, but no genetic parent. */
+      adoptive: boolean;
+      to: string;
+    }
   | { type: 'partner'; current: boolean; to: string };
 
 type Gendered = 'woman' | 'man' | 'other';
@@ -175,22 +182,48 @@ function pick<T>(gender: Gendered, terms: { woman: T; man: T; other: T }) {
   return terms[gender];
 }
 
-function siblingParentsOf(family: Family, personId: string): string[] {
-  return family.links
-    .filter(
-      (link) =>
-        link.target === personId &&
-        (link.kind === 'biological' || link.kind === 'adoptive'),
-    )
+const adoptiveParentsOf = (family: Family, personId: string) =>
+  family.links
+    .filter((link) => link.target === personId && link.kind === 'adoptive')
     .map((link) => link.source);
+
+const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
+  a.size === b.size && [...a].every((item) => b.has(item));
+
+/**
+ * How two people are siblings, if they are: the one definition the canvas
+ * labels and the saved relationship to the participant both follow.
+ *
+ * It is decided from their genetic parents first (biological parents and
+ * donors): full siblings have the same genetic parents, and half siblings
+ * share some. Only two people who share no genetic parent are adoptive
+ * siblings, when one has adopted either of them and is a parent to both;
+ * they are half adoptive siblings unless their genetic and adoptive parents
+ * are the same. An adoptive parent never makes full genetic siblings half
+ * siblings. Someone who shares only a step-parent is not a sibling here, and
+ * is reached through that parent instead.
+ */
+function siblingTie(
+  family: Family,
+  a: string,
+  b: string,
+): { half: boolean; adoptive: boolean } | undefined {
+  const aGenetic = new Set(geneticParentsOf(family, a));
+  const bGenetic = new Set(geneticParentsOf(family, b));
+  if ([...aGenetic].some((parent) => bGenetic.has(parent))) {
+    return { half: !sameSet(aGenetic, bGenetic), adoptive: false };
+  }
+  const aParents = new Set([...aGenetic, ...adoptiveParentsOf(family, a)]);
+  const bParents = new Set([...bGenetic, ...adoptiveParentsOf(family, b)]);
+  if (![...aParents].some((parent) => bParents.has(parent))) return undefined;
+  return { half: !sameSet(aParents, bParents), adoptive: true };
 }
 
 /**
  * A person's relatives one step away, in the order a path through them is
  * preferred: parents (as recorded), siblings, partners, then children.
- * Siblings are a single step so that "aunt" is found as a parent's sibling.
- * They share a biological or adoptive parent; someone who shares only a
- * step-parent is reached through that parent instead.
+ * Siblings are a single step so that "aunt" is found as a parent's sibling,
+ * and are those `siblingTie` finds.
  */
 export function stepsFrom(family: Family, personId: string): Step[] {
   const steps: Step[] = [];
@@ -199,17 +232,10 @@ export function stepsFrom(family: Family, personId: string): Step[] {
       steps.push({ type: 'parent', kind: link.kind, to: link.source });
     }
   }
-  const parents = new Set(siblingParentsOf(family, personId));
-  if (parents.size > 0) {
-    for (const person of family.people) {
-      if (person.id === personId) continue;
-      const theirs = new Set(siblingParentsOf(family, person.id));
-      const shared = [...parents].filter((parent) => theirs.has(parent));
-      if (shared.length === 0) continue;
-      const isFull =
-        shared.length === parents.size && theirs.size === parents.size;
-      steps.push({ type: 'sibling', half: !isFull, to: person.id });
-    }
+  for (const person of family.people) {
+    if (person.id === personId) continue;
+    const tie = siblingTie(family, personId, person.id);
+    if (tie) steps.push({ type: 'sibling', ...tie, to: person.id });
   }
   for (const link of family.links) {
     if (link.kind !== 'partner') continue;

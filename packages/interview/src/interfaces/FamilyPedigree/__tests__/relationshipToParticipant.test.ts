@@ -103,6 +103,37 @@ describe('relationshipsToParticipant', () => {
     });
   });
 
+  test('counts donors as genetic parents when telling siblings apart', () => {
+    expect(
+      relationshipsOf(
+        [
+          ego,
+          person('lisa'),
+          person('mark'),
+          person('karen'),
+          person('full'),
+          person('half'),
+          person('adopted'),
+        ],
+        [
+          link('lisa', 'ego', 'donor'),
+          link('mark', 'ego', 'donor'),
+          link('karen', 'ego', 'adoptive'),
+          link('lisa', 'mark', 'partner'),
+          link('lisa', 'full', 'biological'),
+          link('mark', 'full', 'biological'),
+          link('lisa', 'half', 'biological'),
+          link('karen', 'adopted', 'adoptive'),
+        ],
+      ),
+    ).toMatchObject({
+      // The same genetic parents, though only the participant was adopted.
+      full: 'sibling',
+      half: 'halfSibling',
+      adopted: 'adoptiveSibling',
+    });
+  });
+
   test('names relatives further out, and in-laws, with no side of the family', () => {
     expect(
       relationshipsOf(

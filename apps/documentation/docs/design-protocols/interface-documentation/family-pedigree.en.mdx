@@ -140,17 +140,19 @@ The interview works the relationship out from the family the participant has dra
 
 | Value                                                              | Who it describes                                                                                          |
 | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `parent`, `child`, `sibling`                                       | A biological parent or child, and a full sibling (both biological parents shared)                         |
-| `halfSibling`                                                      | A sibling who shares one biological parent                                                                |
+| `parent`, `child`, `sibling`                                       | A biological parent or child, and a full sibling (the same genetic parents)                               |
+| `halfSibling`                                                      | A sibling who shares some, but not all, genetic parents                                                   |
 | `donor`, `donorConceivedChild`                                     | An egg or sperm donor, and a child conceived with the participant as donor                                |
 | `surrogate`, `surrogacyChild`                                      | Someone who carried the participant without giving a gamete, and a child the participant carried that way |
-| `adoptiveParent`, `adoptiveChild`, `adoptiveSibling`               | Related through adoption (an adoptive sibling shares no biological parent)                                |
+| `adoptiveParent`, `adoptiveChild`, `adoptiveSibling`               | Related through adoption (an adoptive sibling shares an adoptive parent but no genetic parent)            |
 | `stepParent`, `stepChild`, `stepSibling`                           | A step or social parent, their child, and a parent's partner's child                                      |
 | `partner`, `formerPartner`                                         | A current and a former partner                                                                            |
 | `grandparent`, `greatGrandparent`, `grandchild`, `greatGrandchild` | Relatives two or three generations away                                                                   |
 | `parentsSibling`, `grandparentsSibling`, `siblingsChild`, `cousin` | Aunts and uncles, great-aunts and great-uncles, nieces and nephews, and first cousins                     |
 | `parentInLaw`, `siblingInLaw`, `childInLaw`                        | A partner's parent, a partner's sibling or a sibling's partner, and a child's partner                     |
 | `otherRelative`                                                    | Anyone connected more distantly, or in a way none of the other values names                               |
+
+A person's genetic parents are their biological parents and their egg or sperm donors, so two people conceived with the same donor are siblings. Whether siblings are full or half siblings depends only on their genetic parents: an adoptive parent never makes a full sibling a half sibling. The labels on the canvas follow the same rule.
 
 Someone related to the participant in more than one way gets one value: the closest biological tie first (`parent`, `child`, `sibling`, then `donor`, `donorConceivedChild` and `halfSibling`), then adoptive ties, then partners, then biological relatives further out, then surrogacy, step and in-law ties, and `otherRelative` last. So a parent's sister who donated the egg is a `donor`, and a grandmother who also carried the participant is a `grandparent`.
 
