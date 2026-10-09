@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+import { suppliedStageText } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
@@ -52,6 +53,23 @@ const peopleCount = (
     validateOnChangeDelay={REFUSAL_DELAY}
   />
 );
+
+/**
+ * A stage that holds the notice a maximum shows, as one does once its
+ * editor's wording section has seeded it: a stage with a maximum and no notice
+ * is refused, and this story mounts the count alone.
+ */
+const holdingTheMaximumNotice = (host: InMemoryHost) => {
+  const { document } = host.store.read(STAGE);
+  const notice = suppliedStageText('NameGenerator', {
+    defaultLocale: 'en-US',
+    locales: ['en-US'],
+  }).find(({ path }) => path.join('.') === 'maxNodesNotice');
+  host.store.applyAsCollaborator(STAGE, {
+    ...document,
+    maxNodesNotice: notice?.value,
+  });
+};
 
 /** A stage that already caps how many people it may name. */
 const holdingAMaximum = (host: InMemoryHost) => {
@@ -146,6 +164,7 @@ export const SomethingThatIsNotACount: Story = {
  * and `"maxNodes":"3"` would be the characters — a stage the schema refuses.
  */
 export const TheCountReachesTheStageAsANumber: Story = {
+  args: { seedEdit: holdingTheMaximumNotice },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
