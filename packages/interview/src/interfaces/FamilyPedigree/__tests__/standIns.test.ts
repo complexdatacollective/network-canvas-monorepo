@@ -217,6 +217,39 @@ describe('the stand-in rule', () => {
     ]);
   });
 
+  test('identical triplets of one donor share one stand-in, though one pair of them has no link recorded', () => {
+    // Nobody raising them is recorded, so only being identical tells that
+    // they came from one egg and one sperm. The first and the last are
+    // identical through the middle one.
+    const result = changes(
+      family(
+        [
+          person('ego', { isEgo: true }),
+          person('a'),
+          person('b'),
+          person('c'),
+          person('donor', { sex: ['male'] }),
+        ],
+        [
+          link('donor', 'a', 'donor'),
+          link('donor', 'b', 'donor'),
+          link('donor', 'c', 'donor'),
+          link('a', 'b', 'identicalTwin'),
+          link('b', 'c', 'identicalTwin'),
+        ],
+      ),
+    );
+    expect(result.people.map((planned) => planned.id)).toEqual(['stand-in-1']);
+    expect(
+      result.links.map((planned) => [planned.source, planned.target]),
+    ).toEqual([
+      ['stand-in-1', 'a'],
+      ['stand-in-1', 'b'],
+      ['stand-in-1', 'c'],
+    ]);
+    expect(result.changedTwins).toEqual([]);
+  });
+
   test('children of one donor raised by the same parent share one stand-in, and children of different donors do not', () => {
     const result = changes(
       family(

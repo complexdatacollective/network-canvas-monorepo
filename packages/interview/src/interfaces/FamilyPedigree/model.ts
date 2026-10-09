@@ -1104,10 +1104,20 @@ export function twinsOf(
  * with a pair missing is still one set.
  */
 export function twinSetOf(family: Family, personId: string): string[] {
+  return reachedByTwinLinks(family, personId, () => true);
+}
+
+/** Everyone the person's twin links of `zygosity` reach, however
+ * indirectly, them included. */
+function reachedByTwinLinks(
+  family: Family,
+  personId: string,
+  follows: (zygosity: TwinZygosity) => boolean,
+): string[] {
   const set = [personId];
   for (let index = 0; index < set.length; index += 1) {
-    for (const { twinId } of twinsOf(family, set[index]!)) {
-      if (!set.includes(twinId)) set.push(twinId);
+    for (const { twinId, zygosity } of twinsOf(family, set[index]!)) {
+      if (follows(zygosity) && !set.includes(twinId)) set.push(twinId);
     }
   }
   return set;
@@ -1576,12 +1586,15 @@ export function planStandIns(
 
   // Someone with one genetic parent is given a stand-in for the other, one
   // for everyone with exactly the same parents.
-  // The first of someone and their identical twins, who stand for them all.
+  // The first of someone and their identical twins, who stand for them all:
+  // everyone identical links reach, however indirectly, since identical
+  // triplets recorded with one pair's link missing still came from one egg.
   const identicalRootOf = (personId: string) =>
-    twinsOf(family, personId)
-      .filter((twin) => twin.zygosity === 'identical')
-      .map((twin) => twin.twinId)
-      .reduce((first, id) => (id < first ? id : first), personId);
+    reachedByTwinLinks(
+      family,
+      personId,
+      (zygosity) => zygosity === 'identical',
+    ).reduce((first, id) => (id < first ? id : first));
   const groups = new Map<string, { parentId: string; childIds: string[] }>();
   for (const person of family.people) {
     if (removedPersonIds.includes(person.id)) continue;
