@@ -1667,6 +1667,34 @@
     "defaultMessage": "Closing screen",
     "description": "Heading of the section where a researcher writes what a participant reads on the screen that ends the interview."
   },
+  "protocolBuilder.finishSession.finishConfirmationLabel": {
+    "defaultMessage": "Confirmation question",
+    "description": "Label of the field holding the question a participant is asked before the interview ends."
+  },
+  "protocolBuilder.finishSession.finishFailedLabel": {
+    "defaultMessage": "If finishing fails",
+    "description": "Label of the field holding the message a participant sees when the interview could not be ended."
+  },
+  "protocolBuilder.finishSession.finishLabelLabel": {
+    "defaultMessage": "Finish button",
+    "description": "Label of the field holding the words on the button that ends the interview."
+  },
+  "protocolBuilder.finishSession.finishedNoticeHint": {
+    "defaultMessage": "Shown under the closing text once the interview has finished.",
+    "description": "Guidance under the finished-notice field."
+  },
+  "protocolBuilder.finishSession.finishedNoticeLabel": {
+    "defaultMessage": "Finished notice",
+    "description": "Label of the field holding the notice shown under the closing text once the interview has ended."
+  },
+  "protocolBuilder.finishSession.finishingDescription": {
+    "defaultMessage": "These start with wording Network Canvas supplies, which you can change.",
+    "description": "Description of the finishing section. Each field starts with supplied wording in each of the protocol’s languages that Network Canvas has it in."
+  },
+  "protocolBuilder.finishSession.finishingTitle": {
+    "defaultMessage": "Finishing the interview",
+    "description": "Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, the notice once it has finished, and the message when finishing fails."
+  },
   "protocolBuilder.finishSession.headingLabel": {
     "defaultMessage": "Heading",
     "description": "Label of the field holding the heading at the top of the screen that ends the interview."

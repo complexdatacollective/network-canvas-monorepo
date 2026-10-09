@@ -9,24 +9,49 @@ import type {
   LocalizedString,
 } from '@codaco/protocol-validation';
 
-import { SummaryMarkdown } from '../SummaryText';
+import MiniTable from '../MiniTable';
+import { SummaryMarkdown, SummaryText } from '../SummaryText';
 import SectionFrame from './SectionFrame';
+
+/** The words a participant sees while finishing the interview. */
+type FinishingText = {
+  finishLabel?: LocalizedString;
+  finishConfirmation?: LocalizedString;
+  finishedNotice?: LocalizedString;
+  finishFailed?: LocalizedString;
+};
 
 type FinishScreenProps = {
   content?: LocalizedString | null;
   outcome?: FinishOutcome | null;
+  finishing?: FinishingText;
 };
 
 /**
- * A finish stage's text and outcome. Its heading is the stage's page heading,
- * printed with every other stage's. Each section's content keeps the same
- * space below the section's title band as the tables in other sections.
+ * A finish stage's text, its finishing words and its outcome. Its heading is
+ * the stage's page heading, printed with every other stage's. Each section's
+ * content keeps the same space below the section's title band as the tables
+ * in other sections.
  */
 const FinishScreen = ({
   content = null,
   outcome = null,
+  finishing = {},
 }: FinishScreenProps) => {
   const intl = useAppIntl();
+  const finishingRows = (
+    [
+      ['finishLabel', finishSessionMessages.finishLabelLabel],
+      ['finishConfirmation', finishSessionMessages.finishConfirmationLabel],
+      ['finishedNotice', finishSessionMessages.finishedNoticeLabel],
+      ['finishFailed', finishSessionMessages.finishFailedLabel],
+    ] as const
+  ).flatMap(([key, label]) => {
+    const value = finishing[key];
+    return value === undefined
+      ? []
+      : [[intl.formatMessage(label), <SummaryText key={key} value={value} />]];
+  });
   return (
     <>
       {content && (
@@ -36,6 +61,13 @@ const FinishScreen = ({
           <div className="my-5">
             <SummaryMarkdown value={content} />
           </div>
+        </SectionFrame>
+      )}
+      {finishingRows.length > 0 && (
+        <SectionFrame
+          title={intl.formatMessage(finishSessionMessages.finishingTitle)}
+        >
+          <MiniTable rotated rows={finishingRows} />
         </SectionFrame>
       )}
       {outcome && (

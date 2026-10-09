@@ -307,6 +307,7 @@ const contentItemRules = (
 // the section names no segment of its own.
 const PAGE_CONTENT: Step = [0, words(pageContentMessages.pageTitle)];
 const FINISH_SCREEN: Step = [0, words(finishSessionMessages.closingTitle)];
+const FINISHING: Step = [0, words(finishSessionMessages.finishingTitle)];
 
 const NARRATIVE_PRESETS: Step = [
   1,
@@ -494,6 +495,22 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       words(finishSessionMessages.headingLabel),
     ]),
     rule('content', FINISH_SCREEN, [1, words(finishSessionMessages.textLabel)]),
+    rule('finishLabel', FINISHING, [
+      1,
+      words(finishSessionMessages.finishLabelLabel),
+    ]),
+    rule('finishConfirmation', FINISHING, [
+      1,
+      words(finishSessionMessages.finishConfirmationLabel),
+    ]),
+    rule('finishedNotice', FINISHING, [
+      1,
+      words(finishSessionMessages.finishedNoticeLabel),
+    ]),
+    rule('finishFailed', FINISHING, [
+      1,
+      words(finishSessionMessages.finishFailedLabel),
+    ]),
   ],
   NameGenerator: [
     NAME_GENERATOR_PROMPT,

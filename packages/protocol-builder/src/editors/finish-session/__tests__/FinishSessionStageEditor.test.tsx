@@ -40,6 +40,12 @@ const openStage = (fields: SectionDoc = {}) => ({
       label: { [FIXTURE_LANGUAGE]: 'Finish' },
       title: { [FIXTURE_LANGUAGE]: 'All *done*' },
       content: { [FIXTURE_LANGUAGE]: 'Thank you for taking part.' },
+      finishLabel: { [FIXTURE_LANGUAGE]: 'Finish' },
+      finishConfirmation: { [FIXTURE_LANGUAGE]: 'Finish this interview?' },
+      finishedNotice: { [FIXTURE_LANGUAGE]: 'This interview is finished.' },
+      finishFailed: {
+        [FIXTURE_LANGUAGE]: 'The interview could not be finished.',
+      },
       outcome: 'completed',
       ...fields,
     },
@@ -64,6 +70,43 @@ describe('the editor for the screen that ends the interview', () => {
       screen.getByRole('heading', { name: 'Interviewer guidance' }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/skip logic/i)).not.toBeInTheDocument();
+  });
+
+  it('edits the words a participant sees while finishing', () => {
+    renderStageEditor(openStage());
+
+    expect(
+      screen.getByRole('heading', { name: 'Finishing the interview' }),
+    ).toBeInTheDocument();
+    for (const [name, value] of [
+      [/Finish button/, 'Finish'],
+      [/Confirmation question/, 'Finish this interview?'],
+      [/Finished notice/, 'This interview is finished.'],
+      [/If finishing fails/, 'The interview could not be finished.'],
+    ] as const) {
+      expect(screen.getByRole('textbox', { name })).toHaveValue(value);
+    }
+  });
+
+  it('saves the finishing words the researcher writes', async () => {
+    const harness = renderStageEditor(openStage());
+    const user = userEvent.setup();
+
+    // Writable once the protocol's languages are known.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: /Finish button/ }),
+      ).not.toHaveAttribute('readonly'),
+    );
+    const button = screen.getByRole('textbox', { name: /Finish button/ });
+    await user.clear(button);
+    await user.type(button, 'Done');
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument).toMatchObject({
+      finishLabel: { [FIXTURE_LANGUAGE]: 'Done' },
+      finishConfirmation: { [FIXTURE_LANGUAGE]: 'Finish this interview?' },
+    });
   });
 
   it('offers the three outcomes, each explained', () => {

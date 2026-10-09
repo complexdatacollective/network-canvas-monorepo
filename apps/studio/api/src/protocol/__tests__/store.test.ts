@@ -406,6 +406,10 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       label: { en: 'Finish' },
       title: { en: 'Thank you' },
       content: { en: 'Done.' },
+      finishLabel: { en: 'Finish' },
+      finishConfirmation: { en: 'Finish this interview?' },
+      finishedNotice: { en: 'This interview is finished.' },
+      finishFailed: { en: 'The interview could not be finished.' },
       outcome: 'completed',
     });
     const stageIds = async (draftId: string) =>

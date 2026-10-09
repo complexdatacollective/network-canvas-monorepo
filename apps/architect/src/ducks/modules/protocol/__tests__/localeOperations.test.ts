@@ -283,20 +283,23 @@ describe('addLocales', () => {
       ];
       const protocol = protocolOf(addLocales(edited, ['fr']));
       const translated = protocol.stages.at(-1);
+      if (translated?.type !== 'FinishSession') {
+        throw new Error('No finish stage');
+      }
       // The researcher's text stays as written; the stage's own settings,
       // which Network Canvas supplies, are translated.
       expect(protocol.stages.slice(0, -1)).toEqual(edited.stages.slice(0, -1));
       expect(translated).toMatchObject({
         content: { en: 'Thanks for taking part.' },
       });
-      expect(translated?.content).not.toHaveProperty('fr');
+      expect(translated.content).not.toHaveProperty('fr');
       for (const setting of [
         'finishLabel',
         'finishConfirmation',
         'finishedNotice',
         'finishFailed',
       ] as const) {
-        expect(translated?.[setting]).toHaveProperty('fr');
+        expect(translated[setting]).toHaveProperty('fr');
       }
     });
   });
@@ -368,7 +371,9 @@ describe('removeLocale', () => {
     expect(
       getLocaleRemovalImpact(collectLocalizedStrings(bilingual()), 'fr')
         .translationCount,
-    ).toBe(7);
+      // Seven texts of the protocol's own, and the finish stage's four
+      // settings.
+    ).toBe(11);
   });
 
   it('counts each text once however many readings of it there are', () => {
@@ -384,7 +389,7 @@ describe('removeLocale', () => {
       'fr',
     );
 
-    expect(impact.translationCount).toBe(7);
+    expect(impact.translationCount).toBe(11);
     expect(impact.strandedStrings).toEqual([unsaved]);
   });
 

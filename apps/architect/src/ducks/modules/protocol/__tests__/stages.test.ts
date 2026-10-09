@@ -85,6 +85,10 @@ describe('protocol.stages', () => {
         label: localized('Finish'),
         title: localized('All done'),
         content: localized('Thank you.'),
+        finishLabel: localized('Finish'),
+        finishConfirmation: localized('Finish this interview?'),
+        finishedNotice: localized('This interview is finished.'),
+        finishFailed: localized('The interview could not be finished.'),
         outcome: 'completed',
       } as Stage;
       const withFinish = [...mockStages, finish];

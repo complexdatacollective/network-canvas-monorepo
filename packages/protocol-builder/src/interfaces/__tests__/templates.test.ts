@@ -183,8 +183,8 @@ describe('a new stage given nothing but a name', () => {
    * A new stage holds its interface's template under its own type, and,
    * where Network Canvas supplies the wording of a setting, that wording:
    * nothing else seeds the form, so what a researcher's new stage holds is
-   * what the template map says, plus a roster's panel title and a family
-   * pedigree's name question. A pedigree's list wording arrives with its
+   * what the template map says, plus a roster's panel title, a family
+   * pedigree's name question and a finish screen's finishing words. A pedigree's list wording arrives with its
    * completeness requirement, which a new stage does not have.
    */
   it.each(STAGE_TYPES)('is the %s template under its stage type', (type) => {
@@ -193,6 +193,20 @@ describe('a new stage given nothing but a name', () => {
       ...getInterfaceTemplate(type),
       ...(type === 'NameGeneratorRoster'
         ? { panelTitle: { en: 'Available to add' } }
+        : {}),
+      ...(type === 'FinishSession'
+        ? {
+            finishLabel: { en: 'Finish' },
+            finishConfirmation: {
+              en: 'Are you sure you want to finish the interview?',
+            },
+            finishedNotice: {
+              en: 'This interview is finished, and its answers can no longer be changed.',
+            },
+            finishFailed: {
+              en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+            },
+          }
         : {}),
       ...(type === 'FamilyPedigree'
         ? {

@@ -221,6 +221,10 @@ describe('the finish recorded for generated interviews', () => {
     label: { en: 'Finish' },
     title: { en: 'Finish' },
     content: { en: 'Thank you.' },
+    finishLabel: { en: 'Finish' },
+    finishConfirmation: { en: 'Finish this interview?' },
+    finishedNotice: { en: 'This interview is finished.' },
+    finishFailed: { en: 'The interview could not be finished.' },
     outcome: 'ineligible',
   };
   // Stored as a valid schema 9 design, which the route parses before it

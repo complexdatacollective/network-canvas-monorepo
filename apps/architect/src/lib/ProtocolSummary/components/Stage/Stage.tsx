@@ -165,6 +165,14 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
   // FinishSession
   const content = configuration.content as LocalizedString | undefined;
   const outcome = configuration.outcome as FinishOutcome | undefined;
+  const finishing = {
+    finishLabel: configuration.finishLabel as LocalizedString | undefined,
+    finishConfirmation: configuration.finishConfirmation as
+      | LocalizedString
+      | undefined,
+    finishedNotice: configuration.finishedNotice as LocalizedString | undefined,
+    finishFailed: configuration.finishFailed as LocalizedString | undefined,
+  };
   // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
   const edgeType = configuration.edgeType as
     | {
@@ -407,7 +415,11 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         />
       )}
       {type === 'FinishSession' && (
-        <FinishScreen content={content ?? null} outcome={outcome ?? null} />
+        <FinishScreen
+          content={content ?? null}
+          outcome={outcome ?? null}
+          finishing={finishing}
+        />
       )}
       <InterviewScript interviewScript={interviewScript ?? null} />
     </div>

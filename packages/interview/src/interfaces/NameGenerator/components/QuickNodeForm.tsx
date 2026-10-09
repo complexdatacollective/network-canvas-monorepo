@@ -163,7 +163,7 @@ const QuickNodeForm = ({
       if (disabled) {
         return {
           success: false,
-          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
         };
       }
 
