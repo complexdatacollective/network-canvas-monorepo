@@ -117,14 +117,24 @@ export async function deleteProtocol(hash: string): Promise<void> {
     db.assets,
     db.protocolMigrations,
     async () => {
-      await db.assets.where('protocolHash').equals(hash).delete();
-      await db.sessions.where('protocolHash').equals(hash).delete();
-      await db.protocols.where('hash').equals(hash).delete();
       // The re-keying records leading to this protocol keep the rows it was
       // migrated from; they go with it.
-      await db.protocolMigrations.bulkDelete(
-        supersededHashesOf(await db.protocolMigrations.toArray(), hash),
+      const superseded = supersededHashesOf(
+        await db.protocolMigrations.toArray(),
+        hash,
       );
+      await db.assets.where('protocolHash').equals(hash).delete();
+      // An interview tab still running against an older version of this
+      // protocol writes its session back under that version's hash, for the
+      // next launch to carry across. Those sessions are this protocol's
+      // interviews too, and with the records below gone nothing could ever
+      // associate them with it again.
+      await db.sessions
+        .where('protocolHash')
+        .anyOf([hash, ...superseded])
+        .delete();
+      await db.protocols.where('hash').equals(hash).delete();
+      await db.protocolMigrations.bulkDelete(superseded);
     },
   );
 }

@@ -1,20 +1,9 @@
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import {
-  createAppIntl,
-  defineMessages,
-  type MessageDescriptor,
-} from '@codaco/app-i18n/messages';
-import { useAppIntl, useLocaleCatalog } from '@codaco/app-i18n/react';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -25,7 +14,6 @@ import {
   type InterviewPayload,
   type ProtocolLocaleChangeHandler,
   type SessionPayload,
-  type SessionSnapshot,
   Shell,
   type SyncHandler,
 } from '@codaco/interview';
@@ -45,7 +33,6 @@ import {
   type Stage,
 } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
-import { architectCatalogSource } from '~/locales/catalogs';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 import { reportError } from '~/utils/reportError';
@@ -53,6 +40,7 @@ import { reportError } from '~/utils/reportError';
 import { isPreviewMessage, type PreviewPayload } from './messages';
 import { collectPreviewRosterData } from './previewRosterData';
 import PreviewToolbar from './PreviewToolbar';
+import { ShellLanguageMessage } from './ShellLanguageMessage';
 import { useAssetResolver } from './useAssetResolver';
 const messages = defineMessages({
   finishConfirmation: {
@@ -160,42 +148,6 @@ function PreviewFinishConfirmation() {
   return <ShellLanguageMessage message={messages.finishConfirmation} />;
 }
 
-// Shell owns its catalog and can select a language independently of Architect.
-// Resolve a host-specific message against the Architect catalog explicitly
-// while subscribing to the Shell locale, including in an already-open dialog.
-function ShellLanguageMessage({ message }: { message: MessageDescriptor }) {
-  const { locale } = useAppIntl();
-  // Usually the Shell renders Architect's own language, which startup already
-  // loaded. When it does not, that language's Architect catalog loads here.
-  // Keyed by locale so a switch suspends rather than keep the previous
-  // language: the sentence is blank for that moment instead of being the one
-  // thing in the dialog that has not changed language.
-  return (
-    <Suspense fallback={null}>
-      <ShellLanguageMessageText
-        key={locale}
-        locale={locale}
-        message={message}
-      />
-    </Suspense>
-  );
-}
-
-function ShellLanguageMessageText({
-  locale,
-  message,
-}: {
-  locale: string;
-  message: MessageDescriptor;
-}) {
-  const catalog = useLocaleCatalog(architectCatalogSource, locale);
-  const intl = useMemo(
-    () => createAppIntl({ locale: catalog.locale, messages: catalog.messages }),
-    [catalog.locale, catalog.messages],
-  );
-  return intl.formatMessage(message);
-}
-
 function protocolWithoutSkipLogic(protocol: CurrentProtocol): CurrentProtocol {
   return {
     ...protocol,
@@ -263,28 +215,6 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     stageMetadata,
   };
 }
-/**
- * The interview re-created from the session so far with no stated language,
- * so that the languages it is asked to show take effect. The step is the
- * host's and stays put; the prompt reached within it is not part of what the
- * interview reports, so the stage restarts at its first prompt, as a resumed
- * interview does.
- */
-function withoutLocalePreference(
-  payload: InterviewPayload,
-  latestSession: SessionSnapshot | null,
-): InterviewPayload {
-  return {
-    protocol: payload.protocol,
-    session: {
-      ...(latestSession ?? payload.session),
-      promptIndex: 0,
-      localePreference: null,
-      localeOptions: payload.session.localeOptions,
-    },
-  };
-}
-
 // A preview fails for exactly one reason — the payload never arrived, or the
 // build it started failed — so the reasons share one slot: a later failure can
 // never leave an earlier one's screen behind. A payload that arrives is no
@@ -311,15 +241,10 @@ export function PreviewHost() {
   // author's choice in the toolbar, or one a language chooser stage stated.
   // Null follows the browser.
   const [statedLocale, setStatedLocale] = useState<LocaleTag | null>(null);
-  // The preference the running interview holds in its own store. Requested
-  // languages cannot override it, and the Shell reads one only from its
-  // payload.
-  const heldPreferenceRef = useRef<LocaleTag | null>(null);
-  // The session as the interview last reported it, to re-create the interview
-  // from when its held preference has to change.
-  const latestSessionRef = useRef<SessionSnapshot | null>(null);
-  // Remounts the Shell when the interview is re-created mid-run.
-  const [interviewRun, setInterviewRun] = useState(0);
+  // Whether the running interview holds a preference in its own store, stated
+  // by a language chooser stage. Requested languages cannot override one, so
+  // from then on the toolbar's choice is stated to the interview instead.
+  const [preferenceHeld, setPreferenceHeld] = useState(false);
   // The interview's messages load during the handshake and the synthetic
   // network build, rather than once the Shell mounts, in the language the
   // Shell will negotiate from the same inputs. A failure here is retried by
@@ -365,8 +290,7 @@ export function PreviewHost() {
       setFailure(null);
       setInterviewPayload(nextPayload);
       setStatedLocale(null);
-      heldPreferenceRef.current = null;
-      latestSessionRef.current = null;
+      setPreferenceHeld(false);
       setProtocolId(previewPayload.protocolId);
       setCurrentStep(previewPayload.startStage);
       setInitialStageOverrideIndex(
@@ -412,16 +336,14 @@ export function PreviewHost() {
   // resolves the interview shows its completed state, as it would for a
   // participant, and Finish cannot be confirmed a second time.
   const handleFinish = useCallback<FinishHandler>(async () => {}, []);
-  // Nothing in a preview is saved; the latest session is kept only in memory.
-  const handleSync = useCallback<SyncHandler>(async (_interviewId, session) => {
-    latestSessionRef.current = session;
-  }, []);
+  // Nothing in a preview is saved.
+  const handleSync = useCallback<SyncHandler>(async () => {}, []);
   // A language chooser stage stated a preference: the toolbar follows it.
   // Calls that only record the language shown carry no preference.
   const handleProtocolLocaleChange = useCallback<ProtocolLocaleChangeHandler>(
     async (_interviewId, { localePreference }) => {
       if (localePreference === null) return;
-      heldPreferenceRef.current = localePreference;
+      setPreferenceHeld(true);
       setStatedLocale(localePreference);
     },
     [],
@@ -436,18 +358,12 @@ export function PreviewHost() {
         : [statedLocale, ...browserLanguages],
     [statedLocale, browserLanguages],
   );
+  // Once the interview holds a preference, the toolbar states its choice to
+  // the interview in place of that one, as a language chooser stage would:
+  // re-creating the interview instead would lose the prompt reached and any
+  // answer still in an unsubmitted form.
   const changePreviewLocale = (locale: LocaleTag) => {
     setStatedLocale(locale);
-    if (heldPreferenceRef.current === null) return;
-    // The interview's store holds a preference stated by a language chooser
-    // stage, which requested languages cannot override and only a new payload
-    // can clear: re-create the interview from the session so far.
-    heldPreferenceRef.current = null;
-    const latestSession = latestSessionRef.current;
-    setInterviewPayload(
-      (current) => current && withoutLocalePreference(current, latestSession),
-    );
-    setInterviewRun((run) => run + 1);
   };
   // Re-run the handshake: the opener answers `preview:ready` with the payload
   // it captured at launch, and processPayload rebuilds a fresh session from it.
@@ -596,8 +512,10 @@ export function PreviewHost() {
       />
       <div className="min-h-0 flex-1">
         <Shell
-          key={interviewRun}
           requestedLocales={requestedLocales}
+          statedLocale={
+            preferenceHeld && statedLocale !== null ? statedLocale : undefined
+          }
           payload={interviewPayload}
           onSync={handleSync}
           onProtocolLocaleChange={handleProtocolLocaleChange}

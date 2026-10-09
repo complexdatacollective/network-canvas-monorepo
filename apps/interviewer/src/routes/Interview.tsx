@@ -202,6 +202,13 @@ type LoadState =
       initialStageOverrideIndex?: number;
     };
 
+// What this route writes for one interview: see `writeStatesRef`.
+type SessionWriteState = {
+  basis: SessionWriteBasis;
+  synced: Pick<StoredSession, 'network' | 'stageMetadata'>;
+  currentStep: number;
+};
+
 const loadFailureCopy = {
   incompatible: {
     heading: messages.interviewUnavailable,
@@ -265,26 +272,27 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     interviewRouteMatches && interviewRouteParams.sessionId === sessionId;
   const [currentStep, setCurrentStep] = useState(0);
   const [allowStageNavigation, setAllowStageNavigation] = useState(false);
-  // SessionPayload from @codaco/interview's onSync does not carry the current
-  // step. Mirror it into a ref so handleSync sees the latest value rather
-  // than the stale closure value.
-  const currentStepRef = useRef(0);
   // Every write from this route is the session's whole state — network, stage
   // metadata and resume position — computed against the protocol it loaded
-  // (`writeBasisRef`). If another tab updates the app and migrates that
-  // protocol while this interview is open, a whole-state write is stored
-  // under the protocol it was made against and the next launch carries it
-  // across the migration, so nothing is lost; a partial one could not be
-  // applied to the migrated data at all (see `updateSession`). The step
-  // change carries no network of its own, so it writes the state most
-  // recently handed to storage, which `syncedStateRef` holds: it is set as
-  // each sync write is queued, and writes to one session land in the order
-  // they were queued, so a step change never puts back an older network.
-  const writeBasisRef = useRef<SessionWriteBasis | null>(null);
-  const syncedStateRef = useRef<Pick<
-    StoredSession,
-    'network' | 'stageMetadata'
-  > | null>(null);
+  // (`basis`). If another tab updates the app and migrates that protocol
+  // while this interview is open, a whole-state write is stored under the
+  // protocol it was made against and the next launch carries it across the
+  // migration, so nothing is lost; a partial one could not be applied to the
+  // migrated data at all (see `updateSession`). The step change carries no
+  // network of its own, so it writes the state most recently handed to
+  // storage (`synced`): it is set as each sync write is queued, and writes to
+  // one session land in the order they were queued, so a step change never
+  // puts back an older network. The sync snapshot does not carry the current
+  // step, so the step is kept here too.
+  //
+  // Kept per interview, not in one slot for whichever is showing. This route
+  // re-renders rather than remounting when the id changes, and the previous
+  // interview's sync handler can still write after the next one has loaded —
+  // a write already queued, or the flush its Shell makes as it unmounts. With
+  // one slot that write would be made against the next interview's protocol
+  // and step, and would leave the previous interview's network for the next
+  // interview's step change to write into it.
+  const writeStatesRef = useRef(new Map<string, SessionWriteState>());
 
   // A history-back (browser button or a swipe gesture the CSS/wheel guards
   // can't intercept, e.g. iPadOS edge swipe) would leave the interview WITHOUT
@@ -440,12 +448,14 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           ? (lastAvailableStage ?? 0)
           : session.currentStep;
       setCurrentStep(initialStep);
-      currentStepRef.current = initialStep;
-      writeBasisRef.current = { protocolHash: protocol.hash };
-      syncedStateRef.current = {
-        network: session.network,
-        stageMetadata: session.stageMetadata,
-      };
+      writeStatesRef.current.set(sessionId, {
+        basis: { protocolHash: protocol.hash },
+        synced: {
+          network: session.network,
+          stageMetadata: session.stageMetadata,
+        },
+        currentStep: initialStep,
+      });
       setAllowStageNavigation(settings.allowStageNavigation);
       setLoadState({
         kind: 'ready',
@@ -523,11 +533,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
             `Sync for interview ${id} reached the handler for ${ownerId}`,
           );
         }
-        const basis = writeBasisRef.current;
-        if (!basis) {
+        const writeState = writeStatesRef.current.get(id);
+        if (!writeState) {
           throw new Error(`Sync for interview ${id} arrived before it loaded`);
         }
-        syncedStateRef.current = {
+        writeState.synced = {
           network: session.network,
           stageMetadata: session.stageMetadata,
         };
@@ -535,10 +545,10 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           id,
           {
             network: session.network,
-            currentStep: currentStepRef.current,
+            currentStep: writeState.currentStep,
             stageMetadata: session.stageMetadata,
           },
-          basis,
+          writeState.basis,
         );
       },
       { waitMs: SYNC_BATCH_MS },
@@ -549,11 +559,12 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   // route stays where it is. The finish confirmation cannot be dismissed while
   // this runs, so the signal aborts only when the interview is torn down, and
   // then nothing is written: a stored finish must always be one the Shell went
-  // on to show as completed.
+  // on to show as completed. The write itself checks the signal again before
+  // it commits, so a teardown while it waits or encrypts still writes nothing.
   const handleFinish = useCallback<FinishHandler>(
     async (id, finish, signal) => {
       signal.throwIfAborted();
-      await markSessionFinished(id, finish);
+      await markSessionFinished(id, finish, signal);
     },
     [],
   );
@@ -572,23 +583,22 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
 
   const handleStepChange = useCallback<StepChangeHandler>(
     (step, meta) => {
-      currentStepRef.current = step;
       setCurrentStep(step);
+      const writeState = writeStatesRef.current.get(sessionId);
+      if (!writeState) return;
+      writeState.currentStep = step;
       if (readOnly) return;
       // Persist the participant-facing progress alongside the step so the
       // dashboard shows exactly what the participant saw, without re-deriving it.
-      const basis = writeBasisRef.current;
-      const synced = syncedStateRef.current;
-      if (!basis || !synced) return;
       void updateSession(
         sessionId,
         {
-          ...synced,
+          ...writeState.synced,
           currentStep: step,
           progress: meta.progress,
           resumeStageOverrideIndex: undefined,
         },
-        basis,
+        writeState.basis,
       );
     },
     [readOnly, sessionId],

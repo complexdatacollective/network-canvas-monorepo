@@ -623,7 +623,7 @@ describe('setTranslation', () => {
   });
 
   it('refuses blank text', () => {
-    for (const text of ['', '   ', '\n\t']) {
+    for (const text of ['', '   ', '\n\t', '\u200B\u00AD']) {
       expect(setTranslation(bilingual(), distantLabel, 'fr', text)).toEqual({
         ok: false,
         reason: 'blank-text',

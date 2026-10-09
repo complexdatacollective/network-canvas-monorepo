@@ -17,9 +17,13 @@ import { getAppSetting } from '~/queries/appSettings';
 
 /**
  * Where the interview ended: the finish stage the participant confirmed Finish
- * on, and the outcome that stage declares. Required — an upgrade takes the
- * deployment down, so no browser is left running a bundle that finishes
- * without saying where.
+ * on, and the outcome that stage declares.
+ *
+ * An upgrade restarts the server but not the browsers already showing an
+ * interview: a tab opened before it keeps running the previous bundle, which
+ * finishes with a bodyless POST. That request is still accepted, as a finish at
+ * the protocol's finish stage — a protocol has exactly one, so it is the stage
+ * the previous bundle's participant reached. A body, once sent, must be whole.
  */
 const FinishRequestSchema = z.object({
   stageId: z.string(),
@@ -40,28 +44,38 @@ const invalidRequest = (error: unknown) => {
   return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
 };
 
+/**
+ * The finish the request names, or `null` for the previous bundle's bodyless
+ * finish.
+ */
+async function readFinishRequest(
+  request: NextRequest,
+): Promise<
+  | { success: true; data: z.infer<typeof FinishRequestSchema> | null }
+  | { success: false; error: unknown }
+> {
+  try {
+    const text = await request.text();
+    if (text === '') return { success: true, data: null };
+    return FinishRequestSchema.safeParse(JSON.parse(text));
+  } catch (error) {
+    return { success: false, error };
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ interviewId: string }> },
 ) {
   const { interviewId } = await params;
 
-  let rawPayload: unknown;
-  try {
-    rawPayload = await request.json();
-  } catch (error) {
-    return invalidRequest(error);
-  }
-
-  const validatedRequest = FinishRequestSchema.safeParse(rawPayload);
-
-  if (!validatedRequest.success) {
+  const read = await readFinishRequest(request);
+  if (!read.success) {
     // A generic message rather than the Zod error, which would disclose the
     // accepted shape to unauthenticated callers.
-    return invalidRequest(validatedRequest.error);
+    return invalidRequest(read.error);
   }
-
-  const { stageId, outcome } = validatedRequest.data;
+  const requested = read.data;
 
   try {
     const interview = await prisma.interview.findUnique({
@@ -101,17 +115,25 @@ export async function POST(
     // so a finish is accepted only as the protocol declares it: the stage must
     // be one of the protocol's finish stages, and the outcome the one that
     // stage declares.
-    const finishStage = storedProtocol.data.stages
-      .filter(isFinishSessionStage)
-      .find((stage) => stage.id === stageId);
+    const finishStages =
+      storedProtocol.data.stages.filter(isFinishSessionStage);
+    const finishStage = requested
+      ? finishStages.find((stage) => stage.id === requested.stageId)
+      : finishStages.length === 1
+        ? finishStages[0]
+        : undefined;
 
     if (!finishStage) {
       return invalidRequest(
-        new Error('Finish names a stage that is not a finish stage'),
+        new Error(
+          requested
+            ? 'Finish names a stage that is not a finish stage'
+            : 'Bodyless finish against a protocol without exactly one finish stage',
+        ),
       );
     }
 
-    if (finishStage.outcome !== outcome) {
+    if (requested && finishStage.outcome !== requested.outcome) {
       return invalidRequest(
         new Error('Finish outcome differs from the one its stage declares'),
       );

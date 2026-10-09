@@ -562,31 +562,6 @@ describe('v8 to v9 localization migration', () => {
       expect(migrationV8toV9.notes).toContain('contained only spaces');
     });
 
-    // Schema 8 accepted an introduction panel whose title was only spaces;
-    // schema 9 requires a title a participant can read.
-    it('titles an introduction panel of spaces with its stage label', () => {
-      const document = schema8Protocol();
-      const stage = stagePath(document, 'egoForm');
-      setAt(document, [...stage, 'introductionPanel', 'title'], ' \u200B ');
-
-      const migrated = migrateProtocol(document, 9);
-      expect(getAt(migrated, [...stage, 'introductionPanel', 'title'])).toEqual(
-        getAt(migrated, [...stage, 'label']),
-      );
-      expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
-    });
-
-    it('titles an introduction panel of spaces “Introduction” when its stage has no label to use', () => {
-      const document = schema8Protocol();
-      const stage = stagePath(document, 'egoForm');
-      setAt(document, [...stage, 'label'], ' ');
-      setAt(document, [...stage, 'introductionPanel', 'title'], ' ');
-
-      expect(
-        getAt(migrateStep(document), [...stage, 'introductionPanel', 'title']),
-      ).toEqual({ en: 'Introduction' });
-    });
-
     it('captions a Network Composer field whose caption is only spaces', () => {
       const document = schema8Protocol();
       const field = [

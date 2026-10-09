@@ -213,6 +213,32 @@ describe('updateSession against concurrent writers', () => {
     expect(row?.progress).toBe(40);
   });
 
+  // The runtime's sync treats a refused write as unsaved and keeps the
+  // answers to offer again, so a failure has to reach it.
+  it('rejects when the write cannot be stored', async () => {
+    const created = await createSession({
+      protocolHash: 'hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: network,
+    });
+    const before = await db.sessions.get(created.id);
+    const cause = new Error('IndexedDB write failed');
+    const put = vi.spyOn(db.sessions, 'put').mockRejectedValueOnce(cause);
+    try {
+      await expect(
+        updateSession(
+          created.id,
+          { network, stageMetadata: undefined, currentStep: 3 },
+          { protocolHash: 'hash' },
+        ),
+      ).rejects.toBe(cause);
+    } finally {
+      put.mockRestore();
+    }
+    expect(await db.sessions.get(created.id)).toEqual(before);
+  });
+
   it('does not resurrect a session deleted mid-write', async () => {
     const created = await createSession({
       protocolHash: 'old-hash',
@@ -346,6 +372,31 @@ describe('setSessionLocale', () => {
     });
   });
 
+  it('leaves the interview’s last-updated time alone', async () => {
+    const created = await createStudySession();
+    const before = (await db.sessions.get(created.id))?.lastUpdatedAt;
+    expect(before).toEqual(expect.any(String));
+
+    // Without fake timers a fast write can land in the same millisecond, so
+    // pin the clock past the creation time.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date(Date.parse(before ?? '') + 60_000));
+      await setSessionLocale(created.id, {
+        locale: 'fr',
+        localePreference: 'fr',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(await db.sessions.get(created.id)).toMatchObject({
+      locale: 'fr',
+      localePreference: 'fr',
+      lastUpdatedAt: before,
+    });
+  });
+
   it('applies changes in the order they were made', async () => {
     const created = await createStudySession();
 
@@ -420,6 +471,34 @@ describe('setSessionLocale', () => {
       localePreference: 'fr',
       locale: 'fr',
     });
+  });
+
+  // The runtime retries a language write it could not confirm, so the same
+  // change can arrive twice; and it treats a refused write as unsaved, so a
+  // failure must reach it.
+  it('stores the same change made twice exactly as once', async () => {
+    const created = await createStudySession();
+    const change = { locale: 'fr', localePreference: 'fr' } as const;
+
+    await setSessionLocale(created.id, change);
+    const once = await db.sessions.get(created.id);
+    await setSessionLocale(created.id, change);
+
+    expect(await db.sessions.get(created.id)).toEqual(once);
+  });
+
+  it('rejects when the language cannot be stored', async () => {
+    const created = await createStudySession();
+    const cause = new Error('IndexedDB write failed');
+    const update = vi.spyOn(db.sessions, 'update').mockRejectedValueOnce(cause);
+    try {
+      await expect(
+        setSessionLocale(created.id, { locale: 'fr', localePreference: 'fr' }),
+      ).rejects.toBe(cause);
+    } finally {
+      update.mockRestore();
+    }
+    expect(await db.sessions.get(created.id)).toMatchObject({ locale: null });
   });
 
   it('does not recreate a deleted session', async () => {

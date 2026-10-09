@@ -8,6 +8,57 @@ import { expect, type Locator, type Page } from '@playwright/test';
 const EMPHASIS_SPLIT = /(\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)/;
 const EMPHASIS_TEST = /^(?:\*\*[^*]+\*\*|_[^_]+_|\*[^*]+\*)$/;
 
+// The characters the canonical sample protocol writes as HTML character
+// references (an older serializer's `&quot;`/`&#39;`, and `&lt;`/`&gt;`
+// around a placeholder). Deliberately short: a reference outside it throws
+// rather than being typed as literal text the comparison would then miss.
+const NAMED_REFERENCES: Record<string, string> = {
+  amp: '&',
+  apos: "'",
+  gt: '>',
+  lt: '<',
+  quot: '"',
+};
+
+const CHARACTER_REFERENCE = /&(?:#(\d+)|#[xX]([\da-fA-F]+)|([A-Za-z]+));/g;
+
+/**
+ * The characters a researcher types for markdown that writes some of them as
+ * HTML character references: `&lt;IRB&gt;` is typed `<IRB>`, `&#39;` is
+ * typed `'`.
+ *
+ * A reference is markdown's spelling of a character, not something anyone
+ * types. Typed literally, `&lt;` is the four characters `&`, `l`, `t`, `;`,
+ * which the editor correctly stores as that text (`\&lt;`) — so the protocol
+ * built from the canonical file would no longer say what the canonical file
+ * says.
+ */
+export function decodeCharacterReferences(markdown: string): string {
+  return markdown.replace(
+    CHARACTER_REFERENCE,
+    (
+      reference: string,
+      decimal: string | undefined,
+      hex: string | undefined,
+      name: string | undefined,
+    ) => {
+      if (decimal !== undefined) {
+        return String.fromCodePoint(Number.parseInt(decimal, 10));
+      }
+      if (hex !== undefined) {
+        return String.fromCodePoint(Number.parseInt(hex, 16));
+      }
+      const character = name === undefined ? undefined : NAMED_REFERENCES[name];
+      if (character === undefined) {
+        throw new Error(
+          `no typed character is known for the reference ${reference}; add it to NAMED_REFERENCES`,
+        );
+      }
+      return character;
+    },
+  );
+}
+
 // One line of inline markdown. Only the emphasis markers need to arrive as
 // real keystrokes — Tiptap converts `**bold**` / `_italic_` / `*italic*`
 // through ProseMirror input rules, which fire on the closing character and

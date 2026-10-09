@@ -57,6 +57,9 @@ function MockShell(props: ShellProps) {
         >
           Finish in the Shell
         </button>
+        <p data-testid="finish-confirmation">
+          {props.finishConfirmationDescription}
+        </p>
         {props.completedActions?.map((action, index) => (
           // eslint-disable-next-line react/no-array-index-key
           <button key={index} type="button" onClick={action.onAction}>
@@ -116,12 +119,17 @@ const COMPLETION_LABELS = Object.fromEntries(
   locales.map((locale) => {
     const { ProtocolGallery } = loadLocaleMessages(locale) as {
       ProtocolGallery: {
-        preview: { restart: string; backToProtocol: string };
+        preview: {
+          finishConfirmation: string;
+          restart: string;
+          backToProtocol: string;
+        };
       };
     };
     return [
       locale,
       {
+        finishConfirmation: ProtocolGallery.preview.finishConfirmation,
         restart: ProtocolGallery.preview.restart,
         backToProtocol: ProtocolGallery.preview.backToProtocol,
       },
@@ -213,6 +221,27 @@ describe('<ProtocolPreview />', () => {
     );
 
     expect(actionNames()).toEqual(['Relancer l’aperçu', 'Retour au protocole']);
+  });
+
+  it('explains finishing in the interview’s language, not the page’s', async () => {
+    initialInterviewLocale = 'de';
+    await renderPreview('fr');
+
+    expect(screen.getByTestId('finish-confirmation').textContent).toBe(
+      COMPLETION_LABELS.de.finishConfirmation,
+    );
+  });
+
+  it('re-explains finishing when the interview changes language', async () => {
+    await renderPreview();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Switch the interview to French' }),
+    );
+
+    expect(screen.getByTestId('finish-confirmation').textContent).toBe(
+      COMPLETION_LABELS.fr.finishConfirmation,
+    );
   });
 
   it('starts a new interview when the preview is started again', async () => {

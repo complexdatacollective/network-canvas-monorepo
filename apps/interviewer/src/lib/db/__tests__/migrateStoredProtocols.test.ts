@@ -915,6 +915,28 @@ describe.each([
     expect(await db.protocolMigrations.get('other-hash')).toBeDefined();
   });
 
+  it('deletes the sessions still stored under a hash the protocol was migrated from', async () => {
+    await seedProtocol(
+      storedRow('old-hash', 'Pedigree Study', v8PedigreeDocument()),
+    );
+    await seedProtocol(storedRow('other-hash', 'Alpha Study', v7Document()));
+    const result = await migrateStoredProtocols();
+    const pedigree = result.migrated.find((m) => m.name === 'Pedigree Study');
+    if (!pedigree) throw new Error('expected the protocol to migrate');
+    // An interview tab opened before the migration writes its whole state
+    // back under the hash it loaded.
+    await seedSession('stale-tab', 'old-hash');
+    await seedSession('current', pedigree.hash);
+    // Another protocol's interviews, under its own superseded hash, stay.
+    await seedSession('other-stale', 'other-hash');
+
+    await deleteProtocol(pedigree.hash);
+
+    expect(await db.sessions.get('stale-tab')).toBeUndefined();
+    expect(await db.sessions.get('current')).toBeUndefined();
+    expect(await db.sessions.get('other-stale')).toBeDefined();
+  });
+
   it('leaves a protocol it cannot migrate untouched and carries on with the rest', async () => {
     await seedProtocol(
       storedRow('broken-hash', 'Broken Study', brokenV7Document()),

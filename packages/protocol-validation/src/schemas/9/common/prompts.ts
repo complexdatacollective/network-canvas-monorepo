@@ -191,11 +191,8 @@ export const categoricalBinPromptSchema = promptSchema
       requireType: ['text'],
       usage: 'validatedAttribute',
     }).optional(),
-    otherVariablePrompt: localizedString(
-      z.string().min(1),
-      'markdown',
-    ).optional(),
-    otherOptionLabel: localizedString(z.string().min(1), 'markdown').optional(),
+    otherVariablePrompt: localizedString(nonBlankText(), 'markdown').optional(),
+    otherOptionLabel: localizedString(nonBlankText(), 'markdown').optional(),
   })
   .superRefine((prompt, ctx) => {
     if (prompt.otherVariable === '') {
@@ -249,8 +246,8 @@ export const categoricalBinPromptSchema = promptSchema
             requireType: ['text'],
             usage: 'validatedAttribute',
           }),
-          otherVariablePrompt: localizedString(z.string().min(1), 'markdown'),
-          otherOptionLabel: localizedString(z.string().min(1), 'markdown'),
+          otherVariablePrompt: localizedString(nonBlankText(), 'markdown'),
+          otherOptionLabel: localizedString(nonBlankText(), 'markdown'),
         }),
         promptSchema.extend({
           ...categoricalBinPromptFields,

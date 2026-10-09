@@ -2,7 +2,11 @@ import { and, eq } from 'drizzle-orm';
 import { Effect, Redacted, Schema } from 'effect';
 import type { SqlError } from 'effect/sql';
 
-import { escapeMessageText } from '@codaco/protocol-validation';
+import {
+  escapeMessageText,
+  type LocalizationDeclaration,
+  type LocalizedString,
+} from '@codaco/protocol-validation';
 import type { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import type {
@@ -235,6 +239,20 @@ export const createAuditedProtocol: (
   );
 });
 
+/**
+ * The placeholder a new screen is named with, in the draft's default language
+ * only. It is not a translation: the other declared languages stay missing, so
+ * a participant reading one falls back as for any untranslated text, and the
+ * researcher sees the screen still needs translating.
+ */
+export function untitledScreenText(
+  localization: LocalizationDeclaration,
+): LocalizedString {
+  return {
+    [localization.defaultLocale]: escapeMessageText('Untitled screen'),
+  };
+}
+
 export const addAuditedInformationStage: (
   access: TeamAccess,
   input: { protocolId: string; draftId: string; stageId: string },
@@ -285,12 +303,7 @@ export const addAuditedInformationStage: (
           reason: `draft ${input.draftId} declares no valid localization`,
         });
       }
-      const untitled = Object.fromEntries(
-        localization.locales.map((locale) => [
-          locale,
-          escapeMessageText('Untitled screen'),
-        ]),
-      );
+      const untitled = untitledScreenText(localization);
       const result = yield* addStage(access.teamId, {
         draftId: input.draftId,
         stage: {

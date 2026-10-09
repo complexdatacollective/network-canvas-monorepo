@@ -467,11 +467,13 @@ function ActiveInterview({
  */
 function InterviewLocalization({
   requestedLocales,
+  statedLocale,
   localeOptions,
   catalog,
   children,
 }: {
   requestedLocales: readonly string[];
+  statedLocale: string | undefined;
   localeOptions: InterviewPayload['session']['localeOptions'];
   catalog: InterviewCatalog | undefined;
   children: ReactNode;
@@ -480,6 +482,17 @@ function InterviewLocalization({
   const localization = useSelector(getProtocolLocalization);
   const localePreference = useSelector(getLocalePreference);
   const recordedLocale = useSelector(getRecordedLocale);
+
+  // A language the host states replaces the held preference in the store, as
+  // a language chooser stage does, so nothing remounts and unsaved input
+  // stays. Only a change of the host's statement applies: the participant can
+  // still state another in between. A language the protocol does not declare
+  // is not a preference it can hold.
+  useEffect(() => {
+    if (statedLocale === undefined) return;
+    if (!localization.locales.includes(statedLocale)) return;
+    dispatch(setLocalePreference(statedLocale));
+  }, [dispatch, statedLocale, localization.locales]);
 
   const handleLocalePreferenceChange = useCallback(
     (locale: string) => dispatch(setLocalePreference(locale)),
@@ -576,6 +589,17 @@ type ShellProps = {
    */
   requestedLocales: readonly string[];
   /**
+   * A language the host states on the participant's behalf, as a language
+   * chooser stage would. Each time it changes it replaces the preference the
+   * session holds, in place: the step, the prompt and unsaved input stay, and
+   * the change is saved through `onProtocolLocaleChange`. A held preference
+   * outranks `requestedLocales`, so this is how a host changes the language
+   * once one is held without re-creating the interview. Architect's preview
+   * passes its toolbar's choice. Omit it to leave the preference to the
+   * participant.
+   */
+  statedLocale?: string;
+  /**
    * The interface language's messages, from `loadInterviewCatalog` given the
    * same `requestedLocales` and the session's `localePreference`. Without it,
    * a Shell opening in a language this page has not loaded shows its loading
@@ -671,6 +695,7 @@ type ShellProps = {
 
 const Shell = ({
   requestedLocales,
+  statedLocale,
   catalog,
   payload,
   onSync,
@@ -885,6 +910,7 @@ const Shell = ({
         <Suspense fallback={<LoadingInterview />}>
           <InterviewLocalization
             requestedLocales={requestedLocales}
+            statedLocale={statedLocale}
             localeOptions={payload.session.localeOptions}
             catalog={catalog}
           >

@@ -228,6 +228,66 @@ describe('variable schema conformance', () => {
     });
   });
 
+  // Two options with one value store the same answer. The 8 to 9 migration
+  // removes the later ones by the same comparison.
+  describe('duplicate option values', () => {
+    const variableWithValues = (
+      type: 'categorical' | 'ordinal',
+      values: (string | number)[],
+    ) => ({
+      name: type,
+      label: type,
+      type,
+      options: values.map((value, index) => ({
+        label: localized(`Option ${index + 1}`),
+        value,
+      })),
+    });
+
+    it.each([
+      ['categorical', ['a', 'b', 'a'], 'a'],
+      ['ordinal', [0, 1, 0], '0'],
+      // Answers are stored by value and exported as text, so these are one.
+      ['categorical', [1, 2, '1'], '1'],
+      ['ordinal', ['2', 1, 2], '2'],
+    ] as const)(
+      'rejects a %s variable with values %j, at the later option',
+      (type, values, duplicate) => {
+        const result = VariableSchema.safeParse(
+          variableWithValues(type, [...values]),
+        );
+
+        expect(result.success).toBe(false);
+        expect(JSON.stringify(result.error?.issues)).toContain(
+          `Options contain duplicate value \\"${duplicate}\\"`,
+        );
+        expect(JSON.stringify(result.error?.issues)).toContain(
+          JSON.stringify(['options', 2, 'value']).slice(1, -1),
+        );
+      },
+    );
+
+    it('rejects them within a codebook, on the options of the attribute', () => {
+      const result = VariablesSchema.safeParse({
+        colour: variableWithValues('categorical', ['red', 'blue', 'red']),
+      });
+
+      expect(result.success).toBe(false);
+      expect(JSON.stringify(result.error?.issues)).toContain(
+        'Options contain duplicate value',
+      );
+    });
+
+    // Matching the schema's rule for names: the editor folds case as a
+    // researcher types, but the schema decides whether a protocol opens.
+    it('does not fold case', () => {
+      const result = VariableSchema.safeParse(
+        variableWithValues('categorical', ['yes', 'Yes', 'YES']),
+      );
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('#677 encrypted only on node text variable', () => {
     it('accepts encrypted on a node text variable', () => {
       const result = VariablesSchema.safeParse({
