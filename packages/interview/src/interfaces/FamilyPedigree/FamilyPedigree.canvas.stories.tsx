@@ -1135,6 +1135,233 @@ export const ThePersonAddedToStaysInViewBesideThePanel: Story = {
   },
 };
 
+/** Drags the canvas by (dx, dy) with the mouse, slowly: in many small
+ * steps. */
+function dragSlowly(viewport: HTMLElement, dx: number, dy: number) {
+  const box = viewport.getBoundingClientRect();
+  const steps = 25;
+  const start = {
+    x: box.left + box.width * 0.5,
+    y: box.top + box.height * 0.5,
+  };
+  const at = (step: number) => ({
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+    clientX: start.x + (dx * step) / steps,
+    clientY: start.y + (dy * step) / steps,
+  });
+  fireEvent.pointerDown(viewport, { ...at(0), buttons: 1 });
+  for (let step = 1; step <= steps; step++) {
+    fireEvent.pointerMove(viewport, { ...at(step), buttons: 1 });
+  }
+  fireEvent.pointerUp(viewport, at(steps));
+}
+
+const phoneLandscape = {
+  parameters: {
+    viewport: {
+      options: {
+        phoneLandscape: {
+          name: 'Phone (landscape)',
+          styles: { width: '844px', height: '390px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phoneLandscape', isRotated: false } },
+};
+
+/** Linda and Robert, and their children: the participant and Bea. */
+const twoGenerations: Family = {
+  people: [
+    { id: 'ego', name: 'Ana', gender: 'woman', sex: 'female', ego: true },
+    { id: 'linda', name: 'Linda', gender: 'woman', sex: 'female' },
+    { id: 'robert', name: 'Robert', gender: 'man', sex: 'male' },
+    { id: 'bea', name: 'Bea', gender: 'woman', sex: 'female' },
+  ],
+  links: [
+    { from: 'linda', to: 'robert', kind: 'partner' },
+    { from: 'linda', to: 'ego', kind: 'biological', carrier: true },
+    { from: 'robert', to: 'ego', kind: 'biological' },
+    { from: 'linda', to: 'bea', kind: 'biological', carrier: true },
+    { from: 'robert', to: 'bea', kind: 'biological' },
+  ],
+};
+
+/**
+ * Zoomed all the way in on a phone held sideways, where one row is further
+ * from the next than the canvas is tall, a slow drag still moves from the
+ * parents' row to the children's: the drag is not caught in the gap
+ * between them.
+ */
+export const ASlowDragCrossesBetweenGenerations: Story = {
+  ...phoneLandscape,
+  render: () => <CanvasStory family={twoGenerations} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    const viewport = canvas.getByTestId('pedigree-canvas');
+    const zoomIn = canvas.getByRole('button', { name: 'Zoom in' });
+    while (!isDisabled(zoomIn)) {
+      fireEvent.click(zoomIn);
+      await settled(canvasElement);
+    }
+    const clear = () => ({
+      ...canvasBox(canvasElement),
+      top: boxOf(canvas.getByRole('heading', { name: /^Add the members/ }))
+        .bottom,
+      bottom: toolbarBox(canvasElement).top,
+    });
+    // Down to the parents' row first.
+    for (let drag = 0; drag < 6; drag++) dragSlowly(viewport, 0, 280);
+    await settled(canvasElement);
+    await expect(
+      overlaps(boxOf(personSymbol(canvasElement, 'linda')), clear()),
+      'Linda in view',
+    ).toBe(true);
+    // Then slowly up, as far as it takes, to the children's.
+    for (let drag = 0; drag < 6; drag++) {
+      dragSlowly(viewport, 0, -280);
+      await settled(canvasElement);
+      if (overlaps(boxOf(personSymbol(canvasElement, 'ego')), clear())) break;
+    }
+    await expect(
+      overlaps(boxOf(personSymbol(canvasElement, 'ego')), clear()),
+      'the participant in view',
+    ).toBe(true);
+  },
+};
+
+/**
+ * + and − zoom with keyboard focus on the toolbar, after choosing a tool, as
+ * they do with focus in the family.
+ */
+export const ZoomKeysWorkFromTheToolbar: Story = {
+  render: () => <CanvasStory family={threePeople} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    const width = () =>
+      boxOf(personSymbol(canvasElement, 'ego')).right -
+      boxOf(personSymbol(canvasElement, 'ego')).left;
+    const before = width();
+    canvas.getByTestId('pedigree-tool-connect').focus();
+    await userEvent.keyboard('-');
+    await settled(canvasElement);
+    await expect(width(), 'zoomed out').toBeLessThan(before - 1);
+    canvas.getByRole('button', { name: 'Zoom in' }).focus();
+    for (let press = 0; press < 2; press++) {
+      await userEvent.keyboard('+');
+      await settled(canvasElement);
+    }
+    await expect(width(), 'zoomed in').toBeGreaterThan(before + 1);
+  },
+};
+
+/** The size on screen, in pixels, of the smallest name drawn in a symbol. */
+function smallestNameOnScreen(canvasElement: HTMLElement) {
+  let smallest = Number.POSITIVE_INFINITY;
+  for (const person of within(canvasElement).getAllByTestId(
+    'pedigree-person',
+  )) {
+    const symbol = person.querySelector('button') as HTMLElement;
+    const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
+    for (const text of symbol.querySelectorAll('span')) {
+      if (!text.textContent?.trim()) continue;
+      smallest = Math.min(
+        smallest,
+        Number.parseFloat(getComputedStyle(text).fontSize) * scale,
+      );
+    }
+  }
+  return smallest;
+}
+
+const phonePortrait = {
+  parameters: {
+    viewport: {
+      options: {
+        phonePortrait: {
+          name: 'Phone (portrait)',
+          styles: { width: '390px', height: '844px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phonePortrait', isRotated: false } },
+};
+
+/**
+ * On a phone, each prompt opens with every name drawn at least as large as
+ * the smallest legible size, on the family's own prompt (here a family too
+ * wide to show whole at that size, which opens on the participant) and on
+ * a nomination prompt, where relatives are chosen by name.
+ */
+export const NamesOpenLegibleOnAPhone: Story = {
+  ...phonePortrait,
+  render: () => (
+    <CanvasStory
+      family={fourGenerations}
+      nominationPrompts={[{ text: HEART_PROMPT }]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    await expect(
+      smallestNameOnScreen(canvasElement),
+      'names on the family prompt',
+    ).toBeGreaterThanOrEqual(11.9);
+    await expect(
+      inside(
+        boxOf(personSymbol(canvasElement, 'ego')),
+        canvasBox(canvasElement),
+      ),
+      'the participant in view',
+    ).toBe(true);
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await canvas.findByText(HEART_PROMPT);
+    await settled(canvasElement);
+    await expect(
+      smallestNameOnScreen(canvasElement),
+      'names on the nomination prompt',
+    ).toBeGreaterThanOrEqual(11.9);
+  },
+};
+
+/**
+ * On a nomination prompt, where no add menu is shown, showing the whole
+ * family leaves no room for one, so a small family is drawn at its natural
+ * size on a phone, names legible.
+ */
+export const TheWholeFamilyOnANominationPromptLeavesNoMenuRoom: Story = {
+  ...phonePortrait,
+  render: () => (
+    <CanvasStory
+      family={twoGenerations}
+      nominationPrompts={[{ text: HEART_PROMPT }]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await userEvent.click(canvas.getByTestId('next-button'));
+    await canvas.findByText(HEART_PROMPT);
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Show the whole family' }),
+    );
+    await settled(canvasElement);
+    await expect(smallestNameOnScreen(canvasElement)).toBeGreaterThanOrEqual(
+      11.9,
+    );
+  },
+};
+
 /**
  * Removing someone from the keyboard leaves focus on a person still in the
  * family, not on nothing.

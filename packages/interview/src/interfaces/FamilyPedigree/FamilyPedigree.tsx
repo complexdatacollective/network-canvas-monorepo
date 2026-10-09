@@ -95,6 +95,7 @@ import {
   focusNeighbourInDirection,
   PedigreeViewport,
   usePedigreeZoomButtons,
+  zoomForKey,
 } from '../pedigree-common/PedigreeCanvas';
 import {
   answersContradictedBy,
@@ -201,6 +202,28 @@ type PanelState = {
    * one. */
   then?: 'sibling' | 'child';
 } | null;
+
+/**
+ * The least zoom at which every name drawn in the given symbols is at least
+ * as large on screen as `text-xs`, the size below which a name stops being
+ * legible.
+ */
+const legibleScale = (symbols: Iterable<HTMLElement>) => {
+  const rootSize =
+    Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
+    16;
+  let smallest = Number.POSITIVE_INFINITY;
+  for (const symbol of symbols) {
+    for (const text of symbol.querySelectorAll('span')) {
+      if (!text.textContent?.trim()) continue;
+      smallest = Math.min(
+        smallest,
+        Number.parseFloat(getComputedStyle(text).fontSize),
+      );
+    }
+  }
+  return Number.isFinite(smallest) ? (rootSize * 0.75) / smallest : 0;
+};
 
 /** The buttons of the add menu shown around a person's symbol, if any. */
 const menuItemsOf = (symbol: HTMLElement) => [
@@ -676,17 +699,30 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
   // The whole family, clear of the prompt above and the toolbar below, with
-  // room around it for anyone's add menu.
+  // room around it for anyone's add menu while one can be shown (not on a
+  // nomination prompt). Each prompt opens on it only as far out as names
+  // stay legible: when the whole family would be drawn smaller, it opens on
+  // the participant at the least legible zoom instead, and the participant
+  // shows the rest by panning, zooming or showing the whole family.
+  const nominating = nomination !== undefined;
   const showWholeFamily = useCallback(
-    ({ animated = true }: { animated?: boolean } = {}) => {
+    ({
+      animated = true,
+      legible = false,
+    }: { animated?: boolean; legible?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
+      const ego = family.egoId ? nodeRefs.current.get(family.egoId) : undefined;
       panZoom.fitToView(layout, clearInsets(), {
         animated,
-        reach: addMenuReach(menuReachRef.current),
+        reach: nominating ? undefined : addMenuReach(menuReachRef.current),
+        least:
+          legible && ego
+            ? { scale: legibleScale(nodeRefs.current.values()), around: ego }
+            : undefined,
       });
     },
-    [panZoom, clearInsets],
+    [panZoom, clearInsets, nominating, family.egoId],
   );
   const zoomButtons = usePedigreeZoomButtons({
     panZoom,
@@ -858,9 +894,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!nodeRefs.current.has(family.egoId)) return;
     const first = fittedForPrompt.current === null;
     fittedForPrompt.current = prompt.id;
-    showWholeFamily({ animated: !first });
+    showWholeFamily({ animated: !first, legible: true });
   });
-  const nominating = nomination !== undefined;
 
   // Adding someone can move everyone else in the layout. The person in
   // question (the one selected, focused, or else the participant) stays where
@@ -2285,7 +2320,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Escape in the add menu returns focus to its person; Escape on the person
   // hides the menu.
-  // (+ and − zoom about the middle of the canvas, in `PedigreeViewport`.)
+  // (+ and − zoom, in `PedigreeViewport` and the toolbar's area.)
   const handleCanvasKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Escape' && linkingId) {
       event.preventDefault();
@@ -2489,6 +2524,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         <div
           ref={toolbarAreaRef}
           className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
+          onKeyDown={(event) => zoomForKey(event, panZoom)}
         >
           {detailsLocked && (
             <Alert

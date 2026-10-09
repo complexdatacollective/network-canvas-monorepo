@@ -74,6 +74,50 @@ describe('clampPanToKeep', () => {
   });
 });
 
+describe('clampPanToKeep, across generations', () => {
+  // Zoomed in on a phone held sideways: a parent and, a row further down
+  // than the clear band is tall, their child.
+  const generations = [
+    { left: 160, top: 160, right: 256, bottom: 256 },
+    { left: 160, top: 390, right: 256, bottom: 486 },
+  ];
+  const band = { width: 844, height: 390 };
+  const insets = { top: 100, right: 0, bottom: 100, left: 0 };
+  const scale = 2.5;
+  const start = clampPanToKeep(
+    { x: 0, y: 0, scale },
+    generations,
+    band,
+    insets,
+  );
+  const childInView = (y: number) =>
+    y + 390 * scale < band.height - insets.bottom &&
+    y + 486 * scale > insets.top;
+
+  test('a drag clamped step by step falls back into the gap and never reaches the next row', () => {
+    let { y } = start;
+    for (let step = 0; step < 100; step++) {
+      y = clampPanToKeep(
+        { x: start.x, y: y - 11, scale },
+        generations,
+        band,
+        insets,
+      ).y;
+    }
+    expect(childInView(y)).toBe(false);
+  });
+
+  test('the whole movement of the same drag, clamped once, reaches it', () => {
+    const { y } = clampPanToKeep(
+      { x: start.x, y: start.y - 1100, scale },
+      generations,
+      band,
+      insets,
+    );
+    expect(childInView(y)).toBe(true);
+  });
+});
+
 describe('viewKeepingInArea', () => {
   const area = { left: 0, top: 100, right: 1000, bottom: 700 };
   const box = (top: number) => ({

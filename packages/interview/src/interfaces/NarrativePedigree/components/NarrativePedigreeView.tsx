@@ -59,6 +59,7 @@ import {
   focusNeighbourInDirection,
   PedigreeViewport,
   usePedigreeZoomButtons,
+  zoomForKey,
 } from '../../pedigree-common/PedigreeCanvas';
 import { PedigreeSnapshotDocument } from '../export/PedigreeSnapshotDocument';
 import { exportSnapshot } from '../export/snapshot';
@@ -770,6 +771,7 @@ export default function NarrativePedigreeView({
           <div
             ref={toolbarRef}
             className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
+            onKeyDown={(event) => zoomForKey(event, panZoom)}
           >
             {focalId !== null && (
               <Button
