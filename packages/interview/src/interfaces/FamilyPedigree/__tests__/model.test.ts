@@ -342,13 +342,16 @@ describe('relatives', () => {
     expect(fullSiblingsOf(family, 'ego')).toEqual([]);
   });
 
-  test('donors do not make siblings', () => {
+  test('a shared donor makes siblings, as a genetic parent', () => {
     const family = readFamily(
       [person('a'), person('b'), person('donor')],
       [link('donor', 'a', 'donor'), link('donor', 'b', 'donor')],
       config,
     );
-    expect(siblingsOf(family, 'a')).toEqual([]);
+    expect(siblingsOf(family, 'a')).toEqual(['b']);
+    // With no primary parent to share, they are not full siblings for the
+    // form's defaults.
+    expect(fullSiblingsOf(family, 'a')).toEqual([]);
   });
 });
 

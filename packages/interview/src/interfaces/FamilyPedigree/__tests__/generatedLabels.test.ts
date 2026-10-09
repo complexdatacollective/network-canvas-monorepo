@@ -97,6 +97,66 @@ describe('generateLabels', () => {
     });
   });
 
+  test('a partnership that has ended is named as one', () => {
+    expect(
+      labelsOf(
+        [
+          ...parents,
+          woman('sis1'),
+          woman('sis2'),
+          man('tom', { name: 'Tom' }),
+          man('sam', { name: 'Sam' }),
+        ],
+        [
+          ...parentLinks,
+          ...siblingLinks('sis1'),
+          ...siblingLinks('sis2'),
+          link('sis1', 'tom', 'partner', { current: false }),
+          link('sis2', 'sam', 'partner'),
+        ],
+      ),
+    ).toMatchObject({
+      sis1: 'Sister (former partner of Tom)',
+      sis2: 'Sister (partner of Sam)',
+    });
+    expect(
+      labelsOf(
+        [person('ego', { isEgo: true }), woman('ex1'), woman('ex2')],
+        [
+          link('ego', 'ex1', 'partner', { current: false }),
+          link('ego', 'ex2', 'partner', { current: false }),
+        ],
+      ),
+    ).toEqual({ ex1: 'Former partner 1', ex2: 'Former partner 2' });
+  });
+
+  test('someone described through a relative is described by that relative’s own label', () => {
+    const labels = labelsOf(
+      [
+        woman('ego', { isEgo: true }),
+        woman('ruth', { name: 'Ruth' }),
+        woman('miriam', { name: 'Miriam' }),
+        man('isaac', { name: 'Isaac' }),
+        man('miriamsDad'),
+        man('isaacsDad'),
+        man('isaacsGrandad'),
+      ],
+      [
+        link('ruth', 'ego', 'biological'),
+        link('miriam', 'ruth', 'biological'),
+        link('isaac', 'ruth', 'biological'),
+        link('miriamsDad', 'miriam', 'biological'),
+        link('isaacsDad', 'isaac', 'biological'),
+        link('isaacsGrandad', 'isaacsDad', 'biological'),
+      ],
+    );
+    expect(labels).toMatchObject({
+      miriamsDad: 'Great-grandfather (parent of Miriam)',
+      isaacsDad: 'Great-grandfather (parent of Isaac)',
+      isaacsGrandad: 'Great-grandfather (parent of Isaac)’s father',
+    });
+  });
+
   test('two sisters are told apart by their named children', () => {
     expect(
       labelsOf(

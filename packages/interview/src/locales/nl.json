@@ -59,6 +59,7 @@
   "interview.familyPedigree.framingControlLabel": "Woordkeuze",
   "interview.familyPedigree.genderIdentityLabel": "Genderidentiteit",
   "interview.familyPedigree.generatedLabelChildOf": "{isYou, select, true {{term} (jouw kind)} other {{term} (kind van {name})}}",
+  "interview.familyPedigree.generatedLabelFormerPartnerOf": "{isYou, select, true {{term} (jouw ex-partner)} other {{term} (ex-partner van {name})}}",
   "interview.familyPedigree.generatedLabelParentOf": "{isYou, select, true {{term} (jouw ouder)} other {{term} (ouder van {name})}}",
   "interview.familyPedigree.generatedLabelPartnerOf": "{isYou, select, true {{term} (jouw partner)} other {{term} (partner van {name})}}",
   "interview.familyPedigree.generatedLabelSiblingOf": "{isYou, select, true {{term} (jouw broer of zus)} other {{term} (broer of zus van {name})}}",

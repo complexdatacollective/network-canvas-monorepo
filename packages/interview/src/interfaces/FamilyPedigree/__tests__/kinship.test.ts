@@ -12,6 +12,7 @@ import {
 } from '../kinship';
 import { messages } from '../messages';
 import { readFamily, type PedigreeConfig } from '../model';
+import { relationshipsToParticipant } from '../relationshipToParticipant';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
 
 const intl = resolveInterviewIntl();
@@ -103,10 +104,10 @@ describe('labelFamily', () => {
       sis: 'Sibling',
       nan: 'Grandparent',
       grandad: 'Grandparent',
-      aunt: "Parent's sibling",
-      uncle: "Parent's sibling",
+      aunt: 'Parent’s sibling',
+      uncle: 'Parent’s sibling',
       cousin: 'Cousin',
-      nephew: "Sibling's child",
+      nephew: 'Sibling’s child',
       kid: 'Child',
       grandkid: 'Grandchild',
     });
@@ -392,7 +393,7 @@ describe('labelFamily', () => {
       [...extendedNodes, man('cousinsSon')],
       [...extendedEdges, link('cousin', 'cousinsSon', 'biological')],
     );
-    expect(labels.cousinsSon).toBe("Cousin's son");
+    expect(labels.cousinsSon).toBe('Cousin’s son');
   });
 
   test('unnamed people may share a kinship word, which generateLabels tells apart', () => {
@@ -422,6 +423,450 @@ describe('labelFamily', () => {
   });
 });
 
+/** Each person's canvas label and saved relationship to the participant,
+ * which must name the same tie. */
+function tiesOf(nodes: NcNode[], edges: NcEdge[]) {
+  const family = readFamily(nodes, edges, config);
+  const labels = labelFamily(family, 'gendered');
+  const relationships = relationshipsToParticipant(family);
+  return Object.fromEntries(
+    [...relationships].map(([id, relationship]) => [
+      id,
+      [
+        formatPersonLabel(labels.get(id)!, intl).replace(/\u00AD/g, ''),
+        relationship,
+      ],
+    ]),
+  );
+}
+
+describe('siblings', () => {
+  const ego = person('ego', { isEgo: true });
+
+  test.each([
+    {
+      family: 'an adopted participant and their birth parents',
+      nodes: [ego, woman('shannon'), man('tom'), woman('karen'), man('bro')],
+      edges: [
+        link('shannon', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+        link('karen', 'ego', 'adoptive'),
+        link('shannon', 'bro', 'biological', { carrier: true }),
+        link('tom', 'bro', 'biological'),
+      ],
+      // An adoptive parent does not make a full biological brother a half
+      // brother.
+      expected: { bro: ['Brother', 'sibling'] },
+    },
+    {
+      family: 'an adopted participant with one birth parent recorded',
+      nodes: [ego, woman('shannon'), woman('karen'), man('dylan')],
+      edges: [
+        link('shannon', 'ego', 'biological', { carrier: true }),
+        link('karen', 'ego', 'adoptive'),
+        link('shannon', 'dylan', 'biological', { carrier: true }),
+      ],
+      expected: { dylan: ['Brother', 'sibling'] },
+    },
+    {
+      family: 'a donor and a birth mother',
+      nodes: [
+        ego,
+        woman('ann'),
+        person('lisa', { sex: ['female'] }),
+        man('mark'),
+        woman('zoe'),
+      ],
+      edges: [
+        link('ann', 'ego', 'biological', { carrier: true }),
+        link('lisa', 'ego', 'donor'),
+        link('lisa', 'zoe', 'biological', { carrier: true }),
+        link('mark', 'zoe', 'biological'),
+      ],
+      // A donor is a genetic parent, so their child is a half sibling.
+      expected: { zoe: ['Half-sister', 'halfSibling'] },
+    },
+    {
+      family: 'two partnered donors',
+      nodes: [
+        ego,
+        person('lisa', { sex: ['female'] }),
+        person('mark', { sex: ['male'] }),
+        woman('ella'),
+        woman('zoe'),
+      ],
+      edges: [
+        link('lisa', 'ego', 'donor'),
+        link('mark', 'ego', 'donor'),
+        link('lisa', 'mark', 'partner'),
+        link('lisa', 'ella', 'biological', { carrier: true }),
+        link('mark', 'ella', 'biological'),
+        link('lisa', 'zoe', 'biological', { carrier: true }),
+      ],
+      // Not step-siblings through the donor's partner.
+      expected: {
+        ella: ['Sister', 'sibling'],
+        zoe: ['Half-sister', 'halfSibling'],
+      },
+    },
+    {
+      family: 'children adopted by the same parent',
+      nodes: [ego, woman('karen'), woman('ruby')],
+      edges: [
+        link('karen', 'ego', 'adoptive'),
+        link('karen', 'ruby', 'adoptive'),
+      ],
+      expected: { ruby: ['Sister', 'adoptiveSibling'] },
+    },
+    {
+      family: "an adopted participant and their adoptive parent's birth child",
+      nodes: [ego, woman('karen'), man('jack')],
+      edges: [
+        link('karen', 'ego', 'adoptive'),
+        link('karen', 'jack', 'biological', { carrier: true }),
+      ],
+      expected: { jack: ['Brother', 'adoptiveSibling'] },
+    },
+  ])(
+    '$family: the label and the relationship agree',
+    ({ nodes, edges, expected }) => {
+      expect(tiesOf(nodes, edges)).toMatchObject(expected);
+    },
+  );
+});
+
+describe('side of the family', () => {
+  const ego = person('ego', { isEgo: true });
+
+  test('someone reached through both parents is given no side', () => {
+    // A sperm donor to both parents.
+    expect(
+      labelsOf(
+        [
+          ego,
+          woman('emma'),
+          man('liam'),
+          person('donor', { gender: ['unknown'], sex: ['male'] }),
+        ],
+        [
+          link('emma', 'ego', 'biological', { carrier: true }),
+          link('liam', 'ego', 'biological'),
+          link('emma', 'liam', 'partner'),
+          link('donor', 'emma', 'donor'),
+          link('donor', 'liam', 'donor'),
+        ],
+      ).donor,
+    ).toBe('Grandparent');
+    // Parents who are half-siblings share their mother.
+    expect(
+      labelsOf(
+        [ego, woman('mum'), man('dad'), woman('nan')],
+        [
+          link('mum', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+          link('nan', 'mum', 'biological'),
+          link('nan', 'dad', 'biological'),
+        ],
+      ).nan,
+    ).toBe('Grandmother');
+  });
+
+  test('a biological parent with unknown gender words gives the side of the gamete they gave', () => {
+    const nodes = [
+      man('ego', { isEgo: true }),
+      person('dad', { gender: ['unknown'], sex: ['male'] }),
+      person('gp1'),
+      person('gp2'),
+      person('aunt', { gender: ['woman'] }),
+    ];
+    const edges = [
+      link('dad', 'ego', 'biological'),
+      link('gp1', 'dad', 'biological'),
+      link('gp2', 'dad', 'biological'),
+      link('gp1', 'aunt', 'biological'),
+      link('gp2', 'aunt', 'biological'),
+    ];
+    expect(labelsOf(nodes, edges)).toMatchObject({
+      dad: 'Biological father',
+      gp1: 'Paternal grandparent',
+      gp2: 'Paternal grandparent',
+      aunt: 'Paternal aunt',
+    });
+  });
+});
+
+describe('step and in-law relatives', () => {
+  // Each parent or child step in a step or in-law tie is one that raises the
+  // child (biological, adoptive or social), and each partnership on the way
+  // is current. Otherwise the person has no step or in-law word.
+  const ego = man('ego', { isEgo: true });
+  const raising = ['biological', 'adoptive', 'social'] as const;
+  const notRaising = ['donor', 'surrogate'] as const;
+
+  describe("a parent's partner", () => {
+    test.each(raising)(
+      'through a %s parent, currently partnered, is a step-parent',
+      (kind) => {
+        expect(
+          tiesOf(
+            [ego, man('dad'), woman('her')],
+            [link('dad', 'ego', kind), link('dad', 'her', 'partner')],
+          ).her,
+        ).toEqual(['Stepmother', 'stepParent']);
+      },
+    );
+    test.each(notRaising)('through a %s is not', (kind) => {
+      expect(
+        tiesOf(
+          [ego, man('dad'), woman('her')],
+          [link('dad', 'ego', kind), link('dad', 'her', 'partner')],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+    test('who is a former partner is not', () => {
+      expect(
+        tiesOf(
+          [ego, man('dad'), woman('her')],
+          [
+            link('dad', 'ego', 'biological'),
+            link('dad', 'her', 'partner', { current: false }),
+          ],
+        ).her,
+      ).toEqual(['Father’s former partner', 'otherRelative']);
+    });
+  });
+
+  describe("a partner's child", () => {
+    test.each(raising)(
+      'a %s child of a current partner is a step-child',
+      (kind) => {
+        expect(
+          tiesOf(
+            [ego, woman('wife'), man('kid')],
+            [link('ego', 'wife', 'partner'), link('wife', 'kid', kind)],
+          ).kid,
+        ).toEqual(['Stepson', 'stepChild']);
+      },
+    );
+    test.each(notRaising)('a %s child is not', (kind) => {
+      expect(
+        tiesOf(
+          [ego, woman('wife'), man('kid')],
+          [link('ego', 'wife', 'partner'), link('wife', 'kid', kind)],
+        ).kid?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a former partner's child is not", () => {
+      expect(
+        tiesOf(
+          [ego, woman('ex'), man('kid')],
+          [
+            link('ego', 'ex', 'partner', { current: false }),
+            link('ex', 'kid', 'biological'),
+          ],
+        ).kid,
+      ).toEqual(['Former partner’s son', 'otherRelative']);
+    });
+  });
+
+  describe("a partner's parent", () => {
+    test.each(raising)(
+      'a %s parent of a current partner is a parent-in-law',
+      (kind) => {
+        expect(
+          tiesOf(
+            [ego, woman('wife'), woman('her')],
+            [link('ego', 'wife', 'partner'), link('her', 'wife', kind)],
+          ).her,
+        ).toEqual(['Mother-in-law', 'parentInLaw']);
+      },
+    );
+    test.each(notRaising)('a %s is not', (kind) => {
+      expect(
+        tiesOf(
+          [ego, woman('wife'), woman('her')],
+          [link('ego', 'wife', 'partner'), link('her', 'wife', kind)],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a former partner's parent is not", () => {
+      expect(
+        tiesOf(
+          [ego, woman('ex'), woman('her')],
+          [
+            link('ego', 'ex', 'partner', { current: false }),
+            link('her', 'ex', 'biological'),
+          ],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+  });
+
+  describe("a child's partner", () => {
+    test.each(raising)(
+      "a %s child's current partner is a child-in-law",
+      (kind) => {
+        expect(
+          tiesOf(
+            [ego, man('kid'), woman('her')],
+            [link('ego', 'kid', kind), link('kid', 'her', 'partner')],
+          ).her,
+        ).toEqual(['Daughter-in-law', 'childInLaw']);
+      },
+    );
+    test.each(notRaising)("a %s child's partner is not", (kind) => {
+      expect(
+        tiesOf(
+          [ego, man('kid'), woman('her')],
+          [link('ego', 'kid', kind), link('kid', 'her', 'partner')],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a child's former partner is not", () => {
+      expect(
+        tiesOf(
+          [ego, man('kid'), woman('her')],
+          [
+            link('ego', 'kid', 'biological'),
+            link('kid', 'her', 'partner', { current: false }),
+          ],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a partner's child's partner is a child-in-law whether or not the step link is drawn", () => {
+      const nodes = [ego, man('frank'), man('greg'), woman('leah')];
+      const edges = [
+        link('ego', 'frank', 'partner'),
+        link('frank', 'greg', 'biological'),
+        link('greg', 'leah', 'partner'),
+      ];
+      expect(tiesOf(nodes, edges).leah?.[1]).toBe('childInLaw');
+      expect(
+        tiesOf(nodes, [...edges, link('ego', 'greg', 'social')]).leah?.[1],
+      ).toBe('childInLaw');
+    });
+  });
+
+  describe("a parent's partner's child", () => {
+    test("a current partner's child is a step-sibling", () => {
+      expect(
+        tiesOf(
+          [ego, man('dad'), woman('her'), woman('kid')],
+          [
+            link('dad', 'ego', 'biological'),
+            link('dad', 'her', 'partner'),
+            link('her', 'kid', 'biological'),
+          ],
+        ).kid,
+      ).toEqual(['Stepsister', 'stepSibling']);
+    });
+    test("a former partner's child is not", () => {
+      expect(
+        tiesOf(
+          [ego, man('dad'), woman('her'), woman('kid')],
+          [
+            link('dad', 'ego', 'biological'),
+            link('dad', 'her', 'partner', { current: false }),
+            link('her', 'kid', 'biological'),
+          ],
+        ).kid?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a donor's partner's child is not", () => {
+      expect(
+        tiesOf(
+          [ego, person('lisa', { sex: ['female'] }), man('mark'), man('finn')],
+          [
+            link('lisa', 'ego', 'donor'),
+            link('lisa', 'mark', 'partner'),
+            link('mark', 'finn', 'biological'),
+          ],
+        ).finn?.[1],
+      ).toBe('otherRelative');
+    });
+  });
+
+  test("a sibling's former partner is not a sibling-in-law", () => {
+    const nodes = [ego, woman('mum'), man('bro'), woman('her')];
+    const edges = [
+      link('mum', 'ego', 'biological'),
+      link('mum', 'bro', 'biological'),
+    ];
+    expect(
+      tiesOf(nodes, [...edges, link('bro', 'her', 'partner')]).her,
+    ).toEqual(['Sister-in-law', 'siblingInLaw']);
+    expect(
+      tiesOf(nodes, [
+        ...edges,
+        link('bro', 'her', 'partner', { current: false }),
+      ]).her?.[1],
+    ).toBe('otherRelative');
+  });
+
+  test("a step-parent's former partner, and a donor's partner, are not step-parents", () => {
+    // The family from the report: a mother, a sperm donor and a step-father.
+    expect(
+      tiesOf(
+        [
+          ego,
+          woman('ann'),
+          person('dan', { sex: ['male'] }),
+          man('paul'),
+          woman('dansPartner'),
+          woman('paulsEx'),
+          man('annsEx'),
+        ],
+        [
+          link('ann', 'ego', 'biological', { carrier: true }),
+          link('dan', 'ego', 'donor'),
+          link('paul', 'ego', 'social'),
+          link('ann', 'paul', 'partner'),
+          link('dan', 'dansPartner', 'partner'),
+          link('paul', 'paulsEx', 'partner', { current: false }),
+          link('ann', 'annsEx', 'partner', { current: false }),
+        ],
+      ),
+    ).toMatchObject({
+      paul: ['Stepfather', 'stepParent'],
+      dansPartner: ['Sperm donor’s partner', 'otherRelative'],
+      paulsEx: ['Stepfather’s former partner', 'otherRelative'],
+      annsEx: ['Mother’s former partner', 'otherRelative'],
+    });
+  });
+});
+
+describe('apostrophes', () => {
+  test('English copy uses the typographic apostrophe, never a straight one outside ICU quoting', () => {
+    // In ICU messages a straight apostrophe quotes a following brace, hash,
+    // pipe or apostrophe; anywhere else it is text, which should be U+2019.
+    const straight = /(?<!')'(?![{}#|'])/;
+    const offending = Object.entries(messages)
+      .filter(([, message]) => straight.test(message.defaultMessage ?? ''))
+      .map(([key]) => key);
+    expect(offending).toEqual([]);
+  });
+
+  test('a label described through a relative reads with a typographic apostrophe', () => {
+    expect(
+      labelsOf(
+        [
+          person('ego', { isEgo: true }),
+          woman('mum'),
+          man('bro'),
+          woman('priya', { name: 'Priya' }),
+          woman('priyasMum'),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('mum', 'bro', 'biological'),
+          link('bro', 'priya', 'partner'),
+          link('priyasMum', 'priya', 'biological'),
+        ],
+      ).priyasMum,
+    ).toBe('Priya\u2019s mother');
+  });
+});
+
 describe('soft hyphens', () => {
   const term = (kinTerm: KinTerm) =>
     formatPersonLabel({ type: 'term', term: kinTerm }, intl);
@@ -447,7 +892,7 @@ describe('soft hyphens', () => {
       stepbrother: 'Step\u00ADbrother',
       maternalGrandparent: 'Maternal grand\u00ADparent',
       greatGrandmother: 'Great-grand\u00ADmother',
-      grandparentsSibling: "Grand\u00ADparent's sibling",
+      grandparentsSibling: 'Grand\u00ADparent’s sibling',
       surrogate: 'Surro\u00ADgate',
       biologicalMother: 'Bio\u00ADlogical mother',
     });
@@ -455,12 +900,13 @@ describe('soft hyphens', () => {
       formatPersonLabel(
         {
           type: 'relativeOf',
+          ownerId: 'cousin',
           owner: { type: 'term', term: 'cousin' },
           term: 'stepmother',
         },
         intl,
       ),
-    ).toBe("Cousin's step\u00ADmother");
+    ).toBe('Cousin’s step\u00ADmother');
   });
 
   test('short words, and words that fit a symbol whole, have none', () => {

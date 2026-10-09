@@ -59,6 +59,7 @@
   "interview.familyPedigree.framingControlLabel": "称谓",
   "interview.familyPedigree.genderIdentityLabel": "性别认同",
   "interview.familyPedigree.generatedLabelChildOf": "{isYou, select, true {{term}（您的子女）} other {{term}（{name}的子女）}}",
+  "interview.familyPedigree.generatedLabelFormerPartnerOf": "{isYou, select, true {{term}（您的前伴侣）} other {{term}（{name}的前伴侣）}}",
   "interview.familyPedigree.generatedLabelParentOf": "{isYou, select, true {{term}（您的家长）} other {{term}（{name}的家长）}}",
   "interview.familyPedigree.generatedLabelPartnerOf": "{isYou, select, true {{term}（您的伴侣）} other {{term}（{name}的伴侣）}}",
   "interview.familyPedigree.generatedLabelSiblingOf": "{isYou, select, true {{term}（您的兄弟姐妹）} other {{term}（{name}的兄弟姐妹）}}",

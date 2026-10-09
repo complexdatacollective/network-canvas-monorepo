@@ -335,15 +335,31 @@ export function partnersOf(family: Family, personId: string): string[] {
     .map((link) => (link.source === personId ? link.target : link.source));
 }
 
-/** Everyone who shares at least one primary parent with the person. */
+/** The person's genetic parents: their biological parents and gamete
+ * donors, who each gave them an egg or a sperm. */
+export function geneticParentsOf(family: Family, personId: string): string[] {
+  return parentLinksOf(family, personId)
+    .filter((link) => isGeneticKind(link.kind))
+    .map((link) => link.source);
+}
+
+/** A person's primary parents and genetic parents together. */
+const primaryOrGeneticParentsOf = (family: Family, personId: string) =>
+  new Set([
+    ...primaryParentsOf(family, personId),
+    ...geneticParentsOf(family, personId),
+  ]);
+
+/** Everyone who shares at least one primary or genetic parent with the
+ * person: a donor's other children are their siblings too. */
 export function siblingsOf(family: Family, personId: string): string[] {
-  const parents = new Set(primaryParentsOf(family, personId));
+  const parents = primaryOrGeneticParentsOf(family, personId);
   if (parents.size === 0) return [];
   return family.people
     .filter(
       (person) =>
         person.id !== personId &&
-        primaryParentsOf(family, person.id).some((parent) =>
+        [...primaryOrGeneticParentsOf(family, person.id)].some((parent) =>
           parents.has(parent),
         ),
     )
@@ -360,6 +376,8 @@ export function siblingsOf(family: Family, personId: string): string[] {
  */
 export function fullSiblingsOf(family: Family, personId: string): string[] {
   const parents = new Set(primaryParentsOf(family, personId));
+  // Someone with no primary parent shares none, whoever their donors are.
+  if (parents.size === 0) return [];
   return siblingsOf(family, personId).filter((siblingId) => {
     const siblingParents = new Set(primaryParentsOf(family, siblingId));
     return (
