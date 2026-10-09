@@ -153,16 +153,17 @@ export default function PersonNode({
         tabIndex={tabIndex}
         onKeyDown={onKeyDown}
       />
-      {/* Beside the symbol's lower left corner, below any partnership line
-          and outside any brackets, so clear of the label inside it and the
-          badge on the opposite corner. */}
+      {/* Beside the symbol's upper left corner: above any partnership line,
+          below the sibling line, outside any brackets, and away from the
+          lines a donor's own lines take down to the child. Clear of the
+          label inside the symbol and of the badge on the other corner. */}
       {hasRoles && (
         <>
           <span
             aria-hidden
             data-reproductive-roles
             className={cx(
-              'pointer-events-none absolute right-full bottom-0 text-sm leading-none font-bold whitespace-nowrap',
+              'pointer-events-none absolute top-0 right-full text-sm leading-none font-bold whitespace-nowrap',
               adopted ? 'mr-6' : 'mr-2',
             )}
           >
