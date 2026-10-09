@@ -44,6 +44,9 @@ export const KIN_TERMS = [
   'halfSister',
   'halfBrother',
   'halfSibling',
+  'adoptiveSister',
+  'adoptiveBrother',
+  'adoptiveSibling',
   'stepsister',
   'stepbrother',
   'stepsibling',
@@ -61,6 +64,9 @@ export const KIN_TERMS = [
   'greatGrandmother',
   'greatGrandfather',
   'greatGrandparent',
+  'stepGrandmother',
+  'stepGrandfather',
+  'stepGrandparent',
   'granddaughter',
   'grandson',
   'grandchild',
@@ -95,45 +101,6 @@ export const KIN_TERMS = [
 export type KinTerm = (typeof KIN_TERMS)[number];
 
 /**
- * The words for one step from a person to their relative, used only to
- * describe someone the kinship words above do not reach ("Cousin’s son").
- */
-type StepTerm =
-  | 'mother'
-  | 'father'
-  | 'parent'
-  | 'eggParent'
-  | 'spermParent'
-  | 'biologicalMother'
-  | 'biologicalFather'
-  | 'adoptiveMother'
-  | 'adoptiveFather'
-  | 'adoptiveParent'
-  | 'stepmother'
-  | 'stepfather'
-  | 'stepparent'
-  | 'eggDonor'
-  | 'spermDonor'
-  | 'donor'
-  | 'surrogate'
-  | 'daughter'
-  | 'son'
-  | 'child'
-  | 'stepdaughter'
-  | 'stepson'
-  | 'stepchild'
-  | 'donorConceivedChild'
-  | 'surrogacyChild'
-  | 'sister'
-  | 'brother'
-  | 'sibling'
-  | 'halfSister'
-  | 'halfBrother'
-  | 'halfSibling'
-  | 'partner'
-  | 'formerPartner';
-
-/**
  * How a person is shown: their name, or — when it is not known — their
  * relationship to the participant ("Maternal grandmother", "Sperm parent").
  */
@@ -141,16 +108,21 @@ export type PersonLabel =
   | { type: 'name'; name: string }
   | { type: 'you' }
   | { type: 'term'; term: KinTerm }
-  /** Beyond the kinship words: described through the person before them. */
-  | {
-      type: 'relativeOf';
-      /** The person before them, and that person's own label. */
-      ownerId: string;
-      owner: PersonLabel;
-      term: StepTerm;
-    }
+  /** Beyond the kinship words: described through one relative on the way
+   * from the participant ("Isaac’s grandfather", "Cousin’s son"). */
+  | { type: 'relativeOf'; anchors: RelativeAnchor[] }
   /** Not connected to the participant at all. */
   | { type: 'unconnected' };
+
+/**
+ * A relative someone may be described through, with their own label, and
+ * the kinship word for the person from that relative.
+ */
+export type RelativeAnchor = {
+  ownerId: string;
+  owner: PersonLabel;
+  term: KinTerm;
+};
 
 type ParentKind = Exclude<PedigreeRelationshipKind, 'partner'>;
 
@@ -192,6 +164,39 @@ const adoptiveParentsOf = (family: Family, personId: string) =>
   family.links
     .filter((link) => link.target === personId && link.kind === 'adoptive')
     .map((link) => link.source);
+
+/**
+ * Whether the step or social parent link from `parentId` to `childId` is a
+ * step-parent's: the step or social parent has a partnership, current or
+ * former, with one of the child's biological or adoptive parents, and did
+ * not carry the child. Anyone else who raises a child as a step or social
+ * parent is called by the plain parent word ("Mother"), and the child by the
+ * plain child word.
+ */
+function isStepLink(family: Family, parentId: string, childId: string) {
+  const link = family.links.find(
+    (candidate) =>
+      candidate.kind === 'social' &&
+      candidate.source === parentId &&
+      candidate.target === childId,
+  );
+  if (!link || link.isGestationalCarrier) return false;
+  const childsParents = new Set(
+    family.links
+      .filter(
+        (candidate) =>
+          candidate.target === childId &&
+          (candidate.kind === 'biological' || candidate.kind === 'adoptive'),
+      )
+      .map((candidate) => candidate.source),
+  );
+  return family.links.some(
+    (candidate) =>
+      candidate.kind === 'partner' &&
+      ((candidate.source === parentId && childsParents.has(candidate.target)) ||
+        (candidate.target === parentId && childsParents.has(candidate.source))),
+  );
+}
 
 const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
   a.size === b.size && [...a].every((item) => b.has(item));
@@ -276,7 +281,7 @@ function stepTerm(
   step: Step,
   framing: FramingId,
   gameteOf: GameteOf,
-): StepTerm & KinTerm {
+): KinTerm {
   const person = family.byId.get(step.to);
   const gender = genderOf(person, framing);
   switch (step.type) {
@@ -313,11 +318,13 @@ function stepTerm(
             other: 'adoptiveParent',
           });
         case 'social':
-          return pick(gender, {
-            woman: 'stepmother',
-            man: 'stepfather',
-            other: 'stepparent',
-          });
+          return isStepLink(family, step.to, fromId)
+            ? pick(gender, {
+                woman: 'stepmother',
+                man: 'stepfather',
+                other: 'stepparent',
+              })
+            : pick(gender, { woman: 'mother', man: 'father', other: 'parent' });
         case 'donor': {
           const gamete = gameteOf(step.to, fromId);
           if (gamete === 'egg') return 'eggDonor';
@@ -331,10 +338,17 @@ function stepTerm(
     case 'child':
       switch (step.kind) {
         case 'social':
+          if (isStepLink(family, fromId, step.to)) {
+            return pick(gender, {
+              woman: 'stepdaughter',
+              man: 'stepson',
+              other: 'stepchild',
+            });
+          }
           return pick(gender, {
-            woman: 'stepdaughter',
-            man: 'stepson',
-            other: 'stepchild',
+            woman: 'daughter',
+            man: 'son',
+            other: 'child',
           });
         case 'donor':
           return 'donorConceivedChild';
@@ -348,6 +362,15 @@ function stepTerm(
           });
       }
     case 'sibling':
+      // Related only through adoption, whether or not all their parents are
+      // the same.
+      if (step.adoptive) {
+        return pick(gender, {
+          woman: 'adoptiveSister',
+          man: 'adoptiveBrother',
+          other: 'adoptiveSibling',
+        });
+      }
       return step.half
         ? pick(gender, {
             woman: 'halfSister',
@@ -420,7 +443,8 @@ function sideOfFirstStep(
 
 /**
  * The kinship word for a relative more than one step away, or undefined when
- * there is no everyday word for them. `path` runs from the participant, and
+ * there is no everyday word for them. `path` runs from `fromId`, the
+ * participant unless the word is for someone's relative of theirs, and
  * `side` is the side of the family it is on, when it is one (`labelFamily`).
  */
 export function kinTermFor(
@@ -428,6 +452,7 @@ export function kinTermFor(
   path: readonly Step[],
   framing: FramingId,
   side?: Side,
+  fromId: string | undefined = family.egoId,
 ): KinTerm | undefined {
   const target = family.byId.get(path[path.length - 1]!.to);
   const gender = genderOf(target, framing);
@@ -506,7 +531,7 @@ export function kinTermFor(
   // A sibling's sibling who shares no parent with the participant, but whose
   // parent is partnered with one of theirs, is a step-sibling.
   if (shape === 'sibling,sibling') {
-    const egoId = family.egoId;
+    const egoId = fromId;
     const targetId = path[1]!.to;
     const parentsOf = (id: string | undefined) =>
       family.links
@@ -531,6 +556,27 @@ export function kinTermFor(
     }
   }
   switch (shape) {
+    // A grandparent's partner, a step-parent's parent, or a parent's
+    // step-parent, as long as each step or social parent on the way is a
+    // step-parent (`isStepLink`): a social parent's parent is not.
+    case 'parent,parent':
+    case 'parent,parent,partner':
+    case 'parent,partner,parent': {
+      const fromOf = (index: number) =>
+        index === 0 ? fromId : path[index - 1]!.to;
+      const stepLinksOnly = path.every(
+        (step, index) =>
+          step.type !== 'parent' ||
+          step.kind !== 'social' ||
+          isStepLink(family, step.to, fromOf(index) ?? ''),
+      );
+      if (!stepLinksOnly) return undefined;
+      return pick(gender, {
+        woman: 'stepGrandmother',
+        man: 'stepGrandfather',
+        other: 'stepGrandparent',
+      });
+    }
     case 'parent,partner,child':
       return pick(gender, {
         woman: 'stepsister',
@@ -579,7 +625,9 @@ export function kinTermFor(
  * the participant as "you"; everyone else by their kinship to the
  * participant, in the words of the stage's framing, found along the shortest
  * path between them. Someone with no everyday kinship word is described
- * through the person before them on that path ("Cousin’s son"). Several
+ * through one person on that path, by the kinship word for them from that
+ * person ("Cousin’s son", "Isaac’s grandfather"): `formatPersonLabel` uses
+ * the nearest whose own label is a name or a plain kinship word. Several
  * unnamed people may share a label here: `generateLabels` tells them apart.
  */
 export function labelFamily(
@@ -628,13 +676,10 @@ export function labelFamily(
     for (const id of next) {
       if (labels.has(id)) continue;
       const path = paths.get(id)!;
-      const step = path[path.length - 1]!;
-      const fromId =
-        path.length === 1 ? family.egoId : path[path.length - 2]!.to;
       if (path.length === 1) {
         layer.set(id, {
           type: 'term',
-          term: stepTerm(family, fromId, step, framing, gameteOf),
+          term: stepTerm(family, family.egoId, path[0]!, framing, gameteOf),
         });
         continue;
       }
@@ -645,17 +690,29 @@ export function labelFamily(
         framing,
         others.length === 0 ? side : undefined,
       );
-      layer.set(
-        id,
-        term
-          ? { type: 'term', term }
-          : {
-              type: 'relativeOf',
-              ownerId: fromId,
-              owner: labels.get(fromId)!,
-              term: stepTerm(family, fromId, step, framing, gameteOf),
-            },
-      );
+      if (term) {
+        layer.set(id, { type: 'term', term });
+        continue;
+      }
+      // Each person on the way who has a word for them, nearest first: the
+      // person before them always does.
+      const anchors: RelativeAnchor[] = [];
+      for (let index = path.length - 2; index >= 0; index--) {
+        const ownerId = path[index]!.to;
+        const rest = path.slice(index + 1);
+        const anchorTerm =
+          rest.length === 1
+            ? stepTerm(family, ownerId, rest[0]!, framing, gameteOf)
+            : kinTermFor(family, rest, framing, undefined, ownerId);
+        if (anchorTerm) {
+          anchors.push({
+            ownerId,
+            owner: labels.get(ownerId)!,
+            term: anchorTerm,
+          });
+        }
+      }
+      layer.set(id, { type: 'relativeOf', anchors });
     }
     for (const [id, label] of layer) labels.set(id, label);
     frontier = next;
@@ -675,8 +732,15 @@ function fillUnconnected(family: Family, labels: Map<string, PersonLabel>) {
 
 /**
  * The label as participant-facing text. `ownerText` gives, by person id, the
- * text to describe someone through when it is not their own label, such as
- * the qualified label `generateLabels` gives them.
+ * text a relative is known by when it is not their own label, such as the
+ * qualified label `generateLabels` gives them.
+ *
+ * Someone described through a relative is described through a single one,
+ * never through a description of another: the nearest whose text is a name
+ * or a plain kinship word, unqualified ("Isaac’s grandfather", not
+ * "Great-grandfather (parent of Isaac)’s father"). Only when no one on the
+ * way is known that simply are they described through the person before
+ * them, as that person is known.
  */
 export function formatPersonLabel(
   label: PersonLabel,
@@ -690,13 +754,22 @@ export function formatPersonLabel(
       return intl.formatMessage(messages.you);
     case 'term':
       return intl.formatMessage(messages.relativeTerm, { term: label.term });
-    case 'relativeOf':
+    case 'relativeOf': {
+      const isPlain = ({ ownerId, owner }: RelativeAnchor) => {
+        if (owner.type === 'name') return true;
+        if (owner.type !== 'term') return false;
+        const own = formatPersonLabel(owner, intl);
+        return (ownerText?.(ownerId) ?? own) === own;
+      };
+      const anchor = label.anchors.find(isPlain) ?? label.anchors[0];
+      if (!anchor) return intl.formatMessage(messages.familyMember);
       return intl.formatMessage(messages.relativeOf, {
         owner:
-          ownerText?.(label.ownerId) ??
-          formatPersonLabel(label.owner, intl, ownerText),
-        term: label.term,
+          ownerText?.(anchor.ownerId) ??
+          formatPersonLabel(anchor.owner, intl, ownerText),
+        term: anchor.term,
       });
+    }
     case 'unconnected':
       return intl.formatMessage(messages.familyMember);
   }

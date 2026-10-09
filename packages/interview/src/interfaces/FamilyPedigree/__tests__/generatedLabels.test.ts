@@ -158,8 +158,61 @@ describe('generateLabels', () => {
     expect(labels).toMatchObject({
       miriamsDad: 'Great-grandfather (parent of Miriam)',
       isaacsDad: 'Great-grandfather (parent of Isaac)',
-      isaacsGrandad: 'Great-grandfather (parent of Isaac)’s father',
+      // Not through his son's qualified label, but through the nearest
+      // relative known by a label of their own.
+      isaacsGrandad: 'Isaac’s grandfather',
     });
+  });
+
+  test('someone beyond the kinship words is described through one relative, never through a description', () => {
+    const labels = labelsOf(
+      [
+        person('ego', { isEgo: true }),
+        woman('mum'),
+        woman('nan'),
+        woman('aunt'),
+        person('cousin'),
+        man('cousinsSon'),
+        woman('cousinsGranddaughter'),
+        woman('cousinsSonsPartner'),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('nan', 'mum', 'biological'),
+        link('nan', 'aunt', 'biological'),
+        link('aunt', 'cousin', 'biological'),
+        link('cousin', 'cousinsSon', 'biological'),
+        link('cousinsSon', 'cousinsGranddaughter', 'biological'),
+        link('cousinsSon', 'cousinsSonsPartner', 'partner'),
+      ],
+    );
+    expect(labels).toMatchObject({
+      cousinsSon: 'Cousin’s son',
+      cousinsGranddaughter: 'Cousin’s granddaughter',
+      cousinsSonsPartner: 'Cousin’s daughter-in-law',
+    });
+    for (const label of Object.values(labels)) {
+      expect(label.split('’s ').length).toBeLessThanOrEqual(2);
+    }
+  });
+
+  test('a plain kinship word is the nearest relative to describe someone through', () => {
+    const labels = labelsOf(
+      [
+        woman('ego', { isEgo: true }),
+        woman('mum'),
+        woman('nan'),
+        woman('greatNan'),
+        woman('greatGreatNan'),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('nan', 'mum', 'biological'),
+        link('greatNan', 'nan', 'biological'),
+        link('greatGreatNan', 'greatNan', 'biological'),
+      ],
+    );
+    expect(labels.greatGreatNan).toBe('Great-grandmother’s mother');
   });
 
   test('two sisters are told apart by their named children', () => {
@@ -689,7 +742,7 @@ describe('distinctNames', () => {
     ).toEqual({ ego: 'You', mum: 'Rosa' });
   });
 
-  test('tells relatives given the same name apart by a relative each', () => {
+  test('never alters or adds to a typed name, even one shared', () => {
     const names = namesOf(
       [
         person('ego', { isEgo: true }),
@@ -697,30 +750,56 @@ describe('distinctNames', () => {
         woman('mum', { name: 'Maria' }),
         man('uncle', { name: 'José García' }),
         woman('aunt', { name: 'Lucia' }),
+        man('grandad', { name: 'José García' }),
+        man('spaced', { name: '  Tom ' }),
       ],
       [
         link('mum', 'dad', 'partner'),
         link('dad', 'ego', 'biological'),
         link('mum', 'ego', 'biological'),
         link('uncle', 'aunt', 'partner'),
+        link('grandad', 'dad', 'biological'),
+        link('spaced', 'ego', 'social'),
       ],
     );
-    expect(names.dad).toBe('José García (partner of Maria)');
-    expect(names.uncle).toBe('José García (partner of Lucia)');
-    expect(names.mum).toBe('Maria');
+    expect(names).toMatchObject({
+      dad: 'José García',
+      uncle: 'José García',
+      grandad: 'José García',
+      mum: 'Maria',
+      spaced: '  Tom ',
+    });
   });
 
-  test('numbers them when no kind of relative tells them all apart', () => {
-    const names = namesOf(
+  test('tells apart unnamed people whose labels match', () => {
+    const family = readFamily(
       [
         person('ego', { isEgo: true }),
-        man('dad', { name: 'José García' }),
-        man('grandad', { name: 'José García' }),
+        person('a'),
+        person('b'),
+        man('kim', { name: 'Kim' }),
       ],
-      [link('dad', 'ego', 'biological'), link('grandad', 'dad', 'biological')],
+      [
+        link('ego', 'a', 'biological'),
+        link('ego', 'b', 'biological'),
+        link('a', 'kim', 'biological'),
+      ],
+      config,
     );
-    expect(names.dad).toBe('José García 1');
-    expect(names.grandad).toBe('José García 2');
-    expect(new Set(Object.values(names)).size).toBe(3);
+    // As when a relative being added is labelled by the relation chosen,
+    // before their kind of tie is.
+    const names = distinctNames(
+      family,
+      new Map([
+        ['ego', 'You'],
+        ['a', 'Child'],
+        ['b', 'Child'],
+        ['kim', 'Kim'],
+      ]),
+      intl,
+    );
+    expect(names.get('a')).not.toBe(names.get('b'));
+    expect(names.get('a')).toMatch(/^Child/);
+    expect(names.get('kim')).toBe('Kim');
   });
 });

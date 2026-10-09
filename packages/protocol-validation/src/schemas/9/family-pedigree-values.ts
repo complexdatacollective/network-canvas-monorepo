@@ -183,8 +183,10 @@ export const PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS: {
  *   no genetic parent), `stepSibling`.
  * - Partners: `partner`, `formerPartner`.
  * - Further along the family: `grandparent`, `greatGrandparent`,
- *   `grandchild`, `greatGrandchild`, `parentsSibling`, `grandparentsSibling`,
- *   `siblingsChild`, `cousin`.
+ *   `stepGrandparent` (a grandparent's current partner, or a step-parent's
+ *   parent), `grandchild`, `greatGrandchild`, `adoptiveGrandchild` (a
+ *   grandchild related only through an adoption), `parentsSibling`,
+ *   `grandparentsSibling`, `siblingsChild`, `cousin`.
  * - In-laws: `parentInLaw`, `siblingInLaw`, `childInLaw`.
  * - `otherRelative`: connected to the participant, but by none of these.
  *
@@ -210,8 +212,10 @@ export const PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT = [
   'formerPartner',
   'grandparent',
   'greatGrandparent',
+  'stepGrandparent',
   'grandchild',
   'greatGrandchild',
+  'adoptiveGrandchild',
   'parentsSibling',
   'grandparentsSibling',
   'siblingsChild',

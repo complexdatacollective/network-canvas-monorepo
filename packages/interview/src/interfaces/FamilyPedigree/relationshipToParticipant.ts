@@ -16,10 +16,11 @@ import type { Family, PedigreeConfig } from './model';
  * Which relationship a person is given when they are related to the
  * participant in more than one way, first first: the closest biological tie,
  * then the closest legal one, then partners, then relatives further out
- * (biological before step and in-law ties), and `otherRelative` last. So a
- * biological parent who is also a parent's partner is a `parent`, a donor
- * who is also a parent's sibling is a `donor`, and a cousin who is also a
- * sibling's partner is a `cousin`.
+ * (biological before adoptive, then step and in-law ties), and
+ * `otherRelative` last. So a biological parent who is also a parent's partner
+ * is a `parent`, a donor who is also a parent's sibling is a `donor`, a
+ * cousin who is also a sibling's partner is a `cousin`, and a grandparent who
+ * is also a grandparent's partner is a `grandparent`.
  */
 const RELATIONSHIP_PRECEDENCE: readonly PedigreeRelationshipToParticipant[] = [
   'parent',
@@ -41,11 +42,13 @@ const RELATIONSHIP_PRECEDENCE: readonly PedigreeRelationshipToParticipant[] = [
   'greatGrandchild',
   'grandparentsSibling',
   'cousin',
+  'adoptiveGrandchild',
   'surrogate',
   'surrogacyChild',
   'stepParent',
   'stepChild',
   'stepSibling',
+  'stepGrandparent',
   'parentInLaw',
   'childInLaw',
   'siblingInLaw',
@@ -67,19 +70,29 @@ const RELATIONSHIP_OF_TERM: Partial<
   stepparent: 'stepParent',
   stepchild: 'stepChild',
   stepsibling: 'stepSibling',
+  stepGrandparent: 'stepGrandparent',
   parentInLaw: 'parentInLaw',
   siblingInLaw: 'siblingInLaw',
   childInLaw: 'childInLaw',
 };
 
 /** The relationship a path of more than one step names, if any, read from
- * its neutral kinship word. */
+ * its neutral kinship word. A grandchild reached through an adoption on the
+ * way is an `adoptiveGrandchild`; one also reached along a path of genetic
+ * ties alone is a `grandchild`, as the precedence decides. */
 function relationshipOfPath(
   family: Family,
   path: readonly Step[],
 ): PedigreeRelationshipToParticipant | undefined {
   const term = kinTermFor(family, path, 'gamete');
-  return term === undefined ? undefined : RELATIONSHIP_OF_TERM[term];
+  if (term === undefined) return undefined;
+  if (
+    term === 'grandchild' &&
+    path.some((step) => step.type === 'child' && step.kind === 'adoptive')
+  ) {
+    return 'adoptiveGrandchild';
+  }
+  return RELATIONSHIP_OF_TERM[term];
 }
 
 /** The longest path any relationship but `otherRelative` needs. */

@@ -297,6 +297,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const namesLocked = encryptNames && !unlocked;
   // Nobody can be added or changed.
   const detailsLocked = encryptDetails && !unlocked;
+  // When the stage leaves the wording to the participant, the question is
+  // asked, and held open, until they answer it (below). While it is held
+  // open the family cannot be used: no one's panel opens and no one can be
+  // added or connected, so nothing competes with the question. Opened again
+  // once answered, it closes as any popover does.
+  const framingUnanswered =
+    stage.framing === 'participantPreference' &&
+    pedigreeMetadata?.framing === undefined;
+  const [framingOpen, setFramingOpen] = useState(false);
+  const wordingForced = framingUnanswered && framingOpen;
   useEffect(() => {
     if (encryptDetails) requirePassphrase();
   }, [encryptDetails, requirePassphrase]);
@@ -531,9 +541,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // No menu while the panel is open: it would offer to add to someone else
   // mid-way through describing this person. Nor while connecting or
-  // disconnecting people, nor while the family waits for the passphrase.
+  // disconnecting people, nor while the family waits for the passphrase or
+  // for the wording to be chosen.
   const menuPersonId =
-    panel?.open || tool !== 'pointer' || nomination || detailsLocked
+    panel?.open ||
+    tool !== 'pointer' ||
+    nomination ||
+    detailsLocked ||
+    wordingForced
       ? null
       : (hoveredId ?? focusedId);
   const menuPerson = menuPersonId ? family.byId.get(menuPersonId) : undefined;
@@ -566,7 +581,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const participantFraming = framingSetting === 'participantPreference';
   // Opened a moment after the stage loads, once the toolbar is in, so the
   // participant sees the rest of the interface first.
-  const [framingOpen, setFramingOpen] = useState(false);
   const askFramingOnLoad = useRef(
     participantFraming && chosenFraming === undefined,
   );
@@ -618,10 +632,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     return everyone;
   }, [shown, framing, intl, draft]);
   // Each person's symbol shows their label. Everywhere else they are named in
-  // words that tell them apart from anyone whose label matches theirs (two
-  // relatives given the same name), as only words can there: the panel's
-  // title, announcements, hints and confirmations, and what a screen reader
-  // reads out for their symbol.
+  // words that tell them apart from anyone whose label matches theirs, as
+  // only words can there: the panel's title, announcements, hints and
+  // confirmations, and what a screen reader reads out for their symbol. A
+  // name the participant typed is never altered or added to: two relatives
+  // given the same name are both called by it, exactly as typed.
   const names = useMemo(
     () => distinctNames(shown, labels, intl),
     [shown, labels, intl],
@@ -881,6 +896,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       askForPassphrase();
       return;
     }
+    // No panel opens before the wording is chosen: the question comes first.
+    if (framingUnanswered) {
+      setFramingOpen(true);
+      return;
+    }
     // The new person, and up to two unnamed parents for a sibling.
     const ids = [uuid(), uuid(), uuid()];
     rememberView(anchor.id, ids[0] ?? anchor.id);
@@ -1082,7 +1102,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // without it opens the choice again. Going back is not held up, and saves
   // no labels: they are saved in the chosen words when the participant
   // next leaves.
-  const framingUnanswered = participantFraming && chosenFraming === undefined;
   useBeforeNext(async (direction) => {
     if (framingUnanswered) {
       if (direction === 'forwards') {
@@ -1156,6 +1175,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const openEdit = async (personId: string, then?: 'sibling' | 'child') => {
     if (detailsLocked) {
       askForPassphrase();
+      return;
+    }
+    if (framingUnanswered) {
+      setFramingOpen(true);
       return;
     }
     const recorded = family.byId.get(personId);
@@ -1269,6 +1292,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (detailsLocked) {
       setLastFocusedId(personId);
       askForPassphrase();
+      return;
+    }
+    // Before the wording is chosen, selecting someone asks for it instead.
+    if (framingUnanswered) {
+      setFramingOpen(true);
       return;
     }
     if (nomination) {
@@ -1906,7 +1934,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   selected={
                     nomination ? isNominated(person) : personId === selectedId
                   }
-                  disabled={nomination ? !canSelect(person) : false}
+                  disabled={
+                    wordingForced || (nomination ? !canSelect(person) : false)
+                  }
                   linking={
                     tool !== 'pointer' &&
                     (personId === linkingId || personId === connectorTargetId)
@@ -2032,7 +2062,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               {!nomination && (
                 <ToolbarToggleGroup
                   aria-label={intl.formatMessage(messages.toolGroupLabel)}
-                  disabled={detailsLocked}
+                  disabled={detailsLocked || wordingForced}
                   value={[tool]}
                   onValueChange={(value) => {
                     const next = value[0];
@@ -2070,9 +2100,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 <FramingControl
                   value={chosenFraming}
                   onChange={chooseFraming}
-                  // A person's panel, being modal, comes first: the question
-                  // waits for it to close rather than compete for focus.
-                  open={framingOpen && !panel?.open}
+                  open={framingOpen}
                   onOpenChange={setFramingOpen}
                 />
               )}

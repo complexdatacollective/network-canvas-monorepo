@@ -79,9 +79,13 @@ export function labelOfNoKind(
       ? { type: 'term', term }
       : {
           type: 'relativeOf',
-          ownerId: anchor.id,
-          owner: { type: 'name', name: anchorLabel },
-          term,
+          anchors: [
+            {
+              ownerId: anchor.id,
+              owner: { type: 'name', name: anchorLabel },
+              term,
+            },
+          ],
         },
     intl,
   );
@@ -200,11 +204,12 @@ function buildLabels(
     );
   }
 
-  // Someone described through a relative ("Great-grandfather’s father") is
-  // described by the label that relative ends up with, qualified or
-  // numbered, so the labels are worked out again until each one's relative
-  // is described as they are. Each round settles everyone one step further
-  // from the participant.
+  // Someone described through a relative ("Isaac’s grandfather") is
+  // described through the nearest whose final label is a name or a plain
+  // kinship word, and that depends on whether the relative ends up qualified
+  // or numbered, so the labels are worked out again until each one's
+  // relatives are settled. Each round settles everyone one step further from
+  // the participant.
   let labels = new Map<string, string>();
   for (let round = 0; round <= unnamed.length; round++) {
     const settled = labels;
@@ -400,16 +405,20 @@ function resolveLabels(
 }
 
 /**
- * The words that name each person alone, by person id, for wherever only
- * words can tell people apart: what a screen reader reads out for their
- * symbol, and the panel titles, connect hints and confirmations that name
- * them. Each starts from their label (`labels`, as `labelEveryone` gives
- * them). People whose labels match — two relatives given the same name —
- * are told apart as generated labels are: by one relative of the same kind
- * for each (their partner, then a child, then a parent, then a sibling,
- * named by that relative's own label), the first kind that separates them
- * all, or else by number in the order they were added. A label no one else
- * shares is kept as it is. Nothing here is saved.
+ * The words that name each person, by person id, for wherever only words
+ * can tell people apart: what a screen reader reads out for their symbol,
+ * and the panel titles, connect hints and confirmations that name them.
+ * Each starts from their label (`labels`, as `labelEveryone` gives them).
+ *
+ * A name the participant typed is never altered or added to, even when two
+ * relatives were given the same one: it is shown exactly as typed. Only
+ * people without a typed name whose labels match (as a relative being
+ * added, labelled by the relation chosen, can match someone else) are told
+ * apart as generated labels are: by one relative of the same kind for each
+ * (their partner, then a child, then a parent, then a sibling, named by
+ * that relative's own label), the first kind that separates them all, or
+ * else by number in the order they were added. A label no one else shares
+ * is kept as it is. Nothing here is saved.
  */
 export function distinctNames(
   family: Family,
@@ -421,7 +430,9 @@ export function distinctNames(
   const groups = new Map<string, Person[]>();
   for (const person of family.people) {
     const label = labels.get(person.id);
-    if (label === undefined || person.isEgo) continue;
+    if (label === undefined || person.isEgo || person.name !== undefined) {
+      continue;
+    }
     const key = comparable(label);
     groups.set(key, [...(groups.get(key) ?? []), person]);
   }

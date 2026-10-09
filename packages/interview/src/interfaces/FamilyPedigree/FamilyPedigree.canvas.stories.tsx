@@ -614,9 +614,7 @@ export const AConnectionIsAnnouncedInItsNewWords: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
-    await canvas.findByRole('button', {
-      name: /^Paternal grandfather.s partner/,
-    });
+    await canvas.findByRole('button', { name: /^Step-grandmother/ });
     await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
     await userEvent.click(personSymbol(canvasElement, 'partner'));
     await userEvent.click(personSymbol(canvasElement, 'ravi'));
@@ -697,39 +695,77 @@ const personPanel = (canvasElement: HTMLElement) =>
   );
 
 /**
- * The question of wording, which opens a moment after the stage loads, waits
- * while a person's panel is open, so the two never compete for focus: the
- * panel's fields can be reached from the keyboard, and the question opens
- * once the panel closes.
+ * Until the wording is chosen, the family cannot be used. Selecting someone
+ * before the question has opened asks it at once, and no panel opens. While
+ * the question is held open, every person and the connect tools are
+ * disabled. Once a wording is chosen, the family can be used again.
  */
-export const TheWordingQuestionWaitsForAnOpenPanel: Story = {
+export const TheFamilyWaitsForTheWording: Story = {
   render: () => (
     <CanvasStory family={threePeople} framing="participantPreference" />
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
-    await canvas.findByRole('button', { name: /^You/ });
-    await tabIntoFamily(canvasElement);
-    await userEvent.keyboard('{Enter}');
-    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
-    // Past the moment the question would open.
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    await expect(body.queryByText(FRAMING_TITLE)).toBeNull();
-    for (let press = 0; press < 3; press++) await userEvent.tab();
-    await expect(
-      personPanel(canvasElement)?.contains(focused(canvasElement)),
-    ).toBe(true);
+    // Selected before the question opens by itself, a person asks it.
+    await userEvent.click(await canvas.findByRole('button', { name: /^You/ }));
+    await body.findByText(FRAMING_TITLE, {}, { timeout: 500 });
+    await expect(personPanel(canvasElement)).toBeNull();
 
-    await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
+    for (const id of ['ego', 'mum', 'dad']) {
+      await expect(personSymbol(canvasElement, id)).toBeDisabled();
+    }
+    await expect(canvas.getByTestId('pedigree-tool-connect')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    await userEvent.click(personSymbol(canvasElement, 'mum'), {
+      pointerEventsCheck: 0,
+    });
+    await expect(personPanel(canvasElement)).toBeNull();
+    await expect(canvas.queryByTestId('pedigree-menu-parent')).toBeNull();
+
+    await userEvent.click(
+      body.getByRole('option', { name: /Mother, father, sister, brother/ }),
+    );
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+    await expect(personSymbol(canvasElement, 'mum')).toBeEnabled();
+    await userEvent.click(personSymbol(canvasElement, 'mum'));
+    await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
+  },
+};
+
+/**
+ * Opened again once a wording is chosen, the question closes as any popover
+ * does when focus leaves it, and leaves the family usable while it is open.
+ */
+export const TheWordingOpenedAgainClosesOnFocusLoss: Story = {
+  render: () => (
+    <CanvasStory family={threePeople} framing="participantPreference" />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
     await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
+    await userEvent.click(
+      body.getByRole('option', { name: /Mother, father, sister, brother/ }),
+    );
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+
+    const trigger = canvas.getByRole('button', { name: 'Wording' });
+    await userEvent.click(trigger);
+    await body.findByText(FRAMING_TITLE);
+    await expect(personSymbol(canvasElement, 'mum')).toBeEnabled();
+    await userEvent.tab();
+    await userEvent.tab();
+    await waitFor(() => expect(body.queryByText(FRAMING_TITLE)).toBeNull());
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
   },
 };
 
 /**
  * Choosing the wording returns focus to its toolbar button, even after focus
- * has been away in the family while the question waited for an answer.
+ * has been away while the question waited for an answer.
  */
 export const ChoosingTheWordingReturnsFocusToItsButton: Story = {
   render: () => (
@@ -740,8 +776,8 @@ export const ChoosingTheWordingReturnsFocusToItsButton: Story = {
     const body = within(canvasElement.ownerDocument.body);
     await body.findByText(FRAMING_TITLE, {}, { timeout: 5000 });
     const trigger = canvas.getByRole('button', { name: 'Wording' });
-    // Out to the family, and back into the question.
-    await tabIntoFamily(canvasElement);
+    // Out to the rest of the toolbar, and back into the question.
+    canvas.getByRole('button', { name: 'Zoom in' }).focus();
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
     const [first] = body.getAllByRole('option');
     first?.focus();
@@ -848,11 +884,12 @@ export const ArrowKeysMoveAlikeAtEveryZoom: Story = {
 };
 
 /**
- * Two relatives with the same name are told apart wherever only words can
- * do it: in their symbols' accessible names, their panels' titles, the
- * connect tool's hints and the remove confirmation.
+ * Two relatives given the same name are each called by it exactly as typed,
+ * wherever they are named: in their symbols and accessible names, their
+ * panels' titles, the connect tool's hints and the remove confirmation.
+ * Nothing is added to a typed name to tell them apart.
  */
-export const NamesakesAreToldApart: Story = {
+export const NamesakesKeepTheirTypedNames: Story = {
   render: () => (
     <CanvasStory
       family={{
@@ -872,40 +909,37 @@ export const NamesakesAreToldApart: Story = {
     const canvas = within(canvasElement);
     const page = within(canvasElement.ownerDocument.body);
     await canvas.findByRole('button', { name: /^You/ });
-    const namesakes = canvas.getAllByRole('button', { name: /^José García/ });
-    await expect(namesakes).toHaveLength(2);
-    const [first, second] = namesakes.map(
-      (symbol) => symbol.getAttribute('aria-label') ?? '',
-    );
-    await expect(first).not.toBe(second);
-    // The accessible names, as computed, are the distinct ones.
-    await expect(canvas.getAllByRole('button', { name: first }).length).toBe(1);
-    await expect(canvas.getAllByRole('button', { name: second }).length).toBe(
-      1,
-    );
+    // Both symbols show, and are read out as, the name alone.
+    await expect(
+      canvas.getAllByRole('button', { name: 'José García' }),
+    ).toHaveLength(2);
+    for (const id of ['dad', 'grandad']) {
+      await expect(personSymbol(canvasElement, id)).toHaveTextContent(
+        /^José García$/,
+      );
+    }
 
-    // Each panel is titled by its own name.
-    const titles: string[] = [];
+    // Each panel is titled by the name as typed.
     for (const id of ['dad', 'grandad']) {
       await userEvent.click(personSymbol(canvasElement, id));
       await waitFor(() => expect(personPanel(canvasElement)).not.toBeNull());
-      titles.push(
-        within(personPanel(canvasElement) as HTMLElement).getByRole('heading', {
-          level: 2,
-        }).textContent ?? '',
-      );
+      const title = within(personPanel(canvasElement) as HTMLElement).getByRole(
+        'heading',
+        { level: 2 },
+      ).textContent;
+      await expect(title).toContain('José García');
+      await expect(title).not.toMatch(/José García \d|José García \(/);
       await userEvent.keyboard('{Escape}');
       await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
     }
-    await expect(titles[0]).not.toBe(titles[1]);
 
-    // Connecting them is refused in words that tell them apart.
+    // Connecting them is refused naming each as typed.
     await userEvent.click(canvas.getByTestId('pedigree-tool-connect'));
     await userEvent.click(personSymbol(canvasElement, 'dad'));
     await userEvent.click(personSymbol(canvasElement, 'grandad'));
     const refusal = canvas.getByTestId('pedigree-connect-hint').textContent;
     await expect(refusal).toMatch(/already connected/);
-    await expect(refusal).not.toMatch(/“José García” and “José García”/);
+    await expect(refusal).toContain('“José García” and “José García”');
     await userEvent.click(canvas.getByTestId('pedigree-tool-pointer'));
 
     // So is removing one of them.
@@ -917,7 +951,7 @@ export const NamesakesAreToldApart: Story = {
       }),
     );
     const dialog = await page.findByRole('dialog', { name: /^Remove/ });
-    await expect(within(dialog).getByRole('heading').textContent).not.toBe(
+    await expect(within(dialog).getByRole('heading').textContent).toBe(
       'Remove José García?',
     );
   },
