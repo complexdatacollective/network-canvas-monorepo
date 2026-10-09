@@ -5,7 +5,6 @@ import { Provider } from 'react-redux';
 import { describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import { familyPedigreeWordingIn } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
 import { getProtocol } from '~/selectors/protocol';
@@ -25,7 +24,6 @@ const protocol = {
     {
       id: 'family',
       type: 'FamilyPedigree',
-      wording: familyPedigreeWordingIn(),
       label: { en: 'Family', fr: 'Famille' },
       completeness: {
         itemText: { siblings: { listItem: { en: SIBLINGS } } },
