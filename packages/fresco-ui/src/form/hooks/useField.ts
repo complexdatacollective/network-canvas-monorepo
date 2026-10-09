@@ -1,6 +1,6 @@
 'use client';
 
-import { debounce } from 'es-toolkit';
+import { debounce, isEqual } from 'es-toolkit';
 import {
   type ReactNode,
   useCallback,
@@ -209,11 +209,25 @@ type UseFieldConfig = {
 // `fieldProps` names none of them. Hoisted so the default is one stable object.
 const NO_FIELD_ELEMENTS: FieldElements = {};
 
+/**
+ * Returns the previous `value` while the new one is equal to it by content.
+ * Callers build array and object initial values inline (`initialValue={[]}`,
+ * `initialValue={ids.map(...)}`), so identity changes on every render while
+ * the content does not.
+ */
+function useStableByValue<T>(value: T): T {
+  const ref = useRef(value);
+  if (ref.current !== value && !isEqual(ref.current, value)) {
+    ref.current = value;
+  }
+  return ref.current;
+}
+
 export function useField(config: UseFieldConfig): UseFieldResult {
   const {
     name,
     nameMode = 'legacy',
-    initialValue,
+    initialValue: initialValueProp,
     showValidationHints = false,
     validationContext,
     hint,
@@ -226,6 +240,13 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // mounted, an English one otherwise) renders them, so what reaches the form
   // store, `onSubmitInvalid`, and Zod issues stays a plain string.
   const intl = useAppIntl();
+
+  // The registration effect below depends on the initial value, and
+  // re-registering a field first unregisters it, which drops its standing
+  // errors. A caller that rebuilds an equal array on every render must
+  // therefore not look like a changed initial value: compare by content, as
+  // the validation props are compared.
+  const initialValue = useStableByValue(initialValueProp);
 
   const namespace = useFieldNamespacePath();
   const namespaceName = useFieldNamespace();
