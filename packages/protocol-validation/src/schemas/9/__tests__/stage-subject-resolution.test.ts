@@ -11,6 +11,7 @@ import {
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { getStageSubjectResolution } from '../stage-subject-resolution.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { stageSchema } from '../stages/index.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
@@ -24,6 +25,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   id: 'fp1',
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree',
+  wording: familyPedigreeWordingIn('en'),
   subject: { entity: 'node', type: 'family_member' },
   prompt: localized('Build your family'),
   nodeConfiguration: {

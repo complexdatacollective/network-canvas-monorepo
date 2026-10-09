@@ -11,6 +11,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
@@ -166,6 +167,7 @@ const familyPedigreeProtocol = () => ({
     {
       id: 'family',
       type: 'FamilyPedigree',
+      wording: familyPedigreeWordingIn('en'),
       label: localized('Family'),
       subject: { entity: 'node', type: 'person' },
       prompt: localized('Build your family'),

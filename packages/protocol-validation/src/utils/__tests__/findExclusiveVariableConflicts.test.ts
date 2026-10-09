@@ -11,6 +11,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../schemas/9/family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../../schemas/9/schema.ts';
+import { familyPedigreeWordingIn } from '../../schemas/9/stage-wording/family-pedigree.ts';
 import {
   findExclusiveVariableConflicts,
   findStageManagedOptionBindings,
@@ -38,6 +39,7 @@ const familyPedigree = (overrides: Stage = {}): Stage => ({
   id: 'fp1',
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree',
+  wording: familyPedigreeWordingIn('en'),
   subject: { entity: 'node', type: 'family_member' },
   prompt: localized('Build your family'),
   nodeConfiguration,

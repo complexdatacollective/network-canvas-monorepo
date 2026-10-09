@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 
 const hitsFor = (protocol: unknown) =>
   collectEntityAttributeReferences(protocol);
@@ -105,6 +106,7 @@ describe('attribute-writer usage tags', () => {
         {
           id: 'family',
           type: 'FamilyPedigree',
+          wording: familyPedigreeWordingIn('en'),
           label: localized('Family'),
           subject: { entity: 'node', type: 'person' },
           prompt: localized('Build your family'),

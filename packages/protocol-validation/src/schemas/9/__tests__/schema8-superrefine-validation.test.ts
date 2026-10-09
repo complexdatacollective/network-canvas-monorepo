@@ -17,6 +17,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import { pedigreeNameField } from './family-pedigree-text.ts';
 import {
   GENDER_IDENTITY_OPTIONS,
@@ -2948,6 +2949,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         {
           id: 'fp1',
           type: 'FamilyPedigree' as const,
+          wording: familyPedigreeWordingIn('en'),
           label: localized('Family Pedigree'),
           subject: { entity: 'node' as const, type: 'person' },
           prompt: localized('Build your family'),

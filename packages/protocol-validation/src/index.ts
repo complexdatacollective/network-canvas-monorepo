@@ -157,9 +157,12 @@ export {
 // What the Family Pedigree's localized messages may use, for an editor of
 // them.
 export {
+  type FamilyPedigreeWording,
   PEDIGREE_PARENTS_ARGUMENTS,
   PEDIGREE_PERSON_ARGUMENTS,
+  PEDIGREE_WORDING_ARGUMENTS,
 } from './schemas/9/stages/family-pedigree.ts';
+export { familyPedigreeWordingIn } from './schemas/9/stage-wording/family-pedigree.ts';
 // The Family Pedigree option labels Network Canvas supplies, written into a
 // protocol by Architect.
 export {

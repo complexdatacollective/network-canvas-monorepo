@@ -5,6 +5,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../family-pedigree-values.ts';
 import { DEFAULT_FINISH_SESSION_TEXT } from '../finish-session-defaults.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   pedigreeCompletenessText,
   pedigreeNameField,
@@ -552,6 +553,7 @@ export const completeProtocol = () => ({
     {
       id: 'familyPedigree',
       type: 'FamilyPedigree',
+      wording: familyPedigreeWordingIn('en'),
       label: localized('Family'),
       subject: { entity: 'node', type: 'relative' },
       prompt: localized('Build your family'),

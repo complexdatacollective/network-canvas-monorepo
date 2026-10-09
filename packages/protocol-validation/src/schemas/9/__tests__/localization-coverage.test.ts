@@ -15,9 +15,11 @@ import {
   localizedString,
 } from '../localized-string.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { familyPedigreeWordingIn } from '../stage-wording/family-pedigree.ts';
 import {
   PEDIGREE_PARENTS_ARGUMENTS,
   PEDIGREE_PERSON_ARGUMENTS,
+  PEDIGREE_WORDING_ARGUMENTS,
 } from '../stages/family-pedigree.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
@@ -50,6 +52,22 @@ const messageSite = (
   ...site(path, 'plain'),
   arguments: declaration,
 });
+
+/**
+ * A message that uses each argument a declaration holds, as its kind says:
+ * the text shows it, a select chooses by its first case, and a plural by
+ * number.
+ */
+const messageUsing = (declaration: MessageArguments): string =>
+  Object.entries(declaration)
+    .map(([name, argument]) => {
+      if (argument.kind === 'text') return `{${name}}`;
+      if (argument.kind === 'plural')
+        return `{${name}, plural, one {# x} other {# y}}`;
+      const [first = 'other'] = argument.cases;
+      return `{${name}, select, ${first} {x} other {y}}`;
+    })
+    .join(' ');
 
 const FINISH_STAGE_INDEX = 20;
 
@@ -237,6 +255,16 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     ),
   ),
   site(stage(18, 'completeness', 'recommendedNote'), 'plain'),
+  // The stage's own words, which Network Canvas supplies: each has the
+  // arguments its message declares (see `PEDIGREE_WORDING_ARGUMENTS`).
+  ...Object.keys(familyPedigreeWordingIn()).map((key) => {
+    const declaration: Readonly<Record<string, MessageArguments | undefined>> =
+      PEDIGREE_WORDING_ARGUMENTS;
+    const argumentsOf = declaration[key];
+    return argumentsOf === undefined
+      ? site(stage(18, 'wording', key), 'plain')
+      : messageSite(stage(18, 'wording', key), argumentsOf);
+  }),
   site(stage(18, 'form', 'fields', 0, 'prompt'), 'markdown'),
   site(stage(18, 'form', 'fields', 0, 'hint'), 'markdown', true),
   site(stage(18, 'nominationPrompts', 0, 'text'), 'markdown'),
@@ -374,11 +402,11 @@ describe('localized string coverage', () => {
     EXPECTED_SITES.flatMap((expected) =>
       expected.arguments === undefined ? [] : [[siteName(expected), expected]],
     ),
-  )('accepts the arguments it declares at %s', (_name, { path }) => {
+  )('accepts the arguments it declares at %s', (_name, expected) => {
     expect(
       failurePaths(
-        withValueAt(path, {
-          en: '{isYou, select, true {You} other {“{name}”}}',
+        withValueAt(expected.path, {
+          en: messageUsing(expected.arguments ?? {}),
         }),
       ),
     ).toEqual([]);

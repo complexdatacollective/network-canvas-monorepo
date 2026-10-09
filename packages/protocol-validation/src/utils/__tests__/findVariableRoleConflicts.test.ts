@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { familyPedigreeWordingIn } from '../../schemas/9/stage-wording/family-pedigree.ts';
 import { findVariableRoleConflicts } from '../findVariableRoleConflicts.ts';
 import { createBaseProtocol, localized } from '../test-utils.ts';
 
@@ -34,6 +35,7 @@ const categoricalBinStage = (variable: string) => ({
 const familyPedigreeStage = (formVariable: string) => ({
   id: 'fp1',
   type: 'FamilyPedigree',
+  wording: familyPedigreeWordingIn('en'),
   label: localized('Family Pedigree'),
   subject: { entity: 'node', type: 'person' },
   prompt: localized('Who is related to you?'),

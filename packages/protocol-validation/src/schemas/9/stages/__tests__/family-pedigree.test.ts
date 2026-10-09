@@ -17,6 +17,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
 } from '../../family-pedigree-values.ts';
 import ProtocolSchemaV9 from '../../schema.ts';
+import { familyPedigreeWordingIn } from '../../stage-wording/family-pedigree.ts';
 import {
   FAMILY_PEDIGREE_BUILD_PROMPT_ID,
   familyPedigreeStage,
@@ -26,6 +27,7 @@ const base = {
   id: 'fp1',
   label: localized('Family Pedigree'),
   type: 'FamilyPedigree' as const,
+  wording: familyPedigreeWordingIn('en'),
   subject: { entity: 'node' as const, type: 'person' },
   prompt: localized('Draw your family'),
   nodeConfiguration: {
@@ -197,6 +199,57 @@ describe('familyPedigreeStage', () => {
         nodeConfiguration: { ...base.nodeConfiguration, nameField: promptOnly },
       }).success,
     ).toBe(true);
+  });
+
+  describe('the words shown only in some configurations', () => {
+    const without = (...keys: string[]) => {
+      const wording: Record<string, unknown> = familyPedigreeWordingIn();
+      for (const key of keys) delete wording[key];
+      return { ...base, wording };
+    };
+    const FRAMING_WORDS = [
+      'framingChoiceTitle',
+      'framingChoiceDescription',
+      'framingControlLabel',
+    ];
+
+    it('requires the framing words while participants choose the words', () => {
+      expect(
+        familyPedigreeStage.safeParse({
+          ...without(...FRAMING_WORDS),
+          framing: 'participantPreference',
+        }).success,
+      ).toBe(false);
+      expect(
+        familyPedigreeStage.safeParse({
+          ...without(...FRAMING_WORDS),
+          framing: 'gendered',
+        }).success,
+      ).toBe(true);
+      expect(
+        familyPedigreeStage.safeParse({
+          ...base,
+          wording: familyPedigreeWordingIn(),
+          framing: 'participantPreference',
+        }).success,
+      ).toBe(true);
+    });
+
+    it('requires the gender identity question while the stage asks about gender identity', () => {
+      expect(
+        familyPedigreeStage.safeParse(without('genderIdentityLabel')).success,
+      ).toBe(false);
+      const nodeConfiguration: Record<string, unknown> = {
+        ...base.nodeConfiguration,
+      };
+      delete nodeConfiguration.genderIdentity;
+      expect(
+        familyPedigreeStage.safeParse({
+          ...without('genderIdentityLabel'),
+          nodeConfiguration,
+        }).success,
+      ).toBe(true);
+    });
   });
 
   describe('the tracker’s wording', () => {
