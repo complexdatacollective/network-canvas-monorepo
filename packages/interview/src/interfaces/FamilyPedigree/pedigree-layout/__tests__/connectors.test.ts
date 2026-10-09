@@ -948,4 +948,67 @@ describe('computeConnectors', () => {
       expect(connectors.parentChildLines[0]!.uplineChildIds).toBeUndefined();
     });
   });
+
+  it('joins a surrogate on the child’s own row by a line below the row, into the child from below', () => {
+    // Jade (2) carried her parents' (0, 1) baby, her sibling (3), so she sits
+    // on the child's row.
+    const sameRowLayout: PedigreeLayout = {
+      n: [2, 2],
+      nid: [
+        [0, 1],
+        [2, 3],
+      ],
+      pos: [
+        [0.5, 1.5],
+        [0, 2],
+      ],
+      fam: [
+        [0, 0],
+        [1, 1],
+      ],
+      group: [
+        [1, 0],
+        [0, 0],
+      ],
+      twins: null,
+      groupMember: [
+        [false, false],
+        [false, false],
+      ],
+    };
+    const sameRowParents: ParentConnection[][] = [
+      [],
+      [],
+      [
+        { parentIndex: 0, edgeType: 'biological' },
+        { parentIndex: 1, edgeType: 'biological' },
+      ],
+      [
+        { parentIndex: 0, edgeType: 'biological' },
+        { parentIndex: 1, edgeType: 'biological' },
+        { parentIndex: 2, edgeType: 'surrogate', isGestationalCarrier: true },
+      ],
+    ];
+    const connectors = computeConnectors(
+      sameRowLayout,
+      scaling,
+      sameRowParents,
+    );
+    expect(connectors.auxiliaryLines).toHaveLength(1);
+    const { points } = connectors.auxiliaryLines[0]!;
+    const rowBottom = 1 + scaling.boxHeight;
+    // No level piece along the row, where it would read as a partnership.
+    for (let k = 1; k < points.length; k++) {
+      if (Math.abs(points[k]!.y - points[k - 1]!.y) < 1e-9) {
+        expect(points[k]!.y).toBeGreaterThan(rowBottom);
+      }
+    }
+    // It ends in the child, coming up from below, off their centre.
+    const last = endOf(connectors.auxiliaryLines[0]!);
+    const beforeLast = points[points.length - 2]!;
+    expect(last.y).toBeCloseTo(1 + scaling.boxHeight / 2, 5);
+    expect(beforeLast.x).toBeCloseTo(last.x, 5);
+    expect(beforeLast.y).toBeGreaterThan(last.y);
+    expect(Math.abs(last.x - 2)).toBeGreaterThan(0.01);
+  });
 });

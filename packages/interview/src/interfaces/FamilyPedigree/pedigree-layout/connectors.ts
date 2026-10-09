@@ -933,9 +933,15 @@ export function computeConnectors(
       return endX;
     };
 
-    if (bar && isParentOfAllSiblings && totalChildren > 1) {
+    if (
+      bar &&
+      isParentOfAllSiblings &&
+      totalChildren > 1 &&
+      parentAt.layer < conn.childLevel
+    ) {
       // A parent of every child in the sibship joins its bar, away from
-      // every line already meeting it.
+      // every line already meeting it. (One on the children's own row joins
+      // each child, from below, instead.)
       const stems = sibshipStems.get(conn.sibship) ?? [];
       const joined = draw(
         {

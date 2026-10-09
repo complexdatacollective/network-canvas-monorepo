@@ -11,6 +11,10 @@ import type { LineSegment, Point } from './types';
  * clear of everyone and every other line; otherwise it is routed
  * orthogonally, like the lines of descent, through the gaps between rows.
  *
+ * A parent on the child's own row (a sister who carried her mother's baby)
+ * is joined below the row, into the child's bottom edge: a line along the
+ * row would read as a partnership, and one above it as a line of descent.
+ *
  * All coordinates are in layout units: x in columns, y in rows.
  */
 
@@ -411,14 +415,36 @@ export function routeLine(
   const rowsBetween = childLayer - from.layer;
 
   const candidates: { points: Point[]; endX: number }[] = [];
-  for (const target of targets) {
-    candidates.push({
-      points: [start, target.meet, ...target.tail],
-      endX: target.x,
-    });
+  const startXs = [from.x, from.x + 0.2 * boxw, from.x - 0.2 * boxw];
+  if (rowsBetween === 0 && end.kind === 'child') {
+    // Down from the parent, along the gap below the row, up into the child.
+    for (const target of targets) {
+      const meet = { x: target.x, y: 2 * end.layer + boxh - target.meet.y };
+      for (const x of startXs) {
+        for (const y of gapLanes(end.layer, [0.12, 0.06, 0.18])) {
+          candidates.push({
+            points: [
+              start,
+              { x, y: start.y },
+              { x, y },
+              { x: target.x, y },
+              meet,
+              ...target.tail,
+            ],
+            endX: target.x,
+          });
+        }
+      }
+    }
+  } else {
+    for (const target of targets) {
+      candidates.push({
+        points: [start, target.meet, ...target.tail],
+        endX: target.x,
+      });
+    }
   }
   if (rowsBetween >= 1) {
-    const startXs = [from.x, from.x + 0.2 * boxw, from.x - 0.2 * boxw];
     const lastGap = childLayer - 1;
     const lanesAboveEnd =
       end.kind === 'bar'
