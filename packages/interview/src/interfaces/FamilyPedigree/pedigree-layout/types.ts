@@ -27,6 +27,10 @@ export type PedigreeLink = {
   isGestationalCarrier?: boolean;
 };
 
+/** The shape of a person's symbol, which decides where a line meets its
+ * edge. */
+export type PedigreeSymbolShape = 'circle' | 'square' | 'diamond';
+
 export type ParentConnection = {
   parentIndex: number;
   /** How the link is drawn, which the adapter may change from the kind
@@ -119,9 +123,15 @@ export type ParentGroupConnector = {
   isActive: boolean;
   doubleSegment?: LineSegment;
   descentXPositions?: number[];
+  /** Where auxiliary lines cross the partnership line (or leave it, for a
+   * couple's line), which its break keeps clear of. */
+  auxiliaryXPositions?: number[];
   nodeHalfWidth?: number;
   slashSide?: 'left' | 'right';
   partnerIds?: [string, string];
+  /** Whether each end stops at the partner's adoption bracket rather than
+   * at their centre. */
+  endsAtBracket?: [boolean, boolean];
 };
 
 export type ParentChildConnector = {
@@ -142,6 +152,9 @@ export type AuxiliaryConnector = {
    * top edge (continuing to their centre, under their symbol) or on the
    * sibling bar it joins. */
   points: Point[];
+  /** Where the line crosses another line, in order along it: it is drawn
+   * hopping over the other line there. */
+  hops?: Point[];
   endpointIds?: [string | undefined, string | undefined];
 };
 
@@ -150,6 +163,8 @@ export type TwinIndicator = {
   code: 1 | 2 | 3;
   segment?: LineSegment; // MZ: horizontal line between twin uplines
   label?: Point; // unknown: position for "?" label
+  /** Unknown: the font size of the "?" label, scaled with the symbols. */
+  labelSize?: number;
   twinIds?: string[];
 };
 

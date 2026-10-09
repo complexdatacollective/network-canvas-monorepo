@@ -12,6 +12,7 @@ import type {
   PedigreeInput,
   PedigreeLayout,
   PedigreeLink,
+  PedigreeSymbolShape,
   Relation,
   ScalingParams,
 } from './types';
@@ -220,6 +221,8 @@ export function buildConnectorData(
   idToIndex?: Map<string, number>,
   nodeNames?: string[],
   indexToId?: string[],
+  /** Each person's symbol shape, by node id. */
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
 ): ConnectorRenderData {
   const metrics = computeLayoutMetrics(dimensions);
   const boxHeight = dimensions.nodeHeight / metrics.rowHeight;
@@ -261,6 +264,9 @@ export function buildConnectorData(
     nodeNames,
     indexToId,
     partnerPairs,
+    nodeShapes && indexToId
+      ? indexToId.map((nodeId) => nodeShapes.get(nodeId))
+      : undefined,
   );
 
   // Transform all coordinates to pixel space
@@ -276,9 +282,9 @@ export function buildConnectorData(
     if (sp.doubleSegment) {
       transformSegment(sp.doubleSegment, sx, sy, xOffset);
     }
-    if (sp.descentXPositions) {
-      for (let k = 0; k < sp.descentXPositions.length; k++) {
-        sp.descentXPositions[k] = sp.descentXPositions[k]! * sx + xOffset;
+    for (const positions of [sp.descentXPositions, sp.auxiliaryXPositions]) {
+      for (let k = 0; k < (positions?.length ?? 0); k++) {
+        positions![k] = positions![k]! * sx + xOffset;
       }
     }
     sp.nodeHalfWidth = metrics.containerWidth / 2;
@@ -302,10 +308,11 @@ export function buildConnectorData(
       ti.label.x = ti.label.x * sx + xOffset;
       ti.label.y = ti.label.y * sy;
     }
+    if (ti.labelSize !== undefined) ti.labelSize *= sy;
   }
 
   for (const aux of connectors.auxiliaryLines) {
-    for (const pt of aux.points) {
+    for (const pt of [...aux.points, ...(aux.hops ?? [])]) {
       pt.x = pt.x * sx + xOffset;
       pt.y = pt.y * sy;
     }
@@ -336,6 +343,12 @@ export function buildConnectorData(
         shiftSegment(endpoint, -rawMinX, 0);
       }
       if (sp.doubleSegment) shiftSegment(sp.doubleSegment, -rawMinX, 0);
+      // The break keeps clear of these, so they move with the line.
+      for (const positions of [sp.descentXPositions, sp.auxiliaryXPositions]) {
+        for (let k = 0; k < (positions?.length ?? 0); k++) {
+          positions![k] = positions![k]! - rawMinX;
+        }
+      }
     }
     for (const pc of connectors.parentChildLines) {
       for (const ul of pc.uplines) shiftSegment(ul, -rawMinX, 0);
@@ -347,7 +360,7 @@ export function buildConnectorData(
       if (ti.label) ti.label.x += -rawMinX;
     }
     for (const aux of connectors.auxiliaryLines) {
-      for (const pt of aux.points) pt.x += -rawMinX;
+      for (const pt of [...aux.points, ...(aux.hops ?? [])]) pt.x += -rawMinX;
     }
     for (const da of connectors.duplicateArcs) {
       for (const pt of da.path.points) pt.x += -rawMinX;
@@ -382,7 +395,7 @@ export function buildConnectorData(
       if (ti.label) ti.label.y += -rawMinY;
     }
     for (const aux of connectors.auxiliaryLines) {
-      for (const pt of aux.points) pt.y += -rawMinY;
+      for (const pt of [...aux.points, ...(aux.hops ?? [])]) pt.y += -rawMinY;
     }
     for (const da of connectors.duplicateArcs) {
       for (const pt of da.path.points) pt.y += -rawMinY;
