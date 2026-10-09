@@ -5,6 +5,7 @@ import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
+import { contentFormatFor } from '../../../localization/contentFormat';
 import {
   distinctNames,
   generateLabels,
@@ -833,5 +834,28 @@ describe('distinctNames', () => {
     expect(names.get('a')).not.toBe(names.get('b'));
     expect(names.get('a')).toMatch(/^Child/);
     expect(names.get('kim')).toBe('Kim');
+  });
+});
+
+// A label is made from the protocol's words, so its number is written as the
+// protocol's language writes numbers, whatever the interface's language is.
+test('numbers a label in the language of the words it is made from', () => {
+  const family = readFamily(
+    [person('ego', { isEgo: true }), woman('ex1'), woman('ex2')],
+    [
+      link('ego', 'ex1', 'partner', { current: false }),
+      link('ego', 'ex2', 'partner', { current: false }),
+    ],
+    config,
+  );
+  const labels = generateLabels(
+    family,
+    'gendered',
+    contentFormatFor('ar-EG'),
+    words,
+  );
+  expect(Object.fromEntries(labels)).toEqual({
+    ex1: 'Former partner ١',
+    ex2: 'Former partner ٢',
   });
 });

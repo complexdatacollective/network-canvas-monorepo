@@ -68,6 +68,20 @@ describe('the interface text a protocol holds', () => {
     expect(Object.keys(text)).toEqual(['interview', 'forms']);
   });
 
+  it('holds the form text for the forms a stage always shows, and the passphrase’s', () => {
+    const groups = (extra: Parameters<typeof protocolWith>[0]) =>
+      Object.keys(interfaceTextFor(protocolWith(extra)));
+    expect(groups({ stages: [{ type: 'NameGeneratorQuickAdd' }] })).toContain(
+      'forms',
+    );
+    expect(groups({ stages: [{ type: 'Anonymisation' }] })).toContain('forms');
+    expect(groups({ codebook: ENCRYPTED_CODEBOOK })).toContain('forms');
+    // A Network Composer's name box is not a form that can be submitted.
+    expect(groups({ stages: [{ type: 'NetworkComposer' }] })).not.toContain(
+      'forms',
+    );
+  });
+
   it('holds the validation messages of only the rules the protocol uses', () => {
     const text = interfaceTextFor(
       protocolWith({

@@ -1,7 +1,7 @@
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { FramingId } from '@codaco/protocol-validation';
 import type { VariableValue } from '@codaco/shared-consts';
 
+import type { ContentFormat } from '../../localization/contentFormat';
 import { readOwnProperty } from '../../utils/ownProperty';
 import {
   formatPersonLabel,
@@ -17,6 +17,12 @@ import {
   type Person,
 } from './model';
 import type { PedigreeWords } from './pedigreeWords';
+
+/**
+ * How a label's number is written and labels are compared: in the language
+ * of the wording the labels are made from, which is the protocol's.
+ */
+type LabelFormat = Pick<ContentFormat, 'locale' | 'formatNumber'>;
 
 /**
  * How a qualifier relates the person to the relative who tells them apart,
@@ -126,10 +132,10 @@ const comparableIn = (locale: string) => (text: string) =>
 export function labelEveryone(
   family: Family,
   framing: FramingId,
-  intl: IntlShape,
+  format: LabelFormat,
   words: PedigreeWords,
 ): Map<string, string> {
-  const generated = buildLabels(family, framing, intl, words);
+  const generated = buildLabels(family, framing, format, words);
   return new Map(
     family.people.map((person) => [
       person.id,
@@ -161,11 +167,11 @@ export function labelEveryone(
 export function generateLabels(
   family: Family,
   framing: FramingId,
-  intl: IntlShape,
+  format: LabelFormat,
   words: PedigreeWords,
 ): Map<string, string> {
   return new Map(
-    [...buildLabels(family, framing, intl, words)]
+    [...buildLabels(family, framing, format, words)]
       .filter(([id]) => family.byId.get(id)?.hasUnreadableName !== true)
       .map(([id, label]) => [id, withoutSoftHyphens(label)]),
   );
@@ -203,7 +209,7 @@ export function labelWrites(
 function buildLabels(
   family: Family,
   framing: FramingId,
-  intl: IntlShape,
+  format: LabelFormat,
   words: PedigreeWords,
 ): Map<string, string> {
   const kinshipLabels = labelFamily(family, framing);
@@ -240,7 +246,7 @@ function buildLabels(
       unnamed,
       baseLabels,
       baseTexts,
-      intl,
+      format,
       words,
     );
     const unchanged =
@@ -259,10 +265,10 @@ function resolveLabels(
   unnamed: readonly Person[],
   baseLabels: ReadonlyMap<string, PersonLabel>,
   baseTexts: ReadonlyMap<string, string>,
-  intl: IntlShape,
+  format: LabelFormat,
   words: PedigreeWords,
 ): Map<string, string> {
-  const comparable = comparableIn(intl.locale);
+  const comparable = comparableIn(format.locale);
   // Every name typed, and any name the participant's own person was given
   // elsewhere in the interview.
   const used = new Set<string>();
@@ -406,7 +412,7 @@ function resolveLabels(
     for (const member of members) {
       let label: string;
       do {
-        label = `${baseTexts.get(member.id) ?? ''} ${intl.formatNumber(number++)}`;
+        label = `${baseTexts.get(member.id) ?? ''} ${format.formatNumber(number++)}`;
       } while (used.has(comparable(label)));
       labels.set(member.id, label);
       used.add(comparable(label));
@@ -453,10 +459,10 @@ function resolveLabels(
 export function distinctNames(
   family: Family,
   labels: ReadonlyMap<string, string>,
-  intl: IntlShape,
+  format: LabelFormat,
   words: PedigreeWords,
 ): Map<string, string> {
-  const comparable = comparableIn(intl.locale);
+  const comparable = comparableIn(format.locale);
   const result = new Map(labels);
   const used = new Set([...labels.values()].map(comparable));
   const groups = new Map<string, Person[]>();
@@ -523,7 +529,7 @@ export function distinctNames(
     for (const member of members) {
       let text: string;
       do {
-        text = `${labels.get(member.id) ?? ''} ${intl.formatNumber(number++)}`;
+        text = `${labels.get(member.id) ?? ''} ${format.formatNumber(number++)}`;
       } while (used.has(comparable(text)));
       used.add(comparable(text));
       told.set(member.id, text);

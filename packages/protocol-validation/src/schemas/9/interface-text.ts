@@ -83,6 +83,7 @@ const FORM_STAGE_TYPES: ReadonlySet<string> = new Set([
   'AlterForm',
   'AlterEdgeForm',
   'NameGenerator',
+  'NameGeneratorQuickAdd',
   'FamilyPedigree',
 ]);
 
@@ -93,8 +94,12 @@ const holdsAForm = (value: unknown): boolean => {
   return Object.values(value).some(holdsAForm);
 };
 
-/** Whether any stage shows a form, such as a Network Composer's fields. */
+/**
+ * Whether the interview shows a form: a stage's own, such as a Network
+ * Composer's fields, or the one that asks for a passphrase.
+ */
 const usesForms = (protocol: ProtocolDocument) =>
+  usesPassphrase(protocol) ||
   stagesOf(protocol).some(
     (stage) =>
       (typeof stage.type === 'string' && FORM_STAGE_TYPES.has(stage.type)) ||

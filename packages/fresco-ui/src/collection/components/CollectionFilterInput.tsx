@@ -145,15 +145,22 @@ export function CollectionFilterInput({
     <Loader2 className="size-4 animate-spin" aria-hidden="true" />
   );
 
-  const prefixContent =
-    showLoadingIndicator && isLoading ? (
-      <div className="flex items-center gap-1.5">
-        {loadingIndicator ?? defaultLoadingIndicator}
-        <span className="sr-only">{statusText}</span>
-      </div>
-    ) : (
-      <Search aria-hidden="true" />
-    );
+  const showingLoading = showLoadingIndicator && isLoading;
+
+  // The status region stays mounted while its text comes and goes, so a
+  // screen reader announces the search starting, wherever focus is.
+  const prefixContent = (
+    <>
+      {showingLoading ? (
+        (loadingIndicator ?? defaultLoadingIndicator)
+      ) : (
+        <Search aria-hidden="true" />
+      )}
+      <span role="status" className="sr-only">
+        {showingLoading ? statusText : ''}
+      </span>
+    </>
+  );
 
   const suffixContent = (
     <div className="flex items-center gap-2">

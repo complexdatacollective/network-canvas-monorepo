@@ -37,6 +37,7 @@ import {
   useResolveLocalizedMessage,
   useResolveLocalizedString,
 } from '../../../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../../../localization/useContentFormat';
 import {
   getActiveSession,
   getEdgeColorForType,
@@ -137,6 +138,7 @@ export default function NarrativePedigreeView({
   stage,
 }: NarrativePedigreeViewProps) {
   const intl = useAppIntl();
+  const contentFormat = useContentFormat();
   const resolve = useResolveLocalizedString();
   const resolveMessage = useResolveLocalizedMessage();
   const stageLabel = useLocalizedString(stage.label).text;
@@ -242,9 +244,9 @@ export default function NarrativePedigreeView({
   const labels = useMemo(
     () =>
       family && sourceWords
-        ? labelEveryone(family, framing, intl, sourceWords)
+        ? labelEveryone(family, framing, contentFormat, sourceWords)
         : new Map<string, string>(),
-    [family, framing, intl, sourceWords],
+    [family, framing, contentFormat, sourceWords],
   );
   const labelFor = useCallback(
     (personId: string) => labels.get(personId) ?? '',

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { datePickerWindows } from '@codaco/shared-consts';
 
 import { cx } from '../../utils/cva';
@@ -127,10 +126,10 @@ const getMonthParts = (value: unknown) => {
 };
 
 export default function DatePickerField(props: DatePickerFieldProps) {
-  const intl = useAppIntl();
-  const yearLabel = dateTimeFieldName(intl.locale, 'year');
-  const monthLabel = dateTimeFieldName(intl.locale, 'month');
   const format = useFieldValueFormat();
+  // In the language of the month names beside them.
+  const yearLabel = dateTimeFieldName(format.locale, 'year');
+  const monthLabel = dateTimeFieldName(format.locale, 'month');
   const {
     type: resolutionType = 'full',
     min,

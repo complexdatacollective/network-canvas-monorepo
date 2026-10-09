@@ -116,6 +116,24 @@ describe('the date picker’s months and years', () => {
     expect(shownMonths()).toEqual(monthNames('de'));
   });
 
+  // The year and month controls' own names sit beside the month names, so
+  // they are in the same language.
+  it('names its year and month controls in the content language', () => {
+    render(
+      <InArabicInterface contentLocale="de">
+        <DatePickerField type="month" name="date" value="" />
+      </InArabicInterface>,
+    );
+
+    const placeholders = screen
+      .getAllByRole('combobox')
+      .map(
+        (control) =>
+          control.querySelector('option[value=""]')?.textContent ?? '',
+      );
+    expect(placeholders).toEqual(['Jahr', 'Monat']);
+  });
+
   it('names months in the interface language when the host names no content language', () => {
     render(
       <InArabicInterface>

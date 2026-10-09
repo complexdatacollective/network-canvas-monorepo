@@ -752,7 +752,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // The person being added is not called by a kind of parent, child or
   // sibling the participant has not chosen.
   const labels = useMemo(() => {
-    const everyone = labelEveryone(shown, framing, intl, words);
+    const everyone = labelEveryone(shown, framing, contentFormat, words);
     const [draftId] = draft?.ids ?? [];
     const drafted = draftId === undefined ? undefined : shown.byId.get(draftId);
     const anchor = draft && shown.byId.get(draft.anchorId);
@@ -774,7 +774,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       );
     }
     return everyone;
-  }, [shown, framing, intl, words, draft]);
+  }, [shown, framing, contentFormat, words, draft]);
   // Each person's symbol shows their label. Everywhere else they are named in
   // words that tell them apart from anyone whose label matches theirs, as
   // only words can there: the panel's title, announcements, hints and
@@ -782,8 +782,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // name the participant typed is never altered or added to: two relatives
   // given the same name are both called by it, exactly as typed.
   const names = useMemo(
-    () => distinctNames(shown, labels, intl, words),
-    [shown, labels, intl, words],
+    () => distinctNames(shown, labels, contentFormat, words),
+    [shown, labels, contentFormat, words],
   );
   const displayName = useCallback(
     (personId: string) =>
@@ -1198,7 +1198,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           ),
         )
       : family;
-    const saved = generateLabels(current, framing, intl, words);
+    const saved = generateLabels(current, framing, contentFormat, words);
     const { held, toWrite } = labelWrites(
       current,
       saved,
