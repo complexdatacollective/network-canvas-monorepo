@@ -462,6 +462,12 @@ export const messages = defineMessages({
     description:
       'Question in the panel showing a family member’s details. Options are the person’s siblings, by name or by how they are related to the participant; any number, or none, may be chosen. Triplets and other multiple births are twins here too.',
   },
+  twinsHint: {
+    id: 'interview.familyPedigree.twinsHint',
+    defaultMessage: 'Include triplets and other multiple births.',
+    description:
+      'Hint under the question in a family member’s panel asking which of their siblings are their twins.',
+  },
   twinZygosityLabel: {
     id: 'interview.familyPedigree.twinZygosityLabel',
     defaultMessage:

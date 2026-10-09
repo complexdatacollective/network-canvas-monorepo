@@ -131,6 +131,7 @@
   "interview.familyPedigree.trackerRecommendedNote": "You can also continue without these by pressing Next again.",
   "interview.familyPedigree.trackerTitle": "Before you continue, please complete the following:",
   "interview.familyPedigree.twinZygosityLabel": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}",
+  "interview.familyPedigree.twinsHint": "Include triplets and other multiple births.",
   "interview.familyPedigree.twinsLabel": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}",
   "interview.familyPedigree.unavailableAlreadyConnected": "{firstIsYou, select, true {You and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.} other {“{first}” and “{second}” are already connected. Two people can be connected only once; to connect them another way, first disconnect them.}}",
   "interview.familyPedigree.unavailableAncestor": "{who, select, parentIsYou {You cannot be a parent of “{child}”, who is already one of your ancestors.} childIsYou {“{parent}” cannot be your parent, because you are already one of their ancestors.} other {“{parent}” cannot be a parent of “{child}”, who is already one of their ancestors.}}",

@@ -131,6 +131,7 @@
   "interview.familyPedigree.trackerRecommendedNote": "Você também pode continuar sem isso clicando em “Avançar” novamente.",
   "interview.familyPedigree.trackerTitle": "Antes de continuar, complete o seguinte:",
   "interview.familyPedigree.twinZygosityLabel": "{who, select, personIsYou {Você e “{twin}” são gêmeos idênticos?} twinIsYou {“{name}” e você são gêmeos idênticos?} other {“{name}” e “{twin}” são gêmeos idênticos?}}",
+  "interview.familyPedigree.twinsHint": "Inclua também trigêmeos e outros partos múltiplos.",
   "interview.familyPedigree.twinsLabel": "{isYou, select, true {Quais dos seus irmãos, se houver, são seus gêmeos?} other {Quais dos irmãos de “{name}”, se houver, são gêmeos dessa pessoa?}}",
   "interview.familyPedigree.unavailableAlreadyConnected": "{firstIsYou, select, true {Você e “{second}” já estão conectados. Duas pessoas só podem ser conectadas uma vez; para conectá-las de outra forma, primeiro desconecte-as.} other {“{first}” e “{second}” já estão conectados. Duas pessoas só podem ser conectadas uma vez; para conectá-las de outra forma, primeiro desconecte-as.}}",
   "interview.familyPedigree.unavailableAncestor": "{who, select, parentIsYou {Você não pode ser pai/mãe de “{child}”, que já é um dos seus antepassados.} childIsYou {“{parent}” não pode ser seu pai/mãe, porque você já é um dos antepassados dessa pessoa.} other {“{parent}” não pode ser pai/mãe de “{child}”, que já é um dos antepassados dessa pessoa.}}",

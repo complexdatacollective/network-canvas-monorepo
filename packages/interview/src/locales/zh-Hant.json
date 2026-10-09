@@ -131,6 +131,7 @@
   "interview.familyPedigree.trackerRecommendedNote": "您也可以再次點選「下一步」，不完成這些項目直接繼續。",
   "interview.familyPedigree.trackerTitle": "繼續之前，請完成以下項目：",
   "interview.familyPedigree.twinZygosityLabel": "{who, select, personIsYou {您和「{twin}」是同卵雙胞胎嗎？} twinIsYou {「{name}」和您是同卵雙胞胎嗎？} other {「{name}」和「{twin}」是同卵雙胞胎嗎？}}",
+  "interview.familyPedigree.twinsHint": "也包括三胞胎及其他多胞胎。",
   "interview.familyPedigree.twinsLabel": "{isYou, select, true {您的兄弟姊妹中，哪些是您的雙胞胎（如有）？} other {「{name}」的兄弟姊妹中，哪些是其雙胞胎（如有）？}}",
   "interview.familyPedigree.unavailableAlreadyConnected": "{firstIsYou, select, true {您和「{second}」已經連結。兩個人只能連結一次；如需以其他方式連結，請先中斷連結。} other {「{first}」和「{second}」已經連結。兩個人只能連結一次；如需以其他方式連結，請先中斷連結。}}",
   "interview.familyPedigree.unavailableAncestor": "{who, select, parentIsYou {您不能是「{child}」的父母，因為「{child}」已經是您的祖先之一。} childIsYou {「{parent}」不能是您的父母，因為您已經是其祖先之一。} other {「{parent}」不能是「{child}」的父母，因為「{child}」已經是「{parent}」的祖先之一。}}",

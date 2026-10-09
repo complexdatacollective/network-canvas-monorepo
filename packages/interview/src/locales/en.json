@@ -527,6 +527,10 @@
     "defaultMessage": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}",
     "description": "Question in the panel showing a family member’s details, asked for each sibling chosen as their twin. name is the person the panel describes, twin is the sibling. Options are \"Identical\", \"Fraternal (non-identical)\" and \"I don’t know\"."
   },
+  "interview.familyPedigree.twinsHint": {
+    "defaultMessage": "Include triplets and other multiple births.",
+    "description": "Hint under the question in a family member’s panel asking which of their siblings are their twins."
+  },
   "interview.familyPedigree.twinsLabel": {
     "defaultMessage": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}",
     "description": "Question in the panel showing a family member’s details. Options are the person’s siblings, by name or by how they are related to the participant; any number, or none, may be chosen. Triplets and other multiple births are twins here too."

@@ -131,6 +131,7 @@
   "interview.familyPedigree.trackerRecommendedNote": "Je kunt ook zonder deze gegevens verdergaan door nogmaals op “Volgende” te klikken.",
   "interview.familyPedigree.trackerTitle": "Vul het volgende aan voordat je verdergaat:",
   "interview.familyPedigree.twinZygosityLabel": "{who, select, personIsYou {Zijn jij en “{twin}” een eeneiige tweeling?} twinIsYou {Zijn “{name}” en jij een eeneiige tweeling?} other {Zijn “{name}” en “{twin}” een eeneiige tweeling?}}",
+  "interview.familyPedigree.twinsHint": "Tel ook drielingen en andere meerlingen mee.",
   "interview.familyPedigree.twinsLabel": "{isYou, select, true {Welke van je broers en zussen zijn, als dat zo is, je tweelingbroer of -zus?} other {Welke van de broers en zussen van “{name}” zijn, als dat zo is, hun tweelingbroer of -zus?}}",
   "interview.familyPedigree.unavailableAlreadyConnected": "{firstIsYou, select, true {Jij en “{second}” zijn al verbonden. Twee mensen kunnen maar één keer worden verbonden; koppel ze eerst los om ze op een andere manier te verbinden.} other {“{first}” en “{second}” zijn al verbonden. Twee mensen kunnen maar één keer worden verbonden; koppel ze eerst los om ze op een andere manier te verbinden.}}",
   "interview.familyPedigree.unavailableAncestor": "{who, select, parentIsYou {Je kunt geen ouder zijn van “{child}”, die al een van je voorouders is.} childIsYou {“{parent}” kan niet je ouder zijn, omdat jij al een van diens voorouders bent.} other {“{parent}” kan geen ouder zijn van “{child}”, die al een van diens voorouders is.}}",

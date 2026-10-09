@@ -131,6 +131,7 @@
   "interview.familyPedigree.trackerRecommendedNote": "También puedes continuar sin esto pulsando de nuevo la flecha de avance.",
   "interview.familyPedigree.trackerTitle": "Antes de continuar, completa lo siguiente:",
   "interview.familyPedigree.twinZygosityLabel": "{who, select, personIsYou {¿Tú y «{twin}» son gemelos idénticos?} twinIsYou {¿«{name}» y tú son gemelos idénticos?} other {¿«{name}» y «{twin}» son gemelos idénticos?}}",
+  "interview.familyPedigree.twinsHint": "Incluye también trillizos y otros partos múltiples.",
   "interview.familyPedigree.twinsLabel": "{isYou, select, true {¿Cuáles de tus hermanos, si alguno, son tus gemelos o mellizos?} other {¿Cuáles de los hermanos de «{name}», si alguno, son sus gemelos o mellizos?}}",
   "interview.familyPedigree.unavailableAlreadyConnected": "{firstIsYou, select, true {Tú e «{second}» ya estáis conectados. Dos personas solo se pueden conectar una vez; para conectarlas de otra forma, primero desconéctalas.} other {«{first}» y «{second}» ya están conectados. Dos personas solo se pueden conectar una vez; para conectarlas de otra forma, primero desconéctalas.}}",
   "interview.familyPedigree.unavailableAncestor": "{who, select, parentIsYou {No puedes ser progenitor/a de «{child}», que ya es uno de tus antepasados.} childIsYou {«{parent}» no puede ser tu progenitor/a, porque ya eres uno de sus antepasados.} other {«{parent}» no puede ser progenitor/a de «{child}», que ya es uno de sus antepasados.}}",

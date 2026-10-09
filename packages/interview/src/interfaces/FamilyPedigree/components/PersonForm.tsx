@@ -830,7 +830,7 @@ function TwinFields({
           isYou: isYou(person.id) ? 'true' : 'false',
           name: displayName(person.id),
         })}
-        hint={intl.formatMessage(messages.siblingTwinHint)}
+        hint={intl.formatMessage(messages.twinsHint)}
         options={candidates.map((id) => ({
           value: id,
           label: displayName(id),

@@ -131,6 +131,7 @@
   "interview.familyPedigree.trackerRecommendedNote": "Puoi anche continuare senza questi elementi facendo di nuovo clic su «Avanti».",
   "interview.familyPedigree.trackerTitle": "Prima di continuare, completa quanto segue:",
   "interview.familyPedigree.twinZygosityLabel": "{who, select, personIsYou {Tu e «{twin}» siete gemelli identici?} twinIsYou {«{name}» e tu siete gemelli identici?} other {«{name}» e «{twin}» sono gemelli identici?}}",
+  "interview.familyPedigree.twinsHint": "Includi anche trigemini e altri parti multipli.",
   "interview.familyPedigree.twinsLabel": "{isYou, select, true {Quali dei tuoi fratelli e sorelle, se ce ne sono, sono tuoi gemelli?} other {Quali dei fratelli e sorelle di «{name}», se ce ne sono, sono suoi gemelli?}}",
   "interview.familyPedigree.unavailableAlreadyConnected": "{firstIsYou, select, true {Tu e «{second}» siete già collegati. Due persone possono essere collegate una sola volta; per collegarle in un altro modo, prima scollegale.} other {«{first}» e «{second}» sono già collegati. Due persone possono essere collegate una sola volta; per collegarle in un altro modo, prima scollegale.}}",
   "interview.familyPedigree.unavailableAncestor": "{who, select, parentIsYou {Non puoi essere un genitore di «{child}», che è già uno dei tuoi antenati.} childIsYou {«{parent}» non può essere tuo genitore, perché sei già uno dei suoi antenati.} other {«{parent}» non può essere un genitore di «{child}», che è già uno dei suoi antenati.}}",
