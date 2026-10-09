@@ -4,13 +4,17 @@ import {
   canonicalizeLocale,
   collectLocalizedStrings,
   type CurrentProtocol,
+  findInterfaceOwnedOptionBindings,
   isFinishSessionStage,
+  isSuppliedOptionLabelSet,
   isUndeterminedLocale,
   type LocaleTag,
   type LocalizedString,
   type LocalizedStringHit,
+  defaultFinishSessionTextAfterLanguageChange,
+  type LanguageChange,
   messageText,
-  withDefaultFinishSessionTranslation,
+  suppliedOptionLabelsAfterLanguageChange,
 } from '@codaco/protocol-validation';
 import { withTranslation } from '~/utils/localizedText';
 
@@ -126,10 +130,64 @@ const resolveNewLocale = (
 };
 
 /**
- * Declares new languages. Nothing is translated, with one exception: a finish
- * stage whose closing text is still the text Network Canvas supplies gets that
- * text in each new language it is supplied in. Everything else shows as a
- * missing translation until it is written.
+ * The protocol after a change to its languages. `rewritten` is the protocol
+ * with every translation already moved or removed as the change says; each
+ * text Network Canvas supplies that the researcher has not changed in the
+ * default language — the labels of the answers a Family Pedigree asks for,
+ * and a finish stage's closing text — then becomes what Network Canvas writes
+ * for the protocol's languages as they now are.
+ */
+const withLanguageChange = (
+  original: CurrentProtocol,
+  rewritten: CurrentProtocol,
+  change: LanguageChange,
+): CurrentProtocol => {
+  return createNextState(rewritten, (draft) => {
+    draft.localization = {
+      defaultLocale: change.after.defaultLocale,
+      locales: [...change.after.locales],
+    };
+    for (const binding of findInterfaceOwnedOptionBindings(original)) {
+      const set = binding.optionSet;
+      if (!isSuppliedOptionLabelSet(set)) continue;
+      const { entity, type } = binding.subject;
+      const variableIn = (protocol: CurrentProtocol) =>
+        (entity === 'ego'
+          ? protocol.codebook.ego?.variables
+          : type === undefined
+            ? undefined
+            : protocol.codebook[entity]?.[type]?.variables)?.[
+          binding.variableId
+        ];
+      const variable = variableIn(original);
+      const target = variableIn(draft as CurrentProtocol);
+      if (variable?.type !== 'categorical' || target?.type !== 'categorical')
+        continue;
+      const options = suppliedOptionLabelsAfterLanguageChange(
+        set,
+        variable.options,
+        change,
+      );
+      if (options !== undefined) target.options = options;
+    }
+    original.stages.forEach((stage, index) => {
+      const target = draft.stages[index];
+      if (!isFinishSessionStage(stage) || target === undefined) return;
+      Object.assign(
+        target,
+        defaultFinishSessionTextAfterLanguageChange(stage, change),
+      );
+    });
+  });
+};
+
+/**
+ * Declares new languages. Nothing is translated, with two exceptions, each
+ * text Network Canvas supplies and the researcher has not changed in the
+ * default language: a finish stage's closing text, and the labels of the
+ * answers a Family Pedigree asks for. Each gets its supplied text in every new
+ * language it is supplied in. Everything else shows as a missing translation
+ * until it is written.
  */
 export const addLocales = (
   protocol: CurrentProtocol,
@@ -142,29 +200,13 @@ export const addLocales = (
     if (added.includes(resolved.locale)) return fail('already-declared');
     added.push(resolved.locale);
   }
-  const { defaultLocale } = protocol.localization;
+  const before = protocol.localization;
   return {
     ok: true,
-    protocol: {
-      ...protocol,
-      stages: protocol.stages.map((stage) =>
-        isFinishSessionStage(stage)
-          ? added.reduce(
-              (translated, locale) =>
-                withDefaultFinishSessionTranslation(
-                  translated,
-                  locale,
-                  defaultLocale,
-                ),
-              stage,
-            )
-          : stage,
-      ),
-      localization: {
-        ...protocol.localization,
-        locales: [...protocol.localization.locales, ...added],
-      },
-    },
+    protocol: withLanguageChange(protocol, protocol, {
+      before,
+      after: { ...before, locales: [...before.locales, ...added] },
+    }),
   };
 };
 
@@ -206,7 +248,10 @@ export const getLocaleRemovalImpact = (
   };
 };
 
-/** Deletes a language and every translation written in it. */
+/**
+ * Deletes a language and every translation written in it. Text Network Canvas
+ * supplies follows as for any change of languages (see `withLanguageChange`).
+ */
 export const removeLocale = (
   protocol: CurrentProtocol,
   locale: LocaleTag,
@@ -220,31 +265,39 @@ export const removeLocale = (
     locale,
   );
   if (impact.strandedStrings.length > 0) return fail('would-empty');
+  const before = protocol.localization;
   return {
     ok: true,
-    protocol: {
-      ...rewriteLocalizedStrings(protocol, withoutLocale(locale)),
-      localization: {
-        ...protocol.localization,
-        locales: protocol.localization.locales.filter(
-          (declared) => declared !== locale,
-        ),
+    protocol: withLanguageChange(
+      protocol,
+      rewriteLocalizedStrings(protocol, withoutLocale(locale)),
+      {
+        before,
+        after: {
+          ...before,
+          locales: before.locales.filter((declared) => declared !== locale),
+        },
       },
-    },
+    ),
   };
 };
 
+/**
+ * Makes another declared language the default. Text Network Canvas supplies
+ * and the researcher has not changed follows (see `withLanguageChange`).
+ */
 export const setDefaultLocale = (
   protocol: CurrentProtocol,
   locale: LocaleTag,
 ): LocaleOperationResult => {
   if (!isDeclared(protocol, locale)) return fail('not-declared');
+  const before = protocol.localization;
   return {
     ok: true,
-    protocol: {
-      ...protocol,
-      localization: { ...protocol.localization, defaultLocale: locale },
-    },
+    protocol: withLanguageChange(protocol, protocol, {
+      before,
+      after: { ...before, defaultLocale: locale },
+    }),
   };
 };
 
@@ -310,9 +363,12 @@ export const setLocalizedString = (
 /**
  * Says that the text recorded as `from` is really written in `tag`: the
  * declaration entry and every translation move to the new tag together, and
- * the default follows when it is `from`. Nothing is translated or deleted.
- * A language the protocol already has is never merged into, so a tag it
- * declares is refused.
+ * the default follows when it is `from`. Nothing the researcher wrote is
+ * translated or deleted; text Network Canvas supplies and the researcher has
+ * not changed becomes its text for the corrected language (see
+ * `withLanguageChange`), so an English protocol corrected to German reads the
+ * German supplied text. A language the protocol already has is never merged
+ * into, so a tag it declares is refused.
  */
 export const changeLocale = (
   protocol: CurrentProtocol,
@@ -323,18 +379,23 @@ export const changeLocale = (
   const resolved = resolveNewLocale(protocol, tag);
   if (!resolved.ok) return fail(resolved.reason);
   const to = resolved.locale;
-  const { localization } = protocol;
+  const before = protocol.localization;
   return {
     ok: true,
-    protocol: {
-      ...rewriteLocalizedStrings(protocol, movedLocale(from, to)),
-      localization: {
-        defaultLocale:
-          localization.defaultLocale === from ? to : localization.defaultLocale,
-        locales: localization.locales.map((declared) =>
-          declared === from ? to : declared,
-        ),
+    protocol: withLanguageChange(
+      protocol,
+      rewriteLocalizedStrings(protocol, movedLocale(from, to)),
+      {
+        before,
+        after: {
+          defaultLocale:
+            before.defaultLocale === from ? to : before.defaultLocale,
+          locales: before.locales.map((declared) =>
+            declared === from ? to : declared,
+          ),
+        },
+        renamed: { [from]: to },
       },
-    },
+    ),
   };
 };

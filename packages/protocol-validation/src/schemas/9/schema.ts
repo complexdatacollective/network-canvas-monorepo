@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { isBlankMessage } from '../../localization/blankText.ts';
 import {
   isCanonicalLocale,
   isUndeterminedLocale,
@@ -51,6 +52,7 @@ import {
   type FormField,
   type StageSubject,
 } from './common/index.ts';
+import { isSuppliedOptionLabelSet } from './family-pedigree-option-labels.ts';
 import type { FilterRule } from './filters/index.ts';
 import {
   INTERFACE_OWNED_OPTION_SETS,
@@ -787,14 +789,37 @@ const ProtocolSchema = z
         continue;
       }
       const optionSet = INTERFACE_OWNED_OPTION_SETS[binding.optionSet];
-      if (optionsMatchInterfaceOwnedSet(variable.options, optionSet.options)) {
-        continue;
-      }
       const owningStageIndex = binding.path[1];
       const owningStage =
         typeof owningStageIndex === 'number'
           ? protocol.stages[owningStageIndex]
           : undefined;
+      if (optionsMatchInterfaceOwnedSet(variable.options, optionSet.options)) {
+        // The interview shows these labels as the answers themselves, with no
+        // wording of its own to fall back on, so none may be blank.
+        if (isSuppliedOptionLabelSet(binding.optionSet)) {
+          variable.options.forEach((option, index) => {
+            for (const [locale, label] of Object.entries(option.label)) {
+              if (!isBlankMessage(label)) continue;
+              ctx.addIssue({
+                code: 'custom' as const,
+                message: `Every option of the ${optionSet.label} attribute "${variableNameFor(protocol, subject, binding.variableId)}" used by ${stageNameFor(owningStage?.type)} needs a label, because participants choose from them.`,
+                path: [
+                  'codebook',
+                  ...(entity === 'ego' ? ['ego'] : [entity, type ?? '']),
+                  'variables',
+                  binding.variableId,
+                  'options',
+                  index,
+                  'label',
+                  locale,
+                ],
+              });
+            }
+          });
+        }
+        continue;
+      }
       ctx.addIssue({
         code: 'custom' as const,
         message: `The ${optionSet.label} attribute "${variableNameFor(protocol, subject, binding.variableId)}" used by ${stageNameFor(owningStage?.type)} must keep its fixed options.`,

@@ -120,7 +120,7 @@ export const FinishingShowsCompletedState: Story = {
     );
     const dialog = await canvas.findByRole('dialog');
     await userEvent.click(
-      within(dialog).getByRole('button', { name: 'Finish Interview' }),
+      within(dialog).getByRole('button', { name: 'Finish' }),
     );
 
     await expect(

@@ -103,6 +103,6 @@ export class InterviewNav {
     await this.page.getByRole('button', { name: 'Finish' }).click();
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Finish Interview' }).click();
+    await dialog.getByRole('button', { name: 'Finish', exact: true }).click();
   }
 }

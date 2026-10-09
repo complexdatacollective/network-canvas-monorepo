@@ -45,12 +45,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Title of the confirmation dialog opened by the finish button at the end of an interview.',
   },
-  finishInterview: {
-    id: 'interview.interfaces.finishInterview',
-    defaultMessage: 'Finish Interview',
-    description:
-      'Confirmation action in the dialog opened by the finish button at the end of an interview; it finishes the current interview.',
-  },
   interviewFinishedNotice: {
     id: 'interview.interfaces.interviewFinishedNotice',
     defaultMessage:
@@ -132,12 +126,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Shown in place of a roster detail that has no value: a blank field or an empty list. Replaces a bare dash so screen readers announce it.',
   },
-  loading: {
-    id: 'interview.interfaces.loading',
-    defaultMessage: 'Loading...',
-    description:
-      'Loading indicator while an external list of people is being read. Keeps the existing three-dot punctuation of this interface.',
-  },
   errorHeading: {
     id: 'interview.interfaces.errorHeading',
     defaultMessage: 'Something went wrong',
@@ -209,24 +197,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'node',
     description:
       'Lowercase fallback subject noun in the generated unnamed-roster-entry label when the protocol supplies no type name.',
-  },
-  oneThirdPanels: {
-    id: 'interview.interfaces.oneThirdPanels',
-    defaultMessage: 'One-third panels',
-    description:
-      'Divider preset that assigns one third of the available area to the source panels in the name generator.',
-  },
-  quarterPanels: {
-    id: 'interview.interfaces.quarterPanels',
-    defaultMessage: '25% panels',
-    description:
-      'Divider preset that assigns 25 percent of the available area to the source panels in the name generator.',
-  },
-  equalSplit: {
-    id: 'interview.interfaces.equalSplit',
-    defaultMessage: 'Equal split',
-    description:
-      'Divider preset that gives equal space to the source panels and the added-people list in the name generator.',
   },
   quickAddInput: {
     id: 'interview.interfaces.quickAddInput',
@@ -481,12 +451,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Empty state when a one-to-many relationship question has no people to display.',
   },
-  noNodesAvailable: {
-    id: 'interview.interfaces.noNodesAvailable',
-    defaultMessage: 'No nodes available to display.',
-    description:
-      'Empty state when the current one-to-many question has no available people for its focal position.',
-  },
   ordinalContainer: {
     id: 'interview.interfaces.ordinalContainer',
     defaultMessage: "Container for the value ''{label}''",
@@ -504,18 +468,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Hide instructions',
     description:
       'Accessible action that collapses the floating instructions panel above a network view.',
-  },
-  pauseAutoLayout: {
-    id: 'interview.interfaces.pauseAutoLayout',
-    defaultMessage: 'Pause Auto Layout',
-    description:
-      'Visible sociogram button that pauses automatic positioning. Its capitalization differs from the narrative icon tooltip.',
-  },
-  resumeAutoLayout: {
-    id: 'interview.interfaces.resumeAutoLayout',
-    defaultMessage: 'Resume Auto Layout',
-    description:
-      'Visible sociogram button that resumes automatic positioning. Its capitalization differs from the narrative icon tooltip.',
   },
   returnedToDrawer: {
     id: 'interview.interfaces.returnedToDrawer',
@@ -614,15 +566,15 @@ export const interfaceMessages = defineMessages({
   },
   zoomIn: {
     id: 'interview.interfaces.zoomIn',
-    defaultMessage: 'Zoom In',
+    defaultMessage: 'Zoom in',
     description:
-      'Accessible name of the geospatial map button that increases magnification. Keeps the existing title capitalization.',
+      'Accessible name of the map and family pedigree buttons that increase magnification. Sentence case.',
   },
   zoomOut: {
     id: 'interview.interfaces.zoomOut',
-    defaultMessage: 'Zoom Out',
+    defaultMessage: 'Zoom out',
     description:
-      'Accessible name of the geospatial map button that decreases magnification. Keeps the existing title capitalization.',
+      'Accessible name of the map and family pedigree buttons that decrease magnification. Sentence case.',
   },
   recenterMap: {
     id: 'interview.interfaces.recenterMap',
@@ -671,12 +623,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Searching...',
     description:
       'Status shown in the geospatial search results panel while a search request is pending.',
-  },
-  noSearchResults: {
-    id: 'interview.interfaces.noSearchResults',
-    defaultMessage: 'Nothing matched your search.',
-    description:
-      'Outcome of a completed geospatial search with no matching places. Do not use this for network failures.',
   },
   searchFailed: {
     id: 'interview.interfaces.searchFailed',

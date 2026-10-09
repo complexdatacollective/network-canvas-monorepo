@@ -1,15 +1,17 @@
-import { toScriptMatchingTag } from '@codaco/shared-consts';
-
-import {
-  canonicalizeLocale,
-  type LocaleTag,
-  type LocalizationDeclaration,
+import type {
+  LocaleTag,
+  LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
 import type { LocalizedString } from './localized-string.ts';
 import type {
   FinishOutcome,
   FinishSessionStage,
 } from './stages/finish-session.ts';
+import {
+  type LanguageChange,
+  suppliedTextAfterLanguageChange,
+  suppliedTextFor,
+} from './supplied-text.ts';
 
 /**
  * The text a finish stage starts with, in one language. Every value is an ICU
@@ -30,7 +32,7 @@ export type FinishSessionText = Readonly<{
  *
  * Each translation was checked by blind back-translation and adversarial
  * comparison (#2131). A regional variant is served by its language
- * (`defaultFinishSessionText`), so British English reads the `en` text.
+ * (`suppliedTextFor`), so British English reads the `en` text.
  */
 export const DEFAULT_FINISH_SESSION_TEXT = {
   'en': {
@@ -99,38 +101,12 @@ const supplied: Readonly<Record<string, FinishSessionText>> =
   DEFAULT_FINISH_SESSION_TEXT;
 
 /**
- * The tag itself, then each shorter tag left by removing its last subtag
- * (RFC 4647 lookup), so `en-US` reaches `en` and `zh-Hant-TW` reaches
- * `zh-Hant`. Chinese is also tried by script, so `zh-TW` reaches `zh-Hant`.
- */
-const lookupCandidates = (locale: LocaleTag): readonly string[] => {
-  const candidates: string[] = [];
-  for (const tag of [locale, toScriptMatchingTag(locale)]) {
-    const subtags = tag.split('-');
-    for (let length = subtags.length; length > 0; length -= 1) {
-      candidates.push(subtags.slice(0, length).join('-'));
-    }
-  }
-  return candidates;
-};
-
-/**
  * The supplied finish text for a protocol language, or `undefined` when there
- * is none. Deliberately stricter than the interview's best-fit matching: text
- * written into a protocol must be in the language it is recorded under, so
- * Catalan is not given Spanish, nor European Portuguese the Brazilian text.
+ * is none (see `suppliedTextFor`).
  */
 export const defaultFinishSessionText = (
   locale: LocaleTag,
-): FinishSessionText | undefined => {
-  const canonical = canonicalizeLocale(locale);
-  if (canonical === undefined) return undefined;
-  for (const candidate of lookupCandidates(canonical)) {
-    const text = supplied[candidate];
-    if (text !== undefined) return text;
-  }
-  return undefined;
-};
+): FinishSessionText | undefined => suppliedTextFor(supplied, locale);
 
 type FinishSessionTextField = keyof FinishSessionText;
 
@@ -212,29 +188,29 @@ export const hasDefaultFinishSessionText = (
 ): boolean => holdsSuppliedText(stage, locale, PARTICIPANT_TEXT_FIELDS);
 
 /**
- * The finish stage with the supplied text added for `locale`, when its title
- * and content in the protocol's default language are still the supplied text
- * and `locale` has supplied text of its own. The label is filled in the same
- * way, but only while it too is still the supplied one. Text the stage
- * already has for `locale` is kept. Returns the stage unchanged otherwise.
+ * The finish stage's text as Network Canvas writes it after a change to the
+ * protocol's languages (see `suppliedTextAfterLanguageChange`): its title and
+ * content when, in the default language before the change, they are still the
+ * supplied text, and its label as well while that too is the supplied one.
+ * Only those fields are returned; text the researcher has changed is theirs.
  */
-export const withDefaultFinishSessionTranslation = <
-  Stage extends Pick<FinishSessionStage, FinishSessionTextField>,
->(
-  stage: Stage,
-  locale: LocaleTag,
-  defaultLocale: LocaleTag,
-): Stage => {
-  const text = defaultFinishSessionText(locale);
-  if (text === undefined || !hasDefaultFinishSessionText(stage, defaultLocale))
-    return stage;
+export const defaultFinishSessionTextAfterLanguageChange = (
+  stage: Pick<FinishSessionStage, FinishSessionTextField>,
+  change: LanguageChange,
+): Partial<Record<FinishSessionTextField, LocalizedString>> => {
+  const { defaultLocale } = change.before;
+  if (!hasDefaultFinishSessionText(stage, defaultLocale)) return {};
   const fields = holdsSuppliedText(stage, defaultLocale, ['label'])
     ? FINISH_SESSION_TEXT_FIELDS
     : PARTICIPANT_TEXT_FIELDS;
-  let next = stage;
-  for (const field of fields) {
-    if (stage[field][locale] !== undefined) continue;
-    next = { ...next, [field]: { ...stage[field], [locale]: text[field] } };
-  }
-  return next;
+  return Object.fromEntries(
+    fields.map((field) => [
+      field,
+      suppliedTextAfterLanguageChange(
+        stage[field],
+        (locale) => defaultFinishSessionText(locale)?.[field],
+        change,
+      ),
+    ]),
+  );
 };

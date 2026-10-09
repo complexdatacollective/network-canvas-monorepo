@@ -14,6 +14,7 @@ import {
 import { useSelector, useStore } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
@@ -43,6 +44,7 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
   getEdgeColorForType,
@@ -122,6 +124,7 @@ import {
   type Person,
   type Relation,
 } from './model';
+import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { relationshipWrites } from './relationshipToParticipant';
@@ -375,6 +378,13 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         }))
       : [];
   }, [codebook, config.personType, genderIdentityAttribute, resolve]);
+
+  // The answers about sex assigned at birth and the kinds of parent, labelled
+  // as the codebook labels them.
+  const optionLabels = useMemo(
+    () => ownedOptionLabels(codebook, config, (value) => resolve(value).text),
+    [codebook, config, resolve],
+  );
 
   const requiredFormVariables = useMemo(() => {
     const variables = codebook.node?.[config.personType]?.variables ?? {};
@@ -1711,7 +1721,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 </p>
                 {!encryptionUnavailable && (
                   <Button size="sm" onClick={() => setPassphraseOpen(true)}>
-                    <AppMessage message={messages.enterPassphrase} />
+                    <AppMessage message={runtimeMessages.enterPassphrase} />
                   </Button>
                 )}
               </div>
@@ -1842,6 +1852,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         pair={tool === 'connect' ? chosenPair : null}
         family={family}
         displayName={displayName}
+        parentKindLabels={optionLabels.parentKind}
         anchor={
           chosenPair
             ? (nodeRefs.current.get(chosenPair.secondId) ?? null)
@@ -1887,12 +1898,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               </Button>
             )}
             <Button type="button" variant="text" onClick={cancelPanel}>
-              <AppMessage message={messages.cancel} />
+              <AppMessage message={commonMessages.cancel} />
             </Button>
             <SubmitButton form={formId}>
               <AppMessage
                 message={
-                  panel?.mode.kind === 'edit' ? messages.save : messages.add
+                  panel?.mode.kind === 'edit'
+                    ? commonMessages.save
+                    : messages.add
                 }
               />
             </SubmitButton>
@@ -1908,6 +1921,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             config={config}
             framing={framing}
             genderIdentityOptions={genderIdentityOptions}
+            optionLabels={optionLabels}
             formFields={formFields}
             generatedLabels={generatedLabels}
             decryptedNames={decryptedNames}

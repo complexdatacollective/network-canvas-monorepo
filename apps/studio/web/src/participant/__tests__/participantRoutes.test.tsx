@@ -308,7 +308,7 @@ describe('the interview session', () => {
     );
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(
-      await within(dialog).findByRole('button', { name: 'Finish Interview' }),
+      await within(dialog).findByRole('button', { name: 'Finish' }),
     );
 
     // The interview stays mounted and shows its completed state: the finish
@@ -373,7 +373,7 @@ describe('participant analytics', () => {
     );
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(
-      await within(dialog).findByRole('button', { name: 'Finish Interview' }),
+      await within(dialog).findByRole('button', { name: 'Finish' }),
     );
     await screen.findByText(FINISHED_NOTICE);
   };

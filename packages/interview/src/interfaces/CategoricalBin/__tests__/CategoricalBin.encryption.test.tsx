@@ -420,10 +420,10 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
     );
 
     fireEvent.click(
-      within(dialog).getByRole('button', { name: 'Enter your Passphrase' }),
+      within(dialog).getByRole('button', { name: 'Enter your passphrase' }),
     );
     const prompt = await screen.findByRole('dialog', {
-      name: 'Enter your Passphrase',
+      name: 'Enter your passphrase',
     });
     fireEvent.change(
       within(prompt).getByLabelText(/^Passphrase/, { selector: 'input' }),
@@ -434,7 +434,7 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
     );
     await waitFor(() => expect(prompt).not.toBeInTheDocument());
     expect(
-      within(dialog).queryByRole('button', { name: 'Enter your Passphrase' }),
+      within(dialog).queryByRole('button', { name: 'Enter your passphrase' }),
     ).toBeNull();
 
     // Now compared with the name as the participant gave it.

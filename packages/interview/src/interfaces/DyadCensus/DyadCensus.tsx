@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
+import { AppMessage } from '@codaco/app-i18n/react';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
@@ -55,7 +55,6 @@ const choiceVariants = {
 type DyadCensusProps = StageProps<'DyadCensus'>;
 
 export default function DyadCensus(props: DyadCensusProps) {
-  const intl = useAppIntl();
   const { stage, getNavigationHelpers } = props;
   const { moveForward } = getNavigationHelpers();
   const dispatch = useAppDispatch();
@@ -351,16 +350,6 @@ export default function DyadCensus(props: DyadCensusProps) {
                   <BooleanField
                     value={displayedEdge ?? undefined}
                     onChange={setEdge}
-                    options={[
-                      {
-                        label: intl.formatMessage(interfaceMessages.yes),
-                        value: true,
-                      },
-                      {
-                        label: intl.formatMessage(interfaceMessages.no),
-                        value: false,
-                      },
-                    ]}
                     noReset
                     aria-labelledby={`${pairLabelId} ${promptLabelId}`}
                   />

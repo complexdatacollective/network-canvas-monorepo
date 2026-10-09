@@ -112,7 +112,7 @@ describe('the horizontal navigation bar beside answers that are locked', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('button', { name: 'Enter your Passphrase' }),
+      await screen.findByRole('button', { name: 'Enter your passphrase' }),
     ).toBeInTheDocument();
   });
 
@@ -129,7 +129,7 @@ describe('the horizontal navigation bar beside answers that are locked', () => {
     await settle();
 
     expect(
-      screen.queryByRole('button', { name: 'Enter your Passphrase' }),
+      screen.queryByRole('button', { name: 'Enter your passphrase' }),
     ).not.toBeInTheDocument();
   });
 });

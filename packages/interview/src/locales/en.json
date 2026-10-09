@@ -71,10 +71,6 @@
     "defaultMessage": "Who is the child’s biological parent?",
     "description": "Question in the side panel for adding a biological child with a partner as the other parent. Options are both of them, or either one."
   },
-  "interview.familyPedigree.cancel": {
-    "defaultMessage": "Cancel",
-    "description": "Button that closes the side panel without saving."
-  },
   "interview.familyPedigree.canvasLabel": {
     "defaultMessage": "Your family",
     "description": "Accessible name for the area showing the family members the participant has added, drawn as a family tree."
@@ -118,10 +114,6 @@
   "interview.familyPedigree.connectAlreadyConnected": {
     "defaultMessage": "{firstIsYou, select, true {You and “{second}” are already connected.} other {“{first}” and “{second}” are already connected.}}",
     "description": "Shown under the toolbar, and read out, when the participant selects two people to connect who are already connected. first and second are their names or how they are related to the participant."
-  },
-  "interview.familyPedigree.connectBack": {
-    "defaultMessage": "Back",
-    "description": "Option in the menu for connecting two people, after choosing that one is the other’s parent: return to the list of relationships."
   },
   "interview.familyPedigree.connectFormerPartners": {
     "defaultMessage": "{firstIsYou, select, true {You and “{second}” were partners} other {“{first}” and “{second}” were partners}}",
@@ -202,10 +194,6 @@
   "interview.familyPedigree.editTitle": {
     "defaultMessage": "{isYou, select, true {About you} other {About {name}}}",
     "description": "Title of the side panel showing the details about a family member. {name} is that family member’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant."
-  },
-  "interview.familyPedigree.enterPassphrase": {
-    "defaultMessage": "Enter passphrase",
-    "description": "Button in the notice under the family tree that opens the box for entering the passphrase protecting names."
   },
   "interview.familyPedigree.familyMember": {
     "defaultMessage": "Family member",
@@ -315,10 +303,6 @@
     "defaultMessage": "Name (optional)",
     "description": "Label of the field for a family member’s name, which the participant may not know."
   },
-  "interview.familyPedigree.no": {
-    "defaultMessage": "No",
-    "description": "Answer to a yes/no question."
-  },
   "interview.familyPedigree.numberedRelative": {
     "defaultMessage": "{label} {number, number}",
     "description": "Tells apart several family members who would otherwise share a label (for example two unnamed children). label is the already translated label; number is their position in the order they were added. Shown in the family tree, and saved as the name of an unnamed family member when nothing else tells them apart."
@@ -339,29 +323,9 @@
     "defaultMessage": "{parentIsYou, select, true {Did you carry the pregnancy?} other {Did {parent} carry the pregnancy?}}",
     "description": "Yes/no question in the details panel: whether this biological parent was pregnant with the family member. {parent} is the parent’s name or, when they have none, how they are related to the participant, such as “Maternal grandmother”, or “Family member” when they are not connected to the participant."
   },
-  "interview.familyPedigree.parentKind.adoptive": {
-    "defaultMessage": "Adoptive parent",
-    "description": "Option: a parent through adoption."
-  },
-  "interview.familyPedigree.parentKind.biological": {
-    "defaultMessage": "Biological parent",
-    "description": "Option: a genetic parent, who contributed an egg or sperm and raised the child or was otherwise their parent."
-  },
   "interview.familyPedigree.parentKind.biologicalCarrier": {
-    "defaultMessage": "Biological parent who carried the pregnancy",
-    "description": "Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child."
-  },
-  "interview.familyPedigree.parentKind.donor": {
-    "defaultMessage": "Egg or sperm donor",
-    "description": "Option: someone who donated an egg or sperm but did not raise the child."
-  },
-  "interview.familyPedigree.parentKind.social": {
-    "defaultMessage": "Step or social parent",
-    "description": "Option: a parent who is not genetically related and did not adopt — for example a step-parent."
-  },
-  "interview.familyPedigree.parentKind.surrogate": {
-    "defaultMessage": "Surrogate",
-    "description": "Option: someone who carried the pregnancy for someone else and is not genetically related to the child."
+    "defaultMessage": "{parentKind} (carried the pregnancy)",
+    "description": "Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child. parentKind is the protocol’s wording for a biological parent (for example Biological parent); keep the qualifier separate from it, since the wording is the researcher’s."
   },
   "interview.familyPedigree.parentKindLabel": {
     "defaultMessage": "What kind of parent are they?",
@@ -394,10 +358,6 @@
   "interview.familyPedigree.pointerTool": {
     "defaultMessage": "Add and edit",
     "description": "Short label of a toolbar button, shown beside its icon, so keep it brief. While it is on, selecting a person opens their details and shows buttons to add their relatives."
-  },
-  "interview.familyPedigree.preferNotToSay": {
-    "defaultMessage": "Prefer not to say",
-    "description": "Answer option for a question about a family member, when the participant would rather not answer."
   },
   "interview.familyPedigree.relationshipSection": {
     "defaultMessage": "How you are related",
@@ -439,25 +399,9 @@
     "defaultMessage": "{count, plural, one {{name} and one other person removed from your family.} other {{name} and # other people removed from your family.}}",
     "description": "Screen reader announcement after a family member is removed along with the people who were connected to the participant only through them. {name} is the name of the person the participant chose to remove or, when it is not known, how they are related to the participant; count is how many other people were removed with them."
   },
-  "interview.familyPedigree.save": {
-    "defaultMessage": "Save",
-    "description": "Button at the bottom of the side panel that saves changes to a family member’s details."
-  },
   "interview.familyPedigree.savedAnnouncement": {
     "defaultMessage": "Details saved.",
     "description": "Screen reader announcement after a family member’s details are saved."
-  },
-  "interview.familyPedigree.sex.female": {
-    "defaultMessage": "Female",
-    "description": "Sex assigned at birth option."
-  },
-  "interview.familyPedigree.sex.intersex": {
-    "defaultMessage": "Intersex",
-    "description": "Sex assigned at birth option."
-  },
-  "interview.familyPedigree.sex.male": {
-    "defaultMessage": "Male",
-    "description": "Sex assigned at birth option."
   },
   "interview.familyPedigree.sexAssignedAtBirthLabel": {
     "defaultMessage": "Sex assigned at birth",
@@ -539,21 +483,9 @@
     "defaultMessage": "Before you continue, please complete the following:",
     "description": "Heading of the list of family members the participant still needs to add before moving on."
   },
-  "interview.familyPedigree.yes": {
-    "defaultMessage": "Yes",
-    "description": "Answer to a yes/no question."
-  },
   "interview.familyPedigree.you": {
     "defaultMessage": "You",
     "description": "Label shown inside the participant’s own symbol in their family tree."
-  },
-  "interview.familyPedigree.zoomIn": {
-    "defaultMessage": "Zoom in",
-    "description": "Toolbar button that makes the family tree larger."
-  },
-  "interview.familyPedigree.zoomOut": {
-    "defaultMessage": "Zoom out",
-    "description": "Toolbar button that makes the family tree smaller."
   },
   "interview.interfaces.addNamePlaceholder": {
     "defaultMessage": "Type a name, then press Enter",
@@ -679,10 +611,6 @@
     "defaultMessage": "{entityLabel} name",
     "description": "Accessible name for a new-item name field. entityLabel is the unchanged, researcher-authored label for the network entity type."
   },
-  "interview.interfaces.equalSplit": {
-    "defaultMessage": "Equal split",
-    "description": "Divider preset that gives equal space to the source panels and the added-people list in the name generator."
-  },
   "interview.interfaces.errorHeading": {
     "defaultMessage": "Something went wrong",
     "description": "Short heading above an external-list loading error. This heading intentionally has no final period."
@@ -698,10 +626,6 @@
   "interview.interfaces.finishConfirmation": {
     "defaultMessage": "Are you sure you want to finish the interview?",
     "description": "Title of the confirmation dialog opened by the finish button at the end of an interview."
-  },
-  "interview.interfaces.finishInterview": {
-    "defaultMessage": "Finish Interview",
-    "description": "Confirmation action in the dialog opened by the finish button at the end of an interview; it finishes the current interview."
   },
   "interview.interfaces.finished": {
     "defaultMessage": "Finished",
@@ -759,10 +683,6 @@
     "defaultMessage": "Links",
     "description": "Narrative legend heading for displayed connection types. Individual connection labels come unchanged from the protocol."
   },
-  "interview.interfaces.loading": {
-    "defaultMessage": "Loading...",
-    "description": "Loading indicator while an external list of people is being read. Keeps the existing three-dot punctuation of this interface."
-  },
   "interview.interfaces.mapMoved": {
     "defaultMessage": "Map moved to {place}.",
     "description": "Screen-reader announcement after a selected search result moves the map. place is the unchanged place name returned by the map service."
@@ -807,14 +727,6 @@
     "defaultMessage": "No nodes to display.",
     "description": "Empty state when a one-to-many relationship question has no people to display."
   },
-  "interview.interfaces.noNodesAvailable": {
-    "defaultMessage": "No nodes available to display.",
-    "description": "Empty state when the current one-to-many question has no available people for its focal position."
-  },
-  "interview.interfaces.noSearchResults": {
-    "defaultMessage": "Nothing matched your search.",
-    "description": "Outcome of a completed geospatial search with no matching places. Do not use this for network failures."
-  },
   "interview.interfaces.node": {
     "defaultMessage": "Node",
     "description": "Capitalized fallback label when a displayed network item has no authored type name or usable participant-entered name."
@@ -822,10 +734,6 @@
   "interview.interfaces.nodeSubject": {
     "defaultMessage": "node",
     "description": "Lowercase fallback subject noun in the generated unnamed-roster-entry label when the protocol supplies no type name."
-  },
-  "interview.interfaces.oneThirdPanels": {
-    "defaultMessage": "One-third panels",
-    "description": "Divider preset that assigns one third of the available area to the source panels in the name generator."
   },
   "interview.interfaces.ordinalContainer": {
     "defaultMessage": "Container for the value ''{label}''",
@@ -851,10 +759,6 @@
     "defaultMessage": "Passphrase set successfully! Click \"Next\" to continue.",
     "description": "Success message after the participant sets the anonymisation passphrase. Next refers to the interview navigation arrow."
   },
-  "interview.interfaces.pauseAutoLayout": {
-    "defaultMessage": "Pause Auto Layout",
-    "description": "Visible sociogram button that pauses automatic positioning. Its capitalization differs from the narrative icon tooltip."
-  },
   "interview.interfaces.pauseAutomaticLayout": {
     "defaultMessage": "Pause automatic layout",
     "description": "Accessible action that pauses automatic movement of the displayed people in a narrative view."
@@ -874,10 +778,6 @@
   "interview.interfaces.previousPreset": {
     "defaultMessage": "Previous preset",
     "description": "Action that selects the previous researcher-configured narrative view."
-  },
-  "interview.interfaces.quarterPanels": {
-    "defaultMessage": "25% panels",
-    "description": "Divider preset that assigns 25 percent of the available area to the source panels in the name generator."
   },
   "interview.interfaces.quickAddInput": {
     "defaultMessage": "Quick add input",
@@ -922,10 +822,6 @@
   "interview.interfaces.responsePlaceholder": {
     "defaultMessage": "Enter your response here...",
     "description": "Placeholder in the explanation field of the categorical Other dialog. The visible question label remains researcher-authored."
-  },
-  "interview.interfaces.resumeAutoLayout": {
-    "defaultMessage": "Resume Auto Layout",
-    "description": "Visible sociogram button that resumes automatic positioning. Its capitalization differs from the narrative icon tooltip."
   },
   "interview.interfaces.resumeAutomaticLayout": {
     "defaultMessage": "Resume automatic layout",
@@ -1016,12 +912,12 @@
     "description": "Affirmative built-in binary response in pair comparisons and human-readable display of true roster values. The stored boolean remains true."
   },
   "interview.interfaces.zoomIn": {
-    "defaultMessage": "Zoom In",
-    "description": "Accessible name of the geospatial map button that increases magnification. Keeps the existing title capitalization."
+    "defaultMessage": "Zoom in",
+    "description": "Accessible name of the map and family pedigree buttons that increase magnification. Sentence case."
   },
   "interview.interfaces.zoomOut": {
-    "defaultMessage": "Zoom Out",
-    "description": "Accessible name of the geospatial map button that decreases magnification. Keeps the existing title capitalization."
+    "defaultMessage": "Zoom out",
+    "description": "Accessible name of the map and family pedigree buttons that decrease magnification. Sentence case."
   },
   "interview.language.chooseLanguage": {
     "defaultMessage": "Choose a language",
@@ -1058,10 +954,6 @@
   "interview.narrativePedigree.diseaseStatus": {
     "defaultMessage": "{condition}: {status}",
     "description": "One entry in a locale-formatted screen-reader list of conditions and statuses. condition is an authored condition name; status is an already localized clinical status label."
-  },
-  "interview.narrativePedigree.familyPedigree": {
-    "defaultMessage": "Family pedigree",
-    "description": "Snapshot title fallback used only when the protocol has no stage label. An authored stage label always takes precedence and stays unchanged."
   },
   "interview.narrativePedigree.focusOn": {
     "defaultMessage": "Focus on {name}",
@@ -1263,10 +1155,6 @@
     "defaultMessage": "Copied!",
     "description": "Confirmation that interview diagnostic information was copied."
   },
-  "interview.runtime.copyClipboard": {
-    "defaultMessage": "Copy to clipboard",
-    "description": "Tooltip for copying diagnostic information about an interview error."
-  },
   "interview.runtime.copyDebugInfo": {
     "defaultMessage": "Copy Debug Info",
     "description": "Button that copies interview error details for the study organizer."
@@ -1288,7 +1176,7 @@
     "description": "Shown on the passphrase screen when the participant already chose a passphrase earlier in this interview and needs to enter it again."
   },
   "interview.runtime.enterPassphrase": {
-    "defaultMessage": "Enter your Passphrase",
+    "defaultMessage": "Enter your passphrase",
     "description": "Title of the dialog for revealing encrypted interview data."
   },
   "interview.runtime.expandDrawer": {
@@ -1434,10 +1322,6 @@
   "interview.runtime.unplacedCount": {
     "defaultMessage": "{count, number} unplaced",
     "description": "Number of items in the tray that have not yet been placed on the canvas."
-  },
-  "interview.runtime.untitledStage": {
-    "defaultMessage": "Untitled stage",
-    "description": "Fallback for an interview screen with no authored label."
   },
   "interview.runtime.videoUnavailable": {
     "defaultMessage": "Video could not be loaded.",

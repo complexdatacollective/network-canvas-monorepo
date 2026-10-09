@@ -227,61 +227,11 @@ export const messages = defineMessages({
     description:
       'Answer option for a question about a family member, when the participant does not know.',
   },
-  preferNotToSay: {
-    id: 'interview.familyPedigree.preferNotToSay',
-    defaultMessage: 'Prefer not to say',
-    description:
-      'Answer option for a question about a family member, when the participant would rather not answer.',
-  },
-  sexFemale: {
-    id: 'interview.familyPedigree.sex.female',
-    defaultMessage: 'Female',
-    description: 'Sex assigned at birth option.',
-  },
-  sexMale: {
-    id: 'interview.familyPedigree.sex.male',
-    defaultMessage: 'Male',
-    description: 'Sex assigned at birth option.',
-  },
-  sexIntersex: {
-    id: 'interview.familyPedigree.sex.intersex',
-    defaultMessage: 'Intersex',
-    description: 'Sex assigned at birth option.',
-  },
   parentKindLabel: {
     id: 'interview.familyPedigree.parentKindLabel',
     defaultMessage: 'What kind of parent are they?',
     description:
       'Question in the side panel for adding a parent: how the new person is a parent of the selected family member.',
-  },
-  parentKindBiological: {
-    id: 'interview.familyPedigree.parentKind.biological',
-    defaultMessage: 'Biological parent',
-    description:
-      'Option: a genetic parent, who contributed an egg or sperm and raised the child or was otherwise their parent.',
-  },
-  parentKindAdoptive: {
-    id: 'interview.familyPedigree.parentKind.adoptive',
-    defaultMessage: 'Adoptive parent',
-    description: 'Option: a parent through adoption.',
-  },
-  parentKindSocial: {
-    id: 'interview.familyPedigree.parentKind.social',
-    defaultMessage: 'Step or social parent',
-    description:
-      'Option: a parent who is not genetically related and did not adopt — for example a step-parent.',
-  },
-  parentKindDonor: {
-    id: 'interview.familyPedigree.parentKind.donor',
-    defaultMessage: 'Egg or sperm donor',
-    description:
-      'Option: someone who donated an egg or sperm but did not raise the child.',
-  },
-  parentKindSurrogate: {
-    id: 'interview.familyPedigree.parentKind.surrogate',
-    defaultMessage: 'Surrogate',
-    description:
-      'Option: someone who carried the pregnancy for someone else and is not genetically related to the child.',
   },
   childKindLabel: {
     id: 'interview.familyPedigree.childKindLabel',
@@ -318,16 +268,6 @@ export const messages = defineMessages({
     description:
       'Yes/no question in the side panel for adding a biological parent. It is asked when the person the parent is added for already has someone recorded as having carried their pregnancy, about the people chosen in “Are they also the parent of…” who have nobody recorded yet. count is how many such people there are; name is the one person’s name, or how they are related to the participant when unnamed; isYou is true when that person is the participant. It may be left unanswered.',
   },
-  yes: {
-    id: 'interview.familyPedigree.yes',
-    defaultMessage: 'Yes',
-    description: 'Answer to a yes/no question.',
-  },
-  no: {
-    id: 'interview.familyPedigree.no',
-    defaultMessage: 'No',
-    description: 'Answer to a yes/no question.',
-  },
   parentPartnerLabel: {
     id: 'interview.familyPedigree.parentPartnerLabel',
     defaultMessage: 'Are they the partner of another parent?',
@@ -345,16 +285,6 @@ export const messages = defineMessages({
     defaultMessage: 'Are they also the parent of…',
     description:
       'Question in the side panel for adding a parent: which of the selected person’s siblings share this parent. Options are the siblings’ names.',
-  },
-  zoomIn: {
-    id: 'interview.familyPedigree.zoomIn',
-    defaultMessage: 'Zoom in',
-    description: 'Toolbar button that makes the family tree larger.',
-  },
-  zoomOut: {
-    id: 'interview.familyPedigree.zoomOut',
-    defaultMessage: 'Zoom out',
-    description: 'Toolbar button that makes the family tree smaller.',
   },
   showWholeFamily: {
     id: 'interview.familyPedigree.showWholeFamily',
@@ -461,17 +391,6 @@ export const messages = defineMessages({
     defaultMessage: 'Add to family',
     description:
       'Button at the bottom of the side panel that adds the new family member.',
-  },
-  save: {
-    id: 'interview.familyPedigree.save',
-    defaultMessage: 'Save',
-    description:
-      'Button at the bottom of the side panel that saves changes to a family member’s details.',
-  },
-  cancel: {
-    id: 'interview.familyPedigree.cancel',
-    defaultMessage: 'Cancel',
-    description: 'Button that closes the side panel without saving.',
   },
   remove: {
     id: 'interview.familyPedigree.remove',
@@ -668,12 +587,6 @@ export const messages = defineMessages({
     description:
       'Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent).',
   },
-  connectBack: {
-    id: 'interview.familyPedigree.connectBack',
-    defaultMessage: 'Back',
-    description:
-      'Option in the menu for connecting two people, after choosing that one is the other’s parent: return to the list of relationships.',
-  },
   connectAlreadyConnected: {
     id: 'interview.familyPedigree.connectAlreadyConnected',
     defaultMessage:
@@ -690,9 +603,9 @@ export const messages = defineMessages({
   },
   parentKindBiologicalCarrier: {
     id: 'interview.familyPedigree.parentKind.biologicalCarrier',
-    defaultMessage: 'Biological parent who carried the pregnancy',
+    defaultMessage: '{parentKind} (carried the pregnancy)',
     description:
-      'Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child.',
+      'Option in the menu for connecting a parent and child: a genetic parent who was also pregnant with the child. parentKind is the protocol’s wording for a biological parent (for example Biological parent); keep the qualifier separate from it, since the wording is the researcher’s.',
   },
   disconnectTool: {
     id: 'interview.familyPedigree.disconnectTool',
@@ -863,11 +776,5 @@ export const messages = defineMessages({
       'Enter your passphrase to add or change people in your family.',
     description:
       'Notice shown under the family tree when the study protects some of the answers about each family member (but not their names) with a passphrase that has not been entered yet. Until it is, the family cannot be changed.',
-  },
-  enterPassphrase: {
-    id: 'interview.familyPedigree.enterPassphrase',
-    defaultMessage: 'Enter passphrase',
-    description:
-      'Button in the notice under the family tree that opens the box for entering the passphrase protecting names.',
   },
 });

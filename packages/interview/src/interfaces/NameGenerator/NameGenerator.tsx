@@ -278,20 +278,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
                 : 'name-generator-panels-horizontal'
             }
             defaultBasis={defaultBasis()}
-            breakpoints={[
-              {
-                value: 25,
-                label: intl.formatMessage(interfaceMessages.quarterPanels),
-              },
-              {
-                value: 33,
-                label: intl.formatMessage(interfaceMessages.oneThirdPanels),
-              },
-              {
-                value: 50,
-                label: intl.formatMessage(interfaceMessages.equalSplit),
-              },
-            ]}
+            breakpoints={[{ value: 25 }, { value: 33 }, { value: 50 }]}
             overrideBasis={isPanelsOpen ? undefined : 0}
             className="min-h-0 w-full flex-1 basis-full"
             aria-label={intl.formatMessage(interfaceMessages.resizePanels)}

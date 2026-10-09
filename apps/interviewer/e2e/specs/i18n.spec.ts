@@ -254,7 +254,7 @@ test.describe('a Spanish browser', () => {
     await expect(description).toHaveAttribute('dir', 'ltr');
     await expect(
       confirmation.getByRole('button', {
-        name: 'Finalizar entrevista',
+        name: 'Finalizar',
         exact: true,
       }),
     ).toBeVisible();

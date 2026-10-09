@@ -327,7 +327,7 @@ const openLockedSlide = async (canvasElement: HTMLElement) => {
   await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument();
   await expect(canvas.queryByRole('spinbutton')).not.toBeInTheDocument();
   await expect(
-    await canvas.findByRole('button', { name: 'Enter your Passphrase' }),
+    await canvas.findByRole('button', { name: 'Enter your passphrase' }),
   ).toBeInTheDocument();
 };
 
@@ -459,7 +459,7 @@ export const ProtectedAnswersRefused: Story = {
       canvas.getByRole('spinbutton', { name: /How old are they/ }),
     ).toHaveValue(34);
     await expect(
-      canvas.queryByRole('button', { name: 'Enter your Passphrase' }),
+      canvas.queryByRole('button', { name: 'Enter your passphrase' }),
     ).not.toBeInTheDocument();
   },
 };

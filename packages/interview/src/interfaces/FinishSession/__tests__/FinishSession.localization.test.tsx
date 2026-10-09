@@ -151,7 +151,7 @@ describe('FinishSession localized recoverable failures', () => {
       const dialog = await screen.findByRole('dialog');
       await user.click(
         within(dialog).getByRole('button', {
-          name: 'Finish Interview',
+          name: 'Finish',
         }),
       );
       expect(
@@ -167,7 +167,7 @@ describe('FinishSession localized recoverable failures', () => {
       expect(within(dialog).getByText(spanish, { exact: true })).toBeVisible();
       expect(within(dialog).queryByText(english)).not.toBeInTheDocument();
       const retry = within(dialog).getByRole('button', {
-        name: 'Finalizar entrevista',
+        name: 'Finalizar',
       });
       expect(retry).toBeEnabled();
       expect(flush).toHaveBeenCalledTimes(1);
@@ -215,7 +215,7 @@ describe('FinishSession localized recoverable failures', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(
       within(dialog).getByRole('button', {
-        name: 'Finalizar entrevista',
+        name: 'Finalizar',
       }),
     );
     await waitFor(() => expect(finish).toHaveBeenCalledTimes(1));
@@ -248,7 +248,7 @@ describe('FinishSession localized recoverable failures', () => {
     await user.click(screen.getByRole('button', { name: 'Finish' }));
     const dialog = await screen.findByRole('dialog');
     const confirmFinish = within(dialog).getByRole('button', {
-      name: 'Finish Interview',
+      name: 'Finish',
     });
 
     await user.click(confirmFinish);
@@ -274,9 +274,7 @@ describe('FinishSession localized recoverable failures', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Finish' }));
     const dialog = await screen.findByRole('dialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Finish Interview' }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
     await waitFor(() => expect(flush).toHaveBeenCalledTimes(1));
 
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -301,9 +299,7 @@ describe('FinishSession localized recoverable failures', () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Finish' }));
     const dialog = await screen.findByRole('dialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Finish Interview' }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
     await waitFor(() => expect(flush).toHaveBeenCalledTimes(1));
 
     unmount();

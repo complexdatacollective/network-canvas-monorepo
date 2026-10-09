@@ -9,11 +9,11 @@ import validateProtocol, {
   FINISH_STAGE_TEXT_MISSING,
 } from '../../../validation/validate-protocol.ts';
 import {
+  defaultFinishSessionTextAfterLanguageChange,
   createDefaultFinishSessionStage,
   DEFAULT_FINISH_SESSION_TEXT,
   defaultFinishSessionText,
   hasDefaultFinishSessionText,
-  withDefaultFinishSessionTranslation,
 } from '../finish-session-defaults.ts';
 import { findFinishStageTextProblems } from '../finish-stage-text.ts';
 import ProtocolSchemaV9 from '../schema.ts';
@@ -324,15 +324,27 @@ describe('supplied finish text', () => {
     ).toBe(true);
   });
 
-  describe('adding a language', () => {
-    const stage = createDefaultFinishSessionStage({
-      id: 'end',
-      localization: { defaultLocale: 'en', locales: ['en'] },
-    });
+  const english = { defaultLocale: 'en', locales: ['en'] };
+  const stage = createDefaultFinishSessionStage({
+    id: 'end',
+    localization: english,
+  });
+  const afterChange = (
+    from: typeof stage,
+    change: Parameters<typeof defaultFinishSessionTextAfterLanguageChange>[1],
+  ) => ({
+    ...from,
+    ...defaultFinishSessionTextAfterLanguageChange(from, change),
+  });
+  const addingFrench = {
+    before: english,
+    after: { defaultLocale: 'en', locales: ['en', 'fr'] },
+  };
 
+  describe('adding a language', () => {
     it('fills in the new language while the default language text is still the supplied text', () => {
       expect(hasDefaultFinishSessionText(stage, 'en')).toBe(true);
-      expect(withDefaultFinishSessionTranslation(stage, 'fr', 'en')).toEqual({
+      expect(afterChange(stage, addingFrench)).toEqual({
         ...stage,
         label: { ...stage.label, fr: DEFAULT_FINISH_SESSION_TEXT.fr.label },
         title: { ...stage.title, fr: DEFAULT_FINISH_SESSION_TEXT.fr.title },
@@ -346,15 +358,15 @@ describe('supplied finish text', () => {
     it('leaves the new language untranslated once the researcher has changed any of the text', () => {
       const edited = { ...stage, content: { en: 'Thanks for taking part.' } };
       expect(hasDefaultFinishSessionText(edited, 'en')).toBe(false);
-      expect(withDefaultFinishSessionTranslation(edited, 'fr', 'en')).toBe(
-        edited,
-      );
+      expect(
+        defaultFinishSessionTextAfterLanguageChange(edited, addingFrench),
+      ).toEqual({});
     });
 
     it('still fills in the text when only the stage was renamed, leaving the new name untranslated', () => {
       const renamed = { ...stage, label: { en: 'End' } };
       expect(hasDefaultFinishSessionText(renamed, 'en')).toBe(true);
-      expect(withDefaultFinishSessionTranslation(renamed, 'fr', 'en')).toEqual({
+      expect(afterChange(renamed, addingFrench)).toEqual({
         ...renamed,
         title: { ...stage.title, fr: DEFAULT_FINISH_SESSION_TEXT.fr.title },
         content: {
@@ -365,16 +377,47 @@ describe('supplied finish text', () => {
     });
 
     it('leaves a language with no supplied text untranslated', () => {
-      expect(withDefaultFinishSessionTranslation(stage, 'ja', 'en')).toBe(
-        stage,
-      );
+      expect(
+        afterChange(stage, {
+          before: english,
+          after: { defaultLocale: 'en', locales: ['en', 'ja'] },
+        }),
+      ).toEqual(stage);
     });
 
     it('keeps text the stage already has in the new language', () => {
       const translated = { ...stage, title: { ...stage.title, fr: 'Fin' } };
+      expect(afterChange(translated, addingFrench).title).toEqual({
+        ...stage.title,
+        fr: 'Fin',
+      });
+    });
+  });
+
+  describe('correcting a language', () => {
+    const correctedToGerman = {
+      before: english,
+      after: { defaultLocale: 'de', locales: ['de'] },
+      renamed: { en: 'de' },
+    };
+
+    it('gives the corrected language its own supplied text', () => {
+      expect(afterChange(stage, correctedToGerman)).toEqual({
+        ...stage,
+        label: { de: DEFAULT_FINISH_SESSION_TEXT.de.label },
+        title: { de: DEFAULT_FINISH_SESSION_TEXT.de.title },
+        content: { de: DEFAULT_FINISH_SESSION_TEXT.de.content },
+      });
+    });
+
+    it('leaves text with nothing supplied in the corrected language untranslated', () => {
       expect(
-        withDefaultFinishSessionTranslation(translated, 'fr', 'en').title,
-      ).toEqual({ ...stage.title, fr: 'Fin' });
+        afterChange(stage, {
+          before: english,
+          after: { defaultLocale: 'ja', locales: ['ja'] },
+          renamed: { en: 'ja' },
+        }),
+      ).toEqual({ ...stage, label: {}, title: {}, content: {} });
     });
   });
 });

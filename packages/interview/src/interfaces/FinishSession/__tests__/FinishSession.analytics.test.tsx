@@ -133,9 +133,7 @@ describe('FinishSession analytics', () => {
     await user.click(screen.getByRole('button', { name: 'Finish' }));
     expect(finishedCalls(tracker)).toEqual([]);
     const dialog = await screen.findByRole('dialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Finish Interview' }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
     await waitFor(() => {
       expect(finishedCalls(tracker)).toEqual([
@@ -153,9 +151,7 @@ describe('FinishSession analytics', () => {
 
     await user.click(screen.getByRole('button', { name: 'Finish' }));
     const dialog = await screen.findByRole('dialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Finish Interview' }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
     expect(
       await within(dialog).findByText(/could not be finished/),

@@ -131,7 +131,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
     const finished = await confirm({
       title: <AppMessage message={interfaceMessages.finishConfirmation} />,
       description: finishConfirmationDescription,
-      confirmLabel: <AppMessage message={interfaceMessages.finishInterview} />,
+      confirmLabel: <AppMessage message={interfaceMessages.finish} />,
       describeError: describeFinishError,
       onConfirm: async (signal: AbortSignal) => {
         // Order matters: autosave is debounced, so the participant's most

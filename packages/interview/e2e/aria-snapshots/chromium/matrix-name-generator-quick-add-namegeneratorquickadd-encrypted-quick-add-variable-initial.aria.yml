@@ -7,7 +7,7 @@
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]
-    - button "Enter your Passphrase": 🔑
+    - button "Enter your passphrase": 🔑
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

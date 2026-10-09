@@ -238,9 +238,7 @@ describe('Shell completed state', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Finish' }));
     const dialog = await screen.findByRole('dialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Finish Interview' }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
     await waitFor(() => expect(screen.queryByText(NOTICE)).not.toBeNull());
     expect(onFinish).toHaveBeenCalledWith(
@@ -270,9 +268,7 @@ describe('Shell completed state', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Finish' }));
     const dialog = await screen.findByRole('dialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Finish Interview' }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
     const notice = await screen.findByText(NOTICE);
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
@@ -290,9 +286,7 @@ describe('Shell completed state', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Finish' }));
     const dialog = await screen.findByRole('dialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Finish Interview' }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
     expect(
       await within(dialog).findByText(/The interview could not be finished/),
@@ -346,9 +340,7 @@ describe('Shell completed state', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Finish' }));
     const dialog = await screen.findByRole('dialog');
-    await user.click(
-      within(dialog).getByRole('button', { name: 'Finish Interview' }),
-    );
+    await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
     await expectCompletedState();
     expect(
@@ -470,9 +462,7 @@ describe('Shell completed state', () => {
       const user = userEvent.setup();
       await user.click(await screen.findByRole('button', { name: 'Finish' }));
       const dialog = await screen.findByRole('dialog');
-      await user.click(
-        within(dialog).getByRole('button', { name: 'Finish Interview' }),
-      );
+      await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
       await waitFor(() => expect(screen.queryByText(NOTICE)).not.toBeNull());
 
       rerender(

@@ -8,7 +8,7 @@
   - status:
     - text: "Information:"
     - paragraph: Enter your passphrase to add or change people in your family.
-    - button "Enter passphrase"
+    - button "Enter your passphrase"
   - toolbar "Family tree tools":
     - group "What clicking a person does":
       - button "Add and edit" [disabled] [pressed]
@@ -20,7 +20,7 @@
     - button "Show the whole family"
   - navigation:
     - button "Previous Step" [disabled]
-    - button "Enter your Passphrase": 🔑
+    - button "Enter your passphrase": 🔑
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

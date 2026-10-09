@@ -1,7 +1,7 @@
 - main:
   - button "Stubbed map (click to select test feature)"
-  - button "Zoom In"
-  - button "Zoom Out"
+  - button "Zoom in"
+  - button "Zoom out"
   - button "Recenter Map"
   - status:
     - heading "Where does this person currently live?" [level=4]

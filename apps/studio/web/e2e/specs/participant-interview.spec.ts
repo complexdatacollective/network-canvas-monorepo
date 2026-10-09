@@ -102,7 +102,7 @@ async function interviewToFinish(page: Page, link: string): Promise<void> {
   ).toBeVisible();
   await page.getByRole('button', { name: 'Finish' }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Finish Interview' }).click();
+  await dialog.getByRole('button', { name: 'Finish', exact: true }).click();
   await expectCompletedInterview(page);
 }
 

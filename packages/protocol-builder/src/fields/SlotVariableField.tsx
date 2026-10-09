@@ -8,6 +8,8 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import {
   INTERFACE_OWNED_OPTION_SETS,
   type InterfaceOwnedOptionSetKey,
+  isSuppliedOptionLabelSet,
+  suppliedOptionLabels,
   type VariableOption,
   type Variables,
   type VariableType,
@@ -188,23 +190,31 @@ export default function SlotVariableField({
       : INTERFACE_OWNED_OPTION_SETS[ownedOptions].options;
 
   const localization = useProtocolLocalization();
-  // The canonical set's labels are plain text (or, for a set without labels
-  // of its own, the host's translated words); an attribute created here holds
-  // them as participant copy in the protocol's default language. Until the
-  // protocol's languages are known they cannot be written, so creating an
-  // attribute for an owned set is not offered.
+  // A set whose labels a participant reads is seeded with the labels Network
+  // Canvas supplies, in every protocol language that has them. Any other
+  // canonical set's labels are plain text (or, for a set without labels of its
+  // own, the host's translated words), held as participant copy in the
+  // protocol's default language. Until the protocol's languages are known
+  // they cannot be written, so creating an attribute for an owned set is not
+  // offered.
   const seededOptions = useMemo<readonly VariableOption[] | undefined>(
     () =>
-      lockedOptions === undefined || localization === undefined
+      lockedOptions === undefined ||
+      ownedOptions === undefined ||
+      localization === undefined
         ? undefined
         : lockedOptions.map((option) => ({
             value: option.value,
-            label: localizedFromText(
-              localization,
-              option.label ?? ownedOptionLabel?.(option.value) ?? option.value,
-            ),
+            label: isSuppliedOptionLabelSet(ownedOptions)
+              ? suppliedOptionLabels(ownedOptions, option.value, localization)
+              : localizedFromText(
+                  localization,
+                  option.label ??
+                    ownedOptionLabel?.(option.value) ??
+                    option.value,
+                ),
           })),
-    [localization, lockedOptions, ownedOptionLabel],
+    [localization, lockedOptions, ownedOptions, ownedOptionLabel],
   );
   const createOffered =
     lockedOptions === undefined || seededOptions !== undefined;

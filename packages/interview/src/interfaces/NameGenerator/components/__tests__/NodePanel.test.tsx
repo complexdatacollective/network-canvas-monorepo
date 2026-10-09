@@ -144,7 +144,7 @@ describe('NodePanel external-data status handling', () => {
 
     renderPanel();
 
-    expect(screen.getByText('Loading...')).toBeTruthy();
+    expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.queryByTestId('node-list')).toBeNull();
   });
 
@@ -156,7 +156,7 @@ describe('NodePanel external-data status handling', () => {
 
     renderPanel();
 
-    expect(screen.getByText('Loading...')).toBeTruthy();
+    expect(screen.getByText('Loading…')).toBeTruthy();
     expect(screen.queryByTestId('node-list')).toBeNull();
   });
 
@@ -171,7 +171,7 @@ describe('NodePanel external-data status handling', () => {
     expect(screen.getByText(/External data could not be loaded/i)).toBeTruthy();
     expect(screen.queryByTestId('node-list')).toBeNull();
     // Error UI must be visibly distinct from a successfully-loaded empty panel.
-    expect(screen.queryByText('Loading...')).toBeNull();
+    expect(screen.queryByText('Loading…')).toBeNull();
   });
 
   it('renders the node list once external data has loaded successfully', () => {
@@ -186,7 +186,7 @@ describe('NodePanel external-data status handling', () => {
 
     const list = screen.getByTestId('node-list');
     expect(list.textContent).toBe('2');
-    expect(screen.queryByText('Loading...')).toBeNull();
+    expect(screen.queryByText('Loading…')).toBeNull();
     expect(screen.queryByText(/External data could not be loaded/i)).toBeNull();
   });
 });

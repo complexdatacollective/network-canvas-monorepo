@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
@@ -153,7 +154,7 @@ function NodePanel(props: NodePanelProps) {
       {isExternalData &&
       (status.state === 'idle' || status.state === 'loading') ? (
         <div className="flex flex-1 items-center justify-center">
-          <Loading message={intl.formatMessage(interfaceMessages.loading)} />
+          <Loading message={intl.formatMessage(commonMessages.loading)} />
         </div>
       ) : isExternalData && status.state === 'error' ? (
         <div className="flex flex-1 flex-col items-center justify-center">

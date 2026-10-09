@@ -99,7 +99,7 @@ async function openPrompter({
 
   const user = userEvent.setup();
   await user.click(
-    screen.getByRole('button', { name: 'Enter your Passphrase' }),
+    screen.getByRole('button', { name: 'Enter your passphrase' }),
   );
   const dialog = await screen.findByRole('dialog');
   // Each label also carries a visual required marker.
@@ -213,7 +213,7 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
       header,
     });
 
-    expect(dialog).toHaveAccessibleName('Enter your Passphrase');
+    expect(dialog).toHaveAccessibleName('Enter your passphrase');
     expect(passphrase).toHaveAttribute('type', 'password');
     expect(passphrase).toHaveAttribute('autocomplete', 'off');
     expect(confirmField(dialog)).not.toBeInTheDocument();
@@ -269,7 +269,7 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     );
 
     await user.click(
-      screen.getByRole('button', { name: 'Enter your Passphrase' }),
+      screen.getByRole('button', { name: 'Enter your passphrase' }),
     );
     const reopened = await within(
       await screen.findByRole('dialog'),
@@ -295,7 +295,7 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     fireEvent.click(
-      screen.getByRole('button', { name: 'Enter your Passphrase' }),
+      screen.getByRole('button', { name: 'Enter your passphrase' }),
     );
 
     const reopened = await within(
@@ -380,7 +380,7 @@ describe('PassphrasePrompter in an interview whose answers no passphrase can ope
       );
 
       expect(
-        screen.queryByRole('button', { name: 'Enter your Passphrase' }),
+        screen.queryByRole('button', { name: 'Enter your passphrase' }),
       ).not.toBeInTheDocument();
     },
   );

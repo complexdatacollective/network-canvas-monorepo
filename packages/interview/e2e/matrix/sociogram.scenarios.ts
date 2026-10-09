@@ -260,10 +260,10 @@ function buildManualBaseline(): ScenarioDefinition {
       // behaviours.automaticLayout is absent, so SimulationPanel never mounts
       // (Sociogram.tsx only renders it when layoutMode === 'AUTOMATIC').
       await expect(
-        page.getByRole('button', { name: 'Pause Auto Layout' }),
+        page.getByRole('button', { name: 'Pause automatic layout' }),
       ).toHaveCount(0);
       await expect(
-        page.getByRole('button', { name: 'Resume Auto Layout' }),
+        page.getByRole('button', { name: 'Resume automatic layout' }),
       ).toHaveCount(0);
 
       // label/interviewScript are stage metadata, never rendered to the
@@ -757,13 +757,15 @@ function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
       await stage.sociogram.waitForSimulationSettled();
 
       await expect(
-        page.getByRole('button', { name: 'Pause Auto Layout' }),
+        page.getByRole('button', { name: 'Pause automatic layout' }),
       ).toBeVisible();
-      await page.getByRole('button', { name: 'Pause Auto Layout' }).click();
+      await page
+        .getByRole('button', { name: 'Pause automatic layout' })
+        .click();
 
       // After pause the toggle flips label; the worker is stopped.
       await expect(
-        page.getByRole('button', { name: 'Resume Auto Layout' }),
+        page.getByRole('button', { name: 'Resume automatic layout' }),
       ).toBeVisible();
 
       // Dragging while paused pins the node but does not restart the worker.
@@ -773,14 +775,16 @@ function buildAutomaticLayoutPauseResume(): ScenarioDefinition {
         'false',
       );
 
-      await page.getByRole('button', { name: 'Resume Auto Layout' }).click();
+      await page
+        .getByRole('button', { name: 'Resume automatic layout' })
+        .click();
       // Resuming re-settles ~instantly via the mock grid worker — it must
       // transition back to false, not hang at true.
       await expect
         .poll(() => sociogram.getAttribute('data-simulation-running'))
         .toBe('false');
       await expect(
-        page.getByRole('button', { name: 'Pause Auto Layout' }),
+        page.getByRole('button', { name: 'Pause automatic layout' }),
       ).toBeVisible();
     },
   };

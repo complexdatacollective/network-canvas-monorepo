@@ -8,6 +8,10 @@ import {
   escapeMessageText,
   type LocalizedStringHit,
   messageText,
+  PEDIGREE_RELATIONSHIP_KINDS,
+  PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
+  suppliedOptionLabel,
+  suppliedOptionLabels,
   validateProtocol,
 } from '@codaco/protocol-validation';
 
@@ -129,6 +133,95 @@ const textOf = (protocol: CurrentProtocol) => {
   };
 };
 
+const withSuppliedFinish = (): CurrentProtocol => {
+  const protocol = monolingual();
+  return {
+    ...protocol,
+    stages: [
+      ...protocol.stages.slice(0, -1),
+      createDefaultFinishSessionStage({
+        id: 'finish',
+        localization: protocol.localization,
+      }),
+    ],
+  };
+};
+
+// A protocol whose Family Pedigree records sex assigned at birth and the
+// kind of each relationship in attributes labelled with the supplied
+// labels, as Architect creates them. Partial: the locale operations read
+// only the stage's attribute bindings and the codebook.
+const withPedigree = (
+  sexLabels: (value: string) => Record<string, string> = (value) =>
+    suppliedOptionLabels('pedigreeSexAssignedAtBirth', value, {
+      defaultLocale: 'en',
+      locales: ['en'],
+    }),
+): CurrentProtocol =>
+  ({
+    ...monolingual(),
+    codebook: {
+      node: {
+        relative: {
+          name: 'relative',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            sex: {
+              name: 'sex',
+              type: 'categorical',
+              options: PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+                value,
+                label: sexLabels(value),
+              })),
+            },
+          },
+        },
+      },
+      edge: {
+        family: {
+          name: 'family',
+          color: 'edge-color-seq-1',
+          variables: {
+            relType: {
+              name: 'relType',
+              type: 'categorical',
+              options: PEDIGREE_RELATIONSHIP_KINDS.map((value) => ({
+                value,
+                label: suppliedOptionLabels('pedigreeRelationship', value, {
+                  defaultLocale: 'en',
+                  locales: ['en'],
+                }),
+              })),
+            },
+          },
+        },
+      },
+    },
+    stages: [
+      {
+        id: 'familyPedigree',
+        type: 'FamilyPedigree',
+        label: { en: 'Family' },
+        subject: { entity: 'node', type: 'relative' },
+        nodeConfiguration: { sexAssignedAtBirthAttribute: 'sex' },
+        edgeConfiguration: { type: 'family', kindAttribute: 'relType' },
+      },
+    ],
+  }) as unknown as CurrentProtocol;
+
+const labelsOf = (
+  protocol: CurrentProtocol,
+  entity: 'node' | 'edge',
+  type: string,
+  variable: string,
+) => {
+  const definition = protocol.codebook[entity]?.[type]?.variables?.[variable];
+  return definition?.type === 'categorical'
+    ? definition.options.map((option) => option.label)
+    : undefined;
+};
+
 describe('addLocales', () => {
   it('declares languages after the existing ones, by their canonical tags', () => {
     const protocol = protocolOf(addLocales(bilingual(), ['PT-br', 'zh-hant']));
@@ -141,20 +234,6 @@ describe('addLocales', () => {
   });
 
   describe('a finish stage with the supplied closing text', () => {
-    const withSuppliedFinish = (): CurrentProtocol => {
-      const protocol = monolingual();
-      return {
-        ...protocol,
-        stages: [
-          ...protocol.stages.slice(0, -1),
-          createDefaultFinishSessionStage({
-            id: 'finish',
-            localization: protocol.localization,
-          }),
-        ],
-      };
-    };
-
     it('gets that text in each new language it is supplied in, and nothing else is translated', async () => {
       const protocol = protocolOf(
         addLocales(withSuppliedFinish(), ['pt-BR', 'ja']),
@@ -189,6 +268,39 @@ describe('addLocales', () => {
       ];
       const protocol = protocolOf(addLocales(edited, ['fr']));
       expect(protocol.stages).toEqual(edited.stages);
+    });
+  });
+
+  describe('the answers a Family Pedigree asks for', () => {
+    it('get their supplied labels in each new language that has them', () => {
+      const protocol = protocolOf(addLocales(withPedigree(), ['es', 'ja']));
+      expect(labelsOf(protocol, 'node', 'relative', 'sex')).toEqual(
+        PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+          en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
+          es: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'es'),
+        })),
+      );
+      expect(labelsOf(protocol, 'edge', 'family', 'relType')).toEqual(
+        PEDIGREE_RELATIONSHIP_KINDS.map((value) => ({
+          en: suppliedOptionLabel('pedigreeRelationship', value, 'en'),
+          es: suppliedOptionLabel('pedigreeRelationship', value, 'es'),
+        })),
+      );
+    });
+
+    it('stay untranslated once the researcher has reworded one', () => {
+      const reworded = withPedigree((value) =>
+        value === 'intersex'
+          ? { en: 'Intersex or variation of sex' }
+          : suppliedOptionLabels('pedigreeSexAssignedAtBirth', value, {
+              defaultLocale: 'en',
+              locales: ['en'],
+            }),
+      );
+      const protocol = protocolOf(addLocales(reworded, ['es']));
+      expect(labelsOf(protocol, 'node', 'relative', 'sex')).toEqual(
+        labelsOf(reworded, 'node', 'relative', 'sex'),
+      );
     });
   });
 
@@ -517,5 +629,64 @@ describe('setTranslation', () => {
         reason: 'blank-text',
       });
     }
+  });
+});
+
+describe('text Network Canvas supplies, when a language is corrected or the default changes', () => {
+  it('becomes the supplied text of the corrected language, as when an English protocol migrated from schema 8 is really German', async () => {
+    const protocol = protocolOf(changeLocale(withSuppliedFinish(), 'en', 'de'));
+    expect(protocol.stages.at(-1)).toMatchObject({
+      label: { de: DEFAULT_FINISH_SESSION_TEXT.de.label },
+      title: { de: DEFAULT_FINISH_SESSION_TEXT.de.title },
+      content: { de: DEFAULT_FINISH_SESSION_TEXT.de.content },
+    });
+    const pedigree = protocolOf(changeLocale(withPedigree(), 'en', 'de'));
+    expect(labelsOf(pedigree, 'node', 'relative', 'sex')).toEqual(
+      PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+        de: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'de'),
+      })),
+    );
+    expect(labelsOf(pedigree, 'edge', 'family', 'relType')).toEqual(
+      PEDIGREE_RELATIONSHIP_KINDS.map((value) => ({
+        de: suppliedOptionLabel('pedigreeRelationship', value, 'de'),
+      })),
+    );
+    expect((await validateProtocol(protocol)).success).toBe(true);
+  });
+
+  it('moves unchanged with its language once the researcher has rewritten it', () => {
+    const reworded = withPedigree((value) =>
+      value === 'intersex'
+        ? { en: 'Intersex or variation of sex' }
+        : suppliedOptionLabels('pedigreeSexAssignedAtBirth', value, {
+            defaultLocale: 'en',
+            locales: ['en'],
+          }),
+    );
+    const protocol = protocolOf(changeLocale(reworded, 'en', 'de'));
+    expect(labelsOf(protocol, 'node', 'relative', 'sex')).toEqual(
+      labelsOf(reworded, 'node', 'relative', 'sex')?.map((label) => ({
+        de: (label as Record<string, string>).en,
+      })),
+    );
+  });
+
+  it('gives a new default language with no supplied labels the English ones, so a language added later is still filled in', () => {
+    const withHungarian = protocolOf(addLocales(withPedigree(), ['hu']));
+    const huDefault = protocolOf(setDefaultLocale(withHungarian, 'hu'));
+    expect(labelsOf(huDefault, 'node', 'relative', 'sex')).toEqual(
+      PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+        en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
+        hu: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
+      })),
+    );
+    const withGerman = protocolOf(addLocales(huDefault, ['de']));
+    expect(labelsOf(withGerman, 'node', 'relative', 'sex')).toEqual(
+      PEDIGREE_SEX_ASSIGNED_AT_BIRTH.map((value) => ({
+        en: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
+        hu: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'en'),
+        de: suppliedOptionLabel('pedigreeSexAssignedAtBirth', value, 'de'),
+      })),
+    );
   });
 });

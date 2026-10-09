@@ -22,9 +22,9 @@ export default function SimulationPanel({
       icon={simulationEnabled ? <PauseIcon /> : <PlayIcon />}
     >
       {simulationEnabled ? (
-        <AppMessage message={interfaceMessages.pauseAutoLayout} />
+        <AppMessage message={interfaceMessages.pauseAutomaticLayout} />
       ) : (
-        <AppMessage message={interfaceMessages.resumeAutoLayout} />
+        <AppMessage message={interfaceMessages.resumeAutomaticLayout} />
       )}
     </Button>
   );

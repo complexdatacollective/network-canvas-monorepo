@@ -452,7 +452,9 @@ describe('GeospatialSearch', () => {
       expect(empty).toHaveTextContent(
         'Search could not be completed. Try again in a moment.',
       );
-      expect(status()).not.toHaveTextContent('Nothing matched your search.');
+      expect(status()).not.toHaveTextContent(
+        'Nothing matched your search term.',
+      );
       consoleError.mockRestore();
     });
 
@@ -463,9 +465,9 @@ describe('GeospatialSearch', () => {
       await openAndSearch(user, toggle, 'zzzqqq');
 
       const empty = await screen.findByTestId('geospatial-search-empty');
-      expect(empty).toHaveTextContent('Nothing matched your search.');
+      expect(empty).toHaveTextContent('Nothing matched your search term.');
       await waitFor(() =>
-        expect(status()).toHaveTextContent('Nothing matched your search.'),
+        expect(status()).toHaveTextContent('Nothing matched your search term.'),
       );
     });
   });

@@ -21,7 +21,25 @@ import ui from '../../../store/modules/ui';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import PersonForm, { type PersonFormResult } from '../components/PersonForm';
 import { readFamily } from '../model';
+import type { OwnedOptionLabels } from '../options';
 import { config, person } from './fixtures';
+
+const OPTION_LABELS: OwnedOptionLabels = {
+  sexAssignedAtBirth: {
+    female: 'Female',
+    male: 'Male',
+    intersex: 'Intersex',
+    unknown: 'Don’t know',
+    preferNotToSay: 'Prefer not to say',
+  },
+  parentKind: {
+    biological: 'Biological parent',
+    adoptive: 'Adoptive parent',
+    social: 'Step or social parent',
+    donor: 'Egg or sperm donor',
+    surrogate: 'Surrogate',
+  },
+};
 
 // The form's error list animates into view, which jsdom cannot observe.
 beforeAll(() => {
@@ -52,13 +70,20 @@ type Setup = {
   formFields?: FormField[];
   /** Each encrypted name decrypted, by person id. */
   decryptedNames?: ReadonlyMap<string, string>;
+  optionLabels?: OwnedOptionLabels;
 };
 
 /** The pedigree's side panel, editing `editing`, in an interview whose network
  * holds `nodes`. */
 function renderPersonForm(
   editing: string,
-  { nodes, nameValidation, formFields = [], decryptedNames = new Map() }: Setup,
+  {
+    nodes,
+    nameValidation,
+    formFields = [],
+    decryptedNames = new Map(),
+    optionLabels = OPTION_LABELS,
+  }: Setup,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -136,6 +161,7 @@ function renderPersonForm(
         config={{ ...config, genderIdentity: undefined }}
         framing="gendered"
         genderIdentityOptions={[]}
+        optionLabels={optionLabels}
         formFields={formFields}
         generatedLabels={{}}
         decryptedNames={decryptedNames}
@@ -209,6 +235,23 @@ describe('the person form', () => {
       expect(onSubmit.mock.calls[0]?.[0].set.name).toBe(typed);
     },
   );
+
+  it('offers the answers about sex assigned at birth as the codebook labels them', () => {
+    renderPersonForm('sis', {
+      nodes: [person('sis', { name: 'Bea', sex: ['female'] })],
+      optionLabels: {
+        ...OPTION_LABELS,
+        sexAssignedAtBirth: {
+          ...OPTION_LABELS.sexAssignedAtBirth,
+          female: 'Assigned female at birth',
+        },
+      },
+    });
+    expect(
+      screen.getByRole('radio', { name: 'Assigned female at birth' }),
+    ).toBeChecked();
+    expect(screen.queryByRole('radio', { name: 'Female' })).toBeNull();
+  });
 
   it('leaves a name of only spaces unnamed', async () => {
     const { onSubmit, user } = renderPersonForm('sis', {

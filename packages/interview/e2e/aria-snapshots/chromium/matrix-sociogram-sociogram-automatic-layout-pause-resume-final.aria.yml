@@ -8,7 +8,7 @@
   - button "Hide instructions" [expanded]
   - status:
     - heading "Place people in the circles based on how close you are to them." [level=4]
-  - button "Pause Auto Layout"
+  - button "Pause automatic layout"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

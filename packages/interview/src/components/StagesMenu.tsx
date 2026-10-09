@@ -217,10 +217,7 @@ export default function StagesMenu({
     () =>
       stages.flatMap((stage, index) => {
         if (stage.type === 'FinishSession') return [];
-        const authored = resolve(stage.label).text;
-        const label = authored.trim()
-          ? authored
-          : intl.formatMessage(messages.untitledStage);
+        const label = resolve(stage.label).text;
         return [
           {
             id: stage.id,
