@@ -226,7 +226,11 @@ describe('activeProtocol', () => {
 
     it('should set protocol and allow assetManifest to be added later', () => {
       // Set a protocol without assetManifest (like loading an old protocol)
-      store.dispatch(actionCreators.setActiveProtocol({} as CurrentProtocol));
+      store.dispatch(
+        actionCreators.setActiveProtocol({
+          localization: { defaultLocale: 'en', locales: ['en'] },
+        } as CurrentProtocol),
+      );
 
       const state = store.getState();
       const protocol = state.activeProtocol;

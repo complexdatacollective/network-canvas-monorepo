@@ -1,7 +1,10 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { CurrentProtocol } from '@codaco/protocol-validation';
+import {
+  type CurrentProtocol,
+  withInterfaceText,
+} from '@codaco/protocol-validation';
 import createTimeline, { timelineActions } from '~/ducks/middleware/timeline';
 import activeProtocol, {
   actionCreators,
@@ -29,33 +32,34 @@ const makeStore = () =>
 
 type Store = ReturnType<typeof makeStore>;
 
-const englishProtocol = (): CurrentProtocol => ({
-  name: 'English study',
-  schemaVersion: 9,
-  localization: { defaultLocale: 'en', locales: ['en'] },
-  assetManifest: {},
-  codebook: {
-    node: {
-      person: {
-        name: 'Person',
-        label: { en: 'Person' },
-        color: 'node-color-seq-1',
-        shape: { default: 'circle' },
+const englishProtocol = (): CurrentProtocol =>
+  withInterfaceText<CurrentProtocol>({
+    name: 'English study',
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
+    assetManifest: {},
+    codebook: {
+      node: {
+        person: {
+          name: 'Person',
+          label: { en: 'Person' },
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+        },
       },
+      edge: {},
+      ego: {},
     },
-    edge: {},
-    ego: {},
-  },
-  stages: [
-    {
-      id: 'welcome',
-      type: 'Information',
-      label: { en: 'Welcome' },
-      title: { en: 'Hello' },
-      items: [],
-    },
-  ],
-});
+    stages: [
+      {
+        id: 'welcome',
+        type: 'Information',
+        label: { en: 'Welcome' },
+        title: { en: 'Hello' },
+        items: [],
+      },
+    ],
+  });
 
 const presentOf = (store: Store) => {
   const present = store.getState().activeProtocol.present;

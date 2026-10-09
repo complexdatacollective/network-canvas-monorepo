@@ -12,6 +12,7 @@ import {
   type LocalizedString,
   type LocalizedStringHit,
   defaultFinishSessionTextAfterLanguageChange,
+  interfaceTextAfterLanguageChange,
   type LanguageChange,
   messageText,
   suppliedOptionLabelsAfterLanguageChange,
@@ -136,8 +137,8 @@ const resolveNewLocale = (
  * text Network Canvas supplies that the researcher has not changed in the
  * default language — the labels of the answers a Family Pedigree asks for, a
  * finish stage's closing text, and stage settings such as a roster's panel
- * title — then becomes what Network Canvas writes
- * for the protocol's languages as they now are.
+ * title, and the interview's shared words — then becomes what Network Canvas
+ * writes for the protocol's languages as they now are.
  */
 const withLanguageChange = (
   original: CurrentProtocol,
@@ -188,6 +189,14 @@ const withLanguageChange = (
         setAtPath(target, path, value);
       }
     });
+    if (original.interfaceText !== undefined) {
+      for (const { group, key, value } of interfaceTextAfterLanguageChange(
+        original.interfaceText,
+        change,
+      )) {
+        setAtPath(draft.interfaceText, [group, key], value);
+      }
+    }
   });
 };
 

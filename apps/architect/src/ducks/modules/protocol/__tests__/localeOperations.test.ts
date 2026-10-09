@@ -745,3 +745,28 @@ describe('a roster stage’s supplied panel title', () => {
     ).toEqual({ hu: 'Available to add' });
   });
 });
+
+describe('the interview’s shared words', () => {
+  const withBack = (back: Record<string, string>): CurrentProtocol =>
+    ({
+      ...monolingual(),
+      interfaceText: { interview: { back } },
+    }) as unknown as CurrentProtocol;
+  const backOf = (protocol: CurrentProtocol) =>
+    protocol.interfaceText?.interview?.back;
+
+  it('follow a language change while they are Network Canvas’s', () => {
+    expect(
+      backOf(protocolOf(addLocales(withBack({ en: 'Back' }), ['fr']))),
+    ).toEqual({ en: 'Back', fr: 'Retour' });
+    expect(
+      backOf(protocolOf(changeLocale(withBack({ en: 'Back' }), 'en', 'de'))),
+    ).toEqual({ de: 'Zurück' });
+  });
+
+  it('are left to the researcher once they have reworded them', () => {
+    expect(
+      backOf(protocolOf(addLocales(withBack({ en: 'Previous' }), ['fr']))),
+    ).toEqual({ en: 'Previous' });
+  });
+});

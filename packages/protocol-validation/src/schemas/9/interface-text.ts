@@ -231,43 +231,46 @@ export const withInterfaceText = <Protocol extends ProtocolDocument>(
     : { ...protocol, interfaceText: next };
 };
 
+/** One interface text, by group and name, as it reads after a change. */
+export type InterfaceTextUpdate = Readonly<{
+  group: string;
+  key: string;
+  value: LocalizedString;
+}>;
+
 /**
- * The interface text after a change to the protocol's languages (see
- * `suppliedTextAfterLanguageChange`): each entry whose default-language text
- * before the change is still Network Canvas's follows the change; one the
- * researcher has reworded is theirs, and is left as it is.
+ * The interface text that follows a change to the protocol's languages (see
+ * `suppliedTextAfterLanguageChange`), as it reads after it: each entry whose
+ * default-language text before the change is still Network Canvas's. One the
+ * researcher has reworded is theirs, and is not among them.
  */
 export const interfaceTextAfterLanguageChange = (
   text: InterfaceText,
   change: LanguageChange,
-): InterfaceText => {
+): readonly InterfaceTextUpdate[] => {
   const { defaultLocale } = change.before;
-  return Object.fromEntries(
-    Object.entries(text).map(([group, values]) => {
-      const entries: Readonly<Record<string, InterfaceTextEntry>> =
-        INTERFACE_TEXT_GROUPS[group as GroupName]?.entries ?? {};
-      return [
-        group,
-        Object.fromEntries(
-          Object.entries(values ?? {}).map(([key, value]) => {
-            const entry = entries[key];
-            const supplied =
-              entry !== undefined &&
-              value[defaultLocale] !== undefined &&
-              value[defaultLocale] === writtenIn(entry, defaultLocale, true);
-            return [
-              key,
-              supplied
-                ? suppliedTextAfterLanguageChange(
-                    value,
-                    (locale, isDefault) => writtenIn(entry, locale, isDefault),
-                    change,
-                  )
-                : value,
-            ];
-          }),
-        ),
-      ];
-    }),
+  return GROUP_NAMES.flatMap((group) =>
+    Object.entries(INTERFACE_TEXT_GROUPS[group].entries).flatMap(
+      ([key, entry]: [string, InterfaceTextEntry]) => {
+        const value = text[group]?.[key];
+        if (
+          value?.[defaultLocale] === undefined ||
+          value[defaultLocale] !== writtenIn(entry, defaultLocale, true)
+        ) {
+          return [];
+        }
+        return [
+          {
+            group,
+            key,
+            value: suppliedTextAfterLanguageChange(
+              value,
+              (locale, isDefault) => writtenIn(entry, locale, isDefault),
+              change,
+            ),
+          },
+        ];
+      },
+    ),
   );
 };

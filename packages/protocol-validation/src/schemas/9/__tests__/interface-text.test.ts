@@ -109,7 +109,7 @@ describe('the interface text a protocol holds', () => {
 });
 
 describe('interface text after a change to the languages', () => {
-  it('fills a language added while the default-language text is still Network Canvas’s, and leaves reworded text alone', () => {
+  it('follows the change while the default-language text is still Network Canvas’s, and leaves reworded text alone', () => {
     const english = { defaultLocale: 'en', locales: ['en'] };
     const text = interfaceTextFor(protocolWith({ localization: english }));
     const reworded = {
@@ -117,12 +117,27 @@ describe('interface text after a change to the languages', () => {
       interview: { ...text.interview, back: { en: 'Previous' } },
     };
 
-    const after = interfaceTextAfterLanguageChange(reworded, {
+    const updates = interfaceTextAfterLanguageChange(reworded, {
       before: english,
       after: ENGLISH_AND_FRENCH,
     });
+    const updated = (key: string) =>
+      updates.find(
+        (update) => update.group === 'interview' && update.key === key,
+      );
 
-    expect(after.interview?.exitInterview?.fr).toEqual(expect.any(String));
-    expect(after.interview?.back).toEqual({ en: 'Previous' });
+    expect(updated('exitInterview')?.value.fr).toEqual(expect.any(String));
+    expect(updated('back')).toBeUndefined();
+  });
+
+  it('removes a language that was removed', () => {
+    const text = interfaceTextFor(protocolWith());
+    const updates = interfaceTextAfterLanguageChange(text, {
+      before: ENGLISH_AND_FRENCH,
+      after: { defaultLocale: 'en', locales: ['en'] },
+    });
+
+    expect(updates.length).toBeGreaterThan(0);
+    for (const { value } of updates) expect(Object.keys(value)).toEqual(['en']);
   });
 });
