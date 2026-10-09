@@ -193,6 +193,39 @@ const adoptiveParentsOf = (family: Family, personId: string) =>
     .filter((link) => link.target === personId && link.kind === 'adoptive')
     .map((link) => link.source);
 
+/**
+ * Whether the step or social parent link from `parentId` to `childId` is a
+ * step-parent's: the step or social parent has a partnership, current or
+ * former, with one of the child's biological or adoptive parents, and did
+ * not carry the child. Anyone else who raises a child as a step or social
+ * parent is called by the plain parent word ("Mother"), and the child by the
+ * plain child word.
+ */
+function isStepLink(family: Family, parentId: string, childId: string) {
+  const link = family.links.find(
+    (candidate) =>
+      candidate.kind === 'social' &&
+      candidate.source === parentId &&
+      candidate.target === childId,
+  );
+  if (!link || link.isGestationalCarrier) return false;
+  const childsParents = new Set(
+    family.links
+      .filter(
+        (candidate) =>
+          candidate.target === childId &&
+          (candidate.kind === 'biological' || candidate.kind === 'adoptive'),
+      )
+      .map((candidate) => candidate.source),
+  );
+  return family.links.some(
+    (candidate) =>
+      candidate.kind === 'partner' &&
+      ((candidate.source === parentId && childsParents.has(candidate.target)) ||
+        (candidate.target === parentId && childsParents.has(candidate.source))),
+  );
+}
+
 const sameSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
   a.size === b.size && [...a].every((item) => b.has(item));
 
@@ -313,11 +346,13 @@ function stepTerm(
             other: 'adoptiveParent',
           });
         case 'social':
-          return pick(gender, {
-            woman: 'stepmother',
-            man: 'stepfather',
-            other: 'stepparent',
-          });
+          return isStepLink(family, step.to, fromId)
+            ? pick(gender, {
+                woman: 'stepmother',
+                man: 'stepfather',
+                other: 'stepparent',
+              })
+            : pick(gender, { woman: 'mother', man: 'father', other: 'parent' });
         case 'donor': {
           const gamete = gameteOf(step.to, fromId);
           if (gamete === 'egg') return 'eggDonor';
@@ -331,10 +366,17 @@ function stepTerm(
     case 'child':
       switch (step.kind) {
         case 'social':
+          if (isStepLink(family, fromId, step.to)) {
+            return pick(gender, {
+              woman: 'stepdaughter',
+              man: 'stepson',
+              other: 'stepchild',
+            });
+          }
           return pick(gender, {
-            woman: 'stepdaughter',
-            man: 'stepson',
-            other: 'stepchild',
+            woman: 'daughter',
+            man: 'son',
+            other: 'child',
           });
         case 'donor':
           return 'donorConceivedChild';

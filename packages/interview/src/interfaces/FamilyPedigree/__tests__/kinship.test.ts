@@ -148,7 +148,8 @@ describe('labelFamily', () => {
     expect(labelsOf(nodes, edges)).toMatchObject({
       eggParent: 'Biological mother',
       spermParent: 'Biological father',
-      nonBinary: 'Step-parent',
+      // Raising them, and no parent's partner: the plain parent word.
+      nonBinary: 'Parent',
     });
     expect(labelsOf(nodes, edges, 'gamete')).toMatchObject({
       eggParent: 'Egg parent',
@@ -801,6 +802,108 @@ describe('step and in-law relatives', () => {
         link('bro', 'her', 'partner', { current: false }),
       ]).her?.[1],
     ).toBe('otherRelative');
+  });
+
+  test("a partner's sibling is a sibling-in-law only while the partnership is current", () => {
+    const nodes = [ego, woman('her'), woman('mum'), man('bro')];
+    const edges = [
+      link('mum', 'her', 'biological'),
+      link('mum', 'bro', 'biological'),
+    ];
+    expect(
+      tiesOf(nodes, [...edges, link('ego', 'her', 'partner')]).bro,
+    ).toEqual(['Brother-in-law', 'siblingInLaw']);
+    expect(
+      tiesOf(nodes, [
+        ...edges,
+        link('ego', 'her', 'partner', { current: false }),
+      ]).bro?.[1],
+    ).toBe('otherRelative');
+  });
+
+  describe('a step or social parent', () => {
+    // A step or social parent link is a step-parent's when the step or
+    // social parent has a partnership, current or former, with one of the
+    // child's biological or adoptive parents, and did not carry them.
+    // Anyone else raising the child takes the plain parent word.
+    test.each([
+      ['a current', true],
+      ['a former', false],
+    ])(
+      "who is %s partner of the child's parent is a step-parent",
+      (_, current) => {
+        expect(
+          tiesOf(
+            [ego, man('dad'), woman('her')],
+            [
+              link('dad', 'ego', 'biological'),
+              link('her', 'ego', 'social'),
+              link('dad', 'her', 'partner', { current }),
+            ],
+          ).her,
+        ).toEqual(['Stepmother', 'stepParent']);
+      },
+    );
+    test("who is no parent's partner takes the plain parent word", () => {
+      expect(
+        tiesOf(
+          [ego, man('dad'), woman('her'), man('him'), person('them')],
+          [
+            link('dad', 'ego', 'biological'),
+            link('her', 'ego', 'social'),
+            link('him', 'ego', 'social'),
+            link('them', 'ego', 'social'),
+          ],
+        ),
+      ).toMatchObject({
+        her: ['Mother', 'stepParent'],
+        him: ['Father', 'stepParent'],
+        them: ['Parent', 'stepParent'],
+      });
+    });
+    test('who carried the child takes the plain parent word', () => {
+      expect(
+        tiesOf(
+          [ego, woman('mum'), woman('her')],
+          [
+            link('mum', 'ego', 'biological'),
+            link('her', 'ego', 'social', { carrier: true }),
+            link('mum', 'her', 'partner'),
+          ],
+        ).her,
+      ).toEqual(['Mother', 'stepParent']);
+    });
+    test('whose partner is another social parent takes the plain parent word', () => {
+      expect(
+        tiesOf(
+          [ego, woman('her'), man('him')],
+          [
+            link('her', 'ego', 'social'),
+            link('him', 'ego', 'social'),
+            link('her', 'him', 'partner'),
+          ],
+        ),
+      ).toMatchObject({
+        her: ['Mother', 'stepParent'],
+        him: ['Father', 'stepParent'],
+      });
+    });
+    test('the child of a social parent who is not a step-parent is a son or daughter', () => {
+      expect(
+        tiesOf(
+          [ego, woman('kid'), man('dad'), man('boy')],
+          [
+            link('ego', 'kid', 'social'),
+            link('dad', 'boy', 'biological'),
+            link('ego', 'boy', 'social'),
+            link('ego', 'dad', 'partner', { current: false }),
+          ],
+        ),
+      ).toMatchObject({
+        kid: ['Daughter', 'stepChild'],
+        boy: ['Stepson', 'stepChild'],
+      });
+    });
   });
 
   test("a step-parent's former partner, and a donor's partner, are not step-parents", () => {
