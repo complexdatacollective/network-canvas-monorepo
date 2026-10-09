@@ -58,6 +58,7 @@ import {
   INTERFACE_OWNED_OPTION_SETS,
   optionsMatchInterfaceOwnedSet,
 } from './interface-owned-options.ts';
+import { InterfaceTextSchema } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import { type Prompt, type Stage, stageSchema } from './stages/index.ts';
 import { findDuplicateDiseaseLabels } from './stages/narrative-pedigree.ts';
@@ -657,6 +658,10 @@ const ProtocolSchema = z
     experiments: ExperimentsSchema.optional(),
     lastModified: z.string().datetime().optional(),
     codebook: CodebookSchema,
+    // The interview's words that belong to no one stage (see
+    // `interface-text.ts`). Architect keeps it holding what the protocol
+    // uses; the interview shows its own words for anything it lacks.
+    interfaceText: InterfaceTextSchema.optional(),
     assetManifest: z.record(z.string(), assetSchema).optional(),
     stages: z.array(stageSchema).superRefine((stages, ctx) => {
       // Check for duplicate stage IDs

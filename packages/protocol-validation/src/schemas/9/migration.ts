@@ -18,6 +18,7 @@ import {
 } from './family-pedigree-session-migration.ts';
 import { TypeLevelOperators } from './filters/filter.ts';
 import { defaultFinishSessionFields } from './finish-session-defaults.ts';
+import { withInterfaceText } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
 import { missingSuppliedStageText } from './supplied-stage-text.ts';
@@ -515,7 +516,10 @@ const migrationV8toV9 = createMigration({
       else Reflect.deleteProperty(container, key);
     }
 
-    return {
+    // The interview's own words for what the protocol uses, recorded in
+    // English like the rest of its text, from the protocol as migrated (an
+    // attribute whose encryption was never on is no longer encrypted).
+    return withInterfaceText({
       ...migrated,
       stages: endsAtFinishStage(migrated.stages)
         ? migrated.stages
@@ -528,7 +532,7 @@ const migrationV8toV9 = createMigration({
       }),
       schemaVersion: 9 as const,
       localization,
-    };
+    });
   },
   // A pedigree's introduction screen becomes a stage of its own, which moves
   // the pedigree and every stage after it one place on; the framework moves

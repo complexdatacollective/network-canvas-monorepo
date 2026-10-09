@@ -20,6 +20,7 @@ import {
 import { extractProtocol } from '../../../utils/extractProtocol.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
 import ProtocolSchemaV8 from '../../8/schema.ts';
+import { interfaceTextFor } from '../interface-text.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import migrationV8toV9 from '../migration.ts';
 import ProtocolSchemaV9 from '../schema.ts';
@@ -205,7 +206,15 @@ describe('v8 to v9 localization migration', () => {
     );
     expected.localization = ENGLISH_ONLY;
 
-    expect(migrateStep(schema8Protocol())).toEqual(expected);
+    // Besides the protocol's own text, the migration adds the interface text
+    // it uses, in English like the rest.
+    const { interfaceText, ...migrated } = migrateStep(schema8Protocol()) as {
+      interfaceText?: unknown;
+    };
+    expect(migrated).toEqual(expected);
+    expect(interfaceText).toEqual(
+      interfaceTextFor(expected as Parameters<typeof interfaceTextFor>[0]),
+    );
   });
 
   it('migrates to a protocol schema 9 accepts', () => {
@@ -225,7 +234,10 @@ describe('v8 to v9 localization migration', () => {
     const document = schema8Protocol(special);
     const migrated = migrateProtocol(document, 9);
 
-    const hits = collectLocalizedStrings(migrated);
+    // The interface text is the migration's own, not the document's.
+    const hits = collectLocalizedStrings(migrated).filter(
+      ({ path: at }) => at[0] !== 'interfaceText',
+    );
     expect(hits.length).toBeGreaterThan(0);
     for (const { path: at, value } of hits) {
       // The finish stage is added by the migration, with supplied text.
@@ -713,7 +725,11 @@ describe('v8 to v9 localization migration', () => {
       const text = collectLocalizedStrings(document);
       expect(text.map(({ path: at }) => at.at(-1))).toContain('minLabel');
 
-      expect(collectLocalizedStrings(migrateStep(document))).toEqual(text);
+      expect(
+        collectLocalizedStrings(migrateStep(document)).filter(
+          ({ path: at }) => at[0] !== 'interfaceText',
+        ),
+      ).toEqual(text);
     });
 
     it('migrates to a protocol schema 9 accepts', () => {
