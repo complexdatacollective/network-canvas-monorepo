@@ -19,14 +19,12 @@ import type {
   PedigreeConnectors,
   PedigreeEdgeType,
   PedigreeLink,
+  PedigreeSymbolShape,
 } from '../types';
+import { INTERFACE_DIMENSIONS } from './fixtures';
+import { type Drawing, faultsOfLinesInto } from './lineFaults';
 
-const DIMENSIONS: LayoutDimensions = {
-  nodeWidth: 108,
-  nodeHeight: 108,
-  rowGapRatio: 1.4,
-  columnGapRatio: 1.4,
-};
+const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
 type Link =
   | [string, 'partner', string, { former?: boolean }?]
@@ -37,7 +35,13 @@ type Link =
       { carrier?: boolean }?,
     ];
 
-function draw(people: string[], spec: Link[]) {
+/** Everyone drawn with one shape, as the interface draws every person with
+ * the shape their codebook gives them. */
+function draw(
+  people: string[],
+  spec: Link[],
+  shape: PedigreeSymbolShape = 'circle',
+) {
   const links: PedigreeLink[] = spec.map(([source, kind, target, extra]) => ({
     source,
     target,
@@ -62,6 +66,7 @@ function draw(people: string[], spec: Link[]) {
     idToIndex,
     people,
     indexToId,
+    new Map(people.map((id) => [id, shape])),
   );
   const topLeft = pedigreeLayoutToPositions(layout, indexToId, DIMENSIONS);
   const centre = (personId: string) => {
@@ -770,12 +775,36 @@ describe('auxiliary and direct parent lines', () => {
   };
 
   for (const [name, { people, links, adopted }] of Object.entries(scenarios)) {
-    it(`are drawn clear of everyone and every other line: ${name}`, () => {
-      const { connectors, centre } = draw(people, links);
-      expect(auxiliaryLineFaults(connectors, people, centre, adopted)).toEqual(
-        [],
-      );
-    });
+    for (const shape of ['circle', 'square'] as const) {
+      it(`are drawn clear of everyone and every other line: ${name} (${shape}s)`, () => {
+        const { connectors, centre } = draw(people, links, shape);
+        expect(
+          auxiliaryLineFaults(connectors, people, centre, adopted),
+        ).toEqual([]);
+      });
+
+      it(`end on each child in their parents' order, apart and uncrossed: ${name} (${shape}s)`, () => {
+        const { connectors, centre } = draw(people, links, shape);
+        const drawing: Drawing = {
+          size: DIMENSIONS.nodeWidth,
+          connectors,
+          centre,
+          shapeOf: () => shape,
+        };
+        const children = new Set(
+          connectors.auxiliaryLines.flatMap((line) =>
+            line.endpointIds?.[1] ? [line.endpointIds[1]] : [],
+          ),
+        );
+        expect(
+          [...children].flatMap((child) =>
+            faultsOfLinesInto(drawing, child).map(
+              (fault) => `${child}: ${fault}`,
+            ),
+          ),
+        ).toEqual([]);
+      });
+    }
   }
 
   it('end at a point on the child’s top edge, distinct for each line into them', () => {

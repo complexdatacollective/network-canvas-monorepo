@@ -4,16 +4,11 @@ import { type ReactNode, useMemo } from 'react';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
 
-import { alignPedigree } from '../alignPedigree';
 import {
   computeLayoutMetrics,
   type LayoutDimensions,
 } from '../layoutDimensions';
-import {
-  buildConnectorData,
-  pedigreeLayoutToPositions,
-  toPedigreeInput,
-} from '../pedigreeAdapter';
+import { drawPedigree } from '../pedigreeAdapter';
 import type { PedigreeLink, PedigreeSymbolShape } from '../types';
 import { PedigreeEdgeSvg } from './EdgeRenderer';
 
@@ -73,26 +68,13 @@ export default function PedigreeLayout({
     if (dimensions.nodeWidth === 0 || dimensions.nodeHeight === 0) return null;
     if (nodeIds.length === 0) return null;
 
-    const { input, indexToId, idToIndex } = toPedigreeInput(nodeIds, links);
-
-    const layout = alignPedigree(input);
-    const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
-    const names = nodeNames
-      ? indexToId.map((id) => nodeNames.get(id) ?? '')
-      : undefined;
-
-    const connectorData = buildConnectorData(
-      layout,
+    return drawPedigree({
+      nodeIds,
       links,
       dimensions,
-      input.parents,
-      idToIndex,
-      names,
-      indexToId,
+      nodeNames,
       nodeShapes,
-    );
-
-    return { positions, connectorData };
+    });
   }, [nodeIds, links, nodeNames, nodeShapes, dimensions]);
 
   if (nodeWidth === 0 || nodeHeight === 0) {

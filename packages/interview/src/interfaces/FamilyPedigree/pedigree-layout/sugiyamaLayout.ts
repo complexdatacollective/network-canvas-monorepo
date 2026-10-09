@@ -1094,9 +1094,53 @@ function buildConstraintBlocks(
     }
     return block;
   };
+  const partnered = (a: number, b: number) =>
+    (spousesOf.get(a) ?? []).includes(b);
+  /** How much a seat on one side of the child's parents costs the drawing,
+   * in seats: how much longer the lines grow, and a crossing. A line from a
+   * seat beyond the partners on that side passes over them; seated beside
+   * the couple it pushes the child's other extra parents already on that
+   * side, and anyone else of the block there, a seat further out, which
+   * lengthens their lines. From the side away from where the child sits in
+   * their sibship it crosses their siblings' lines up to the family. And
+   * the lines that end on the child from one side of their line of descent
+   * share that side of their edge: more than it holds apart, and one of
+   * them must end on the far side, crossing that line. A line joining the
+   * sibship's bar from beside a partner whose own line drops to one of the
+   * children crosses that line. */
+  const CROSSING_IN_SEATS = 2;
+  /** The lines one side of a child's edge holds a fifth of a symbol apart,
+   * whatever the symbol's shape (a square holds two; a circle and a
+   * diamond, three). */
+  const LINES_A_SIDE_HOLDS = 2;
+  const seatCost = (
+    passed: number,
+    beyond: number,
+    crossings: number,
+    linesOnSide: number,
+  ) =>
+    passed +
+    beyond +
+    (crossings + (linesOnSide > LINES_A_SIDE_HOLDS ? 1 : 0)) *
+      CROSSING_IN_SEATS;
   const seatedDonors = new Set<number>();
   for (const [child, extras] of graph.extraParents) {
     const familyUnit = graph.familyOf.get(child)!;
+    // The side of the sibship the child sits on (siblings are seated in the
+    // order recorded): -1 left, 1 right, 0 the middle (an only child). A
+    // parent of every child in the sibship joins its bar instead, from
+    // either side.
+    const siblings = familyUnit.children
+      .filter((c) => graph.layers[c] === graph.layers[child])
+      .toSorted((a, b) => a - b);
+    const parentOfAll = (aux: number) =>
+      siblings.every((c) => graph.extraParents.get(c)?.includes(aux));
+    const sideOfChild = (aux: number) =>
+      parentOfAll(aux)
+        ? 0
+        : Math.sign(siblings.indexOf(child) - (siblings.length - 1) / 2);
+    const tieOf = (parent: number, to = child) =>
+      graph.parentEdgeTypes.get(`${parent}-${to}`) ?? 'biological';
     for (const aux of extras) {
       if (!nodeSet.has(aux)) continue;
       const coupleOnLayer = familyUnit.parentGroup.members.filter((m) =>
@@ -1107,6 +1151,59 @@ function buildConstraintBlocks(
       const isDonor = isAuxiliaryEdge(
         graph.parentEdgeTypes.get(`${aux}-${child}`) ?? 'biological',
       );
+      const others = new Set(extras.filter((x) => x !== aux));
+      const childSide = sideOfChild(aux);
+      // The lines that would end on the child's edge on one side of their
+      // line of descent, with this one seated there: only for a child sitting
+      // under the middle of the couple, whose sides are the couple's. Those
+      // of the child's other extra parents seated on that side, this one, and
+      // each partner on that side whose tie to the child differs from the
+      // couple's other ties (a social parent beside a birth parent), drawn by
+      // a line of their own.
+      const hasOwnLine = (partner: number, to: number) => {
+        const ties = coupleOnLayer.map((m) => tieOf(m, to));
+        if (new Set(ties).size < 2) return false;
+        const descentTie = ties.includes('biological') ? 'biological' : ties[0];
+        return tieOf(partner, to) !== descentTie;
+      };
+      const joinsBar = siblings.length > 1 && parentOfAll(aux);
+      const linesOnSide = (
+        sideNodes: number[],
+        sidePartners: number[],
+      ): number =>
+        childSide === 0 && !joinsBar
+          ? 1 +
+            sideNodes.filter((node) => others.has(node)).length +
+            sidePartners.filter((m) => hasOwnLine(m, child)).length
+          : 0;
+      const crossesOwnLine = (sidePartners: number[]) =>
+        joinsBar &&
+        sidePartners.some((m) => siblings.some((c) => hasOwnLine(m, c)));
+      const partnersBySide = (blockNodes: number[]) => {
+        const seated = coupleOnLayer.toSorted(
+          (a, b) => blockNodes.indexOf(a) - blockNodes.indexOf(b),
+        );
+        return {
+          left: seated.slice(0, Math.floor(seated.length / 2)),
+          right: seated.slice(Math.ceil(seated.length / 2)),
+        };
+      };
+      // Whether to seat on the right: the cheaper side, and on a tie the
+      // side the child sits on, or for a child in the middle the side
+      // holding fewer of the child's other extra parents, so two such
+      // lines reach the child from either side rather than converging on
+      // one side of their line of descent.
+      const chooseRight = (
+        left: number,
+        right: number,
+        othersLeft: number,
+        othersRight: number,
+      ) =>
+        left === right
+          ? childSide !== 0
+            ? childSide > 0
+            : othersRight <= othersLeft
+          : right < left;
 
       if (assigned.has(aux) || inRealSibship.has(aux) || spousesOf.has(aux)) {
         // Placed already by steps 1–2, or for another child. Only a donor
@@ -1116,22 +1213,48 @@ function buildConstraintBlocks(
         const donorBlock = blocks.find((b) => b.nodes.includes(aux));
         const coupleBlock = blockHolding(coupleOnLayer);
         if (!donorBlock || donorBlock === coupleBlock) continue;
+        // The donor's block joins the parents' block at the end nearer the
+        // couple, so its line passes everyone between that end and them (on
+        // a tie, the side holding fewer of the child's lines, else the
+        // left). The side of the sibship the child sits on is not weighed:
+        // the sibship may yet be drawn the other way round.
         const couplePositions = coupleBlock.nodes
           .map((node, i) => (coupleSet.has(node) ? i : -1))
           .filter((i) => i >= 0);
-        const toLeftEdge = Math.min(...couplePositions);
-        const toRightEdge =
-          coupleBlock.nodes.length - 1 - Math.max(...couplePositions);
-        coupleBlock.nodes =
-          toLeftEdge <= toRightEdge
-            ? [
-                ...movePartnerAnchorToBoundary(donorBlock.nodes, aux, 'right'),
-                ...coupleBlock.nodes,
-              ]
-            : [
-                ...coupleBlock.nodes,
-                ...movePartnerAnchorToBoundary(donorBlock.nodes, aux, 'left'),
-              ];
+        const leftNodes = coupleBlock.nodes.slice(
+          0,
+          Math.min(...couplePositions),
+        );
+        const rightNodes = coupleBlock.nodes.slice(
+          Math.max(...couplePositions) + 1,
+        );
+        const partnersOf = partnersBySide(coupleBlock.nodes);
+        const left = seatCost(
+          leftNodes.length,
+          0,
+          crossesOwnLine(partnersOf.left) ? 1 : 0,
+          linesOnSide(leftNodes, partnersOf.left),
+        );
+        const right = seatCost(
+          rightNodes.length,
+          0,
+          crossesOwnLine(partnersOf.right) ? 1 : 0,
+          linesOnSide(rightNodes, partnersOf.right),
+        );
+        const seatRight =
+          right < left ||
+          (right === left &&
+            rightNodes.filter((node) => others.has(node)).length <
+              leftNodes.filter((node) => others.has(node)).length);
+        coupleBlock.nodes = seatRight
+          ? [
+              ...coupleBlock.nodes,
+              ...movePartnerAnchorToBoundary(donorBlock.nodes, aux, 'left'),
+            ]
+          : [
+              ...movePartnerAnchorToBoundary(donorBlock.nodes, aux, 'right'),
+              ...coupleBlock.nodes,
+            ];
         blocks.splice(blocks.indexOf(donorBlock), 1);
         continue;
       }
@@ -1139,72 +1262,50 @@ function buildConstraintBlocks(
 
       const targetBlock = blockHolding(coupleOnLayer);
 
-      // Seat the parent immediately adjacent to the couple, on the couple's
-      // OUTER side (the side nearer the block boundary). When the couple is its
-      // own block this lands on the block edge; when the couple is embedded in a
-      // sibship block it lands beside the couple rather than at the far end, so
-      // the line stays short either way. On a tie it takes the side of the
-      // sibship the child sits on; for a child in the middle (an only child),
-      // the side holding fewer of this child's other extra parents, so two
-      // such lines reach them from opposite sides instead of one running
-      // under the other.
-      const couplePositions = targetBlock.nodes
+      // Seat the parent immediately adjacent to the couple, on the side
+      // whose seat costs the drawing least (see `seatCost`). When the couple
+      // is its own block this lands on the block edge; when the couple is
+      // embedded in a sibship block it lands beside the couple rather than
+      // at the far end, so the line stays short either way. Never seat it
+      // between two partners: when the couple sits inside a chain of
+      // partnerships, go out past the end of the chain.
+      const nodes = targetBlock.nodes;
+      const couplePositions = nodes
         .map((node, i) => (coupleSet.has(node) ? i : -1))
         .filter((i) => i >= 0);
       const leftPos = Math.min(...couplePositions);
       const rightPos = Math.max(...couplePositions);
-      // Never seat it between two partners: when the couple sits inside a
-      // chain of partnerships, go out past the end of the chain.
-      const nodes = targetBlock.nodes;
-      const partnered = (a: number, b: number) =>
-        (spousesOf.get(a) ?? []).includes(b);
-      const others = new Set(extras.filter((x) => x !== aux));
-      const othersLeft = nodes
-        .slice(0, leftPos)
-        .filter((node) => others.has(node)).length;
-      const othersRight = nodes
-        .slice(rightPos + 1)
-        .filter((node) => others.has(node)).length;
-      // The child's other extra parents seated already do not count towards
-      // the distance to the block's edge.
-      const distToLeftEdge = leftPos - othersLeft;
-      const distToRightEdge =
-        targetBlock.nodes.length - 1 - rightPos - othersRight;
-      // On a tie, the side of the sibship the child sits on (siblings are
-      // seated in the order recorded), so the line reaches the child without
-      // passing over the family's line of descent. A parent of every child
-      // in the sibship joins its bar instead, from either side.
-      const siblings = familyUnit.children
-        .filter((c) => graph.layers[c] === graph.layers[child])
-        .toSorted((a, b) => a - b);
-      const parentOfAll = siblings.every((c) =>
-        graph.extraParents.get(c)?.includes(aux),
-      );
-      const childSide = parentOfAll
-        ? 0
-        : Math.sign(siblings.indexOf(child) - (siblings.length - 1) / 2);
-      const seatRight =
-        distToRightEdge === distToLeftEdge
-          ? childSide !== 0
-            ? childSide > 0
-            : othersRight <= othersLeft
-          : distToRightEdge < distToLeftEdge;
-      if (seatRight) {
-        let end = rightPos;
-        while (
-          end + 1 < nodes.length &&
-          partnered(nodes[end]!, nodes[end + 1]!)
-        ) {
-          end++;
-        }
-        nodes.splice(end + 1, 0, aux);
-      } else {
-        let start = leftPos;
-        while (start > 0 && partnered(nodes[start - 1]!, nodes[start]!)) {
-          start--;
-        }
-        nodes.splice(start, 0, aux);
+      let start = leftPos;
+      while (start > 0 && partnered(nodes[start - 1]!, nodes[start]!)) {
+        start--;
       }
+      let end = rightPos;
+      while (
+        end + 1 < nodes.length &&
+        partnered(nodes[end]!, nodes[end + 1]!)
+      ) {
+        end++;
+      }
+      const leftBeyond = nodes.slice(0, start);
+      const rightBeyond = nodes.slice(end + 1);
+      const partnersOf = partnersBySide(nodes);
+      const seatRight = chooseRight(
+        seatCost(
+          leftPos - start,
+          leftBeyond.length,
+          (childSide > 0 ? 1 : 0) + (crossesOwnLine(partnersOf.left) ? 1 : 0),
+          linesOnSide(leftBeyond, partnersOf.left),
+        ),
+        seatCost(
+          end - rightPos,
+          rightBeyond.length,
+          (childSide < 0 ? 1 : 0) + (crossesOwnLine(partnersOf.right) ? 1 : 0),
+          linesOnSide(rightBeyond, partnersOf.right),
+        ),
+        leftBeyond.filter((node) => others.has(node)).length,
+        rightBeyond.filter((node) => others.has(node)).length,
+      );
+      nodes.splice(seatRight ? end + 1 : start, 0, aux);
       assigned.add(aux);
     }
   }
@@ -1280,6 +1381,20 @@ function collectLayerEdges(
     for (const child of childrenOnLower) {
       edges.push([descentX, pos.get(child)!, true]);
       coveredChildren.add(child);
+      // A partner whose tie to the child differs from the couple's other
+      // ties (a social parent beside a birth parent) is joined to the child
+      // by a line of their own, which can cross other lines too.
+      const ties = parentsOnUpper.map(
+        (p) => graph.parentEdgeTypes.get(`${p}-${child}`) ?? 'biological',
+      );
+      if (new Set(ties).size > 1) {
+        const descentTie = ties.includes('biological') ? 'biological' : ties[0];
+        parentsOnUpper.forEach((p, k) => {
+          if (ties[k] !== descentTie) {
+            edges.push([pos.get(p)!, pos.get(child)!, false]);
+          }
+        });
+      }
     }
 
     const childPositions = childrenOnLower.map((c) => pos.get(c)!);

@@ -1,9 +1,25 @@
+import {
+  FAMILY_PEDIGREE_GAPS,
+  type LayoutDimensions,
+} from '../layoutDimensions';
 import type {
   ParentConnection,
   PartnerConnection,
   PedigreeInput,
   Relation,
 } from '../types';
+
+/**
+ * The symbol size and gaps the interface draws with: a small Node
+ * (`size-24`, 96px at the default root font size) and Family Pedigree's
+ * gaps. Oracles of what the participant sees measure the drawing at these
+ * proportions.
+ */
+export const INTERFACE_DIMENSIONS: LayoutDimensions = {
+  nodeWidth: 96,
+  nodeHeight: 96,
+  ...FAMILY_PEDIGREE_GAPS,
+};
 
 const sp = (parentIndex: number): ParentConnection => ({
   parentIndex,

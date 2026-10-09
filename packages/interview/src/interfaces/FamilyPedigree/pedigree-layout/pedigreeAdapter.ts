@@ -1,5 +1,6 @@
 import type { PedigreeTwinKind } from '@codaco/protocol-validation';
 
+import { alignPedigree } from './alignPedigree';
 import { computeConnectors } from './connectors';
 import {
   computeLayoutMetrics,
@@ -426,4 +427,43 @@ function shiftSegment(
   seg.x2 += dx;
   seg.y1 += dy;
   seg.y2 += dy;
+}
+
+/**
+ * A family laid out and its connectors routed, exactly as `PedigreeLayout`
+ * draws it: each person's top-left corner, by node id, and the connectors.
+ */
+export function drawPedigree({
+  nodeIds,
+  links,
+  dimensions,
+  nodeNames,
+  nodeShapes,
+}: {
+  nodeIds: readonly string[];
+  links: readonly PedigreeLink[];
+  dimensions: LayoutDimensions;
+  nodeNames?: ReadonlyMap<string, string>;
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>;
+}): {
+  positions: Map<string, { x: number; y: number }>;
+  connectorData: ConnectorRenderData;
+} {
+  const { input, indexToId, idToIndex } = toPedigreeInput(nodeIds, links);
+  const layout = alignPedigree(input);
+  const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
+  const names = nodeNames
+    ? indexToId.map((id) => nodeNames.get(id) ?? '')
+    : undefined;
+  const connectorData = buildConnectorData(
+    layout,
+    links,
+    dimensions,
+    input.parents,
+    idToIndex,
+    names,
+    indexToId,
+    nodeShapes,
+  );
+  return { positions, connectorData };
 }

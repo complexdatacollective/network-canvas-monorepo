@@ -25,17 +25,20 @@ import type {
   PedigreeConnectors,
   PedigreeLayout as Layout,
   PedigreeLink,
+  PedigreeSymbolShape,
   Point,
 } from '../types';
+import { INTERFACE_DIMENSIONS } from './fixtures';
 
-const DIMENSIONS: LayoutDimensions = {
-  nodeWidth: 108,
-  nodeHeight: 108,
-  rowGapRatio: 1.4,
-  columnGapRatio: 1.4,
-};
+const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
-function draw(people: string[], links: PedigreeLink[]) {
+/** Everyone drawn with one shape, as the interface draws every person with
+ * the shape their codebook gives them. */
+function draw(
+  people: string[],
+  links: PedigreeLink[],
+  shape: PedigreeSymbolShape = 'circle',
+) {
   const { input, indexToId, idToIndex } = toPedigreeInput(people, links);
   const layout = alignPedigree(input);
   const { connectors } = buildConnectorData(
@@ -46,6 +49,7 @@ function draw(people: string[], links: PedigreeLink[]) {
     idToIndex,
     people,
     indexToId,
+    new Map(people.map((id) => [id, shape])),
   );
   const topLeft = pedigreeLayoutToPositions(layout, indexToId, DIMENSIONS);
   const centre = (personId: string): Point => {
@@ -394,10 +398,12 @@ const families: Record<string, { people: string[]; links: PedigreeLink[] }> = {
 
 describe('the drawing accounts for every recorded tie', () => {
   for (const [name, { people, links }] of Object.entries(families)) {
-    it(name, () => {
-      const { connectors, centre } = draw(people, links);
-      expect(unaccounted(links, connectors, centre)).toEqual([]);
-    });
+    for (const shape of ['circle', 'square'] as const) {
+      it(`${name} (${shape}s)`, () => {
+        const { connectors, centre } = draw(people, links, shape);
+        expect(unaccounted(links, connectors, centre)).toEqual([]);
+      });
+    }
   }
 
   it('reports a tie that is not drawn', () => {
@@ -562,6 +568,7 @@ describe('every line lies inside the drawing', () => {
           nodeHeight={DIMENSIONS.nodeHeight}
           rowGapRatio={DIMENSIONS.rowGapRatio}
           columnGapRatio={DIMENSIONS.columnGapRatio}
+          nodeShapes={new Map(people.map((id) => [id, 'circle' as const]))}
           renderNode={(id) => <div>{id}</div>}
         />,
       );

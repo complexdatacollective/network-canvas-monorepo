@@ -159,6 +159,7 @@ import {
 } from './model';
 import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
+import { FAMILY_PEDIGREE_GAPS } from './pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { pedigreeLinksOf } from './pedigreeLinks';
 import { relationshipWrites } from './relationshipToParticipant';
@@ -2529,10 +2530,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             nodeShapes={nodeShapes}
             nodeWidth={nodeWidth}
             nodeHeight={nodeHeight}
-            // Room around each person for the add menu that appears beside,
-            // above and below them.
-            rowGapRatio={1.4}
-            columnGapRatio={1.4}
+            rowGapRatio={FAMILY_PEDIGREE_GAPS.rowGapRatio}
+            columnGapRatio={FAMILY_PEDIGREE_GAPS.columnGapRatio}
             renderNode={(personId) => {
               const person = shown.byId.get(personId);
               if (!person) return null;

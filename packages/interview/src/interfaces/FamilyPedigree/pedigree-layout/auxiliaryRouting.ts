@@ -179,15 +179,68 @@ const CENTRE_CLEARANCE = 0.15;
 const MIN_END_GAP = 0.2;
 const MIN_EXIT_GAP = 0.25;
 
+/** How far down a symbol's side a line may end, as a fraction of its
+ * height, when the top of the edge has too little room: round a circle's
+ * shoulder, a square's rounded corner, or down a diamond's upper side. */
+const SHOULDER_DEPTH = 1 / 3;
+/** And no nearer a side than this, from the middle, so that the line's
+ * continuation down to the child's centre stays hidden under the symbol. */
+const SHOULDER_REACH = 0.48;
+
+/**
+ * Places on one side of a symbol's edge for `count` lines, outward from
+ * `from` (a fraction of the width from the middle) and round the shoulder no
+ * lower than `SHOULDER_DEPTH`, spread evenly along the edge and each at
+ * least a fifth of the symbol from the next, measured straight across;
+ * undefined when that is too little room. The places are distances from the
+ * middle, nearest first.
+ */
+function placesRoundShoulder(
+  shape: PedigreeSymbolShape | undefined,
+  from: number,
+  count: number,
+): number[] | undefined {
+  // The edge from `from` to as low as a line may end, in small steps, with
+  // the distance along it to each.
+  const STEP = 0.001;
+  const edge: { o: number; depth: number; along: number }[] = [];
+  for (let o = from; o <= SHOULDER_REACH + 1e-9; o += STEP) {
+    const depth = edgeDepth(shape, o);
+    if (depth > SHOULDER_DEPTH + 1e-9) break;
+    const last = edge[edge.length - 1];
+    edge.push({
+      o,
+      depth,
+      along: last ? last.along + Math.hypot(o - last.o, depth - last.depth) : 0,
+    });
+  }
+  const length = edge[edge.length - 1]!.along;
+  const places = Array.from({ length: count }, (_, k) => {
+    const target = count === 1 ? 0 : (k * length) / (count - 1);
+    return edge.find((point) => point.along >= target - 1e-9) ?? edge.at(-1)!;
+  });
+  const apart = places.every(
+    (point, k) =>
+      k === 0 ||
+      Math.hypot(
+        point.o - places[k - 1]!.o,
+        point.depth - places[k - 1]!.depth,
+      ) >=
+        MIN_END_GAP - 1e-9,
+  );
+  return apart ? places.map((point) => point.o) : undefined;
+}
+
 /**
  * The places on a child's top edge where each of the lines other than their
  * own line of descent may end, given the x of each line's parent in order
  * left to right: for each line, the places to choose among. The lines keep
- * their parents' order along the edge, a quarter of the symbol apart where
- * the edge has room. When the child's own line up leaves from the middle,
- * the lines from parents on either side of the child end on that side of
- * it, so they need not cross it; a side with too little room for its lines
- * shares the whole edge with the other.
+ * their parents' order along the edge, a fifth of the symbol apart at
+ * least. When the child's own line up leaves from the middle, the lines
+ * from parents on either side of the child end on that side of it, so they
+ * need not cross it: spread over the top of the edge on that side, or, when
+ * that has too little room, round the symbol's shoulder. Only a side with
+ * too little room even so shares the whole edge with the other.
  */
 export function childAttachments(
   x: number,
@@ -213,12 +266,21 @@ export function childAttachments(
       count <= 1 || side >= (count - 1) * MIN_END_GAP - 1e-9;
     const left = parentXs.filter((px) => px < x - 1e-9).length;
     const right = parentXs.length - left;
-    if (fits(left) && fits(right)) {
-      return [
-        ...spread(-reach, -CENTRE_CLEARANCE, left),
-        ...spread(CENTRE_CLEARANCE, reach, right),
-      ];
-    }
+    // The places for one side's lines, in order left to right.
+    const sidePlaces = (count: number, sign: -1 | 1) => {
+      if (fits(count)) {
+        return sign < 0
+          ? spread(-reach, -CENTRE_CLEARANCE, count)
+          : spread(CENTRE_CLEARANCE, reach, count);
+      }
+      const outward = placesRoundShoulder(shape, CENTRE_CLEARANCE, count);
+      if (!outward) return undefined;
+      const places = outward.map((o) => at([sign * o]));
+      return sign < 0 ? places.toReversed() : places;
+    };
+    const leftPlaces = sidePlaces(left, -1);
+    const rightPlaces = sidePlaces(right, 1);
+    if (leftPlaces && rightPlaces) return [...leftPlaces, ...rightPlaces];
   }
   // Each line over a stretch of its own, in order along the whole edge.
   const stretches: [number, number][] = clearOfCentre

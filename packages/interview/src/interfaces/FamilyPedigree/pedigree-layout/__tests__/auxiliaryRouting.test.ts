@@ -20,13 +20,9 @@ import type {
   PedigreeLink,
   PedigreeSymbolShape,
 } from '../types';
+import { INTERFACE_DIMENSIONS } from './fixtures';
 
-const DIMENSIONS: LayoutDimensions = {
-  nodeWidth: 108,
-  nodeHeight: 108,
-  rowGapRatio: 1.4,
-  columnGapRatio: 1.4,
-};
+const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
 function draw(
   people: string[],

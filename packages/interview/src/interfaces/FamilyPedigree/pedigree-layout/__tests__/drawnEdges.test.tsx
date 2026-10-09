@@ -14,13 +14,9 @@ import {
   toPedigreeInput,
 } from '../pedigreeAdapter';
 import type { PedigreeLink } from '../types';
+import { INTERFACE_DIMENSIONS } from './fixtures';
 
-const DIMENSIONS: LayoutDimensions = {
-  nodeWidth: 108,
-  nodeHeight: 108,
-  rowGapRatio: 1.4,
-  columnGapRatio: 1.4,
-};
+const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
 type Point = { x: number; y: number };
 
