@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  type MouseEvent,
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
@@ -101,6 +94,7 @@ import {
   CHILD_KIND_LABELS,
   type OwnedOptionLabels,
 } from '../options';
+import { DerivedAnswersScope, useDerivedAnswer } from './derivedAnswers';
 import {
   bothSameSexReason,
   cannotCarryReason,
@@ -615,107 +609,109 @@ export default function PersonForm({
 
   return (
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
-      <div className="flex flex-col gap-8">
-        <MissingDetailsNotice questions={missingQuestions} />
-        <section className="flex flex-col">
-          <Heading level="h3" margin="none" className="mb-4">
-            <AppMessage
-              message={messages.aboutThisPerson}
-              values={{ isYou: isEgo ? 'true' : 'false' }}
-            />
-          </Heading>
-          {asksName && (
-            <Field
-              component={InputField}
-              name={config.nameAttribute}
-              nameMode="opaque"
-              label={intl.formatMessage(messages.nameLabel)}
-              hint={intl.formatMessage(messages.nameHint)}
-              initialValue={person?.name}
-              autoComplete="off"
-              {...nameValidationProps}
-              validationContext={nameValidationContext}
-            />
-          )}
-          {config.genderIdentity && (
-            <Field
-              component={RadioGroupField}
-              name={config.genderIdentity.attribute}
-              nameMode="opaque"
-              label={intl.formatMessage(messages.genderIdentityLabel)}
-              options={genderIdentityOptions}
-              required
-              initialValue={person?.genderIdentity}
-            />
-          )}
-          <Field
-            component={RadioGroupField}
-            name={config.sexAssignedAtBirthAttribute}
-            nameMode="opaque"
-            label={intl.formatMessage(messages.sexAssignedAtBirthLabel)}
-            options={sexOptions}
-            required
-            hint={joinReasons(reasonContext, sexReasons)}
-            initialValue={person?.sexAssignedAtBirth}
-          />
-        </section>
-        {mode.kind === 'add' && onDraftChange && (
-          <DraftWatcher
-            relation={mode.relation}
-            anchor={mode.anchor}
-            family={family}
-            config={config}
-            onDraftChange={onDraftChange}
-          />
-        )}
-        {mode.kind === 'add' && (
-          <section className="flex flex-col">
-            <Heading level="h3" margin="none" className="mb-4">
-              <AppMessage message={messages.relationshipSection} />
-            </Heading>
-            <RelationshipFields
-              relation={mode.relation}
-              anchor={mode.anchor}
-              ids={mode.ids}
-              family={family}
-              displayName={displayName}
-              config={config}
-              framing={framing}
-              parentKindLabels={optionLabels.parentKind}
-              reasonContext={reasonContext}
-            />
-          </section>
-        )}
-        {person && askAbout && (askAbout.siblings || askAbout.children) && (
-          <RelativesQuestions
-            person={person}
-            askAbout={askAbout}
-            displayName={displayName}
-          />
-        )}
-        {mode.kind === 'edit' && (
-          <ExistingRelationshipFields
-            person={mode.person}
-            family={family}
-            displayName={displayName}
-            parentKindLabels={optionLabels.parentKind}
-            reasonContext={reasonContext}
-            sexAttribute={config.sexAssignedAtBirthAttribute}
-          />
-        )}
-        {formFields.length > 0 && (
+      <DerivedAnswersScope>
+        <div className="flex flex-col gap-8">
+          <MissingDetailsNotice questions={missingQuestions} />
           <section className="flex flex-col">
             <Heading level="h3" margin="none" className="mb-4">
               <AppMessage
-                message={messages.moreAboutThisPerson}
+                message={messages.aboutThisPerson}
                 values={{ isYou: isEgo ? 'true' : 'false' }}
               />
             </Heading>
-            <PassphraseEntry needed={passphraseNeeded} />
-            {fieldComponents}
+            {asksName && (
+              <Field
+                component={InputField}
+                name={config.nameAttribute}
+                nameMode="opaque"
+                label={intl.formatMessage(messages.nameLabel)}
+                hint={intl.formatMessage(messages.nameHint)}
+                initialValue={person?.name}
+                autoComplete="off"
+                {...nameValidationProps}
+                validationContext={nameValidationContext}
+              />
+            )}
+            {config.genderIdentity && (
+              <Field
+                component={RadioGroupField}
+                name={config.genderIdentity.attribute}
+                nameMode="opaque"
+                label={intl.formatMessage(messages.genderIdentityLabel)}
+                options={genderIdentityOptions}
+                required
+                initialValue={person?.genderIdentity}
+              />
+            )}
+            <Field
+              component={RadioGroupField}
+              name={config.sexAssignedAtBirthAttribute}
+              nameMode="opaque"
+              label={intl.formatMessage(messages.sexAssignedAtBirthLabel)}
+              options={sexOptions}
+              required
+              hint={joinReasons(reasonContext, sexReasons)}
+              initialValue={person?.sexAssignedAtBirth}
+            />
           </section>
-        )}
-      </div>
+          {mode.kind === 'add' && onDraftChange && (
+            <DraftWatcher
+              relation={mode.relation}
+              anchor={mode.anchor}
+              family={family}
+              config={config}
+              onDraftChange={onDraftChange}
+            />
+          )}
+          {mode.kind === 'add' && (
+            <section className="flex flex-col">
+              <Heading level="h3" margin="none" className="mb-4">
+                <AppMessage message={messages.relationshipSection} />
+              </Heading>
+              <RelationshipFields
+                relation={mode.relation}
+                anchor={mode.anchor}
+                ids={mode.ids}
+                family={family}
+                displayName={displayName}
+                config={config}
+                framing={framing}
+                parentKindLabels={optionLabels.parentKind}
+                reasonContext={reasonContext}
+              />
+            </section>
+          )}
+          {person && askAbout && (askAbout.siblings || askAbout.children) && (
+            <RelativesQuestions
+              person={person}
+              askAbout={askAbout}
+              displayName={displayName}
+            />
+          )}
+          {mode.kind === 'edit' && (
+            <ExistingRelationshipFields
+              person={mode.person}
+              family={family}
+              displayName={displayName}
+              parentKindLabels={optionLabels.parentKind}
+              reasonContext={reasonContext}
+              sexAttribute={config.sexAssignedAtBirthAttribute}
+            />
+          )}
+          {formFields.length > 0 && (
+            <section className="flex flex-col">
+              <Heading level="h3" margin="none" className="mb-4">
+                <AppMessage
+                  message={messages.moreAboutThisPerson}
+                  values={{ isYou: isEgo ? 'true' : 'false' }}
+                />
+              </Heading>
+              <PassphraseEntry needed={passphraseNeeded} />
+              {fieldComponents}
+            </section>
+          )}
+        </div>
+      </DerivedAnswersScope>
     </FormWithoutProvider>
   );
 }
@@ -980,9 +976,17 @@ function TwinFields({
 }) {
   const intl = useAppIntl();
   const candidates = twinCandidatesOf(family, person.id);
-  const current = twinsOf(family, person.id);
   const values = useFormValue([ROLE.twins], 'opaque');
   const chosen = asStringArray(values[ROLE.twins]);
+  // Everyone in their twin set, so a set recorded with a pair missing is made
+  // whole when saved; someone no longer their sibling as the answers stand is
+  // not offered, so is not among them (`useDerivedAnswer`).
+  const twinsAnswer = useDerivedAnswer({
+    name: ROLE.twins,
+    nameMode: 'opaque',
+    derived: twinSetOf(family, person.id).filter((id) => id !== person.id),
+    isAvailable: (id) => typeof id === 'string' && candidates.includes(id),
+  });
   if (candidates.length === 0) return null;
   const isYou = (personId: string) => family.byId.get(personId)?.isEgo === true;
   const who = (twinId: string) =>
@@ -1002,62 +1006,93 @@ function TwinFields({
           value: id,
           label: displayName(id),
         }))}
-        // Everyone in their twin set, so a set recorded with a pair missing
-        // is made whole when saved.
-        initialValue={twinSetOf(family, person.id).filter(
-          (id) => id !== person.id,
-        )}
+        {...twinsAnswer}
       />
       {chosen
         .filter((twinId) => candidates.includes(twinId))
-        .map((twinId) => {
-          const recorded = current.find((each) => each.twinId === twinId);
-          // Identical twins have the same genetic parents. Twins recorded as
-          // identical whose parents differ (saved before every change kept
-          // that) are shown as the family records them after the next
-          // change: not known to be identical (`planStandIns`).
-          const identicalUnavailable = !identicalTwinsPossible(
-            family,
-            person.id,
-            twinId,
-          );
-          const recordedZygosity =
-            recorded?.zygosity === 'identical' && identicalUnavailable
-              ? 'unknown'
-              : recorded?.zygosity;
-          const args = {
-            who: who(twinId),
-            name: displayName(person.id),
-            twin: displayName(twinId),
-          };
-          const identicalHint = identicalUnavailable
-            ? intl.formatMessage(messages.unavailableIdenticalTwin, {
-                ...args,
-                answer: intl.formatMessage(messages.listedName, {
-                  name: intl.formatMessage(ZYGOSITY_LABELS.identical),
-                }),
-              })
-            : undefined;
-          return (
-            <Field
-              key={twinId}
-              component={RadioGroupField}
-              name={twinZygosityField(twinId)}
-              nameMode="opaque"
-              label={intl.formatMessage(messages.twinZygosityLabel, args)}
-              options={ZYGOSITIES.map((value) => ({
-                value,
-                label: intl.formatMessage(ZYGOSITY_LABELS[value]),
-                disabled: value === 'identical' && identicalUnavailable,
-                description: value === 'identical' ? identicalHint : undefined,
-              }))}
-              hint={identicalHint}
-              required
-              initialValue={recordedZygosity}
-            />
-          );
-        })}
+        .map((twinId) => (
+          <TwinZygosityField
+            key={twinId}
+            person={person}
+            twinId={twinId}
+            family={family}
+            who={who(twinId)}
+            displayName={displayName}
+          />
+        ))}
     </>
+  );
+}
+
+/** Whether the person and one of their twins are identical. */
+function TwinZygosityField({
+  person,
+  twinId,
+  family,
+  who,
+  displayName,
+}: {
+  person: Person;
+  twinId: string;
+  family: Family;
+  who: 'personIsYou' | 'twinIsYou' | 'other';
+  displayName: (personId: string) => string;
+}) {
+  const intl = useAppIntl();
+  const recorded = twinsOf(family, person.id).find(
+    (each) => each.twinId === twinId,
+  );
+  // Identical twins have the same genetic parents. Twins recorded as
+  // identical whose parents differ (saved before every change kept that, or
+  // as a parent is re-described) are shown as the family records them after
+  // the next change: not known to be identical (`planStandIns`). That answer
+  // is worked out from the parents as the answers stand, so follows them
+  // until the participant answers, and "identical" is never left chosen
+  // while it is unavailable (`useDerivedAnswer`).
+  const identicalUnavailable = !identicalTwinsPossible(
+    family,
+    person.id,
+    twinId,
+  );
+  const recordedZygosity =
+    recorded?.zygosity === 'identical' && identicalUnavailable
+      ? 'unknown'
+      : recorded?.zygosity;
+  const zygosityAnswer = useDerivedAnswer({
+    name: twinZygosityField(twinId),
+    nameMode: 'opaque',
+    derived: recordedZygosity,
+    isAvailable: (value) => value !== 'identical' || !identicalUnavailable,
+  });
+  const args = {
+    who,
+    name: displayName(person.id),
+    twin: displayName(twinId),
+  };
+  const identicalHint = identicalUnavailable
+    ? intl.formatMessage(messages.unavailableIdenticalTwin, {
+        ...args,
+        answer: intl.formatMessage(messages.listedName, {
+          name: intl.formatMessage(ZYGOSITY_LABELS.identical),
+        }),
+      })
+    : undefined;
+  return (
+    <Field
+      component={RadioGroupField}
+      name={twinZygosityField(twinId)}
+      nameMode="opaque"
+      label={intl.formatMessage(messages.twinZygosityLabel, args)}
+      options={ZYGOSITIES.map((value) => ({
+        value,
+        label: intl.formatMessage(ZYGOSITY_LABELS[value]),
+        disabled: value === 'identical' && identicalUnavailable,
+        description: value === 'identical' ? identicalHint : undefined,
+      }))}
+      hint={identicalHint}
+      required
+      {...zygosityAnswer}
+    />
   );
 }
 
@@ -1259,6 +1294,17 @@ function ParentLinkFields({
   const kindField = linkField(link, 'kind');
   const values = useFormValue([kindField], 'opaque');
   const kind = asString(values[kindField]) ?? link.kind;
+  const kindUnavailable = (value: string) =>
+    (isGeneticKind(value) && !canBeGenetic) ||
+    (value === 'surrogate' && (anotherCarrierId !== undefined || !canCarry));
+  // The kind recorded, until it is unavailable (`useDerivedAnswer`): it is
+  // then shown unchosen, and left as stored unless another is chosen.
+  const kindAnswer = useDerivedAnswer({
+    name: kindField,
+    nameMode: 'opaque',
+    derived: link.kind,
+    isAvailable: (value) => !kindUnavailable(String(value)),
+  });
   // While another parent carried the pregnancy, only "Yes" would record a
   // second carrier: it is unavailable, naming them, and "No" stays.
   const carriedYesReason =
@@ -1267,6 +1313,17 @@ function ParentLinkFields({
           carrierRecordedReason(personId, anotherCarrierId, [yesAnswer(intl)]),
         ])
       : undefined;
+  // Not known shows neither answer chosen, except that while someone else
+  // carried them, "No" is the answer worked out (`useDerivedAnswer`): it
+  // goes again once nobody else did, unless the participant chose it.
+  const carriedAnswer = useDerivedAnswer({
+    name: linkField(link, 'carrier'),
+    nameMode: 'opaque',
+    derived:
+      link.isGestationalCarrier ??
+      (anotherCarrierId === undefined ? undefined : false),
+    isAvailable: (value) => value !== true || carriedYesReason === undefined,
+  });
 
   return (
     <>
@@ -1282,14 +1339,11 @@ function ParentLinkFields({
         options={PARENT_KINDS.map((value) => ({
           value,
           label: parentKindLabels[value],
-          disabled:
-            (isGeneticKind(value) && !canBeGenetic) ||
-            (value === 'surrogate' &&
-              (anotherCarrierId !== undefined || !canCarry)),
+          disabled: kindUnavailable(value),
           description: reasonsFor(reasonContext, kindReasons, value),
         }))}
         hint={joinReasons(reasonContext, kindReasons)}
-        initialValue={link.kind}
+        {...kindAnswer}
       />
       {kind !== 'surrogate' && mayHaveCarried(kind) && canCarry && (
         <Field
@@ -1302,12 +1356,7 @@ function ParentLinkFields({
           })}
           options={carriedOptions(intl, carriedYesReason)}
           hint={carriedYesReason}
-          // Not known shows neither answer chosen, except that someone else
-          // having carried them leaves only "No".
-          initialValue={
-            link.isGestationalCarrier ??
-            (anotherCarrierId === undefined ? undefined : false)
-          }
+          {...carriedAnswer}
         />
       )}
     </>
@@ -1836,19 +1885,16 @@ function ParentFields({
     .join(' ');
 
   // Answers made impossible by a later one — the new parent's sex at birth,
-  // or their kind — are taken back, so the question is asked again.
+  // or their kind — are taken back, so the question is asked again, or
+  // takes its default again while the participant has not answered it
+  // (`useDerivedAnswer`).
   const setFieldValue = useFormStore((store) => store.setFieldValue);
-  const kindImpossible = chosenKind !== undefined && !kindPossible(chosenKind);
-  useEffect(() => {
-    if (kindImpossible) setFieldValue(ROLE.parentKind, undefined);
-  }, [kindImpossible, setFieldValue]);
+  const kindAnswer = useDerivedAnswer({
+    name: ROLE.parentKind,
+    derived: 'biological',
+    isAvailable: (kind) => kindPossible(String(kind)),
+  });
   const keptSiblings = chosenSiblings.filter(siblingPossible);
-  const siblingsDropped = keptSiblings.length < chosenSiblings.length;
-  const keptRef = useRef(keptSiblings);
-  keptRef.current = keptSiblings;
-  useEffect(() => {
-    if (siblingsDropped) setFieldValue(ROLE.alsoParentOf, keptRef.current);
-  }, [siblingsDropped, setFieldValue]);
 
   // A new parent of any kind but a surrogate (who always did) who could have
   // carried a pregnancy is asked whether they did for everyone they are added as a parent of who has
@@ -1864,12 +1910,11 @@ function ParentFields({
     mayHaveCarried(parentKind) &&
     couldCarryPregnancy(sexAssignedAtBirth) &&
     (!anchorHasCarrier || siblingsWithoutCarrier.length > 0);
-  const carriedAnswered = values[ROLE.carriedPregnancy] !== undefined;
-  useEffect(() => {
-    if (!asksCarried && carriedAnswered) {
-      setFieldValue(ROLE.carriedPregnancy, undefined);
-    }
-  }, [asksCarried, carriedAnswered, setFieldValue]);
+  const carriedAnswer = useDerivedAnswer({
+    name: ROLE.carriedPregnancy,
+    derived: undefined,
+    isAvailable: () => asksCarried,
+  });
   const [onlySibling] = siblingsWithoutCarrier;
   // With nobody left to ask about, because the anchor already has someone
   // recorded as carrying them, the question is shown unavailable, naming
@@ -1913,6 +1958,7 @@ function ParentFields({
             })
           : intl.formatMessage(messages.carriedPregnancyLabel)
       }
+      {...carriedAnswer}
     />
   );
 
@@ -1936,29 +1982,31 @@ function ParentFields({
   const belongsWith = (parentId: string) =>
     !birthAndAdoptive(kindOfParent(parentId), parentKind);
   const [onlyParent] = existingParents;
-  const partnerDefault = useDefaultUntilAnswered(
-    ROLE.partnerId,
-    partnerChoice,
-    parentKind === 'biological'
-      ? undefined
-      : raises &&
-          existingParents.length === 1 &&
-          onlyParent !== undefined &&
-          belongsWith(onlyParent)
-        ? onlyParent
-        : NONE,
-  );
-  const siblingsDefault = useDefaultUntilAnswered(
-    ROLE.alsoParentOf,
-    values[ROLE.alsoParentOf],
-    siblings.filter(
+  const partnerAnswer = useDerivedAnswer({
+    name: ROLE.partnerId,
+    derived:
+      parentKind === 'biological'
+        ? undefined
+        : raises &&
+            existingParents.length === 1 &&
+            onlyParent !== undefined &&
+            belongsWith(onlyParent)
+          ? onlyParent
+          : NONE,
+  });
+  // A sibling the new parent could not be the same kind of parent of is
+  // never left chosen.
+  const siblingsAnswer = useDerivedAnswer({
+    name: ROLE.alsoParentOf,
+    derived: siblings.filter(
       (id) =>
         takenOver.includes(id) ||
         (existingParents.every(belongsWith) &&
           fullSiblings.has(id) &&
           siblingPossible(id)),
     ),
-  );
+    isAvailable: (id) => typeof id === 'string' && siblingPossible(id),
+  });
   // Once the participant has answered, the siblings the new parent takes a
   // stand-in's place for are still kept chosen, and let go again when they
   // no longer are (another kind or sex chosen).
@@ -1997,7 +2045,7 @@ function ParentFields({
         }))}
         hint={kindHint}
         required
-        initialValue="biological"
+        {...kindAnswer}
       />
       {!anchorHasCarrier && carriedField}
       {carriedUnavailableField}
@@ -2013,8 +2061,7 @@ function ParentFields({
             })),
             { value: NONE, label: intl.formatMessage(interfaceMessages.no) },
           ]}
-          initialValue={partnerDefault.initial}
-          {...partnerDefault.answering}
+          {...partnerAnswer}
         />
       )}
       {raises && partnerChoice !== undefined && partnerChoice !== NONE && (
@@ -2033,8 +2080,7 @@ function ParentFields({
             disabled: !siblingPossible(id) || takenOver.includes(id),
           }))}
           hint={siblingsHint || undefined}
-          initialValue={siblingsDefault.initial}
-          {...siblingsDefault.answering}
+          {...siblingsAnswer}
         />
       )}
       {anchorHasCarrier && carriedField}
@@ -2046,68 +2092,6 @@ function ParentFields({
 const birthAndAdoptive = (first: string | undefined, second: string) =>
   (first === 'biological' && second === 'adoptive') ||
   (first === 'adoptive' && second === 'biological');
-
-/** Whether an event on a question's options was aimed at one that can be
- * chosen: the option itself, or its label. */
-const choosesOption = (target: EventTarget) => {
-  if (!(target instanceof Element)) return false;
-  const selector = '[role="radio"], [role="checkbox"]';
-  const option =
-    target.closest(selector) ??
-    target.closest('label')?.querySelector(selector);
-  return (
-    option !== null &&
-    option !== undefined &&
-    option.getAttribute('aria-disabled') !== 'true' &&
-    !option.hasAttribute('data-disabled') &&
-    !option.matches(':disabled')
-  );
-};
-
-/**
- * Keeps a question's answer at its default while the default changes with
- * earlier answers, until the participant answers it themselves. Choosing an
- * option, with the pointer or the keyboard, is an answer even when it is the
- * option already chosen, as is any change to the answer not made here; once
- * answered, the answer is theirs and is left alone. Returns the default the
- * question starts with, and the handlers that notice the participant
- * answering, for the question's options.
- */
-function useDefaultUntilAnswered<Answer extends string | string[] | undefined>(
-  name: string,
-  answer: FieldValue | undefined,
-  defaultAnswer: Answer,
-) {
-  const setFieldValue = useFormStore((store) => store.setFieldValue);
-  // No default is kept as no answer.
-  const key = defaultAnswer === undefined ? '' : JSON.stringify(defaultAnswer);
-  const [initial] = useState(defaultAnswer);
-  // The default the answer was last given, and whether the participant has
-  // since answered otherwise.
-  const given = useRef(key);
-  const answered = useRef(false);
-  const answerKey = answer === undefined ? undefined : JSON.stringify(answer);
-  useEffect(() => {
-    if (answerKey !== undefined && answerKey !== given.current) {
-      answered.current = true;
-    }
-  }, [answerKey]);
-  const followDefault = useEffectEvent((nextKey: string) => {
-    if (answered.current || given.current === nextKey) return;
-    given.current = nextKey;
-    setFieldValue(name, defaultAnswer);
-  });
-  useEffect(() => followDefault(key), [key]);
-  // Choosing an option from the keyboard (Space on the option focused)
-  // clicks it, as the pointer does; moving to another with the arrow keys
-  // changes the answer.
-  const answering = {
-    onClickCapture: (event: MouseEvent<HTMLElement>) => {
-      if (choosesOption(event.target)) answered.current = true;
-    },
-  };
-  return { initial, answering };
-}
 
 function ChildFields({
   anchor,
@@ -2133,13 +2117,12 @@ function ChildFields({
   // anchor's partner. The default follows the kind of child until the
   // participant answers.
   const donatedOrCarried = childKind === 'donor' || childKind === 'surrogate';
-  const otherParentDefault = useDefaultUntilAnswered(
-    ROLE.otherParent,
-    otherParent,
-    donatedOrCarried
+  const otherParentAnswer = useDerivedAnswer({
+    name: ROLE.otherParent,
+    derived: donatedOrCarried
       ? UNKNOWN
       : (preferred ?? (choices.length === 0 ? UNKNOWN : undefined)),
-  );
+  });
   const hasOtherParent = otherParent !== undefined && otherParent !== NONE;
   // With a partner as the other parent of a biological child, either or
   // both of them may be its biological parents. Someone not yet in the
@@ -2152,9 +2135,6 @@ function ChildFields({
   // so is asked afresh when another is chosen (`aboutPerson`).
   const biologicalField =
     otherPartner && aboutPerson(ROLE.biologicalParent, otherPartner);
-  const biologicalValues = useFormValue(
-    biologicalField ? [biologicalField] : [],
-  );
   // Both, only when one could have provided the egg and the other the
   // sperm.
   const bothPossible =
@@ -2163,18 +2143,13 @@ function ChildFields({
       anchor.sexAssignedAtBirth,
       family.byId.get(otherPartner)?.sexAssignedAtBirth,
     ]);
-  const biologicalParent = biologicalField
-    ? asString(biologicalValues[biologicalField])
-    : 'both';
-  // Choosing another parent can make "both" impossible; the question is
-  // then asked again.
-  const setFieldValue = useFormStore((store) => store.setFieldValue);
-  const bothImpossible = biologicalParent === 'both' && !bothPossible;
-  useEffect(() => {
-    if (bothImpossible && biologicalField) {
-      setFieldValue(biologicalField, undefined);
-    }
-  }, [bothImpossible, biologicalField, setFieldValue]);
+  // Both, until answered, unless it is impossible: the question is then
+  // asked (`useDerivedAnswer`).
+  const biologicalAnswer = useDerivedAnswer({
+    name: biologicalField || undefined,
+    derived: 'both',
+    isAvailable: (answer) => answer !== 'both' || bothPossible,
+  });
   // A step or adopted child's other parent, someone already recorded, may
   // be the child's own biological parent (a partner's child the anchor
   // raises or adopted), so is asked about: nothing is assumed either way.
@@ -2185,6 +2160,15 @@ function ChildFields({
       ? otherParent
       : undefined;
   const carriers = childCarrierChoices(family, anchor, childKind, otherParent);
+  // An answer naming someone no longer offered — an other parent since
+  // replaced — is taken back, so the question is asked again.
+  const carrierAnswer = useDerivedAnswer({
+    name: ROLE.carrier,
+    derived: undefined,
+    isAvailable: (id) =>
+      carriers.length > 0 &&
+      (id === NONE || (typeof id === 'string' && carriers.includes(id))),
+  });
 
   // Why an answer is unavailable, naming it.
   const childKindReasons = [
@@ -2228,8 +2212,7 @@ function ChildFields({
           { value: NONE, label: intl.formatMessage(messages.otherParentNone) },
         ]}
         required
-        initialValue={otherParentDefault.initial}
-        {...otherParentDefault.answering}
+        {...otherParentAnswer}
       />
       <Field
         component={RadioGroupField}
@@ -2274,7 +2257,7 @@ function ChildFields({
             { value: 'otherParent', label: displayName(otherPartner) },
           ]}
           required
-          initialValue="both"
+          {...biologicalAnswer}
         />
       )}
       {raisedWithOtherParent && (
@@ -2308,6 +2291,7 @@ function ChildFields({
               label: intl.formatMessage(messages.carrierUnknown),
             },
           ]}
+          {...carrierAnswer}
         />
       )}
     </>
@@ -2385,13 +2369,11 @@ function SiblingFields({
     ),
   );
   const biologicalUnavailable = !biologicalPossible && sharesEnough;
-  const setFieldValue = useFormStore((store) => store.setFieldValue);
-  const biologicalImpossible =
-    asString(values[ROLE.siblingKind]) === 'biological' &&
-    biologicalUnavailable;
-  useEffect(() => {
-    if (biologicalImpossible) setFieldValue(ROLE.siblingKind, undefined);
-  }, [biologicalImpossible, setFieldValue]);
+  const kindAnswer = useDerivedAnswer({
+    name: ROLE.siblingKind,
+    derived: 'biological',
+    isAvailable: (kind) => kind !== 'biological' || !biologicalUnavailable,
+  });
 
   // A sibling is asked who carried the pregnancy, as a child is: each parent
   // the sibling will have, as the answers stand, who could have carried it —
@@ -2423,12 +2405,13 @@ function SiblingFields({
           config.sexAssignedAtBirthAttribute,
         );
   // An answer a later one has taken away is asked again.
-  const carrier = asString(values[ROLE.carrier]);
-  const carrierImpossible =
-    carrier !== undefined && carrier !== NONE && !carriers.includes(carrier);
-  useEffect(() => {
-    if (carrierImpossible) setFieldValue(ROLE.carrier, undefined);
-  }, [carrierImpossible, setFieldValue]);
+  const carrierAnswer = useDerivedAnswer({
+    name: ROLE.carrier,
+    derived: undefined,
+    isAvailable: (id) =>
+      carriers.length > 0 &&
+      (id === NONE || (typeof id === 'string' && carriers.includes(id))),
+  });
   // A biological sibling of parents not all of whom could be their genetic
   // parents — two mothers, say, or a mother and two fathers — is asked which
   // (ruling 26), with nothing chosen for them: first one of the shared
@@ -2501,19 +2484,18 @@ function SiblingFields({
     firstNamed === undefined
       ? { candidates: [], asked: false }
       : namingAfter([firstNamed]);
-  const secondAnswer = asString(values[ROLE.siblingOtherBiologicalParent]);
-  const firstStale = firstAnswer !== undefined && firstNamed === undefined;
-  const secondStale =
-    secondAnswer !== undefined &&
-    (!second.asked || !second.candidates.includes(secondAnswer));
-  useEffect(() => {
-    if (firstStale) setFieldValue(ROLE.siblingBiologicalParent, undefined);
-  }, [firstStale, setFieldValue]);
-  useEffect(() => {
-    if (secondStale) {
-      setFieldValue(ROLE.siblingOtherBiologicalParent, undefined);
-    }
-  }, [secondStale, setFieldValue]);
+  const firstAnswerKept = useDerivedAnswer({
+    name: ROLE.siblingBiologicalParent,
+    derived: undefined,
+    isAvailable: (id) =>
+      first.asked && typeof id === 'string' && first.candidates.includes(id),
+  });
+  const secondAnswerKept = useDerivedAnswer({
+    name: ROLE.siblingOtherBiologicalParent,
+    derived: undefined,
+    isAvailable: (id) =>
+      second.asked && typeof id === 'string' && second.candidates.includes(id),
+  });
 
   // Twins (ruling 16): identical twins have the same genetic parents, so a
   // sibling who would not have all of the anchor's cannot be one. The model
@@ -2535,11 +2517,11 @@ function SiblingFields({
           name: intl.formatMessage(messages.siblingTwinIdentical),
         }),
       });
-  const identicalImpossible =
-    asString(values[ROLE.twin]) === 'identical' && !identicalPossible;
-  useEffect(() => {
-    if (identicalImpossible) setFieldValue(ROLE.twin, undefined);
-  }, [identicalImpossible, setFieldValue]);
+  const twinAnswer = useDerivedAnswer({
+    name: ROLE.twin,
+    derived: NONE,
+    isAvailable: (answer) => answer !== 'identical' || identicalPossible,
+  });
 
   // Someone with no parents is given an egg parent and a sperm parent,
   // unnamed; the sibling may share both or one of them, and the surrogate
@@ -2637,7 +2619,7 @@ function SiblingFields({
           disabled: value === 'biological' && biologicalUnavailable,
         }))}
         required
-        initialValue="biological"
+        {...kindAnswer}
       />
       {first.asked && (
         <Field
@@ -2649,6 +2631,7 @@ function SiblingFields({
             label: parentLabel(id),
           }))}
           required
+          {...firstAnswerKept}
         />
       )}
       {second.asked && (
@@ -2661,6 +2644,7 @@ function SiblingFields({
             label: parentLabel(id),
           }))}
           required
+          {...secondAnswerKept}
         />
       )}
       {carriers.length > 0 && (
@@ -2675,6 +2659,7 @@ function SiblingFields({
               label: intl.formatMessage(messages.carrierUnknown),
             },
           ]}
+          {...carrierAnswer}
         />
       )}
       <Field
@@ -2701,7 +2686,7 @@ function SiblingFields({
             label: intl.formatMessage(messages.siblingTwinUnknown),
           },
         ]}
-        initialValue={NONE}
+        {...twinAnswer}
       />
     </>
   );
