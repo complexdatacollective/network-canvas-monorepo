@@ -1,16 +1,15 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { type Ref, useEffect, useId, useRef, useState } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import {
   defineToolbarChild,
   ToolbarButton,
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { FamilyPedigreeStageDefinition } from '@codaco/protocol-validation';
 
@@ -103,7 +102,8 @@ function ProgressRing({ fraction }: { fraction: number }) {
  * Progress towards the family the researcher requires, as a ring in the
  * stage's toolbar. Hovering or focusing it shows a short list of what is
  * still needed in a popover; clicking it, or pressing Next before the family
- * is complete, pins the list open.
+ * is complete, pins the list open. Once complete, the ring is a tick and
+ * there is no list.
  */
 function CompletenessTracker({
   progress,
@@ -121,7 +121,6 @@ function CompletenessTracker({
   const { text: recommendedNote } = useLocalizedString(
     completeness.recommendedNote,
   );
-  const titleId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -194,6 +193,10 @@ function CompletenessTracker({
   // after the stage opens; the ring starts empty rather than full.
   const fraction = progress.total === 0 ? 0 : progress.done / progress.total;
   const complete = progress.total > 0 && progress.items.length === 0;
+  const progressLabel = intl.formatMessage(messages.trackerProgressLabel, {
+    complete: complete ? 'true' : 'false',
+    percent: fraction,
+  });
 
   // The answered item leaves the list, taking focus with it: focus moves to
   // the list, or to the ring once nothing is left.
@@ -206,8 +209,10 @@ function CompletenessTracker({
   return (
     <ToolbarPopover
       ref={ref}
-      open={expanded}
+      open={expanded && !complete}
       onOpenChange={(next, details) => {
+        // Complete, there is no list to pin open.
+        if (complete) return;
         // A press on the ring while the list shows only from hover or focus
         // pins it, rather than closing it.
         if (next || (details.reason === 'trigger-press' && !open)) {
@@ -223,10 +228,7 @@ function CompletenessTracker({
       trigger={
         <ToolbarButton
           ref={triggerRef}
-          aria-label={intl.formatMessage(messages.trackerProgressLabel, {
-            complete: complete ? 'true' : 'false',
-            percent: fraction,
-          })}
+          aria-label={progressLabel}
           className="aspect-square w-16 p-0!"
           data-testid="pedigree-completeness"
           onPointerEnter={pointerEnter}
@@ -264,18 +266,11 @@ function CompletenessTracker({
       }}
     >
       <div className="flex flex-col gap-3">
-        <Heading id={titleId} level="h4" margin="none">
-          <AppMessage
-            message={
-              complete ? messages.trackerComplete : messages.trackerTitle
-            }
-          />
-        </Heading>
         {!complete && (
           <div
             ref={listRef}
             role="region"
-            aria-labelledby={titleId}
+            aria-label={progressLabel}
             tabIndex={-1}
             className="flex flex-col gap-3 outline-none"
           >

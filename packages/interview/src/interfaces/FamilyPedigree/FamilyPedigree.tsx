@@ -25,7 +25,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Node from '@codaco/fresco-ui/Node';
 import {
   SegmentedToolbar,
-  ToolbarButton,
+  ToolbarIconButton,
   ToolbarSeparator,
   ToolbarToggleGroup,
 } from '@codaco/fresco-ui/SegmentedToolbar';
@@ -113,6 +113,7 @@ import PersonForm, {
 import PersonNode from './components/PersonNode';
 import { decryptDetails, useDecryptedNames } from './encryptedNames';
 import { generateLabels, labelEveryone, labelWrites } from './generatedLabels';
+import { formatRelativeTerm } from './kinship';
 import { messages } from './messages';
 import {
   areConnected,
@@ -553,7 +554,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   );
   const displayName = useCallback(
     (personId: string) =>
-      labels.get(personId) ?? intl.formatMessage(messages.familyMember),
+      labels.get(personId) ?? formatRelativeTerm('other', intl),
     [labels, intl],
   );
 
@@ -713,14 +714,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   }, [selectedId, panZoom, clearInsets]);
 
   // Anything that could write what the study encrypts waits for the
-  // passphrase, and asks for it instead, saying why: to see the names, when
-  // they are encrypted, as well as to add or change people. When no
-  // passphrase can be entered, it says so instead.
+  // passphrase, and asks for it instead, saying why. When no passphrase can
+  // be entered, it says so instead.
   const passphraseNotice = encryptionUnavailable
     ? lockedNotice
-    : encryptNames
-      ? messages.passphraseNeededNotice
-      : messages.detailsPassphraseNeededNotice;
+    : runtimeMessages.protectedAnswersLocked;
   const askForPassphrase = () => {
     requirePassphrase();
     setAnnouncement(intl.formatMessage(passphraseNotice));
@@ -1405,9 +1403,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // list.
   const listOfNames = (ids: readonly string[]) =>
     intl.formatList(
-      ids.map((id) =>
-        intl.formatMessage(messages.listedName, { name: displayName(id) }),
-      ),
+      ids.map((id) => displayName(id)),
       { type: 'conjunction' },
     );
 
@@ -1450,27 +1446,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       setLinkingId(null);
       return;
     }
-    // A pair has one link at most; when the second person cannot be chosen,
-    // the first stays selected.
-    const connected = areConnected(family, linkingId, personId);
-    if (tool === 'connect' && connected) {
-      refuse(
-        intl.formatMessage(
-          messages.connectAlreadyConnected,
-          pairArgs(linkingId, personId),
-        ),
-      );
-      return;
-    }
-    if (tool === 'disconnect' && !connected) {
-      refuse(
-        intl.formatMessage(
-          messages.disconnectNotConnected,
-          pairArgs(linkingId, personId),
-        ),
-      );
-      return;
-    }
+    // A pair has one link at most, so the people the tool cannot pair with
+    // the first person are unavailable (see `pairUnavailable`).
     // Only the participant's family is drawn, so a connection that is the
     // only link between the participant and someone cannot be removed: they
     // would vanish from the tree. The participant connects them another way
@@ -1510,7 +1487,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     await confirm({
       title: intl.formatMessage(messages.disconnectConfirmTitle, args),
       description: intl.formatMessage(messages.disconnectConfirmDescription),
-      confirmLabel: intl.formatMessage(messages.disconnectConfirm),
+      confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
       onConfirm: () => {
         for (const linkId of linksBetween(firstId, secondId)) {
@@ -1537,14 +1514,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     closePanel();
     await confirm({
       title: intl.formatMessage(messages.removeConfirmTitle, { name }),
-      description:
-        cutOffIds.length === 0
-          ? intl.formatMessage(messages.removeConfirmDescription)
-          : intl.formatMessage(messages.removeConfirmDescriptionWithOthers, {
-              count: cutOffIds.length,
-              names: listOfNames(cutOffIds),
-            }),
-      confirmLabel: intl.formatMessage(messages.remove),
+      description: intl.formatMessage(messages.removeConfirmDescription, {
+        hasOthers: cutOffIds.length === 0 ? 'false' : 'true',
+        count: cutOffIds.length,
+        names: listOfNames(cutOffIds),
+      }),
+      confirmLabel: intl.formatMessage(commonMessages.delete),
       intent: 'destructive',
       onConfirm: () => {
         for (const linkId of linkIds) dispatch(deleteEdge(linkId));
@@ -1584,19 +1559,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     if (!panel) return '';
     const { mode } = panel;
     const subject = mode.kind === 'add' ? mode.anchor : mode.person;
-    const args = {
+    return intl.formatMessage(messages.panelTitle, {
+      relation: mode.kind === 'edit' ? 'edit' : mode.relation,
       isYou: subject.isEgo ? 'true' : 'false',
       name: displayName(subject.id),
-    };
-    if (mode.kind === 'edit')
-      return intl.formatMessage(messages.editTitle, args);
-    const titles = {
-      parent: messages.addParentTitle,
-      sibling: messages.addSiblingTitle,
-      partner: messages.addPartnerTitle,
-      child: messages.addChildTitle,
-    };
-    return intl.formatMessage(titles[mode.relation], args);
+    });
   })();
 
   const editedPerson = panel?.mode.kind === 'edit' ? panel.mode.person : null;
@@ -1615,14 +1582,22 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const connectorFrom = linkingId
     ? (nodeRefs.current.get(linkingId) ?? null)
     : null;
+  // Once the first person is chosen, the people the tool cannot pair them
+  // with are unavailable: connecting, anyone already connected to them;
+  // disconnecting, anyone who is not. The first person stays available, to
+  // let them go.
+  const pairUnavailable = (id: string) =>
+    linkingId !== null &&
+    id !== linkingId &&
+    areConnected(family, linkingId, id) !== (tool === 'disconnect');
   // Connecting, someone already connected to the first person is not a
   // target, and the line keeps following the mouse past them; disconnecting,
   // only they are.
   const isConnectTarget = (id: string | null): id is string =>
     id !== null &&
     linkingId !== null &&
-    id !== linkingId &&
-    areConnected(family, linkingId, id) === (tool === 'disconnect');
+    !pairUnavailable(id) &&
+    id !== linkingId;
   const connectorTargetId =
     chosenPair?.secondId ??
     [hoveredId, focusedId].find(isConnectTarget) ??
@@ -1695,7 +1670,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   selected={
                     nomination ? isNominated(person) : personId === selectedId
                   }
-                  disabled={nomination ? !canSelect(person) : false}
+                  disabled={
+                    nomination ? !canSelect(person) : pairUnavailable(personId)
+                  }
                   linking={
                     tool !== 'pointer' &&
                     (personId === linkingId || personId === connectorTargetId)
@@ -1768,23 +1745,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
               data-testid="pedigree-connect-hint"
             >
               {connectNotice ??
-                (linkingId
-                  ? intl.formatMessage(
-                      tool === 'connect'
-                        ? messages.connectHintLinking
-                        : messages.disconnectHintLinking,
-                      {
-                        isYou: family.byId.get(linkingId)?.isEgo
-                          ? 'true'
-                          : 'false',
-                        name: displayName(linkingId),
-                      },
-                    )
-                  : intl.formatMessage(
-                      tool === 'connect'
-                        ? messages.connectHint
-                        : messages.disconnectHint,
-                    ))}
+                intl.formatMessage(
+                  tool === 'connect'
+                    ? messages.connectHint
+                    : messages.disconnectHint,
+                )}
             </p>
           )}
           {/* Rises into place when the stage first loads. */}
@@ -1825,30 +1790,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     if (isTool(next)) chooseTool(next);
                   }}
                 >
-                  <ToolbarButton
-                    className="flex-col gap-0.5 px-5 text-xs [&>.lucide]:h-5"
+                  <ToolbarIconButton
                     value="pointer"
+                    aria-label={intl.formatMessage(messages.pointerTool)}
                     icon={<MousePointer2 />}
                     data-testid="pedigree-tool-pointer"
-                  >
-                    {intl.formatMessage(messages.pointerTool)}
-                  </ToolbarButton>
-                  <ToolbarButton
-                    className="flex-col gap-0.5 px-5 text-xs [&>.lucide]:h-5"
+                  />
+                  <ToolbarIconButton
                     value="connect"
+                    aria-label={intl.formatMessage(messages.connectTool)}
                     icon={<Waypoints />}
                     data-testid="pedigree-tool-connect"
-                  >
-                    {intl.formatMessage(messages.connectTool)}
-                  </ToolbarButton>
-                  <ToolbarButton
-                    className="flex-col gap-0.5 px-5 text-xs [&>.lucide]:h-5"
+                  />
+                  <ToolbarIconButton
                     value="disconnect"
+                    aria-label={intl.formatMessage(messages.disconnectTool)}
                     icon={<Unlink />}
                     data-testid="pedigree-tool-disconnect"
-                  >
-                    {intl.formatMessage(messages.disconnectTool)}
-                  </ToolbarButton>
+                  />
                 </ToolbarToggleGroup>
               )}
               {!nomination && participantFraming && <ToolbarSeparator />}
@@ -1929,20 +1888,14 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                 className="mr-auto"
                 onClick={() => void handleRemove(editedPerson.id)}
               >
-                <AppMessage message={messages.remove} />
+                <AppMessage message={commonMessages.delete} />
               </Button>
             )}
             <Button type="button" variant="text" onClick={cancelPanel}>
               <AppMessage message={commonMessages.cancel} />
             </Button>
             <SubmitButton form={formId}>
-              <AppMessage
-                message={
-                  panel?.mode.kind === 'edit'
-                    ? commonMessages.save
-                    : messages.add
-                }
-              />
+              <AppMessage message={commonMessages.save} />
             </SubmitButton>
           </>
         }

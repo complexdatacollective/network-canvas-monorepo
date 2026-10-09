@@ -27,7 +27,6 @@ import type {
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type FormField,
@@ -454,12 +453,6 @@ export default function PersonForm({
           </Alert>
         )}
         <section className="flex flex-col">
-          <Heading level="h3" margin="none" className="mb-4">
-            <AppMessage
-              message={messages.aboutThisPerson}
-              values={{ isYou: isEgo ? 'true' : 'false' }}
-            />
-          </Heading>
           {asksName && (
             <Field
               component={InputField}
@@ -514,9 +507,6 @@ export default function PersonForm({
         )}
         {mode.kind === 'add' && (
           <section className="flex flex-col">
-            <Heading level="h3" margin="none" className="mb-4">
-              <AppMessage message={messages.relationshipSection} />
-            </Heading>
             <RelationshipFields
               relation={mode.relation}
               anchor={mode.anchor}
@@ -546,12 +536,6 @@ export default function PersonForm({
         )}
         {formFields.length > 0 && (
           <section className="flex flex-col">
-            <Heading level="h3" margin="none" className="mb-4">
-              <AppMessage
-                message={messages.moreAboutThisPerson}
-                values={{ isYou: isEgo ? 'true' : 'false' }}
-              />
-            </Heading>
             <PassphraseEntry needed={passphraseNeeded} />
             {fieldComponents}
           </section>
@@ -581,7 +565,7 @@ function RelativesQuestions({
     name: displayName(person.id),
   };
   const options = [
-    { value: 'yes', label: intl.formatMessage(messages.hasRelativesYes) },
+    { value: 'yes', label: intl.formatMessage(interfaceMessages.yes) },
     { value: 'no', label: intl.formatMessage(interfaceMessages.no) },
     { value: 'unknown', label: intl.formatMessage(messages.dontKnow) },
   ];
@@ -594,9 +578,6 @@ function RelativesQuestions({
   };
   return (
     <section className="flex flex-col">
-      <Heading level="h3" margin="none" className="mb-4">
-        <AppMessage message={messages.familySection} />
-      </Heading>
       {askAbout.siblings && (
         <Field
           component={RadioGroupField}
@@ -728,9 +709,6 @@ function ExistingRelationshipFields({
 
   return (
     <section className="flex flex-col">
-      <Heading level="h3" margin="none" className="mb-4">
-        <AppMessage message={messages.relationshipsSection} />
-      </Heading>
       {partnerships.map((link) => {
         const partnerId = link.source === person.id ? link.target : link.source;
         return (
@@ -740,6 +718,7 @@ function ExistingRelationshipFields({
             name={linkField(link, 'current')}
             nameMode="opaque"
             label={intl.formatMessage(messages.stillTogetherLabel, {
+              named: 'true',
               personIsYou: isYou(person.id),
               partnerIsYou: isYou(partnerId),
               partner: displayName(partnerId),
@@ -825,6 +804,7 @@ function ParentLinkFields({
           name={linkField(link, 'carrier')}
           nameMode="opaque"
           label={intl.formatMessage(messages.parentCarriedLabel, {
+            named: 'true',
             parentIsYou,
             parent: parentName,
           })}
@@ -1054,7 +1034,9 @@ function PartnershipCurrentField() {
     <Field
       component={BooleanField}
       name={ROLE.partnershipCurrent}
-      label={intl.formatMessage(messages.partnershipCurrentLabel)}
+      label={intl.formatMessage(messages.stillTogetherLabel, {
+        named: 'false',
+      })}
       initialValue={true}
     />
   );
@@ -1168,7 +1150,7 @@ function ParentFields({
                   : 'false',
               name: onlySibling === undefined ? '' : displayName(onlySibling),
             })
-          : intl.formatMessage(messages.carriedPregnancyLabel)
+          : intl.formatMessage(messages.parentCarriedLabel, { named: 'false' })
       }
     />
   );
@@ -1580,12 +1562,14 @@ function SiblingFields({
           {
             value: 'eggParent',
             label: intl.formatMessage(messages.sharedParentEggOnly, {
+              parent: 'egg',
               framing,
             }),
           },
           {
             value: 'spermParent',
-            label: intl.formatMessage(messages.sharedParentSpermOnly, {
+            label: intl.formatMessage(messages.sharedParentEggOnly, {
+              parent: 'sperm',
               framing,
             }),
           },
@@ -1621,7 +1605,6 @@ function SiblingFields({
         component={RadioGroupField}
         name={ROLE.siblingKind}
         label={intl.formatMessage(messages.siblingKindLabel)}
-        hint={intl.formatMessage(messages.siblingKindHint, args)}
         options={CHILD_KINDS.map((value) => ({
           value,
           label: intl.formatMessage(CHILD_KIND_LABELS[value]),

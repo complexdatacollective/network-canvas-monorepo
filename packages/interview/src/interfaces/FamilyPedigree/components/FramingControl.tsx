@@ -8,11 +8,12 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import {
   defineToolbarChild,
-  ToolbarButton,
+  ToolbarIconButton,
   ToolbarPopover,
 } from '@codaco/fresco-ui/SegmentedToolbar';
 import type { FramingId } from '@codaco/protocol-validation';
 
+import { formatRelativeTerm } from '../kinship';
 import { messages } from '../messages';
 
 type FramingControlProps = {
@@ -49,13 +50,11 @@ function FramingControl({
         onOpenChange(next);
       }}
       trigger={
-        <ToolbarButton
-          className="flex-col gap-0.5 px-5 text-xs [&>.lucide]:h-5"
+        <ToolbarIconButton
+          aria-label={intl.formatMessage(messages.framingControlLabel)}
           icon={<Speech />}
           data-testid="pedigree-framing"
-        >
-          {intl.formatMessage(messages.framingControlLabel)}
-        </ToolbarButton>
+        />
       }
       contentProps={{
         side: 'top',
@@ -70,16 +69,20 @@ function FramingControl({
         options={[
           {
             value: 'gendered',
-            label: intl.formatMessage(messages.framingChoiceGendered),
-            description: intl.formatMessage(
-              messages.framingChoiceGenderedDescription,
+            label: intl.formatList(
+              ['mother', 'father', 'sister', 'brother'].map((term) =>
+                formatRelativeTerm(term, intl),
+              ),
+              { type: 'unit' },
             ),
           },
           {
             value: 'gamete',
-            label: intl.formatMessage(messages.framingChoiceGamete),
-            description: intl.formatMessage(
-              messages.framingChoiceGameteDescription,
+            label: intl.formatList(
+              ['eggParent', 'spermParent', 'sibling'].map((term) =>
+                formatRelativeTerm(term, intl),
+              ),
+              { type: 'unit' },
             ),
           },
         ]}

@@ -296,7 +296,7 @@ describe('generateLabels', () => {
   test('family members not connected to the participant are numbered, or told apart by named partners', () => {
     expect(
       labelsOf([...parents, person('x'), person('y')], parentLinks),
-    ).toMatchObject({ x: 'Family member 1', y: 'Family member 2' });
+    ).toMatchObject({ x: 'Relative 1', y: 'Relative 2' });
     expect(
       labelsOf(
         [
@@ -313,8 +313,8 @@ describe('generateLabels', () => {
         ],
       ),
     ).toMatchObject({
-      x: 'Family member (partner of Lee)',
-      y: 'Family member (partner of Kai)',
+      x: 'Relative (partner of Lee)',
+      y: 'Relative (partner of Kai)',
     });
   });
 

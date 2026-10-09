@@ -155,11 +155,14 @@ export default function ConnectMenu({
       first: displayName(first),
       second: displayName(second),
     };
-    const partners = intl.formatMessage(messages.connectPartners, pairArgs);
-    const formerPartners = intl.formatMessage(
-      messages.connectFormerPartners,
-      pairArgs,
-    );
+    const partners = intl.formatMessage(messages.connectPartners, {
+      ...pairArgs,
+      current: 'true',
+    });
+    const formerPartners = intl.formatMessage(messages.connectPartners, {
+      ...pairArgs,
+      current: 'false',
+    });
     const canPartner = canConnectPartners(family, first, second);
     const parentOption = (parent: ParentAndChild) => (
       <DropdownMenuItem
