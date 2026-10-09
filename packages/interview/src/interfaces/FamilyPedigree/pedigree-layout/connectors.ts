@@ -41,7 +41,8 @@ function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
  *   A recorded partnership that is not active (see `partnerPairs`) is drawn
  *   with a relationship break mark. When omitted, all group lines are treated
  *   as active (backwards-compatible default).
- * @param branch - branch style for parent-child links (0=diagonal, >0=right-angle). Default 0.6
+ * @param branch - branch style for parent-child links (0=diagonal shoulder,
+ *   otherwise right-angled: a drop, a level run and a drop). Default 0.6
  * @param pconnect - where parent link meets sibling bar (0-1). Default 0.5
  * @param partnerPairs - all recorded partner pairs. Used to route recorded
  *   partnerships that the adjacent-node layout cannot encode directly.
@@ -523,7 +524,7 @@ export function computeConnectors(
             sibshipParents.find((p) => p.edgeType === 'biological')?.edgeType ??
             sibshipParents[0]!.edgeType,
           uplines,
-          siblingBar,
+          ...(siblingBar.x2 - siblingBar.x1 > 1e-9 ? { siblingBar } : {}),
           parentLink: [],
           ...(id
             ? {
@@ -613,18 +614,33 @@ export function computeConnectors(
           descentParentsOf.set(`${i},${j}`, descentParents(from));
         }
 
-        // Where the parent link meets the sibling bar
+        // Where the parent link meets the sibling bar: below the descent
+        // where it can be, but never over someone on the children's row who
+        // has no line up from this bar (a partner sitting between two
+        // siblings), who would read as one of these children.
         const targetRange = maxTarget - minTarget;
-        const x1 =
+        const [footFrom, footTo] =
           targetRange < 2 * pconnect
-            ? (minTarget + maxTarget) / 2
-            : Math.max(
-                minTarget + pconnect,
-                Math.min(maxTarget - pconnect, descentX),
-              );
+            ? [(minTarget + maxTarget) / 2, (minTarget + maxTarget) / 2]
+            : [minTarget + pconnect, maxTarget - pconnect];
+        const notOfThisBar = Array.from(
+          { length: layout.n[i] ?? 0 },
+          (_, j) => j,
+        )
+          .filter((j) => !columns.includes(j))
+          .map((j) => layout.pos[i]![j]!)
+          .filter((x) => x > minTarget && x < maxTarget);
+        const x1 = clearOf(
+          Math.max(footFrom, Math.min(footTo, descentX)),
+          notOfThisBar,
+          boxw / 2 + 0.05,
+          [footFrom, footTo],
+          [minTarget, maxTarget],
+        );
         joinSibship(`${i},${fam},${from}`, i, columns, siblingBar, [
           x1,
           ...uplines.map((upline) => upline.x2),
+          ...notOfThisBar,
         ]);
         const parentLink = buildParentLink(x1, descentX, i, boxh, legh, branch);
 
@@ -654,13 +670,17 @@ export function computeConnectors(
             type: 'parent-child',
             edgeType,
             uplines: ks.map((k) => uplines[k]!),
-            siblingBar: {
-              type: 'line',
-              x1: barFrom,
-              y1: siblingBar.y1,
-              x2: barTo,
-              y2: siblingBar.y1,
-            },
+            ...(barTo - barFrom > 1e-9
+              ? {
+                  siblingBar: {
+                    type: 'line',
+                    x1: barFrom,
+                    y1: siblingBar.y1,
+                    x2: barTo,
+                    y2: siblingBar.y1,
+                  } satisfies LineSegment,
+                }
+              : {}),
             parentLink: link,
             ...(id
               ? {
@@ -717,13 +737,6 @@ export function computeConnectors(
               y2: i - legh,
             },
           ],
-          siblingBar: {
-            type: 'line',
-            x1: childX,
-            y1: i - legh,
-            x2: childX,
-            y2: i - legh,
-          },
           parentLink: buildParentLink(childX, descentX, i, boxh, legh, branch),
           ...(id
             ? { parentIds: parentIdsForFamily, uplineChildIds: [childIdOf(j)] }
@@ -875,7 +888,9 @@ export function computeConnectors(
     for (const segment of line.parentLink) {
       scene.lines.push({ segment, kind: 'other' });
     }
-    scene.lines.push({ segment: line.siblingBar, kind: 'bar' });
+    if (line.siblingBar) {
+      scene.lines.push({ segment: line.siblingBar, kind: 'bar' });
+    }
     for (const segment of line.uplines) {
       scene.lines.push({ segment, kind: 'upline' });
     }
@@ -1071,6 +1086,29 @@ function coupleDescent(
   };
 }
 
+/**
+ * `x`, or the nearest point to it within `preferred` (failing that, within
+ * `allowed`) at least `clearance` from every one of `blocked`.
+ */
+function clearOf(
+  x: number,
+  blocked: number[],
+  clearance: number,
+  preferred: [number, number],
+  allowed: [number, number],
+): number {
+  const isClear = (candidate: number) =>
+    blocked.every((b) => Math.abs(b - candidate) >= clearance - 1e-9);
+  if (isClear(x)) return x;
+  const candidates = blocked
+    .flatMap((b) => [b - clearance, b + clearance])
+    .filter(isClear)
+    .toSorted((a, b) => Math.abs(a - x) - Math.abs(b - x));
+  const within = ([from, to]: [number, number]) =>
+    candidates.find((c) => c >= from - 1e-9 && c <= to + 1e-9);
+  return within(preferred) ?? within(allowed) ?? x;
+}
+
 /** The items in groups by key, each group and the groups in first-seen order. */
 function groupBy<T, K>(items: T[], keyOf: (item: T) => K): Map<K, T[]> {
   const groups = new Map<K, T[]>();
@@ -1081,6 +1119,14 @@ function groupBy<T, K>(items: T[], keyOf: (item: T) => K): Map<K, T[]> {
   return groups;
 }
 
+/**
+ * The line of descent from a parent (or a couple's descent point) at
+ * `parentx` down to where it meets the sibling bar, or a lone child's line up,
+ * at `childX`. Right-angled (any `branch` but 0): a drop, a level run
+ * halfway between the parent's row and the sibling bar, and a drop, or one
+ * straight drop when the two are in line. With `branch` 0 the shoulder is a
+ * diagonal.
+ */
 function buildParentLink(
   childX: number,
   parentx: number,
@@ -1089,56 +1135,25 @@ function buildParentLink(
   legh: number,
   branch: number,
 ): LineSegment[] {
-  const y1 = i - legh;
+  const barY = i - legh;
   const parentCenterY = i - 1 + boxh / 2;
   const parentBottomY = i - 1 + boxh;
-  const link: LineSegment[] = [];
+  const line = (x1: number, y1: number, x2: number, y2: number) =>
+    ({ type: 'line', x1, y1, x2, y2 }) satisfies LineSegment;
 
-  if (branch === 0) {
-    link.push(
-      {
-        type: 'line',
-        x1: parentx,
-        y1: parentCenterY,
-        x2: parentx,
-        y2: parentBottomY,
-      },
-      {
-        type: 'line',
-        x1: parentx,
-        y1: parentBottomY,
-        x2: childX,
-        y2: y1,
-      },
-    );
-  } else {
-    const gapSpan = y1 - parentBottomY;
-    const ydelta = (gapSpan * branch) / 2;
-    link.push(
-      {
-        type: 'line',
-        x1: parentx,
-        y1: parentCenterY,
-        x2: parentx,
-        y2: parentBottomY,
-      },
-      {
-        type: 'line',
-        x1: parentx,
-        y1: parentBottomY,
-        x2: parentx,
-        y2: parentBottomY + ydelta,
-      },
-      {
-        type: 'line',
-        x1: parentx,
-        y1: parentBottomY + ydelta,
-        x2: childX,
-        y2: y1 - ydelta,
-      },
-      { type: 'line', x1: childX, y1: y1 - ydelta, x2: childX, y2: y1 },
-    );
+  if (Math.abs(childX - parentx) < 1e-9) {
+    return [line(parentx, parentCenterY, parentx, barY)];
   }
-
-  return link;
+  if (branch === 0) {
+    return [
+      line(parentx, parentCenterY, parentx, parentBottomY),
+      line(parentx, parentBottomY, childX, barY),
+    ];
+  }
+  const runY = parentBottomY + (barY - parentBottomY) / 2;
+  return [
+    line(parentx, parentCenterY, parentx, runY),
+    line(parentx, runY, childX, runY),
+    line(childX, runY, childX, barY),
+  ];
 }

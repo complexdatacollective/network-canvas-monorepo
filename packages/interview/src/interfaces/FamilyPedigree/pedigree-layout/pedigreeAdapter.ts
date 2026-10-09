@@ -251,7 +251,7 @@ export function buildConnectorData(
     for (const ul of pc.uplines) {
       transformSegment(ul, sx, sy, xOffset);
     }
-    transformSegment(pc.siblingBar, sx, sy, xOffset);
+    if (pc.siblingBar) transformSegment(pc.siblingBar, sx, sy, xOffset);
     for (const pl of pc.parentLink) {
       transformSegment(pl, sx, sy, xOffset);
     }
@@ -302,7 +302,7 @@ export function buildConnectorData(
     }
     for (const pc of connectors.parentChildLines) {
       for (const ul of pc.uplines) shiftSegment(ul, -rawMinX, 0);
-      shiftSegment(pc.siblingBar, -rawMinX, 0);
+      if (pc.siblingBar) shiftSegment(pc.siblingBar, -rawMinX, 0);
       for (const pl of pc.parentLink) shiftSegment(pl, -rawMinX, 0);
     }
     for (const ti of connectors.twinIndicators) {
@@ -337,7 +337,7 @@ export function buildConnectorData(
     }
     for (const pc of connectors.parentChildLines) {
       for (const ul of pc.uplines) shiftSegment(ul, 0, -rawMinY);
-      shiftSegment(pc.siblingBar, 0, -rawMinY);
+      if (pc.siblingBar) shiftSegment(pc.siblingBar, 0, -rawMinY);
       for (const pl of pc.parentLink) shiftSegment(pl, 0, -rawMinY);
     }
     for (const ti of connectors.twinIndicators) {

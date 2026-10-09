@@ -225,7 +225,7 @@ function drawnSegments(connectors: PedigreeConnectors): StyledSegment[] {
     const dashed = isDashed(line.edgeType);
     for (const segment of [
       ...line.parentLink,
-      line.siblingBar,
+      ...(line.siblingBar ? [line.siblingBar] : []),
       ...line.uplines,
     ]) {
       segments.push({ segment, dashed });
@@ -417,7 +417,10 @@ describe('partnership lines routed above a row', () => {
     const lane = routed[0]!.segment;
     const rowTop = centre('claire').y - DIMENSIONS.nodeHeight / 2;
     for (const line of connectors.parentChildLines) {
-      for (const segment of [line.siblingBar, ...line.parentLink]) {
+      for (const segment of [
+        ...(line.siblingBar ? [line.siblingBar] : []),
+        ...line.parentLink,
+      ]) {
         if (segment.y1 !== segment.y2) continue;
         expect(Math.abs(segment.y1 - lane.y1)).toBeGreaterThan(4);
         expect(collinearOverlap(lane, segment)).toBe(0);
@@ -425,7 +428,7 @@ describe('partnership lines routed above a row', () => {
     }
     // It sits between the row's sibling bars and the tops of the row's
     // symbols, where no sibling bar or line of descent runs.
-    const barY = descentsInto(connectors, 'claire')[0]!.siblingBar.y1;
+    const barY = descentsInto(connectors, 'claire')[0]!.siblingBar!.y1;
     expect(lane.y1).toBeGreaterThan(barY);
     expect(lane.y1).toBeLessThan(rowTop);
   });
@@ -791,7 +794,7 @@ describe('auxiliary and direct parent lines', () => {
     const joins = connectors.auxiliaryLines.map((line) => {
       const segments = auxiliarySegments(line);
       const last = segments[segments.length - 1]!;
-      expect(last.y2).toBeCloseTo(sibship.siblingBar.y1, 5);
+      expect(last.y2).toBeCloseTo(sibship.siblingBar!.y1, 5);
       for (const stem of stems) {
         expect(Math.abs(last.x2 - stem)).toBeGreaterThan(10);
       }
@@ -822,7 +825,7 @@ describe('auxiliary and direct parent lines', () => {
     );
     expect(kens.length).toBeGreaterThan(0);
     for (const segment of kens) {
-      expect(properlyCross(segment, sibship.siblingBar)).toBe(false);
+      expect(properlyCross(segment, sibship.siblingBar!)).toBe(false);
       for (const child of ['amy', 'ben']) {
         expect(
           properlyCross(segment, uplineOf(connectors, child).segment),
@@ -891,5 +894,58 @@ describe('the former-partner break', () => {
       expect(line.partnerIds).toContain('dee');
       expect(line.slashSide).toBeUndefined();
     }
+  });
+});
+
+describe('lines of descent', () => {
+  it('are drawn with only upright and level pieces, none of them of no length', () => {
+    // Jess, Robert's daughter, pushes the participant off the couple's
+    // midpoint.
+    const { connectors } = draw(
+      ['ego', 'linda', 'robert', 'jess'],
+      [
+        ['linda', 'biological', 'ego', { carrier: true }],
+        ['robert', 'biological', 'ego'],
+        ['linda', 'partner', 'robert'],
+        ['robert', 'biological', 'jess'],
+      ],
+    );
+    for (const line of connectors.parentChildLines) {
+      for (const segment of [
+        ...line.parentLink,
+        ...(line.siblingBar ? [line.siblingBar] : []),
+        ...line.uplines,
+      ]) {
+        expect(length(segment)).toBeGreaterThan(0);
+        const upright = Math.abs(segment.x1 - segment.x2) < 1e-6;
+        const level = Math.abs(segment.y1 - segment.y2) < 1e-6;
+        expect(upright || level, JSON.stringify(segment)).toBe(true);
+      }
+    }
+  });
+
+  it('come down onto a sibling bar away from a partner between the siblings', () => {
+    // Mark, partnered with two sisters, sits between them.
+    const { connectors, centre } = draw(
+      ['ego', 'claire', 'mark', 'peter', 'margaret', 'julie'],
+      [
+        ['claire', 'biological', 'ego', { carrier: true }],
+        ['mark', 'biological', 'ego'],
+        ['claire', 'partner', 'mark', { former: true }],
+        ['peter', 'partner', 'margaret'],
+        ['peter', 'biological', 'claire'],
+        ['margaret', 'biological', 'claire', { carrier: true }],
+        ['peter', 'biological', 'julie'],
+        ['margaret', 'biological', 'julie', { carrier: true }],
+        ['mark', 'partner', 'julie'],
+      ],
+    );
+    const mark = centre('mark');
+    const sisters = uplineOf(connectors, 'claire').connector;
+    expect(sisters.uplineChildIds).toContain('julie');
+    const foot = sisters.parentLink[sisters.parentLink.length - 1]!;
+    expect(Math.abs(foot.x2 - mark.x)).toBeGreaterThan(
+      DIMENSIONS.nodeWidth / 4,
+    );
   });
 });

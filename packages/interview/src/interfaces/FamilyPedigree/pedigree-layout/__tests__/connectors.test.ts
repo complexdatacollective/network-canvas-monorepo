@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { computeConnectors } from '../connectors';
-import type { ParentConnection, PedigreeLayout, ScalingParams } from '../types';
+import type {
+  LineSegment,
+  ParentConnection,
+  PedigreeLayout,
+  ScalingParams,
+} from '../types';
 
 /** Where an auxiliary line ends: on the child, or on the bar it joins. */
 const endOf = (line: { points: { x: number; y: number }[] }) =>
@@ -71,7 +76,7 @@ describe('computeConnectors', () => {
     expect(connectors.parentChildLines[0]!.edgeType).toBe('biological');
   });
 
-  it('produces branched parent links (4 segments) when branch > 0', () => {
+  it('draws a parent link as one straight drop when the bar is joined under the descent', () => {
     const connectors = computeConnectors(
       layout,
       scaling,
@@ -80,12 +85,67 @@ describe('computeConnectors', () => {
       0.6,
     );
     const pc = connectors.parentChildLines[0]!;
-    expect(pc.parentLink.length).toBe(4);
+    expect(pc.parentLink).toEqual([
+      { type: 'line', x1: 1, y1: 0.25, x2: 1, y2: 0.75 },
+    ]);
   });
 
-  it('produces 2 parent link segments when branch = 0', () => {
+  it('draws an offset parent link as a drop, a level run and a drop, with no zero-length piece', () => {
+    // A lone child under the left parent of a couple centred on x = 1.
+    const offsetLayout: PedigreeLayout = {
+      ...layout,
+      n: [2, 1],
+      nid: [
+        [1, 2, 0],
+        [3, 0, 0],
+      ],
+      pos: [
+        [0, 2, 0],
+        [0, 0, 0],
+      ],
+      fam: [
+        [0, 0, 0],
+        [1, 0, 0],
+      ],
+    };
     const connectors = computeConnectors(
-      layout,
+      offsetLayout,
+      scaling,
+      parents,
+      undefined,
+      0.6,
+    );
+    const pc = connectors.parentChildLines[0]!;
+    expect(pc.parentLink).toHaveLength(3);
+    const [drop, run, foot] = pc.parentLink as [
+      LineSegment,
+      LineSegment,
+      LineSegment,
+    ];
+    expect(drop.x1).toBe(drop.x2);
+    expect(run.y1).toBe(run.y2);
+    expect(foot.x1).toBe(foot.x2);
+    // The run lies between the parents' row and the sibling bar.
+    expect(run.y1).toBeGreaterThan(0.5);
+    expect(run.y1).toBeLessThan(0.75);
+    // A lone child has no sibling bar to draw.
+    expect(pc.siblingBar).toBeUndefined();
+    for (const segment of [...pc.parentLink, ...pc.uplines]) {
+      expect(
+        Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1),
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it('produces 2 parent link segments, the shoulder diagonal, when branch = 0', () => {
+    const connectors = computeConnectors(
+      {
+        ...layout,
+        pos: [
+          [0, 2, 0],
+          [1.5, 2.5, 3.5],
+        ],
+      },
       scaling,
       parents,
       undefined,
@@ -93,6 +153,7 @@ describe('computeConnectors', () => {
     );
     const pc = connectors.parentChildLines[0]!;
     expect(pc.parentLink.length).toBe(2);
+    expect(pc.parentLink[1]!.x1).not.toBe(pc.parentLink[1]!.x2);
   });
 
   it('group connector double flag reflects consanguinity', () => {
@@ -753,10 +814,12 @@ describe('computeConnectors', () => {
       activePairs,
     );
     const pc = connectors.parentChildLines[0]!;
-    // Should produce standard branched parent link (4 segments), not diagonal joins
-    expect(pc.parentLink.length).toBe(4);
+    // A standard parent link, straight down to the child below the couple's
+    // midpoint, not diagonal joins
+    expect(pc.parentLink).toHaveLength(1);
     // Parent link should descend from couple midpoint (both biological)
     expect(pc.parentLink[0]!.x1).toBeCloseTo(1, 1);
+    expect(pc.parentLink[0]!.x2).toBeCloseTo(1, 1);
   });
 
   describe('node id attachment (id parameter)', () => {

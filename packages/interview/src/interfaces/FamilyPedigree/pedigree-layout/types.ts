@@ -117,7 +117,8 @@ export type ParentChildConnector = {
   type: 'parent-child';
   edgeType: PedigreeEdgeType;
   uplines: LineSegment[];
-  siblingBar: LineSegment;
+  /** Absent when the line runs to a single child, who has no bar. */
+  siblingBar?: LineSegment;
   parentLink: LineSegment[];
   parentIds?: string[];
   uplineChildIds?: (string | undefined)[];
