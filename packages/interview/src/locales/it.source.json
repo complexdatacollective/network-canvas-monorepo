@@ -59,6 +59,7 @@
   "interview.familyPedigree.framingControlLabel": "Wording",
   "interview.familyPedigree.genderIdentityLabel": "Gender identity",
   "interview.familyPedigree.generatedLabelChildOf": "{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}",
+  "interview.familyPedigree.generatedLabelFormerPartnerOf": "{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}",
   "interview.familyPedigree.generatedLabelParentOf": "{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}",
   "interview.familyPedigree.generatedLabelPartnerOf": "{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}",
   "interview.familyPedigree.generatedLabelSiblingOf": "{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}",

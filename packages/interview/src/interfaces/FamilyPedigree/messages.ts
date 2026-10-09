@@ -40,6 +40,13 @@ export const messages = defineMessages({
     description:
       'Label for a family member the participant did not name, when their kinship word alone is shared with someone else. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Sister” or “Family member”; name is the name of their partner, or that partner’s own kinship word, such as “Tom” or “Uncle”. The first form is used when their partner is the participant.',
   },
+  generatedLabelFormerPartnerOf: {
+    id: 'interview.familyPedigree.generatedLabelFormerPartnerOf',
+    defaultMessage:
+      '{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}',
+    description:
+      'Label for a family member the participant did not name, when their kinship word alone is shared with someone else and they are told apart by a partnership that has ended. Shown inside their symbol in the family tree, and saved as their name so later parts of the interview show the same label. term is the already translated kinship word, such as “Sister” or “Family member”; name is the name of their former partner, or that person’s own kinship word, such as “Tom” or “Uncle”. The first form is used when their former partner is the participant.',
+  },
   generatedLabelParentOf: {
     id: 'interview.familyPedigree.generatedLabelParentOf',
     defaultMessage:

@@ -174,11 +174,13 @@ export const PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS: {
  * Architect seeds them in the researcher's language.
  *
  * - Parents: `parent` (a biological parent), `adoptiveParent`, `stepParent`
- *   (a step or social parent, or a parent's partner), `donor`, `surrogate`.
+ *   (a step or social parent, or the current partner of a parent who raises
+ *   them), `donor`, `surrogate`.
  * - Children: `child` (a biological child), `adoptiveChild`, `stepChild`,
  *   `donorConceivedChild`, `surrogacyChild`.
- * - Siblings: `sibling` (sharing every biological parent), `halfSibling`,
- *   `adoptiveSibling` (related through adoption only), `stepSibling`.
+ * - Siblings: `sibling` (the same genetic parents: biological parents and
+ *   donors), `halfSibling`, `adoptiveSibling` (sharing an adoptive parent but
+ *   no genetic parent), `stepSibling`.
  * - Partners: `partner`, `formerPartner`.
  * - Further along the family: `grandparent`, `greatGrandparent`,
  *   `grandchild`, `greatGrandchild`, `parentsSibling`, `grandparentsSibling`,

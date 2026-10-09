@@ -362,6 +362,25 @@ const isDescent = (step: Step) =>
     step.kind === 'adoptive' ||
     step.kind === 'donor');
 
+/** The parent kinds who raise a child, as step and in-law ties pass
+ * through. */
+const RAISING_KINDS: ReadonlySet<PedigreeRelationshipKind> =
+  new Set<PedigreeRelationshipKind>(['biological', 'adoptive', 'social']);
+
+/** A step a step or in-law tie can pass through: a parent or child who
+ * raises them, a sibling, or a current partner. */
+const isStepOrInLawStep = (step: Step) => {
+  switch (step.type) {
+    case 'parent':
+    case 'child':
+      return RAISING_KINDS.has(step.kind);
+    case 'sibling':
+      return true;
+    case 'partner':
+      return step.current;
+  }
+};
+
 /**
  * The kinship word for a relative more than one step away, or undefined when
  * there is no everyday word for them. `path` runs from the participant.
@@ -450,14 +469,12 @@ export function kinTermFor(
         });
       case 'parent,sibling,child':
         return 'cousin';
-      case 'parent,partner,child':
-        return pick(gender, {
-          woman: 'stepsister',
-          man: 'stepbrother',
-          other: 'stepsibling',
-        });
     }
   }
+  // Step and in-law ties pass only through parents and children who raise
+  // them and through partnerships that are current: a donor's or surrogate's
+  // partner, or a parent's former partner, is not a step-parent.
+  if (!path.every(isStepOrInLawStep)) return undefined;
   // A sibling's sibling who shares no parent with the participant, but whose
   // parent is partnered with one of theirs, is a step-sibling.
   if (shape === 'sibling,sibling') {
@@ -465,13 +482,14 @@ export function kinTermFor(
     const targetId = path[1]!.to;
     const parentsOf = (id: string | undefined) =>
       family.links
-        .filter((link) => link.kind !== 'partner' && link.target === id)
+        .filter((link) => link.target === id && RAISING_KINDS.has(link.kind))
         .map((link) => link.source);
     const theirParents = new Set(parentsOf(targetId));
     const partnered = parentsOf(egoId).some((parentId) =>
       family.links.some(
         (link) =>
           link.kind === 'partner' &&
+          link.isCurrentPartner &&
           ((link.source === parentId && theirParents.has(link.target)) ||
             (link.target === parentId && theirParents.has(link.source))),
       ),
@@ -485,6 +503,12 @@ export function kinTermFor(
     }
   }
   switch (shape) {
+    case 'parent,partner,child':
+      return pick(gender, {
+        woman: 'stepsister',
+        man: 'stepbrother',
+        other: 'stepsibling',
+      });
     case 'parent,partner':
       return pick(gender, {
         woman: 'stepmother',
@@ -511,6 +535,8 @@ export function kinTermFor(
         other: 'siblingInLaw',
       });
     case 'child,partner':
+    // A partner's child's partner, as when the step link is drawn.
+    case 'partner,child,partner':
       return pick(gender, {
         woman: 'daughterInLaw',
         man: 'sonInLaw',

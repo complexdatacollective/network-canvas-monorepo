@@ -423,21 +423,24 @@ describe('labelFamily', () => {
   });
 });
 
-describe('siblings', () => {
-  /** Each person's canvas label and saved relationship to the participant,
-   * which must name the same tie. */
-  function siblingTiesOf(nodes: NcNode[], edges: NcEdge[]) {
-    const family = readFamily(nodes, edges, config);
-    const labels = labelFamily(family, 'gendered');
-    const relationships = relationshipsToParticipant(family);
-    return Object.fromEntries(
-      [...relationships].map(([id, relationship]) => [
-        id,
-        [formatPersonLabel(labels.get(id)!, intl), relationship],
-      ]),
-    );
-  }
+/** Each person's canvas label and saved relationship to the participant,
+ * which must name the same tie. */
+function tiesOf(nodes: NcNode[], edges: NcEdge[]) {
+  const family = readFamily(nodes, edges, config);
+  const labels = labelFamily(family, 'gendered');
+  const relationships = relationshipsToParticipant(family);
+  return Object.fromEntries(
+    [...relationships].map(([id, relationship]) => [
+      id,
+      [
+        formatPersonLabel(labels.get(id)!, intl).replace(/\u00AD/g, ''),
+        relationship,
+      ],
+    ]),
+  );
+}
 
+describe('siblings', () => {
   const ego = person('ego', { isEgo: true });
 
   test.each([
@@ -527,9 +530,249 @@ describe('siblings', () => {
   ])(
     '$family: the label and the relationship agree',
     ({ nodes, edges, expected }) => {
-      expect(siblingTiesOf(nodes, edges)).toMatchObject(expected);
+      expect(tiesOf(nodes, edges)).toMatchObject(expected);
     },
   );
+});
+
+describe('step and in-law relatives', () => {
+  // Each parent or child step in a step or in-law tie is one that raises the
+  // child (biological, adoptive or social), and each partnership on the way
+  // is current. Otherwise the person has no step or in-law word.
+  const ego = man('ego', { isEgo: true });
+  const raising = ['biological', 'adoptive', 'social'] as const;
+  const notRaising = ['donor', 'surrogate'] as const;
+
+  describe("a parent's partner", () => {
+    test.each(raising)(
+      'through a %s parent, currently partnered, is a step-parent',
+      (kind) => {
+        expect(
+          tiesOf(
+            [ego, man('dad'), woman('her')],
+            [link('dad', 'ego', kind), link('dad', 'her', 'partner')],
+          ).her,
+        ).toEqual(['Stepmother', 'stepParent']);
+      },
+    );
+    test.each(notRaising)('through a %s is not', (kind) => {
+      expect(
+        tiesOf(
+          [ego, man('dad'), woman('her')],
+          [link('dad', 'ego', kind), link('dad', 'her', 'partner')],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+    test('who is a former partner is not', () => {
+      expect(
+        tiesOf(
+          [ego, man('dad'), woman('her')],
+          [
+            link('dad', 'ego', 'biological'),
+            link('dad', 'her', 'partner', { current: false }),
+          ],
+        ).her,
+      ).toEqual(["Father's former partner", 'otherRelative']);
+    });
+  });
+
+  describe("a partner's child", () => {
+    test.each(raising)(
+      'a %s child of a current partner is a step-child',
+      (kind) => {
+        expect(
+          tiesOf(
+            [ego, woman('wife'), man('kid')],
+            [link('ego', 'wife', 'partner'), link('wife', 'kid', kind)],
+          ).kid,
+        ).toEqual(['Stepson', 'stepChild']);
+      },
+    );
+    test.each(notRaising)('a %s child is not', (kind) => {
+      expect(
+        tiesOf(
+          [ego, woman('wife'), man('kid')],
+          [link('ego', 'wife', 'partner'), link('wife', 'kid', kind)],
+        ).kid?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a former partner's child is not", () => {
+      expect(
+        tiesOf(
+          [ego, woman('ex'), man('kid')],
+          [
+            link('ego', 'ex', 'partner', { current: false }),
+            link('ex', 'kid', 'biological'),
+          ],
+        ).kid,
+      ).toEqual(["Former partner's son", 'otherRelative']);
+    });
+  });
+
+  describe("a partner's parent", () => {
+    test.each(raising)(
+      'a %s parent of a current partner is a parent-in-law',
+      (kind) => {
+        expect(
+          tiesOf(
+            [ego, woman('wife'), woman('her')],
+            [link('ego', 'wife', 'partner'), link('her', 'wife', kind)],
+          ).her,
+        ).toEqual(['Mother-in-law', 'parentInLaw']);
+      },
+    );
+    test.each(notRaising)('a %s is not', (kind) => {
+      expect(
+        tiesOf(
+          [ego, woman('wife'), woman('her')],
+          [link('ego', 'wife', 'partner'), link('her', 'wife', kind)],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a former partner's parent is not", () => {
+      expect(
+        tiesOf(
+          [ego, woman('ex'), woman('her')],
+          [
+            link('ego', 'ex', 'partner', { current: false }),
+            link('her', 'ex', 'biological'),
+          ],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+  });
+
+  describe("a child's partner", () => {
+    test.each(raising)(
+      "a %s child's current partner is a child-in-law",
+      (kind) => {
+        expect(
+          tiesOf(
+            [ego, man('kid'), woman('her')],
+            [link('ego', 'kid', kind), link('kid', 'her', 'partner')],
+          ).her,
+        ).toEqual(['Daughter-in-law', 'childInLaw']);
+      },
+    );
+    test.each(notRaising)("a %s child's partner is not", (kind) => {
+      expect(
+        tiesOf(
+          [ego, man('kid'), woman('her')],
+          [link('ego', 'kid', kind), link('kid', 'her', 'partner')],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a child's former partner is not", () => {
+      expect(
+        tiesOf(
+          [ego, man('kid'), woman('her')],
+          [
+            link('ego', 'kid', 'biological'),
+            link('kid', 'her', 'partner', { current: false }),
+          ],
+        ).her?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a partner's child's partner is a child-in-law whether or not the step link is drawn", () => {
+      const nodes = [ego, man('frank'), man('greg'), woman('leah')];
+      const edges = [
+        link('ego', 'frank', 'partner'),
+        link('frank', 'greg', 'biological'),
+        link('greg', 'leah', 'partner'),
+      ];
+      expect(tiesOf(nodes, edges).leah?.[1]).toBe('childInLaw');
+      expect(
+        tiesOf(nodes, [...edges, link('ego', 'greg', 'social')]).leah?.[1],
+      ).toBe('childInLaw');
+    });
+  });
+
+  describe("a parent's partner's child", () => {
+    test("a current partner's child is a step-sibling", () => {
+      expect(
+        tiesOf(
+          [ego, man('dad'), woman('her'), woman('kid')],
+          [
+            link('dad', 'ego', 'biological'),
+            link('dad', 'her', 'partner'),
+            link('her', 'kid', 'biological'),
+          ],
+        ).kid,
+      ).toEqual(['Stepsister', 'stepSibling']);
+    });
+    test("a former partner's child is not", () => {
+      expect(
+        tiesOf(
+          [ego, man('dad'), woman('her'), woman('kid')],
+          [
+            link('dad', 'ego', 'biological'),
+            link('dad', 'her', 'partner', { current: false }),
+            link('her', 'kid', 'biological'),
+          ],
+        ).kid?.[1],
+      ).toBe('otherRelative');
+    });
+    test("a donor's partner's child is not", () => {
+      expect(
+        tiesOf(
+          [ego, person('lisa', { sex: ['female'] }), man('mark'), man('finn')],
+          [
+            link('lisa', 'ego', 'donor'),
+            link('lisa', 'mark', 'partner'),
+            link('mark', 'finn', 'biological'),
+          ],
+        ).finn?.[1],
+      ).toBe('otherRelative');
+    });
+  });
+
+  test("a sibling's former partner is not a sibling-in-law", () => {
+    const nodes = [ego, woman('mum'), man('bro'), woman('her')];
+    const edges = [
+      link('mum', 'ego', 'biological'),
+      link('mum', 'bro', 'biological'),
+    ];
+    expect(
+      tiesOf(nodes, [...edges, link('bro', 'her', 'partner')]).her,
+    ).toEqual(['Sister-in-law', 'siblingInLaw']);
+    expect(
+      tiesOf(nodes, [
+        ...edges,
+        link('bro', 'her', 'partner', { current: false }),
+      ]).her?.[1],
+    ).toBe('otherRelative');
+  });
+
+  test("a step-parent's former partner, and a donor's partner, are not step-parents", () => {
+    // The family from the report: a mother, a sperm donor and a step-father.
+    expect(
+      tiesOf(
+        [
+          ego,
+          woman('ann'),
+          person('dan', { sex: ['male'] }),
+          man('paul'),
+          woman('dansPartner'),
+          woman('paulsEx'),
+          man('annsEx'),
+        ],
+        [
+          link('ann', 'ego', 'biological', { carrier: true }),
+          link('dan', 'ego', 'donor'),
+          link('paul', 'ego', 'social'),
+          link('ann', 'paul', 'partner'),
+          link('dan', 'dansPartner', 'partner'),
+          link('paul', 'paulsEx', 'partner', { current: false }),
+          link('ann', 'annsEx', 'partner', { current: false }),
+        ],
+      ),
+    ).toMatchObject({
+      paul: ['Stepfather', 'stepParent'],
+      dansPartner: ["Sperm donor's partner", 'otherRelative'],
+      paulsEx: ["Stepfather's former partner", 'otherRelative'],
+      annsEx: ["Mother's former partner", 'otherRelative'],
+    });
+  });
 });
 
 describe('soft hyphens', () => {

@@ -97,6 +97,39 @@ describe('generateLabels', () => {
     });
   });
 
+  test('a partnership that has ended is named as one', () => {
+    expect(
+      labelsOf(
+        [
+          ...parents,
+          woman('sis1'),
+          woman('sis2'),
+          man('tom', { name: 'Tom' }),
+          man('sam', { name: 'Sam' }),
+        ],
+        [
+          ...parentLinks,
+          ...siblingLinks('sis1'),
+          ...siblingLinks('sis2'),
+          link('sis1', 'tom', 'partner', { current: false }),
+          link('sis2', 'sam', 'partner'),
+        ],
+      ),
+    ).toMatchObject({
+      sis1: 'Sister (former partner of Tom)',
+      sis2: 'Sister (partner of Sam)',
+    });
+    expect(
+      labelsOf(
+        [person('ego', { isEgo: true }), woman('ex1'), woman('ex2')],
+        [
+          link('ego', 'ex1', 'partner', { current: false }),
+          link('ego', 'ex2', 'partner', { current: false }),
+        ],
+      ),
+    ).toEqual({ ex1: 'Former partner 1', ex2: 'Former partner 2' });
+  });
+
   test('two sisters are told apart by their named children', () => {
     expect(
       labelsOf(

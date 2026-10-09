@@ -15,8 +15,8 @@ import {
 
 /**
  * How a qualifier relates the person to the relative who tells them apart,
- * in the order they are tried: their partner, their child, their parent,
- * their sibling.
+ * in the order they are tried: their partner (current or former), their
+ * child, their parent, their sibling.
  */
 type Qualifier = 'partnerOf' | 'parentOf' | 'childOf' | 'siblingOf';
 const QUALIFIERS: readonly Qualifier[] = [
@@ -207,6 +207,15 @@ function buildLabels(
       : undefined;
   };
 
+  const isCurrentPartnership = (a: string, b: string) =>
+    family.links.some(
+      (link) =>
+        link.kind === 'partner' &&
+        link.isCurrentPartner &&
+        ((link.source === a && link.target === b) ||
+          (link.source === b && link.target === a)),
+    );
+
   /** The qualified label for a person through one relative, if they can be
    * referred to at this stage of the search. */
   const qualified = (
@@ -218,7 +227,11 @@ function buildLabels(
     const relative = family.byId.get(relativeId);
     if (!relative) return undefined;
     const term = baseTexts.get(personId) ?? '';
-    const message = QUALIFIER_MESSAGES[qualifier];
+    // A partnership that has ended is named as one.
+    const message =
+      qualifier === 'partnerOf' && !isCurrentPartnership(personId, relativeId)
+        ? messages.generatedLabelFormerPartnerOf
+        : QUALIFIER_MESSAGES[qualifier];
     if (relative.isEgo) {
       return intl.formatMessage(message, { isYou: 'true', term, name: '' });
     }
