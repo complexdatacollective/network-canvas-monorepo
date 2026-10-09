@@ -1815,6 +1815,85 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
   },
 };
 
+/**
+ * The list of what is still needed asks for the participant's brothers and
+ * sisters. Choosing it asks whether they have any; answering "Yes — I’ll add
+ * them" goes on to adding a sibling. That answer is kept: opened again, the
+ * participant's panel still shows it.
+ */
+export const SayingYouHaveSiblingsGoesOnToAddingOne: Story = {
+  args: { requirement: 'firstDegree', enforcement: 'required' },
+  render: (args) => (
+    <PedigreeStory
+      {...settings(args)}
+      family={{
+        people: [
+          {
+            id: 'ego',
+            name: 'Sarietha',
+            gender: 'woman',
+            sex: 'female',
+            ego: true,
+            notRecorded: ['noChildren'],
+          },
+          { id: 'julie', name: 'Julie', gender: 'woman', sex: 'female' },
+          { id: 'rob', name: 'Rob', gender: 'man', sex: 'male' },
+        ],
+        links: [
+          { from: 'julie', to: 'rob', kind: 'partner' },
+          { from: 'julie', to: 'ego', kind: 'biological', carrier: true },
+          { from: 'rob', to: 'ego', kind: 'biological' },
+        ],
+      }}
+    />
+  ),
+  play: async (context) => {
+    await expectPeople(3)(context);
+    const { canvasElement } = context;
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByTestId('next-button'));
+    const item = await body.findByRole(
+      'button',
+      {
+        name: 'Add your biological brothers and sisters, or say you have none',
+      },
+      { timeout: 5000 },
+    );
+    await userEvent.click(item);
+    const siblings = await body.findByRole('radiogroup', {
+      name: /^Do you have any biological brothers or sisters/,
+    });
+    await userEvent.click(
+      within(siblings).getByRole('radio', {
+        name: 'Yes — I’ll add them to the family tree',
+      }),
+    );
+    await userEvent.click(await body.findByRole('button', { name: 'Save' }));
+
+    // On to adding a sibling.
+    await waitFor(() =>
+      expect(
+        body.getByRole('heading', { name: 'Add your sibling' }),
+      ).toBeVisible(),
+    );
+    await userEvent.click(body.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
+
+    // The answer is kept.
+    await userEvent.click(await canvas.findByRole('button', { name: /^You/ }));
+    const asked = await body.findByRole('radiogroup', {
+      name: /^Do you have any biological brothers or sisters/,
+    });
+    await expect(
+      within(asked).getByRole('radio', {
+        name: 'Yes — I’ll add them to the family tree',
+      }),
+    ).toBeChecked();
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Scenarios from the standardized pedigree nomenclature papers: Bennett et al.
 // (2008), "Standardized human pedigree nomenclature: update and assessment of

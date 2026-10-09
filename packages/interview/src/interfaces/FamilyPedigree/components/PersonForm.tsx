@@ -124,6 +124,23 @@ export type PersonFormResult = {
   request?: AddRelativeRequest;
   /** Changes to the person's existing relationships (edit only). */
   linkUpdates?: LinkUpdate[];
+  /** The answers to whether the person has siblings, and children, for
+   * each asked (edit only). */
+  relativesAnswers?: Partial<Record<RelativesGroup, RelativesAnswer>>;
+};
+
+type RelativesGroup = 'siblings' | 'children';
+type RelativesAnswer = 'yes' | 'no' | 'unknown';
+
+/** Which relatives to ask about, whether they must be answered, and which
+ * the participant has already said "Yes — I'll add them" to. */
+export type AskAbout = {
+  siblings: boolean;
+  children: boolean;
+  required: boolean;
+  /** "Yes" is not recorded in the network, so the stage keeps it for the
+   * visit and the panel opens on it again. */
+  answeredYes?: Partial<Record<RelativesGroup, boolean>>;
 };
 
 /** The person being added, as the form stands: shown in the family before
@@ -205,7 +222,7 @@ type PersonFormProps = {
   decryptedNames: ReadonlyMap<string, string>;
   displayName: (personId: string) => string;
   /** Edit only: ask whether the person has siblings, and children. */
-  askAbout?: { siblings: boolean; children: boolean; required: boolean };
+  askAbout?: AskAbout;
   /** Add only: called with the person being added whenever the answers
    * that decide how they are drawn change. */
   onDraftChange?: (draft: PersonDraft) => void;
@@ -345,6 +362,17 @@ export default function PersonForm({
     // "No" and "Don't know" are recorded; "Yes" leaves the question to the
     // siblings or children the participant goes on to add.
     const notRecordedAttribute = config.relativesNotRecordedAttribute;
+    const relativesAnswers: Partial<Record<RelativesGroup, RelativesAnswer>> =
+      {};
+    for (const [group, question, asked] of [
+      ['siblings', ROLE.hasSiblings, askAbout?.siblings],
+      ['children', ROLE.hasChildren, askAbout?.children],
+    ] as const) {
+      const value = asString(values[question]);
+      if (asked && (value === 'yes' || value === 'no' || value === 'unknown')) {
+        relativesAnswers[group] = value;
+      }
+    }
     if (
       person &&
       notRecordedAttribute &&
@@ -398,6 +426,7 @@ export default function PersonForm({
         mode.kind === 'edit'
           ? readLinkUpdates(existingLinksOf(family, mode.person.id), values)
           : undefined,
+      relativesAnswers: mode.kind === 'edit' ? relativesAnswers : undefined,
     });
     return { success: true };
   };
@@ -428,30 +457,29 @@ export default function PersonForm({
     return prompt === undefined ? variable : resolve(prompt).text;
   };
 
-  const missingLabels =
+  // Each missing detail, by the question that asks it and how it is named.
+  const missingQuestions =
     mode.kind === 'edit'
       ? mode.missing.map((detail) =>
           typeof detail === 'string'
-            ? intl.formatMessage(BUILT_IN_DETAIL_LABELS[detail])
-            : fieldPromptText(detail.variable),
+            ? {
+                name:
+                  detail === 'genderIdentity'
+                    ? (config.genderIdentity?.attribute ?? '')
+                    : config.sexAssignedAtBirthAttribute,
+                label: intl.formatMessage(BUILT_IN_DETAIL_LABELS[detail]),
+              }
+            : {
+                name: detail.variable,
+                label: fieldPromptText(detail.variable),
+              },
         )
       : [];
 
   return (
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
       <div className="flex flex-col gap-8">
-        {missingLabels.length > 0 && (
-          <Alert variant="warning">
-            <AppMessage
-              message={messages.missingDetailsList}
-              values={{
-                details: intl.formatList(missingLabels, {
-                  type: 'conjunction',
-                }),
-              }}
-            />
-          </Alert>
-        )}
+        <MissingDetailsNotice questions={missingQuestions} />
         <section className="flex flex-col">
           <Heading level="h3" margin="none" className="mb-4">
             <AppMessage
@@ -562,6 +590,44 @@ export default function PersonForm({
   );
 }
 
+/** An answer that leaves a detail missing. */
+const isUnanswered = (value: FieldValue | undefined) =>
+  value === undefined ||
+  value === null ||
+  (typeof value === 'string' && value.trim() === '') ||
+  (Array.isArray(value) && value.length === 0);
+
+/**
+ * The details the panel opened missing that are still unanswered, as the
+ * form stands: one answered drops out of the notice, and one cleared again
+ * comes back.
+ */
+function MissingDetailsNotice({
+  questions,
+}: {
+  questions: readonly { name: string; label: string }[];
+}) {
+  const intl = useAppIntl();
+  const values = useFormValue(
+    questions.map((question) => question.name),
+    'opaque',
+  );
+  const labels = questions
+    .filter((question) => isUnanswered(values[question.name]))
+    .map((question) => question.label);
+  if (labels.length === 0) return null;
+  return (
+    <Alert variant="warning">
+      <AppMessage
+        message={messages.missingDetailsList}
+        values={{
+          details: intl.formatList(labels, { type: 'conjunction' }),
+        }}
+      />
+    </Alert>
+  );
+}
+
 /**
  * Whether the person has siblings, and children, asked when the family must
  * account for them and none are recorded yet.
@@ -572,7 +638,7 @@ function RelativesQuestions({
   displayName,
 }: {
   person: Person;
-  askAbout: { siblings: boolean; children: boolean; required: boolean };
+  askAbout: AskAbout;
   displayName: (personId: string) => string;
 }) {
   const intl = useAppIntl();
@@ -585,11 +651,11 @@ function RelativesQuestions({
     { value: 'no', label: intl.formatMessage(interfaceMessages.no) },
     { value: 'unknown', label: intl.formatMessage(messages.dontKnow) },
   ];
-  const initial = (
-    group: (typeof RELATIVES_NOT_RECORDED)[keyof typeof RELATIVES_NOT_RECORDED],
-  ) => {
+  const initial = (relatives: RelativesGroup) => {
+    const group = RELATIVES_NOT_RECORDED[relatives];
     if (person.relativesNotRecorded.includes(group.none)) return 'no';
     if (person.relativesNotRecorded.includes(group.unknown)) return 'unknown';
+    if (askAbout.answeredYes?.[relatives]) return 'yes';
     return undefined;
   };
   return (
@@ -604,7 +670,7 @@ function RelativesQuestions({
           label={intl.formatMessage(messages.hasSiblingsQuestion, args)}
           options={options}
           required={askAbout.required}
-          initialValue={initial(RELATIVES_NOT_RECORDED.siblings)}
+          initialValue={initial('siblings')}
         />
       )}
       {askAbout.children && (
@@ -614,7 +680,7 @@ function RelativesQuestions({
           label={intl.formatMessage(messages.hasChildrenQuestion, args)}
           options={options}
           required={askAbout.required}
-          initialValue={initial(RELATIVES_NOT_RECORDED.children)}
+          initialValue={initial('children')}
         />
       )}
     </section>
@@ -1012,33 +1078,39 @@ function readRequest(
         carrier,
       };
     }
-    case 'sibling': {
-      const shared = asStringArray(values[ROLE.sharedParents]);
-      const placeholders = asString(values[ROLE.sharedParentCount]);
-      // The model records the carrier only while the answers still make them
-      // one of the sibling's parents who could have carried the pregnancy.
-      const carrier = asString(values[ROLE.carrier]);
-      return {
-        relation,
-        sharedParentIds: shared.filter((id) => id !== UNKNOWN),
-        sharesUnshown:
-          placeholders === 'eggParent' || placeholders === 'spermParent'
-            ? placeholders
-            : // With no parents to choose from, and no choice of which
-              // unnamed parent to share, the sibling shares both.
-              placeholders === 'both' || shared.length === 0
-              ? 'both'
-              : shared.includes(UNKNOWN)
-                ? 'other'
-                : 'none',
-        parentKind:
-          (asString(values[ROLE.siblingKind]) as
-            | (typeof SIBLING_KINDS)[number]
-            | undefined) ?? 'biological',
-        carrier: carrier && carrier !== NONE ? carrier : null,
-      };
-    }
+    case 'sibling':
+      return readSiblingRequest(values);
   }
+}
+
+/** The answers about a new sibling, as the request to add them. */
+function readSiblingRequest(
+  values: Record<string, FieldValue | undefined>,
+): Extract<AddRelativeRequest, { relation: 'sibling' }> {
+  const shared = asStringArray(values[ROLE.sharedParents]);
+  const placeholders = asString(values[ROLE.sharedParentCount]);
+  // The model records the carrier only while the answers still make them
+  // one of the sibling's parents who could have carried the pregnancy.
+  const carrier = asString(values[ROLE.carrier]);
+  return {
+    relation: 'sibling',
+    sharedParentIds: shared.filter((id) => id !== UNKNOWN),
+    sharesUnshown:
+      placeholders === 'eggParent' || placeholders === 'spermParent'
+        ? placeholders
+        : // With no parents to choose from, and no choice of which
+          // unnamed parent to share, the sibling shares both.
+          placeholders === 'both' || shared.length === 0
+          ? 'both'
+          : shared.includes(UNKNOWN)
+            ? 'other'
+            : 'none',
+    parentKind:
+      (asString(values[ROLE.siblingKind]) as
+        | (typeof SIBLING_KINDS)[number]
+        | undefined) ?? 'biological',
+    carrier: carrier && carrier !== NONE ? carrier : null,
+  };
 }
 
 function RelationshipFields({
@@ -1648,13 +1720,7 @@ function SiblingFields({
     family,
     anchorId: anchor.id,
     details: {},
-    request: {
-      ...(readRequest('sibling', values, anchor, family) as Extract<
-        AddRelativeRequest,
-        { relation: 'sibling' }
-      >),
-      parentKind: 'biological',
-    },
+    request: { ...readSiblingRequest(values), parentKind: 'biological' },
     sexAttribute: config.sexAssignedAtBirthAttribute,
   });
   const biologicalPossible = biologicalPlan.links.some(

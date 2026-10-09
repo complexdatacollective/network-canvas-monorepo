@@ -24,7 +24,7 @@ import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import PersonForm, { type PersonFormResult } from '../components/PersonForm';
-import { type Relation, readFamily } from '../model';
+import { type MissingDetail, type Relation, readFamily } from '../model';
 import type { OwnedOptionLabels } from '../options';
 import { config, link, person } from './fixtures';
 
@@ -73,6 +73,8 @@ type Setup = {
   edges?: NcEdge[];
   /** Adds a relative of the person, rather than editing them. */
   adding?: Relation;
+  /** The details the panel opened saying are missing (edit only). */
+  missing?: MissingDetail[];
   nameValidation?: Record<string, unknown>;
   formFields?: FormField[];
   /** Each encrypted name decrypted, by person id. */
@@ -88,6 +90,7 @@ function renderPersonForm(
     nodes,
     edges = [],
     adding,
+    missing = [],
     nameValidation,
     formFields = [],
     decryptedNames = new Map(),
@@ -173,7 +176,7 @@ function renderPersonForm(
                 anchor: edited,
                 ids: ['added', 'new-1', 'new-2'],
               }
-            : { kind: 'edit', person: edited, missing: [], unavailable: [] }
+            : { kind: 'edit', person: edited, missing, unavailable: [] }
         }
         family={family}
         config={{ ...config, genderIdentity: undefined }}
@@ -523,5 +526,29 @@ describe('an answer that cannot be chosen', () => {
     });
     expect(within(sex).getByRole('radio', { name: 'Male' })).toBeDisabled();
     expect(sex).toHaveAccessibleDescription(/“donor”.*“Male” at birth/);
+  });
+});
+
+describe('the missing details notice', () => {
+  it('drops a detail once it is answered, and lists it again once cleared', async () => {
+    const { user } = renderPersonForm('bea', {
+      nodes: [person('bea'), person('ego', { isEgo: true })],
+      missing: ['sexAssignedAtBirth', { variable: NICKNAME }],
+      formFields: [nicknameField],
+    });
+    const notice = () => screen.queryByText(/^Some details are missing/);
+    expect(notice()).toHaveTextContent(
+      'Some details are missing: Sex assigned at birth and Nickname.',
+    );
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await waitFor(() =>
+      expect(notice()).toHaveTextContent('Some details are missing: Nickname.'),
+    );
+    await user.type(screen.getByRole('textbox', { name: /Nickname/ }), 'Bee');
+    await waitFor(() => expect(notice()).toBeNull());
+    await user.clear(screen.getByRole('textbox', { name: /Nickname/ }));
+    await waitFor(() =>
+      expect(notice()).toHaveTextContent('Some details are missing: Nickname.'),
+    );
   });
 });
