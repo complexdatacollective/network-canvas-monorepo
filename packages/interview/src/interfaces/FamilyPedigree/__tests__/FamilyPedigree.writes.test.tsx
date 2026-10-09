@@ -370,6 +370,95 @@ describe('FamilyPedigree opening on a family missing a stand-in', () => {
     expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
   });
 
+  /** The participant, their biological mother Julie, and a stand-in the
+   * stage gave for their other genetic parent, as a family saved earlier
+   * records them; `standInSex` is the stand-in's sex at birth, and `rob`
+   * adds Rob as their biological father, as another stage may have. */
+  function savedStandIn({
+    standInSex,
+    rob = false,
+  }: {
+    standInSex: 'male' | 'female';
+    rob?: boolean;
+  }) {
+    const si = new SyntheticInterview(3);
+    const people = si.addNodeType({ name: 'Person' });
+    const stage = si.addStage('FamilyPedigree', {
+      subject: { entity: 'node', type: people.id },
+      prompt: 'Add the members of your family.',
+    });
+    si.addManualNode(stage.id, stage.personType, 'ego', {
+      [stage.ego]: true,
+      [stage.sexAssignedAtBirth]: ['female'],
+    });
+    si.addManualNode(stage.id, stage.personType, 'mum', {
+      [stage.ego]: false,
+      [stage.sexAssignedAtBirth]: ['female'],
+      [stage.name]: 'Julie',
+    });
+    si.addManualNode(stage.id, stage.personType, 'standIn', {
+      [stage.ego]: false,
+      [stage.sexAssignedAtBirth]: [standInSex],
+    });
+    si.addManualEdge(stage.edgeType, 'mum-ego', 'mum', 'ego', {
+      [stage.kind]: ['biological'],
+      [stage.gestationalCarrier]: true,
+    });
+    si.addManualEdge(stage.edgeType, 'standIn-ego', 'standIn', 'ego', {
+      [stage.kind]: ['biological'],
+    });
+    if (rob) {
+      si.addManualNode(stage.id, stage.personType, 'rob', {
+        [stage.ego]: false,
+        [stage.sexAssignedAtBirth]: ['male'],
+        [stage.name]: 'Rob',
+      });
+      si.addManualEdge(stage.edgeType, 'rob-ego', 'rob', 'ego', {
+        [stage.kind]: ['biological'],
+      });
+    }
+    si.addInformationStage({ title: 'After the pedigree', text: 'Done.' });
+    return SuperJSON.stringify(
+      si.getInterviewPayload({
+        currentStep: 0,
+        stageMetadata: { 0: { standIns: ['standIn'] } },
+      }),
+    );
+  }
+
+  it('lets a stand-in give way to a genetic parent recorded in their place, without any change', async () => {
+    render(
+      <StoryInterviewShell
+        rawPayload={savedStandIn({ standInSex: 'male', rob: true })}
+      />,
+      { wrapper: WithoutMotion },
+    );
+    await screen.findAllByTestId('pedigree-person');
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-person-id="standIn"]'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
+  });
+
+  it('gives a stand-in the sex at birth that follows the other genetic parent’s, without any change', async () => {
+    const updates = vi.spyOn(session, 'updateNode');
+    render(
+      <StoryInterviewShell
+        rawPayload={savedStandIn({ standInSex: 'female' })}
+      />,
+      { wrapper: WithoutMotion },
+    );
+    await screen.findAllByTestId('pedigree-person');
+    await waitFor(() =>
+      expect(updates).toHaveBeenCalledWith(
+        expect.objectContaining({ nodeId: 'standIn' }),
+      ),
+    );
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
+  });
+
   it('adds nobody to a family that keeps the rule', async () => {
     const additions = watchAdditions();
     await renderStage({ mumKind: 'adoptive' });

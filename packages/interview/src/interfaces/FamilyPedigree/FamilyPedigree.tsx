@@ -1612,6 +1612,15 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       planStandIns(latestFamily(), uuid, config.sexAssignedAtBirthAttribute),
     );
 
+  // Whether keeping the stand-in rule changes anything.
+  const changesAnything = (changes: StandInChanges) =>
+    changes.people.length > 0 ||
+    changes.links.length > 0 ||
+    changes.updatedPeople.length > 0 ||
+    changes.changedTwins.length > 0 ||
+    changes.removedLinkIds.length > 0 ||
+    changes.removedPersonIds.length > 0;
+
   // Writes what keeping the stand-in rule changes, stopping at the first
   // write the session refuses, which it resolves to. Stand-ins are taken
   // away only once every other change is stored, so a refusal leaves no one
@@ -1683,22 +1692,20 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     });
   };
 
-  // The stand-ins a family read on opening the stage is missing (one saved
-  // before this version, or changed by another stage) are added once, so the
-  // participant sees them and the saved family matches one made here. Only
-  // stand-ins are added: nobody is removed or changed until the participant
-  // changes the family.
+  // A family read on opening the stage that does not keep the stand-in rule
+  // (one saved before this version, or changed by another stage) is brought
+  // into line once, as after any change, so the participant sees it as it
+  // will be saved and the saved family matches one made here: stand-ins are
+  // added, give way, and take the sex at birth that follows, in one piece.
   const standInsChecked = useRef(false);
   const addMissingStandIns = useEffectEvent(async () => {
-    const missing = planStandIns(
+    const changes = planStandIns(
       latestFamily(),
       uuid,
       config.sexAssignedAtBirthAttribute,
     );
-    if (missing.people.length === 0 && missing.links.length === 0) return;
-    reportRefusedStandIn(
-      await applyStandIns({ people: missing.people, links: missing.links }),
-    );
+    if (!changesAnything(changes)) return;
+    reportRefusedStandIn(await applyStandIns(changes));
   });
   useEffect(() => {
     if (!family.egoId || standInsChecked.current) return;
