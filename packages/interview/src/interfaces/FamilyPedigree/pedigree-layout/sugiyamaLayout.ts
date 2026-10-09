@@ -57,8 +57,27 @@ function partnerGroupKey(members: number[]): string {
 function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   const n = ped.id.length;
 
-  // 1. Assign layers (1-based)
-  const depth = kindepth(ped.parents, true);
+  // 1. Assign layers (1-based). A child's generation comes from its primary
+  // parents, and from all of its parents only when it has none, as in step
+  // 3b: a donor may be a generation younger than the parents who raise the
+  // child, or one of them may be the child's birth parent. A donor or
+  // surrogate with no parents shown is still lined up with the child's
+  // primary parents, so a donor shared by two families brings both onto the
+  // donor's row.
+  const generationParents = ped.parents.map((pConns) => {
+    const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
+    return primary.length > 0 ? primary : pConns;
+  });
+  const alignedAuxiliaryParents = ped.parents.map((pConns, i) =>
+    generationParents[i] === pConns
+      ? []
+      : pConns.filter(
+          (p) =>
+            isAuxiliaryEdge(p.edgeType) &&
+            ped.parents[p.parentIndex]!.length === 0,
+        ),
+  );
+  const depth = kindepth(generationParents, true, alignedAuxiliaryParents);
   const layers = depth.map((d) => d + 1);
 
   // 2. Force auxiliary parents to same layer as social parents

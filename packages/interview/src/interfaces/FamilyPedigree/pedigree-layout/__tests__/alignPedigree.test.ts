@@ -1775,7 +1775,10 @@ describe('every parent is joined to their child', () => {
 });
 
 describe('a parent who descends from a co-parent', () => {
-  // Every person is drawn exactly once, on a row below each of their parents.
+  // Every person is drawn exactly once, on a row below each of their primary
+  // parents (each of their parents when they have none) and never above a
+  // donor or surrogate. A donor or surrogate who descends from a primary
+  // parent shares the child's generation, so may share its row.
   const expectEveryChildBelowItsParents = (ped: PedigreeInput) => {
     const result = alignPedigree(ped);
     const drawn = result.nid.flatMap((row, level) =>
@@ -1784,11 +1787,19 @@ describe('a parent who descends from a co-parent', () => {
     expect(drawn.toSorted((a, b) => a - b)).toStrictEqual(
       ped.id.map((_, i) => i),
     );
+    const isAuxiliary = (p: ParentConnection) =>
+      p.edgeType === 'donor' || p.edgeType === 'surrogate';
     ped.parents.forEach((conns, child) => {
       const childAt = positionOf(result, child);
       expect(childAt).toBeDefined();
-      for (const p of conns) {
+      const primary = conns.filter((p) => !isAuxiliary(p));
+      for (const p of primary.length > 0 ? primary : conns) {
         expect(childAt!.layer).toBeGreaterThan(
+          positionOf(result, p.parentIndex)!.layer,
+        );
+      }
+      for (const p of conns) {
+        expect(childAt!.layer).toBeGreaterThanOrEqual(
           positionOf(result, p.parentIndex)!.layer,
         );
       }
@@ -1861,5 +1872,88 @@ describe('a parent who descends from a co-parent', () => {
         ],
       ],
     });
+  });
+});
+
+describe('a child sits one row below its primary parents', () => {
+  const levelOf = (result: ReturnType<typeof alignPedigree>, person: number) =>
+    result.nid.findIndex((row, level) =>
+      row.slice(0, result.n[level]).includes(person),
+    );
+  const donor = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'donor',
+  });
+  const social = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'social',
+  });
+  const adoptive = (parentIndex: number): ParentConnection => ({
+    parentIndex,
+    edgeType: 'adoptive',
+  });
+
+  it('when a donor is shared between two families', () => {
+    // grandmother → hannah; hannah + donor → you. donor → zoe, raised by amy
+    // (biological) and her partner jo (social).
+    const ped: PedigreeInput = {
+      id: ['grandmother', 'hannah', 'donor', 'you', 'zoe', 'amy', 'jo'],
+      parents: [
+        [],
+        [sp(0)],
+        [],
+        [sp(1), donor(2)],
+        [donor(2), sp(5), social(6)],
+        [],
+        [],
+      ],
+      partners: [{ partnerIndex1: 5, partnerIndex2: 6, isActive: true }],
+    };
+    const result = alignPedigree(ped);
+    expect(levelOf(result, 5)).toBe(levelOf(result, 4) - 1);
+    expect(levelOf(result, 6)).toBe(levelOf(result, 4) - 1);
+    expect(levelOf(result, 1)).toBe(levelOf(result, 3) - 1);
+    // Zoe is the participant's donor sibling, in the participant's generation.
+    expect(levelOf(result, 4)).toBe(levelOf(result, 3));
+  });
+
+  it('when the donor is a generation younger than the raising parents', () => {
+    // mum + dad → you, helen. you → chloe. helen (social) and her partner
+    // mark (biological) raise oliver, with chloe as his egg donor.
+    const ped: PedigreeInput = {
+      id: ['mum', 'dad', 'you', 'helen', 'chloe', 'mark', 'oliver'],
+      parents: [
+        [],
+        [],
+        [sp(0), sp(1)],
+        [sp(0), sp(1)],
+        [sp(2)],
+        [],
+        [social(3), sp(5), donor(4)],
+      ],
+      partners: [
+        { partnerIndex1: 0, partnerIndex2: 1, isActive: true },
+        { partnerIndex1: 3, partnerIndex2: 5, isActive: true },
+      ],
+    };
+    const result = alignPedigree(ped);
+    expect(levelOf(result, 3)).toBe(levelOf(result, 6) - 1);
+    expect(levelOf(result, 5)).toBe(levelOf(result, 6) - 1);
+    expect(levelOf(result, 3)).toBe(levelOf(result, 2));
+  });
+
+  it('when grandparents adopt their grandchild', () => {
+    // patricia + gary → jade. jade is your birth parent (remapped to a donor
+    // edge, as the adapter does for an adopted child); patricia and gary
+    // adopted you.
+    const ped: PedigreeInput = {
+      id: ['patricia', 'gary', 'jade', 'you'],
+      parents: [[], [], [sp(0), sp(1)], [donor(2), adoptive(0), adoptive(1)]],
+      partners: [{ partnerIndex1: 0, partnerIndex2: 1, isActive: true }],
+    };
+    const result = alignPedigree(ped);
+    expect(levelOf(result, 0)).toBe(levelOf(result, 3) - 1);
+    expect(levelOf(result, 1)).toBe(levelOf(result, 3) - 1);
+    expect(levelOf(result, 3)).toBe(levelOf(result, 2));
   });
 });
