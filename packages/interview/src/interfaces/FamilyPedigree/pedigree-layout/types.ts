@@ -123,6 +123,9 @@ export type ParentGroupConnector = {
   isActive: boolean;
   doubleSegment?: LineSegment;
   descentXPositions?: number[];
+  /** Where auxiliary lines cross the partnership line (or leave it, for a
+   * couple's line), which its break keeps clear of. */
+  auxiliaryXPositions?: number[];
   nodeHalfWidth?: number;
   slashSide?: 'left' | 'right';
   partnerIds?: [string, string];

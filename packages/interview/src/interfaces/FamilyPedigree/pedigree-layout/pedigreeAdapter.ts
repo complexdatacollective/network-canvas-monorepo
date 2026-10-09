@@ -282,9 +282,9 @@ export function buildConnectorData(
     if (sp.doubleSegment) {
       transformSegment(sp.doubleSegment, sx, sy, xOffset);
     }
-    if (sp.descentXPositions) {
-      for (let k = 0; k < sp.descentXPositions.length; k++) {
-        sp.descentXPositions[k] = sp.descentXPositions[k]! * sx + xOffset;
+    for (const positions of [sp.descentXPositions, sp.auxiliaryXPositions]) {
+      for (let k = 0; k < (positions?.length ?? 0); k++) {
+        positions![k] = positions![k]! * sx + xOffset;
       }
     }
     sp.nodeHalfWidth = metrics.containerWidth / 2;
@@ -343,6 +343,12 @@ export function buildConnectorData(
         shiftSegment(endpoint, -rawMinX, 0);
       }
       if (sp.doubleSegment) shiftSegment(sp.doubleSegment, -rawMinX, 0);
+      // The break keeps clear of these, so they move with the line.
+      for (const positions of [sp.descentXPositions, sp.auxiliaryXPositions]) {
+        for (let k = 0; k < (positions?.length ?? 0); k++) {
+          positions![k] = positions![k]! - rawMinX;
+        }
+      }
     }
     for (const pc of connectors.parentChildLines) {
       for (const ul of pc.uplines) shiftSegment(ul, -rawMinX, 0);

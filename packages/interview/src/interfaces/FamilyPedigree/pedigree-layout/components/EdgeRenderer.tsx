@@ -75,59 +75,75 @@ function renderGroupLine(
   );
 }
 
-function renderInactiveGroupLine(
-  conn: ParentGroupConnector,
-  idx: number,
-  color: string,
-) {
-  const { x1, y1, x2, y2 } = conn.segment;
+const SLASH_HEIGHT = 12;
+const SLASH_WIDTH = 4;
+const SLASH_GAP = 4;
+const BREAK_HALF_WIDTH = SLASH_WIDTH + SLASH_GAP / 2;
+
+/**
+ * Where the break in a former partnership line goes: its centre and half
+ * width. It starts on the side the line prefers (or at its middle) and keeps
+ * clear of every line that meets or crosses the partnership line there: the
+ * lines of descent leaving it and the auxiliary lines crossing it. When the
+ * preferred place is not clear, it goes in the middle of the widest stretch
+ * between those lines and the partners' symbols.
+ */
+export function formerPartnerBreak(conn: ParentGroupConnector): {
+  centre: number;
+  halfWidth: number;
+} {
+  const { x1, x2 } = conn.segment;
   const midX = (x1 + x2) / 2;
-  const midY = (y1 + y2) / 2;
-
-  const SLASH_HEIGHT = 12;
-  const SLASH_WIDTH = 4;
-  const SLASH_GAP = 4;
-  const BREAK_HALF_WIDTH = SLASH_WIDTH + SLASH_GAP / 2;
-
   const nhw = conn.nodeHalfWidth ?? 0;
   // An end that stops at an adoption bracket is already clear of the symbol.
   const leftNodeEdge = conn.endsAtBracket?.[0] ? x1 : x1 + nhw;
   const rightNodeEdge = conn.endsAtBracket?.[1] ? x2 : x2 - nhw;
 
   // Start with the preferred side if specified, otherwise center.
-  let breakCenterX: number;
-  if (conn.slashSide === 'left') {
-    breakCenterX = leftNodeEdge + (midX - leftNodeEdge) / 2;
-  } else if (conn.slashSide === 'right') {
-    breakCenterX = midX + (rightNodeEdge - midX) / 2;
-  } else {
-    breakCenterX = midX;
-  }
+  let centre =
+    conn.slashSide === 'left'
+      ? leftNodeEdge + (midX - leftNodeEdge) / 2
+      : conn.slashSide === 'right'
+        ? midX + (rightNodeEdge - midX) / 2
+        : midX;
 
-  if (conn.descentXPositions?.length) {
-    const CLEARANCE = BREAK_HALF_WIDTH + EDGE_WIDTH;
-    const tooClose = conn.descentXPositions.some(
-      (dx) => Math.abs(dx - breakCenterX) < CLEARANCE,
+  const blocked = [
+    ...(conn.descentXPositions ?? []),
+    ...(conn.auxiliaryXPositions ?? []),
+  ].filter((x) => x > leftNodeEdge && x < rightNodeEdge);
+  const clearance = BREAK_HALF_WIDTH + EDGE_WIDTH;
+  if (blocked.some((x) => Math.abs(x - centre) < clearance)) {
+    // The middle of the widest stretch between the lines and the symbols.
+    const stops = [leftNodeEdge, ...blocked, rightNodeEdge].toSorted(
+      (a, b) => a - b,
     );
-    if (tooClose) {
-      const minDescent = Math.min(...conn.descentXPositions);
-      const maxDescent = Math.max(...conn.descentXPositions);
-
-      // Place break equidistant between the descent line and the closest node edge
-      const leftGap = minDescent - leftNodeEdge;
-      const rightGap = rightNodeEdge - maxDescent;
-      if (leftGap > rightGap) {
-        breakCenterX = leftNodeEdge + leftGap / 2;
-      } else {
-        breakCenterX = maxDescent + rightGap / 2;
+    let widest = { from: leftNodeEdge, to: rightNodeEdge, width: -1 };
+    for (let k = 0; k + 1 < stops.length; k++) {
+      const width = stops[k + 1]! - stops[k]!;
+      if (width > widest.width) {
+        widest = { from: stops[k]!, to: stops[k + 1]!, width };
       }
     }
+    centre = (widest.from + widest.to) / 2;
   }
 
-  const safeCenter = Math.max(
-    leftNodeEdge + BREAK_HALF_WIDTH,
-    Math.min(breakCenterX, rightNodeEdge - BREAK_HALF_WIDTH),
-  );
+  return {
+    centre: Math.max(
+      leftNodeEdge + BREAK_HALF_WIDTH,
+      Math.min(centre, rightNodeEdge - BREAK_HALF_WIDTH),
+    ),
+    halfWidth: BREAK_HALF_WIDTH,
+  };
+}
+
+function renderInactiveGroupLine(
+  conn: ParentGroupConnector,
+  idx: number,
+  color: string,
+) {
+  const { x1, y1, x2, y2 } = conn.segment;
+  const midY = (y1 + y2) / 2;
+  const { centre: safeCenter } = formerPartnerBreak(conn);
 
   return (
     <g key={`group-bar-inactive-${idx}`}>

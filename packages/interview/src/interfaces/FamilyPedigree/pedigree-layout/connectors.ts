@@ -1339,6 +1339,30 @@ export function computeConnectors(
   }
   if (rerouted) optimise(routed);
 
+  // A former partnership's break keeps clear of the auxiliary lines that
+  // cross the partnership line, or leave it.
+  for (const group of groupLines) {
+    if (group.isActive) continue;
+    const { x1, x2, y1 } = group.segment;
+    const [from, to] = [Math.min(x1, x2), Math.max(x1, x2)];
+    const xs = auxiliaryLines.flatMap((line) =>
+      segmentsOf(line.points).flatMap((segment) => {
+        const [lowY, highY] = [
+          Math.min(segment.y1, segment.y2),
+          Math.max(segment.y1, segment.y2),
+        ];
+        if (y1 < lowY - 1e-9 || y1 > highY + 1e-9) return [];
+        if (Math.abs(segment.y2 - segment.y1) < 1e-9) return [];
+        const x =
+          segment.x1 +
+          ((y1 - segment.y1) / (segment.y2 - segment.y1)) *
+            (segment.x2 - segment.x1);
+        return x > from && x < to ? [x] : [];
+      }),
+    );
+    if (xs.length > 0) group.auxiliaryXPositions = [...new Set(xs)];
+  }
+
   // Where an auxiliary line crosses another line it hops over it, so the
   // crossing does not read as a junction. Of two auxiliary lines, the later
   // hops.
