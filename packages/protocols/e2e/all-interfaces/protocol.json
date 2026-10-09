@@ -1433,8 +1433,20 @@
       }
     },
     "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      },
+      "minLength": {
+        "en-US": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}"
+      },
+      "maxLength": {
+        "en-US": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}"
+      },
       "unique": {
         "en-US": "Must be unique."
+      },
+      "sameAs": {
+        "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
       }
     }
   }

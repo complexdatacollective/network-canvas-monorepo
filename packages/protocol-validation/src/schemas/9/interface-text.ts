@@ -138,13 +138,40 @@ const dateBoundMessages = (
 };
 
 /**
+ * The rules the interview applies of its own accord, whatever the codebook
+ * says: a passphrase must be given, confirmed and long enough (and no longer
+ * than an Anonymisation stage allows), and a Family Pedigree's own questions
+ * must be answered.
+ */
+const interviewValidationMessages = (
+  protocol: ProtocolDocument,
+): readonly string[] => {
+  const stages = stagesOf(protocol);
+  return [
+    ...(usesPassphrase(protocol) ? ['required', 'minLength', 'sameAs'] : []),
+    ...(stages.some(
+      (stage) =>
+        stage.type === 'Anonymisation' &&
+        isRecord(stage.validation) &&
+        typeof stage.validation.maxLength === 'number',
+    )
+      ? ['maxLength']
+      : []),
+    ...(stages.some((stage) => stage.type === 'FamilyPedigree')
+      ? ['required']
+      : []),
+  ];
+};
+
+/**
  * The validation messages a protocol can show: one for each rule its
- * attributes use, and one for each bound its date controls set.
+ * attributes use, one for each bound its date controls set, and those of the
+ * rules the interview applies itself.
  */
 const validationMessagesUsed = (
   protocol: ProtocolDocument,
 ): ReadonlySet<string> => {
-  const used = new Set<string>();
+  const used = new Set<string>(interviewValidationMessages(protocol));
   for (const variable of codebookVariables(protocol.codebook)) {
     if (!isRecord(variable.validation)) continue;
     for (const [rule, value] of Object.entries(variable.validation)) {

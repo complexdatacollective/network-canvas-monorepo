@@ -189,6 +189,7 @@ export {
 // stage by Architect when it is made and when a language is added.
 export {
   inapplicableStageSettings,
+  isSuppliedEnglishMessage,
   missingSuppliedStageText,
   type SuppliedStageText,
   suppliedStageText,

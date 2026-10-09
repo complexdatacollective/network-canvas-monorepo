@@ -101,6 +101,30 @@ describe('the interface text a protocol holds', () => {
     expect(interfaceTextFor(protocolWith()).validation).toBeUndefined();
   });
 
+  it('holds the messages of the rules the interview applies itself', () => {
+    const rules = (stages: readonly unknown[], codebook?: unknown) =>
+      Object.keys(
+        interfaceTextFor(protocolWith({ stages, codebook })).validation ?? {},
+      ).sort();
+
+    // Choosing a passphrase: it must be given, confirmed and long enough.
+    expect(rules([], ENCRYPTED_CODEBOOK)).toEqual([
+      'minLength',
+      'required',
+      'sameAs',
+    ]);
+    expect(rules([{ type: 'Anonymisation' }])).toEqual([
+      'minLength',
+      'required',
+      'sameAs',
+    ]);
+    expect(
+      rules([{ type: 'Anonymisation', validation: { maxLength: 40 } }]),
+    ).toEqual(['maxLength', 'minLength', 'required', 'sameAs']);
+    // A Family Pedigree asks questions that must be answered.
+    expect(rules([{ type: 'FamilyPedigree' }])).toEqual(['required']);
+  });
+
   it('holds the date messages for the bounds a date control sets', () => {
     const withControl = (control: Record<string, unknown>) =>
       Object.keys(

@@ -53,6 +53,7 @@ import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../../localization/useContentFormat';
 import {
   getActiveSession,
   getEdgeColorForType,
@@ -244,6 +245,7 @@ const planAddition = (
 
 const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const intl = useAppIntl();
+  const contentFormat = useContentFormat();
   const words = usePedigreeWordsOf(stage.wording);
   const { wording, text } = words;
   const dispatch = useAppDispatch();
@@ -1988,13 +1990,10 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     };
   };
 
-  // People named together, joined as the participant's language joins a
-  // list.
+  // People named together, joined as the language of the wording they are
+  // named in joins a list.
   const listOfNames = (ids: readonly string[]) =>
-    intl.formatList(
-      ids.map((id) => displayName(id)),
-      { type: 'conjunction' },
-    );
+    contentFormat.formatList(ids.map((id) => displayName(id)));
 
   // Why a change made in the panel is refused, as a form error, when it
   // would leave someone outside the participant's family

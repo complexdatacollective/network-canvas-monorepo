@@ -40,8 +40,14 @@ export type ContentFormat = Readonly<{
   formatNumber: (value: number) => string;
   /** One coordinate, with at most four fraction digits. */
   formatCoordinate: (value: number) => string;
-  /** Items in the locale's list pattern ("a, b, and c"). */
-  formatList: (items: readonly string[]) => string;
+  /**
+   * Items in the locale's list pattern: "a, b, and c", or, for a `unit`
+   * list of measures or terms, "a, b, c".
+   */
+  formatList: (
+    items: readonly string[],
+    type?: 'conjunction' | 'unit',
+  ) => string;
   /** Alphabetical order in the locale. */
   collator: Intl.Collator;
 }>;
@@ -57,10 +63,13 @@ function createContentFormat(locale: string): ContentFormat {
   const coordinate = new Intl.NumberFormat(locale, {
     maximumFractionDigits: COORDINATE_FRACTION_DIGITS,
   });
-  const list = new Intl.ListFormat(locale, {
-    type: 'conjunction',
-    style: 'long',
-  });
+  const lists = {
+    conjunction: new Intl.ListFormat(locale, {
+      type: 'conjunction',
+      style: 'long',
+    }),
+    unit: new Intl.ListFormat(locale, { type: 'unit', style: 'long' }),
+  };
   return {
     locale,
     // Formatted from the value's shortest decimal text, which `Intl` reads as
@@ -71,7 +80,7 @@ function createContentFormat(locale: string): ContentFormat {
         String(value) as `${number}`,
       ),
     formatCoordinate: (value) => coordinate.format(value),
-    formatList: (items) => list.format(items),
+    formatList: (items, type = 'conjunction') => lists[type].format(items),
     collator: new Intl.Collator(locale),
   };
 }

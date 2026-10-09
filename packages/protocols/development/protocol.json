@@ -3995,6 +3995,14 @@
         "en-US": "You must answer this question before continuing.",
         "es": "Debes responder a esta pregunta antes de continuar."
       },
+      "minLength": {
+        "en-US": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}",
+        "es": "{min, plural, one {Introduce al menos # carácter.} other {Introduce al menos # caracteres.}}"
+      },
+      "maxLength": {
+        "en-US": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}",
+        "es": "{max, plural, one {Introduce como máximo # carácter.} other {Introduce como máximo # caracteres.}}"
+      },
       "minValue": {
         "en-US": "Enter a value greater than or equal to {min}.",
         "es": "Introduce un valor mayor o igual que {min}."

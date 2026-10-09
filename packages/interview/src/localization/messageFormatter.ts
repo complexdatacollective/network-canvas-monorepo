@@ -1,13 +1,17 @@
 import { IntlMessageFormat } from 'intl-messageformat';
 
-import type { LocaleTag } from '@codaco/protocol-validation';
+import {
+  isSuppliedEnglishMessage,
+  type LocaleTag,
+} from '@codaco/protocol-validation';
 
 /** The values a localized message's arguments take (see `localizedMessage`). */
 export type LocalizedMessageValues = Readonly<Record<string, string | number>>;
 
 /**
  * Formats a protocol-authored ICU message in the locale its text is written
- * in, with `values` for the arguments a localized message declares. Results
+ * in (English for Network Canvas's English wording, whatever language holds
+ * it), with `values` for the arguments a localized message declares. Results
  * without values are cached per (locale, message), and the parsed message
  * per (locale, message) for those with values, so either cache is bounded by
  * the protocol's own strings.
@@ -42,7 +46,10 @@ export function createLocalizedMessageFormatter(): LocalizedMessageFormatter {
   const parse = (locale: LocaleTag, message: string) =>
     new IntlMessageFormat(message, locale, undefined, { ignoreTag: true });
 
-  return (locale, message, values) => {
+  return (heldIn, message, values) => {
+    // Network Canvas's English wording, held under a language it supplies no
+    // wording in, still chooses its plural by English rules.
+    const locale = isSuppliedEnglishMessage(message) ? 'en' : heldIn;
     if (values !== undefined) {
       const formats = cacheFor(parsed, locale);
       let format = formats.get(message);

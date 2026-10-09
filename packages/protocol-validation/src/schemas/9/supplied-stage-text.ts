@@ -2,6 +2,12 @@ import type {
   LocaleTag,
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
+import {
+  FORMS_INTERFACE_TEXT,
+  INTERVIEW_INTERFACE_TEXT,
+  PASSPHRASE_INTERFACE_TEXT,
+  VALIDATION_INTERFACE_TEXT,
+} from './interface-text-wording.ts';
 import type { LocalizedString } from './localized-string.ts';
 import { FAMILY_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/family-pedigree.ts';
 import { FINISH_SESSION_SUPPLIED_TEXT } from './stage-wording/finish-session.ts';
@@ -218,4 +224,31 @@ export const suppliedStageSettingApplies = (
   );
   if (setting === undefined) return false;
   return setting.when === undefined || setting.when(stage);
+};
+
+let suppliedEnglish: ReadonlySet<string> | undefined;
+
+/**
+ * Whether `message` is wording Network Canvas supplies in English, for a
+ * stage setting or for the protocol's interface text. A protocol whose
+ * default language Network Canvas supplies no wording in holds the English
+ * under that language, so the interview formats such a message by English
+ * plural rules wherever it is held: by Japanese rules, "{count, plural, one
+ * {# item} other {# items}}" would read "1 items".
+ */
+export const isSuppliedEnglishMessage = (message: string): boolean => {
+  suppliedEnglish ??= new Set(
+    [
+      ...Object.values(SUPPLIED_STAGE_TEXT).flat(),
+      ...[
+        INTERVIEW_INTERFACE_TEXT,
+        PASSPHRASE_INTERFACE_TEXT,
+        FORMS_INTERFACE_TEXT,
+        VALIDATION_INTERFACE_TEXT,
+      ].flatMap((entries) => Object.values(entries)),
+    ].flatMap(({ message: wording }) =>
+      wording.en === undefined ? [] : [wording.en],
+    ),
+  );
+  return suppliedEnglish.has(message);
 };

@@ -51,6 +51,7 @@ import {
   useResolveLocalizedMessage,
   useResolveLocalizedString,
 } from '../../../localization/ProtocolLocalizationProvider';
+import { useContentFormat } from '../../../localization/useContentFormat';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -636,7 +637,7 @@ function MissingDetailsNotice({
   questions: readonly { name: string; label: string }[];
 }) {
   const { wording, text } = usePedigreeWords();
-  const intl = useAppIntl();
+  const contentFormat = useContentFormat();
   const values = useFormValue(
     questions.map((question) => question.name),
     'opaque',
@@ -648,7 +649,7 @@ function MissingDetailsNotice({
   return (
     <Alert variant="warning">
       {text(wording.missingDetailsList, {
-        details: intl.formatList(labels, { type: 'conjunction' }),
+        details: contentFormat.formatList(labels),
       })}
     </Alert>
   );
