@@ -5,36 +5,60 @@ import { nameGeneratorWordingMessages } from '@codaco/protocol-builder/sections/
 import type { LocalizedString } from '@codaco/protocol-validation';
 
 import MiniTable from '../MiniTable';
-import { SummaryText } from '../SummaryText';
+import { SummaryMessage, SummaryText } from '../SummaryText';
 import SectionFrame from './SectionFrame';
+import { stageMessageArguments } from './stageMessageArguments';
 
-/** A setting's label, and the wording the stage holds for it, if it holds any. */
-export type WordingSetting = readonly [
-  MessageDescriptor,
-  LocalizedString | undefined,
-];
+/** A setting's label, and where the stage holds its wording. */
+type WordingSetting = readonly [MessageDescriptor, string];
 
 type StageWordingProps = {
-  settings: readonly WordingSetting[];
+  type: string;
+  configuration: Readonly<Record<string, unknown>>;
 };
+
+/** The label each wording setting is shown under, in the order it is shown. */
+const STAGE_WORDING_SETTINGS: readonly WordingSetting[] = [
+  [nameGeneratorWordingMessages.minNoticeLabel, 'minNodesNotice'],
+  [nameGeneratorWordingMessages.maxNoticeLabel, 'maxNodesNotice'],
+  [nameGeneratorWordingMessages.externalErrorLabel, 'externalDataError'],
+  [nameGeneratorWordingMessages.quickAddHintLabel, 'quickAddHint'],
+  [nameGeneratorWordingMessages.allAddedLabel, 'allAddedNotice'],
+  [geospatialWordingMessages.offlineLabel, 'offlineNotice'],
+  [geospatialWordingMessages.unavailableLabel, 'mapUnavailable'],
+  [geospatialWordingMessages.outsideAreasLabel, 'outsideAreasLabel'],
+  [nameGeneratorWordingMessages.searchLabelLabel, 'searchLabel'],
+  [nameGeneratorWordingMessages.searchNoMatchLabel, 'searchNoMatch'],
+  [geospatialWordingMessages.searchFailedLabel, 'searchFailed'],
+];
 
 /**
  * The words a name generator or a map shows a participant, as the stage holds
  * them. Settings the stage does not hold are left out, so a stage with none
  * prints nothing.
  */
-const StageWording = ({ settings }: StageWordingProps) => {
+const StageWording = ({ type, configuration }: StageWordingProps) => {
   const intl = useAppIntl();
-  const rows = settings.flatMap(([label, value], index) =>
-    value === undefined
-      ? []
-      : [
-          [
-            intl.formatMessage(label),
-            <SummaryText key={index} value={value} />,
-          ],
-        ],
-  );
+  const declarations = stageMessageArguments({ ...configuration, type });
+  const rows = STAGE_WORDING_SETTINGS.flatMap(([label, key]) => {
+    const value = configuration[key] as LocalizedString | undefined;
+    if (value === undefined) return [];
+    const declaration = declarations.get(key);
+    return [
+      [
+        intl.formatMessage(label),
+        declaration === undefined ? (
+          <SummaryText key={key} value={value} />
+        ) : (
+          <SummaryMessage
+            key={key}
+            value={value}
+            messageArguments={declaration}
+          />
+        ),
+      ],
+    ];
+  });
   if (rows.length === 0) {
     return null;
   }
@@ -45,30 +69,6 @@ const StageWording = ({ settings }: StageWordingProps) => {
       <MiniTable rotated rows={rows} />
     </SectionFrame>
   );
-};
-
-/** The label each wording setting is shown under, in the order it is shown. */
-export const stageWordingSettings = (
-  configuration: Readonly<Record<string, unknown>>,
-): readonly WordingSetting[] => {
-  const text = (key: string) =>
-    configuration[key] as LocalizedString | undefined;
-  return [
-    [nameGeneratorWordingMessages.minNoticeLabel, text('minNodesNotice')],
-    [nameGeneratorWordingMessages.maxNoticeLabel, text('maxNodesNotice')],
-    [
-      nameGeneratorWordingMessages.externalErrorLabel,
-      text('externalDataError'),
-    ],
-    [nameGeneratorWordingMessages.quickAddHintLabel, text('quickAddHint')],
-    [nameGeneratorWordingMessages.allAddedLabel, text('allAddedNotice')],
-    [geospatialWordingMessages.offlineLabel, text('offlineNotice')],
-    [geospatialWordingMessages.unavailableLabel, text('mapUnavailable')],
-    [geospatialWordingMessages.outsideAreasLabel, text('outsideAreasLabel')],
-    [nameGeneratorWordingMessages.searchLabelLabel, text('searchLabel')],
-    [nameGeneratorWordingMessages.searchNoMatchLabel, text('searchNoMatch')],
-    [geospatialWordingMessages.searchFailedLabel, text('searchFailed')],
-  ];
 };
 
 export default StageWording;

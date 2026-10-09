@@ -52,7 +52,7 @@ import RosterPanel from './RosterPanel';
 import ScaffoldingStep from './ScaffoldingStep';
 import SectionFrame from './SectionFrame';
 import SkipLogic from './SkipLogic';
-import StageWording, { stageWordingSettings } from './StageWording';
+import StageWording from './StageWording';
 const messages = defineMessages({
   networkFiltering: {
     id: 'architect.protocolSummary.stage.stage.networkFiltering',
@@ -395,7 +395,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       <Prompts prompts={prompts ?? null} />
       <Form form={form ?? null} />
       <Behaviours behaviours={behaviours ?? null} />
-      <StageWording settings={stageWordingSettings(configuration)} />
+      <StageWording type={type} configuration={configuration} />
       <Presets presets={presets ?? null} />
       <PageHeading heading={title ?? null} />
       <Items items={items ?? null} />

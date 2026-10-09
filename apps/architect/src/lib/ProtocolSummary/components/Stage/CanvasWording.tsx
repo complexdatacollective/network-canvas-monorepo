@@ -10,8 +10,9 @@ import {
 } from '@codaco/protocol-validation';
 
 import MiniTable from '../MiniTable';
-import { SummaryText } from '../SummaryText';
+import { SummaryMessage, SummaryText } from '../SummaryText';
 import SectionFrame from './SectionFrame';
+import { stageMessageArguments } from './stageMessageArguments';
 
 type WordingSetting = {
   /** The setting's path inside the stage, as the schema names it. */
@@ -186,13 +187,27 @@ const CanvasWording = ({ type, configuration }: CanvasWordingProps) => {
   const spec = WORDING[type];
   if (!spec) return null;
   const stage = { ...configuration, type };
+  const declarations = stageMessageArguments(stage);
   const rows = spec.settings.flatMap(({ path, label }) => {
     const keys = path.split('.');
     if (!suppliedStageSettingApplies(stage, keys)) return [];
     const value = valueAt(configuration, keys);
-    return value === undefined
-      ? []
-      : [[intl.formatMessage(label), <SummaryText key={path} value={value} />]];
+    if (value === undefined) return [];
+    const declaration = declarations.get(path);
+    return [
+      [
+        intl.formatMessage(label),
+        declaration === undefined ? (
+          <SummaryText key={path} value={value} />
+        ) : (
+          <SummaryMessage
+            key={path}
+            value={value}
+            messageArguments={declaration}
+          />
+        ),
+      ],
+    ];
   });
   if (rows.length === 0) return null;
   return (

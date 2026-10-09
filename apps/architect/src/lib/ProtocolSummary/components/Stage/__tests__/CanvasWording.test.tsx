@@ -130,6 +130,19 @@ describe('Protocol Summary canvas wording', () => {
     ).toBeInTheDocument();
   });
 
+  // A snapshot title shows a name and a condition: the summary names its
+  // placeholders, as the stage editor does, rather than printing its syntax.
+  it('prints a snapshot title with its placeholders named', () => {
+    renderWording('NarrativePedigree', {
+      conditionText: { snapshotCondition: { en: '{title}: {condition}' } },
+    });
+
+    const row = rowFor('Snapshot title for a condition');
+    expect(row).not.toHaveTextContent('{title}');
+    expect(row).not.toHaveTextContent('{condition}');
+    expect(row).toHaveTextContent(/\[.+\]: \[.+\]/);
+  });
+
   it('prints nothing for a stage whose settings hold no words', () => {
     const { container } = renderWording('NetworkComposer', {});
     expect(container).toBeEmptyDOMElement();
