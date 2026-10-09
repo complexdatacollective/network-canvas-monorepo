@@ -41,6 +41,10 @@ export type ValidationFunction<T extends ValidationParameter> = (
   // rule signature stays callable without it. Absent (external callers, the
   // provider-less default), messages render their English defaultMessage.
   intl?: IntlShape,
+  // The language the field shows its values in (`useFieldValueFormat`), which
+  // a value written into a message, such as a date bound, is formatted in.
+  // Absent, it is the formatter's.
+  valueLocale?: string,
 ) => (formValues: Record<string, FieldValue>) => z.ZodMiniType;
 
 // A number written as `{x, number}` or an ICU plural's `#` is formatted in the locale of the message
@@ -464,14 +468,16 @@ function utcDateFromParts(
  *
  * Returns the raw string for values we don't recognise as date/time literals.
  */
-function formatBoundForDisplay(bound: string, intl: IntlShape): string {
+function formatBoundForDisplay(bound: string, locale: string): string {
+  const formatDate = (date: Date, options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(locale, options).format(date);
   if (YEAR_RE.test(bound)) return bound;
 
   const yearMonth = YEAR_MONTH_RE.exec(bound);
   if (yearMonth) {
     const year = Number(yearMonth[1]);
     const month = Number(yearMonth[2]);
-    return intl.formatDate(utcDateFromParts(year, month, 1), {
+    return formatDate(utcDateFromParts(year, month, 1), {
       year: 'numeric',
       month: 'long',
       timeZone: 'UTC',
@@ -495,14 +501,14 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
         Number(dateTime[5]),
         seconds !== undefined ? Number(seconds) : 0,
       );
-      return intl.formatDate(date, {
+      return formatDate(date, {
         dateStyle: 'long',
         timeStyle: boundTimeStyle(seconds),
         timeZone: 'UTC',
         calendar: 'gregory',
       });
     }
-    return intl.formatDate(utcDateFromParts(year, month, day), {
+    return formatDate(utcDateFromParts(year, month, day), {
       dateStyle: 'long',
       timeZone: 'UTC',
       calendar: 'gregory',
@@ -519,7 +525,7 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
       seconds !== undefined ? Number(seconds) : 0,
       0,
     );
-    return intl.formatTime(anchor, {
+    return formatDate(anchor, {
       timeStyle: boundTimeStyle(seconds),
       timeZone: 'UTC',
     });
@@ -540,7 +546,7 @@ function formatBoundForDisplay(bound: string, intl: IntlShape): string {
  * sorts the spaces before the year.
  */
 const min: ValidationFunction<number | string> =
-  (minParam, _context, intl) => () => {
+  (minParam, _context, intl, valueLocale) => () => {
     invariant(
       minParam !== undefined && minParam !== null && minParam !== '',
       'Min must be specified',
@@ -549,7 +555,7 @@ const min: ValidationFunction<number | string> =
     const paramIsDateShaped =
       typeof minParam === 'string' && matchesDatePattern(minParam);
     const displayMin = paramIsDateShaped
-      ? formatBoundForDisplay(minParam, resolveIntl(intl))
+      ? formatBoundForDisplay(minParam, valueLocale ?? resolveIntl(intl).locale)
       : String(minParam);
     const hint = paramIsDateShaped
       ? resolveIntl(intl).formatMessage(messages.minDate, {
@@ -606,7 +612,7 @@ const min: ValidationFunction<number | string> =
  * shared `isUnanswered` short-circuit has to come before either branch.
  */
 const max: ValidationFunction<number | string> =
-  (maxParam, _context, intl) => () => {
+  (maxParam, _context, intl, valueLocale) => () => {
     invariant(
       maxParam !== undefined && maxParam !== null && maxParam !== '',
       'Max must be specified',
@@ -615,7 +621,7 @@ const max: ValidationFunction<number | string> =
     const paramIsDateShaped =
       typeof maxParam === 'string' && matchesDatePattern(maxParam);
     const displayMax = paramIsDateShaped
-      ? formatBoundForDisplay(maxParam, resolveIntl(intl))
+      ? formatBoundForDisplay(maxParam, valueLocale ?? resolveIntl(intl).locale)
       : String(maxParam);
     const hint = paramIsDateShaped
       ? resolveIntl(intl).formatMessage(messages.maxDate, {

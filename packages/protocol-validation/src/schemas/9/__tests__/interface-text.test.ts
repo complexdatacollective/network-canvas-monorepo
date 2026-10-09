@@ -76,10 +76,27 @@ describe('the interface text a protocol holds', () => {
     );
     expect(groups({ stages: [{ type: 'Anonymisation' }] })).toContain('forms');
     expect(groups({ codebook: ENCRYPTED_CODEBOOK })).toContain('forms');
-    // A Network Composer's name box is not a form that can be submitted.
+    // A Network Composer's name box is not a form that can be submitted, but
+    // the form its inspector shows for a selected person is, once it has
+    // fields.
     expect(groups({ stages: [{ type: 'NetworkComposer' }] })).not.toContain(
       'forms',
     );
+    expect(
+      groups({
+        stages: [{ type: 'NetworkComposer', nodeForm: { fields: [] } }],
+      }),
+    ).not.toContain('forms');
+    expect(
+      groups({
+        stages: [
+          {
+            type: 'NetworkComposer',
+            nodeForm: { fields: [{ variable: 'age', prompt: { en: 'Age' } }] },
+          },
+        ],
+      }),
+    ).toContain('forms');
   });
 
   it('holds the validation messages of only the rules the protocol uses', () => {

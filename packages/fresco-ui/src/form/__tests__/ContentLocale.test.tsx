@@ -10,8 +10,10 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
 
 import { ARABIC } from '../../__tests__/catalogFixtures';
 import { ContentLocaleProvider } from '../ContentLocale';
+import Field from '../Field/Field';
 import DatePickerField from '../fields/DatePicker';
 import VisualAnalogScaleField from '../fields/VisualAnalogScale';
+import FormStoreProvider from '../store/formStoreProvider';
 
 function InArabicInterface({
   contentLocale,
@@ -161,5 +163,27 @@ describe('the date picker’s months and years', () => {
     ).map((option) => option.textContent);
     expect(years).toContain('2020');
     expect(years).not.toContain(arabicYear);
+  });
+});
+
+describe('a date bound in a validation message', () => {
+  // The bound sits in the message the field shows, beside the field's own
+  // values, so it is written in their language.
+  it('is written in the content language, not the interface language', () => {
+    render(
+      <InArabicInterface contentLocale="de">
+        <FormStoreProvider>
+          <Field
+            name="born"
+            label="Born"
+            component={DatePickerField}
+            min="2000-01-01"
+            showValidationHints
+          />
+        </FormStoreProvider>
+      </InArabicInterface>,
+    );
+
+    expect(screen.getByText(/1\. Januar 2000/)).toBeInTheDocument();
   });
 });

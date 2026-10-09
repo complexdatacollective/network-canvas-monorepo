@@ -128,6 +128,7 @@ export function messageRuleValidation(
 export function makeValidationFunction(
   props: Record<string, unknown>,
   intl?: IntlShape,
+  valueLocale?: string,
 ) {
   const validationContext = props.validationContext as
     | ValidationContext
@@ -180,6 +181,7 @@ export function makeValidationFunction(
               parameter as ValidationParameter,
               context,
               intl,
+              valueLocale,
             )(formValues);
 
             const result = await validationFn.safeParseAsync(fieldValue);
@@ -255,6 +257,7 @@ export function makeValidationFunction(
 export function makeValidationHints(
   props: Record<string, unknown>,
   intl?: IntlShape,
+  valueLocale?: string,
 ) {
   const validationContext = props.validationContext as
     | ValidationContext
@@ -290,6 +293,7 @@ export function makeValidationHints(
           | { regex: string; hint: string },
         validationContext,
         intl,
+        valueLocale,
       )({});
 
       // Extract hint from the schema's metadata via global registry

@@ -87,10 +87,20 @@ const FORM_STAGE_TYPES: ReadonlySet<string> = new Set([
   'FamilyPedigree',
 ]);
 
+/**
+ * Where a stage holds a form of its own: an edge's or a prompt's `form`, or
+ * the form a Network Composer's inspector shows for a selected person.
+ */
+const FORM_KEYS = ['form', 'nodeForm'] as const;
+
+/** A form the interview shows: one with fields to answer. */
+const isShownForm = (value: unknown) =>
+  isRecord(value) && Array.isArray(value.fields) && value.fields.length > 0;
+
 const holdsAForm = (value: unknown): boolean => {
   if (Array.isArray(value)) return value.some(holdsAForm);
   if (!isRecord(value)) return false;
-  if (isRecord(value.form)) return true;
+  if (FORM_KEYS.some((key) => isShownForm(value[key]))) return true;
   return Object.values(value).some(holdsAForm);
 };
 

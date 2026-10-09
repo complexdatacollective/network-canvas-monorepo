@@ -16,6 +16,7 @@ import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import type { PresentationalText } from '../../PresentationalText';
+import { useFieldValueFormat } from '../ContentLocale';
 import {
   type FieldElements,
   fieldDescribedBy,
@@ -226,6 +227,9 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // mounted, an English one otherwise) renders them, so what reaches the form
   // store, `onSubmitInvalid`, and Zod issues stays a plain string.
   const intl = useAppIntl();
+  // The language the field's values are shown in, which a value written into
+  // a validation message is formatted in too.
+  const valueLocale = useFieldValueFormat().locale;
 
   const namespace = useFieldNamespacePath();
   const namespaceName = useFieldNamespace();
@@ -272,21 +276,22 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // configuration, so those changes neither unregister the field nor erase
   // submitted refusals, values or touched/blurred metadata. Its next run uses
   // the current rules and language, including custom schemas with closures.
-  const validationConfigRef = useRef({ propsWithContext, intl });
+  const validationConfigRef = useRef({ propsWithContext, intl, valueLocale });
   useLayoutEffect(() => {
-    validationConfigRef.current = { propsWithContext, intl };
+    validationConfigRef.current = { propsWithContext, intl, valueLocale };
   });
 
   // Separately remember the formatter used by errors already on screen; an
   // in-flight old-language validation still needs a corrective run when it
   // settles after a language switch.
-  const intlRef = useRef(intl);
+  const intlRef = useRef({ intl, valueLocale });
 
   const validation = useCallback((formValues: Record<string, FieldValue>) => {
     const current = validationConfigRef.current;
     return makeValidationFunction(
       current.propsWithContext,
       current.intl,
+      current.valueLocale,
     )(formValues);
   }, []);
 
@@ -294,10 +299,16 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   const validationSummary = useMemo(
     () =>
       showValidationHints
-        ? makeValidationHints(propsWithContext, intl)
+        ? makeValidationHints(propsWithContext, intl, valueLocale)
         : undefined,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [showValidationHints, validationPropsJson, resolvedValidationContext, intl],
+    [
+      showValidationHints,
+      validationPropsJson,
+      resolvedValidationContext,
+      intl,
+      valueLocale,
+    ],
   );
 
   const fieldState = useFormStore((state) =>
@@ -365,9 +376,14 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // to finish before acknowledging the locale, then revalidate any errors its
   // old-locale snapshot committed.
   useEffect(() => {
-    if (intlRef.current === intl || isFormValidating) return;
+    const seen = intlRef.current;
+    if (
+      (seen.intl === intl && seen.valueLocale === valueLocale) ||
+      isFormValidating
+    )
+      return;
     if (fieldErrors && fieldErrors.length > 0) {
-      intlRef.current = intl;
+      intlRef.current = { intl, valueLocale };
       // Submission errors carry their own descriptors and reformat in the
       // renderer. Revalidating locally would erase a server refusal even
       // though the user has not edited or resubmitted the field.
@@ -379,7 +395,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
         return;
       validateResolvedField();
     }
-  }, [intl, fieldErrors, isFormValidating, validateResolvedField]);
+  }, [intl, valueLocale, fieldErrors, isFormValidating, validateResolvedField]);
 
   const setResolvedFieldValue = useCallback(
     (value: FieldValue) => {
