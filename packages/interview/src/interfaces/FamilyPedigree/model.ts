@@ -686,8 +686,11 @@ export type AddRelativeRequest =
        */
       sharesOnly?: 'eggParent' | 'spermParent';
       /** The sibling's own relationship to the parents they share, which
-       * need not be the anchor's: one may be adopted and the other not. */
-      parentKind: 'biological' | 'adoptive' | 'social';
+       * need not be the anchor's: one may be adopted and the other not.
+       * Never a step-child alone: someone a shared parent only raises shares
+       * neither a genetic nor an adoptive parent with the anchor, so is not
+       * their sibling (`siblingTie`). */
+      parentKind: 'biological' | 'adoptive';
       /**
        * For a biological sibling, which of the parents they share are their
        * biological parents, in the order named, when not all of them could

@@ -469,7 +469,7 @@
   },
   "interview.familyPedigree.siblingKindLabel": {
     "defaultMessage": "To the parents they share, are they…",
-    "description": "Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options \"A biological child\", \"An adopted child\", \"A step-child or other child they raise\"."
+    "description": "Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options \"A biological child\" and \"An adopted child\"."
   },
   "interview.familyPedigree.siblingOtherBiologicalParentLabel": {
     "defaultMessage": "Which of them is the sibling’s other biological parent?",

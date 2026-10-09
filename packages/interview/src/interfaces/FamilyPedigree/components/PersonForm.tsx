@@ -216,9 +216,12 @@ const PARENT_KINDS: PedigreeParentKind[] = [
   'surrogate',
 ];
 // A child can be added as any kind of child a parent can be recorded as
-// having; a sibling, to the parents they share, as a child they raise.
+// having; a sibling, to the parents they share, as their biological or
+// adopted child, the ties that make them a sibling (`siblingTie`). Someone a
+// parent raises as a step-child is a step-sibling, added as the child of
+// their own parent.
 const CHILD_KINDS = PARENT_KINDS;
-const SIBLING_KINDS = ['biological', 'adoptive', 'social'] as const;
+const SIBLING_KINDS = ['biological', 'adoptive'] as const;
 const ZYGOSITIES: TwinZygosity[] = ['identical', 'fraternal', 'unknown'];
 const asZygosity = (value: FieldValue | undefined) =>
   ZYGOSITIES.find((zygosity) => zygosity === value);

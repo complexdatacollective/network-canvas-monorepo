@@ -27,7 +27,14 @@ import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import PersonForm, { type PersonFormResult } from '../components/PersonForm';
-import { type MissingDetail, type Relation, readFamily } from '../model';
+import {
+  familyWithPlan,
+  type MissingDetail,
+  planAddRelative,
+  type Relation,
+  readFamily,
+  siblingTie,
+} from '../model';
 import type { OwnedOptionLabels } from '../options';
 import { config, link, person } from './fixtures';
 
@@ -779,6 +786,66 @@ describe('a parent of any kind who carried the pregnancy', () => {
       biologicalParent: 'anchor',
       carrier: 'otherParent',
     });
+  });
+
+  it('offers only answers that make the new person the participant’s sibling', async () => {
+    // Someone the parents raise as a step-child shares neither a genetic nor
+    // an adoptive parent with the participant, so is not their sibling.
+    const nodes = [
+      person('ego', { isEgo: true, sex: ['male'] }),
+      person('amy', { sex: ['female'] }),
+      person('rob', { sex: ['male'] }),
+    ];
+    const edges = [
+      link('amy', 'ego', 'biological', { carrier: true }),
+      link('rob', 'ego', 'biological'),
+    ];
+    const family = readFamily(nodes, edges, config);
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes,
+      edges,
+      adding: 'sibling',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    const kinds = within(
+      screen.getByRole('radiogroup', {
+        name: /^To the parents they share, are they…/,
+      }),
+    ).getAllByRole('radio');
+    expect(kinds.length).toBeGreaterThan(0);
+    for (const [index, kind] of kinds.entries()) {
+      await user.click(kind);
+      const carrier = screen.queryByRole('radiogroup', {
+        name: /^Who carried the pregnancy\?/,
+      });
+      if (carrier) {
+        await user.click(within(carrier).getAllByRole('radio')[0]!);
+      }
+      await save(user);
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(index + 1));
+      const { request } = onSubmit.mock.calls[index]![0];
+      if (!request) throw new Error('No addition saved');
+      let counter = 0;
+      const plan = planAddRelative({
+        family,
+        anchorId: 'ego',
+        newPersonId: 'added',
+        details: {},
+        request,
+        createId: () => `new-${++counter}`,
+        sexAttribute: config.sexAssignedAtBirthAttribute,
+      });
+      const after = familyWithPlan(
+        family,
+        plan.people,
+        plan.links,
+        config.sexAssignedAtBirthAttribute,
+      );
+      expect(
+        siblingTie(after, 'ego', 'added'),
+        `answer ${kind.getAttribute('data-value')}`,
+      ).toBeDefined();
+    }
   });
 
   it('offers a new adoptive sibling’s adoptive parent as having carried them', async () => {

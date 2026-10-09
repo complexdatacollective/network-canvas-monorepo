@@ -367,7 +367,7 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.siblingKindLabel',
     defaultMessage: 'To the parents they share, are they…',
     description:
-      'Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options "A biological child", "An adopted child", "A step-child or other child they raise".',
+      'Question in the side panel for adding a sibling: how the new sibling is related to the parents chosen above. Followed by the options "A biological child" and "An adopted child".',
   },
   siblingKindHint: {
     id: 'interview.familyPedigree.siblingKindHint',
