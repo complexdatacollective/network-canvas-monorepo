@@ -15,6 +15,7 @@ import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import DrawerNode from '../interfaces/Sociogram/DrawerNode';
+import { useContentFormat } from '../localization/useContentFormat';
 
 type NodeDrawerProps = {
   nodes: NcNode[];
@@ -51,6 +52,8 @@ export default function NodeDrawer({
   dropTarget,
 }: NodeDrawerProps) {
   const intl = useAppIntl();
+  // The count is shown among the protocol's text, so in its digits.
+  const contentFormat = useContentFormat();
   const unplacedId = useId();
   const toggleLabelId = useId();
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
@@ -158,7 +161,7 @@ export default function NodeDrawer({
               animate={{ rotate: isExpandedEffective ? 0 : 180 }}
             />
             <span aria-hidden="true" className="font-semibold tabular-nums">
-              {intl.formatNumber(nodes.length)}
+              {contentFormat.formatNumber(nodes.length)}
             </span>
             <span id={unplacedId} className="sr-only">
               <AppMessage

@@ -7,6 +7,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import BinSummary from '../BinSummary';
 
 // Label resolution is `useNodeLabel`'s job and needs the whole session store to
@@ -73,5 +74,18 @@ describe('BinSummary', () => {
 
     expect(screen.getByText(LONG_LABEL)).toBeInTheDocument();
     expect(screen.queryByText(/^\+/)).not.toBeInTheDocument();
+  });
+
+  it('counts the others in the digits of the language the protocol is read in', () => {
+    render(
+      <TestProtocolLocalization
+        localization={{ defaultLocale: 'ar-EG', locales: ['ar-EG'] }}
+      >
+        <BinSummary nodes={makeNodes(4, 'أمل')} />
+      </TestProtocolLocalization>,
+    );
+
+    const count = screen.getByText('أمل').nextElementSibling;
+    expect(count?.textContent).toMatch(/\+٣$/);
   });
 });
