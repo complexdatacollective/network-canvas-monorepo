@@ -102,6 +102,8 @@
   "interview.familyPedigree.removeConfirmTitle": "{name} verwijderen?",
   "interview.familyPedigree.removedAnnouncement": "{name} is uit je familie verwijderd.",
   "interview.familyPedigree.removedWithOthersAnnouncement": "{count, plural, one {{name} en nog één persoon zijn uit je familie verwijderd.} other {{name} en nog # andere mensen zijn uit je familie verwijderd.}}",
+  "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {eicel- of zaaddonor} traditionalSurrogate {eiceldonor die de zwangerschap heeft gedragen} other {draagmoeder}}",
+  "interview.familyPedigree.reproductiveRoleLetter": "{role, select, donor {D} traditionalSurrogate {S} other {GC}}",
   "interview.familyPedigree.savedAnnouncement": "Gegevens opgeslagen.",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "Bij de geboorte toegewezen geslacht",
   "interview.familyPedigree.sharedParentCountBoth": "Beide ouders",

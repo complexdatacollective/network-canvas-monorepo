@@ -845,4 +845,18 @@ export const messages = defineMessages({
     description:
       'Notice shown under the family tree when the study protects some of the answers about each family member (but not their names) with a passphrase that has not been entered yet. Until it is, the family cannot be changed.',
   },
+  reproductiveRoleLetter: {
+    id: 'interview.familyPedigree.reproductiveRoleLetter',
+    defaultMessage:
+      '{role, select, donor {D} traditionalSurrogate {S} other {GC}}',
+    description:
+      'Letters drawn beside a family member’s symbol in the family tree, from standard pedigree nomenclature: D for someone who donated an egg or sperm, S for a donor who also carried the pregnancy, GC for a surrogate (gestational carrier) with no genetic tie to the child. Keep these letters unless your language’s pedigree convention uses others.',
+  },
+  reproductiveRoleDescription: {
+    id: 'interview.familyPedigree.reproductiveRoleDescription',
+    defaultMessage:
+      '{role, select, donor {egg or sperm donor} traditionalSurrogate {egg donor who carried the pregnancy} other {surrogate}}',
+    description:
+      'Read out with a family member’s symbol, for each letter drawn beside it. "donor" is someone who donated an egg or sperm; "traditionalSurrogate" is an egg donor who also carried the pregnancy; "other" is a surrogate who carried the pregnancy without a genetic tie to the child. When someone has more than one role, the phrases are joined into a list, so write each as it would appear inside a sentence (lower case in English).',
+  },
 });

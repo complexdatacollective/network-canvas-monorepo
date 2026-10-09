@@ -140,6 +140,7 @@ import { ownedOptionLabels } from './options';
 import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { relationshipWrites } from './relationshipToParticipant';
+import { reproductiveRolesOf } from './reproductiveRoles';
 import type { Point } from './spatialNavigation';
 import {
   type Box,
@@ -1923,6 +1924,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     (link) =>
                       link.kind === 'adoptive' && link.target === personId,
                   )}
+                  reproductiveRoles={reproductiveRolesOf(shown.links, personId)}
 
                   onActivate={() => handleActivate(personId)}
                   tabIndex={personId === tabStopId ? 0 : -1}

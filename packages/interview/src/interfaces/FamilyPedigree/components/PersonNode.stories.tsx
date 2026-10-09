@@ -87,3 +87,72 @@ export const AdoptedPlaceholderWithMissingDetails: Story = {
     }
   },
 };
+
+/**
+ * An adopted relative with details missing who donated to one child and
+ * carried another as a surrogate: the letters are drawn beside the symbol,
+ * clear of the label, the badge and the brackets, and read out as the
+ * symbol's description.
+ */
+export const DonorAndSurrogateLetters: Story = {
+  args: {
+    label: 'Aunt',
+    shape: 'circle',
+    reproductiveRoles: ['donor', 'gestationalCarrier'],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const symbol = canvas.getByRole('button', {
+      name: 'Aunt, adopted, some details missing',
+      description: 'egg or sperm donor and surrogate',
+    });
+    const person = canvas.getByTestId('pedigree-person');
+    const letters = person.querySelector('[data-reproductive-roles]');
+    if (!letters) throw new Error('No letters');
+    await expect(letters).toHaveTextContent('D GC');
+    await expect(letters).toHaveAttribute('aria-hidden', 'true');
+    const letterBoxes = textRects(letters);
+    await expect(letterBoxes.length).toBeGreaterThan(0);
+    const symbolBox = symbol.getBoundingClientRect();
+    const others = [
+      symbolBox,
+      ...[
+        ...person.querySelectorAll(
+          '[data-missing-details-badge], [data-adoption-bracket]',
+        ),
+      ].map((element) => element.getBoundingClientRect()),
+      ...textRects(within(symbol).getByText('Aunt')),
+    ];
+    await expect(others).toHaveLength(5);
+    for (const letterBox of letterBoxes) {
+      for (const other of others) {
+        await expect(overlaps(letterBox, other)).toBe(false);
+      }
+    }
+  },
+};
+
+/** A donor who carried the pregnancy, read out in plain words. */
+export const TraditionalSurrogateLetter: Story = {
+  args: {
+    label: 'Sister',
+    shape: 'circle',
+    adopted: false,
+    hasMissingDetails: false,
+    reproductiveRoles: ['traditionalSurrogate'],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole('button', {
+        name: 'Sister',
+        description: 'egg donor who carried the pregnancy',
+      }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas
+        .getByTestId('pedigree-person')
+        .querySelector('[data-reproductive-roles]'),
+    ).toHaveTextContent('S');
+  },
+};
