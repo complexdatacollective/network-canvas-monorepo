@@ -807,6 +807,10 @@
     "defaultMessage": "Heading 4",
     "description": "Accessible name of the level-4 heading toggle in the editor toolbar."
   },
+  "frescoUi.richTextEditor.insertToken": {
+    "defaultMessage": "Insert “{token}”",
+    "description": "Accessible name of a toolbar button that inserts a placeholder, such as a person’s name, at the caret. {token} is the placeholder’s label, which the button also shows."
+  },
   "frescoUi.richTextEditor.italic": {
     "defaultMessage": "Italic",
     "description": "Accessible name of the italic toggle in the editor toolbar."
@@ -842,6 +846,10 @@
   "frescoUi.richTextEditor.thematicBreak": {
     "defaultMessage": "Thematic break",
     "description": "Accessible name of the toolbar button inserting a horizontal rule."
+  },
+  "frescoUi.richTextEditor.tokens": {
+    "defaultMessage": "Insert a placeholder",
+    "description": "Accessible name of the toolbar group of buttons that each insert a placeholder, such as a person’s name, into the text."
   },
   "frescoUi.richTextEditor.undo": {
     "defaultMessage": "Undo",
