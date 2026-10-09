@@ -4,6 +4,7 @@ import { migrateProtocol } from '../../../migration/migrate-protocol.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import {
   missingSuppliedStageText,
+  suppliedStageSettingApplies,
   suppliedStageText,
   suppliedStageTextAfterLanguageChange,
 } from '../supplied-stage-text.ts';
@@ -239,5 +240,67 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
         },
       },
     ]);
+  });
+});
+
+describe('which supplied settings apply to a stage', () => {
+  it('applies a setting with no condition to every stage of its type', () => {
+    expect(
+      suppliedStageSettingApplies({ type: 'NetworkComposer' }, [
+        'addNamePlaceholder',
+      ]),
+    ).toBe(true);
+  });
+
+  it('applies a Network Composer groups heading only once the stage has groups', () => {
+    expect(
+      suppliedStageSettingApplies({ type: 'NetworkComposer' }, [
+        'groupsHeading',
+      ]),
+    ).toBe(false);
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'NetworkComposer', convexHullVariable: 'contactType' },
+        ['groupsHeading'],
+      ),
+    ).toBe(true);
+  });
+
+  it('applies a layout tooltip only while the stage’s automatic layout is on', () => {
+    const path = ['tooltips', 'pauseLayout'];
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'Sociogram', behaviours: { automaticLayout: true } },
+        path,
+      ),
+    ).toBe(true);
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'Sociogram', behaviours: { automaticLayout: false } },
+        path,
+      ),
+    ).toBe(false);
+  });
+
+  it('applies an at-risk notation only when the Narrative Pedigree shows at-risk statuses', () => {
+    const path = ['conditionText', 'notation', 'atRiskAffected'];
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'NarrativePedigree', showAtRiskStatuses: false },
+        path,
+      ),
+    ).toBe(false);
+    expect(
+      suppliedStageSettingApplies(
+        { type: 'NarrativePedigree', showAtRiskStatuses: true },
+        path,
+      ),
+    ).toBe(true);
+  });
+
+  it('applies nothing to a path the stage type does not supply', () => {
+    expect(
+      suppliedStageSettingApplies({ type: 'Sociogram' }, ['noSuchSetting']),
+    ).toBe(false);
   });
 });
