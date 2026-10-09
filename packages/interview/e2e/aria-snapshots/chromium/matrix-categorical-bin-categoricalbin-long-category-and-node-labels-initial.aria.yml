@@ -21,7 +21,7 @@
     - heading "Religious" [level=4]
   - button "Category Political, 0 items":
     - heading "Political" [level=4]
-  - button "Collapse drawer" [expanded]: 3 unplaced
+  - button "3 unplaced Collapse drawer" [expanded]
   - button "Aleksandra Konstantina Kowalczyk-Nowakowska de la Fuente y Villanueva von Hohenberg-Sforza Montgomery-Wellington the Third"
   - button "Beatrice"
   - button "Charlotte"

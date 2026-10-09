@@ -12,7 +12,7 @@
     - strong: Very
     - text: ""
   - listbox "Container for the value 'Very close'"
-  - button "Collapse drawer" [expanded]: 3 unplaced
+  - button "3 unplaced Collapse drawer" [expanded]
   - button "Alice"
   - button "Bob"
   - button "Carol"

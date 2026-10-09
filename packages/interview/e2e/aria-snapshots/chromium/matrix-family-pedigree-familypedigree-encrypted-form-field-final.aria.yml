@@ -6,7 +6,6 @@
   - dialog "About Bea":
     - heading "About Bea" [level=2]
     - button "Close"
-    - heading "About this person" [level=3]
     - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
     - textbox "Name (optional)": Bea
     - text: Gender identity Required
@@ -35,7 +34,6 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - heading "Relationships" [level=3]
     - text: Julie is their…
     - radiogroup "Julie is their…":
       - radio "Biological parent" [checked]
@@ -68,9 +66,8 @@
     - group "Which of “Bea”’s siblings, if any, are their twins?":
       - checkbox "You"
       - text: You
-    - heading "More about this person" [level=3]
     - text: Nickname
     - textbox "Nickname": Bee
-    - button "Remove from family"
+    - button "Delete"
     - button "Cancel"
     - button "Save"

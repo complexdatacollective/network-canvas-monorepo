@@ -6,7 +6,7 @@
   - searchbox "Filter": Drew
   - text: 0 results
   - button "Clear search"
-  - listbox "Available Roster Nodes": Nothing matched your search term.
+  - listbox "Available Roster Nodes": No classmate by that name - matrix check
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
   - navigation:

@@ -1,0 +1,25 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Your family":
+    - button "Rachel"
+    - button "Tom"
+    - button "Biological father, some details missing"
+    - button "You, adopted": Me myself - matrix check
+  - paragraph: Pick two people to join - matrix check
+  - toolbar "Family tree tools":
+    - group "What clicking a person does":
+      - button "Edit tool - matrix check"
+      - button "Link tool - matrix check" [pressed]
+      - button "Unlink tool - matrix check"
+    - separator
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+  - text: Tom and Rachel apart - matrix check
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

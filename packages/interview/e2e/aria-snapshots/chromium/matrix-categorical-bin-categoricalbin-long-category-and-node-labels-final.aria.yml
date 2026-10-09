@@ -3,7 +3,7 @@
     - heading "Which categories does each person belong to?" [level=2]
   - button "Category Family, 3 items":
     - heading "Family" [level=4]
-    - paragraph: Aleksandra Konstantina Kowalczyk-Nowakowska de la Fuente y Villanueva von Hohenberg-Sforza Montgomery-Wellington the Third and 2 others
+    - paragraph: Aleksandra Konstantina Kowalczyk-Nowakowska de la Fuente y Villanueva von Hohenberg-Sforza Montgomery-Wellington the Third +2
   - button "Category People I know through my extended family and their close friends, 0 items":
     - heading "People I know through my extended family and their close friends" [level=4]
   - button "Category Work, 0 items":
@@ -22,7 +22,7 @@
     - heading "Religious" [level=4]
   - button "Category Political, 0 items":
     - heading "Political" [level=4]
-  - button "Expand drawer" [disabled]: 0 unplaced
+  - button "0 unplaced Expand drawer" [disabled]
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

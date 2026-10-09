@@ -1,6 +1,6 @@
 - main:
   - application "Placement area"
-  - button "Collapse drawer" [expanded]: 4 unplaced
+  - button "4 unplaced Collapse drawer" [expanded]
   - button "Alice"
   - button "Bob"
   - button "Carol"

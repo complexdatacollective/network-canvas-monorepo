@@ -1,6 +1,6 @@
 - main:
   - application "Placement area"
-  - button "Expand drawer": 0 unplaced
+  - button "0 unplaced Expand drawer"
   - text: Drop here to remove
   - button "Hide instructions" [expanded]
   - status:

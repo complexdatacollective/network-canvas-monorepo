@@ -20,8 +20,7 @@
   - text: Question 9
   - textbox "Question 9"
   - status:
-    - button "Scroll to see more questions":
-      - heading "Scroll to see more questions" [level=4]
+    - button "Scroll to see more questions"
   - navigation:
     - button "Settings"
     - button "Previous Step"

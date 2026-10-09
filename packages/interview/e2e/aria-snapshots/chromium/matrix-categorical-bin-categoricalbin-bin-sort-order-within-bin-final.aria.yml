@@ -10,7 +10,7 @@
     - option "Zed"
   - button "Category Work, 0 items":
     - heading "Work" [level=4]
-  - button "Expand drawer" [disabled]: 0 unplaced
+  - button "0 unplaced Expand drawer" [disabled]
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]
