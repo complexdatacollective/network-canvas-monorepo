@@ -5,7 +5,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type RefObject, useCallback, useMemo, useState } from 'react';
 
-import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   Accordion,
   AccordionHeader,
@@ -92,6 +92,12 @@ const SECTION_GROUPS = 'groups';
 
 type PresetSwitcherProps = {
   presets: Preset[];
+  /** The stage's words for the headings of the panel's sections. */
+  headings: Readonly<{
+    attributes: string | undefined;
+    links: string | undefined;
+    groups: string | undefined;
+  }>;
   activePreset: number;
   highlightIndex: number;
   showHighlighting: boolean;
@@ -107,6 +113,7 @@ type PresetSwitcherProps = {
 
 export default function PresetSwitcher({
   presets,
+  headings,
   activePreset,
   highlightIndex,
   showHighlighting,
@@ -276,12 +283,10 @@ export default function PresetSwitcher({
             value={accordionValue}
             onValueChange={handleAccordionValueChange}
           >
-            {hasHighlights && (
+            {hasHighlights && headings.attributes !== undefined && (
               <AccordionItem value={SECTION_ATTRIBUTES}>
                 <AccordionHeader>
-                  <AccordionTrigger>
-                    <AppMessage message={interfaceMessages.attributes} />
-                  </AccordionTrigger>
+                  <AccordionTrigger>{headings.attributes}</AccordionTrigger>
                 </AccordionHeader>
                 <AccordionPanel>
                   <RadioGroup
@@ -305,12 +310,10 @@ export default function PresetSwitcher({
               </AccordionItem>
             )}
 
-            {hasEdges && (
+            {hasEdges && headings.links !== undefined && (
               <AccordionItem value={SECTION_LINKS}>
                 <AccordionHeader>
-                  <AccordionTrigger>
-                    <AppMessage message={interfaceMessages.links} />
-                  </AccordionTrigger>
+                  <AccordionTrigger>{headings.links}</AccordionTrigger>
                 </AccordionHeader>
                 <AccordionPanel>
                   <div className="flex flex-col gap-2">
@@ -330,12 +333,10 @@ export default function PresetSwitcher({
               </AccordionItem>
             )}
 
-            {hasGroups && (
+            {hasGroups && headings.groups !== undefined && (
               <AccordionItem value={SECTION_GROUPS}>
                 <AccordionHeader>
-                  <AccordionTrigger>
-                    <AppMessage message={interfaceMessages.groups} />
-                  </AccordionTrigger>
+                  <AccordionTrigger>{headings.groups}</AccordionTrigger>
                 </AccordionHeader>
                 <AccordionPanel>
                   <div className="flex flex-col gap-2">

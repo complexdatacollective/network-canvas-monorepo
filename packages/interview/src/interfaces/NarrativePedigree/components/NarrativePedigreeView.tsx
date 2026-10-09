@@ -33,6 +33,8 @@ import { useNodeMeasurement } from '../../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   useLocalizedString,
+  useOptionalLocalizedText,
+  useResolveLocalizedMessage,
   useResolveLocalizedString,
 } from '../../../localization/ProtocolLocalizationProvider';
 import {
@@ -72,7 +74,7 @@ import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { affectedSet, getStatusLabel, type Status } from '../genetics/status';
 import { computeContributors } from '../highlight';
 import { messages } from '../messages';
-import ConditionPanel from './ConditionPanel';
+import ConditionPanel, { type ConditionPanelWords } from './ConditionPanel';
 import { Sticker } from './Sticker';
 
 type NarrativeStage = StageProps<'NarrativePedigree'>['stage'];
@@ -131,7 +133,33 @@ export default function NarrativePedigreeView({
 }: NarrativePedigreeViewProps) {
   const intl = useAppIntl();
   const resolve = useResolveLocalizedString();
+  const resolveMessage = useResolveLocalizedMessage();
   const stageLabel = useLocalizedString(stage.label).text;
+  // The stage's own words (`stage-wording/narrative-pedigree.ts`). The two
+  // at-risk rows are held only while the stage shows at-risk statuses.
+  const atRiskAffected = useOptionalLocalizedText(
+    stage.conditionText.notation.atRiskAffected,
+  );
+  const atRiskCarrier = useOptionalLocalizedText(
+    stage.conditionText.notation.atRiskCarrier,
+  );
+  const conditionWords: ConditionPanelWords = {
+    keyHeading: resolve(stage.keyHeading).text,
+    heading: resolve(stage.conditionText.heading).text,
+    instruction: resolve(stage.conditionText.instruction).text,
+    saveSnapshot: resolve(stage.tooltips.saveSnapshot).text,
+    notation: {
+      affected: resolve(stage.conditionText.notation.affected).text,
+      obligateAffected: resolve(stage.conditionText.notation.obligateAffected)
+        .text,
+      obligateCarrier: resolve(stage.conditionText.notation.obligateCarrier)
+        .text,
+      atRiskAffected,
+      atRiskCarrier,
+      unknown: resolve(stage.conditionText.notation.unknown).text,
+    },
+  };
+  const clearFocusText = resolve(stage.tooltips.clearFocus).text;
   // Architect stores the selected node palette entry as a typed protocol
   // reference. SVG and inline CSS need the corresponding theme variable, so
   // resolve every disease once at the view boundary before it reaches the key,
@@ -619,16 +647,22 @@ export default function NarrativePedigreeView({
     const base = stageLabel;
     if (!selectedDiseaseLabel) return base;
     return focalLabel
-      ? intl.formatMessage(messages.snapshotInheritance, {
+      ? resolveMessage(stage.conditionText.snapshotInheritance, {
           title: base,
           condition: selectedDiseaseLabel,
           name: focalLabel,
-        })
-      : intl.formatMessage(messages.snapshotCondition, {
+        }).text
+      : resolveMessage(stage.conditionText.snapshotCondition, {
           title: base,
           condition: selectedDiseaseLabel,
-        });
-  }, [stageLabel, selectedDiseaseLabel, focalLabel, intl]);
+        }).text;
+  }, [
+    stageLabel,
+    selectedDiseaseLabel,
+    focalLabel,
+    stage.conditionText,
+    resolveMessage,
+  ]);
 
   const snapshotFilename = useMemo(() => {
     const slug = snapshotTitle
@@ -697,6 +731,8 @@ export default function NarrativePedigreeView({
           glyphColour={snapshotGlyphColour}
           keyShape="circle"
           showAtRiskStatuses={showAtRiskStatuses}
+          keyHeading={conditionWords.keyHeading}
+          notationWords={conditionWords.notation}
           showKey={selectedDisease !== undefined}
         />
       )}
@@ -735,6 +771,7 @@ export default function NarrativePedigreeView({
             never collapses; the pedigree pane gives up space instead, and the
             family can be panned and zoomed within it. */}
         <ConditionPanel
+          words={conditionWords}
           diseases={diseases}
           selectedDiseaseId={selectedDiseaseId}
           onSelect={(id) => {
@@ -785,7 +822,7 @@ export default function NarrativePedigreeView({
                     <IconButton
                       size="sm"
                       variant="default"
-                      aria-label={intl.formatMessage(messages.clearFocus)}
+                      aria-label={clearFocusText}
                       icon={
                         <Icon
                           name="RotateCcw"
@@ -798,9 +835,7 @@ export default function NarrativePedigreeView({
                     />
                   }
                 />
-                <TooltipContent>
-                  {intl.formatMessage(messages.clearFocus)}
-                </TooltipContent>
+                <TooltipContent>{clearFocusText}</TooltipContent>
               </Tooltip>
             )}
             <SegmentedToolbar

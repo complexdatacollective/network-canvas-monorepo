@@ -252,6 +252,21 @@ export function useLocalizedString(
 }
 
 /**
+ * `useLocalizedString` for a setting the stage holds only while its
+ * configuration shows it (see `missingRequiredStageSettings`): its text, or
+ * undefined where the stage does not hold it.
+ */
+export function useOptionalLocalizedText(
+  value: LocalizedString | undefined,
+): string | undefined {
+  const resolve = useResolveLocalizedString();
+  return useMemo(
+    () => (value === undefined ? undefined : resolve(value).text),
+    [resolve, value],
+  );
+}
+
+/**
  * `useResolveLocalizedString` for a localized message (see
  * `localizedMessage`): the translation is chosen the same way, then
  * formatted with `values` in the language it is written in, so its plural

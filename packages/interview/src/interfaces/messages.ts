@@ -33,13 +33,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Warning when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost.',
   },
-  discardOvertakenEditDescription: {
-    id: 'interview.interfaces.discardOvertakenEditDescription',
-    defaultMessage:
-      'Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.',
-    description:
-      'Warning when leaving a side panel after undo or redo changed an answer the participant had edited but not yet saved. The edit stays on screen, and is saved only if the participant changes that answer again.',
-  },
   discardChanges: {
     id: 'interview.interfaces.discardChanges',
     defaultMessage: 'Discard changes',
@@ -160,35 +153,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Network-composer tool that selects existing people or connections for editing.',
   },
-  addNode: {
-    id: 'interview.interfaces.addNode',
-    defaultMessage: 'Add node',
-    description:
-      'Accessible name of the network-composer tool that opens a field to add a new network item.',
-  },
-  drawEdge: {
-    id: 'interview.interfaces.drawEdge',
-    defaultMessage: 'Draw edge',
-    description:
-      'Accessible name of the network-composer tool that creates a connection between two items.',
-  },
-  groups: {
-    id: 'interview.interfaces.groups',
-    defaultMessage: 'Groups',
-    description:
-      'Network-composer tool label and narrative legend heading for groups of people.',
-  },
   layoutTools: {
     id: 'interview.interfaces.layoutTools',
     defaultMessage: 'Layout tools',
     description:
       'Accessible name of the network-composer toolbar group that controls automatic positioning.',
-  },
-  automaticLayout: {
-    id: 'interview.interfaces.automaticLayout',
-    defaultMessage: 'Automatic layout',
-    description:
-      'Toggle that automatically positions people in the network composer.',
   },
   historyTools: {
     id: 'interview.interfaces.historyTools',
@@ -220,53 +189,11 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the narrative toolbar group that pauses or resumes automatic positioning.',
   },
-  pauseAutomaticLayout: {
-    id: 'interview.interfaces.pauseAutomaticLayout',
-    defaultMessage: 'Pause automatic layout',
-    description:
-      'Accessible action that pauses automatic movement of the displayed people in a narrative view.',
-  },
-  resumeAutomaticLayout: {
-    id: 'interview.interfaces.resumeAutomaticLayout',
-    defaultMessage: 'Resume automatic layout',
-    description:
-      'Accessible action that resumes automatic movement of the displayed people in a narrative view.',
-  },
   drawingControls: {
     id: 'interview.interfaces.drawingControls',
     defaultMessage: 'Drawing controls',
     description:
       'Accessible name of the narrative toolbar group for freehand annotations.',
-  },
-  disableDrawing: {
-    id: 'interview.interfaces.disableDrawing',
-    defaultMessage: 'Disable drawing',
-    description:
-      'Toggle action that turns off freehand drawing on the narrative canvas.',
-  },
-  enableDrawing: {
-    id: 'interview.interfaces.enableDrawing',
-    defaultMessage: 'Enable drawing',
-    description:
-      'Toggle action that turns on freehand drawing on the narrative canvas.',
-  },
-  unfreezeAnnotations: {
-    id: 'interview.interfaces.unfreezeAnnotations',
-    defaultMessage: 'Unfreeze annotations',
-    description:
-      'Toggle action that allows existing narrative annotations to be edited again.',
-  },
-  freezeAnnotations: {
-    id: 'interview.interfaces.freezeAnnotations',
-    defaultMessage: 'Freeze annotations',
-    description:
-      'Toggle action that locks existing narrative annotations in place.',
-  },
-  resetAnnotations: {
-    id: 'interview.interfaces.resetAnnotations',
-    defaultMessage: 'Reset annotations',
-    description:
-      'Action that clears the freehand annotations from the narrative canvas.',
   },
   presets: {
     id: 'interview.interfaces.presets',
@@ -297,18 +224,6 @@ export const interfaceMessages = defineMessages({
     defaultMessage: 'Next preset',
     description:
       'Action that selects the next researcher-configured narrative view.',
-  },
-  attributes: {
-    id: 'interview.interfaces.attributes',
-    defaultMessage: 'Attributes',
-    description:
-      'Narrative legend heading for attributes used to highlight people. Individual attribute labels come unchanged from the protocol.',
-  },
-  links: {
-    id: 'interview.interfaces.links',
-    defaultMessage: 'Links',
-    description:
-      'Narrative legend heading for displayed connection types. Individual connection labels come unchanged from the protocol.',
   },
   targetNodes: {
     id: 'interview.interfaces.targetNodes',

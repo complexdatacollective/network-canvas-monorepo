@@ -22,6 +22,7 @@ import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import useSortedNodeList from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
+import { useOptionalLocalizedText } from '../../localization/ProtocolLocalizationProvider';
 import {
   getEdges,
   getPlacedNodes,
@@ -60,6 +61,14 @@ export function unplaceNodeAttributePatch(
 const Sociogram = (stageProps: SociogramProps) => {
   const intl = useAppIntl();
   const { stage } = stageProps;
+  // The layout toggle's words (`stage-wording/sociogram.ts`), given only when
+  // the stage holds both.
+  const pauseLayout = useOptionalLocalizedText(stage.tooltips?.pauseLayout);
+  const resumeLayout = useOptionalLocalizedText(stage.tooltips?.resumeLayout);
+  const layoutWords =
+    pauseLayout !== undefined && resumeLayout !== undefined
+      ? { pauseLayout, resumeLayout }
+      : undefined;
   const { prompt } = usePrompts<(typeof stage.prompts)[number]>();
   const dispatch = useAppDispatch();
   const { announce } = useAccessibilityAnnouncements();
@@ -381,8 +390,9 @@ const Sociogram = (stageProps: SociogramProps) => {
         />
       )}
       <CollapsablePrompts dragConstraints={interfaceRef}>
-        {layoutMode === 'AUTOMATIC' && (
+        {layoutMode === 'AUTOMATIC' && layoutWords !== undefined && (
           <SimulationPanel
+            words={layoutWords}
             simulationEnabled={simulation.simulationEnabled}
             onToggle={simulation.toggleSimulation}
           />

@@ -47,10 +47,23 @@ type EdgeEntry = {
   color?: string;
 };
 
+/**
+ * The words the stage holds for its tools. The connection and groups tools
+ * appear only when the stage has edge types and groups, and so have words.
+ */
+export type ComposerToolWords = Readonly<{
+  addNamePlaceholder: string;
+  addPerson: string;
+  automaticLayout: string;
+  drawConnection?: string;
+  groups?: string;
+}>;
+
 type ToolPaletteProps = {
   composerStore: ComposerStoreApi;
   undoStore: UndoStoreApi;
   edges: EdgeEntry[];
+  words: ComposerToolWords;
   /** Protocol label for the node entity, shown in the add-node field. */
   nodeLabel: string;
   /** Codebook variable the quick-add name is written to. */
@@ -107,6 +120,7 @@ export default function ToolPalette({
   composerStore,
   undoStore,
   edges,
+  words,
   nodeLabel,
   quickAddTargetVariable,
   onAddNode,
@@ -193,7 +207,7 @@ export default function ToolPalette({
           }}
           trigger={
             <ToolbarIconButton
-              aria-label={intl.formatMessage(interfaceMessages.addNode)}
+              aria-label={words.addPerson}
               aria-pressed={activeTool.kind === 'addNode'}
               icon={<AddNodeIcon />}
             />
@@ -204,6 +218,7 @@ export default function ToolPalette({
           ) : (
             <AddNodeInput
               entityLabel={nodeLabel}
+              placeholder={words.addNamePlaceholder}
               targetVariable={quickAddTargetVariable}
               onCreate={onAddNode}
               onAddingChange={setAddingName}
@@ -215,11 +230,11 @@ export default function ToolPalette({
 
         {/* One edge button opens a menu instead of crowding the toolbar with
             identical link icons. */}
-        {edges.length > 0 ? (
+        {edges.length > 0 && words.drawConnection !== undefined ? (
           <ToolbarMenu
             trigger={
               <ToolbarIconButton
-                aria-label={intl.formatMessage(interfaceMessages.drawEdge)}
+                aria-label={words.drawConnection}
                 aria-pressed={activeTool.kind === 'edge'}
                 icon={<EdgeIcon />}
                 className={edgeButtonClass}
@@ -246,13 +261,13 @@ export default function ToolPalette({
         ) : null}
 
         {/* A single Groups button opens the active group value picker. */}
-        {groupVariable !== null ? (
+        {groupVariable !== null && words.groups !== undefined ? (
           <ToolbarPopover
             open={groupsOpen}
             onOpenChange={setGroupsOpen}
             trigger={
               <ToolbarIconButton
-                aria-label={intl.formatMessage(interfaceMessages.groups)}
+                aria-label={words.groups}
                 aria-pressed={activeTool.kind === 'group'}
                 icon={<GroupsIcon />}
                 className={groupButtonClass}
@@ -278,7 +293,7 @@ export default function ToolPalette({
         aria-label={intl.formatMessage(interfaceMessages.layoutTools)}
       >
         <ToolbarIconButton
-          aria-label={intl.formatMessage(interfaceMessages.automaticLayout)}
+          aria-label={words.automaticLayout}
           icon={<AutoLayoutIcon />}
           pressed={automaticLayout}
           onPressedChange={onToggleAutomaticLayout}

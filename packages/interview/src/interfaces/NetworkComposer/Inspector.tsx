@@ -44,7 +44,6 @@ import PassphraseNotice, {
 import discardChangesDialog, {
   failedCheckReason,
 } from '../discardChangesDialog';
-import { interfaceMessages } from '../messages';
 import type { LeaveGuard } from './useComposerStore';
 
 type Attributes = NcNode[typeof entityAttributesProperty];
@@ -81,6 +80,8 @@ export type InspectorProps = {
    * releases the hold.
    */
   guardDraft: (entityId: string, confirmLeave: LeaveGuard) => () => void;
+  /** The stage's words for leaving an edit an undo or redo overtook. */
+  overtakenEditNotice: string;
 };
 
 // How long to wait after the last edit before validating and persisting.
@@ -175,6 +176,7 @@ function AttributeFormInner({
   unavailable,
   onSave,
   guardDraft,
+  overtakenEditNotice,
 }: Omit<InspectorProps, 'form' | 'onDelete' | 'passphraseStatus'> & {
   form: ComposerForm;
 }) {
@@ -449,13 +451,14 @@ function AttributeFormInner({
       await savesUnderWay.current;
       if (showsSaved(state.getFormValues())) return true;
 
-      let reason = (await state.validateForm())
-        ? await persist(state.getFormValues())
-        : failedCheckReason(passphraseNeeded);
+      let reason: MessageDescriptor | string | undefined =
+        (await state.validateForm())
+          ? await persist(state.getFormValues())
+          : failedCheckReason(passphraseNeeded);
       // Leaving is not changing the question again, so an edit an undo or
       // redo overtook is not saved by it.
       if (reason === undefined && heldRef.current.size > 0) {
-        reason = interfaceMessages.discardOvertakenEditDescription;
+        reason = overtakenEditNotice;
       }
       if (reason === undefined) return true;
 
@@ -465,7 +468,14 @@ function AttributeFormInner({
       });
       return discarded === true;
     })();
-  }, [storeApi, showsSaved, persist, passphraseNeeded, confirm]);
+  }, [
+    storeApi,
+    showsSaved,
+    persist,
+    passphraseNeeded,
+    confirm,
+    overtakenEditNotice,
+  ]);
 
   useBeforeNext(confirmLeave);
   useEffect(
@@ -495,6 +505,7 @@ export default function Inspector({
   onSave,
   onDelete,
   guardDraft,
+  overtakenEditNotice,
 }: InspectorProps) {
   const hasFields = form !== undefined && (form.fields?.length ?? 0) > 0;
 
@@ -515,6 +526,7 @@ export default function Inspector({
             unavailable={unavailable}
             onSave={onSave}
             guardDraft={guardDraft}
+            overtakenEditNotice={overtakenEditNotice}
           />
         </FormStoreProvider>
       ) : null}

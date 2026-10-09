@@ -283,21 +283,9 @@
     "defaultMessage": "Type a name, then press Enter",
     "description": "Placeholder in the network-composer name field; pressing Enter adds the named item."
   },
-  "interview.interfaces.addNode": {
-    "defaultMessage": "Add node",
-    "description": "Accessible name of the network-composer tool that opens a field to add a new network item."
-  },
   "interview.interfaces.addedNodes": {
     "defaultMessage": "Added Nodes",
     "description": "Accessible name used by drag-and-drop announcements for the list of people already added to the network."
-  },
-  "interview.interfaces.attributes": {
-    "defaultMessage": "Attributes",
-    "description": "Narrative legend heading for attributes used to highlight people. Individual attribute labels come unchanged from the protocol."
-  },
-  "interview.interfaces.automaticLayout": {
-    "defaultMessage": "Automatic layout",
-    "description": "Toggle that automatically positions people in the network composer."
   },
   "interview.interfaces.availableItems": {
     "defaultMessage": "List of available items to add",
@@ -343,10 +331,6 @@
     "defaultMessage": "Deselect",
     "description": "Action that clears the current outside-map-area selection so the participant can choose another location."
   },
-  "interview.interfaces.disableDrawing": {
-    "defaultMessage": "Disable drawing",
-    "description": "Toggle action that turns off freehand drawing on the narrative canvas."
-  },
   "interview.interfaces.discardChanges": {
     "defaultMessage": "Discard changes",
     "description": "Confirmation action that leaves an invalid form and discards its unsaved changes."
@@ -359,17 +343,9 @@
     "defaultMessage": "Discard changes?",
     "description": "Title of the warning shown when a participant tries to leave a form containing invalid unsaved answers."
   },
-  "interview.interfaces.discardOvertakenEditDescription": {
-    "defaultMessage": "Undo or redo changed an answer while you were editing it, so your edit has not been saved. To keep your edit, change that answer again. If you continue, your edit will be lost.",
-    "description": "Warning when leaving a side panel after undo or redo changed an answer the participant had edited but not yet saved. The edit stays on screen, and is saved only if the participant changes that answer again."
-  },
   "interview.interfaces.dragToReposition": {
     "defaultMessage": "Drag to reposition",
     "description": "Accessible name of the handle that moves the floating narrative preset toolbar."
-  },
-  "interview.interfaces.drawEdge": {
-    "defaultMessage": "Draw edge",
-    "description": "Accessible name of the network-composer tool that creates a connection between two items."
   },
   "interview.interfaces.drawingControls": {
     "defaultMessage": "Drawing controls",
@@ -383,10 +359,6 @@
     "defaultMessage": "No value",
     "description": "Shown in place of a roster detail that has no value: a blank field or an empty list. Replaces a bare dash so screen readers announce it."
   },
-  "interview.interfaces.enableDrawing": {
-    "defaultMessage": "Enable drawing",
-    "description": "Toggle action that turns on freehand drawing on the narrative canvas."
-  },
   "interview.interfaces.entityName": {
     "defaultMessage": "{entityLabel} name",
     "description": "Accessible name for a new-item name field. entityLabel is the unchanged, researcher-authored label for the network entity type."
@@ -399,10 +371,6 @@
     "defaultMessage": "External data could not be loaded.",
     "description": "Explanation shown when a configured external list of people could not be loaded."
   },
-  "interview.interfaces.freezeAnnotations": {
-    "defaultMessage": "Freeze annotations",
-    "description": "Toggle action that locks existing narrative annotations in place."
-  },
   "interview.interfaces.groupMembershipOptions": {
     "defaultMessage": "Group membership options",
     "description": "Accessible name of the popover containing group membership choices in the network composer."
@@ -410,10 +378,6 @@
   "interview.interfaces.groupMembershipPeople": {
     "defaultMessage": "Group membership for selected people",
     "description": "Accessible name of the controls that set group membership for the currently selected people."
-  },
-  "interview.interfaces.groups": {
-    "defaultMessage": "Groups",
-    "description": "Network-composer tool label and narrative legend heading for groups of people."
   },
   "interview.interfaces.hideInstructions": {
     "defaultMessage": "Hide instructions",
@@ -434,10 +398,6 @@
   "interview.interfaces.layoutTools": {
     "defaultMessage": "Layout tools",
     "description": "Accessible name of the network-composer toolbar group that controls automatic positioning."
-  },
-  "interview.interfaces.links": {
-    "defaultMessage": "Links",
-    "description": "Narrative legend heading for displayed connection types. Individual connection labels come unchanged from the protocol."
   },
   "interview.interfaces.mapMoved": {
     "defaultMessage": "Map moved to {place}.",
@@ -475,10 +435,6 @@
     "defaultMessage": "Passphrase accepted! Click \"Next\" to continue.",
     "description": "Success message after the participant enters, on the anonymisation screen, the passphrase they chose earlier in the interview. Next refers to the interview navigation arrow."
   },
-  "interview.interfaces.pauseAutomaticLayout": {
-    "defaultMessage": "Pause automatic layout",
-    "description": "Accessible action that pauses automatic movement of the displayed people in a narrative view."
-  },
   "interview.interfaces.presetNavigation": {
     "defaultMessage": "Preset navigation",
     "description": "Accessible name of the toolbar group that switches between researcher-configured narrative views."
@@ -507,10 +463,6 @@
     "defaultMessage": "Redo",
     "description": "Toolbar action that reapplies an edit that was undone in the network composer."
   },
-  "interview.interfaces.resetAnnotations": {
-    "defaultMessage": "Reset annotations",
-    "description": "Action that clears the freehand annotations from the narrative canvas."
-  },
   "interview.interfaces.resizePanel": {
     "defaultMessage": "Resize panel",
     "description": "Accessible name of the draggable divider that changes the width of the network-composer editing panel."
@@ -518,10 +470,6 @@
   "interview.interfaces.resizePanels": {
     "defaultMessage": "Resize panel and node list areas",
     "description": "Accessible name of the divider between the source panel and the list of added people; dragging or keyboard controls resize the two areas."
-  },
-  "interview.interfaces.resumeAutomaticLayout": {
-    "defaultMessage": "Resume automatic layout",
-    "description": "Accessible action that resumes automatic movement of the displayed people in a narrative view."
   },
   "interview.interfaces.returnedToDrawer": {
     "defaultMessage": "Returned to the drawer.",
@@ -575,10 +523,6 @@
     "defaultMessage": "Undo",
     "description": "Toolbar action that reverses the most recent edit in the network composer."
   },
-  "interview.interfaces.unfreezeAnnotations": {
-    "defaultMessage": "Unfreeze annotations",
-    "description": "Toggle action that allows existing narrative annotations to be edited again."
-  },
   "interview.interfaces.zoomIn": {
     "defaultMessage": "Zoom in",
     "description": "Accessible name of the map and family pedigree buttons that increase magnification. Sentence case."
@@ -603,21 +547,9 @@
     "defaultMessage": "At risk (carrier)",
     "description": "Clinical status label for uncertain carrier status, distinct from uncertain risk of developing the condition."
   },
-  "interview.narrativePedigree.carries": {
-    "defaultMessage": "Carries this condition",
-    "description": "Plain-language legend meaning of an obligate carrier: the person carries the relevant inherited variant, distinct from being affected."
-  },
-  "interview.narrativePedigree.clearFocus": {
-    "defaultMessage": "Clear focus",
-    "description": "Action removing the selected focal person and their contributor highlight, while keeping the selected condition."
-  },
   "interview.narrativePedigree.conditionKey": {
     "defaultMessage": "Condition key",
     "description": "Accessible name of the side panel listing protocol-authored conditions and explaining the pedigree status symbols."
-  },
-  "interview.narrativePedigree.conditions": {
-    "defaultMessage": "Conditions",
-    "description": "Subheading above protocol-authored condition names. Only this generic heading is translated, not the names of conditions."
   },
   "interview.narrativePedigree.diseaseStatus": {
     "defaultMessage": "{condition}: {status}",
@@ -626,26 +558,6 @@
   "interview.narrativePedigree.focusOn": {
     "defaultMessage": "Focus on {name}",
     "description": "Accessible action focusing the inheritance view on a person. name is entered research text or a localized relationship fallback; do not alter it."
-  },
-  "interview.narrativePedigree.hasCondition": {
-    "defaultMessage": "Has this condition",
-    "description": "Plain-language legend meaning of the filled affected-status symbol: the person is recorded as having the condition."
-  },
-  "interview.narrativePedigree.key": {
-    "defaultMessage": "Key",
-    "description": "Heading for the symbol legend, shared by the on-screen condition panel and the printable snapshot document."
-  },
-  "interview.narrativePedigree.mayCarry": {
-    "defaultMessage": "May carry this condition",
-    "description": "Plain-language legend meaning of uncertain carrier status. Preserve the uncertainty and distinguish carrying from developing the condition."
-  },
-  "interview.narrativePedigree.mayDevelop": {
-    "defaultMessage": "May develop this condition",
-    "description": "Plain-language legend meaning of uncertain risk of developing the condition. Preserve the uncertainty and do not claim a diagnosis."
-  },
-  "interview.narrativePedigree.notKnown": {
-    "defaultMessage": "Not known",
-    "description": "Plain-language legend meaning when genetic status is unknown or the protocol hides probabilistic status markers."
   },
   "interview.narrativePedigree.obligateAffected": {
     "defaultMessage": "Obligate affected",
@@ -658,14 +570,6 @@
   "interview.narrativePedigree.resizeKey": {
     "defaultMessage": "Resize the condition key panel",
     "description": "Accessible name for the splitter resizing the condition-legend panel beside the diagram."
-  },
-  "interview.narrativePedigree.saveSnapshot": {
-    "defaultMessage": "Save snapshot",
-    "description": "Action saving the current family tree, selected condition, focus and notation legend as a printable PNG image."
-  },
-  "interview.narrativePedigree.selectCondition": {
-    "defaultMessage": "Select a condition to see who it affects.",
-    "description": "Instruction for choosing one condition to show its inheritance notation and enable focusing on a family member."
   },
   "interview.narrativePedigree.showingAll": {
     "defaultMessage": "Showing all conditions",
@@ -683,21 +587,9 @@
     "defaultMessage": "Showing {condition}. Focused on {name}. Showing who contributes to their inheritance.",
     "description": "Whole live announcement naming the selected condition and focused person, then explaining the inheritance-contributor highlight. condition and name remain separate, unchanged values."
   },
-  "interview.narrativePedigree.snapshotCondition": {
-    "defaultMessage": "{title}: {condition}",
-    "description": "Whole snapshot heading combining the authored stage title and condition name. title and condition remain verbatim; the punctuation can follow locale conventions."
-  },
-  "interview.narrativePedigree.snapshotInheritance": {
-    "defaultMessage": "{title}: {condition} — inheritance for {name}",
-    "description": "Whole snapshot heading for a condition focused on a person. title and condition are authored text; name is entered text or a localized fallback. Translate only the surrounding inheritance phrase."
-  },
   "interview.narrativePedigree.statusUnknown": {
     "defaultMessage": "Status unknown",
     "description": "Clinical status tooltip and screen-reader label when the inheritance information does not establish a displayed genetic status."
-  },
-  "interview.narrativePedigree.willDevelop": {
-    "defaultMessage": "Will develop this condition",
-    "description": "Plain-language legend meaning of the obligate/presymptomatic affected symbol: development is modelled as certain, unlike the may-develop status."
   },
   "interview.narrativePedigree.zoomControls": {
     "defaultMessage": "Zoom controls",
