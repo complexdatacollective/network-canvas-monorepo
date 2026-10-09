@@ -103,7 +103,6 @@
   "interview.familyPedigree.removedAnnouncement": "已将{name}从您的家庭中移除。",
   "interview.familyPedigree.removedWithOthersAnnouncement": "{count, plural, other {已将{name}和另外 # 人从您的家庭中移除。}}",
   "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {卵子或精子捐献者} traditionalSurrogate {同时怀孕的卵子捐献者} other {代孕者}}",
-  "interview.familyPedigree.reproductiveRoleLetter": "{role, select, donor {D} traditionalSurrogate {S} other {GC}}",
   "interview.familyPedigree.savedAnnouncement": "信息已保存。",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "出生时指定的性别",
   "interview.familyPedigree.sharedParentCountBoth": "双方父母",

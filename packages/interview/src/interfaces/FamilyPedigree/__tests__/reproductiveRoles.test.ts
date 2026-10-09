@@ -17,7 +17,7 @@ const link = (
   isCurrentPartner: false,
 });
 
-describe('reproductive roles drawn beside a symbol', () => {
+describe('reproductive roles read out with a symbol', () => {
   it.each([
     ['a donor who did not carry', link('d', 'kid', 'donor'), ['donor']],
     [

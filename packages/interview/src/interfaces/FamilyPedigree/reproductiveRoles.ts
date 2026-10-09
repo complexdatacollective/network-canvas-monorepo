@@ -1,11 +1,11 @@
 import type { FamilyLink } from './model';
 
 /**
- * A role in someone else's conception or birth, drawn as a letter beside the
- * person's symbol (Bennett et al. 2022): D for a donor, S for a traditional
- * surrogate (a donor who carried the pregnancy), GC for a gestational carrier
- * (a surrogate, who has no genetic tie). A parent who raises the child gets no
- * letter, whether or not they carried.
+ * A role in someone else's conception or birth, read out with the person's
+ * symbol: a donor, a traditional surrogate (a donor who carried the
+ * pregnancy), or a gestational carrier (a surrogate, who has no genetic tie).
+ * A parent who raises the child has none of these roles, whether or not they
+ * carried. The drawing shows no mark for them.
  */
 export type ReproductiveRole =
   | 'donor'
@@ -18,8 +18,8 @@ const ORDER: readonly ReproductiveRole[] = [
   'gestationalCarrier',
 ];
 
-/** The role a parent link gives its parent, if any. The one place the
- * letters are derived from a link's kind and carrier flag. */
+/** The role a parent link gives its parent, if any. The one place a role is
+ * derived from a link's kind and carrier flag. */
 function reproductiveRoleOf(
   link: Pick<FamilyLink, 'kind' | 'isGestationalCarrier'>,
 ): ReproductiveRole | undefined {

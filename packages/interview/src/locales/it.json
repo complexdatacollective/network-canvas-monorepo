@@ -103,7 +103,6 @@
   "interview.familyPedigree.removedAnnouncement": "Hai rimosso {name} dalla tua famiglia.",
   "interview.familyPedigree.removedWithOthersAnnouncement": "{count, plural, one {Hai rimosso {name} e un’altra persona dalla tua famiglia.} other {Hai rimosso {name} e altre # persone dalla tua famiglia.}}",
   "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {donatore o donatrice di ovulo o spermatozoo} traditionalSurrogate {donatrice di ovulo che ha portato avanti la gravidanza} other {gestante surrogata}}",
-  "interview.familyPedigree.reproductiveRoleLetter": "{role, select, donor {D} traditionalSurrogate {S} other {GC}}",
   "interview.familyPedigree.savedAnnouncement": "Informazioni salvate.",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "Sesso assegnato alla nascita",
   "interview.familyPedigree.sharedParentCountBoth": "Entrambi i genitori",

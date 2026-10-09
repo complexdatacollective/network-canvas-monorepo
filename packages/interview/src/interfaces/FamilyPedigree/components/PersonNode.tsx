@@ -51,8 +51,8 @@ type PersonNodeProps = {
   linking: boolean;
   /** Adopted: drawn within brackets, as pedigree nomenclature has it. */
   adopted: boolean;
-  /** Their roles in others' conception or birth, drawn as letters beside
-   * their symbol (D, S, GC) and read out as its description. */
+  /** Their roles in others' conception or birth, read out as their
+   * symbol's description. Nothing is drawn for them. */
   reproductiveRoles?: readonly ReproductiveRole[];
 
   hasMissingDetails: boolean;
@@ -120,7 +120,6 @@ export default function PersonNode({
           <span
             key={side}
             aria-hidden
-            data-adoption-bracket
             className={cx(
               'pointer-events-none absolute -inset-y-2 w-3 border-solid border-current',
               side === 'left' ? '-left-4' : '-right-4',
@@ -153,37 +152,17 @@ export default function PersonNode({
         tabIndex={tabIndex}
         onKeyDown={onKeyDown}
       />
-      {/* Beside the symbol's upper left corner: above any partnership line,
-          below the sibling line, outside any brackets, and away from the
-          lines a donor's own lines take down to the child. Clear of the
-          label inside the symbol and of the badge on the other corner. */}
       {hasRoles && (
-        <>
-          <span
-            aria-hidden
-            data-reproductive-roles
-            className={cx(
-              'pointer-events-none absolute top-0 right-full text-sm leading-none font-bold whitespace-nowrap',
-              adopted ? 'mr-6' : 'mr-2',
-            )}
-          >
-            {reproductiveRoles
-              .map((role) =>
-                intl.formatMessage(messages.reproductiveRoleLetter, { role }),
-              )
-              .join(' ')}
-          </span>
-          <span id={rolesId} hidden>
-            {intl.formatList(
-              reproductiveRoles.map((role) =>
-                intl.formatMessage(messages.reproductiveRoleDescription, {
-                  role,
-                }),
-              ),
-              { type: 'conjunction' },
-            )}
-          </span>
-        </>
+        <span id={rolesId} hidden>
+          {intl.formatList(
+            reproductiveRoles.map((role) =>
+              intl.formatMessage(messages.reproductiveRoleDescription, {
+                role,
+              }),
+            ),
+            { type: 'conjunction' },
+          )}
+        </span>
       )}
       {/* Centred on the symbol's corner, clear of the label inside it. */}
       {hasMissingDetails && (

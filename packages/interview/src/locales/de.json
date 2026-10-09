@@ -103,7 +103,6 @@
   "interview.familyPedigree.removedAnnouncement": "{name} wurde aus Ihrer Familie entfernt.",
   "interview.familyPedigree.removedWithOthersAnnouncement": "{count, plural, one {{name} und eine weitere Person wurden aus Ihrer Familie entfernt.} other {{name} und # weitere Personen wurden aus Ihrer Familie entfernt.}}",
   "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {Eizell- oder Samenspende} traditionalSurrogate {Eizellspende und Austragen der Schwangerschaft} other {Leihmutter}}",
-  "interview.familyPedigree.reproductiveRoleLetter": "{role, select, donor {D} traditionalSurrogate {S} other {GC}}",
   "interview.familyPedigree.savedAnnouncement": "Angaben gespeichert.",
   "interview.familyPedigree.sexAssignedAtBirthLabel": "Bei der Geburt zugewiesenes Geschlecht",
   "interview.familyPedigree.sharedParentCountBoth": "Beide Elternteile",

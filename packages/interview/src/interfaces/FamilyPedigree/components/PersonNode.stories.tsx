@@ -90,11 +90,11 @@ export const AdoptedPlaceholderWithMissingDetails: Story = {
 
 /**
  * An adopted relative with details missing who donated to one child and
- * carried another as a surrogate: the letters are drawn beside the symbol,
- * clear of the label, the badge and the brackets, and read out as the
- * symbol's description.
+ * carried another as a surrogate: their roles are read out as the symbol's
+ * description, and nothing is drawn for them beyond the symbol, the badge
+ * and the brackets.
  */
-export const DonorAndSurrogateLetters: Story = {
+export const DonorAndSurrogateRolesAreSpoken: Story = {
   args: {
     label: 'Aunt',
     shape: 'circle',
@@ -106,34 +106,26 @@ export const DonorAndSurrogateLetters: Story = {
       name: 'Aunt, adopted, some details missing',
       description: 'egg or sperm donor and surrogate',
     });
+    await expect(symbol).toBeInTheDocument();
+    // No pedigree letter is drawn: the only visible text is the label.
     const person = canvas.getByTestId('pedigree-person');
-    const letters = person.querySelector('[data-reproductive-roles]');
-    if (!letters) throw new Error('No letters');
-    await expect(letters).toHaveTextContent('D GC');
-    await expect(letters).toHaveAttribute('aria-hidden', 'true');
-    const letterBoxes = textRects(letters);
-    await expect(letterBoxes.length).toBeGreaterThan(0);
-    const symbolBox = symbol.getBoundingClientRect();
-    const others = [
-      symbolBox,
-      ...[
-        ...person.querySelectorAll(
-          '[data-missing-details-badge], [data-adoption-bracket]',
-        ),
-      ].map((element) => element.getBoundingClientRect()),
-      ...textRects(within(symbol).getByText('Aunt')),
-    ];
-    await expect(others).toHaveLength(5);
-    for (const letterBox of letterBoxes) {
-      for (const other of others) {
-        await expect(overlaps(letterBox, other)).toBe(false);
-      }
-    }
+    const visibleText = [...person.querySelectorAll('*')]
+      .filter(
+        (element) =>
+          !element.closest('[hidden]') &&
+          [...element.childNodes].some(
+            (node) =>
+              node.nodeType === Node.TEXT_NODE &&
+              (node.textContent ?? '').trim() !== '',
+          ),
+      )
+      .map((element) => element.textContent?.trim());
+    await expect(visibleText).toEqual(['Aunt']);
   },
 };
 
 /** A donor who carried the pregnancy, read out in plain words. */
-export const TraditionalSurrogateLetter: Story = {
+export const TraditionalSurrogateRoleIsSpoken: Story = {
   args: {
     label: 'Sister',
     shape: 'circle',
@@ -149,10 +141,6 @@ export const TraditionalSurrogateLetter: Story = {
         description: 'egg donor who carried the pregnancy',
       }),
     ).toBeInTheDocument();
-    await expect(
-      canvas
-        .getByTestId('pedigree-person')
-        .querySelector('[data-reproductive-roles]'),
-    ).toHaveTextContent('S');
+    await expect(canvas.queryByText('S')).toBeNull();
   },
 };
