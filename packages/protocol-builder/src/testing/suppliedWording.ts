@@ -12,6 +12,11 @@ const FIXTURE_LOCALIZATION = {
 
 type WordingTree = { [key: string]: LocalizedString | WordingTree };
 
+/** A branch holds further settings; a leaf holds one language's text. */
+const isWordingTree = (
+  node: LocalizedString | WordingTree,
+): node is WordingTree => !('en-US' in node);
+
 /** Sets `value` at `path` in `tree`, creating the objects the path passes through. */
 const setWording = (
   tree: WordingTree,
@@ -26,7 +31,7 @@ const setWording = (
   }
   const child = tree[head];
   const branch: WordingTree =
-    child !== undefined && !('en-US' in child) ? child : {};
+    child !== undefined && isWordingTree(child) ? child : {};
   tree[head] = branch;
   setWording(branch, rest, value);
 };

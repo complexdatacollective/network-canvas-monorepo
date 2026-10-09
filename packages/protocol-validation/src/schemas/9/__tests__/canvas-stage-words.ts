@@ -14,16 +14,6 @@ export const networkComposerWords = () => ({
   },
 });
 
-/** The settings a Narrative holds for a preset that highlights and shows edges. */
-export const narrativeWords = () => ({
-  attributesHeading: localized('Attributes'),
-  linksHeading: localized('Links'),
-  tooltips: {
-    pauseLayout: localized('Pause automatic layout'),
-    resumeLayout: localized('Resume automatic layout'),
-  },
-});
-
 /** The settings a Narrative Pedigree holds, with at-risk statuses off. */
 export const narrativePedigreeWords = () => ({
   keyHeading: localized('Key'),
