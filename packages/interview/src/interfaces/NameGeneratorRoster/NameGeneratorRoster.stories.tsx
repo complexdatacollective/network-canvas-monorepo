@@ -228,7 +228,7 @@ function buildUuidMismatchInterview() {
       },
     },
     // A value-less node: no usable attribute values, so it must fall through to
-    // the "Unnamed Person N" placeholder rather than showing its _uid hash.
+    // the "Person N" placeholder rather than showing its _uid hash.
     { attributes: {} },
   ];
 
@@ -271,7 +271,7 @@ const UuidMismatchStoryWrapper = () => {
  * Before the fix, the cards fell back to the content-hash `_uid` and showed an
  * opaque random ID. After the fix, each card shows the first available value
  * ("Alice Smith", "Bob Jones"), and the value-less node shows the
- * "Unnamed Person 3" placeholder.
+ * "Person 3" placeholder.
  */
 export const PreviewExportUuidMismatch: Story = {
   render: () => <UuidMismatchStoryWrapper />,

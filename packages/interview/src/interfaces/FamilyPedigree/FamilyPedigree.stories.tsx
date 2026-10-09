@@ -3252,7 +3252,7 @@ export const RequiredNamesMayBeLeftBlankButMustBeUnique: Story = {
     );
     await userEvent.type(await nameField(), 'Julie');
     await save();
-    await body.findByText('This value is used elsewhere. It must be unique.');
+    await body.findByText('Must be unique.');
     await expect(panelOf(canvasElement)).not.toBeNull();
 
     // The label saved for the father is not: he is given another.
@@ -3668,12 +3668,8 @@ async function openPassphraseFromNotice(canvasElement: HTMLElement) {
   const notice = within(
     await canvas.findByTestId('pedigree-passphrase-notice'),
   );
-  await userEvent.click(
-    notice.getByRole('button', { name: 'Enter your passphrase' }),
-  );
-  return within(
-    await body.findByRole('dialog', { name: 'Enter your passphrase' }),
-  );
+  await userEvent.click(notice.getByRole('button', { name: 'Passphrase' }));
+  return within(await body.findByRole('dialog', { name: 'Passphrase' }));
 }
 
 // The label also carries a visual required marker.
@@ -3689,9 +3685,7 @@ async function enterPassphraseFromNotice(
   const body = within(canvasElement.ownerDocument.body);
   const dialog = await openPassphraseFromNotice(canvasElement);
   await userEvent.type(passphraseField(dialog), passphrase);
-  await userEvent.click(
-    dialog.getByRole('button', { name: 'Submit passphrase' }),
-  );
+  await userEvent.click(dialog.getByRole('button', { name: 'Continue' }));
   await waitFor(() => expect(body.queryByRole('dialog')).toBeNull(), {
     timeout: CHECK_TIMEOUT,
   });
@@ -3763,9 +3757,7 @@ export const WrongPassphrase: Story = {
     ).toBeNull();
     const field = passphraseField(dialog);
     await userEvent.type(field, WRONG_PASSPHRASE);
-    await userEvent.click(
-      dialog.getByRole('button', { name: 'Submit passphrase' }),
-    );
+    await userEvent.click(dialog.getByRole('button', { name: 'Continue' }));
     await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'), {
       timeout: CHECK_TIMEOUT,
     });
@@ -3793,7 +3785,7 @@ export const WrongPassphrase: Story = {
     // Going on waits for the passphrase, and nothing is written: her name
     // keeps its ciphertext, and the father is given no label.
     await userEvent.click(canvas.getByTestId('next-button'));
-    await body.findByRole('dialog', { name: 'Enter your passphrase' });
+    await body.findByRole('dialog', { name: 'Passphrase' });
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(body.queryByRole('dialog')).toBeNull());
     await expect(canvas.getByTestId('pedigree-canvas')).toBeVisible();

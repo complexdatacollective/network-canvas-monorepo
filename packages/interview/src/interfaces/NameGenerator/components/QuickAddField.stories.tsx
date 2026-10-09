@@ -295,34 +295,7 @@ async function showSettledHint(canvasElement: HTMLElement) {
   return hint;
 }
 
-export const MultiEntryHint: Story = {
-  args: {
-    name: 'name',
-    placeholder: 'Type a name and press enter...',
-    disabled: false,
-    maxNodes: 0,
-  },
-  render: ({ icon: _icon, maxNodes: _maxNodes, ...args }) => (
-    <QuickAddFieldWrapper {...args} onFormSubmit={formSubmitAction} />
-  ),
-  play: async ({ canvasElement }) => {
-    const hint = await showSettledHint(canvasElement);
-
-    await expect(hint).toHaveTextContent(
-      'Press Enter when you are finished. The box will stay open so you can quickly enter multiple names in a row.',
-    );
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'A stage with room for more than one more node keeps the full hint, including the promise that the box stays open. Paired with `SingleEntryHint` so the two copy variants can be compared visually.',
-      },
-    },
-  },
-};
-
-export const SingleEntryHint: Story = {
+export const UsageHint: Story = {
   args: {
     name: 'name',
     placeholder: 'Type a name and press enter...',
@@ -336,13 +309,12 @@ export const SingleEntryHint: Story = {
     const hint = await showSettledHint(canvasElement);
 
     await expect(hint).toHaveTextContent('Press Enter when you are finished.');
-    await expect(hint).not.toHaveTextContent('multiple names in a row');
   },
   parameters: {
     docs: {
       description: {
         story:
-          'A stage whose remaining `maxNodes` allowance is a single node closes the box on the next successful add, so the usage hint drops its promise that the box stays open.',
+          'The usage hint. It reads the same whatever the remaining `maxNodes` allowance, so it never promises that the box stays open.',
       },
     },
   },
