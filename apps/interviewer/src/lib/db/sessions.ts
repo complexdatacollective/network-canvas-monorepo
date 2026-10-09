@@ -496,6 +496,12 @@ export function updateSession(
 
 // Joins the per-id chain, so a participant's language changes are stored in
 // the order they were made.
+//
+// `lastUpdatedAt` is left alone: the interview records the language it shows
+// as soon as it opens, and a language is not interview data. Advancing the
+// timestamp would make merely reopening an interview, or choosing a
+// language, move it ahead of interviews that were actually worked on in the
+// lists that sort by it.
 export function setSessionLocale(
   id: string,
   change: ProtocolLocaleChange,
@@ -506,7 +512,6 @@ export function setSessionLocale(
     await db.sessions.update(id, {
       localePreference: change.localePreference,
       locale: change.locale,
-      lastUpdatedAt: new Date().toISOString(),
     });
   });
 }
@@ -521,18 +526,28 @@ export function setSessionLocale(
 // metadata, resume position and protocol hash all stay as it wrote them.
 // Stage ids survive a migration, so the recorded finish stage still names
 // the same stage.
+//
+// `signal` aborts when the interview recording the finish is torn down. It is
+// checked again inside the transaction that writes the finish, after every
+// wait for the queue, the key and the database, so an interview that will
+// never show its completed state is never stored as finished; an aborted
+// finish rejects with the signal's reason and writes nothing.
 export function markSessionFinished(
   id: string,
   finish: SessionFinish,
+  signal?: AbortSignal,
 ): Promise<void> {
   return enqueueSessionMutation(id, async () => {
     // A row whose storage changed between encrypted and plaintext while the
     // finish was being prepared is prepared again.
     for (let attempt = 0; attempt < 3; attempt += 1) {
+      signal?.throwIfAborted();
       const existingRow = await db.sessions.get(id);
       if (!existingRow) return;
       const prepared = await prepareSessionFinish(existingRow, finish);
       const recorded = await db.transaction('rw', db.sessions, async () => {
+        // Throwing here aborts the transaction before anything is put.
+        signal?.throwIfAborted();
         const latest = await db.sessions.get(id);
         // A session deleted in the gap stays deleted.
         if (!latest) return true;

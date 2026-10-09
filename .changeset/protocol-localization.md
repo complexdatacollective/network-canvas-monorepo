@@ -108,7 +108,9 @@ In Architect:
 - A preview opens in the language a participant with your browser would see,
   rather than in Architect's own language. A "Preview language" menu above it
   switches the interview to any of the protocol's languages while the preview
-  window is open.
+  window is open, in place: the screen, the prompt and anything typed but not
+  yet submitted stay, including after a Language Chooser has stated a
+  language.
 
 In Interviewer and Fresco:
 
@@ -128,8 +130,10 @@ in order (`navigator.languages`, or a parsed `Accept-Language` header on a
 server), and `onProtocolLocaleChange(interviewId, { locale, localePreference })`,
 which the interview calls when the participant chooses a language and when the
 language it shows differs from the stored one. Store both values and run the
-calls for one interview in order. `SessionPayload` now requires
-`localePreference` and `locale` (each a `LocaleTag` or `null`) and
+calls for one interview in order. An optional `statedLocale` states a language
+on the participant's behalf, replacing a held preference in place.
+`SessionPayload` now requires `localePreference` and `locale` (each a
+`LocaleTag` or `null`) and
 `localeOptions`, the `LocaleMetadata` of every language the protocol declares
 (from `getLocaleMetadata` in `@codaco/protocol-validation`), which is never
 stored. `localeOptions` holds one entry for each declared language, in any

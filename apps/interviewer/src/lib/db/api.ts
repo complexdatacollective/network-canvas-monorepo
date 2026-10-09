@@ -124,8 +124,9 @@ export async function whenSessionWritesSettle(): Promise<void> {
 export async function markSessionFinished(
   id: string,
   finish: SessionFinish,
+  signal?: AbortSignal,
 ): Promise<void> {
-  return dexieSessions.markSessionFinished(id, finish);
+  return dexieSessions.markSessionFinished(id, finish, signal);
 }
 
 export async function markSessionUnfinished(

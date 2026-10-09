@@ -15,8 +15,10 @@ languages.
   by its position, such as "Screen 3". A protocol with more than one language
   has a language menu beside each text field, and choosing a language there
   switches the whole editor.
-- A screen added from the outline starts as "Untitled screen" in every language
-  the protocol declares.
+- A screen added from the outline starts as "Untitled screen" in the
+  protocol's default language. Its other languages are left untranslated, so
+  they show as needing a translation, and a participant reading one sees the
+  fallback rather than English presented as a translation.
 - Comparing two versions names each screen that was added, removed or changed
   by its name in the protocol's default language, or in another language that
   has text when the default has none. Versions saved before protocols could be

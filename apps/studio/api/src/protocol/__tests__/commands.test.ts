@@ -17,7 +17,7 @@ import { RequestId } from '../../http/middleware/request-id.ts';
 import { Jobs } from '../../jobs/jobs.ts';
 import { Analytics } from '../../platform/analytics.ts';
 import { SecretsCipher } from '../../secrets/services.ts';
-import { createAuditedProtocol } from '../commands.ts';
+import { createAuditedProtocol, untitledScreenText } from '../commands.ts';
 
 const PRINCIPAL = Principal.of({
   kind: 'user',
@@ -59,6 +59,15 @@ describe('audited protocol commands', () => {
     assert.include(
       Exit.isFailure(outcome) ? Cause.pretty(outcome.cause) : '',
       'Protocol name must contain a non-whitespace character',
+    );
+  });
+});
+
+describe('the placeholder a new screen is named with', () => {
+  it('is text in the default language only, leaving the others missing', () => {
+    assert.deepStrictEqual(
+      untitledScreenText({ defaultLocale: 'en', locales: ['fr', 'en', 'es'] }),
+      { en: 'Untitled screen' },
     );
   });
 });
