@@ -53,7 +53,12 @@ describe('a sibling who shares a donor', () => {
       carrier: null,
     });
     expect(result.links).toEqual([
-      { source: 'donor', target: 'added', kind: 'donor' },
+      {
+        source: 'donor',
+        target: 'added',
+        kind: 'donor',
+        isGestationalCarrier: false,
+      },
       { source: 'amy', target: 'added', kind: 'biological' },
       { source: 'beth', target: 'added', kind: 'social' },
     ]);
@@ -68,7 +73,12 @@ describe('a sibling who shares a donor', () => {
     });
     // A stand-in fills their other genetic parent (ruling 25).
     expect(result.links).toEqual([
-      { source: 'donor', target: 'added', kind: 'donor' },
+      {
+        source: 'donor',
+        target: 'added',
+        kind: 'donor',
+        isGestationalCarrier: false,
+      },
       { source: 'new-1', target: 'added', kind: 'biological' },
     ]);
   });

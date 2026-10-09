@@ -67,7 +67,6 @@ import {
   type Relation,
   type TwinZygosity,
   carrierOf,
-  carriesAs,
   familyWithLinkKinds,
   type FamilyLinkKind,
   couldCarryPregnancy,
@@ -176,7 +175,8 @@ export type PersonDraft = {
 export type LinkUpdate = {
   linkId: string;
   kind: PedigreeRelationshipKind;
-  isGestationalCarrier: boolean;
+  /** As `FamilyLink`'s: undefined, nothing recorded, while not known. */
+  isGestationalCarrier: boolean | undefined;
   isCurrentPartner: boolean;
 };
 
@@ -266,6 +266,8 @@ type PersonFormProps = {
 
 const asString = (value: FieldValue | undefined) =>
   typeof value === 'string' ? value : undefined;
+const asBoolean = (value: FieldValue | undefined) =>
+  typeof value === 'boolean' ? value : undefined;
 const asOption = (value: FieldValue | undefined) =>
   typeof value === 'string' || typeof value === 'number' ? value : undefined;
 const asStringArray = (value: FieldValue | undefined) =>
@@ -460,6 +462,7 @@ export default function PersonForm({
       linkUpdates:
         mode.kind === 'edit'
           ? readLinkUpdates(
+              family,
               existingLinksOf(family, mode.person.id),
               values,
               standInsGivingWay(
@@ -802,6 +805,7 @@ function standInsGivingWay(
 }
 
 function readLinkUpdates(
+  family: Family,
   links: ReturnType<typeof existingLinksOf>,
   values: Record<string, FieldValue>,
   /** Links not asked about: a stand-in's, giving way. */
@@ -825,10 +829,20 @@ function readLinkUpdates(
       (asString(values[linkField(link, 'kind')]) as
         | PedigreeParentKind
         | undefined) ?? link.kind;
-    const isGestationalCarrier = carriesAs(
-      kind,
-      values[linkField(link, 'carrier')] === true,
-    );
+    // The answer as given, or nothing while it is not: "No" only when
+    // answered, or when the parent could not have carried them.
+    const answer = values[linkField(link, 'carrier')];
+    const isGestationalCarrier =
+      kind === 'surrogate'
+        ? true
+        : !mayHaveCarried(kind) ||
+            !couldCarryPregnancy(
+              family.byId.get(link.source)?.sexAssignedAtBirth,
+            )
+          ? false
+          : typeof answer === 'boolean'
+            ? answer
+            : undefined;
     if (
       kind !== link.kind ||
       isGestationalCarrier !== link.isGestationalCarrier
@@ -1037,7 +1051,9 @@ function ExistingRelationshipFields({
     if (kind === 'surrogate') return true;
     if (!mayHaveCarried(kind) || !canCarry(link)) return false;
     const carrier = linkValues[linkField(link, 'carrier')];
-    return carrier === undefined ? link.isGestationalCarrier : carrier === true;
+    return carrier === undefined
+      ? link.isGestationalCarrier === true
+      : carrier === true;
   };
   if (
     partnerships.length === 0 &&
@@ -1208,7 +1224,12 @@ function ParentLinkFields({
           })}
           options={carriedOptions(intl, carriedYesReason)}
           hint={carriedYesReason}
-          initialValue={link.isGestationalCarrier}
+          // Not known shows neither answer chosen, except that someone else
+          // having carried them leaves only "No".
+          initialValue={
+            link.isGestationalCarrier ??
+            (anotherCarrierId === undefined ? undefined : false)
+          }
         />
       )}
     </>
@@ -1321,7 +1342,8 @@ function readRequest(
         parentKind:
           (asString(values[ROLE.parentKind]) as PedigreeParentKind) ??
           'biological',
-        carriedPregnancy: values[ROLE.carriedPregnancy] === true,
+        // Not answered records nothing, told apart from "No".
+        carriedPregnancy: asBoolean(values[ROLE.carriedPregnancy]),
         partnerId: partnerId && partnerId !== NONE ? partnerId : null,
         partnershipCurrent: values[ROLE.partnershipCurrent] !== false,
         alsoParentOf: asStringArray(values[ROLE.alsoParentOf]),

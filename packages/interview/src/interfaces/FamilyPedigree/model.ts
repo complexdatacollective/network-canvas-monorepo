@@ -148,9 +148,11 @@ export type FamilyLink = {
   /** The child, for a parent link; the other partner, for a partner link. */
   target: string;
   kind: FamilyLinkKind;
-  /** This parent carried the child's pregnancy. Any kind of parent may have
-   * (a surrogate always did); a child has at most one. */
-  isGestationalCarrier: boolean;
+  /** This parent carried the child's pregnancy: true when they did, false
+   * when they did not, and undefined when that is not known (nothing is
+   * recorded). Any kind of parent may have (a surrogate always did); a child
+   * has at most one. */
+  isGestationalCarrier: boolean | undefined;
   isCurrentPartner: boolean;
 };
 
@@ -219,6 +221,12 @@ function readOption(
   return typeof candidate === 'string' && candidate !== ''
     ? candidate
     : undefined;
+}
+
+/** A recorded carrying flag: undefined, not known, unless it is recorded
+ * as true or false. */
+function readCarrier(value: VariableValue | undefined): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
 }
 
 /** Every known member of a multi-valued categorical value. */
@@ -389,8 +397,9 @@ export function readFamily(
       source: edge.from,
       target: edge.to,
       kind,
-      isGestationalCarrier:
-        attribute(config.gestationalCarrierAttribute) === true,
+      isGestationalCarrier: readCarrier(
+        attribute(config.gestationalCarrierAttribute),
+      ),
       // A partnership is current unless recorded otherwise.
       isCurrentPartner: attribute(config.currentPartnerAttribute) !== false,
     });
@@ -644,8 +653,9 @@ export type AddRelativeRequest =
       parentKind: PedigreeParentKind;
       /** The new parent carried the pregnancy of the anchor and of each
        * sibling chosen, among those with nobody else recorded as carrying
-       * theirs. Any kind of parent may have; a surrogate always did. */
-      carriedPregnancy: boolean;
+       * theirs: undefined when not answered. Any kind of parent may have; a
+       * surrogate always did. */
+      carriedPregnancy: boolean | undefined;
       /** An existing parent of the anchor who is this parent's partner. */
       partnerId: string | null;
       partnershipCurrent: boolean;
@@ -668,9 +678,9 @@ export type AddRelativeRequest =
        * the other parent is the same kind of parent as the anchor. */
       biologicalParent: 'both' | 'anchor' | 'otherParent';
       /** Which of the child's parents carried the pregnancy, whatever kind
-       * of parent they are, or null when neither did or it is not known. A
-       * surrogate carried a child they are the surrogate of, so is never
-       * asked. */
+       * of parent they are, or null when it is not known (someone else may
+       * have). A surrogate carried a child they are the surrogate of, so is
+       * never asked. */
       carrier: 'anchor' | 'otherParent' | null;
     }
   | {
@@ -706,7 +716,8 @@ export type AddRelativeRequest =
        * Who carried the pregnancy, for a biological sibling: one of the
        * parents the sibling is planned to have (`possibleCarriers`), by id,
        * which for an unnamed parent the addition gives them is the id the
-       * plan creates for that parent. Null when not known.
+       * plan creates for that parent. Null when not known (someone else may
+       * have).
        */
       carrier: string | null;
     };
@@ -724,6 +735,7 @@ export type PlannedLink = {
   source: string;
   target: string;
   kind: FamilyLinkKind;
+  /** As `FamilyLink`'s: undefined, nothing recorded, while not known. */
   isGestationalCarrier?: boolean;
   isCurrentPartner?: boolean;
 };
@@ -792,7 +804,7 @@ export function planAddRelative({
   switch (request.relation) {
     case 'parent': {
       const kind = request.parentKind;
-      const carried = carriesAs(kind, request.carriedPregnancy);
+      const carried = carrierAnswer(kind, request.carriedPregnancy);
       // The new parent is the same parent to the anchor and to each sibling
       // chosen: the same kind, and the same record of carrying the
       // pregnancy, except for anyone who already has someone recorded as
@@ -805,7 +817,10 @@ export function planAddRelative({
           source: newPersonId,
           target: childId,
           kind,
-          isGestationalCarrier: carried && !hasCarrier(family, childId),
+          // Someone else recorded as carrying them settles it (`settleCarriers`).
+          isGestationalCarrier: hasCarrier(family, childId)
+            ? undefined
+            : carried,
         });
       }
       if (request.partnerId && PRIMARY_PARENT_KINDS.has(kind)) {
@@ -874,9 +889,9 @@ export function planAddRelative({
         source: anchorId,
         target: newPersonId,
         kind: anchorKind,
-        isGestationalCarrier: carriesAs(
+        isGestationalCarrier: carrierAnswer(
           anchorKind,
-          request.carrier === 'anchor',
+          request.carrier === null ? undefined : request.carrier === 'anchor',
         ),
       });
       if (otherParentId) {
@@ -886,7 +901,14 @@ export function planAddRelative({
           target: newPersonId,
           kind: otherKind,
           isGestationalCarrier:
-            kind !== 'surrogate' && request.carrier === 'otherParent',
+            kind === 'surrogate'
+              ? false
+              : carrierAnswer(
+                  otherKind,
+                  request.carrier === null
+                    ? undefined
+                    : request.carrier === 'otherParent',
+                ),
         });
       }
       break;
@@ -1058,28 +1080,80 @@ export function planAddRelative({
       request.twin,
     );
   }
-  if (request.relation !== 'sibling' || request.carrier === null) {
-    return plan;
-  }
   // The sibling's carrier is one of the parents they are planned to have
   // who could have carried the pregnancy; any other answer, which a later
   // one has made impossible, records nobody.
-  const carrier = possibleCarriers(
-    family,
-    plan,
-    newPersonId,
-    sexAttribute,
-  ).find((id) => id === request.carrier);
+  const carrier =
+    request.relation === 'sibling' && request.carrier !== null
+      ? possibleCarriers(family, plan, newPersonId, sexAttribute).find(
+          (id) => id === request.carrier,
+        )
+      : undefined;
+  const answered = plan.links.map((link) =>
+    carrier !== undefined &&
+    link.source === carrier &&
+    link.target === newPersonId
+      ? { ...link, isGestationalCarrier: true }
+      : link,
+  );
   return {
     ...plan,
-    links: plan.links.map((link) =>
-      carrier !== undefined &&
-      link.source === carrier &&
-      link.target === newPersonId
-        ? { ...link, isGestationalCarrier: true }
-        : link,
-    ),
+    links: settleCarriers(family, plan.people, answered, sexAttribute),
   };
+}
+
+/**
+ * What the participant's answer about carrying records for a parent of this
+ * kind: true when they did, false when they did not, undefined while not
+ * answered. A surrogate always carried; a partner never did.
+ */
+function carrierAnswer(
+  kind: string,
+  carried: boolean | undefined,
+): boolean | undefined {
+  if (kind === 'surrogate') return true;
+  if (!mayHaveCarried(kind)) return false;
+  return carried;
+}
+
+/**
+ * Planned parent links as they record carrying a pregnancy. One the answers
+ * leave open records nothing, so it is told apart from "No", unless its
+ * parent could not have carried the child: recorded as male at birth, or
+ * with someone else recorded (or planned) as having carried them.
+ */
+function settleCarriers(
+  family: Family,
+  people: readonly PlannedPerson[],
+  links: readonly PlannedLink[],
+  sexAttribute: string,
+): PlannedLink[] {
+  const carried = new Set(
+    links
+      .filter((link) => link.kind !== 'partner' && link.isGestationalCarrier)
+      .map((link) => link.target),
+  );
+  const sexOf = (personId: string) =>
+    plannedSexOf(
+      family,
+      { people: [...people], links: [...links] },
+      personId,
+      sexAttribute,
+    );
+  return links.map((link) => {
+    if (link.kind === 'partner' || link.isGestationalCarrier !== undefined) {
+      return link;
+    }
+    if (link.kind === 'surrogate') {
+      return { ...link, isGestationalCarrier: true };
+    }
+    const someoneElse =
+      carried.has(link.target) ||
+      (family.byId.has(link.target) && hasCarrier(family, link.target));
+    return someoneElse || !couldCarryPregnancy(sexOf(link.source))
+      ? { ...link, isGestationalCarrier: false }
+      : link;
+  });
 }
 
 /** The person's twins, each with their zygosity and the link recording it. */
@@ -1631,15 +1705,18 @@ export function planStandIns(
     groups.set(key, group);
   }
   const people: PlannedPerson[] = [];
-  const links: PlannedLink[] = [...movedLinks];
+  const unsettled: PlannedLink[] = [...movedLinks];
   for (const { parentId, childIds } of groups.values()) {
     const id = createId();
     const sex = otherGameteSex(sexOf(parentId));
     people.push({ id, details: sex ? { [sexAttribute]: [sex] } : {} });
     for (const childId of childIds) {
-      links.push({ source: id, target: childId, kind: 'biological' });
+      unsettled.push({ source: id, target: childId, kind: 'biological' });
     }
   }
+  // Nobody was asked whether a stand-in, or the parent taking one's place,
+  // carried the pregnancy.
+  const links = settleCarriers(family, people, unsettled, sexAttribute);
 
   // Identical twins whose genetic parents, as the rule leaves them, differ.
   const geneticParentsAfter = (personId: string) =>
@@ -1851,7 +1928,7 @@ export function familyWithPlan(
         source: link.source,
         target: link.target,
         kind: link.kind,
-        isGestationalCarrier: link.isGestationalCarrier ?? false,
+        isGestationalCarrier: link.isGestationalCarrier,
         isCurrentPartner: link.isCurrentPartner ?? true,
       })),
     ],
@@ -1993,7 +2070,7 @@ export const mayHaveCarried = (kind: string) =>
 /** Whether a parent of this kind, for whom the participant answered
  * `carried`, is recorded as having carried the pregnancy: a surrogate always
  * is. */
-export const carriesAs = (kind: string, carried: boolean) =>
+const carriesAs = (kind: string, carried: boolean) =>
   kind === 'surrogate' || (carried && mayHaveCarried(kind));
 
 /**

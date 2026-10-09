@@ -144,7 +144,12 @@ describe('the stand-in rule', () => {
       { id: 'stand-in-1', details: { sex: ['male'] } },
     ]);
     expect(result.links).toEqual([
-      { source: 'stand-in-1', target: 'ego', kind: 'biological' },
+      {
+        source: 'stand-in-1',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -411,7 +416,12 @@ describe('the stand-in rule', () => {
     ]);
     expect(result.removedPersonIds).toEqual(['standIn']);
     expect(result.links).toEqual([
-      { source: 'dad', target: 'sib', kind: 'biological' },
+      {
+        source: 'dad',
+        target: 'sib',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
     expect(result.people).toEqual([]);
   });
@@ -441,7 +451,12 @@ describe('the stand-in rule', () => {
     );
     expect(result.removedPersonIds).toEqual(['standIn']);
     expect(result.links).toEqual([
-      { source: 'mark', target: 'jess', kind: 'biological' },
+      {
+        source: 'mark',
+        target: 'jess',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
     expect(result.people).toEqual([]);
   });
@@ -695,6 +710,7 @@ describe('additions keep the stand-in rule', () => {
       source: 'stand-in-1',
       target: 'added',
       kind: 'biological',
+      isGestationalCarrier: false,
     });
     expect(result.people).toContainEqual({
       id: 'stand-in-1',
@@ -723,7 +739,12 @@ describe('a sibling who does not share a parent', () => {
     });
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'stand-in-1', target: 'added', kind: 'biological' },
+      {
+        source: 'stand-in-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
     expect(result.removedLinkIds ?? []).toEqual([]);
   });
@@ -794,7 +815,12 @@ describe('removing a parent who tells half siblings apart', () => {
     );
     const result = changes(after);
     expect(result.links).toEqual([
-      { source: 'stand-in-1', target: 'sam', kind: 'biological' },
+      {
+        source: 'stand-in-1',
+        target: 'sam',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
     const refilled = family(
       [

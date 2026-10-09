@@ -459,6 +459,44 @@ describe('FamilyPedigree opening on a family missing a stand-in', () => {
     expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
   });
 
+  // Decided gap (9 Oct 2026): nobody was asked whether a stand-in carried
+  // the pregnancy, so nothing is recorded, told apart from "No".
+  it('records nothing about whether a stand-in who could have carried the pregnancy did', async () => {
+    const si = new SyntheticInterview(4);
+    const people = si.addNodeType({ name: 'Person' });
+    const stage = si.addStage('FamilyPedigree', {
+      subject: { entity: 'node', type: people.id },
+      prompt: 'Add the members of your family.',
+    });
+    si.addManualNode(stage.id, stage.personType, 'ego', {
+      [stage.ego]: true,
+      [stage.sexAssignedAtBirth]: ['female'],
+    });
+    si.addManualNode(stage.id, stage.personType, 'dad', {
+      [stage.ego]: false,
+      [stage.sexAssignedAtBirth]: ['male'],
+      [stage.name]: 'Rob',
+    });
+    si.addManualEdge(stage.edgeType, 'dad-ego', 'dad', 'ego', {
+      [stage.kind]: ['biological'],
+      [stage.gestationalCarrier]: false,
+    });
+    si.addInformationStage({ title: 'After the pedigree', text: 'Done.' });
+    const additions = vi.spyOn(session, 'addNodesAndEdges');
+    render(
+      <StoryInterviewShell
+        rawPayload={SuperJSON.stringify(
+          si.getInterviewPayload({ currentStep: 0 }),
+        )}
+      />,
+      { wrapper: WithoutMotion },
+    );
+    await screen.findAllByTestId('pedigree-person');
+    await waitFor(() => expect(additions).toHaveBeenCalledTimes(1));
+    const [edge] = additions.mock.calls[0]![0].edges;
+    expect(edge?.attributeData).toEqual({ [stage.kind]: ['biological'] });
+  });
+
   it('adds nobody to a family that keeps the rule', async () => {
     const additions = watchAdditions();
     await renderStage({ mumKind: 'adoptive' });

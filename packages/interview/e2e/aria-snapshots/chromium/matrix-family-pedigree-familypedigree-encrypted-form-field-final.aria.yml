@@ -51,7 +51,7 @@
     - text: Did Julie carry the pregnancy?
     - radiogroup "Did Julie carry the pregnancy?":
       - radio "Yes"
-      - radio "No" [checked]
+      - radio "No"
     - text: Rob is their… “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
     - radiogroup "Rob is their…":
       - radio "Biological parent" [checked]

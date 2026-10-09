@@ -755,6 +755,54 @@ describe('a parent of any kind who carried the pregnancy', () => {
     });
   });
 
+  // Decided gap (9 Oct 2026): not answered records nothing, told apart
+  // from "No".
+  it('records nothing about carrying for a new parent when the question is left unanswered', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [person('ego', { isEgo: true, sex: ['male'] })],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await user.click(screen.getByRole('radio', { name: 'Adoptive parent' }));
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const request = onSubmit.mock.calls[0]?.[0].request;
+    expect(request).toMatchObject({ parentKind: 'adoptive' });
+    expect(request).toHaveProperty('carriedPregnancy', undefined);
+  });
+
+  it('shows neither answer to whether a parent carried them when nothing is recorded, and writes nothing on saving', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('amy', { sex: ['female'] }),
+        person('ann', { sex: ['female'] }),
+      ],
+      edges: [
+        link('amy', 'ego', 'adoptive'),
+        link('ann', 'ego', 'adoptive', { carrier: false }),
+      ],
+    });
+    const unknown = screen.getByRole('radiogroup', {
+      name: /^Did amy carry the pregnancy\?/,
+    });
+    for (const option of within(unknown).getAllByRole('radio')) {
+      expect(option).not.toBeChecked();
+    }
+    expect(
+      within(
+        screen.getByRole('radiogroup', {
+          name: /^Did ann carry the pregnancy\?/,
+        }),
+      ).getByRole('radio', { name: 'No' }),
+    ).toBeChecked();
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].linkUpdates).toEqual([]);
+  });
+
   it('offers a new child’s social parent as having carried them', async () => {
     const { onSubmit, user } = renderPersonForm('jo', {
       nodes: [

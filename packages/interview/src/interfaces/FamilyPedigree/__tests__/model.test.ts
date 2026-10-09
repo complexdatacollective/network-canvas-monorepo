@@ -549,9 +549,19 @@ describe('planAddRelative', () => {
     // partners, which the participant was never asked.
     expect(result.links).toEqual([
       { source: 'new-1', target: 'ego', kind: 'biological' },
-      { source: 'new-2', target: 'ego', kind: 'biological' },
+      {
+        source: 'new-2',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
       { source: 'new-1', target: 'added', kind: 'biological' },
-      { source: 'new-2', target: 'added', kind: 'biological' },
+      {
+        source: 'new-2',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -606,7 +616,12 @@ describe('planAddRelative', () => {
     expect(result.people.map((planned) => planned.id)).toEqual(['added']);
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'standIn', target: 'added', kind: 'biological' },
+      {
+        source: 'standIn',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -637,7 +652,12 @@ describe('planAddRelative', () => {
     ]);
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -705,7 +725,12 @@ describe('planAddRelative', () => {
     // stand-in of their own (ruling 25).
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -719,7 +744,12 @@ describe('planAddRelative', () => {
     // Ruling 25: a stand-in of their own for the parent they do not share.
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -762,7 +792,12 @@ describe('planAddRelative', () => {
           kind: 'biological',
           isGestationalCarrier: true,
         },
-        { source: 'dad', target: 'added', kind: 'biological' },
+        {
+          source: 'dad',
+          target: 'added',
+          kind: 'biological',
+          isGestationalCarrier: false,
+        },
       ]);
     });
 
@@ -787,7 +822,12 @@ describe('planAddRelative', () => {
       });
       // Ruling 25: a stand-in of their own for the parent they do not share.
       expect(result.links).toEqual([
-        { source: 'dad', target: 'added', kind: 'biological' },
+        {
+          source: 'dad',
+          target: 'added',
+          kind: 'biological',
+          isGestationalCarrier: false,
+        },
         { source: 'new-1', target: 'added', kind: 'biological' },
       ]);
     });
@@ -918,9 +958,19 @@ describe('planAddRelative', () => {
     expect(result.links).toEqual(
       expect.arrayContaining([
         { source: 'new-1', target: 'ego', kind: 'biological' },
-        { source: 'new-2', target: 'ego', kind: 'biological' },
+        {
+          source: 'new-2',
+          target: 'ego',
+          kind: 'biological',
+          isGestationalCarrier: false,
+        },
         { source: 'new-1', target: 'added', kind: 'adoptive' },
-        { source: 'new-2', target: 'added', kind: 'adoptive' },
+        {
+          source: 'new-2',
+          target: 'added',
+          kind: 'adoptive',
+          isGestationalCarrier: false,
+        },
       ]),
     );
   });
@@ -994,7 +1044,12 @@ describe('planAddRelative', () => {
         isGestationalCarrier: false,
       },
       // Ruling 25: a stand-in for the child's other genetic parent.
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -1011,13 +1066,11 @@ describe('planAddRelative', () => {
         source: 'mum',
         target: 'added',
         kind: 'social',
-        isGestationalCarrier: false,
       },
       {
         source: 'dad',
         target: 'added',
         kind: 'biological',
-        isGestationalCarrier: false,
       },
       // Ruling 25: a stand-in for the child's other genetic parent.
       { source: 'new-1', target: 'added', kind: 'biological' },
@@ -1126,7 +1179,12 @@ describe('planAddRelative', () => {
         isGestationalCarrier: false,
       },
       // Ruling 25: a stand-in for the child's other genetic parent.
-      { source: 'new-2', target: 'added', kind: 'biological' },
+      {
+        source: 'new-2',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -1160,11 +1218,26 @@ describe('planAddRelative', () => {
         kind: 'biological',
         isGestationalCarrier: true,
       },
-      { source: 'beth', target: 'added', kind: 'social' },
+      {
+        source: 'beth',
+        target: 'added',
+        kind: 'social',
+        isGestationalCarrier: false,
+      },
       // Ruling 25: the two, full siblings, share a stand-in for their other
       // genetic parent.
-      { source: 'new-1', target: 'ego', kind: 'biological' },
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -1188,7 +1261,12 @@ describe('planAddRelative', () => {
       { source: 'ann', target: 'added', kind: 'biological' },
       { source: 'bea', target: 'added', kind: 'adoptive' },
       // Ruling 25: a stand-in for the sibling's other genetic parent.
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -1313,7 +1391,12 @@ describe('no addition gives anyone more than two genetic parents', () => {
       { sex: ['female'] },
     ]);
     expect(result.links).toEqual([
-      { source: 'standIn', target: 'added', kind: 'biological' },
+      {
+        source: 'standIn',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
       { source: 'new-1', target: 'added', kind: 'biological' },
     ]);
   });
@@ -1452,8 +1535,18 @@ describe('a new parent of the anchor’s siblings', () => {
       },
       // Ruling 25: the two, recorded with one genetic parent, share a
       // stand-in for the other.
-      { source: 'new-2', target: 'ego', kind: 'biological' },
-      { source: 'new-2', target: 'sib', kind: 'biological' },
+      {
+        source: 'new-2',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'new-2',
+        target: 'sib',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 

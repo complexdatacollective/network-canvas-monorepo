@@ -234,3 +234,145 @@ describe('who may have carried a sibling', () => {
     ).toEqual(['amy']);
   });
 });
+
+// Decided gap (9 Oct 2026): carrying is recorded as not done only when the
+// participant said so, or when the parent could not have carried the child
+// (recorded as male at birth, or someone else recorded as having carried
+// them). Not answered, or "someone else, or I don't know", records nothing,
+// which is told apart from "No".
+describe('carrying not known', () => {
+  const carrierOf = (
+    links: readonly { source: string; target: string; kind: string }[],
+    source: string,
+    target: string,
+  ) =>
+    (
+      links.find((each) => each.source === source && each.target === target) as
+        | { isGestationalCarrier?: boolean }
+        | undefined
+    )?.isGestationalCarrier;
+
+  test('a new parent not asked whether they carried records nothing; one who said no records no', () => {
+    const f = family([person('ego', { isEgo: true })]);
+    const request = (carriedPregnancy: boolean | undefined) =>
+      ({
+        relation: 'parent',
+        parentKind: 'biological',
+        carriedPregnancy,
+        partnerId: null,
+        partnershipCurrent: true,
+        alsoParentOf: [],
+      }) satisfies AddRelativeRequest;
+    expect(
+      carrierOf(plan(f, 'ego', request(undefined)).links, 'added', 'ego'),
+    ).toBeUndefined();
+    expect(
+      carrierOf(plan(f, 'ego', request(false)).links, 'added', 'ego'),
+    ).toBe(false);
+  });
+
+  test('a new parent recorded as male at birth, or of someone another carried, records no', () => {
+    const f = family(
+      [person('ego', { isEgo: true }), person('mum', { sex: ['female'] })],
+      [link('mum', 'ego', 'biological', { carrier: true })],
+    );
+    const added = planAddRelative({
+      family: f,
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: {},
+      request: {
+        relation: 'parent',
+        parentKind: 'adoptive',
+        carriedPregnancy: undefined,
+        partnerId: null,
+        partnershipCurrent: true,
+        alsoParentOf: [],
+      },
+      createId: () => 'new-1',
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
+    expect(carrierOf(added.links, 'added', 'ego')).toBe(false);
+    const male = planAddRelative({
+      family: family([person('ego', { isEgo: true })]),
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: { [config.sexAssignedAtBirthAttribute]: ['male'] },
+      request: {
+        relation: 'parent',
+        parentKind: 'adoptive',
+        carriedPregnancy: undefined,
+        partnerId: null,
+        partnershipCurrent: true,
+        alsoParentOf: [],
+      },
+      createId: () => 'new-1',
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
+    expect(carrierOf(male.links, 'added', 'ego')).toBe(false);
+  });
+
+  test('a child whose carrier is not known records nothing for either parent', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('sam', { sex: ['intersex'] }),
+      ],
+      [link('ego', 'sam', 'partner')],
+    );
+    const result = plan(f, 'ego', {
+      relation: 'child',
+      otherParent: 'sam',
+      parentKind: 'biological',
+      biologicalParent: 'both',
+      carrier: null,
+    });
+    expect(carrierOf(result.links, 'ego', 'added')).toBeUndefined();
+    expect(carrierOf(result.links, 'sam', 'added')).toBeUndefined();
+    // Once one carried, the other did not.
+    const known = plan(f, 'ego', {
+      relation: 'child',
+      otherParent: 'sam',
+      parentKind: 'biological',
+      biologicalParent: 'both',
+      carrier: 'anchor',
+    });
+    expect(carrierOf(known.links, 'ego', 'added')).toBe(true);
+    expect(carrierOf(known.links, 'sam', 'added')).toBe(false);
+  });
+
+  test('a sibling whose carrier is not known records nothing for a parent who could have', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      [link('mum', 'ego', 'biological'), link('dad', 'ego', 'biological')],
+    );
+    const result = plan(f, 'ego', {
+      relation: 'sibling',
+      sharedParentIds: ['mum', 'dad'],
+      parentKind: 'biological',
+      carrier: null,
+    });
+    expect(carrierOf(result.links, 'mum', 'added')).toBeUndefined();
+    expect(carrierOf(result.links, 'dad', 'added')).toBe(false);
+  });
+
+  test('reads a carrying flag never recorded as not known, apart from no', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('mum', { sex: ['female'] }),
+        person('ann', { sex: ['female'] }),
+      ],
+      [
+        link('mum', 'ego', 'adoptive'),
+        link('ann', 'ego', 'adoptive', { carrier: false }),
+      ],
+    );
+    expect(carrierOf(f.links, 'mum', 'ego')).toBeUndefined();
+    expect(carrierOf(f.links, 'ann', 'ego')).toBe(false);
+  });
+});

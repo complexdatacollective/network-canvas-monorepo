@@ -209,15 +209,15 @@ const menuItemsOf = (symbol: HTMLElement) => [
     ?.querySelectorAll<HTMLElement>('[data-add-menu-item]') ?? []),
 ];
 
-/** The attributes recording a link. */
+/** The attributes recording a link. Whether a parent carried the
+ * pregnancy is left unrecorded while not known, told apart from "No". */
 const linkAttributesFor = (config: PedigreeConfig, link: PlannedLink) => ({
   [config.kindAttribute]: [link.kind],
   ...(link.kind === 'partner'
     ? { [config.currentPartnerAttribute]: link.isCurrentPartner ?? true }
-    : {
-        [config.gestationalCarrierAttribute]:
-          link.isGestationalCarrier ?? false,
-      }),
+    : link.isGestationalCarrier === undefined
+      ? {}
+      : { [config.gestationalCarrierAttribute]: link.isGestationalCarrier }),
 });
 
 /** The attributes recording twins: their zygosity, as the relationship
@@ -1821,12 +1821,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   ? {
                       [config.currentPartnerAttribute]: update.isCurrentPartner,
                     }
-                  : {
-                      [config.gestationalCarrierAttribute]:
-                        update.isGestationalCarrier,
-                    }),
+                  : update.isGestationalCarrier === undefined
+                    ? {}
+                    : {
+                        [config.gestationalCarrierAttribute]:
+                          update.isGestationalCarrier,
+                      }),
               },
-              unset: [],
+              // Not known any more: nothing recorded.
+              unset:
+                update.kind !== 'partner' &&
+                update.isGestationalCarrier === undefined
+                  ? [config.gestationalCarrierAttribute]
+                  : [],
             },
           }),
         );
