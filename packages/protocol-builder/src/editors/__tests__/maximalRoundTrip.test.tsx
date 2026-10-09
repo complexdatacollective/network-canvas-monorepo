@@ -16,6 +16,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { openEveryWordingGroup } from '../family-pedigree/__tests__/editorFixtures.ts';
 import {
   addFamilyMemberVariables,
   EVERY_PEDIGREE_WORD,
@@ -96,6 +97,8 @@ type MaximalStage = Readonly<{
   settle?: () => Promise<unknown>;
   /** Puts in place what the stage needs that the fixture protocol lacks. */
   prepare?: (harness: StageEditorHarness) => void;
+  /** Opens what holds fields only while it is open, once the editor is up. */
+  reveal?: (harness: StageEditorHarness) => Promise<void>;
   /**
    * Keys the interface's schema has and its editor has no section for yet.
    * They round-trip untouched, so a researcher cannot see or change them;
@@ -484,6 +487,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     interfaceName: 'FamilyPedigree',
     type: 'FamilyPedigree',
     stageId: 'family-pedigree-1',
+    reveal: openEveryWordingGroup,
     fields: fixtureMaximal('family-pedigree-1', {
       ...EVERY_STAGE,
       nodeConfiguration: {
@@ -626,7 +630,15 @@ describe('a maximal stage of each interface', () => {
 
   it.each(EVERY_MAXIMAL_STAGE)(
     '$interfaceName: is fully editable, and saves every key unchanged',
-    async ({ type, stageId, fields, settle, prepare, unowned = [] }) => {
+    async ({
+      type,
+      stageId,
+      fields,
+      settle,
+      prepare,
+      reveal,
+      unowned = [],
+    }) => {
       // No registry passed: every interface is claimed by the package's own,
       // so the dispatcher finding the editor is part of what the case shows.
       const harness = renderStageEditor({
@@ -642,6 +654,7 @@ describe('a maximal stage of each interface', () => {
       // from what is registered — so a mount that has not filled the outline
       // has not finished registering.
       await waitFor(() => expect(harness.outline().length).toBeGreaterThan(2));
+      await reveal?.(harness);
 
       // Nothing is excused unless the case says so: a maximal stage is the one
       // case where every key the interface offers must be on screen, so an

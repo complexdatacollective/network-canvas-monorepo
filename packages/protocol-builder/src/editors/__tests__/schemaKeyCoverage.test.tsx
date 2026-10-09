@@ -10,6 +10,7 @@ import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
   familyPedigreeEditor,
+  openEveryWordingGroup,
   shimMarkdownEditorMeasurement,
 } from '../family-pedigree/__tests__/editorFixtures.ts';
 import {
@@ -210,6 +211,7 @@ describe.each(MAXIMAL)(
           })),
         },
       });
+      await openEveryWordingGroup(harness);
 
       await harness.roundTrip({ unowned: [...unowned] });
     });
@@ -243,6 +245,7 @@ describe.each(FIXTURE_STAGES)(
   ({ stageId, editor }) => {
     it('is saved back without a key the researcher never authored', async () => {
       const harness = renderStageEditor({ stageId, editor });
+      await openEveryWordingGroup(harness);
 
       await harness.roundTrip({ unowned: [] });
     });

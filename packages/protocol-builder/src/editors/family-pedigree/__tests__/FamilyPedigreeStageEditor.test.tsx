@@ -31,6 +31,7 @@ import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
 import { newNominationPromptId } from '../sections/NominationPromptsSection.tsx';
 import {
   familyPedigreeEditor,
+  PARTICIPANT_WORDING_GROUP_TITLES,
   shimMarkdownEditorMeasurement,
 } from './editorFixtures.ts';
 import {
@@ -1589,11 +1590,6 @@ describe('the wording', () => {
 });
 
 describe('the participant wording', () => {
-  const GROUPS = [
-    'Drawing the family',
-    'Connecting people',
-    'Adding a family member',
-  ];
   const group = (name: string) => screen.findByRole('button', { name });
   const wordingOf = (document: SectionDoc | undefined) =>
     isRecord(document?.wording) ? document.wording : {};
@@ -1602,7 +1598,7 @@ describe('the participant wording', () => {
     const harness = openFixture();
     await harness.opened();
 
-    for (const name of GROUPS) {
+    for (const name of PARTICIPANT_WORDING_GROUP_TITLES) {
       expect(await group(name)).toHaveAttribute('aria-expanded', 'false');
     }
     expect(

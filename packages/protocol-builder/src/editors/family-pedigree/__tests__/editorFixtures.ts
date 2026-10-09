@@ -1,3 +1,7 @@
+import { screen, waitFor } from '@testing-library/react';
+import type { UserEvent } from '@testing-library/user-event';
+import { expect } from 'vitest';
+
 import { mountedAs } from '../../__tests__/formEditorHarness.tsx';
 import { familyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.ts';
 
@@ -23,3 +27,28 @@ export function shimMarkdownEditorMeasurement(): void {
   Range.prototype.getBoundingClientRect ??= () => new DOMRect();
   Document.prototype.elementFromPoint ??= () => null;
 }
+
+/**
+ * Opens every group of the participant wording, whose fields are on screen
+ * only while their group is open, so a test that needs every key of the stage
+ * on screen has the wording's too.
+ */
+export async function openEveryWordingGroup(
+  harness: Readonly<{ user: UserEvent }>,
+): Promise<void> {
+  for (const name of PARTICIPANT_WORDING_GROUP_TITLES) {
+    const trigger = await screen.findByRole('button', { name });
+    if (trigger.getAttribute('aria-expanded') === 'true') continue;
+    await harness.user.click(trigger);
+    await waitFor(() =>
+      expect(trigger).toHaveAttribute('aria-expanded', 'true'),
+    );
+  }
+}
+
+/** What each group of the participant wording is called on screen. */
+export const PARTICIPANT_WORDING_GROUP_TITLES = [
+  'Drawing the family',
+  'Connecting people',
+  'Adding a family member',
+] as const;
