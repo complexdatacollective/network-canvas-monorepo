@@ -686,7 +686,7 @@ export function faultsOfSiblingGrouping(
 /** Sub-bars that run on past the lines hanging from them: each end of a
  * run's sub-bar is where a child's line up, or the stem of a run inside it,
  * comes down from it. */
-export function faultsOfRunBars(drawing: Drawing): string[] {
+function faultsOfRunBars(drawing: Drawing): string[] {
   return drawing.connectors.parentChildLines.flatMap((line) => {
     const runs = line.runs ?? [];
     const hanging = [
