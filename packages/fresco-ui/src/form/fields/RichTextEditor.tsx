@@ -25,7 +25,7 @@ import {
   type Schema,
   Slice,
 } from '@tiptap/pm/model';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Plugin, PluginKey, Selection } from '@tiptap/pm/state';
 import {
   EditorContent,
   type JSONContent,
@@ -1113,6 +1113,12 @@ export default function RichTextEditorField({
   // is a whole sentence ahead of `value` by design. Seeding the replacement
   // from the value instead threw that sentence away mid-edit.
   const seed = unemittedDocumentRef.current ?? value;
+  // Where focus was as the field appeared. The editor takes `autoFocus` a
+  // tick after it mounts, and focus that has moved on meanwhile — to a field
+  // the researcher clicked, say — is theirs, not the editor's to take back.
+  const [focusAtMount] = useState(() =>
+    typeof document === 'undefined' ? null : document.activeElement,
+  );
 
   const editor = useEditor(
     {
@@ -1130,7 +1136,22 @@ export default function RichTextEditorField({
           ? oneLineDocumentOf(seed, editorSchema)
           : seed,
       editable: !disabled && !readOnly,
-      autofocus: autoFocus ? 'end' : false,
+      autofocus: false,
+      onCreate: ({ editor: created }) => {
+        if (!autoFocus) return;
+        const active = document.activeElement;
+        const focusMovedOn =
+          active !== null &&
+          active !== document.body &&
+          active !== focusAtMount &&
+          !created.view.dom.contains(active);
+        if (focusMovedOn) return;
+        // Here and now: the focus command waits another frame, by when the
+        // researcher may already be somewhere else.
+        const { state, view } = created;
+        view.dispatch(state.tr.setSelection(Selection.atEnd(state.doc)));
+        view.focus();
+      },
       onUpdate: ({ editor: updateEditor }) => {
         const updated = updateEditor.getJSON();
 

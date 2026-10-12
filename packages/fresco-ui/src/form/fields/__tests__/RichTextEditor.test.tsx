@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -181,6 +182,61 @@ describe('RichTextEditorField', () => {
     const undo = screen.getByRole('button', { name: 'Undo' });
     expect(undo).toHaveAttribute('aria-disabled', 'true');
     expect(undo).toBeEnabled();
+  });
+
+  // The editor takes `autoFocus` a tick after it mounts. Waiting past the
+  // tick, a frame, and another tick covers every point at which it could.
+  const afterAutoFocus = () =>
+    act(
+      () =>
+        new Promise<void>((resolve) => {
+          setTimeout(() => {
+            requestAnimationFrame(() => {
+              setTimeout(resolve, 0);
+            });
+          }, 0);
+        }),
+    );
+
+  it('takes focus when asked to', async () => {
+    render(
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-label="Biography"
+        autoFocus
+        value={documentWithText}
+        onChange={() => undefined}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Biography' });
+    await afterAutoFocus();
+    expect(editor).toHaveFocus();
+  });
+
+  // In Architect's translation table, a researcher who tabs on and then
+  // clicks straight into another cell had their click undone: the next cell's
+  // editor took focus back a frame later, then closed, leaving focus nowhere.
+  it('leaves focus where it went before the editor could take it', async () => {
+    render(
+      <>
+        <RichTextEditorField
+          id="bio"
+          name="bio"
+          aria-label="Biography"
+          autoFocus
+          value={documentWithText}
+          onChange={() => undefined}
+        />
+        <input aria-label="Elsewhere" />
+      </>,
+    );
+
+    const elsewhere = screen.getByRole('textbox', { name: 'Elsewhere' });
+    elsewhere.focus();
+    await afterAutoFocus();
+    expect(elsewhere).toHaveFocus();
   });
 
   it('forwards container class, focus, and blur callbacks', async () => {
