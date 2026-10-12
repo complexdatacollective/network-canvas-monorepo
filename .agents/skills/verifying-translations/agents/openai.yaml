@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Verifying Translations'
+  short_description: 'Adversarial reverse translation before any translation is accepted'
+  default_prompt: 'Use $verifying-translations to verify these translations by blind back-translation and adversarial comparison before committing them.'
