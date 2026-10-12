@@ -12,6 +12,7 @@ import {
   ProtocolLocalizationSchema,
 } from '../localized-string.ts';
 import ProtocolSchemaV9 from '../schema.ts';
+import { informationStage as informationStageSchema } from '../stages/information.ts';
 
 const issuesOf = (schema: z.ZodType, value: unknown) => {
   const result = schema.safeParse(value);
@@ -239,6 +240,33 @@ describe('localizedString', () => {
   it('accepts markup as literal text', () => {
     expect(
       required.safeParse({ en: '<b>Bold</b> & <i>more</i>' }).success,
+    ).toBe(true);
+  });
+});
+
+describe('Information stage title', () => {
+  const stage = (title: unknown) => ({
+    id: 'welcome',
+    type: 'Information',
+    label: { en: 'Welcome' },
+    title,
+    items: [],
+  });
+
+  // A translation of only spaces would be chosen over falling back to
+  // another language, and show a stage with no heading.
+  it('rejects a translation that shows nothing', () => {
+    expect(
+      informationStageSchema.safeParse(stage({ en: 'Information', fr: '   ' }))
+        .success,
+    ).toBe(false);
+  });
+
+  it('accepts a title in every language', () => {
+    expect(
+      informationStageSchema.safeParse(
+        stage({ en: 'Information', fr: 'Informations' }),
+      ).success,
     ).toBe(true);
   });
 });

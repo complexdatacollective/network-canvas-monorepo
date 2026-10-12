@@ -642,6 +642,79 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     });
   });
 
+  it('rewrites a shape mapping keyed by a value merged into one of another type', () => {
+    const protocol = protocolWithCategoryValues([1, 'work', '1']);
+    const { person } = protocol.codebook.node;
+    const migrated = migrateProtocol(
+      asSchema8Protocol({
+        ...protocol,
+        codebook: {
+          ...protocol.codebook,
+          node: {
+            ...protocol.codebook.node,
+            person: {
+              ...person,
+              shape: {
+                default: 'circle',
+                dynamic: {
+                  variable: 'category',
+                  type: 'discrete',
+                  map: [
+                    { value: '1', shape: 'square' },
+                    { value: 'work', shape: 'diamond' },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      }),
+      9,
+    );
+
+    expect(migrated.codebook.node?.person?.shape.dynamic).toMatchObject({
+      map: [
+        { value: 1, shape: 'square' },
+        { value: 'work', shape: 'diamond' },
+      ],
+    });
+  });
+
+  it('keeps the first shape when two mapped values merge', () => {
+    const protocol = protocolWithCategoryValues([1, 'work', '1']);
+    const { person } = protocol.codebook.node;
+    const migrated = migrateProtocol(
+      asSchema8Protocol({
+        ...protocol,
+        codebook: {
+          ...protocol.codebook,
+          node: {
+            ...protocol.codebook.node,
+            person: {
+              ...person,
+              shape: {
+                default: 'circle',
+                dynamic: {
+                  variable: 'category',
+                  type: 'discrete',
+                  map: [
+                    { value: 1, shape: 'square' },
+                    { value: '1', shape: 'diamond' },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      }),
+      9,
+    );
+
+    expect(migrated.codebook.node?.person?.shape.dynamic).toMatchObject({
+      map: [{ value: 1, shape: 'square' }],
+    });
+  });
+
   it('rewrites recorded answers that hold a value merged into one of another type', () => {
     const { migrateSession } = migrateProtocolWithSessions(
       asSchema8Protocol(protocolWithCategoryValues([1, 'work', '1'])),
@@ -1144,6 +1217,54 @@ describe('Migrating a Tie-Strength Census decline label from schema 8 to 9', () 
 
     expect(note?.notes).toContain(
       'On a Tie-Strength Census stage, the label of the option for declining',
+    );
+  });
+});
+
+// The base protocol with an Information stage whose title is given, as
+// schema 8 stored it.
+const migratedInformationTitle = (title: string) => {
+  const base = createBaseProtocol();
+  const document = asSchema8Protocol({
+    ...base,
+    stages: [
+      {
+        id: 'welcome',
+        type: 'Information' as const,
+        label: localized('Welcome'),
+        title: localized('Placeholder'),
+        items: [
+          { id: 'item', type: 'text' as const, content: localized('Hi') },
+        ],
+      },
+      ...base.stages,
+    ],
+  });
+  const stage = document.stages.find(({ id }) => id === 'welcome');
+  if (!stage) throw new Error('No Information stage');
+  (stage as Record<string, unknown>).title = title;
+  const migrated = migrateProtocol(document, 9);
+  return migrated.stages.find(({ id }) => id === 'welcome');
+};
+
+describe('Migrating an Information stage title from schema 8 to 9', () => {
+  it.each(BLANK_TEXT)('gives a title of %s the stage name', (_, blank) => {
+    expect(migratedInformationTitle(blank)).toMatchObject({
+      title: localized('Welcome'),
+    });
+  });
+
+  it('keeps a title that says something', () => {
+    expect(migratedInformationTitle('Hello')).toMatchObject({
+      title: localized('Hello'),
+    });
+  });
+
+  it('says so in the migration notes', () => {
+    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
+
+    expect(note?.notes).toContain(
+      'The title of an Information stage must now contain some text',
     );
   });
 });

@@ -422,6 +422,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: tieStrengthDeclineLabel. Tie-Strength Census is the name of an interface (stage type) where participants rate the strength of the relationship between pairs of people; one option lets them decline to rate it. "No relationship" is a literal English default written into protocol data: keep it in English.',
   },
+  schema9InformationTitle: {
+    id: 'protocolValidation.migrationNotes.schema9.informationTitle',
+    defaultMessage:
+      'The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: informationTitle. Information is the name of an interface (stage type) that shows text and media to participants.',
+  },
   schema9EncryptedAttributeRules: {
     id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
     defaultMessage:
@@ -607,6 +614,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9IntroductionPanelText,
       migrationNoteMessages.schema9OtherBinText,
       migrationNoteMessages.schema9TieStrengthDeclineLabel,
+      migrationNoteMessages.schema9InformationTitle,
       migrationNoteMessages.schema9EncryptedAttributeRules,
       migrationNoteMessages.schema9FamilyPedigree,
       migrationNoteMessages.schema9FamilyPedigreeLabels,
