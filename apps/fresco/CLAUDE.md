@@ -438,7 +438,46 @@ including the early one taken when the build never completes.
 
 `expectedVersion` is the version the Version Packages PR bumps Fresco to —
 the one `bundle-pending-packages.mjs` bakes into the staged tree and the one
-the build stamp records. Each lane is bound to that build by the image id
+the build stamp records. Run from the Version Packages branch itself — HEAD is
+the commit origin's `changeset-release/main` points at now (read with
+`git ls-remote`, so not a possibly stale local tracking ref), under that branch
+name or any other, as in a detached worktree — and it can be omitted: the
+workflow infers it from the Fresco version that branch carries
+(`release-test/scripts/release-branch-version.mjs`), provided the branch
+contains `origin/main`'s tip (which must match origin's `main`) and moves
+Fresco's version past it as stable semver. A checkout that looks like the
+release branch (named `changeset-release/main`, or at the local tracking ref)
+but is not origin's current head, an unreachable origin, a PR that does not
+contain main's tip (wait for the bot to regenerate it), a downgrade, or a
+version that is not stable semver leaves the run unpinned rather than inferring
+anything. So does any other checkout that deleted normal-lane changesets since
+it left `origin/main`, as only a Version Packages head does: a detached or
+renamed checkout of a superseded PR head keeps neither the branch name nor the
+tracking ref, so what it consumed is what identifies it. So does an origin that is not the canonical
+`complexdatacollective/network-canvas-monorepo` on github.com (after any
+`insteadOf` rewriting), since nothing it says identifies the Version Packages
+PR. The release branch has already consumed (deleted) the changesets it ships,
+so the script also names every changeset it deleted relative to main's tip;
+the diff judge, audit and critic read them from that commit, and the coverage
+gates count them as pending. A branch that consumed none, or that still
+carries a changeset the normal lane owns (the merge-time freshness guard's
+predicate: a stale PR updated by merging main rather than regenerated), or that
+deleted a changeset a separately gated lane (Documentation, Website, Studio)
+still needs, pins nothing. Neither does a Fresco version the app-release guard
+would skip: one whose `fresco@` tag already exists on origin, one not newer
+than origin's newest `fresco@` tag, or a branch that does not contain that
+tag's commit (an unmerged hotfix; merge it into main and wait for the PR to
+regenerate). The branch is checked on every run, pinned or not, and a run from
+it is bound to it either way: the image must be built from the branch head, a
+passed `expectedVersion` must equal the version the branch carries, the branch
+must release Fresco, and its consumed changesets are counted. Because the bot regenerates the PR whenever
+main moves, the branch is checked again after the lanes finish; if its head,
+version or consumed changesets changed, or the check fails, the run is
+`incomplete`. A pinned run whose checkout cannot be identified (the check
+failed, or origin is not the canonical repository) is also `incomplete`,
+since changesets it may have consumed would go uncounted.
+`expectedVersionSource` reports where the version came from (`args`,
+`release-branch`, or `null` when unpinned). Each lane is bound to that build by the image id
 docker reports for its Fresco container (`/api/health` names no version, on
 purpose). Other args:
 `skipBuild` (reuse the previous image, revalidated against its stamp),
