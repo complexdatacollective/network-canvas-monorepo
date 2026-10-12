@@ -95,10 +95,15 @@ export function toPedigreeInput(
       const parentIdx = idToIndex.get(link.source);
       if (childIdx === undefined || parentIdx === undefined) continue;
 
-      // Each tie as it is drawn: carrying the pregnancy is a birth tie.
+      // Each tie as it is drawn (carrying the pregnancy is a birth tie), and
+      // as recorded, where the two differ.
+      const edgeType = drawnKind(relationshipType, isGestationalCarrier);
       parents[childIdx]!.push({
         parentIndex: parentIdx,
-        edgeType: drawnKind(relationshipType, isGestationalCarrier),
+        edgeType,
+        ...(edgeType === relationshipType
+          ? {}
+          : { recordedKind: relationshipType }),
         isGestationalCarrier,
       });
     }

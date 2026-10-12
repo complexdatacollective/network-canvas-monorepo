@@ -1517,3 +1517,23 @@ describe('each child hangs from their own family’s single line of descent', ()
     expect(Math.min(top.y1, top.y2)).toBeCloseTo(lowerRail, 6);
   });
 });
+
+describe('a tie’s recorded kind and its drawn style are separate facts', () => {
+  it('keeps an adopted person’s brackets clear of their partnership line when the adoptive mother carried them', () => {
+    // Carrying changes only the style the tie is drawn in (solid); the
+    // adoption stands, so the person is bracketed and their partnership
+    // line stops at the bracket, as PersonNode draws it.
+    const { connectors } = draw(
+      ['ego', 'mum', 'dana'],
+      [
+        ['mum', 'adoptive', 'ego', { carrier: true }],
+        ['ego', 'partner', 'dana'],
+      ],
+    );
+    const line = connectors.groupLines.find((g) =>
+      g.partnerIds?.includes('ego'),
+    )!;
+    const egoEnd = line.partnerIds![0] === 'ego' ? 0 : 1;
+    expect(line.endsAtBracket?.[egoEnd]).toBe(true);
+  });
+});

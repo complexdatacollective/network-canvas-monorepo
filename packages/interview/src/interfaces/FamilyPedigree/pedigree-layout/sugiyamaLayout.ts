@@ -85,7 +85,9 @@ function partnerGroupKey(members: number[]): string {
  * by a relative (see `relativeRaisers`) stays in their birth family: the
  * relatives who raise them, and anyone raising them alongside, are drawn
  * beside the birth family with a line of their own, as extra parents, rather
- * than as the parents the child descends from. Their links are left out here.
+ * than as the parents the child descends from. Their links are left out here,
+ * read by the kind each is drawn as: a relative who raises the child and
+ * carried them holds a birth tie, and stays one of the parents placed.
  * Everyone else's parents are as given.
  */
 function placementParents(ped: PedigreeInput): ParentConnection[][] {

@@ -42,7 +42,7 @@ import type {
   PedigreeEdgeType,
   PedigreeSymbolShape,
 } from './types';
-import { areConsanguineous } from './utils';
+import { areConsanguineous, recordedKind } from './utils';
 
 /** The height of the question mark between twins of unknown zygosity, as a
  * fraction of a symbol's height. */
@@ -165,8 +165,9 @@ export function routePedigree(
     { layer: number; x: number; y: number }
   >();
   /** An adopted person is drawn within brackets. */
+  // An adopted person, as recorded (carrying does not undo an adoption).
   const isBracketed = (personIndex: number) =>
-    (parents[personIndex] ?? []).some((p) => p.edgeType === 'adoptive');
+    (parents[personIndex] ?? []).some((p) => recordedKind(p) === 'adoptive');
 
   const placeOf = new Map<number, { layer: number; col: number }>();
   for (let layer = 0; layer < maxlev; layer++) {

@@ -39,6 +39,11 @@ export type ParentConnection = {
    * are drawn by lines of their own, is decided from these in one place
    * (`lineOwnersOf`). */
   edgeType: PedigreeEdgeType;
+  /** The kind of tie as recorded (adoptive, social, …), where carrying
+   * changed the kind it is drawn as; absent when the two are the same.
+   * Whether the child was adopted, and who raises them, are read from this
+   * (`recordedKind`), never from `edgeType`. */
+  recordedKind?: PedigreeEdgeType;
   /** This parent carried the pregnancy, whatever the kind of their tie. */
   isGestationalCarrier?: boolean;
 };

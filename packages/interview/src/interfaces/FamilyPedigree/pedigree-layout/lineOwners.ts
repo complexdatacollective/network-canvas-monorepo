@@ -3,7 +3,7 @@ import type {
   PartnerConnection,
   PedigreeEdgeType,
 } from './types';
-import { relativeRaisers } from './utils';
+import { recordedKind, relativeRaisers } from './utils';
 
 /**
  * Whoever a line in the drawing comes from: one person, a recorded couple
@@ -127,7 +127,7 @@ export function lineOwnersOf(
   // How each child's line of descent is chosen: from their birth owners,
   // from their adopters, or from the first kind of raiser.
   const cases = parents.map((conns, child) => {
-    const adopters = conns.filter((p) => p.edgeType === 'adoptive');
+    const adopters = conns.filter((p) => recordedKind(p) === 'adoptive');
     if (raisedByRelatives[child]!.size > 0) return 'birth' as const;
     if (
       adopters.length > 0 &&
@@ -200,7 +200,7 @@ export function lineOwnersOf(
 
   return parents.map((conns, child) => {
     const ofKind = (kinds: PedigreeEdgeType[]) =>
-      conns.filter((p) => kinds.includes(p.edgeType));
+      conns.filter((p) => kinds.includes(recordedKind(p)));
     const raisers = [...ofKind(['adoptive']), ...ofKind(['social'])];
 
     let descentTies: ParentConnection[] = [];
@@ -209,7 +209,7 @@ export function lineOwnersOf(
     } else if (cases[child] === 'adopters') {
       descentTies = ownerAmong(ofKind(['adoptive']));
     } else if (raisers.length > 0) {
-      descentTies = ownerAmong(ofKind([raisers[0]!.edgeType]));
+      descentTies = ownerAmong(ofKind([recordedKind(raisers[0]!)]));
     }
 
     const descent: LineOwner | undefined =

@@ -60,7 +60,11 @@ export function tableCounts(arr: number[]): Map<number, number> {
   return counts;
 }
 
-import type { ParentConnection, PartnerConnection } from './types';
+import type {
+  ParentConnection,
+  PartnerConnection,
+  PedigreeEdgeType,
+} from './types';
 
 // Chase all ancestors of a person
 export function ancestor(me: number, parents: ParentConnection[][]): number[] {
@@ -209,6 +213,12 @@ export function layerConstraints(n: number) {
   };
 }
 
+/** The kind of a tie as recorded (adoptive, social, …), which carrying does
+ * not change: whether a child was adopted, and who raises them, are read
+ * from this; whether a line is solid or dashed, from the drawn kind. */
+export const recordedKind = (p: ParentConnection): PedigreeEdgeType =>
+  p.recordedKind ?? p.edgeType;
+
 /**
  * For each child, the relatives who raise them, and those raising them
  * alongside a relative: a child adopted or raised by a relative stays in
@@ -249,7 +259,9 @@ export function relativeRaisers(
       .filter((p) => p.edgeType === 'biological')
       .map((p) => p.parentIndex);
     const raisers = conns
-      .filter((p) => p.edgeType === 'adoptive' || p.edgeType === 'social')
+      .filter(
+        (p) => recordedKind(p) === 'adoptive' || recordedKind(p) === 'social',
+      )
       .map((p) => p.parentIndex);
     if (birthParents.length === 0 || raisers.length === 0) return new Set();
 
