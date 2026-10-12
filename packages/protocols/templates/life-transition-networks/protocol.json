@@ -401,8 +401,7 @@
         "fields": [
           {
             "variable": "transition_type",
-            "prompt": { "en-US": "What kind of change?" },
-            "hint": { "en-US": "" }
+            "prompt": { "en-US": "What kind of change?" }
           },
           {
             "variable": "transition_when",
@@ -413,8 +412,7 @@
           },
           {
             "variable": "transition_summary",
-            "prompt": { "en-US": "In a few sentences, what happened?" },
-            "hint": { "en-US": "" }
+            "prompt": { "en-US": "In a few sentences, what happened?" }
           }
         ]
       }

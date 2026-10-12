@@ -1803,8 +1803,11 @@ describe('the codebook an attribute a form field collects lives in', () => {
 
     const dialog = await openField(harness, 'Edit field');
     const question = dialog.getByRole('textbox', { name: 'Question text' });
-    await harness.user.clear(question);
-    await harness.user.type(question, 'How do you know them?');
+    // Replace the question in one edit rather than clearing it first: the
+    // emptied value can come back to the editor after the next keystroke has
+    // landed and take that keystroke with it.
+    await harness.user.click(question);
+    await harness.user.keyboard('{Control>}a{/Control}How do you know them?');
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
