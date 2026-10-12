@@ -566,9 +566,9 @@ export function computeConnectors(
         ),
       );
     // The runs: each inside another or apart from it. A stretch overlapping
-    // a run without being inside it is cut where that run ends (its donors
-    // then reach it by a line to each part: the ruling cannot give them
-    // one).
+    // a run without being inside it is cut where that run ends, and its
+    // donors reach each part by a line of its own (Josh, 12 Oct 2026: the
+    // helper with more children, or the first recorded, keeps the run).
     const kept: Stretch[] = [];
     const queue = candidates.filter(holdsTwins);
     const bySize = (a: Stretch, b: Stretch) =>
