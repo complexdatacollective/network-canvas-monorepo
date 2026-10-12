@@ -427,6 +427,43 @@ describe('NarrativePedigree protocol-level cross-references', () => {
     }
   });
 
+  it('rejects a source FamilyPedigree that runs after the NarrativePedigree reading it', () => {
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        stages: [validNarrativePedigreeStageShape, validFamilyPedigreeStage],
+      }),
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) =>
+        i.message.includes('must come before'),
+      );
+      expect(issue).toBeDefined();
+      expect(issue?.path).toEqual(['stages', 0, 'sourceStageId']);
+    }
+  });
+
+  it('accepts a source FamilyPedigree with other stages between it and its reader', () => {
+    const informationStage = {
+      id: 'info1',
+      label: 'Information',
+      type: 'Information' as const,
+      title: 'Welcome',
+      items: [{ id: 'i1', type: 'text' as const, content: 'Hello' }],
+    };
+    const result = ProtocolSchemaV8.safeParse(
+      makeProtocol({
+        stages: [
+          informationStage,
+          validFamilyPedigreeStage,
+          { ...informationStage, id: 'info2' },
+          validNarrativePedigreeStageShape,
+        ],
+      }),
+    );
+    expect(result.success).toBe(true);
+  });
+
   it('rejects when a disease variable does not exist on the source node type', () => {
     const result = ProtocolSchemaV8.safeParse(
       makeProtocol({

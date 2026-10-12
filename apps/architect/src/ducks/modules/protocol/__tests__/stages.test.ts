@@ -8,6 +8,7 @@ import { commitStage } from '../commitStage';
 import reducer, {
   actionCreators,
   getFamilyPedigreeNodeTypeChangeBlock,
+  getInvalidPedigreeSourceReferences,
   getInvalidSkipDestinationReferences,
   getSkipDestinationDependentStages,
   test,
@@ -132,6 +133,74 @@ describe('protocol.stages', () => {
         expect(violation?.sourceStage.id).toBe('source');
         expect(violation?.destinationStage).toBeUndefined();
         expect(violation?.destinationStageId).toBe('destination');
+      });
+    });
+
+    describe('pedigree source ordering', () => {
+      const stagesWithPedigree = [
+        { id: 'fp', type: 'FamilyPedigree', label: 'Family Pedigree' },
+        { id: 'middle', type: 'Information', label: 'Middle' },
+        {
+          id: 'np',
+          type: 'NarrativePedigree',
+          label: 'Narrative Pedigree',
+          sourceStageId: 'fp',
+        },
+      ] as Stage[];
+
+      it('rejects a reorder that moves the reading stage before its source', () => {
+        const updatedStages = reducer(stagesWithPedigree, test.moveStage(2, 0));
+
+        expect(updatedStages).toEqual(stagesWithPedigree);
+      });
+
+      it('rejects a reorder that moves the source after its reading stage', () => {
+        const updatedStages = reducer(stagesWithPedigree, test.moveStage(0, 2));
+
+        expect(updatedStages).toEqual(stagesWithPedigree);
+      });
+
+      it('allows a reorder that keeps the source earlier than its reading stage', () => {
+        expect(
+          reducer(stagesWithPedigree, test.moveStage(1, 0)).map(
+            (stage) => stage.id,
+          ),
+        ).toEqual(['middle', 'fp', 'np']);
+        expect(
+          reducer(stagesWithPedigree, test.moveStage(1, 2)).map(
+            (stage) => stage.id,
+          ),
+        ).toEqual(['fp', 'np', 'middle']);
+      });
+
+      it('allows the move that repairs a source stored after its reading stage', () => {
+        const inverted = [
+          stagesWithPedigree[2],
+          stagesWithPedigree[1],
+          stagesWithPedigree[0],
+        ] as Stage[];
+
+        expect(
+          reducer(inverted, test.moveStage(2, 0)).map((stage) => stage.id),
+        ).toEqual(['fp', 'np', 'middle']);
+      });
+
+      it('reports the source and the stage that reads it', () => {
+        const [violation] = getInvalidPedigreeSourceReferences([
+          stagesWithPedigree[2],
+          stagesWithPedigree[0],
+        ] as Stage[]);
+
+        expect(violation?.readingStage.id).toBe('np');
+        expect(violation?.sourceStage.id).toBe('fp');
+      });
+
+      it('leaves a missing source to the schema, not the reorder guard', () => {
+        expect(
+          getInvalidPedigreeSourceReferences([
+            stagesWithPedigree[2],
+          ] as Stage[]),
+        ).toEqual([]);
       });
     });
 

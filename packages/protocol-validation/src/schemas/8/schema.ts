@@ -1183,6 +1183,17 @@ const ProtocolSchema = z
             path: ['stages', stageIndex, 'sourceStageId'],
           });
         } else {
+          // The NarrativePedigree draws the family the source collected, so the
+          // source has to run first: one placed later would still be empty.
+          const sourceIndex = protocol.stages.indexOf(sourceStage);
+          if (sourceIndex > stageIndex) {
+            ctx.addIssue({
+              code: 'custom' as const,
+              message: `NarrativePedigree sourceStageId "${stage.sourceStageId}" must come before the stage that reads it.`,
+              path: ['stages', stageIndex, 'sourceStageId'],
+            });
+          }
+
           // sourceStage is confirmed FamilyPedigree — resolve variables on its node type.
           const sourceNodeType = sourceStage.nodeConfig.type;
           const sourceSubject = {

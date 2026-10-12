@@ -1,6 +1,7 @@
 import { defineMessages, createMessageError } from '@codaco/app-i18n/messages';
 import type { SkipLogicDestination, Stage } from '@codaco/protocol-validation';
 import {
+  getInvalidPedigreeSourceReferences,
   getInvalidSkipDestinationReferences,
   getSkipDestinationDependentStages,
 } from '~/ducks/modules/protocol/stages';
@@ -42,6 +43,13 @@ const utilityMessages = defineMessages({
       '{destinationReference} must remain later than {sourceReference}, which routes to it when skipped. Choose a different destination before changing this order.',
     description:
       'The description text in components / Timeline / skipDestinationGuards.',
+  },
+  mustRemainEarlierThan: {
+    id: 'architect.utility.timeline.skipDestinationGuards.mustRemainEarlierThan',
+    defaultMessage:
+      '{sourceReference} must remain earlier than {readingReference}, which shows the family it collects. Choose a different source stage before changing this order.',
+    description:
+      'The description text in components / Timeline / skipDestinationGuards. sourceReference is a Family Pedigree stage; readingReference is the Narrative Pedigree stage that draws the family tree collected by it.',
   },
 });
 const finalMessages = defineMessages({
@@ -150,6 +158,45 @@ export const getSkipDestinationReorderGuard = <T extends TimelineStage>(
       description: createMessageError(utilityMessages.mustRemainLaterThan, {
         destinationReference: destinationReference,
         sourceReference: sourceReference,
+      }),
+    },
+  };
+};
+
+// The `stages` a Timeline holds are pruned of stage-type fields, so the caller
+// resolves each NarrativePedigree's source from the full protocol.
+export const getPedigreeSourceReorderGuard = <T extends TimelineStage>(
+  committedStages: T[],
+  proposedStages: T[],
+  getSourceStageId: (stageId: string) => string | undefined,
+): ReorderGuard<T> => {
+  const [violation] = getInvalidPedigreeSourceReferences(
+    proposedStages.map((stage) => ({
+      id: stage.id,
+      label: stage.label,
+      type: stage.type,
+      sourceStageId: getSourceStageId(stage.id),
+    })),
+  );
+
+  if (!violation) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    restoredStages: committedStages,
+    warning: {
+      title: createMessageError(utilityMessages.cannotMoveStage),
+      description: createMessageError(utilityMessages.mustRemainEarlierThan, {
+        sourceReference: formatStageReference(
+          committedStages,
+          violation.sourceStage,
+        ),
+        readingReference: formatStageReference(
+          committedStages,
+          violation.readingStage,
+        ),
       }),
     },
   };

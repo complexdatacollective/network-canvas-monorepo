@@ -798,6 +798,7 @@
   "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": "No se puede eliminar la etapa",
   "architect.utility.timeline.skipDestinationGuards.cannotMoveStage": "No se puede mover la etapa",
   "architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor": "{destinationReference} es el destino de salto de {dependentReferences}. Elige otro destino en esas etapas antes de eliminarla.",
+  "architect.utility.timeline.skipDestinationGuards.mustRemainEarlierThan": "{sourceReference} debe permanecer antes de {readingReference}, que muestra la familia que recoge. Elige otra etapa de origen antes de cambiar este orden.",
   "architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan": "{destinationReference} debe permanecer después de {sourceReference}, que dirige a ella cuando se omite. Elige otro destino antes de cambiar este orden.",
   "architect.utility.timeline.skipDestinationGuards.stage": "Etapa {value1, number}: {value2}",
   "architect.utility.timeline.skipDestinationGuards.unknownStage": "Etapa desconocida ({value1})",

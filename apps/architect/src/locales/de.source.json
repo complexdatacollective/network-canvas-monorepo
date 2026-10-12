@@ -798,6 +798,7 @@
   "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": "Cannot delete stage",
   "architect.utility.timeline.skipDestinationGuards.cannotMoveStage": "Cannot move stage",
   "architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor": "{destinationReference} is the skip destination for {dependentReferences}. Choose a different destination on those stages before deleting it.",
+  "architect.utility.timeline.skipDestinationGuards.mustRemainEarlierThan": "{sourceReference} must remain earlier than {readingReference}, which shows the family it collects. Choose a different source stage before changing this order.",
   "architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan": "{destinationReference} must remain later than {sourceReference}, which routes to it when skipped. Choose a different destination before changing this order.",
   "architect.utility.timeline.skipDestinationGuards.stage": "Stage {value1, number} — {value2}",
   "architect.utility.timeline.skipDestinationGuards.unknownStage": "Unknown stage ({value1})",

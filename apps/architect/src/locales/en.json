@@ -3195,6 +3195,10 @@
     "defaultMessage": "{destinationReference} is the skip destination for {dependentReferences}. Choose a different destination on those stages before deleting it.",
     "description": "The description text in components / Timeline / skipDestinationGuards."
   },
+  "architect.utility.timeline.skipDestinationGuards.mustRemainEarlierThan": {
+    "defaultMessage": "{sourceReference} must remain earlier than {readingReference}, which shows the family it collects. Choose a different source stage before changing this order.",
+    "description": "The description text in components / Timeline / skipDestinationGuards. sourceReference is a Family Pedigree stage; readingReference is the Narrative Pedigree stage that draws the family tree collected by it."
+  },
   "architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan": {
     "defaultMessage": "{destinationReference} must remain later than {sourceReference}, which routes to it when skipped. Choose a different destination before changing this order.",
     "description": "The description text in components / Timeline / skipDestinationGuards."

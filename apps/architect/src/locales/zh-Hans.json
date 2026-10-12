@@ -798,6 +798,7 @@
   "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": "无法删除阶段",
   "architect.utility.timeline.skipDestinationGuards.cannotMoveStage": "无法移动阶段",
   "architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor": "{destinationReference} 是 {dependentReferences} 的跳转目标。删除之前，请先在这些阶段上选择其他目标。",
+  "architect.utility.timeline.skipDestinationGuards.mustRemainEarlierThan": "{sourceReference} 必须位于 {readingReference} 之前，因为后者会展示前者收集的家庭。更改此顺序之前，请先选择其他来源阶段。",
   "architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan": "{destinationReference} 必须位于 {sourceReference} 之后，因为后者在跳过时会跳转到它。更改此顺序之前，请先选择其他目标。",
   "architect.utility.timeline.skipDestinationGuards.stage": "阶段 {value1, number} — {value2}",
   "architect.utility.timeline.skipDestinationGuards.unknownStage": "未知阶段（{value1}）",

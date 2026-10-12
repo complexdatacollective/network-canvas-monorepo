@@ -798,6 +798,7 @@
   "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": "無法刪除階段",
   "architect.utility.timeline.skipDestinationGuards.cannotMoveStage": "無法移動階段",
   "architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor": "{destinationReference} 是 {dependentReferences} 的略過目的地。刪除前，請先在相關階段上選擇其他目的地。",
+  "architect.utility.timeline.skipDestinationGuards.mustRemainEarlierThan": "{sourceReference} 必須保持在 {readingReference} 之前，因為後者會呈現前者收集的家庭。變更順序前，請先選擇其他來源階段。",
   "architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan": "{destinationReference} 必須保持在 {sourceReference} 之後，因為後者在略過時會導向此階段。變更順序前，請先選擇其他目的地。",
   "architect.utility.timeline.skipDestinationGuards.stage": "階段 {value1, number}：{value2}",
   "architect.utility.timeline.skipDestinationGuards.unknownStage": "未知階段（{value1}）",

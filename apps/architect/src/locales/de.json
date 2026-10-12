@@ -798,6 +798,7 @@
   "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": "Abschnitt kann nicht gelöscht werden",
   "architect.utility.timeline.skipDestinationGuards.cannotMoveStage": "Abschnitt kann nicht verschoben werden",
   "architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor": "{destinationReference} ist das Sprungziel für {dependentReferences}. Wählen Sie in diesen Abschnitten ein anderes Ziel aus, bevor Sie den Zielabschnitt löschen.",
+  "architect.utility.timeline.skipDestinationGuards.mustRemainEarlierThan": "{sourceReference} muss weiterhin vor {readingReference} kommen, da dieser Abschnitt die dort erfasste Familie darstellt. Wählen Sie einen anderen Quellabschnitt aus, bevor Sie diese Reihenfolge ändern.",
   "architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan": "{destinationReference} muss weiterhin nach {sourceReference} kommen, da dieser Abschnitt beim Überspringen dorthin weiterleitet. Wählen Sie ein anderes Ziel aus, bevor Sie diese Reihenfolge ändern.",
   "architect.utility.timeline.skipDestinationGuards.stage": "Abschnitt {value1, number} – {value2}",
   "architect.utility.timeline.skipDestinationGuards.unknownStage": "Unbekannter Abschnitt ({value1})",

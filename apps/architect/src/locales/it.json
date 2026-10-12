@@ -798,6 +798,7 @@
   "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": "Impossibile eliminare la fase",
   "architect.utility.timeline.skipDestinationGuards.cannotMoveStage": "Impossibile spostare la fase",
   "architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor": "{destinationReference} è la destinazione di salto per {dependentReferences}. Scegli una destinazione diversa in quelle fasi prima di eliminarla.",
+  "architect.utility.timeline.skipDestinationGuards.mustRemainEarlierThan": "{sourceReference} deve restare prima di {readingReference}, che mostra la famiglia che raccoglie. Scegli una fase di origine diversa prima di cambiare quest’ordine.",
   "architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan": "{destinationReference} deve restare dopo {sourceReference}, che vi rimanda quando viene saltata. Scegli una destinazione diversa prima di cambiare quest’ordine.",
   "architect.utility.timeline.skipDestinationGuards.stage": "Fase {value1, number}: {value2}",
   "architect.utility.timeline.skipDestinationGuards.unknownStage": "Fase sconosciuta ({value1})",

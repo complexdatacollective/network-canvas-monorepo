@@ -798,6 +798,7 @@
   "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": "Kan fase niet verwijderen",
   "architect.utility.timeline.skipDestinationGuards.cannotMoveStage": "Kan fase niet verplaatsen",
   "architect.utility.timeline.skipDestinationGuards.isTheSkipDestinationFor": "{destinationReference} is de bestemming van de overslaanlogica van {dependentReferences}. Kies in die fasen een andere bestemming voordat je deze fase verwijdert.",
+  "architect.utility.timeline.skipDestinationGuards.mustRemainEarlierThan": "{sourceReference} moet vóór {readingReference} blijven komen, want die fase toont de familie die ze verzamelt. Kies een andere bronfase voordat je deze volgorde wijzigt.",
   "architect.utility.timeline.skipDestinationGuards.mustRemainLaterThan": "{destinationReference} moet na {sourceReference} blijven komen, want die fase leidt ernaartoe wanneer ze wordt overgeslagen. Kies een andere bestemming voordat je deze volgorde wijzigt.",
   "architect.utility.timeline.skipDestinationGuards.stage": "Fase {value1, number} – {value2}",
   "architect.utility.timeline.skipDestinationGuards.unknownStage": "Onbekende fase ({value1})",

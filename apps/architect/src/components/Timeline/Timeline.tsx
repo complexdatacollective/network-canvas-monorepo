@@ -31,6 +31,7 @@ import {
 import InsertButton from './InsertButton';
 import { timelineRowGrid } from './rowLayout';
 import {
+  getPedigreeSourceReorderGuard,
   getSkipDestinationDeleteWarning,
   getSkipDestinationReorderGuard,
 } from './skipDestinationGuards';
@@ -125,9 +126,9 @@ const Timeline = () => {
   // hasSkipLogic, skipLogic: {destination}}` for cheap render diffing — the
   // skip destination is on it because the reorder and delete guards below read
   // it — while dropping stage-type-specific fields like NarrativePedigree's
-  // `sourceStageId`. The FamilyPedigree delete guard needs that one to find
-  // dependents, so it reads the full protocol separately (mirroring
-  // `deleteStageAsync`'s own dependents check in
+  // `sourceStageId`. The FamilyPedigree delete guard and the pedigree-source
+  // reorder guard need that one, so they read the full protocol separately
+  // (mirroring `deleteStageAsync`'s own dependents check in
   // ducks/modules/protocol/stages.ts, which already does this correctly)
   // rather than off the pruned list.
   const protocol = useSelector(getProtocol);
@@ -361,10 +362,21 @@ const Timeline = () => {
         return false;
       }
 
-      const reorderGuard = getSkipDestinationReorderGuard(
-        stages,
-        proposedStages,
-      );
+      let reorderGuard = getSkipDestinationReorderGuard(stages, proposedStages);
+      if (reorderGuard.allowed) {
+        reorderGuard = getPedigreeSourceReorderGuard(
+          stages,
+          proposedStages,
+          (id) => {
+            const stage = protocol?.stages.find(
+              (candidate) => candidate.id === id,
+            );
+            return stage?.type === 'NarrativePedigree'
+              ? stage.sourceStageId
+              : undefined;
+          },
+        );
+      }
 
       if (!reorderGuard.allowed) {
         setOrderedStages(reorderGuard.restoredStages);
@@ -394,7 +406,7 @@ const Timeline = () => {
       );
       return true;
     },
-    [announce, dispatch, openDialog, readOnly, stages, intl],
+    [announce, dispatch, openDialog, readOnly, stages, protocol, intl],
   );
 
   // Commit the whole reorder as a single moveStage once the drag ends, using the

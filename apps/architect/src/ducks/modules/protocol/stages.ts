@@ -97,6 +97,34 @@ export const getInvalidSkipDestinationReferences = <
     ];
   });
 
+// A NarrativePedigree draws the family its source FamilyPedigree collected, so
+// the source must run first. Mirrors the schema's own rule, so the timeline
+// cannot reach an order the stored protocol would fail validation on.
+export const getInvalidPedigreeSourceReferences = <
+  T extends StageDependencyCandidate,
+>(
+  stages: T[],
+) =>
+  stages.flatMap((readingStage, readingIndex) => {
+    if (
+      readingStage.type !== 'NarrativePedigree' ||
+      readingStage.sourceStageId === undefined
+    ) {
+      return [];
+    }
+
+    const sourceIndex = stages.findIndex(
+      (stage) => stage.id === readingStage.sourceStageId,
+    );
+    const sourceStage = stages[sourceIndex];
+
+    if (!sourceStage || sourceIndex < readingIndex) {
+      return [];
+    }
+
+    return [{ readingStage, sourceStage }];
+  });
+
 // Async thunks
 const deleteStageAsync = createAppAsyncThunk(
   'stages/deleteStageAsync',
@@ -153,6 +181,8 @@ const stagesSlice = createSlice({
         skipLogic: stage.skipLogic
           ? { destination: stage.skipLogic.destination }
           : undefined,
+        sourceStageId:
+          stage.type === 'NarrativePedigree' ? stage.sourceStageId : undefined,
       }));
       const [reorderedStage] = reorderedStages.splice(oldIndex, 1);
       if (!reorderedStage) {
@@ -160,7 +190,10 @@ const stagesSlice = createSlice({
       }
       reorderedStages.splice(newIndex, 0, reorderedStage);
 
-      if (getInvalidSkipDestinationReferences(reorderedStages).length > 0) {
+      if (
+        getInvalidSkipDestinationReferences(reorderedStages).length > 0 ||
+        getInvalidPedigreeSourceReferences(reorderedStages).length > 0
+      ) {
         return;
       }
 
