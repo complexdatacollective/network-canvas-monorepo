@@ -816,3 +816,40 @@ describe('lines of one owner', () => {
     expect(close.length).toBeLessThanOrEqual(0.25 * W);
   });
 });
+
+describe('a carrier of some of a sibship', () => {
+  it('draws one straight line to the stem of the run of children she carried, and the couple’s children stay one sibship (Bennett 1c)', () => {
+    const { connectors } = draw(
+      ['ego', 'ana', 'luis', 'carrier', 'leo', 'mia'],
+      [
+        partners('ana', 'luis'),
+        ...['ego', 'leo', 'mia'].flatMap((child) => [
+          parent('ana', 'biological', child, child === 'mia'),
+          parent('luis', 'biological', child),
+        ]),
+        parent('carrier', 'surrogate', 'ego', true),
+        parent('carrier', 'surrogate', 'leo', true),
+      ],
+    );
+    // One sibship: one line of descent reaches all three children.
+    const sibship = connectors.parentChildLines.filter((line) =>
+      line.uplineChildIds?.some((id) => ['ego', 'leo', 'mia'].includes(id!)),
+    );
+    expect(sibship).toHaveLength(1);
+    expect(sibship[0]!.uplineChildIds?.toSorted()).toEqual([
+      'ego',
+      'leo',
+      'mia',
+    ]);
+    // The carrier's one line is straight and ends on the run's stem.
+    const lines = connectors.auxiliaryLines.filter(
+      (line) => line.endpointIds?.[0] === 'carrier',
+    );
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.points).toHaveLength(2);
+    const end = lines[0]!.points.at(-1)!;
+    const stems = (sibship[0]!.runs ?? []).map((run) => run.stem);
+    expect(stems).toHaveLength(1);
+    expect(pointToSegment(end, stems[0]!)).toBeLessThan(0.5);
+  });
+});

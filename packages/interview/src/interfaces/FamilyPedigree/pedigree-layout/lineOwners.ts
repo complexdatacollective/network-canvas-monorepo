@@ -75,14 +75,21 @@ export const ownerKey = (owner: LineOwner) =>
  * 3. otherwise the birth owners;
  * 4. otherwise the raisers, adoptive before social.
  *
- * The birth owners (Round 5 ruling 2, after Bennett et al. 2022, Fig. 5):
- * whoever carried the pregnancy, with their partner when that partner is
- * the child's other genetic parent (their partnership line then carries the
- * line of descent), or with the other biological parent as a pair when
- * both are the child's biological parents and no partnership is recorded
- * between them. With no carrier recorded, the biological parents: the
- * recorded couple who both hold the tie, or the two who hold it with no
- * partnership recorded, or failing those the parent recorded first.
+ * The birth owners (Round 5 ruling 2, stated per sibship, Josh, 12 Oct
+ * 2026, after Bennett et al. 2022, Fig. 5). Children whose descent comes
+ * from their birth owners and who share their biological parents (a
+ * recorded couple who both hold the tie, the two who hold it with no
+ * partnership recorded, or the one recorded) form one sibship under them.
+ * The sibship's line of descent comes from the person who carried every
+ * child in it, with their partner when that partner is the children's other
+ * genetic parent (their partnership line then carries it), or with the
+ * other biological parent as a pair when no partnership is recorded between
+ * them; so an only child sits under their carrier. When no one person
+ * carried every child, it comes from the biological parents, and each
+ * carrier draws a line of their own to the run of children they carried, as
+ * a donor does. A child with no biological parent recorded has their
+ * carrier as their birth owner, with a partner who is the other genetic
+ * parent.
  *
  * Within raising kinds, the owner is the recorded couple who both hold the
  * kind chosen, or failing those the parent recorded first. Every other tie
@@ -117,34 +124,12 @@ export function lineOwnersOf(
     return [holding[0]!];
   }
 
-  return parents.map((conns, child) => {
-    const ofKind = (kinds: PedigreeEdgeType[]) =>
-      conns.filter((p) => kinds.includes(p.edgeType));
-    const biological = ofKind(['biological']);
-    const adopters = ofKind(['adoptive']);
-    const raisers = [...adopters, ...ofKind(['social'])];
-
-    // The birth owners' ties: the carrier's, with a partner who is the
-    // other genetic parent, or with the other biological parent of a pair.
-    const birthTies = (): ParentConnection[] => {
-      const carrier = carrierAmong(conns);
-      if (!carrier) return ownerAmong(biological);
-      const others = conns.filter((p) => p !== carrier);
-      const partner = others.find(
-        (p) => isGenetic(p) && partnered(p.parentIndex, carrier.parentIndex),
-      );
-      if (partner) return [carrier, partner];
-      const otherBiological = others.filter((p) => p.edgeType === 'biological');
-      if (carrier.edgeType === 'biological' && otherBiological.length === 1) {
-        return [carrier, otherBiological[0]!];
-      }
-      return [carrier];
-    };
-
-    let descentTies: ParentConnection[] = [];
-    if (raisedByRelatives[child]!.size > 0) {
-      descentTies = birthTies();
-    } else if (
+  // How each child's line of descent is chosen: from their birth owners,
+  // from their adopters, or from the first kind of raiser.
+  const cases = parents.map((conns, child) => {
+    const adopters = conns.filter((p) => p.edgeType === 'adoptive');
+    if (raisedByRelatives[child]!.size > 0) return 'birth' as const;
+    if (
       adopters.length > 0 &&
       !conns.some(
         (birth) =>
@@ -154,9 +139,75 @@ export function lineOwnersOf(
           ),
       )
     ) {
-      descentTies = ownerAmong(adopters);
-    } else if (carrierAmong(conns) || biological.length > 0) {
-      descentTies = birthTies();
+      return 'adopters' as const;
+    }
+    if (carrierAmong(conns) || conns.some((p) => p.edgeType === 'biological')) {
+      return 'birth' as const;
+    }
+    return 'raisers' as const;
+  });
+
+  // The birth owners' ties for a child whose carrier is `carrier`: the
+  // carrier's, with a partner who is the other genetic parent, or with the
+  // other biological parent of a pair.
+  const carrierTies = (
+    conns: ParentConnection[],
+    carrier: ParentConnection,
+  ): ParentConnection[] => {
+    const others = conns.filter((p) => p !== carrier);
+    const partner = others.find(
+      (p) => isGenetic(p) && partnered(p.parentIndex, carrier.parentIndex),
+    );
+    if (partner) return [carrier, partner];
+    const otherBiological = others.filter((p) => p.edgeType === 'biological');
+    if (carrier.edgeType === 'biological' && otherBiological.length === 1) {
+      return [carrier, otherBiological[0]!];
+    }
+    return [carrier];
+  };
+
+  // Each birth-owned child's biological owner, which names their sibship.
+  const biologicalOwner = parents.map((conns, child) =>
+    cases[child] === 'birth'
+      ? ownerAmong(conns.filter((p) => p.edgeType === 'biological'))
+      : [],
+  );
+  const sibshipKey = (child: number) =>
+    biologicalOwner[child]!.map((p) => p.parentIndex)
+      .toSorted((a, b) => a - b)
+      .join('+');
+
+  const birthTies = (child: number): ParentConnection[] => {
+    const conns = parents[child]!;
+    const own = biologicalOwner[child]!;
+    if (own.length === 0) {
+      const carrier = carrierAmong(conns);
+      return carrier ? carrierTies(conns, carrier) : [];
+    }
+    const key = sibshipKey(child);
+    const sibship = parents.flatMap((_, other) =>
+      cases[other] === 'birth' && sibshipKey(other) === key ? [other] : [],
+    );
+    const carriers = sibship.map(
+      (other) => carrierAmong(parents[other]!)?.parentIndex,
+    );
+    const carrier = carrierAmong(conns);
+    if (carrier && carriers.every((c) => c === carrier.parentIndex)) {
+      return carrierTies(conns, carrier);
+    }
+    return own;
+  };
+
+  return parents.map((conns, child) => {
+    const ofKind = (kinds: PedigreeEdgeType[]) =>
+      conns.filter((p) => kinds.includes(p.edgeType));
+    const raisers = [...ofKind(['adoptive']), ...ofKind(['social'])];
+
+    let descentTies: ParentConnection[] = [];
+    if (cases[child] === 'birth') {
+      descentTies = birthTies(child);
+    } else if (cases[child] === 'adopters') {
+      descentTies = ownerAmong(ofKind(['adoptive']));
     } else if (raisers.length > 0) {
       descentTies = ownerAmong(ofKind([raisers[0]!.edgeType]));
     }

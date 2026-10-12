@@ -523,15 +523,6 @@ describe('a donor’s line meets the line of descent of the children they gave t
     // Paul's lines run as one course from him and part as a fork; his line
     // to the participant hops Hannah's line of descent.
     'a surrogate for one of a donor’s two children, the other recorded first': 1,
-    // The participant hangs from the surrogate who carried them (Round 5,
-    // ruling 2): Hannah's line to them and Paul's to Ruby cross whichever
-    // way the three parents sit.
-    'a surrogate for one of a donor’s two children': 1,
-    'a surrogate for one of a donor’s two children, recorded apart': 1,
-    // The children the surrogate carried hang from her (Round 5, ruling 2),
-    // so a line to them from beyond the donor crosses one of the donor's
-    // lines whichever way the three parents sit.
-    'a surrogate for two of a donor’s three children': 1,
   };
 
   for (const size of SYMBOL_SIZES) {
@@ -592,10 +583,11 @@ describe('a donor’s line meets the line of descent of the children they gave t
       });
     }
 
-    // The child a surrogate carried hangs from her (Round 5, ruling 2), so
-    // the donor's two children hang from two lines of descent, and he joins
-    // each by a line of his own.
-    it(`gives a donor a line to each line of descent their children hang from, when a surrogate carried one of them, whichever was recorded first (${size}px symbols)`, () => {
+    // Full siblings stay one sibship (Josh, 12 Oct 2026): the participant,
+    // whom a surrogate carried, stays in their mother's sibship, so the
+    // donor of the participant and Ruby reaches their run by one line, and
+    // the surrogate reaches the participant's line up by one of her own.
+    it(`keeps a surrogate's child in their mother's sibship, and gives the donor one line to the run of his children, whichever was recorded first (${size}px symbols)`, () => {
       for (const order of [
         ['ego', 'ruby', 'theo'],
         ['ego', 'theo', 'ruby'],
@@ -610,21 +602,22 @@ describe('a donor’s line meets the line of descent of the children they gave t
               [...childrenReachedBy(drawing.connectors, line)].toSorted(),
             )
             .toSorted((a, b) => a.join().localeCompare(b.join()));
-        expect(reached('paul')).toEqual([['ego'], ['ruby']]);
-        expect(reached('carrier')).toEqual([]);
+        expect(reached('paul'), order.join()).toEqual([['ego', 'ruby']]);
+        expect(reached('carrier'), order.join()).toEqual([['ego']]);
         expect(
           drawing.connectors.parentChildLines.find((line) =>
             line.uplineChildIds?.includes('ego'),
           )?.parentIds,
-        ).toEqual(['carrier']);
+        ).toEqual(['hannah']);
       }
     });
 
-    // The children a surrogate carried hang from her (Round 5, ruling 2):
-    // here Ruby and Theo, whose mother's line joins hers, while the
-    // participant hangs from their mother. The donor of the participant and
-    // Ruby reaches each of those lines of descent by a line of its own.
-    it(`hangs a surrogate's children from her, and gives the donor of some of them a line to each line of descent (${size}px symbols)`, () => {
+    // Hannah's three children are one sibship under her, as no one person
+    // carried them all. The donor of the participant and Ruby and the
+    // surrogate of Ruby and Theo overlap without nesting, so the donor,
+    // recorded first, keeps his run, and the surrogate reaches each of her
+    // children by a line of her own (Round 3).
+    it(`keeps a sibship under the mother when a surrogate carried some of it, and gives an overlapping donor and surrogate a run and lines (${size}px symbols)`, () => {
       const nodes = [
         person('ego', { name: 'Maya', sex: ['male'], isEgo: true }),
         mother(),
@@ -650,9 +643,9 @@ describe('a donor’s line meets the line of descent of the children they gave t
             [...childrenReachedBy(drawing.connectors, line)].toSorted(),
           )
           .toSorted((a, b) => a.join().localeCompare(b.join()));
-      expect(reached('paul')).toEqual([['ego'], ['ruby']]);
-      expect(reached('carrier')).toEqual([]);
-      expect(reached('hannah')).toEqual([['ruby', 'theo']]);
+      expect(reached('paul')).toEqual([['ego', 'ruby']]);
+      expect(reached('carrier')).toEqual([['ruby'], ['theo']]);
+      expect(reached('hannah')).toEqual([]);
     });
 
     it(`reaches the two half-siblings who share a donor by one line, and the third by their own line up (${size}px symbols)`, () => {

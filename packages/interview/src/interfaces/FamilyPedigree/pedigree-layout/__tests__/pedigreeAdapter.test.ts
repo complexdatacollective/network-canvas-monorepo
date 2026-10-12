@@ -463,6 +463,105 @@ describe('who carried the pregnancy (Round 5, Josh, 12 Oct 2026)', () => {
     expect(owners.lines).toEqual([{ parents: ['a', 'b'], kind: 'biological' }]);
   });
 
+  describe('full siblings stay one sibship (Josh, 12 Oct 2026)', () => {
+    const carried = (from: string, to: string) => ({
+      from,
+      to,
+      relationshipType: 'surrogate' as const,
+      isGestationalCarrier: true,
+    });
+
+    test('a couple’s three children hang from the couple when a surrogate carried two of them, and she draws one line', () => {
+      const nodes = ['ana', 'luis', 'carrier', 'ego', 'leo', 'mia'];
+      const edges = makeEdges([
+        { from: 'ana', to: 'luis', relationshipType: 'partner' },
+        ...['ego', 'leo', 'mia'].flatMap((child) => [
+          {
+            from: 'ana',
+            to: child,
+            relationshipType: 'biological' as const,
+            isGestationalCarrier: child === 'mia',
+          },
+          { from: 'luis', to: child, relationshipType: 'biological' as const },
+        ]),
+        carried('carrier', 'ego'),
+        carried('carrier', 'leo'),
+      ]);
+      for (const child of ['ego', 'leo', 'mia']) {
+        const owners = ownersOf(nodes, edges, child);
+        expect(owners.descent?.toSorted(), child).toEqual(['ana', 'luis']);
+      }
+      for (const child of ['ego', 'leo']) {
+        expect(ownersOf(nodes, edges, child).lines).toEqual([
+          { parents: ['carrier'], kind: 'surrogate' },
+        ]);
+      }
+    });
+
+    test('a child their parents did not carry stays in the sibship of the full sibling their mother carried', () => {
+      const nodes = ['grace', 'henry', 'jenna', 'ego', 'oliver'];
+      const edges = makeEdges([
+        { from: 'grace', to: 'henry', relationshipType: 'partner' },
+        {
+          from: 'grace',
+          to: 'ego',
+          relationshipType: 'biological',
+          isGestationalCarrier: true,
+        },
+        { from: 'henry', to: 'ego', relationshipType: 'biological' },
+        { from: 'grace', to: 'oliver', relationshipType: 'biological' },
+        { from: 'henry', to: 'oliver', relationshipType: 'biological' },
+        carried('jenna', 'oliver'),
+      ]);
+      expect(ownersOf(nodes, edges, 'oliver').descent?.toSorted()).toEqual([
+        'grace',
+        'henry',
+      ]);
+      expect(ownersOf(nodes, edges, 'oliver').lines).toEqual([
+        { parents: ['jenna'], kind: 'surrogate' },
+      ]);
+    });
+
+    test('twins one surrogate carried hang from her, and their parents draw one line (Bennett 3)', () => {
+      const nodes = ['mum', 'dad', 'lena', 'ego', 'arjun'];
+      const edges = makeEdges([
+        { from: 'mum', to: 'dad', relationshipType: 'partner' },
+        ...['ego', 'arjun'].flatMap((child) => [
+          { from: 'mum', to: child, relationshipType: 'biological' as const },
+          { from: 'dad', to: child, relationshipType: 'biological' as const },
+          carried('lena', child),
+        ]),
+      ]);
+      for (const child of ['ego', 'arjun']) {
+        const owners = ownersOf(nodes, edges, child);
+        expect(owners.descent, child).toEqual(['lena']);
+        expect(owners.lines).toEqual([
+          { parents: ['mum', 'dad'], kind: 'biological' },
+        ]);
+      }
+    });
+
+    test('twins carried by two different people hang from their parents, and each carrier draws a line to the twin they carried', () => {
+      const nodes = ['mum', 'dad', 'lena', 'kim', 'ego', 'arjun'];
+      const edges = makeEdges([
+        { from: 'mum', to: 'dad', relationshipType: 'partner' },
+        ...['ego', 'arjun'].flatMap((child) => [
+          { from: 'mum', to: child, relationshipType: 'biological' as const },
+          { from: 'dad', to: child, relationshipType: 'biological' as const },
+        ]),
+        carried('lena', 'ego'),
+        carried('kim', 'arjun'),
+      ]);
+      expect(ownersOf(nodes, edges, 'ego').descent?.toSorted()).toEqual([
+        'dad',
+        'mum',
+      ]);
+      expect(ownersOf(nodes, edges, 'arjun').lines).toEqual([
+        { parents: ['kim'], kind: 'surrogate' },
+      ]);
+    });
+  });
+
   test('a donor who carried owns the line of descent; the biological father and his partner draw lines of their own (Bennett 4a)', () => {
     const edges = makeEdges([
       { from: 'man', to: 'woman', relationshipType: 'partner' },
