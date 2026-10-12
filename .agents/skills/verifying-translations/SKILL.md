@@ -105,17 +105,18 @@ Polish needs `few` and `many` where English has only `one` and `other`.
 
 ### 2. Blind back-translate
 
-A fresh agent translates the target text back into English. What it receives
-decides whether the check means anything:
+A fresh agent translates the target text back into the source language. What
+it receives decides whether the check means anything:
 
-| Gives it                                                                  | Never gives it                                                                     |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| The name of the language the text is in, and the text, masked (below)     | The English source, or any paraphrase or gist of it                                |
-| An opaque id (`t01`, `t02`, …)                                            | Real message ids or keys (`interview.passphrase.locked` is the meaning in English) |
-| The UI element kind: button, heading, error message, answer option        | Context notes or `description`s (they are English and explain the meaning)         |
-| For an answer option, the question it answers, **in the target language** | Earlier translations or earlier back-translations                                  |
+| Gives it                                                                                     | Never gives it                                                                     |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| The language the text is in, the language to translate it into, and the text, masked (below) | The English source, or any paraphrase or gist of it                                |
+| An opaque id (`t01`, `t02`, …)                                                               | Real message ids or keys (`interview.passphrase.locked` is the meaning in English) |
+| The UI element kind: button, heading, error message, answer option                           | Context notes or `description`s (they are English and explain the meaning)         |
+| For an answer option, the question it answers, **in the target language**                    | Earlier translations or earlier back-translations                                  |
 
-Ask for a literal back-translation plus a note on anything ambiguous or unclear.
+Ask for a literal back-translation into the source language plus a note on
+anything ambiguous or unclear.
 
 **Mask every English token in the text first.** ICU argument names
 (`{otherCount}`), select keys (`researcher {…}`), rich-text tag names
