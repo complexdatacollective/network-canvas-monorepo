@@ -124,6 +124,7 @@ const ANALYSIS_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
+    platform: { type: 'string' },
     workDir: { type: 'string' },
     canonicalPath: { type: 'string' },
     codebookPlan: { type: 'string' },
@@ -157,7 +158,14 @@ const ANALYSIS_SCHEMA = {
       },
     },
   },
-  required: ['workDir', 'canonicalPath', 'codebookPlan', 'assets', 'stages'],
+  required: [
+    'platform',
+    'workDir',
+    'canonicalPath',
+    'codebookPlan',
+    'assets',
+    'stages',
+  ],
 };
 
 const SETUP_SCHEMA = {
@@ -649,6 +657,9 @@ ${sampleSourceNote}
    git archive ${sampleRef} packages/protocols/sample | tar -x -C <dir>
    Return the directory as workDir and the absolute path of the extracted
    protocol.json as canonicalPath. Write nothing else in the repository.
+   Also run uname -sm and return its output verbatim as platform: the
+   Playwright browser runs on this same host, and the workflow refuses hosts
+   whose Chromium cannot play the sample's videos.
    Copy each asset file to <dir>/upload/<its assetManifest name> (keep the
    name exactly, spaces included): the app names an uploaded resource after
    its file, as a person's own copy of these files would be named.
@@ -771,15 +782,20 @@ ${buildLog}
 Do not delete the protocol — a later agent does that.`;
 
 const repairPrompt = (analysis, protocolName, worklist) => `${pwOps('repairer')}
-## Your task — repair the stages an audit found incomplete
+## Your task — repair what an audit found incomplete
 ${sampleSourceNote}
 The canonical file is ${analysis.canonicalPath}; it is the specification.
 Protocol to edit: "${protocolName}" (open it from the start screen's list).
-Fix each item below through the UI: edit an existing stage, or add a missing
-one in its correct timeline position. Save, reopen to confirm it persisted,
-and return to the start screen.
+Fix each item below through the UI. A stage item: edit the existing stage,
+or add a missing one in its correct timeline position. A protocol, codebook
+or assets item: change the protocol's settings, codebook entry or resource
+library to match the specification — deleting a duplicate resource from
+this protocol's library is a fix, but never re-upload one the library
+already holds. Save, reopen to confirm each change persisted, and return to
+the start screen.
 ${worklist}
-Report one stages entry per stage you touched, with the canonical index.`;
+Report one stages entry per stage you touched, with the canonical index, and
+describe any protocol, codebook or resource fixes in tooling_notes.`;
 
 const cleanupPrompt = (protocolName) => `${pwOps('cleanup')}
 ## Your task
@@ -812,17 +828,64 @@ const describeBuild = (stageStatus) =>
     .map((s) => `- Stage ${s.index} "${s.label}": ${s.status} — ${s.details}`)
     .join('\n') || '- Nothing built yet.';
 
-// Stages the audit found missing, or divergent in ways not attributed to the
-// app, keeping only the discrepancies a repair pass could fix.
-const repairable = (comparison) =>
-  comparison.stages
-    .map((s) => ({
-      ...s,
-      discrepancies: s.discrepancies.filter((d) =>
-        ['driver', 'unclear'].includes(d.attribution),
-      ),
-    }))
-    .filter((s) => s.fidelity === 'missing' || s.discrepancies.length);
+const isRepairable = (d) => ['driver', 'unclear'].includes(d.attribution);
+
+// Everything the audit found missing, or divergent in ways not attributed to
+// the app — stage, codebook, resource or protocol settings alike — as one
+// repair worklist line per item.
+const repairWorklist = (comparison) => [
+  ...comparison.stages
+    .filter(
+      (s) => s.fidelity === 'missing' || s.discrepancies.some(isRepairable),
+    )
+    .map(
+      (s) =>
+        `- Stage ${s.index} "${s.label}" (${s.fidelity}): ${
+          s.discrepancies
+            .filter(isRepairable)
+            .map((d) => d.summary)
+            .join('; ') || 'missing from the protocol'
+        }`,
+    ),
+  ...comparison.protocolDiscrepancies
+    .filter(isRepairable)
+    .map((d) => `- ${d.area}: ${d.summary}`),
+];
+
+// The audit is evidence only when it covers the whole specification: exactly
+// one entry per planned stage, and stage counts that agree with the plan.
+// Returns the reasons it falls short, or an empty list.
+const auditCoverageGaps = (analysis, comparison) => {
+  const gaps = [];
+  const planned = analysis.stages.length;
+  if (comparison.canonicalStageCount !== planned) {
+    gaps.push(
+      `the auditor counted ${comparison.canonicalStageCount} specification stages against ${planned} planned`,
+    );
+  }
+  if (comparison.builtStageCount !== comparison.canonicalStageCount) {
+    gaps.push(
+      `the built protocol has ${comparison.builtStageCount} stages against ${comparison.canonicalStageCount} in the specification`,
+    );
+  }
+  const unaudited = analysis.stages.filter(
+    (s) => comparison.stages.filter((c) => c.index === s.index).length !== 1,
+  );
+  if (unaudited.length) {
+    gaps.push(
+      `the audit does not report exactly one entry for ${unaudited
+        .map((s) => `stage ${s.index} "${s.label}"`)
+        .join(', ')}`,
+    );
+  }
+  return gaps;
+};
+
+// Linux arm64 Chromium crashes (SIGILL) as soon as it presents a decoded
+// video frame — see dev-vm/README.md — and the sample shows six videos, so a
+// build from such a host can never finish.
+const unsupportedBuildHost = (platform) =>
+  /linux/i.test(platform) && /(aarch64|arm64)/i.test(platform);
 
 const runSampleBuild = async () => {
   const checks = [];
@@ -845,18 +908,105 @@ const runSampleBuild = async () => {
     );
     return { checks, notes, appDefects, detail: null };
   }
+  if (unsupportedBuildHost(analysis.platform)) {
+    add(
+      'analysis',
+      'blocked',
+      `This host (${analysis.platform}) runs Playwright's Linux arm64 Chromium, which crashes on the sample's video resources (dev-vm/README.md), so the build cannot run here. Run the release test from the macOS host or an x86-64 machine.`,
+    );
+    return { checks, notes, appDefects, detail: null };
+  }
   const protocolName = sampleProtocolName(analysis.workDir);
   log(
     `Sample build: ${analysis.stages.length} stages, ${analysis.assets.length} assets, protocol "${protocolName}"`,
   );
 
-  const setup = await agent(setupPrompt(analysis, protocolName), {
-    label: 'sample:setup',
-    phase: SAMPLE_PHASE,
-    schema: SETUP_SCHEMA,
-    model: 'sonnet',
-    effort: 'medium',
-  });
+  // From here on the protocol may exist, so cleanup runs however the build
+  // and audit end: a crash must not strand it in the persistent profile,
+  // where later runs are forbidden to delete it.
+  let setup = null;
+  let comparison = null;
+  let cleanup = null;
+  const stageStatus = new Map();
+  const record = (result) => {
+    if (!result) return;
+    notes.push(result.tooling_notes);
+    appDefects.push(...result.appDefects);
+    for (const s of result.stages) stageStatus.set(s.index, s);
+  };
+  const batches = batchStages(analysis.stages);
+  try {
+    setup = await agent(setupPrompt(analysis, protocolName), {
+      label: 'sample:setup',
+      phase: SAMPLE_PHASE,
+      schema: SETUP_SCHEMA,
+      model: 'sonnet',
+      effort: 'medium',
+    });
+
+    for (const batch of batches) {
+      const range = `${batch[0].index}-${batch[batch.length - 1].index}`;
+      const result = await agent(
+        buildPrompt(analysis, protocolName, batch, describeBuild(stageStatus)),
+        {
+          label: `sample:build ${range}`,
+          phase: SAMPLE_PHASE,
+          schema: BUILD_SCHEMA,
+          model: 'sonnet',
+          effort: 'medium',
+        },
+      );
+      if (!result)
+        log(`Sample builder for stages ${range} returned no result.`);
+      record(result);
+    }
+
+    const audit = (round) =>
+      agent(
+        comparePrompt(
+          analysis,
+          protocolName,
+          describeBuild(stageStatus),
+          round,
+        ),
+        {
+          label: `sample:audit ${round}`,
+          phase: SAMPLE_PHASE,
+          schema: COMPARE_SCHEMA,
+          model: 'opus',
+          effort: 'high',
+        },
+      );
+    comparison = await audit(1);
+
+    // One repair round for what the drivers left undone or mis-set: a builder
+    // slip is not app evidence, so it earns a retry before the audit is final.
+    const worklist = comparison ? repairWorklist(comparison) : [];
+    if (worklist.length) {
+      log(`Sample build: repairing ${worklist.length} items`);
+      record(
+        await agent(repairPrompt(analysis, protocolName, worklist.join('\n')), {
+          label: 'sample:repair',
+          phase: SAMPLE_PHASE,
+          schema: BUILD_SCHEMA,
+          model: 'sonnet',
+          effort: 'medium',
+        }),
+      );
+      comparison = await audit(2);
+    }
+  } catch (error) {
+    notes.push(`sample build crashed: ${error}`);
+  } finally {
+    cleanup = await agent(cleanupPrompt(protocolName), {
+      label: 'sample:cleanup',
+      phase: SAMPLE_PHASE,
+      schema: CLEANUP_SCHEMA,
+      model: 'sonnet',
+      effort: 'low',
+    }).catch(() => null);
+  }
+
   if (setup) {
     notes.push(`setup: ${setup.tooling_notes}`);
     appDefects.push(...setup.appDefects);
@@ -877,76 +1027,6 @@ const runSampleBuild = async () => {
   } else {
     add('assets', 'blocked', 'The setup agent returned no result.');
   }
-
-  const stageStatus = new Map();
-  const record = (result) => {
-    if (!result) return;
-    notes.push(result.tooling_notes);
-    appDefects.push(...result.appDefects);
-    for (const s of result.stages) stageStatus.set(s.index, s);
-  };
-  const batches = batchStages(analysis.stages);
-  for (const batch of batches) {
-    const range = `${batch[0].index}-${batch[batch.length - 1].index}`;
-    const result = await agent(
-      buildPrompt(analysis, protocolName, batch, describeBuild(stageStatus)),
-      {
-        label: `sample:build ${range}`,
-        phase: SAMPLE_PHASE,
-        schema: BUILD_SCHEMA,
-        model: 'sonnet',
-        effort: 'medium',
-      },
-    );
-    if (!result) log(`Sample builder for stages ${range} returned no result.`);
-    record(result);
-  }
-
-  const audit = (round) =>
-    agent(
-      comparePrompt(analysis, protocolName, describeBuild(stageStatus), round),
-      {
-        label: `sample:audit ${round}`,
-        phase: SAMPLE_PHASE,
-        schema: COMPARE_SCHEMA,
-        model: 'opus',
-        effort: 'high',
-      },
-    );
-  let comparison = await audit(1);
-
-  // One repair round for what the drivers left undone or mis-set: a builder
-  // slip is not app evidence, so it earns a retry before the audit is final.
-  if (comparison && repairable(comparison).length) {
-    const worklist = repairable(comparison)
-      .map(
-        (s) =>
-          `- Stage ${s.index} "${s.label}" (${s.fidelity}): ${
-            s.discrepancies.map((d) => d.summary).join('; ') ||
-            'missing from the protocol'
-          }`,
-      )
-      .join('\n');
-    log(`Sample build: repairing ${repairable(comparison).length} stages`);
-    record(
-      await agent(repairPrompt(analysis, protocolName, worklist), {
-        label: 'sample:repair',
-        phase: SAMPLE_PHASE,
-        schema: BUILD_SCHEMA,
-        model: 'sonnet',
-        effort: 'medium',
-      }),
-    );
-    comparison = await audit(2);
-  }
-
-  const cleanup = await agent(cleanupPrompt(protocolName), {
-    label: 'sample:cleanup',
-    phase: SAMPLE_PHASE,
-    schema: CLEANUP_SCHEMA,
-    model: 'sonnet',
-    effort: 'low',
-  });
 
   if (!comparison) {
     add(
@@ -1005,16 +1085,16 @@ const runSampleBuild = async () => {
           .join('; ')}`,
       );
     }
+    const gaps = [
+      ...auditCoverageGaps(analysis, comparison),
+      ...missingStages.map((s) => `stage ${s.index} "${s.label}" missing`),
+      ...unresolved.map((d) => `${d.where}: ${d.summary}`),
+    ];
     add(
       'fidelity',
-      unresolved.length || missingStages.length ? 'blocked' : 'pass',
-      unresolved.length || missingStages.length
-        ? `After repair, still unverified: ${[
-            ...missingStages.map(
-              (s) => `stage ${s.index} "${s.label}" missing`,
-            ),
-            ...unresolved.map((d) => `${d.where}: ${d.summary}`),
-          ].join('; ')}`
+      gaps.length ? 'blocked' : 'pass',
+      gaps.length
+        ? `After repair, still unverified: ${gaps.join('; ')}`
         : `All ${comparison.canonicalStageCount} stages, the codebook and the assets match the specification${
             residual.some((r) => r.attribution === 'app')
               ? ', apart from the app defects reported separately'
@@ -1026,9 +1106,12 @@ const runSampleBuild = async () => {
   // The audit's inspection of the exported protocol outranks a builder's
   // self-report: a stage a builder called partial but the audit matched to
   // the specification was built.
-  const auditMatched = (index) =>
-    comparison &&
-    comparison.stages.some((s) => s.index === index && s.fidelity === 'match');
+  const auditMatched = (index) => {
+    const entries = comparison
+      ? comparison.stages.filter((s) => s.index === index)
+      : [];
+    return entries.length === 1 && entries[0].fidelity === 'match';
+  };
   const unbuilt = analysis.stages.filter(
     (s) =>
       !auditMatched(s.index) &&
@@ -1385,11 +1468,15 @@ const verdict = confirmedFailures.length
 // green partial run, or a green run against an unpinned build, is useful
 // signal but never promotion evidence — and the machine-readable field for
 // a release gate to consume is `promotable`, not `verdict`.
+// The sample build is promotion evidence only when its specification is the
+// one the deployment was built from.
+const sampleSpecPinned = expectCommit !== null && sampleRef === expectCommit;
 const promotable =
   verdict === 'pass' &&
   !only &&
   expectVersion !== null &&
-  expectCommit !== null;
+  expectCommit !== null &&
+  sampleSpecPinned;
 
 log(
   `Verdict: ${verdict} (promotable: ${promotable}) — ${checks.length} checks, ${confirmedFailures.length} confirmed failures, ${unverified.length} unverified failures, ${flaky.length} flaky, ${blocked.length} blocked`,
@@ -1419,8 +1506,12 @@ if (verdict === 'fail') {
     gaps.push(
       "no expectCommit was supplied, so the deployed build's exact commit was not pinned",
     );
+  } else if (!sampleSpecPinned) {
+    gaps.push(
+      `the sample protocol was rebuilt from ${sampleRef}, not from the deployed commit ${expectCommit}`,
+    );
   }
-  meaning = `Every selected check passed, but this run is NOT promotion evidence: ${gaps.join('; ')}. Re-run with full coverage, expectVersion, and expectCommit to gate a release.`;
+  meaning = `Every selected check passed, but this run is NOT promotion evidence: ${gaps.join('; ')}. Re-run with full coverage, expectVersion, and expectCommit (and no sampleRef override) to gate a release.`;
 }
 if (only && verdict !== 'pass') {
   meaning = `Partial run (${selectedKeys.join(', ')} only) — ${meaning}`;

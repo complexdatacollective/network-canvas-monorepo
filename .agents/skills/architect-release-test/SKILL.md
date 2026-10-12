@@ -52,7 +52,15 @@ downloads the result as a user would, validates it, and compares it with the
 canonical protocol, attributing each difference to the app, to a driver
 slip, or to data no user sets. One repair pass retries what the drivers got
 wrong before the audit is final. App defects become failed checks, which an
-independent verifier reproduces before they can fail the release.
+independent verifier reproduces before they can fail the release. A
+`--sample-ref` other than the pinned `--expect-commit` makes the run
+non-promotable: the build then checks the deployment against a different
+specification.
+
+The build cannot run on Linux arm64 (for example the `dev-vm/` Lima VM):
+Playwright's Chromium there crashes on the sample's video resources, so the
+slice reports `blocked` straight after analysis. Run the release test from
+the macOS host or an x86-64 machine.
 
 **Deriving the default pins (default URL only).** The dev deployment
 builds `main`, so unless the user supplied the flags or `--unpinned`, pin
