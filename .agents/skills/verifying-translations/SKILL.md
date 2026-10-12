@@ -90,21 +90,30 @@ decides whether the check means anything:
 
 | Gives it                                                                  | Never gives it                                                                     |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| The source language's name and the target-language text, ICU intact       | The English source, or any paraphrase or gist of it                                |
+| The source language's name and the target-language text, masked (below)   | The English source, or any paraphrase or gist of it                                |
 | An opaque id (`t01`, `t02`, …)                                            | Real message ids or keys (`interview.passphrase.locked` is the meaning in English) |
 | The UI element kind: button, heading, error message, answer option        | Context notes or `description`s (they are English and explain the meaning)         |
 | For an answer option, the question it answers, **in the target language** | Earlier translations or earlier back-translations                                  |
 
 Ask for a literal back-translation plus a note on anything ambiguous or unclear.
 
+**Mask every English token in the text first.** ICU argument names
+(`{otherCount}`), select keys (`researcher {…}`), rich-text tag names
+(`<link>`) and Markdown link targets all carry the English meaning. Replace each
+with an opaque token (`{a1}`, `k1 {…}`, `<t1>`, `(u1)`) while keeping the
+structure, and keep the mapping. Plural keywords (`one`, `few`, `other`) and
+product names stay as they are. Restore the original tokens before step 3.
+
 ### 3. Adversarial compare
 
 A different fresh agent, not the translator and not the back-translator,
-receives the English, the context note, the translation, and the
+receives the English, the context note, the translation (tokens restored), the
+locale's existing translations of the same concepts with its register, and the
 back-translation **with the back-translator's notes, pasted verbatim**, never
 summarized by you, since you are the one being checked. Instruct it to find
-problems, not to confirm quality. It reports each finding with severity and a
-proposed fix:
+problems, not to confirm quality. Every check below needs an input it has; if
+one is missing, the round cannot come back clean on that check. It reports each
+finding with severity and a proposed fix:
 
 - meaning drift, omission or addition
 - ambiguity: the back-translation could mean something the English does not
@@ -159,6 +168,7 @@ is sixteen short agent runs, a few minutes of wall-clock time.
 - About to commit or stamp a translation no fresh comparator has seen
 - A back-translator prompt that contains English beyond the element kind
 - Real message ids, keys, context notes or `description`s in the back-translator's input
+- Unmasked placeholder names, select keys or tag names in the back-translator's input
 - A reviewer spawned with your conversation (`fork`, or Codex's default `fork_turns`)
 - Summarizing the back-translator's output for the comparator instead of pasting it
 - "Looks right to me" as the comparison step
