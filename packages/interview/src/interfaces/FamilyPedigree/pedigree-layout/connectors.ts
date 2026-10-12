@@ -1250,7 +1250,7 @@ export function computeConnectors(
       ...(line.endpointSegments ?? []),
       ...(line.doubleSegment ? [line.doubleSegment] : []),
     ]) {
-      scene.lines.push({ segment, kind: 'other' });
+      scene.lines.push({ segment, kind: 'partnership' });
     }
   }
   for (const line of parentChildLines) {

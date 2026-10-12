@@ -38,8 +38,9 @@ type Symbol = {
 /** A line already drawn, which a routed line must keep clear of. */
 export type DrawnLine = {
   segment: LineSegment;
-  /** Sibling bars and uplines read as joining whatever crosses them. */
-  kind: 'bar' | 'upline' | 'other';
+  /** Sibling bars, uplines and partnership lines read as joining whatever
+   * crosses them. */
+  kind: 'bar' | 'upline' | 'partnership' | 'other';
   /** For auxiliary lines: whose line this is, so one parent's lines to
    * several children may share their way down. */
   owner?: string;
@@ -546,6 +547,9 @@ const COST = {
   throughCorner: 500,
   crossBar: 300,
   crossUpline: 300,
+  /** As much as a sibling bar: a line across a partnership line reads as
+   * coming down from the couple. */
+  crossPartnership: 300,
   crossOther: 10,
   nearCorner: 50,
   /** A line a few degrees off upright reads as drawn by mistake. */
@@ -678,7 +682,9 @@ function courseCoster(
               ? COST.crossBar
               : line.kind === 'upline'
                 ? COST.crossUpline
-                : COST.crossOther;
+                : line.kind === 'partnership'
+                  ? COST.crossPartnership
+                  : COST.crossOther;
       }
       for (const vertex of [
         { x: line.segment.x1, y: line.segment.y1 },
@@ -832,7 +838,12 @@ function endContextOf(
       ? {
           parent: {
             symbol: parentSymbol,
-            crossings: crossingsOf(parentSymbol, ['bar', 'upline', 'other']),
+            crossings: crossingsOf(parentSymbol, [
+              'bar',
+              'upline',
+              'partnership',
+              'other',
+            ]),
           },
         }
       : {}),
@@ -842,7 +853,11 @@ function endContextOf(
       ? {
           child: {
             symbol: childSymbol,
-            crossings: crossingsOf(childSymbol, ['bar', 'other']),
+            crossings: crossingsOf(childSymbol, [
+              'bar',
+              'partnership',
+              'other',
+            ]),
           },
         }
       : {}),
