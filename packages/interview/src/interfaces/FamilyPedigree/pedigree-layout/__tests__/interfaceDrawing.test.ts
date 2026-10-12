@@ -30,6 +30,7 @@ import {
   CENTRE_CLEARANCE,
   childrenReachedBy,
   type Drawing,
+  faultsOfCoParentDescents,
   faultsOfHelperLines,
   faultsOfLinesInto,
   faultsOfSiblingGrouping,
@@ -709,6 +710,229 @@ describe('relatives who adopt a child without a partner who adopts too', () => {
         for (const line of lines) {
           expectAt(line.points[0]!, drawing.centre(line.endpointIds![0]!));
         }
+      });
+    }
+  }
+});
+
+/**
+ * Co-parents never recorded as partners: a birth mother and the unnamed
+ * stand-in for the father, with one child or two.
+ */
+function standInFamily(children: ('ego' | 'sib')[]) {
+  const nodes = [
+    person('ego', { name: 'Maya', sex: ['female'], isEgo: true }),
+    woman('mum', 'Ana'),
+    man('standIn'),
+    ...(children.includes('sib') ? [man('sib', 'Leo')] : []),
+  ];
+  const edges = children.flatMap((child) => [
+    link('mum', child, 'biological', { carrier: true }),
+    link('standIn', child, 'biological', { carrier: false }),
+  ]);
+  return { nodes, edges };
+}
+
+describe('co-parents with no recorded partnership', () => {
+  for (const size of SYMBOL_SIZES) {
+    for (const [shapes, everyone] of SHAPE_SETS) {
+      const label = `${shapes}, ${size}px symbols`;
+      for (const [count, children] of [
+        ['one child', ['ego']],
+        ['two children', ['ego', 'sib']],
+      ] as const) {
+        it(`draw a line down from each of them, joined into one before the ${count === 'one child' ? 'child' : 'sibling bar'} (${count}, ${label})`, () => {
+          const { nodes, edges } = standInFamily([...children]);
+          const drawing = drawAsInterface(nodes, edges, size, everyone);
+          expect(faultsOfCoParentDescents(drawing)).toEqual([]);
+          const [descent] = drawing.connectors.parentChildLines.filter(
+            (line) =>
+              line.parentLink.length > 0 &&
+              line.uplineChildIds?.includes('ego'),
+          );
+          // Nothing starts midway between them, where the line of descent
+          // dropped from before (round 2).
+          const [mum, standIn] = [
+            drawing.centre('mum'),
+            drawing.centre('standIn'),
+          ];
+          const midway = { x: (mum.x + standIn.x) / 2, y: mum.y };
+          for (const piece of descent!.parentLink) {
+            for (const end of [
+              { x: piece.x1, y: piece.y1 },
+              { x: piece.x2, y: piece.y2 },
+            ]) {
+              expect(
+                Math.hypot(end.x - midway.x, end.y - midway.y),
+              ).toBeGreaterThan(size / 2);
+            }
+          }
+          expect(
+            strictLineFaults(drawing, helperTiesOf(edges), idsOf(nodes)),
+          ).toEqual([]);
+        });
+      }
+    }
+  }
+});
+
+/**
+ * drawingCoverage's "step parents and adoptive parents who separated": the
+ * participant's birth parents Shannon and an unnamed father, who were never
+ * partners; Karen and Mike, who adopted them and separated; Denise, Karen's
+ * partner, and Lauren, Mike's partner, who each raise them; and Jack, Mike
+ * and Lauren's son.
+ */
+function sixParents() {
+  const nodes = [
+    person('ego', { name: 'Ego', sex: ['male'], isEgo: true }),
+    woman('karen', 'Karen'),
+    man('mike', 'Mike'),
+    woman('shannon', 'Shannon'),
+    man('egoFather'),
+    woman('lauren', 'Lauren'),
+    woman('denise', 'Denise'),
+    man('jack', 'Jack'),
+  ];
+  const edges = [
+    link('egoFather', 'ego', 'biological', { carrier: false }),
+    link('karen', 'ego', 'adoptive', { carrier: false }),
+    link('mike', 'ego', 'adoptive', { carrier: false }),
+    link('karen', 'mike', 'partner', { current: false }),
+    link('shannon', 'ego', 'biological', { carrier: true }),
+    link('mike', 'lauren', 'partner', { current: true }),
+    link('lauren', 'ego', 'social', { carrier: false }),
+    link('karen', 'denise', 'partner', { current: true }),
+    link('denise', 'ego', 'social', { carrier: false }),
+    link('mike', 'jack', 'biological', { carrier: false }),
+    link('lauren', 'jack', 'biological', { carrier: true }),
+  ];
+  return { nodes, edges };
+}
+
+describe('a participant with birth parents, separated adoptive parents and their partners', () => {
+  const linesFrom = (drawing: Drawing, parent: string) =>
+    drawing.connectors.auxiliaryLines.filter(
+      (line) => line.endpointIds?.[0] === parent,
+    );
+  const segmentsOfLine = (line: AuxiliaryConnector) => segmentsOf(line.points);
+  const sharesPiece = (a: LineSegment[], b: LineSegment[]) =>
+    a.some((s) =>
+      b.some(
+        (t) =>
+          Math.hypot(s.x1 - t.x1, s.y1 - t.y1) < 0.5 &&
+          Math.hypot(s.x2 - t.x2, s.y2 - t.y2) < 0.5,
+      ),
+    );
+
+  for (const size of SYMBOL_SIZES) {
+    for (const [shapes, everyone] of SHAPE_SETS) {
+      const label = `${shapes}, ${size}px symbols`;
+
+      it(`seats the birth father beside Shannon (${label})`, () => {
+        const { nodes, edges } = sixParents();
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const row = [
+          'shannon',
+          'egoFather',
+          'denise',
+          'karen',
+          'mike',
+          'lauren',
+        ]
+          .map((id) => ({ id, x: drawing.centre(id).x }))
+          .toSorted((a, b) => a.x - b.x)
+          .map(({ id }) => id);
+        expect(
+          Math.abs(row.indexOf('shannon') - row.indexOf('egoFather')),
+        ).toBe(1);
+      });
+
+      it(`draws the birth parents' lines down from each of them, joined into one solid line before the participant (${label})`, () => {
+        const { nodes, edges } = sixParents();
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const [shannon] = linesFrom(drawing, 'shannon');
+        const [father] = linesFrom(drawing, 'egoFather');
+        expect(linesFrom(drawing, 'shannon')).toHaveLength(1);
+        expect(linesFrom(drawing, 'egoFather')).toHaveLength(1);
+        for (const [line, id] of [
+          [shannon!, 'shannon'],
+          [father!, 'egoFather'],
+        ] as const) {
+          expect(line.endpointIds?.[1]).toBe('ego');
+          expect(line.edgeType).toBe('donor');
+          expectAt(line.points[0]!, drawing.centre(id));
+          // Straight down out of the parent's own symbol.
+          expect(line.points[1]!.x).toBeCloseTo(line.points[0]!.x, 5);
+          expect(line.points[1]!.y).toBeGreaterThan(
+            drawing.centre(id).y + size / 2,
+          );
+        }
+        // One line from where they join to the participant.
+        const tail = (line: AuxiliaryConnector) => line.points.slice(-2);
+        expect(tail(shannon!)).toEqual(tail(father!));
+      });
+
+      it(`draws a separate line from each social parent into the participant, joined to no other line (${label})`, () => {
+        const { nodes, edges } = sixParents();
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const adoptive = drawing.connectors.parentChildLines
+          .filter((line) => line.uplineChildIds?.includes('ego'))
+          .flatMap((line) => [...line.parentLink, ...line.uplines]);
+        for (const id of ['denise', 'lauren']) {
+          const lines = linesFrom(drawing, id);
+          expect(lines, id).toHaveLength(1);
+          expect(lines[0]!.edgeType).toBe('social');
+          expect(lines[0]!.endpointIds?.[1]).toBe('ego');
+          expectAt(lines[0]!.points[0]!, drawing.centre(id));
+          expect(sharesPiece(segmentsOfLine(lines[0]!), adoptive)).toBe(false);
+          for (const other of drawing.connectors.auxiliaryLines) {
+            if (other === lines[0]) continue;
+            expect(
+              sharesPiece(segmentsOfLine(lines[0]!), segmentsOfLine(other)),
+              `${id} and ${other.endpointIds?.[0]}`,
+            ).toBe(false);
+          }
+        }
+      });
+
+      it(`ends the lines on the participant's top in their parents' left-to-right order (${label})`, () => {
+        const { nodes, edges } = sixParents();
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const ego = drawing.centre('ego');
+        const endX = (line: AuxiliaryConnector) =>
+          line.points.find(
+            (p) =>
+              Math.abs(p.y - (ego.y - size / 2)) < size * 0.3 &&
+              Math.abs(p.x - ego.x) < size / 2,
+          )?.x ?? line.points.at(-1)!.x;
+        const birth = endX(linesFrom(drawing, 'shannon')[0]!);
+        const denise = endX(linesFrom(drawing, 'denise')[0]!);
+        const lauren = endX(linesFrom(drawing, 'lauren')[0]!);
+        expect(birth).toBeLessThan(denise);
+        expect(denise).toBeLessThan(ego.x);
+        expect(lauren).toBeGreaterThan(ego.x);
+      });
+
+      it(`crosses only once, where Lauren's line hops the line down to Jack (${label})`, () => {
+        const { nodes, edges } = sixParents();
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const hops = drawing.connectors.auxiliaryLines.flatMap((line) =>
+          (line.hops ?? []).map((hop) => ({ id: line.endpointIds?.[0], hop })),
+        );
+        expect(hops.map(({ id }) => id)).toEqual(['lauren']);
+        const toJack = drawing.connectors.parentChildLines
+          .filter((line) => line.uplineChildIds?.includes('jack'))
+          .flatMap((line) => [...line.parentLink, ...line.uplines]);
+        expect(
+          toJack.some(
+            (piece) =>
+              Math.abs(piece.x1 - piece.x2) < 0.5 &&
+              Math.abs(piece.x1 - hops[0]!.hop.x) < 0.75 &&
+              hops[0]!.hop.y >= Math.min(piece.y1, piece.y2) &&
+              hops[0]!.hop.y <= Math.max(piece.y1, piece.y2),
+          ),
+        ).toBe(true);
       });
     }
   }

@@ -3,6 +3,7 @@ import {
   childAttachments,
   crossing,
   type DrawnLine,
+  type From,
   courseCost,
   joinsFor,
   type RouteEnd,
@@ -116,10 +117,12 @@ export function computeConnectors(
   const duplicateArcs: DuplicateArc[] = [];
   const renderedPartnerPairs = new Set<string>();
   // Only a recorded partnership is drawn with a partnership line. Co-parents
-  // the layout seats side by side without one are joined by no line at all:
-  // their children's line of descent drops from midway between them, so
-  // nothing reads as a partnership. (With no recorded partnerships given,
-  // every pair the layout makes is taken to be one.)
+  // the layout seats side by side without one are joined by no line at
+  // their symbols: their children's line of descent comes down from each of
+  // them, the two lines joining into one below their row, so nothing reads
+  // as a partnership and no line starts from the empty space between them.
+  // (With no recorded partnerships given, every pair the layout makes is
+  // taken to be one.)
   const isRecordedPartnership = (pairKey: string) =>
     partnerPairs === undefined || partnerPairs.has(pairKey);
   // Only a recorded former partnership is drawn with the break.
@@ -683,14 +686,15 @@ export function computeConnectors(
   // their row, the children are still one family, with one line of descent
   // from that line. When their two parents are co-parents with no recorded
   // partnership who sit side by side, the children are one family too, with
-  // one line of descent from midway between them. Otherwise (co-parents
+  // one line of descent, which comes down from each of them and joins below
+  // their row (see `buildCoParentLink`). Otherwise (co-parents
   // with someone sitting between them, or a routed line with no clear point
   // to drop from), those who share every primary parent, in the same roles,
   // still form a sibship: a sibling bar with uplines and twin marks, though
   // no line of descent comes down from a couple; each parent joins the bar
-  // with a line of its own. (A drop from midway between co-parents with
-  // someone between them would come out of, or from beside, that person,
-  // and read as theirs.) Each such family or sibship gets a key past every
+  // with a line of its own. (Lines from co-parents with someone between them
+  // joined below their row would pass beneath that person, and read as
+  // theirs.) Each such family or sibship gets a key past every
   // column, so it never meets a family the layout named.
   const familyOf = layout.fam.map((row) => [...row]);
   const coupleless = new Set<number>();
@@ -818,7 +822,36 @@ export function computeConnectors(
     childX: number;
     parentX: number;
     startY: number;
+    /** For co-parents with no partnership line: where each sits. */
+    coParentXs?: [number, number];
   }[] = [];
+  // A line of descent from its parents to the bar, its level run (if any)
+  // at `runY`.
+  const linkOf = (
+    link: Omit<(typeof descentLinks)[number], 'line' | 'level'>,
+    i: number,
+    runY?: number,
+  ) =>
+    link.coParentXs
+      ? buildCoParentLink(
+          link.childX,
+          link.coParentXs,
+          link.startY,
+          i,
+          boxh,
+          legh,
+          runY,
+        )
+      : buildParentLink(
+          link.childX,
+          link.parentX,
+          link.startY,
+          i,
+          boxh,
+          legh,
+          branch,
+          runY,
+        );
 
   // Each couple's own line of descent from their partnership line, by pair
   // key: the first family whose children descend from both of them.
@@ -946,8 +979,7 @@ export function computeConnectors(
       };
       // A couple's line of descent starts on their partnership line (the
       // lower rail of a double one); co-parents' with no partnership line,
-      // midway between them at the height of their centres, where such a
-      // line would run; one parent's, at the parent.
+      // at each of them; one parent's, at the parent.
       const startYOf = (from: DescentSource) => {
         if (from !== 'both' || !groupLine) return i - 1 + boxh / 2;
         return groupLine.double && groupLine.doubleSegment
@@ -1024,14 +1056,22 @@ export function computeConnectors(
           ...new Set(fork.joinOf),
           ...notOfThisBar,
         ]);
-        const parentLink = buildParentLink(
-          x1,
-          descentX,
-          startY,
+        // Co-parents with no partnership line: a line down from each.
+        const coParentXs =
+          !routed &&
+          !groupLine &&
+          coupleLeftId !== coupleRightId &&
+          familyFrom === 'both'
+            ? ([leftPos, rightPos] as [number, number])
+            : undefined;
+        const parentLink = linkOf(
+          {
+            childX: x1,
+            parentX: descentX,
+            startY,
+            ...(coParentXs ? { coParentXs } : {}),
+          },
           i,
-          boxh,
-          legh,
-          branch,
         );
 
         // Each child's own tie sets the style of the line to them. The
@@ -1098,6 +1138,7 @@ export function computeConnectors(
           childX: x1,
           parentX: descentX,
           startY,
+          ...(coParentXs ? { coParentXs } : {}),
         });
         if (
           familyFrom === 'both' &&
@@ -1183,7 +1224,9 @@ export function computeConnectors(
     for (let i = 1; i < maxlev; i++) {
       const runs = descentLinks.filter(
         (link) =>
-          link.level === i && Math.abs(link.childX - link.parentX) >= 1e-9,
+          link.level === i &&
+          (link.coParentXs !== undefined ||
+            Math.abs(link.childX - link.parentX) >= 1e-9),
       );
       for (const group of overlappingRuns(runs)) {
         if (group.length < 2) continue;
@@ -1194,16 +1237,7 @@ export function computeConnectors(
           const runY =
             parentBottomY +
             ((barY - parentBottomY) * (lane + 1)) / (order.length + 1);
-          link.line.parentLink = buildParentLink(
-            link.childX,
-            link.parentX,
-            link.startY,
-            i,
-            boxh,
-            legh,
-            branch,
-            runY,
-          );
+          link.line.parentLink = linkOf(link, i, runY);
         });
       }
     }
@@ -1577,20 +1611,32 @@ export function computeConnectors(
       scene.lines.push({ segment: twin.segment, kind: 'other' });
   }
 
-  const plans = [...auxConnections.values(), ...socialConnections.values()]
+  const pairKeyOf = (a: number, b: number) =>
+    `${Math.min(a, b)},${Math.max(a, b)}`;
+  const unpaired = [...auxConnections.values(), ...socialConnections.values()]
     .map((conn) => {
       const parentAt = nodeLocation.get(conn.parentIndex);
       if (!parentAt) return undefined;
-      const partnerAt =
-        'partnerIndex' in conn && conn.partnerIndex !== undefined
-          ? nodeLocation.get(conn.partnerIndex)
+      const partnerIndex =
+        'partnerIndex' in conn ? conn.partnerIndex : undefined;
+      const partnerLocation =
+        partnerIndex === undefined ? undefined : nodeLocation.get(partnerIndex);
+      // Co-parents seated side by side with no partnership line between
+      // them: each comes down from their own symbol, and their lines join
+      // below the row (see `From.mate`), so none starts between them.
+      const mate =
+        partnerIndex !== undefined &&
+        partnerLocation &&
+        !isRecordedPartnership(pairKeyOf(conn.parentIndex, partnerIndex))
+          ? { person: partnerIndex, x: partnerLocation.x }
           : undefined;
+      const partnerAt = mate ? undefined : partnerLocation;
       // A couple raising a relative's child: their line leaves their own
       // line of descent, or their partnership line.
       const coupleKey = 'coupleKey' in conn ? conn.coupleKey : undefined;
       const couple =
         coupleKey === undefined ? undefined : coupleStartOf(coupleKey);
-      const from = couple
+      const from: From = couple
         ? {
             person: conn.parentIndex,
             x: couple.x,
@@ -1604,10 +1650,11 @@ export function computeConnectors(
             // them.
             x: partnerAt ? (parentAt.x + partnerAt.x) / 2 : parentAt.x,
             layer: parentAt.layer,
+            ...(mate ? { mate } : {}),
           };
       // A couple's lines are theirs together, apart from either partner's
       // own.
-      const owner = `${couple ? `couple ${coupleKey}` : `${conn.parentIndex}${partnerAt ? '+' : ''}`},${conn.edgeType}`;
+      const owner = `${couple ? `couple ${coupleKey}` : mate ? `pair ${pairKeyOf(conn.parentIndex, mate.person)}` : `${conn.parentIndex}${partnerAt ? '+' : ''}`},${conn.edgeType}`;
       const bar = sibshipBar.get(conn.sibship);
       const totalChildren = sibshipSize.get(conn.sibship) ?? 0;
       const isParentOfAllSiblings = conn.childColumns.length >= totalChildren;
@@ -1628,6 +1675,61 @@ export function computeConnectors(
       return { conn, from, owner, bar, joinsBar, run };
     })
     .filter((plan) => plan !== undefined);
+  // An adopted child's two birth parents, co-parents never recorded as
+  // partners and seated side by side, draw their lines to the child
+  // together: each comes down from their own symbol, and the two join below
+  // their row (see `From.mate`).
+  const birthParentOf = (
+    parent: number,
+    conn: (typeof unpaired)[number]['conn'],
+  ) =>
+    conn.edgeType === 'donor' &&
+    conn.childColumns.every((col) =>
+      (parents[layout.nid[conn.childLevel]![col]!] ?? []).some(
+        (p) => p.parentIndex === parent && p.isBirthParent,
+      ),
+    );
+  const pairedAway = new Set<(typeof unpaired)[number]>();
+  for (const plan of unpaired) {
+    if (pairedAway.has(plan) || plan.from.mate) continue;
+    const { conn } = plan;
+    if (!birthParentOf(conn.parentIndex, conn)) continue;
+    const at = placeOf.get(conn.parentIndex);
+    const other = unpaired.find((candidate) => {
+      if (candidate === plan || pairedAway.has(candidate)) return false;
+      if (candidate.from.mate) return false;
+      const theirs = candidate.conn;
+      if (!birthParentOf(theirs.parentIndex, theirs)) return false;
+      if (
+        theirs.childLevel !== conn.childLevel ||
+        theirs.sibship !== conn.sibship ||
+        candidate.run !== plan.run ||
+        theirs.childColumns.join() !== conn.childColumns.join()
+      ) {
+        return false;
+      }
+      if (
+        isRecordedPartnership(pairKeyOf(conn.parentIndex, theirs.parentIndex))
+      ) {
+        return false;
+      }
+      const there = placeOf.get(theirs.parentIndex);
+      return (
+        at !== undefined &&
+        there !== undefined &&
+        at.layer === there.layer &&
+        Math.abs(at.col - there.col) === 1
+      );
+    });
+    if (!other) continue;
+    pairedAway.add(other);
+    plan.from = {
+      ...plan.from,
+      mate: { person: other.conn.parentIndex, x: other.from.x },
+    };
+    plan.owner = `pair ${pairKeyOf(conn.parentIndex, other.conn.parentIndex)},${conn.edgeType}`;
+  }
+  const plans = unpaired.filter((plan) => !pairedAway.has(plan));
 
   // Where each line joining a run's stem ends on it (by plan): the lines to
   // one run spread down the stem between the sibling bar and the sub-bar,
@@ -1677,7 +1779,13 @@ export function computeConnectors(
       const key = `${plan.conn.childLevel},${col}`;
       endsOnChild.set(key, [
         ...(endsOnChild.get(key) ?? []),
-        { plan: index, x: plan.from.x },
+        {
+          plan: index,
+          // A pair's line, from between them.
+          x: plan.from.mate
+            ? (plan.from.x + plan.from.mate.x) / 2
+            : plan.from.x,
+        },
       ]);
     }
   });
@@ -1726,6 +1834,8 @@ export function computeConnectors(
     end: RouteEnd;
     owner: string;
     line: AuxiliaryConnector;
+    /** A co-parent's line joining this one (see `From.mate`). */
+    mateLine?: AuxiliaryConnector;
     drawn: DrawnLine[];
     endX: number;
     /** The joins on the sibling bar it meets, if it meets one. */
@@ -1737,8 +1847,9 @@ export function computeConnectors(
     points: Point[],
     owner: string,
     end: RouteEnd,
+    matePoints?: Point[],
   ): DrawnLine[] =>
-    segmentsOf(points).map((segment) => ({
+    [...segmentsOf(points), ...segmentsOf(matePoints ?? [])].map((segment) => ({
       segment,
       kind: 'other',
       owner,
@@ -1754,8 +1865,8 @@ export function computeConnectors(
       stems?: number[],
       slot?: string,
     ) => {
-      const { points, endX } = routeLine(from, end, owner, scene);
-      const drawn = drawnOf(points, owner, end);
+      const { points, endX, matePoints } = routeLine(from, end, owner, scene);
+      const drawn = drawnOf(points, owner, end, matePoints);
       scene.lines.push(...drawn);
       const line: AuxiliaryConnector = {
         type: 'auxiliary',
@@ -1764,11 +1875,24 @@ export function computeConnectors(
         ...(id ? { endpointIds: [parentNodeId, childNodeId] } : {}),
       };
       auxiliaryLines.push(line);
+      const mateLine: AuxiliaryConnector | undefined =
+        from.mate && matePoints
+          ? {
+              type: 'auxiliary',
+              edgeType: conn.edgeType,
+              points: matePoints,
+              ...(id
+                ? { endpointIds: [id[from.mate.person], childNodeId] }
+                : {}),
+            }
+          : undefined;
+      if (mateLine) auxiliaryLines.push(mateLine);
       routed.push({
         from,
         end,
         owner,
         line,
+        ...(mateLine ? { mateLine } : {}),
         drawn,
         endX,
         ...(stems ? { stems } : {}),
@@ -1831,13 +1955,23 @@ export function computeConnectors(
   });
 
   type Routed = (typeof routed)[number];
-  const courseOf = (entry: Routed) => ({
+  type Course = { points: Point[]; endX: number; matePoints?: Point[] };
+  const courseOf = (entry: Routed): Course => ({
     points: entry.line.points,
     endX: entry.endX,
+    ...(entry.mateLine ? { matePoints: entry.mateLine.points } : {}),
   });
-  const adopt = (entry: Routed, course: { points: Point[]; endX: number }) => {
+  const adopt = (entry: Routed, course: Course) => {
     entry.line.points = course.points;
-    entry.drawn = drawnOf(course.points, entry.owner, entry.end);
+    if (entry.mateLine && course.matePoints) {
+      entry.mateLine.points = course.matePoints;
+    }
+    entry.drawn = drawnOf(
+      course.points,
+      entry.owner,
+      entry.end,
+      entry.mateLine?.points,
+    );
     if (entry.stems) {
       const at = entry.stems.indexOf(entry.endX);
       if (at >= 0) entry.stems[at] = course.endX;
@@ -1876,13 +2010,14 @@ export function computeConnectors(
   // of the best few courses for each, the two that are best together. (Two
   // lines down one gap may each be clear only on the other's lane.)
   const PAIR_OPTIONS = 8;
-  const costAmong = (entry: Routed, points: Point[], extra: DrawnLine[]) =>
+  const costAmong = (entry: Routed, course: Course, extra: DrawnLine[]) =>
     courseCost(
       entry.from,
       entry.end,
       entry.owner,
       { ...scene, lines: [...scene.lines, ...extra] },
-      points,
+      course.points,
+      course.matePoints,
     );
   // Two lines far apart cannot get in each other's way.
   const reachOfLine = 0.3 * Math.max(boxw, boxh);
@@ -1912,15 +2047,23 @@ export function computeConnectors(
         const [a, b] = [entries[i]!, entries[j]!];
         if (!mayMeet(a, b)) continue;
         withoutLines(a, b);
-        const together = (first: Point[], second: Point[]) =>
-          costAmong(a, first, drawnOf(second, b.owner, b.end)) +
-          costAmong(b, second, drawnOf(first, a.owner, a.end));
+        const together = (first: Course, second: Course) =>
+          costAmong(
+            a,
+            first,
+            drawnOf(second.points, b.owner, b.end, second.matePoints),
+          ) +
+          costAmong(
+            b,
+            second,
+            drawnOf(first.points, a.owner, a.end, first.matePoints),
+          );
         const apart =
-          costAmong(a, a.line.points, []) + costAmong(b, b.line.points, []);
+          costAmong(a, courseOf(a), []) + costAmong(b, courseOf(b), []);
         let best = {
           first: courseOf(a),
           second: courseOf(b),
-          cost: together(a.line.points, b.line.points),
+          cost: together(courseOf(a), courseOf(b)),
         };
         if (best.cost > apart + 1e-9) {
           const options = (entry: Routed) =>
@@ -1934,7 +2077,7 @@ export function computeConnectors(
           const seconds = options(b);
           for (const first of options(a)) {
             for (const second of seconds) {
-              const cost = together(first.points, second.points);
+              const cost = together(first, second);
               if (cost < best.cost - 1e-9) best = { first, second, cost };
             }
           }
@@ -1969,7 +2112,7 @@ export function computeConnectors(
         sum +
         costAmong(
           entry,
-          entry.line.points,
+          courseOf(entry),
           entries.filter((other) => other !== entry).flatMap((o) => o.drawn),
         ),
       0,
@@ -2264,14 +2407,51 @@ function buildParentLink(
   ];
 }
 
-type DescentRun = { childX: number; parentX: number };
+/**
+ * The line of descent from two co-parents with no partnership line between
+ * them, seated at `xs` on the row above level i: a line straight down from
+ * each parent (from `startY`, the height of their centres) to `runY`, a
+ * level line there joining the two and running on to above the children
+ * (`childX`), and from there one line down to the bar. Nothing joins them
+ * at the height of their symbols, which would read as a partnership, and
+ * no line starts from the empty space between them.
+ */
+function buildCoParentLink(
+  childX: number,
+  xs: [number, number],
+  startY: number,
+  i: number,
+  boxh: number,
+  legh: number,
+  runY?: number,
+): LineSegment[] {
+  const barY = i - legh;
+  const parentBottomY = i - 1 + boxh;
+  const levelY = runY ?? parentBottomY + (barY - parentBottomY) / 2;
+  const line = (x1: number, y1: number, x2: number, y2: number) =>
+    ({ type: 'line', x1, y1, x2, y2 }) satisfies LineSegment;
+  // The level line in pieces between the drops and the line down, so that
+  // each meets it at a piece's end.
+  const stops = [...new Set([...xs, childX])].toSorted((a, b) => a - b);
+  return [
+    ...xs.map((x) => line(x, startY, x, levelY)),
+    ...stops.slice(1).map((x, k) => line(stops[k]!, levelY, x, levelY)),
+    line(childX, levelY, childX, barY),
+  ];
+}
+
+type DescentRun = {
+  childX: number;
+  parentX: number;
+  coParentXs?: [number, number];
+};
 
 /** The runs in groups whose level spans overlap or meet, each in order. */
 function overlappingRuns<T extends DescentRun>(runs: T[]): T[][] {
   const span = (run: T) =>
     [
-      Math.min(run.childX, run.parentX),
-      Math.max(run.childX, run.parentX),
+      Math.min(run.childX, run.parentX, ...(run.coParentXs ?? [])),
+      Math.max(run.childX, run.parentX, ...(run.coParentXs ?? [])),
     ] as const;
   const sorted = runs.toSorted((a, b) => span(a)[0] - span(b)[0]);
   const groups: T[][] = [];

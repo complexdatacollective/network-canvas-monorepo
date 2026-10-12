@@ -903,6 +903,44 @@ const lineBetween = (connectors: PedigreeConnectors, a: string, b: string) =>
       line.partnerIds?.includes(a) && line.partnerIds.includes(b) && a !== b,
   );
 
+/** Whether a line of descent comes down from each of two co-parents with no
+ * partnership line, the two drops joined by a level line below their row
+ * (Josh, 12 Oct 2026, replacing the round 2 drop from midway between
+ * them). */
+const comesDownFromEach = (
+  parentLink: LineSegment[],
+  centre: (id: string) => { x: number; y: number },
+  [a, b]: [string, string],
+) => {
+  const drops = [a, b].map((id) =>
+    parentLink.find(
+      (piece) =>
+        Math.abs(piece.x1 - centre(id).x) < 1e-6 &&
+        Math.abs(piece.y1 - centre(id).y) < 1e-6 &&
+        Math.abs(piece.x2 - piece.x1) < 1e-6 &&
+        piece.y2 > centre(id).y + DIMENSIONS.nodeHeight / 2,
+    ),
+  );
+  if (drops.some((drop) => drop === undefined)) return false;
+  const joinY = drops[0]!.y2;
+  if (Math.abs(drops[1]!.y2 - joinY) > 1e-6) return false;
+  // The level pieces at the join reach from one drop to the other.
+  const level = parentLink.filter(
+    (piece) =>
+      Math.abs(piece.y1 - joinY) < 1e-6 && Math.abs(piece.y2 - joinY) < 1e-6,
+  );
+  const [from, to] = [centre(a).x, centre(b).x].toSorted((p, q) => p - q);
+  let reach = from!;
+  for (const piece of level.toSorted(
+    (p, q) => Math.min(p.x1, p.x2) - Math.min(q.x1, q.x2),
+  )) {
+    if (Math.min(piece.x1, piece.x2) <= reach + 1e-6) {
+      reach = Math.max(reach, piece.x1, piece.x2);
+    }
+  }
+  return reach >= to! - 1e-6;
+};
+
 describe('co-parents with no recorded partnership', () => {
   /** The one line of descent into the child, and where it starts. */
   const descentInto = (connectors: PedigreeConnectors, childId: string) => {
@@ -913,16 +951,15 @@ describe('co-parents with no recorded partnership', () => {
     const [top] = lines[0]!.parentLink;
     return { line: lines[0]!, start: { x: top!.x1, y: top!.y1 } };
   };
-  const expectFromMidway = (
+  const expectFromEach = (
     connectors: PedigreeConnectors,
     centre: (id: string) => { x: number; y: number },
     childId: string,
     [a, b]: [string, string],
   ) => {
-    const { start } = descentInto(connectors, childId);
+    const descent = descentInto(connectors, childId).line;
     expect(centre(a).y).toBeCloseTo(centre(b).y, 6);
-    expect(start.x).toBeCloseTo((centre(a).x + centre(b).x) / 2, 6);
-    expect(start.y).toBeCloseTo(centre(a).y, 6);
+    expect(comesDownFromEach(descent.parentLink, centre, [a, b])).toBe(true);
     // Their ties are drawn by that line alone.
     expect(auxiliaryLinesFrom(connectors, a)).toEqual([]);
     expect(auxiliaryLinesFrom(connectors, b)).toEqual([]);
@@ -933,7 +970,7 @@ describe('co-parents with no recorded partnership', () => {
     ).toEqual([]);
   };
 
-  it('are joined by no line when they sit side by side, and their children descend from midway between them', () => {
+  it('are joined by no line when they sit side by side, and their children’s line of descent comes down from each of them', () => {
     const { connectors, centre } = draw(
       ['ego', 'ann', 'bob', 'sib'],
       [
@@ -943,7 +980,7 @@ describe('co-parents with no recorded partnership', () => {
         ['bob', 'biological', 'sib'],
       ],
     );
-    expectFromMidway(connectors, centre, 'ego', ['ann', 'bob']);
+    expectFromEach(connectors, centre, 'ego', ['ann', 'bob']);
     expect(descentInto(connectors, 'sib').line).toBe(
       descentInto(connectors, 'ego').line,
     );
@@ -961,7 +998,7 @@ describe('co-parents with no recorded partnership', () => {
         ['mum', 'partner', 'stepdad'],
       ],
     );
-    expectFromMidway(connectors, centre, 'ego', ['mum', 'standIn']);
+    expectFromEach(connectors, centre, 'ego', ['mum', 'standIn']);
     expect(lineBetween(connectors, 'mum', 'stepdad')).toBeDefined();
     const stepdads = auxiliaryLinesFrom(connectors, 'stepdad');
     expect(stepdads).toHaveLength(1);
@@ -979,7 +1016,7 @@ describe('co-parents with no recorded partnership', () => {
         ['standIn', 'biological', 'half'],
       ],
     );
-    expectFromMidway(connectors, centre, 'half', ['mum', 'standIn']);
+    expectFromEach(connectors, centre, 'half', ['mum', 'standIn']);
     expect(lineBetween(connectors, 'mum', 'dad')).toBeDefined();
   });
 });
@@ -1220,7 +1257,8 @@ function overlappingDescents(connectors: PedigreeConnectors) {
 describe('each child hangs from their own family’s single line of descent', () => {
   // A child's birth parents who were never recorded as partners (here, a
   // birth mother and the unnamed stand-in for the father) are joined by no
-  // line, and the child descends from midway between them, so a half-sibling
+  // line, and the child's line of descent comes down from each of them
+  // (12 Oct 2026; round 2 dropped it from midway between them), so a half-sibling
   // whose parents are the mother and her partner hangs from that couple's
   // own line of descent, not from one shared sibling bar (Josh's round 2
   // ruling; B2 asked for one bar). The partner who also raises the child is
@@ -1244,8 +1282,15 @@ describe('each child hangs from their own family’s single line of descent', ()
   ) => {
     for (const childId of childIds) {
       const start = descentStart(connectors, childId);
-      expect(start.x).toBeCloseTo((centre(a).x + centre(b).x) / 2, 6);
-      expect(start.y).toBeCloseTo(centre(a).y, 6);
+      if (lineBetween(connectors, a, b)) {
+        expect(start.x).toBeCloseTo((centre(a).x + centre(b).x) / 2, 6);
+        expect(start.y).toBeCloseTo(centre(a).y, 6);
+      } else {
+        // Co-parents with no partnership line: down from each of them.
+        expect(comesDownFromEach(start.line.parentLink, centre, [a, b])).toBe(
+          true,
+        );
+      }
       expect(start.line.uplineChildIds?.toSorted()).toEqual(
         childIds.toSorted(),
       );

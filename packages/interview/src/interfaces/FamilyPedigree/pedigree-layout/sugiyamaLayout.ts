@@ -1304,6 +1304,37 @@ function buildConstraintBlocks(
 
       const targetBlock = blockHolding(coupleOnLayer);
 
+      // An adopted child's birth parents who were never partners are seated
+      // side by side, the second beyond the first, so that their lines come
+      // down from each of them and join before the child (see
+      // `computeConnectors`) without passing anyone.
+      const birthParent = (parent: number) =>
+        graph.parents[child]!.some(
+          (p) => p.parentIndex === parent && p.isBirthParent,
+        );
+      const mate = birthParent(aux)
+        ? extras.find(
+            (other) =>
+              other !== aux &&
+              birthParent(other) &&
+              !partnered(other, aux) &&
+              targetBlock.nodes.includes(other),
+          )
+        : undefined;
+      if (mate !== undefined) {
+        const mateAt = targetBlock.nodes.indexOf(mate);
+        const coupleAt = targetBlock.nodes.findIndex((node) =>
+          coupleSet.has(node),
+        );
+        targetBlock.nodes.splice(
+          mateAt < coupleAt ? mateAt : mateAt + 1,
+          0,
+          aux,
+        );
+        assigned.add(aux);
+        continue;
+      }
+
       // Seat the parent immediately adjacent to the couple, on the side
       // whose seat costs the drawing least (see `seatCost`). When the couple
       // is its own block this lands on the block edge; when the couple is
@@ -1737,6 +1768,31 @@ function reverseBlocks(
 ): { ordering: number[][]; crossings: number } {
   let current = ordering.map((layer) => [...layer]);
   let currentCrossings = startingCrossings;
+  const partnered = (a: number | undefined, b: number | undefined) =>
+    a !== undefined &&
+    b !== undefined &&
+    graph.partnerGroups.some(
+      (group) => group.members.includes(a) && group.members.includes(b),
+    );
+  // A block's runs of partners side by side within it: reversing one keeps
+  // every partner beside their partner, and turns the chain round beside
+  // the rest of the block (as for a chain of partners with an adopted
+  // child's birth parents seated beside it).
+  const chainsWithin = (
+    layerOrdering: number[],
+    [start, end]: [number, number],
+  ): [number, number][] => {
+    const chains: [number, number][] = [];
+    let from = start;
+    for (let k = start + 1; k <= end; k++) {
+      if (k < end && partnered(layerOrdering[k - 1], layerOrdering[k])) {
+        continue;
+      }
+      if (k - from >= 2 && (from > start || k < end)) chains.push([from, k]);
+      from = k;
+    }
+    return chains;
+  };
 
   for (let iter = 0; iter < iterationCap; iter++) {
     let improvedThisPass = false;
@@ -1745,8 +1801,11 @@ function reverseBlocks(
       const layerOrdering = current[layer]!;
       if (layerOrdering.length < 2) continue;
 
-      const runs = currentBlockRuns(layerOrdering, graph);
-      for (const [start, end] of runs) {
+      const blockRuns = currentBlockRuns(layerOrdering, graph);
+      const chains = blockRuns.flatMap((run) =>
+        chainsWithin(layerOrdering, run),
+      );
+      for (const [start, end] of [...blockRuns, ...chains]) {
         if (end - start < 2) continue;
 
         const candidate = current.map((l) => [...l]);
@@ -1756,7 +1815,13 @@ function reverseBlocks(
         }
 
         const candidateCrossings = countCrossings(candidate, graph);
-        if (candidateCrossings < currentCrossings) {
+        // A chain turned round within its block must uncross two lines of
+        // descent at least: partners keep the sides they were seated on
+        // otherwise.
+        const needed = chains.some(([a, b]) => a === start && b === end)
+          ? DESCENT_CROSSING_WEIGHT
+          : 1;
+        if (candidateCrossings <= currentCrossings - needed) {
           current = candidate;
           currentCrossings = candidateCrossings;
           improvedThisPass = true;

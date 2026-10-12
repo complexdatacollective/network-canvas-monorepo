@@ -888,9 +888,16 @@ export function PedigreeEdgeSvg({
       );
     }
 
-    for (let i = 0; i < connectors.auxiliaryLines.length; i++) {
-      const aux = connectors.auxiliaryLines[i]!;
-      const dimmed = isDimmedByIds(highlightedNodeIds, aux.endpointIds);
+    // The dimmed lines first: two co-parents' lines that join share their
+    // course from where they meet, and a lit one stays lit along it.
+    const auxiliaries = connectors.auxiliaryLines
+      .map((aux, i) => ({
+        aux,
+        i,
+        dimmed: isDimmedByIds(highlightedNodeIds, aux.endpointIds),
+      }))
+      .toSorted((a, b) => Number(b.dimmed) - Number(a.dimmed));
+    for (const { aux, i, dimmed } of auxiliaries) {
       elements.push(
         <g
           key={`aux-dim-${i}`}

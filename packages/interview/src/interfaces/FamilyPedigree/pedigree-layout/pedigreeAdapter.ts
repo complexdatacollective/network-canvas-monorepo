@@ -132,7 +132,10 @@ export function toPedigreeInput(
       const raisesChild = adoptiveParents.some(
         (adoptive) => partnersOf.get(p.parentIndex)?.has(adoptive) ?? false,
       );
-      if (!raisesChild) p.edgeType = 'donor';
+      if (!raisesChild) {
+        p.edgeType = 'donor';
+        p.isBirthParent = true;
+      }
     }
   }
 

@@ -823,7 +823,7 @@ function courseCoster(
 const UPPER_LANES = [0.15, 0.35, 0.42];
 const LOWER_LANES = [0.72, 0.6, 0.78];
 
-type From = {
+export type From = {
   person: number;
   x: number;
   layer: number;
@@ -836,8 +836,18 @@ type From = {
    * pieces, as a T, rather than starting at `x`. (Where it offers no room,
    * the line starts at `x` after all.) */
   stem?: LineSegment[];
+  /** A co-parent with no partnership line between them, seated beside the
+   * parent on their row, whose line joins this one: each comes down from
+   * their own symbol, and the two run on as one from where they meet (see
+   * `pairOptions`). */
+  mate?: { person: number; x: number };
 };
-type Course = { points: Point[]; endX: number };
+type Course = {
+  points: Point[];
+  endX: number;
+  /** For a line with a co-parent's joining it: the co-parent's course. */
+  matePoints?: Point[];
+};
 
 /** Heights in the gap below a couple's row, as fractions of the gap, at
  * which a line may leave their line of descent. */
@@ -942,14 +952,120 @@ export function courseCost(
   owner: string,
   scene: RoutingScene,
   points: Point[],
+  /** A co-parent's course joining this one (see `From.mate`). */
+  matePoints?: Point[],
 ): number {
-  return courseCoster(
-    leavesSymbolOf(from),
+  const { mate, ...single } = from;
+  const own = courseCoster(
+    leavesSymbolOf(single),
     end,
     owner,
     scene,
-    endContextOf(from, end, owner, scene),
+    endContextOf(single, end, owner, scene),
   )(points);
+  if (!mate || !matePoints) return own;
+  return own + courseCost(mateFrom(from, mate), end, owner, scene, matePoints);
+}
+
+const mateFrom = (from: From, mate: NonNullable<From['mate']>): From => ({
+  person: mate.person,
+  x: mate.x,
+  layer: from.layer,
+});
+
+/**
+ * The course of a co-parent's line (`follow`) joining a line (`lead`) that
+ * comes straight down from the parent's symbol and runs level along the gap
+ * below their row: straight down from the co-parent's own symbol to that
+ * level, and along it to the lead's course, which it then shares to the
+ * end. Undefined when the lead's course does not start that way.
+ */
+function joinedCourse(
+  lead: From,
+  follow: From,
+  points: Point[],
+  boxh: number,
+): Point[] | undefined {
+  const [start, drop, along] = points;
+  if (!start || !drop || !along) return undefined;
+  if (Math.abs(drop.x - lead.x) > 1e-9 || Math.abs(start.x - lead.x) > 1e-9) {
+    return undefined;
+  }
+  if (drop.y <= lead.layer + boxh + 1e-9 || drop.y >= lead.layer + 1) {
+    return undefined;
+  }
+  if (Math.abs(along.y - drop.y) > 1e-9) return undefined;
+  return [
+    { x: follow.x, y: follow.layer + boxh / 2 },
+    { x: follow.x, y: drop.y },
+    // Copies: each line's points are its own, moved into place one line at
+    // a time.
+    ...points.slice(2).map((p) => ({ ...p })),
+  ];
+}
+
+/**
+ * The best courses for two co-parents' lines that join: of the courses of
+ * either one's line that come straight down from their symbol and run
+ * level below their row, each with the other's line joined to it, the
+ * cheapest together. Each line starts at its own parent, so neither starts
+ * from the empty space between them, nor joins them at their symbols.
+ */
+function pairOptions(
+  from: From,
+  end: RouteEnd,
+  owner: string,
+  scene: RoutingScene,
+  limit: number,
+  current?: Course,
+): (Course & { cost: number })[] {
+  const { mate, ...single } = from;
+  if (!mate) return routeOptions(from, end, owner, scene, limit, current);
+  const other = mateFrom(from, mate);
+  const scored: (Course & { cost: number })[] = [];
+  if (current?.matePoints) {
+    scored.push({
+      ...current,
+      cost: courseCost(
+        from,
+        end,
+        owner,
+        scene,
+        current.points,
+        current.matePoints,
+      ),
+    });
+  }
+  for (const [lead, follow] of [
+    [single, other],
+    [other, single],
+  ] as const) {
+    for (const option of routeOptions(lead, end, owner, scene, 400)) {
+      const joined = joinedCourse(lead, follow, option.points, scene.boxHeight);
+      if (!joined) continue;
+      const [points, matePoints] =
+        lead === single ? [option.points, joined] : [joined, option.points];
+      scored.push({
+        points,
+        matePoints,
+        endX: option.endX,
+        cost: option.cost + courseCost(follow, end, owner, scene, joined),
+      });
+    }
+  }
+  const best = scored.toSorted((a, b) => a.cost - b.cost).slice(0, limit);
+  if (best.length > 0) return best;
+  // No joined course: the two lines each go their own way.
+  const [own] = routeOptions(single, end, owner, scene, 1);
+  const [theirs] = routeOptions(other, end, owner, scene, 1);
+  return [
+    {
+      points: own!.points,
+      matePoints: theirs!.points,
+      endX: own!.endX,
+      cost: own!.cost + theirs!.cost,
+    },
+  ];
 }
 
 /**
@@ -980,6 +1096,7 @@ export function routeOptions(
   limit: number,
   current?: Course,
 ): (Course & { cost: number })[] {
+  if (from.mate) return pairOptions(from, end, owner, scene, limit, current);
   const { boxWidth: boxw, boxHeight: boxh } = scene;
   const defaultStart = { x: from.x, y: from.y ?? from.layer + boxh / 2 };
   // Every line is drawn: with no place offered, a line ends at the middle of

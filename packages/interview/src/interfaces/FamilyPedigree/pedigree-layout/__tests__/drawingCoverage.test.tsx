@@ -159,6 +159,9 @@ function unaccounted(
       aux.some((l) => {
         const [q, child] = l.endpointIds ?? [];
         if (child !== c || q === undefined || q === p) return false;
+        if (!connectors.groupLines.some((g) => same(g.partnerIds, [p, q]))) {
+          return false;
+        }
         const start = l.points[0]!;
         return (
           close(start.x, (centre(p).x + centre(q).x) / 2) &&
@@ -206,29 +209,33 @@ function unaccounted(
     const sibship = connectors.parentChildLines.filter((pc) =>
       pc.uplineChildIds?.includes(c),
     );
-    // The line of descent from the parent, or from the parent's couple: from
-    // their partnership line (either rail of a double one, or a line routed
-    // above their row), or from midway between them.
+    // The line of descent from the parent (for co-parents with no
+    // partnership line, a line down from each of them), or from the
+    // parent's couple: from their partnership line (either rail of a double
+    // one, or a line routed above their row).
     for (const pc of sibship) {
       const [top] = pc.parentLink;
       if (!top || !pc.parentIds?.includes(p)) continue;
-      if (close(top.x1, centre(p).x) && close(top.y1, centre(p).y)) return true;
+      if (
+        pc.parentLink.some(
+          (piece) =>
+            close(piece.x1, centre(p).x) && close(piece.y1, centre(p).y),
+        )
+      ) {
+        return true;
+      }
       const start = { x: top.x1, y: top.y1 };
       if (
         pc.parentIds.some(
           (q) =>
             q !== p &&
-            ((close(centre(p).y, centre(q).y) &&
-              close(start.x, (centre(p).x + centre(q).x) / 2) &&
-              close(start.y, centre(p).y)) ||
-              connectors.groupLines.some(
-                (g) =>
-                  same(g.partnerIds, [p, q]) &&
-                  [
-                    g.segment,
-                    ...(g.doubleSegment ? [g.doubleSegment] : []),
-                  ].some((rail) => onSegment(start, rail)),
-              )),
+            connectors.groupLines.some(
+              (g) =>
+                same(g.partnerIds, [p, q]) &&
+                [g.segment, ...(g.doubleSegment ? [g.doubleSegment] : [])].some(
+                  (rail) => onSegment(start, rail),
+                ),
+            ),
         )
       ) {
         return true;
@@ -553,12 +560,39 @@ describe('the drawing accounts for every recorded tie', () => {
   }
 
   it('reports a tie that is not drawn', () => {
-    // Co-parents' shared children descend from midway between them: that
-    // one line accounts for both parents' ties, and moving it accounts for
-    // neither.
+    // Co-parents' shared children descend from a line down from each of
+    // them, joined below their row: that one line accounts for both
+    // parents' ties, and moving it, or dropping it from midway between them
+    // instead (the round 2 drawing), accounts for neither.
     {
       const { people, links } = families['co-parents who were never partners']!;
       const { connectors, centre } = draw(people, links);
+      const [ann, bob] = [centre('ann'), centre('bob')];
+      const fromMidway = {
+        ...connectors,
+        parentChildLines: connectors.parentChildLines.map((line) =>
+          line.parentLink.length === 0
+            ? line
+            : {
+                ...line,
+                parentLink: [
+                  {
+                    type: 'line',
+                    x1: (ann.x + bob.x) / 2,
+                    y1: ann.y,
+                    x2: (ann.x + bob.x) / 2,
+                    y2: line.siblingBar!.y1,
+                  } satisfies LineSegment,
+                ],
+              },
+        ),
+      };
+      expect(unaccounted(links, fromMidway, centre)).toEqual([
+        'biological tie ann→ego is not drawn',
+        'biological tie bob→ego is not drawn',
+        'biological tie ann→sib is not drawn',
+        'biological tie bob→sib is not drawn',
+      ]);
       const moved = {
         ...connectors,
         parentChildLines: connectors.parentChildLines.map((line) => ({

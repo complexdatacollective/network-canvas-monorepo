@@ -43,6 +43,10 @@ export type ParentConnection = {
    * a relative) read this, never the drawn type. The adapter always sets it;
    * when absent, the drawn type is taken to be the recorded one. */
   isGenetic?: boolean;
+  /** An adopted child's birth parent, drawn as a donor: two such parents
+   * with no partnership recorded are co-parents, seated side by side, whose
+   * lines come down from each of them and join before the child. */
+  isBirthParent?: boolean;
 };
 
 export type PartnerConnection = {

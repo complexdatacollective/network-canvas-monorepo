@@ -1319,8 +1319,22 @@ describe('co-parents with no recorded partnership', () => {
       partnerPairs,
     );
 
+  /** A line down from each of them, from the height of their centres to
+   * midway between their row and the bar, a level line there joining them,
+   * and one line down from midway along it to the bar (Josh, 12 Oct 2026,
+   * replacing the round 2 drop from the point midway between them). */
+  const fromEach = [
+    { x1: 0, y1: 0.25, x2: 0, y2: 0.625 },
+    { x1: 1, y1: 0.25, x2: 1, y2: 0.625 },
+    { x1: 0, y1: 0.625, x2: 0.5, y2: 0.625 },
+    { x1: 0.5, y1: 0.625, x2: 1, y2: 0.625 },
+    { x1: 0.5, y1: 0.625, x2: 0.5, y2: 0.75 },
+  ];
+  const pieces = (link: LineSegment[]) =>
+    link.map(({ x1, y1, x2, y2 }) => ({ x1, y1, x2, y2 }));
+
   for (const grouped of [true, false]) {
-    it(`are joined by no line, and their children descend from midway between them (${grouped ? 'paired' : 'not paired'} by the layout)`, () => {
+    it(`are joined by no line, and their children's line of descent comes down from each of them (${grouped ? 'paired' : 'not paired'} by the layout)`, () => {
       const connectors = draw(sideBySide(grouped), new Set());
       expect(connectors.groupLines).toEqual([]);
       expect(connectors.auxiliaryLines).toEqual([]);
@@ -1329,15 +1343,13 @@ describe('co-parents with no recorded partnership', () => {
       );
       expect(descents).toHaveLength(1);
       const [line] = descents;
-      // From the point midway between them, at the height of their
-      // centres, where a partnership line would run.
-      expect(line!.parentLink[0]).toMatchObject({ x1: 0.5, y1: 0.25 });
+      expect(pieces(line!.parentLink)).toEqual(fromEach);
       expect(line!.uplineChildIds).toEqual(['c1', 'c2']);
       expect(line!.parentIds?.toSorted()).toEqual(['ann', 'bob']);
     });
   }
 
-  it('descends from midway between them to an only child', () => {
+  it('comes down from each of them to an only child', () => {
     const layout: PedigreeLayout = {
       n: [2, 1],
       nid: [[0, 1], [2]],
@@ -1351,10 +1363,44 @@ describe('co-parents with no recorded partnership', () => {
     expect(connectors.groupLines).toEqual([]);
     expect(connectors.auxiliaryLines).toEqual([]);
     expect(connectors.parentChildLines).toHaveLength(1);
-    expect(connectors.parentChildLines[0]!.parentLink[0]).toMatchObject({
-      x1: 0.5,
-      y1: 0.25,
-    });
+    expect(pieces(connectors.parentChildLines[0]!.parentLink)).toEqual(
+      fromEach,
+    );
+  });
+
+  it('come down from each of them to a child two rows below, their lines joining before the child', () => {
+    // Xavier sits on the row between Ann and Bob and their child, so no
+    // line of descent comes down to the child: each parent's tie is drawn
+    // by a line of its own, which leaves their own symbol straight down,
+    // and the two run on as one from where they meet (Josh, 12 Oct 2026;
+    // before, one line started midway between them).
+    const layout: PedigreeLayout = {
+      n: [2, 1, 1],
+      nid: [[0, 1], [4], [2]],
+      pos: [[0, 1], [3], [0.5]],
+      fam: [[0, 0], [0], [0]],
+      group: [[0, 0], [0], [0]],
+      twins: null,
+      groupMember: [[false, false], [false], [false]],
+    };
+    const connectors = draw(layout, new Set());
+    expect(connectors.groupLines).toEqual([]);
+    const lines = connectors.auxiliaryLines.filter(
+      (line) => line.endpointIds?.[1] === 'c1',
+    );
+    expect(
+      lines
+        .map((line) => line.endpointIds?.[0] ?? '')
+        .toSorted((p, q) => p.localeCompare(q)),
+    ).toEqual(['ann', 'bob']);
+    for (const line of lines) {
+      const [start, next] = line.points;
+      const x = line.endpointIds?.[0] === 'ann' ? 0 : 1;
+      expect(start).toEqual({ x, y: 0.25 });
+      expect(next!.x).toBe(x);
+      expect(next!.y).toBeGreaterThan(0.5);
+    }
+    expect(lines[0]!.points.slice(-2)).toEqual(lines[1]!.points.slice(-2));
   });
 
   it('keeps the partnership line of a recorded partnership', () => {

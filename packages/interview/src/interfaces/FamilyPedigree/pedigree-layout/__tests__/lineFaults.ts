@@ -83,26 +83,88 @@ function distanceToSegment(p: Point, s: LineSegment): number {
   return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy));
 }
 
+const near = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y) < 0.5;
+
+/** How many points at the ends of two courses are the same: where two
+ * lines are drawn as one. */
+function sharedTail(a: Point[], b: Point[]): number {
+  let k = 0;
+  while (
+    k < Math.min(a.length, b.length) &&
+    near(a[a.length - 1 - k]!, b[b.length - 1 - k]!)
+  ) {
+    k++;
+  }
+  return k;
+}
+
 /**
  * Everything wrong with the lines that end on one child: their ends on one
  * edge of the child out of their parents' left-to-right order, a crossing among them or over another
  * line, two ends closer than a fifth of a symbol (or an end within the
  * centre clearance of the child's own line of descent), and two lines
  * closer than a quarter of a symbol away from the child.
+ *
+ * Two lines drawn as one from a point on (two co-parents' lines joined
+ * before the child) are one line here, from between their parents; each
+ * must start at its own parent's centre and leave their symbol straight
+ * down, so neither starts from a point between the two.
  */
 export function faultsOfLinesInto(drawing: Drawing, childId: string): string[] {
   const { connectors, size } = drawing;
   const child = drawing.centre(childId);
   const faults: string[] = [];
-  const lines = connectors.auxiliaryLines
-    .filter((line) => line.endpointIds?.[1] === childId)
-    .map((line) => ({
-      name: `${line.endpointIds?.[0]}'s ${line.edgeType} line`,
-      parentX: line.points[0]!.x,
-      end: visibleEnd(line.points, drawing, childId),
-      points: line.points,
-      hops: line.hops ?? [],
-    }));
+  const into = connectors.auxiliaryLines.filter(
+    (line) => line.endpointIds?.[1] === childId,
+  );
+  // The lines drawn as one: those that share at least their last piece.
+  const groups: (typeof into)[] = [];
+  for (const line of into) {
+    const group = groups.find((members) =>
+      members.some((other) => sharedTail(other.points, line.points) >= 2),
+    );
+    if (group) group.push(line);
+    else groups.push([line]);
+  }
+  const lines = groups.map((members) => {
+    const parentIds = members.map((line) => line.endpointIds?.[0] ?? '');
+    const [first] = members;
+    if (members.length > 1) {
+      for (const line of members) {
+        const id = line.endpointIds?.[0] ?? '';
+        const [start, next] = line.points;
+        const centre = drawing.centre(id);
+        if (
+          !start ||
+          !next ||
+          !near(start, centre) ||
+          Math.abs(next.x - start.x) > 0.5 ||
+          next.y <= start.y
+        ) {
+          faults.push(
+            `${id}'s ${line.edgeType} line does not come straight down from ${id}'s symbol before it joins`,
+          );
+        }
+      }
+    }
+    const hops = members
+      .flatMap((line) => line.hops ?? [])
+      .filter(
+        (hop, k, all) => all.findIndex((other) => near(other, hop)) === k,
+      );
+    return {
+      name:
+        members.length > 1
+          ? `the joined ${first!.edgeType} line of ${parentIds.join(' and ')}`
+          : `${parentIds[0]}'s ${first!.edgeType} line`,
+      parentX:
+        members.reduce((sum, line) => sum + line.points[0]!.x, 0) /
+        members.length,
+      end: visibleEnd(first!.points, drawing, childId),
+      segments: members.flatMap((line) => segmentsOf(line.points)),
+      hops,
+    };
+  });
   const descent = connectors.parentChildLines.find((line) =>
     line.uplineChildIds?.includes(childId),
   );
@@ -152,7 +214,7 @@ export function faultsOfLinesInto(drawing: Drawing, childId: string): string[] {
       // a longer stretch read as one.
       const shape = drawing.shapeOf(childId);
       let closeRun = 0;
-      for (const s of segmentsOf(a.points)) {
+      for (const s of a.segments) {
         const length = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
         const steps = Math.ceil(length * 2);
         for (let k = 0; k < steps; k++) {
@@ -162,9 +224,11 @@ export function faultsOfLinesInto(drawing: Drawing, childId: string): string[] {
           };
           if (insideSymbol(p, child, size, shape)) continue;
           const apart = Math.min(
-            ...segmentsOf(b.points).map((t) => distanceToSegment(p, t)),
+            ...b.segments.map((t) => distanceToSegment(p, t)),
           );
-          if (apart < LINE_CLEARANCE * size) closeRun += length / steps;
+          // With the end gaps' allowance: two lines exactly a quarter of a
+          // symbol apart are clear of each other.
+          if (apart < LINE_CLEARANCE * size - 0.25) closeRun += length / steps;
         }
       }
       if (closeRun > LINE_CLEARANCE * size) {
@@ -555,8 +619,103 @@ export function faultsOfSiblingGrouping(
   return faults;
 }
 
+/**
+ * Everything wrong with the lines of descent from two co-parents with no
+ * partnership line between them (a stand-in and a recorded parent, say):
+ * the line must come down from each parent's own symbol, the two joining
+ * into one before the child or the sibling bar, with no bar between them
+ * at the height of their symbols and no piece that starts or ends in empty
+ * space, so that nothing reads as a partnership or as coming from someone
+ * between them.
+ */
+export function faultsOfCoParentDescents(drawing: Drawing): string[] {
+  const { connectors, size } = drawing;
+  const faults: string[] = [];
+  const partnered = (a: string, b: string) =>
+    connectors.groupLines.some(
+      (line) => line.partnerIds?.includes(a) && line.partnerIds.includes(b),
+    );
+  for (const line of connectors.parentChildLines) {
+    const [a, b, ...more] = line.parentIds ?? [];
+    if (!a || !b || a === b || more.length > 0) continue;
+    if (line.parentLink.length === 0 || partnered(a, b)) continue;
+    const name = `the line of descent from ${a} and ${b}`;
+    const pieces = line.parentLink;
+    const inParent = (p: Point) =>
+      [a, b].some(
+        (id) =>
+          near(p, drawing.centre(id)) ||
+          insideSymbol(p, drawing.centre(id), size, drawing.shapeOf(id)),
+      );
+    const symbolsBottom =
+      Math.max(drawing.centre(a).y, drawing.centre(b).y) + size / 2;
+    for (const id of [a, b]) {
+      const centre = drawing.centre(id);
+      const drop = pieces.some(
+        (piece) =>
+          isUpright(piece) &&
+          !isLevel(piece) &&
+          Math.abs(piece.x1 - centre.x) < 0.5 &&
+          upperEnd(piece).y <= centre.y + size / 2 + 0.5,
+      );
+      if (!drop) faults.push(`${name} does not come down from ${id}'s symbol`);
+    }
+    for (const piece of pieces) {
+      if (isLevel(piece) && piece.y1 < symbolsBottom) {
+        faults.push(`${name} joins them at the height of their symbols`);
+      }
+    }
+    // The pieces below the parents' line: the bar, the runs and the lines
+    // up, where the line of descent may end.
+    const below = [
+      ...(line.siblingBar ? [line.siblingBar] : []),
+      ...(line.runs ?? []).map((run) => run.stem),
+      ...line.uplines,
+    ];
+    for (const piece of pieces) {
+      for (const end of [upperEnd(piece), lowerEnd(piece)]) {
+        if (inParent(end)) continue;
+        const touches = [...pieces, ...below].some(
+          (other) => other !== piece && distanceToSegment(end, other) < ON_LINE,
+        );
+        if (!touches) {
+          faults.push(
+            `${name} has a piece ending in empty space at (${end.x.toFixed(0)}, ${end.y.toFixed(0)})`,
+          );
+        }
+      }
+    }
+    // One line: every piece joined to the drops from both parents.
+    const linked = new Set<number>();
+    const queue = pieces.flatMap((piece, k) =>
+      inParent(upperEnd(piece)) ? [k] : [],
+    );
+    while (queue.length > 0) {
+      const k = queue.pop()!;
+      if (linked.has(k)) continue;
+      linked.add(k);
+      const piece = pieces[k]!;
+      pieces.forEach((other, m) => {
+        if (linked.has(m)) return;
+        const meet = [upperEnd(other), lowerEnd(other)].some(
+          (end) => distanceToSegment(end, piece) < ON_LINE,
+        );
+        const met = [upperEnd(piece), lowerEnd(piece)].some(
+          (end) => distanceToSegment(end, other) < ON_LINE,
+        );
+        if (meet || met) queue.push(m);
+      });
+    }
+    if (linked.size < pieces.length) {
+      faults.push(`${name} is not one line from the two of them`);
+    }
+  }
+  return faults;
+}
+
 /** The strict line checks over a whole drawing: the lines into each child
- * who has any, and the donors' and surrogates' lines into sibships. */
+ * who has any, the donors' and surrogates' lines into sibships, and the
+ * lines of descent from co-parents with no partnership line. */
 export function strictLineFaults(
   drawing: Drawing,
   ties: HelperTie[],
@@ -573,5 +732,6 @@ export function strictLineFaults(
     ),
     ...faultsOfHelperLines(drawing, ties, people),
     ...faultsOfSiblingGrouping(drawing, ties),
+    ...faultsOfCoParentDescents(drawing),
   ];
 }
