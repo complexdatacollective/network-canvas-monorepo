@@ -9,6 +9,7 @@ import type {
   LineSegment,
   ParentChildConnector,
   ParentGroupConnector,
+  Point,
 } from '../types';
 
 export const EDGE_WIDTH = 5;
@@ -526,12 +527,37 @@ function renderCoupleGroupLine(
   );
 }
 
+/** A donor's or surrogate's line that ends on a line of descent (a run's
+ * stem, a lone child's line up, or a sibling bar), where it ends. */
+type HelperJoin = { helperId: string; point: Point };
+
+const onUpright = (p: Point, s: LineSegment) =>
+  Math.abs(s.x1 - s.x2) < 1e-6 &&
+  Math.abs(p.x - s.x1) < 1e-6 &&
+  p.y >= Math.min(s.y1, s.y2) - 1e-6 &&
+  p.y <= Math.max(s.y1, s.y2) + 1e-6;
+const onLevel = (p: Point, s: LineSegment) =>
+  Math.abs(s.y1 - s.y2) < 1e-6 &&
+  Math.abs(p.y - s.y1) < 1e-6 &&
+  p.x >= Math.min(s.x1, s.x2) - 1e-6 &&
+  p.x <= Math.max(s.x1, s.x2) + 1e-6;
+
+/** An upright piece cut at `y`: the part above, and the part below. */
+const cutUpright = (s: LineSegment, y: number): [LineSegment, LineSegment] => {
+  const [top, bottom] = [Math.min(s.y1, s.y2), Math.max(s.y1, s.y2)];
+  return [
+    { type: 'line', x1: s.x1, y1: top, x2: s.x1, y2: y },
+    { type: 'line', x1: s.x1, y1: y, x2: s.x1, y2: bottom },
+  ];
+};
+
 function renderParentChild(
   conn: ParentChildConnector,
   idx: number,
   color: string,
   highlightedNodeIds?: Set<string>,
   highlightedEdgeKeys?: Set<string>,
+  helperJoins: HelperJoin[] = [],
 ) {
   const isDashed = conn.edgeType === 'social' || conn.edgeType === 'adoptive';
 
@@ -636,6 +662,7 @@ function renderParentChild(
     (
       from: number | undefined,
       junctions: { x: number; childId: string | undefined }[],
+      contributes: (childId: string | undefined) => boolean = childContributes,
     ) =>
     (segStart: number, segEnd: number): boolean => {
       // No derivable descent → fall back to the family-level shared dim.
@@ -648,7 +675,7 @@ function renderParentChild(
         let hasNonContributing = false;
         for (const { x, childId } of junctions) {
           if (!onSide(x)) continue;
-          if (childContributes(childId)) {
+          if (contributes(childId)) {
             contributingReach =
               contributingReach === undefined
                 ? x
@@ -679,55 +706,144 @@ function renderParentChild(
       if (segEnd <= reach) return false;
       return hasNonContributing;
     };
-  const isBarSubSegmentDimmed = barDimming(descentX, uplineJunctions);
+  // A donor's or surrogate's line that ends on this line of descent carries
+  // their tie on down it, from where it ends to the children they gave to:
+  // those pieces are lit when that tie transmits too.
+  const transmitsThrough = (joins: HelperJoin[], childId: string | undefined) =>
+    highlightedEdgeKeys !== undefined &&
+    childId !== undefined &&
+    joins.some(({ helperId }) =>
+      highlightedEdgeKeys.has(edgeKey(helperId, childId)),
+    );
+  const barJoins = conn.siblingBar
+    ? helperJoins.filter(({ point }) => onLevel(point, conn.siblingBar!))
+    : [];
+  // On the bar, a stretch is lit by a donor's tie when it lies between where
+  // their line meets the bar and the junction of a child they transmit to.
+  const isBarSubSegmentDimmed = (segStart: number, segEnd: number) =>
+    barDimming(descentX, uplineJunctions)(segStart, segEnd) &&
+    !barJoins.some(({ helperId, point }) =>
+      uplineJunctions.some(
+        ({ x, childId }) =>
+          transmitsThrough([{ helperId, point }], childId) &&
+          segStart >= Math.min(point.x, x) - 1e-6 &&
+          segEnd <= Math.max(point.x, x) + 1e-6,
+      ),
+    );
 
   const splitXs = descentX !== undefined ? [descentX] : [];
   for (const { x } of uplineJunctions) splitXs.push(x);
+  for (const { point } of barJoins) splitXs.push(point.x);
 
   // Each run's stem and sub-bar: bright while any of its children
-  // contributes.
+  // contributes, through the parents' line of descent from the top of the
+  // stem or a donor's line from where it meets the stem.
   const runPieces = (conn.runs ?? []).flatMap((run) => {
     const junctions = conn.uplines.flatMap((ul, i) =>
       runOf(ul) === run
         ? [{ x: ul.x2, childId: conn.uplineChildIds?.[i] }]
         : [],
     );
-    const stemDimmed = highlightActive
-      ? !junctions.some(({ childId }) => childContributes(childId))
-      : sharedDimmed;
+    const stemJoins = helperJoins.filter(({ point }) =>
+      onUpright(point, run.stem),
+    );
+    const contributes = (childId: string | undefined) =>
+      childContributes(childId) || transmitsThrough(stemJoins, childId);
+    let stem: { segment: LineSegment; dimmed: boolean }[] = [
+      { segment: run.stem, dimmed: sharedDimmed },
+    ];
+    if (highlightActive) {
+      const litFrom = stemJoins
+        .filter((join) =>
+          junctions.some(({ childId }) => transmitsThrough([join], childId)),
+        )
+        .map(({ point }) => point.y);
+      if (junctions.some(({ childId }) => childContributes(childId))) {
+        stem = [{ segment: run.stem, dimmed: false }];
+      } else if (litFrom.length > 0) {
+        const [above, below] = cutUpright(run.stem, Math.min(...litFrom));
+        stem = [
+          { segment: above, dimmed: true },
+          { segment: below, dimmed: false },
+        ];
+      } else {
+        stem = [{ segment: run.stem, dimmed: true }];
+      }
+    }
     return [
-      { segment: run.stem, dimmed: stemDimmed },
+      ...stem,
       ...(run.bar
         ? highlightActive
           ? splitBar(
               run.bar,
               [run.stem.x1, ...junctions.map(({ x }) => x)],
-              barDimming(run.stem.x1, junctions),
+              barDimming(run.stem.x1, junctions, contributes),
             )
           : [{ segment: run.bar, dimmed: sharedDimmed }]
         : []),
     ];
   });
 
+  // Each child's line up: lit when the parents' tie to them transmits, or a
+  // donor's whose line meets their run's stem, the sibling bar, or (below
+  // that point) their own line up.
+  const uplinePieces = conn.uplines.flatMap((ul, i) => {
+    const childId = conn.uplineChildIds?.[i];
+    const dimmed = isDescentSegmentDimmed(
+      conn.parentIds,
+      childId,
+      highlightedNodeIds,
+      highlightedEdgeKeys,
+    );
+    if (!dimmed) return [{ segment: ul, dimmed }];
+    const run = runOf(ul);
+    const above = run
+      ? helperJoins.filter(({ point }) => onUpright(point, run.stem))
+      : barJoins;
+    if (transmitsThrough(above, childId))
+      return [{ segment: ul, dimmed: false }];
+    const own = helperJoins
+      .filter(
+        (join) =>
+          onUpright(join.point, ul) && transmitsThrough([join], childId),
+      )
+      .map(({ point }) => point.y);
+    if (own.length === 0) return [{ segment: ul, dimmed }];
+    const [top, bottom] = cutUpright(ul, Math.min(...own));
+    return [
+      { segment: top, dimmed: true },
+      { segment: bottom, dimmed: false },
+    ];
+  });
+
+  // Each piece of the line down from the parents carries the ties of the
+  // parents it comes from: the line down from one of two co-parents with no
+  // partnership line is lit only when that parent's tie transmits.
+  const parentLinkPieces = conn.parentLink.map((segment, k) => {
+    const carriers = conn.parentLinkParentIds?.[k];
+    if (!carriers || !highlightActive) return { segment, dimmed: sharedDimmed };
+    return {
+      segment,
+      dimmed: isSharedBarDimmed(
+        carriers,
+        conn.uplineChildIds,
+        highlightedNodeIds,
+        highlightedEdgeKeys,
+      ),
+    };
+  });
+
   // Every piece of the connector, dimmed or not; the pieces of each shade are
   // then drawn as polylines, so a line that runs on (a descent straight down
   // into an only child, say) is one stroke with no seams at its joins.
   const pieces: { segment: LineSegment; dimmed: boolean }[] = [
-    ...conn.uplines.map((ul, i) => ({
-      segment: ul,
-      dimmed: isDescentSegmentDimmed(
-        conn.parentIds,
-        conn.uplineChildIds?.[i],
-        highlightedNodeIds,
-        highlightedEdgeKeys,
-      ),
-    })),
+    ...uplinePieces,
     ...(conn.siblingBar
       ? highlightActive
         ? splitBar(conn.siblingBar, splitXs, isBarSubSegmentDimmed)
         : [{ segment: conn.siblingBar, dimmed: sharedDimmed }]
       : []),
-    ...conn.parentLink.map((segment) => ({ segment, dimmed: sharedDimmed })),
+    ...parentLinkPieces,
     ...runPieces,
   ];
 
@@ -876,6 +992,15 @@ export function PedigreeEdgeSvg({
       );
     }
 
+    const helperJoins: HelperJoin[] = connectors.auxiliaryLines.flatMap(
+      (aux) => {
+        const [helperId, childId] = aux.endpointIds ?? [];
+        const point = aux.points.at(-1);
+        return helperId !== undefined && childId === undefined && point
+          ? [{ helperId, point }]
+          : [];
+      },
+    );
     for (let i = 0; i < connectors.parentChildLines.length; i++) {
       elements.push(
         renderParentChild(
@@ -884,6 +1009,7 @@ export function PedigreeEdgeSvg({
           color,
           highlightedNodeIds,
           highlightedEdgeKeys,
+          helperJoins,
         ),
       );
     }

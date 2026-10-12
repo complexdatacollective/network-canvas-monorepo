@@ -145,6 +145,11 @@ export type ParentChildConnector = {
   /** Absent when the line runs to a single child, who has no bar. */
   siblingBar?: LineSegment;
   parentLink: LineSegment[];
+  /** For each piece of `parentLink`, the parents whose ties it carries,
+   * where that is not all of them: the lines down from each of two
+   * co-parents with no partnership line carry that parent's tie only, until
+   * they join. */
+  parentLinkParentIds?: string[][];
   parentIds?: string[];
   uplineChildIds?: (string | undefined)[];
   /** The runs of two or more children who share donors or surrogates the

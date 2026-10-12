@@ -1344,6 +1344,15 @@ describe('co-parents with no recorded partnership', () => {
       expect(descents).toHaveLength(1);
       const [line] = descents;
       expect(pieces(line!.parentLink)).toEqual(fromEach);
+      // Each line down, and the level line from it to the line down to
+      // the children, carries that parent's tie alone.
+      expect(line!.parentLinkParentIds).toEqual([
+        ['ann'],
+        ['bob'],
+        ['ann'],
+        ['bob'],
+        ['ann', 'bob'],
+      ]);
       expect(line!.uplineChildIds).toEqual(['c1', 'c2']);
       expect(line!.parentIds?.toSorted()).toEqual(['ann', 'bob']);
     });

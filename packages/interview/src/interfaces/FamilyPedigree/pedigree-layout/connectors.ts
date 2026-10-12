@@ -822,8 +822,10 @@ export function computeConnectors(
     childX: number;
     parentX: number;
     startY: number;
-    /** For co-parents with no partnership line: where each sits. */
+    /** For co-parents with no partnership line: where each sits, and who
+     * they are. */
     coParentXs?: [number, number];
+    coParentIds?: [string, string];
   }[] = [];
   // A line of descent from its parents to the bar, its level run (if any)
   // at `runY`.
@@ -852,6 +854,38 @@ export function computeConnectors(
           branch,
           runY,
         );
+
+  // Whose tie each piece of a line of descent from co-parents with no
+  // partnership line carries: the line down from each, and its level line
+  // on to where the other's joins it, carry that parent's alone (see
+  // `ParentChildConnector.parentLinkParentIds`).
+  const carriersOf = (
+    link: Omit<(typeof descentLinks)[number], 'line' | 'level'>,
+    pieces: LineSegment[],
+  ): { parentLinkParentIds?: string[][] } => {
+    const { coParentXs: xs, coParentIds: ids, childX } = link;
+    if (!xs || !ids) return {};
+    const theirs = (keep: (x: number) => boolean) =>
+      ids.filter((_, k) => keep(xs[k]!));
+    return {
+      parentLinkParentIds: pieces.map((piece) => {
+        const [from, to] = [
+          Math.min(piece.x1, piece.x2),
+          Math.max(piece.x1, piece.x2),
+        ];
+        if (Math.abs(piece.y1 - piece.y2) < 1e-9) {
+          // Level: from the parents on its far side from the line down.
+          return to <= childX + 1e-9
+            ? theirs((x) => x <= from + 1e-9)
+            : theirs((x) => x >= to - 1e-9);
+        }
+        const top = Math.min(piece.y1, piece.y2);
+        return Math.abs(top - link.startY) < 1e-9
+          ? theirs((x) => Math.abs(x - piece.x1) < 1e-9)
+          : [...ids];
+      }),
+    };
+  };
 
   // Each couple's own line of descent from their partnership line, by pair
   // key: the first family whose children descend from both of them.
@@ -1064,15 +1098,21 @@ export function computeConnectors(
           familyFrom === 'both'
             ? ([leftPos, rightPos] as [number, number])
             : undefined;
-        const parentLink = linkOf(
-          {
-            childX: x1,
-            parentX: descentX,
-            startY,
-            ...(coParentXs ? { coParentXs } : {}),
-          },
-          i,
-        );
+        const coParentIds =
+          coParentXs && id
+            ? ([id[coupleLeftId] ?? '', id[coupleRightId] ?? ''] as [
+                string,
+                string,
+              ])
+            : undefined;
+        const descent = {
+          childX: x1,
+          parentX: descentX,
+          startY,
+          ...(coParentXs ? { coParentXs } : {}),
+          ...(coParentIds ? { coParentIds } : {}),
+        };
+        const parentLink = linkOf(descent, i);
 
         // Each child's own tie sets the style of the line to them. The
         // parent link and the bar between it and the children of the first
@@ -1132,14 +1172,8 @@ export function computeConnectors(
           primaryMax,
           parentLink,
         );
-        descentLinks.push({
-          level: i,
-          line: primaryPart,
-          childX: x1,
-          parentX: descentX,
-          startY,
-          ...(coParentXs ? { coParentXs } : {}),
-        });
+        Object.assign(primaryPart, carriersOf(descent, parentLink));
+        descentLinks.push({ level: i, line: primaryPart, ...descent });
         if (
           familyFrom === 'both' &&
           groupLine &&
@@ -1238,6 +1272,7 @@ export function computeConnectors(
             parentBottomY +
             ((barY - parentBottomY) * (lane + 1)) / (order.length + 1);
           link.line.parentLink = linkOf(link, i, runY);
+          Object.assign(link.line, carriersOf(link, link.line.parentLink));
         });
       }
     }

@@ -9,6 +9,7 @@ import {
 import { dimColor } from '../dimColor';
 import type { ConnectorRenderData } from '../pedigreeAdapter';
 import type {
+  AuxiliaryConnector,
   DuplicateArc,
   ParentChildConnector,
   ParentGroupConnector,
@@ -1186,5 +1187,112 @@ describe('auxiliary lines that cross another line', () => {
     expect(container.querySelector('polyline')?.getAttribute('points')).toBe(
       '0,20 100,20',
     );
+  });
+});
+
+describe('PedigreeEdgeSvg — a donor’s line carries the lineage on down the line of descent it joins', () => {
+  // Child 1 and child 2 share a donor the third child does not: they hang
+  // from a sub-bar at y=130 on a stem at x=40, which the donor's line meets
+  // at y=115. A second donor's line meets child 3's own line up at y=120.
+  // Parent 1 transmits to no one.
+  const connector = makeParentChildConnector({
+    uplines: [
+      seg(20, 150, 20, 130),
+      seg(60, 150, 60, 130),
+      seg(180, 150, 180, 100),
+    ],
+    uplineChildIds: ['child1', 'child2', 'child3'],
+    siblingBar: seg(40, 100, 180, 100),
+    parentLink: [seg(100, 60, 100, 100)],
+    parentIds: ['parent1'],
+    runs: [{ stem: seg(40, 100, 40, 130), bar: seg(20, 130, 60, 130) }],
+  });
+  const donorLine = (
+    donor: string,
+    end: { x: number; y: number },
+  ): AuxiliaryConnector => ({
+    type: 'auxiliary',
+    edgeType: 'donor',
+    points: [{ x: end.x - 30, y: 0 }, { x: end.x - 30, y: end.y }, end],
+    endpointIds: [donor, undefined],
+  });
+  const draw = (edges: string[]) =>
+    render(
+      <PedigreeEdgeSvg
+        connectorData={{
+          connectors: {
+            groupLines: [],
+            parentChildLines: [connector],
+            auxiliaryLines: [
+              donorLine('donor', { x: 40, y: 115 }),
+              donorLine('donor2', { x: 180, y: 120 }),
+            ],
+            twinIndicators: [],
+            duplicateArcs: [],
+          },
+        }}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={new Set(edges.flatMap((edge) => edge.split('->')))}
+        highlightedEdgeKeys={new Set(edges)}
+      />,
+    ).container;
+
+  test('lights the stem below the donor’s line, the sub-bar and the line up to the child the donor gave the lineage to', () => {
+    const container = draw([edgeKey('donor', 'child1')]);
+    expect(isLineDimmed(uprightStrokeAt(container, 40, 125)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 30, 130)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 20, 140)!)).toBe(false);
+    // Above where the donor's line meets it, the stem carries only the
+    // parents' line of descent, which transmits nothing.
+    expect(isLineDimmed(uprightStrokeAt(container, 40, 105)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 50, 130)!)).toBe(true);
+    expect(isLineDimmed(uprightStrokeAt(container, 60, 140)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 70, 100)!)).toBe(true);
+  });
+
+  test('lights a lone child’s line up below where a donor’s line meets it', () => {
+    const container = draw([edgeKey('donor2', 'child3')]);
+    expect(isLineDimmed(uprightStrokeAt(container, 180, 135)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 180, 110)!)).toBe(true);
+    expect(isLineDimmed(uprightStrokeAt(container, 40, 125)!)).toBe(true);
+  });
+});
+
+describe('PedigreeEdgeSvg — co-parents with no partnership line', () => {
+  // A line down from Ann (x=0) and from Bob (x=100) to y=62, a level line
+  // joining them, and one line from x=50 down to their child.
+  const connector = makeParentChildConnector({
+    uplines: [seg(50, 150, 50, 100)],
+    siblingBar: undefined,
+    parentLink: [
+      seg(0, 25, 0, 62),
+      seg(100, 25, 100, 62),
+      seg(0, 62, 50, 62),
+      seg(50, 62, 100, 62),
+      seg(50, 62, 50, 100),
+    ],
+    parentLinkParentIds: [['ann'], ['bob'], ['ann'], ['bob'], ['ann', 'bob']],
+    parentIds: ['ann', 'bob'],
+    uplineChildIds: ['child1'],
+  });
+
+  test('light the line down from the parent who transmits, and dim the other’s until the two join', () => {
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeConnectorData([connector])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={new Set(['ann', 'bob', 'child1'])}
+        highlightedEdgeKeys={new Set([edgeKey('ann', 'child1')])}
+      />,
+    );
+    expect(isLineDimmed(uprightStrokeAt(container, 0, 40)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 25, 62)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 50, 80)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 100, 40)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 75, 62)!)).toBe(true);
   });
 });
