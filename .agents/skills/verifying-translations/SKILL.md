@@ -85,11 +85,11 @@ Every English text needs a **context note**: where it appears, who reads it
 (participant or researcher), and what it refers to. The translator and the
 comparator both get it; the back-translator never does.
 
-| Surface                                     | Context note comes from                                                                                               |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| app-i18n catalogs                           | the message's `description`; if it is missing, add one to the source descriptor first (the catalog guards require it) |
-| next-intl messages (website, documentation) | no descriptor exists: write the note from the component that renders the key                                          |
-| Markdown content, protocol localization     | write the note from the surrounding document or stage (heading, prompt, the question an answer option belongs to)     |
+| Surface                                     | Context note comes from                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| app-i18n catalogs                           | the message's `description`, if it says where the text appears, who reads it and what it refers to. If it is missing or generic (160 messages say only `Visible copy in …`), rewrite it in the source descriptor from the rendering code first; descriptions are not stamped, so this invalidates no translation |
+| next-intl messages (website, documentation) | no descriptor exists: write the note from the component that renders the key                                                                                                                                                                                                                                     |
+| Markdown content, protocol localization     | write the note from the surrounding document or stage (heading, prompt, the question an answer option belongs to)                                                                                                                                                                                                |
 
 Notes written by hand go in the comparator prompt and in the PR's verification
 section, so a reviewer can see what the comparator was told.
