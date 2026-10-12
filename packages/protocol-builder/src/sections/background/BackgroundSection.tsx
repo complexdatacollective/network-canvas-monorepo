@@ -223,15 +223,19 @@ export default function BackgroundSection() {
   );
 
   /**
-   * The mode the researcher has chosen this session, which outranks the shape
-   * of the stage they opened.
+   * The mode the researcher has chosen this session, which settles the one
+   * case the stage cannot: a background holding neither kind.
    *
    * It has to: switching TO an image shows an empty picker, and a stage with
-   * no image chosen yet is indistinguishable from a circles background.
+   * no image chosen yet is indistinguishable from a circles background nobody
+   * has filled in. It must not outrank a stage that DOES say which kind it is,
+   * because the stage moves without this control — changing the node type
+   * resets it to the interface's circles — and a control left on Image over a
+   * ring count saves the next image chosen beside it.
    */
   const [chosenMode, setChosenMode] = useState<BackgroundMode | null>(null);
   const mode: BackgroundMode =
-    chosenMode ?? modeOfBackground(committedFields.background);
+    modeOfBackground(committedFields.background) ?? chosenMode ?? 'circles';
 
   const chooseMode = useCallback(
     (next: string | number | (string | number)[] | undefined) => {
@@ -318,13 +322,17 @@ export default function BackgroundSection() {
 }
 
 /**
- * Which background the stage the editor opened on describes.
+ * Which background the stage describes, or `null` when it holds neither kind.
  *
  * Read from the KEYS rather than from the values, because the values cannot
  * tell the two apart: "an image background whose image is not chosen yet" and
  * "a circles background nobody has filled in" are both empty.
  */
-function modeOfBackground(background: unknown): BackgroundMode {
-  if (typeof background !== 'object' || background === null) return 'circles';
-  return Object.hasOwn(background, 'image') ? 'image' : 'circles';
+function modeOfBackground(background: unknown): BackgroundMode | null {
+  if (typeof background !== 'object' || background === null) return null;
+  if (Object.hasOwn(background, 'image')) return 'image';
+  return Object.hasOwn(background, 'concentricCircles') ||
+    Object.hasOwn(background, 'skewedTowardCenter')
+    ? 'circles'
+    : null;
 }
