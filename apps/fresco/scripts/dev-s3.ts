@@ -107,8 +107,6 @@ function checkEnvDevelopment(): void {
     S3_REGION: REGION,
     S3_ACCESS_KEY_ID: ACCESS_KEY_ID,
     S3_SECRET_ACCESS_KEY: SECRET_ACCESS_KEY,
-    AWS_REQUEST_CHECKSUM_CALCULATION: 'WHEN_REQUIRED',
-    AWS_RESPONSE_CHECKSUM_VALIDATION: 'WHEN_REQUIRED',
   };
   const actual = parseEnv(
     readFileSync(new URL('.env.development', appRoot), 'utf8'),

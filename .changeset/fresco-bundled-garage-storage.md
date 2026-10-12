@@ -15,3 +15,8 @@ storage step needs no manual preparation. The deployment needs Docker Engine
 This release does not migrate existing files. A deployment that already runs
 the bundled MinIO and switches to the new compose file loses its MinIO service;
 the files stay in the `minio` Docker volume until the operator moves them.
+
+Uploads now work with S3-compatible services that check upload checksums,
+Garage among them. Fresco used to sign each upload URL with the checksum of an
+empty file, before the browser had sent the real one, so those services
+rejected the upload.

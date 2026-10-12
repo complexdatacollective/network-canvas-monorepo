@@ -44,9 +44,6 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
       DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@postgres:5432/postgres
       PUBLIC_URL: http://localhost:${FRESCO_PORT:-3210}
-      # As docker-compose.prod.yml: without these Garage rejects presigned uploads.
-      AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
-      AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
       # Stops server-side capture, and stops the browser reaching off-box at
       # all: posthog-js is loaded only once the server has confirmed analytics
       # are on, so a stack that sets this contacts nothing but localhost. The

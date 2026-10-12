@@ -78,10 +78,6 @@ services:
       # FRESCO_DOMAIN is the only place the deployment domain is set; the app's
       # public URL is derived from it here (overrides any PUBLIC_URL in .env).
       PUBLIC_URL: https://${FRESCO_DOMAIN}
-      # The AWS SDK otherwise signs a checksum of an empty body into presigned
-      # upload URLs, and Garage rejects the browser's real upload against it.
-      AWS_REQUEST_CHECKSUM_CALCULATION: WHEN_REQUIRED
-      AWS_RESPONSE_CHECKSUM_VALIDATION: WHEN_REQUIRED
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.middlewares.fresco-hsts.headers.stsseconds=63072000'

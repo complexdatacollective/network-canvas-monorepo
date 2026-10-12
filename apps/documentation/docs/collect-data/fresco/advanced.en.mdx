@@ -164,6 +164,19 @@ Garage does not offer server-side encryption. Protocol assets are stored in the 
 
 </TipBox>
 
+#### Replacing the storage access key
+
+If the access key may have been exposed, replace it. `garage-init` only adds keys and never removes them, so the old key keeps full access to your files until you delete it yourself. A deleted key ID can't be used again, so the replacement needs a new ID as well as a new secret.
+
+1. Generate a new `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY` with the commands above, and note the old key ID.
+2. Put the new values in `.env` and run `docker compose -f docker-compose.prod.yml up -d`. `garage-init` imports the new key and gives it access to the `assets` bucket.
+3. In Fresco, open **Settings → Storage** and enter the new Access Key ID and Secret Access Key.
+4. Delete the old key:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml exec garage /garage key delete --yes <old key ID>
+   ```
+
 ### External S3-compatible storage
 
 Used by [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml). No storage runs on the host: browsers upload assets directly to your S3 service via presigned URLs, and download them via presigned redirects.

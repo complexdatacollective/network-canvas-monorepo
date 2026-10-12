@@ -59,19 +59,6 @@ test('both inline configs are byte-identical to production', () => {
   }
 });
 
-test('the app runs with the SDK checksum settings Garage needs', () => {
-  for (const name of [
-    'AWS_REQUEST_CHECKSUM_CALCULATION',
-    'AWS_RESPONSE_CHECKSUM_VALIDATION',
-  ]) {
-    assert.equal(prod.services.fresco.environment[name], 'WHEN_REQUIRED');
-    assert.equal(
-      releaseTest.services.fresco.environment[name],
-      prod.services.fresco.environment[name],
-    );
-  }
-});
-
 test('the app starts only once its storage is bootstrapped', () => {
   assert.deepEqual(releaseTest.services.fresco.depends_on['garage-init'], {
     condition: 'service_completed_successfully',
