@@ -203,6 +203,7 @@ describe('RichTextEditorField', () => {
       <RichTextEditorField
         id="bio"
         name="bio"
+        aria-describedby="bio-hint"
         aria-label="Biography"
         autoFocus
         value={documentWithText}
@@ -224,6 +225,7 @@ describe('RichTextEditorField', () => {
         <RichTextEditorField
           id="bio"
           name="bio"
+          aria-describedby="bio-hint"
           aria-label="Biography"
           autoFocus
           value={documentWithText}
@@ -233,6 +235,36 @@ describe('RichTextEditorField', () => {
       </>,
     );
 
+    const elsewhere = screen.getByRole('textbox', { name: 'Elsewhere' });
+    elsewhere.focus();
+    await afterAutoFocus();
+    expect(elsewhere).toHaveFocus();
+  });
+
+  // TipTap's own focus command waits a frame more, and a click in that frame
+  // was undone just the same.
+  it('leaves focus where it went once the editor has taken it', async () => {
+    render(
+      <>
+        <RichTextEditorField
+          id="bio"
+          name="bio"
+          aria-describedby="bio-hint"
+          aria-label="Biography"
+          autoFocus
+          value={documentWithText}
+          onChange={() => undefined}
+        />
+        <input aria-label="Elsewhere" />
+      </>,
+    );
+
+    await act(
+      () =>
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        }),
+    );
     const elsewhere = screen.getByRole('textbox', { name: 'Elsewhere' });
     elsewhere.focus();
     await afterAutoFocus();
