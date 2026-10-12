@@ -26,15 +26,6 @@ import { chooseAttribute, chooseOrCreateAttribute } from './variables.js';
 //   "Node highlighting" the tick list "Highlight attributes" (`highlight`).
 //   Both name codebook entries, and both drop the key entirely when nothing is
 //   ticked.
-//
-// The behaviours are one section again, as released Architect had them:
-// `CanvasPermissionsSection` ("Narrative behaviors") holds three switches, in
-// Architect's order — "Automatic layout" at `behaviours.automaticLayout`,
-// "Free-draw" at `behaviours.freeDraw` and "Allow repositioning" at
-// `behaviours.allowRepositioning`. There is no "Layout mode" list on a
-// narrative stage: the shared `NodeLayoutSection` is the sociogram's. The
-// Narrative template seeds automaticLayout and allowRepositioning true, so the
-// automatic-layout switch opens ON and turning it off is a click.
 
 export async function addNarrativePreset(
   editor: StageEditor,
@@ -81,22 +72,4 @@ export async function addNarrativePreset(
     },
     { addButtonLabel: 'Create new preset' },
   );
-}
-
-export async function setNarrativeBehaviours(
-  editor: StageEditor,
-  opts: { freeDraw?: boolean; automaticLayout?: boolean },
-): Promise<void> {
-  if (opts.freeDraw) {
-    await editor
-      .field('behaviours.freeDraw')
-      .getByRole('switch', { name: 'Free-draw', exact: true })
-      .click();
-  }
-  if (opts.automaticLayout === false) {
-    await editor
-      .field('behaviours.automaticLayout')
-      .getByRole('switch', { name: 'Automatic layout', exact: true })
-      .click();
-  }
 }

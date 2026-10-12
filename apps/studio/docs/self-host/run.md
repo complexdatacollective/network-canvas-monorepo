@@ -40,14 +40,16 @@ later signs every open session out.
 openssl rand -base64 32          # → BETTER_AUTH_SECRET
 ```
 
-**The object store's credentials.** The first takes Garage's key format —
-`GK` followed by 24 hex characters — and the rest are 32 random bytes each.
+**The object store's credentials.** Garage creates the bucket and imports this
+key itself when it starts, so you choose the pair. The key id may be any 8 or
+more letters, digits, `-`, `_` or `.`, and the secret any 16 or more printable
+ASCII characters; these generate a pair well inside both. `GARAGE_RPC_SECRET`
+is Garage's internal secret, which it requires even with one node.
 
 ```bash
-echo "GK$(openssl rand -hex 12)" # → S3_ACCESS_KEY_ID
+openssl rand -hex 12             # → S3_ACCESS_KEY_ID
 openssl rand -hex 32             # → S3_SECRET_ACCESS_KEY
 openssl rand -hex 32             # → GARAGE_RPC_SECRET
-openssl rand -hex 32             # → GARAGE_ADMIN_TOKEN
 ```
 
 Leave `S3_REGION`, `S3_BUCKET`, `POSTGRES_USER` and `POSTGRES_DB` as they come.
@@ -156,7 +158,7 @@ with no restart.
 docker compose run --rm migrate
 ```
 
-It creates the bucket, applies every migration this build carries — on a new
+It waits for Garage, which has by then created the bucket and its key, applies every migration this build carries — on a new
 database, all of them, which is what creates the schema — and, because the
 instance has no owner yet, issues the first-run setup token and prints it:
 

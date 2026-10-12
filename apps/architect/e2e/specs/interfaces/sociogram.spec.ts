@@ -1,11 +1,19 @@
+import path from 'node:path';
+
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../../helpers/load-fixture.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
+import { setImageBackground } from '../../pageobjects/editor-sections/background.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addSociogramPrompt } from '../../pageobjects/editor-sections/sociogram-prompts.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
+
+const BACKGROUND_IMAGE = path.resolve(
+  import.meta.dirname,
+  '../../fixtures/files/sample-protocol/responsive-political-compass.svg',
+);
 
 // A stage being ADDED arrives with a name already proposed for it, so it holds
 // something the protocol does not from its first frame and may be saved
@@ -106,4 +114,46 @@ test('creates a valid Sociogram stage from scratch', async ({
   expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'sociogram-stage.json',
   );
+});
+
+// Choosing the node type resets the stage to the Sociogram template, whose
+// background is concentric circles. The background type control used to stay
+// on Image over that reset, so the image chosen next was saved beside a ring
+// count the researcher could no longer see — a background of both kinds, which
+// "Finished Editing" refused.
+test('keeps an image background saveable when the node type is chosen after it', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol());
+  await gotoProtocol(architectPage);
+
+  const editor = new StageEditor(architectPage);
+  await editor.createNew('Sociogram');
+  await setImageBackground(editor, architectPage, { upload: BACKGROUND_IMAGE });
+
+  await selectOrCreateNodeType(architectPage, 'person');
+
+  await expect(
+    editor
+      .section('Background')
+      .getByRole('listbox', { name: 'Choose a background type', exact: true })
+      .getByRole('option', { name: /^Concentric Circles/ }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(
+    editor.field('background.concentricCircles').getByRole('spinbutton'),
+  ).toHaveValue('4');
+
+  await setImageBackground(editor, architectPage, { upload: BACKGROUND_IMAGE });
+  await addSociogramPrompt(editor, {
+    text: 'Place them',
+    layoutVariable: 'layout',
+  });
+
+  await editor.expectNoIssues();
+  await editor.save();
+
+  const stage = await readStageJson(architectPage, 0);
+  if (stage.type !== 'Sociogram') throw new Error('expected a Sociogram');
+  expect(Object.keys(stage.background ?? {})).toEqual(['image']);
 });

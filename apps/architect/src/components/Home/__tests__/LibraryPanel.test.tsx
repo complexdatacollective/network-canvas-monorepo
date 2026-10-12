@@ -354,3 +354,71 @@ describe('<LibraryPanel /> gallery card', () => {
     expect(document.activeElement).not.toBe(document.body);
   });
 });
+
+describe('<LibraryPanel /> opening tab', () => {
+  const rerenderPanel = (rerender: (ui: ReactNode) => void) =>
+    rerender(
+      <LibraryPanel
+        onOpenProtocol={vi.fn()}
+        onOpenSample={vi.fn()}
+        onOpenDevProtocol={vi.fn()}
+        templates={[]}
+        onOpenTemplate={vi.fn()}
+      />,
+    );
+
+  it('opens on Templates when there are no recent protocols', () => {
+    useProtocolLibraryMock.mockReturnValue({ protocols: [], isLoaded: true });
+    renderPanel();
+
+    expect(screen.getByRole('tab', { name: 'Templates' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('opens on Recent when there are saved protocols', () => {
+    useProtocolLibraryMock.mockReturnValue({
+      protocols: [makeProtocolRow()],
+      isLoaded: true,
+    });
+    renderPanel();
+
+    expect(screen.getByRole('tab', { name: 'Recent' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('waits for the library to load before choosing', () => {
+    useProtocolLibraryMock.mockReturnValue({ protocols: [], isLoaded: false });
+    const { rerender } = renderPanel();
+
+    useProtocolLibraryMock.mockReturnValue({
+      protocols: [makeProtocolRow()],
+      isLoaded: true,
+    });
+    rerenderPanel(rerender);
+
+    expect(screen.getByRole('tab', { name: 'Recent' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('stays on Recent when the last protocol is removed', () => {
+    useProtocolLibraryMock.mockReturnValue({
+      protocols: [makeProtocolRow()],
+      isLoaded: true,
+    });
+    const { rerender } = renderPanel();
+
+    useProtocolLibraryMock.mockReturnValue({ protocols: [], isLoaded: true });
+    rerenderPanel(rerender);
+
+    expect(screen.getByRole('tab', { name: 'Recent' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+});

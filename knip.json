@@ -82,6 +82,7 @@
         ".claude/workflows/fresco-release-test.js",
         ".claude/workflows/interviewer-release-test.js",
         ".agents/skills/preparing-e2e-visual-baselines/scripts/classify-visual-changes.mjs",
+        ".agents/skills/architect-release-test/scripts/check-built-protocol.mjs",
         ".agents/skills/**/scripts/*.test.mjs"
       ],
       "ignoreDependencies": [

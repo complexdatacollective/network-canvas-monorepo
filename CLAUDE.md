@@ -269,6 +269,12 @@ Before adding code for any feature, fix, or refactor, search for the existing pa
 
 **Immediately before the first code edit that changes a user-facing interface, interaction, or user-visible output, invoke the `developing-network-canvas-ui` skill once for that implementation task.** Do not invoke it for backend, schema, worker, CI, tooling, dependency, test-only, or documentation changes unless they alter a user-facing surface, and do not re-invoke it for follow-up messages within the same implementation task.
 
+**Whenever you write, change, or accept a translation — any non-English text in
+a locale catalog, website or documentation messages, localized content, or a
+protocol's localization — invoke the `verifying-translations` skill before
+committing it.** Every translation must pass adversarial reverse translation
+before it is accepted; stamping a catalog is not verification.
+
 ### Code Standards
 
 - **NO `any` types** - explicitly forbidden, always use proper TypeScript typing

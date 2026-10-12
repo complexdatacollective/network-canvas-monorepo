@@ -53,8 +53,35 @@ const escapeAngleBracket = (value = ''): string =>
  */
 const DASHES_OPENING_A_LINE = /^([^\S\n]*)(-+)/gm;
 
-const escapeMarkdownText = (value: string): string =>
+/**
+ * An `&` the renderer would decode: typed as `&lt;`, it would be shown as `<`.
+ * A bare `&` is text to markdown, so it is left readable.
+ */
+const CHARACTER_REFERENCE = /&(?=#\d{1,7};|#x[\da-f]{1,6};|[a-z][a-z\d]*;)/gi;
+
+const LINE_SO_FAR_IS_BLANK = /(^|\n)[^\S\n]*$/;
+
+/**
+ * The interview renderer passes raw HTML through and then sanitises it, so a
+ * typed `<IRB OR ETHICS BOARD HERE>` was read as an unknown element and dropped
+ * from the participant's screen. `<` can open HTML or an autolink almost
+ * anywhere, so every one is escaped. `>` means something only where it opens a
+ * line (a block quote) or closes a bracket, and is escaped only there: the
+ * comparison in an option label like `A > B` stays readable in the lists that
+ * show the stored source.
+ */
+const escapeAngleBrackets = (value: string): string =>
   value
+    .replace(/>/g, (bracket, offset: number) => {
+      const before = value.slice(0, offset);
+      return LINE_SO_FAR_IS_BLANK.test(before) || before.includes('<')
+        ? '&gt;'
+        : bracket;
+    })
+    .replaceAll('<', '&lt;');
+
+const escapeMarkdownText = (value: string): string =>
+  escapeAngleBrackets(value.replace(CHARACTER_REFERENCE, '&amp;'))
     .replace(/\\/g, '\\\\')
     .replace(/(^\d+)+(\.)/g, '$1\\$2')
     .replace(/\*/g, '\\*')

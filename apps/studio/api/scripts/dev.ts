@@ -12,15 +12,19 @@
  * `traefik`, `web`, `api` and `worker` stay stopped: in development those run
  * from source under watch, with the client's HMR.
  *
- * `--object-stores` starts only Garage and Azurite and bootstraps Garage's
- * bucket: the two stores the object-store contract suite runs against
- * (#2077). CI runs it ahead of the Studio suite, whose Postgres and Valkey are
- * the workflow's own service containers on the same ports.
+ * `--object-stores` starts only Garage and Azurite: the two stores the
+ * object-store contract suite runs against (#2077). CI runs it ahead of the
+ * Studio suite, whose Postgres and Valkey are the workflow's own service
+ * containers on the same ports.
  *
- * `pnpm dev` runs this twice. `--prepare` brings the services up, bootstraps
- * the bucket, resets and seeds the database, and exits; only then does
- * `concurrently` start the server, the worker, the client and this script
- * again as `--follow`, which tails the containers' logs and touches nothing.
+ * Garage needs no bootstrap step of its own: it creates its layout, the access
+ * key and the bucket as it starts, and reports healthy only once it has, so
+ * the `--wait` that brings the services up is also the wait for the bucket.
+ *
+ * `pnpm dev` runs this twice. `--prepare` brings the services up, resets and
+ * seeds the database, and exits; only then does `concurrently` start the
+ * server, the worker, the client and this script again as `--follow`, which
+ * tails the containers' logs and touches nothing.
  * The split is what keeps the reset ahead of the server: started side by side,
  * a server whose last build's schema was still current would verify the
  * fingerprint, start its delivery workers and begin answering requests, and
@@ -86,7 +90,6 @@ function composeEnvironment(): Record<string, string> {
     S3_ACCESS_KEY_ID: DEV.s3AccessKeyId,
     S3_SECRET_ACCESS_KEY: DEV.s3SecretAccessKey,
     GARAGE_RPC_SECRET: DEV.garageRpcSecret,
-    GARAGE_ADMIN_TOKEN: DEV.garageAdminToken,
   };
 }
 
@@ -146,14 +149,6 @@ function up(services: readonly string[]): void {
     if (result.status !== 0) {
       throw new Error(`docker compose up failed:\n${result.stderr}`);
     }
-  }
-}
-
-/** The layout, the access key, the bucket and its grant. Idempotent. */
-function bootstrapObjectStore(): void {
-  const result = compose.run(['run', '--rm', 'garage-init']);
-  if (result.status !== 0) {
-    throw new Error(`garage-init failed:\n${result.stderr}`);
   }
 }
 
@@ -257,7 +252,6 @@ async function main(argv: readonly string[]): Promise<void> {
 
   if (mode === 'object-stores') {
     up(OBJECT_STORES);
-    bootstrapObjectStore();
     console.log(
       [
         `Garage (S3)   127.0.0.1:${DEV.s3Port}  bucket '${DEV.s3Bucket}'`,
@@ -268,7 +262,6 @@ async function main(argv: readonly string[]): Promise<void> {
   }
 
   up(SERVICES);
-  bootstrapObjectStore();
   await resetAndSeed();
   console.log(
     [
