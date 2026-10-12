@@ -15,7 +15,8 @@ another way" is not this process.
 ## What counts as translation work
 
 Any change that puts non-English text in front of a reader, or accepts existing
-non-English text against new English:
+non-English text against new English. That sentence is the scope; the table
+lists the surfaces known today:
 
 | Surface                                              | Where                                                                                               |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
@@ -23,8 +24,13 @@ non-English text against new English:
 | Re-accepting a translation after its English changed | catalog guard failure → `i18n:stamp` (see `packages/app-i18n/README.md`, "Translation provenance")  |
 | Website and documentation messages                   | `apps/networkcanvas.com/messages/`, `apps/documentation/messages/`                                  |
 | Website content                                      | `apps/networkcanvas.com/content/**/<id>.<locale>.md`                                                |
+| Website CSV content                                  | locale-suffixed columns (`title_es`, `institution_fr`) in `apps/networkcanvas.com/content/*.csv`    |
 | Protocol text                                        | per-locale values in a protocol's `localization` (templates, samples, fixtures users see)           |
 | A new language anywhere                              | all of the above                                                                                    |
+
+Localized text somewhere the table does not list is still in scope. To find
+every locale's copy of a text, search for the locale tags themselves (`es.json`,
+`.es.md`, `_es` columns, `"es":` keys), not for the surfaces above.
 
 One string, one locale, or a one-word fix is still translation work. Size does
 not change the rule.
@@ -110,30 +116,35 @@ product names stay as they are. Restore the original tokens before step 3.
 ### 3. Adversarial compare
 
 A different fresh agent, not the translator and not the back-translator,
-receives the English, the context note, the translation (tokens restored), the
-locale's existing translations of the same concepts with its register, and the
-back-translation **with the back-translator's notes, pasted verbatim**, never
-summarized by you, since you are the one being checked. Instruct it to find
-problems, not to confirm quality. It reports each finding with severity and a
-proposed fix:
+checks the translation. Instruct it to find problems, not to confirm quality,
+and to report each finding with severity and a proposed fix. Its prompt must
+carry every input its checks need:
 
-- meaning drift, omission or addition
-- ambiguity: the back-translation could mean something the English does not
-- register and terminology inconsistent with that locale's existing translations
-- ICU parity: the same placeholders, select arms and exact plural arms as the
-  English; plural categories correct for the target locale
-- tone for the audience (participant or researcher), and length against the
-  English: a translation much longer than the English on a constrained element
-  (button, tab, label, toast) is a finding
+| Check                             | Inputs in the comparator's prompt                                                                              |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Meaning drift, omission, addition | the English, the translation (tokens restored), the context note                                               |
+| Ambiguity                         | the back-translation **with the back-translator's notes, pasted verbatim**, never summarized by you            |
+| Register and terminology          | the exact locale tag (`pt-BR`, not "Portuguese"), its register, its existing translations of the same concepts |
+| ICU parity                        | the English and translation with ICU intact, and the locale tag                                                |
+| Tone and length                   | the audience and element kind from the context note                                                            |
 
-A length finding is settled by looking at the rendered surface in that locale,
-not by the comparator's estimate or yours.
+ICU parity means the same placeholders, select arms and exact plural arms as the
+English, with plural categories correct for that locale's CLDR rules. A
+translation much longer than the English on a constrained element (button, tab,
+label, toast) is a finding; it is settled by looking at the rendered surface in
+that locale, not by the comparator's estimate or yours.
 
 ### 4. Decide
 
 Accept or reject every finding, with a one-line reason. When the back-translator
-and comparator both trip on the same thing, suspect the English: fix it at the
-source (through the provenance flow for app-i18n catalogs) and retranslate.
+and comparator both trip on the same thing, suspect the English and fix it at
+the source.
+
+**A changed English text makes every translation of it stale**, not only the
+locale under review. Retranslate it in every locale and run each through the
+loop. App-i18n catalogs flag this through the provenance guard; next-intl
+messages, Markdown, CSV columns and protocol text do not, so find every locale's
+copy yourself.
 
 Fixed texts go back through steps 2 and 3 with **fresh** agents. Repeat until a
 round has zero accepted findings. A clean round is a comparator report, not your
@@ -153,8 +164,10 @@ does not replace this loop.
 
 ## Batching
 
-Batch by language: one back-translator and one comparator per language per
-round, run in parallel in the background. Twenty strings across eight languages
+Batch by language, one back-translator and one comparator per language per
+round, in two waves: every back-translator in parallel, then each language's
+comparator once its back-translation is back. A comparator never starts before
+the back-translation it checks exists. Twenty strings across eight languages
 is sixteen short agent runs, a few minutes of wall-clock time.
 
 ## Rationalizations
