@@ -9,10 +9,10 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { EDGE_WIDTH, formerPartnerBreak } from '../components/EdgeRenderer';
+import { formerPartnerBreak } from '../components/EdgeRenderer';
 import PedigreeLayout from '../components/PedigreeLayout';
 import { computeConnectors } from '../connectors';
-import type { LayoutDimensions } from '../layoutDimensions';
+import { EDGE_WIDTH, type LayoutDimensions } from '../layoutDimensions';
 import { drawPedigree } from '../pedigreeAdapter';
 import type {
   LineSegment,
@@ -26,6 +26,7 @@ import type {
 } from '../types';
 import { coordinates, drawnMarks, markPlaces } from './drawnMarks';
 import { INTERFACE_DIMENSIONS } from './fixtures';
+import { lineEndFaults } from './lineEnds';
 import {
   type Drawing,
   familyOf,
@@ -41,11 +42,13 @@ function draw(
   people: string[],
   links: PedigreeLink[],
   shape: PedigreeSymbolShape = 'circle',
+  size = DIMENSIONS.nodeWidth,
 ) {
+  const dimensions = { ...DIMENSIONS, nodeWidth: size, nodeHeight: size };
   const { positions: topLeft, connectorData } = drawPedigree({
     nodeIds: people,
     links,
-    dimensions: DIMENSIONS,
+    dimensions,
     nodeNames: new Map(people.map((id) => [id, id])),
     nodeShapes: new Map(people.map((id) => [id, shape])),
   });
@@ -53,13 +56,10 @@ function draw(
   const centre = (personId: string): Point => {
     const position = topLeft.get(personId);
     if (!position) throw new Error(`${personId} is not drawn`);
-    return {
-      x: position.x + DIMENSIONS.nodeWidth / 2,
-      y: position.y + DIMENSIONS.nodeHeight / 2,
-    };
+    return { x: position.x + size / 2, y: position.y + size / 2 };
   };
   const drawing: Drawing = {
-    size: DIMENSIONS.nodeWidth,
+    size,
     connectors,
     centre,
     shapeOf: () => shape,
@@ -982,4 +982,22 @@ describe('the former-partner break', () => {
   it('stays where it would go when nothing crosses there', () => {
     expect(formerPartnerBreak(former([], [60])).centre).toBe(150);
   });
+});
+
+// Every line ends exactly on what it meets (Josh, 12 Oct 2026): on a person,
+// on the outline PersonNode paints, where the lines into a child converge
+// at its top and run on under the symbol, showing no corner; on a line, on
+// its centreline. Measured for every family, in every shape, at both the
+// interface's sizes.
+describe('every line ends exactly on what it meets', () => {
+  for (const size of [96, 87]) {
+    for (const shape of ['circle', 'square', 'diamond'] as const) {
+      for (const [name, { people, links }] of Object.entries(families)) {
+        it(`${name} (${shape}s, ${size}px)`, () => {
+          const { drawing } = draw(people, links, shape, size);
+          expect(lineEndFaults(drawing)).toEqual([]);
+        });
+      }
+    }
+  }
 });

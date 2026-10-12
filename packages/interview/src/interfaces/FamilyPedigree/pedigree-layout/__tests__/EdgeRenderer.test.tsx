@@ -1992,3 +1992,75 @@ describe('PedigreeEdgeSvg — one tracer lights every piece by the ties through 
     }
   });
 });
+
+// Every line ends exactly on what it meets, and joints show no gap, overhang
+// or notch at any angle (Josh, 12 Oct 2026): every connector is stroked with
+// round caps, and every stroke of several pieces with round joins, so a
+// line meeting another at any angle, on its centreline, is covered to the
+// other's edge, and a dashed line's pattern is left as it is.
+describe('PedigreeEdgeSvg — joints', () => {
+  // A former partnership line is square-ended at its break, where it meets
+  // nothing, so the gap the slashes stand in is exact; its ends at the
+  // partners are under their symbols.
+  const strokes = (container: HTMLElement, former: boolean) =>
+    Array.from(container.querySelectorAll('line, polyline, path')).filter(
+      (element) =>
+        element.getAttribute('stroke') !== null &&
+        !(
+          former &&
+          element.tagName === 'line' &&
+          element.getAttribute('y1') === '50' &&
+          element.getAttribute('y2') === '50'
+        ),
+    );
+
+  for (const [name, bar] of [
+    ['a partnership line', makeCoupleBar()],
+    ['a former partnership line', makeCoupleBar({ isActive: false })],
+    [
+      'a consanguineous couple’s line',
+      makeCoupleBar({ double: true, doubleSegment: seg(0, 60, 200, 60) }),
+    ],
+  ] as const) {
+    test(`strokes ${name} and the line of descent from it with round caps and joins`, () => {
+      const data = makeCoupleWithChild(bar);
+      data.connectors.auxiliaryLines.push({
+        type: 'auxiliary',
+        edgeType: 'donor',
+        points: [
+          { x: 250, y: 0 },
+          { x: 150, y: 100 },
+          { x: 100, y: 100 },
+        ],
+        endpointIds: ['donor', undefined],
+        ownerIds: ['donor'],
+      });
+      for (const highlightedNodeIds of [undefined, new Set(['child'])]) {
+        const { container, unmount } = render(
+          <PedigreeEdgeSvg
+            connectorData={data}
+            color="black"
+            width={300}
+            height={300}
+            {...(highlightedNodeIds ? { highlightedNodeIds } : {})}
+          />,
+        );
+        const drawn = strokes(container, !bar.isActive);
+        expect(drawn.length).toBeGreaterThanOrEqual(3);
+        for (const element of drawn) {
+          expect(
+            element.getAttribute('stroke-linecap'),
+            element.outerHTML,
+          ).toBe('round');
+          if (element.tagName !== 'line') {
+            expect(
+              element.getAttribute('stroke-linejoin'),
+              element.outerHTML,
+            ).toBe('round');
+          }
+        }
+        unmount();
+      }
+    });
+  }
+});

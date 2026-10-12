@@ -3,10 +3,8 @@
 import type { MotionValue } from 'motion/react';
 import { type RefObject, useEffect, useState } from 'react';
 
-import {
-  DASHED_PATTERN,
-  EDGE_WIDTH,
-} from '../pedigree-layout/components/EdgeRenderer';
+import { DASHED_PATTERN } from '../pedigree-layout/components/EdgeRenderer';
+import { EDGE_WIDTH } from '../pedigree-layout/layoutDimensions';
 
 type Point = { x: number; y: number };
 

@@ -39,6 +39,9 @@ type Symbol = {
   /** Where lines meet the symbol's edge; unknown, a line ends where it
    * would meet any of them. */
   shape?: PedigreeSymbolShape;
+  /** How far a square's corners and a diamond's tips are rounded, as a
+   * fraction of the box. */
+  cornerRadius?: number;
 };
 
 /** A line already drawn, which a routed line must keep clear of. */
@@ -73,6 +76,11 @@ export type RoutingScene = {
   /** By the row above each gap: the height of the highest sibling bar in
    * the gap below it, where a sibship's runs raised it above the middle. */
   barTops?: Map<number, number>;
+  /** How far a square's corners and a diamond's tips are rounded, as a
+   * fraction of the box. */
+  cornerRadius?: number;
+  /** Half the width a line is drawn, as a fraction of the box. */
+  halfStroke?: number;
 };
 
 export type RouteEnd =
@@ -127,6 +135,7 @@ export function symbolOf(
   boxHeight: number,
   bracketed: boolean,
   shape?: PedigreeSymbolShape,
+  cornerRadius?: number,
 ): { symbol: Symbol; brackets: Symbol[] } {
   const symbol = {
     person,
@@ -135,6 +144,7 @@ export function symbolOf(
     top: layer,
     bottom: layer + boxHeight,
     ...(shape ? { shape } : {}),
+    ...(cornerRadius === undefined ? {} : { cornerRadius }),
   };
   if (!bracketed) return { symbol, brackets: [] };
   const top = layer - boxHeight * BRACKET_OVERHANG;
@@ -167,8 +177,15 @@ const gapMiddles = (stops: number[]) => {
   return gaps.toSorted((a, b) => b.width - a.width).map((gap) => gap.at);
 };
 
-/** A square's rounded corners, as a fraction of its width. */
+/** A square's rounded corners, as a fraction of its width, unless the
+ * symbol says otherwise. */
 const CORNER_RADIUS = 0.25;
+
+/** How far above the top of its box a diamond's rounded tip stands, as a
+ * fraction of the box: a square of 0.85 the box, its corners rounded at
+ * `cornerRadius` of the box before it is scaled, turned 45°. */
+const diamondTipAbove = (cornerRadius: number) =>
+  (0.85 * Math.SQRT2) / 2 - 0.5 - 0.85 * cornerRadius * (Math.SQRT2 - 1);
 
 /**
  * How far below the top of its box a symbol's edge lies at `offset` from the
@@ -178,29 +195,52 @@ const CORNER_RADIUS = 0.25;
  * Unknown, the deepest of the three. Symbols are symmetric, so the same
  * depth measures up from the bottom.
  */
-function edgeDepth(shape: PedigreeSymbolShape | undefined, offset: number) {
+function edgeDepth(
+  shape: PedigreeSymbolShape | undefined,
+  offset: number,
+  cornerRadius = CORNER_RADIUS,
+) {
   const o = Math.min(Math.abs(offset), 0.5);
   const circle = 0.5 - Math.sqrt(Math.max(0, 0.25 - o * o));
   const diamond = Math.max(0, o - 0.1);
-  const intoCorner = o - (0.5 - CORNER_RADIUS);
+  const intoCorner = o - (0.5 - cornerRadius);
   const square =
     intoCorner <= 0
       ? 0
-      : CORNER_RADIUS -
-        Math.sqrt(Math.max(0, CORNER_RADIUS ** 2 - intoCorner ** 2));
+      : cornerRadius -
+        Math.sqrt(Math.max(0, cornerRadius ** 2 - intoCorner ** 2));
   if (shape === 'circle') return circle;
   if (shape === 'square') return square;
   if (shape === 'diamond') return diamond;
   return Math.max(circle, diamond, square);
 }
 
-/** The top of a symbol: a diamond's tip stands a tenth of the box above
- * the box's top. */
+/** The top of a symbol as it is drawn: a diamond's rounded tip stands a
+ * little above the box's top (see `diamondTipAbove`). */
 export const symbolTop = (
   layer: number,
   boxHeight: number,
   shape: PedigreeSymbolShape | undefined,
-) => layer - (shape === 'diamond' ? 0.1 * boxHeight : 0);
+  cornerRadius = CORNER_RADIUS,
+) =>
+  layer - (shape === 'diamond' ? diamondTipAbove(cornerRadius) * boxHeight : 0);
+
+/** How far a point lies outside a box of half-size `half` whose corners are
+ * rounded at `radius`, from its middle, in the first quadrant. */
+function outsideRoundedBox(
+  qx: number,
+  qy: number,
+  half: number,
+  radius: number,
+) {
+  const ax = qx - (half - radius);
+  const ay = qy - (half - radius);
+  return (
+    Math.hypot(Math.max(ax, 0), Math.max(ay, 0)) +
+    Math.min(Math.max(ax, ay), 0) -
+    radius
+  );
+}
 
 /**
  * How far a point lies outside a symbol, as a fraction of the symbol
@@ -209,24 +249,66 @@ export const symbolTop = (
  */
 function outsideSymbol(
   p: Point,
-  symbol: { left: number; right: number; top: number; bottom: number },
+  symbol: {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    cornerRadius?: number;
+  },
   shape: PedigreeSymbolShape | undefined,
 ): number {
   const width = symbol.right - symbol.left;
   const height = symbol.bottom - symbol.top;
-  const dx = Math.abs(p.x - (symbol.left + symbol.right) / 2) / width;
-  const dy = Math.abs(p.y - (symbol.top + symbol.bottom) / 2) / height;
+  const x = (p.x - (symbol.left + symbol.right) / 2) / width;
+  const y = (p.y - (symbol.top + symbol.bottom) / 2) / height;
+  const [dx, dy] = [Math.abs(x), Math.abs(y)];
+  const radius = symbol.cornerRadius ?? CORNER_RADIUS;
   if (shape === 'circle') return Math.hypot(dx, dy) - 0.5;
-  if (shape === 'diamond')
-    return (dx + dy - 0.5 * 0.85 * Math.SQRT2) / Math.SQRT2;
-  const radius = shape === 'square' ? CORNER_RADIUS : 0;
-  const qx = dx - (0.5 - radius);
-  const qy = dy - (0.5 - radius);
-  return (
-    Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) +
-    Math.min(Math.max(qx, qy), 0) -
-    radius
-  );
+  if (shape === 'diamond') {
+    return outsideRoundedBox(
+      Math.abs(x + y) / Math.SQRT2,
+      Math.abs(x - y) / Math.SQRT2,
+      0.85 / 2,
+      0.85 * radius,
+    );
+  }
+  return outsideRoundedBox(dx, dy, 0.5, shape === 'square' ? radius : 0);
+}
+
+/** Whether a point lies inside a symbol's outline by at least `by` (a
+ * fraction of the box). */
+const insideBy = (p: Point, symbol: Symbol, by: number) =>
+  outsideSymbol(p, symbol, symbol.shape) <= -by - 1e-6;
+
+/**
+ * Where a line coming into a symbol at `meet` (on its outline), from
+ * `before`, runs on to under it, in its own direction: the first of a few
+ * points along that way that lies inside the outline by at least
+ * `halfStroke` (a fraction of the box), so neither a turn nor the line's end
+ * shows. Undefined when the line comes in too flat to run on inside, as a
+ * line flatter than a diamond's sides does at its tip.
+ */
+export function runOnInside(
+  before: Point,
+  meet: Point,
+  symbol: Symbol,
+  halfStroke: number,
+): Point | undefined {
+  const width = symbol.right - symbol.left;
+  const height = symbol.bottom - symbol.top;
+  const ux = (meet.x - before.x) / width;
+  const uy = (meet.y - before.y) / height;
+  const length = Math.hypot(ux, uy);
+  if (length < 1e-9) return undefined;
+  for (const along of [0.2, 0.3, 0.4, 0.5]) {
+    const p = {
+      x: meet.x + ((along * ux) / length) * width,
+      y: meet.y + ((along * uy) / length) * height,
+    };
+    if (insideBy(p, symbol, halfStroke)) return p;
+  }
+  return undefined;
 }
 
 /**
@@ -644,6 +726,10 @@ const COST = {
   crossing: 1000,
   /** A course with any corner that shows. */
   bent: 100,
+  /** A line into a child too flat to run on under their symbol from where
+   * the lines into them converge, so its end shows there (every line ends
+   * exactly on what it meets, Josh, 12 Oct 2026). */
+  runsOff: 100,
   /** A line a few degrees off upright reads as drawn by mistake. */
   nearlyUpright: 3,
   bend: 1,
@@ -679,7 +765,11 @@ type EndContext = {
 const childTop = (
   end: Extract<RouteEnd, { kind: 'child' }>,
   boxHeight: number,
-): Point => ({ x: end.x, y: symbolTop(end.layer, boxHeight, end.shape) });
+  cornerRadius?: number,
+): Point => ({
+  x: end.x,
+  y: symbolTop(end.layer, boxHeight, end.shape, cornerRadius),
+});
 
 type Box = { left: number; right: number; top: number; bottom: number };
 
@@ -770,7 +860,9 @@ function courseCoster(
   const keyOf = (p: Point) => `${p.x},${p.y}`;
   // Where the course leaves its owner and meets its target.
   const targets: Point[] =
-    end.kind === 'join' ? end.points : [childTop(end, boxh)];
+    end.kind === 'join'
+      ? end.points
+      : [childTop(end, boxh, scene.cornerRadius)];
   const courseEnds: Point[] = [...(start ? [start] : []), ...targets];
   const isTarget = (p: Point) =>
     targets.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < ON);
@@ -1026,6 +1118,21 @@ function courseCoster(
         const across =
           Math.abs(ux * vy - uy * vx) / (length * Math.hypot(vx, vy));
         if (across < 0.05 && ux * vx + uy * vy > 0) cost += COST.continues;
+      }
+    }
+    // A line into a child runs on under their symbol, in its own direction.
+    if (!linesOnly && end.kind === 'child' && meetAt > 0) {
+      const child = ends.find((symbol) => symbol.person === end.person);
+      if (
+        child &&
+        !runOnInside(
+          points[meetAt - 1]!,
+          points[meetAt]!,
+          child,
+          scene.halfStroke ?? 0,
+        )
+      ) {
+        cost += COST.runsOff;
       }
     }
     // Lines meeting at one point keep their owners' order across the page
@@ -1424,8 +1531,8 @@ export function routeOptions(
             // At the top of the child, where every line into them
             // converges, and on to their centre, under their symbol.
             x: end.x,
-            entry: childTop(end, boxh),
-            meet: childTop(end, boxh),
+            entry: childTop(end, boxh, scene.cornerRadius),
+            meet: childTop(end, boxh, scene.cornerRadius),
             tail: [{ x: end.x, y: end.layer + boxh / 2 }],
           },
         ];
@@ -1572,7 +1679,11 @@ export function routeOptions(
     const exits: Point[][] = fromStem ? [] : [[start]];
     if (!fromStem && parentSymbol && rowsBetween >= 1) {
       for (const offset of [0, 0.2, -0.2, 0.32, -0.32]) {
-        const depth = edgeDepth(parentSymbol.shape, offset);
+        const depth = edgeDepth(
+          parentSymbol.shape,
+          offset,
+          parentSymbol.cornerRadius,
+        );
         exits.push([
           start,
           { x: from.x + offset * boxw, y: from.layer + boxh * (1 - depth) },

@@ -54,9 +54,9 @@ import {
   withoutSoftHyphens,
 } from '../../FamilyPedigree/generatedLabels';
 import { pedigreeConfigFromStage } from '../../FamilyPedigree/model';
-import { EDGE_WIDTH } from '../../FamilyPedigree/pedigree-layout/components/EdgeRenderer';
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import { dimColor } from '../../FamilyPedigree/pedigree-layout/dimColor';
+import { EDGE_WIDTH } from '../../FamilyPedigree/pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
 import { pedigreeLinksOf } from '../../FamilyPedigree/pedigreeLinks';
 import {

@@ -216,4 +216,9 @@ export type ScalingParams = {
   legHeight: number;
   hScale: number;
   vScale: number;
+  /** How far a square's corners and a diamond's tips are rounded, as a
+   * fraction of the box's width (see `SYMBOL_CORNER_RADIUS_PX`). */
+  cornerRadius?: number;
+  /** Half the width a line is drawn, as a fraction of the box's width. */
+  halfStroke?: number;
 };

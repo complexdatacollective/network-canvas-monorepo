@@ -704,8 +704,12 @@ describe('computeConnectors', () => {
       (l) => l.edgeType === 'social',
     );
     expect(social.length).toBe(2);
-    // Each ends at a child, under their symbol: y = 1 + 0.25 = 1.25.
-    for (const line of social) expect(endOf(line).y).toBeCloseTo(1.25, 5);
+    // Each ends at a child, running on under their symbol: below its top
+    // (y = 1) and above its bottom (y = 1.5).
+    for (const line of social) {
+      expect(endOf(line).y).toBeGreaterThan(1);
+      expect(endOf(line).y).toBeLessThan(1.5);
+    }
     // The birth parents' line of descent comes down from each of them.
     expect(
       connectors.auxiliaryLines.filter((l) => l.edgeType === 'biological'),
@@ -721,7 +725,8 @@ describe('computeConnectors', () => {
       (l) => l.edgeType === 'social',
     );
     expect(social.length).toBe(1);
-    expect(endOf(social[0]!).y).toBeCloseTo(1.25, 5);
+    expect(endOf(social[0]!).y).toBeGreaterThan(1);
+    expect(endOf(social[0]!).y).toBeLessThan(1.5);
   });
 
   it('slashSide is set correctly for inactive group lines', () => {

@@ -14,6 +14,7 @@ import {
   type RouteEnd,
   routeLine,
   routeOptions,
+  runOnInside,
   type RoutingScene,
   segmentsOf,
   symbolOf,
@@ -142,7 +143,12 @@ export function routePedigree(
    * lines, or from several (see below). */
   search: 'quick' | 'thorough' = 'thorough',
 ): { connectors: PedigreeConnectors; cost: number } {
-  const { boxWidth: boxw, boxHeight: boxh, legHeight: legh } = scaling;
+  const {
+    boxWidth: boxw,
+    boxHeight: boxh,
+    legHeight: legh,
+    cornerRadius,
+  } = scaling;
   const maxlev = layout.nid.length;
   const maxcol = Math.max(...layout.n, 0);
 
@@ -1473,6 +1479,10 @@ export function routePedigree(
     lines: [],
     rowXs: layout.pos.map((row, layer) => row.slice(0, layout.n[layer] ?? 0)),
     barTops: new Map(),
+    ...(cornerRadius === undefined ? {} : { cornerRadius }),
+    ...(scaling.halfStroke === undefined
+      ? {}
+      : { halfStroke: scaling.halfStroke }),
   };
   for (const line of parentChildLines) {
     if (!line.siblingBar) continue;
@@ -1491,6 +1501,7 @@ export function routePedigree(
         boxh,
         isBracketed(personIndex),
         shapes?.[personIndex],
+        cornerRadius,
       );
       scene.symbols.push(symbol);
       scene.brackets.push(...brackets);
@@ -1735,7 +1746,7 @@ export function routePedigree(
         return pointJoin(
           {
             x: layout.pos[conn.childLevel]![col]!,
-            y: symbolTop(conn.childLevel, boxh, shapes?.[child]),
+            y: symbolTop(conn.childLevel, boxh, shapes?.[child], cornerRadius),
           },
           child,
         );
@@ -2222,6 +2233,43 @@ export function routePedigree(
     scene.lines.push(...entry.drawn);
   }
   const cost = cheapest?.total ?? 0;
+
+  // A line into a child runs on under their symbol in its own direction,
+  // from where it meets the outline, so the lines into a child converge on
+  // the outline and no turn shows there. One too flat to run on from there
+  // (flatter than the outline where the lines converge) ends where they
+  // converge, on the outline: a turn there would show, and a line running
+  // on would run on past the child.
+  for (const entry of routed) {
+    const { end } = entry;
+    if (end.kind !== 'child') continue;
+    const { person } = end;
+    const symbol = scene.symbols.find((s) => s.person === person);
+    if (!symbol) continue;
+    // Its top, or, for a line from the same row, its bottom.
+    const top = symbolTop(end.layer, boxh, symbol.shape, cornerRadius);
+    const meets = (p: Point) =>
+      Math.abs(p.x - end.x) < 1e-9 &&
+      (Math.abs(p.y - top) < 1e-9 ||
+        Math.abs(p.y - (2 * end.layer + boxh - top)) < 1e-9);
+    for (const line of [entry.line, entry.mateLine]) {
+      if (!line) continue;
+      const meetAt = line.points.findIndex(
+        (p, k) => k > 0 && k < line.points.length - 1 && meets(p),
+      );
+      if (meetAt < 1) continue;
+      const under = runOnInside(
+        line.points[meetAt - 1]!,
+        line.points[meetAt]!,
+        symbol,
+        scaling.halfStroke ?? 0,
+      );
+      line.points = [
+        ...line.points.slice(0, meetAt + 1),
+        ...(under ? [under] : []),
+      ];
+    }
+  }
 
   // A former partnership's break keeps clear of the auxiliary lines that
   // cross the partnership line, or leave it.

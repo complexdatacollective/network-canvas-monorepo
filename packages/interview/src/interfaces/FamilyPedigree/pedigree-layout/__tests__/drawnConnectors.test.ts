@@ -17,12 +17,8 @@ import type {
   PedigreeSymbolShape,
 } from '../types';
 import { INTERFACE_DIMENSIONS } from './fixtures';
-import {
-  type Drawing,
-  familyOf,
-  outsideSymbol,
-  strictLineFaults,
-} from './lineFaults';
+import { outsideOutline as outsideSymbol } from './lineEnds';
+import { type Drawing, familyOf, strictLineFaults } from './lineFaults';
 
 const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
@@ -1201,7 +1197,10 @@ describe('a child with many parent ties beside their birth parents', () => {
       const at = line.points.findIndex(
         (p) => Math.hypot(p.x - top.x, p.y - top.y) < 1,
       );
-      expect(at, 'the line reaches the top of the child').toBeGreaterThan(0);
+      expect(
+        at,
+        `the line reaches the top of the child ${JSON.stringify(line.points)} ${JSON.stringify(top)}`,
+      ).toBeGreaterThan(0);
       const before = line.points[at - 1]!;
       return Math.atan2(before.x - top.x, top.y - before.y);
     });

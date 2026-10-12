@@ -28,6 +28,7 @@ import type {
   PedigreeSymbolShape,
   Point,
 } from '../types';
+import { canRunOnInside, outlineTop, outsideOutline } from './lineEnds';
 
 /** Constraint 6: how far apart two junctions on one line or one symbol
  * edge are, at least, and how far a junction keeps from the ends and
@@ -160,43 +161,14 @@ function samples(s: LineSegment): { p: Point; length: number }[] {
   }));
 }
 
-/**
- * How far a point lies outside a person's symbol as PersonNode draws it
- * (negative inside): a circle, a square with rounded corners a quarter of
- * its width, or a diamond (a square turned and scaled to 0.85).
- */
-export function outsideSymbol(
-  p: Point,
-  c: Point,
-  size: number,
-  shape: PedigreeSymbolShape,
-): number {
-  const dx = Math.abs(p.x - c.x);
-  const dy = Math.abs(p.y - c.y);
-  const half = size / 2;
-  if (shape === 'circle') return Math.hypot(dx, dy) - half;
-  if (shape === 'diamond') {
-    return (dx + dy - half * 0.85 * Math.SQRT2) / Math.SQRT2;
-  }
-  const radius = size * 0.25;
-  const qx = dx - (half - radius);
-  const qy = dy - (half - radius);
-  return (
-    Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) +
-    Math.min(Math.max(qx, qy), 0) -
-    radius
-  );
-}
+/** How far a point lies outside a person's symbol as PersonNode paints it
+ * (negative inside): see `outsideOutline`. */
+const outsideSymbol = outsideOutline;
 
 /** The topmost point of a person's symbol, where lines converging on them
  * from above meet. */
 function topOfSymbol(drawing: Drawing, id: string): Point {
-  const c = drawing.centre(id);
-  const shape = drawing.shapeOf(id);
-  return {
-    x: c.x,
-    y: c.y - (shape === 'diamond' ? 0.85 * Math.SQRT1_2 : 0.5) * drawing.size,
-  };
+  return outlineTop(drawing.centre(id), drawing.size, drawing.shapeOf(id));
 }
 
 /** Where a course first meets the child's symbol: the visible end. */
@@ -983,6 +955,19 @@ function faultsOfStraightness(drawing: Drawing, family: Family): string[] {
       y2: end.y,
     };
     const joins = new Set([...line.owners, ...reached]);
+    // Into a child too flat to run on under their symbol.
+    if (
+      line.child !== undefined &&
+      !canRunOnInside(
+        start,
+        end,
+        drawing.centre(line.child),
+        size,
+        drawing.shapeOf(line.child),
+      )
+    ) {
+      continue;
+    }
     // Through anyone it does not leave (a couple's line leaves their
     // partnership line, not either symbol), or close past someone it does
     // not join.

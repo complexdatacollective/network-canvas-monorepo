@@ -3,6 +3,7 @@
 import { type JSX, useMemo } from 'react';
 
 import { dimColor } from '../dimColor';
+import { EDGE_WIDTH } from '../layoutDimensions';
 import type { ConnectorRenderData } from '../pedigreeAdapter';
 import type {
   AuxiliaryConnector,
@@ -13,9 +14,11 @@ import type {
   Point,
 } from '../types';
 
-export const EDGE_WIDTH = 5;
 export const DASHED_PATTERN = '8 8';
 
+/** One straight piece of a connector. Its ends are round, so a piece that
+ * ends on another line's centreline, at any angle, is covered to that
+ * line's edge: no gap, overhang or notch shows at the joint. */
 function renderLine(
   seg: LineSegment,
   color: string,
@@ -31,6 +34,7 @@ function renderLine(
       y2={seg.y2}
       stroke={color}
       strokeWidth={EDGE_WIDTH}
+      strokeLinecap="round"
       {...extra}
     />
   );
@@ -155,8 +159,11 @@ function renderInactiveGroupLine(
   const { x1, y1, x2, y2 } = conn.segment;
   const midY = (y1 + y2) / 2;
   const { centre: safeCenter } = formerPartnerBreak(conn);
+  // Square-ended at the break, so the gap the slashes stand in is exact.
   const part = (segment: LineSegment, key: string) =>
-    shading ? shading.part(segment, key) : renderLine(segment, color, key);
+    shading
+      ? shading.part(segment, key)
+      : renderLine(segment, color, key, { strokeLinecap: 'butt' });
   const slashes = (
     <>
       <line
@@ -423,7 +430,7 @@ function renderSplitBar(
         segment,
         dimmed ? dimColor(color) : color,
         `${keyPrefix}-line-${i}`,
-        roundCaps ? { strokeLinecap: 'round' } : undefined,
+        { strokeLinecap: roundCaps ? 'round' : 'butt' },
       )}
     </g>
   ));

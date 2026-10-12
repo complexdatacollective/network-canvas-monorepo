@@ -4,7 +4,9 @@ import { alignPedigree } from './alignPedigree';
 import { routePedigree } from './connectors';
 import {
   computeLayoutMetrics,
+  EDGE_WIDTH,
   type LayoutDimensions,
+  SYMBOL_CORNER_RADIUS_PX,
 } from './layoutDimensions';
 import { drawnKind } from './lineOwners';
 import type {
@@ -189,6 +191,8 @@ function routeLayout(
     legHeight: (1 - boxHeight) / 2,
     hScale: 1,
     vScale: 1,
+    cornerRadius: SYMBOL_CORNER_RADIUS_PX / dimensions.nodeWidth,
+    halfStroke: EDGE_WIDTH / 2 / dimensions.nodeWidth,
   };
 
   // Build sets of all and active partner pairs (numeric index keys). The full
