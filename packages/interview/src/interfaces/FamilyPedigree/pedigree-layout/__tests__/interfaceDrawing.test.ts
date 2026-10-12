@@ -233,7 +233,7 @@ describe('the places for the lines ending on one side of a child', () => {
       `keeps ${count} lines into a ${shape} left of its line of descent, in order and apart`,
       () => {
         const parentXs = Array.from({ length: count }, (_, k) => -3 + k);
-        const places = childAttachments(0, 1, shape, parentXs, true).map(
+        const places = childAttachments(0, 1, shape, parentXs, 0).map(
           (options) => options[0]!,
         );
         for (const o of places) {

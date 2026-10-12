@@ -590,18 +590,14 @@ describe('computeConnectors', () => {
       donorSomeParents,
     );
     expect(connectors.auxiliaryLines.length).toBe(2);
-    // Each meets the line of descent of the one child they gave to (round
-    // 3, 12 Oct 2026): that child's own line up, from the side, below the
-    // sibling bar (y = childLevel(1) - legh(0.25) = 0.75) and above the
-    // child's top (y = 1).
+    // Each meets the line of descent where it first leads only to the one
+    // child they gave to (the donor line rule, Bennett et al. 2022, 1c):
+    // the top of that child's own line up, on the sibling bar (y =
+    // childLevel(1) - legh(0.25) = 0.75).
     connectors.auxiliaryLines.forEach((line, k) => {
       const end = endOf(line);
       expect(end.x).toBeCloseTo(k, 5);
-      expect(end.y).toBeGreaterThan(0.75 + 0.05);
-      expect(end.y).toBeLessThan(1 - 0.05);
-      const before = line.points.at(-2)!;
-      expect(before.y).toBeCloseTo(end.y, 5);
-      expect(before.x).not.toBeCloseTo(end.x, 1);
+      expect(end.y).toBeCloseTo(0.75, 5);
     });
   });
 
@@ -647,8 +643,11 @@ describe('computeConnectors', () => {
       singleChildParents,
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
-    // Single child: connects directly to child node y = 1 + 0.25 = 1.25
-    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(1.25, 5);
+    // An only child: the donor's line and the line of descent converge on
+    // the top of the child (Bennett et al. 2022, 1f), at y = 1.
+    const end = endOf(connectors.auxiliaryLines[0]!);
+    expect(end.x).toBeCloseTo(0.5, 5);
+    expect(end.y).toBeCloseTo(1, 5);
   });
 
   // mom(0) and biodad(2), birth parents never recorded as partners, seated

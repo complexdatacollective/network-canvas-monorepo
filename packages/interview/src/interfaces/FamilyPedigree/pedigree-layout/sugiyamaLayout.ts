@@ -1413,11 +1413,13 @@ function barycentricSweep(
   layerOrdering: number[][],
   graph: PedigreeGraph,
   direction: 'down' | 'up',
+  /** The first row a sweep down reseats. */
+  from = 1,
 ): number[][] {
   const result = layerOrdering.map((layer) => [...layer]);
 
   if (direction === 'down') {
-    for (let k = 1; k < result.length; k++) {
+    for (let k = from; k < result.length; k++) {
       const fixedLayer = result[k - 1]!;
       const fixedPos = new Map<number, number>();
       for (let i = 0; i < fixedLayer.length; i++) {
@@ -1697,18 +1699,24 @@ function refineSeating(
     let improved = false;
     for (let layer = 0; layer < current.length && !improved; layer++) {
       for (const { row, choice } of movesOn(layer)) {
-        const candidate = withRow(layer, row);
+        const moved = withRow(layer, row);
         const previous = choice
           ? graph.sibshipChoice.get(choice[0])
           : undefined;
         if (choice) graph.sibshipChoice.set(choice[0], choice[1]);
-        const cost = seatingCost(candidate, graph);
-        if (lessCost(cost, currentCost)) {
-          current = candidate;
-          currentCost = cost;
-          improved = true;
-          break;
+        // Each move is weighed as it is, and with the rows below it
+        // reseated under it by a sweep down.
+        const followed = barycentricSweep(moved, graph, 'down', layer + 1);
+        for (const candidate of [moved, followed]) {
+          const cost = seatingCost(candidate, graph);
+          if (lessCost(cost, currentCost)) {
+            current = candidate;
+            currentCost = cost;
+            improved = true;
+            break;
+          }
         }
+        if (improved) break;
         if (choice) {
           if (previous) graph.sibshipChoice.set(choice[0], previous);
           else graph.sibshipChoice.delete(choice[0]);

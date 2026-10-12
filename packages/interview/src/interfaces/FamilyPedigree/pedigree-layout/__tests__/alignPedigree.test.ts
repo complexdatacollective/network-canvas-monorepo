@@ -1554,8 +1554,22 @@ describe('a person with three partners', () => {
     expect(styleOf(1, 4)).toBe('social');
     expect(styleOf(2, 5)).toBe('biological');
     expect(lines.get('p→kid2')).toBe('social');
-    expect(lines.get('d→kid1')).toBe('donor');
-    expect(lines.get('d→kid2')).toBe('surrogate');
+    // d's lines join each only child's line of descent at the top of the
+    // child, in the style of d's tie to them.
+    const xOf = (child: number) =>
+      result.pos.flatMap((row, level) =>
+        row
+          .slice(0, result.n[level])
+          .filter((_, col) => result.nid[level]![col] === child),
+      )[0]!;
+    const fromD = conn.auxiliaryLines.filter(
+      (line) => line.endpointIds?.[0] === 'd',
+    );
+    const styleTo = (child: number) =>
+      fromD.find((line) => Math.abs(line.points.at(-1)!.x - xOf(child)) < 1e-9)
+        ?.edgeType;
+    expect(styleTo(4)).toBe('donor');
+    expect(styleTo(5)).toBe('surrogate');
   });
 
   it('joins a child without a family to its only parent', () => {

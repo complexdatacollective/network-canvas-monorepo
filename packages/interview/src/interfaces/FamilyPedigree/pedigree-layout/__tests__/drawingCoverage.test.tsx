@@ -248,16 +248,17 @@ function unaccounted(
           }) satisfies LineSegment,
       ),
     ]);
-    // Or, for a donor or surrogate of some of the sibship (round 3, 12 Oct
-    // 2026), onto the line of descent of the child's run below the bar: the
-    // stem of the sub-bar the child hangs from, or the child's own line up.
+    // Or, for a donor or surrogate of some of the sibship (the donor and
+    // carrier line rule, 12 Oct 2026), where the line of descent first leads
+    // only to their children: the top of the stem of a run the child is in,
+    // or, for an only child, the top of the child, on their own line up.
     const ownUpline = sibship.flatMap((pc) =>
       pc.uplines.filter((_, k) => pc.uplineChildIds?.[k] === c),
     )[0]!;
     // The stems of the runs the child is in: the one they hang from, the
     // one that run hangs from in turn (a run inside another), and so on up.
     const runs = sibship.flatMap((pc) => pc.runs ?? []);
-    const stems = [ownUpline];
+    const stems: LineSegment[] = [];
     for (let top: Point | undefined = childTop; top;) {
       const at: Point = top;
       const run = runs.find((candidate) =>
@@ -281,7 +282,9 @@ function unaccounted(
       const end = l.points.at(-1)!;
       return (
         (close(end.y, childTop.y) && bars.some((bar) => onSegment(end, bar))) ||
-        stems.some((stem) => strictlyWithin(end, stem))
+        stems.some((stem) => close(end.x, stem.x1) && close(end.y, stem.y1)) ||
+        (sibship.flatMap((pc) => pc.uplineChildIds ?? []).length === 1 &&
+          strictlyWithin(end, ownUpline))
       );
     });
   };

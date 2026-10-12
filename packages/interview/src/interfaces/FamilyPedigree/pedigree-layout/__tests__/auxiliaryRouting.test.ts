@@ -176,15 +176,10 @@ describe('every recorded tie is drawn as a line', () => {
     rowXs: [[0], [1, 2]],
   };
 
-  it('routes a line to a bar it is offered no place on', () => {
+  it('routes a line to the point on a line of descent it is offered', () => {
     const { points } = routeLine(
       { person: 0, x: 0, layer: 0 },
-      {
-        kind: 'bar',
-        bar: { type: 'line', x1: 1.5, y1: 0.75, x2: 1.5, y2: 0.75 },
-        layer: 1,
-        joins: [],
-      },
+      { kind: 'join', points: [{ x: 1.5, y: 0.75 }], layer: 1 },
       'owner',
       scene,
     );
@@ -192,7 +187,7 @@ describe('every recorded tie is drawn as a line', () => {
     expect(points.at(-1)).toEqual({ x: 1.5, y: 0.75 });
   });
 
-  it('weighs crossing a partnership line as it weighs crossing a sibling bar', () => {
+  it('weighs every crossing the same, whatever it crosses', () => {
     // A line straight down from a parent to a child, across one line.
     const across: LineSegment = {
       type: 'line',
@@ -213,7 +208,20 @@ describe('every recorded tie is drawn as a line', () => {
         ],
       );
     expect(costAcross('partnership')).toBe(costAcross('bar'));
-    expect(costAcross('partnership')).toBeGreaterThan(costAcross('other'));
+    expect(costAcross('upline')).toBe(costAcross('bar'));
+    expect(costAcross('other')).toBe(costAcross('bar'));
+    expect(costAcross('other')).toBeGreaterThan(
+      courseCost(
+        { person: 0, x: 0, layer: 0 },
+        { kind: 'child', person: 1, x: 0, layer: 1, attachments: [0] },
+        'owner',
+        scene,
+        [
+          { x: 0, y: 0.25 },
+          { x: 0, y: 1.25 },
+        ],
+      ),
+    );
   });
 
   it('routes a line to a child it is offered no place on', () => {
@@ -261,7 +269,7 @@ describe('where auxiliary lines meet a symbol', () => {
       ['ego', 'mary', 'don'],
       [
         parent('mary', 'biological', 'ego', true),
-        parent('don', 'donor', 'ego'),
+        parent('don', 'social', 'ego'),
       ],
       { ego: 'square', mary: 'circle', don: 'square' },
     );

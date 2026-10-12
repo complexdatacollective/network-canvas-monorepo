@@ -22,7 +22,12 @@ import type {
   PedigreeSymbolShape,
 } from '../types';
 import { INTERFACE_DIMENSIONS } from './fixtures';
-import { type Drawing, familyOf, strictLineFaults } from './lineFaults';
+import {
+  type Drawing,
+  familyOf,
+  outsideSymbol,
+  strictLineFaults,
+} from './lineFaults';
 import { check } from './pendingRebuild';
 
 const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
@@ -568,6 +573,7 @@ function auxiliaryLineFaults(
   people: string[],
   centre: (id: string) => { x: number; y: number },
   adopted: string[] = [],
+  shape: PedigreeSymbolShape = 'circle',
 ): string[] {
   const W = DIMENSIONS.nodeWidth;
   const H = DIMENSIONS.nodeHeight;
@@ -622,9 +628,15 @@ function auxiliaryLineFaults(
     for (const segment of segments) {
       for (const id of people) {
         if (id === from || id === to) continue;
-        if (crossesRect(segment, boxOf(id))) {
-          faults.push(`${name} passes through ${id}`);
-        }
+        // Through the symbol as it is drawn.
+        const steps = Math.ceil(
+          Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1),
+        );
+        const through = Array.from({ length: steps + 1 }, (_, k) => ({
+          x: segment.x1 + ((segment.x2 - segment.x1) * k) / Math.max(steps, 1),
+          y: segment.y1 + ((segment.y2 - segment.y1) * k) / Math.max(steps, 1),
+        })).some((p) => outsideSymbol(p, centre(id), W, shape) < -0.5);
+        if (through) faults.push(`${name} passes through ${id}`);
       }
       for (const id of adopted) {
         const c = centre(id);
@@ -780,7 +792,7 @@ describe('auxiliary and direct parent lines', () => {
       it(`are drawn clear of everyone and every other line: ${name} (${shape}s)`, () => {
         const { connectors, centre } = draw(people, links, shape);
         expect(
-          auxiliaryLineFaults(connectors, people, centre, adopted),
+          auxiliaryLineFaults(connectors, people, centre, adopted, shape),
         ).toEqual([]);
       });
 
@@ -797,7 +809,7 @@ describe('auxiliary and direct parent lines', () => {
     }
   }
 
-  it('end at a point on the child’s top edge, distinct for each line into them', () => {
+  it('converge with the line of descent on the top of an only child (Bennett 1f)', () => {
     const { connectors, centre } = draw(
       ['ego', 'ann', 'dan', 'sue'],
       [
@@ -807,19 +819,14 @@ describe('auxiliary and direct parent lines', () => {
       ],
     );
     const ego = centre('ego');
-    const ends = connectors.auxiliaryLines.map((line) => {
-      const segments = auxiliarySegments(line);
-      const last = segments[segments.length - 1]!;
-      // The line meets the child's symbol from above, at its top, and runs
-      // on under it, off the child's own line up.
-      expect(last.x1).toBeCloseTo(last.x2, 5);
-      expect(last.y1).toBeLessThanOrEqual(ego.y - DIMENSIONS.nodeHeight / 4);
-      expect(Math.abs(last.x2 - ego.x)).toBeGreaterThan(5);
-      expect(Math.abs(last.x2 - ego.x)).toBeLessThan(DIMENSIONS.nodeWidth / 2);
-      return last.x2;
-    });
-    expect(ends).toHaveLength(2);
-    expect(Math.abs(ends[0]! - ends[1]!)).toBeGreaterThan(5);
+    expect(connectors.auxiliaryLines).toHaveLength(2);
+    for (const line of connectors.auxiliaryLines) {
+      // Straight from the donor or carrier to the top of the child.
+      expect(line.points).toHaveLength(2);
+      const end = line.points.at(-1)!;
+      expect(end.x).toBeCloseTo(ego.x, 5);
+      expect(end.y).toBeCloseTo(ego.y - DIMENSIONS.nodeHeight / 2, 5);
+    }
   });
 
   it('join a sibship’s bar away from every child’s line', () => {

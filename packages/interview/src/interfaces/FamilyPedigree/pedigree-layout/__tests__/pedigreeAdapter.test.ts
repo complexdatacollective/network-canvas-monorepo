@@ -290,9 +290,10 @@ describe('toPedigreeInput', () => {
       (p) => p.parentIndex === idToIndex.get('cara'),
     );
     expect(cara?.edgeType).toBe('biological');
-    const { descent, lines } = lineOwnersOf(input.parents, input.partners)[
-      idToIndex.get('child')!
-    ]!;
+    const { descent, lines } = lineOwnersOf(
+      input.parents,
+      input.partners ?? [],
+    )[idToIndex.get('child')!]!;
     expect(descent?.parents.toSorted((a, b) => a - b)).toStrictEqual(
       [idToIndex.get('ann')!, idToIndex.get('bob')!].toSorted((a, b) => a - b),
     );
