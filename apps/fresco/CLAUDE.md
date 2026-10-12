@@ -455,12 +455,19 @@ anything. So does an origin that is not the canonical
 PR. The release branch has already consumed (deleted) the changesets it ships,
 so the script also names every changeset it deleted relative to main's tip;
 the diff judge, audit and critic read them from that commit, and the coverage
-gates count them as pending. A branch that consumed none pins nothing. An
-inferred pin binds exactly as a passed one does, and also requires the image
-to be built from that branch head. Because the bot regenerates the PR whenever
+gates count them as pending. A branch that consumed none, or that still
+carries a changeset the normal lane owns (the merge-time freshness guard's
+predicate: a stale PR updated by merging main rather than regenerated), pins
+nothing. The branch is checked on every run, pinned or not, and a run from it
+is bound to it either way: the image must be built from the branch head, a
+passed `expectedVersion` must equal the version the branch carries, and its
+consumed changesets are counted. Because the bot regenerates the PR whenever
 main moves, the branch is checked again after the lanes finish; if its head,
 version or consumed changesets changed, or the check fails, the run is
-`incomplete`. `expectedVersionSource` reports which it was (`args`,
+`incomplete`. A pinned run whose checkout cannot be identified (the check
+failed, or origin is not the canonical repository) is also `incomplete`,
+since changesets it may have consumed would go uncounted.
+`expectedVersionSource` reports where the version came from (`args`,
 `release-branch`, or `null` when unpinned). Each lane is bound to that build by the image id
 docker reports for its Fresco container (`/api/health` names no version, on
 purpose). Other args:

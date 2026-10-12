@@ -119,8 +119,8 @@ const allowDirty = flag('allowDirty');
 // Fresco to, which bundle-pending-packages.mjs bakes into the staged tree.
 // Without it the run cannot certify: nothing proves the image under test is
 // the build the release will publish. When the caller pins none, it is
-// inferred from the checkout if that is the Version Packages branch (see the
-// Build phase).
+// inferred from the checkout if that is the Version Packages branch, and a
+// run from that branch is bound to it either way (see the Build phase).
 if (
   rawArgs.expectedVersion !== undefined &&
   typeof rawArgs.expectedVersion !== 'string'
@@ -879,9 +879,9 @@ if (skipBuild) {
     'skipBuild: validating existing fresco-release-test:pending against its stamp',
   );
 }
-// Run only when the caller pinned no version, and again before the verdict
-// when the pin came from it. Its answer is a script's own JSON, validated in
-// code below; the agent decides nothing.
+// Run on every invocation, and again before the verdict when the run is
+// bound to the release branch. Its answer is a script's own JSON, validated
+// in code below; the agent decides nothing.
 const detectReleaseBranch = (label = 'release-branch') =>
   agent(
     `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once: node ${SCRIPTS}/release-branch-version.mjs
@@ -895,13 +895,15 @@ It prints ONE line of JSON and nothing else. Return its fields verbatim: ok, onR
   );
 const [build, released, releaseBranch] = await parallel([
   ...(skipBuild ? [validateReusedImage, buildTasks[1]] : buildTasks),
-  ...(pinnedVersion ? [] : [detectReleaseBranch]),
+  detectReleaseBranch,
 ]);
 
-// A version inferred from the release branch binds the run exactly as a pinned
-// one does: the build stamp must report it, and the build must be of the very
-// commit the branch points at. Anything short of an unambiguous release-branch
-// answer leaves the run unpinned, and so never certifying.
+// A run from the release branch is bound to it whether or not the caller
+// pinned a version: the build must be of the very commit the branch points at,
+// and that commit must still be the branch head when the verdict is reached.
+// An unpinned run takes its version from the branch; anything short of an
+// unambiguous release-branch answer leaves it unpinned, and so never
+// certifying. A pinned run must agree with the branch.
 //
 // The release branch has already consumed the changesets it releases, so the
 // working tree no longer says what the release ships; the script names them
@@ -921,16 +923,25 @@ const releaseBranchChangesets = (answer) => {
     names: [...new Set(names)].toSorted((a, b) => a.localeCompare(b)),
   };
 };
+const onReleaseBranch =
+  releaseBranch?.ok === true && releaseBranch.onReleaseBranch === true;
 const consumedChangesets = releaseBranchChangesets(releaseBranch);
-const inferredHead = shaped(releaseBranch?.head, COMMIT, 40);
+const releaseHead = onReleaseBranch
+  ? shaped(releaseBranch.head, COMMIT, 40)
+  : null;
+const branchVersion = onReleaseBranch
+  ? shaped(releaseBranch.version, STABLE_VERSION, 64)
+  : null;
 const inferredVersion =
-  releaseBranch?.ok === true &&
-  releaseBranch.onReleaseBranch === true &&
-  releaseBranch.releasesFresco === true &&
-  inferredHead &&
+  !pinnedVersion &&
+  releaseBranch?.releasesFresco === true &&
+  releaseHead &&
   consumedChangesets
-    ? shaped(releaseBranch.version, STABLE_VERSION, 64)
+    ? branchVersion
     : null;
+const boundToReleaseBranch = Boolean(
+  inferredVersion || (pinnedVersion && onReleaseBranch),
+);
 // The release-branch agent's error is relayed text: printable, bounded, and
 // quoted as its report, never as the workflow's own words.
 const relayedError = (value) => {
@@ -959,6 +970,29 @@ const unpinnedReason = expectedVersion
         : !consumedChangesets
           ? 'and the Version Packages branch did not say which changesets it consumed, so what it releases could not be accounted for'
           : 'and the Version Packages branch reported no usable Fresco version';
+// A pinned run is certified only if it can be shown not to be the release
+// branch, or to be bound to it: otherwise the changesets the branch has
+// already consumed would go uncounted.
+const releaseBranchProblems = !pinnedVersion
+  ? []
+  : !releaseBranch || releaseBranch.ok !== true
+    ? [
+        `whether this checkout is the Version Packages branch could not be determined (${relayedError(releaseBranch?.error)}), so changesets it may already have consumed are unaccounted for`,
+      ]
+    : !onReleaseBranch
+      ? []
+      : [
+          ...(releaseHead
+            ? []
+            : [
+                'the Version Packages branch reported no usable head commit, so the build cannot be bound to it',
+              ]),
+          ...(consumedChangesets
+            ? []
+            : [
+                'the Version Packages branch did not say which changesets it consumed, so what it releases could not be accounted for',
+              ]),
+        ];
 // Told to every agent that reads the pending changesets. On the release branch
 // .changeset/ no longer holds them, and an agent that read only the directory
 // would account for a release that ships nothing.
@@ -967,7 +1001,7 @@ const consumedChangesetsNote = consumedChangesets
   : '';
 if (inferredVersion)
   log(
-    `expectedVersion ${inferredVersion} inferred from the Version Packages branch at ${inferredHead.slice(0, 12)}`,
+    `expectedVersion ${inferredVersion} inferred from the Version Packages branch at ${releaseHead.slice(0, 12)}`,
   );
 
 // The protocol fixtures every script-driven lane imports: the one an interview
@@ -1060,13 +1094,17 @@ if (expectedVersion && buildVersion && buildVersion !== expectedVersion)
   provenanceFailures.push(
     `the pending image is version ${buildVersion}, but this run certifies ${expectedVersion} — the wrong build is under test`,
   );
-if (inferredVersion) {
+if (boundToReleaseBranch && releaseHead) {
   const buildCommit = shaped(build.commit, COMMIT, 40)?.toLowerCase();
-  if (!buildCommit || !inferredHead.toLowerCase().startsWith(buildCommit))
+  if (!buildCommit || !releaseHead.toLowerCase().startsWith(buildCommit))
     provenanceFailures.push(
-      `the version was inferred from the Version Packages branch at ${inferredHead}, but the pending image was built from ${build.commit ?? 'an unreported commit'} — the wrong build is under test`,
+      `this run is bound to the Version Packages branch at ${releaseHead}, but the pending image was built from ${build.commit ?? 'an unreported commit'} — the wrong build is under test`,
     );
 }
+if (pinnedVersion && onReleaseBranch && branchVersion !== pinnedVersion)
+  provenanceFailures.push(
+    `this run certifies ${pinnedVersion}, but the Version Packages branch it runs from carries Fresco ${branchVersion ?? 'with no usable version'} — the wrong version is pinned`,
+  );
 
 // Deliberately gives the agent nothing to decide. The reading is a
 // deterministic script's own JSON — what the sink recorded, and whether the
@@ -1582,9 +1620,10 @@ Then verify nothing remains: docker ps -a and docker volume ls filtered for "fre
 // The bot regenerates the Version Packages PR whenever main moves, so an
 // inferred pin is asked again now: a verdict for the head the run started from
 // would approve a commit that is no longer the one being merged.
-const releaseBranchRecheck = inferredVersion
-  ? await detectReleaseBranch('release-branch-recheck')
-  : null;
+const releaseBranchRecheck =
+  boundToReleaseBranch && releaseHead && consumedChangesets
+    ? await detectReleaseBranch('release-branch-recheck')
+    : null;
 
 // ---------------------------------------------------------------------------
 // Synthesis, in code. The critic is a narrator and a cross-checker; it is
@@ -1601,7 +1640,8 @@ const unaccounted = [];
 // Neither: hygiene and environment notes that must stay visible.
 const warnings = [];
 
-if (inferredVersion) {
+unaccounted.push(...releaseBranchProblems);
+if (boundToReleaseBranch && releaseHead && consumedChangesets) {
   const recheckedChangesets = releaseBranchChangesets(releaseBranchRecheck);
   const recheckedHead = shaped(releaseBranchRecheck?.head, COMMIT, 40);
   if (!releaseBranchRecheck || releaseBranchRecheck.ok !== true)
@@ -1610,16 +1650,16 @@ if (inferredVersion) {
     );
   else if (
     releaseBranchRecheck.onReleaseBranch !== true ||
-    releaseBranchRecheck.releasesFresco !== true ||
-    recheckedHead?.toLowerCase() !== inferredHead.toLowerCase() ||
+    releaseBranchRecheck.releasesFresco !== releaseBranch.releasesFresco ||
+    recheckedHead?.toLowerCase() !== releaseHead.toLowerCase() ||
     shaped(releaseBranchRecheck.version, STABLE_VERSION, 64) !==
-      inferredVersion ||
+      branchVersion ||
     recheckedChangesets?.at.toLowerCase() !==
       consumedChangesets.at.toLowerCase() ||
     recheckedChangesets.names.join('\n') !== consumedChangesets.names.join('\n')
   )
     unaccounted.push(
-      `the Version Packages branch changed while the run was under way (it started at ${inferredHead.slice(0, 12)}, releasing Fresco ${inferredVersion}; it is now ${recheckedHead?.slice(0, 12) ?? 'unidentified'}) — this run tested a commit that is no longer the PR head; fetch origin, check out the new head and rerun`,
+      `the Version Packages branch changed while the run was under way (it started at ${releaseHead.slice(0, 12)}, carrying Fresco ${branchVersion ?? 'with no usable version'}; it is now ${recheckedHead?.slice(0, 12) ?? 'unidentified'}) — this run tested a commit that is no longer the PR head; fetch origin, check out the new head and rerun`,
     );
 }
 

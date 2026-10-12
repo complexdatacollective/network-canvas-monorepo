@@ -31,11 +31,17 @@
 // Changesets deletes each one it versions, so the working tree no longer
 // carries what the release ships. They are reported by name with the main tip
 // they can still be read from, so the release test can account for them. A
-// release branch whose consumed changesets cannot be listed fails.
+// release branch whose consumed changesets cannot be listed fails, and so does
+// one that still carries a changeset the normal lane owns (the merge-time
+// freshness guard's own predicate): containing main's tip is not enough when
+// the PR was updated by merging main rather than regenerated.
 //
 // Origin is only trusted as the canonical repository: anything ls-remote says
 // about another remote says nothing about the Version Packages PR.
 import { execFileSync, spawnSync } from 'node:child_process';
+
+import { parseChangeset } from '../../../../scripts/release/changeset-app-utils.mjs';
+import { unconsumedChangesets } from '../../../../scripts/release/check-version-packages-freshness.mjs';
 
 const RELEASE_BRANCH = 'changeset-release/main';
 const MAIN = 'main';
@@ -137,6 +143,24 @@ const consumedChangesets = (base) => {
   return names;
 };
 
+// The changesets a committed tree carries, read as the merge-time freshness
+// guard reads a checked-out one.
+const changesetsAt = (rev) =>
+  git('ls-tree', '-z', '--name-only', rev, `${CHANGESET_DIR}/`)
+    .split('\0')
+    .map((path) => path.slice(CHANGESET_DIR.length + 1))
+    .filter((file) => file.endsWith('.md') && file !== 'README.md')
+    .toSorted((a, b) => a.localeCompare(b))
+    .map((file) => ({
+      id: file.slice(0, -'.md'.length),
+      ...parseChangeset(git('show', `${rev}:${CHANGESET_DIR}/${file}`)),
+    }));
+
+const ignoredAt = (rev) =>
+  new Set(
+    JSON.parse(git('show', `${rev}:${CHANGESET_DIR}/config.json`)).ignore ?? [],
+  );
+
 const isAncestor = (ancestor, descendant) => {
   const { status } = spawnSync(
     'git',
@@ -204,6 +228,17 @@ try {
   if (!isAncestor(mainTip, head))
     fail(
       `the Version Packages PR does not contain origin/${MAIN}'s tip, so it is stale - wait for the release bot to regenerate it, then fetch origin and rerun`,
+    );
+  // A stale PR brought up to date by merging main, rather than regenerated,
+  // contains main's tip yet still carries main's newer changesets; merged,
+  // changesets/action would regenerate the PR instead of publishing it.
+  const surviving = unconsumedChangesets(
+    changesetsAt('HEAD'),
+    ignoredAt('HEAD'),
+  );
+  if (surviving.length)
+    fail(
+      `the Version Packages PR still carries normal-lane changesets (${surviving.map(({ id }) => id).join(', ')}), so it is stale - wait for the release bot to regenerate it, then fetch origin and rerun`,
     );
   const version = versionAt('HEAD');
   const baseVersion = versionAt(mainTip);

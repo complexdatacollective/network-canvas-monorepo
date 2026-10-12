@@ -2199,16 +2199,98 @@ test('a consumed changeset nobody accounted for keeps the release from certifyin
   assert.match(JSON.stringify(result), /brave-otters/);
 });
 
-test('a pinned version is never second-guessed by the release branch', async () => {
-  const { result, prompts } = await run(happyPath(), {
-    expectedVersion: '4.1.2',
-  });
+test('a pinned run off the release branch is not bound to it', async () => {
+  const { result, prompts } = await run(happyPath());
   assert.equal(result.expectedVersionSource, 'args');
-  assert.ok(
-    !prompts.some((p) => p.label?.startsWith('release-branch')),
-    'the release branch was consulted although a version was pinned',
+  assert.equal(result.releasable, true);
+  assert.ok(prompts.some((p) => p.label === 'release-branch'));
+  assert.ok(!prompts.some((p) => p.label === 'release-branch-recheck'));
+});
+
+// The documented invocation pins the version, so a pinned run from the
+// release branch is held to everything an inferred one is.
+test('a pinned run from the release branch counts what it consumed and is checked again', async () => {
+  const { result, prompts } = await run(fromReleaseBranch());
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, true);
+  assert.equal(result.expectedVersionSource, 'args');
+  assert.equal(prompts.at(-1).label, 'release-branch-recheck');
+  assert.match(
+    promptFor(prompts, 'release-critic'),
+    /already consumed \(deleted\) the changesets this release ships/,
   );
 });
+
+test('a pinned run from the release branch must pin the version it carries', async () => {
+  const { result } = await run(fromReleaseBranch({ version: '4.1.3' }));
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('the wrong version is pinned')),
+    JSON.stringify(result.failures),
+  );
+});
+
+test('a pinned run from the release branch must build its head', async () => {
+  const { result } = await run(fromReleaseBranch({ head: 'f'.repeat(40) }));
+  assert.equal(result.verdict, 'no-go');
+  assert.ok(
+    result.failures.some((f) => f.includes('was built from abc1234')),
+    JSON.stringify(result.failures),
+  );
+});
+
+test('a pinned run from a release branch regenerated meanwhile is not certified', async () => {
+  const { result } = await run(
+    fromReleaseBranch(
+      {},
+      releaseBranchAt({ head: `abc1235${'0'.repeat(33)}` }),
+    ),
+  );
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) =>
+      u.includes('changed while the run was under way'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+for (const [name, response, reason] of [
+  [
+    'a pinned run whose checkout could not be identified',
+    { ok: false, error: 'could not reach origin' },
+    'could not be determined',
+  ],
+  [
+    'a pinned run whose release-branch agent died',
+    null,
+    'could not be determined',
+  ],
+  [
+    'a pinned run from a release branch that names no consumed changesets',
+    releaseBranchAt({ consumedChangesets: [] }),
+    'did not say which changesets it consumed',
+  ],
+  [
+    'a pinned run from a release branch with an unshaped head',
+    releaseBranchAt({ head: 'HEAD' }),
+    'no usable head commit',
+  ],
+]) {
+  test(`${name} is not certified`, async () => {
+    const r = happyPath();
+    r['release-branch'] = response;
+    const { result, prompts } = await run(r);
+    assert.equal(result.verdict, 'incomplete');
+    assert.equal(result.releasable, false);
+    assert.ok(
+      result.unaccounted.some((u) => u.includes(reason)),
+      JSON.stringify(result.unaccounted),
+    );
+    assert.ok(!prompts.some((p) => p.label === 'release-branch-recheck'));
+  });
+}
 
 test('an unpinned run off the release branch does not ask it again', async () => {
   const { prompts } = await run(happyPath(), {});
@@ -2398,7 +2480,8 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
   // Each commit gets its own timestamp: two commits of the same tree, parent
   // and message within one second would otherwise be the same commit.
   let clock = 1_700_000_000;
-  // Commits a Fresco version with exactly these pending changesets. Main also
+  // Commits a Fresco version with exactly these pending changesets, each
+  // "name" or "name:package" (releasing fresco unless named). Main also
   // carries .changeset/ files that are not changesets; the release branch
   // drops them too, so deleting one is never mistaken for consuming it.
   const commit = (version, changesets, others = true) => {
@@ -2408,16 +2491,24 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
     );
     rmSync(join(work, '.changeset'), { recursive: true, force: true });
     mkdirSync(join(work, '.changeset/nested'), { recursive: true });
+    writeFileSync(
+      join(work, '.changeset/config.json'),
+      JSON.stringify({ ignore: ['documentation'] }),
+    );
     if (others) {
       writeFileSync(join(work, '.changeset/README.md'), 'about changesets');
-      writeFileSync(join(work, '.changeset/config.json'), '{}');
       writeFileSync(
         join(work, '.changeset/nested/inner.md'),
         'not a changeset',
       );
     }
-    for (const name of changesets)
-      writeFileSync(join(work, `.changeset/${name}.md`), `---\n---\n${name}`);
+    for (const entry of changesets) {
+      const [name, releases = 'fresco'] = entry.split(':');
+      writeFileSync(
+        join(work, `.changeset/${name}.md`),
+        `---\n"${releases}": patch\n---\n\n${name}\n`,
+      );
+    }
     git('add', '-A');
     clock += 1;
     execFileSync('git', ['commit', '-q', '--allow-empty', '-m', version], {
@@ -2430,9 +2521,12 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
     });
     return git('rev-parse', 'HEAD');
   };
-  // main carries pending changesets; the release branch consumes them.
-  const onMain = (version) => commit(version, ['brave-otters', 'calm-owls']);
-  const released = (version) => commit(version, [], false);
+  // main carries pending changesets; the release branch consumes the normal
+  // lane's and leaves the separately gated documentation lane's in place.
+  const DOCS = 'quiet-docs:documentation';
+  const onMain = (version, extra = []) =>
+    commit(version, ['brave-otters', 'calm-owls', DOCS, ...extra]);
+  const released = (version) => commit(version, [DOCS], false);
   // Moves a branch on origin; a push also moves the local tracking ref.
   const publish = (branch, rev = 'HEAD') =>
     git('push', '-q', '-f', 'origin', `${rev}:refs/heads/${branch}`);
@@ -2606,10 +2700,13 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
     assert.match(refusal(), /origin\/main is not origin's current main/);
     git('fetch', '-q', 'origin');
 
-    // The branch by name, consuming nothing: nothing says what it releases.
+    // The branch by name at main's tip: main's changesets are all still there.
     git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
     publish('changeset-release/main');
-    assert.match(refusal(), /consumed no changesets/);
+    assert.match(
+      refusal(),
+      /still carries normal-lane changesets \(brave-otters, calm-owls\)/,
+    );
 
     // The branch by name, releasing other packages only.
     publish('changeset-release/main', released('4.1.1'));
@@ -2634,11 +2731,32 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
     publish('changeset-release/main', released('4.1.0'));
     assert.match(refusal(), /backwards, from 4\.1\.1 to 4\.1\.0/);
 
+    // A stale PR brought up to date by merging main rather than regenerated:
+    // it contains main's tip, but main's newer changeset survives in it.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    released('4.1.2');
+    git('checkout', '-q', '--detach', 'origin/main');
+    publish('main', onMain('4.1.1', ['new-otter']));
+    git('checkout', '-q', 'changeset-release/main');
+    git('merge', '-q', '--no-edit', 'origin/main');
+    publish('changeset-release/main');
+    assert.match(
+      refusal(),
+      /still carries normal-lane changesets \(new-otter\), so it is stale/,
+    );
+
     // A consumed changeset whose name the workflow cannot carry.
     git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
     publish('main', commit('4.1.1', ['brave-otters', 'odd name']));
     publish('changeset-release/main', released('4.1.2'));
     assert.match(refusal(), /cannot carry \("odd name\.md"\)/);
+
+    // Nothing of the normal lane's was pending, so nothing says what the
+    // branch releases.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    publish('main', commit('4.1.1', [DOCS]));
+    publish('changeset-release/main', released('4.1.2'));
+    assert.match(refusal(), /consumed no changesets/);
 
     // A base whose version is not stable semver proves nothing about the bump.
     publish('main', onMain('next'));
