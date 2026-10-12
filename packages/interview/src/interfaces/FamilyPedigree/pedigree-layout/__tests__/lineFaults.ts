@@ -99,8 +99,8 @@ function sharedTail(a: Point[], b: Point[]): number {
 }
 
 /**
- * Whether a hop on a line from a parent (at `parentX`) into a child is the
- * one crossing the drawing cannot avoid: over an upright piece of another
+ * Whether a hop on a social parent's line (from `parentX`) into a child is
+ * the one crossing the drawing cannot avoid: over an upright piece of another
  * family's line of descent, which comes down from a point on the parents'
  * rows between the parent and the child (as the line from a social parent
  * on the far side of their own partner crosses the line of descent from
@@ -133,7 +133,8 @@ function isUnavoidableHop(
 /**
  * Everything wrong with the lines that end on one child: their ends on one
  * edge of the child out of their parents' left-to-right order, a crossing among them or over another
- * line (but for one hop the drawing cannot avoid: see `isUnavoidableHop`),
+ * line (but for one hop by a social parent's line that the drawing cannot
+ * avoid: see `isUnavoidableHop`),
  * two ends closer than a fifth of a symbol (or an end within the
  * centre clearance of the child's own line of descent), and two lines
  * closer than a quarter of a symbol away from the child.
@@ -190,6 +191,7 @@ export function faultsOfLinesInto(drawing: Drawing, childId: string): string[] {
         members.length > 1
           ? `the joined ${first!.edgeType} line of ${parentIds.join(' and ')}`
           : `${parentIds[0]}'s ${first!.edgeType} line`,
+      edgeType: first!.edgeType,
       parentX:
         members.reduce((sum, line) => sum + line.points[0]!.x, 0) /
         members.length,
@@ -229,10 +231,15 @@ export function faultsOfLinesInto(drawing: Drawing, childId: string): string[] {
       }
     }
   }
+  // The one hop accepted is a social parent's line over another family's
+  // line of descent (Josh, 12 Oct 2026): any other line's hop is a fault.
   for (const line of lines) {
-    const unavoidable = line.hops.filter((hop) =>
-      isUnavoidableHop(drawing, line.parentX, childId, hop),
-    );
+    const unavoidable =
+      line.edgeType === 'social'
+        ? line.hops.filter((hop) =>
+            isUnavoidableHop(drawing, line.parentX, childId, hop),
+          )
+        : [];
     if (line.hops.length > (unavoidable.length > 0 ? 1 : 0)) {
       faults.push(`${line.name} crosses a line`);
     }

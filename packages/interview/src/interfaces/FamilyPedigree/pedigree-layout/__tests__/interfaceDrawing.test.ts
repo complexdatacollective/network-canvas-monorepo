@@ -985,6 +985,22 @@ describe('a participant with birth parents, separated adoptive parents and their
         expect(faultsOfLinesInto(moved, 'ego')).toContain(
           "lauren's social line crosses a line",
         );
+        // The hop is accepted for a social parent's line only: an adoptive
+        // line making the same crossing is a fault.
+        const adoptive = {
+          ...drawing,
+          connectors: {
+            ...drawing.connectors,
+            auxiliaryLines: drawing.connectors.auxiliaryLines.map((line) =>
+              line === lauren
+                ? { ...line, edgeType: 'adoptive' as const }
+                : line,
+            ),
+          },
+        };
+        expect(faultsOfLinesInto(adoptive, 'ego')).toContain(
+          "lauren's adoptive line crosses a line",
+        );
       });
 
       it(`passes the strict line checks (${label})`, () => {
