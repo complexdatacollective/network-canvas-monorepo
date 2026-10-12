@@ -909,7 +909,7 @@ const expectedVersionSource = pinnedVersion
 const unpinnedReason = expectedVersion
   ? null
   : !releaseBranch || releaseBranch.ok !== true
-    ? 'and whether this checkout is the Version Packages branch could not be determined'
+    ? `and whether this checkout is the Version Packages branch could not be determined (${releaseBranch?.error ?? 'the release-branch agent returned no result'})`
     : releaseBranch.onReleaseBranch !== true
       ? 'and this checkout is not the Version Packages branch (changeset-release/main), so none could be inferred'
       : releaseBranch.releasesFresco !== true

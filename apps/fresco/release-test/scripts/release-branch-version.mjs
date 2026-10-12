@@ -6,22 +6,30 @@
 // release branch certifies without restating a version the branch already
 // carries.
 //
-// The checkout counts as the release branch when HEAD is the commit
-// origin/changeset-release/main points at, whatever the local branch is called
+// The PR head is what origin says it is now (git ls-remote), never a local
+// tracking ref that may predate the bot's last push. The checkout counts as the
+// release branch when HEAD is that commit, whatever the local branch is called
 // — the branch is usually checked out elsewhere, so a worktree testing it holds
-// the same commit under another name. A local branch NAMED changeset-release/main
-// whose HEAD is not that commit (stale, or carrying local commits) is not the PR
-// being approved, and neither is one whose tracking ref was never fetched; both
-// fail rather than certify. A release branch that leaves Fresco's version where
-// main has it (the PR releases other packages only) reports
-// releasesFresco:false: there is no Fresco version to certify. A version that is
-// not stable semver on either side, or that moves backwards, fails.
+// the same commit under another name. A checkout that looks like the release
+// branch — a local branch NAMED changeset-release/main, or HEAD at the local
+// origin/changeset-release/main — but is not origin's current head (stale,
+// carrying local commits, or origin unreachable) is not the PR being approved
+// and fails rather than certify. Anything else simply reports
+// onReleaseBranch:false.
+//
+// On the release branch, the Fresco version is compared with origin/main's
+// tip, which must match origin's main and be contained in HEAD: a PR that
+// predates main's newest commit (a hotfix released since, say) is stale and
+// fails. A version ahead of main's reports releasesFresco:true; the same version
+// (the PR releases other packages only) reports releasesFresco:false; a version
+// that moves backwards, or is not stable semver on either side, fails.
 //
 // Versions are read from committed trees, not the working tree. A dirty tree
 // never certifies, and the commit is what the release will build.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 
 const RELEASE_BRANCH = 'changeset-release/main';
+const MAIN = 'main';
 const MANIFEST = 'apps/fresco/package.json';
 
 const git = (...args) =>
@@ -36,6 +44,47 @@ const tryGit = (...args) => {
   } catch {
     return null;
   }
+};
+
+const commitAt = (rev) =>
+  tryGit('rev-parse', '--verify', '-q', `${rev}^{commit}`);
+
+// Origin's current branch heads by name, or null when origin cannot be reached.
+// Never prompts for credentials, and gives up rather than hang the workflow.
+const remoteHeads = () => {
+  const { status, stdout } = spawnSync(
+    'git',
+    [
+      'ls-remote',
+      'origin',
+      `refs/heads/${RELEASE_BRANCH}`,
+      `refs/heads/${MAIN}`,
+    ],
+    {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      timeout: 60_000,
+    },
+  );
+  if (status !== 0) return null;
+  const heads = new Map();
+  for (const line of stdout.split('\n')) {
+    const [sha, ref] = line.trim().split(/\s+/);
+    if (sha && ref?.startsWith('refs/heads/'))
+      heads.set(ref.slice('refs/heads/'.length), sha);
+  }
+  return heads;
+};
+
+const isAncestor = (ancestor, descendant) => {
+  const { status } = spawnSync(
+    'git',
+    ['merge-base', '--is-ancestor', ancestor, descendant],
+    { stdio: 'ignore' },
+  );
+  if (status === 0 || status === 1) return status === 0;
+  throw new Error(`git merge-base --is-ancestor exited ${status}`);
 };
 
 const versionAt = (rev) => {
@@ -63,35 +112,43 @@ const fail = (error) => {
 try {
   const head = git('rev-parse', '--verify', 'HEAD^{commit}');
   const branch = tryGit('symbolic-ref', '--short', '-q', 'HEAD');
-  const releaseHead = tryGit(
-    'rev-parse',
-    '--verify',
-    '-q',
-    `refs/remotes/origin/${RELEASE_BRANCH}^{commit}`,
-  );
-  if (branch === RELEASE_BRANCH && head !== releaseHead)
-    fail(
-      releaseHead
-        ? `HEAD is not origin/${RELEASE_BRANCH} — this checkout is not the Version Packages PR; reset it to the PR head and rerun`
-        : `origin/${RELEASE_BRANCH} is unknown — fetch origin and rerun`,
-    );
+  const trackedReleaseHead = commitAt(`refs/remotes/origin/${RELEASE_BRANCH}`);
+  const remote = remoteHeads();
+  const releaseHead = remote?.get(RELEASE_BRANCH) ?? null;
   const onReleaseBranch = releaseHead !== null && head === releaseHead;
+  const looksLikeReleaseBranch =
+    branch === RELEASE_BRANCH || head === trackedReleaseHead;
+  if (!onReleaseBranch && looksLikeReleaseBranch)
+    fail(
+      !remote
+        ? 'could not reach origin — fetch access is required to identify the Version Packages PR; restore access to origin and rerun'
+        : !releaseHead
+          ? `origin has no ${RELEASE_BRANCH} — there is no Version Packages PR to test`
+          : `HEAD is not origin's ${RELEASE_BRANCH} (${releaseHead.slice(0, 12)}) — this checkout is not the Version Packages PR; fetch origin, check out the PR head and rerun`,
+    );
   if (!onReleaseBranch) {
     print({ ok: true, onReleaseBranch: false, head, branch });
     process.exit(0);
   }
 
+  const mainTip = commitAt(`refs/remotes/origin/${MAIN}`);
+  if (!mainTip || mainTip !== remote.get(MAIN))
+    fail(
+      `origin/${MAIN} is not origin's current ${MAIN} — fetch origin and rerun`,
+    );
+  if (!isAncestor(mainTip, head))
+    fail(
+      `the Version Packages PR does not contain origin/${MAIN}'s tip, so it is stale — wait for the release bot to regenerate it, then fetch origin and rerun`,
+    );
   const version = versionAt('HEAD');
-  const base = tryGit('merge-base', 'HEAD', 'refs/remotes/origin/main');
-  if (!base) fail('no merge base with origin/main — fetch origin and rerun');
-  const baseVersion = versionAt(base);
+  const baseVersion = versionAt(mainTip);
   const parsed = parseStable(version);
   const parsedBase = parseStable(baseVersion);
   if (!parsed)
     fail(`HEAD has no stable semver version in ${MANIFEST} (${version})`);
   if (!parsedBase)
     fail(
-      `the merge base with origin/main has no stable semver version in ${MANIFEST} (${baseVersion})`,
+      `origin/${MAIN} has no stable semver version in ${MANIFEST} (${baseVersion})`,
     );
   const order = compareStable(parsed, parsedBase);
   if (order < 0)

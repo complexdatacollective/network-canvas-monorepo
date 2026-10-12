@@ -2221,7 +2221,9 @@ for (const [name, response, reason] of [
 }
 
 test('release-branch-version.mjs recognises the Version Packages branch', () => {
-  const work = mkdtempSync(join(tmpdir(), 'fresco-release-branch-'));
+  const root = mkdtempSync(join(tmpdir(), 'fresco-release-branch-'));
+  const work = join(root, 'work');
+  const origin = join(root, 'origin.git');
   const script = join(
     repoRoot,
     'apps/fresco/release-test/scripts/release-branch-version.mjs',
@@ -2234,9 +2236,12 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
       JSON.stringify({ name: 'fresco', version }),
     );
     git('add', '-A');
-    git('commit', '-q', '-m', version);
+    git('commit', '-q', '--allow-empty', '-m', version);
     return git('rev-parse', 'HEAD');
   };
+  // Moves a branch on origin; a push also moves the local tracking ref.
+  const publish = (branch, rev = 'HEAD') =>
+    git('push', '-q', '-f', 'origin', `${rev}:refs/heads/${branch}`);
   const detect = () =>
     JSON.parse(
       execFileSync(process.execPath, [script], {
@@ -2257,19 +2262,18 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
   };
   try {
     mkdirSync(join(work, 'apps/fresco'), { recursive: true });
+    execFileSync('git', ['init', '-q', '--bare', origin]);
     git('init', '-q', '-b', 'work');
     git('config', 'user.email', 'release-test@example.invalid');
     git('config', 'user.name', 'release test');
     git('config', 'commit.gpgsign', 'false');
-    git('update-ref', 'refs/remotes/origin/main', commitVersion('4.1.1'));
+    git('remote', 'add', 'origin', origin);
+    const main = commitVersion('4.1.1');
+    publish('main');
 
     // A worktree holding the release branch's commit under another name.
     const releaseHead = commitVersion('4.1.2');
-    git(
-      'update-ref',
-      'refs/remotes/origin/changeset-release/main',
-      releaseHead,
-    );
+    publish('changeset-release/main');
     assert.deepEqual(detect(), {
       ok: true,
       onReleaseBranch: true,
@@ -2289,47 +2293,89 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
       branch: 'work',
     });
 
-    // The branch by name, releasing other packages only.
-    git('checkout', '-q', '-b', 'changeset-release/main', 'origin/main');
+    // The bot pushed a newer PR head this checkout never fetched: HEAD at the
+    // stale tracking ref is not the PR being approved.
+    git('checkout', '-q', '--detach', releaseHead);
+    const regenerated = commitVersion('4.1.2');
+    git('push', '-q', 'origin', `${regenerated}:refs/heads/scratch`);
     git(
+      `--git-dir=${origin}`,
       'update-ref',
-      'refs/remotes/origin/changeset-release/main',
-      git('rev-parse', 'HEAD'),
+      'refs/heads/changeset-release/main',
+      regenerated,
     );
+    git('checkout', '-q', '--detach', releaseHead);
+    assert.equal(
+      git('rev-parse', 'refs/remotes/origin/changeset-release/main'),
+      releaseHead,
+    );
+    assert.match(refusal(), /HEAD is not origin's changeset-release\/main/);
+
+    // Origin unreachable: a checkout at the tracking ref cannot be confirmed,
+    // while an unrelated one is plainly not the release branch.
+    git('remote', 'set-url', 'origin', join(root, 'missing.git'));
+    assert.match(refusal(), /could not reach origin/);
+    git('checkout', '-q', 'work');
+    assert.deepEqual(detect(), {
+      ok: true,
+      onReleaseBranch: false,
+      head: ahead,
+      branch: 'work',
+    });
+    git('remote', 'set-url', 'origin', origin);
+    git('fetch', '-q', 'origin');
+
+    // A hotfix released 4.1.2 from main after the PR was generated: the PR's
+    // 4.1.2 is not ahead of what main now carries.
+    git('checkout', '-q', '--detach', main);
+    publish('main', commitVersion('4.1.2'));
+    git('checkout', '-q', '--detach', regenerated);
+    assert.match(refusal(), /does not contain origin\/main's tip/);
+
+    // main gained any commit the PR does not carry.
+    git('checkout', '-q', '--detach', main);
+    publish('main', commitVersion('4.1.1'));
+    git('checkout', '-q', '--detach', regenerated);
+    assert.match(refusal(), /stale — wait for the release bot/);
+
+    // A local origin/main behind origin's cannot stand in for main's tip.
+    const fetchedMain = git('rev-parse', 'origin/main');
+    git('checkout', '-q', '--detach', fetchedMain);
+    const pr = commitVersion('4.1.2');
+    publish('changeset-release/main');
+    git('checkout', '-q', '--detach', fetchedMain);
+    publish('main', commitVersion('4.1.1'));
+    git('update-ref', 'refs/remotes/origin/main', fetchedMain);
+    git('checkout', '-q', '--detach', pr);
+    assert.match(refusal(), /origin\/main is not origin's current main/);
+    git('fetch', '-q', 'origin');
+
+    // The branch by name, releasing other packages only.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    publish('changeset-release/main');
     const unbumped = detect();
     assert.equal(unbumped.onReleaseBranch, true);
     assert.equal(unbumped.releasesFresco, false);
 
     // The branch by name, carrying a commit the PR does not: not the PR.
     commitVersion('4.1.9');
-    assert.match(refusal(), /HEAD is not origin\/changeset-release\/main/);
+    assert.match(refusal(), /HEAD is not origin's changeset-release\/main/);
 
-    // The branch by name with its tracking ref never fetched.
-    git('update-ref', '-d', 'refs/remotes/origin/changeset-release/main');
-    assert.match(refusal(), /fetch origin/);
+    // The branch by name with no PR open on origin.
+    git('push', '-q', 'origin', ':refs/heads/changeset-release/main');
+    assert.match(refusal(), /origin has no changeset-release\/main/);
 
     // A release branch that moves Fresco backwards.
     git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
-    git(
-      'update-ref',
-      'refs/remotes/origin/changeset-release/main',
-      commitVersion('4.1.0'),
-    );
+    publish('changeset-release/main', commitVersion('4.1.0'));
     assert.match(refusal(), /backwards, from 4\.1\.1 to 4\.1\.0/);
 
     // A base whose version is not stable semver proves nothing about the bump.
-    git('update-ref', 'refs/remotes/origin/main', commitVersion('next'));
-    git(
-      'update-ref',
-      'refs/remotes/origin/changeset-release/main',
-      commitVersion('4.2.0'),
-    );
-    assert.match(
-      refusal(),
-      /merge base with origin\/main has no stable semver/,
-    );
+    publish('main', commitVersion('next'));
+    publish('changeset-release/main', commitVersion('4.2.0'));
+    assert.match(refusal(), /origin\/main has no stable semver/);
   } finally {
-    rmSync(work, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

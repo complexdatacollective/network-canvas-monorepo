@@ -438,13 +438,18 @@ including the early one taken when the build never completes.
 `expectedVersion` is the version the Version Packages PR bumps Fresco to —
 the one `bundle-pending-packages.mjs` bakes into the staged tree and the one
 the build stamp records. Run from the Version Packages branch itself — HEAD is
-the commit `origin/changeset-release/main` points at, under that branch name or
-any other, as in a detached worktree — and it can be omitted: the workflow
-infers it from the Fresco version that branch carries
-(`release-test/scripts/release-branch-version.mjs`), provided the branch moves
-it forward past main's as stable semver. A local `changeset-release/main` that
-is not at the fetched PR head, a downgrade, or a version that is not stable
-semver leaves the run unpinned rather than inferring anything. An inferred pin binds exactly as a passed one does, and also
+the commit origin's `changeset-release/main` points at now (read with
+`git ls-remote`, so not a possibly stale local tracking ref), under that branch
+name or any other, as in a detached worktree — and it can be omitted: the
+workflow infers it from the Fresco version that branch carries
+(`release-test/scripts/release-branch-version.mjs`), provided the branch
+contains `origin/main`'s tip (which must match origin's `main`) and moves
+Fresco's version past it as stable semver. A checkout that looks like the
+release branch (named `changeset-release/main`, or at the local tracking ref)
+but is not origin's current head, an unreachable origin, a PR that does not
+contain main's tip (wait for the bot to regenerate it), a downgrade, or a
+version that is not stable semver leaves the run unpinned rather than inferring
+anything. An inferred pin binds exactly as a passed one does, and also
 requires the image to be built from that branch head; `expectedVersionSource`
 reports which it was (`args`, `release-branch`, or `null` when unpinned). Each lane is bound to that build by the image id
 docker reports for its Fresco container (`/api/health` names no version, on
