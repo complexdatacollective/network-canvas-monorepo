@@ -61,6 +61,23 @@ const sampleRef =
     args.sampleRef.trim()) ||
   expectCommit ||
   'origin/main';
+// Agents run the ref in shell commands, and a valid git ref can still carry
+// shell syntax ("feature/$(id)"), so only plain ref characters are accepted.
+if (
+  !/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(sampleRef) ||
+  sampleRef.includes('..')
+) {
+  throw new Error(
+    `sampleRef ${JSON.stringify(sampleRef)} is not a plain git ref or commit (letters, digits, ".", "_", "/", "-").`,
+  );
+}
+
+// Paths agents report back are reused in later agents' shell commands, which
+// single-quote them, so they may hold spaces but no quotes or shell syntax.
+const isPlainPath = (path) =>
+  typeof path === 'string' &&
+  /^\/[A-Za-z0-9 ._/-]+$/.test(path) &&
+  !path.split('/').includes('..');
 
 const CHECKS_SCHEMA = {
   type: 'object',
@@ -306,7 +323,7 @@ const CLEANUP_SCHEMA = {
 // Architect keeps all protocols in that origin's IndexedDB, so concurrent
 // slices would race each other's protocol-list writes and could block a
 // release on a phantom failure.
-const ops = (tag) => `
+const ops = (tag, name = `RT ${tag} ${runTag}`) => `
 You are one slice of a release test of Network Canvas Architect, an offline
 protocol-design PWA. Target deployment: ${target}
 
@@ -356,14 +373,13 @@ protocol-design PWA. Target deployment: ${target}
 - If a first-run welcome or gallery card appears, dismiss it; that is normal.
 
 ## State safety (critical)
-- This browser profile may contain a person's real protocols. You may create
-  protocols only with names starting "RT ${tag} ", and may modify or delete
-  ONLY the exact protocols you created in this run. Never touch any other
-  protocol — including a leftover "RT" protocol from an earlier or concurrent
-  run (report those in tooling_notes instead of deleting them) — never use
-  "Clear all", never clear site storage.
-- Name your protocol "RT ${tag} <suffix>" where <suffix> is 4 random
-  alphanumeric characters you choose, so runs never collide.
+- This browser profile may contain a person's real protocols. Name any
+  protocol you create exactly "${name}" (renaming it by appending text is
+  fine), and modify or delete ONLY protocols whose names begin with
+  "${name}". Never touch any other protocol — including a leftover "RT"
+  protocol from an earlier or concurrent run (report those in tooling_notes
+  instead of deleting them) — never use "Clear all", never clear site
+  storage.
 - Before finishing — even after a failure — return to the start screen, delete
   every protocol you created, and close every tab you opened.
 
@@ -500,6 +516,45 @@ const REACH_EXPECTED = [
   'version',
   'build-commit',
 ];
+
+// Every protocol this run creates is named by the orchestrator under one
+// run-unique tag, so a clean-up agent can find and delete it even when the
+// agent that created it died. Scripts cannot draw random values, so a tiny
+// agent does.
+const tagResult = await agent(
+  'Return a tag of exactly 6 random characters, each a lowercase letter or digit.',
+  {
+    label: 'run-tag',
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { tag: { type: 'string', pattern: '^[a-z0-9]{6}$' } },
+      required: ['tag'],
+    },
+    model: 'haiku',
+    effort: 'low',
+  },
+);
+if (!tagResult) throw new Error('Could not draw a run tag for protocol names.');
+const runTag = tagResult.tag;
+log(
+  `Run tag: ${runTag} (every protocol this run creates is named "RT … ${runTag}…")`,
+);
+// Protocols a clean-up agent could not confirm deleted.
+const cleanupIssues = [];
+const cleanUp = async (name, browser, mustExist, label) => {
+  const result = await agent(cleanupPrompt(name, { browser, mustExist }), {
+    label,
+    schema: CLEANUP_SCHEMA,
+    model: 'sonnet',
+    effort: 'low',
+  }).catch(() => null);
+  if (!result || result.status !== 'pass') {
+    const issue = `"${name}" may remain in the ${browser === 'playwright' ? 'Playwright' : 'Browser pane'} profile: ${result ? result.details : 'the clean-up agent returned no result'}`;
+    cleanupIssues.push(issue);
+    log(`Clean-up: ${issue}`);
+  }
+};
 
 const reachabilityPrompt = `${ops('reach')}
 ## Setup — purge the stale worker BEFORE any check
@@ -665,7 +720,7 @@ ${sampleSourceNote}
    place the browser can upload from:
    mkdir -p .playwright-mcp && mktemp -d "$PWD/.playwright-mcp/architect-sample-XXXX"
    and extract the specification into it:
-   git archive ${sampleRef} packages/protocols/sample | tar -x -C <dir>
+   git archive '${sampleRef}' packages/protocols/sample | tar -x -C '<dir>'
    Return the directory as workDir and the absolute path of the extracted
    protocol.json as canonicalPath. Write nothing else in the repository.
    Also run uname -sm and return its output verbatim as platform: the
@@ -700,9 +755,6 @@ ${sampleSourceNote}
    codebook entries, 3 for one that introduces new codebook entries or has
    several prompts.
 Return only the structured data.`;
-
-const sampleProtocolName = (workDir) =>
-  `RT sample ${workDir.replace(/[^A-Za-z0-9]/g, '').slice(-4)}`;
 
 const setupPrompt = (analysis, protocolName) => `${pwOps('setup')}
 ## Your task — create the protocol and its resources
@@ -783,7 +835,7 @@ Run directory: ${analysis.workDir} (write your files under it)
    canonicalStageCount and builtStageCount are your own counts.
 4. The comparison ignores generated fields by construction, so check them on
    their own: run
-   node .agents/skills/architect-release-test/scripts/check-built-protocol.mjs ${analysis.workDir}/built-round-${round}
+   node .agents/skills/architect-release-test/scripts/check-built-protocol.mjs '${analysis.workDir}/built-round-${round}'
    from the repository root. Set invariantsChecked true only when it ran
    against the exported files (false if export was blocked), and report
    each problem it prints as a protocolDiscrepancies entry with area
@@ -822,12 +874,22 @@ ${worklist}
 Report one stages entry per stage you touched, with the canonical index, and
 describe any protocol, codebook or resource fixes in tooling_notes.`;
 
-const cleanupPrompt = (protocolName) => `${pwOps('cleanup')}
-## Your task
-Delete the protocol "${protocolName}" from the start screen (and nothing
-else), confirming any dialog, and confirm it no longer appears in the list.
-Report status pass when it is gone, fail if the app refuses or it reappears
-after a reload, blocked if you could not find it.`;
+// Deletes what one agent may have left behind, by the name the orchestrator
+// gave it: the agent's own clean-up is not relied on, because an agent that
+// dies first would strand its protocol in the persistent profile, where
+// later runs are forbidden to delete it. In the Playwright browser for the
+// sample build and its verifiers, in the Browser pane otherwise.
+const cleanupPrompt = (name, { browser, mustExist }) => `${
+  browser === 'playwright' ? pwOps('cleanup') : ops('cleanup', name)
+}
+## Your task — cleanup only; create nothing
+Delete every protocol whose name begins with "${name}" from the start screen
+(and nothing else), confirming any dialog, and confirm none remains after a
+reload. Report status pass when none remains${
+  mustExist
+    ? ', fail if the app refuses or one reappears, blocked if you could not find it.'
+    : ' (including when there was none to delete), fail if the app refuses or one reappears.'
+}`;
 
 // Group stages into builder batches by weight, never splitting a stage.
 const batchStages = (stages) => {
@@ -979,7 +1041,20 @@ const runSampleBuild = async () => {
     );
     return { checks, notes, appDefects, detail: null };
   }
-  const protocolName = sampleProtocolName(analysis.workDir);
+  const unsafePaths = [
+    analysis.workDir,
+    analysis.canonicalPath,
+    ...analysis.assets.map((a) => a.path),
+  ].filter((path) => !isPlainPath(path));
+  if (unsafePaths.length) {
+    add(
+      'analysis',
+      'blocked',
+      `The analyst reported paths later agents cannot safely quote in shell commands: ${unsafePaths.map((p) => JSON.stringify(p)).join(', ')}.`,
+    );
+    return { checks, notes, appDefects, detail: null };
+  }
+  const protocolName = `RT sample ${runTag}`;
   log(
     `Sample build: ${analysis.stages.length} stages, ${analysis.assets.length} assets, protocol "${protocolName}"`,
   );
@@ -1066,13 +1141,16 @@ const runSampleBuild = async () => {
   } catch (error) {
     notes.push(`sample build crashed: ${error}`);
   } finally {
-    cleanup = await agent(cleanupPrompt(protocolName), {
-      label: 'sample:cleanup',
-      phase: SAMPLE_PHASE,
-      schema: CLEANUP_SCHEMA,
-      model: 'sonnet',
-      effort: 'low',
-    }).catch(() => null);
+    cleanup = await agent(
+      cleanupPrompt(protocolName, { browser: 'playwright', mustExist: true }),
+      {
+        label: 'sample:cleanup',
+        phase: SAMPLE_PHASE,
+        schema: CLEANUP_SCHEMA,
+        model: 'sonnet',
+        effort: 'low',
+      },
+    ).catch(() => null);
   }
 
   if (setup) {
@@ -1247,6 +1325,7 @@ const runSampleBuild = async () => {
 
 phase('Reachability');
 log(`Target: ${target}`);
+
 // Model policy: drivers run on Sonnet at medium effort — browser driving is
 // its sweet spot, and a driver mistake costs one Opus verification rather
 // than a wrong verdict: only verifier-confirmed failures fail the gate, and
@@ -1325,8 +1404,21 @@ if (!siteUp) {
         model: 'sonnet',
         effort: 'medium',
       },
-    );
+    ).catch(() => null);
     results.push({ slice: slice.key, expected: slice.expected, result });
+    const deletedOwn =
+      result &&
+      result.checks.some(
+        (c) => ['cleanup', 'delete'].includes(c.name) && c.status === 'pass',
+      );
+    if (!deletedOwn) {
+      await cleanUp(
+        `RT ${slice.tag} ${runTag}`,
+        'pane',
+        false,
+        `cleanup:${slice.key}`,
+      );
+    }
   }
 }
 const sample = samplePending ? await samplePending : null;
@@ -1439,27 +1531,29 @@ phase('Verify failures');
 if (failed.length === 0) {
   log('No failures to verify.');
 }
-for (const f of failed.slice(0, 6)) {
+for (const [i, f] of failed.slice(0, 6).entries()) {
   log(`Verifying reported failure: ${f.slice}/${f.name}`);
+  const verifyName = `RT verify ${runTag} ${i + 1}`;
+  const verifyBrowser = f.slice === SAMPLE_KEY ? 'playwright' : 'pane';
   // A sample-build defect may need uploads, so it is reproduced in the
   // Playwright browser after the build slice has released it.
   const verifyOps =
     f.slice === SAMPLE_KEY
       ? `${pwOps('verifier')}
-You may create one protocol named "RT verify <4 random alphanumerics>" and
-must delete it before finishing. ${sampleSourceNote}
+You may create one protocol, named exactly "${verifyName}", and must delete
+it before finishing. ${sampleSourceNote}
 The audited export the report names is still on disk; inspect it. For an
 "invariants" failure, author what the report implicates in your own
 protocol, download it, unzip it under .playwright-mcp/, and run
 node .agents/skills/architect-release-test/scripts/check-built-protocol.mjs <that directory>.`
-      : ops('verify');
+      : ops('verify', verifyName);
   const verdict = await agent(
     `${verifyOps}
 ## Your task
 A release-test agent reported this failure on the target deployment and you
 must independently reproduce it. Be skeptical: agents sometimes misdrive the
 UI. Perform the flow yourself, carefully, in a fresh tab with your own
-"RT verify" protocol where one is needed.
+"${verifyName}" protocol where one is needed.
 
 Reported failure (check "${f.name}" in slice "${f.slice}"):
 ${f.details}
@@ -1478,7 +1572,8 @@ Describe exactly what you did in evidence either way.`,
       model: 'opus',
       effort: 'high',
     },
-  );
+  ).catch(() => null);
+  await cleanUp(verifyName, verifyBrowser, false, `cleanup:verify ${i + 1}`);
   if (!verdict) {
     unverified.push({
       ...f,
@@ -1618,8 +1713,11 @@ return {
   unverifiedFailures: unverified,
   flaky,
   blocked,
-  notes: results
-    .filter(({ result }) => result && result.tooling_notes)
-    .map(({ slice, result }) => ({ slice, notes: result.tooling_notes })),
+  notes: [
+    ...results
+      .filter(({ result }) => result && result.tooling_notes)
+      .map(({ slice, result }) => ({ slice, notes: result.tooling_notes })),
+    ...cleanupIssues.map((issue) => ({ slice: 'cleanup', notes: issue })),
+  ],
   checks,
 };

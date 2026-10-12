@@ -52,7 +52,8 @@ downloads the result as a user would, validates it, and compares it with the
 canonical protocol, attributing each difference to the app, to a driver
 slip, or to data no user sets. It also runs `scripts/check-built-protocol.mjs`
 on the export, which checks the generated fields the comparison cannot see
-(each asset's export entry, entity colours, form-field ids, the
+(each asset's export entry and that its extension truly describes its
+content, entity colours, form-field ids, the
 modification stamp); builders leave colours to the app, and any invariant
 problem fails or blocks the slice. One repair pass retries what the drivers got wrong
 before the final audit. Fidelity passes only when that final audit
@@ -62,7 +63,8 @@ become failed checks, which an independent verifier reproduces before they
 can fail the release. A
 `--sample-ref` other than the pinned `--expect-commit` makes the run
 non-promotable: the build then checks the deployment against a different
-specification.
+specification. Agents use the ref in shell commands, so the workflow
+refuses one containing anything but letters, digits, `.`, `_`, `/` and `-`.
 
 The build cannot run on Linux arm64 (for example the `dev-vm/` Lima VM):
 Playwright's Chromium there crashes on the sample's video resources, so the
@@ -108,8 +110,12 @@ Invoke the Workflow tool with
   tabs share one origin profile and Architect stores protocols in
   IndexedDB) while the build runs alongside them in its own Playwright
   browser. Never start two runs concurrently.
-- The run is read-only for real data: agents only touch protocols they
-  create with an `RT` name prefix and delete them afterwards.
+- The run is read-only for real data. Every protocol it creates is named by
+  the workflow under one run tag (`RT <slice> <tag>`, `RT sample <tag>`,
+  `RT verify <tag> <n>`, logged at the start), and a separate clean-up agent
+  deletes it by that name whenever the agent that made it may not have, so
+  a crashed agent cannot strand test data. Anything a clean-up agent could
+  not confirm deleted is listed in `notes` under `cleanup`.
 - The build's files (extracted specification, renamed uploads, exported
   `.netcanvas`) stay under the git-ignored `.playwright-mcp/architect-sample-*`
   directory named in `sampleBuild.workDir`, for inspection; delete it when

@@ -12,19 +12,58 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
-const EXTENSIONS = {
-  image: /\.(png|svg|jpe?g|gif)$/i,
-  video: /\.(mov|mp4)$/i,
-  audio: /\.(mp3|aiff|m4a)$/i,
-  network: /\.(csv|json)$/i,
-  geojson: /\.geojson$/i,
+const ascii = (bytes, start, end) =>
+  Buffer.from(bytes.subarray(start, end)).toString('latin1');
+const text = (bytes) =>
+  Buffer.from(bytes)
+    .toString('utf8')
+    .replace(/^\uFEFF/, '');
+const isJsonDocument = (bytes) => {
+  try {
+    const value = JSON.parse(text(bytes));
+    return typeof value === 'object' && value !== null;
+  } catch {
+    return false;
+  }
+};
+const isIsoMedia = (bytes) =>
+  ['ftyp', 'moov', 'mdat', 'wide', 'free', 'skip'].includes(ascii(bytes, 4, 8));
+
+// What each exported extension promises about its file's content. Consumers
+// choose a decoder from the extension alone — the interview parses a network
+// file as CSV only when it ends in exactly "csv", and as JSON otherwise — so
+// an entry whose extension misstates its content breaks wherever it is used.
+const FORMATS = {
+  png: (b) => ascii(b, 0, 8) === '\x89PNG\r\n\x1A\n',
+  jpg: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  jpeg: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  gif: (b) => ['GIF87a', 'GIF89a'].includes(ascii(b, 0, 6)),
+  svg: (b) => /^\s*</.test(text(b)) && text(b).slice(0, 4096).includes('<svg'),
+  mov: isIsoMedia,
+  mp4: isIsoMedia,
+  m4a: isIsoMedia,
+  mp3: (b) =>
+    ascii(b, 0, 3) === 'ID3' || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0),
+  aiff: (b) =>
+    ascii(b, 0, 4) === 'FORM' && ['AIFF', 'AIFC'].includes(ascii(b, 8, 12)),
+  json: isJsonDocument,
+  geojson: isJsonDocument,
+  csv: (b) => !b.includes(0) && !isJsonDocument(b),
+};
+const TYPE_EXTENSIONS = {
+  image: ['png', 'jpg', 'jpeg', 'gif', 'svg'],
+  video: ['mov', 'mp4'],
+  audio: ['mp3', 'aiff', 'm4a'],
+  network: ['csv', 'json'],
+  geojson: ['geojson'],
 };
 
 const isRecord = (value) =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// `hasAsset` says whether the export contains a file by its source name.
-export function checkBuiltProtocol(built, hasAsset) {
+// `readAsset` returns an exported file's bytes by its source name, or null
+// when the export does not contain it.
+export function checkBuiltProtocol(built, readAsset) {
   const problems = [];
   if (!isRecord(built)) return ['protocol.json is not an object'];
 
@@ -44,8 +83,8 @@ export function checkBuiltProtocol(built, hasAsset) {
   // Export names each file after its asset id (`entryNameFor` in
   // apps/architect/src/utils/bundleProtocol.ts) so two uploads that share a
   // filename cannot overwrite each other in the zip: every source must be
-  // that id-derived name, unique, present, and carry an extension that fits
-  // its type, or export entries and preview MIME types break.
+  // that id-derived name, unique and present, with an extension that fits
+  // its type and truly describes its content.
   const manifest = isRecord(built.assetManifest) ? built.assetManifest : {};
   const sources = new Set();
   for (const [id, entry] of Object.entries(manifest)) {
@@ -62,14 +101,15 @@ export function checkBuiltProtocol(built, hasAsset) {
       problems.push(`assetManifest[${id}].source is missing`);
       continue;
     }
-    const expected = EXTENSIONS[type];
-    if (expected && !expected.test(source)) {
+    const dot = source.lastIndexOf('.');
+    const extension = dot > 0 ? source.slice(dot + 1) : '';
+    const allowed = TYPE_EXTENSIONS[type];
+    if (allowed && !allowed.includes(extension)) {
       problems.push(
-        `assetManifest[${id}].source ${JSON.stringify(source)} does not carry a ${String(type)} extension`,
+        `assetManifest[${id}].source ${JSON.stringify(source)} does not carry a ${String(type)} extension (${allowed.join(', ')})`,
       );
     }
     const stem = id.replace(/[^A-Za-z0-9._-]/g, '_').replace(/\.{2,}/g, '_');
-    const dot = source.lastIndexOf('.');
     const base = dot > 0 ? source.slice(0, dot) : source;
     const suffix = base.startsWith(`${stem}-`)
       ? base.slice(stem.length + 1)
@@ -85,9 +125,14 @@ export function checkBuiltProtocol(built, hasAsset) {
       );
     }
     sources.add(source);
-    if (!hasAsset(source)) {
+    const bytes = readAsset(source);
+    if (bytes === null) {
       problems.push(
         `assetManifest[${id}].source ${JSON.stringify(source)} is not in the export`,
+      );
+    } else if (FORMATS[extension] && !FORMATS[extension](bytes)) {
+      problems.push(
+        `assetManifest[${id}].source ${JSON.stringify(source)} does not contain ${extension} data`,
       );
     }
   }
@@ -148,9 +193,10 @@ if (
     process.exitCode = 2;
   } else {
     const built = JSON.parse(readFileSync(join(dir, 'protocol.json'), 'utf8'));
-    const problems = checkBuiltProtocol(built, (source) =>
-      existsSync(join(dir, 'assets', source)),
-    );
+    const problems = checkBuiltProtocol(built, (source) => {
+      const path = join(dir, 'assets', source);
+      return existsSync(path) ? readFileSync(path) : null;
+    });
     process.stdout.write(`${JSON.stringify({ problems }, null, 2)}\n`);
     process.exitCode = problems.length ? 1 : 0;
   }
