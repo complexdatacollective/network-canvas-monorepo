@@ -132,12 +132,12 @@ export class StageEditor {
     // backslash escape the canonical sample protocol contains (`\-`, an
     // escaped hyphen from its own serializer era) must be typed as a plain
     // hyphen — typing the backslash literally makes the serializer escape it
-    // again (`\\\-`), which no longer parses to the same text. HTML character
-    // references (`&quot;`, `&lt;`…) are typed as the characters they name
-    // for the same reason: typed literally, the editor stores them as the
-    // literal text `\&lt;`, which is not the `<` the canonical file holds.
-    const typed = decodeCharacterReferences(markdown.replaceAll('\\-', '-'));
-    for (const block of parseMarkdownBlocks(typed)) {
+    // again (`\\\-`), which no longer parses to the same text. Character
+    // references (`&quot;`, `&lt;`…) are typed as the characters they stand
+    // for, for the same reason.
+    for (const block of parseMarkdownBlocks(
+      decodeCharacterReferences(markdown.replaceAll('\\-', '-')),
+    )) {
       if (needsBlockBreak) {
         await this.page.keyboard.press('Enter');
       }
