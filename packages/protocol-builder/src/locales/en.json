@@ -2823,6 +2823,14 @@
     "defaultMessage": "Twin’s name",
     "description": "Name of the placeholder, inserted into a message, that shows a twin’s name."
   },
+  "protocolBuilder.localizedMessage.placementMissing": {
+    "defaultMessage": "Include “{placeholder}” in this text.",
+    "description": "Refusal shown under a text when a translation leaves out a placeholder, such as a person’s name or a number, that the original text shows. placeholder is the placeholder’s name, such as “Name”."
+  },
+  "protocolBuilder.localizedMessage.placementMissingIn": {
+    "defaultMessage": "Include “{placeholder}” in this version: {version}.",
+    "description": "Refusal shown under a text written in several versions when one version of a translation leaves out a placeholder, such as a person’s name or a number, that the original shows there. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”."
+  },
   "protocolBuilder.localizedMessage.pluralVersion": {
     "defaultMessage": "When “{placeholder}” is {numbers}",
     "description": "Label of the box holding the version of a text shown for some numbers. placeholder is the name of the number the text can show, such as “Parents missing”; numbers lists examples of the numbers that version is for, in the language being edited, such as “1” or “0, 2, 3, …”."

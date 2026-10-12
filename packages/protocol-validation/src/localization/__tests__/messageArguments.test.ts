@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   composeMessage,
   findMessageArgumentProblem,
+  findMissingPlacement,
   type MessageArguments,
   messageVariants,
   pluralCategoriesOf,
   pluralCountExamples,
+  requiredArgumentsOf,
+  requirePlacements,
 } from '../messageArguments.ts';
 
 /** What the Family Pedigree tracker's parents entry may use. */
@@ -190,5 +193,124 @@ describe('variants written back as a message', () => {
     expect(messageVariants(composed, PARENTS, 'en')).toEqual(
       messageVariants(message, PARENTS, 'en'),
     );
+  });
+});
+
+describe('what a translation must show', () => {
+  const NOTICE: MessageArguments = { count: { kind: 'plural' } };
+  const NOTICE_EN =
+    '{count, plural, one {Add # more person} other {Add # more people}}';
+  const notice = requirePlacements(NOTICE, NOTICE_EN, 'en');
+  const parents = requirePlacements(PARENTS, PARENTS_EN, 'en');
+
+  it('requires what the original shows, in the versions it shows it', () => {
+    // The English names everyone but the participant, and never the count.
+    expect(parents).toEqual({
+      isYou: { kind: 'select', cases: ['true'] },
+      name: { kind: 'text', required: [{ isYou: 'other' }] },
+      missing: { kind: 'plural' },
+    });
+    expect(notice).toEqual({ count: { kind: 'plural', required: [{}] } });
+  });
+
+  // English says "one more person" without the number, which other
+  // languages' "one" cannot.
+  it('requires a number the original shows in any of its versions', () => {
+    expect(
+      requirePlacements(
+        NOTICE,
+        '{count, plural, one {Add one more person} other {Add # more people}}',
+        'en',
+      ),
+    ).toEqual({ count: { kind: 'plural', required: [{}] } });
+  });
+
+  it('requires text only where the original shows it in every version', () => {
+    expect(
+      requirePlacements(
+        PARENTS,
+        '{missing, plural, one {Add a parent for {name}} other {Add parents}}',
+        'en',
+      ).name,
+    ).toEqual({ kind: 'text' });
+  });
+
+  it('accepts a translation showing what it must', () => {
+    expect(
+      findMissingPlacement(
+        '{isYou, select, true {Ajoutez vos parents} other {Ajoutez les parents de « {name} »}}',
+        parents,
+        'fr',
+      ),
+    ).toBeUndefined();
+    // One phrase for everyone shows the name in every version.
+    expect(
+      findMissingPlacement('Ajoutez les parents de « {name} »', parents, 'fr'),
+    ).toBeUndefined();
+  });
+
+  it('names the argument and the version a translation leaves it out of', () => {
+    expect(
+      findMissingPlacement(
+        '{isYou, select, true {Ajoutez vos parents} other {Ajoutez des parents}}',
+        parents,
+        'fr',
+      ),
+    ).toEqual({
+      argument: 'name',
+      when: { isYou: 'other', missing: 'one' },
+    });
+    expect(findMissingPlacement('Ajoutez des parents', parents, 'fr')).toEqual({
+      argument: 'name',
+      when: { isYou: 'other', missing: 'one' },
+    });
+  });
+
+  // English "one" is only 1, so "one person" says the number; Russian "one"
+  // is also 21, 31 and so on, so its words cannot.
+  it('lets a version for a single number leave the number out', () => {
+    expect(
+      findMissingPlacement(
+        '{count, plural, one {Add one more person} other {Add # more people}}',
+        notice,
+        'en',
+      ),
+    ).toBeUndefined();
+    expect(
+      findMissingPlacement(
+        '{count, plural, one {Добавьте ещё одного человека} few {Добавьте ещё # человека} many {Добавьте ещё # человек} other {Добавьте ещё # человека}}',
+        notice,
+        'ru',
+      ),
+    ).toEqual({ argument: 'count', when: { count: 'one' } });
+    // French "one" is 0 and 1.
+    expect(
+      findMissingPlacement(
+        '{count, plural, one {Ajoutez une personne} other {Ajoutez # personnes}}',
+        notice,
+        'fr',
+      ),
+    ).toEqual({ argument: 'count', when: { count: 'one' } });
+  });
+
+  it('requires nothing of a declaration without requirements', () => {
+    expect(findMissingPlacement('Add people', NOTICE, 'en')).toBeUndefined();
+  });
+
+  it('lists what a version must show', () => {
+    const variants = messageVariants('', notice, 'ar');
+    expect(
+      variants.map((variant) => [
+        variant.when.count,
+        requiredArgumentsOf(variant, notice, 'ar'),
+      ]),
+    ).toEqual([
+      ['zero', []],
+      ['one', []],
+      ['two', []],
+      ['few', ['count']],
+      ['many', ['count']],
+      ['other', ['count']],
+    ]);
   });
 });

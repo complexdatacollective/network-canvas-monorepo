@@ -705,6 +705,8 @@
   "protocolBuilder.localizedMessage.placeholderTerm": "Termine di parentela",
   "protocolBuilder.localizedMessage.placeholderTitle": "Titolo della fase",
   "protocolBuilder.localizedMessage.placeholderTwin": "Nome del gemello o della gemella",
+  "protocolBuilder.localizedMessage.placementMissing": "Includi «{placeholder}» in questo testo.",
+  "protocolBuilder.localizedMessage.placementMissingIn": "Includi «{placeholder}» in questa versione: {version}.",
   "protocolBuilder.localizedMessage.pluralVersion": "Quando «{placeholder}» è {numbers}",
   "protocolBuilder.localizedMessage.unreadable": "Questo testo usa qualcosa che non può mostrare. Riscrivilo qui.",
   "protocolBuilder.localizedMessage.versionsBlank": "Scrivi ogni versione di questo testo, oppure lasciale tutte vuote.",

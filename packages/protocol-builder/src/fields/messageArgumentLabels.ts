@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import {
   defineMessages,
+  type IntlShape,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -549,148 +550,156 @@ const relativeTermWords = (
   );
 };
 
+/**
+ * The names of message arguments in the language of `intl` (see
+ * `useMessageArgumentLabels`), for code outside a component, such as a
+ * field's validation.
+ */
+export function messageArgumentLabels(intl: IntlShape): MessageArgumentLabels {
+  const text = (message: MessageDescriptor) => intl.formatMessage(message);
+  const words = relativeTermWords(intl.locale);
+  return {
+    caseLabels: {
+      isYou: {
+        true: text(messages.aboutParticipant),
+        other: text(messages.aboutSomeoneElse),
+      },
+      firstIsYou: {
+        true: text(messages.caseFirstIsParticipant),
+        other: text(messages.caseFirstIsSomeoneElse),
+      },
+      parentIsYou: {
+        true: text(messages.caseParentIsParticipant),
+        other: text(messages.caseParentIsSomeoneElse),
+      },
+      childIsYou: {
+        true: text(messages.caseChildIsParticipant),
+        other: text(messages.caseChildIsSomeoneElse),
+      },
+      personIsYou: {
+        true: text(messages.casePersonIsParticipant),
+        other: text(messages.casePersonIsSomeoneElse),
+      },
+      partnerIsYou: {
+        true: text(messages.casePartnerIsParticipant),
+        other: text(messages.casePartnerIsSomeoneElse),
+      },
+      single: {
+        true: text(messages.caseOnePerson),
+        other: text(messages.caseSeveralPeople),
+      },
+      current: {
+        true: text(messages.casePartnershipCurrent),
+        other: text(messages.casePartnershipEnded),
+      },
+      named: {
+        true: text(messages.casePersonNamed),
+        other: text(messages.casePersonUnnamed),
+      },
+      hasOthers: {
+        true: text(messages.caseOthersRemoved),
+        other: text(messages.caseNobodyElseRemoved),
+      },
+      hasLabel: {
+        true: text(messages.caseNamesOtherQuestion),
+        other: text(messages.caseRefersToPreviousAnswer),
+      },
+      framing: {
+        gamete: text(messages.caseGameteWording),
+        other: text(messages.caseMotherFatherWording),
+      },
+      parent: {
+        egg: text(messages.caseEggParent),
+        other: text(messages.caseSpermParent),
+      },
+      shared: {
+        eggParent: text(messages.caseSharesEggParent),
+        spermParent: text(messages.caseSharesSpermParent),
+        other: text(messages.caseSharesBothParents),
+      },
+      anchorIsYou: {
+        true: text(messages.caseAnchorIsParticipant),
+        other: text(messages.caseAnchorIsSomeoneElse),
+      },
+      otherIsYou: {
+        true: text(messages.caseCoParentIsParticipant),
+        other: text(messages.caseOtherParentIsSomeoneElse),
+      },
+      hasSurrogate: {
+        true: text(messages.caseSurrogateRecorded),
+        other: text(messages.caseNoSurrogateRecorded),
+      },
+      sex: {
+        female: text(messages.caseOnlyForFemaleAtBirth),
+        other: text(messages.caseOnlyForMaleAtBirth),
+      },
+      relation: {
+        edit: text(messages.caseRelationEdit),
+        parent: text(messages.caseRelationParent),
+        sibling: text(messages.caseRelationSibling),
+        partner: text(messages.caseRelationPartner),
+        formerPartner: text(messages.caseRelationFormerPartner),
+        owner: text(messages.caseRelationOwner),
+        other: text(messages.caseRelationChild),
+      },
+      who: {
+        personIsYou: text(messages.casePersonIsParticipant),
+        twinIsYou: text(messages.caseTwinIsParticipant),
+        parentIsYou: text(messages.caseParentIsParticipant),
+        childIsYou: text(messages.caseChildIsParticipant),
+        carrierIsYou: text(messages.caseCarrierIsParticipant),
+        coParentIsYou: text(messages.caseCoParentIsParticipant),
+        includesYou: text(messages.caseParticipantIsOneOfTwoParents),
+        you: text(messages.caseAboutParticipant),
+        this: text(messages.caseAboutThisPerson),
+        other: text(messages.caseOtherwise),
+      },
+      term: {
+        ...Object.fromEntries(
+          Object.entries(words).map(([term, word]) => [
+            term,
+            intl.formatMessage(messages.caseRelativeCase, { term: word }),
+          ]),
+        ),
+        other: text(messages.caseRelativeOther),
+      },
+    },
+    placeholderLabels: {
+      name: text(messages.name),
+      missing: text(messages.missing),
+      count: text(messages.placeholderCount),
+      min: text(messages.placeholderMin),
+      max: text(messages.placeholderMax),
+      first: text(messages.placeholderFirst),
+      second: text(messages.placeholderSecond),
+      names: text(messages.placeholderNames),
+      parent: text(messages.placeholderParent),
+      child: text(messages.placeholderChild),
+      children: text(messages.placeholderChildren),
+      anchor: text(messages.placeholderAnchor),
+      standIn: text(messages.placeholderStandIn),
+      chosen: text(messages.placeholderChosen),
+      partner: text(messages.placeholderPartner),
+      twin: text(messages.placeholderTwin),
+      carrier: text(messages.placeholderCarrier),
+      coParent: text(messages.placeholderCoParent),
+      other: text(messages.placeholderCoParent),
+      owner: text(messages.placeholderOwner),
+      term: text(messages.placeholderTerm),
+      details: text(messages.placeholderDetails),
+      parentKind: text(messages.placeholderParentKind),
+      sex: text(messages.placeholderSex),
+      answers: text(messages.placeholderAnswers),
+      answer: text(messages.placeholderAnswer),
+      title: text(messages.placeholderTitle),
+      condition: text(messages.placeholderCondition),
+      label: text(messages.placeholderLabel),
+    },
+  };
+}
+
+/** The names of message arguments in the interface's language. */
 export function useMessageArgumentLabels(): MessageArgumentLabels {
   const intl = useAppIntl();
-  return useMemo(() => {
-    const text = (message: MessageDescriptor) => intl.formatMessage(message);
-    const words = relativeTermWords(intl.locale);
-    return {
-      caseLabels: {
-        isYou: {
-          true: text(messages.aboutParticipant),
-          other: text(messages.aboutSomeoneElse),
-        },
-        firstIsYou: {
-          true: text(messages.caseFirstIsParticipant),
-          other: text(messages.caseFirstIsSomeoneElse),
-        },
-        parentIsYou: {
-          true: text(messages.caseParentIsParticipant),
-          other: text(messages.caseParentIsSomeoneElse),
-        },
-        childIsYou: {
-          true: text(messages.caseChildIsParticipant),
-          other: text(messages.caseChildIsSomeoneElse),
-        },
-        personIsYou: {
-          true: text(messages.casePersonIsParticipant),
-          other: text(messages.casePersonIsSomeoneElse),
-        },
-        partnerIsYou: {
-          true: text(messages.casePartnerIsParticipant),
-          other: text(messages.casePartnerIsSomeoneElse),
-        },
-        single: {
-          true: text(messages.caseOnePerson),
-          other: text(messages.caseSeveralPeople),
-        },
-        current: {
-          true: text(messages.casePartnershipCurrent),
-          other: text(messages.casePartnershipEnded),
-        },
-        named: {
-          true: text(messages.casePersonNamed),
-          other: text(messages.casePersonUnnamed),
-        },
-        hasOthers: {
-          true: text(messages.caseOthersRemoved),
-          other: text(messages.caseNobodyElseRemoved),
-        },
-        hasLabel: {
-          true: text(messages.caseNamesOtherQuestion),
-          other: text(messages.caseRefersToPreviousAnswer),
-        },
-        framing: {
-          gamete: text(messages.caseGameteWording),
-          other: text(messages.caseMotherFatherWording),
-        },
-        parent: {
-          egg: text(messages.caseEggParent),
-          other: text(messages.caseSpermParent),
-        },
-        shared: {
-          eggParent: text(messages.caseSharesEggParent),
-          spermParent: text(messages.caseSharesSpermParent),
-          other: text(messages.caseSharesBothParents),
-        },
-        anchorIsYou: {
-          true: text(messages.caseAnchorIsParticipant),
-          other: text(messages.caseAnchorIsSomeoneElse),
-        },
-        otherIsYou: {
-          true: text(messages.caseCoParentIsParticipant),
-          other: text(messages.caseOtherParentIsSomeoneElse),
-        },
-        hasSurrogate: {
-          true: text(messages.caseSurrogateRecorded),
-          other: text(messages.caseNoSurrogateRecorded),
-        },
-        sex: {
-          female: text(messages.caseOnlyForFemaleAtBirth),
-          other: text(messages.caseOnlyForMaleAtBirth),
-        },
-        relation: {
-          edit: text(messages.caseRelationEdit),
-          parent: text(messages.caseRelationParent),
-          sibling: text(messages.caseRelationSibling),
-          partner: text(messages.caseRelationPartner),
-          formerPartner: text(messages.caseRelationFormerPartner),
-          owner: text(messages.caseRelationOwner),
-          other: text(messages.caseRelationChild),
-        },
-        who: {
-          personIsYou: text(messages.casePersonIsParticipant),
-          twinIsYou: text(messages.caseTwinIsParticipant),
-          parentIsYou: text(messages.caseParentIsParticipant),
-          childIsYou: text(messages.caseChildIsParticipant),
-          carrierIsYou: text(messages.caseCarrierIsParticipant),
-          coParentIsYou: text(messages.caseCoParentIsParticipant),
-          includesYou: text(messages.caseParticipantIsOneOfTwoParents),
-          you: text(messages.caseAboutParticipant),
-          this: text(messages.caseAboutThisPerson),
-          other: text(messages.caseOtherwise),
-        },
-        term: {
-          ...Object.fromEntries(
-            Object.entries(words).map(([term, word]) => [
-              term,
-              intl.formatMessage(messages.caseRelativeCase, { term: word }),
-            ]),
-          ),
-          other: text(messages.caseRelativeOther),
-        },
-      },
-      placeholderLabels: {
-        name: text(messages.name),
-        missing: text(messages.missing),
-        count: text(messages.placeholderCount),
-        min: text(messages.placeholderMin),
-        max: text(messages.placeholderMax),
-        first: text(messages.placeholderFirst),
-        second: text(messages.placeholderSecond),
-        names: text(messages.placeholderNames),
-        parent: text(messages.placeholderParent),
-        child: text(messages.placeholderChild),
-        children: text(messages.placeholderChildren),
-        anchor: text(messages.placeholderAnchor),
-        standIn: text(messages.placeholderStandIn),
-        chosen: text(messages.placeholderChosen),
-        partner: text(messages.placeholderPartner),
-        twin: text(messages.placeholderTwin),
-        carrier: text(messages.placeholderCarrier),
-        coParent: text(messages.placeholderCoParent),
-        other: text(messages.placeholderCoParent),
-        owner: text(messages.placeholderOwner),
-        term: text(messages.placeholderTerm),
-        details: text(messages.placeholderDetails),
-        parentKind: text(messages.placeholderParentKind),
-        sex: text(messages.placeholderSex),
-        answers: text(messages.placeholderAnswers),
-        answer: text(messages.placeholderAnswer),
-        title: text(messages.placeholderTitle),
-        condition: text(messages.placeholderCondition),
-        label: text(messages.placeholderLabel),
-      },
-    };
-  }, [intl]);
+  return useMemo(() => messageArgumentLabels(intl), [intl]);
 }

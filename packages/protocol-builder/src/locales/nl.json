@@ -705,6 +705,8 @@
   "protocolBuilder.localizedMessage.placeholderTerm": "Verwantschapsterm",
   "protocolBuilder.localizedMessage.placeholderTitle": "Titel van de fase",
   "protocolBuilder.localizedMessage.placeholderTwin": "Naam van de tweelingbroer of -zus",
+  "protocolBuilder.localizedMessage.placementMissing": "Neem “{placeholder}” op in deze tekst.",
+  "protocolBuilder.localizedMessage.placementMissingIn": "Neem “{placeholder}” op in deze versie: {version}.",
   "protocolBuilder.localizedMessage.pluralVersion": "Als “{placeholder}” {numbers} is",
   "protocolBuilder.localizedMessage.unreadable": "Deze tekst gebruikt iets wat hij niet kan tonen. Schrijf hem hier opnieuw.",
   "protocolBuilder.localizedMessage.versionsBlank": "Schrijf elke versie van deze tekst, of laat ze allemaal leeg.",

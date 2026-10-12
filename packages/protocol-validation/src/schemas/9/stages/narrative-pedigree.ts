@@ -18,6 +18,11 @@ import {
 import { INHERITANCE_PATTERNS } from '../narrative-pedigree-values.ts';
 import { stageReference } from '../stage-reference.ts';
 import { withStageSubjectResolution } from '../stage-subject-resolution.ts';
+import {
+  SNAPSHOT_CONDITION,
+  SNAPSHOT_INHERITANCE,
+} from '../stage-wording/narrative-pedigree.ts';
+import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { baseStageSchema } from './base.ts';
 
 /**
@@ -78,15 +83,22 @@ export const findDuplicateDiseaseLabels = (
 
 // The snapshot's heading is built from the stage's title and the condition's
 // name, and from the focused person's name too for the inheritance heading.
-export const SNAPSHOT_CONDITION_ARGUMENTS = {
-  title: { kind: 'text' },
-  condition: { kind: 'text' },
-} as const satisfies MessageArguments;
+// Every translation must show them where the supplied wording does.
+export const SNAPSHOT_CONDITION_ARGUMENTS: MessageArguments =
+  requireSuppliedPlacements(
+    { title: { kind: 'text' }, condition: { kind: 'text' } },
+    SNAPSHOT_CONDITION,
+  );
 
-export const SNAPSHOT_INHERITANCE_ARGUMENTS = {
-  ...SNAPSHOT_CONDITION_ARGUMENTS,
-  name: { kind: 'text' },
-} as const satisfies MessageArguments;
+export const SNAPSHOT_INHERITANCE_ARGUMENTS: MessageArguments =
+  requireSuppliedPlacements(
+    {
+      title: { kind: 'text' },
+      condition: { kind: 'text' },
+      name: { kind: 'text' },
+    },
+    SNAPSHOT_INHERITANCE,
+  );
 
 // A narrative pedigree describes the people of the FamilyPedigree it points
 // at, so its subject is that stage's alter node type. `sourceStageId` is

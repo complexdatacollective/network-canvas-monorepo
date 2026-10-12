@@ -112,17 +112,24 @@ describe('TranslationTable: texts with versions', () => {
     const [aboutYou, aboutSomeoneElse] = await versions('French');
     expect(aboutYou).toHaveAccessibleName(/About the participant/);
     await user.type(aboutYou!, 'Vos frères et sœurs');
-    await user.type(aboutSomeoneElse!, 'Frères et sœurs');
+    await user.type(aboutSomeoneElse!, 'Frères et sœurs de ');
+    // The English names the person in the version about someone else, so
+    // that version's toolbar says the name is still needed.
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Insert “Name” (required in this text)',
+      }),
+    );
     await leaveCell(user, 'French');
     expect(listItem(store)).toEqual({ en: SIBLINGS });
     expect(messageCell('French')).toHaveAccessibleDescription(
-      /Vos frères et sœurs.*Frères et sœurs/,
+      /Vos frères et sœurs.*Frères et sœurs de \[Name\]/,
     );
 
     await save(user);
     expect(listItem(store)).toEqual({
       en: SIBLINGS,
-      fr: '{isYou, select, true {Vos frères et sœurs} other {Frères et sœurs}}',
+      fr: '{isYou, select, true {Vos frères et sœurs} other {Frères et sœurs de {name}}}',
     });
   });
 
@@ -195,6 +202,24 @@ describe('TranslationTable: texts with versions', () => {
     expect(getProtocol(store.getState())).toBe(before);
     // Save takes the researcher back into the versions to finish them.
     await versions('English');
+  });
+
+  it('says which placeholder a version leaves out, and refuses to save it', async () => {
+    const { store, user } = renderTable();
+    const before = getProtocol(store.getState());
+
+    await user.click(messageCell('French'));
+    const [aboutYou, aboutSomeoneElse] = await versions('French');
+    await user.type(aboutYou!, 'Vos frères et sœurs');
+    await user.type(aboutSomeoneElse!, 'Ses frères et sœurs');
+    await leaveCell(user, 'French');
+
+    const missing = 'Include “Name” in this version: About someone else.';
+    expect(await screen.findByText(missing)).toBeInTheDocument();
+    expect(messageCell('French')).toHaveAttribute('aria-invalid', 'true');
+
+    await save(user);
+    expect(getProtocol(store.getState())).toBe(before);
   });
 
   it('says why the only translation cannot be cleared, and refuses to save it', async () => {

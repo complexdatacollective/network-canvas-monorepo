@@ -10,6 +10,13 @@ import type { LocaleTag } from './localeTag.ts';
 import { escapeMessageText } from './messageSyntax.ts';
 
 /**
+ * The select cases of the versions of a message a value must be shown in:
+ * one entry per combination of the message's select arguments' cases, and a
+ * single empty entry for a message without a select.
+ */
+export type RequiredPlacements = readonly Readonly<Record<string, string>>[];
+
+/**
  * One argument a localized message may use, as the setting that holds it
  * declares it:
  * - `text`, a value shown where `{name}` is written;
@@ -18,11 +25,14 @@ import { escapeMessageText } from './messageSyntax.ts';
  * - `plural`, a number, chosen by its plural category with
  *   `{name, plural, one {…} other {…}}` and shown where `#` is written in
  *   one of those arms.
+ *
+ * A `text` or `plural` argument may be required in some versions (see
+ * `requirePlacements` and `findMissingPlacement`).
  */
 export type MessageArgument =
-  | Readonly<{ kind: 'text' }>
+  | Readonly<{ kind: 'text'; required?: RequiredPlacements }>
   | Readonly<{ kind: 'select'; cases: readonly string[] }>
-  | Readonly<{ kind: 'plural' }>;
+  | Readonly<{ kind: 'plural'; required?: RequiredPlacements }>;
 
 /** The arguments a localized message may use, by name. */
 export type MessageArguments = Readonly<Record<string, MessageArgument>>;
@@ -415,4 +425,137 @@ export const composeMessage = (
   };
 
   return compose(axesOf(declaration, locale), {}, false);
+};
+
+/** The select cases a variant is for, without its plural category. */
+const selectCasesOf = (
+  when: Readonly<Record<string, string>>,
+  declaration: MessageArguments,
+): Readonly<Record<string, string>> =>
+  Object.fromEntries(
+    Object.entries(when).filter(
+      ([name]) => declaration[name]?.kind === 'select',
+    ),
+  );
+
+const sameCases = (
+  a: Readonly<Record<string, string>>,
+  b: Readonly<Record<string, string>>,
+): boolean =>
+  Object.keys(a).length === Object.keys(b).length &&
+  Object.entries(a).every(([name, key]) => b[name] === key);
+
+const placedIn = (variant: MessageVariant): ReadonlySet<string> =>
+  new Set(
+    variant.parts.flatMap((part) =>
+      typeof part === 'string' ? [] : [part.argument],
+    ),
+  );
+
+/**
+ * `declaration` with each `text` and `plural` argument required where
+ * `original`, written in `locale`, shows it: a translation must show what its
+ * original shows. For each combination of select cases, a text argument is
+ * required if the original shows it in every plural version of that
+ * combination, and a number if the original shows it in any of them (whether
+ * a language's "one" needs the number is that language's to say; see
+ * `findMissingPlacement`). An argument the original never shows is not
+ * required anywhere.
+ */
+export const requirePlacements = (
+  declaration: MessageArguments,
+  original: string,
+  locale: LocaleTag,
+): MessageArguments => {
+  const variants = messageVariants(original, declaration, locale);
+  const groups: {
+    cases: Readonly<Record<string, string>>;
+    placed: ReadonlySet<string>[];
+  }[] = [];
+  for (const variant of variants) {
+    const cases = selectCasesOf(variant.when, declaration);
+    const group = groups.find((candidate) => sameCases(candidate.cases, cases));
+    if (group === undefined)
+      groups.push({ cases, placed: [placedIn(variant)] });
+    else group.placed.push(placedIn(variant));
+  }
+  return Object.fromEntries(
+    Object.entries(declaration).map(
+      ([name, argument]): [string, MessageArgument] => {
+        if (argument.kind === 'select') return [name, argument];
+        const required = groups
+          .filter(({ placed }) =>
+            argument.kind === 'plural'
+              ? placed.some((names) => names.has(name))
+              : placed.every((names) => names.has(name)),
+          )
+          .map(({ cases }) => cases);
+        const placements = required.length === 0 ? {} : { required };
+        return [
+          name,
+          argument.kind === 'plural'
+            ? { kind: 'plural', ...placements }
+            : { kind: 'text', ...placements },
+        ];
+      },
+    ),
+  );
+};
+
+/** A required argument a version of a message does not show. */
+export type MissingPlacement = Readonly<{
+  argument: string;
+  /** The version: its select cases and plural category. */
+  when: Readonly<Record<string, string>>;
+}>;
+
+/**
+ * The arguments `variant` of a message written in `locale` must show: those
+ * required for its select cases, except its plural argument in a category
+ * that only one whole number selects in that language, where the words
+ * already say the number (English "one person"; Russian "one" also covers 21
+ * and must show it).
+ */
+export const requiredArgumentsOf = (
+  variant: MessageVariant,
+  declaration: MessageArguments,
+  locale: LocaleTag,
+): readonly string[] => {
+  const cases = selectCasesOf(variant.when, declaration);
+  return Object.entries(declaration).flatMap(([name, argument]) => {
+    if (argument.kind === 'select') return [];
+    if (!(argument.required ?? []).some((each) => sameCases(each, cases))) {
+      return [];
+    }
+    if (argument.kind === 'plural') {
+      const category = variant.when[name];
+      const counts =
+        category === undefined
+          ? undefined
+          : pluralCountExamples(locale).get(category as PluralCategory);
+      if (counts?.length === 1) return [];
+    }
+    return [name];
+  });
+};
+
+/**
+ * The first required argument (see `requirePlacements`) some version of
+ * `message`, written in `locale`, does not show, or undefined when every
+ * version shows what it must. Meant for messages `findMessageArgumentProblem`
+ * accepts.
+ */
+export const findMissingPlacement = (
+  message: string,
+  declaration: MessageArguments,
+  locale: LocaleTag,
+): MissingPlacement | undefined => {
+  for (const variant of messageVariants(message, declaration, locale)) {
+    const placed = placedIn(variant);
+    const argument = requiredArgumentsOf(variant, declaration, locale).find(
+      (name) => !placed.has(name),
+    );
+    if (argument !== undefined) return { argument, when: variant.when };
+  }
+  return undefined;
 };

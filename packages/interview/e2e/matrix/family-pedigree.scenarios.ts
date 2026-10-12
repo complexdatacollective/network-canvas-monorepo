@@ -446,10 +446,10 @@ const OWN_WORDS = {
     '{who, select, parentIsYou {You cannot parent {child} - matrix check} childIsYou {{parent} cannot parent you - matrix check} other {{parent} cannot parent {child} - matrix check}}',
   ),
   unavailableBothSameSex: message(
-    '{firstIsYou, select, true {You and {second} both {sex} - matrix check} other {{first} and {second} both {sex} - matrix check}}',
+    '{firstIsYou, select, true {You and {second} both {sex}, so not {answers} - matrix check} other {{first} and {second} both {sex}, so not {answers} - matrix check}}',
   ),
   unavailableCannotCarry: message(
-    '{who, select, you {You cannot carry as {sex} - matrix check} this {This person cannot carry as {sex} - matrix check} other {{name} cannot carry as {sex} - matrix check}}',
+    '{who, select, you {You cannot carry as {sex}, so not {answers} - matrix check} this {This person cannot carry as {sex}, so not {answers} - matrix check} other {{name} cannot carry as {sex}, so not {answers} - matrix check}}',
   ),
   unavailableCarried: message(
     '{who, select, personIsYou {You carried {children} so not {sex} - matrix check} childIsYou {Carried you so not {sex} - matrix check} other {Carried {children} so not {sex} - matrix check}}',
@@ -461,16 +461,16 @@ const OWN_WORDS = {
     '{who, select, childIsYou {{count, plural, one {You have {first} and {second} as genetic parents, so not {answers} - matrix check} other {You have {first} and {second} as genetic parents, so none of {answers} - matrix check}}} includesYou {{count, plural, one {{child} has you and {second} as genetic parents, so not {answers} - matrix check} other {{child} has you and {second} as genetic parents, so none of {answers} - matrix check}}} other {{count, plural, one {{child} has {first} and {second} as genetic parents, so not {answers} - matrix check} other {{child} has {first} and {second} as genetic parents, so none of {answers} - matrix check}}}}',
   ),
   unavailableIdenticalTwin: message(
-    '{who, select, personIsYou {You and {twin} cannot be identical - matrix check} twinIsYou {{name} and you cannot be identical - matrix check} other {{name} and {twin} cannot be identical - matrix check}}',
+    '{who, select, personIsYou {You and {twin} cannot be identical, so not {answer} - matrix check} twinIsYou {{name} and you cannot be identical, so not {answer} - matrix check} other {{name} and {twin} cannot be identical, so not {answer} - matrix check}}',
   ),
   unavailableIdenticalTwinNew: message(
-    '{isYou, select, true {New sibling cannot be identical to you - matrix check} other {New sibling cannot be identical to {name} - matrix check}}',
+    '{isYou, select, true {New sibling cannot be identical to you, so not {answer} - matrix check} other {New sibling cannot be identical to {name}, so not {answer} - matrix check}}',
   ),
   unavailableSameSexAsCoParent: message(
     '{who, select, personIsYou {You and {coParent} parent {children}, both {sex} - matrix check} childIsYou {This person and {coParent} parent you, both {sex} - matrix check} coParentIsYou {You and this person parent {children}, both {sex} - matrix check} other {This person and {coParent} parent {children}, both {sex} - matrix check}}',
   ),
   unavailableSameSexGeneticParent: message(
-    '{who, select, coParentIsYou {You and {child} share a sex {sex} - matrix check} childIsYou {{coParent} shares a sex {sex} with another parent of yours - matrix check} other {{coParent} shares a sex {sex} for {child} - matrix check}}',
+    '{who, select, coParentIsYou {You and {child} share a sex {sex}, so not {answers} - matrix check} childIsYou {{coParent} shares a sex {sex} with another parent of yours, so not {answers} - matrix check} other {{coParent} shares a sex {sex} for {child}, so not {answers} - matrix check}}',
   ),
   zygosityFraternal: 'Fraternal zygosity - matrix check',
   zygosityIdentical: 'Identical zygosity - matrix check',
@@ -1282,7 +1282,7 @@ function researcherWording(): ScenarioDefinition {
           listItem:
             '{isYou, select, true {Your brothers and sisters} other {{name}’s brothers and sisters}}',
           noneButton:
-            '{isYou, select, true {No brothers or sisters} other {None}}',
+            '{isYou, select, true {No brothers or sisters} other {{name} has none}}',
           question:
             '{isYou, select, true {Any brothers or sisters?} other {Does {name} have brothers or sisters?}}',
         },
@@ -2944,7 +2944,9 @@ function wordingAddParent(): ScenarioDefinition {
         .click();
       await expect(
         form
-          .getByText('This person cannot carry as Male - matrix check')
+          .getByText(
+            /This person cannot carry as Male, so not .+ - matrix check/,
+          )
           .first(),
       ).toBeVisible();
 
@@ -3047,7 +3049,7 @@ function wordingAddChild(): ScenarioDefinition {
       await expect(
         panel(page)
           .getByText(
-            'Julie shares a sex Female with another parent of yours - matrix check',
+            /Julie shares a sex Female with another parent of yours, so not .+ - matrix check/,
           )
           .first(),
       ).toBeVisible();
@@ -3095,7 +3097,9 @@ function wordingAddChild(): ScenarioDefinition {
         form.getByText('Genetic parents only - matrix check'),
       ).toBeVisible();
       await expect(
-        form.getByText('You and Pam both Female - matrix check').first(),
+        form
+          .getByText(/You and Pam both Female, so not .+ - matrix check/)
+          .first(),
       ).toBeVisible();
       await expect(
         genetic.getByRole('radio', {
@@ -3276,7 +3280,9 @@ function wordingEditPerson(): ScenarioDefinition {
       ).toBeDisabled();
       await expect(
         form
-          .getByText('You and Cal cannot be identical - matrix check')
+          .getByText(
+            /You and Cal cannot be identical, so not .+ - matrix check/,
+          )
           .first(),
       ).toBeVisible();
       await cancel();
@@ -3427,7 +3433,9 @@ function wordingAddSibling(): ScenarioDefinition {
       });
       await expect(identical).toBeEnabled();
       await expect(
-        form.getByText('New sibling cannot be identical to you - matrix check'),
+        form.getByText(
+          /New sibling cannot be identical to you, so not .+ - matrix check/,
+        ),
       ).toHaveCount(0);
 
       // Sharing one, they may not, and the form says why.
@@ -3437,7 +3445,9 @@ function wordingAddSibling(): ScenarioDefinition {
       await expect(identical).toBeDisabled();
       await expect(
         form
-          .getByText('New sibling cannot be identical to you - matrix check')
+          .getByText(
+            /New sibling cannot be identical to you, so not .+ - matrix check/,
+          )
           .first(),
       ).toBeVisible();
       await expectAbsent(

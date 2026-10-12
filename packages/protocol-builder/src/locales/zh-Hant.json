@@ -705,6 +705,8 @@
   "protocolBuilder.localizedMessage.placeholderTerm": "親屬稱謂",
   "protocolBuilder.localizedMessage.placeholderTitle": "階段標題",
   "protocolBuilder.localizedMessage.placeholderTwin": "雙胞胎的姓名",
+  "protocolBuilder.localizedMessage.placementMissing": "請在此文字中包含「{placeholder}」。",
+  "protocolBuilder.localizedMessage.placementMissingIn": "請在此版本中包含「{placeholder}」：{version}。",
   "protocolBuilder.localizedMessage.pluralVersion": "當「{placeholder}」為 {numbers} 時",
   "protocolBuilder.localizedMessage.unreadable": "此文字使用了無法顯示的內容。請在此重新撰寫。",
   "protocolBuilder.localizedMessage.versionsBlank": "請填寫此文字的每個版本，或將它們全部留空。",

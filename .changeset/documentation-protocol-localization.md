@@ -11,7 +11,8 @@ from an earlier version, preview each language, print every translation in
 the protocol summary, and how participants get their language. It explains
 that languages have no order and are always listed alphabetically, that a
 text needs a translation in at least one language and a missing translation
-is only a warning, and how
+is only a warning, that a translation must include the placeholders, such as
+a person's name or a number, that Network Canvas's English includes, and how
 participants are shown the best available translation of each text: in their
 own language or a close regional match, then in the other languages their
 browser lists, then in the default language, then in any language that has it.

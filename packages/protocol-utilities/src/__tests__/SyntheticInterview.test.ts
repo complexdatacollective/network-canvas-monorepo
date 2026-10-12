@@ -3317,7 +3317,9 @@ describe('SyntheticInterview stage wording', () => {
     const synth = new SyntheticInterview();
     synth.addStage('FamilyPedigree', {
       wording: {
-        'panelTitle': 'Your relatives',
+        // The supplied title names the person, so a replacement must too; a
+        // string is literal text, so a message is given by language.
+        'panelTitle': { 'en-US': 'Relatives of {name}' },
         'wording.biologicalParentLabel': 'Birth parent',
       },
     });
@@ -3326,7 +3328,7 @@ describe('SyntheticInterview stage wording', () => {
     expect(stages[0]).not.toHaveProperty('panelTitle');
     expect(stages[0]).toMatchObject({
       wording: {
-        panelTitle: { 'en-US': 'Your relatives' },
+        panelTitle: { 'en-US': 'Relatives of {name}' },
         biologicalParentLabel: { 'en-US': 'Birth parent' },
       },
     });

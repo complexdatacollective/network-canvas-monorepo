@@ -184,8 +184,14 @@ describe('v8 to v9 localization migration', () => {
 
   it('produces the complete fixture with its copy in English', () => {
     const expected: unknown = structuredClone(completeProtocol());
-    for (const { path: at, value } of collectLocalizedStrings(expected)) {
-      setAt(expected, at, { en: escapeMessageText(value.en ?? '') });
+    for (const {
+      path: at,
+      value,
+      arguments: declared,
+    } of collectLocalizedStrings(expected)) {
+      if (declared === undefined) {
+        setAt(expected, at, { en: escapeMessageText(value.en ?? '') });
+      }
     }
     for (const definition of codebookTypes(expected)) {
       definition.label = { en: definition.name };
@@ -234,9 +240,11 @@ describe('v8 to v9 localization migration', () => {
     const document = schema8Protocol(special);
     const migrated = migrateProtocol(document, 9);
 
-    // The interface text is the migration's own, not the document's.
+    // The interface text is the migration's own, not the document's, and
+    // text with placeholders is new in schema 9 (see `asSchema8Protocol`).
     const hits = collectLocalizedStrings(migrated).filter(
-      ({ path: at }) => at[0] !== 'interfaceText',
+      ({ path: at, arguments: declared }) =>
+        at[0] !== 'interfaceText' && declared === undefined,
     );
     expect(hits.length).toBeGreaterThan(0);
     for (const { path: at, value } of hits) {
