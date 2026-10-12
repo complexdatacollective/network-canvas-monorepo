@@ -795,8 +795,8 @@ const HOPS: Record<string, number> = {
   // to the participant hops Hannah's line of descent.
   'a surrogate for one of a donor’s two children, the other recorded first': 1,
   // The birth parents' line to the participant hops their sibling's line
-  // up: the two parents' lines run as one there, and each draws the hop.
-  'two siblings adopted together, with the same birth parents': 2,
+  // up: the two parents' lines run as one there, drawn once, with one hop.
+  'two siblings adopted together, with the same birth parents': 1,
   // The stepfather's lines run as one course to below the sibling bar,
   // where his line to the participant parts and hops their sibling's line
   // up.

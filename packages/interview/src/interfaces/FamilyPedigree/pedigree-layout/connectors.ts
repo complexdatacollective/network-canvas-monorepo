@@ -117,6 +117,10 @@ export function computeConnectors(
   return routePedigree(...args).connectors;
 }
 
+/** The indexes of `costs`, the cheapest first. */
+const cheapestFirst = (costs: number[]) =>
+  costs.map((_, k) => k).toSorted((x, y) => costs[x]! - costs[y]!);
+
 /**
  * The connectors (see `computeConnectors`), and what their routed lines
  * cost the drawing, the cost every line's course is chosen by (see
@@ -134,6 +138,9 @@ export function routePedigree(
   id?: string[],
   partnerPairs?: Set<string>,
   shapes?: (PedigreeSymbolShape | undefined)[],
+  /** How widely the lines' courses are searched: from one order of the
+   * lines, or from several (see below). */
+  search: 'quick' | 'thorough' = 'thorough',
 ): { connectors: PedigreeConnectors; cost: number } {
   const { boxWidth: boxw, boxHeight: boxh, legHeight: legh } = scaling;
   const maxlev = layout.nid.length;
@@ -1750,6 +1757,8 @@ export function routePedigree(
     endX: number;
     /** The joins on the sibling bar it meets, if it meets one. */
     stems?: number[];
+    /** Where across the page the children it reaches sit, on average. */
+    anchor: number;
   }[] = [];
   const drawnOf = (
     points: Point[],
@@ -1769,17 +1778,30 @@ export function routePedigree(
       ...(end.kind === 'child' ? { endsOn: end.person } : {}),
     }));
 
-  // Every line, one after another, each routed among the lines drawn
-  // before it (and then again among them all, below).
+  // Every line, one after another across the page (by where its owner
+  // sits, and then where the children it reaches sit), each routed among
+  // the lines drawn before it (and then again among them all, below).
   type Work = {
     plan: (typeof plans)[number];
     join?: (typeof plans)[number]['joins'][number];
   };
-  const work: Work[] = plans.flatMap((plan): Work[] =>
-    plan.joins.length > 0
-      ? plan.joins.map((join) => ({ plan, join }))
-      : [{ plan }],
-  );
+  const childrenX = ({ conn }: (typeof plans)[number]) =>
+    conn.childColumns.reduce(
+      (sum, col) => sum + layout.pos[conn.childLevel]![col]!,
+      0,
+    ) / Math.max(1, conn.childColumns.length);
+  const work: Work[] = plans
+    .flatMap((plan): Work[] =>
+      plan.joins.length > 0
+        ? plan.joins.map((join) => ({ plan, join }))
+        : [{ plan }],
+    )
+    .toSorted(
+      (a, b) =>
+        ownerXOf(a.plan.from) - ownerXOf(b.plan.from) ||
+        childrenX(a.plan) - childrenX(b.plan) ||
+        a.plan.from.layer - b.plan.from.layer,
+    );
   const pushLine = (
     plan: (typeof plans)[number],
     points: Point[],
@@ -1823,6 +1845,7 @@ export function routePedigree(
       end: RouteEnd,
       childNodeId: string | undefined,
       stems?: number[],
+      anchor = childrenX(plan),
     ) => {
       const { points, endX, matePoints } = routeLine(from, end, owner, scene);
       const drawn = drawnOf(points, { owner, end, from }, matePoints);
@@ -1842,6 +1865,7 @@ export function routePedigree(
         drawn,
         endX,
         ...(stems ? { stems } : {}),
+        anchor,
       });
       return endX;
     };
@@ -1879,6 +1903,8 @@ export function routePedigree(
           ...(shape ? { shape } : {}),
         },
         id ? id[childPersonIndex] : undefined,
+        undefined,
+        layout.pos[conn.childLevel]![col]!,
       );
     }
   }
@@ -1907,28 +1933,135 @@ export function routePedigree(
       (line) => !entries.some((entry) => entry.drawn.includes(line)),
     );
   };
-  // Each line again, against every other line, those routed after it
-  // included, until none can be bettered.
-  const rerouteEach = (entries: Routed[], passes: number) => {
-    for (let pass = 0; pass < passes; pass++) {
-      let bettered = false;
-      for (const entry of entries) {
-        withoutLines(entry);
-        const next = routeLine(
-          entry.from,
-          entry.end,
-          entry.owner,
-          scene,
-          courseOf(entry),
-        );
-        if (next.points !== entry.line.points) {
-          bettered = true;
-          adopt(entry, next);
-        }
-        scene.lines.push(...entry.drawn);
-      }
-      if (!bettered) break;
+  // What the drawing costs: each line's course among the lines of descent
+  // and partnership lines and the lines before it across the page (left to
+  // right, by where its owner sits and where it ends), so that every
+  // meeting of two lines is counted once, and the order the family was
+  // recorded in plays no part.
+  const fixedLines = scene.lines.filter((line) => line.owner === undefined);
+  const acrossThePage = routed;
+  const rankOf = new Map(acrossThePage.map((entry, k) => [entry, k]));
+  const termOf = (entry: Routed) =>
+    courseCost(
+      entry.from,
+      entry.end,
+      entry.owner,
+      {
+        ...scene,
+        lines: [
+          ...fixedLines,
+          ...acrossThePage.slice(0, rankOf.get(entry)).flatMap((e) => e.drawn),
+        ],
+      },
+      entry.line.points,
+      entry.mateLine?.points,
+    );
+  const terms = new Map<Routed, number>();
+  const totalOf = () => {
+    let total = 0;
+    for (const entry of routed) total += terms.get(entry) ?? 0;
+    return total;
+  };
+  const costEveryLine = () => {
+    for (const entry of routed) terms.set(entry, termOf(entry));
+  };
+  const place = (entry: Routed, course: Course) => {
+    withoutLines(entry);
+    adopt(entry, course);
+    scene.lines.push(...entry.drawn);
+  };
+  // Two lines far apart cannot get in each other's way.
+  const reachOfLine = 0.3 * Math.max(boxw, boxh);
+  const areaOf = (points: Point[]) => {
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    return {
+      left: Math.min(...xs) - reachOfLine,
+      right: Math.max(...xs) + reachOfLine,
+      top: Math.min(...ys) - reachOfLine,
+      bottom: Math.max(...ys) + reachOfLine,
+    };
+  };
+  const mayMeet = (a: Routed, b: Routed) => {
+    const [p, q] = [
+      areaOf([...a.line.points, ...(a.mateLine?.points ?? [])]),
+      areaOf([...b.line.points, ...(b.mateLine?.points ?? [])]),
+    ];
+    return (
+      p.right >= q.left &&
+      p.left <= q.right &&
+      p.bottom >= q.top &&
+      p.top <= q.bottom
+    );
+  };
+  // When each line last changed, and when each line and each pair were last
+  // routed again: a line (or pair) is not routed again until it, or a line
+  // near it, has changed since.
+  let tick = 0;
+  const changedAt = new Map<Routed, number>();
+  const triedAt = new Map<string, number>();
+  const changedNear = (...entries: Routed[]) =>
+    Math.max(
+      ...routed
+        .filter(
+          (entry) =>
+            entries.includes(entry) ||
+            entries.some((other) => mayMeet(entry, other)),
+        )
+        .map((entry) => changedAt.get(entry) ?? 0),
+    );
+  const untriedSince = (key: string, ...entries: Routed[]) =>
+    (triedAt.get(key) ?? -1) < changedNear(...entries);
+  // Takes new courses for some lines if the drawing then costs less: what
+  // each changed line costs, and what each line after it across the page
+  // that comes near its old or new course costs, before and after.
+  const takeIfCheaper = (changes: Map<Routed, Course>): boolean => {
+    const changed = [...changes.keys()];
+    const first = Math.min(...changed.map((entry) => rankOf.get(entry)!));
+    const near = (moved: Routed[]) =>
+      acrossThePage.filter(
+        (entry) =>
+          changes.has(entry) ||
+          (rankOf.get(entry)! > first &&
+            moved.some((other) => mayMeet(entry, other))),
+      );
+    const before = new Map(changed.map((entry) => [entry, courseOf(entry)]));
+    const affected = new Set(near(changed));
+    for (const [entry, course] of changes) place(entry, course);
+    for (const entry of near(changed)) affected.add(entry);
+    const was = [...affected].reduce((sum, e) => sum + terms.get(e)!, 0);
+    const now = new Map([...affected].map((e) => [e, termOf(e)]));
+    const is = [...now.values()].reduce((sum, cost) => sum + cost, 0);
+    if (is < was - 1e-9) {
+      for (const [entry, cost] of now) terms.set(entry, cost);
+      tick++;
+      for (const entry of changed) changedAt.set(entry, tick);
+      return true;
     }
+    for (const [entry, course] of before) place(entry, course);
+    return false;
+  };
+  // Each line routed again among all the others, those after it included,
+  // taken if the drawing costs less.
+  const rerouteEach = (order: Routed[]) => {
+    let bettered = false;
+    for (const entry of order) {
+      const key = `${routed.indexOf(entry)}`;
+      if (!untriedSince(key, entry)) continue;
+      triedAt.set(key, tick);
+      withoutLines(entry);
+      const next = routeLine(
+        entry.from,
+        entry.end,
+        entry.owner,
+        scene,
+        courseOf(entry),
+      );
+      scene.lines.push(...entry.drawn);
+      if (next.points === entry.line.points) continue;
+      if (takeIfCheaper(new Map([[entry, next]]))) bettered = true;
+    }
+    return bettered;
   };
   // Two lines that still cross or crowd each other are routed together:
   // of the best few courses for each, the two that are best together. (Two
@@ -1943,33 +2076,17 @@ export function routePedigree(
       course.points,
       course.matePoints,
     );
-  // Two lines far apart cannot get in each other's way.
-  const reachOfLine = 0.3 * Math.max(boxw, boxh);
-  const areaOf = (points: Point[]) => {
-    const xs = points.map((p) => p.x);
-    const ys = points.map((p) => p.y);
-    return {
-      left: Math.min(...xs) - reachOfLine,
-      right: Math.max(...xs) + reachOfLine,
-      top: Math.min(...ys) - reachOfLine,
-      bottom: Math.max(...ys) + reachOfLine,
-    };
-  };
-  const mayMeet = (a: Routed, b: Routed) => {
-    const [p, q] = [areaOf(a.line.points), areaOf(b.line.points)];
-    return (
-      p.right >= q.left &&
-      p.left <= q.right &&
-      p.bottom >= q.top &&
-      p.top <= q.bottom
-    );
-  };
-  const routeInPairs = (entries: Routed[]) => {
+  const routeInPairs = (order: Routed[]) => {
     let bettered = false;
-    for (let i = 0; i < entries.length; i++) {
-      for (let j = i + 1; j < entries.length; j++) {
-        const [a, b] = [entries[i]!, entries[j]!];
+    for (let i = 0; i < order.length; i++) {
+      for (let j = i + 1; j < order.length; j++) {
+        const [a, b] = [order[i]!, order[j]!];
         if (!mayMeet(a, b)) continue;
+        const key = [routed.indexOf(a), routed.indexOf(b)]
+          .toSorted((x, y) => x - y)
+          .join(',');
+        if (!untriedSince(key, a, b)) continue;
+        triedAt.set(key, tick);
         withoutLines(a, b);
         const together = (first: Course, second: Course) =>
           costAmong(a, first, drawnOf(second.points, b, second.matePoints)) +
@@ -1995,7 +2112,9 @@ export function routePedigree(
           const [firsts, seconds] = [options(a), options(b)];
           // What each course costs among the scene, and what each course of
           // the other line adds to that: a course's cost among two sets of
-          // lines is the sum of what each adds (see `courseCosts`).
+          // lines is the sum of what each adds (see `courseCosts`), and
+          // neither adds less than nothing, so two courses dearer alone
+          // than the best two together are not weighed together.
           const alone = (entry: Routed, courses: Course[]) => {
             const costOf = courseCosts(
               entry.from,
@@ -2007,74 +2126,102 @@ export function routePedigree(
               costOf(course.points, course.matePoints),
             );
           };
-          const added = (
-            entry: Routed,
-            mine: Course[],
-            other: Routed,
-            theirs: Course[],
-          ) =>
-            theirs.map((course) => {
-              const costOf = courseCosts(
-                entry.from,
-                entry.end,
-                entry.owner,
-                {
-                  ...scene,
-                  lines: drawnOf(course.points, other, course.matePoints),
-                },
-                true,
-              );
-              return mine.map((option) =>
-                costOf(option.points, option.matePoints),
-              );
-            });
+          const addedBy = (entry: Routed, other: Routed, course: Course) =>
+            courseCosts(
+              entry.from,
+              entry.end,
+              entry.owner,
+              {
+                ...scene,
+                lines: drawnOf(course.points, other, course.matePoints),
+              },
+              true,
+            );
           const [aAlone, bAlone] = [alone(a, firsts), alone(b, seconds)];
-          const aGivenB = added(a, firsts, b, seconds);
-          const bGivenA = added(b, seconds, a, firsts);
-          firsts.forEach((first, f) => {
-            seconds.forEach((second, g) => {
-              const cost =
-                aAlone[f]! + aGivenB[g]![f]! + bAlone[g]! + bGivenA[f]![g]!;
+          const [fs, gs] = [cheapestFirst(aAlone), cheapestFirst(bAlone)];
+          const givenA = new Map<number, ReturnType<typeof courseCosts>>();
+          for (const g of gs) {
+            if (bAlone[g]! + aAlone[fs[0]!]! >= best.cost - 1e-9) break;
+            const second = seconds[g]!;
+            const aGivenB = addedBy(a, b, second);
+            for (const f of fs) {
+              const both = aAlone[f]! + bAlone[g]!;
+              if (both >= best.cost - 1e-9) break;
+              const first = firsts[f]!;
+              const withB = both + aGivenB(first.points, first.matePoints);
+              if (withB >= best.cost - 1e-9) continue;
+              let bGivenA = givenA.get(f);
+              if (!bGivenA) {
+                bGivenA = addedBy(b, a, first);
+                givenA.set(f, bGivenA);
+              }
+              const cost = withB + bGivenA(second.points, second.matePoints);
               if (cost < best.cost - 1e-9) best = { first, second, cost };
-            });
-          });
-          if (best.first.points !== a.line.points) {
-            adopt(a, best.first);
-            bettered = true;
-          }
-          if (best.second.points !== b.line.points) {
-            adopt(b, best.second);
-            bettered = true;
+            }
           }
         }
         scene.lines.push(...a.drawn, ...b.drawn);
+        const changes = new Map<Routed, Course>();
+        if (best.first.points !== a.line.points) changes.set(a, best.first);
+        if (best.second.points !== b.line.points) changes.set(b, best.second);
+        if (changes.size > 0 && takeIfCheaper(changes)) bettered = true;
       }
     }
     return bettered;
   };
-  const optimise = (entries: Routed[]) => {
-    rerouteEach(entries, 3);
-    if (routeInPairs(entries)) rerouteEach(entries, 1);
+  // Lines are rerouted one at a time until none can be bettered alone, and
+  // then in pairs; whenever a pair is bettered, one at a time again.
+  const ROUNDS = 6;
+  const improve = (order: Routed[]) => {
+    for (let round = 0; round < ROUNDS; round++) {
+      for (let pass = 0; pass < 4 * ROUNDS && rerouteEach(order); pass++);
+      if (!routeInPairs(order)) break;
+    }
   };
-  optimise(routed);
-
-  // What the routed lines cost, each among the lines of descent and
-  // partnership lines and the lines routed before it.
-  const fixedLines = scene.lines.filter((line) => line.owner === undefined);
-  let cost = 0;
-  routed.forEach((entry, k) => {
-    cost += courseCost(
-      entry.from,
-      entry.end,
-      entry.owner,
-      {
-        ...scene,
-        lines: [...fixedLines, ...routed.slice(0, k).flatMap((e) => e.drawn)],
-      },
-      entry.line.points,
-      entry.mateLine?.points,
-    );
-  });
+  // The search starts afresh from a few orders of the lines, each line
+  // routed among those before it, and keeps the cheapest drawing it
+  // reaches: from left to right, from right to left, and the longest lines
+  // first (a quick search, from left to right only). Which line was
+  // recorded first plays no part.
+  const spanOf = (entry: Routed) =>
+    Math.abs(entry.anchor - ownerXOf(entry.from)) +
+    (entry.end.layer - entry.from.layer);
+  const orders = [
+    acrossThePage,
+    acrossThePage.toReversed(),
+    acrossThePage.toSorted((a, b) => spanOf(b) - spanOf(a)),
+  ];
+  let cheapest: { courses: Map<Routed, Course>; total: number } | undefined;
+  for (const order of search === 'quick' || routed.length < 2
+    ? [acrossThePage]
+    : orders) {
+    // Across the page, the lines are as first routed, above.
+    if (order !== acrossThePage) {
+      scene.lines = [...fixedLines];
+      for (const entry of order) {
+        adopt(entry, routeLine(entry.from, entry.end, entry.owner, scene));
+        scene.lines.push(...entry.drawn);
+      }
+    }
+    costEveryLine();
+    tick++;
+    for (const entry of routed) changedAt.set(entry, tick);
+    triedAt.clear();
+    improve(order);
+    const total = totalOf();
+    if (!cheapest || total < cheapest.total - 1e-9) {
+      cheapest = {
+        courses: new Map(routed.map((entry) => [entry, courseOf(entry)])),
+        total,
+      };
+    }
+  }
+  scene.lines = [...fixedLines];
+  for (const entry of routed) {
+    adopt(entry, cheapest!.courses.get(entry)!);
+    scene.lines.push(...entry.drawn);
+  }
+  const cost = cheapest?.total ?? 0;
 
   // A former partnership's break keeps clear of the auxiliary lines that
   // cross the partnership line, or leave it.
@@ -2136,6 +2283,12 @@ export function routePedigree(
       crossed
         .flatMap((other) => crossing(segment, other) ?? [])
         .filter((at) => !hiddenBySymbol(at))
+        // Two lines of one course crossed at one point: one hop.
+        .filter(
+          (at, k, all) =>
+            all.findIndex((p) => Math.hypot(p.x - at.x, p.y - at.y) < 1e-6) ===
+            k,
+        )
         .toSorted(
           (a, b) =>
             Math.hypot(a.x - segment.x1, a.y - segment.y1) -

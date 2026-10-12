@@ -563,25 +563,36 @@ describe('a donor’s line meets the line of descent of the children they gave t
       });
     }
 
-    // Paul's seat is decided by what all his lines cross, not by his
-    // donor's run alone. Each crossing is pinned at the fewest the search
-    // finds for each recorded order. Recorded theo, ego, ruby, Paul sits on
-    // Theo's side, and his donor's line crosses the couple's line of descent
-    // and Luis's line (two crossings). Recorded ego, ruby, theo, the search
-    // settles on Paul beside Hannah, where his line to Theo crosses Hannah's
-    // line of descent and Luis's lines to both children (three): the
-    // routed search depends on the recorded order there (reported on PR
-    // #2172).
-    for (const [order, fewest] of [
-      [['ego', 'ruby', 'theo'], 3],
-      [['theo', 'ego', 'ruby'], 2],
-    ] as const) {
-      it(`seats a donor who raises another child where their lines cross least, recorded ${order.join(', ')} (${size}px symbols)`, () => {
-        const { nodes, edges } = donorWhoRaisesAnother([...order]);
-        const drawing = drawAsInterface(nodes, edges, size);
-        expect(crossingsOf(drawing, 'paul')).toBeLessThanOrEqual(fewest);
+    // Paul's seat is decided by what all the lines cross once routed, and
+    // neither the seat nor the lines depend on which child was recorded
+    // first: both orders draw the same family, with four hops. Paul sits
+    // beside Hannah, above the participant and Ruby; Luis's lines to them
+    // run as one course across Theo's line of descent and Paul's line to
+    // Theo, and part, his line to the participant hopping Ruby's line up;
+    // Paul's line to Theo hops Hannah's line of descent. (Three, as drawn
+    // before the rebuild, needs the two lines of descent to cross, which no
+    // seating may do.)
+    it(`draws a donor who raises another child alike whichever child was recorded first, with the fewest hops found (${size}px symbols)`, () => {
+      const drawings = [
+        ['ego', 'ruby', 'theo'],
+        ['theo', 'ego', 'ruby'],
+      ].map((order) => {
+        const { nodes, edges } = donorWhoRaisesAnother(order);
+        return drawAsInterface(nodes, edges, size);
       });
-    }
+      for (const drawing of drawings) {
+        expect(hopCount(drawing.connectors)).toBeLessThanOrEqual(4);
+      }
+      const [first, second] = drawings.map(({ centre, connectors }) => ({
+        seats: ['hannah', 'luis', 'paul', 'ego', 'ruby', 'theo'].map(centre),
+        lines: connectors.auxiliaryLines
+          .map((line) => [line.endpointIds, line.points])
+          .toSorted((a, b) =>
+            JSON.stringify(a).localeCompare(JSON.stringify(b)),
+          ),
+      }));
+      expect(second).toEqual(first);
+    });
 
     // Full siblings stay one sibship (Josh, 12 Oct 2026): the participant,
     // whom a surrogate carried, stays in their mother's sibship, so the
@@ -832,39 +843,6 @@ const expectAt = (p: { x: number; y: number }, q: { x: number; y: number }) => {
 
 const crossesSegment = (line: AuxiliaryConnector, segment: LineSegment) =>
   segmentsOf(line.points).some((piece) => crossing(piece, segment));
-
-/** How many times a person's own lines (to the children they are a donor,
- * surrogate, or social or adoptive parent of) cross any other drawn line:
- * another person's line, a line of descent or a partnership line. */
-function crossingsOf(drawing: Drawing, personId: string): number {
-  const { connectors } = drawing;
-  const others: LineSegment[] = [
-    ...connectors.auxiliaryLines
-      .filter((line) => line.endpointIds?.[0] !== personId)
-      .flatMap((line) => segmentsOf(line.points)),
-    ...connectors.parentChildLines.flatMap((line) => [
-      ...line.parentLink,
-      ...(line.siblingBar ? [line.siblingBar] : []),
-      ...(line.runs ?? []).flatMap((run) => [
-        run.stem,
-        ...(run.bar ? [run.bar] : []),
-      ]),
-      ...line.uplines,
-    ]),
-    ...connectors.groupLines.flatMap((line) => [
-      line.segment,
-      ...(line.endpointSegments ?? []),
-    ]),
-  ];
-  return connectors.auxiliaryLines
-    .filter((line) => line.endpointIds?.[0] === personId)
-    .flatMap((line) => segmentsOf(line.points))
-    .reduce(
-      (sum, piece) =>
-        sum + others.filter((other) => crossing(piece, other)).length,
-      0,
-    );
-}
 
 describe('a couple who adopt a relative’s child', () => {
   for (const size of SYMBOL_SIZES) {

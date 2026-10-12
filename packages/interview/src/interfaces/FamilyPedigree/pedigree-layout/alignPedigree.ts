@@ -6,6 +6,12 @@ import type { Hints, PedigreeInput, PedigreeLayout } from './types';
  * weighed by their routed lines, at most. */
 const SEATINGS_DRAWN = 10;
 
+/** How many of the seatings drawn best by a quick search of their lines are
+ * drawn again with a thorough one, which decides between them. */
+const SEATINGS_SEARCHED = 2;
+
+type Search = 'quick' | 'thorough';
+
 /**
  * A family laid out. Given `drawingCost` (what a layout's routed lines cost
  * the drawing: see `routePedigree`), the seating is chosen by what it costs
@@ -13,8 +19,9 @@ const SEATINGS_DRAWN = 10;
  * 2026): of the cheapest seatings the search finds, the one whose drawing
  * costs least, compared after the seating's own hard constraints (lines of
  * descent that would cross, helpers away from the owners), and before its
- * passing, length and recorded order. Without it, the seating the search
- * settles on.
+ * passing, length and recorded order. Every seating is drawn with a quick
+ * search of its lines, and the two drawn best again with a thorough one,
+ * which decides. Without `drawingCost`, the seating the search settles on.
  */
 export function alignPedigree(
   ped: PedigreeInput,
@@ -23,54 +30,58 @@ export function alignPedigree(
     width?: number;
     align?: boolean | number[];
     hints?: Hints;
-    drawingCost?: (layout: PedigreeLayout) => number;
+    drawingCost?: (layout: PedigreeLayout, search: Search) => number;
   } = {},
 ): PedigreeLayout {
   const { drawingCost } = options;
   if (!drawingCost) return sugiyamaLayouts(ped, 1)[0]!.layout;
   const candidates = sugiyamaLayouts(ped, SEATINGS_DRAWN);
-  let best: { layout: PedigreeLayout; key: number[] } | undefined;
-  const drawnKeys: { layout: PedigreeLayout; key: number[] }[] = [];
+  type Drawn = { layout: PedigreeLayout; key: number[] };
+  const keyOf = (
+    layout: PedigreeLayout,
+    [hard, , passing, length, order]: number[],
+    search: Search,
+  ) => [hard!, drawingCost(layout, search), passing!, length!, order!];
+  const cheaper = (a: Drawn, b: Drawn) => (lessCost(a.key, b.key) ? -1 : 1);
+  const drawn: Drawn[] = [];
   for (const { layout, cost } of candidates) {
-    const [hard, , passing, length, order] = cost;
-    const drawn = drawingCost(layout);
-    const key = [hard, drawn, passing, length, order];
-    drawnKeys.push({ layout, key });
-    if (!best || lessCost(key, best.key)) best = { layout, key };
+    drawn.push({ layout, key: keyOf(layout, cost, 'quick') });
     // The cheapest seating by the estimate, drawn with every line straight
     // and clear, is not bettered by another.
-    if (
-      best.layout === candidates[0]!.layout &&
-      hard === 0 &&
-      straightAndClear(drawn)
-    ) {
-      break;
+    const [hard, lines] = drawn[0]!.key;
+    if (drawn.length === 1 && hard === 0 && straightAndClear(lines!)) {
+      return layout;
     }
   }
+  // The seatings drawn best by the quick search, drawn again thoroughly.
+  const searchedOf = (quick: Drawn[]) =>
+    quick
+      .toSorted(cheaper)
+      .slice(0, SEATINGS_SEARCHED)
+      .map(({ layout, key }) => ({
+        layout,
+        key: keyOf(layout, key, 'thorough'),
+      }));
+  const searched = searchedOf(drawn);
   // When no seating draws without breaking a hard constraint, how far each
   // row sits across from the others is searched as well: the seating is
   // the same, and each row is shifted by up to a seat either way, for the
   // two seatings drawn best.
-  const unbroken = () =>
-    best !== undefined &&
-    (best.key[0]! > 0 || !breaksAHardConstraint(best.key[1]!));
-  const nearest = drawnKeys
-    .filter(({ key }) => key[0] === 0)
-    .toSorted((a, b) => (lessCost(a.key, b.key) ? -1 : 1))
-    .slice(0, 2);
-  for (const {
-    layout,
-    key: [hard, , passing, length, order],
-  } of nearest) {
-    for (const by of ROW_SHIFTS) {
-      for (let layer = 0; layer < layout.pos.length && !unbroken(); layer++) {
-        const shifted = shiftRow(layout, layer, by);
-        const key = [hard!, drawingCost(shifted), passing!, length!, order!];
-        if (lessCost(key, best!.key)) best = { layout: shifted, key };
+  const [best] = searched.toSorted(cheaper);
+  const [seatsBreak, linesCost] = best!.key;
+  if (seatsBreak === 0 && breaksAHardConstraint(linesCost!)) {
+    const shifted: Drawn[] = [];
+    for (const { layout, key } of searched) {
+      for (const by of ROW_SHIFTS) {
+        for (let layer = 0; layer < layout.pos.length; layer++) {
+          const moved = shiftRow(layout, layer, by);
+          shifted.push({ layout: moved, key: keyOf(moved, key, 'quick') });
+        }
       }
     }
+    searched.push(...searchedOf(shifted));
   }
-  return best!.layout;
+  return searched.toSorted(cheaper)[0]!.layout;
 }
 
 /** How far a row may be shifted across from the others, in seats, the

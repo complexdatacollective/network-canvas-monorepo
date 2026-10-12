@@ -233,8 +233,9 @@ function outsideSymbol(
  * The places along a sibling bar where a line may join it, nearest
  * `towardX` first: in each stretch between the bar's ends and the lines
  * already meeting it, the point nearest `towardX` at least `clearance`
- * from both. Never none: once every stretch is too short, the middle of
- * the widest.
+ * from both, and the stretch's middle, where a line coming down into it
+ * keeps furthest from both. Never none: once every stretch is too short,
+ * the middle of the widest.
  */
 export function barPoints(
   bar: LineSegment,
@@ -254,7 +255,11 @@ export function barPoints(
   const xs: number[] = [];
   for (let k = 0; k + 1 < stops.length; k++) {
     const [a, b] = [stops[k]! + clearance, stops[k + 1]! - clearance];
-    if (b >= a - 1e-9) xs.push(Math.max(a, Math.min(b, towardX)));
+    if (b < a - 1e-9) continue;
+    const nearest = Math.max(a, Math.min(b, towardX));
+    const middle = (stops[k]! + stops[k + 1]!) / 2;
+    xs.push(nearest);
+    if (Math.abs(middle - nearest) > ON) xs.push(middle);
   }
   if (xs.length === 0) xs.push(gapMiddles(stops)[0] ?? (from + to) / 2);
   return xs
@@ -846,7 +851,15 @@ function courseCoster(
     for (const bracket of linesOnly ? [] : scene.brackets.filter(isNear)) {
       if (lengthInside(segment, bracket) > ON) cost += COST.bracket;
     }
-    for (const line of lines) {
+    // A piece on the course of a line of the same owner is drawn once, with
+    // that line: what it meets is counted there.
+    const onOwnCourse = own.some(
+      (line) =>
+        distanceToSegment({ x: segment.x1, y: segment.y1 }, line.segment) <
+          ON &&
+        distanceToSegment({ x: segment.x2, y: segment.y2 }, line.segment) < ON,
+    );
+    for (const line of onOwnCourse ? [] : lines) {
       if (sharedRun(segment, line.segment, ends) > ON) cost += COST.runAlong;
       const at = crossing(segment, line.segment);
       // Lines meeting at one point (on a line of descent, or at the top of
@@ -1096,6 +1109,10 @@ function courseCoster(
  * target: straight down from above it, or from either side, steeply or
  * flat. Steep enough to read as coming down, and far enough off a line
  * coming straight down into the same point to keep clear of it. */
+/** How far along a piece of a line of the same owner a course may part
+ * from it, as a fork. */
+const FORK_POINTS = [0.25, 0.5];
+
 const APPROACHES = [0, 35, -35, 60, -60].map((degrees) =>
   Math.tan((degrees * Math.PI) / 180),
 );
@@ -1329,7 +1346,11 @@ function pairOptions(
     [single, other],
     [other, single],
   ] as const) {
-    for (const option of routeOptions(lead, end, owner, scene, 400)) {
+    const joins = (points: Point[]) =>
+      joinedCourse(lead, follow, points, scene.boxHeight) !== undefined;
+    for (const option of routeOptions(lead, end, owner, scene, 400, {
+      accept: joins,
+    })) {
       const joined = joinedCourse(lead, follow, option.points, scene.boxHeight);
       if (!joined) continue;
       const [points, matePoints] =
@@ -1383,9 +1404,11 @@ export function routeOptions(
   owner: string,
   scene: RoutingScene,
   limit: number,
-  current?: Course,
+  current?: Course | { accept: (points: Point[]) => boolean },
 ): (Course & { cost: number })[] {
-  if (from.mate) return pairOptions(from, end, owner, scene, limit, current);
+  const accept = current && 'accept' in current ? current.accept : undefined;
+  const kept = current && 'points' in current ? current : undefined;
+  if (from.mate) return pairOptions(from, end, owner, scene, limit, kept);
   const { boxWidth: boxw, boxHeight: boxh } = scene;
   const defaultStart = { x: from.x, y: from.y ?? from.layer + boxh / 2 };
   const targets =
@@ -1469,7 +1492,7 @@ export function routeOptions(
       if (course.length > 4) return;
       const at = course.at(-1)!;
       for (const next of downFrom(at)) {
-        for (const t of [0.25, 0.5]) {
+        for (const t of FORK_POINTS) {
           found.push([
             ...course,
             { x: at.x + t * (next.x - at.x), y: at.y + t * (next.y - at.y) },
@@ -1779,10 +1802,11 @@ export function routeOptions(
   const scored: (Course & { cost: number })[] = [];
   const cheapest: number[] = [];
   const seen = new Set<string>();
-  for (const candidate of current ? [current, ...candidates] : candidates) {
+  for (const candidate of kept ? [kept, ...candidates] : candidates) {
     // The current course is kept as it is, so a caller can tell it was.
     const points =
-      candidate === current ? current.points : simplify(candidate.points);
+      candidate === kept ? kept.points : simplify(candidate.points);
+    if (accept && !accept(points)) continue;
     const key = points
       .map((p) => `${p.x.toFixed(6)},${p.y.toFixed(6)}`)
       .join(' ');

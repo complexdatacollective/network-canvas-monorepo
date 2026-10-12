@@ -1910,11 +1910,14 @@ function faultsOfCrossings(drawing: Drawing, family: Family): string[] {
 }
 
 /** How many hops a drawing makes. */
+/** How many hops are drawn: a hop on a piece two lines of one course share
+ * is drawn once. */
 export const hopCount = (connectors: PedigreeConnectors) =>
-  connectors.auxiliaryLines.reduce(
-    (total, line) => total + (line.hops?.length ?? 0),
-    0,
-  );
+  new Set(
+    connectors.auxiliaryLines.flatMap((line) =>
+      (line.hops ?? []).map((p) => `${p.x.toFixed(4)},${p.y.toFixed(4)}`),
+    ),
+  ).size;
 
 /** Whether two people share genes: one descends from the other, or both
  * from someone recorded. */

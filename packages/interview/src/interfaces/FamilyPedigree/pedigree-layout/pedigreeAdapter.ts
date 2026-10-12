@@ -179,6 +179,7 @@ function routeLayout(
   nodeNames?: string[],
   indexToId?: string[],
   nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
+  search: 'quick' | 'thorough' = 'thorough',
 ) {
   const metrics = computeLayoutMetrics(dimensions);
   const boxHeight = dimensions.nodeHeight / metrics.rowHeight;
@@ -223,6 +224,7 @@ function routeLayout(
     nodeShapes && indexToId
       ? indexToId.map((nodeId) => nodeShapes.get(nodeId))
       : undefined,
+    search,
   );
 }
 
@@ -448,7 +450,7 @@ export function drawPedigree({
   // Each seating weighed is drawn, and chosen by what its drawing costs.
   const routed = new Map<PedigreeLayout, PedigreeConnectors>();
   const layout = alignPedigree(input, {
-    drawingCost: (candidate) => {
+    drawingCost: (candidate, search) => {
       const { connectors, cost } = routeLayout(
         candidate,
         links,
@@ -458,6 +460,7 @@ export function drawPedigree({
         names,
         indexToId,
         nodeShapes,
+        search,
       );
       routed.set(candidate, connectors);
       return cost;

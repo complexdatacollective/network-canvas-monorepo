@@ -2044,10 +2044,13 @@ function encodePedigreeLayout(
       const allChildren = new Set(fu.children);
       processed.add(fi);
 
-      // Find other family units sharing any parent on this layer
+      // Find other family units of two or more parents sharing any parent
+      // on this layer, whichever was recorded first: a unit of one parent
+      // neither starts a group nor joins one.
       for (let fj = fi + 1; fj < graph.familyUnits.length; fj++) {
         if (processed.has(fj)) continue;
         const otherFu = graph.familyUnits[fj]!;
+        if (otherFu.parentGroup.members.length < 2) continue;
         const sharesParent = otherFu.parentGroup.members.some((m) => {
           const idx = layerNodes.indexOf(m);
           return idx >= 0 && parentNodeSet.has(nid[layer]![idx]!);
