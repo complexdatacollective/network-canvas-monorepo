@@ -1,0 +1,83 @@
+name: Fresco preview database
+
+# Each pull request that changes Fresco gets a Neon branch of its base's
+# database, wired into its Netlify deploy preview as branch-scoped
+# DATABASE_URL / DATABASE_URL_UNPOOLED values; a pull request that stops
+# changing Fresco, or closes, loses both. A pull request into main copies main's database; one into another
+# branch copies that branch's preview database. See
+# scripts/ci/fresco-preview-database.mjs and apps/fresco/scripts/build-preview.ts.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited, closed]
+
+permissions:
+  contents: read
+  # To find other open pull requests from the same head branch.
+  pull-requests: read
+
+concurrency:
+  group: fresco-preview-database-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    name: Provision
+    # Forks and Dependabot get no secrets. An edit matters only when it moved
+    # the pull request to another base.
+    if: >-
+      github.event.action != 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' &&
+      (github.event.action != 'edited' || github.event.changes.base != null)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+      - name: Bring the preview database in line with the pull request
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_FRESCO }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: >-
+          node scripts/ci/fresco-preview-database.mjs sync
+          --pr "$PR_NUMBER" --head "$HEAD_REF" --base "$BASE_REF"
+          --head-sha "$HEAD_SHA" --base-sha "$BASE_SHA"
+
+  teardown:
+    name: Tear down
+    if: >-
+      github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version-file: .nvmrc
+      - name: Remove the preview database
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_FRESCO }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: >-
+          node scripts/ci/fresco-preview-database.mjs teardown
+          --pr "$PR_NUMBER" --head "$HEAD_REF"
