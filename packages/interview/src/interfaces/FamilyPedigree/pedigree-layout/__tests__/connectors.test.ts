@@ -1410,6 +1410,18 @@ describe('co-parents with no recorded partnership', () => {
       expect(next!.y).toBeGreaterThan(0.5);
     }
     expect(lines[0]!.points.slice(-2)).toEqual(lines[1]!.points.slice(-2));
+    // Each records where the two meet, from where they share one course,
+    // drawn once.
+    const shared = lines.map((line) => line.points.slice(line.joinsAt));
+    expect(lines.every((line) => line.joinsAt !== undefined)).toBe(true);
+    expect(shared[0]).toEqual(shared[1]);
+    for (const line of lines) {
+      expect(
+        line.points
+          .slice(0, line.joinsAt)
+          .some((p) => shared[0]!.some((q) => q.x === p.x && q.y === p.y)),
+      ).toBe(false);
+    }
   });
 
   it("stacks another family's level line where it crosses the fewest of the lines down from each of them", () => {

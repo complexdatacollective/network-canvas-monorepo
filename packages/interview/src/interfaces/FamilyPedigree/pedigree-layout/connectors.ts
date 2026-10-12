@@ -2221,6 +2221,17 @@ export function computeConnectors(
     if (xs.length > 0) group.auxiliaryXPositions = [...new Set(xs)];
   }
 
+  // Two co-parents' lines that join follow one course from where they
+  // meet: each records that point, so the course is drawn once.
+  for (const { line, mateLine } of routed) {
+    if (!mateLine) continue;
+    const meeting = firstMeeting(mateLine.points, line.points);
+    if (!meeting) continue;
+    for (const joined of [mateLine, line]) {
+      joined.joinsAt = withPoint(joined.points, meeting);
+    }
+  }
+
   // Where an auxiliary line crosses another line it hops over it, so the
   // crossing does not read as a junction. Of two auxiliary lines, the later
   // hops.
@@ -2389,6 +2400,48 @@ function clearOf(
   const within = ([from, to]: [number, number]) =>
     candidates.find((c) => c >= from - 1e-9 && c <= to + 1e-9);
   return within(preferred) ?? within(allowed) ?? x;
+}
+
+/** Whether `p` lies on the segment from `a` to `b`. */
+function liesOn(p: Point, a: Point, b: Point): boolean {
+  const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
+  if (length < 1e-12) return Math.hypot(p.x - a.x, p.y - a.y) < 1e-9;
+  if (Math.abs(cross) / length > 1e-9) return false;
+  const along = (p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y);
+  return along >= -1e-9 && along <= length * length + 1e-9;
+}
+
+/** The first point along `course` (after its start) that lies on `other`'s
+ * course: where a line joining another meets it. */
+function firstMeeting(course: Point[], other: Point[]): Point | undefined {
+  const onOther = (p: Point) =>
+    other.slice(1).some((b, k) => liesOn(p, other[k]!, b));
+  for (let k = 1; k < course.length; k++) {
+    const [a, b] = [course[k - 1]!, course[k]!];
+    // The places along this piece where it may first touch the other
+    // course: its far end, and the ends of the other's pieces on it.
+    const along = (p: Point) =>
+      (p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y);
+    const candidates = [b, ...other.filter((p) => liesOn(p, a, b))]
+      .filter(onOther)
+      .toSorted((p, q) => along(p) - along(q));
+    if (candidates[0]) return candidates[0];
+  }
+  return undefined;
+}
+
+/** The index of `p` in a course, inserting it where it lies on a piece. */
+function withPoint(points: Point[], p: Point): number {
+  const at = points.findIndex(
+    (q) => Math.abs(q.x - p.x) < 1e-9 && Math.abs(q.y - p.y) < 1e-9,
+  );
+  if (at >= 0) return at;
+  const k = points
+    .slice(1)
+    .findIndex((b, index) => liesOn(p, points[index]!, b));
+  points.splice(k + 1, 0, { ...p });
+  return k + 1;
 }
 
 /** The items in groups by key, each group and the groups in first-seen order. */

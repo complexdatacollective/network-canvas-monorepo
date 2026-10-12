@@ -178,6 +178,10 @@ export type AuxiliaryConnector = {
    * hopping over the other line there. */
   hops?: Point[];
   endpointIds?: [string | undefined, string | undefined];
+  /** For one of two co-parents' lines that join (see `From.mate`): the
+   * index of the point where the two meet. From there on both lines follow
+   * one course, which is drawn once. */
+  joinsAt?: number;
 };
 
 export type TwinIndicator = {

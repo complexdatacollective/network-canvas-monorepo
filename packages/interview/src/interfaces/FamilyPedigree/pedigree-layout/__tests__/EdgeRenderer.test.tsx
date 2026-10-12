@@ -1296,3 +1296,98 @@ describe('PedigreeEdgeSvg — co-parents with no partnership line', () => {
     expect(isLineDimmed(barStrokeAt(container, 75, 62)!)).toBe(true);
   });
 });
+
+describe('PedigreeEdgeSvg — two co-parents’ lines that join', () => {
+  // Each comes down from their own symbol and runs level at y=50; from
+  // (100, 50) they are one line down to the child.
+  const joined = (dimmedLead: boolean) => {
+    const lines: AuxiliaryConnector[] = [
+      {
+        type: 'auxiliary',
+        edgeType: 'social',
+        points: [
+          { x: 0, y: 0 },
+          { x: 0, y: 50 },
+          { x: 100, y: 50 },
+          { x: 100, y: 100 },
+        ],
+        endpointIds: ['lead', 'child'],
+        joinsAt: 2,
+      },
+      {
+        type: 'auxiliary',
+        edgeType: 'social',
+        points: [
+          { x: 200, y: 0 },
+          { x: 200, y: 50 },
+          { x: 100, y: 50 },
+          { x: 100, y: 100 },
+        ],
+        endpointIds: ['mate', 'child'],
+        joinsAt: 2,
+      },
+    ];
+    return render(
+      <PedigreeEdgeSvg
+        connectorData={{
+          connectors: {
+            groupLines: [],
+            parentChildLines: [],
+            auxiliaryLines: lines,
+            twinIndicators: [],
+            duplicateArcs: [],
+          },
+        }}
+        color="black"
+        width={300}
+        height={300}
+        {...(dimmedLead
+          ? { highlightedNodeIds: new Set(['mate', 'child']) }
+          : {})}
+      />,
+    ).container;
+  };
+  const strokesThrough = (container: HTMLElement, x: number, y: number) =>
+    Array.from(container.querySelectorAll('polyline, path')).filter((el) => {
+      const points =
+        el.tagName === 'path'
+          ? [
+              ...(el.getAttribute('d') ?? '').matchAll(
+                /[ML]([\d.-]+),([\d.-]+)/g,
+              ),
+            ].map((m) => ({ x: Number(m[1]), y: Number(m[2]) }))
+          : (el.getAttribute('points') ?? '')
+              .trim()
+              .split(/\s+/)
+              .map((pair) => {
+                const [px, py] = pair.split(',').map(Number);
+                return { x: px!, y: py! };
+              });
+      return points
+        .slice(1)
+        .some(
+          (to, k) =>
+            Math.min(points[k]!.x, to.x) <= x &&
+            Math.max(points[k]!.x, to.x) >= x &&
+            Math.min(points[k]!.y, to.y) <= y &&
+            Math.max(points[k]!.y, to.y) >= y,
+        );
+    });
+
+  test('draw the line they share once, so its dashes keep one rhythm', () => {
+    const container = joined(false);
+    expect(strokesThrough(container, 100, 75)).toHaveLength(1);
+    expect(strokesThrough(container, 0, 25)).toHaveLength(1);
+    expect(strokesThrough(container, 200, 25)).toHaveLength(1);
+  });
+
+  test('draw it lit when either line is lit', () => {
+    const container = joined(true);
+    const [shared] = strokesThrough(container, 100, 75);
+    expect(strokesThrough(container, 100, 75)).toHaveLength(1);
+    expect(isLineDimmed(shared as SVGElement)).toBe(false);
+    expect(
+      isLineDimmed(strokesThrough(container, 0, 25)[0] as SVGElement),
+    ).toBe(true);
+  });
+});

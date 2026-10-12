@@ -1014,22 +1014,41 @@ export function PedigreeEdgeSvg({
       );
     }
 
-    // The dimmed lines first: two co-parents' lines that join share their
-    // course from where they meet, and a lit one stays lit along it.
-    const auxiliaries = connectors.auxiliaryLines
-      .map((aux, i) => ({
-        aux,
-        i,
-        dimmed: isDimmedByIds(highlightedNodeIds, aux.endpointIds),
-      }))
-      .toSorted((a, b) => Number(b.dimmed) - Number(a.dimmed));
+    const auxiliaries = connectors.auxiliaryLines.map((aux, i) => ({
+      aux,
+      i,
+      dimmed: isDimmedByIds(highlightedNodeIds, aux.endpointIds),
+    }));
+    // Two co-parents' lines that join follow one course from where they
+    // meet, which is drawn once, so that a dashed line keeps one rhythm: by
+    // the first of them that is lit, the other drawn only to where they
+    // meet.
+    const sharedCourse = (aux: AuxiliaryConnector) =>
+      aux.points
+        .slice(aux.joinsAt)
+        .map((p) => `${p.x},${p.y}`)
+        .join(' ');
+    const drawsShared = new Set<number>();
+    const joinedGroups = new Map<string, typeof auxiliaries>();
+    for (const entry of auxiliaries) {
+      if (entry.aux.joinsAt === undefined) continue;
+      const key = `${entry.aux.edgeType}|${sharedCourse(entry.aux)}`;
+      joinedGroups.set(key, [...(joinedGroups.get(key) ?? []), entry]);
+    }
+    for (const group of joinedGroups.values()) {
+      drawsShared.add((group.find((entry) => !entry.dimmed) ?? group[0]!).i);
+    }
     for (const { aux, i, dimmed } of auxiliaries) {
+      const drawn =
+        aux.joinsAt === undefined || drawsShared.has(i)
+          ? aux
+          : { ...aux, points: aux.points.slice(0, aux.joinsAt + 1) };
       elements.push(
         <g
           key={`aux-dim-${i}`}
           {...(dimmed ? { 'data-edge-dimmed': 'true' } : {})}
         >
-          {renderAuxiliary(aux, i, dimmed ? dimColor(color) : color)}
+          {renderAuxiliary(drawn, i, dimmed ? dimColor(color) : color)}
         </g>,
       );
     }
