@@ -338,8 +338,6 @@ const createMockStore = () => {
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
-    localePreference: null,
-    locale: null,
     network: {
       nodes: [
         // Existing nodes for testing unique validation

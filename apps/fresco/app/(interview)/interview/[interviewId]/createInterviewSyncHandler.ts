@@ -114,8 +114,8 @@ export function createInterviewSyncHandler({
 
     const controller = new AbortController();
     inFlight = controller;
-    // Named fields rather than the whole snapshot: the locale fields are
-    // persisted only through the locale route.
+    // Named fields rather than the whole snapshot: the endpoint writes only
+    // these.
     const body = JSON.stringify({
       id: session.id,
       network: session.network,

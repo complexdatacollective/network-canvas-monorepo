@@ -12,7 +12,6 @@ import {
   createInitialNetwork,
   type FinishHandler,
   type InterviewPayload,
-  type ProtocolLocaleChangeHandler,
   type SessionPayload,
   Shell,
   type SyncHandler,
@@ -166,10 +165,6 @@ async function buildSession(payload: PreviewPayload): Promise<SessionPayload> {
     exportTime: null,
     lastUpdated: now,
     network: createInitialNetwork(),
-    // Each run starts as it would for a participant with this browser: no
-    // language stated yet.
-    localePreference: null,
-    locale: null,
     localeOptions: payload.protocol.localization.locales.map((locale) =>
       getLocaleMetadata(locale),
     ),
@@ -338,16 +333,12 @@ export function PreviewHost() {
   const handleFinish = useCallback<FinishHandler>(async () => {}, []);
   // Nothing in a preview is saved.
   const handleSync = useCallback<SyncHandler>(async () => {}, []);
-  // A language chooser stage stated a preference: the toolbar follows it.
-  // Calls that only record the language shown carry no preference.
-  const handleProtocolLocaleChange = useCallback<ProtocolLocaleChangeHandler>(
-    async (_interviewId, { localePreference }) => {
-      if (localePreference === null) return;
-      setPreferenceHeld(true);
-      setStatedLocale(localePreference);
-    },
-    [],
-  );
+  // The interview now holds a preference (a language chooser stage stated
+  // one): the toolbar follows it.
+  const handleLocalePreferenceChange = useCallback((locale: LocaleTag) => {
+    setPreferenceHeld(true);
+    setStatedLocale(locale);
+  }, []);
   // The Shell applies a change of requested languages in place, keeping the
   // step, answers and unsaved input, so the stated language is passed as the
   // first requested one.
@@ -518,7 +509,7 @@ export function PreviewHost() {
           }
           payload={interviewPayload}
           onSync={handleSync}
-          onProtocolLocaleChange={handleProtocolLocaleChange}
+          onLocalePreferenceChange={handleLocalePreferenceChange}
           onFinish={handleFinish}
           finishConfirmationDescription={<PreviewFinishConfirmation />}
           completedActions={completedActions}

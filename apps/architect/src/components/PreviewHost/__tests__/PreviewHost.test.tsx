@@ -62,7 +62,6 @@ vi.mock('@codaco/interview', async () => {
         <div data-testid="shell-mounted">
           <actual.InterviewI18nProvider
             requestedLocale={props.requestedLocales}
-            localePreference={props.payload.session.localePreference}
           >
             <span data-testid="shell-finish-description">
               {props.finishConfirmationDescription}
@@ -981,7 +980,9 @@ describe('PreviewHost', () => {
 
       expect(control).toHaveValue('fr');
       expect(lastShellProps().requestedLocales).toEqual(['fr-CA', 'en-US']);
-      expect(lastShellProps().payload.session.localePreference).toBeNull();
+      expect(lastShellProps().payload.session).not.toHaveProperty(
+        'localePreference',
+      );
     });
 
     it('names the only language of a single-language protocol without offering a switch', async () => {
@@ -1008,14 +1009,9 @@ describe('PreviewHost', () => {
 
     it('follows the language a language chooser stage states', async () => {
       const control = await openPreview(makeProtocol(ENGLISH_AND_FRENCH));
-      const { onProtocolLocaleChange, payload } = lastShellProps();
+      const { onLocalePreferenceChange } = lastShellProps();
 
-      await act(() =>
-        onProtocolLocaleChange(payload.session.id, {
-          locale: 'fr',
-          localePreference: 'fr',
-        }),
-      );
+      act(() => onLocalePreferenceChange?.('fr'));
 
       expect(control).toHaveValue('fr');
     });
@@ -1026,13 +1022,8 @@ describe('PreviewHost', () => {
         ['en-US'],
         2,
       );
-      const { onProtocolLocaleChange, payload } = lastShellProps();
-      await act(() =>
-        onProtocolLocaleChange(payload.session.id, {
-          locale: 'fr',
-          localePreference: 'fr',
-        }),
-      );
+      const { onLocalePreferenceChange, payload } = lastShellProps();
+      act(() => onLocalePreferenceChange?.('fr'));
 
       fireEvent.change(control, { target: { value: 'en' } });
 

@@ -64,9 +64,6 @@ const PREVIEW_GENERATION = 'preview';
 
 const noopSync = async () => {};
 
-// The preview persists nothing, so a stated language is never stored.
-const noopProtocolLocaleChange = async () => {};
-
 function useWave(waves: PreviewWave[]): PreviewWave | undefined {
   const requested = Number(useSearchParams().get('wave'));
   return waves.find(({ wave }) => wave === requested) ?? waves[0];
@@ -260,7 +257,6 @@ export function ProtocolPreview({
         currentStep={currentStep}
         onStepChange={setCurrentStep}
         onSync={noopSync}
-        onProtocolLocaleChange={noopProtocolLocaleChange}
         onFinish={onFinish}
         onRequestAsset={onRequestAsset}
         finishConfirmationDescription={

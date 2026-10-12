@@ -101,7 +101,6 @@ const interview = (metadata: ValueMetadata): InterviewExportInput => ({
   finishTime: new Date('2025-01-02'),
   finishOutcome: 'completed',
   protocolHash: 'protocol-1',
-  locale: null,
   network: {
     nodes: [
       {
@@ -317,7 +316,6 @@ const recordedInterview: InterviewExportInput = {
   finishTime: new Date('2025-01-02'),
   finishOutcome: 'completed',
   protocolHash: 'protocol-1',
-  locale: null,
   network: {
     nodes: [
       {

@@ -191,8 +191,6 @@ export function createEncryptionStore(
       finishTime: null,
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
-      localePreference: null,
-      locale: null,
       localeOptions: [getLocaleMetadata('en')],
       network: {
         ...createInitialNetwork(),
@@ -221,6 +219,5 @@ export function createEncryptionStore(
 
   return createStore(payload, {
     onSync,
-    onProtocolLocaleChange: () => Promise.resolve(),
   });
 }

@@ -286,7 +286,7 @@ Where those settings come from depends on the app:
 - **Fresco** uses the languages set in the participant's web browser. The language of the Fresco dashboard doesn't affect interviews.
 - **Interviewer** uses the language settings of the device or browser it runs on. Interviewer's own **App language** setting doesn't affect interviews.
 
-To let participants choose for themselves, add a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage to your protocol. It lists your protocol's languages alphabetically, each by its own name, and it is the only way for a participant to change the language during an interview. Once they choose, the interview keeps their choice, even when it is resumed later. Until then, the interview picks a language again each time it is opened, so an interview resumed on a different device can appear in a different language.
+To let participants choose for themselves, add a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage to your protocol. It lists your protocol's languages alphabetically, each by its own name, and it is the only way for a participant to change the language during an interview. Once they choose, the interview keeps their choice until the browser tab is closed, including if the page is reloaded. The choice isn't saved with the interview, so each time the interview is opened in a new tab, and until the participant chooses, the interview picks a language again, and an interview resumed on a different device can appear in a different language.
 
 The words that your protocol holds, including its [stage wording](#stage-wording) and [interview text](#interview-text), are shown in the language the interview is shown in, like the rest of your protocol's text. The interview's own built-in words, such as the labels of its navigation and the language chooser, follow the participant's language settings separately. They are available in English, English (UK), Spanish, German, French, Italian, Dutch, Brazilian Portuguese, Simplified Chinese and Traditional Chinese. When none of the participant's languages is one of these, they are shown in English.
 
@@ -294,4 +294,4 @@ When the interview is shown in a right-to-left language, such as Arabic or Hebre
 
 ## Languages in your data
 
-Each interview records the language its text was last shown in, and your exported data includes it. See [Interview language](/en/analyze-data/data-export#interview-language).
+The language an interview is shown in is not part of your data. It isn't saved with the interview or included in your exported data. Your answers, the values of categorical and ordinal options, and the names of node types, edge types and attributes are the same whichever language the participant reads.

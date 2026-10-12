@@ -19,11 +19,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import type {
-  InterviewPayload,
-  ProtocolLocaleChangeHandler,
-  SyncHandler,
-} from '../../../contract/types';
+import type { InterviewPayload, SyncHandler } from '../../../contract/types';
 import { interviewCatalogSource } from '../../../i18n/catalog';
 import Shell from '../../../Shell';
 
@@ -85,8 +81,6 @@ function makePayload({
       finishTime: null,
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
-      localePreference: null,
-      locale: null,
       localeOptions: localization.locales.map((locale) =>
         getLocaleMetadata(locale),
       ),
@@ -137,15 +131,11 @@ function renderChooser({
   requestedLocales?: readonly string[];
 } = {}) {
   const onSync = vi.fn<SyncHandler>(() => Promise.resolve());
-  const onProtocolLocaleChange = vi.fn<ProtocolLocaleChangeHandler>(() =>
-    Promise.resolve(),
-  );
   renderUI(
     <Shell
       payload={payload}
       requestedLocales={requestedLocales}
       onSync={onSync}
-      onProtocolLocaleChange={onProtocolLocaleChange}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
@@ -154,7 +144,7 @@ function renderChooser({
     />,
     { wrapper: WithoutMotion },
   );
-  return { onSync, onProtocolLocaleChange };
+  return { onSync };
 }
 
 function liveStore() {
@@ -222,8 +212,8 @@ describe('LanguageChooser', () => {
     ).toHaveAttribute('aria-selected', 'false');
   });
 
-  it('applies a choice at once to the interface and saves it as the stated preference', async () => {
-    const { onProtocolLocaleChange } = renderChooser();
+  it('applies a choice at once to the interface and keeps it in this tab only', async () => {
+    const { onSync } = renderChooser();
     const user = userEvent.setup();
     const group = await languageGroup();
     expect(
@@ -242,13 +232,16 @@ describe('LanguageChooser', () => {
     expect(
       within(group).getByRole('option', { name: label('es') }),
     ).toHaveAttribute('aria-selected', 'true');
-    await waitFor(() =>
-      expect(onProtocolLocaleChange).toHaveBeenLastCalledWith(
-        'chooser-session',
-        { locale: 'es', localePreference: 'es' },
+    expect(liveStore().getState().ui.localePreference).toBe('es');
+    expect(
+      window.sessionStorage.getItem(
+        'network-canvas:interview-locale-preference:chooser-session',
       ),
+    ).toBe('es');
+    expect(liveStore().getState().session).not.toHaveProperty(
+      'localePreference',
     );
-    expect(liveStore().getState().session.localePreference).toBe('es');
+    expect(onSync).not.toHaveBeenCalled();
   });
 
   it('is operated from the keyboard, choosing only the language it confirms', async () => {

@@ -102,36 +102,30 @@ model Asset {
 }
 
 model Interview {
-  id               String      @id @default(cuid()) // Cannot be bigint because we want to obfuscate the id
-  startTime        DateTime    @default(now())
-  finishTime       DateTime?
-  exportTime       DateTime?
-  lastUpdated      DateTime    @updatedAt
-  network          Json
-  participant      Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
-  participantId    String
-  protocol         Protocol    @relation(fields: [protocolId], references: [id], onDelete: Cascade)
-  protocolId       String      @map("protocolId")
-  currentStep      Int         @default(0)
-  stageMetadata    Json? // Used to store negative responses in tiestrength census and dyadcensus
-  isSynthetic      Boolean     @default(false)
+  id            String         @id @default(cuid()) // Cannot be bigint because we want to obfuscate the id
+  startTime     DateTime       @default(now())
+  finishTime    DateTime?
+  exportTime    DateTime?
+  lastUpdated   DateTime       @updatedAt
+  network       Json
+  participant   Participant    @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  participantId String
+  protocol      Protocol       @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  protocolId    String         @map("protocolId")
+  currentStep   Int            @default(0)
+  stageMetadata Json? // Used to store negative responses in tiestrength census and dyadcensus
+  isSynthetic   Boolean        @default(false)
   // Write-ordering guard for the interview sync endpoint. The participant's
   // browser numbers each sync it issues and the endpoint only applies one
   // carrying a higher number than the row already holds, so a request that
   // overtakes a newer one is discarded instead of rolling the interview back.
   // Not a timestamp: see the sync route for why the client clock will not do.
-  syncRevision     Int         @default(0)
-  // The language the participant chose on a language chooser stage. Until one
-  // is chosen, the browser's languages decide on every load.
-  localePreference String?
-  // The protocol language last shown, recorded for exports and never used to
-  // choose one. Null until the interview first reports it.
-  locale           String?
+  syncRevision  Int            @default(0)
   // The finish stage the interview ended at, and the outcome that stage
   // declares, recorded with finishTime. Both stay null for an interview that is
   // not finished, and for one finished before finish stages were recorded.
-  finishStageId    String?
-  finishOutcome    FinishOutcome?
+  finishStageId String?
+  finishOutcome FinishOutcome?
 
   @@index(fields: [protocolId])
   @@index([participantId])

@@ -153,8 +153,6 @@ function buildSession(existingNodes: NcNode[] = []): SessionState {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2024-01-01T00:00:00.000Z',
-    localePreference: null,
-    locale: null,
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego',

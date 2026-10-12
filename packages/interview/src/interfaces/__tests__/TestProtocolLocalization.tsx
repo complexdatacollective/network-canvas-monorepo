@@ -40,9 +40,7 @@ export function TestProtocolLocalization({
       localeOptions={localeOptions}
       requestedLocales={NO_REQUESTED_LOCALES}
       localePreference={locale}
-      recordedLocale={null}
       onLocalePreferenceChange={noop}
-      onLocaleRecorded={noop}
     >
       {children}
     </ProtocolLocalizationProvider>

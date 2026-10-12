@@ -9,13 +9,8 @@ import { omit } from 'es-toolkit';
 import { useDispatch } from 'react-redux';
 
 import { NULL_TRACKER, type Tracker } from '../analytics/tracker';
-import type {
-  InterviewPayload,
-  ProtocolLocaleChangeHandler,
-  SyncHandler,
-} from '../contract/types';
+import type { InterviewPayload, SyncHandler } from '../contract/types';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
-import { createLocaleChangeMiddleware } from './middleware/localeChangeMiddleware';
 import { createInterviewLogger } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
 import { createWritesInFlightMiddleware } from './middleware/writesInFlight';
@@ -32,12 +27,9 @@ const rootReducer = combineReducers({
 
 type StoreOptions = {
   onSync: SyncHandler;
-  onProtocolLocaleChange: ProtocolLocaleChangeHandler;
   isDevelopment?: boolean;
   extraMiddleware?: Middleware[];
   tracker?: Tracker;
-  /** The Shell's `openFinishedAsActive`. */
-  openFinishedAsActive?: boolean;
 };
 
 export const store = (
@@ -48,14 +40,6 @@ export const store = (
     onSync: options.onSync,
   });
   const {
-    middleware: localeChangeMiddleware,
-    settled: localeChangesSettled,
-    markFinished,
-  } = createLocaleChangeMiddleware({
-    onProtocolLocaleChange: options.onProtocolLocaleChange,
-    openFinishedAsActive: options.openFinishedAsActive,
-  });
-  const {
     middleware: writesInFlightMiddleware,
     writesSettled,
     trackWrite,
@@ -63,17 +47,13 @@ export const store = (
   // A write still protecting its answers is stored before they are handed to
   // the host, and the result says whether every write under way was stored,
   // so finishing or closing can stay when one was refused. While the page
-  // unloads there is no time to wait for them. Exports read the recorded
-  // locale, so this waits for the locale write as well as the session write.
-  // A session or locale the host refused to store counts as a refused write.
+  // unloads there is no time to wait for them. A session the host refused to
+  // store counts as a refused write.
   const flushSync = async (flushOptions?: { unloading?: boolean }) => {
     const settling = flushOptions?.unloading ? undefined : writesSettled();
     const stored = (await settling) ?? true;
-    const [synced, localeStored] = await Promise.all([
-      flush(flushOptions),
-      localeChangesSettled(),
-    ]);
-    return stored && synced && localeStored;
+    const synced = await flush(flushOptions);
+    return stored && synced;
   };
   const tracker = options.tracker ?? NULL_TRACKER;
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
@@ -97,7 +77,6 @@ export const store = (
           ...(options.isDevelopment ? [createInterviewLogger(redaction)] : []),
           writesInFlightMiddleware,
           syncMiddleware,
-          localeChangeMiddleware,
           analyticsMiddleware,
           ...(options.extraMiddleware ?? []),
         ),
@@ -114,8 +93,7 @@ export const store = (
         protocol: protocolPayload,
       },
     }),
-    // `markFinished` is called once the host has recorded the finish.
-    { flushSync, writesSettled, trackWrite, markFinished },
+    { flushSync, writesSettled, trackWrite },
   );
 };
 

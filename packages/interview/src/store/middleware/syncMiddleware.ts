@@ -13,10 +13,7 @@ import type {
 
 type SyncMiddlewareState = { session: SessionSnapshot };
 
-// The locale fields are persisted through `ProtocolLocaleChangeHandler`
-// (see `localeChangeMiddleware`), so a change to them alone is not a write for
-// this route.
-const NOT_SYNCED = ['promptIndex', 'locale', 'localePreference'] as const;
+const NOT_SYNCED = ['promptIndex'] as const;
 
 const sessionChanged = (a: SessionSnapshot, b: SessionSnapshot) =>
   !isEqual(omit(a, NOT_SYNCED), omit(b, NOT_SYNCED));

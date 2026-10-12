@@ -20,9 +20,6 @@ import ParticipantNotice, {
 
 const route = getRouteApi('/participant/session/$sessionToken');
 
-// Studio does not store a participant's language yet (see session.ts).
-const ignoreProtocolLocaleChange = async () => {};
-
 const ANALYTICS: InterviewAnalyticsMetadata = {
   installationId: 'studio',
   hostApp: 'studio',
@@ -105,7 +102,6 @@ function InterviewSessionView() {
       currentStep={currentStep}
       onStepChange={onStepChange}
       onSync={onSync}
-      onProtocolLocaleChange={ignoreProtocolLocaleChange}
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
       analytics={ANALYTICS}

@@ -11,6 +11,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -53,7 +54,6 @@ import type {
   InterviewAnalyticsMetadata,
   InterviewerFlags,
   InterviewPayload,
-  ProtocolLocaleChangeHandler,
   StepChangeHandler,
   SyncHandler,
 } from './contract/types';
@@ -65,17 +65,21 @@ import { navigationMessages } from './i18n/navigationMessages';
 import { CompletedInterview } from './interfaces/FinishSession/FinishSession';
 import { InterfaceTextOverlay } from './localization/InterfaceTextOverlay';
 import {
+  readStoredLocalePreference,
+  storeLocalePreference,
+} from './localization/localePreferenceStorage';
+import {
   ProtocolLocalizationProvider,
   useProtocolLocale,
 } from './localization/ProtocolLocalizationProvider';
-import { getLocalePreference, getRecordedLocale } from './selectors/session';
+import { getInterviewId } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import {
   getInterfaceText,
   getProtocolLocalization,
   getStages,
 } from './store/modules/protocol';
-import { recordLocale, setLocalePreference } from './store/modules/session';
+import { getLocalePreference, setLocalePreference } from './store/modules/ui';
 import { store, useAppDispatch, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
 import { WritesInFlightProvider } from './store/WritesInFlightContext';
@@ -470,19 +474,22 @@ function ActiveInterview({
 }
 
 /**
- * Connects both languages to the session: the interface language follows the
- * participant's stated preference when it has that language, and the protocol
- * translation is chosen, recorded, and changed through the session store.
+ * Connects both languages to the interview: the interface language follows
+ * the participant's stated preference when it has that language, and the
+ * protocol translation is chosen and changed through the store. Neither is
+ * interview data, so neither reaches the host.
  */
 function InterviewLocalization({
   requestedLocales,
   statedLocale,
+  onLocalePreferenceChange,
   localeOptions,
   catalog,
   children,
 }: {
   requestedLocales: readonly string[];
   statedLocale: string | undefined;
+  onLocalePreferenceChange: ((locale: string) => void) | undefined;
   localeOptions: InterviewPayload['session']['localeOptions'];
   catalog: InterviewCatalog | undefined;
   children: ReactNode;
@@ -490,8 +497,30 @@ function InterviewLocalization({
   const dispatch = useAppDispatch();
   const localization = useSelector(getProtocolLocalization);
   const interfaceText = useSelector(getInterfaceText);
+  const interviewId = useSelector(getInterviewId);
   const localePreference = useSelector(getLocalePreference);
-  const recordedLocale = useSelector(getRecordedLocale);
+
+  // The participant's choice is not interview data, and no host stores it.
+  // A choice made earlier in this tab (before a reload, or before leaving and
+  // resuming) comes back from the tab's sessionStorage, if the protocol still
+  // declares it. Read after mount, so a server render and its hydration
+  // agree, but before the browser paints, so the language does not visibly
+  // change once the interview is on screen.
+  useLayoutEffect(() => {
+    const stored = readStoredLocalePreference(
+      interviewId,
+      localization.locales,
+    );
+    if (stored !== null) dispatch(setLocalePreference(stored));
+  }, [dispatch, interviewId, localization.locales]);
+
+  const onLocalePreferenceChangeRef = useRef(onLocalePreferenceChange);
+  onLocalePreferenceChangeRef.current = onLocalePreferenceChange;
+  useEffect(() => {
+    if (localePreference === null) return;
+    storeLocalePreference(interviewId, localePreference);
+    onLocalePreferenceChangeRef.current?.(localePreference);
+  }, [interviewId, localePreference]);
 
   // A language the host states replaces the held preference in the store, as
   // a language chooser stage does, so nothing remounts and unsaved input
@@ -508,10 +537,6 @@ function InterviewLocalization({
     (locale: string) => dispatch(setLocalePreference(locale)),
     [dispatch],
   );
-  const handleLocaleRecorded = useCallback(
-    (locale: string) => dispatch(recordLocale(locale)),
-    [dispatch],
-  );
 
   return (
     <InterviewI18nProvider
@@ -524,9 +549,7 @@ function InterviewLocalization({
         localeOptions={localeOptions}
         requestedLocales={requestedLocales}
         localePreference={localePreference}
-        recordedLocale={recordedLocale}
         onLocalePreferenceChange={handleLocalePreferenceChange}
-        onLocaleRecorded={handleLocaleRecorded}
       >
         <InterfaceTextOverlay interfaceText={interfaceText}>
           {children}
@@ -597,23 +620,35 @@ type ShellProps = {
    * (serialised to the client so both choose alike). Until the participant
    * states a preference, these choose both the protocol translation and the
    * language of the interview's built-in text. The package reads no browser
-   * or storage globals itself.
+   * language globals itself; the only storage it touches is the tab's
+   * sessionStorage, where it keeps the participant's language choice.
    */
   requestedLocales: readonly string[];
   /**
    * A language the host states on the participant's behalf, as a language
    * chooser stage would. Each time it changes it replaces the preference the
-   * session holds, in place: the step, the prompt and unsaved input stay, and
-   * the change is saved through `onProtocolLocaleChange`. A held preference
-   * outranks `requestedLocales`, so this is how a host changes the language
-   * once one is held without re-creating the interview. Architect's preview
-   * passes its toolbar's choice. Omit it to leave the preference to the
-   * participant.
+   * interview holds, in place: the step, the prompt and unsaved input stay. A
+   * held preference outranks `requestedLocales`, so this is how a host changes the
+   * language once one is held without re-creating the interview. Architect's
+   * preview passes its toolbar's choice. Omit it to leave the preference to
+   * the participant.
    */
   statedLocale?: string;
   /**
+   * Told the language the interview now holds as the participant's
+   * preference, whenever it changes: chosen on a language chooser stage,
+   * stated through `statedLocale`, or restored from the tab's sessionStorage.
+   * For a host whose own controls follow the interview's language, as
+   * Architect's preview toolbar does. The choice is not interview data: the
+   * interview keeps it itself, so a host must not store it with the session
+   * or export it.
+   */
+  onLocalePreferenceChange?: (locale: string) => void;
+  /**
    * The interface language's messages, from `loadInterviewCatalog` given the
-   * same `requestedLocales` and the session's `localePreference`. Without it,
+   * same `requestedLocales` (and the language the participant chose, when the
+   * host knows it — normally it does not, since the choice is kept only in
+   * the tab's sessionStorage). Without it,
    * a Shell opening in a language this page has not loaded shows its loading
    * screen while that language downloads; a server host passes it so the
    * interview renders, and hydrates, without waiting. Used only while it
@@ -622,11 +657,6 @@ type ShellProps = {
   catalog?: InterviewCatalog;
   payload: InterviewPayload;
   onSync: SyncHandler;
-  /**
-   * Persists the session's `locale` and `localePreference`, which the general
-   * `onSync` route never writes.
-   */
-  onProtocolLocaleChange: ProtocolLocaleChangeHandler;
   onFinish: FinishHandler;
   onRequestAsset: AssetRequestHandler;
   currentStep?: number;
@@ -708,10 +738,10 @@ type ShellProps = {
 const Shell = ({
   requestedLocales,
   statedLocale,
+  onLocalePreferenceChange,
   catalog,
   payload,
   onSync,
-  onProtocolLocaleChange,
   onFinish,
   onRequestAsset,
   currentStep,
@@ -744,12 +774,6 @@ const Shell = ({
     (...args) => onSyncRef.current(...args),
     [],
   );
-  const onProtocolLocaleChangeRef = useRef(onProtocolLocaleChange);
-  onProtocolLocaleChangeRef.current = onProtocolLocaleChange;
-  const stableOnProtocolLocaleChange = useCallback<ProtocolLocaleChangeHandler>(
-    (...args) => onProtocolLocaleChangeRef.current(...args),
-    [],
-  );
 
   // Tracker holder. The AnalyticsProvider mounts asynchronously (dynamic
   // import of posthog-js) so we cannot pass the tracker directly into the
@@ -770,19 +794,10 @@ const Shell = ({
     () =>
       store(payload, {
         onSync: stableOnSync,
-        onProtocolLocaleChange: stableOnProtocolLocaleChange,
         isDevelopment: flags?.isDevelopment,
         tracker: trackerHolder,
-        openFinishedAsActive,
       }),
-    [
-      payload,
-      openFinishedAsActive,
-      stableOnSync,
-      stableOnProtocolLocaleChange,
-      flags?.isDevelopment,
-      trackerHolder,
-    ],
+    [payload, stableOnSync, flags?.isDevelopment, trackerHolder],
   );
 
   // A host that batches writes (see createDebouncedSyncHandler) may be holding
@@ -923,6 +938,7 @@ const Shell = ({
           <InterviewLocalization
             requestedLocales={requestedLocales}
             statedLocale={statedLocale}
+            onLocalePreferenceChange={onLocalePreferenceChange}
             localeOptions={payload.session.localeOptions}
             catalog={catalog}
           >
@@ -942,8 +958,6 @@ const Shell = ({
                     key={payload.session.id}
                     initialCompletion={initialCompletion}
                     completedActions={completedActions}
-                    // A finished interview never records a language change.
-                    onComplete={reduxStore.markFinished}
                   >
                     <CurrentStepProvider
                       currentStep={reviewEntry.currentStep}

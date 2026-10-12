@@ -155,8 +155,6 @@ export function mapInterviewPayload(
       lastUpdated: session.lastUpdated.toISOString(),
       network: stored.data.network,
       stageMetadata: stored.data.stageMetadata ?? undefined,
-      localePreference: session.localePreference,
-      locale: session.locale,
       localeOptions: storedProtocol.data.localization.locales.map((locale) =>
         getLocaleMetadata(locale),
       ),

@@ -28,8 +28,6 @@ function makeSession(overrides: Partial<SessionState> = {}): SessionState {
     exportTime: null,
     lastUpdated: new Date().toISOString(),
     network: { ego: { _uid: 'ego-1', [Symbol()]: {} }, nodes: [], edges: [] },
-    localePreference: null,
-    locale: null,
 
     ...overrides,
   } as SessionState;
@@ -118,17 +116,6 @@ describe('syncMiddleware', () => {
 
     store.dispatch(mutateSession({ promptIndex: 5 }));
     await settle();
-
-    expect(onSyncMock).not.toHaveBeenCalled();
-  });
-
-  it('does not sync when only the locale fields change', async () => {
-    const store = createTestStore(middleware);
-
-    store.dispatch(mutateSession({ locale: 'es' }));
-    store.dispatch(mutateSession({ locale: 'fr', localePreference: 'fr' }));
-    await settle();
-    await flush();
 
     expect(onSyncMock).not.toHaveBeenCalled();
   });

@@ -89,7 +89,6 @@ const interviewWithBadCharacters: InterviewExportInput = {
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-02'),
   protocolHash: 'protocol-1',
-  locale: null,
   finishOutcome: 'completed',
   network: {
     nodes: [
@@ -139,7 +138,6 @@ const cleanInterview: InterviewExportInput = {
   startTime: new Date('2025-01-01'),
   finishTime: new Date('2025-01-02'),
   protocolHash: 'protocol-1',
-  locale: null,
   finishOutcome: 'completed',
   network: {
     nodes: [

@@ -121,10 +121,10 @@ In Architect:
 
 In Interviewer and Fresco:
 
-- Each interview records the language the participant chose and the language
-  they last saw. Exported ego data has a `networkCanvasInterviewLocale` column
-  (CSV) and an `nc:interviewLocale` attribute (GraphML) holding the language
-  last shown.
+- The language an interview is shown in is not interview data: it is not
+  saved with the interview and not exported. A language the participant
+  chooses lasts for the rest of their visit in that browser tab, including
+  across a reload.
 - Interviewer's new interview form no longer asks for a language, and the
   confirmation at the end of an interview follows the interview's language.
 - Fresco reads the participant's browser languages from their request, so the
@@ -134,18 +134,17 @@ In Interviewer and Fresco:
 `localePreference`, `onLocaleChange`, `allowLanguageSelection` or
 `requestedLocale`. Pass `requestedLocales`, the participant's browser languages
 in order (`navigator.languages`, or a parsed `Accept-Language` header on a
-server), and `onProtocolLocaleChange(interviewId, { locale, localePreference })`,
-which the interview calls when the participant chooses a language and when the
-language it shows differs from the stored one. Store both values and run the
-calls for one interview in order. An optional `statedLocale` states a language
-on the participant's behalf, replacing a held preference in place.
-`SessionPayload` now requires `localePreference` and `locale` (each a
-`LocaleTag` or `null`) and
-`localeOptions`, the `LocaleMetadata` of every language the protocol declares
+server). The interview keeps the participant's chosen language itself, in the
+tab's `sessionStorage` keyed by interview id, so a host stores nothing for it.
+An optional `statedLocale` states a language on the participant's behalf,
+replacing a held preference in place, and an optional
+`onLocalePreferenceChange` tells a host whose own controls follow the
+interview's language which one the participant chose. `SessionPayload` now
+requires `localeOptions`, the `LocaleMetadata` of every language the protocol declares
 (from `getLocaleMetadata` in `@codaco/protocol-validation`), which is never
 stored. `localeOptions` holds one entry for each declared language, in any
 order: the interview sorts them, and the Shell throws only when the set of
 languages differs from the protocol's. The `onSync` snapshot is typed
-`SessionSnapshot`; never store its locale fields from there. Components used
+`SessionSnapshot`. Components used
 outside the Shell that show protocol text need a `ProtocolLocalizationProvider`.
 The package README describes the whole contract.

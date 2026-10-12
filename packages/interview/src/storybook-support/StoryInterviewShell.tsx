@@ -114,8 +114,6 @@ function buildPayload(raw: RawSyntheticPayload): {
     ...(parsedStageMetadata.success
       ? { stageMetadata: parsedStageMetadata.data }
       : {}),
-    localePreference: null,
-    locale: null,
     localeOptions: localization.locales.map((locale) =>
       getLocaleMetadata(locale),
     ),
@@ -200,7 +198,6 @@ const StoryInterviewShell = (props: {
     (...args) => onSyncProp?.(...args) ?? Promise.resolve(),
     [onSyncProp],
   );
-  const onProtocolLocaleChange = useCallback(() => Promise.resolve(), []);
   const onFinish = useCallback(() => Promise.resolve(), []);
 
   // Wrapping providers (DndStoreProvider, DialogProvider, Toast viewport,
@@ -213,7 +210,6 @@ const StoryInterviewShell = (props: {
       onStepChange={onStepChange}
       requestedLocales={NO_REQUESTED_LOCALES}
       onSync={onSync}
-      onProtocolLocaleChange={onProtocolLocaleChange}
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
       flags={{ isDevelopment: props.isDevelopment ?? true }}

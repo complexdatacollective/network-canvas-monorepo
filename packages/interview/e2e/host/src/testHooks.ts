@@ -137,8 +137,6 @@ export function createInterview(
     exportTime: null,
     lastUpdated: new Date().toISOString(),
     network: seed?.network ?? createInitialNetwork(),
-    localePreference: null,
-    locale: null,
     ...(seed?.stageMetadata != null
       ? { stageMetadata: seed.stageMetadata }
       : {}),

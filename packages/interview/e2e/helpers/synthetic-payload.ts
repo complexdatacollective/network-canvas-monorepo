@@ -181,8 +181,6 @@ export function buildSyntheticPayload(
             [entityAttributesProperty]: {},
           },
         },
-    localePreference: null,
-    locale: null,
     ...(parsedStageMetadata.success && opts.stageMetadata != null
       ? { stageMetadata: parsedStageMetadata.data }
       : {}),

@@ -110,8 +110,6 @@ const sessionState: SessionState = {
   finishTime: null,
   exportTime: null,
   lastUpdated: '2024-01-01T00:00:00.000Z',
-  localePreference: 'ar',
-  locale: 'ar',
   network: {
     ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
     nodes: [],

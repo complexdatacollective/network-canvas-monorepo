@@ -59,10 +59,6 @@ export const openSession = async (rawSessionToken: string) => {
       stageMetadata: StageMetadataSchema.parse(
         Redacted.value(loaded.session.stageMetadata),
       ),
-      // Studio does not store a participant's language yet: each visit starts
-      // from the browser's languages, and a choice lasts for the page.
-      localePreference: null,
-      locale: null,
       localeOptions: protocol.localization.locales.map((locale) =>
         getLocaleMetadata(locale),
       ),
