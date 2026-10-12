@@ -50,9 +50,15 @@ would: they upload the assets through the file chooser and learn the UI
 from the screens and the end-user docs, not the app source. An Opus auditor
 downloads the result as a user would, validates it, and compares it with the
 canonical protocol, attributing each difference to the app, to a driver
-slip, or to data no user sets. One repair pass retries what the drivers got
-wrong before the audit is final. App defects become failed checks, which an
-independent verifier reproduces before they can fail the release. A
+slip, or to data no user sets. It also runs `scripts/check-built-protocol.mjs`
+on the export, which checks the generated fields the comparison cannot see
+(content-addressed asset names, entity colours, form-field ids, the
+modification stamp). One repair pass retries what the drivers got wrong
+before the final audit. Fidelity passes only when that final audit
+accounts for every planned stage exactly once and explains every divergence.
+App defects, and failed exports or validation, from either audit round
+become failed checks, which an independent verifier reproduces before they
+can fail the release. A
 `--sample-ref` other than the pinned `--expect-commit` makes the run
 non-promotable: the build then checks the deployment against a different
 specification.

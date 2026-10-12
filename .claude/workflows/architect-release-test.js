@@ -257,13 +257,17 @@ const COMPARE_SCHEMA = {
         required: ['index', 'label', 'fidelity', 'discrepancies'],
       },
     },
+    invariantsChecked: { type: 'boolean' },
     protocolDiscrepancies: {
       type: 'array',
       items: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          area: { type: 'string', enum: ['codebook', 'assets', 'protocol'] },
+          area: {
+            type: 'string',
+            enum: ['codebook', 'assets', 'protocol', 'invariants'],
+          },
           summary: { type: 'string' },
           attribution: DISCREPANCY_ATTRIBUTION,
           reasoning: { type: 'string' },
@@ -282,6 +286,7 @@ const COMPARE_SCHEMA = {
     'builtStageCount',
     'stages',
     'protocolDiscrepancies',
+    'invariantsChecked',
     'tooling_notes',
   ],
 };
@@ -770,13 +775,23 @@ Run directory: ${analysis.workDir} (write your files under it)
    variable types, options and validation; asset names, types and file
    contents (hash them). The protocol's name differs by design.
    canonicalStageCount and builtStageCount are your own counts.
-4. For every discrepancy, attribute it: "driver" when the builders' log shows
+4. The comparison ignores generated fields by construction, so check them on
+   their own: run
+   node .agents/skills/architect-release-test/scripts/check-built-protocol.mjs ${analysis.workDir}/built-round-${round}
+   from the repository root. Set invariantsChecked true only when it ran
+   against the exported files (false if export was blocked), and report
+   each problem it prints as a protocolDiscrepancies entry with area
+   "invariants", attributed like any other discrepancy.
+5. For every discrepancy, attribute it: "driver" when the builders' log shows
    they skipped or mis-set it; "app" when the app evidently failed to author
    or persist something a user set (corroborate with the builders' log or
    your own inspection of the editor); "non-user-facing" only for data a user
    never sets through the UI (say why); otherwise "unclear". Explain each
-   attribution in reasoning. Report every canonical stage, with fidelity
-   "match" only when it has no discrepancies.
+   attribution in reasoning. Report every canonical stage exactly once, by
+   its canonical index, and nothing else: fidelity "match" only when it has
+   no discrepancies, "divergent" only with the discrepancies that make it so,
+   "missing" when the built protocol lacks it. A built stage with no
+   canonical counterpart is a protocol discrepancy, not a stage entry.
 Builders' log:
 ${buildLog}
 Do not delete the protocol — a later agent does that.`;
@@ -852,10 +867,12 @@ const repairWorklist = (comparison) => [
     .map((d) => `- ${d.area}: ${d.summary}`),
 ];
 
-// The audit is evidence only when it covers the whole specification: exactly
-// one entry per planned stage, and stage counts that agree with the plan.
+// The final audit is evidence only when it is a complete, self-consistent
+// account of the build: exactly one entry for each planned stage and none
+// beside them, counts that agree with the plan, every non-match explained by
+// a discrepancy a user could see, and the generated-field invariants checked.
 // Returns the reasons it falls short, or an empty list.
-const auditCoverageGaps = (analysis, comparison) => {
+const auditGaps = (analysis, comparison) => {
   const gaps = [];
   const planned = analysis.stages.length;
   if (comparison.canonicalStageCount !== planned) {
@@ -878,8 +895,44 @@ const auditCoverageGaps = (analysis, comparison) => {
         .join(', ')}`,
     );
   }
+  const unplanned = comparison.stages.filter(
+    (c) => !analysis.stages.some((s) => s.index === c.index),
+  );
+  if (unplanned.length) {
+    gaps.push(
+      `the audit reports stages outside the plan: ${unplanned
+        .map((c) => `index ${c.index} "${c.label}"`)
+        .join(', ')}`,
+    );
+  }
+  const unexplained = comparison.stages.filter(
+    (c) =>
+      c.fidelity === 'divergent' &&
+      !c.discrepancies.some((d) => d.attribution !== 'non-user-facing'),
+  );
+  if (unexplained.length) {
+    gaps.push(
+      `the audit marks ${unexplained
+        .map((c) => `stage ${c.index} "${c.label}"`)
+        .join(', ')} divergent without a user-facing discrepancy`,
+    );
+  }
+  if (!comparison.invariantsChecked) {
+    gaps.push('the generated-field invariants were not checked');
+  }
   return gaps;
 };
+
+// Every discrepancy an audit reported, labelled with where it was found.
+const discrepanciesOf = (comparison) => [
+  ...comparison.stages.flatMap((s) =>
+    s.discrepancies.map((d) => ({
+      ...d,
+      where: `stage ${s.index} "${s.label}"`,
+    })),
+  ),
+  ...comparison.protocolDiscrepancies.map((d) => ({ ...d, where: d.area })),
+];
 
 // Linux arm64 Chromium crashes (SIGILL) as soon as it presents a decoded
 // video frame — see dev-vm/README.md — and the sample shows six videos, so a
@@ -926,6 +979,9 @@ const runSampleBuild = async () => {
   // where later runs are forbidden to delete it.
   let setup = null;
   let comparison = null;
+  // Every audit round's report: an app failure one round saw stays a failure
+  // even when a later round misses it.
+  const audits = [];
   let cleanup = null;
   const stageStatus = new Map();
   const record = (result) => {
@@ -978,6 +1034,7 @@ const runSampleBuild = async () => {
         },
       );
     comparison = await audit(1);
+    if (comparison) audits.push({ round: 1, comparison });
 
     // One repair round for what the drivers left undone or mis-set: a builder
     // slip is not app evidence, so it earns a retry before the audit is final.
@@ -994,6 +1051,7 @@ const runSampleBuild = async () => {
         }),
       );
       comparison = await audit(2);
+      if (comparison) audits.push({ round: 2, comparison });
     }
   } catch (error) {
     notes.push(`sample build crashed: ${error}`);
@@ -1028,17 +1086,49 @@ const runSampleBuild = async () => {
     add('assets', 'blocked', 'The setup agent returned no result.');
   }
 
+  // App failures and failed export or validation from ANY round stand: a
+  // clean later round does not erase what an earlier one observed, and the
+  // independent verifier decides whether each reproduces.
+  const appFailures = new Map();
+  for (const { round, comparison: report } of audits) {
+    notes.push(`audit ${round}: ${report.tooling_notes}`);
+    for (const d of discrepanciesOf(report)) {
+      const key = `${d.where}\u0000${d.summary}`;
+      if (d.attribution === 'app' && !appFailures.has(key)) {
+        appFailures.set(key, { ...d, round });
+      }
+    }
+  }
+  for (const d of appFailures.values()) {
+    add(
+      `fidelity:${d.where}`,
+      'fail',
+      `${d.summary} — ${d.reasoning} (audit round ${d.round}, export in ${analysis.workDir}/built-round-${d.round}, spec ${sampleRef}, protocol "${protocolName}")`,
+    );
+  }
+  for (const name of ['export', 'validation']) {
+    const failed = audits.find((a) => a.comparison[`${name}Status`] === 'fail');
+    if (failed) {
+      add(
+        name,
+        'fail',
+        `Audit round ${failed.round} (export in ${analysis.workDir}/built-round-${failed.round}): ${failed.comparison[`${name}Details`]}`,
+      );
+    } else if (comparison) {
+      add(name, comparison[`${name}Status`], comparison[`${name}Details`]);
+    } else {
+      add(name, 'blocked', 'The final audit returned no result.');
+    }
+  }
+
   if (!comparison) {
     add(
       'analysis',
       'blocked',
-      'The audit returned no result, so the plan was not cross-checked.',
+      'The final audit returned no result, so the plan was not cross-checked.',
     );
-    for (const name of ['export', 'validation', 'fidelity']) {
-      add(name, 'blocked', 'The audit agent returned no result.');
-    }
+    add('fidelity', 'blocked', 'The final audit returned no result.');
   } else {
-    notes.push(`audit: ${comparison.tooling_notes}`);
     add(
       'analysis',
       comparison.canonicalStageCount === analysis.stages.length
@@ -1046,35 +1136,8 @@ const runSampleBuild = async () => {
         : 'blocked',
       `Analyst planned ${analysis.stages.length} stages; the auditor counted ${comparison.canonicalStageCount} in the specification.`,
     );
-    add('export', comparison.exportStatus, comparison.exportDetails);
-    add(
-      'validation',
-      comparison.validationStatus,
-      comparison.validationDetails,
-    );
 
-    const residual = [
-      ...comparison.stages.flatMap((s) =>
-        s.discrepancies.map((d) => ({
-          ...d,
-          where: `stage ${s.index} "${s.label}"`,
-        })),
-      ),
-      ...comparison.protocolDiscrepancies.map((d) => ({ ...d, where: d.area })),
-    ];
-    const missingStages = comparison.stages.filter(
-      (s) => s.fidelity === 'missing',
-    );
-    for (const d of residual.filter((r) => r.attribution === 'app')) {
-      add(
-        `fidelity:${d.where}`,
-        'fail',
-        `${d.summary} — ${d.reasoning} (spec ${sampleRef}, protocol "${protocolName}")`,
-      );
-    }
-    const unresolved = residual.filter((r) =>
-      ['driver', 'unclear'].includes(r.attribution),
-    );
+    const residual = discrepanciesOf(comparison);
     const nonUserFacing = residual.filter(
       (r) => r.attribution === 'non-user-facing',
     );
@@ -1086,9 +1149,11 @@ const runSampleBuild = async () => {
       );
     }
     const gaps = [
-      ...auditCoverageGaps(analysis, comparison),
-      ...missingStages.map((s) => `stage ${s.index} "${s.label}" missing`),
-      ...unresolved.map((d) => `${d.where}: ${d.summary}`),
+      ...auditGaps(analysis, comparison),
+      ...comparison.stages
+        .filter((s) => s.fidelity === 'missing')
+        .map((s) => `stage ${s.index} "${s.label}" missing`),
+      ...residual.filter(isRepairable).map((d) => `${d.where}: ${d.summary}`),
     ];
     add(
       'fidelity',
@@ -1096,7 +1161,7 @@ const runSampleBuild = async () => {
       gaps.length
         ? `After repair, still unverified: ${gaps.join('; ')}`
         : `All ${comparison.canonicalStageCount} stages, the codebook and the assets match the specification${
-            residual.some((r) => r.attribution === 'app')
+            appFailures.size
               ? ', apart from the app defects reported separately'
               : ''
           }.`,
@@ -1365,7 +1430,11 @@ for (const f of failed.slice(0, 6)) {
     f.slice === SAMPLE_KEY
       ? `${pwOps('verifier')}
 You may create one protocol named "RT verify <4 random alphanumerics>" and
-must delete it before finishing. ${sampleSourceNote}`
+must delete it before finishing. ${sampleSourceNote}
+The audited export the report names is still on disk; inspect it. For an
+"invariants" failure, author what the report implicates in your own
+protocol, download it, unzip it under .playwright-mcp/, and run
+node .agents/skills/architect-release-test/scripts/check-built-protocol.mjs <that directory>.`
       : ops('verify');
   const verdict = await agent(
     `${verifyOps}
