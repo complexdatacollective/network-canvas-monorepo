@@ -1,6 +1,6 @@
 'use server';
 
-import { ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
+import { ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { z as zm } from 'zod/mini';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -8,6 +8,7 @@ import { setAppSetting } from '~/actions/appSettings';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { captureException } from '~/lib/posthog-server';
 import { getStorageEnvStatus } from '~/lib/storage/config';
+import { createS3Client } from '~/lib/storage/layers/S3Client';
 import { hasProtocols, type StorageProvider } from '~/queries/storageProvider';
 import { createS3SettingsSchemas } from '~/schemas/s3Settings';
 
@@ -143,16 +144,13 @@ export async function saveS3Config(rawData: unknown) {
     s3SecretAccessKey,
   } = parsed.data;
 
-  // Validate credentials by attempting a HeadBucket call
+  // Validate credentials by listing the bucket
   try {
-    const client = new S3Client({
+    const client = createS3Client({
       endpoint: s3Endpoint,
       region: s3Region,
-      credentials: {
-        accessKeyId: s3AccessKeyId,
-        secretAccessKey: s3SecretAccessKey,
-      },
-      forcePathStyle: true,
+      accessKeyId: s3AccessKeyId,
+      secretAccessKey: s3SecretAccessKey,
     });
 
     await client.send(

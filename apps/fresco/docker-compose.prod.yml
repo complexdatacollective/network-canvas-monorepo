@@ -1,4 +1,4 @@
-# Fresco deployment with SELF-HOSTED storage (bundled MinIO).
+# Fresco deployment with SELF-HOSTED storage (bundled Garage).
 #
 # Alternative storage scenarios live in sibling files:
 #   docker-compose.external-s3.yml  - external S3-compatible service (AWS S3, R2, ...)
@@ -8,8 +8,21 @@
 #
 #   FRESCO_DOMAIN        - the public domain for this deployment (e.g. study.example.com)
 #   ACME_EMAIL           - email for Let's Encrypt certificate notifications
-#   MINIO_ROOT_USER      - MinIO access key (choose a non-default value)
-#   MINIO_ROOT_PASSWORD  - MinIO secret key (use a long random value)
+#   GARAGE_ACCESS_KEY_ID      - storage access key: GK followed by 24 hex characters
+#   GARAGE_SECRET_ACCESS_KEY  - storage secret key: 64 hex characters
+#   GARAGE_RPC_SECRET         - Garage's internal secret: 64 hex characters
+#   GARAGE_ADMIN_TOKEN        - token the bucket set-up step authenticates with
+#
+# Generate each one with:
+#
+#   echo "GK$(openssl rand -hex 12)"   # GARAGE_ACCESS_KEY_ID
+#   openssl rand -hex 32               # GARAGE_SECRET_ACCESS_KEY
+#   openssl rand -hex 32               # GARAGE_RPC_SECRET
+#   openssl rand -hex 32               # GARAGE_ADMIN_TOKEN
+#
+# Requires Docker Engine 25 or newer and Docker Compose v2.23.1 or newer: Garage's
+# configuration and its set-up script are carried inline in this file, which
+# older versions cannot read.
 #
 # FRESCO_DOMAIN is the single source of truth for this deployment's domain: the
 # app's PUBLIC_URL is derived from it automatically (see the fresco service's
@@ -18,7 +31,7 @@
 
 services:
   # Bundled reverse proxy: terminates TLS (automatic Let's Encrypt
-  # certificates) and routes both the app and MinIO on one domain.
+  # certificates) and routes both the app and Garage on one domain.
   #
   # Required deployer configuration (set in .env):
   #   FRESCO_DOMAIN  - the public domain for this deployment (e.g. study.example.com)
@@ -54,8 +67,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
-        condition: service_healthy
+      garage-init:
+        condition: service_completed_successfully
     restart: always
     networks:
       - fresco_network
@@ -89,13 +102,15 @@ services:
     networks:
       - fresco_network
 
-  # Optional: S3-compatible storage using MinIO.
-  # If you prefer UploadThing, remove this service and configure
-  # UploadThing during Fresco setup instead.
+  # Optional: S3-compatible storage using Garage (https://garagehq.deuxfleurs.fr).
+  # If you prefer UploadThing, remove the garage and garage-init services, the
+  # garage-config and garage-init configs, the garage-data volume and the
+  # fresco service's dependency on garage-init, and configure UploadThing
+  # during Fresco setup instead.
   #
-  # MinIO stays PRIVATE: no published ports, no anonymous bucket access.
+  # Garage stays PRIVATE: no published ports, no anonymous bucket access.
   # Browsers reach it through the bundled Traefik reverse proxy via a path
-  # route on your Fresco domain: /assets/* -> minio:9000 (the bucket is named
+  # route on your Fresco domain: /assets/* -> garage:3900 (the bucket is named
   # 'assets'; path-style S3 URLs put the bucket name in the path). The path
   # and Host header are preserved - required for signature validation.
   #
@@ -103,7 +118,7 @@ services:
   # Caddy example:
   #   app.example.com {
   #     handle /assets/* {
-  #       reverse_proxy minio:9000
+  #       reverse_proxy garage:3900
   #     }
   #     handle {
   #       reverse_proxy fresco:3000
@@ -112,72 +127,258 @@ services:
   # nginx example:
   #   location /assets/ {
   #     proxy_set_header Host $host;
-  #     proxy_pass http://minio:9000;
+  #     proxy_pass http://garage:3900;
   #   }
   #
   # During Fresco setup, select "S3 / S3-Compatible" and use:
-  #   Endpoint URL:      http://minio:9000        (internal - containers only)
+  #   Endpoint URL:      http://garage:3900       (internal - containers only)
   #   Public URL:        https://<your domain>    (your Fresco domain)
   #   Bucket Name:       assets
   #   Region:            us-east-1
-  #   Access Key ID:     value of MINIO_ROOT_USER (set in .env; no default)
-  #   Secret Access Key: value of MINIO_ROOT_PASSWORD (set in .env; no default)
+  #   Access Key ID:     value of GARAGE_ACCESS_KEY_ID (set in .env)
+  #   Secret Access Key: value of GARAGE_SECRET_ACCESS_KEY (set in .env)
   #
-  # Note: the bucket name occupies /<bucket>/ on your domain - keep the
-  # default 'assets' (verified collision-free) or pick a name that cannot
-  # collide with app routes. If you change the bucket name, set S3_BUCKET in
-  # .env so the Traefik route and bucket creation stay in sync with the
-  # bucket name you enter during Fresco setup.
-  minio:
-    image: minio/minio:latest
+  # The bucket name occupies /assets/ on your domain; 'assets' is verified not
+  # to collide with any of Fresco's own routes, so it is fixed here.
+  garage:
+    image: dxflrs/garage:v2.1.0@sha256:4c9b34c113e61358466e83fd6e7d66e6d18657ede14b776eb78a93ee8da7cf6a
     restart: always
-    # ports:
-    #   - '9001:9001'  # Uncomment to expose the MinIO admin console for debugging only.
     volumes:
-      - minio:/data
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set a strong MINIO_ROOT_PASSWORD in .env}
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ['CMD', 'mc', 'ready', 'local']
-      interval: 5s
-      timeout: 10s
-      retries: 5
+      - garage-data:/var/lib/garage
+    configs:
+      - source: garage-config
+        target: /etc/garage.toml
+        # Garage refuses a configuration file that carries secrets and is
+        # readable by anyone but its owner. Compose's default for a config is
+        # 0444, which that check rejects.
+        mode: 0400
+    # No healthcheck: the image is built FROM scratch and has no shell to run
+    # one with. garage-init waits for Garage's admin API itself, and the
+    # fresco service waits for garage-init.
     networks:
       - fresco_network
     # Traefik rule-length priority makes the PathPrefix rule win for /assets/*;
     # Host and path are preserved — required for SigV4 signature validation.
     labels:
       - 'traefik.enable=true'
-      - 'traefik.http.routers.minio.rule=Host(`${FRESCO_DOMAIN}`) && PathPrefix(`/${S3_BUCKET:-assets}`)'
-      - 'traefik.http.routers.minio.entrypoints=websecure'
-      - 'traefik.http.routers.minio.tls.certresolver=letsencrypt'
-      - 'traefik.http.services.minio.loadbalancer.server.port=9000'
+      - 'traefik.http.routers.garage.rule=Host(`${FRESCO_DOMAIN}`) && PathPrefix(`/assets`)'
+      - 'traefik.http.routers.garage.entrypoints=websecure'
+      - 'traefik.http.routers.garage.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.garage.loadbalancer.server.port=3900'
 
-  # One-shot container that creates the default bucket after MinIO starts.
-  # Runs once and exits — it does not stay running.
-  minio-init:
-    image: minio/minio:latest
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: /bin/sh
-    command:
-      - -c
-      - |
-        mc alias set minio http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD}
-        mc mb --ignore-existing minio/${S3_BUCKET:-assets}
+  # One-shot container that assigns Garage its storage role, imports the
+  # access key and creates the 'assets' bucket. It runs on every `up`, does
+  # only what is not done yet, and exits — it does not stay running.
+  garage-init:
+    image: curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6
+    entrypoint: ['/bin/sh', '/garage-init.sh']
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set a strong MINIO_ROOT_PASSWORD in .env}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Set GARAGE_ADMIN_TOKEN in .env (openssl rand -hex 32)}
+      GARAGE_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID in .env (GK followed by 24 hex characters)}
+      GARAGE_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY in .env (openssl rand -hex 32)}
+      # Only needed when browsers reach storage on a different origin from
+      # the app, which the Traefik route above avoids. Leave unset.
+      GARAGE_CORS_ORIGIN: ${GARAGE_CORS_ORIGIN:-}
+    configs:
+      - source: garage-init
+        target: /garage-init.sh
+    depends_on:
+      garage:
+        condition: service_started
     networks:
       - fresco_network
 
 volumes:
   postgres:
-  minio:
+  garage-data:
   letsencrypt:
+
+configs:
+  garage-config:
+    content: |
+      # One node, one copy of every object. Durability on a single-host
+      # deployment comes from the volume and its backups, not from Garage.
+      replication_factor = 1
+
+      metadata_dir = "/var/lib/garage/meta"
+      data_dir = "/var/lib/garage/data"
+
+      # The node-to-node port. Required even with one node, and never
+      # published: nothing outside this network speaks Garage's RPC.
+      rpc_bind_addr = "[::]:3901"
+      rpc_secret = "${GARAGE_RPC_SECRET:?Set GARAGE_RPC_SECRET in .env (openssl rand -hex 32)}"
+
+      # Garage only accepts requests signed for the region it names. us-east-1
+      # is what the setup wizard suggests and what S3 clients default to.
+      [s3_api]
+      api_bind_addr = "[::]:3900"
+      s3_region = "us-east-1"
+      root_domain = ".s3.garage"
+
+      [admin]
+      api_bind_addr = "[::]:3903"
+      admin_token = "${GARAGE_ADMIN_TOKEN:?Set GARAGE_ADMIN_TOKEN in .env (openssl rand -hex 32)}"
+
+  # Every `$$` below is one literal `$` in the script: Compose interpolates
+  # the content of a config exactly as it interpolates the rest of this file.
+  garage-init:
+    content: |
+      # Bootstraps a single-node Garage through its admin API (v2). The Garage
+      # image is FROM scratch, so there is no shell to run its CLI in; this
+      # runs in a curl image on the same network. Every step is idempotent.
+      #
+      # No jq in that image either. Every value read here is a flat scalar, so
+      # the JSON is split on its structural characters and the wanted key
+      # matched as a whole line.
+      set -eu
+
+      ADMIN="http://garage:3903"
+      S3="http://garage:3900"
+      BUCKET=assets
+      REGION=us-east-1
+
+      fail() {
+          echo "garage-init: $$1" >&2
+          exit 1
+      }
+
+      # Garage's own key format, checked here so a mistyped .env value is
+      # reported as such rather than as a failed import.
+      printf '%s' "$$GARAGE_ACCESS_KEY_ID" | grep -Eq '^GK[0-9a-f]{24}$$' ||
+          fail 'GARAGE_ACCESS_KEY_ID must be GK followed by 24 lowercase hex characters: echo "GK$$(openssl rand -hex 12)"'
+      printf '%s' "$$GARAGE_SECRET_ACCESS_KEY" | grep -Eq '^[0-9a-f]{64}$$' ||
+          fail 'GARAGE_SECRET_ACCESS_KEY must be 64 lowercase hex characters: openssl rand -hex 32'
+
+      # Sets STATUS and BODY. A non-2xx is not fatal here: two callers read a
+      # "not found" as "not created yet" and carry on.
+      request() {
+          _method="$$1"
+          _path="$$2"
+          _body="$${3:-}"
+          if [ -n "$$_body" ]; then
+              _response=$$(curl -sS -X "$$_method" "$$ADMIN$$_path" \
+                  -H "Authorization: Bearer $$GARAGE_ADMIN_TOKEN" \
+                  -H 'Content-Type: application/json' \
+                  -d "$$_body" -w '\n%{http_code}') || fail "$$_method $$_path could not be sent"
+          else
+              _response=$$(curl -sS -X "$$_method" "$$ADMIN$$_path" \
+                  -H "Authorization: Bearer $$GARAGE_ADMIN_TOKEN" \
+                  -w '\n%{http_code}') || fail "$$_method $$_path could not be sent"
+          fi
+          STATUS=$$(printf '%s' "$$_response" | tail -n 1)
+          BODY=$$(printf '%s' "$$_response" | sed '$$d')
+      }
+
+      # As above, but a non-2xx stops the run and says what was asked and what
+      # came back: a half-bootstrapped object store is worse than none.
+      require() {
+          request "$$1" "$$2" "$${3:-}"
+          case "$$STATUS" in
+          2*) ;;
+          *) fail "$$1 $$2 returned $$STATUS: $$BODY" ;;
+          esac
+      }
+
+      # $$1 key, $$2 document, $$3 a basic regular expression the value must
+      # match whole. Garage pretty-prints its responses, so the whitespace
+      # around the key, the colon and the value is all optional.
+      string_field() {
+          printf '%s' "$$2" | tr ',{}[]' '\n\n\n\n\n' |
+              sed -n "s/^[[:space:]]*\"$$1\"[[:space:]]*:[[:space:]]*\"\\($$3\\)\"[[:space:]]*\$$/\\1/p" |
+              head -n 1
+      }
+
+      number_field() {
+          printf '%s' "$$2" | tr ',{}[]' '\n\n\n\n\n' |
+              sed -n "s/^[[:space:]]*\"$$1\"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\)[[:space:]]*\$$/\\1/p" |
+              head -n 1
+      }
+
+      echo 'garage-init: waiting for Garage to answer its admin API...'
+      attempt=0
+      until curl -sS -f -o /dev/null \
+          -H "Authorization: Bearer $$GARAGE_ADMIN_TOKEN" \
+          "$$ADMIN/v2/GetClusterStatus"; do
+          attempt=$$((attempt + 1))
+          [ "$$attempt" -lt 60 ] || fail "Garage's admin API at $$ADMIN did not answer after 60 attempts"
+          sleep 1
+      done
+
+      # A node id is a 64-character hex public key, which nothing else in the
+      # status document is.
+      require GET /v2/GetClusterStatus
+      node_id=$$(string_field id "$$BODY" '[0-9a-f]\{64\}')
+      [ -n "$$node_id" ] || fail "could not read this node's id from GetClusterStatus: $$BODY"
+
+      # The layout version increments only when a layout is applied, and only
+      # this script ever writes one, so a version above zero means the node
+      # already has its role. A previous run that staged a role but failed
+      # before applying it leaves the version at zero, and is redone here.
+      require GET /v2/GetClusterLayout
+      layout_version=$$(number_field version "$$BODY")
+      [ -n "$$layout_version" ] || fail "could not read the layout version from GetClusterLayout: $$BODY"
+
+      if [ "$$layout_version" -eq 0 ]; then
+          echo "garage-init: assigning node $$node_id a role"
+          # Capacity is advertised, not reserved: with one node it only has to
+          # be large enough for Garage to shard across its partitions.
+          require POST /v2/UpdateClusterLayout \
+              "{\"roles\":[{\"id\":\"$$node_id\",\"zone\":\"fresco\",\"capacity\":107374182400,\"tags\":[]}]}"
+          require POST /v2/ApplyClusterLayout "{\"version\":$$((layout_version + 1))}"
+      else
+          echo "garage-init: cluster layout version $$layout_version is already applied"
+      fi
+
+      request GET "/v2/GetKeyInfo?id=$$GARAGE_ACCESS_KEY_ID"
+      if [ "$$STATUS" = 200 ]; then
+          echo "garage-init: access key $$GARAGE_ACCESS_KEY_ID already exists"
+      else
+          echo "garage-init: importing access key $$GARAGE_ACCESS_KEY_ID"
+          require POST /v2/ImportKey \
+              "{\"accessKeyId\":\"$$GARAGE_ACCESS_KEY_ID\",\"secretAccessKey\":\"$$GARAGE_SECRET_ACCESS_KEY\",\"name\":\"fresco\"}"
+      fi
+
+      # `id` is the bucket's own identifier — the access keys listed in the
+      # same document carry theirs under `accessKeyId`.
+      request GET "/v2/GetBucketInfo?globalAlias=$$BUCKET"
+      if [ "$$STATUS" = 200 ]; then
+          echo "garage-init: bucket $$BUCKET already exists"
+      else
+          echo "garage-init: creating bucket $$BUCKET"
+          require POST /v2/CreateBucket "{\"globalAlias\":\"$$BUCKET\"}"
+      fi
+      bucket_id=$$(string_field id "$$BODY" '[0-9a-f]\{64\}')
+      [ -n "$$bucket_id" ] || fail "could not read the id of bucket $$BUCKET: $$BODY"
+
+      # Granting a permission that is already granted is a no-op, so this runs
+      # unconditionally rather than reading the current grants back first.
+      require POST /v2/AllowBucketKey \
+          "{\"bucketId\":\"$$bucket_id\",\"accessKeyId\":\"$$GARAGE_ACCESS_KEY_ID\",\"permissions\":{\"read\":true,\"write\":true,\"owner\":true}}"
+
+      # Browsers upload to and download from the bucket directly, through
+      # presigned URLs. When they reach it on the app's own origin (the
+      # Traefik route) no CORS rule is needed; a different origin needs one,
+      # and Garage has no global setting for it, only a per-bucket rule set
+      # through the S3 API. Replacing the rule is idempotent.
+      if [ -n "$${GARAGE_CORS_ORIGIN:-}" ]; then
+          cors="<CORSConfiguration><CORSRule><AllowedOrigin>$$GARAGE_CORS_ORIGIN</AllowedOrigin><AllowedMethod>GET</AllowedMethod><AllowedMethod>PUT</AllowedMethod><AllowedMethod>HEAD</AllowedMethod><AllowedHeader>*</AllowedHeader><ExposeHeader>ETag</ExposeHeader><MaxAgeSeconds>3600</MaxAgeSeconds></CORSRule></CORSConfiguration>"
+          digest=$$(printf '%s' "$$cors" | sha256sum | cut -d ' ' -f 1)
+          # A freshly applied layout can take a moment to accept S3 requests.
+          attempt=0
+          until status=$$(curl -sS -o /dev/null -w '%{http_code}' -X PUT "$$S3/$$BUCKET?cors" \
+              --aws-sigv4 "aws:amz:$$REGION:s3" \
+              --user "$$GARAGE_ACCESS_KEY_ID:$$GARAGE_SECRET_ACCESS_KEY" \
+              -H "x-amz-content-sha256: $$digest" \
+              -H 'Content-Type: application/xml' \
+              -d "$$cors") && [ "$$status" = 200 ]; do
+              attempt=$$((attempt + 1))
+              [ "$$attempt" -lt 30 ] || fail "setting the CORS rule on bucket $$BUCKET returned $${status:-no response}"
+              sleep 1
+          done
+          echo "garage-init: bucket $$BUCKET accepts browser requests from $$GARAGE_CORS_ORIGIN"
+      fi
+
+      echo "garage-init: bucket $$BUCKET is ready for key $$GARAGE_ACCESS_KEY_ID"
 
 # Define a network, which allows containers to communicate
 # with each other, by using their container name as a hostname
