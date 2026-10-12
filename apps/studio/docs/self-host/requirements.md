@@ -31,8 +31,8 @@ instance; four gives Postgres and the Node processes room during a protocol
 import, an export, or a burst of interview sync.
 
 **Disk.** The images are about **2.7 GB** unpacked — `studio-api` is 1.75 GB of
-that, `postgres` 425 MB, `traefik` 230 MB, `studio-web` 111 MB, and `valkey`,
-`garage` and the bootstrap image the remainder. An upgrade keeps the previous
+that, `postgres` 425 MB, `traefik` 230 MB, `studio-web` 111 MB, and `valkey` and
+`garage` the remainder. An upgrade keeps the previous
 generation until you prune, so budget for two: about 4.5 GB before any data.
 What grows after that is interview assets in the object-store volume and the
 database; 20 GB is a floor rather than a plan.
