@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import TranslationTable from '~/components/Localization/TranslationTable';
 import CodebookPage from '~/components/pages/CodebookPage';
@@ -82,7 +83,9 @@ const ageRow = {
 const renderAttributeTable = (store: Store) =>
   render(
     <Provider store={store}>
-      <TranslationTable />
+      <FormStoreProvider>
+        <TranslationTable onSaved={vi.fn()} onCancel={vi.fn()} />
+      </FormStoreProvider>
       <Variables entity="node" type="person" variables={[ageRow]} />
     </Provider>,
   );

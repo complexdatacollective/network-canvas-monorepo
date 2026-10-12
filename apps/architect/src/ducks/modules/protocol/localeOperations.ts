@@ -359,7 +359,7 @@ export const setTranslation = (
  * say something, as the schema requires: a language with nothing to show is
  * left out of `value`, never stored blank.
  */
-export const setLocalizedString = (
+const setLocalizedString = (
   protocol: CurrentProtocol,
   path: readonly (string | number)[],
   value: LocalizedString,
@@ -384,6 +384,26 @@ export const setLocalizedString = (
       setAtPath(draft, hit.path, value);
     }),
   };
+};
+
+/**
+ * Several texts set as `setLocalizedString` sets one, together: every one is
+ * set, or, when one cannot be, none is.
+ */
+export const setLocalizedStrings = (
+  protocol: CurrentProtocol,
+  updates: readonly Readonly<{
+    path: readonly (string | number)[];
+    value: LocalizedString;
+  }>[],
+): LocaleOperationResult => {
+  let next = protocol;
+  for (const { path, value } of updates) {
+    const result = setLocalizedString(next, path, value);
+    if (!result.ok) return result;
+    next = result.protocol;
+  }
+  return { ok: true, protocol: next };
 };
 
 /**

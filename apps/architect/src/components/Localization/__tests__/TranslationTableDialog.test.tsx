@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import LocalizationPage from '~/components/pages/LocalizationPage';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -39,7 +41,9 @@ const renderPage = (path = '/protocol/localization') => {
   store.dispatch(setActiveProtocol(structuredClone(bilingual)));
   render(
     <Provider store={store}>
-      <LocalizationPage />
+      <DialogProvider>
+        <LocalizationPage />
+      </DialogProvider>
     </Provider>,
   );
   return { store, user: userEvent.setup() };
@@ -55,6 +59,12 @@ const expectClosed = () =>
     expect(
       screen.queryByRole('dialog', { name: 'Translation table' }),
     ).not.toBeInTheDocument(),
+  );
+
+const tableButton = (name: string) =>
+  within(screen.getByRole('dialog', { name: 'Translation table' })).getByRole(
+    'button',
+    { name },
   );
 
 const frenchTitle = () =>
@@ -89,7 +99,7 @@ describe('TranslationTableDialog', () => {
       within(dialog).queryByRole('button', { name: /full screen/i }),
     ).not.toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await expectClosed();
     await waitFor(() => expect(address()).toBe('/protocol/localization'));
     await waitFor(() => expect(link).toHaveFocus());
@@ -117,7 +127,7 @@ describe('TranslationTableDialog', () => {
       within(dialog).getByRole('combobox', { name: 'Texts to show' }),
     ).toHaveDisplayValue('Missing French');
 
-    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await expectClosed();
     // There is no entry of the page's own to go back to, so the table's is
     // replaced.
@@ -143,78 +153,112 @@ describe('TranslationTableDialog', () => {
     );
     expect(address()).toBe('/protocol/localization?table=open&missing=fr');
 
-    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await expectClosed();
     await waitFor(() => expect(address()).toBe('/protocol/localization'));
   });
 
-  it('undoes a change on Escape before closing on a second Escape', async () => {
-    const { store, user } = renderPage('/protocol/localization?table=open');
+  it('is not closed by Escape, which only undoes a change', async () => {
+    const { user } = renderPage('/protocol/localization?table=open');
     await findTable();
 
     await user.click(frenchTitle());
     await user.keyboard('Bonjour');
     await user.keyboard('{Escape}');
     expect(frenchTitle()).toHaveValue('');
+
+    await user.keyboard('{Escape}');
     expect(
       screen.getByRole('dialog', { name: 'Translation table' }),
     ).toBeInTheDocument();
+    expect(address()).toBe('/protocol/localization?table=open');
+  });
 
-    await user.keyboard('{Escape}');
+  it('saves every change and closes on Save', async () => {
+    const { store, user } = renderPage();
+
+    await user.click(
+      screen.getByRole('link', { name: 'Open translation table' }),
+    );
+    await findTable();
+    await user.click(frenchTitle());
+    await user.keyboard('Bonjour');
+    await user.click(tableButton('Save'));
+
     await expectClosed();
+    expect(stageTitle(store)).toEqual({ en: 'Hello', fr: 'Bonjour' });
+    await waitFor(() => expect(address()).toBe('/protocol/localization'));
+  });
+
+  it('asks before Cancel throws changes away', async () => {
+    const { store, user } = renderPage();
+    const { openDialog } = globalThis.__architectDialogMocks;
+
+    await user.click(
+      screen.getByRole('link', { name: 'Open translation table' }),
+    );
+    await findTable();
+
+    // Nothing to lose: Cancel closes without asking.
+    await user.click(tableButton('Cancel'));
+    await expectClosed();
+    expect(openDialog).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole('link', { name: 'Open translation table' }),
+    );
+    await findTable();
+    await user.click(frenchTitle());
+    await user.keyboard('Bonjour');
+
+    // Kept: the table stays open with the change in it.
+    openDialog.mockResolvedValueOnce(false);
+    await user.click(tableButton('Cancel'));
+    expect(openDialog).toHaveBeenCalledTimes(1);
+    expect(frenchTitle()).toHaveValue('Bonjour');
+
+    // Thrown away: the table closes, and the protocol is as it was. It closes
+    // by going back, and what guards Back finds nothing left to ask about.
+    openDialog.mockResolvedValueOnce(true);
+    const asked: boolean[] = [];
+    const ask = () => asked.push(hasDirtyNestedDraft());
+    window.addEventListener('popstate', ask);
+    try {
+      await user.click(tableButton('Cancel'));
+      await expectClosed();
+    } finally {
+      window.removeEventListener('popstate', ask);
+    }
+    expect(asked).toEqual([false]);
+    expect(openDialog).toHaveBeenCalledTimes(2);
     expect(stageTitle(store)).toEqual({ en: 'Hello' });
   });
 
-  it('undoes a change to formatted text on Escape before closing', async () => {
-    const { user } = renderPage('/protocol/localization?table=open');
-    await findTable();
-
-    await user.click(screen.getByRole('button', { name: /\bContent French$/ }));
-    const editor = await screen.findByRole('textbox', {
-      name: /\bContent French$/,
-    });
-    await waitFor(() => expect(editor).toHaveFocus());
-    await user.keyboard('Lisez');
-    await user.keyboard('{Escape}');
-    expect(
-      screen.getByRole('dialog', { name: 'Translation table' }),
-    ).toBeInTheDocument();
-
-    const fresh = await screen.findByRole('textbox', {
-      name: /\bContent French$/,
-    });
-    await waitFor(() => expect(fresh).toHaveFocus());
-    await user.keyboard('{Escape}');
-    await expectClosed();
-  });
-
-  it('saves the cell being edited when the table is closed', async () => {
-    const { store, user } = renderPage();
-
-    await user.click(
-      screen.getByRole('link', { name: 'Open translation table' }),
-    );
-    const dialog = await findTable();
-    await user.click(frenchTitle());
-    await user.keyboard('Bonjour');
-    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
-
-    await expectClosed();
-    expect(stageTitle(store)).toEqual({ en: 'Hello', fr: 'Bonjour' });
-  });
-
-  it('saves the cell being edited when the browser goes back', async () => {
-    const { store, user } = renderPage();
+  it('tells Back and a refresh that it holds changes until they are saved', async () => {
+    const { user } = renderPage();
 
     await user.click(
       screen.getByRole('link', { name: 'Open translation table' }),
     );
     await findTable();
+    expect(hasDirtyNestedDraft()).toBe(false);
+
     await user.click(frenchTitle());
     await user.keyboard('Bonjour');
+    expect(hasDirtyNestedDraft()).toBe(true);
 
-    window.history.back();
-    await expectClosed();
-    expect(stageTitle(store)).toEqual({ en: 'Hello', fr: 'Bonjour' });
+    // Save closes by going back, and what guards Back asks, as that happens,
+    // whether anything would be lost.
+    const asked: boolean[] = [];
+    const ask = () => asked.push(hasDirtyNestedDraft());
+    window.addEventListener('popstate', ask);
+    try {
+      await user.click(tableButton('Save'));
+      await expectClosed();
+    } finally {
+      window.removeEventListener('popstate', ask);
+    }
+    expect(asked).toEqual([false]);
+    expect(hasDirtyNestedDraft()).toBe(false);
   });
 });

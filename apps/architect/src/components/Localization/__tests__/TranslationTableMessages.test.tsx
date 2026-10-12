@@ -1,9 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { rootReducer } from '~/ducks/modules/root';
@@ -41,7 +42,9 @@ const renderTable = () => {
   store.dispatch(setActiveProtocol(structuredClone(protocol)));
   render(
     <Provider store={store}>
-      <TranslationTable />
+      <FormStoreProvider>
+        <TranslationTable onSaved={vi.fn()} onCancel={vi.fn()} />
+      </FormStoreProvider>
     </Provider>,
   );
   return { store, user: userEvent.setup() };
@@ -52,6 +55,27 @@ const listItem = (store: ReturnType<typeof renderTable>['store']): unknown => {
   return stage && 'completeness' in stage
     ? stage.completeness?.itemText?.siblings?.listItem
     : undefined;
+};
+
+const save = (user: ReturnType<typeof renderTable>['user']) =>
+  user.click(screen.getByRole('button', { name: 'Save' }));
+
+const VERSIONS_BLANK =
+  'Write every version of this text, or leave them all empty.';
+
+/** Leaves the cell for the stage name's English cell. */
+const leaveCell = async (
+  user: ReturnType<typeof renderTable>['user'],
+  language: string,
+) => {
+  await user.click(
+    screen.getByRole('textbox', { name: /Stage name English$/ }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole('group', { name: cellName(language) })).toBe(
+      null,
+    ),
+  );
 };
 
 const cellName = (language: string) =>
@@ -81,7 +105,7 @@ describe('TranslationTable: texts with versions', () => {
     );
   });
 
-  it('is edited a version at a time, and saved as one text when the cell is left', async () => {
+  it('is edited a version at a time, and saved as one text when the table is saved', async () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('French'));
@@ -89,20 +113,17 @@ describe('TranslationTable: texts with versions', () => {
     expect(aboutYou).toHaveAccessibleName(/About the participant/);
     await user.type(aboutYou!, 'Vos frères et sœurs');
     await user.type(aboutSomeoneElse!, 'Frères et sœurs');
+    await leaveCell(user, 'French');
     expect(listItem(store)).toEqual({ en: SIBLINGS });
+    expect(messageCell('French')).toHaveAccessibleDescription(
+      /Vos frères et sœurs.*Frères et sœurs/,
+    );
 
-    await user.click(
-      screen.getByRole('textbox', { name: /Stage name English$/ }),
-    );
-    await waitFor(() =>
-      expect(listItem(store)).toEqual({
-        en: SIBLINGS,
-        fr: '{isYou, select, true {Vos frères et sœurs} other {Frères et sœurs}}',
-      }),
-    );
-    expect(screen.queryByRole('group', { name: cellName('French') })).toBe(
-      null,
-    );
+    await save(user);
+    expect(listItem(store)).toEqual({
+      en: SIBLINGS,
+      fr: '{isYou, select, true {Vos frères et sœurs} other {Frères et sœurs}}',
+    });
   });
 
   it('changes nothing when the cell is opened and left', async () => {
@@ -111,18 +132,13 @@ describe('TranslationTable: texts with versions', () => {
 
     await user.click(messageCell('English'));
     await versions('English');
-    await user.click(
-      screen.getByRole('textbox', { name: /Stage name English$/ }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole('group', { name: cellName('English') })).toBe(
-        null,
-      ),
-    );
+    await leaveCell(user, 'English');
+    await save(user);
+
     expect(getProtocol(store.getState())).toBe(before);
   });
 
-  it('saves on Enter, and moves to the next row', async () => {
+  it('moves to the next row on Enter', async () => {
     const { store, user } = renderTable();
 
     await user.click(messageCell('English'));
@@ -130,11 +146,6 @@ describe('TranslationTable: texts with versions', () => {
     await user.type(aboutYou!, ' (all)');
     await user.keyboard('{Enter}');
 
-    await waitFor(() =>
-      expect(listItem(store)).toEqual({
-        en: '{isYou, select, true {Your brothers and sisters (all)} other {Brothers and sisters of {name}}}',
-      }),
-    );
     // The interview's own words follow every text a stage holds.
     await waitFor(() =>
       expect(
@@ -143,10 +154,15 @@ describe('TranslationTable: texts with versions', () => {
         }),
       ).toHaveFocus(),
     );
+    await save(user);
+    expect(listItem(store)).toEqual({
+      en: '{isYou, select, true {Your brothers and sisters (all)} other {Brothers and sisters of {name}}}',
+    });
   });
 
   it('puts back the saved versions on Escape', async () => {
     const { store, user } = renderTable();
+    const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
     const [aboutYou] = await versions('English');
@@ -155,98 +171,49 @@ describe('TranslationTable: texts with versions', () => {
 
     const [restored] = await versions('English');
     expect(restored).toHaveTextContent(/^Your brothers and sisters$/);
-    await user.click(
-      screen.getByRole('textbox', { name: /Stage name English$/ }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole('group', { name: cellName('English') })).toBe(
-        null,
-      ),
-    );
-    expect(listItem(store)).toEqual({ en: SIBLINGS });
+    await save(user);
+    expect(getProtocol(store.getState())).toBe(before);
   });
 
-  it('refuses some versions written and others empty, says why, and keeps what was saved', async () => {
+  it('says why some versions written and others empty cannot be saved, and refuses to save them', async () => {
     const { store, user } = renderTable();
+    const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
     const [aboutYou] = await versions('English');
     await user.click(aboutYou!);
     await user.keyboard('{Control>}a{/Control}{Backspace}');
-    expect(
-      await screen.findByText(
-        'Write every version of this text, or leave them all empty.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('group', { name: cellName('English') }),
-    ).toHaveAccessibleDescription(
-      'Write every version of this text, or leave them all empty.',
+    await leaveCell(user, 'English');
+
+    expect(await screen.findByText(VERSIONS_BLANK)).toBeInTheDocument();
+    expect(messageCell('English')).toHaveAttribute('aria-invalid', 'true');
+    expect(messageCell('English')).toHaveAccessibleDescription(
+      new RegExp(`${VERSIONS_BLANK}$`),
     );
 
-    await user.click(
-      screen.getByRole('textbox', { name: /Stage name English$/ }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole('group', { name: cellName('English') })).toBe(
-        null,
-      ),
-    );
-    expect(listItem(store)).toEqual({ en: SIBLINGS });
+    await save(user);
+    expect(getProtocol(store.getState())).toBe(before);
+    // Save takes the researcher back into the versions to finish them.
+    await versions('English');
   });
 
-  it('says a change was not saved when its cell is taken away mid-edit', async () => {
+  it('says why the only translation cannot be cleared, and refuses to save it', async () => {
     const { store, user } = renderTable();
-
-    await user.click(messageCell('English'));
-    const [aboutYou] = await versions('English');
-    await user.click(aboutYou!);
-    await user.keyboard('{Control>}a{/Control}{Backspace}');
-    await screen.findByText(
-      'Write every version of this text, or leave them all empty.',
-    );
-
-    // English stops being one of the protocol's languages while its cell
-    // still has focus, so the cell goes without ever being left.
-    act(() => {
-      store.dispatch(
-        setActiveProtocol({
-          ...structuredClone(protocol),
-          localization: { defaultLocale: 'fr', locales: ['fr'] },
-        }),
-      );
-    });
-
-    expect(
-      await screen.findByText(
-        'Your change was not saved. Write every version of this text, or leave them all empty.',
-      ),
-    ).toBeInTheDocument();
-    expect(listItem(store)).toEqual({ en: SIBLINGS });
-  });
-
-  it('refuses to clear the only translation, and keeps it', async () => {
-    const { store, user } = renderTable();
+    const before = getProtocol(store.getState());
 
     await user.click(messageCell('English'));
     for (const version of await versions('English')) {
       await user.click(version);
       await user.keyboard('{Control>}a{/Control}{Backspace}');
     }
+    await leaveCell(user, 'English');
     expect(
       await screen.findByText(
         'This text exists only in English. Translate it into another language before clearing it.',
       ),
     ).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole('textbox', { name: /Stage name English$/ }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole('group', { name: cellName('English') })).toBe(
-        null,
-      ),
-    );
-    expect(listItem(store)).toEqual({ en: SIBLINGS });
+    await save(user);
+    expect(getProtocol(store.getState())).toBe(before);
   });
 });

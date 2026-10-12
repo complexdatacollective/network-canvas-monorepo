@@ -13,7 +13,7 @@ import activeProtocol, {
   removeProtocolLocale,
   setActiveProtocol,
   setProtocolDefaultLocale,
-  setProtocolLocalizedString,
+  setProtocolLocalizedStrings,
   setProtocolTranslation,
 } from '~/ducks/modules/activeProtocol';
 import app from '~/ducks/modules/app';
@@ -235,9 +235,13 @@ describe('protocol language reducers and undo', () => {
     const before = pastLength(store);
 
     store.dispatch(
-      setProtocolLocalizedString({
-        path: ['stages', 0, 'label'],
-        value: { en: 'Hello', fr: 'Bonjour' },
+      setProtocolLocalizedStrings({
+        updates: [
+          {
+            path: ['stages', 0, 'label'],
+            value: { en: 'Hello', fr: 'Bonjour' },
+          },
+        ],
       }),
     );
 
@@ -252,6 +256,54 @@ describe('protocol language reducers and undo', () => {
     expect(presentOf(store)).toEqual(translated);
   });
 
+  it('sets several texts in one undo step', () => {
+    store.dispatch(addProtocolLocales({ locales: ['fr'] }));
+    const untranslated = presentOf(store);
+    const before = pastLength(store);
+
+    store.dispatch(
+      setProtocolLocalizedStrings({
+        updates: [
+          {
+            path: ['stages', 0, 'label'],
+            value: { en: 'Hello', fr: 'Bonjour' },
+          },
+          { path: ['stages', 0, 'title'], value: { en: 'Hi', fr: 'Salut' } },
+        ],
+      }),
+    );
+
+    expect(pastLength(store)).toBe(before + 1);
+    expect(presentOf(store).stages[0]).toMatchObject({
+      label: { en: 'Hello', fr: 'Bonjour' },
+      title: { en: 'Hi', fr: 'Salut' },
+    });
+
+    store.dispatch(timelineActions.undo());
+    expect(presentOf(store)).toEqual(untranslated);
+  });
+
+  it('sets none of the texts when one of them is refused', () => {
+    store.dispatch(addProtocolLocales({ locales: ['fr'] }));
+    const before = pastLength(store);
+    const present = presentOf(store);
+
+    store.dispatch(
+      setProtocolLocalizedStrings({
+        updates: [
+          {
+            path: ['stages', 0, 'label'],
+            value: { en: 'Hello', fr: 'Bonjour' },
+          },
+          { path: ['stages', 0, 'title'], value: { en: 'Hi', fr: '  ' } },
+        ],
+      }),
+    );
+
+    expect(pastLength(store)).toBe(before);
+    expect(presentOf(store)).toBe(present);
+  });
+
   it('records nothing for a refused set of translations', () => {
     store.dispatch(addProtocolLocales({ locales: ['fr'] }));
     const before = pastLength(store);
@@ -259,29 +311,34 @@ describe('protocol language reducers and undo', () => {
 
     // Not a participant-facing text.
     store.dispatch(
-      setProtocolLocalizedString({
-        path: ['stages', 0, 'nonexistent'],
-        value: { en: 'Hello' },
+      setProtocolLocalizedStrings({
+        updates: [
+          { path: ['stages', 0, 'nonexistent'], value: { en: 'Hello' } },
+        ],
       }),
     );
     // A language the protocol does not declare.
     store.dispatch(
-      setProtocolLocalizedString({
-        path: ['stages', 0, 'label'],
-        value: { en: 'Welcome', de: 'Willkommen' },
+      setProtocolLocalizedStrings({
+        updates: [
+          {
+            path: ['stages', 0, 'label'],
+            value: { en: 'Welcome', de: 'Willkommen' },
+          },
+        ],
       }),
     );
     // Nothing participants would see.
     store.dispatch(
-      setProtocolLocalizedString({
-        path: ['stages', 0, 'label'],
-        value: { en: '  ', fr: '' },
+      setProtocolLocalizedStrings({
+        updates: [
+          { path: ['stages', 0, 'label'], value: { en: '  ', fr: '' } },
+        ],
       }),
     );
     store.dispatch(
-      setProtocolLocalizedString({
-        path: ['stages', 0, 'label'],
-        value: {},
+      setProtocolLocalizedStrings({
+        updates: [{ path: ['stages', 0, 'label'], value: {} }],
       }),
     );
     // One language with nothing to show beside one that has text: the schema
@@ -289,9 +346,13 @@ describe('protocol language reducers and undo', () => {
     // exact translation rather than fall back.
     for (const blank of ['   ', '\u200B']) {
       store.dispatch(
-        setProtocolLocalizedString({
-          path: ['stages', 0, 'label'],
-          value: { en: 'Welcome', fr: blank },
+        setProtocolLocalizedStrings({
+          updates: [
+            {
+              path: ['stages', 0, 'label'],
+              value: { en: 'Welcome', fr: blank },
+            },
+          ],
         }),
       );
     }

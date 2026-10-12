@@ -1964,8 +1964,8 @@
     "description": "Button in the toolbar of the translation table that opens a short explanation of the table and how to edit it."
   },
   "architect.localization.translationTable.keyboardHelp": {
-    "defaultMessage": "Changes are saved when you leave a cell, and Escape undoes a change until then. The up and down arrow keys move between rows from the first or last line of a cell. Ctrl+Enter, or ⌘+Enter on a Mac, saves and moves to the next row, as Enter does in a text of one line. In formatted text, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.",
-    "description": "Help text for the translation table, explaining how editing its cells works. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons above it."
+    "defaultMessage": "Changes are kept in the table until you save it, and each cell is checked when you leave it. Escape undoes your change to a cell. The up and down arrow keys move between rows from the first or last line of a cell. Ctrl+Enter, or ⌘+Enter on a Mac, moves to the next row, as Enter does in a text of one line. In formatted text, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.",
+    "description": "Help text for the translation table, explaining how editing its cells works. Nothing typed into the table reaches the protocol until the researcher presses Save. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons above it."
   },
   "architect.localization.translationTable.languages": {
     "defaultMessage": "Languages ({shown, number} of {total, number})",
@@ -1978,10 +1978,6 @@
   "architect.localization.translationTable.lastLanguage": {
     "defaultMessage": "One language is always shown.",
     "description": "Note in the menu of language columns when only one language is shown, which therefore cannot be hidden."
-  },
-  "architect.localization.translationTable.messageRefused": {
-    "defaultMessage": "Your change was not saved. {reason}",
-    "description": "Screen-reader announcement after leaving a translation table cell whose text, written in several versions, could not be saved. reason is the sentence saying what is wrong, such as that some versions are empty."
   },
   "architect.localization.translationTable.missingAny": {
     "defaultMessage": "Missing in any shown language",
@@ -2015,10 +2011,6 @@
     "defaultMessage": "This text exists only in {language}. Translate it into another language before clearing it.",
     "description": "Shown in a cell of the translation table when its translation is emptied but is the only translation the text has, which cannot be removed. language is the language of the cell."
   },
-  "architect.localization.translationTable.onlyTranslationKept": {
-    "defaultMessage": "The {language} translation was kept, because this text exists only in {language}.",
-    "description": "Screen-reader announcement after an emptied translation is restored, because it is the only translation the text has. language is the language of the translation."
-  },
   "architect.localization.translationTable.progress": {
     "defaultMessage": "{translated, number} of {total, number} translated",
     "description": "Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s texts have a translation into it."
@@ -2030,10 +2022,6 @@
   "architect.localization.translationTable.progressLabel": {
     "defaultMessage": "{language} translation progress",
     "description": "Accessible name of the progress bar in the heading of a language’s column in the translation table."
-  },
-  "architect.localization.translationTable.saveFailed": {
-    "defaultMessage": "This translation could not be saved, because the text or its language has been removed from the protocol.",
-    "description": "Screen-reader announcement when a translation typed into the translation table cannot be saved."
   },
   "architect.localization.translationTable.search": {
     "defaultMessage": "Search texts and translations",
@@ -2055,21 +2043,17 @@
     "defaultMessage": "Text",
     "description": "Heading of the first column of the translation table, which names each text by where it is in the protocol."
   },
+  "architect.localization.translationTable.textRemoved": {
+    "defaultMessage": "This translation cannot be saved, because the text or its language has been removed from the protocol.",
+    "description": "Shown above the translation table when saving fails because a translation typed into it belongs to a text, or a language, that is no longer in the protocol."
+  },
   "architect.localization.translationTable.unlessBrowserLists": {
     "defaultMessage": "* Unless the participant’s browser also lists another language that has the text.",
     "description": "Note under the translation table, explaining the asterisk on the tag that says which language participants see where a translation is missing. Begins with the same asterisk."
   },
-  "architect.localization.translationTableDialog.redo": {
-    "defaultMessage": "Redo",
-    "description": "Accessible name of the button in the toolbar of the translation table that redoes the last change undone."
-  },
   "architect.localization.translationTableDialog.title": {
     "defaultMessage": "Translation table",
     "description": "Title of the dialog, opened from the Languages page, that shows every participant-facing text of a protocol beside its translation into each language."
-  },
-  "architect.localization.translationTableDialog.undo": {
-    "defaultMessage": "Undo",
-    "description": "Accessible name of the button in the toolbar of the translation table that undoes the last change to the protocol."
   },
   "architect.nestedDraftReclaimDialog.backToTheEditor": {
     "defaultMessage": "Back to the Editor",

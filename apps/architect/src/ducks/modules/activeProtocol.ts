@@ -32,7 +32,7 @@ import {
   type LocaleOperationResult,
   removeLocale,
   setDefaultLocale,
-  setLocalizedString,
+  setLocalizedStrings,
   setTranslation,
 } from './protocol/localeOperations';
 import stages from './protocol/stages';
@@ -126,15 +126,18 @@ const activeProtocolSlice = createSlice({
           action.payload.text,
         ),
       ),
-    setProtocolLocalizedString: (
+    // Several texts in one step, so one undo takes back the whole set.
+    setProtocolLocalizedStrings: (
       state,
       action: PayloadAction<{
-        path: readonly (string | number)[];
-        value: LocalizedString;
+        updates: readonly Readonly<{
+          path: readonly (string | number)[];
+          value: LocalizedString;
+        }>[];
       }>,
     ) =>
       applyLocaleOperation(state, (protocol) =>
-        setLocalizedString(protocol, action.payload.path, action.payload.value),
+        setLocalizedStrings(protocol, action.payload.updates),
       ),
     clearActiveProtocol: (_state) => {
       // Assets are namespaced per protocol and owned by the library; deleting a
@@ -202,7 +205,7 @@ export const {
   setProtocolDefaultLocale,
   changeProtocolLocale,
   setProtocolTranslation,
-  setProtocolLocalizedString,
+  setProtocolLocalizedStrings,
 } = activeProtocolSlice.actions;
 
 export const actionCreators = {

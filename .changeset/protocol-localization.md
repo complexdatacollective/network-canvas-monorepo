@@ -64,9 +64,15 @@ In Architect:
   and interface, then by codebook type, and each text is named the way its
   editor names it, such as "Page heading" or "Item 1 › Content". Each cell is
   edited where it is, formatted text with the stage editor's formatting
-  buttons, and saved when you leave it or close the table: Escape undoes a
-  change until then and otherwise closes the table, the arrow keys move
-  between rows, and Ctrl+Enter saves and moves to the next row. An empty cell
+  buttons, and checked when you leave it. Changes stay in the table, each
+  marked, until Save writes them all into the protocol as one change that a
+  single Undo takes back; while any cell holds text that can't be saved, Save
+  refuses and takes you to that cell, showing it even if a search, filter or
+  hidden column had taken it out of view. Cancel closes the table, asking first
+  when it would throw changes away. Escape and a click outside don't close it,
+  and Back or a reload asks before losing changes. Escape undoes your change to
+  a cell, the arrow keys move between rows, and Ctrl+Enter moves to the next
+  row. An empty cell
   shows what participants using that language see instead, tagged with that
   text's language. A menu shows every text, the texts missing
   a translation into any language shown, or those missing one language; a

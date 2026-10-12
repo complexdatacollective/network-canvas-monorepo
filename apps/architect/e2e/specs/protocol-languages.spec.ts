@@ -391,9 +391,9 @@ test('adds a language, keeps the default language from being removed, translates
     translationCell(page, 'Page heading', 'French'),
   ).toHaveAccessibleDescription(/^Welcome to the study Not translated yet\./);
 
-  // Enter saves a text of one line and moves to the next row, in plain and
-  // formatted text alike. The last row has nowhere to go, so Ctrl+Enter only
-  // saves it. Rows translated while the filter is on stay until it changes.
+  // Enter moves to the next row from a text of one line, in plain and
+  // formatted text alike. Rows translated while the filter is on stay until it
+  // changes, and nothing reaches the protocol until the table is saved.
   await translationCell(page, 'Stage name', 'French').click();
   await page.keyboard.type('Bienvenue');
   await page.keyboard.press('Enter');
@@ -412,10 +412,19 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(translationCell(page, 'Text', 'French', 2)).toBeFocused();
   await page.keyboard.type('Merci encore.');
   await page.keyboard.press('Control+Enter');
+  await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
   await expect(
     table.getByRole('columnheader', { name: /^French/ }),
-  ).toContainText('20 of 20 translated');
-  await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
+  ).toContainText('14 of 20 translated');
+
+  // Saving writes every translation at once, and goes back to the Languages
+  // page and to the link that opened the table.
+  await translationTableDialog(page)
+    .getByRole('button', { name: 'Save', exact: true })
+    .click();
+  await expect(translationTableDialog(page)).toBeHidden();
+  await expect(page).toHaveURL(/\/protocol\/localization$/);
+  await expect(openTable).toBeFocused();
   const translated = await readProtocolJson(page, (protocol) =>
     Object.hasOwn(finishContent(protocol) ?? {}, 'fr'),
   );
@@ -431,24 +440,23 @@ test('adds a language, keeps the default language from being removed, translates
     en: 'Thank you for taking part.',
     fr: 'Merci de votre participation.',
   });
-  await textsToShow(page).selectOption({ label: 'All texts' });
-  await textsToShow(page).selectOption({ label: 'Missing French' });
-  await expect(
-    page.getByText('Every text is translated into French.'),
-  ).toBeVisible();
-
-  // Closing goes back to the Languages page, and to the link that opened the
-  // table.
-  await translationTableDialog(page)
-    .getByRole('button', { name: 'Close', exact: true })
-    .click();
-  await expect(translationTableDialog(page)).toBeHidden();
-  await expect(page).toHaveURL(/\/protocol\/localization$/);
-  await expect(openTable).toBeFocused();
   await expect(french).toContainText('20 of 20 texts translated');
   await expect(
     french.getByText('Missing translations', { exact: true }),
   ).toHaveCount(0);
+
+  // Opened again, the table has nothing left to translate into French, and
+  // Cancel closes it without asking, since nothing was changed.
+  await openTable.click();
+  await textsToShow(page).selectOption({ label: 'Missing French' });
+  await expect(
+    page.getByText('Every text is translated into French.'),
+  ).toBeVisible();
+  await translationTableDialog(page)
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await expect(translationTableDialog(page)).toBeHidden();
+  await expect(openTable).toBeFocused();
 
   // Languages have no order: a language added last is listed by its name.
   await page
@@ -645,7 +653,7 @@ test('opens the translation table on every missing translation from the protocol
 
   // Closed, the table leaves the Languages page it was opened over.
   await translationTableDialog(page)
-    .getByRole('button', { name: 'Close', exact: true })
+    .getByRole('button', { name: 'Cancel', exact: true })
     .click();
   await expect(translationTableDialog(page)).toBeHidden();
   await expect(page).toHaveURL(/\/protocol\/localization$/);

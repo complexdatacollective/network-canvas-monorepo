@@ -1,16 +1,17 @@
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
-import { Redo, Undo } from 'lucide-react';
+import { useContext } from 'react';
 import { useSearchParams } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { IconButton } from '@codaco/fresco-ui/Button';
-import CloseButton from '@codaco/fresco-ui/CloseButton';
 import DialogPopup from '@codaco/fresco-ui/dialogs/DialogPopup';
+import FormStoreProvider, {
+  FormStoreContext,
+} from '@codaco/fresco-ui/form/store/formStoreProvider';
 import Modal from '@codaco/fresco-ui/Modal';
 import { useModalOpener } from '@codaco/fresco-ui/Modal/ModalOpener';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import { useProtocolUndoRedo } from '~/hooks/useProtocolUndoRedo';
+import { useNestedDraftDialog } from '~/components/DialogForm/useNestedDraftDialog';
 
 import TranslationTable from './TranslationTable';
 import {
@@ -26,30 +27,21 @@ const messages = defineMessages({
     description:
       'Title of the dialog, opened from the Languages page, that shows every participant-facing text of a protocol beside its translation into each language.',
   },
-  undo: {
-    id: 'architect.localization.translationTableDialog.undo',
-    defaultMessage: 'Undo',
-    description:
-      'Accessible name of the button in the toolbar of the translation table that undoes the last change to the protocol.',
-  },
-  redo: {
-    id: 'architect.localization.translationTableDialog.redo',
-    defaultMessage: 'Redo',
-    description:
-      'Accessible name of the button in the toolbar of the translation table that redoes the last change undone.',
-  },
 });
 
 type FallbackFocus = () => HTMLElement | null;
 
 const TranslationTableSurface = ({
   fallbackFocus,
+  onSaved,
+  onCancel,
 }: {
   fallbackFocus: FallbackFocus;
+  onSaved: () => void;
+  onCancel: () => void;
 }) => {
   const intl = useAppIntl();
   const opener = useModalOpener();
-  const { canUndo, canRedo, undo, redo } = useProtocolUndoRedo();
 
   // The control that opened the table, or, when the table was opened by a
   // link from another page or by its address, somewhere on the page it
@@ -71,31 +63,56 @@ const TranslationTableSurface = ({
             {intl.formatMessage(messages.title)}
           </BaseDialog.Title>
         }
-        actions={
-          <>
-            <IconButton
-              size="sm"
-              variant="text"
-              color="dynamic"
-              icon={<Undo aria-hidden />}
-              aria-label={intl.formatMessage(messages.undo)}
-              disabled={!canUndo}
-              onClick={undo}
-            />
-            <IconButton
-              size="sm"
-              variant="text"
-              color="dynamic"
-              icon={<Redo aria-hidden />}
-              aria-label={intl.formatMessage(messages.redo)}
-              disabled={!canRedo}
-              onClick={redo}
-            />
-          </>
-        }
-        closeButton={<BaseDialog.Close render={<CloseButton size="sm" />} />}
+        onSaved={onSaved}
+        onCancel={onCancel}
       />
     </DialogPopup>
+  );
+};
+
+/**
+ * The modal and the form it holds. Only its own buttons close it: Save, once
+ * every change is in the protocol, and Cancel, which asks first when there
+ * are changes it would lose. Escape and a press outside it do nothing, and
+ * Back, a refresh or a protocol lock ask as they do for any open editor.
+ */
+const TranslationTableModal = ({
+  open,
+  close,
+  fallbackFocus,
+}: {
+  open: boolean;
+  close: () => void;
+  fallbackFocus: FallbackFocus;
+}) => {
+  const formStore = useContext(FormStoreContext);
+  // Closed by going back, as Back would close it. What guards Back asks then
+  // whether the table holds unsaved changes, so a discard the researcher has
+  // just confirmed is made first, or they would be asked about it again.
+  const discardAndClose = () => {
+    const state = formStore?.getState();
+    state?.rebaseToDocument(state.getFormValues());
+    close();
+  };
+  const { requestClose } = useNestedDraftDialog({
+    open,
+    onClose: discardAndClose,
+  });
+
+  return (
+    <Modal
+      open={open}
+      dismissible={false}
+      onOpenChange={(next) => {
+        if (!next) requestClose();
+      }}
+    >
+      <TranslationTableSurface
+        fallbackFocus={fallbackFocus}
+        onSaved={close}
+        onCancel={requestClose}
+      />
+    </Modal>
   );
 };
 
@@ -126,14 +143,13 @@ const TranslationTableDialog = ({
   };
 
   return (
-    <Modal
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) close();
-      }}
-    >
-      <TranslationTableSurface fallbackFocus={fallbackFocus} />
-    </Modal>
+    <FormStoreProvider>
+      <TranslationTableModal
+        open={open}
+        close={close}
+        fallbackFocus={fallbackFocus}
+      />
+    </FormStoreProvider>
   );
 };
 
