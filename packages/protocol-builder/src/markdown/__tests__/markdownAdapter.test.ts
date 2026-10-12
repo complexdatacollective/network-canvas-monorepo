@@ -147,6 +147,7 @@ describe('RichText markdown adapter', () => {
       '> 5 years',
       'Fish &amp; chips, &lt;tags&gt;, &#60; and &copy;',
       'Fish & chips',
+      'Saved to C:\\Users\\<name>\\&lt;file&gt;',
     ])('shows the participant %s exactly as typed', (text) => {
       expect(shownToParticipant(text)).toBe(text);
     });

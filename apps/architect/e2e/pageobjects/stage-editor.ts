@@ -33,6 +33,33 @@ type MarkdownBlock =
   | { kind: 'paragraph'; text: string }
   | { kind: 'bullet' | 'ordered'; items: string[] };
 
+const NAMED_CHARACTERS: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+};
+
+// The characters a user types for the character references in canonical
+// markdown. Typed literally, `&lt;` is text the researcher wrote, and the
+// serializer stores it escaped as `&amp;lt;`. An unknown name throws, so a
+// new reference in the canonical file fails here rather than being typed.
+function decodeCharacterReferences(markdown: string): string {
+  return markdown.replace(
+    /&(?:#(\d+)|#x([\da-f]+)|([a-z][a-z\d]*));/gi,
+    (reference, decimal?: string, hex?: string, name?: string) => {
+      if (decimal) return String.fromCodePoint(Number.parseInt(decimal, 10));
+      if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
+      const character = name ? NAMED_CHARACTERS[name] : undefined;
+      if (character === undefined) {
+        throw new Error(`No typed character for ${reference}`);
+      }
+      return character;
+    },
+  );
+}
+
 // Split source markdown into typeable blocks: blank-line-separated
 // paragraphs, plus bullet (`* `/`- `) and ordered (`1. `) list runs whose
 // single-newline-separated lines all carry a marker.
@@ -132,10 +159,12 @@ export class StageEditor {
     // backslash escape the canonical sample protocol contains (`\-`, an
     // escaped hyphen from its own serializer era) must be typed as a plain
     // hyphen — typing the backslash literally makes the serializer escape it
-    // again (`\\\-`), which no longer parses to the same text. HTML entities
-    // (`&quot;`, `&lt;`…) are typed literally on purpose: both sides parse
-    // them to the same characters (verified by the build spike).
-    for (const block of parseMarkdownBlocks(markdown.replaceAll('\\-', '-'))) {
+    // again (`\\\-`), which no longer parses to the same text. Character
+    // references (`&quot;`, `&lt;`…) are typed as the characters they stand
+    // for, for the same reason.
+    for (const block of parseMarkdownBlocks(
+      decodeCharacterReferences(markdown.replaceAll('\\-', '-')),
+    )) {
       if (needsBlockBreak) {
         await this.page.keyboard.press('Enter');
       }

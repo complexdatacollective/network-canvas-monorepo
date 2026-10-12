@@ -81,9 +81,8 @@ const escapeAngleBrackets = (value: string): string =>
     .replaceAll('<', '&lt;');
 
 const escapeMarkdownText = (value: string): string =>
-  escapeAngleBrackets(
-    value.replace(/\\/g, '\\\\').replace(CHARACTER_REFERENCE, '&amp;'),
-  )
+  escapeAngleBrackets(value.replace(CHARACTER_REFERENCE, '&amp;'))
+    .replace(/\\/g, '\\\\')
     .replace(/(^\d+)+(\.)/g, '$1\\$2')
     .replace(/\*/g, '\\*')
     .replace(/_/g, '\\_')
