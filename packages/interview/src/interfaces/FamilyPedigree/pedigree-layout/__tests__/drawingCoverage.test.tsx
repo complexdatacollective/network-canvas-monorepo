@@ -1,9 +1,10 @@
 /**
  * The drawing accounts for every recorded tie: each parent tie is drawn by a
- * line of descent, a line of its own, a couple's line or a line to the
- * sibship's bar; each partnership by a partnership line; each pair of twins
- * by a twin mark; and every line lies inside the drawing, clear of the
- * former-partner break.
+ * line of descent, a line of its own, a couple's line (from their partnership
+ * line, or from their own line of descent) or a line to the sibship's bar;
+ * each partnership by a partnership line; each pair of twins by a twin mark;
+ * and every line lies inside the drawing, clear of the former-partner
+ * break.
  */
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -128,6 +129,41 @@ function unaccounted(
           close(start.x, (centre(p).x + centre(q).x) / 2) &&
           close(start.y, centre(p).y)
         );
+      })
+    ) {
+      return true;
+    }
+    // A couple's line to a relative's child they raise, leaving the couple's
+    // own line of descent: it starts on an upright piece of the line that
+    // drops from the couple's partnership line to their children.
+    if (
+      aux.some((l) => {
+        const [q, child] = l.endpointIds ?? [];
+        if (child !== c || q === undefined || q === p) return false;
+        const partnership = connectors.groupLines.find((g) =>
+          same(g.partnerIds, [p, q]),
+        );
+        if (!partnership) return false;
+        const start = l.points[0]!;
+        return connectors.parentChildLines.some((pc) => {
+          const [top] = pc.parentLink;
+          if (!top || !same(pc.parentIds, [p, q])) return false;
+          if (!onSegment({ x: top.x1, y: top.y1 }, partnership.segment)) {
+            if (
+              !partnership.doubleSegment ||
+              !onSegment({ x: top.x1, y: top.y1 }, partnership.doubleSegment)
+            ) {
+              return false;
+            }
+          }
+          return pc.parentLink.some(
+            (piece) =>
+              close(piece.x1, piece.x2) &&
+              close(start.x, piece.x1) &&
+              start.y > Math.min(piece.y1, piece.y2) + 0.5 &&
+              start.y < Math.max(piece.y1, piece.y2) - 0.5,
+          );
+        });
       })
     ) {
       return true;
@@ -367,6 +403,41 @@ const families: Record<string, { people: string[]; links: PedigreeLink[] }> = {
       parent('hugh', 'adoptive', 'chloe'),
     ],
   },
+  'a younger sister adopted by her married brother': {
+    people: ['ego', 'mum', 'dad', 'tom', 'pat', 'sis', 'kid'],
+    links: [
+      partners('mum', 'dad'),
+      parent('mum', 'biological', 'ego', true),
+      parent('dad', 'biological', 'ego'),
+      parent('mum', 'biological', 'tom', true),
+      parent('dad', 'biological', 'tom'),
+      parent('mum', 'biological', 'sis', true),
+      parent('dad', 'biological', 'sis'),
+      partners('tom', 'pat'),
+      parent('pat', 'biological', 'kid', true),
+      parent('tom', 'biological', 'kid'),
+      parent('tom', 'adoptive', 'sis'),
+      parent('pat', 'adoptive', 'sis'),
+    ],
+  },
+  'a niece adopted by her aunt and uncle, who have no children': {
+    people: ['ego', 'gran', 'grandad', 'mum', 'dad', 'aunt', 'uncle', 'niece'],
+    links: [
+      partners('gran', 'grandad'),
+      parent('gran', 'biological', 'mum', true),
+      parent('grandad', 'biological', 'mum'),
+      parent('gran', 'biological', 'aunt', true),
+      parent('grandad', 'biological', 'aunt'),
+      partners('mum', 'dad'),
+      partners('aunt', 'uncle'),
+      parent('mum', 'biological', 'ego', true),
+      parent('dad', 'biological', 'ego'),
+      parent('mum', 'biological', 'niece', true),
+      parent('dad', 'biological', 'niece'),
+      parent('aunt', 'adoptive', 'niece'),
+      parent('uncle', 'adoptive', 'niece'),
+    ],
+  },
   'co-parents who were never partners': {
     people: ['ego', 'ann', 'bob', 'sib'],
     links: [
@@ -430,6 +501,29 @@ describe('the drawing accounts for every recorded tie', () => {
         'biological tie bob→ego is not drawn',
         'biological tie ann→sib is not drawn',
         'biological tie bob→sib is not drawn',
+      ]);
+    }
+    // A couple's line to a relative's child they adopt accounts for both
+    // their ties from their own line of descent, and for only the tie of the
+    // partner it is named after once it starts anywhere else.
+    {
+      const { people, links } =
+        families[
+          'a granddaughter adopted by her grandparents, with a former partner'
+        ]!;
+      const { connectors, centre } = draw(people, links);
+      const offStem = {
+        ...connectors,
+        auxiliaryLines: connectors.auxiliaryLines.map((line) => ({
+          ...line,
+          points: [
+            { x: line.points[0]!.x + 20, y: line.points[0]!.y },
+            ...line.points.slice(1),
+          ],
+        })),
+      };
+      expect(unaccounted(links, offStem, centre)).toEqual([
+        'adoptive tie hugh→chloe is not drawn',
       ]);
     }
     const { people, links } = families['a step parent and a donor']!;

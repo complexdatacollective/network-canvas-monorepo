@@ -18,10 +18,14 @@ import { resolveNodeShape } from '../../../../selectors/session';
 import { config, link, person } from '../../__tests__/fixtures';
 import { readFamily } from '../../model';
 import { pedigreeLinksOf } from '../../pedigreeLinks';
-import { childAttachments } from '../auxiliaryRouting';
+import { childAttachments, crossing, segmentsOf } from '../auxiliaryRouting';
 import { FAMILY_PEDIGREE_GAPS } from '../layoutDimensions';
 import { drawPedigree } from '../pedigreeAdapter';
-import type { PedigreeSymbolShape } from '../types';
+import type {
+  AuxiliaryConnector,
+  LineSegment,
+  PedigreeSymbolShape,
+} from '../types';
 import {
   CENTRE_CLEARANCE,
   type Drawing,
@@ -50,6 +54,8 @@ function drawAsInterface(
   nodes: NcNode[],
   edges: NcEdge[],
   size: number,
+  /** Everyone drawn with this shape rather than the one their sex gives. */
+  everyone?: PedigreeSymbolShape,
 ): Drawing {
   const family = readFamily(nodes, edges, config);
   const links = pedigreeLinksOf(family);
@@ -57,7 +63,8 @@ function drawAsInterface(
   const nodeShapes = new Map(
     family.people.map((p) => [
       p.id,
-      resolveNodeShape(SHAPE, p.attributes) as PedigreeSymbolShape,
+      everyone ??
+        (resolveNodeShape(SHAPE, p.attributes) as PedigreeSymbolShape),
     ]),
   );
   const { positions, connectorData } = drawPedigree({
@@ -201,5 +208,230 @@ describe('the places for the lines ending on one side of a child', () => {
         ).toBeGreaterThanOrEqual(MIN_END_GAP - 1e-6);
       }
     });
+  }
+});
+
+/**
+ * The families of relatives who adopt a child: the child stays drawn in their
+ * birth family, and the adopters' dashed line comes to them from elsewhere.
+ */
+function grandparentAdoption(adopters: ('margaret' | 'hugh')[]) {
+  const nodes = [
+    person('ego', { name: 'Ego', sex: ['female'], isEgo: true }),
+    woman('margaret', 'Margaret'),
+    man('hugh', 'Hugh'),
+    man('ian', 'Ian'),
+    woman('chloe', 'Chloe'),
+    man('formerPartner', 'Former'),
+  ];
+  const edges = [
+    link('margaret', 'ego', 'biological', { carrier: true }),
+    link('hugh', 'ego', 'biological', { carrier: false }),
+    link('margaret', 'hugh', 'partner', { current: true }),
+    link('margaret', 'ian', 'biological', { carrier: true }),
+    link('hugh', 'ian', 'biological', { carrier: false }),
+    link('ego', 'chloe', 'biological', { carrier: true }),
+    link('formerPartner', 'chloe', 'biological', { carrier: false }),
+    link('ego', 'formerPartner', 'partner', { current: false }),
+    ...adopters.map((id) => link(id, 'chloe', 'adoptive', { carrier: false })),
+  ];
+  return { nodes, edges };
+}
+
+/** A married older brother and his wife, with a son of their own, adopt his
+ * younger sister. */
+function siblingAdoption() {
+  const nodes = [
+    person('ego', { name: 'Ego', sex: ['female'], isEgo: true }),
+    woman('mum', 'Mum'),
+    man('dad', 'Dad'),
+    man('tom', 'Tom'),
+    woman('pat', 'Pat'),
+    woman('sis', 'Sis'),
+    man('kid', 'Kid'),
+  ];
+  const edges = [
+    link('mum', 'dad', 'partner', { current: true }),
+    ...['ego', 'tom', 'sis'].flatMap((child) => [
+      link('mum', child, 'biological', { carrier: true }),
+      link('dad', child, 'biological', { carrier: false }),
+    ]),
+    link('tom', 'pat', 'partner', { current: true }),
+    link('pat', 'kid', 'biological', { carrier: true }),
+    link('tom', 'kid', 'biological', { carrier: false }),
+    link('tom', 'sis', 'adoptive', { carrier: false }),
+    link('pat', 'sis', 'adoptive', { carrier: false }),
+  ];
+  return { nodes, edges };
+}
+
+/** The participant's sister is adopted by their aunt and, when `uncle` is
+ * her husband, by him too, or, when he is her brother, by the two of them
+ * who are not partners. The aunt has no children of her own. */
+function nieceAdoption(uncle: 'husband' | 'brother') {
+  const nodes = [
+    person('ego', { name: 'Ego', sex: ['female'], isEgo: true }),
+    woman('gran', 'Gran'),
+    man('grandad', 'Grandad'),
+    woman('mum', 'Mum'),
+    man('dad', 'Dad'),
+    woman('aunt', 'Aunt'),
+    man('uncle', 'Uncle'),
+    woman('niece', 'Niece'),
+  ];
+  const edges = [
+    link('gran', 'grandad', 'partner', { current: true }),
+    ...['mum', 'aunt', ...(uncle === 'brother' ? ['uncle'] : [])].flatMap(
+      (child) => [
+        link('gran', child, 'biological', { carrier: true }),
+        link('grandad', child, 'biological', { carrier: false }),
+      ],
+    ),
+    link('mum', 'dad', 'partner', { current: true }),
+    ...(uncle === 'husband'
+      ? [link('aunt', 'uncle', 'partner', { current: true })]
+      : []),
+    ...['ego', 'niece'].flatMap((child) => [
+      link('mum', child, 'biological', { carrier: true }),
+      link('dad', child, 'biological', { carrier: false }),
+    ]),
+    link('aunt', 'niece', 'adoptive', { carrier: false }),
+    link('uncle', 'niece', 'adoptive', { carrier: false }),
+  ];
+  return { nodes, edges };
+}
+
+const adoptiveLinesInto = (drawing: Drawing, childId: string) =>
+  drawing.connectors.auxiliaryLines.filter(
+    (line) => line.edgeType === 'adoptive' && line.endpointIds?.[1] === childId,
+  );
+
+/** The upright pieces of a couple's own line of descent, which drops from
+ * their partnership line to their children. */
+function stemOf(drawing: Drawing, a: string, b: string): LineSegment[] {
+  const descent = drawing.connectors.parentChildLines.find(
+    (line) =>
+      line.parentLink.length > 0 &&
+      [a, b].every((id) => line.parentIds?.includes(id)),
+  );
+  return (descent?.parentLink ?? []).filter(
+    (piece) => Math.abs(piece.x1 - piece.x2) < 0.5,
+  );
+}
+
+/** Whether a line leaves a couple's line of descent as a T: it starts on an
+ * upright piece of it, below the couple's symbols and clear of the piece's
+ * lower end, and runs off it level. */
+function leavesStemAsT(
+  line: AuxiliaryConnector,
+  stem: LineSegment[],
+  drawing: Drawing,
+  partner: string,
+) {
+  const [start, next] = line.points;
+  if (!start || !next) return false;
+  const belowSymbols = drawing.centre(partner).y + drawing.size / 2;
+  const onStem = stem.some(
+    (piece) =>
+      Math.abs(start.x - piece.x1) < 0.5 &&
+      start.y > Math.max(Math.min(piece.y1, piece.y2), belowSymbols) &&
+      start.y < Math.max(piece.y1, piece.y2) - 0.1 * drawing.size,
+  );
+  return (
+    onStem &&
+    Math.abs(next.y - start.y) < 0.5 &&
+    Math.abs(next.x - start.x) > 0.5
+  );
+}
+
+const expectAt = (p: { x: number; y: number }, q: { x: number; y: number }) => {
+  expect(p.x).toBeCloseTo(q.x, 5);
+  expect(p.y).toBeCloseTo(q.y, 5);
+};
+
+const crossesSegment = (line: AuxiliaryConnector, segment: LineSegment) =>
+  segmentsOf(line.points).some((piece) => crossing(piece, segment));
+
+const SHAPE_SETS = [
+  ['mixed shapes', undefined],
+  ['all squares', 'square'],
+] as const;
+
+describe('a couple who adopt a relative’s child', () => {
+  for (const size of SYMBOL_SIZES) {
+    for (const [shapes, everyone] of SHAPE_SETS) {
+      const label = `${shapes}, ${size}px symbols`;
+
+      it(`draw one dashed line from their line of descent to a granddaughter, around her parents and uncrossed (${label})`, () => {
+        const { nodes, edges } = grandparentAdoption(['margaret', 'hugh']);
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const lines = adoptiveLinesInto(drawing, 'chloe');
+        expect(lines).toHaveLength(1);
+        const stem = stemOf(drawing, 'margaret', 'hugh');
+        expect(stem.length).toBeGreaterThan(0);
+        expect(leavesStemAsT(lines[0]!, stem, drawing, 'margaret')).toBe(true);
+        expect(faultsOfLinesInto(drawing, 'chloe')).toEqual([]);
+        const formerPartnership = drawing.connectors.groupLines.find((line) =>
+          ['ego', 'formerPartner'].every((id) => line.partnerIds?.includes(id)),
+        )!;
+        expect(crossesSegment(lines[0]!, formerPartnership.segment)).toBe(
+          false,
+        );
+      });
+
+      it(`draw one dashed line from their line of descent to a younger sister, uncrossed (${label})`, () => {
+        const { nodes, edges } = siblingAdoption();
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const lines = adoptiveLinesInto(drawing, 'sis');
+        expect(lines).toHaveLength(1);
+        const stem = stemOf(drawing, 'tom', 'pat');
+        expect(stem.length).toBeGreaterThan(0);
+        expect(leavesStemAsT(lines[0]!, stem, drawing, 'tom')).toBe(true);
+        expect(faultsOfLinesInto(drawing, 'sis')).toEqual([]);
+      });
+
+      it(`with no children of their own draw one dashed line from the middle of their partnership line (${label})`, () => {
+        const { nodes, edges } = nieceAdoption('husband');
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const lines = adoptiveLinesInto(drawing, 'niece');
+        expect(lines).toHaveLength(1);
+        const [aunt, uncle] = [drawing.centre('aunt'), drawing.centre('uncle')];
+        const [start] = lines[0]!.points;
+        expect(start!.x).toBeCloseTo((aunt.x + uncle.x) / 2, 5);
+        expect(start!.y).toBeCloseTo(aunt.y, 5);
+        expect(faultsOfLinesInto(drawing, 'niece')).toEqual([]);
+      });
+    }
+  }
+});
+
+describe('relatives who adopt a child without a partner who adopts too', () => {
+  for (const size of SYMBOL_SIZES) {
+    for (const [shapes, everyone] of SHAPE_SETS) {
+      const label = `${shapes}, ${size}px symbols`;
+
+      it(`a lone grandparent keeps a dashed line of her own (${label})`, () => {
+        const { nodes, edges } = grandparentAdoption(['margaret']);
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const lines = adoptiveLinesInto(drawing, 'chloe');
+        expect(lines).toHaveLength(1);
+        expect(lines[0]!.endpointIds?.[0]).toBe('margaret');
+        expectAt(lines[0]!.points[0]!, drawing.centre('margaret'));
+      });
+
+      it(`an aunt and uncle who are not partners keep a dashed line each (${label})`, () => {
+        const { nodes, edges } = nieceAdoption('brother');
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const lines = adoptiveLinesInto(drawing, 'niece');
+        expect(
+          lines
+            .map((line) => line.endpointIds?.[0] ?? '')
+            .toSorted((a, b) => a.localeCompare(b)),
+        ).toEqual(['aunt', 'uncle']);
+        for (const line of lines) {
+          expectAt(line.points[0]!, drawing.centre(line.endpointIds![0]!));
+        }
+      });
+    }
   }
 });
