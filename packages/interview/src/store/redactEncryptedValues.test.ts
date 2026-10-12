@@ -55,6 +55,56 @@ describe('redacting encrypted values for development tools', () => {
     });
   });
 
+  // A protocol may give an encrypted variable any id, including the one an
+  // entity uses for what it records about its encrypted values.
+  it('hides an encrypted variable whose id is the metadata property name', () => {
+    const named = createEncryptedValueRedaction({
+      node: {
+        person: {
+          name: 'Person',
+          label: { en: 'Person' },
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            [entitySecureAttributesMeta]: {
+              name: entitySecureAttributesMeta,
+              label: 'secret',
+              type: 'text',
+              component: 'Text',
+              encrypted: true,
+            },
+          },
+        },
+      },
+    });
+
+    expect(
+      named.action({
+        type: 'NETWORK/UPDATE_NODE/pending',
+        meta: {
+          arg: {
+            nodeId: 'node-1',
+            attributePatch: {
+              set: { [entitySecureAttributesMeta]: 'Alice' },
+              unset: [],
+            },
+          },
+        },
+      }),
+    ).toEqual({
+      type: 'NETWORK/UPDATE_NODE/pending',
+      meta: {
+        arg: {
+          nodeId: 'node-1',
+          attributePatch: {
+            set: { [entitySecureAttributesMeta]: '[encrypted]' },
+            unset: [],
+          },
+        },
+      },
+    });
+  });
+
   it('leaves the action it copies as it was', () => {
     const attributeData = { name: 'Alice', age: 40 };
     const action = {
