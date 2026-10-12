@@ -166,7 +166,7 @@ Garage does not offer server-side encryption. Protocol assets are stored in the 
 
 #### Replacing the storage access key
 
-If the access key may have been exposed, replace it. Garage only adds keys and never removes them, so the old key keeps full access to your files until you delete it yourself. The replacement needs a new ID as well as a new secret: a deleted key ID can't be used again, and if you change only the secret of an existing key ID, Garage refuses to start.
+If the access key may have been exposed, replace it. Garage only adds keys and never removes them, so the old key keeps full access to your files until you delete it yourself. The replacement needs a new ID as well as a new secret: a deleted key ID can't be used again, and if you change only the secret of an existing key ID, Garage refuses to start. Fresco waits for Garage to report healthy before it starts, so in that case `docker compose up` stops with an error saying the `garage` container is unhealthy, and `docker compose -f docker-compose.prod.yml logs garage` names the key.
 
 1. Generate a new `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY` with the commands above, and note the old key ID.
 2. In `.env`, replace `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY` with the new values.

@@ -36,6 +36,7 @@ test('the release-test Garage runs the production image, command and configurati
   assert.deepEqual(testGarage.command, prodGarage.command);
   assert.deepEqual(testGarage.configs, prodGarage.configs);
   assert.deepEqual(testGarage.volumes, prodGarage.volumes);
+  assert.deepEqual(testGarage.healthcheck, prodGarage.healthcheck);
   const sources = (env) =>
     Object.fromEntries(
       Object.entries(env).map(([key, value]) => [key, interpolated(value)]),
@@ -57,10 +58,21 @@ test('the inline Garage configuration is byte-identical to production', () => {
   assert.deepEqual(Object.keys(releaseTest.configs), ['garage-config']);
 });
 
-test('the app waits for its storage as production does', () => {
+// Garage refuses to start when it cannot set itself up (a changed secret,
+// unreadable metadata), and Fresco's own health check never touches storage,
+// so starting the app regardless would report a healthy deployment in which
+// every file operation fails. The image has no shell: the check has to be the
+// Garage binary itself, in exec form.
+test('the app waits for its storage to report healthy', () => {
+  assert.deepEqual(prod.services.garage.healthcheck.test, [
+    'CMD',
+    '/garage',
+    'health',
+    '--quiet',
+  ]);
   for (const compose of [prod, releaseTest])
     assert.deepEqual(compose.services.fresco.depends_on.garage, {
-      condition: 'service_started',
+      condition: 'service_healthy',
     });
 });
 

@@ -33,7 +33,7 @@ services:
       postgres:
         condition: service_healthy
       garage:
-        condition: service_started
+        condition: service_healthy
       # Started AND listening before the app is, so a server-side analytics
       # request can never be refused rather than recorded.
       relay-sink:
@@ -107,7 +107,7 @@ services:
 
   # The bundled Garage of docker-compose.prod.yml. Compose cannot `extends`
   # a service whose configs live in another file, so the image, command,
-  # environment and config below are copies — and
+  # environment, config and healthcheck below are copies — and
   # scripts/release-test/fresco-release-test-storage.test.mjs fails if any of
   # them drifts from the production file. What differs is only what a
   # localhost stack needs instead of Traefik: the S3 port is published, and
@@ -126,6 +126,12 @@ services:
     configs:
       - source: garage-config
         target: /etc/garage.toml
+    healthcheck:
+      test: ['CMD', '/garage', 'health', '--quiet']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     # Browsers on the host PUT and GET directly through presigned URLs signed
     # for this published port (the fresco service's S3_PUBLIC_URL).
     ports:
