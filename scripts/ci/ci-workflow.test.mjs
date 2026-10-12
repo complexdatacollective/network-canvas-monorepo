@@ -2555,3 +2555,48 @@ test('every production build that uploads source maps gets the credentials', () 
     );
   }
 });
+
+test('only the production Fresco build on Netlify migrates the database', () => {
+  // Deploy previews and branch deploys read the production DATABASE_URL. A
+  // preview of the schema-9 branch that ran setup-database.ts migrated the
+  // sandbox's protocols and interviews to a schema main refuses to run, and
+  // every interview link on the live deployment failed (12 Oct 2026).
+  const toml = readFileSync(
+    new URL('../../apps/fresco/netlify.toml', import.meta.url),
+    'utf8',
+  );
+
+  const commands = new Map();
+  let section = null;
+  for (const line of toml.split('\n')) {
+    const header = /^\[([^\]]+)\]\s*$/.exec(line);
+    if (header) {
+      section = header[1];
+      continue;
+    }
+    const command = /^command\s*=\s*"([^"]*)"\s*$/.exec(line);
+    if (command && section) commands.set(section, command[1]);
+  }
+
+  const migrates = (command) => {
+    const script = /^pnpm (?:run )?([\w:-]+)$/.exec(command)?.[1];
+    assert.ok(script, `"${command}" is not a pnpm script call`);
+    const body = frescoPackage.scripts[script];
+    assert.ok(body, `apps/fresco/package.json has no "${script}" script`);
+    return body.includes('setup-database');
+  };
+
+  assert.ok(
+    migrates(commands.get('build')),
+    'the production build must still run setup-database.ts',
+  );
+  for (const context of ['context.deploy-preview', 'context.branch-deploy']) {
+    const command = commands.get(context);
+    assert.ok(command, `${context} must override the production build command`);
+    assert.equal(
+      migrates(command),
+      false,
+      `${context} must not run setup-database.ts against the shared database`,
+    );
+  }
+});
