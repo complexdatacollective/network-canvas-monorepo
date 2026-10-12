@@ -267,9 +267,9 @@ describe('minimizeCrossings', () => {
   it('reflects a frozen sibship block to reach the mirror orientation', () => {
     // Two intermarrying sibships form ONE gen-II block whose couples' left/right
     // orientation is frozen by ascending node index. The barycentric sweeps only
-    // reorder whole blocks, never reflect one, so without the block-reversal pass
-    // this ordering keeps a spurious crossing (2). The reflection pass reaches the
-    // mirror orientation that removes it.
+    // reorder whole blocks, never reflect one, so without the seating search
+    // this ordering keeps a spurious crossing (2). The search turns the block
+    // round, reaching the mirror orientation that removes it.
     const graph = buildPedigreeGraph(twoSibshipIntermarriage);
     const ordering = minimizeCrossings(graph);
 

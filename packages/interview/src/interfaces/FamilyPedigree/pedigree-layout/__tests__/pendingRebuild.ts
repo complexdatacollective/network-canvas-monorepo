@@ -8,15 +8,10 @@ import { it } from 'vitest';
  * this list; the list, and this module, go once the rebuild is complete.
  */
 const PENDING = new Set<string>([
-  'have each run’s donor seated on its side, the outer runs’ outermost',
   'seats a donor who raises another child where their lines cross least, recorded ego, ruby, theo (87px symbols)',
   'seats a donor who raises another child where their lines cross least, recorded ego, ruby, theo (96px symbols)',
   'seats a donor who raises another child where their lines cross least, recorded theo, ego, ruby (87px symbols)',
   'seats a donor who raises another child where their lines cross least, recorded theo, ego, ruby (96px symbols)',
-  'seats each outer run’s donor on its run’s side (87px symbols)',
-  'seats each outer run’s donor on its run’s side (96px symbols)',
-  'seats the birth parent beside her partner and the other birth parent (chloe first, then tyler, 87px symbols)',
-  'seats the birth parent beside her partner and the other birth parent (chloe first, then tyler, 96px symbols)',
   'two siblings adopted together, with different birth parents (squares)',
   'two siblings adopted together, with the same birth parents (circles)',
   'two siblings adopted together, with the same birth parents (squares)',
@@ -47,8 +42,6 @@ const PENDING = new Set<string>([
   'draw one dashed line from their line of descent to a younger sister, uncrossed (all squares, 96px symbols)',
   'draw one dashed line from their line of descent to a younger sister, uncrossed (mixed shapes, 87px symbols)',
   'draw one dashed line from their line of descent to a younger sister, uncrossed (mixed shapes, 96px symbols)',
-  'draws their lines down from each of them, joined before the child (chloe first, then tyler, 87px symbols)',
-  'draws their lines down from each of them, joined before the child (chloe first, then tyler, 96px symbols)',
   'keeps 2 lines into a square left of its line of descent, in order and apart',
   'keeps 3 lines into a circle left of its line of descent, in order and apart',
   'one donor to a mother and a father (circles)',
