@@ -43,8 +43,8 @@ export const test = base.extend<ArchitectFixtures>({
   // render) and cover every page the context ever opens, second tabs and
   // popups included. Whatever they do not answer is aborted and recorded, and
   // that record is asserted empty here in teardown. A spec that builds its own
-  // context (`00-sample-protocol.spec.ts`) has to do the same by hand. What is
-  // answered, and why, is documented in `mapbox-mocks.ts`.
+  // context has to do the same by hand. What is answered, and why, is
+  // documented in `mapbox-mocks.ts`.
   context: async ({ context }, use) => {
     const escaped = await installMapboxMocks(context);
     await use(context);

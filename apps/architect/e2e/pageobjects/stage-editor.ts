@@ -147,7 +147,7 @@ export class StageEditor {
   // Tiptap's mark input rules as typed. The SAVED string is the current
   // serializer's canonical form (`- ` bullets, renumbered ordered lists,
   // escaped punctuation), NOT the typed bytes — compare round-tripped
-  // documents, not raw strings (see helpers/normalize-protocol.ts).
+  // documents, not raw strings (see helpers/normalize-stage.ts).
   async fillRichTextMarkdown(
     ariaLabel: string,
     markdown: string,
