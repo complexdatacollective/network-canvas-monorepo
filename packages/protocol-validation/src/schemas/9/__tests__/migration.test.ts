@@ -5,6 +5,7 @@ import { MigrationResultInvalidError } from '../../../migration/errors.ts';
 import {
   getMigrationInfo,
   migrateProtocol,
+  migrateProtocolWithSessions,
 } from '../../../migration/migrate-protocol.ts';
 import { createBaseProtocol, localized } from '../../../utils/test-utils.ts';
 import validateProtocol from '../../../validation/validate-protocol.ts';
@@ -607,6 +608,73 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
       skipLogic: { filter: { rules: [rule] } },
     });
     expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+  });
+
+  it('rewrites a rule that names a value merged into one of another type', () => {
+    const protocol = protocolWithCategoryValues([1, 'work', '1']);
+    const rule = (value: unknown) => ({
+      type: 'node' as const,
+      id: 'rule-one',
+      options: {
+        type: 'person',
+        attribute: 'category',
+        operator: 'INCLUDES',
+        value,
+      },
+    });
+    const [nameGenerator, ...rest] = protocol.stages;
+    const migrated = migrateProtocol(
+      asSchema8Protocol({
+        ...protocol,
+        stages: [
+          {
+            ...nameGenerator,
+            skipLogic: { action: 'SKIP', filter: { rules: [rule(['1'])] } },
+          },
+          ...rest,
+        ],
+      }),
+      9,
+    );
+
+    expect(migrated.stages[0]).toMatchObject({
+      skipLogic: { filter: { rules: [rule([1])] } },
+    });
+  });
+
+  it('rewrites recorded answers that hold a value merged into one of another type', () => {
+    const { migrateSession } = migrateProtocolWithSessions(
+      asSchema8Protocol(protocolWithCategoryValues([1, 'work', '1'])),
+    );
+    const person = (_uid: string, category: unknown) => ({
+      _uid,
+      type: 'person',
+      attributes: { category },
+    });
+    const result = migrateSession({
+      network: {
+        ego: { _uid: 'ego', attributes: {} },
+        nodes: [
+          person('a', ['1']),
+          person('b', ['1', 1, 'work']),
+          person('c', [1]),
+          { _uid: 'd', type: 'place', attributes: { category: ['1'] } },
+        ],
+        edges: [],
+      },
+      stageMetadata: {},
+      currentStep: 0,
+    });
+    if (!result.success) throw result.error;
+
+    expect(
+      result.session.network.nodes.map(({ attributes }) => attributes),
+    ).toEqual([
+      { category: [1] },
+      { category: [1, 'work'] },
+      { category: [1] },
+      { category: ['1'] },
+    ]);
   });
 
   // The attribute only ever offered one answer, and no repair can invent a

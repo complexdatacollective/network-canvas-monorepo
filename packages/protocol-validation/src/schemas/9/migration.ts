@@ -3,6 +3,7 @@ import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
 import { escapeMessageText } from '../../localization/messageSyntax.ts';
 import { createMigration } from '../../migration/index.ts';
+import type { SessionDocument } from '../../migration/session.ts';
 import { collectEntityAttributeReferences } from '../../utils/collectEntityAttributeReferences.ts';
 import {
   collectLocalizedStringSites,
@@ -166,9 +167,10 @@ const removeContradictionsOf = (
  * the same value: they store the same answer, so a participant's choice
  * between them cannot be recovered, and their export columns collide. Each
  * later option whose value repeats an earlier one goes, compared as schema 9
- * compares them (`optionValueKey`), so `1` and `"1"` collide. The option kept
- * has the value the removed one had, so answers already recorded, and filters
- * and skip logic that name it, still refer to an option.
+ * compares them (`optionValueKey`), so `1` and `"1"` collide. Where the two
+ * are exactly equal, answers already recorded, and filters and skip logic
+ * that name the value, still refer to the option kept; where they differ in
+ * type, `remapMergedOptionValues` and the session step rewrite them to it.
  */
 const removeDuplicateOptionValues = (codebook: unknown) => {
   for (const variables of variableRecordsOf(codebook)) {
@@ -193,6 +195,140 @@ const removeDuplicateOptionValues = (codebook: unknown) => {
       changed.add(id);
     }
     if (changed.size > 0) removeContradictionsOf(variables, changed);
+  }
+};
+
+type OptionValue = string | number;
+
+/**
+ * An attribute whose options `removeDuplicateOptionValues` merges across
+ * types, and each value it removes mapped to the value of the option kept:
+ * options `1` then `"1"` map `"1"` to `1`. Answers and rules compare option
+ * values exactly, so either still holding the removed value would name no
+ * option.
+ */
+type MergedOptionValues = {
+  entity: 'node' | 'edge' | 'ego';
+  type: string | undefined;
+  attribute: string;
+  kept: ReadonlyMap<OptionValue, OptionValue>;
+};
+
+const mergedValuesOf = (options: unknown[]) => {
+  const first = new Map<string, OptionValue>();
+  const kept = new Map<OptionValue, OptionValue>();
+  for (const option of options) {
+    const value = isRecord(option) ? option.value : undefined;
+    if (typeof value !== 'string' && typeof value !== 'number') continue;
+    const key = optionValueKey(value);
+    const firstValue = first.get(key);
+    if (firstValue === undefined) first.set(key, value);
+    else if (firstValue !== value) kept.set(value, firstValue);
+  }
+  return kept;
+};
+
+const mergedOptionValuesOf = (codebook: unknown): MergedOptionValues[] => {
+  const merged: MergedOptionValues[] = [];
+  const visit = (
+    entity: MergedOptionValues['entity'],
+    type: string | undefined,
+    variables: unknown,
+  ) => {
+    if (!isRecord(variables)) return;
+    for (const [attribute, variable] of Object.entries(variables)) {
+      if (!isRecord(variable) || !Array.isArray(variable.options)) continue;
+      if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
+        continue;
+      }
+      const kept = mergedValuesOf(variable.options);
+      if (kept.size > 0) merged.push({ entity, type, attribute, kept });
+    }
+  };
+  if (!isRecord(codebook)) return merged;
+  for (const entity of ['node', 'edge'] as const) {
+    const types = codebook[entity];
+    if (!isRecord(types)) continue;
+    for (const [type, definition] of Object.entries(types)) {
+      if (isRecord(definition)) visit(entity, type, definition.variables);
+    }
+  }
+  if (isRecord(codebook.ego)) visit('ego', undefined, codebook.ego.variables);
+  return merged;
+};
+
+/**
+ * An answer or rule value with each removed value replaced by the value
+ * kept. A categorical answer that held both keeps the value once.
+ */
+const withKeptValues = (
+  value: unknown,
+  kept: ReadonlyMap<OptionValue, OptionValue>,
+): unknown => {
+  const keptValue = (item: unknown) =>
+    typeof item === 'string' || typeof item === 'number'
+      ? (kept.get(item) ?? item)
+      : item;
+  return Array.isArray(value)
+    ? [...new Set(value.map(keptValue))]
+    : keptValue(value);
+};
+
+/**
+ * Rewrites the value of every filter and skip logic rule, wherever a stage
+ * holds one, that names a removed option value to the value kept.
+ */
+const remapMergedOptionValues = (
+  protocol: unknown,
+  merged: readonly MergedOptionValues[],
+) => {
+  if (merged.length === 0 || !isRecord(protocol)) return;
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (!isRecord(value)) return;
+    const { type: entity, options } = value;
+    if (isRecord(options) && typeof options.attribute === 'string') {
+      const attribute = merged.find(
+        (candidate) =>
+          candidate.entity === entity &&
+          candidate.attribute === options.attribute &&
+          (entity === 'ego' || candidate.type === options.type),
+      );
+      if (attribute && 'value' in options) {
+        options.value = withKeptValues(options.value, attribute.kept);
+      }
+    }
+    Object.values(value).forEach(visit);
+  };
+  visit(protocol.stages);
+};
+
+/**
+ * Rewrites a session's answers that hold a removed option value to the
+ * value kept, reading which values were merged from the schema 8 codebook.
+ */
+const remapMergedOptionAnswers = (
+  network: SessionDocument['network'],
+  schema8Protocol: unknown,
+) => {
+  const merged = mergedOptionValuesOf(
+    isRecord(schema8Protocol) ? schema8Protocol.codebook : undefined,
+  );
+  for (const { entity, type, attribute, kept } of merged) {
+    const entities =
+      entity === 'ego'
+        ? [network.ego]
+        : network[entity === 'node' ? 'nodes' : 'edges'].filter(
+            (candidate) => candidate.type === type,
+          );
+    for (const { attributes } of entities) {
+      if (isRecord(attributes) && attribute in attributes) {
+        attributes[attribute] = withKeptValues(attributes[attribute], kept);
+      }
+    }
   }
 };
 
@@ -702,6 +838,7 @@ const migrationV8toV9 = createMigration({
     removeContradictoryPassphraseRules(migrated);
     removeEncryptedAttributeComparisons(migrated);
     // Before the pedigree conversion, which reads the options it keeps.
+    remapMergedOptionValues(migrated, mergedOptionValuesOf(migrated.codebook));
     removeDuplicateOptionValues(migrated.codebook);
     // Before the codebook labels and the localization pass, so the attribute
     // and stage the conversion adds are labelled and localized with the rest.
@@ -762,6 +899,7 @@ const migrationV8toV9 = createMigration({
   // on that screen past the end of the stages, so it resumes on the finish
   // stage instead.
   migrateSession: (session, { before, after }) => {
+    remapMergedOptionAnswers(session.network, before);
     resumeAtAppendedFinishStage(session, after);
     resumeUnstartedPedigreeAtIntroduction(session, after, before);
     migrateFamilyPedigreeSessionRecords(session, after, before);
