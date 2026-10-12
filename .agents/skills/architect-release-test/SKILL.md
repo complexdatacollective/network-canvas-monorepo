@@ -10,20 +10,23 @@ description: Run the agent-driven release smoke test of the deployed Architect d
 The saved workflow `.claude/workflows/architect-release-test.js` drives the
 deployed Architect dev site (https://architect.networkcanvas.dev, which
 tracks `main`) through a release-tester checklist using browser agents in
-the in-app Browser pane, and returns a structured verdict. Release gates
+the in-app Browser pane, has agents rebuild the entire sample protocol
+through Architect's own UI in a Playwright browser, and returns a structured
+verdict. Release gates
 consume the result's `promotable` field — true only for a full-coverage
 pass with the expected version pinned and matched. This skill is the
 command wrapper: parse the arguments, run the workflow, and report the
 verdict.
 
-This command requires Claude Code's Workflow runtime and Browser pane.
+This command requires Claude Code's Workflow runtime, the Browser pane, and
+the Playwright MCP plugin (`mcp__plugin_playwright_playwright__*`).
 (Codex: you cannot run this workflow — say so and stop; the checklist
 itself is readable in the workflow file if a person wants to perform a
 manual pass.)
 
 ## Arguments
 
-`/architect-release-test [--url <url>] [--slices <key,key>] [--expect-version <semver>] [--expect-commit <sha>] [--unpinned]`
+`/architect-release-test [--url <url>] [--slices <key,key>] [--expect-version <semver>] [--expect-commit <sha>] [--sample-ref <ref>] [--unpinned]`
 
 | Argument           | Maps to args.…   | Default                                                 |
 | ------------------ | ---------------- | ------------------------------------------------------- |
@@ -31,10 +34,25 @@ manual pass.)
 | `--slices`         | `slices` (array) | omitted — full run (a filtered run is never promotable) |
 | `--expect-version` | `expectVersion`  | derived from `origin/main` — default URL only           |
 | `--expect-commit`  | `expectCommit`   | derived from `origin/main` — default URL only           |
+| `--sample-ref`     | `sampleRef`      | `expectCommit`, else `origin/main`                      |
 | `--unpinned`       | —                | skip both pins; the run cannot be promotable            |
 
 Slice keys: `protocol-lifecycle`, `stages-and-timeline`,
-`codebook-and-summary`, `stage-preview`. Reachability always runs.
+`codebook-and-summary`, `stage-preview`, `sample-protocol-build`.
+Reachability always runs.
+
+**The sample-protocol build** is the core end-user check. An analyst agent
+reads `packages/protocols/sample` at `sampleRef` (the commit the deployment
+builds, so the specification matches the app under test) and writes a
+stage-by-stage build plan. Sonnet builder agents then recreate every stage,
+codebook entry and resource by driving Architect's UI the way a person
+would: they upload the assets through the file chooser and learn the UI
+from the screens and the end-user docs, not the app source. An Opus auditor
+downloads the result as a user would, validates it, and compares it with the
+canonical protocol, attributing each difference to the app, to a driver
+slip, or to data no user sets. One repair pass retries what the drivers got
+wrong before the audit is final. App defects become failed checks, which an
+independent verifier reproduces before they can fail the release.
 
 **Deriving the default pins (default URL only).** The dev deployment
 builds `main`, so unless the user supplied the flags or `--unpinned`, pin
@@ -67,14 +85,21 @@ a commit-pinned run fails its build-commit check against them by design
 ## Running it
 
 Invoke the Workflow tool with
-`{ name: 'architect-release-test', args: { url?, slices?, expectVersion?, expectCommit? } }`
+`{ name: 'architect-release-test', args: { url?, slices?, expectVersion?, expectCommit?, sampleRef? } }`
 (or `scriptPath: '.claude/workflows/architect-release-test.js'`). Notes:
 
-- A full run takes roughly 25–35 minutes; slices run sequentially by
-  design (the Browser-pane tabs share one origin profile and Architect
-  stores protocols in IndexedDB). Never start two runs concurrently.
+- A full run takes as long as the sample-protocol build — expect a couple
+  of hours. The Browser-pane slices run sequentially by design (the pane's
+  tabs share one origin profile and Architect stores protocols in
+  IndexedDB) while the build runs alongside them in its own Playwright
+  browser. Never start two runs concurrently.
 - The run is read-only for real data: agents only touch protocols they
   create with an `RT` name prefix and delete them afterwards.
+- The build's files (extracted specification, renamed uploads, exported
+  `.netcanvas`) stay under the git-ignored `.playwright-mcp/architect-sample-*`
+  directory named in `sampleBuild.workDir`, for inspection; delete it when
+  done. Playwright can only upload from inside the repository, which is why
+  it lives there.
 - Commit-pinned runs re-fetch `/build-info.json` after all other phases: a
   deployment that changed mid-run holds the verdict at `blocked`, because
   the collected evidence may describe a build that is no longer live.
@@ -99,6 +124,8 @@ Lead with `promotable`, then the verdict:
   string names the gap; relay it and, if the user is gating a release,
   offer the full pinned re-run.
 
-Always report `deployedVersion` and `deployedCommit`, and, when relevant, the `notes` entries —
+Always report `deployedVersion` and `deployedCommit`, the `sampleBuild`
+stage table (how many stages matched the specification), and, when
+relevant, the `notes` entries —
 they carry harness observations and occasionally real app findings worth
 spinning off.

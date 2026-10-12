@@ -235,13 +235,13 @@ documentation. CI and Netlify consume those files without regenerating them.
 Playwright's arm64 Linux Chromium crashes (`SIGILL`, reported as
 `Target crashed`) as soon as a decoded video frame is presented — a visible
 `<video>`, or `drawImage` of one onto a canvas. Decode itself is fine, and
-Firefox and WebKit are unaffected. So on an Apple-silicon dev VM,
-`apps/architect`'s `00-sample-protocol.spec.ts` always stops at step 04, the
-first `.mov` upload, and its remaining steps report "did not run".
+Firefox and WebKit are unaffected. So on an Apple-silicon dev VM, any Chromium
+e2e step that presents a video frame crashes the page and the rest of that test
+reports "did not run".
 
 This is an environment limitation, diagnosed and recorded in
 `dev-vm/README.md`'s troubleshooting list; it is not a product or test defect.
-CI runs on x86_64 and executes the whole spec, so that spec's video coverage is
-real but CI-only. Do not skip, weaken or re-point the spec to accommodate a
-local run, and do not spend time re-diagnosing it: record it as known and rely
-on CI for the verdict.
+CI runs on x86_64 and executes the whole spec, so video coverage is real but
+CI-only. Do not skip, weaken or re-point a spec to accommodate a local run, and
+do not spend time re-diagnosing it: record it as known and rely on CI for the
+verdict.
