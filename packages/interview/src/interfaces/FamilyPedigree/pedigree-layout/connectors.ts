@@ -39,6 +39,14 @@ const TWIN_LABEL_SIZE = 0.3;
 /** How far above the children's row a run's sub-bar runs, as a fraction of
  * the leg from the sibling bar down to the row. */
 const SUB_BAR_RISE = 0.2;
+/** The same for a run whose stem two or more lines meet: lower, so that
+ * the lowest of them comes in clear of the sub-bar. */
+const CROWDED_SUB_BAR_RISE = 0.1;
+/** How far the lines meeting a run's stem keep from the sibling bar above
+ * and the sub-bar below, as fractions of a symbol's height: a line coming
+ * in nearer the sub-bar runs beside it on its way. */
+const STEM_TOP_CLEARANCE = 0.12;
+const STEM_BOTTOM_CLEARANCE = 0.27;
 
 /** A run of a sibship (see `forkRuns` in `computeConnectors`). */
 type SibshipRunPlan = {
@@ -494,7 +502,6 @@ export function computeConnectors(
     avoidX?: number,
   ) => {
     const barY = i - legh;
-    const bottomY = i - legh * SUB_BAR_RISE;
     const sets = columns.map((j) => helpersAt(i, j));
     const common = new Set(
       (sets[0] ?? []).filter((h) => sets.every((set) => set.includes(h))),
@@ -529,7 +536,10 @@ export function computeConnectors(
         helpers: new Set(key.split(',')),
         stemX: targets[k]!,
         topY: barY,
-        bottomY,
+        bottomY:
+          i -
+          legh *
+            (key.split(',').length > 1 ? CROWDED_SUB_BAR_RISE : SUB_BAR_RISE),
       };
       runs.push(current);
     });
@@ -558,6 +568,7 @@ export function computeConnectors(
           stemX;
       }
       run.stemX = stemX;
+      const { bottomY } = run;
       for (const k of run.ks) {
         uplines[k] = { ...uplines[k]!, y2: bottomY };
         joinOf[k] = stemX;
@@ -1621,7 +1632,8 @@ export function computeConnectors(
   // Where each line joining a run's stem ends on it (by plan): the lines to
   // one run spread down the stem between the sibling bar and the sub-bar,
   // a fifth of a symbol apart at least, the line from the parent nearest
-  // the stem highest, so that lines from one side need not cross.
+  // the stem highest, so that lines from one side need not cross; raised,
+  // where the stem has room, until the lowest keeps clear of the sub-bar.
   const junctionOf = new Map<number, number>();
   const byRun = groupBy(
     plans.flatMap((plan, index) => (plan.run ? [index] : [])),
@@ -1640,8 +1652,19 @@ export function computeConnectors(
       0.22 * boxh,
     );
     const middle = (run.topY + run.bottomY) / 2;
+    const half = ((ordered.length - 1) / 2) * spacing;
+    const rise = Math.max(
+      0,
+      Math.min(
+        middle + half - (run.bottomY - STEM_BOTTOM_CLEARANCE * boxh),
+        middle - half - (run.topY + STEM_TOP_CLEARANCE * boxh),
+      ),
+    );
     ordered.forEach((index, m) => {
-      junctionOf.set(index, middle + (m - (ordered.length - 1) / 2) * spacing);
+      junctionOf.set(
+        index,
+        middle - rise + (m - (ordered.length - 1) / 2) * spacing,
+      );
     });
   }
 

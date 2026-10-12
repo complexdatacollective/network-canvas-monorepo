@@ -449,6 +449,19 @@ const families: Record<string, { people: string[]; links: PedigreeLink[] }> = {
       parent('theoDonor', 'donor', 'theo'),
     ],
   },
+  'a sperm donor and a surrogate for two of three half-siblings': {
+    people: ['ego', 'hannah', 'paul', 'carrier', 'ruby', 'theo', 'theoDonor'],
+    links: [
+      parent('hannah', 'biological', 'ego'),
+      parent('paul', 'donor', 'ego'),
+      parent('carrier', 'surrogate', 'ego', true),
+      parent('hannah', 'biological', 'ruby'),
+      parent('paul', 'donor', 'ruby'),
+      parent('carrier', 'surrogate', 'ruby', true),
+      parent('hannah', 'biological', 'theo', true),
+      parent('theoDonor', 'donor', 'theo'),
+    ],
+  },
   'a granddaughter adopted by her grandparents, with a former partner': {
     people: ['ego', 'margaret', 'hugh', 'ian', 'chloe', 'formerPartner'],
     links: [

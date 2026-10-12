@@ -42,6 +42,13 @@ import {
  * measures it, and as the e2e matrix renders it at 1280×720. */
 const SYMBOL_SIZES = [96, 87];
 
+/** The shapes the codebook gives (circles and squares by sex), or everyone
+ * drawn as a square. */
+const SHAPE_SETS = [
+  ['mixed shapes', undefined],
+  ['all squares', 'square'],
+] as const;
+
 /** The shape mapping the e2e matrix's codebook gives a person. */
 const SHAPE: NodeDefinition['shape'] = {
   default: 'diamond',
@@ -335,6 +342,32 @@ describe('a donor’s line meets the line of descent of the children they gave t
     return { nodes, edges };
   }
 
+  /** drawingCoverage's "a sperm donor and a surrogate for two of three
+   * half-siblings": Hannah's first two children were conceived with Paul
+   * and carried by a surrogate, so two lines meet the one stem of their
+   * run. */
+  function donorAndSurrogate() {
+    const nodes = [
+      person('ego', { name: 'Maya', sex: ['male'], isEgo: true }),
+      mother(),
+      man('paul', 'Paul'),
+      woman('carrier'),
+      woman('ruby', 'Ruby'),
+      man('theo', 'Theo'),
+      man('theoDonor'),
+    ];
+    const edges = [
+      ...['ego', 'ruby'].flatMap((child) => [
+        link('hannah', child, 'biological', { carrier: false }),
+        donor('paul', child),
+        link('carrier', child, 'surrogate', { carrier: true }),
+      ]),
+      birth('theo'),
+      donor('theoDonor', 'theo'),
+    ];
+    return { nodes, edges };
+  }
+
   /** Three donors, each to a run of the sibship: the middle run's donor
    * comes in over the sibling bar. */
   function threeDonors() {
@@ -386,17 +419,21 @@ describe('a donor’s line meets the line of descent of the children they gave t
     'a couple with a surrogate for two of three children': coupleWithSurrogate,
     'three donors to three runs of a sibship': threeDonors,
     'one donor to every child': oneDonorToAll,
+    'a sperm donor and a surrogate for two of three half-siblings':
+      donorAndSurrogate,
   };
 
   for (const size of SYMBOL_SIZES) {
     for (const [name, family] of Object.entries(families)) {
-      it(`passes the strict line checks: ${name} (${size}px symbols)`, () => {
-        const { nodes, edges } = family();
-        const drawing = drawAsInterface(nodes, edges, size);
-        expect(
-          strictLineFaults(drawing, helperTiesOf(edges), idsOf(nodes)),
-        ).toEqual([]);
-      });
+      for (const [shapes, everyone] of SHAPE_SETS) {
+        it(`passes the strict line checks: ${name} (${shapes}, ${size}px symbols)`, () => {
+          const { nodes, edges } = family();
+          const drawing = drawAsInterface(nodes, edges, size, everyone);
+          expect(
+            strictLineFaults(drawing, helperTiesOf(edges), idsOf(nodes)),
+          ).toEqual([]);
+        });
+      }
     }
 
     // Luis raises the two donor-conceived children, so his own lines to
@@ -597,11 +634,6 @@ const expectAt = (p: { x: number; y: number }, q: { x: number; y: number }) => {
 
 const crossesSegment = (line: AuxiliaryConnector, segment: LineSegment) =>
   segmentsOf(line.points).some((piece) => crossing(piece, segment));
-
-const SHAPE_SETS = [
-  ['mixed shapes', undefined],
-  ['all squares', 'square'],
-] as const;
 
 describe('a couple who adopt a relative’s child', () => {
   for (const size of SYMBOL_SIZES) {
