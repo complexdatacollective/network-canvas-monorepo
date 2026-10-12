@@ -115,7 +115,11 @@ How you configure storage depends on which compose file you chose. With the bund
 
 Used by [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml). [Garage](https://garagehq.deuxfleurs.fr) is a lightweight S3-compatible object store. It runs as a **private** container with no published ports. Browsers reach it through the bundled Traefik proxy via a path route (`/assets/*` → `garage:3900`) on your Fresco domain — path-style S3 URLs put the bucket name in the path. Garage sets itself up when it starts: it creates your access key and the `assets` bucket if they don't exist yet. Fresco is given the same key, so you don't enter any storage settings yourself, and the key stays in `.env` rather than in Fresco's database.
 
-Earlier versions of this compose file bundled MinIO; it now bundles Garage.
+<TipBox>
+
+Earlier versions of this compose file bundled MinIO; it now bundles Garage. **If your deployment already runs the bundled MinIO, don't replace your compose file with this one.** Your files are not moved to Garage: they stay in the `minio` Docker volume, and protocols that use them stop working. Keep your current compose file, or move your files to another S3-compatible service yourself and switch to [`docker-compose.external-s3.yml`](#external-s3-compatible-storage).
+
+</TipBox>
 
 This configuration needs **Docker Engine 25 or newer** and **Docker Compose v2.23.1 or newer**, because Garage's configuration is written inline in the compose file, which older versions cannot read.
 
@@ -256,3 +260,5 @@ To update, pull the latest image and recreate the stack (substitute the compose 
 docker compose -f docker-compose.external-s3.yml pull
 docker compose -f docker-compose.external-s3.yml up -d
 ```
+
+This updates the Fresco image but keeps your compose file as it is. If your deployment runs the bundled MinIO, read [Self-hosted storage with Garage](#self-hosted-storage-with-garage) before you replace that file.
