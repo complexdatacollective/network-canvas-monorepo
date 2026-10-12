@@ -72,7 +72,7 @@ const renderAlert = (store: TestStore) =>
   );
 
 const MISSING_NOTE =
-  'Some text isn’t translated into French yet. Participants see it in another language instead.';
+  'Some wording isn’t translated into French yet. Participants see it in another language instead.';
 
 const DISMISS_BUTTON = { name: 'Dismiss the note about missing translations' };
 
@@ -104,7 +104,7 @@ describe('LocalizationAlert', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Some text isn’t translated into French and Tibetan yet. Participants see it in another language instead.',
+        'Some wording isn’t translated into French and Tibetan yet. Participants see it in another language instead.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(

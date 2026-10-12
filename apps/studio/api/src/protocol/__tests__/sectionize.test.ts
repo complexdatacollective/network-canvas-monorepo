@@ -94,7 +94,7 @@ describe('a new protocol', () => {
         outcome: 'completed',
       }),
     ]);
-    expect(protocol.interfaceText?.interview).toBeDefined();
+    expect(protocol.interfaceText?.navigation).toBeDefined();
     expect(sectionizeProtocol(protocol).settings).toMatchObject({
       interfaceText: protocol.interfaceText,
     });
@@ -123,7 +123,7 @@ describe('golden hashes', () => {
         "assets": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
         "codebook:edge:knows": "96ba2dfdd02dc597536433e6debfbdaec16f3ffc1738b0377515198ddaa30193",
         "codebook:node:person": "508208bef9a636733579c7062b00429e206a0410d991a505b5da78b4be9c3fd9",
-        "settings": "9a02dc3bd1395039c988f957e0080b5321610f3732dcaac69d2999578c0e5d7d",
+        "settings": "92399b6874ba843f857bdb6b6529531390bea9828151aee29210c970873f3429",
         "stage:finish": "be81f328aa5affc07aa5d80f80fd090920c21934337aeba90383b1d507acb1be",
         "stage:nameGenerator1": "da989aa0f95cc6223c4ae6e1e8eecd53698a900bae557d0dae58ba43948f9511",
         "stage:sociogram1": "f20a610875c24d940f59bd6d68d52e3b0453fe778d1a4af9a3a09a7926b0e3a9",
@@ -131,7 +131,7 @@ describe('golden hashes', () => {
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"ac0de533e4816fb53225fe076b6c3d7e94db32a4360449f230675c59a28ebac7"`,
+      `"d23a88bd5850a18d36924f4bdcc6d5f98848e471c42d4e804b26175ffe4af52e"`,
     );
   });
 });

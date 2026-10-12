@@ -430,7 +430,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
     // The interview's shared wording, which the migration to version 9
     // supplies, is stored with it.
     expect(updateCall.data).toHaveProperty(
-      'interfaceText.interview.continue.en',
+      'interfaceText.navigation.continue.en',
       'Continue',
     );
 
@@ -1390,12 +1390,12 @@ describe('languages in the deploy migration', () => {
     // The wording the migration supplied, as the researcher wrote it in
     // French and German, with one entry of their own.
     const translated = inFrenchAndGerman(current.interfaceText) as {
-      interview: Record<string, unknown>;
+      navigation: Record<string, unknown>;
     };
     const interfaceText = {
       ...translated,
-      interview: {
-        ...translated.interview,
+      navigation: {
+        ...translated.navigation,
         continue: { fr: 'Question suivante', de: 'Nächste Frage' },
       },
     };
@@ -1430,8 +1430,8 @@ describe('languages in the deploy migration', () => {
     // The researcher's wording is kept, where normalizing would otherwise
     // supply Network Canvas's.
     expect(written).toHaveProperty(
-      'data.interfaceText.interview.continue',
-      interfaceText.interview.continue,
+      'data.interfaceText.navigation.continue',
+      interfaceText.navigation.continue,
     );
     expect(written).toHaveProperty('data.codebook', codebook);
     expect(written).toHaveProperty('data.stages', stages);

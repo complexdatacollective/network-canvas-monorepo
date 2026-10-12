@@ -25,20 +25,20 @@ const messages = defineMessages({
     id: 'architect.localization.localizationAlert.missingTitle',
     defaultMessage: 'Not everything is translated yet',
     description:
-      'Title of the informational notice on the stage list shown while some of the protocol’s text has no translation in one or more of its languages.',
+      'Title of the informational notice on the stage list shown while some of the protocol’s wording has no translation in one or more of its languages.',
   },
   missingDescription: {
     id: 'architect.localization.localizationAlert.missingDescription',
     defaultMessage:
-      'Some text isn’t translated into {languages} yet. Participants see it in another language instead.',
+      'Some wording isn’t translated into {languages} yet. Participants see it in another language instead.',
     description:
-      'Notice shown while some of the protocol’s text has no translation in one or more of its languages. languages is the list of those languages, already joined in the reader’s language, for example “French, German and Tibetan”.',
+      'Notice shown while some of the protocol’s wording has no translation in one or more of its languages. languages is the list of those languages, already joined in the reader’s language, for example “French, German and Tibetan”.',
   },
   showMissing: {
     id: 'architect.localization.localizationAlert.showMissing',
     defaultMessage: 'Show missing translations',
     description:
-      'Link in the note about missing translations on the stage list. It opens the translation table showing only the texts with a translation missing.',
+      'Link in the note about missing translations on the stage list. It opens the translation table showing only the localized strings with a translation missing.',
   },
   dismissMissing: {
     id: 'architect.localization.localizationAlert.dismissMissing',

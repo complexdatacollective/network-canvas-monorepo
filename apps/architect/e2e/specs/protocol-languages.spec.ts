@@ -45,16 +45,16 @@ const ALL_TEXT_ROWS = [
   'Finishing the interview › Confirmation question',
   'Finishing the interview › Finished notice',
   'Finishing the interview › If finishing fails',
-  'Throughout the interview › Exit button',
-  'Throughout the interview › Exit explanation',
-  'Throughout the interview › Screen error message',
-  'Throughout the interview › Missing item message',
-  'Throughout the interview › Back button',
-  'Throughout the interview › Continue button',
-  'Throughout the interview › Cancel button',
-  'Throughout the interview › Done button',
-  'Throughout the interview › Delete button',
-  'Throughout the interview › General error message',
+  'Interview navigation › Exit button',
+  'Interview navigation › Exit explanation',
+  'Interview navigation › Back button',
+  'Interview navigation › Continue button',
+  'Buttons › Cancel button',
+  'Buttons › Done button',
+  'Buttons › Delete button',
+  'Messages › Screen error message',
+  'Messages › Missing item message',
+  'Messages › Error message',
 ];
 
 /** The finish stage's finishing words, as Network Canvas supplies them. */
@@ -166,7 +166,7 @@ function translationTableDialog(page: Page): Locator {
 
 function translationTable(page: Page): Locator {
   return translationTableDialog(page).getByRole('table', {
-    name: /^Every text participants see/,
+    name: /^Everything participants see/,
   });
 }
 
@@ -187,7 +187,10 @@ function translationCell(
 }
 
 function textsToShow(page: Page): Locator {
-  return page.getByRole('combobox', { name: 'Texts to show', exact: true });
+  return page.getByRole('combobox', {
+    name: 'Translations to show',
+    exact: true,
+  });
 }
 
 test('adds a language, keeps the default language from being removed, translates its missing texts in the translation table, and lists languages alphabetically', async ({
@@ -210,7 +213,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(languageRows(page)).toHaveCount(1);
   await expect(english).toContainText('English');
   await expect(english.getByText('Default', { exact: true })).toBeVisible();
-  await expect(english).toContainText('20 of 20 texts translated');
+  await expect(english).toContainText('20 of 20 strings translated');
   // With nothing to translate into, there is no translation table.
   const openTable = page.getByRole('link', {
     name: 'Open translation table',
@@ -245,7 +248,7 @@ test('adds a language, keeps the default language from being removed, translates
 
   const french = languageRow(page, 'fr');
   await expect(french).toContainText('French');
-  await expect(french).toContainText('14 of 20 texts translated');
+  await expect(french).toContainText('14 of 20 strings translated');
   await expect(french.getByText('Default', { exact: true })).toHaveCount(0);
   await expect(
     french.getByText('Missing translations', { exact: true }),
@@ -262,7 +265,7 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(
     page.getByRole('region', { name: 'Protocol languages' }),
   ).toHaveAccessibleDescription(
-    /They see each text in the first of the following languages that has a translation of it:/,
+    /Where something is not translated, they see the first of the following languages that has a translation:/,
   );
   // A language with no translations of its own strands nothing, so it can go.
   await expect(removeButton(page, 'French')).toBeEnabled();
@@ -296,14 +299,14 @@ test('adds a language, keeps the default language from being removed, translates
       });
     }
   }
-  expect(added.interfaceText?.interview?.back).toEqual({
+  expect(added.interfaceText?.navigation?.back).toEqual({
     en: 'Back',
     fr: 'Retour',
   });
 
   // Make French the default.
   await expect(defaultLanguage).toHaveAccessibleDescription(
-    'Participants see text in this language when it has no translation in a language they use.',
+    'Participants see this language wherever there is no translation in a language they use.',
   );
   await defaultLanguage.selectOption({ label: 'French' });
   await expect(french.getByText('Default', { exact: true })).toBeVisible();
@@ -349,7 +352,7 @@ test('adds a language, keeps the default language from being removed, translates
   // Nor can English, though it is no longer the default: its texts exist in
   // no other language yet.
   const strandedReason =
-    '6 texts exist only in English. Translate them into another language before removing English.';
+    '6 strings have a translation only in English. Translate them into another language before removing English.';
   await expect(removeEnglish).toBeDisabled();
   await expect(removeEnglish).toHaveAccessibleDescription(strandedReason);
   await removeEnglish.hover();
@@ -368,14 +371,14 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(translationTableDialog(page)).toBeVisible();
   await expect(
     translationTableDialog(page).getByRole('searchbox', {
-      name: 'Search texts and translations',
+      name: 'Search translations',
     }),
   ).toBeFocused();
   await textsToShow(page).selectOption({ label: 'Missing French' });
   await expect(page).toHaveURL(
     /\/protocol\/localization\?table=open&missing=fr$/,
   );
-  await expect(page.getByText('Showing 6 of 20 texts')).toBeVisible();
+  await expect(page.getByText('Showing 6 of 20 strings')).toBeVisible();
   const table = translationTable(page);
   await expect(table.locator('th[scope="row"]')).toHaveText(STAGE_TEXT_ROWS);
   // A stage is headed by its position, its name in the default language and
@@ -440,7 +443,7 @@ test('adds a language, keeps the default language from being removed, translates
     en: 'Thank you for taking part.',
     fr: 'Merci de votre participation.',
   });
-  await expect(french).toContainText('20 of 20 texts translated');
+  await expect(french).toContainText('20 of 20 strings translated');
   await expect(
     french.getByText('Missing translations', { exact: true }),
   ).toHaveCount(0);
@@ -450,7 +453,7 @@ test('adds a language, keeps the default language from being removed, translates
   await openTable.click();
   await textsToShow(page).selectOption({ label: 'Missing French' });
   await expect(
-    page.getByText('Every text is translated into French.'),
+    page.getByText('Everything is translated into French.'),
   ).toBeVisible();
   await translationTableDialog(page)
     .getByRole('button', { name: 'Cancel', exact: true })
@@ -642,10 +645,10 @@ test('opens the translation table on every missing translation from the protocol
   await expect(textsToShow(page).locator('option:checked')).toHaveText(
     'Missing in any shown language',
   );
-  await expect(page.getByText('Showing 6 of 20 texts')).toBeVisible();
+  await expect(page.getByText('Showing 6 of 20 strings')).toBeVisible();
 
   // The filter is kept in the address, and every text has a row without it.
-  await textsToShow(page).selectOption({ label: 'All texts' });
+  await textsToShow(page).selectOption({ label: 'All translations' });
   await expect(page).toHaveURL(/\/protocol\/localization\?table=open$/);
   await expect(translationTable(page).locator('th[scope="row"]')).toHaveText(
     ALL_TEXT_ROWS,

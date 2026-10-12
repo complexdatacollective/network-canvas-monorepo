@@ -124,7 +124,7 @@ describe('TranslationTableDialog', () => {
 
     const dialog = await findTable();
     expect(
-      within(dialog).getByRole('combobox', { name: 'Texts to show' }),
+      within(dialog).getByRole('combobox', { name: 'Translations to show' }),
     ).toHaveDisplayValue('Missing French');
 
     await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -148,7 +148,7 @@ describe('TranslationTableDialog', () => {
     );
     const dialog = await findTable();
     await user.selectOptions(
-      within(dialog).getByRole('combobox', { name: 'Texts to show' }),
+      within(dialog).getByRole('combobox', { name: 'Translations to show' }),
       'Missing French',
     );
     expect(address()).toBe('/protocol/localization?table=open&missing=fr');

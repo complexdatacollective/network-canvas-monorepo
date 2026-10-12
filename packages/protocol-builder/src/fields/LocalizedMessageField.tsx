@@ -9,6 +9,10 @@ import RichTextEditorField, {
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 import {
+  TokenizedText,
+  type TokenizedTextPart,
+} from '@codaco/fresco-ui/TokenPill';
+import {
   composeMessage,
   findMessageArgumentProblem,
   findMissingPlacement,
@@ -343,7 +347,10 @@ function useMessageVersions(
   return messageVersions(message, declaration, locale, intl, labels);
 }
 
-/** A version's parts as text, each placeholder as its name in brackets. */
+/**
+ * A version's words, each placeholder as its name in brackets: what two
+ * versions are compared by, to see whether they read the same.
+ */
 const versionText = (
   parts: readonly MessagePart[],
   tokens: readonly RichTextEditorToken[],
@@ -356,11 +363,17 @@ const versionText = (
     )
     .join('');
 
+/** A version's parts for `TokenizedText`, which draws each placeholder as a pill. */
+const tokenizedParts = (parts: readonly MessagePart[]): TokenizedTextPart[] =>
+  parts.map((part) =>
+    typeof part === 'string' ? part : { token: part.argument },
+  );
+
 /**
- * A message's versions in `locale`, read-only, each placeholder named in
- * brackets: what a summary or an unfocused table cell shows. A message whose
- * versions all read the same shows as its one phrase, and a case whose
- * versions all read the same, whatever the number, shows once.
+ * A message's versions in `locale`, read-only, each placeholder drawn as the
+ * pill the editor draws: what a summary or an unfocused table cell shows. A
+ * message whose versions all read the same shows as its one phrase, and a case
+ * whose versions all read the same, whatever the number, shows once.
  */
 export function LocalizedMessageVersionsSummary({
   message,
@@ -377,7 +390,13 @@ export function LocalizedMessageVersionsSummary({
     locale,
   );
   const texts = variants.map((variant) => versionText(variant.parts, tokens));
-  if (texts.every((text) => text === texts[0])) return <>{texts[0] ?? ''}</>;
+  const version = (index: number) => (
+    <TokenizedText
+      parts={tokenizedParts(variants[index]?.parts ?? [])}
+      tokens={tokens}
+    />
+  );
+  if (texts.every((text) => text === texts[0])) return version(0);
 
   return (
     <dl className="flex flex-col gap-1">
@@ -396,7 +415,7 @@ export function LocalizedMessageVersionsSummary({
             <dt className="text-sm text-current/70">
               {[group.label, label].filter(Boolean).join(' · ')}
             </dt>
-            <dd>{texts[index]}</dd>
+            <dd>{version(index)}</dd>
           </div>
         ));
       })}

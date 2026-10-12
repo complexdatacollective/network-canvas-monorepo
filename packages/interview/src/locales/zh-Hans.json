@@ -36,7 +36,7 @@
   "interview.interfaces.confirmPassphrase": "确认密码短语",
   "interview.interfaces.deselect": "取消选择",
   "interview.interfaces.discardChanges": "放弃更改",
-  "interview.interfaces.discardChangesDescription": "此表单包含无效数据，因此无法保存。如果继续，表单将被重置，您的更改将会丢失。是否放弃更改？",
+  "interview.interfaces.discardChangesDescription": "是否放弃更改？",
   "interview.interfaces.discardChangesTitle": "放弃更改？",
   "interview.interfaces.dragToReposition": "拖动以调整位置",
   "interview.interfaces.drawingControls": "绘图控件",

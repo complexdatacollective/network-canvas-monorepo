@@ -34,7 +34,7 @@ const withText = protocolWith({
       en: '{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}',
     },
   },
-  interview: { continue: { en: 'Carry on' } },
+  navigation: { continue: { en: 'Carry on' } },
 });
 
 /** The table row whose label is `label`, so its value can be checked. */
@@ -54,19 +54,19 @@ describe('Protocol Summary interview text', () => {
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: 'Throughout the interview',
+        name: 'Interview navigation',
       }),
     ).toBeVisible();
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Answer checks' }),
+      screen.getByRole('heading', { level: 2, name: 'Validation messages' }),
     ).toBeVisible();
     expect(screen.getByText('Continue button')).toBeVisible();
     expect(screen.getByText('Too long message')).toBeVisible();
-    // The wording's order: the interview group before the validation group.
+    // The wording's order: the navigation group before the validation group.
     const headings = screen
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent);
-    expect(headings).toEqual(['Throughout the interview', 'Answer checks']);
+    expect(headings).toEqual(['Interview navigation', 'Validation messages']);
   });
 
   it('prints a plain entry as it is written', () => {

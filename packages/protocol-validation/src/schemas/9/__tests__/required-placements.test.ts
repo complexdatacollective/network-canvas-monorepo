@@ -7,9 +7,11 @@ import {
 } from '../../../localization/messageArguments.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
 import {
+  BUTTONS_INTERFACE_TEXT,
   FORMS_INTERFACE_TEXT,
   type InterfaceTextEntry,
-  INTERVIEW_INTERFACE_TEXT,
+  MESSAGES_INTERFACE_TEXT,
+  NAVIGATION_INTERFACE_TEXT,
   PASSPHRASE_INTERFACE_TEXT,
   VALIDATION_INTERFACE_TEXT,
 } from '../interface-text-wording.ts';
@@ -72,7 +74,9 @@ const interfaceGroup = (
 const suppliedProtocol = () => ({
   schemaVersion: 9,
   interfaceText: {
-    interview: interfaceGroup(INTERVIEW_INTERFACE_TEXT),
+    navigation: interfaceGroup(NAVIGATION_INTERFACE_TEXT),
+    buttons: interfaceGroup(BUTTONS_INTERFACE_TEXT),
+    messages: interfaceGroup(MESSAGES_INTERFACE_TEXT),
     passphrase: interfaceGroup(PASSPHRASE_INTERFACE_TEXT),
     forms: interfaceGroup(FORMS_INTERFACE_TEXT),
     validation: interfaceGroup(VALIDATION_INTERFACE_TEXT),

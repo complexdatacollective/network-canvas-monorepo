@@ -31,14 +31,14 @@ const messages = defineMessages({
   },
   notTranslated: {
     id: 'architect.protocolSummary.translations.notTranslated',
-    defaultMessage: 'Not translated yet. Participants see the {language} text.',
+    defaultMessage: 'Not translated yet. Participants see it in {language}.',
     description:
       'Shown in the printable protocol summary beside a language that a text has no translation in, when participants using that language are certain to see it in another language instead: a closely related language, such as Brazilian Portuguese for European Portuguese, or the only language the text is written in. language is that language’s name.',
   },
   notTranslatedUnlessBrowserLists: {
     id: 'architect.protocolSummary.translations.notTranslatedUnlessBrowserLists',
     defaultMessage:
-      'Not translated yet. Participants see the {language} text, unless their browser also lists a language that has it.',
+      'Not translated yet. Participants see it in {language}, unless their browser also lists a language that has a translation.',
     description:
       'Shown in the printable protocol summary beside a language that a text has no translation in, nor in a closely related language. Participants using that language see the text in another language their web browser lists, when the text has a translation in one, and otherwise in language: the protocol’s default language, or failing that another of its languages.',
   },

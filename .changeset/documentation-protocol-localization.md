@@ -5,8 +5,8 @@
 The documentation now covers translated protocols. A new Translating Your
 Protocol page explains how to choose the language a protocol is written in,
 add and remove languages, set the default language, find missing translations,
-translate in the translation table, which shows every text beside its
-translation into each language, change the language a protocol's text is recorded as, for a protocol upgraded
+translate in the translation table, which shows everything participants see
+beside its translation into each language, change the language a protocol's text is recorded as, for a protocol upgraded
 from an earlier version, preview each language, print every translation in
 the protocol summary, and how participants get their language. It explains
 that languages have no order and are always listed alphabetically, that a

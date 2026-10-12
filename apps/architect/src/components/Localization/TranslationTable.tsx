@@ -64,6 +64,7 @@ import {
   type TranslationRow,
 } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
+import { cx } from '~/utils/cva';
 
 import { describePlace, type PlaceDetails, textSteps } from './textPlaces';
 import TranslationCell, { fallbackFor } from './TranslationCell';
@@ -82,7 +83,7 @@ const messages = defineMessages({
   about: {
     id: 'architect.localization.translationTable.about',
     defaultMessage:
-      'Every text participants see, beside its translation into each language. Empty cells show the text participants see instead.',
+      'This table shows everything participants see in the interview, with its translation into each language. Where a translation is missing, the cell shows what participants see instead.',
     description:
       'Opening paragraph of the help for the translation table, which explains what the table shows.',
   },
@@ -95,15 +96,15 @@ const messages = defineMessages({
   caption: {
     id: 'architect.localization.translationTable.caption',
     defaultMessage:
-      'Every text participants see, with its translation into each of the protocol’s languages',
+      'Everything participants see, with its translation into each of the protocol’s languages',
     description:
-      'Caption of the translation table, read by screen readers. Each row is one text, each column one language.',
+      'Caption of the translation table, read by screen readers. Each row is one localized string, each column one language.',
   },
   textColumn: {
     id: 'architect.localization.translationTable.textColumn',
-    defaultMessage: 'Text',
+    defaultMessage: 'Location',
     description:
-      'Heading of the first column of the translation table, which names each text by where it is in the protocol.',
+      'Heading of the first column of the translation table, which names each localized string by where it is in the protocol.',
   },
   defaultLanguage: {
     id: 'architect.localization.translationTable.defaultLanguage',
@@ -115,13 +116,13 @@ const messages = defineMessages({
     id: 'architect.localization.translationTable.progress',
     defaultMessage: '{translated, number} of {total, number} translated',
     description:
-      'Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s texts have a translation into it.',
+      'Read by screen readers in the heading of a language’s column in the translation table: how many of the protocol’s localized strings have a translation into it.',
   },
   progressCount: {
     id: 'architect.localization.translationTable.progressCount',
     defaultMessage: '{translated, number} of {total, number}',
     description:
-      'Shown beside a language’s name and progress bar in the heading of its column in the translation table: how many of the protocol’s texts have a translation into it. Keep it as short as possible, since it shares one line with the language’s name.',
+      'Shown beside a language’s name and progress bar in the heading of its column in the translation table: how many of the protocol’s localized strings have a translation into it. Keep it as short as possible, since it shares one line with the language’s name.',
   },
   progressLabel: {
     id: 'architect.localization.translationTable.progressLabel',
@@ -131,33 +132,33 @@ const messages = defineMessages({
   },
   search: {
     id: 'architect.localization.translationTable.search',
-    defaultMessage: 'Search texts and translations',
+    defaultMessage: 'Search translations',
     description:
-      'Label and placeholder of the search field above the translation table. It finds texts by where they are or by their translations into the languages shown.',
+      'Label and placeholder of the search field above the translation table. It finds localized strings by where they are or by their translations into the languages shown.',
   },
   filter: {
     id: 'architect.localization.translationTable.filter',
-    defaultMessage: 'Texts to show',
+    defaultMessage: 'Translations to show',
     description:
-      'Accessible name of the menu above the translation table that chooses whether it shows every text or only the texts with a translation missing.',
+      'Accessible name of the menu above the translation table that chooses whether it shows every localized string or only those with a translation missing.',
   },
   allTexts: {
     id: 'architect.localization.translationTable.allTexts',
-    defaultMessage: 'All texts',
+    defaultMessage: 'All translations',
     description:
-      'Option in the menu above the translation table that shows every text the protocol has.',
+      'Option in the menu above the translation table that shows every localized string the protocol has.',
   },
   missingAny: {
     id: 'architect.localization.translationTable.missingAny',
     defaultMessage: 'Missing in any shown language',
     description:
-      'Option in the menu above the translation table that shows only the texts with no translation into one or more of the languages whose columns are shown.',
+      'Option in the menu above the translation table that shows only the localized strings with no translation into one or more of the languages whose columns are shown.',
   },
   missingLanguage: {
     id: 'architect.localization.translationTable.missingLanguage',
     defaultMessage: 'Missing {language}',
     description:
-      'Option in the menu above the translation table, one per language, that shows only the texts with no translation into that language. language is the language’s name, such as “French”.',
+      'Option in the menu above the translation table, one per language, that shows only the localized strings with no translation into that language. language is the language’s name, such as “French”.',
   },
   languages: {
     id: 'architect.localization.translationTable.languages',
@@ -180,38 +181,38 @@ const messages = defineMessages({
   shownCount: {
     id: 'architect.localization.translationTable.shownCount',
     defaultMessage:
-      'Showing {shown, number} of {total, plural, one {# text} other {# texts}}',
+      'Showing {shown, number} of {total, plural, one {# string} other {# strings}}',
     description:
-      'Above the translation table: how many texts the search and filter leave in the table, out of every text the protocol has.',
+      'Above the translation table: how many localized strings the search and filter leave in the table, out of every localized string the protocol has.',
   },
   noMatches: {
     id: 'architect.localization.translationTable.noMatches',
-    defaultMessage: 'No texts match your search.',
+    defaultMessage: 'Nothing matches your search.',
     description:
-      'Shown in the translation table when no text matches the search.',
+      'Shown in the translation table when no localized string matches the search.',
   },
   allTranslated: {
     id: 'architect.localization.translationTable.allTranslated',
-    defaultMessage: 'Every text is translated into the languages shown.',
+    defaultMessage: 'Everything is translated into the languages shown.',
     description:
-      'Shown in the translation table when only texts with missing translations are shown and there are none.',
+      'Shown in the translation table when only localized strings with missing translations are shown and there are none.',
   },
   allTranslatedInto: {
     id: 'architect.localization.translationTable.allTranslatedInto',
-    defaultMessage: 'Every text is translated into {language}.',
+    defaultMessage: 'Everything is translated into {language}.',
     description:
-      'Shown in the translation table when only texts with no translation into one language are shown and there are none. language is the language’s name, such as “French”.',
+      'Shown in the translation table when only localized strings with no translation into one language are shown and there are none. language is the language’s name, such as “French”.',
   },
   noTexts: {
     id: 'architect.localization.translationTable.noTexts',
-    defaultMessage: 'This protocol has no text for participants yet.',
+    defaultMessage: 'This protocol has nothing for participants to read yet.',
     description:
-      'Shown in the translation table when the protocol has no participant-facing text at all.',
+      'Shown in the translation table when the protocol has no participant-facing localized strings at all.',
   },
   unlessBrowserLists: {
     id: 'architect.localization.translationTable.unlessBrowserLists',
     defaultMessage:
-      '* Unless the participant’s browser also lists another language that has the text.',
+      '* Unless the participant’s browser also lists another language that has a translation.',
     description:
       'Note under the translation table, explaining the asterisk on the tag that says which language participants see where a translation is missing. Begins with the same asterisk.',
   },
@@ -219,21 +220,21 @@ const messages = defineMessages({
     id: 'architect.localization.translationTable.groupHeading',
     defaultMessage: '<muted>{place}</muted> · <title>{name}</title>',
     description:
-      'Heading of a group of rows in the translation table, naming the codebook entry that holds their texts. place is the kind of entry, such as “Node type”; name is its name, which links to it. Keep the tags around the same parts.',
+      'Heading of a group of rows in the translation table, naming the codebook entry that holds their localized strings. place is the kind of entry, such as “Node type”; name is its name, which links to it. Keep the tags around the same parts.',
   },
   groupHeadingDetail: {
     id: 'architect.localization.translationTable.groupHeadingDetail',
     defaultMessage:
       '<muted>{place}</muted> · <title>{name}</title> · <muted>{detail}</muted>',
     description:
-      'Heading of a group of rows in the translation table, naming the stage that holds their texts. place is the stage’s position, such as “Stage 4”; name is the stage’s name, which links to it; detail is the kind of stage, such as “Name Generator”. Keep the tags around the same parts.',
+      'Heading of a group of rows in the translation table, naming the stage that holds their localized strings. place is the stage’s position, such as “Stage 4”; name is the stage’s name, which links to it; detail is the kind of stage, such as “Name Generator”. Keep the tags around the same parts.',
   },
   keyboardHelp: {
     id: 'architect.localization.translationTable.keyboardHelp',
     defaultMessage:
-      'Changes are kept in the table until you save it, and each cell is checked when you leave it. Escape undoes your change to a cell. The up and down arrow keys move between rows from the first or last line of a cell. Ctrl+Enter, or ⌘+Enter on a Mac, moves to the next row, as Enter does in a text of one line. In formatted text, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.',
+      'Select a cell to edit it. Your changes are kept in the table until you select Save, and each cell is checked when you leave it. Press Escape to undo your changes to a cell. When the cursor is on the first or last line of a cell, the up and down arrow keys move to the previous or next row. Ctrl+Enter (⌘+Enter on a Mac) also moves to the next row, as Enter does in a cell with one line. In a cell with formatting, Tab moves to the formatting buttons and then to the next cell, except in a list, where it indents the item.',
     description:
-      'Help text for the translation table, explaining how editing its cells works. Nothing typed into the table reaches the protocol until the researcher presses Save. Ctrl, Enter, ⌘ and Tab are the names of keys; use the names printed on keyboards in your language. Formatted text is text with bold, italics, headings or lists, which is edited with a row of formatting buttons above it.',
+      'Help text for the translation table, explaining how editing its cells works. Nothing typed into the table reaches the protocol until the researcher selects Save. Ctrl, Enter, ⌘, Escape and Tab are the names of keys; use the names printed on keyboards in your language. A cell with formatting holds text with bold, italics, headings or lists, which is edited with a row of formatting buttons above it.',
   },
 });
 
@@ -782,6 +783,13 @@ const TranslationTable = ({
       <Table
         ref={tableRef}
         bodyScroll
+        // Scrollbars that take room of their own and show whenever the table
+        // overflows, rather than floating over its sticky cells and fading
+        // away between scrolls.
+        scrollerClassName={cx(
+          '[&::-webkit-scrollbar-corner]:bg-surface-1 [&::-webkit-scrollbar-track]:bg-surface-1 [&::-webkit-scrollbar]:size-3.5',
+          '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-3 [&::-webkit-scrollbar-thumb]:border-solid [&::-webkit-scrollbar-thumb]:border-transparent [&::-webkit-scrollbar-thumb]:bg-current/40 [&::-webkit-scrollbar-thumb]:bg-clip-padding [&::-webkit-scrollbar-thumb:hover]:bg-current/60',
+        )}
         aria-describedby={helpId}
         style={tableStyle}
         surfaceProps={{

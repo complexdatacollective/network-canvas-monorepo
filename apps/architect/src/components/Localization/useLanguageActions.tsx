@@ -43,7 +43,7 @@ const messages = defineMessages({
   addDescription: {
     id: 'architect.localization.languageActions.addDescription',
     defaultMessage:
-      'Participants can take the interview in any of the protocol’s languages. Until you translate a text into a new language, participants who use it see the closest translation available instead.',
+      'Participants can take the interview in any of the protocol’s languages. Until you translate the wording into a new language, participants who use it see the closest translation available instead.',
     description: 'Explanation in the dialog that adds languages to a protocol.',
   },
   addSubmit: {
@@ -60,38 +60,38 @@ const messages = defineMessages({
     id: 'architect.localization.languageActions.changeTitle',
     defaultMessage: 'Change {language} to a different language',
     description:
-      'Title of the dialog that records the text of one protocol language as another language. language is the name of the language being changed.',
+      'Title of the dialog that records the translations of one protocol language as another language. language is the name of the language being changed.',
   },
   changeDescription: {
     id: 'architect.localization.languageActions.changeDescription',
     defaultMessage:
-      'Use this when the text recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.',
+      'Use this when the wording recorded as {language} is really written in another language, for example in a protocol upgraded from an older version. Every {language} translation is recorded as the language you choose instead. Nothing is translated or deleted.',
     description:
-      'Explanation in the dialog that records the text of one protocol language as another language. language is the name of the language being changed.',
+      'Explanation in the dialog that records the translations of one protocol language as another language. language is the name of the language being changed.',
   },
   languageLabel: {
     id: 'architect.localization.languageActions.languageLabel',
     defaultMessage: 'Language',
     description:
-      'Label of the list of languages in the dialog that records the text of a protocol language as another language.',
+      'Label of the list of languages in the dialog that records the translations of a protocol language as another language.',
   },
   chooseALanguage: {
     id: 'architect.localization.languageActions.chooseALanguage',
     defaultMessage: 'Choose a language',
     description:
-      'Placeholder of the list of languages that the text of a protocol language can be recorded as.',
+      'Placeholder of the list of languages that the translations of a protocol language can be recorded as.',
   },
   chooseOne: {
     id: 'architect.localization.languageActions.chooseOne',
     defaultMessage: 'Choose a language.',
     description:
-      'Error when the dialog that records the text of a protocol language as another language is submitted without a language.',
+      'Error when the dialog that records the translations of a protocol language as another language is submitted without a language.',
   },
   changeSubmit: {
     id: 'architect.localization.languageActions.changeSubmit',
     defaultMessage: 'Change language',
     description:
-      'Submit button of the dialog that records the text of a protocol language as another language.',
+      'Submit button of the dialog that records the translations of a protocol language as another language.',
   },
   removeTitle: {
     id: 'architect.localization.languageActions.removeTitle',
@@ -102,7 +102,7 @@ const messages = defineMessages({
   removeDescription: {
     id: 'architect.localization.languageActions.removeDescription',
     defaultMessage:
-      '{count, plural, =0 {There are no {language} translations yet, so no text will be deleted.} one {The # translation written in {language} will be deleted.} other {All # translations written in {language} will be deleted.}} Participants will no longer be able to choose this language.',
+      '{count, plural, =0 {There are no {language} translations yet, so nothing will be deleted.} one {The # translation written in {language} will be deleted.} other {All # translations written in {language} will be deleted.}} Participants will no longer be able to choose this language.',
     description:
       'Confirmation before a language is removed. count is how many translations are deleted; language is the language name.',
   },

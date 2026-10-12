@@ -272,8 +272,17 @@ describe('Protocol Summary family pedigree', () => {
     // The message reads as its versions, its placeholders named, never as
     // the syntax it is stored in.
     expect(screen.getByText('Add your parents')).toBeInTheDocument();
-    expect(screen.getByText('Parents of [Name]')).toBeInTheDocument();
-    expect(screen.getByText('About [Name]')).toBeInTheDocument();
+    // A placeholder is a pill inside the line, so each line is found by the
+    // words it reads as.
+    const line = (text: string) =>
+      screen.getAllByText(
+        (_, element) =>
+          element?.textContent === text &&
+          element.querySelector('[data-token="name"]') !== null &&
+          [...element.children].every((child) => child.tagName === 'SPAN'),
+      )[0];
+    expect(line('Parents of Name')).toBeInTheDocument();
+    expect(line('About Name')).toBeInTheDocument();
     expect(screen.queryByText(/isYou/)).toBeNull();
     expect(screen.getByText('You may skip these.')).toBeInTheDocument();
 

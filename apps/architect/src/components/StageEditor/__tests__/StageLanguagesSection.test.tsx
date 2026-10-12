@@ -335,7 +335,7 @@ describe('the language chooser’s languages in Architect', () => {
     const remove = removeButton('French');
     expect(remove).toHaveAttribute('aria-disabled', 'true');
     expect(remove).toHaveAccessibleDescription(
-      '1 text exists only in French. Translate it into another language before removing French.',
+      '1 string has a translation only in French. Translate it into another language before removing French.',
     );
     await userEvent.click(remove);
     expect(globalThis.__architectDialogMocks.confirm).not.toHaveBeenCalled();

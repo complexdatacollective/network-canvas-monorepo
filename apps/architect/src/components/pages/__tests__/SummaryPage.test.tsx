@@ -64,9 +64,7 @@ describe('<SummaryPage /> language', () => {
       screen.getByText('Written in English').closest('[lang]'),
     ).toHaveAttribute('lang', 'en');
     expect(
-      screen.getByText(
-        'Not translated yet. Participants see the English text.',
-      ),
+      screen.getByText('Not translated yet. Participants see it in English.'),
     ).toBeVisible();
   });
 
