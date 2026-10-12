@@ -232,6 +232,14 @@ describe('TranslationTableDialog', () => {
     expect(asked).toEqual([false]);
     expect(openDialog).toHaveBeenCalledTimes(2);
     expect(stageTitle(store)).toEqual({ en: 'Hello' });
+
+    // Opened again, the table shows what the protocol holds, not the text
+    // that was thrown away.
+    await user.click(
+      screen.getByRole('link', { name: 'Open translation table' }),
+    );
+    await findTable();
+    expect(frenchTitle()).toHaveValue('');
   });
 
   it('tells Back and a refresh that it holds changes until they are saved', async () => {
