@@ -185,6 +185,14 @@ configs:
       metadata_dir = "/var/lib/garage/meta"
       data_dir = "/var/lib/garage/data"
 
+      # This node holds the only copy of everything, so it trades write speed
+      # for surviving a power cut or a hard reset. Garage's default metadata
+      # engine, LMDB, can be corrupted by an unclean shutdown; SQLite cannot,
+      # and the fsyncs keep recent writes from being lost in one.
+      db_engine = "sqlite"
+      metadata_fsync = true
+      data_fsync = true
+
       # Garage's node-to-node port. A single node has no peers, but Garage
       # still requires the port and its secret, and the garage command-line
       # tool talks to the server through it. Bound to the container's own
