@@ -2,8 +2,8 @@
   - status:
     - heading "Add the members of your family." [level=2]
   - region "Your family":
-    - button "Rachel"
     - button "Tom"
+    - button "Rachel"
     - button "Biological father"
     - button "You": Me myself - matrix check
   - paragraph: Pick two people to join - matrix check

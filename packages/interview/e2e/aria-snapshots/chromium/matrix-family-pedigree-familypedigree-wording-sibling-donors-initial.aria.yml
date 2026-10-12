@@ -2,9 +2,9 @@
   - status:
     - heading "Add the members of your family." [level=2]
   - region "Your family":
-    - button "Don"
-    - button "Gail"
     - button "Dee"
+    - button "Gail"
+    - button "Don"
     - button "You"
   - toolbar "Family tree tools":
     - group "What clicking a person does":
