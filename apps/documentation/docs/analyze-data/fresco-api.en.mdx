@@ -98,6 +98,7 @@ curl -H "Authorization: Bearer $FRESCO_TOKEN" \
       "finishTime": "2026-06-10T11:12:00.000Z",
       "lastUpdated": "2026-06-10T11:12:00.000Z",
       "currentStep": 5,
+      "finishStageId": "finish",
       "finishOutcome": "completed",
       "protocolId": "protocol123",
       "participantId": "participant456",
@@ -124,6 +125,7 @@ Each object in `data` is an interview summary:
 | `finishTime`    | When it was completed, or `null` while in progress.                                                                                                                   |
 | `lastUpdated`   | When the interview data last changed.                                                                                                                                 |
 | `currentStep`   | The stage the participant has reached.                                                                                                                                |
+| `finishStageId` | The id of the protocol's Finish Screen stage that ended the interview, or `null` for interviews that are not finished, or were finished before Fresco recorded it.    |
 | `finishOutcome` | How the interview ended: `completed`, `ineligible` or `terminated`. `null` for interviews that are not finished, or were finished before Fresco recorded the outcome. |
 | `protocolId`    | id of the protocol used.                                                                                                                                              |
 | `participantId` | id of the participant.                                                                                                                                                |

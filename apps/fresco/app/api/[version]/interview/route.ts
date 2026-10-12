@@ -71,6 +71,7 @@ async function v1(request: NextRequest) {
           id: true,
           startTime: true,
           finishTime: true,
+          finishStageId: true,
           finishOutcome: true,
           lastUpdated: true,
           currentStep: true,
