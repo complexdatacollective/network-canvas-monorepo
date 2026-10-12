@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -181,6 +182,93 @@ describe('RichTextEditorField', () => {
     const undo = screen.getByRole('button', { name: 'Undo' });
     expect(undo).toHaveAttribute('aria-disabled', 'true');
     expect(undo).toBeEnabled();
+  });
+
+  // The editor takes `autoFocus` a tick after it mounts. Waiting past the
+  // tick, a frame, and another tick covers every point at which it could.
+  const afterAutoFocus = () =>
+    act(
+      () =>
+        new Promise<void>((resolve) => {
+          setTimeout(() => {
+            requestAnimationFrame(() => {
+              setTimeout(resolve, 0);
+            });
+          }, 0);
+        }),
+    );
+
+  it('takes focus when asked to', async () => {
+    render(
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Biography"
+        autoFocus
+        value={documentWithText}
+        onChange={() => undefined}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Biography' });
+    await afterAutoFocus();
+    expect(editor).toHaveFocus();
+  });
+
+  // In Architect's translation table, a researcher who tabs on and then
+  // clicks straight into another cell had their click undone: the next cell's
+  // editor took focus back a frame later, then closed, leaving focus nowhere.
+  it('leaves focus where it went before the editor could take it', async () => {
+    render(
+      <>
+        <RichTextEditorField
+          id="bio"
+          name="bio"
+          aria-describedby="bio-hint"
+          aria-label="Biography"
+          autoFocus
+          value={documentWithText}
+          onChange={() => undefined}
+        />
+        <input aria-label="Elsewhere" />
+      </>,
+    );
+
+    const elsewhere = screen.getByRole('textbox', { name: 'Elsewhere' });
+    elsewhere.focus();
+    await afterAutoFocus();
+    expect(elsewhere).toHaveFocus();
+  });
+
+  // TipTap's own focus command waits a frame more, and a click in that frame
+  // was undone just the same.
+  it('leaves focus where it went once the editor has taken it', async () => {
+    render(
+      <>
+        <RichTextEditorField
+          id="bio"
+          name="bio"
+          aria-describedby="bio-hint"
+          aria-label="Biography"
+          autoFocus
+          value={documentWithText}
+          onChange={() => undefined}
+        />
+        <input aria-label="Elsewhere" />
+      </>,
+    );
+
+    await act(
+      () =>
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        }),
+    );
+    const elsewhere = screen.getByRole('textbox', { name: 'Elsewhere' });
+    elsewhere.focus();
+    await afterAutoFocus();
+    expect(elsewhere).toHaveFocus();
   });
 
   it('forwards container class, focus, and blur callbacks', async () => {
@@ -1000,6 +1088,32 @@ describe('a RichTextEditorField with tokens', () => {
     const chip = editor.querySelector('[data-token="name"]');
     expect(chip).toHaveTextContent('Name');
     expect(chip).toHaveAttribute('contenteditable', 'false');
+  });
+
+  it('says which required tokens the text does not include yet', async () => {
+    const field = renderWithTokens({
+      tokens: [
+        { id: 'name', label: 'Name', required: true },
+        { id: '#', label: 'Number', required: true },
+      ],
+    });
+    const editor = await field.editor();
+
+    // The name is in the text; the number is not.
+    expect(
+      screen.getByRole('button', { name: 'Insert “Name”' }),
+    ).not.toHaveAttribute('data-missing');
+    const number = screen.getByRole('button', {
+      name: 'Insert “Number” (required in this text)',
+    });
+    expect(number).toHaveAttribute('data-missing', 'true');
+
+    await field.user.click(editor);
+    await field.user.click(number);
+
+    expect(
+      await screen.findByRole('button', { name: 'Insert “Number”' }),
+    ).not.toHaveAttribute('data-missing');
   });
 
   it('inserts a token at the caret from its toolbar button', async () => {

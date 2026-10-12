@@ -134,7 +134,10 @@ export const RESEARCHER_TRACKER_TEXT: SectionDoc = {
       noneButton: {
         'en-US': '{isYou, select, true {I have none} other {{name} has none}}',
       },
-      question: { 'en-US': 'Any brothers or sisters?' },
+      question: {
+        'en-US':
+          '{isYou, select, true {Any brothers or sisters?} other {Does {name} have brothers or sisters?}}',
+      },
     },
     children: {
       listItem: {
@@ -144,7 +147,10 @@ export const RESEARCHER_TRACKER_TEXT: SectionDoc = {
       noneButton: {
         'en-US': '{isYou, select, true {I have none} other {{name} has none}}',
       },
-      question: { 'en-US': 'Any children?' },
+      question: {
+        'en-US':
+          '{isYou, select, true {Any children?} other {Does {name} have children?}}',
+      },
     },
     details: {
       listItem: {

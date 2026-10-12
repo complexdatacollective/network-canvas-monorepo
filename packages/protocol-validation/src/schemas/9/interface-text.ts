@@ -17,6 +17,7 @@ import {
   localizedString,
   nonBlankText,
 } from './localized-string.ts';
+import { requireSuppliedPlacements } from './supplied-stage-setting.ts';
 import {
   type LanguageChange,
   suppliedTextAfterLanguageChange,
@@ -312,7 +313,9 @@ const GROUP_NAMES = Object.keys(INTERFACE_TEXT_GROUPS) as GroupName[];
 const entrySchema = (entry: InterfaceTextEntry) =>
   entry.arguments === undefined
     ? localizedString(nonBlankText(), 'plain')
-    : localizedMessage(nonBlankText(), { arguments: entry.arguments });
+    : localizedMessage(nonBlankText(), {
+        arguments: requireSuppliedPlacements(entry.arguments, entry.message),
+      });
 
 const groupSchema = (entries: Readonly<Record<string, InterfaceTextEntry>>) =>
   z.strictObject(

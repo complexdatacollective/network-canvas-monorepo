@@ -13,6 +13,7 @@ import {
   PEDIGREE_COMPLETENESS_SCOPES,
   PEDIGREE_GENDER_WORDS,
 } from '../family-pedigree-values.ts';
+import { PARENTS_ITEM } from '../family-pedigree-wording.ts';
 import {
   localizedMessage,
   localizedString,
@@ -21,8 +22,10 @@ import {
 import {
   asksGenderIdentity,
   choosesFraming,
+  FAMILY_PEDIGREE_SUPPLIED_TEXT,
   limitsNominationBySex,
 } from '../stage-wording/family-pedigree.ts';
+import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { categoricalOptionValueSchema } from '../variables/variable.ts';
 import { baseStageSchema } from './base.ts';
 
@@ -203,14 +206,23 @@ export const EdgeConfigurationSchema = z.strictObject({
 });
 
 /**
- * What the tracker's wording about one person may use: whether that person
- * is the participant (`isYou` is `true`), so the text can say "you", and
- * their name as the participant has it.
+ * What wording about one person may use: whether that person is the
+ * participant (`isYou` is `true`), so the text can say "you", and their name
+ * as the participant has it.
  */
-export const PEDIGREE_PERSON_ARGUMENTS = {
+const PERSON_ARGUMENTS = {
   isYou: { kind: 'select', cases: ['true'] },
   name: { kind: 'text' },
 } as const satisfies MessageArguments;
+
+/**
+ * What the tracker's wording about one person may use (see
+ * `PERSON_ARGUMENTS`). Every tracker text names someone else in the same
+ * versions, so one declaration serves them all; it requires what the first
+ * of them shows, and a test holds the others to it.
+ */
+export const PEDIGREE_PERSON_ARGUMENTS: MessageArguments =
+  requireSuppliedPlacements(PERSON_ARGUMENTS, PARENTS_ITEM);
 
 const personMessage = () =>
   localizedMessage(nonBlankText(), { arguments: PEDIGREE_PERSON_ARGUMENTS });
@@ -420,12 +432,12 @@ const UNAVAILABLE_ANSWERS_ARGUMENTS = {
  * (`other` is always allowed), a `plural` argument is a count, and a `text`
  * argument is shown as it is.
  */
-export const PEDIGREE_WORDING_ARGUMENTS = {
+const WORDING_ARGUMENTS = {
   biologicalParentBoth: TWO_PEOPLE_ARGUMENTS,
   carriedSiblingsPregnancyLabel: {
     single: SELECT_TRUE,
     count: TEXT,
-    ...PEDIGREE_PERSON_ARGUMENTS,
+    ...PERSON_ARGUMENTS,
   },
   changeWouldCutOff: { count: PLURAL, names: TEXT },
   disconnectStandIn: {
@@ -463,7 +475,7 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
       kind: 'select',
       cases: ['edit', 'parent', 'sibling', 'partner'],
     },
-    ...PEDIGREE_PERSON_ARGUMENTS,
+    ...PERSON_ARGUMENTS,
   },
   parentCarriedLabel: {
     named: SELECT_TRUE,
@@ -490,17 +502,17 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
   },
   removeConfirmTitle: { name: TEXT },
   sharedDonorsLabel: {
-    ...PEDIGREE_PERSON_ARGUMENTS,
+    ...PERSON_ARGUMENTS,
     hasSurrogate: SELECT_TRUE,
   },
-  sharedParentCountLabel: PEDIGREE_PERSON_ARGUMENTS,
+  sharedParentCountLabel: PERSON_ARGUMENTS,
   sharedParentEggOnly: {
     parent: { kind: 'select', cases: ['egg'] },
     framing: { kind: 'select', cases: ['gamete'] },
   },
-  sharedParentsNotSibling: { ...PEDIGREE_PERSON_ARGUMENTS, chosen: TEXT },
-  sharedSurrogateLabel: PEDIGREE_PERSON_ARGUMENTS,
-  siblingTwinLabel: PEDIGREE_PERSON_ARGUMENTS,
+  sharedParentsNotSibling: { ...PERSON_ARGUMENTS, chosen: TEXT },
+  sharedSurrogateLabel: PERSON_ARGUMENTS,
+  siblingTwinLabel: PERSON_ARGUMENTS,
   standInPlaceTaken: {
     anchorIsYou: SELECT_TRUE,
     anchor: TEXT,
@@ -513,7 +525,7 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     partner: TEXT,
     partnerIsYou: SELECT_TRUE,
   },
-  twinsLabel: PEDIGREE_PERSON_ARGUMENTS,
+  twinsLabel: PERSON_ARGUMENTS,
   twinZygosityLabel: TWIN_PAIR_ARGUMENTS,
   unavailableAncestor: {
     who: { kind: 'select', cases: ['parentIsYou', 'childIsYou'] },
@@ -550,7 +562,7 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
     second: TEXT,
   },
   unavailableIdenticalTwin: { ...TWIN_PAIR_ARGUMENTS, answer: TEXT },
-  unavailableIdenticalTwinNew: { ...PEDIGREE_PERSON_ARGUMENTS, answer: TEXT },
+  unavailableIdenticalTwinNew: { ...PERSON_ARGUMENTS, answer: TEXT },
   unavailableSameSexAsCoParent: {
     who: {
       kind: 'select',
@@ -569,7 +581,32 @@ export const PEDIGREE_WORDING_ARGUMENTS = {
   },
 } as const satisfies Readonly<Record<string, MessageArguments>>;
 
-type WordingWithArguments = keyof typeof PEDIGREE_WORDING_ARGUMENTS;
+type WordingWithArguments = keyof typeof WORDING_ARGUMENTS;
+
+const suppliedWordingOf = (key: WordingWithArguments) => {
+  const setting = FAMILY_PEDIGREE_SUPPLIED_TEXT.find(
+    ({ path }) => path.length === 2 && path[0] === 'wording' && path[1] === key,
+  );
+  if (setting === undefined) {
+    throw new Error(`No wording is supplied for "${key}".`);
+  }
+  return setting.message;
+};
+
+/**
+ * What each of the Family Pedigree's wording settings with arguments may use
+ * (see `WORDING_ARGUMENTS`), each requiring in every translation what its
+ * supplied English wording shows.
+ */
+export const PEDIGREE_WORDING_ARGUMENTS = Object.fromEntries(
+  Object.entries(WORDING_ARGUMENTS).map(([key, declaration]) => [
+    key,
+    requireSuppliedPlacements(
+      declaration,
+      suppliedWordingOf(key as WordingWithArguments),
+    ),
+  ]),
+) as Readonly<Record<WordingWithArguments, MessageArguments>>;
 
 const plainWording = () => localizedString(nonBlankText(), 'plain');
 

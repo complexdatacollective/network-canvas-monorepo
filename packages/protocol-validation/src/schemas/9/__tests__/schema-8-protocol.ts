@@ -40,7 +40,8 @@ const highlightIds = (stage: unknown) => {
 
 /**
  * A schema 9 protocol written in English, as schema 8 held it: each localized
- * string is its English text, put through `rewrite`, codebook definitions
+ * string is its English text, put through `rewrite` (text with placeholders,
+ * which schema 8 never held, stays localized), codebook definitions
  * have no label, Narrative highlights are attribute ids, and the language
  * chooser and language settings, which schema 8 did not have, are gone.
  */
@@ -52,7 +53,12 @@ export const asSchema8Protocol = (
   if (!isRecord(document) || !Array.isArray(document.stages)) {
     throw new Error('Not a protocol with stages');
   }
-  for (const { path, value } of collectLocalizedStrings(document)) {
+  for (const { path, value, arguments: declared } of collectLocalizedStrings(
+    document,
+  )) {
+    // Text with placeholders is new in schema 9, as are the settings that
+    // hold it, so the document keeps it as schema 9 holds it.
+    if (declared !== undefined) continue;
     const text = value.en;
     const key = path.at(-1);
     const parent = path

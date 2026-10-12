@@ -705,6 +705,8 @@
   "protocolBuilder.localizedMessage.placeholderTerm": "Relationship word",
   "protocolBuilder.localizedMessage.placeholderTitle": "Stage title",
   "protocolBuilder.localizedMessage.placeholderTwin": "Twin’s name",
+  "protocolBuilder.localizedMessage.placementMissing": "Include “{placeholder}” in this text.",
+  "protocolBuilder.localizedMessage.placementMissingIn": "Include “{placeholder}” in this version: {version}.",
   "protocolBuilder.localizedMessage.pluralVersion": "When “{placeholder}” is {numbers}",
   "protocolBuilder.localizedMessage.unreadable": "This text uses something it cannot show. Write it again here.",
   "protocolBuilder.localizedMessage.versionsBlank": "Write every version of this text, or leave them all empty.",

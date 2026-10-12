@@ -39,6 +39,34 @@ const composerScaleField = (variable: string, label: string) => ({
   parameters: { minLabel: en('Not at all'), maxLabel: en('Completely') },
 });
 
+/**
+ * A validation rule's message, showing what the supplied wording shows: the
+ * limit, the count, or the other question's label.
+ */
+const validationMessage = (rule: string): string => {
+  const shown: Readonly<Record<string, string>> = {
+    minLength: '{min, plural, other {# characters}}',
+    maxLength: '{max, plural, other {# characters}}',
+    minValue: '{min}',
+    maxValue: '{max}',
+    minDate: '{min}',
+    maxDate: '{max}',
+    minSelected: '{count, plural, other {# options}}',
+    maxSelected: '{count, plural, other {# options}}',
+  };
+  if (rule in shown) return `The ${rule} message: ${shown[rule]}.`;
+  return [
+    'differentFrom',
+    'sameAs',
+    'greaterThan',
+    'lessThan',
+    'greaterThanOrEqual',
+    'lessThanOrEqual',
+  ].includes(rule)
+    ? `{hasLabel, select, true {The ${rule} message: {label}.} other {The ${rule} message.}}`
+    : `The ${rule} message.`;
+};
+
 const panel = {
   id: 'panel-1',
   title: en('People named'),
@@ -134,7 +162,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       [
         [
           [...fixtureStage(type), 'minNodesNotice'],
-          en('You must name more people.'),
+          en('{count, plural, other {You must name # more people.}}'),
         ],
         [
           [...fixtureStage(type), 'maxNodesNotice'],
@@ -232,18 +260,19 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       enforcement: 'recommended',
       relativesNotRecordedAttribute: 'relativesNotRecorded',
       itemText: {
-        parents: { listItem: en('Add parents') },
+        // Each names the person, as the supplied wording does.
+        parents: { listItem: en('Add parents for {name}') },
         siblings: {
-          listItem: en('Add brothers and sisters'),
-          noneButton: en('None'),
-          question: en('Any brothers or sisters?'),
+          listItem: en('Add brothers and sisters for {name}'),
+          noneButton: en('None for {name}'),
+          question: en('Does {name} have brothers or sisters?'),
         },
         children: {
-          listItem: en('Add children'),
-          noneButton: en('None'),
-          question: en('Any children?'),
+          listItem: en('Add children for {name}'),
+          noneButton: en('None for {name}'),
+          question: en('Does {name} have children?'),
         },
-        details: { listItem: en('Some details are missing') },
+        details: { listItem: en('Some details about {name} are missing') },
       },
       recommendedNote: en('You can continue without these.'),
     },
@@ -269,7 +298,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
         'lessThan',
         'greaterThanOrEqual',
         'lessThanOrEqual',
-      ].map((rule) => [rule, en(`The ${rule} message.`)]),
+      ].map((rule) => [rule, en(validationMessage(rule))]),
     ),
   ],
   [

@@ -9,7 +9,9 @@ import {
 } from '../../localization/localeTag.ts';
 import {
   findMessageArgumentProblem,
+  findMissingPlacement,
   type MessageArguments,
+  type MissingPlacement,
 } from '../../localization/messageArguments.ts';
 import { findMessageSyntaxProblem } from '../../localization/messageSyntax.ts';
 
@@ -173,14 +175,31 @@ export const localizedString = (
     [LOCALIZED_STRING]: { format },
   });
 
+const describeMissingPlacement = (
+  { argument, when }: MissingPlacement,
+  declaration: MessageArguments,
+): string => {
+  const shown =
+    declaration[argument]?.kind === 'plural'
+      ? `the number "${argument}" (as "#")`
+      : `"{${argument}}"`;
+  const version = Object.entries(when)
+    .map(([name, key]) => `${name} "${key}"`)
+    .join(', ');
+  return version === ''
+    ? `This text must show ${shown}.`
+    : `The version of this text for ${version} must show ${shown}.`;
+};
+
 /**
  * A localized string whose translations may also use the arguments the
  * setting declares, for text Network Canvas words differently by who or how
  * many it is about: `{name}` shows a value, `select` picks a version by case
  * and `plural` by number (see `findMessageArgumentProblem`). Each language
  * chooses its own versions, so a language that needs no distinction writes
- * one phrase. Always plain: the interview shows values as text, which
- * markdown could otherwise read as formatting.
+ * one phrase. A translation must show each argument where the declaration
+ * requires it (see `findMissingPlacement`). Always plain: the interview shows
+ * values as text, which markdown could otherwise read as formatting.
  */
 export const localizedMessage = (
   content: z.ZodString,
@@ -197,9 +216,25 @@ export const localizedMessage = (
     content,
     (message) => findMessageArgumentProblem(message, declaration),
     false,
-  ).meta({
-    [LOCALIZED_STRING]: { format: 'plain', arguments: declaration },
-  });
+  )
+    .superRefine((value, ctx) => {
+      for (const [locale, message] of Object.entries(value)) {
+        if (findMessageArgumentProblem(message, declaration) !== undefined) {
+          continue;
+        }
+        const missing = findMissingPlacement(message, declaration, locale);
+        if (missing !== undefined) {
+          ctx.addIssue({
+            code: 'custom',
+            message: describeMissingPlacement(missing, declaration),
+            path: [locale],
+          });
+        }
+      }
+    })
+    .meta({
+      [LOCALIZED_STRING]: { format: 'plain', arguments: declaration },
+    });
 };
 
 const isLocalizedStringDescriptor = (

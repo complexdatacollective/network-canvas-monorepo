@@ -783,6 +783,10 @@
     "defaultMessage": "Heading 4",
     "description": "Accessible name of the level-4 heading toggle in the editor toolbar."
   },
+  "frescoUi.richTextEditor.insertRequiredToken": {
+    "defaultMessage": "Insert “{token}” (required in this text)",
+    "description": "Accessible name of a toolbar button that inserts a placeholder, such as a person’s name, that the text must include but does not yet. {token} is the placeholder’s label, which the button also shows."
+  },
   "frescoUi.richTextEditor.insertToken": {
     "defaultMessage": "Insert “{token}”",
     "description": "Accessible name of a toolbar button that inserts a placeholder, such as a person’s name, at the caret. {token} is the placeholder’s label, which the button also shows."
