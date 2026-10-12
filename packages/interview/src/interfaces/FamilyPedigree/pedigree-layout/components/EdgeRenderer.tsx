@@ -234,7 +234,9 @@ const HOP_RADIUS = EDGE_WIDTH * 1.6;
  * crosses with a half circle (bulging up from a level piece, and to one side
  * of an upright one) so the crossing does not read as a junction.
  */
-export function auxiliaryPath(conn: AuxiliaryConnector): string {
+export function auxiliaryPath(
+  conn: Pick<AuxiliaryConnector, 'points' | 'hops'>,
+): string {
   const { points, hops = [] } = conn;
   const [first] = points;
   if (!first) return '';
@@ -267,30 +269,135 @@ export function auxiliaryPath(conn: AuxiliaryConnector): string {
   return d;
 }
 
-function renderAuxiliary(conn: AuxiliaryConnector, idx: number, color: string) {
-  const style = getAuxiliaryStyle(conn.edgeType);
-  const stroke = {
-    fill: 'none',
-    stroke: color,
-    strokeWidth: style.strokeWidth,
-    ...('strokeDasharray' in style
-      ? { strokeDasharray: style.strokeDasharray }
-      : {}),
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-  } as const;
-  // One stroke, so a dashed line's pattern flows round its corners (and its
-  // hops, when it crosses another line).
-  if (conn.hops?.length) {
-    return <path key={`aux-${idx}`} d={auxiliaryPath(conn)} {...stroke} />;
-  }
+function renderAuxiliary(stroke: AuxiliaryStroke, idx: number, color: string) {
+  const style = getAuxiliaryStyle(stroke.edgeType);
+  // One stroke for each run of pieces, so a dashed line's pattern flows round
+  // its corners and hops; where a run starts partway along its line, the
+  // pattern carries on from there.
   return (
-    <polyline
+    <path
       key={`aux-${idx}`}
-      points={conn.points.map((p) => `${p.x},${p.y}`).join(' ')}
-      {...stroke}
+      d={auxiliaryPath(stroke)}
+      fill="none"
+      stroke={color}
+      strokeWidth={style.strokeWidth}
+      {...('strokeDasharray' in style
+        ? {
+            strokeDasharray: style.strokeDasharray,
+            ...(stroke.dashOffset > 0
+              ? { strokeDashoffset: stroke.dashOffset }
+              : {}),
+          }
+        : {})}
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
   );
+}
+
+/** A run of an auxiliary line's pieces drawn as one stroke: its course and
+ * hops, how far along its line it starts, and whether it is lit. */
+type AuxiliaryStroke = Pick<
+  AuxiliaryConnector,
+  'points' | 'hops' | 'edgeType'
+> & { dashOffset: number; lit: boolean };
+
+/**
+ * The auxiliary lines as strokes, every piece drawn once. Each line is cut
+ * wherever a corner or end of any auxiliary line lies on it, so lines that
+ * share a course (two lines of one owner before they part, two co-parents'
+ * lines after they join) share its pieces. A piece is lit if any line through
+ * it is lit, and is drawn by the first line through it of the same shade, so
+ * a lit piece is never painted over by a dim one, nor drawn twice.
+ */
+function auxiliaryStrokes(
+  lines: AuxiliaryConnector[],
+  lineLit: boolean[],
+): AuxiliaryStroke[] {
+  const corners = lines.flatMap((aux) => aux.points);
+  const dashed = (aux: AuxiliaryConnector) =>
+    'strokeDasharray' in getAuxiliaryStyle(aux.edgeType);
+  const pieceKey = (aux: AuxiliaryConnector, a: Point, b: Point) => {
+    const [p, q] = [pointKey(a), pointKey(b)];
+    return `${dashed(aux) ? 'dashed' : 'solid'}|${p < q ? `${p}|${q}` : `${q}|${p}`}`;
+  };
+  const piecesOf = lines.map((aux) =>
+    aux.points.slice(1).flatMap((to, k) => {
+      const from = aux.points[k]!;
+      const segment: LineSegment = {
+        type: 'line',
+        x1: from.x,
+        y1: from.y,
+        x2: to.x,
+        y2: to.y,
+      };
+      const ts = [
+        0,
+        1,
+        ...corners
+          .map((p) => fractionAlong(p, segment))
+          .filter((t): t is number => t !== undefined && t > 0 && t < 1),
+      ].toSorted((a, b) => a - b);
+      const at = (t: number): Point => ({
+        x: from.x + t * (to.x - from.x),
+        y: from.y + t * (to.y - from.y),
+      });
+      return ts.slice(1).flatMap((t, m) => {
+        const [a, b] = [at(ts[m]!), at(t)];
+        return pointKey(a) === pointKey(b)
+          ? []
+          : [{ from: a, to: b, key: pieceKey(aux, a, b) }];
+      });
+    }),
+  );
+  const pieceLit = new Map<string, boolean>();
+  piecesOf.forEach((pieces, i) => {
+    for (const { key } of pieces) {
+      pieceLit.set(key, (pieceLit.get(key) ?? false) || lineLit[i]!);
+    }
+  });
+  const drawer = new Map<string, number>();
+  piecesOf.forEach((pieces, i) => {
+    for (const { key } of pieces) {
+      if (!drawer.has(key) && lineLit[i] === pieceLit.get(key)) {
+        drawer.set(key, i);
+      }
+    }
+  });
+  piecesOf.forEach((pieces, i) => {
+    for (const { key } of pieces) if (!drawer.has(key)) drawer.set(key, i);
+  });
+
+  const strokes: AuxiliaryStroke[] = [];
+  piecesOf.forEach((pieces, i) => {
+    const aux = lines[i]!;
+    const lit = lineLit[i]!;
+    let along = 0;
+    let run: { points: Point[]; dashOffset: number } | undefined;
+    const close = () => {
+      if (run) {
+        strokes.push({
+          points: run.points,
+          ...(aux.hops ? { hops: aux.hops } : {}),
+          edgeType: aux.edgeType,
+          dashOffset: run.dashOffset,
+          lit,
+        });
+      }
+      run = undefined;
+    };
+    for (const { from, to, key } of pieces) {
+      if (drawer.get(key) === i) {
+        if (run) run.points.push(to);
+        else run = { points: [from, to], dashOffset: along };
+      } else {
+        close();
+      }
+      along += Math.hypot(to.x - from.x, to.y - from.y);
+    }
+    close();
+  });
+  return strokes;
 }
 
 /**
@@ -428,6 +535,12 @@ function descentSegments(conn: ParentChildConnector): LineSegment[] {
   ];
 }
 
+/** Whose ties an auxiliary line draws: its owners, one person or a
+ * couple. */
+const ownersOf = (aux: AuxiliaryConnector): string[] =>
+  aux.ownerIds ??
+  (aux.endpointIds?.[0] === undefined ? [] : [aux.endpointIds[0]]);
+
 /**
  * Traces every lit tie's course through the drawing and marks the pieces it
  * passes through. The lines of descent are cut wherever another line ends on
@@ -531,12 +644,14 @@ function traceLitCourses(
   }
   const linesEndingAt = new Map<string, number[]>();
   auxiliaryLines.forEach((aux, i) => {
-    const [parentId, childId] = aux.endpointIds ?? [];
+    const childId = aux.endpointIds?.[1];
     const end = aux.points.at(-1);
-    if (parentId === undefined || childId !== undefined || !end) return;
-    enter(parentId, end);
-    const key = `${parentId}|${pointKey(end)}`;
-    linesEndingAt.set(key, [...(linesEndingAt.get(key) ?? []), i]);
+    if (childId !== undefined || !end) return;
+    for (const parentId of ownersOf(aux)) {
+      enter(parentId, end);
+      const key = `${parentId}|${pointKey(end)}`;
+      linesEndingAt.set(key, [...(linesEndingAt.get(key) ?? []), i]);
+    }
   });
 
   /** The course from `start` up to the nearest place `parentId`'s ties
@@ -628,47 +743,20 @@ function traceLitCourses(
     });
   }
   // Each lit tie drawn on a line of its own, and the stretch of a line of
-  // descent or partnership line above where that line leaves it. A couple's
-  // line (one that leaves their partnership line partway along, or their own
-  // line of descent) carries the ties of both partners to the child, save
-  // one that another line draws.
-  const drawnElsewhere = (parentId: string, childId: string) =>
-    auxiliaryLines.some(
-      ({ endpointIds }) =>
-        endpointIds?.[0] === parentId && endpointIds[1] === childId,
-    ) ||
-    parentChildLines.some(
-      (conn) =>
-        conn.parentIds?.includes(parentId) &&
-        conn.uplineChildIds?.includes(childId),
-    );
-  const partnersMidway = (parentId: string, entry: Point) =>
-    groupLines.flatMap(({ segment, doubleSegment, partnerIds }) => {
-      const side = partnerIds?.indexOf(parentId) ?? -1;
-      const midway = [segment, ...(doubleSegment ? [doubleSegment] : [])].some(
-        (rail) => {
-          const t = fractionAlong(entry, rail);
-          return t !== undefined && t > 1e-3 && t < 1 - 1e-3;
-        },
-      );
-      return side >= 0 && midway ? [partnerIds![1 - side]!] : [];
-    });
+  // descent or partnership line above where that line leaves it: the line
+  // carries the ties of every one of its owners to the child (a couple's
+  // line, both partners').
   auxiliaryLines.forEach((aux, i) => {
-    const [parentId, childId] = aux.endpointIds ?? [];
+    const childId = aux.endpointIds?.[1];
     const start = aux.points[0];
-    if (parentId === undefined || childId === undefined || !start) return;
-    const course = traceUp(start, parentId);
-    const entry = course?.entry ?? start;
-    const carriers = [
-      parentId,
-      ...partnersMidway(parentId, entry).filter(
-        (partnerId) => !drawnElsewhere(partnerId, childId),
-      ),
-    ].filter((carrier) => tieLit(carrier, childId));
-    if (carriers.length === 0) return;
-    auxiliary[i] = true;
-    light(course?.pieces ?? []);
-    for (const carrier of carriers) litFrom(carrier, entry);
+    if (childId === undefined || !start) return;
+    for (const parentId of ownersOf(aux)) {
+      if (!tieLit(parentId, childId)) continue;
+      const course = traceUp(start, parentId);
+      auxiliary[i] = true;
+      light(course?.pieces ?? []);
+      litFrom(parentId, course?.entry ?? start);
+    }
   });
 
   // Each segment of a line of descent, its pieces of one shade joined again.
@@ -1018,41 +1106,18 @@ export function PedigreeEdgeSvg({
       );
     });
 
-    const auxiliaries = connectors.auxiliaryLines.map((aux, i) => ({
-      aux,
-      i,
-      dimmed: courses ? !courses.auxiliary[i] : false,
-    }));
-    // Two co-parents' lines that join follow one course from where they
-    // meet, which is drawn once, so that a dashed line keeps one rhythm: by
-    // the first of them that is lit, the other drawn only to where they
-    // meet.
-    const sharedCourse = (aux: AuxiliaryConnector) =>
-      aux.points
-        .slice(aux.joinsAt)
-        .map((p) => `${p.x},${p.y}`)
-        .join(' ');
-    const drawsShared = new Set<number>();
-    const joinedGroups = new Map<string, typeof auxiliaries>();
-    for (const entry of auxiliaries) {
-      if (entry.aux.joinsAt === undefined) continue;
-      const key = `${entry.aux.edgeType}|${sharedCourse(entry.aux)}`;
-      joinedGroups.set(key, [...(joinedGroups.get(key) ?? []), entry]);
-    }
-    for (const group of joinedGroups.values()) {
-      drawsShared.add((group.find((entry) => !entry.dimmed) ?? group[0]!).i);
-    }
-    for (const { aux, i, dimmed } of auxiliaries) {
-      const drawn =
-        aux.joinsAt === undefined || drawsShared.has(i)
-          ? aux
-          : { ...aux, points: aux.points.slice(0, aux.joinsAt + 1) };
+    // Every piece of the auxiliary lines is drawn once, lit if a lit line
+    // passes through it (see `auxiliaryStrokes`).
+    auxiliaryStrokes(
+      connectors.auxiliaryLines,
+      courses?.auxiliary ?? connectors.auxiliaryLines.map(() => true),
+    ).forEach((stroke, k) => {
       elements.push(
-        <g key={`aux-dim-${i}`} {...(dimmed ? DIMMED : {})}>
-          {renderAuxiliary(drawn, i, dimmed ? dimColor(color) : color)}
+        <g key={`aux-dim-${k}`} {...(stroke.lit ? {} : DIMMED)}>
+          {renderAuxiliary(stroke, k, stroke.lit ? color : dimColor(color))}
         </g>,
       );
-    }
+    });
 
     for (let i = 0; i < connectors.twinIndicators.length; i++) {
       const ti = connectors.twinIndicators[i]!;

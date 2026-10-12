@@ -225,6 +225,22 @@ describe('PedigreeEdgeSvg — sibling branch off contributing lineage is dimmed'
 // re-theme to --dim-blend).
 const DIM_BLEND_BLACK = dimColor('black');
 
+/** The points a <polyline> or straight-line <path> stroke runs through. */
+function drawnPoints(el: Element): { x: number; y: number }[] {
+  if (el.tagName === 'path') {
+    return [
+      ...(el.getAttribute('d') ?? '').matchAll(/[ML]([\d.-]+),([\d.-]+)/g),
+    ].map((m) => ({ x: Number(m[1]), y: Number(m[2]) }));
+  }
+  return (el.getAttribute('points') ?? '')
+    .trim()
+    .split(/\s+/)
+    .map((pair) => {
+      const [px, py] = pair.split(',').map(Number);
+      return { x: px!, y: py! };
+    });
+}
+
 /**
  * The rendered stroke (a <line>, or a <polyline> the bar's pieces are joined
  * into) that draws the sibling bar at the point (x, y).
@@ -257,15 +273,10 @@ function barStrokeAt(
     ];
     if (runsThrough(points)) return line;
   }
-  for (const polyline of Array.from(container.querySelectorAll('polyline'))) {
-    const points = (polyline.getAttribute('points') ?? '')
-      .trim()
-      .split(/\s+/)
-      .map((pair) => {
-        const [px, py] = pair.split(',').map(Number);
-        return { x: px!, y: py! };
-      });
-    if (runsThrough(points)) return polyline;
+  for (const stroke of Array.from(
+    container.querySelectorAll<SVGElement>('polyline, path'),
+  )) {
+    if (runsThrough(drawnPoints(stroke))) return stroke;
   }
   return undefined;
 }
@@ -465,20 +476,16 @@ function makeCoupleWithChild(
   };
 }
 
-/** The rendered polyline running upright through the point (x, y). */
+/** The rendered stroke running upright through the point (x, y). */
 function uprightStrokeAt(
   container: HTMLElement,
   x: number,
   y: number,
 ): SVGElement | undefined {
-  return Array.from(container.querySelectorAll('polyline')).find((polyline) => {
-    const points = (polyline.getAttribute('points') ?? '')
-      .trim()
-      .split(/\s+/)
-      .map((pair) => {
-        const [px, py] = pair.split(',').map(Number);
-        return { x: px!, y: py! };
-      });
+  return Array.from(
+    container.querySelectorAll<SVGElement>('polyline, path'),
+  ).find((stroke) => {
+    const points = drawnPoints(stroke);
     return points
       .slice(1)
       .some(
@@ -1211,9 +1218,11 @@ describe('auxiliary lines that cross another line', () => {
     const path = container.querySelector('path');
     expect(path?.getAttribute('d')).toContain('A8,8');
     expect(path?.getAttribute('stroke-dasharray')).toBe('8 8');
-    expect(container.querySelector('polyline')?.getAttribute('points')).toBe(
-      '0,20 100,20',
-    );
+    expect(
+      Array.from(container.querySelectorAll('path')).map((el) =>
+        el.getAttribute('d'),
+      ),
+    ).toContain('M0,20 L100,20');
   });
 });
 
@@ -1820,6 +1829,7 @@ describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course pass
               { x: 300, y: 200 },
             ],
             endpointIds: ['aunt', 'niece'],
+            ownerIds: ['aunt', 'uncle'],
           },
         ],
       }),
@@ -1838,5 +1848,147 @@ describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course pass
     );
     expect(isLineDimmed(barStrokeAt(container, 10, 50)!)).toBe(false);
     expect(isLineDimmed(barStrokeAt(container, 190, 50)!)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// One highlight rule through one tracer: a piece is lit if and only if a lit
+// tie passes through it, read from the line model (its owners and course),
+// and every piece is drawn once.
+// ---------------------------------------------------------------------------
+
+/** The points of a drawn auxiliary stroke (moves and straight lines). */
+function strokePoints(el: Element): { x: number; y: number }[] {
+  const raw = el.getAttribute('d') ?? el.getAttribute('points') ?? '';
+  const numbers = [...raw.matchAll(/-?\d+(?:\.\d+)?/g)].map((m) =>
+    Number(m[0]),
+  );
+  const points: { x: number; y: number }[] = [];
+  for (let k = 0; k + 1 < numbers.length; k += 2) {
+    points.push({ x: numbers[k]!, y: numbers[k + 1]! });
+  }
+  return points;
+}
+
+/** Whether a stroke's course runs along the piece from `a` to `b`. */
+function strokeCovers(
+  el: Element,
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): boolean {
+  const points = strokePoints(el);
+  const on = (p: { x: number; y: number }, s: { x: number; y: number }[]) => {
+    const [u, v] = s as [{ x: number; y: number }, { x: number; y: number }];
+    const cross = (v.x - u.x) * (p.y - u.y) - (v.y - u.y) * (p.x - u.x);
+    const dot = (p.x - u.x) * (v.x - u.x) + (p.y - u.y) * (v.y - u.y);
+    const len2 = (v.x - u.x) ** 2 + (v.y - u.y) ** 2;
+    return Math.abs(cross) < 1e-6 * len2 && dot >= -1e-6 && dot <= len2 + 1e-6;
+  };
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  return points
+    .slice(1)
+    .some((p, k) => on(mid, [points[k]!, p]) && on(a, [points[k]!, p]));
+}
+
+const auxStrokes = (container: HTMLElement) => [
+  ...container.querySelectorAll('path, polyline'),
+];
+
+describe('PedigreeEdgeSvg — one tracer lights every piece by the ties through it', () => {
+  test('a couple’s shared line that ends on a line of descent is lit by the second partner’s lit tie', () => {
+    // A surrogate's line of descent to twins, who hang from one point; the
+    // twins' parents' line leaves their partnership line and ends there.
+    const data: ConnectorRenderData = {
+      connectors: {
+        groupLines: [
+          {
+            type: 'parent-group',
+            segment: seg(0, 0, 200, 0),
+            double: false,
+            isActive: true,
+            partnerIds: ['a', 'b'],
+          },
+        ],
+        parentChildLines: [
+          makeParentChildConnector({
+            parentLink: [seg(300, 0, 300, 100)],
+            uplines: [seg(300, 100, 250, 150), seg(300, 100, 350, 150)],
+            parentIds: ['lena'],
+            uplineChildIds: ['p1', 'p2'],
+          }),
+        ],
+        auxiliaryLines: [
+          {
+            type: 'auxiliary',
+            edgeType: 'biological',
+            points: [
+              { x: 100, y: 0 },
+              { x: 300, y: 100 },
+            ],
+            endpointIds: ['a', undefined],
+            ownerIds: ['a', 'b'],
+          },
+        ],
+        twinIndicators: [],
+        duplicateArcs: [],
+      },
+    };
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={data}
+        color="#000"
+        width={400}
+        height={300}
+        highlightedEdgeKeys={new Set([edgeKey('b', 'p1')])}
+      />,
+    );
+    const strokes = auxStrokes(container).filter((el) =>
+      strokeCovers(el, { x: 100, y: 0 }, { x: 300, y: 100 }),
+    );
+    expect(strokes).toHaveLength(1);
+    expect(strokes[0]!.closest('[data-edge-dimmed]')).toBeNull();
+  });
+
+  test('two lines of one owner that share a course draw the shared piece once, lit when either tie is', () => {
+    const line = (
+      child: string,
+      end: { x: number; y: number },
+    ): AuxiliaryConnector => ({
+      type: 'auxiliary',
+      edgeType: 'social',
+      points: [{ x: 0, y: 0 }, { x: 100, y: 100 }, end],
+      endpointIds: ['s', child],
+      ownerIds: ['s'],
+    });
+    const data: ConnectorRenderData = {
+      connectors: {
+        groupLines: [],
+        parentChildLines: [],
+        // The dim line second, so drawn after the lit one.
+        auxiliaryLines: [
+          line('c1', { x: 0, y: 200 }),
+          line('c2', { x: 200, y: 200 }),
+        ],
+        twinIndicators: [],
+        duplicateArcs: [],
+      },
+    };
+    for (const lit of ['c1', 'c2']) {
+      const { container, unmount } = render(
+        <PedigreeEdgeSvg
+          connectorData={data}
+          color="#000"
+          width={300}
+          height={300}
+          highlightedEdgeKeys={new Set([edgeKey('s', lit)])}
+        />,
+      );
+      const shared = auxStrokes(container).filter((el) =>
+        strokeCovers(el, { x: 0, y: 0 }, { x: 100, y: 100 }),
+      );
+      expect(shared, lit).toHaveLength(1);
+      expect(shared[0]!.closest('[data-edge-dimmed]'), lit).toBeNull();
+      unmount();
+    }
   });
 });
