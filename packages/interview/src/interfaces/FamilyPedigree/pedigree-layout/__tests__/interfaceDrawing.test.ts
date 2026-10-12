@@ -517,9 +517,11 @@ describe('a donor’s line meets the line of descent of the children they gave t
 
   // Families not listed cross nothing.
   const FEWEST_HOPS: Record<string, number> = {
-    // Hannah's social line to the participant hops their sister's line up.
+    // Hannah's lines run as one course to below the sibling bar, where her
+    // line to Ruby parts and hops the participant's line up.
     'an egg donor, a sperm donor and a surrogate for two of three children': 1,
-    // The carrier's line hops the donor's run (Round 3).
+    // Paul's lines run as one course from him and part as a fork; his line
+    // to the participant hops Hannah's line of descent.
     'a surrogate for one of a donor’s two children, the other recorded first': 1,
     // The participant hangs from the surrogate who carried them (Round 5,
     // ruling 2): Hannah's line to them and Paul's to Ruby cross whichever

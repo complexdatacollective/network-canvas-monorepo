@@ -788,9 +788,11 @@ describe('the lines pass the strict line checks', () => {
 const HOPS: Record<string, number> = {
   // Lauren's line hops the line down to Jack.
   'step parents and adoptive parents who separated': 1,
-  // Hannah's social line to the participant hops their sister's line up.
+  // Hannah's lines run as one course to below the sibling bar, where her
+  // line to Ruby parts and hops the participant's line up.
   'an egg donor, a sperm donor and a surrogate for two of three children Hannah raises': 1,
-  // The carrier's line hops the donor's bar.
+  // Paul's lines run as one course from him and part as a fork; his line
+  // to the participant hops Hannah's line of descent.
   'a surrogate for one of a donor’s two children, the other recorded first': 1,
   // The children the surrogate carried hang from her (Round 5, ruling 2),
   // so a line to them from beyond the donor crosses one of the donor's
@@ -800,7 +802,9 @@ const HOPS: Record<string, number> = {
   // The birth parents' line to the participant hops their sibling's line
   // up: the two parents' lines run as one there, and each draws the hop.
   'two siblings adopted together, with the same birth parents': 2,
-  // The stepfather's line to the participant hops their sibling's line up.
+  // The stepfather's lines run as one course to below the sibling bar,
+  // where his line to the participant parts and hops their sibling's line
+  // up.
   'a stepfather who raises all his partner’s children': 1,
 };
 

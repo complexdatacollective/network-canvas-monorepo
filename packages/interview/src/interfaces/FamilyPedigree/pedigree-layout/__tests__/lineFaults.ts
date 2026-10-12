@@ -1695,11 +1695,23 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
               drawing.shapeOf(line.child!),
             ) < 0.5,
         ) ?? line.end);
-  // Two lines of different owners.
+  // Two lines. Lines of one owner leave the owner together, and may run on
+  // as one course; once they part, they keep clear of each other like any
+  // two lines.
   for (let i = 0; i < lines.length; i++) {
     for (let j = i + 1; j < lines.length; j++) {
       const [a, b] = [lines[i]!, lines[j]!];
-      if (a.owners.join() === b.owners.join()) continue;
+      const sameOwners = a.owners.join() === b.owners.join();
+      // Where both leave their owner: inside, or just outside, an owner's
+      // symbol, or near the point on the partnership line they start at.
+      const leaving = (p: Point) =>
+        sameOwners &&
+        (near(p, a.line.points[0]!, 0.3 * size) ||
+          a.owners.some(
+            (id) =>
+              outsideSymbol(p, drawing.centre(id), size, drawing.shapeOf(id)) <
+              0.3 * size,
+          ));
       // Lines that meet at one point: on a line of descent (the donor
       // rule), or at the top of the child they converge on.
       if (
@@ -1737,7 +1749,7 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
       let close = 0;
       for (const s of a.segments) {
         for (const { p, length } of samples(s)) {
-          if (hops.some((h) => near(p, h, 0.3 * size))) {
+          if (hops.some((h) => near(p, h, 0.3 * size)) || leaving(p)) {
             close = 0;
             continue;
           }

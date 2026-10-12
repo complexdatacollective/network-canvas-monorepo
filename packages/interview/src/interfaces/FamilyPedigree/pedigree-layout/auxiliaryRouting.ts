@@ -752,6 +752,16 @@ function courseCoster(
         p.y > symbol.top + ON &&
         p.y < symbol.bottom - ON,
     );
+  // Just outside the owner's symbol, where its lines leave it together.
+  const leaving = ends
+    .filter((symbol) => symbol.person === from)
+    .map((symbol) => ({
+      ...symbol,
+      left: symbol.left - HOP_REACH * boxw,
+      right: symbol.right + HOP_REACH * boxw,
+      top: symbol.top - HOP_REACH * boxh,
+      bottom: symbol.bottom + HOP_REACH * boxh,
+    }));
   const keyOf = (p: Point) => `${p.x},${p.y}`;
   // Where the course leaves its owner and meets its target.
   const targets: Point[] =
@@ -808,6 +818,30 @@ function courseCoster(
     for (const line of own) {
       const at = crossing(segment, line.segment);
       if (at && !insideAny(symbols, at)) cost += COST.crossOwn;
+      // Lines of one owner leave the owner together and may run on as one
+      // course; once they part they keep clear of each other, like any two
+      // lines.
+      if (!isNear(boxOfSegment(line.segment))) continue;
+      const partings = [
+        { x: line.segment.x1, y: line.segment.y1 },
+        { x: line.segment.x2, y: line.segment.y2 },
+      ]
+        .filter((p) => distanceToSegment(p, segment) < ON)
+        .concat(
+          [
+            { x: segment.x1, y: segment.y1 },
+            { x: segment.x2, y: segment.y2 },
+          ].filter((p) => distanceToSegment(p, line.segment) < ON),
+        );
+      const stretches = closeStretches(
+        segment,
+        line.segment,
+        boxw,
+        boxh,
+        [...ends, ...leaving],
+        [...(at ? [at] : []), ...(start ? [start] : []), ...partings],
+      );
+      if (stretches.length > 0) close.push({ line, stretches });
     }
     for (const bracket of linesOnly ? [] : scene.brackets.filter(isNear)) {
       if (lengthInside(segment, bracket) > ON) cost += COST.bracket;
@@ -1406,6 +1440,50 @@ export function routeOptions(
     defaultStart,
   );
 
+  // The courses of lines of the same owner leaving from the same point, as
+  // far as points along them: a quarter and half of the way along each
+  // piece, and the corners between pieces.
+  const ownCourses = (start: Point): Point[][] => {
+    const own = scene.lines.filter(
+      (line) => line.owner !== undefined && line.owner === owner,
+    );
+    const downFrom = (p: Point) =>
+      own.flatMap(({ segment: { x1, y1, x2, y2 } }) => {
+        const [top, bottom] =
+          y1 < y2
+            ? [
+                { x: x1, y: y1 },
+                { x: x2, y: y2 },
+              ]
+            : [
+                { x: x2, y: y2 },
+                { x: x1, y: y1 },
+              ];
+        return Math.hypot(top.x - p.x, top.y - p.y) < ON &&
+          bottom.y - top.y > ON
+          ? [bottom]
+          : [];
+      });
+    const found: Point[][] = [];
+    const walk = (course: Point[]) => {
+      if (course.length > 4) return;
+      const at = course.at(-1)!;
+      for (const next of downFrom(at)) {
+        for (const t of [0.25, 0.5]) {
+          found.push([
+            ...course,
+            { x: at.x + t * (next.x - at.x), y: at.y + t * (next.y - at.y) },
+          ]);
+        }
+        if (downFrom(next).length > 0) {
+          found.push([...course, next]);
+          walk([...course, next]);
+        }
+      }
+    };
+    walk([start]);
+    return found;
+  };
   const candidates: { points: Point[]; endX: number }[] = [];
   // Points clear of each symbol near the straight line from `a` to `b`
   // (other than the ends'), round it and at the corners of a square round
@@ -1566,19 +1644,64 @@ export function routeOptions(
         const t = (y - high.y) / (low.y - high.y);
         return [{ x: high.x + t * (low.x - high.x), y }];
       });
+      // Where a line of the same owner, leaving from the same point, passes
+      // the door's height between the start and the door: a course that
+      // runs on that line's course to there parts from it as a fork.
+      const forksAt = (door: Point): number[] =>
+        scene.lines.flatMap((line) => {
+          if (line.owner === undefined || line.owner !== owner) return [];
+          const { x1, y1, x2, y2 } = line.segment;
+          const [top, bottom] =
+            y1 < y2
+              ? [
+                  { x: x1, y: y1 },
+                  { x: x2, y: y2 },
+                ]
+              : [
+                  { x: x2, y: y2 },
+                  { x: x1, y: y1 },
+                ];
+          if (Math.hypot(top.x - start.x, top.y - start.y) > ON) return [];
+          if (door.y <= top.y || door.y >= bottom.y) return [];
+          const x =
+            top.x +
+            ((door.y - top.y) / (bottom.y - top.y)) * (bottom.x - top.x);
+          const side = Math.sign(start.x - door.x) || 1;
+          return (x - door.x) * side > 0.15 * boxw ? [x] : [];
+        });
       // Level through it, from a corner short of it: a corner on the line
       // up would read as a junction.
       for (const target of targets) {
         for (const door of doors) {
           const side = Math.sign(start.x - door.x) || 1;
-          for (const short of [0.15, 0.3]) {
-            const before = { x: door.x + side * short * boxw, y: door.y };
+          for (const x of [
+            door.x + side * 0.15 * boxw,
+            door.x + side * 0.3 * boxw,
+            ...forksAt(door),
+          ]) {
+            const before = { x, y: door.y };
             for (const into of approaches(target, door.y)) {
               candidates.push({
                 points: [start, before, ...into],
                 endX: target.x,
               });
             }
+          }
+        }
+      }
+      // On the course of a line of the same owner that leaves from the same
+      // point, to a point along it, and from there, where it parts as a
+      // fork, into the target: straight, or level and then in.
+      for (const prefix of ownCourses(start)) {
+        const at = prefix.at(-1)!;
+        for (const target of targets) {
+          if (at.y >= target.meet.y - ON) continue;
+          candidates.push({
+            points: [...prefix, target.meet, ...target.tail],
+            endX: target.x,
+          });
+          for (const into of approaches(target, at.y)) {
+            candidates.push({ points: [...prefix, ...into], endX: target.x });
           }
         }
       }

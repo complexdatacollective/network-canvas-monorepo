@@ -753,3 +753,66 @@ describe('auxiliary lines keep clear of every other line', () => {
     }
   });
 });
+
+describe('lines of one owner', () => {
+  const W = DIMENSIONS.nodeWidth;
+
+  it('run as one course from the owner, and keep clear of each other once they part', () => {
+    const { connectors, boxOf } = draw(
+      ['ego', 'sib', 'mum', 'dad', 'stepdad'],
+      [
+        partners('mum', 'dad', false),
+        partners('mum', 'stepdad'),
+        ...['ego', 'sib'].flatMap((child) => [
+          parent('mum', 'biological', child, true),
+          parent('dad', 'biological', child),
+          parent('stepdad', 'social', child),
+        ]),
+      ],
+    );
+    const [a, b] = connectors.auxiliaryLines.filter(
+      (line) => line.endpointIds?.[0] === 'stepdad',
+    );
+    expect(a && b).toBeTruthy();
+    const pieces = (points: P[]): LineSegment[] =>
+      points.slice(1).map((p, k) => ({
+        type: 'line',
+        x1: points[k]!.x,
+        y1: points[k]!.y,
+        x2: p.x,
+        y2: p.y,
+      }));
+    const [aPieces, bPieces] = [pieces(a!.points), pieces(b!.points)];
+    const apart = (p: P, other: LineSegment[]) =>
+      Math.min(...other.map((t) => pointToSegment(p, t)));
+    // Where they part: a corner of one on the course of the other.
+    const partings = [
+      ...a!.points.filter((p) => apart(p, bPieces) < 0.5),
+      ...b!.points.filter((p) => apart(p, aPieces) < 0.5),
+    ];
+    // They leave the stepfather on one course.
+    const leaving = boxOf('stepdad');
+    const firstOutside = a!.points.find((p) => !inside(p, leaving))!;
+    expect(apart(firstOutside, bPieces)).toBeLessThan(0.5);
+    // Everywhere else, away from where they part and from the symbols,
+    // they run on one course or a quarter of a symbol apart (but for as
+    // much again, where lines parting at an angle draw apart).
+    const symbols = ['ego', 'sib', 'stepdad'].map(boxOf);
+    const close = aPieces.flatMap((s) => {
+      const steps = Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1));
+      return Array.from({ length: steps }, (_, k) => {
+        const t = (k + 0.5) / steps;
+        return { x: s.x1 + t * (s.x2 - s.x1), y: s.y1 + t * (s.y2 - s.y1) };
+      }).filter((p) => {
+        if (symbols.some((box) => inside(p, box))) return false;
+        if (partings.some((q) => Math.hypot(p.x - q.x, p.y - q.y) < 0.3 * W)) {
+          return false;
+        }
+        const d = apart(p, bPieces);
+        return d >= 0.5 && d < 0.25 * W - 0.5;
+      });
+    });
+    // Each sample stands for a pixel of the course.
+    expect(close.length).toBeLessThanOrEqual(0.25 * W);
+  });
+});
