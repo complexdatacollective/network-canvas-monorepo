@@ -449,7 +449,10 @@ release branch (named `changeset-release/main`, or at the local tracking ref)
 but is not origin's current head, an unreachable origin, a PR that does not
 contain main's tip (wait for the bot to regenerate it), a downgrade, or a
 version that is not stable semver leaves the run unpinned rather than inferring
-anything. So does an origin that is not the canonical
+anything. So does any other checkout that deleted normal-lane changesets since
+it left `origin/main`, as only a Version Packages head does: a detached or
+renamed checkout of a superseded PR head keeps neither the branch name nor the
+tracking ref, so what it consumed is what identifies it. So does an origin that is not the canonical
 `complexdatacollective/network-canvas-monorepo` on github.com (after any
 `insteadOf` rewriting), since nothing it says identifies the Version Packages
 PR. The release branch has already consumed (deleted) the changesets it ships,

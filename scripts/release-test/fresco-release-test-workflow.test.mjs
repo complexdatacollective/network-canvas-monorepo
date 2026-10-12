@@ -2603,14 +2603,13 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
       /not the canonical repository complexdatacollective\/network-canvas-monorepo/,
     );
 
-    // One commit past the release branch is no longer its head.
-    const ahead = released('4.1.3');
-    assert.deepEqual(detect(), {
-      ok: true,
-      onReleaseBranch: false,
-      head: ahead,
-      branch: 'work',
-    });
+    // One commit past the release branch is no longer its head, and what it
+    // consumed marks it as a modified release candidate.
+    released('4.1.3');
+    assert.match(
+      refusal(),
+      /HEAD deleted normal-lane changesets \(brave-otters, calm-owls\) as a Version Packages head does/,
+    );
 
     // The bot pushed a newer PR head this checkout never fetched: HEAD at the
     // stale tracking ref is not the PR being approved.
@@ -2630,17 +2629,28 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
     );
     assert.match(refusal(), /HEAD is not origin's changeset-release\/main/);
 
+    // Once the tracking ref is fetched past it, a detached checkout of the
+    // superseded head keeps neither the branch name nor the tracking ref.
+    git('fetch', '-q', 'origin');
+    assert.match(
+      refusal(),
+      /not origin's current changeset-release\/main \([0-9a-f]{12}\) - an earlier or modified release candidate/,
+    );
+
     // Origin unreachable: a checkout at the tracking ref cannot be confirmed,
-    // while an unrelated one is plainly not the release branch.
+    // while an unrelated one is plainly not the release branch, even when it
+    // consumed a separately gated lane's changeset as that lane's PR does.
+    git('checkout', '-q', '--detach', regenerated);
     const missing = join(root, 'missing.git');
     git('remote', 'set-url', 'origin', missing);
     assert.match(refusal({ trusting: missing }), /could not reach origin/);
-    git('checkout', '-q', 'work');
+    git('checkout', '-q', '-B', 'feature', main);
+    const feature = commit('4.1.1', ['brave-otters', 'calm-owls', 'mine']);
     assert.deepEqual(detect({ trusting: missing }), {
       ok: true,
       onReleaseBranch: false,
-      head: ahead,
-      branch: 'work',
+      head: feature,
+      branch: 'feature',
     });
 
     // Origin is trusted only as the canonical repository, in any of the forms

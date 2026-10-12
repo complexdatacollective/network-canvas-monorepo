@@ -14,7 +14,10 @@
 // branch — a local branch NAMED changeset-release/main, or HEAD at the local
 // origin/changeset-release/main — but is not origin's current head (stale,
 // carrying local commits, or origin unreachable) is not the PR being approved
-// and fails rather than certify. Anything else simply reports
+// and fails rather than certify. So does any other checkout that deleted the
+// normal lane's changesets since it left origin/main, as only a release head
+// does: a detached or renamed checkout of a superseded PR head keeps neither
+// the branch name nor the tracking ref. Anything else simply reports
 // onReleaseBranch:false.
 //
 // On the release branch, the Fresco version is compared with origin/main's
@@ -147,8 +150,10 @@ const trustedOrigin = () => {
   return { url, trusted };
 };
 
-const consumedChangesets = (base) => {
-  const deleted = execFileSync(
+// Every top-level changeset HEAD deleted relative to base, with its contents
+// at base.
+const deletedChangesets = (base) =>
+  execFileSync(
     'git',
     [
       'diff',
@@ -164,26 +169,31 @@ const consumedChangesets = (base) => {
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
   )
     .split('\0')
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((path) => ({ path, file: path.slice(CHANGESET_DIR.length + 1) }))
+    .filter(
+      ({ file }) =>
+        !file.includes('/') &&
+        file.endsWith('.md') &&
+        file.toLowerCase() !== 'readme.md',
+    )
+    .map(({ path, file }) => ({
+      file,
+      name: file.slice(0, -'.md'.length),
+      changeset: parseChangeset(git('show', `${base}:${path}`)),
+    }));
+
+const consumedChangesets = (base) => {
   const ignored = ignoredAt(base);
   const names = [];
-  for (const path of deleted) {
-    const file = path.slice(CHANGESET_DIR.length + 1);
-    if (file.includes('/') || !file.endsWith('.md')) continue;
-    const name = file.slice(0, -'.md'.length);
-    if (name.toLowerCase() === 'readme') continue;
+  for (const { file, name, changeset } of deletedChangesets(base)) {
     if (!CHANGESET_NAME.test(name))
       throw new Error(
         `the release branch consumed a changeset whose name the release test cannot carry (${JSON.stringify(file)})`,
       );
     // Separately gated lanes keep their changesets until their own release
     // PR; a head that deleted one would drop it from that lane for good.
-    if (
-      isIgnoredLaneChangeset(
-        parseChangeset(git('show', `${base}:${path}`)),
-        ignored,
-      )
-    )
+    if (isIgnoredLaneChangeset(changeset, ignored))
       throw new Error(
         `the release branch deleted ${name}, a changeset owned by a separately gated release lane, which the Version Packages PR must leave in place`,
       );
@@ -265,6 +275,23 @@ try {
           : `HEAD is not origin's ${RELEASE_BRANCH} (${releaseHead.slice(0, 12)}) - this checkout is not the Version Packages PR; fetch origin, check out the PR head and rerun`,
     );
   if (!onReleaseBranch) {
+    // Neither the branch name nor the tracking ref survives a detached or
+    // renamed checkout of a superseded PR head, but what it consumed does:
+    // only a Version Packages head deletes the normal lane's changesets.
+    const localMain = commitAt(`refs/remotes/origin/${MAIN}`);
+    const forkPoint = localMain && tryGit('merge-base', localMain, head);
+    if (!forkPoint)
+      fail(
+        `HEAD shares no history with origin/${MAIN} in this clone, so whether it is an earlier Version Packages head cannot be told - fetch origin and rerun`,
+      );
+    const ignored = ignoredAt(forkPoint);
+    const consumed = deletedChangesets(forkPoint).filter(
+      ({ changeset }) => !isIgnoredLaneChangeset(changeset, ignored),
+    );
+    if (consumed.length)
+      fail(
+        `HEAD deleted normal-lane changesets (${consumed.map(({ name }) => name).join(', ')}) as a Version Packages head does, but it is not origin's current ${RELEASE_BRANCH}${releaseHead ? ` (${releaseHead.slice(0, 12)})` : ''} - an earlier or modified release candidate is not the PR being approved; check out the current PR head and rerun`,
+      );
     print({ ok: true, onReleaseBranch: false, head, branch });
     process.exit(0);
   }
