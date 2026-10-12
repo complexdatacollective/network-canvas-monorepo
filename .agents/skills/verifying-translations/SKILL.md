@@ -45,6 +45,13 @@ text is out of scope.
 
 ## The loop
 
+**Source language.** This skill says "the English" because nearly all source
+text here is English. A protocol can be authored in any language: there, "the
+English" means the protocol's source text, and the back-translator translates
+into that language. A source tagged `und` has no known language; ask the author
+which language it is before translating, since nothing can be checked against a
+source of unknown language.
+
 Three different agents. The translator may be you; the other two are always
 fresh subagents.
 
@@ -148,7 +155,9 @@ the source.
 locale under review. Retranslate it in every locale and run each through the
 loop. App-i18n catalogs flag this through the provenance guard; next-intl
 messages, Markdown, CSV columns and protocol text do not, so find every locale's
-copy yourself.
+copy yourself. For app-i18n, run `pnpm --filter <pkg> i18n:extract` right after
+the English edit: it regenerates `en.json`, and the catalog guard then lists
+every stale translation.
 
 Fixed texts go back through steps 2 and 3 with **fresh** agents. Repeat until a
 round has zero accepted findings. A clean round is a comparator report, not your
@@ -156,9 +165,11 @@ own reading.
 
 ### 5. Stamp, record, commit
 
-Only now run `i18n:stamp` (app-i18n catalogs). Stamping records which English a
-translation was made from; it says nothing about whether the translation is
-right.
+Only now stamp (app-i18n catalogs): `pnpm --filter <pkg> i18n:extract` if any
+English changed, then `pnpm --filter <pkg> i18n:stamp`, and read its report.
+Stamping reads the committed `en.json`, so stamping before extracting records
+the old English. Stamping records which English a translation was made from; it
+says nothing about whether the translation is right.
 
 The PR description gets a verification section: a rounds table per language
 (findings per round down to zero), the register chosen, hand-written context
