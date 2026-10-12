@@ -1,9 +1,10 @@
 /*
  * The development object store. It is the self-hosted deployment's own Garage
- * — `docker-compose.prod.yml`'s `garage` service and `garage-init` bootstrap,
- * with `docker-compose.dev.yml` over them publishing the S3 API on the host
- * loopback — rather than a hand-rolled container, so a change to how
- * deployments run Garage is felt here first.
+ * — `docker-compose.prod.yml`'s `garage` service, with `docker-compose.dev.yml`
+ * over it publishing the S3 API on the host loopback — rather than a
+ * hand-rolled container, so a change to how deployments run Garage is felt
+ * here first. Garage creates the key and bucket itself; this adds only the
+ * CORS rule a deployment does not need.
  *
  * Each branch gets its own Compose project, and with it its own container and
  * data volume. Stopping this script leaves the stack running for the next
@@ -18,11 +19,15 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 
-import { ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
+import {
+  ListObjectsV2Command,
+  PutBucketCorsCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 
 const HOST_PORT = 9000;
 const ENDPOINT = `http://localhost:${HOST_PORT}`;
-// Both fixed by the deployment's garage-init script and Garage configuration.
+// Both fixed by the deployment's garage service and its configuration.
 const BUCKET = 'assets';
 const REGION = 'us-east-1';
 
@@ -34,8 +39,6 @@ const SECRET_ACCESS_KEY =
   '44ddf3da7d056e03767853bba63c422fd60365b6a613c6d367b2b83ab94e55eb';
 const RPC_SECRET =
   '335eb119d65bbe23d71cc90755bdc7ef73c35f5e1afd7118c914b904850618f5';
-const ADMIN_TOKEN =
-  '277dfc71b7bf19a83ba88ac04d5cc830bd0fabad2134bca3f7d498b33bc44901';
 
 // The browser uploads and downloads straight from the store through presigned
 // URLs, which is cross-origin from `next dev`. Any origin, so a dev server that
@@ -74,8 +77,6 @@ const composeEnvironment: Record<string, string> = {
   GARAGE_ACCESS_KEY_ID: ACCESS_KEY_ID,
   GARAGE_SECRET_ACCESS_KEY: SECRET_ACCESS_KEY,
   GARAGE_RPC_SECRET: RPC_SECRET,
-  GARAGE_ADMIN_TOKEN: ADMIN_TOKEN,
-  GARAGE_CORS_ORIGIN: CORS_ORIGIN,
 };
 
 const composeFlags = [
@@ -169,41 +170,41 @@ function startGarage(): void {
   }
 }
 
-/** Layout, access key, bucket, grant and CORS rule. Idempotent. */
-function bootstrap(): void {
-  if (compose(['run', '--rm', 'garage-init']).status !== 0) {
-    throw new Error('garage-init failed');
-  }
-}
-
-async function waitForReady(): Promise<void> {
-  const client = new S3Client({
-    endpoint: ENDPOINT,
-    region: REGION,
-    credentials: {
-      accessKeyId: ACCESS_KEY_ID,
-      secretAccessKey: SECRET_ACCESS_KEY,
-    },
-    forcePathStyle: true,
-  });
+async function waitForReady(client: S3Client): Promise<void> {
   let lastError: unknown;
-  try {
-    for (let attempt = 1; attempt <= READY_MAX_ATTEMPTS; attempt++) {
-      try {
-        await client.send(
-          new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 0 }),
-        );
-        return;
-      } catch (error) {
-        lastError = error;
-        await new Promise((resolve) => setTimeout(resolve, READY_INTERVAL_MS));
-      }
+  for (let attempt = 1; attempt <= READY_MAX_ATTEMPTS; attempt++) {
+    try {
+      await client.send(
+        new ListObjectsV2Command({ Bucket: BUCKET, MaxKeys: 0 }),
+      );
+      return;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, READY_INTERVAL_MS));
     }
-  } finally {
-    client.destroy();
   }
   throw new Error(
     `Garage did not serve bucket '${BUCKET}' after ${READY_MAX_ATTEMPTS} attempts: ${String(lastError)}`,
+  );
+}
+
+/** Replaces the bucket's CORS rule, so it is idempotent. */
+async function allowBrowserOrigin(client: S3Client): Promise<void> {
+  await client.send(
+    new PutBucketCorsCommand({
+      Bucket: BUCKET,
+      CORSConfiguration: {
+        CORSRules: [
+          {
+            AllowedOrigins: [CORS_ORIGIN],
+            AllowedMethods: ['GET', 'PUT', 'HEAD'],
+            AllowedHeaders: ['*'],
+            ExposeHeaders: ['ETag'],
+            MaxAgeSeconds: 3600,
+          },
+        ],
+      },
+    }),
   );
 }
 
@@ -259,9 +260,22 @@ async function main(argv: readonly string[]): Promise<void> {
 
   checkEnvDevelopment();
   startGarage();
-  bootstrap();
   console.log('Waiting for Garage to serve the bucket...');
-  await waitForReady();
+  const client = new S3Client({
+    endpoint: ENDPOINT,
+    region: REGION,
+    credentials: {
+      accessKeyId: ACCESS_KEY_ID,
+      secretAccessKey: SECRET_ACCESS_KEY,
+    },
+    forcePathStyle: true,
+  });
+  try {
+    await waitForReady(client);
+    await allowBrowserOrigin(client);
+  } finally {
+    client.destroy();
+  }
   printBanner();
   followLogs();
 }

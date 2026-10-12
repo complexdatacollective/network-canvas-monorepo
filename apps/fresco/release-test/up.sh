@@ -58,7 +58,6 @@ RELAY_SINK_SCRIPT="relay-sink.mjs"
 GARAGE_ACCESS_KEY_ID="GK7e57000000000000000000a1"
 GARAGE_SECRET_ACCESS_KEY="7e57000000000000000000000000000000000000000000000000000000000000"
 GARAGE_RPC_SECRET="7e57000000000000000000000000000000000000000000000000000000000001"
-GARAGE_ADMIN_TOKEN="release-test-admin-token"
 
 case "$LANE" in
   upgrade)
@@ -135,7 +134,7 @@ export LANE FRESCO_IMAGE="$IMAGE" FRESCO_PORT POSTGRES_PORT STORAGE_PORT \
   FRESCO_REQUIRE_TWO_FACTOR FRESCO_NODE_TLS_REJECT_UNAUTHORIZED \
   FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION \
   RELAY_SINK_SCRIPT GARAGE_ACCESS_KEY_ID GARAGE_SECRET_ACCESS_KEY \
-  GARAGE_RPC_SECRET GARAGE_ADMIN_TOKEN
+  GARAGE_RPC_SECRET
 compose() {
   docker compose -p "$PROJECT" -f "$SCRIPT_DIR/docker-compose.yml" "$@"
 }
@@ -165,6 +164,11 @@ compose up -d --wait --wait-timeout 300 || {
   compose logs --tail 100 fresco >&2 || true
   exit 1
 }
+
+# Garage creates its key and bucket itself; the CORS rule for the app's
+# origin is the one thing a localhost stack needs that a deployment does not.
+# Logged to stderr: stdout carries only the JSON line below.
+node "$SCRIPT_DIR/scripts/storage-urls.mjs" cors --lane "$LANE" >&2
 
 BASE_URL="http://localhost:$FRESCO_PORT"
 HEALTH="$(curl -fsS "$BASE_URL/api/health")"

@@ -15,7 +15,7 @@
 /**
  * The bundled Garage every lane runs, as the setup wizard is told about it.
  *
- * The key pair is the fixed test key up.sh hands each lane's garage-init, and
+ * The key pair is the fixed test key up.sh hands each lane's Garage, and
  * `scripts/release-test/fresco-release-test-storage.test.mjs` fails when the
  * two drift. `endpoint` is the address the Fresco container reaches Garage
  * at; the browser and the host reach it at `http://localhost:<storagePort>`.

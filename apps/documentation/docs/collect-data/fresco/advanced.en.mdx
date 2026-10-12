@@ -113,21 +113,20 @@ How you configure storage depends on which compose file you chose. With the bund
 
 ### Self-hosted storage with Garage
 
-Used by [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml). [Garage](https://garagehq.deuxfleurs.fr) is a lightweight S3-compatible object store. It runs as a **private** container with no published ports. Browsers reach it through the bundled Traefik proxy via a path route (`/assets/*` → `garage:3900`) on your Fresco domain — path-style S3 URLs put the bucket name in the path. Every time you run `docker compose up`, a one-shot `garage-init` container finishes setting Garage up, imports your access key, and creates the `assets` bucket if they don't exist yet, then exits.
+Used by [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml). [Garage](https://garagehq.deuxfleurs.fr) is a lightweight S3-compatible object store. It runs as a **private** container with no published ports. Browsers reach it through the bundled Traefik proxy via a path route (`/assets/*` → `garage:3900`) on your Fresco domain — path-style S3 URLs put the bucket name in the path. Garage sets itself up when it starts: it creates your access key and the `assets` bucket if they don't exist yet.
 
 Earlier versions of this compose file bundled MinIO; it now bundles Garage.
 
-This configuration needs **Docker Engine 25 or newer** and **Docker Compose v2.23.1 or newer**, because Garage's configuration and its set-up script are written inline in the compose file, which older versions cannot read.
+This configuration needs **Docker Engine 25 or newer** and **Docker Compose v2.23.1 or newer**, because Garage's configuration is written inline in the compose file, which older versions cannot read.
 
 #### 1. Generate the storage secrets
 
-Garage needs four values in your `.env`. They have no defaults, and the stack will not start without them. Generate each one on your host:
+Garage needs three values in your `.env`. They have no defaults, and the stack will not start without them. Generate each one on your host:
 
 ```bash
 echo "GK$(openssl rand -hex 12)"   # GARAGE_ACCESS_KEY_ID
 openssl rand -hex 32               # GARAGE_SECRET_ACCESS_KEY
 openssl rand -hex 32               # GARAGE_RPC_SECRET
-openssl rand -hex 32               # GARAGE_ADMIN_TOKEN
 ```
 
 Then add the results to `.env`:
@@ -136,10 +135,9 @@ Then add the results to `.env`:
 GARAGE_ACCESS_KEY_ID=GK...       # GK followed by 24 hex characters
 GARAGE_SECRET_ACCESS_KEY=...     # 64 hex characters
 GARAGE_RPC_SECRET=...            # Garage's internal secret
-GARAGE_ADMIN_TOKEN=...           # used by garage-init to set Garage up
 ```
 
-Treat all four like passwords. Fresco uses the access key and secret to reach the bucket; the other two stay inside the stack.
+Treat all three like passwords. Fresco uses the access key and secret to reach the bucket; the RPC secret stays inside the stack.
 
 #### 2. Enter the storage settings in the setup wizard
 
@@ -166,10 +164,10 @@ Garage does not offer server-side encryption. Protocol assets are stored in the 
 
 #### Replacing the storage access key
 
-If the access key may have been exposed, replace it. `garage-init` only adds keys and never removes them, so the old key keeps full access to your files until you delete it yourself. A deleted key ID can't be used again, so the replacement needs a new ID as well as a new secret.
+If the access key may have been exposed, replace it. Garage only adds keys and never removes them, so the old key keeps full access to your files until you delete it yourself. The replacement needs a new ID as well as a new secret: a deleted key ID can't be used again, and if you change only the secret of an existing key ID, Garage refuses to start.
 
 1. Generate a new `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY` with the commands above, and note the old key ID.
-2. Put the new values in `.env` and run `docker compose -f docker-compose.prod.yml up -d`. `garage-init` imports the new key and gives it access to the `assets` bucket.
+2. Put the new values in `.env` and run `docker compose -f docker-compose.prod.yml up -d`. Garage adds the new key at startup and gives it access to the `assets` bucket.
 3. In Fresco, open **Settings → Storage** and enter the new Access Key ID and Secret Access Key.
 4. Delete the old key:
 
