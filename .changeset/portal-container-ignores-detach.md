@@ -1,6 +1,5 @@
 ---
 '@codaco/fresco-ui': patch
-'fresco': patch
 ---
 
 Opening a newly created interview no longer crashes with "Maximum update depth
