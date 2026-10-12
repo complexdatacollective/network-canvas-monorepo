@@ -1,6 +1,6 @@
 ---
 name: verifying-translations
-description: 'Use whenever translation work is done in the network-canvas monorepo — writing, changing, re-checking or accepting any non-English text — before it is committed. Covers app-i18n locale catalogs (src/locales/{tag}.json, {tag}.source.json, i18n:stamp, catalog guard failures after an English edit), networkcanvas.com and documentation messages, website Updates {id}.{locale}.md files, protocol localization values, and adding a new language. Keywords: translate, translation, localize, locale, i18n, catalog, retranslate, machine translation, back-translation, new language, es, de, fr, zh-Hans, hu.'
+description: 'Use whenever translation work is done in the network-canvas monorepo — writing, changing, re-checking or accepting any non-English text, or editing English text that already has translations — before it is committed. Covers app-i18n locale catalogs (src/locales/{tag}.json, {tag}.source.json, i18n:stamp, catalog guard failures after an English edit), networkcanvas.com and documentation messages, website Updates {id}.{locale}.md files, protocol localization values, and adding a new language. Keywords: translate, translation, localize, locale, i18n, catalog, retranslate, machine translation, back-translation, new language, es, de, fr, zh-Hans, hu.'
 ---
 
 # Verifying translations
@@ -14,19 +14,20 @@ another way" is not this process.
 
 ## What counts as translation work
 
-Any change that puts non-English text in front of a reader, or accepts existing
-non-English text against new English. That sentence is the scope; the table
-lists the surfaces known today:
+Any change that puts non-English text in front of a reader, changes English
+text that has translations, or accepts existing non-English text against new
+English. That sentence is the scope; the table lists the surfaces known today:
 
-| Surface                                              | Where                                                                                               |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| App and package UI catalogs                          | `apps/**/src/locales/<tag>.json` (including `apps/studio/web`), `packages/*/src/locales/<tag>.json` |
-| Re-accepting a translation after its English changed | catalog guard failure → `i18n:stamp` (see `packages/app-i18n/README.md`, "Translation provenance")  |
-| Website and documentation messages                   | `apps/networkcanvas.com/messages/`, `apps/documentation/messages/`                                  |
-| Website content                                      | `apps/networkcanvas.com/content/**/<id>.<locale>.md`                                                |
-| Website CSV content                                  | locale-suffixed columns (`title_es`, `institution_fr`) in `apps/networkcanvas.com/content/*.csv`    |
-| Protocol text                                        | per-locale values in a protocol's `localization` (templates, samples, fixtures users see)           |
-| A new language anywhere                              | all of the above                                                                                    |
+| Surface                                              | Where                                                                                                                                       |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| App and package UI catalogs                          | `apps/**/src/locales/<tag>.json` (including `apps/studio/web`), `packages/*/src/locales/<tag>.json`                                         |
+| Re-accepting a translation after its English changed | catalog guard failure → `i18n:stamp` (see `packages/app-i18n/README.md`, "Translation provenance")                                          |
+| Website and documentation messages                   | `apps/networkcanvas.com/messages/`, `apps/documentation/messages/`                                                                          |
+| Documentation pages                                  | `apps/documentation/docs/**/*.<locale>.md(x)` (English only today; a new documentation language translates them)                            |
+| Website content                                      | `apps/networkcanvas.com/content/**/<id>.<locale>.md`                                                                                        |
+| Website CSV content                                  | locale-suffixed columns (`title_es`, `institution_fr`) in `apps/networkcanvas.com/content/*.csv`                                            |
+| Protocol text                                        | per-locale values in a protocol's `localization` (templates, samples, fixtures users see)                                                   |
+| A new language                                       | every surface of the hosts that will offer it, plus the shared-package catalogs `ecosystemLocales` requires (`packages/app-i18n/README.md`) |
 
 Localized text somewhere the table does not list is still in scope. To find
 every locale's copy of a text, search for the locale tags themselves (`es.json`,
@@ -35,9 +36,12 @@ every locale's copy of a text, search for the locale tags themselves (`es.json`,
 One string, one locale, or a one-word fix is still translation work. Size does
 not change the rule.
 
-English variants (`en-GB`, `en-US`) are spelling localization, not translation;
-they are out of scope. Removing a message or renaming an id without changing
-any text is out of scope.
+Writing English spelling variants (`en-GB` overrides, an optional
+`*.en-GB.md`) is not translation and is out of scope. Editing the English source
+(a `defaultMessage`, `messages/en.json`, `*.en-US.md`, `*.en.mdx`, a protocol's
+English text) is in scope whenever translations of it exist, because it makes
+them stale (step 4). Removing a message or renaming an id without changing any
+text is out of scope.
 
 ## The loop
 
