@@ -237,13 +237,16 @@ export async function completeSetup(
         `the storage step's ${name} should be locked to ${value}; it shows "${shown}"${disabled ? '' : ' and is editable'}`,
       );
   }
+  // The setup page renders this mask in place of the configured secret.
+  const secretMask = '••••••••';
   const secret = page.locator('input[name="s3SecretAccessKey"]');
-  if (
-    !(await secret.isDisabled()) ||
-    (await secret.inputValue()) === STORAGE.secretAccessKey
-  )
+  const [secretShown, secretDisabled] = [
+    await secret.inputValue(),
+    await secret.isDisabled(),
+  ];
+  if (!secretDisabled || secretShown !== secretMask)
     throw new Error(
-      "the storage step's secret key should be locked and must not be shown",
+      `the storage step's secret key should be locked and masked as "${secretMask}"; it shows ${secretShown === STORAGE.secretAccessKey ? 'the real secret' : `"${secretShown}"`}${secretDisabled ? '' : ' and is editable'}`,
     );
   await advance(2, () =>
     page
