@@ -52,7 +52,7 @@ const composerFormFieldShape = {
     usage: 'validatedAttribute',
   }),
   label: localizedString(nonBlankText(), 'markdown'),
-  hint: localizedString(z.string(), 'markdown').optional(),
+  hint: localizedString(nonBlankText(), 'markdown').optional(),
   showValidationHints: z.boolean().optional(),
 };
 
@@ -64,8 +64,8 @@ const ComposerScaleFieldSchema = z.strictObject({
   component: z.literal(ComponentTypes.VisualAnalogScale),
   parameters: z
     .looseObject({
-      minLabel: localizedString(z.string(), 'markdown').optional(),
-      maxLabel: localizedString(z.string(), 'markdown').optional(),
+      minLabel: localizedString(nonBlankText(), 'markdown').optional(),
+      maxLabel: localizedString(nonBlankText(), 'markdown').optional(),
     })
     .optional(),
 });

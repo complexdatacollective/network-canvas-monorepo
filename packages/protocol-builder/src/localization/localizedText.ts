@@ -2,6 +2,7 @@ import {
   CurrentProtocolSchema,
   escapeMessageText,
   getLocaleMetadata,
+  isBlankText,
   type LocaleTag,
   type LocalizedString,
   messageText,
@@ -63,7 +64,8 @@ export function translationText(value: unknown, locale: LocaleTag): string {
 
 /**
  * `value` with one translation replaced. Blank text — empty, or only
- * whitespace — removes that translation rather than storing one a participant
+ * whitespace or other characters that show nothing (`isBlankText`, the rule
+ * the protocol schema holds every translation to) — removes that translation rather than storing one a participant
  * would see as nothing, and a string left with no translation at all is
  * absent. That is what lets a required field refuse a blank answer: Fresco's
  * check reads a map with any key in it as answered.
@@ -77,9 +79,7 @@ export function withTranslation(
     ([key]) => key !== locale,
   );
   const next = Object.fromEntries(
-    text.trim() === ''
-      ? others
-      : [...others, [locale, escapeMessageText(text)]],
+    isBlankText(text) ? others : [...others, [locale, escapeMessageText(text)]],
   );
   return Object.keys(next).length === 0 ? undefined : next;
 }

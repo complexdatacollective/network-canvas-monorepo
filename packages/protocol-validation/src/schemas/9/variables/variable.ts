@@ -187,8 +187,8 @@ const scalarVariableSchema = baseVariableSchema.extend({
   component: z.enum(scalarComponents).optional(),
   parameters: z
     .strictObject({
-      minLabel: localizedString(z.string(), 'markdown').optional(),
-      maxLabel: localizedString(z.string(), 'markdown').optional(),
+      minLabel: localizedString(nonBlankText(), 'markdown').optional(),
+      maxLabel: localizedString(nonBlankText(), 'markdown').optional(),
     })
     .optional(),
   validation: z.strictObject(validations).pick(scalarValidations).optional(),

@@ -1268,3 +1268,304 @@ describe('Migrating an Information stage title from schema 8 to 9', () => {
     );
   });
 });
+
+// The base protocol with a Narrative stage of two presets, the first labelled
+// as given, as schema 8 stored it.
+const migratedNarrative = (label: string) => {
+  const base = createBaseProtocol();
+  const document = asSchema8Protocol({
+    ...base,
+    stages: [
+      ...base.stages,
+      {
+        id: 'narrative',
+        type: 'Narrative' as const,
+        label: localized('Tell the story'),
+        subject: { entity: 'node' as const, type: 'person' },
+        presets: [
+          {
+            id: 'first',
+            label: localized('Placeholder'),
+            layoutVariable: 'layoutPosition',
+          },
+          {
+            id: 'second',
+            label: localized('Placeholder'),
+            layoutVariable: 'layoutPosition',
+          },
+        ],
+        background: { concentricCircles: 3 },
+        behaviours: {},
+      },
+    ],
+  });
+  const stage = document.stages.find(({ id }) => id === 'narrative');
+  if (!stage || !('presets' in stage)) throw new Error('No Narrative stage');
+  const presets = stage.presets as Record<string, unknown>[];
+  for (const preset of presets) preset.label = label;
+  return migrateProtocol(document, 9).stages.find(
+    ({ id }) => id === 'narrative',
+  );
+};
+
+describe('Migrating Narrative preset labels from schema 8 to 9', () => {
+  it.each(BLANK_TEXT)(
+    'gives a label of %s the 7 to 8 default, "Preset" and its position',
+    (_, blank) => {
+      expect(migratedNarrative(blank)).toMatchObject({
+        presets: [
+          { label: localized('Preset 1') },
+          { label: localized('Preset 2') },
+        ],
+      });
+    },
+  );
+
+  it('keeps a label that says something', () => {
+    expect(migratedNarrative('Closeness')).toMatchObject({
+      presets: [
+        { label: localized('Closeness') },
+        { label: localized('Closeness') },
+      ],
+    });
+  });
+
+  // Fresco re-runs this migration over rows already in schema 9 form.
+  it('removes only the blank translations of text already localized, and names a highlight left blank', () => {
+    const base = createBaseProtocol();
+    const [stage] = stagesMigratedFrom({
+      ...base,
+      schemaVersion: 8,
+      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+      stages: [
+        {
+          id: 'narrative',
+          type: 'Narrative',
+          label: { en: 'Tell the story' },
+          subject: { entity: 'node', type: 'person' },
+          presets: [
+            {
+              id: 'first',
+              label: { en: 'Closeness', fr: '  ' },
+              layoutVariable: 'layoutPosition',
+              highlight: [{ variable: 'age', label: { en: ' ', fr: '\t' } }],
+            },
+          ],
+          background: { concentricCircles: 3 },
+          behaviours: {},
+        },
+      ],
+    });
+
+    expect(stage).toMatchObject({
+      presets: [
+        {
+          label: { en: 'Closeness' },
+          highlight: [{ variable: 'age', label: { en: 'Age' } }],
+        },
+      ],
+    });
+    expect(stage).not.toHaveProperty('presets.0.label.fr');
+  });
+});
+
+// The base protocol with its Name Generator form titled as given, as schema 8
+// stored it.
+const migratedFormTitle = (title: string, nodeTypeName = 'Person') => {
+  const base = createBaseProtocol();
+  const document = asSchema8Protocol({
+    ...base,
+    codebook: {
+      ...base.codebook,
+      node: {
+        ...base.codebook.node,
+        person: { ...base.codebook.node.person, name: nodeTypeName },
+      },
+    },
+  });
+  const stage = document.stages.find(({ id }) => id === 'nameGenerator1');
+  if (!stage || !('form' in stage)) throw new Error('No Name Generator');
+  (stage.form as Record<string, unknown>).title = title;
+  const migrated = migrateProtocol(document, 9).stages.find(
+    ({ id }) => id === 'nameGenerator1',
+  );
+  return migrated && 'form' in migrated ? migrated.form : undefined;
+};
+
+describe('Migrating a Name Generator form title from schema 8 to 9', () => {
+  it.each(BLANK_TEXT)(
+    'gives a title of %s the 7 to 8 default, "Add" and the node type',
+    (_, blank) => {
+      expect(migratedFormTitle(blank)).toMatchObject({
+        title: localized('Add Person'),
+      });
+    },
+  );
+
+  // Schema 9 refuses the blank name itself, so the step runs unvalidated.
+  it('gives it "Add" alone when the node type name shows nothing', () => {
+    const base = createBaseProtocol();
+    const document = asSchema8Protocol(base) as Record<string, unknown>;
+    const codebook = document.codebook as {
+      node: { person: Record<string, unknown> };
+    };
+    codebook.node.person.name = ' ';
+    const [stage] = document.stages as Record<string, unknown>[];
+    if (!stage) throw new Error('No Name Generator');
+    (stage.form as Record<string, unknown>).title = ' ';
+    expect(stagesMigratedFrom(document)[0]).toMatchObject({
+      form: { title: localized('Add') },
+    });
+  });
+
+  it('keeps a title that says something', () => {
+    expect(migratedFormTitle('Name someone')).toMatchObject({
+      title: localized('Name someone'),
+    });
+  });
+});
+
+// The base protocol with an Information stage whose first text item holds
+// the text given, as schema 8 stored it.
+const migratedInformationItems = (content: string) => {
+  const base = createBaseProtocol();
+  const document = asSchema8Protocol({
+    ...base,
+    stages: [
+      {
+        id: 'welcome',
+        type: 'Information' as const,
+        label: localized('Welcome'),
+        title: localized('Welcome'),
+        items: [
+          { id: 'first', type: 'text' as const, content: localized('Hi') },
+          { id: 'second', type: 'text' as const, content: localized('Bye') },
+        ],
+      },
+      ...base.stages,
+    ],
+  });
+  const stage = document.stages.find(({ id }) => id === 'welcome');
+  if (!stage || !('items' in stage)) throw new Error('No Information stage');
+  const [first] = stage.items as Record<string, unknown>[];
+  if (!first) throw new Error('No text item');
+  first.content = content;
+  const migrated = migrateProtocol(document, 9).stages.find(
+    ({ id }) => id === 'welcome',
+  );
+  return migrated && 'items' in migrated ? migrated.items : undefined;
+};
+
+describe('Migrating Information text items from schema 8 to 9', () => {
+  it.each(BLANK_TEXT)('removes an item of %s', (_, blank) => {
+    expect(migratedInformationItems(blank)).toEqual([
+      { id: 'second', type: 'text', content: localized('Bye') },
+    ]);
+  });
+
+  it('keeps an item that says something', () => {
+    expect(migratedInformationItems('Hello')).toEqual([
+      { id: 'first', type: 'text', content: localized('Hello') },
+      { id: 'second', type: 'text', content: localized('Bye') },
+    ]);
+  });
+});
+
+// The base protocol with its Name Generator form field hinted as given.
+const migratedHint = (hint: unknown, locales = ['en']) => {
+  const base = createBaseProtocol();
+  const document = asSchema8Protocol(base) as Record<string, unknown>;
+  const stage = (document.stages as Record<string, unknown>[])[0];
+  const form = stage?.form as Record<string, unknown> | undefined;
+  const [field] = (form?.fields ?? []) as Record<string, unknown>[];
+  if (!field) throw new Error('No form field');
+  field.hint = hint;
+  if (locales.length > 1) {
+    document.localization = { defaultLocale: 'en', locales };
+  }
+  const migrated = migrateProtocol(document, 9).stages.find(
+    ({ id }) => id === 'nameGenerator1',
+  );
+  return migrated && 'form' in migrated ? migrated.form?.fields[0] : undefined;
+};
+
+describe('Migrating optional text that shows nothing from schema 8 to 9', () => {
+  it.each(BLANK_TEXT)('removes a hint of %s', (_, blank) => {
+    expect(migratedHint(blank)).not.toHaveProperty('hint');
+  });
+
+  it('removes an empty hint', () => {
+    expect(migratedHint('')).not.toHaveProperty('hint');
+  });
+
+  it('keeps a hint that says something', () => {
+    expect(migratedHint('Their full name')).toMatchObject({
+      hint: localized('Their full name'),
+    });
+  });
+
+  // Fresco re-runs this migration over rows already in schema 9 form.
+  it('removes only the blank translations of text already localized', () => {
+    expect(
+      migratedHint({ en: 'Their full name', fr: '  ' }, ['en', 'fr']),
+    ).toMatchObject({ hint: { en: 'Their full name' } });
+    expect(
+      migratedHint({ en: 'Their full name', fr: '  ' }, ['en', 'fr']),
+    ).not.toHaveProperty('hint.fr');
+  });
+
+  it('removes text already localized that is blank in every language', () => {
+    expect(migratedHint({ en: '', fr: '​' }, ['en', 'fr'])).not.toHaveProperty(
+      'hint',
+    );
+  });
+
+  it('removes a scale end label that shows nothing', () => {
+    const base = createBaseProtocol();
+    const document = asSchema8Protocol({
+      ...base,
+      codebook: {
+        ...base.codebook,
+        ego: {
+          variables: {
+            ...base.codebook.ego.variables,
+            egoCloseness: {
+              name: 'EgoCloseness',
+              label: 'EgoCloseness',
+              type: 'scalar',
+              component: 'VisualAnalogScale',
+              parameters: {
+                minLabel: localized('Not close'),
+                maxLabel: localized('Placeholder'),
+              },
+            },
+          },
+        },
+      },
+    }) as Record<string, unknown>;
+    const codebook = document.codebook as {
+      ego: {
+        variables: { egoCloseness: { parameters: Record<string, unknown> } };
+      };
+    };
+    codebook.ego.variables.egoCloseness.parameters.maxLabel = '  ';
+    const migrated = migrateProtocol(document, 9);
+
+    expect(migrated.codebook.ego?.variables?.egoCloseness).toMatchObject({
+      parameters: { minLabel: localized('Not close') },
+    });
+    expect(migrated.codebook.ego?.variables?.egoCloseness).not.toHaveProperty(
+      'parameters.maxLabel',
+    );
+  });
+});
+
+describe('The schema 9 migration notes', () => {
+  it('say that other text participants see must contain some text', () => {
+    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
+
+    expect(note?.notes).toContain(
+      'Some other text that participants see must now contain some text.',
+    );
+  });
+});
