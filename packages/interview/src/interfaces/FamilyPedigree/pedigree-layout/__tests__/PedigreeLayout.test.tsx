@@ -40,6 +40,7 @@ describe('PedigreeLayout', () => {
     const nodes = makeNodes([{ id: 'ego', isEgo: true }]);
     const { container } = render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={[]}
         {...DIMS}
@@ -54,6 +55,7 @@ describe('PedigreeLayout', () => {
     const nodes = makeNodes([{ id: 'ego', isEgo: true }]);
     const { container } = render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={[]}
         {...DIMS}
@@ -67,6 +69,7 @@ describe('PedigreeLayout', () => {
   test('renders nothing when nodes map is empty', () => {
     const { container } = render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={[]}
         links={[]}
         {...DIMS}
@@ -105,6 +108,7 @@ describe('PedigreeLayout', () => {
 
     render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={edges}
         {...DIMS}
@@ -146,6 +150,7 @@ describe('PedigreeLayout', () => {
 
     render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={edges}
         {...DIMS}
@@ -189,6 +194,7 @@ describe('PedigreeLayout', () => {
 
     const { container } = render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={edges}
         {...DIMS}
@@ -234,6 +240,7 @@ describe('PedigreeLayout', () => {
 
     const { container } = render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={edges}
         {...DIMS}
@@ -297,6 +304,7 @@ describe('PedigreeLayout', () => {
 
     const { container } = render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={edges}
         {...DIMS}
@@ -321,6 +329,7 @@ describe('PedigreeLayout', () => {
 
     render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={edges}
         {...DIMS}
@@ -364,6 +373,7 @@ describe('PedigreeLayout', () => {
 
     render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodes}
         links={edges}
         {...DIMS}
@@ -413,6 +423,7 @@ describe('PedigreeLayout', () => {
     test('no data-edge-dimmed attributes when highlightedNodeIds is undefined', () => {
       const { container } = render(
         <PedigreeLayout
+          nodeShapes={new Map()}
           nodeIds={familyNodes()}
           links={familyEdges()}
           {...DIMS}
@@ -428,6 +439,7 @@ describe('PedigreeLayout', () => {
       const highlightedNodeIds = new Set(['father', 'mother', 'ego']);
       const { container } = render(
         <PedigreeLayout
+          nodeShapes={new Map()}
           nodeIds={familyNodes()}
           links={familyEdges()}
           {...DIMS}
@@ -445,6 +457,7 @@ describe('PedigreeLayout', () => {
       const highlightedNodeIds = new Set(['mother', 'ego']);
       const { container } = render(
         <PedigreeLayout
+          nodeShapes={new Map()}
           nodeIds={familyNodes()}
           links={familyEdges()}
           {...DIMS}
@@ -462,6 +475,7 @@ describe('PedigreeLayout', () => {
       const highlightedNodeIds = new Set(['ego']);
       const { container } = render(
         <PedigreeLayout
+          nodeShapes={new Map()}
           nodeIds={familyNodes()}
           links={familyEdges()}
           {...DIMS}
@@ -490,6 +504,7 @@ describe('PedigreeLayout reading order', () => {
     ]);
     render(
       <PedigreeLayout
+        nodeShapes={new Map()}
         nodeIds={nodeIds}
         links={links}
         {...DIMS}

@@ -243,6 +243,34 @@ export function stepsFrom(family: Family, personId: string): Step[] {
 type GameteOf = (parentId: string, childId: string) => Gamete | undefined;
 
 /**
+ * The kinship word for `parentId` from `childId`, one of their parents, in
+ * the framing's words ("father", "egg donor"): what an unnamed parent is
+ * called from the person a form is about, rather than from the participant.
+ * Undefined when they are not recorded as the child's parent.
+ */
+export function parentTermFrom(
+  family: Family,
+  childId: string,
+  parentId: string,
+  framing: FramingId,
+): KinTerm | undefined {
+  const link = family.links.find(
+    (each) =>
+      each.kind !== 'partner' &&
+      each.source === parentId &&
+      each.target === childId,
+  );
+  if (!link || link.kind === 'partner') return undefined;
+  return stepTerm(
+    family,
+    childId,
+    { type: 'parent', kind: link.kind, to: parentId },
+    framing,
+    gameteLookup(inferGametes(family)),
+  );
+}
+
+/**
  * The term for a single step from `fromId`, which is also a close relative's
  * term. A biological parent or donor is named by the gamete they gave
  * `fromId`, as the shared rule derives it from sex assigned at birth
@@ -720,9 +748,11 @@ export function formatRelativeTerm(term: string, words: PedigreeWords): string {
  * Someone described through a relative is described through a single one,
  * never through a description of another: the nearest whose text is a name
  * or a plain kinship word, unqualified ("Isaac’s grandfather", not
- * "Great-grandfather (parent of Isaac)’s father"). Only when no one on the
- * way is known that simply are they described through the person before
- * them, as that person is known.
+ * "Great-grandfather (parent of Isaac)’s father"). When no one on the way is
+ * known that simply, they are described through the person before them by
+ * that person's own kinship label, without the qualifier that tells them
+ * apart ("Sister’s former partner", not "Sister (partner of Tom)’s former
+ * partner"); labels that then match are told apart as any others are.
  */
 export function formatPersonLabel(
   label: PersonLabel,
@@ -747,9 +777,7 @@ export function formatPersonLabel(
       if (!anchor) return formatRelativeTerm('other', words);
       return words.text(words.wording.generatedLabelOf, {
         relation: 'owner',
-        owner:
-          ownerText?.(anchor.ownerId) ??
-          formatPersonLabel(anchor.owner, words, ownerText),
+        owner: formatPersonLabel(anchor.owner, words, ownerText),
         term: formatRelativeTerm(anchor.term, words),
       });
     }

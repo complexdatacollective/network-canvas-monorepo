@@ -73,6 +73,12 @@ type RadioItemProps = {
   className?: string;
   /** Extra classes for the label text span (e.g. `@md:sr-only` to hide it). */
   labelClassName?: string;
+  /**
+   * Said about this option alone, such as why it is unavailable: the
+   * option's accessible description. It is not shown, so a reason that
+   * applies to several options can be shown once for the group (its hint).
+   */
+  description?: string;
 };
 
 export function RadioItem({
@@ -84,9 +90,11 @@ export function RadioItem({
   id,
   className,
   labelClassName,
+  description,
 }: RadioItemProps) {
   const generatedId = useId();
   const optionId = id ?? generatedId;
+  const descriptionId = `${optionId}-description`;
   const optionValue = String(value);
   const indicatorState = disabled
     ? 'disabled'
@@ -94,7 +102,7 @@ export function RadioItem({
       ? 'readOnly'
       : 'normal';
 
-  return (
+  const item = (
     <label
       htmlFor={optionId}
       className={cx(groupOptionVariants({ size, disabled }), className)}
@@ -117,6 +125,7 @@ export function RadioItem({
               {...renderProps}
               id={optionId}
               type="button"
+              aria-describedby={description ? descriptionId : undefined}
               data-value={optionValue}
               className={radioIndicatorVariants({
                 size,
@@ -163,12 +172,27 @@ export function RadioItem({
       </span>
     </label>
   );
+  // Outside the label, which names the option, so the description is not
+  // read as part of its name.
+  return description ? (
+    <>
+      {item}
+      <span id={descriptionId} className="sr-only">
+        {description}
+      </span>
+    </>
+  ) : (
+    item
+  );
 }
 
 type RadioOption = {
   value: string | number;
   label: ReactNode | PresentationalText;
   disabled?: boolean;
+  /** Said about this option alone, such as why it is unavailable (see
+   * `RadioItem`). */
+  description?: string;
 };
 
 type RadioGroupFieldProps = CreateFormFieldProps<
@@ -275,6 +299,7 @@ export default function RadioGroupField(props: RadioGroupFieldProps) {
             // the researcher typed, and an element id may not contain
             // whitespace.
             id={`${optionIdPrefix}-${index}`}
+            description={option.description}
           />
         ))}
       </RadioGroup>

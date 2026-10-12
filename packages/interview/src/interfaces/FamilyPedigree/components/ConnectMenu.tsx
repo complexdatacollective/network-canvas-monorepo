@@ -18,6 +18,7 @@ import {
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
 
+import { useContentFormat } from '../../../localization/useContentFormat';
 import { messages } from '../messages';
 import {
   availableParentChoices,
@@ -25,11 +26,17 @@ import {
   type Connection,
   type Family,
   type ParentChoice,
+  type ParentChoiceBlock,
   parentChoiceOptions,
   parentConnectionBlock,
 } from '../model';
 import type { OwnedOptionLabels } from '../options';
 import { type PedigreeWords, usePedigreeWords } from '../pedigreeWords';
+import {
+  carrierRecordedReason,
+  geneticParentReason,
+  joinReasons,
+} from './unavailableReasons';
 
 export type ConnectPair = { firstId: string; secondId: string };
 
@@ -50,6 +57,9 @@ type ConnectMenuProps = {
   displayName: (personId: string) => string;
   /** The codebook's labels for the kinds of parent. */
   parentKindLabels: OwnedOptionLabels['parentKind'];
+  /** The codebook's labels for sex assigned at birth, for the reasons a
+   * genetic kind of parent is unavailable. */
+  sexLabels: OwnedOptionLabels['sexAssignedAtBirth'];
   /** The second person's symbol, which the menu opens beside and returns
    * focus to. */
   anchor: HTMLElement | null;
@@ -186,6 +196,7 @@ export default function ConnectMenu({
   family,
   displayName,
   parentKindLabels,
+  sexLabels,
   anchor,
   onConnect,
   onClose,
@@ -193,6 +204,7 @@ export default function ConnectMenu({
   const words = usePedigreeWords();
   const { wording, text } = words;
   const intl = useAppIntl();
+  const contentFormat = useContentFormat();
   const reasonIdPrefix = useId();
   const connection = connectionWords(
     words,
@@ -224,11 +236,36 @@ export default function ConnectMenu({
 
     if (parentChoice) {
       const label = parentLabel(parentChoice);
-      // A choice that would record a second carrier is unavailable; the
-      // reason, naming who carried the child, is shown once, under the first
-      // such choice, and describes each of them.
-      const carrierReasonId = `${reasonIdPrefix}-carrier`;
-      let carrierReasonShown = false;
+      // A choice that would contradict the family is unavailable, with the
+      // reason shown under it, and describing it. The reason names the
+      // choice it disables, and why: who carried the child, for a choice
+      // that would record a second carrier, or the genetic parents already
+      // recorded, for a genetic kind.
+      const reasonContext = {
+        words,
+        family,
+        displayName,
+        sexLabels,
+        formatList: contentFormat.formatList,
+      };
+      const reasonFor = (
+        unavailable: ParentChoiceBlock,
+        option: ParentChoice,
+        kindLabel: string,
+      ) => {
+        const answers = [
+          { value: choiceId(option), label: getMarkdownLabelText(kindLabel) },
+        ];
+        return joinReasons(reasonContext, [
+          unavailable.rule === 'carrierRecorded'
+            ? carrierRecordedReason(
+                parentChoice.childId,
+                unavailable.carrierId,
+                answers,
+              )
+            : geneticParentReason(unavailable, answers),
+        ]);
+      };
       return (
         <DropdownMenuGroup>
           <DropdownMenuLabel>{label}</DropdownMenuLabel>
@@ -239,25 +276,16 @@ export default function ConnectMenu({
           ).map(({ choice: option, unavailable }, index) => {
             const kindLabel = parentChoiceLabel(option);
             const id = choiceId(option);
-            const reason =
-              unavailable && !carrierReasonShown
-                ? text(wording.unavailableCarrierChoice, {
-                    who: isYou(unavailable.carrierId)
-                      ? 'carrierIsYou'
-                      : isYou(parentChoice.childId)
-                        ? 'childIsYou'
-                        : 'other',
-                    carrier: displayName(unavailable.carrierId),
-                    child: displayName(parentChoice.childId),
-                  })
-                : undefined;
-            if (unavailable) carrierReasonShown = true;
+            const reason = unavailable
+              ? reasonFor(unavailable, option, kindLabel)
+              : undefined;
+            const reasonId = `${reasonIdPrefix}-kind-${id}`;
             return (
               <DropdownMenuItem
                 key={id}
                 ref={index === 0 ? firstItemRef : undefined}
                 disabled={unavailable !== undefined}
-                aria-describedby={unavailable ? carrierReasonId : undefined}
+                aria-describedby={unavailable ? reasonId : undefined}
                 data-testid={`pedigree-connect-kind-${id}`}
                 onClick={() =>
                   onConnect({ kind: 'parent', ...parentChoice, ...option })
@@ -266,7 +294,7 @@ export default function ConnectMenu({
                 <ItemText
                   label={<RenderMarkdown>{kindLabel}</RenderMarkdown>}
                   reason={reason}
-                  reasonId={carrierReasonId}
+                  reasonId={reasonId}
                 />
               </DropdownMenuItem>
             );

@@ -6,6 +6,7 @@ import {
   type AddRelativeRequest,
   type Family,
   planAddRelative,
+  possibleCarriers,
   readFamily,
 } from '../model';
 import { config, link, person } from './fixtures';
@@ -53,7 +54,12 @@ describe('a sibling who shares a donor', () => {
       carrier: null,
     });
     expect(result.links).toEqual([
-      { source: 'donor', target: 'added', kind: 'donor' },
+      {
+        source: 'donor',
+        target: 'added',
+        kind: 'donor',
+        isGestationalCarrier: false,
+      },
       { source: 'amy', target: 'added', kind: 'biological' },
       { source: 'beth', target: 'added', kind: 'social' },
     ]);
@@ -68,7 +74,12 @@ describe('a sibling who shares a donor', () => {
     });
     // A stand-in fills their other genetic parent (ruling 25).
     expect(result.links).toEqual([
-      { source: 'donor', target: 'added', kind: 'donor' },
+      {
+        source: 'donor',
+        target: 'added',
+        kind: 'donor',
+        isGestationalCarrier: false,
+      },
       { source: 'new-1', target: 'added', kind: 'biological' },
     ]);
   });
@@ -90,7 +101,7 @@ describe('a biological sibling of two mothers', () => {
       relation: 'sibling',
       sharedParentIds: ['ann', 'bea'],
       parentKind: 'biological',
-      biologicalParentId: 'bea',
+      biologicalParentIds: ['bea'],
       carrier: null,
     });
     expect(
@@ -103,5 +114,102 @@ describe('a biological sibling of two mothers', () => {
       ['bea', 'biological'],
       ['ann', 'adoptive'],
     ]);
+  });
+});
+
+// A biological sibling sharing three parents, two of whom could each be their
+// genetic father, is recorded with the genetic parents the participant
+// named, never one taken from the order the parents were recorded in.
+describe('a biological sibling of three shared parents', () => {
+  const threeParents = () =>
+    family(
+      [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sarah', { name: 'Sarah', sex: ['female'] }),
+        person('tom', { name: 'Tom', sex: ['male'] }),
+        person('raj', { name: 'Raj', sex: ['male'] }),
+      ],
+      [
+        link('sarah', 'ego', 'biological', { carrier: true }),
+        link('tom', 'ego', 'biological'),
+        link('raj', 'ego', 'social'),
+        link('sarah', 'tom', 'partner', { current: false }),
+        link('sarah', 'raj', 'partner'),
+      ],
+    );
+
+  test('is the biological child of both parents named', () => {
+    const result = plan(threeParents(), {
+      relation: 'sibling',
+      sharedParentIds: ['sarah', 'tom', 'raj'],
+      parentKind: 'biological',
+      biologicalParentIds: ['sarah', 'raj'],
+      carrier: null,
+    });
+    expect(
+      result.links
+        .filter((planned) => planned.target === 'added')
+        .map((planned) => [planned.source, planned.kind]),
+    ).toEqual([
+      ['sarah', 'biological'],
+      ['raj', 'biological'],
+      ['tom', 'social'],
+    ]);
+  });
+});
+
+// Decided gap (9 Oct 2026): the sibling form offers the participant's
+// surrogate among the shared-parent choices, as ruling 20 offers donors.
+describe('a sibling who shares the surrogate who carried the participant', () => {
+  const parentsAndASurrogate = () =>
+    family(
+      [
+        person('ego', { isEgo: true }),
+        person('amy', { name: 'Amy', sex: ['female'] }),
+        person('rob', { name: 'Rob', sex: ['male'] }),
+        person('gc', { name: 'Gail', sex: ['female'] }),
+      ],
+      [
+        link('amy', 'ego', 'biological'),
+        link('rob', 'ego', 'biological'),
+        link('gc', 'ego', 'surrogate', { carrier: true }),
+      ],
+    );
+
+  test('was carried by them too, and by nobody else', () => {
+    const result = plan(parentsAndASurrogate(), {
+      relation: 'sibling',
+      sharedParentIds: ['amy', 'rob', 'gc'],
+      parentKind: 'biological',
+      carrier: 'amy',
+    });
+    expect(result.links).toEqual([
+      {
+        source: 'gc',
+        target: 'added',
+        kind: 'surrogate',
+        isGestationalCarrier: true,
+      },
+      {
+        source: 'amy',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'rob',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+    ]);
+    expect(
+      possibleCarriers(
+        parentsAndASurrogate(),
+        result,
+        'added',
+        config.sexAssignedAtBirthAttribute,
+      ),
+    ).toEqual([]);
   });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { alignPedigree } from '../alignPedigree';
 import { computeConnectors } from '../connectors';
 import { toPedigreeInput } from '../pedigreeAdapter';
-import type { PedigreeLink, ScalingParams } from '../types';
+import type { LineSegment, PedigreeLink, ScalingParams } from '../types';
 
 const scaling: ScalingParams = {
   boxWidth: 0.6,
@@ -161,5 +161,110 @@ describe('twins', () => {
     expect(
       layout.twins?.[layer]?.[Math.min(row.indexOf('a'), row.indexOf('b'))],
     ).toBe(2);
+  });
+
+  /** Each twin's line up to their parents, by node id. */
+  const uplinesById = (
+    connectors: ReturnType<typeof computeConnectors>,
+  ): Map<string, LineSegment> =>
+    new Map(
+      connectors.parentChildLines.flatMap((line) =>
+        line.uplines.map(
+          (upline, k) => [line.uplineChildIds?.[k] ?? '', upline] as const,
+        ),
+      ),
+    );
+  /** The x where a line crosses the height y. */
+  const xAt = (line: LineSegment, y: number) =>
+    line.x1 + ((y - line.y1) / (line.y2 - line.y1)) * (line.x2 - line.x1);
+
+  it('ends an identical twins’ bar on each twin’s line', () => {
+    const { connectors } = family(
+      ['a', 'b'],
+      [twin('a', 'b', 'identicalTwin')],
+    );
+    const bar = connectors.twinIndicators[0]!.segment!;
+    const uplines = uplinesById(connectors);
+    const ends = [bar.x1, bar.x2].toSorted((p, q) => p - q);
+    const crossings = ['a', 'b']
+      .map((child) => xAt(uplines.get(child)!, bar.y1))
+      .toSorted((p, q) => p - q);
+    expect(ends[0]).toBeCloseTo(crossings[0]!, 6);
+    expect(ends[1]).toBeCloseTo(crossings[1]!, 6);
+  });
+
+  it('marks twins whose recorded parents differ between their own lines', () => {
+    // Paul and Peter share a mother; Peter's father is someone else, so the
+    // twins hang from different bars.
+    const ids = ['ego', 'paul', 'jane', 'gran', 'grandad', 'peter', 'other'];
+    const links: PedigreeLink[] = [
+      { source: 'paul', target: 'ego', kind: 'biological' },
+      {
+        source: 'jane',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      { source: 'gran', target: 'grandad', kind: 'partner' },
+      {
+        source: 'gran',
+        target: 'paul',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      { source: 'grandad', target: 'paul', kind: 'biological' },
+      {
+        source: 'gran',
+        target: 'peter',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      { source: 'other', target: 'peter', kind: 'biological' },
+    ];
+    for (const kind of ['identicalTwin', 'unknownZygosityTwin'] as const) {
+      const { input } = toPedigreeInput(ids, [
+        ...links,
+        twin('paul', 'peter', kind),
+      ]);
+      const layout = alignPedigree(input);
+      const connectors = computeConnectors(
+        layout,
+        scaling,
+        input.parents,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        ids,
+      );
+      const marks = connectors.twinIndicators;
+      expect(marks).toHaveLength(1);
+      expect(marks[0]!.twinIds?.toSorted()).toEqual(['paul', 'peter']);
+      const uplines = uplinesById(connectors);
+      const y = marks[0]!.segment?.y1 ?? marks[0]!.label!.y;
+      const crossings = ['paul', 'peter']
+        .map((child) => xAt(uplines.get(child)!, y))
+        .toSorted((p, q) => p - q);
+      if (kind === 'identicalTwin') {
+        const bar = marks[0]!.segment!;
+        for (const value of [bar.x1, bar.x2, bar.y1, bar.y2]) {
+          expect(Number.isFinite(value)).toBe(true);
+        }
+        const ends = [bar.x1, bar.x2].toSorted((p, q) => p - q);
+        expect(ends[0]).toBeCloseTo(crossings[0]!, 6);
+        expect(ends[1]).toBeCloseTo(crossings[1]!, 6);
+      } else {
+        const { label } = marks[0]!;
+        expect(Number.isFinite(label!.x)).toBe(true);
+        expect(label!.x).toBeCloseTo((crossings[0]! + crossings[1]!) / 2, 6);
+      }
+    }
+  });
+
+  it('sizes the question mark with the symbols', () => {
+    const small = family(['a', 'b'], [twin('a', 'b', 'unknownZygosityTwin')]);
+    const size = small.connectors.twinIndicators[0]!.labelSize!;
+    expect(size).toBeGreaterThan(0.2 * scaling.boxHeight);
+    expect(size).toBeLessThan(0.5 * scaling.boxHeight);
   });
 });

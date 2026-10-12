@@ -33,20 +33,20 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: Your donors in common - matrix check
-    - group "Your donors in common - matrix check":
+    - text: Your donors or surrogate in common - matrix check
+    - group "Your donors or surrogate in common - matrix check":
       - checkbox "Dee"
       - text: Dee
       - checkbox "Don"
       - text: Don
+      - checkbox "Gail"
+      - text: Gail
     - text: To the parents they share, are they… Required
     - radiogroup "To the parents they share, are they…":
       - radio "A biological child" [checked]
       - text: A biological child
       - radio "An adopted child"
       - text: An adopted child
-      - radio "A step-child or other child they raise"
-      - text: A step-child or other child they raise
     - text: Who carried the pregnancy?
     - radiogroup "Who carried the pregnancy?":
       - radio "Adoptive parent 1"
@@ -55,12 +55,12 @@
       - text: Adoptive parent 2
       - radio "Someone else, or I don’t know"
       - text: Someone else, or I don’t know
-    - text: Are they your twin? Answer yes for triplets and other multiple births too. Some answers are unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose one, choose all of your biological parents and donors above.
+    - text: Are they your twin? Answer yes for triplets and other multiple births too. “Yes, identical twins” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.
     - radiogroup "Are they your twin?":
       - radio "No" [checked]
       - text: "No"
       - radio "Yes, identical twins" [disabled]
-      - text: Yes, identical twins
+      - text: Yes, identical twins “Yes, identical twins” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.
       - radio "Yes, fraternal (non-identical) twins"
       - text: Yes, fraternal (non-identical) twins
       - radio "Yes, but I don’t know if they are identical"

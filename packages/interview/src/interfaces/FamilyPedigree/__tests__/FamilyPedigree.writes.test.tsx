@@ -85,18 +85,22 @@ type InterviewOptions = {
   twinOnly?: boolean;
   /** How the mother is the participant's parent. */
   mumKind?: 'biological' | 'adoptive';
+  /** Whether the stage asks about gender identity. */
+  askGenderIdentity?: boolean;
 };
 
 function interview({
   twin = false,
   twinOnly = false,
   mumKind = 'biological',
+  askGenderIdentity = true,
 }: InterviewOptions = {}) {
   const si = new SyntheticInterview(1);
   const people = si.addNodeType({ name: 'Person' });
   const stage = si.addStage('FamilyPedigree', {
     subject: { entity: 'node', type: people.id },
     prompt: 'Add the members of your family.',
+    askGenderIdentity,
   });
   si.addManualNode(stage.id, stage.personType, 'ego', {
     [stage.ego]: true,
@@ -383,6 +387,133 @@ describe('FamilyPedigree opening on a family missing a stand-in', () => {
     expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
   });
 
+  /** The participant, their biological mother Julie, and a stand-in the
+   * stage gave for their other genetic parent, as a family saved earlier
+   * records them; `standInSex` is the stand-in's sex at birth, and `rob`
+   * adds Rob as their biological father, as another stage may have. */
+  function savedStandIn({
+    standInSex,
+    rob = false,
+  }: {
+    standInSex: 'male' | 'female';
+    rob?: boolean;
+  }) {
+    const si = new SyntheticInterview(3);
+    const people = si.addNodeType({ name: 'Person' });
+    const stage = si.addStage('FamilyPedigree', {
+      subject: { entity: 'node', type: people.id },
+      prompt: 'Add the members of your family.',
+    });
+    si.addManualNode(stage.id, stage.personType, 'ego', {
+      [stage.ego]: true,
+      [stage.sexAssignedAtBirth]: ['female'],
+    });
+    si.addManualNode(stage.id, stage.personType, 'mum', {
+      [stage.ego]: false,
+      [stage.sexAssignedAtBirth]: ['female'],
+      [stage.name]: 'Julie',
+    });
+    si.addManualNode(stage.id, stage.personType, 'standIn', {
+      [stage.ego]: false,
+      [stage.sexAssignedAtBirth]: [standInSex],
+    });
+    si.addManualEdge(stage.edgeType, 'mum-ego', 'mum', 'ego', {
+      [stage.kind]: ['biological'],
+      [stage.gestationalCarrier]: true,
+    });
+    si.addManualEdge(stage.edgeType, 'standIn-ego', 'standIn', 'ego', {
+      [stage.kind]: ['biological'],
+    });
+    if (rob) {
+      si.addManualNode(stage.id, stage.personType, 'rob', {
+        [stage.ego]: false,
+        [stage.sexAssignedAtBirth]: ['male'],
+        [stage.name]: 'Rob',
+      });
+      si.addManualEdge(stage.edgeType, 'rob-ego', 'rob', 'ego', {
+        [stage.kind]: ['biological'],
+      });
+    }
+    si.addInformationStage({ title: 'After the pedigree', text: 'Done.' });
+    return SuperJSON.stringify(
+      si.getInterviewPayload({
+        currentStep: 0,
+        stageMetadata: { 0: { standIns: ['standIn'] } },
+      }),
+    );
+  }
+
+  it('lets a stand-in give way to a genetic parent recorded in their place, without any change', async () => {
+    render(
+      <StoryInterviewShell
+        rawPayload={savedStandIn({ standInSex: 'male', rob: true })}
+      />,
+      { wrapper: WithoutMotion },
+    );
+    await screen.findAllByTestId('pedigree-person');
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-person-id="standIn"]'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
+  });
+
+  it('gives a stand-in the sex at birth that follows the other genetic parent’s, without any change', async () => {
+    const updates = vi.spyOn(session, 'updateNode');
+    render(
+      <StoryInterviewShell
+        rawPayload={savedStandIn({ standInSex: 'female' })}
+      />,
+      { wrapper: WithoutMotion },
+    );
+    await screen.findAllByTestId('pedigree-person');
+    await waitFor(() =>
+      expect(updates).toHaveBeenCalledWith(
+        expect.objectContaining({ nodeId: 'standIn' }),
+      ),
+    );
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
+  });
+
+  // Decided gap (9 Oct 2026): nobody was asked whether a stand-in carried
+  // the pregnancy, so nothing is recorded, told apart from "No".
+  it('records nothing about whether a stand-in who could have carried the pregnancy did', async () => {
+    const si = new SyntheticInterview(4);
+    const people = si.addNodeType({ name: 'Person' });
+    const stage = si.addStage('FamilyPedigree', {
+      subject: { entity: 'node', type: people.id },
+      prompt: 'Add the members of your family.',
+    });
+    si.addManualNode(stage.id, stage.personType, 'ego', {
+      [stage.ego]: true,
+      [stage.sexAssignedAtBirth]: ['female'],
+    });
+    si.addManualNode(stage.id, stage.personType, 'dad', {
+      [stage.ego]: false,
+      [stage.sexAssignedAtBirth]: ['male'],
+      [stage.name]: 'Rob',
+    });
+    si.addManualEdge(stage.edgeType, 'dad-ego', 'dad', 'ego', {
+      [stage.kind]: ['biological'],
+      [stage.gestationalCarrier]: false,
+    });
+    si.addInformationStage({ title: 'After the pedigree', text: 'Done.' });
+    const additions = vi.spyOn(session, 'addNodesAndEdges');
+    render(
+      <StoryInterviewShell
+        rawPayload={SuperJSON.stringify(
+          si.getInterviewPayload({ currentStep: 0 }),
+        )}
+      />,
+      { wrapper: WithoutMotion },
+    );
+    await screen.findAllByTestId('pedigree-person');
+    await waitFor(() => expect(additions).toHaveBeenCalledTimes(1));
+    const [edge] = additions.mock.calls[0]![0].edges;
+    expect(edge?.attributeData).toEqual({ [stage.kind]: ['biological'] });
+  });
+
   it('adds nobody to a family that keeps the rule', async () => {
     const additions = watchAdditions();
     await renderStage({ mumKind: 'adoptive' });
@@ -473,5 +604,141 @@ describe('FamilyPedigree stages that draw the same family', () => {
     // Nobody is added in his place: he holds it.
     expect(additions).not.toHaveBeenCalled();
     expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3);
+  });
+});
+
+// Rule: a stand-in is an unnamed parent the interface made, standing in for
+// one not yet recorded; anything the participant tells about them, a sex at
+// birth included, makes them someone in their own right.
+describe('FamilyPedigree stand-ins the participant describes or disconnects', () => {
+  /** The stand-in given beside the participant's mother on opening. */
+  const standIn = async () => {
+    await waitFor(() =>
+      expect(screen.getAllByTestId('pedigree-person')).toHaveLength(3),
+    );
+    const node = [...document.querySelectorAll('[data-person-id]')].find(
+      (each) => !['ego', 'mum'].includes(each.getAttribute('data-person-id')!),
+    );
+    if (!(node instanceof HTMLElement)) throw new Error('No stand-in drawn');
+    const [button] = within(node).getAllByRole('button');
+    if (!button) throw new Error('No stand-in button');
+    return button;
+  };
+
+  it('keeps the sex at birth the participant chose for a stand-in', async () => {
+    // Without the gender identity question, nothing else is recorded about
+    // them.
+    await renderStage({ askGenderIdentity: false });
+    const user = userEvent.setup();
+    await user.click(await standIn());
+    let panel = await screen.findByTestId('pedigree-person-panel');
+    const sex = () =>
+      within(screen.getByTestId('pedigree-person-panel')).getByRole(
+        'radiogroup',
+        { name: /^Sex assigned at birth/ },
+      );
+    await user.click(within(sex()).getByRole('radio', { name: /Intersex/ }));
+    await user.click(within(panel).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('pedigree-person-panel'),
+      ).not.toBeInTheDocument(),
+    );
+
+    await user.click(await standIn());
+    panel = await screen.findByTestId('pedigree-person-panel');
+    expect(
+      within(sex()).getByRole('radio', { name: /Intersex/ }),
+    ).toBeChecked();
+  });
+
+  it('says a stand-in is replaced by adding the parent they stand in for, when disconnecting them would leave them out', async () => {
+    await renderStage();
+    const user = userEvent.setup();
+    const placeholder = await standIn();
+    await user.click(screen.getByRole('button', { name: 'Disconnect' }));
+    await user.click(placeholder);
+    await user.click(personButton('ego'));
+
+    expect(
+      (await screen.findAllByText(/stands in for a parent of yours/)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/Connect them to someone else/)).toBeNull();
+  });
+});
+
+describe('FamilyPedigree a parent re-described as genetic', () => {
+  // Alex raised the participant before their mother Julie was recorded;
+  // Jess shares only the stand-in for the participant's other genetic
+  // parent, beside an unknown other parent of her own. Nobody's sex at
+  // birth is recorded, so only the change itself tells who takes the
+  // stand-in's place.
+  function halfSisterThroughStandIn() {
+    const si = new SyntheticInterview(5);
+    const people = si.addNodeType({ name: 'Person' });
+    const stage = si.addStage('FamilyPedigree', {
+      subject: { entity: 'node', type: people.id },
+      prompt: 'Add the members of your family.',
+      askGenderIdentity: false,
+    });
+    const node = (id: string, name?: string, isEgo = false) =>
+      si.addManualNode(stage.id, stage.personType, id, {
+        [stage.ego]: isEgo,
+        // The participant answers “Don’t know”, which rules out nothing.
+        ...(isEgo ? { [stage.sexAssignedAtBirth]: ['unknown'] } : {}),
+        ...(name ? { [stage.name]: name } : {}),
+      });
+    node('ego', undefined, true);
+    node('alex', 'Alex');
+    node('mum', 'Julie');
+    node('jess', 'Jess');
+    node('standIn');
+    node('jessStandIn');
+    const parent = (from: string, to: string, kind: string) =>
+      si.addManualEdge(stage.edgeType, `${from}-${to}`, from, to, {
+        [stage.kind]: [kind],
+      });
+    parent('alex', 'ego', 'social');
+    parent('mum', 'ego', 'biological');
+    parent('standIn', 'ego', 'biological');
+    parent('standIn', 'jess', 'biological');
+    parent('jessStandIn', 'jess', 'biological');
+    si.addInformationStage({ title: 'After the pedigree', text: 'Done.' });
+    return SuperJSON.stringify(
+      si.getInterviewPayload({
+        currentStep: 0,
+        stageMetadata: { 0: { standIns: ['standIn', 'jessStandIn'] } },
+      }),
+    );
+  }
+
+  it('takes the stand-in’s place for everyone they stood in for', async () => {
+    render(<StoryInterviewShell rawPayload={halfSisterThroughStandIn()} />, {
+      wrapper: WithoutMotion,
+    });
+    await screen.findAllByTestId('pedigree-person');
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(6);
+    const user = userEvent.setup();
+    await user.click(personButton('ego'));
+    const panel = await screen.findByTestId('pedigree-person-panel');
+    await user.click(
+      within(
+        within(panel).getByRole('radiogroup', { name: /^“?Alex”? is your…/ }),
+      ).getByRole('radio', { name: 'Biological parent' }),
+    );
+    await user.click(within(panel).getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('pedigree-person-panel'),
+      ).not.toBeInTheDocument(),
+    );
+    // The stand-in gives way for Jess too: Alex is her parent in their
+    // place, so they stand in for nobody, and are gone.
+    await waitFor(() =>
+      expect(
+        document.querySelector('[data-person-id="standIn"]'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getAllByTestId('pedigree-person')).toHaveLength(5);
   });
 });

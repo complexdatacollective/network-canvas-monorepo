@@ -2,7 +2,7 @@
   - status:
     - heading "Add the members of your family." [level=2]
   - region "Your family":
-    - button "Biological father, some details missing"
+    - button "Biological father"
     - button "Rachel"
     - button "Tom"
     - button "You"

@@ -16,6 +16,7 @@ import {
   readFamily,
   sexesRuledOut,
   siblingsOf,
+  twinCandidatesOf,
 } from '../model';
 import { relationshipsToParticipant } from '../relationshipToParticipant';
 import { config, configWithoutGenderIdentity, link, person } from './fixtures';
@@ -548,9 +549,19 @@ describe('planAddRelative', () => {
     // partners, which the participant was never asked.
     expect(result.links).toEqual([
       { source: 'new-1', target: 'ego', kind: 'biological' },
-      { source: 'new-2', target: 'ego', kind: 'biological' },
+      {
+        source: 'new-2',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
       { source: 'new-1', target: 'added', kind: 'biological' },
-      { source: 'new-2', target: 'added', kind: 'biological' },
+      {
+        source: 'new-2',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -605,7 +616,12 @@ describe('planAddRelative', () => {
     expect(result.people.map((planned) => planned.id)).toEqual(['added']);
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'standIn', target: 'added', kind: 'biological' },
+      {
+        source: 'standIn',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -636,7 +652,12 @@ describe('planAddRelative', () => {
     ]);
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -704,7 +725,12 @@ describe('planAddRelative', () => {
     // stand-in of their own (ruling 25).
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -718,7 +744,12 @@ describe('planAddRelative', () => {
     // Ruling 25: a stand-in of their own for the parent they do not share.
     expect(result.links).toEqual([
       { source: 'mum', target: 'added', kind: 'biological' },
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -761,7 +792,12 @@ describe('planAddRelative', () => {
           kind: 'biological',
           isGestationalCarrier: true,
         },
-        { source: 'dad', target: 'added', kind: 'biological' },
+        {
+          source: 'dad',
+          target: 'added',
+          kind: 'biological',
+          isGestationalCarrier: false,
+        },
       ]);
     });
 
@@ -786,7 +822,12 @@ describe('planAddRelative', () => {
       });
       // Ruling 25: a stand-in of their own for the parent they do not share.
       expect(result.links).toEqual([
-        { source: 'dad', target: 'added', kind: 'biological' },
+        {
+          source: 'dad',
+          target: 'added',
+          kind: 'biological',
+          isGestationalCarrier: false,
+        },
         { source: 'new-1', target: 'added', kind: 'biological' },
       ]);
     });
@@ -917,9 +958,19 @@ describe('planAddRelative', () => {
     expect(result.links).toEqual(
       expect.arrayContaining([
         { source: 'new-1', target: 'ego', kind: 'biological' },
-        { source: 'new-2', target: 'ego', kind: 'biological' },
+        {
+          source: 'new-2',
+          target: 'ego',
+          kind: 'biological',
+          isGestationalCarrier: false,
+        },
         { source: 'new-1', target: 'added', kind: 'adoptive' },
-        { source: 'new-2', target: 'added', kind: 'adoptive' },
+        {
+          source: 'new-2',
+          target: 'added',
+          kind: 'adoptive',
+          isGestationalCarrier: false,
+        },
       ]),
     );
   });
@@ -993,7 +1044,52 @@ describe('planAddRelative', () => {
         isGestationalCarrier: false,
       },
       // Ruling 25: a stand-in for the child's other genetic parent.
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+    ]);
+  });
+
+  test('a step-child whose other parent is their biological parent is that parent’s biological child', () => {
+    const result = plan(nuclearFamily(), 'mum', {
+      relation: 'child',
+      otherParent: 'dad',
+      parentKind: 'social',
+      biologicalParent: 'otherParent',
+      carrier: null,
+    });
+    expect(result.links).toEqual([
+      {
+        source: 'mum',
+        target: 'added',
+        kind: 'social',
+      },
+      {
+        source: 'dad',
+        target: 'added',
+        kind: 'biological',
+      },
+      // Ruling 25: a stand-in for the child's other genetic parent.
       { source: 'new-1', target: 'added', kind: 'biological' },
+    ]);
+  });
+
+  test('a step-child whose other parent is not their biological parent is that parent’s step-child too', () => {
+    const result = plan(nuclearFamily(), 'mum', {
+      relation: 'child',
+      otherParent: 'dad',
+      parentKind: 'social',
+      biologicalParent: 'both',
+      carrier: null,
+    });
+    expect(
+      result.links.map((planned) => [planned.source, planned.kind]),
+    ).toEqual([
+      ['mum', 'social'],
+      ['dad', 'social'],
     ]);
   });
 
@@ -1083,7 +1179,12 @@ describe('planAddRelative', () => {
         isGestationalCarrier: false,
       },
       // Ruling 25: a stand-in for the child's other genetic parent.
-      { source: 'new-2', target: 'added', kind: 'biological' },
+      {
+        source: 'new-2',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -1117,11 +1218,26 @@ describe('planAddRelative', () => {
         kind: 'biological',
         isGestationalCarrier: true,
       },
-      { source: 'beth', target: 'added', kind: 'social' },
+      {
+        source: 'beth',
+        target: 'added',
+        kind: 'social',
+        isGestationalCarrier: false,
+      },
       // Ruling 25: the two, full siblings, share a stand-in for their other
       // genetic parent.
-      { source: 'new-1', target: 'ego', kind: 'biological' },
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -1145,7 +1261,12 @@ describe('planAddRelative', () => {
       { source: 'ann', target: 'added', kind: 'biological' },
       { source: 'bea', target: 'added', kind: 'adoptive' },
       // Ruling 25: a stand-in for the sibling's other genetic parent.
-      { source: 'new-1', target: 'added', kind: 'biological' },
+      {
+        source: 'new-1',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -1270,7 +1391,12 @@ describe('no addition gives anyone more than two genetic parents', () => {
       { sex: ['female'] },
     ]);
     expect(result.links).toEqual([
-      { source: 'standIn', target: 'added', kind: 'biological' },
+      {
+        source: 'standIn',
+        target: 'added',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
       { source: 'new-1', target: 'added', kind: 'biological' },
     ]);
   });
@@ -1409,8 +1535,18 @@ describe('a new parent of the anchor’s siblings', () => {
       },
       // Ruling 25: the two, recorded with one genetic parent, share a
       // stand-in for the other.
-      { source: 'new-2', target: 'ego', kind: 'biological' },
-      { source: 'new-2', target: 'sib', kind: 'biological' },
+      {
+        source: 'new-2',
+        target: 'ego',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
+      {
+        source: 'new-2',
+        target: 'sib',
+        kind: 'biological',
+        isGestationalCarrier: false,
+      },
     ]);
   });
 
@@ -1578,5 +1714,87 @@ describe('sexesRuledOut', () => {
       },
       { sex: 'male', rule: 'carried', childId: 'ego' },
     ]);
+  });
+});
+
+// Rule: candidate lists come from genuine relationships. A shared child makes
+// two people co-parents only where they hold the same tie to it, and nobody's
+// own ancestor or descendant is their sibling.
+describe('who could be the other parent of a new child', () => {
+  const stepFamily = () =>
+    readFamily(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('gary', { name: 'Gary', sex: ['male'] }),
+        person('lorna', { name: 'Lorna', sex: ['female'] }),
+        person('standIn', { sex: ['male'] }),
+      ],
+      [
+        link('gary', 'ego', 'social'),
+        link('lorna', 'ego', 'biological', { carrier: true }),
+        link('gary', 'lorna', 'partner'),
+        link('standIn', 'ego', 'biological'),
+      ],
+      config,
+      {},
+      new Map(),
+      new Set(['standIn']),
+    );
+
+  test('never a step-child’s other parents for their step-parent', () => {
+    expect(otherParentChoices(stepFamily(), 'gary').choices).toEqual(['lorna']);
+  });
+
+  test('never the birth parents of a child the person adopted', () => {
+    const family = readFamily(
+      [
+        person('ego', { isEgo: true }),
+        person('ann', { name: 'Ann', sex: ['female'] }),
+        person('bea', { name: 'Bea', sex: ['female'] }),
+        person('birthMum', { name: 'Cat', sex: ['female'] }),
+      ],
+      [
+        link('ann', 'ego', 'adoptive'),
+        link('bea', 'ego', 'adoptive'),
+        link('birthMum', 'ego', 'biological', { carrier: true }),
+      ],
+      config,
+    );
+    expect(otherParentChoices(family, 'ann').choices).toEqual(['bea']);
+  });
+
+  test('the other biological parent of a child they had, a stand-in included', () => {
+    expect(otherParentChoices(stepFamily(), 'lorna').choices).toEqual([
+      'gary',
+      'standIn',
+    ]);
+  });
+});
+
+describe('who is someone’s sibling', () => {
+  // Patricia, the participant's grandmother, adopted the participant, so is
+  // the parent of both the participant and their mother Kayla.
+  const kinshipAdoption = () =>
+    readFamily(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('kayla', { name: 'Kayla', sex: ['female'] }),
+        person('patricia', { name: 'Patricia', sex: ['female'] }),
+      ],
+      [
+        link('kayla', 'ego', 'biological', { carrier: true }),
+        link('patricia', 'kayla', 'biological', { carrier: true }),
+        link('patricia', 'ego', 'adoptive'),
+      ],
+      config,
+    );
+
+  test('never their own parent, though they share a parent', () => {
+    expect(siblingsOf(kinshipAdoption(), 'ego')).toEqual([]);
+    expect(siblingsOf(kinshipAdoption(), 'kayla')).toEqual([]);
+  });
+
+  test('never offers their own parent as a twin', () => {
+    expect(twinCandidatesOf(kinshipAdoption(), 'ego')).toEqual([]);
   });
 });

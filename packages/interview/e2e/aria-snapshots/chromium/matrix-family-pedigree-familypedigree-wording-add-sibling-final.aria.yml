@@ -45,8 +45,6 @@
       - text: Biological kind - matrix check
       - radio "Adopted kind - matrix check"
       - text: Adopted kind - matrix check
-      - radio "Social kind - matrix check"
-      - text: Social kind - matrix check
     - text: Carrier of the pregnancy - matrix check
     - radiogroup "Carrier of the pregnancy - matrix check":
       - radio "Julie"
@@ -58,7 +56,7 @@
       - radio "Not twins - matrix check" [checked]
       - text: Not twins - matrix check
       - radio "Identical twin option - matrix check" [disabled]
-      - text: Identical twin option - matrix check
+      - text: Identical twin option - matrix check New sibling cannot be identical to you - matrix check
       - radio "Fraternal twin option - matrix check"
       - text: Fraternal twin option - matrix check
       - radio "Twins of unknown kind - matrix check"

@@ -20,10 +20,12 @@ describe('Node label fitting', () => {
   it('leaves a label that already fits exactly as it was', async () => {
     render(<Node label="Ash" />);
 
+    // The default rung, which ignores soft hyphens: only the floor rungs may
+    // break inside a word.
     await waitFor(() =>
       expect(labelOf('Ash')).toHaveAttribute(
         'class',
-        labelVariants({ size: 'md' }),
+        labelVariants({ size: 'md', className: 'hyphens-none' }),
       ),
     );
   });
@@ -37,7 +39,7 @@ describe('Node label fitting', () => {
     await waitFor(() =>
       expect(labelOf('Mohammad Crist')).toHaveAttribute(
         'class',
-        labelVariants({ size: 'md' }),
+        labelVariants({ size: 'md', className: 'hyphens-none' }),
       ),
     );
     expect(labelOf('Mohammad Crist')).not.toHaveClass('wrap-anywhere');
@@ -80,6 +82,58 @@ describe('Node label fitting', () => {
     render(<Node label={name(30)} />);
 
     await waitFor(() => expect(labelOf(name(30))).toHaveClass('wrap-anywhere'));
+  });
+
+  it('ignores soft hyphens on every rung that could still hold a word whole', async () => {
+    // A soft hyphen is only a place a word may break. Left to the browser's
+    // default it is honoured on every rung, so "bio-logical" breaks on the
+    // first line and the fitter, seeing no overflow, never tries a size where
+    // the word fits whole.
+    render(<Node label="Christophers Wisozk" />);
+
+    const label = labelOf('Christophers Wisozk');
+    await waitFor(() => expect(label).toHaveClass('text-sm'));
+    expect(label).toHaveClass('hyphens-none');
+  });
+
+  it('marks break points in a name only once no size holds it whole', async () => {
+    render(<Node label="Konstantinopoulos" />);
+
+    const label = screen.getByRole('button', { name: 'Konstantinopoulos' });
+    const text = label.querySelector('span[class*="line-clamp"]')!;
+    await waitFor(() => expect(text).toHaveClass('hyphens-auto'));
+    // The letters are exactly the ones typed; the break points are invisible
+    // soft hyphens, and the accessible name never carries them.
+    expect(text.textContent).toContain('\u00AD');
+    expect(text.textContent?.replaceAll('\u00AD', '')).toBe(
+      'Konstantinopoulos',
+    );
+    expect(label).toHaveAttribute('aria-label', 'Konstantinopoulos');
+  });
+
+  it('leaves a name that fits exactly as typed', async () => {
+    render(<Node label="Christophers Wisozk" />);
+
+    const label = labelOf('Christophers Wisozk');
+    await waitFor(() => expect(label).toHaveClass('text-sm'));
+    expect(label.textContent).toBe('Christophers Wisozk');
+  });
+
+  it('does not carry break points over to the next name', async () => {
+    const { rerender } = render(<Node label="Konstantinopoulos" />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button').querySelector('span[class*="line-clamp"]'),
+      ).toHaveClass('hyphens-auto'),
+    );
+
+    rerender(<Node label="Ash" />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button').querySelector('span[class*="line-clamp"]')
+          ?.textContent,
+      ).toBe('Ash'),
+    );
   });
 
   it('never shrinks past the legibility floor', async () => {

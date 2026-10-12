@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { useCallback, useRef } from 'react';
+import { useCallback, useId, useRef } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -48,6 +48,11 @@ type BooleanOption = {
   label: PresentationalText;
   value: boolean;
   negative?: boolean;
+  /** This answer alone cannot be chosen; the other still can. */
+  disabled?: boolean;
+  /** Said about this answer alone, such as why it is unavailable: its
+   * accessible description, not shown. */
+  description?: string;
 };
 
 const optionCardOwnVariants = cva({
@@ -205,7 +210,7 @@ export default function BooleanField(props: BooleanFieldProps) {
     (e: React.KeyboardEvent, index: number) => {
       const enabledIndices = options
         .map((_opt, i) => i)
-        .filter(() => !disabled);
+        .filter((i) => !disabled && !options[i]?.disabled);
 
       const currentEnabledIndex = enabledIndices.indexOf(index);
       if (currentEnabledIndex === -1) return;
@@ -234,6 +239,16 @@ export default function BooleanField(props: BooleanFieldProps) {
   );
 
   const groupState = getInputState(props);
+  const descriptionIdPrefix = useId();
+  // The chosen answer holds the tab stop. With nothing chosen, or when the
+  // chosen answer cannot be chosen (a disabled button leaves the tab order),
+  // the first answer that can be chosen holds it.
+  const firstEnabled = options.findIndex((option) => !option.disabled);
+  const selectedIndex = options.findIndex((option) => option.value === value);
+  const tabStop =
+    selectedIndex >= 0 && !options[selectedIndex]?.disabled
+      ? selectedIndex
+      : firstEnabled;
 
   return (
     <div className={cx('flex w-full flex-col gap-2', className)}>
@@ -265,7 +280,9 @@ export default function BooleanField(props: BooleanFieldProps) {
         )}
         {options.map((option, index) => {
           const isSelected = value === option.value;
-          const optionState = disabled
+          const optionDisabled = Boolean(disabled) || Boolean(option.disabled);
+          const descriptionId = `${descriptionIdPrefix}-${index}`;
+          const optionState = optionDisabled
             ? 'disabled'
             : readOnly
               ? 'readOnly'
@@ -284,9 +301,8 @@ export default function BooleanField(props: BooleanFieldProps) {
               aria-checked={isSelected}
               data-value={String(option.value)}
               data-negative={option.negative ? 'true' : undefined}
-              tabIndex={
-                isSelected || (value === undefined && index === 0) ? 0 : -1
-              }
+              aria-describedby={option.description ? descriptionId : undefined}
+              tabIndex={index === tabStop ? 0 : -1}
               className={optionCardVariants({
                 selected: isSelected,
                 state: optionState,
@@ -294,13 +310,15 @@ export default function BooleanField(props: BooleanFieldProps) {
                 size: 'md',
               })}
               onClick={() => {
-                if (!disabled && !readOnly) {
+                if (!optionDisabled && !readOnly) {
                   handleSelect(option.value);
                 }
               }}
               onKeyDown={(e) => handleKeyDown(e, index)}
-              disabled={disabled}
-              whileTap={disabled || readOnly ? undefined : { scale: 0.98 }}
+              disabled={optionDisabled}
+              whileTap={
+                optionDisabled || readOnly ? undefined : { scale: 0.98 }
+              }
               transition={selectionSpring}
             >
               <BooleanIndicator
@@ -319,6 +337,19 @@ export default function BooleanField(props: BooleanFieldProps) {
             </motion.button>
           );
         })}
+        {/* Outside the answers, whose content names them, so a description
+            is not read as part of the name. */}
+        {options.map((option, index) =>
+          option.description ? (
+            <span
+              key={`description-${String(option.value)}`}
+              id={`${descriptionIdPrefix}-${index}`}
+              className="sr-only"
+            >
+              {option.description}
+            </span>
+          ) : null,
+        )}
       </fieldset>
       {!noReset && value !== undefined && (
         <Button

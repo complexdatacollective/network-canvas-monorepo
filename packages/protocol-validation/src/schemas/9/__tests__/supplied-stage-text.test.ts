@@ -180,13 +180,15 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
     ).map(({ path }) => path.join('.'));
 
   // The wording a stage holds only while its configuration is on: the framing
-  // question while participants choose the words, and the gender identity
-  // question while the stage asks about gender identity.
+  // question while participants choose the words, the gender identity
+  // question while the stage asks about gender identity, and the note on a
+  // question limited to one sex at birth while it has one.
   const CONFIGURED = [
     'framingChoiceTitle',
     'framingChoiceDescription',
     'framingControlLabel',
     'genderIdentityLabel',
+    'nominationLimitHint',
   ];
   const alwaysWording = Object.keys(familyPedigreeWordingIn())
     .filter((key) => !CONFIGURED.includes(key))
@@ -224,6 +226,31 @@ describe('the Family Pedigree wording Network Canvas supplies', () => {
     expect(
       paths({ nodeConfiguration: { nameField: { prompt: { en: 'Name' } } } }),
     ).toEqual(alwaysWording);
+  });
+
+  it('gives a stage the note on a question limited to one sex at birth only while it has one', () => {
+    const named = {
+      nodeConfiguration: { nameField: { prompt: { en: 'Name' } } },
+    };
+    expect(
+      paths({
+        ...named,
+        nominationPrompts: [{ id: 'smokes', attribute: 'smokes' }],
+      }),
+    ).not.toContain('wording.nominationLimitHint');
+    expect(
+      paths({
+        ...named,
+        nominationPrompts: [
+          { id: 'smokes', attribute: 'smokes' },
+          {
+            id: 'pregnant',
+            attribute: 'pregnant',
+            onlyForSexAssignedAtBirth: 'female',
+          },
+        ],
+      }),
+    ).toContain('wording.nominationLimitHint');
   });
 
   it('writes the wording with its arguments, in each language it is supplied in', () => {

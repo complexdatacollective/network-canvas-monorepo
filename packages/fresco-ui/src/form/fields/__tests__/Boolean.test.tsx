@@ -81,3 +81,60 @@ describe('BooleanField negative options', () => {
     expect(onChange).toHaveBeenCalledWith(false);
   });
 });
+
+describe('BooleanField answers that cannot be chosen', () => {
+  const options = [
+    {
+      label: 'Yes',
+      value: true,
+      disabled: true,
+      description: 'Someone else carried them.',
+    },
+    { label: 'No', value: false },
+  ];
+
+  it('disables only that answer, says why, and leaves the other to choose', async () => {
+    const onChange = vi.fn();
+    render(
+      <BooleanField
+        name="carried"
+        options={options}
+        value={undefined}
+        onChange={onChange}
+      />,
+    );
+    const yes = screen.getByRole('radio', { name: 'Yes' });
+    const no = screen.getByRole('radio', { name: 'No' });
+    expect(yes).toBeDisabled();
+    expect(yes).toHaveAccessibleDescription('Someone else carried them.');
+    expect(no).toBeEnabled();
+    // With nothing chosen, focus lands on the answer that can be chosen.
+    expect(no).toHaveAttribute('tabindex', '0');
+
+    await userEvent.click(yes);
+    expect(onChange).not.toHaveBeenCalled();
+    await userEvent.click(no);
+    expect(onChange).toHaveBeenCalledWith(false);
+  });
+
+  it('keeps the group in the tab order when the chosen answer is the one that cannot be chosen', () => {
+    render(
+      <BooleanField
+        name="carried"
+        options={options}
+        value={true}
+        onChange={() => undefined}
+      />,
+    );
+    // A disabled button leaves the tab order, so the tab stop moves to the
+    // first answer that can be chosen.
+    expect(screen.getByRole('radio', { name: 'Yes' })).toHaveAttribute(
+      'tabindex',
+      '-1',
+    );
+    expect(screen.getByRole('radio', { name: 'No' })).toHaveAttribute(
+      'tabindex',
+      '0',
+    );
+  });
+});

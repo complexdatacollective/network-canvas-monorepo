@@ -17,6 +17,7 @@
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
+  - text: Family members are now described with words like mother, father, sister and brother.
   - navigation:
     - button "Previous Step"
     - progressbar "Progress indicator": x

@@ -3,7 +3,7 @@
     - heading "Add the members of your family." [level=2]
   - region "Your family":
     - button "Linda"
-    - button "You, some details missing"
+    - button "You"
     - toolbar "Add your relatives":
       - button "Parent"
       - button "Sibling"

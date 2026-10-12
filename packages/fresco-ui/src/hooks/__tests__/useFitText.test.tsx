@@ -34,19 +34,23 @@ function Probe({
   lineHeight?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { ref, stepIndex, isTruncated } = useFitText<HTMLSpanElement>({
-    steps,
-    containerRef,
-    watch: text,
-    enabled,
-  });
+  const { ref, stepIndex, isTruncated, fittedWatch } =
+    useFitText<HTMLSpanElement>({
+      steps,
+      containerRef,
+      watch: text,
+      enabled,
+    });
 
   return (
     <div ref={containerRef}>
       <span ref={ref} style={lineHeight ? { fontSize, lineHeight } : undefined}>
         {text}
       </span>
-      <output data-testid="state">{`${stepIndex}:${isTruncated}`}</output>
+      <output
+        data-testid="state"
+        data-fitted={String(fittedWatch)}
+      >{`${stepIndex}:${isTruncated}`}</output>
     </div>
   );
 }
@@ -57,6 +61,18 @@ beforeEach(installLabelMetrics);
 afterEach(uninstallLabelMetrics);
 
 describe('useFitText', () => {
+  it('reports which text the current rung was measured for', async () => {
+    const { rerender } = render(<Probe text="short" />);
+    await waitFor(() =>
+      expect(screen.getByTestId('state').dataset.fitted).toBe('short'),
+    );
+
+    rerender(<Probe text="other" />);
+    await waitFor(() =>
+      expect(screen.getByTestId('state').dataset.fitted).toBe('other'),
+    );
+  });
+
   it('keeps the largest rung when the text already fits', async () => {
     render(<Probe text={'a'.repeat(30)} />);
     await waitFor(() => expect(state()).toBe('0:false'));

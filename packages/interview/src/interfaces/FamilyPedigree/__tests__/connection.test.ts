@@ -199,13 +199,19 @@ describe('connecting two people', () => {
   });
 
   test('the recorded link', () => {
+    const empty = family([], []);
+    const sex = config.sexAssignedAtBirthAttribute;
     expect(
-      planConnection({
-        kind: 'partner',
-        firstId: 'a',
-        secondId: 'b',
-        current: false,
-      }),
+      planConnection(
+        {
+          kind: 'partner',
+          firstId: 'a',
+          secondId: 'b',
+          current: false,
+        },
+        empty,
+        sex,
+      ),
     ).toEqual({
       source: 'a',
       target: 'b',
@@ -213,22 +219,30 @@ describe('connecting two people', () => {
       isCurrentPartner: false,
     });
     expect(
-      planConnection({
-        kind: 'parent',
-        parentId: 'p',
-        childId: 'c',
-        parentKind: 'biological',
-        carriedPregnancy: true,
-      }),
+      planConnection(
+        {
+          kind: 'parent',
+          parentId: 'p',
+          childId: 'c',
+          parentKind: 'biological',
+          carriedPregnancy: true,
+        },
+        empty,
+        sex,
+      ),
     ).toMatchObject({ kind: 'biological', isGestationalCarrier: true });
     expect(
-      planConnection({
-        kind: 'parent',
-        parentId: 'p',
-        childId: 'c',
-        parentKind: 'surrogate',
-        carriedPregnancy: true,
-      }),
+      planConnection(
+        {
+          kind: 'parent',
+          parentId: 'p',
+          childId: 'c',
+          parentKind: 'surrogate',
+          carriedPregnancy: true,
+        },
+        empty,
+        sex,
+      ),
     ).toEqual({
       source: 'p',
       target: 'c',

@@ -83,12 +83,15 @@ const consentSkip = (destination?: Fields): Fields => ({
 });
 
 /** A schema 8 Family Pedigree with every optional piece set. */
-/** The wording a stage holds while its framing question and gender identity are off. */
+/** The wording a stage holds while its framing question and gender identity
+ * are off and no question about the family is limited to one sex at birth
+ * (schema 8 has no such limit). */
 const CONFIGURED_WORDING = [
   'framingChoiceTitle',
   'framingChoiceDescription',
   'framingControlLabel',
   'genderIdentityLabel',
+  'nominationLimitHint',
 ];
 
 const pedigreeWordingWithout = () =>

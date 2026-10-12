@@ -43,24 +43,20 @@
       - text: Nobody else - matrix check
     - text: Kind of child - matrix check Required
     - radiogroup "Kind of child - matrix check":
-      - radio "Biological kind - matrix check" [checked]
+      - radio "Biological kind - matrix check"
       - text: Biological kind - matrix check
       - radio "Adopted kind - matrix check"
       - text: Adopted kind - matrix check
-      - radio "Social kind - matrix check"
+      - radio "Social kind - matrix check" [checked]
       - text: Social kind - matrix check
       - radio "Donor kind - matrix check"
       - text: Donor kind - matrix check
       - radio "Surrogacy kind - matrix check"
       - text: Surrogacy kind - matrix check
-    - text: Which one is genetic - matrix check Required Genetic parents only - matrix check You and Pam both Female - matrix check
-    - radiogroup "Which one is genetic - matrix check":
-      - radio "You and Pam both - matrix check" [disabled]
-      - text: You and Pam both - matrix check
-      - radio "You"
-      - text: You
-      - radio "Pam"
-      - text: Pam
+    - text: Is Pam a genetic parent of the child - matrix check Required
+    - radiogroup "Is Pam a genetic parent of the child - matrix check":
+      - radio "Yes"
+      - radio "No"
     - text: Carrier of the pregnancy - matrix check
     - radiogroup "Carrier of the pregnancy - matrix check":
       - radio "You"

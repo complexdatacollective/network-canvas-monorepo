@@ -1,6 +1,7 @@
 - main:
   - status:
     - heading "Add the members of your family." [level=2]
+  - text: Family members are now described with words like mother, father, sister and brother.
   - region "Interview notifications"
   - dialog "Add your sibling":
     - heading "Add your sibling" [level=2]
@@ -33,13 +34,13 @@
       - text: Don’t know
       - radio "Prefer not to say"
       - text: Prefer not to say
-    - text: Parents shared with you - matrix check Required Gendered placeholders note - matrix check
+    - text: Parents shared with you - matrix check Required Shares the father note - matrix check
     - radiogroup "Parents shared with you - matrix check":
-      - radio "Both of them - matrix check" [checked]
+      - radio "Both of them - matrix check"
       - text: Both of them - matrix check
       - radio "Mother side only - matrix check"
       - text: Mother side only - matrix check
-      - radio "Father side only - matrix check"
+      - radio "Father side only - matrix check" [checked]
       - text: Father side only - matrix check
     - text: To the parents they share, are they… Required
     - radiogroup "To the parents they share, are they…":
@@ -47,20 +48,18 @@
       - text: A biological child
       - radio "An adopted child"
       - text: An adopted child
-      - radio "A step-child or other child they raise"
-      - text: A step-child or other child they raise
     - text: Who carried the pregnancy?
     - radiogroup "Who carried the pregnancy?":
-      - radio "Relative term - matrix check 1"
-      - text: Relative term - matrix check 1
+      - radio "Relative term - matrix check’s Relative term - matrix check"
+      - text: Relative term - matrix check’s Relative term - matrix check
       - radio "Someone else, or I don’t know"
       - text: Someone else, or I don’t know
-    - text: Are they your twin? Answer yes for triplets and other multiple births too.
+    - text: Are they your twin? Answer yes for triplets and other multiple births too. “Yes, identical twins” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.
     - radiogroup "Are they your twin?":
       - radio "No" [checked]
       - text: "No"
-      - radio "Yes, identical twins"
-      - text: Yes, identical twins
+      - radio "Yes, identical twins" [disabled]
+      - text: Yes, identical twins “Yes, identical twins” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.
       - radio "Yes, fraternal (non-identical) twins"
       - text: Yes, fraternal (non-identical) twins
       - radio "Yes, but I don’t know if they are identical"

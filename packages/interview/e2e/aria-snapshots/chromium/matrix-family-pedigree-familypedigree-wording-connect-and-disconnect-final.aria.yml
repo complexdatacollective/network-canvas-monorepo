@@ -4,8 +4,8 @@
   - region "Your family":
     - button "Rachel"
     - button "Tom"
-    - button "Biological father, some details missing"
-    - button "You, adopted": Me myself - matrix check
+    - button "Biological father"
+    - button "You": Me myself - matrix check
   - paragraph: Pick two people to join - matrix check
   - toolbar "Family tree tools":
     - group "What clicking a person does":

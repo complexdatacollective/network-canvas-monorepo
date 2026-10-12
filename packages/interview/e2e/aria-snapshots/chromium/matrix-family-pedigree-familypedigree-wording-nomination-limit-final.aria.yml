@@ -1,0 +1,18 @@
+- main:
+  - status:
+    - heading "Who in your family has had ovarian cancer?" [level=2]
+  - region "Your family":
+    - button "Julie"
+    - button "Rob" [disabled]
+    - button "You"
+  - paragraph: Only people assigned female at birth here - matrix check
+  - toolbar "Family tree tools":
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step"
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

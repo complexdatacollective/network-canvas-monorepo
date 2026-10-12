@@ -66,15 +66,16 @@ const overlaps = (a: DOMRect, b: DOMRect) =>
   a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 
 /**
- * An adopted placeholder relative with details missing: announced with
- * both, without the soft hyphens, and with the warning badge clear of every
- * line of the label.
+ * An adopted placeholder relative with details missing: named by their label
+ * alone, without the soft hyphens, described as adopted and missing details,
+ * and with the warning badge clear of every line of the label.
  */
 export const AdoptedPlaceholderWithMissingDetails: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const symbol = canvas.getByRole('button', {
-      name: 'Paternal grandparent 1, adopted, some details missing',
+      name: 'Paternal grandparent 1',
+      description: 'Adopted. Some details are missing.',
     });
     await expect(symbol).toBeInTheDocument();
 
@@ -106,8 +107,9 @@ export const DonorAndSurrogateRolesAreSpoken: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const symbol = canvas.getByRole('button', {
-      name: 'Aunt, adopted, some details missing',
-      description: 'egg or sperm donor and surrogate',
+      name: 'Aunt',
+      description:
+        'Adopted. Some details are missing. egg or sperm donor and surrogate',
     });
     await expect(symbol).toBeInTheDocument();
     // No pedigree letter is drawn: the only visible text is the label.

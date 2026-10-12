@@ -1,0 +1,60 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - text: Hal added to your family.
+  - region "Interview notifications"
+  - dialog "Add your parent":
+    - heading "Add your parent" [level=2]
+    - button "Close"
+    - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
+    - textbox "Name (optional)"
+    - text: Gender identity Required
+    - radiogroup "Gender identity":
+      - radio "Woman"
+      - text: Woman
+      - radio "Man"
+      - text: Man
+      - radio "Non-binary"
+      - text: Non-binary
+      - radio "A different identity"
+      - text: A different identity
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Sex assigned at birth Required
+    - radiogroup "Sex assigned at birth":
+      - radio "Female"
+      - text: Female
+      - radio "Male" [checked]
+      - text: Male
+      - radio "Intersex"
+      - text: Intersex
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: What kind of parent are they? Required “Surrogate” is unavailable because “Julie” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Julie” is connected to you. “Surrogate” is unavailable because this person is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+    - radiogroup "What kind of parent are they?":
+      - radio "Biological parent" [checked]
+      - text: Biological parent
+      - radio "Adoptive parent"
+      - text: Adoptive parent
+      - radio "Step or social parent"
+      - text: Step or social parent
+      - radio "Egg or sperm donor"
+      - text: Egg or sperm donor
+      - radio "Surrogate" [disabled]
+      - text: Surrogate “Surrogate” is unavailable because “Julie” is recorded as having carried you, and only one person carries a pregnancy. To choose it, first change how “Julie” is connected to you. “Surrogate” is unavailable because this person is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
+    - text: Are they the partner of another parent?
+    - radiogroup "Are they the partner of another parent?":
+      - radio "Julie"
+      - text: Julie
+      - radio "No"
+      - text: "No"
+    - text: Are they also the parent of… Hal shares your unnamed parent, whom this person replaces - matrix check
+    - group "Are they also the parent of…":
+      - checkbox "Hal" [checked] [disabled]
+      - text: Hal
+    - button "Cancel"
+    - button "Save"

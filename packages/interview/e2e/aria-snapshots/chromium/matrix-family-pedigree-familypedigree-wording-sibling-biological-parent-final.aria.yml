@@ -47,11 +47,9 @@
       - text: A biological child
       - radio "An adopted child"
       - text: An adopted child
-      - radio "A step-child or other child they raise"
-      - text: A step-child or other child they raise
     - text: Genetic parent of the sibling - matrix check Required
     - radiogroup "Genetic parent of the sibling - matrix check":
-      - radio "Julie" [checked]
+      - radio "Julie"
       - text: Julie
       - radio "Pam"
       - text: Pam
