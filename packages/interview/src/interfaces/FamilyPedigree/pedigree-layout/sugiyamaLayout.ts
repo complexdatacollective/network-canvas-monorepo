@@ -1247,6 +1247,26 @@ function buildConstraintBlocks(
             : othersRight <= othersLeft
           : right < left;
 
+      // An adopted child's birth parents who were never partners are seated
+      // side by side, so that their lines come down from each of them and
+      // join before the child (see `computeConnectors`) without passing
+      // anyone; but never between partners, which would split a recorded
+      // partnership (each then keeps a line of their own).
+      const birthParent = (parent: number) =>
+        graph.parents[child]!.some(
+          (p) => p.parentIndex === parent && p.isBirthParent,
+        );
+      const mateIn = (blockNodes: number[]) =>
+        birthParent(aux)
+          ? extras.find(
+              (other) =>
+                other !== aux &&
+                birthParent(other) &&
+                !partnered(other, aux) &&
+                blockNodes.includes(other),
+            )
+          : undefined;
+
       if (assigned.has(aux) || inRealSibship.has(aux) || spousesOf.has(aux)) {
         // Placed already by steps 1–2, or for another child. Only a donor
         // or surrogate seated by steps 1–2 is moved beside the parents.
@@ -1255,6 +1275,40 @@ function buildConstraintBlocks(
         const donorBlock = blocks.find((b) => b.nodes.includes(aux));
         const coupleBlock = blockHolding(coupleOnLayer);
         if (!donorBlock || donorBlock === coupleBlock) continue;
+        // Beside the other birth parent, where they sit at an end of the
+        // parents' block.
+        const mate = mateIn(coupleBlock.nodes);
+        if (mate !== undefined && !donorBlock.nodes.includes(mate)) {
+          const mateAt = coupleBlock.nodes.indexOf(mate);
+          const atEnd =
+            mateAt === 0
+              ? 'left'
+              : mateAt === coupleBlock.nodes.length - 1
+                ? 'right'
+                : undefined;
+          if (atEnd !== undefined) {
+            coupleBlock.nodes =
+              atEnd === 'right'
+                ? [
+                    ...coupleBlock.nodes,
+                    ...movePartnerAnchorToBoundary(
+                      donorBlock.nodes,
+                      aux,
+                      'left',
+                    ),
+                  ]
+                : [
+                    ...movePartnerAnchorToBoundary(
+                      donorBlock.nodes,
+                      aux,
+                      'right',
+                    ),
+                    ...coupleBlock.nodes,
+                  ];
+            blocks.splice(blocks.indexOf(donorBlock), 1);
+            continue;
+          }
+        }
         // The donor's block joins the parents' block at the end nearer the
         // couple, so its line passes everyone between that end and them (on
         // a tie, the side holding fewer of the child's lines, else the
@@ -1304,33 +1358,34 @@ function buildConstraintBlocks(
 
       const targetBlock = blockHolding(coupleOnLayer);
 
-      // An adopted child's birth parents who were never partners are seated
-      // side by side, the second beyond the first, so that their lines come
-      // down from each of them and join before the child (see
-      // `computeConnectors`) without passing anyone.
-      const birthParent = (parent: number) =>
-        graph.parents[child]!.some(
-          (p) => p.parentIndex === parent && p.isBirthParent,
-        );
-      const mate = birthParent(aux)
-        ? extras.find(
-            (other) =>
-              other !== aux &&
-              birthParent(other) &&
-              !partnered(other, aux) &&
-              targetBlock.nodes.includes(other),
-          )
-        : undefined;
+      // Beside the other birth parent: beyond them where no partner of
+      // theirs sits there, else between them and the couple; failing both,
+      // past the end of their chain of partnerships nearer the couple.
+      const mate = mateIn(targetBlock.nodes);
       if (mate !== undefined) {
-        const mateAt = targetBlock.nodes.indexOf(mate);
-        const coupleAt = targetBlock.nodes.findIndex((node) =>
-          coupleSet.has(node),
-        );
-        targetBlock.nodes.splice(
-          mateAt < coupleAt ? mateAt : mateAt + 1,
-          0,
-          aux,
-        );
+        const row = targetBlock.nodes;
+        const mateAt = row.indexOf(mate);
+        const coupleAt = row.findIndex((node) => coupleSet.has(node));
+        const outward = mateAt < coupleAt ? -1 : 1;
+        const free = (side: -1 | 1) => {
+          const neighbour = row[mateAt + side];
+          return neighbour === undefined || !partnered(mate, neighbour);
+        };
+        const beside = (side: -1 | 1) => (side < 0 ? mateAt : mateAt + 1);
+        let at: number;
+        if (free(outward)) at = beside(outward);
+        else if (free(-outward as -1 | 1)) at = beside(-outward as -1 | 1);
+        else {
+          let k = mateAt;
+          while (
+            row[k - outward] !== undefined &&
+            partnered(row[k]!, row[k - outward]!)
+          ) {
+            k -= outward;
+          }
+          at = outward < 0 ? k + 1 : k;
+        }
+        row.splice(at, 0, aux);
         assigned.add(aux);
         continue;
       }

@@ -1013,3 +1013,73 @@ describe('a participant with birth parents, separated adoptive parents and their
     }
   }
 });
+
+/**
+ * An adopted child's birth parents who were never partners, Chloe and
+ * Tyler, one of whom has a partner of her own, Sam; Helen and Mark adopted
+ * the child. Recorded in either order.
+ */
+function birthParentWithPartner(order: ('chloe' | 'tyler')[]) {
+  const nodes = [
+    person('ego', { name: 'Ego', sex: ['female'], isEgo: true }),
+    woman('helen', 'Helen'),
+    man('mark', 'Mark'),
+    ...order.map((id) =>
+      id === 'chloe' ? woman('chloe', 'Chloe') : man('tyler', 'Tyler'),
+    ),
+    man('sam', 'Sam'),
+  ];
+  const edges = [
+    link('helen', 'mark', 'partner', { current: true }),
+    link('helen', 'ego', 'adoptive', { carrier: false }),
+    link('mark', 'ego', 'adoptive', { carrier: false }),
+    ...order.map((id) =>
+      link(id, 'ego', 'biological', { carrier: id === 'chloe' }),
+    ),
+    link('chloe', 'sam', 'partner', { current: true }),
+  ];
+  return { nodes, edges };
+}
+
+describe('an adopted child’s birth parents who were never partners, one with a partner', () => {
+  for (const size of SYMBOL_SIZES) {
+    for (const order of [
+      ['chloe', 'tyler'],
+      ['tyler', 'chloe'],
+    ] as ('chloe' | 'tyler')[][]) {
+      const label = `${order.join(' first, then ')}, ${size}px symbols`;
+
+      it(`seats the birth parent beside her partner and the other birth parent (${label})`, () => {
+        const { nodes, edges } = birthParentWithPartner(order);
+        const drawing = drawAsInterface(nodes, edges, size);
+        const row = ['helen', 'mark', 'chloe', 'tyler', 'sam'].toSorted(
+          (a, b) => drawing.centre(a).x - drawing.centre(b).x,
+        );
+        const apart = (a: string, b: string) =>
+          Math.abs(row.indexOf(a) - row.indexOf(b));
+        expect(apart('chloe', 'sam')).toBe(1);
+        expect(apart('chloe', 'tyler')).toBe(1);
+        expect(Math.min(apart('tyler', 'helen'), apart('tyler', 'mark'))).toBe(
+          1,
+        );
+        const partnership = drawing.connectors.groupLines.find((line) =>
+          ['chloe', 'sam'].every((id) => line.partnerIds?.includes(id)),
+        );
+        expect(partnership?.endpointSegments ?? []).toEqual([]);
+      });
+
+      it(`draws their lines down from each of them, joined before the child (${label})`, () => {
+        const { nodes, edges } = birthParentWithPartner(order);
+        const drawing = drawAsInterface(nodes, edges, size);
+        const tail = (id: string) =>
+          drawing.connectors.auxiliaryLines
+            .find((line) => line.endpointIds?.[0] === id)!
+            .points.slice(-2);
+        expect(tail('chloe')).toEqual(tail('tyler'));
+        expect(
+          strictLineFaults(drawing, helperTiesOf(edges), idsOf(nodes)),
+        ).toEqual([]);
+      });
+    }
+  }
+});
