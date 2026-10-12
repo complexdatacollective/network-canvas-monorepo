@@ -1,7 +1,27 @@
 import type { LocaleTag } from '../../localization/localeTag.ts';
+import {
+  type MessageArguments,
+  requirePlacements,
+} from '../../localization/messageArguments.ts';
 
 /** Text Network Canvas supplies, one ICU message per language it ships in. */
 export type SuppliedWording = Readonly<Record<LocaleTag, string>>;
+
+/**
+ * `declaration` requiring, in every language, what Network Canvas's English
+ * wording for the setting shows (see `requirePlacements`): a translation must
+ * not drop a person's name or a count the original gives.
+ */
+export const requireSuppliedPlacements = (
+  declaration: MessageArguments,
+  wording: SuppliedWording,
+): MessageArguments => {
+  const english = wording.en;
+  if (english === undefined) {
+    throw new Error('Supplied wording must include English.');
+  }
+  return requirePlacements(declaration, english, 'en');
+};
 
 /** One stage setting whose wording Network Canvas supplies. */
 export type SuppliedStageSetting = Readonly<{

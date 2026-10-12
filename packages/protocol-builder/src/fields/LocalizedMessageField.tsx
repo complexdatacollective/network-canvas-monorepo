@@ -11,20 +11,27 @@ import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 import {
   composeMessage,
   findMessageArgumentProblem,
+  findMissingPlacement,
   type LocaleTag,
   type LocalizedString,
   type MessageArguments,
   type MessagePart,
   type MessageVariant,
   messageVariants,
+  type MissingPlacement,
   pluralCountExamples,
+  requiredArgumentsOf,
 } from '@codaco/protocol-validation';
 
 import { asLocalizedString } from '../localization/localizedText.ts';
 import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RichTextContent as JSONContent } from '../markdown/markdownAdapter.ts';
 import { LocalizedStringField } from './LocalizedStringField.tsx';
-import { useMessageArgumentLabels } from './messageArgumentLabels.ts';
+import {
+  type MessageArgumentLabels,
+  messageArgumentLabels,
+  useMessageArgumentLabels,
+} from './messageArgumentLabels.ts';
 
 const messages = defineMessages({
   pluralVersion: {
@@ -39,6 +46,18 @@ const messages = defineMessages({
       'Write every version of this text, or leave them all empty.',
     description:
       'Refusal shown under a text written in several versions (for the participant, for someone else, and so on) when some versions have words and others are empty, in any of the protocol’s languages.',
+  },
+  placementMissing: {
+    id: 'protocolBuilder.localizedMessage.placementMissing',
+    defaultMessage: 'Include “{placeholder}” in this text.',
+    description:
+      'Refusal shown under a text when a translation leaves out a placeholder, such as a person’s name or a number, that the original text shows. placeholder is the placeholder’s name, such as “Name”.',
+  },
+  placementMissingIn: {
+    id: 'protocolBuilder.localizedMessage.placementMissingIn',
+    defaultMessage: 'Include “{placeholder}” in this version: {version}.',
+    description:
+      'Refusal shown under a text written in several versions when one version of a translation leaves out a placeholder, such as a person’s name or a number, that the original shows there. placeholder is the placeholder’s name, such as “Name”; version is the label of the version, such as “About someone else”.',
   },
   unreadable: {
     id: 'protocolBuilder.localizedMessage.unreadable',
@@ -94,30 +113,74 @@ const partsOf = (document: JSONContent | undefined): MessagePart[] => {
   return parts;
 };
 
+type LocalizedMessageProblem =
+  | Readonly<{ kind: 'versionsBlank' | 'unreadable' }>
+  | Readonly<{ kind: 'placementMissing'; missing: MissingPlacement }>;
+
 /**
  * What a translation of a message is refused for: some of its versions
- * written and others empty, or something its arguments do not offer. Every
- * place that writes a message holds it to this rule: the stage editor's
- * field (`localizedMessageValidation`) and Architect's translation table.
+ * written and others empty, something its arguments do not offer, or a
+ * version leaving out a placeholder it must show (see
+ * `findMissingPlacement`). Every place that writes a message holds it to
+ * this rule: the stage editor's field (`localizedMessageValidation`) and
+ * Architect's translation table.
  */
-export const localizedMessageProblem = (
+const localizedMessageProblem = (
   message: string,
   declaration: MessageArguments,
   locale: LocaleTag,
-): 'versionsBlank' | 'unreadable' | undefined => {
+): LocalizedMessageProblem | undefined => {
   if (findMessageArgumentProblem(message, declaration) === undefined) {
-    return undefined;
+    const missing = findMissingPlacement(message, declaration, locale);
+    return missing === undefined
+      ? undefined
+      : { kind: 'placementMissing', missing };
   }
   const variants = messageVariants(message, declaration, locale);
   const blank = variants.filter(isBlankVariant).length;
-  return blank > 0 && blank < variants.length ? 'versionsBlank' : 'unreadable';
+  return {
+    kind: blank > 0 && blank < variants.length ? 'versionsBlank' : 'unreadable',
+  };
+};
+
+/** The refusal for `problem`, in words, naming any placeholder and version. */
+const problemText = (
+  problem: LocalizedMessageProblem,
+  message: string,
+  declaration: MessageArguments,
+  locale: LocaleTag,
+  intl: IntlShape,
+): string => {
+  if (problem.kind !== 'placementMissing') {
+    return intl.formatMessage(messages[problem.kind]);
+  }
+  const { argument, when } = problem.missing;
+  const versions = messageVersions(
+    message,
+    declaration,
+    locale,
+    intl,
+    messageArgumentLabels(intl),
+  );
+  const version = versions.variants.findIndex((variant) =>
+    Object.entries(when).every(([name, key]) => variant.when[name] === key),
+  );
+  const label = version === -1 ? '' : versions.versionLabel(version);
+  const placeholder = versions.placeholderName(argument);
+  return label === ''
+    ? intl.formatMessage(messages.placementMissing, { placeholder })
+    : intl.formatMessage(messages.placementMissingIn, {
+        placeholder,
+        version: label,
+      });
 };
 
 /**
  * The rule every translation of a localized message is held to: each
- * version has words, or none does, and it uses only what the setting
- * offers. Shown under the field rather than left to the stage's save, where
- * the schema's refusal would name no translation.
+ * version has words, or none does, it uses only what the setting offers, and
+ * it shows each placeholder where the setting requires it. Shown under the
+ * field rather than left to the stage's save, where the schema's refusal
+ * would name no translation.
  */
 export function localizedMessageValidation(
   declaration: MessageArguments,
@@ -134,7 +197,7 @@ export function localizedMessageValidation(
             ctx.addIssue({
               code: 'custom',
               input: value,
-              message: intl.formatMessage(messages[problem]),
+              message: problemText(problem, message, declaration, locale, intl),
               path: [],
             });
             return;
@@ -159,7 +222,7 @@ export function useLocalizedMessageProblem(
   const problem = localizedMessageProblem(message, declaration, locale);
   return problem === undefined
     ? undefined
-    : intl.formatMessage(messages[problem]);
+    : problemText(problem, message, declaration, locale, intl);
 }
 
 type VersionGroup = Readonly<{
@@ -180,14 +243,13 @@ type VersionGroup = Readonly<{
  * the words the researcher reads for each, and the placeholders the text can
  * show.
  */
-function useMessageVersions(
+function messageVersions(
   message: string,
   declaration: MessageArguments,
   locale: LocaleTag,
+  intl: IntlShape,
+  { caseLabels, placeholderLabels }: MessageArgumentLabels,
 ) {
-  const intl = useAppIntl();
-  const { caseLabels, placeholderLabels } = useMessageArgumentLabels();
-
   const placeholderName = (argument: string) => {
     const label = placeholderLabels[argument]?.trim();
     return label === undefined || label === '' ? argument : label;
@@ -252,11 +314,33 @@ function useMessageVersions(
     groups.set(key, group);
   });
 
+  const groupList = [...groups.values()] as readonly VersionGroup[];
+  /** Everything a version's label says: its cases, then its numbers. */
+  const versionLabel = (index: number) => {
+    const group = groupList.find(({ versions }) =>
+      versions.some((version) => version.index === index),
+    );
+    const version = group?.versions.find((each) => each.index === index);
+    return [group?.label, version?.label].filter(Boolean).join(' · ');
+  };
+
   return {
     variants,
-    groups: [...groups.values()] as readonly VersionGroup[],
+    groups: groupList,
     tokens,
+    placeholderName,
+    versionLabel,
   };
+}
+
+function useMessageVersions(
+  message: string,
+  declaration: MessageArguments,
+  locale: LocaleTag,
+) {
+  const intl = useAppIntl();
+  const labels = useMessageArgumentLabels();
+  return messageVersions(message, declaration, locale, intl, labels);
 }
 
 /** A version's parts as text, each placeholder as its name in brackets. */
@@ -421,7 +505,14 @@ export function LocalizedMessageVersions({
                       italic: false,
                       history: false,
                     }}
-                    tokens={tokens}
+                    tokens={tokens.map((token) => ({
+                      ...token,
+                      required: requiredArgumentsOf(
+                        variant,
+                        declaration,
+                        locale,
+                      ).includes(token.id),
+                    }))}
                     // Every keystroke, so that a host can mark the text
                     // changed, and judge it, as it is written.
                     changeMode="input"

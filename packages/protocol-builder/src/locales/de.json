@@ -705,6 +705,8 @@
   "protocolBuilder.localizedMessage.placeholderTerm": "Verwandtschaftsbezeichnung",
   "protocolBuilder.localizedMessage.placeholderTitle": "Titel des Abschnitts",
   "protocolBuilder.localizedMessage.placeholderTwin": "Name des Zwillings",
+  "protocolBuilder.localizedMessage.placementMissing": "Fügen Sie „{placeholder}“ in diesen Text ein.",
+  "protocolBuilder.localizedMessage.placementMissingIn": "Fügen Sie „{placeholder}“ in diese Version ein: {version}.",
   "protocolBuilder.localizedMessage.pluralVersion": "Wenn „{placeholder}“ {numbers} ist",
   "protocolBuilder.localizedMessage.unreadable": "Dieser Text verwendet etwas, das er nicht anzeigen kann. Schreiben Sie ihn hier neu.",
   "protocolBuilder.localizedMessage.versionsBlank": "Schreiben Sie jede Version dieses Textes oder lassen Sie alle leer.",

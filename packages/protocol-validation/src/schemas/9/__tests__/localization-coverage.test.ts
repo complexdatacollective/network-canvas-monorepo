@@ -22,6 +22,10 @@ import {
   PEDIGREE_WORDING_ARGUMENTS,
 } from '../stages/family-pedigree.ts';
 import { NODE_COUNT_ARGUMENTS } from '../stages/name-generator.ts';
+import {
+  SNAPSHOT_CONDITION_ARGUMENTS,
+  SNAPSHOT_INHERITANCE_ARGUMENTS,
+} from '../stages/narrative-pedigree.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
 type Path = readonly (string | number)[];
@@ -317,15 +321,14 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(19, 'conditionText', 'notation', 'atRiskAffected'), 'plain'),
   site(stage(19, 'conditionText', 'notation', 'atRiskCarrier'), 'plain'),
   site(stage(19, 'conditionText', 'notation', 'unknown'), 'plain'),
-  messageSite(stage(19, 'conditionText', 'snapshotCondition'), {
-    title: { kind: 'text' },
-    condition: { kind: 'text' },
-  }),
-  messageSite(stage(19, 'conditionText', 'snapshotInheritance'), {
-    title: { kind: 'text' },
-    condition: { kind: 'text' },
-    name: { kind: 'text' },
-  }),
+  messageSite(
+    stage(19, 'conditionText', 'snapshotCondition'),
+    SNAPSHOT_CONDITION_ARGUMENTS,
+  ),
+  messageSite(
+    stage(19, 'conditionText', 'snapshotInheritance'),
+    SNAPSHOT_INHERITANCE_ARGUMENTS,
+  ),
 
   // The finish stage's title and content are markdown, so a researcher can
   // emphasise a word in either.
@@ -430,8 +433,16 @@ describe('localized string coverage', () => {
 
   it.each(EXPECTED_SITES.map((expected) => [siteName(expected), expected]))(
     'rejects a translation in a language the protocol does not declare at %s',
-    (_name, { path }) => {
-      const protocol = withValueAt(path, { en: 'English', fr: 'Français' });
+    (_name, { path, arguments: declaration }) => {
+      // A message shows what it must (see `findMissingPlacement`).
+      const text = (words: string) =>
+        declaration === undefined
+          ? words
+          : `${words} ${messageUsing(declaration)}`;
+      const protocol = withValueAt(path, {
+        en: text('English'),
+        fr: text('Français'),
+      });
       expect(failurePaths(protocol)).toEqual([pathKey([...path, 'fr'])]);
     },
   );

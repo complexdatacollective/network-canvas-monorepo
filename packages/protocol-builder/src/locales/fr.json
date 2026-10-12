@@ -705,6 +705,8 @@
   "protocolBuilder.localizedMessage.placeholderTerm": "Terme de parenté",
   "protocolBuilder.localizedMessage.placeholderTitle": "Titre de l’étape",
   "protocolBuilder.localizedMessage.placeholderTwin": "Nom du jumeau ou de la jumelle",
+  "protocolBuilder.localizedMessage.placementMissing": "Ajoutez « {placeholder} » à ce texte.",
+  "protocolBuilder.localizedMessage.placementMissingIn": "Ajoutez « {placeholder} » à cette version : {version}.",
   "protocolBuilder.localizedMessage.pluralVersion": "Lorsque « {placeholder} » est {numbers}",
   "protocolBuilder.localizedMessage.unreadable": "Ce texte utilise un élément qu’il ne peut pas afficher. Réécrivez-le ici.",
   "protocolBuilder.localizedMessage.versionsBlank": "Rédigez chaque version de ce texte, ou laissez-les toutes vides.",

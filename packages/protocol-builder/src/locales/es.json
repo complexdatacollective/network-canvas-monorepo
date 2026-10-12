@@ -705,6 +705,8 @@
   "protocolBuilder.localizedMessage.placeholderTerm": "Término de parentesco",
   "protocolBuilder.localizedMessage.placeholderTitle": "Título de la etapa",
   "protocolBuilder.localizedMessage.placeholderTwin": "Nombre del gemelo o la gemela",
+  "protocolBuilder.localizedMessage.placementMissing": "Incluye «{placeholder}» en este texto.",
+  "protocolBuilder.localizedMessage.placementMissingIn": "Incluye «{placeholder}» en esta versión: {version}.",
   "protocolBuilder.localizedMessage.pluralVersion": "Cuando «{placeholder}» es {numbers}",
   "protocolBuilder.localizedMessage.unreadable": "Este texto usa algo que no puede mostrar. Vuelve a escribirlo aquí.",
   "protocolBuilder.localizedMessage.versionsBlank": "Escribe todas las versiones de este texto o deja todas vacías.",

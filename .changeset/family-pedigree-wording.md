@@ -45,7 +45,12 @@ from schema 8 gives each stage the wording it has always shown. Several
 settings read differently when they are about the participant and when they
 are about someone else, or show a name or a number; Architect's stage editor,
 translation table and protocol summary show each version separately, named,
-with placeholders as named chips.
+with placeholders as named pills. A translation must show each placeholder
+in the versions where Network Canvas's English shows it, so a translation
+cannot drop a person's name or a count by accident. A version for a plural
+form that only one number takes, such as English "one", may leave the number
+out. Architect marks the placeholders a version still needs, and names the
+missing placeholder and its version in the error.
 
 **Interface text.** The text several stages share — Back, Continue, Cancel,
 Done and Delete; the passphrase prompt; form words; and one message for each
@@ -64,9 +69,12 @@ number of people still to place.
 
 For developers: `@codaco/app-i18n` adds `AppIntlOverlay`, which lays a set of
 messages over a catalog in a chosen locale; `@codaco/fresco-ui`'s rich text
-editor takes a `tokens` prop to insert placeholders, and a dialog's busy
+editor takes a `tokens` prop to insert placeholders, each of which may be
+marked `required`, and a dialog's busy
 confirm button is announced through a status region;
 `@codaco/protocol-validation` adds `missingSuppliedStageText`,
 `inapplicableStageSettings`, `suppliedStageSettingApplies`,
-`messageVariants`, `composeMessage` and `findMessageArgumentProblem`; and
+`messageVariants`, `composeMessage`, `findMessageArgumentProblem`,
+`findMissingPlacement` and `requiredArgumentsOf`, and a declared `text` or
+`plural` argument may list the versions it is `required` in; and
 `SyntheticInterview.addStage` takes a stage's own `wording`.

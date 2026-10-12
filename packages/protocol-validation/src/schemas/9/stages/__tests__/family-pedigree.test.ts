@@ -301,11 +301,26 @@ describe('familyPedigreeStage', () => {
       ).toBe(false);
     });
 
-    it('may be one phrase for everyone', () => {
+    it('may be one phrase for everyone, naming the person', () => {
       expect(
-        familyPedigreeStage.safeParse(withParentsItem('Add biological parents'))
-          .success,
+        familyPedigreeStage.safeParse(
+          withParentsItem('Add biological parents for {name}'),
+        ).success,
       ).toBe(true);
+    });
+
+    // The supplied wording names everyone but the participant, so a
+    // translation must too.
+    it('must name someone other than the participant', () => {
+      const result = familyPedigreeStage.safeParse(
+        withParentsItem(
+          '{isYou, select, true {Add your biological parents} other {Add biological parents}}',
+        ),
+      );
+      expect(result.success).toBe(false);
+      expect(result.error?.issues[0]?.message).toBe(
+        'The version of this text for isYou "other" must show "{name}".',
+      );
     });
 
     it('may not use anything else', () => {

@@ -21,6 +21,7 @@ import { Placeholder } from '@tiptap/extension-placeholder';
 import {
   type DOMOutputSpec,
   Fragment,
+  type Node as ProseMirrorNode,
   type Schema,
   Slice,
 } from '@tiptap/pm/model';
@@ -154,6 +155,12 @@ const messages = defineMessages({
     description:
       'Accessible name of a toolbar button that inserts a placeholder, such as a person’s name, at the caret. {token} is the placeholder’s label, which the button also shows.',
   },
+  insertRequiredToken: {
+    id: 'frescoUi.richTextEditor.insertRequiredToken',
+    defaultMessage: 'Insert “{token}” (required in this text)',
+    description:
+      'Accessible name of a toolbar button that inserts a placeholder, such as a person’s name, that the text must include but does not yet. {token} is the placeholder’s label, which the button also shows.',
+  },
   tokens: {
     id: 'frescoUi.richTextEditor.tokens',
     defaultMessage: 'Insert a placeholder',
@@ -254,18 +261,36 @@ const SingleLineDocument = TiptapNode.create({
 /**
  * A placeholder the field can hold among its text, such as a person's name
  * filled in later. `id` is what the value records; `label` is what the field
- * shows, on the chip in the text and on the button that inserts it.
+ * shows, on the pill in the text and on the button that inserts it. A
+ * `required` placeholder is one the text must include: while it does not,
+ * the button that inserts it says so.
  */
-export type RichTextEditorToken = Readonly<{ id: string; label: string }>;
+export type RichTextEditorToken = Readonly<{
+  id: string;
+  label: string;
+  required?: boolean;
+}>;
 
 /** The node type a token is held as: `{ type: 'token', attrs: { id } }`. */
 const TOKEN_NODE = 'token';
 
 const tokenChipClasses = cx(
-  'mx-0.5 rounded-sm px-1.5 py-0.5 whitespace-nowrap',
-  'bg-input-contrast/10 font-semibold',
+  'mx-0.5 rounded-full border px-2 py-px whitespace-nowrap',
+  'border-primary/40 bg-primary/10 font-semibold',
   '[&.ProseMirror-selectednode]:outline-primary [&.ProseMirror-selectednode]:outline-2',
 );
+
+/** The ids of the tokens `doc` holds, one per line, for the toolbar to compare. */
+const placedTokenIds = (doc: ProseMirrorNode): string => {
+  const ids = new Set<string>();
+  doc.descendants((node) => {
+    const tokenId: unknown = node.attrs.id;
+    if (node.type.name === TOKEN_NODE && typeof tokenId === 'string') {
+      ids.add(tokenId);
+    }
+  });
+  return [...ids].toSorted().join('\n');
+};
 
 /**
  * A token, held as one character of the line: the caret steps over it,
@@ -930,12 +955,23 @@ export default function RichTextEditorField({
   const [isFocused, setIsFocused] = useState(false);
   const options = normalizeToolbarOptions(toolbarOptions, singleLine);
   // By what they say rather than by identity: a host passing a fresh array
-  // on every render would otherwise rebuild the editor on every render.
-  const tokensKey = JSON.stringify(tokensProp ?? []);
+  // on every render would otherwise rebuild the editor on every render. The
+  // editor holds only what a pill shows; which are required is the toolbar's.
+  const tokensKey = JSON.stringify(
+    (tokensProp ?? []).map(({ id: tokenId, label }) => ({
+      id: tokenId,
+      label,
+    })),
+  );
   const tokens = useMemo(
     (): readonly RichTextEditorToken[] =>
       JSON.parse(tokensKey) as RichTextEditorToken[],
     [tokensKey],
+  );
+  const requiredTokens = new Set(
+    (tokensProp ?? []).flatMap((token) =>
+      token.required === true ? [token.id] : [],
+    ),
   );
   const editorId = id ?? name ?? 'rich-text-editor';
   const editorName = name ?? editorId;
@@ -1131,8 +1167,10 @@ export default function RichTextEditorField({
       isOrderedList: e?.isActive('orderedList') ?? false,
       canUndo: e?.can().undo() ?? false,
       canRedo: e?.can().redo() ?? false,
+      placedTokens: e === null ? '' : placedTokenIds(e.state.doc),
     }),
   });
+  const placedTokens = new Set(editorState.placedTokens.split('\n'));
 
   useEffect(() => {
     // A destroyed editor keeps its last document but nothing to change it
@@ -1733,29 +1771,43 @@ export default function RichTextEditorField({
                 className={toolbarGroupStyles}
                 aria-label={intl.formatMessage(messages.tokens)}
               >
-                {tokens.map((token) => (
-                  <ToolbarButton
-                    key={token.id}
-                    className={toolbarTokenButtonStyles}
-                    disabled={isDisabled}
-                    aria-label={intl.formatMessage(messages.insertToken, {
-                      token: token.label,
-                    })}
-                    onClick={() =>
-                      editor
-                        .chain()
-                        .focus()
-                        .insertContent({
-                          type: TOKEN_NODE,
-                          attrs: { id: token.id },
-                        })
-                        .run()
-                    }
-                  >
-                    <Plus aria-hidden />
-                    {token.label}
-                  </ToolbarButton>
-                ))}
+                {tokens.map((token) => {
+                  const missing =
+                    requiredTokens.has(token.id) && !placedTokens.has(token.id);
+                  return (
+                    <ToolbarButton
+                      key={token.id}
+                      className={toolbarTokenButtonStyles}
+                      disabled={isDisabled}
+                      data-missing={missing || undefined}
+                      aria-label={intl.formatMessage(
+                        missing
+                          ? messages.insertRequiredToken
+                          : messages.insertToken,
+                        { token: token.label },
+                      )}
+                      onClick={() =>
+                        editor
+                          .chain()
+                          .focus()
+                          .insertContent({
+                            type: TOKEN_NODE,
+                            attrs: { id: token.id },
+                          })
+                          .run()
+                      }
+                    >
+                      <Plus aria-hidden />
+                      {token.label}
+                      {missing && (
+                        <span
+                          aria-hidden
+                          className="bg-warning size-2 shrink-0 rounded-full"
+                        />
+                      )}
+                    </ToolbarButton>
+                  );
+                })}
               </Toolbar.Group>
             )}
 

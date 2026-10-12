@@ -78,13 +78,16 @@ export { isBlankMessage, isBlankText } from './localization/blankText.ts';
 export {
   composeMessage,
   findMessageArgumentProblem,
+  findMissingPlacement,
   type MessageArgument,
   type MessageArguments,
   type MessagePart,
   type MessageVariant,
   messageVariants,
+  type MissingPlacement,
   pluralCategoriesOf,
   pluralCountExamples,
+  requiredArgumentsOf,
 } from './localization/messageArguments.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
 export {

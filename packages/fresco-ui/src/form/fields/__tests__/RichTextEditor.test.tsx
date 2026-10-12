@@ -1002,6 +1002,32 @@ describe('a RichTextEditorField with tokens', () => {
     expect(chip).toHaveAttribute('contenteditable', 'false');
   });
 
+  it('says which required tokens the text does not include yet', async () => {
+    const field = renderWithTokens({
+      tokens: [
+        { id: 'name', label: 'Name', required: true },
+        { id: '#', label: 'Number', required: true },
+      ],
+    });
+    const editor = await field.editor();
+
+    // The name is in the text; the number is not.
+    expect(
+      screen.getByRole('button', { name: 'Insert “Name”' }),
+    ).not.toHaveAttribute('data-missing');
+    const number = screen.getByRole('button', {
+      name: 'Insert “Number” (required in this text)',
+    });
+    expect(number).toHaveAttribute('data-missing', 'true');
+
+    await field.user.click(editor);
+    await field.user.click(number);
+
+    expect(
+      await screen.findByRole('button', { name: 'Insert “Number”' }),
+    ).not.toHaveAttribute('data-missing');
+  });
+
   it('inserts a token at the caret from its toolbar button', async () => {
     const field = renderWithTokens({ value: lineOf() });
     const editor = await field.editor();

@@ -20,6 +20,8 @@ import {
   requireWhenShown,
   type StageRecord,
 } from '../stage-wording/conditions.ts';
+import { MIN_NODES_NOTICE } from '../stage-wording/name-generator.ts';
+import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { baseStageSchema } from './base.ts';
 
 // Shared by NameGenerator and NameGeneratorQuickAdd: a node-count window must be
@@ -45,10 +47,14 @@ export const nameGeneratorBehavioursSchema = z
   })
   .optional();
 
-/** What a minimum's notice may use: how many people are still needed. */
-export const NODE_COUNT_ARGUMENTS = {
-  count: { kind: 'plural' },
-} as const satisfies MessageArguments;
+/**
+ * What a minimum's notice may use: how many people are still needed, which
+ * every translation must show where the supplied wording does.
+ */
+export const NODE_COUNT_ARGUMENTS: MessageArguments = requireSuppliedPlacements(
+  { count: { kind: 'plural' } },
+  MIN_NODES_NOTICE,
+);
 
 /**
  * The words a name generator shows about its limits and its side panels,

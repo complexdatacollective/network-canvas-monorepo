@@ -26,16 +26,22 @@ const ENGLISH: ProtocolLocalization = { defaultLocale: 'en', locales: ['en'] };
 
 type Saved = { item?: LocalizedString };
 
-function ItemField({ initialValue }: { initialValue?: LocalizedString }) {
+function ItemField({
+  initialValue,
+  declaration,
+}: {
+  initialValue?: LocalizedString;
+  declaration: MessageArguments;
+}) {
   const intl = useAppIntl();
   return (
     <Field
       name="item"
       label="List item"
       component={LocalizedMessageField}
-      arguments={ARGUMENTS}
+      arguments={declaration}
       initialValue={initialValue}
-      custom={localizedMessageValidation(ARGUMENTS, intl)}
+      custom={localizedMessageValidation(declaration, intl)}
     />
   );
 }
@@ -43,6 +49,7 @@ function ItemField({ initialValue }: { initialValue?: LocalizedString }) {
 function renderItem(
   initialValue?: LocalizedString,
   localization: ProtocolLocalization = ENGLISH,
+  declaration: MessageArguments = ARGUMENTS,
 ) {
   const saved: { current: Saved | undefined } = { current: undefined };
   render(
@@ -53,7 +60,7 @@ function renderItem(
           return { success: true };
         }}
       >
-        <ItemField initialValue={initialValue} />
+        <ItemField initialValue={initialValue} declaration={declaration} />
         <button type="submit">Save</button>
       </Form>
     </ProtocolLocalizationProvider>,
@@ -179,5 +186,75 @@ describe('LocalizedMessageField', () => {
       screen.getAllByRole('button', { name: 'Insert “Parents missing”' }),
     ).toHaveLength(4);
     expect(screen.queryByRole('button', { name: /isYou/ })).toBeNull();
+  });
+
+  describe('with placeholders a translation must show', () => {
+    // The original names everyone but the participant, and counts the
+    // missing parents for everyone.
+    const REQUIRED: MessageArguments = {
+      isYou: { kind: 'select', cases: ['true'] },
+      name: { kind: 'text', required: [{ isYou: 'other' }] },
+      missing: {
+        kind: 'plural',
+        required: [{ isYou: 'true' }, { isYou: 'other' }],
+      },
+    };
+
+    it('marks the placeholders a version must show and does not', async () => {
+      renderItem({ en: 'Add # parents' }, ENGLISH, REQUIRED);
+
+      await screen.findAllByRole('textbox');
+      // Only the versions about someone else must name them; English "one"
+      // is only 1, so no version for one parent must show the number.
+      expect(
+        screen.getAllByRole('button', {
+          name: 'Insert “Name” (required in this text)',
+        }),
+      ).toHaveLength(2);
+      expect(
+        screen.getAllByRole('button', {
+          name: 'Insert “Parents missing” (required in this text)',
+        }),
+      ).toHaveLength(2);
+    });
+
+    it('refuses a version that leaves one out, naming it and the version', async () => {
+      const user = userEvent.setup();
+      const saved = renderItem(
+        {
+          en: '{isYou, select, true {{missing, plural, one {Add your other parent} other {Add your # parents}}} other {{missing, plural, one {Add another parent for {name}} other {Add # parents}}}}',
+        },
+        ENGLISH,
+        REQUIRED,
+      );
+      await screen.findAllByRole('textbox');
+
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect(
+        await screen.findByText(
+          /^Include “Name” in this version: About someone else · When “Parents missing” is .+\.$/,
+        ),
+      ).toBeVisible();
+      expect(saved.current).toBeUndefined();
+    });
+
+    it('saves a translation that shows them where it must', async () => {
+      const user = userEvent.setup();
+      const saved = renderItem(
+        {
+          en: '{isYou, select, true {{missing, plural, one {Add your other parent} other {Add your # parents}}} other {{missing, plural, one {Add another parent for {name}} other {Add # parents for {name}}}}}',
+        },
+        ENGLISH,
+        REQUIRED,
+      );
+      await screen.findAllByRole('textbox');
+
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => {
+        expect(saved.current).toBeDefined();
+      });
+    });
   });
 });
