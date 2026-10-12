@@ -2,8 +2,8 @@ name: Fresco preview database
 
 # Each pull request that changes Fresco gets a Neon branch of its base's
 # database, wired into its Netlify deploy preview as branch-scoped
-# DATABASE_URL / DATABASE_URL_UNPOOLED values; closing the pull request removes
-# both. A pull request into main copies main's database; one into another
+# DATABASE_URL / DATABASE_URL_UNPOOLED values; a pull request that stops
+# changing Fresco, or closes, loses both. A pull request into main copies main's database; one into another
 # branch copies that branch's preview database. See
 # scripts/ci/fresco-preview-database.mjs and apps/fresco/scripts/build-preview.ts.
 
@@ -39,24 +39,7 @@ jobs:
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
           node-version-file: .nvmrc
-      - name: Check whether the pull request changes Fresco
-        id: affected
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          turbo_version=$(node -p "require('./package.json').devDependencies.turbo")
-          status=0
-          npx --yes "turbo@${turbo_version}" query affected --tasks build \
-            --packages fresco --base "$BASE_SHA" --head "$HEAD_SHA" \
-            --exit-code > /dev/null || status=$?
-          case "$status" in
-            0) echo 'fresco=false' >> "$GITHUB_OUTPUT" ;;
-            1) echo 'fresco=true' >> "$GITHUB_OUTPUT" ;;
-            *) echo "::error::turbo query affected exited $status"; exit "$status" ;;
-          esac
-      - name: Provision the preview database
-        if: steps.affected.outputs.fresco == 'true'
+      - name: Bring the preview database in line with the pull request
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
           NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
@@ -66,9 +49,12 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: >-
-          node scripts/ci/fresco-preview-database.mjs provision
+          node scripts/ci/fresco-preview-database.mjs sync
           --pr "$PR_NUMBER" --head "$HEAD_REF" --base "$BASE_REF"
+          --head-sha "$HEAD_SHA" --base-sha "$BASE_SHA"
 
   teardown:
     name: Tear down

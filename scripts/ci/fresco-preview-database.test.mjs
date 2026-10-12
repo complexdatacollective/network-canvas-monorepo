@@ -9,6 +9,7 @@ import {
   planProvision,
   planTeardown,
   provision,
+  syncPullRequest,
   teardown,
 } from './fresco-preview-database.mjs';
 
@@ -511,4 +512,105 @@ test('other open pull requests are looked up by head branch, leaving out this on
     'complexdatacollective:feature',
   );
   assert.equal(requests[0].searchParams.get('state'), 'open');
+});
+
+/** A fake GitHub holding open pull requests as { number, head, base }. */
+function fakeGitHub(pulls) {
+  const withShas = pulls.map((pull) => ({
+    ...pull,
+    headSha: `${pull.head}-sha`,
+    baseSha: `${pull.base}-sha`,
+  }));
+  return {
+    pulls: withShas,
+    async otherOpenPullRequests(head, exclude) {
+      return withShas
+        .filter((pull) => pull.head === head && pull.number !== exclude)
+        .map(({ number, base }) => ({ number, base }));
+    },
+    async openPullRequestsInto(base) {
+      return withShas.filter((pull) => pull.base === base);
+    },
+  };
+}
+
+const quiet = { log: () => {}, mask: () => {} };
+
+test('a pull request that stops changing Fresco loses its database', async () => {
+  const apis = fakeApis({ branches: [production], env: productionOnlyEnv });
+  const github = fakeGitHub([{ number: 1, head: 'feature', base: 'main' }]);
+  const [pr] = github.pulls;
+  await syncPullRequest({
+    pr,
+    ...apis,
+    github,
+    isAffected: async () => true,
+    ...quiet,
+  });
+  assert.ok(apis.state.branches.some((b) => b.name === 'preview/feature'));
+
+  const result = await syncPullRequest({
+    pr,
+    ...apis,
+    github,
+    isAffected: async () => false,
+    ...quiet,
+  });
+
+  assert.equal(result.action, 'unaffected');
+  assert.ok(!apis.state.branches.some((b) => b.name === 'preview/feature'));
+  assert.equal(
+    branchValue(apis.state, 'PREVIEW_DATABASE_BRANCH', 'feature'),
+    undefined,
+  );
+});
+
+test("creating a base's database brings the pull requests waiting on it in line", async () => {
+  const apis = fakeApis({ branches: [production], env: productionOnlyEnv });
+  const github = fakeGitHub([
+    { number: 1, head: 'schema-9', base: 'main' },
+    { number: 2, head: 'feature', base: 'schema-9' },
+    { number: 3, head: 'docs-only', base: 'schema-9' },
+    { number: 4, head: 'deeper', base: 'feature' },
+  ]);
+  const [base, child] = github.pulls;
+  const affected = new Set(['schema-9-sha', 'feature-sha', 'deeper-sha']);
+  const isAffected = async (_baseSha, headSha) => affected.has(headSha);
+
+  // The child was opened first and found nothing to copy.
+  const early = await syncPullRequest({
+    pr: child,
+    ...apis,
+    github,
+    isAffected,
+    ...quiet,
+  });
+  assert.equal(early.action, 'unavailable');
+
+  await syncPullRequest({ pr: base, ...apis, github, isAffected, ...quiet });
+
+  const byName = (name) => apis.state.branches.find((b) => b.name === name);
+  assert.equal(
+    byName('preview/feature')?.parent_id,
+    byName('preview/schema-9').id,
+  );
+  assert.equal(
+    byName('preview/deeper')?.parent_id,
+    byName('preview/feature').id,
+  );
+  assert.equal(
+    byName('preview/docs-only'),
+    undefined,
+    'a pull request that does not change Fresco gets nothing',
+  );
+  for (const head of ['feature', 'deeper']) {
+    assert.ok(
+      apis.calls.some(
+        (call) =>
+          call.pathname.endsWith('/builds') &&
+          call.query.get('branch') === head,
+      ),
+      `${head} is built`,
+    );
+  }
 });

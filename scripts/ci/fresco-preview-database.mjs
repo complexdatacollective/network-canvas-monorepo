@@ -12,7 +12,8 @@
 // apps/fresco/scripts/build-preview.ts migrates a preview's database only when
 // it names this preview's own branch.
 
-import { appendFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export const PRODUCTION_BRANCH = 'main';
@@ -262,6 +263,28 @@ export function createGitHub({ token, repository, fetchImpl = fetch }) {
         .filter((pull) => pull.number !== exclude)
         .map((pull) => ({ number: pull.number, base: pull.base.ref }));
     },
+    /** Open pull requests from this repository into `base`. */
+    async openPullRequestsInto(base) {
+      const query = new URLSearchParams({
+        state: 'open',
+        base,
+        per_page: '100',
+      });
+      const pulls = await request(
+        fetchImpl,
+        `https://api.github.com/repos/${repository}/pulls?${query}`,
+        { token },
+      );
+      return pulls
+        .filter((pull) => pull.head.repo?.full_name === repository)
+        .map((pull) => ({
+          number: pull.number,
+          head: pull.head.ref,
+          base: pull.base.ref,
+          headSha: pull.head.sha,
+          baseSha: pull.base.sha,
+        }));
+    },
   };
 }
 
@@ -401,6 +424,100 @@ export async function teardown({
   return { deleted: true, name: plan.name };
 }
 
+/**
+ * Bring one pull request's preview database in line with the pull request:
+ * a copy of its base's database while it changes Fresco, nothing otherwise.
+ * A database created here is also the base for any open pull request into
+ * this branch that found nothing to copy, so those are brought in line too.
+ */
+export async function syncPullRequest({
+  pr,
+  neon,
+  netlify,
+  github,
+  isAffected,
+  log,
+  mask,
+}) {
+  const otherPullRequests = await github.otherOpenPullRequests(
+    pr.head,
+    pr.number,
+  );
+
+  // A pull request that no longer changes Fresco (a later push, or a
+  // retarget) keeps no database: left in place, a copy of a former base would
+  // go on backing its preview.
+  if (!(await isAffected(pr.baseSha, pr.headSha))) {
+    log(`#${pr.number} does not change Fresco.`);
+    await teardown({ neon, netlify, head: pr.head, otherPullRequests, log });
+    return { action: 'unaffected', name: previewBranchName(pr.head) };
+  }
+
+  const result = await provision({
+    neon,
+    netlify,
+    head: pr.head,
+    base: pr.base,
+    otherPullRequests,
+    log,
+    mask,
+  });
+
+  if (result.action === 'create' || result.action === 'recreate') {
+    for (const child of await github.openPullRequestsInto(pr.head)) {
+      log(`Bringing #${child.number}, which targets ${pr.head}, in line.`);
+      await syncPullRequest({
+        pr: child,
+        neon,
+        netlify,
+        github,
+        isAffected,
+        log,
+        mask,
+      });
+    }
+  }
+  return result;
+}
+
+/**
+ * Whether the pull request changes Fresco, by the same `turbo query affected`
+ * check the Netlify deploy-preview ignore command makes.
+ */
+function turboIsAffected(baseSha, headSha) {
+  const turboVersion = JSON.parse(
+    readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+  ).devDependencies.turbo;
+  // A pull request brought in line from its base's run may have commits this
+  // checkout has not seen.
+  execFileSync('git', ['fetch', '--quiet', 'origin', baseSha, headSha]);
+  try {
+    execFileSync(
+      'npx',
+      [
+        '--yes',
+        `turbo@${turboVersion}`,
+        'query',
+        'affected',
+        '--tasks',
+        'build',
+        '--packages',
+        'fresco',
+        '--base',
+        baseSha,
+        '--head',
+        headSha,
+        '--exit-code',
+      ],
+      { stdio: 'ignore' },
+    );
+    return false;
+  } catch (error) {
+    if (error.status === 1) return true;
+    throw error;
+  }
+}
+
 function option(args, name) {
   const index = args.indexOf(name);
   const value = index === -1 ? undefined : args[index + 1];
@@ -431,43 +548,48 @@ async function runCli() {
   });
   const log = (line) => console.log(line);
   const mask = (secret) => console.log(`::add-mask::${secret}`);
-  const head = option(args, '--head');
-  const otherPullRequests = await github.otherOpenPullRequests(
-    head,
-    Number(option(args, '--pr')),
-  );
+  const pr = {
+    number: Number(option(args, '--pr')),
+    head: option(args, '--head'),
+  };
 
   let summary;
-  if (command === 'provision') {
-    const result = await provision({
+  if (command === 'sync') {
+    const result = await syncPullRequest({
+      pr: {
+        ...pr,
+        base: option(args, '--base'),
+        baseSha: option(args, '--base-sha'),
+        headSha: option(args, '--head-sha'),
+      },
       neon,
       netlify,
-      head,
-      base: option(args, '--base'),
-      otherPullRequests,
+      github,
+      isAffected: async (baseSha, headSha) => turboIsAffected(baseSha, headSha),
       log,
       mask,
     });
     summary =
-      result.action === 'unavailable'
-        ? `No preview database: the base branch has none to copy.`
-        : result.action === 'shared'
-          ? `Preview database \`${result.name}\` left as it is: another open pull request shares its head branch.`
-          : `Preview database \`${result.name}\` (${result.action}), copied ` +
-            `from \`${result.parent}\`.`;
+      {
+        unaffected:
+          'No preview database: the pull request does not change Fresco.',
+        unavailable: 'No preview database: the base branch has none to copy.',
+        shared: `Preview database \`${result.name}\` left as it is: another open pull request shares its head branch.`,
+      }[result.action] ??
+      `Preview database \`${result.name}\` (${result.action}), copied from \`${result.parent}\`.`;
   } else if (command === 'teardown') {
     const result = await teardown({
       neon,
       netlify,
-      head,
-      otherPullRequests,
+      head: pr.head,
+      otherPullRequests: await github.otherOpenPullRequests(pr.head, pr.number),
       log,
     });
     summary = result.deleted
       ? `Deleted preview database \`${result.name}\`.`
       : `Preview database \`${result.name}\` was not deleted.`;
   } else {
-    throw new Error('usage: fresco-preview-database.mjs provision|teardown');
+    throw new Error('usage: fresco-preview-database.mjs sync|teardown');
   }
 
   // eslint-disable-next-line no-process-env
