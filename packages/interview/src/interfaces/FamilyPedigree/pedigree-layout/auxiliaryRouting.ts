@@ -64,6 +64,17 @@ export type DrawnLine = {
   people?: number[];
 };
 
+/**
+ * How much searching a drawing's lines may do, and how much it has done:
+ * each course weighed counts as much as there is in the scene to weigh it
+ * against (its symbols and lines), so the count follows the time taken
+ * whatever the size of the family. Every search of courses past a line's
+ * first routing stops once `spent` reaches `limit`, so how long the lines
+ * take to draw is bounded before the search starts, however large the
+ * family.
+ */
+export type RoutingWork = { spent: number; limit: number };
+
 export type RoutingScene = {
   boxWidth: number;
   boxHeight: number;
@@ -81,6 +92,8 @@ export type RoutingScene = {
   cornerRadius?: number;
   /** Half the width a line is drawn, as a fraction of the box. */
   halfStroke?: number;
+  /** The work the search of the lines may do (see `RoutingWork`). */
+  work?: RoutingWork;
 };
 
 export type RouteEnd =
@@ -1170,9 +1183,14 @@ function courseCoster(
     return cost;
   };
 
+  // What weighing one course costs the search's work: as much as there is
+  // in the scene to weigh it against.
+  const weight = 1 + scene.symbols.length + scene.lines.length;
+
   /** What is wrong with a course, as a cost: 0 is a clean line. Once the
    * cost passes `limit`, it is returned as it stands. */
   return (points: Point[], limit = Number.POSITIVE_INFINITY): number => {
+    if (scene.work) scene.work.spent += weight;
     // A line into a child is seen as far as the top of their symbol, where
     // the lines into them converge; its run on to their centre is hidden.
     const meetsChild = end.kind === 'child' ? points.findIndex(isTarget) : -1;
@@ -1257,6 +1275,15 @@ type Course = {
   /** For a line with a co-parent's joining it: the co-parent's course. */
   matePoints?: Point[];
 };
+
+/** How many symbols in the way of a straight course are passed round, the
+ * nearest first; how many other children's lines up a course may cross to
+ * reach its target, the nearest first; and how many courses along lines of
+ * the same owner a course may fork from. Each bounds the courses weighed
+ * for one line, however large the family. */
+const SYMBOLS_PASSED = 6;
+const DOORS = 6;
+const OWN_COURSES = 48;
 
 /** Heights in the gap below a couple's row, as fractions of the gap, at
  * which a line may leave their line of descent. */
@@ -1596,7 +1623,7 @@ export function routeOptions(
       });
     const found: Point[][] = [];
     const walk = (course: Point[]) => {
-      if (course.length > 4) return;
+      if (course.length > 4 || found.length >= OWN_COURSES) return;
       const at = course.at(-1)!;
       for (const next of downFrom(at)) {
         for (const t of FORK_POINTS) {
@@ -1612,7 +1639,7 @@ export function routeOptions(
       }
     };
     walk([start]);
-    return found;
+    return found.slice(0, OWN_COURSES);
   };
   const candidates: { points: Point[]; endX: number }[] = [];
   // Points clear of each symbol near the straight line from `a` to `b`
@@ -1628,20 +1655,23 @@ export function routeOptions(
       x2: b.x,
       y2: b.y,
     };
+    const distanceOf = (symbol: Symbol) =>
+      distanceToSegment(
+        {
+          x: (symbol.left + symbol.right) / 2,
+          y: (symbol.top + symbol.bottom) / 2,
+        },
+        segment,
+      );
     return scene.symbols
       .filter(
         (symbol) =>
           symbol.person !== from.person &&
           !(end.kind === 'child' && symbol.person === end.person) &&
-          distanceToSegment(
-            {
-              x: (symbol.left + symbol.right) / 2,
-              y: (symbol.top + symbol.bottom) / 2,
-            },
-            segment,
-          ) <
-            (radii[0]! + 0.25) * boxw,
+          distanceOf(symbol) < (radii[0]! + 0.25) * boxw,
       )
+      .toSorted((p, q) => distanceOf(p) - distanceOf(q))
+      .slice(0, SYMBOLS_PASSED)
       .flatMap((symbol) => {
         const x = (symbol.left + symbol.right) / 2;
         const y = (symbol.top + symbol.bottom) / 2;
@@ -1757,27 +1787,36 @@ export function routeOptions(
       }
       // Across another child's line up, between their sibling bar and their
       // symbol: the one way out from between lines that converge on them.
-      const doors = scene.lines.flatMap((line) => {
-        if (line.kind !== 'upline') return [];
-        const { x1, y1, x2, y2 } = line.segment;
-        const [low, high] =
-          y1 > y2
-            ? [
-                { x: x1, y: y1 },
-                { x: x2, y: y2 },
-              ]
-            : [
-                { x: x2, y: y2 },
-                { x: x1, y: y1 },
-              ];
-        if (Math.abs(low.y - (childLayer + boxh / 2)) > ON) return [];
-        if (targets.some((target) => Math.abs(target.x - low.x) < ON)) {
-          return [];
-        }
-        const y = (high.y + childLayer) / 2;
-        const t = (y - high.y) / (low.y - high.y);
-        return [{ x: high.x + t * (low.x - high.x), y }];
-      });
+      const doors = scene.lines
+        .flatMap((line) => {
+          if (line.kind !== 'upline') return [];
+          const { x1, y1, x2, y2 } = line.segment;
+          const [low, high] =
+            y1 > y2
+              ? [
+                  { x: x1, y: y1 },
+                  { x: x2, y: y2 },
+                ]
+              : [
+                  { x: x2, y: y2 },
+                  { x: x1, y: y1 },
+                ];
+          if (Math.abs(low.y - (childLayer + boxh / 2)) > ON) return [];
+          if (targets.some((target) => Math.abs(target.x - low.x) < ON)) {
+            return [];
+          }
+          const y = (high.y + childLayer) / 2;
+          const t = (y - high.y) / (low.y - high.y);
+          return [{ x: high.x + t * (low.x - high.x), y }];
+        })
+        // The doors nearest the target, so a wide row of children offers no
+        // more ways through than a narrow one.
+        .toSorted(
+          (p, q) =>
+            Math.min(...targets.map((target) => Math.abs(target.x - p.x))) -
+            Math.min(...targets.map((target) => Math.abs(target.x - q.x))),
+        )
+        .slice(0, DOORS);
       // Where a line of the same owner, leaving from the same point, passes
       // the door's height between the start and the door: a course that
       // runs on that line's course to there parts from it as a fork.

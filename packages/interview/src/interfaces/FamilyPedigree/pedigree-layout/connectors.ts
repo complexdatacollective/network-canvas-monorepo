@@ -16,6 +16,7 @@ import {
   routeOptions,
   runOnInside,
   type RoutingScene,
+  type RoutingWork,
   segmentsOf,
   symbolOf,
 } from './auxiliaryRouting';
@@ -142,6 +143,9 @@ export function routePedigree(
   /** How widely the lines' courses are searched: from one order of the
    * lines, or from several (see below). */
   search: 'quick' | 'thorough' = 'thorough',
+  /** How much the search of the lines' courses may do past each line's
+   * first routing (see `RoutingWork`); unbounded without it. */
+  searchWork?: RoutingWork,
 ): { connectors: PedigreeConnectors; cost: number } {
   const {
     boxWidth: boxw,
@@ -1483,7 +1487,12 @@ export function routePedigree(
     ...(scaling.halfStroke === undefined
       ? {}
       : { halfStroke: scaling.halfStroke }),
+    ...(searchWork ? { work: searchWork } : {}),
   };
+  // Whether the search may weigh more courses. Each line's first routing
+  // is always done; every search for a better course past it stops once
+  // the work is spent.
+  const mayWeighMore = () => !searchWork || searchWork.spent < searchWork.limit;
   for (const line of parentChildLines) {
     if (!line.siblingBar) continue;
     const y = line.siblingBar.y1;
@@ -2057,6 +2066,7 @@ export function routePedigree(
   const rerouteEach = (order: Routed[]) => {
     let bettered = false;
     for (const entry of order) {
+      if (!mayWeighMore()) return false;
       const key = `${routed.indexOf(entry)}`;
       if (!untriedSince(key, entry)) continue;
       triedAt.set(key, tick);
@@ -2091,6 +2101,7 @@ export function routePedigree(
     let bettered = false;
     for (let i = 0; i < order.length; i++) {
       for (let j = i + 1; j < order.length; j++) {
+        if (!mayWeighMore()) return false;
         const [a, b] = [order[i]!, order[j]!];
         if (!mayMeet(a, b)) continue;
         const key = [routed.indexOf(a), routed.indexOf(b)]
@@ -2208,6 +2219,7 @@ export function routePedigree(
     : orders) {
     // Across the page, the lines are as first routed, above.
     if (order !== acrossThePage) {
+      if (!mayWeighMore()) break;
       scene.lines = [...fixedLines];
       for (const entry of order) {
         adopt(entry, routeLine(entry.from, entry.end, entry.owner, scene));

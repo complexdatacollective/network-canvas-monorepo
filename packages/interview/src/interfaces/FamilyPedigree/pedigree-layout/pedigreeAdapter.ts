@@ -1,6 +1,7 @@
 import type { PedigreeTwinKind } from '@codaco/protocol-validation';
 
 import { alignPedigree } from './alignPedigree';
+import type { RoutingWork } from './auxiliaryRouting';
 import { routePedigree } from './connectors';
 import {
   computeLayoutMetrics,
@@ -182,6 +183,7 @@ function routeLayout(
   indexToId?: string[],
   nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
   search: 'quick' | 'thorough' = 'thorough',
+  work?: RoutingWork,
 ) {
   const metrics = computeLayoutMetrics(dimensions);
   const boxHeight = dimensions.nodeHeight / metrics.rowHeight;
@@ -229,6 +231,7 @@ function routeLayout(
       ? indexToId.map((nodeId) => nodeShapes.get(nodeId))
       : undefined,
     search,
+    work,
   );
 }
 
@@ -427,26 +430,63 @@ function shiftSegment(
   seg.y2 += dy;
 }
 
-/**
- * A family laid out and its connectors routed, exactly as `PedigreeLayout`
- * draws it: each person's top-left corner, by node id, and the connectors.
- */
-export function drawPedigree({
-  nodeIds,
-  links,
-  dimensions,
-  nodeNames,
-  nodeShapes,
-}: {
+type DrawPedigreeInput = {
   nodeIds: readonly string[];
   links: readonly PedigreeLink[];
   dimensions: LayoutDimensions;
   nodeNames?: ReadonlyMap<string, string>;
   nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>;
-}): {
+};
+
+type DrawnPedigree = {
   positions: Map<string, { x: number; y: number }>;
   connectorData: ConnectorRenderData;
-} {
+};
+
+/** How many of the families drawn last are kept, to be drawn again at no
+ * cost. */
+const DRAWINGS_KEPT = 8;
+const drawingsKept = new Map<string, DrawnPedigree>();
+
+/**
+ * A family laid out and its connectors routed, exactly as `PedigreeLayout`
+ * draws it: each person's top-left corner, by node id, and the connectors.
+ * The same family, drawn again (as it is on every render that rebuilds its
+ * records), is the drawing already made: the layout is a function of what is
+ * drawn alone, and its search is the slowest work the interface does. The
+ * drawing returned is shared, and never changed by those who read it.
+ */
+export function drawPedigree(input: DrawPedigreeInput): DrawnPedigree {
+  const key = JSON.stringify([
+    input.nodeIds,
+    input.links,
+    input.dimensions,
+    input.nodeNames ? [...input.nodeNames] : null,
+    input.nodeShapes ? [...input.nodeShapes] : null,
+  ]);
+  const kept = drawingsKept.get(key);
+  if (kept) {
+    // The latest drawn are kept longest.
+    drawingsKept.delete(key);
+    drawingsKept.set(key, kept);
+    return kept;
+  }
+  const drawn = drawPedigreeAfresh(input);
+  drawingsKept.set(key, drawn);
+  for (const oldest of drawingsKept.keys()) {
+    if (drawingsKept.size <= DRAWINGS_KEPT) break;
+    drawingsKept.delete(oldest);
+  }
+  return drawn;
+}
+
+function drawPedigreeAfresh({
+  nodeIds,
+  links,
+  dimensions,
+  nodeNames,
+  nodeShapes,
+}: DrawPedigreeInput): DrawnPedigree {
   const { input, indexToId, idToIndex } = toPedigreeInput(nodeIds, links);
   const names = nodeNames
     ? indexToId.map((id) => nodeNames.get(id) ?? '')
@@ -454,7 +494,7 @@ export function drawPedigree({
   // Each seating weighed is drawn, and chosen by what its drawing costs.
   const routed = new Map<PedigreeLayout, PedigreeConnectors>();
   const layout = alignPedigree(input, {
-    drawingCost: (candidate, search) => {
+    drawingCost: (candidate, search, work) => {
       const { connectors, cost } = routeLayout(
         candidate,
         links,
@@ -465,6 +505,7 @@ export function drawPedigree({
         indexToId,
         nodeShapes,
         search,
+        work,
       );
       routed.set(candidate, connectors);
       return cost;

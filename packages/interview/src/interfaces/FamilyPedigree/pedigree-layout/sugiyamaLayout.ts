@@ -639,6 +639,9 @@ function seatPartnershipTangle(
   );
 }
 
+/** How many orders of one sibship the seating search weighs, at most. */
+const SIBSHIP_ORDERS = 120;
+
 /**
  * The orders a sibship's children may be seated in, the default first: the
  * children of each donor or surrogate side by side, so that their line
@@ -654,7 +657,11 @@ function seatPartnershipTangle(
  * cannot both have one run: the larger (or first recorded) keeps its run
  * (Josh, 12 Oct 2026).
  */
-function sibshipOrders(members: number[], graph: PedigreeGraph): number[][] {
+function sibshipOrders(
+  members: number[],
+  graph: PedigreeGraph,
+  limit = SIBSHIP_ORDERS,
+): number[][] {
   const memberSet = new Set(members);
   const units: number[][] = [];
   const placed = new Set<number>();
@@ -702,18 +709,38 @@ function sibshipOrders(members: number[], graph: PedigreeGraph): number[][] {
   // place (the order they were recorded); the other orders keep each group
   // together, its inner groups within it, in any order of the groups and
   // children at each level.
-  const LIMIT = 120;
-  const permutations = (item: number[]): number[][] =>
-    item.length < 2
-      ? [item]
-      : item
-          .flatMap((first, k) =>
-            permutations([...item.slice(0, k), ...item.slice(k + 1)]).map(
-              (rest) => [first, ...rest],
-            ),
-          )
-          .slice(0, LIMIT);
-  const orders = (places: number[]): number[][] => {
+  // Every enumeration below is lazy: an order is built only when it is
+  // taken, and no more than `SIBSHIP_ORDERS` are ever taken, so a large
+  // sibship costs no more than a small one.
+  const permutations = function* (item: number[]): Generator<number[]> {
+    if (item.length < 2) {
+      yield item;
+      return;
+    }
+    for (let k = 0; k < item.length; k++) {
+      const rest = [...item.slice(0, k), ...item.slice(k + 1)];
+      for (const tail of permutations(rest)) yield [item[k]!, ...tail];
+    }
+  };
+  // The orders of a list of items, each item in each of its own orders:
+  // the first item's choice varies slowest.
+  const product = function* (
+    items: number[][],
+    alternativesOf: (item: number[]) => number[][],
+  ): Generator<number[]> {
+    const [first, ...rest] = items;
+    if (first === undefined) {
+      yield [];
+      return;
+    }
+    const heads = alternativesOf(first);
+    for (const head of heads) {
+      for (const tail of product(rest, alternativesOf)) {
+        yield [...head, ...tail];
+      }
+    }
+  };
+  const orders = function* (places: number[]): Generator<number[]> {
     const inner = kept.filter(
       (group) =>
         group.size < places.length &&
@@ -739,42 +766,49 @@ function sibshipOrders(members: number[], graph: PedigreeGraph): number[][] {
     }
     items.push(...loose.values());
     const sorted = items.toSorted((a, b) => a[0]! - b[0]!);
-    const alternativesOf = (item: number[]) =>
-      outermost.some(
-        (group) => group.size === item.length && group.has(item[0]!),
-      )
-        ? orders(item)
-        : permutations(item);
-    const results: number[][] = [];
-    const permute = (prefix: number[][], rest: number[][]) => {
-      if (results.length >= LIMIT) return;
-      if (rest.length === 0) {
-        let combined: number[][] = [[]];
-        for (const item of prefix) {
-          combined = combined
-            .flatMap((head) =>
-              alternativesOf(item).map((tail) => [...head, ...tail]),
-            )
-            .slice(0, LIMIT);
-        }
-        results.push(...combined.slice(0, LIMIT - results.length));
-        return;
+    // Each item's own orders, taken once and at most as many as are used.
+    const alternatives = new Map<number[], number[][]>();
+    const alternativesOf = (item: number[]) => {
+      let found = alternatives.get(item);
+      if (!found) {
+        found = take(
+          outermost.some(
+            (group) => group.size === item.length && group.has(item[0]!),
+          )
+            ? orders(item)
+            : permutations(item),
+          SIBSHIP_ORDERS,
+        );
+        alternatives.set(item, found);
       }
-      rest.forEach((item, k) =>
-        permute([...prefix, item], [...rest.slice(0, k), ...rest.slice(k + 1)]),
-      );
+      return found;
     };
-    permute([], sorted);
-    return results;
+    for (const itemOrder of permutations(sorted.map((_, k) => k))) {
+      yield* product(
+        itemOrder.map((k) => sorted[k]!),
+        alternativesOf,
+      );
+    }
   };
-  return orders(units.map((_, k) => k)).map((order) =>
+  return take(orders(units.map((_, k) => k)), limit).map((order) =>
     order.flatMap((k) => units[k]!),
   );
 }
 
+/** The first `count` values a generator yields, built no further. */
+function take<T>(values: Iterable<T>, count: number): T[] {
+  const taken: T[] = [];
+  if (count <= 0) return taken;
+  for (const value of values) {
+    taken.push(value);
+    if (taken.length >= count) break;
+  }
+  return taken;
+}
+
 /** A sibship's default order (see `sibshipOrders`). */
 function sibshipOrder(members: number[], graph: PedigreeGraph): number[] {
-  return sibshipOrders(members, graph)[0]!;
+  return sibshipOrders(members, graph, 1)[0]!;
 }
 
 function buildConstraintBlocks(
@@ -1553,10 +1587,17 @@ function currentBlockRuns(
 }
 
 /**
+ * How much the seating search may do: seatings weighed, each counted as
+ * many times as there are people to seat (about what weighing it takes).
+ */
+const SEATING_SEARCH_WORK = 60_000;
+
+/**
  * The seating search. From the seating the sweeps settle on, it tries every
  * move that keeps the hard constraints of seating (partners and pairs side
  * by side, sibships together, blocks whole) and keeps any that costs the
- * drawing less (see `seatingCost`), until none does:
+ * drawing less (see `seatingCost`), until none does or its work is spent
+ * (`SEATING_SEARCH_WORK`):
  * - turning a block, or a chain of partners within one, round;
  * - moving a child's extra parent, with their own block, to any other place
  *   in the row (to either side of the owners of the child's line of
@@ -1573,6 +1614,14 @@ function refineSeating(
   let current = ordering.map((layer) => [...layer]);
   let currentCost = seatingCost(current, graph);
   weigh(current, currentCost);
+  // The search's work: each seating weighed, and each order of a sibship
+  // laid out, counts as many as there are people to seat. It stops once
+  // `SEATING_SEARCH_WORK` is spent.
+  let spent = 0;
+  const spend = () => {
+    spent += graph.nodeCount;
+  };
+  const workLeft = () => spent < SEATING_SEARCH_WORK;
   const partnered = (a: number | undefined, b: number | undefined) =>
     a !== undefined &&
     b !== undefined &&
@@ -1684,6 +1733,8 @@ function refineSeating(
       const key = sibshipKey(members);
       const chosen = graph.sibshipChoice.get(key);
       for (const order of orders) {
+        if (!workLeft()) return;
+        spend();
         graph.sibshipChoice.set(key, order);
         const block = buildConstraintBlocks(row, graph, false).find((b) =>
           b.nodes.includes(members[0]!),
@@ -1703,10 +1754,11 @@ function refineSeating(
     }
   }
 
-  for (let iter = 0; iter < iterationCap; iter++) {
+  for (let iter = 0; iter < iterationCap && workLeft(); iter++) {
     let improved = false;
     for (let layer = 0; layer < current.length && !improved; layer++) {
       for (const { row, choice } of movesOn(layer)) {
+        if (!workLeft()) break;
         const moved = withRow(layer, row);
         const previous = choice
           ? graph.sibshipChoice.get(choice[0])
@@ -1716,6 +1768,7 @@ function refineSeating(
         // reseated under it by a sweep down.
         const followed = barycentricSweep(moved, graph, 'down', layer + 1);
         for (const candidate of [moved, followed]) {
+          spend();
           const cost = seatingCost(candidate, graph);
           weigh(candidate, cost);
           if (lessCost(cost, currentCost)) {
