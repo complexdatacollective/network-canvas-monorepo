@@ -11,7 +11,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
-  type NcEncryptionHeader,
   ncUUIDProperty,
 } from '@codaco/shared-consts';
 
@@ -84,26 +83,6 @@ const valueSalt = [
   44, 130, 213, 61, 8, 177, 25, 240, 96, 151, 72, 188, 3, 119, 232, 54,
 ];
 
-const encryptionHeader: NcEncryptionHeader = {
-  version: 1,
-  method: 'AES-256-GCM',
-  kdf: {
-    algorithm: 'PBKDF2',
-    hash: 'SHA-256',
-    iterations: 600_000,
-    salt: [
-      168, 29, 241, 116, 83, 207, 14, 155, 70, 222, 37, 129, 193, 48, 104, 236,
-    ],
-  },
-  check: {
-    iv: [183, 56, 249, 21, 142, 97, 208, 63, 125, 30, 164, 245],
-    data: [
-      92, 167, 18, 234, 79, 146, 31, 203, 58, 121, 190, 5, 252, 67, 138, 24,
-      179, 100, 215, 42,
-    ],
-  },
-};
-
 type ValueMetadata = { iv: number[]; salt?: number[] };
 
 const secureAttributes = (
@@ -115,10 +94,7 @@ const secureAttributes = (
   ),
 });
 
-const interview = (
-  metadata: ValueMetadata,
-  header?: NcEncryptionHeader,
-): InterviewExportInput => ({
+const interview = (metadata: ValueMetadata): InterviewExportInput => ({
   id: 'interview-1',
   participantIdentifier: 'case-1',
   startTime: new Date('2025-01-01'),
@@ -127,7 +103,6 @@ const interview = (
   protocolHash: 'protocol-1',
   locale: null,
   network: {
-    ...(header ? { encryption: header } : {}),
     nodes: [
       {
         [entityPrimaryKeyProperty]: 'node-1',
@@ -188,51 +163,36 @@ const dataOf = (element: Element | undefined) =>
     ]),
   );
 
-// Everything the header, a value's metadata and a stored ciphertext are made
-// of, as each would be written if the exporter serialised it.
-const secretsOf = (metadata: ValueMetadata, header?: NcEncryptionHeader) => [
-  'encryption',
-  'AES-256-GCM',
-  'PBKDF2',
-  'SHA-256',
-  'iterations',
-  '600000',
+// Everything a value's metadata and a stored ciphertext are made of, as each
+// would be written if the exporter serialised it.
+const secretsOf = (metadata: ValueMetadata) => [
   entitySecureAttributesMeta,
   nameCiphertext.join(','),
   nicknameCiphertext.join(','),
   metadata.iv.join(','),
   ...(metadata.salt ? [metadata.salt.join(',')] : []),
-  ...(header
-    ? [
-        header.kdf.salt.join(','),
-        header.check.iv.join(','),
-        header.check.data.join(','),
-      ]
-    : []),
 ];
 
 describe.each([
   {
-    label: 'a network with an encryption header and metadata without a salt',
+    label: 'a network with metadata without a salt',
     metadata: { iv: valueIv },
-    header: encryptionHeader,
   },
   {
-    label: 'a schema 8 network with metadata that has a salt and no header',
+    label: 'a schema 8 network with metadata that has a salt',
     metadata: { iv: valueIv, salt: valueSalt },
-    header: undefined,
   },
-])('an export of $label', ({ metadata, header }) => {
+])('an export of $label', ({ metadata }) => {
   let files = new Map<string, string>();
   let failedExports: unknown[] = [];
   let graphml: Document;
 
   beforeAll(async () => {
-    const run = await runRecordedExport(
-      options,
-      [interview(metadata, header)],
-      { hash: 'protocol-1', name: 'Secure protocol', codebook },
-    );
+    const run = await runRecordedExport(options, [interview(metadata)], {
+      hash: 'protocol-1',
+      name: 'Secure protocol',
+      codebook,
+    });
     files = run.files;
     failedExports = run.result.failedExports;
     graphml = new DOMParser().parseFromString(
@@ -286,13 +246,11 @@ describe.each([
     );
   });
 
-  it('writes no ciphertext, metadata or encryption header to any file', () => {
+  it('writes no ciphertext or metadata to any file', () => {
     const everything = [...files.values()].join('\n');
 
     expect(
-      secretsOf(metadata, header).filter((secret) =>
-        everything.includes(secret),
-      ),
+      secretsOf(metadata).filter((secret) => everything.includes(secret)),
     ).toEqual([]);
   });
 });
@@ -361,7 +319,6 @@ const recordedInterview: InterviewExportInput = {
   protocolHash: 'protocol-1',
   locale: null,
   network: {
-    encryption: encryptionHeader,
     nodes: [
       {
         [entityPrimaryKeyProperty]: 'person-1',

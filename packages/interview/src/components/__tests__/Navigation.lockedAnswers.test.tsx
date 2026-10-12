@@ -1,18 +1,13 @@
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  type NcEncryptionHeader,
 } from '@codaco/shared-consts';
 
 import type { InterviewPayload } from '../../contract/types';
-import {
-  encryptionFor,
-  outOfBoundsHeader,
-} from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import Shell from '../../Shell';
 
 vi.mock('../../hooks/useMediaQuery', () => ({ default: () => false }));
@@ -37,7 +32,7 @@ beforeAll(() => {
   vi.stubGlobal('ResizeObserver', StubResizeObserver);
 });
 
-const payloadWith = (encryption?: NcEncryptionHeader) =>
+const lockedPayload = () =>
   ({
     session: {
       id: 'session-1',
@@ -55,7 +50,6 @@ const payloadWith = (encryption?: NcEncryptionHeader) =>
         },
         nodes: [],
         edges: [],
-        ...(encryption ? { encryption } : {}),
       },
     },
     protocol: {
@@ -95,16 +89,9 @@ function renderHorizontalInterview(payload: InterviewPayload) {
   );
 }
 
-// Lets a passphrase request the stage made reach the navigation bar, so one
-// that would only arrive late is not missed.
-const settle = () =>
-  act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  });
-
 describe('the horizontal navigation bar beside answers that are locked', () => {
   it('offers the passphrase when one can open them', async () => {
-    renderHorizontalInterview(payloadWith());
+    renderHorizontalInterview(lockedPayload());
 
     expect(
       (
@@ -119,22 +106,5 @@ describe('the horizontal navigation bar beside answers that are locked', () => {
     expect(
       await screen.findByRole('button', { name: 'Passphrase' }),
     ).toBeInTheDocument();
-  });
-
-  it('offers no passphrase, and says the answers are unavailable, when none can open them', async () => {
-    const { header } = await encryptionFor('pw');
-    renderHorizontalInterview(payloadWith(outOfBoundsHeader(header)));
-
-    expect(
-      await screen.findByText(
-        'Answers protected by a passphrase cannot be shown or saved in this interview.',
-        { exact: false },
-      ),
-    ).toBeInTheDocument();
-    await settle();
-
-    expect(
-      screen.queryByRole('button', { name: 'Passphrase' }),
-    ).not.toBeInTheDocument();
   });
 });

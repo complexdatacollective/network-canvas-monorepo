@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useDispatch, useSelector, useStore } from 'react-redux';
 
 import { runtimeMessages } from '../../i18n/runtimeMessages';
@@ -9,37 +9,19 @@ import {
   showPassphrasePrompter,
 } from '../../store/modules/ui';
 import type { RootState } from '../../store/store';
-import { isUsableEncryptionHeader } from './encryptionFormat';
-import { unlockEncryption } from './unlockEncryption';
+import { hasCheckableValue, unlockEncryption } from './unlockEncryption';
 import { useDecryptionScope } from './useDecryptionScope';
-import { useReportUnreadable } from './useReportUnreadable';
-
-const hasEncryptionHeader = (state: RootState) =>
-  state.session.network.encryption !== undefined;
-
-const hasRefusedEncryptionHeader = (state: RootState) => {
-  const header = state.session.network.encryption;
-  return header !== undefined && !isUsableEncryptionHeader(header);
-};
 
 export const usePassphrase = () => {
   const dispatch = useDispatch();
   const store = useStore<RootState>();
-  const reportUnreadable = useReportUnreadable();
 
   const unlocked = useDecryptionScope() !== undefined;
-  const passphraseChosen = useSelector(hasEncryptionHeader);
-  const encryptionUnavailable = useSelector(hasRefusedEncryptionHeader);
+  const passphraseChosen = useSelector(hasCheckableValue);
   const showPrompter = useSelector(showPassphrasePrompter);
 
-  useEffect(() => {
-    if (encryptionUnavailable) reportUnreadable('refused-header');
-  }, [encryptionUnavailable, reportUnreadable]);
-
   const requirePassphrase = useCallback(() => {
-    // No passphrase can open a refused header, so none is asked for: the
-    // prompter would turn every one away.
-    if (unlocked || encryptionUnavailable) {
+    if (unlocked) {
       if (showPrompter) {
         dispatch(setShowPassphrasePrompter(false));
       }
@@ -49,17 +31,18 @@ export const usePassphrase = () => {
     if (!showPrompter) {
       dispatch(setShowPassphrasePrompter(true));
     }
-  }, [unlocked, encryptionUnavailable, dispatch, showPrompter]);
+  }, [unlocked, dispatch, showPrompter]);
 
   /**
-   * Derives the key from `candidate` and puts it in force: the first
-   * passphrase of an interview creates its encryption header, and any later
-   * one must match it. Resolves to how the attempt ended.
+   * Derives the key from `candidate` and puts it in force: the passphrase is
+   * checked against the answers the interview has already encrypted, and
+   * becomes the interview's when there are none. Resolves to how the attempt
+   * ended.
    */
   const unlock = useCallback(
     async (candidate: string) => {
       const outcome = await unlockEncryption(store, candidate);
-      if (outcome === 'chosen' || outcome === 'verified') {
+      if (outcome !== 'incorrect') {
         dispatch(setShowPassphrasePrompter(false));
       }
       return outcome;
@@ -69,10 +52,7 @@ export const usePassphrase = () => {
 
   /** As `unlock`, resolving to whether the passphrase was accepted. */
   const submitPassphrase = useCallback(
-    async (candidate: string) => {
-      const outcome = await unlock(candidate);
-      return outcome === 'chosen' || outcome === 'verified';
-    },
+    async (candidate: string) => (await unlock(candidate)) !== 'incorrect',
     [unlock],
   );
 
@@ -80,20 +60,13 @@ export const usePassphrase = () => {
     /** Whether the interview's encryption key is in force. */
     unlocked,
     /**
-     * Whether a passphrase has been chosen for this interview, so that one
-     * entered now is checked against it rather than becoming it.
+     * Whether the interview already holds answers encrypted with its
+     * passphrase, so that one entered now is checked against them rather
+     * than becoming the interview's.
      */
     passphraseChosen,
-    /**
-     * Whether the interview's encryption header is outside the runtime's
-     * bounds, so no passphrase can open its protected answers: they are
-     * unavailable for the rest of the interview, and none is asked for.
-     */
-    encryptionUnavailable,
     /** What to show in place of protected answers while they are locked. */
-    lockedNotice: encryptionUnavailable
-      ? runtimeMessages.protectedAnswersUnavailable
-      : runtimeMessages.protectedAnswersLocked,
+    lockedNotice: runtimeMessages.protectedAnswersLocked,
     unlock,
     submitPassphrase,
     requirePassphrase,

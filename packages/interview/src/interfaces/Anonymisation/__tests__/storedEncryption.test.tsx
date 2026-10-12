@@ -18,7 +18,6 @@ import { useDecryptedNodes } from '../useDecryptedNodes';
 import { useProtectedFormValues } from '../useProtectedFormValues';
 import {
   createEncryptionStore,
-  encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
   unlockWith,
@@ -54,10 +53,7 @@ const unmarkedVariables: Record<string, Variable> = {
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 
 async function unmarkedStore(nodes: NcNode[]) {
-  const { header } = await encryptionFor('pw');
-  return createEncryptionStore(nodes, undefined, unmarkedVariables, {
-    header,
-  });
+  return createEncryptionStore(nodes, undefined, unmarkedVariables);
 }
 
 function renderInInterview<T>(store: EncryptionStore, hook: () => T) {

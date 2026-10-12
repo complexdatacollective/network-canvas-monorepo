@@ -20,7 +20,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
-  type NcEncryptionHeader,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -147,10 +146,7 @@ function buildStage(fixedSiblingValue?: boolean): QuickAddStage {
   };
 }
 
-function buildSession(
-  existingNodes: NcNode[] = [],
-  encryption?: NcEncryptionHeader,
-): SessionState {
+function buildSession(existingNodes: NcNode[] = []): SessionState {
   return {
     id: 'session',
     startTime: '2024-01-01T00:00:00.000Z',
@@ -166,7 +162,6 @@ function buildSession(
       },
       nodes: existingNodes,
       edges: [],
-      ...(encryption ? { encryption } : {}),
     },
   };
 }
@@ -209,11 +204,10 @@ async function renderQuickNodeForm({
   ) => Promise<FormSubmissionResult>;
   trackWrite?: (stored: Promise<boolean>) => void;
 }) {
-  const encryption = encrypted ? await encryptionFor(PASSPHRASE) : undefined;
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
-      session: buildSession(existingNodes, encryption?.header),
+      session: buildSession(existingNodes),
       protocol: buildProtocol(
         validation,
         omitComponent,

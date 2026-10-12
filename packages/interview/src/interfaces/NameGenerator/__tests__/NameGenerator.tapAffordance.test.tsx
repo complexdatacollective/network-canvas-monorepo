@@ -53,7 +53,6 @@ vi.mock('../../Anonymisation/usePassphrase', async () => {
     usePassphrase: (): Passphrase => ({
       unlocked: false,
       passphraseChosen: true,
-      encryptionUnavailable: false,
       lockedNotice: runtimeMessages.protectedAnswersLocked,
       unlock: vi.fn<Passphrase['unlock']>(),
       submitPassphrase: vi.fn<Passphrase['submitPassphrase']>(),

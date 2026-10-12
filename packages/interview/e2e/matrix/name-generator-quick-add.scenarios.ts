@@ -678,8 +678,8 @@ export const nameGeneratorQuickAddScenarios: InterfaceScenarios = {
 
         const network = await protocol.getNetworkState(interview.interviewId);
         expect(network?.nodes).toHaveLength(1);
-        // Choosing the passphrase created the interview's encryption header.
-        expect(network?.encryption?.version).toBe(1);
+        // Nothing about the key is stored with the network.
+        expect(network).not.toHaveProperty('encryption');
         const node = network?.nodes[0];
         const attrValues = Object.values(
           node?.[entityAttributesProperty] ?? {},

@@ -5,9 +5,7 @@ import { createMessageError } from '@codaco/app-i18n/messages';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import {
   createEncryptionStore,
-  encryptionFor,
   NODE_TYPE,
-  outOfBoundsHeader,
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { addNode } from '../../store/modules/session';
 import {
@@ -15,14 +13,7 @@ import {
   writeSubmissionResult,
 } from '../writeSubmissionResult';
 
-async function storeWith({ refused }: { refused: boolean }) {
-  const { header } = await encryptionFor('pw');
-  return createEncryptionStore([], undefined, undefined, {
-    header: refused ? outOfBoundsHeader(header) : header,
-  });
-}
-
-const addProtectedPerson = (store: Awaited<ReturnType<typeof storeWith>>) =>
+const addProtectedPerson = (store: ReturnType<typeof createEncryptionStore>) =>
   store.dispatch(
     addNode({
       type: NODE_TYPE,
@@ -34,7 +25,7 @@ const addProtectedPerson = (store: Awaited<ReturnType<typeof storeWith>>) =>
 
 describe('the reason a protected answer was not saved', () => {
   it('asks for the passphrase while one could still be entered', async () => {
-    const store = await storeWith({ refused: false });
+    const store = createEncryptionStore([]);
 
     expect(writeSubmissionResult(await addProtectedPerson(store))).toEqual({
       success: false,
@@ -47,22 +38,5 @@ describe('the reason a protected answer was not saved', () => {
         rejectedWriteMessage(error) ===
         runtimeMessages.protectedAnswersNotSaved,
     );
-  });
-
-  it('says protected answers cannot be saved, never asking for a passphrase, when none can open the interview', async () => {
-    const store = await storeWith({ refused: true });
-
-    expect(writeSubmissionResult(await addProtectedPerson(store))).toEqual({
-      success: false,
-      formErrors: [
-        createMessageError(runtimeMessages.protectedAnswersUnavailable),
-      ],
-    });
-    await expect(addProtectedPerson(store).unwrap()).rejects.toSatisfy(
-      (error) =>
-        rejectedWriteMessage(error) ===
-        runtimeMessages.protectedAnswersUnavailable,
-    );
-    expect(store.getState().session.network.nodes).toEqual([]);
   });
 });

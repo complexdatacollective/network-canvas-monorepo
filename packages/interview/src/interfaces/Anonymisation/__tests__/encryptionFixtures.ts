@@ -9,7 +9,6 @@ import {
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
   type NcEdge,
-  type NcEncryptionHeader,
   type NcNode,
   type StageMetadata,
 } from '@codaco/shared-consts';
@@ -17,7 +16,7 @@ import {
 import { createInitialNetwork } from '../../../contract/network';
 import type { InterviewPayload, SyncHandler } from '../../../contract/types';
 import { store as createStore } from '../../../store/store';
-import { createEncryptionHeader } from '../encryptionFormat';
+import { deriveInterviewKey } from '../encryptionFormat';
 import { installEncryptionKey } from '../unlockEncryption';
 import { generateSecureAttributes } from '../utils';
 
@@ -49,34 +48,32 @@ const personDefinition = {
   variables: encryptedVariables,
 } satisfies NonNullable<Codebook['node']>[string];
 
-type Encryption = { header: NcEncryptionHeader; key: CryptoKey };
+/** The id of the session every store made here runs under. */
+const SESSION_ID = 'session-1';
+
+type Encryption = { key: CryptoKey };
 
 const encryptions = new Map<string, Promise<Encryption>>();
 
 /**
- * The encryption header and key of an interview protected with `passphrase`.
- * Deriving a key is deliberately slow, so it is done once per passphrase and
- * shared by every test in the file.
+ * The key of an interview protected with `passphrase`, by default the one
+ * every store made here runs under. Deriving a key is deliberately slow, so
+ * it is done once per passphrase and interview, and shared by every test in
+ * the file.
  */
-export function encryptionFor(passphrase: string): Promise<Encryption> {
-  const cached = encryptions.get(passphrase);
+export function encryptionFor(
+  passphrase: string,
+  interviewId: string = SESSION_ID,
+): Promise<Encryption> {
+  const cacheKey = JSON.stringify([passphrase, interviewId]);
+  const cached = encryptions.get(cacheKey);
   if (cached) return cached;
-  const encryption = createEncryptionHeader(passphrase);
-  encryptions.set(passphrase, encryption);
+  const encryption = deriveInterviewKey(passphrase, interviewId).then(
+    (key) => ({ key }),
+  );
+  encryptions.set(cacheKey, encryption);
   return encryption;
 }
-
-/**
- * `header` as a corrupt or tampered copy might store it, asking for far more
- * key derivation work than the runtime allows, so that no passphrase is ever
- * checked against it.
- */
-export const outOfBoundsHeader = (
-  header: NcEncryptionHeader,
-): NcEncryptionHeader => ({
-  ...header,
-  kdf: { ...header.kdf, iterations: 1_000_000_000 },
-});
 
 /**
  * Puts the key of `passphrase` in force in `store`, as entering it would,
@@ -168,12 +165,6 @@ type EncryptionStoreOptions = {
   edges?: NcEdge[];
   edgeTypes?: Codebook['edge'];
   stageMetadata?: StageMetadata;
-  /**
-   * The interview's encryption header, once a passphrase has been chosen in
-   * it (from `encryptionFor`). Without one, the next passphrase entered is
-   * the first.
-   */
-  header?: NcEncryptionHeader;
   /** Receives every session the interview hands the host to persist. */
   onSync?: SyncHandler;
 };
@@ -190,13 +181,12 @@ export function createEncryptionStore(
     edges = [],
     edgeTypes,
     stageMetadata,
-    header,
     onSync = () => Promise.resolve(),
   }: EncryptionStoreOptions = {},
 ) {
   const payload: InterviewPayload = {
     session: {
-      id: 'session-1',
+      id: SESSION_ID,
       startTime: '2026-01-01T00:00:00.000Z',
       finishTime: null,
       exportTime: null,
@@ -208,7 +198,6 @@ export function createEncryptionStore(
         ...createInitialNetwork(),
         nodes,
         edges,
-        ...(header ? { encryption: header } : {}),
       },
       ...(stageMetadata ? { stageMetadata } : {}),
     },

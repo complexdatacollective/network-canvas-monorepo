@@ -270,7 +270,6 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     minNodesNotice: stage.minNodesNotice,
     maxNodesNotice: stage.maxNodesNotice,
     isLastPrompt,
-    writesEncrypted: useEncryption,
   });
 
   // The people whose add is under way. Protecting their answers can take a

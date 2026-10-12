@@ -8,7 +8,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 import {
-  networkWithEncryptionHeader,
+  encryptedNetwork,
   schema8EncryptedNetwork,
 } from '~/lib/__tests__/encryptedNetworks';
 
@@ -172,11 +172,11 @@ describe('PrismaInterviewRepository', () => {
 
   it.each([
     {
-      label: 'the encryption header and IV-only values',
-      stored: networkWithEncryptionHeader,
+      label: 'IV-only values',
+      stored: encryptedNetwork,
     },
     {
-      label: 'schema 8 values without a header',
+      label: 'schema 8 values',
       stored: schema8EncryptedNetwork,
     },
   ])('exports a network with $label unchanged', async ({ stored }) => {

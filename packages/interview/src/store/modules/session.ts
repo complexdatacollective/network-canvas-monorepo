@@ -10,7 +10,6 @@ import {
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
   type NcEdge,
-  type NcEncryptionHeader,
   type NcEntity,
   type NcNetwork,
   type NcNode,
@@ -23,9 +22,7 @@ import {
   getDecryptionScope,
   rememberEncryptedWrite,
 } from '../../interfaces/Anonymisation/decryptionScope';
-import { isUsableEncryptionHeader } from '../../interfaces/Anonymisation/encryptionFormat';
 import {
-  EncryptionUnavailableError,
   generateSecureAttributes,
   PassphraseRequiredError,
 } from '../../interfaces/Anonymisation/utils';
@@ -154,7 +151,6 @@ const actionTypes = {
   toggleEdge: 'NETWORK/TOGGLE_EDGE' as const,
   deleteEdge: 'NETWORK/DELETE_EDGE' as const,
   updateEgo: 'NETWORK/UPDATE_EGO' as const,
-  setEncryptionHeader: 'NETWORK/SET_ENCRYPTION_HEADER' as const,
 };
 
 const initialState = {} as SessionState;
@@ -162,16 +158,11 @@ const initialState = {} as SessionState;
 /**
  * The scope holding the key an encrypted write must use. Throwing rejects the
  * whole write, so a patch that mixes encrypted and plain values is never
- * applied in part. The error says whether a passphrase could still put the
- * key in force.
+ * applied in part.
  */
 function requireDecryptionScope(getState: () => RootState): DecryptionScope {
   const scope = getDecryptionScope(getState);
   if (scope) return scope;
-  const header = getState().session.network.encryption;
-  if (header !== undefined && !isUsableEncryptionHeader(header)) {
-    throw new EncryptionUnavailableError();
-  }
   throw new PassphraseRequiredError();
 }
 
@@ -475,15 +466,6 @@ export const restoreNodeAttributes = createAction<{
   nodeId: NcNode[EntityPrimaryKey];
   snapshot: NodeAttributeSnapshot;
 }>(actionTypes.restoreNodeAttributes);
-
-/**
- * Records how this interview's encryption key is derived and checked. Written
- * once, when the first passphrase is accepted; a header already in place is
- * never replaced, because every stored value depends on it.
- */
-export const setEncryptionHeader = createAction<NcEncryptionHeader>(
-  actionTypes.setEncryptionHeader,
-);
 
 export const updatePrompt = createAction<number>(actionTypes.updatePrompt);
 /**
@@ -1011,17 +993,6 @@ const sessionReducer = createReducer(initialState, (builder) => {
           };
         }),
       },
-    });
-  });
-
-  builder.addCase(setEncryptionHeader, (state, action) => {
-    invariant(
-      !state.network.encryption,
-      'This interview already has an encryption header',
-    );
-    return withLastUpdated({
-      ...state,
-      network: { ...state.network, encryption: action.payload },
     });
   });
 

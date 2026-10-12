@@ -100,8 +100,7 @@ const externalNode: NcNode = {
 };
 
 async function makeStore({ unlocked }: { unlocked: boolean }) {
-  const { header } = await encryptionFor(PASSPHRASE);
-  const store = createEncryptionStore([], [stage], variables, { header });
+  const store = createEncryptionStore([], [stage], variables);
   if (unlocked) await unlockWith(store, PASSPHRASE);
   return store;
 }

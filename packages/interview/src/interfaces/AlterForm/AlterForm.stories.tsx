@@ -257,7 +257,11 @@ export const WithValidation: Story = {
 
 const PASSPHRASE = 'correct horse battery staple';
 
-function buildProtectedInterview() {
+/**
+ * A person, Alice, whose nickname is protected. With `withBob`, a second
+ * person whose nickname is protected too follows her.
+ */
+function buildProtectedInterview({ withBob = false } = {}) {
   const interview = new SyntheticInterview();
   const person = interview.addNodeType({ name: 'Person' });
   const name = person.addVariable({ name: 'name', type: 'text' });
@@ -296,6 +300,13 @@ function buildProtectedInterview() {
     [nickname.id]: 'Ali',
     [age.id]: 34,
   });
+  if (withBob) {
+    interview.addManualNode(stage.id, person.id, 'bob', {
+      [name.id]: 'Bob',
+      [nickname.id]: 'Bobby',
+      [age.id]: 41,
+    });
+  }
 
   interview.addInformationStage({
     title: 'Complete',
@@ -371,9 +382,11 @@ export const ProtectedAnswersUnlocked: Story = {
 };
 
 // Alice's nickname was encrypted for someone else, as when an answer is
-// copied between people, so no passphrase can read it here.
+// copied between people, so no passphrase can read it here. Bob's was not:
+// the passphrase is checked by decrypting an answer the interview holds, so
+// it is his that shows the passphrase is the right one.
 const buildUnavailableInterview = () => ({
-  ...buildProtectedInterview(),
+  ...buildProtectedInterview({ withBob: true }),
   encryptedFor: { alice: 'someone-else' },
 });
 
@@ -420,49 +433,6 @@ export const ProtectedAnswerUnavailable: Story = {
     await expect(replacement).toHaveAccessibleDescription(
       /leave the field empty to keep the earlier answer/,
     );
-  },
-};
-
-export const ProtectedAnswersRefused: Story = {
-  render: () => (
-    <EncryptedStoryInterviewShell
-      build={buildProtectedInterview}
-      passphrase={PASSPHRASE}
-      currentStep={0}
-      headerIterations={1_000_000_000}
-    />
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'The record this interview keeps to check a passphrase has been damaged (here, an impossible key-stretching count), so no passphrase can open the protected nickname. The form opens without asking for one: the nickname is shown as unavailable, with the reason, and cannot be replaced, while the other questions can still be answered.',
-      },
-    },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByTestId('next-button', {}, { timeout: 10_000 }),
-    );
-
-    const nickname = await canvas.findByRole('textbox', {
-      name: /What nickname do you use for this person/,
-    });
-    await expect(nickname).toHaveValue('Answer unavailable');
-    await expect(nickname).toHaveAttribute('readonly');
-    await expect(nickname).toHaveAccessibleDescription(
-      /cannot be shown or saved in this interview/,
-    );
-    await expect(
-      canvas.queryByRole('button', { name: 'Enter a new answer' }),
-    ).not.toBeInTheDocument();
-    await expect(
-      canvas.getByRole('spinbutton', { name: /How old are they/ }),
-    ).toHaveValue(34);
-    await expect(
-      canvas.queryByRole('button', { name: 'Passphrase' }),
-    ).not.toBeInTheDocument();
   },
 };
 

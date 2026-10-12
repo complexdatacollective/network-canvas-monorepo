@@ -200,7 +200,6 @@ async function makeStore(
       },
       nodes,
       edges: [],
-      encryption: (await encryptionFor(PASSPHRASE)).header,
     },
   };
   const protocolState: ProtocolPayload = {

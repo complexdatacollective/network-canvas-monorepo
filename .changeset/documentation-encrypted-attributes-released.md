@@ -12,15 +12,16 @@ exports actually write.
 
 The Anonymisation page now explains how answers are protected: one key for
 each interview, derived from the participant's passphrase with PBKDF2-SHA256
-(600,000 iterations and a random salt) and used with AES-256-GCM; each answer
-bound to the person and question it belongs to, and padded; and a check value
-that confirms a passphrase without storing it. It explains that a participant
+(600,000 iterations, with a salt derived from the interview's id) and used
+with AES-256-GCM; each answer bound to the person and question it belongs to,
+and padded; and how a passphrase entered again is checked against the answers
+already encrypted, without anything about the passphrase or the key being
+stored. It explains that a participant
 confirms the passphrase when choosing it, that it must be at least 8
 characters long unless the stage sets its own minimum, which replaces the
 default even when shorter, that a maximum shorter than 8 lowers the default
 minimum to match, and that a forgotten passphrase cannot be recovered by
-anyone. A new section explains what a participant sees when an interview's
-protection details are damaged or come from a newer version, and the export
+anyone. The export
 section now says that only answers saved encrypted are replaced with
 `ENCRYPTED`. Another new section explains that skip logic and filters can't
 compare the answers to an encrypted attribute, except in a panel over an

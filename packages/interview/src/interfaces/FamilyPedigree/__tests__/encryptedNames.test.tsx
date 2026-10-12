@@ -17,7 +17,6 @@ import type { RootState } from '../../../store/store';
 import {
   createEncryptionStore,
   encryptedVariables,
-  encryptionFor,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import {
@@ -52,10 +51,7 @@ const asSchema8 = (node: NcNode): NcNode => ({
 });
 
 async function lockedStore(nodes: NcNode[]) {
-  const { header } = await encryptionFor(PASSPHRASE);
-  return createEncryptionStore(nodes, undefined, encryptedVariables, {
-    header,
-  });
+  return createEncryptionStore(nodes, undefined, encryptedVariables);
 }
 
 async function unlockedScope(nodes: NcNode[]) {
@@ -155,7 +151,6 @@ describe('decryptDetails', () => {
         ['name', 'nickname'],
         encryptedVariables,
         scope,
-        false,
       ),
     ).toEqual({
       status: 'ready',
@@ -169,7 +164,7 @@ describe('decryptDetails', () => {
     const bea = await encryptedPerson('bea', 'Bea', PASSPHRASE);
 
     expect(
-      await decryptDetails(bea, ['name'], encryptedVariables, undefined, false),
+      await decryptDetails(bea, ['name'], encryptedVariables, undefined),
     ).toEqual({ status: 'locked' });
   });
 
@@ -180,25 +175,11 @@ describe('decryptDetails', () => {
         ['name'],
         encryptedVariables,
         undefined,
-        false,
       ),
     ).toEqual({
       status: 'ready',
       values: new Map(),
       unavailable: [],
-      unreadable: [],
-    });
-  });
-
-  test('when no passphrase can ever put a key in force, an encrypted value is unavailable rather than locked', async () => {
-    const bea = await encryptedPerson('bea', 'Bea', PASSPHRASE);
-
-    expect(
-      await decryptDetails(bea, ['name'], encryptedVariables, undefined, true),
-    ).toEqual({
-      status: 'ready',
-      values: new Map(),
-      unavailable: ['name'],
       unreadable: [],
     });
   });
@@ -209,7 +190,7 @@ describe('decryptDetails', () => {
     const scope = await unlockedScope([bea, moved]);
 
     expect(
-      await decryptDetails(moved, ['name'], encryptedVariables, scope, false),
+      await decryptDetails(moved, ['name'], encryptedVariables, scope),
     ).toEqual({
       status: 'ready',
       values: new Map(),
@@ -231,7 +212,6 @@ describe('decryptDetails', () => {
         ['name', 'nickname'],
         encryptedVariables,
         undefined,
-        false,
       ),
     ).toEqual({
       status: 'ready',

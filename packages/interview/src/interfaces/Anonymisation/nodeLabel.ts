@@ -65,8 +65,6 @@ type NodeLabelTextOptions = {
   /** The label of an answer that can never be read. */
   unavailable: string;
   outcomeOf: OutcomeOf;
-  /** Whether the interview's encryption header is refused, so no key exists. */
-  encryptionUnavailable: boolean;
 };
 
 /**
@@ -78,20 +76,13 @@ type NodeLabelTextOptions = {
 export function nodeLabelText(
   node: NcNode,
   source: NodeLabelSource,
-  {
-    typeLabel,
-    unavailable,
-    outcomeOf,
-    encryptionUnavailable,
-  }: NodeLabelTextOptions,
+  { typeLabel, unavailable, outcomeOf }: NodeLabelTextOptions,
 ): string {
   if (source.status === 'plain') {
     if (source.text !== undefined) return source.text;
     return typeLabel.trim() === '' ? node[entityPrimaryKeyProperty] : typeLabel;
   }
-  if (source.status === 'unreadable' || encryptionUnavailable) {
-    return unavailable;
-  }
+  if (source.status === 'unreadable') return unavailable;
 
   const outcome = outcomeOf(source.value);
   if (!outcome) return LOCKED_LABEL;

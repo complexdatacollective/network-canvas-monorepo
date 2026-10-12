@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { createInitialNetwork } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
-  networkWithEncryptionHeader,
+  encryptedNetwork,
   schema8EncryptedNetwork,
 } from '~/lib/__tests__/encryptedNetworks';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
@@ -353,11 +353,11 @@ describe('mapInterviewPayload', () => {
 
   it.each([
     {
-      label: 'the encryption header and IV-only values',
-      stored: networkWithEncryptionHeader,
+      label: 'IV-only values',
+      stored: encryptedNetwork,
     },
     {
-      label: 'schema 8 values without a header',
+      label: 'schema 8 values',
       stored: schema8EncryptedNetwork,
     },
   ])('hands the interview a network with $label unchanged', ({ stored }) => {

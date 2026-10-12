@@ -7,11 +7,7 @@ import { showPassphrasePrompter } from '../../../store/modules/ui';
 import PassphraseNotice, {
   type PassphraseNoticeStatus,
 } from '../PassphraseNotice';
-import {
-  createEncryptionStore,
-  encryptionFor,
-  outOfBoundsHeader,
-} from './encryptionFixtures';
+import { createEncryptionStore } from './encryptionFixtures';
 
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 
@@ -34,21 +30,5 @@ describe('PassphraseNotice', () => {
       'Enter your passphrase to see and change them.',
     );
     expect(showPassphrasePrompter(store.getState())).toBe(true);
-  });
-
-  it('says protected answers are unavailable, and asks for no passphrase, when none can open them', async () => {
-    const { header } = await encryptionFor('pw');
-    const store = createEncryptionStore([], undefined, undefined, {
-      header: outOfBoundsHeader(header),
-    });
-    renderNotice('locked', store);
-
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Answers protected by a passphrase cannot be shown or saved in this interview.',
-    );
-    expect(screen.getByRole('status')).not.toHaveTextContent(
-      'Enter your passphrase',
-    );
-    expect(showPassphrasePrompter(store.getState())).toBe(false);
   });
 });

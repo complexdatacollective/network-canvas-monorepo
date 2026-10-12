@@ -10,7 +10,6 @@ import {
 import {
   createEncryptionStore,
   encryptedVariables,
-  encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
   unlockWith,
@@ -27,8 +26,7 @@ import { addNode, updateNode } from '../session';
 const mixedPatch = { set: { name: 'Bob', age: 41 }, unset: [] };
 
 async function lockedStore(nodes: NcNode[] = []) {
-  const { header } = await encryptionFor('pw');
-  return createEncryptionStore(nodes, undefined, undefined, { header });
+  return createEncryptionStore(nodes);
 }
 
 async function unlockedStore(nodes: NcNode[] = []) {

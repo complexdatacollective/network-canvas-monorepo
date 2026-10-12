@@ -43,7 +43,7 @@ vi.mock('~/lib/posthog-server', () => ({
 }));
 
 import {
-  networkWithEncryptionHeader,
+  encryptedNetwork,
   schema8EncryptedNetwork,
 } from '~/lib/__tests__/encryptedNetworks';
 import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
@@ -264,11 +264,11 @@ describe('interview sync route', () => {
 
     it.each([
       {
-        label: 'the encryption header and IV-only values',
-        network: networkWithEncryptionHeader,
+        label: 'IV-only values',
+        network: encryptedNetwork,
       },
       {
-        label: 'schema 8 values without a header',
+        label: 'schema 8 values',
         network: schema8EncryptedNetwork,
       },
     ])(

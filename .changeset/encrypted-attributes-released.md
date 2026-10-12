@@ -23,14 +23,17 @@ protocols that the schema 8 alpha stored with name encryption on.
 Encrypted answers are now protected in a new way:
 
 - Each interview has one encryption key, made from the participant's
-  passphrase with PBKDF2-SHA256 (600,000 iterations and a random salt for the
-  interview) and used with AES-256-GCM. The key is made once when the
+  passphrase with PBKDF2-SHA256 (600,000 iterations, with a salt derived from
+  the interview's id) and used with AES-256-GCM. The key is made once when the
   passphrase is chosen and once each time it is entered again, and is only
-  ever held in memory: it is never saved, synced or exported.
-- The interview records how its key is made, with a check value, alongside
-  its network. A passphrase is accepted only if it opens the check value, so
-  a mistyped passphrase is turned away at once, even before any answer has
-  been encrypted, instead of failing later.
+  ever held in memory: it is never saved, synced or exported. Nothing else
+  about the key is stored either: no salt, and no value for checking a
+  passphrase against.
+- A passphrase entered again is accepted only if its key decrypts an answer
+  the interview has already encrypted, so a mistyped passphrase is turned
+  away at once instead of failing later. Until an answer has been encrypted,
+  there is nothing a passphrase could be wrong about, and the passphrase
+  entered becomes the interview's.
 - Each answer is bound to the person and the question it belongs to, so an
   encrypted answer copied anywhere else can't be read, and it is padded so
   that its length reveals less about it.
@@ -52,14 +55,6 @@ Encrypted answers are now protected in a new way:
   up. Password managers are asked to stay out of it too, and it can't be
   closed while it checks a passphrase. It starts empty each time it opens,
   even when it is opened again as it closes.
-- The interview checks how its key is made before making one. If that record
-  is damaged, or was written by a newer version, no passphrase is asked for,
-  because none could be accepted. Protected answers show as "Answer
-  unavailable", and the participant is told they can't be shown or saved.
-  The interview can still go on: forms open with their other questions, a
-  name generator's minimum number of people no longer holds the participant
-  back, and a family pedigree that would save protected names is replaced by
-  a notice.
 - An answer that can't be read is shown as "Answer unavailable" rather than
   asking for the passphrase again. Saving a form keeps such an answer instead
   of clearing it, and the participant can replace it with a new one.
@@ -167,10 +162,10 @@ forward.
 
 For hosts of `@codaco/interview`: `ProtocolPayload.experiments` no longer has
 `encryptedVariables`, because an attribute marked as encrypted is always
-encrypted. A session's network can now carry an `encryption` header, which must be stored and returned with the rest
-of the network; without it, the interview treats the passphrase as never
-chosen and earlier encrypted answers can no longer be read. A header outside
-the runtime's bounds is left as it is. Encrypted values' metadata is now
-`{ iv }`, and schema 8's `{ iv, salt }` is still accepted. Redux DevTools and
+encrypted. The interview's key is derived from the passphrase and the
+session's `id`, so a host must keep a session's id unchanged for as long as it
+holds the session: under another id, its encrypted answers can no longer be
+read. Encrypted values' metadata is now `{ iv }`, and schema 8's
+`{ iv, salt }` is still accepted. Redux DevTools and
 the interview's action logger now connect only when the host passes
 `flags.isDevelopment`, and both show encrypted answers redacted.

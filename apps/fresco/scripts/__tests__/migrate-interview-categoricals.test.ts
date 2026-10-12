@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Codebook } from '@codaco/protocol-validation';
 import { type NcNetwork, NcNetworkSchema } from '@codaco/shared-consts';
 import {
-  networkWithEncryptionHeader,
+  encryptedNetwork,
   schema8EncryptedNetwork,
 } from '~/lib/__tests__/encryptedNetworks';
 import {
@@ -203,11 +203,11 @@ describe('migrateNetworkCategoricals', () => {
 
   it.each([
     {
-      label: 'the encryption header and IV-only values',
-      encrypted: networkWithEncryptionHeader,
+      label: 'IV-only values',
+      encrypted: encryptedNetwork,
     },
     {
-      label: 'schema 8 values without a header',
+      label: 'schema 8 values',
       encrypted: schema8EncryptedNetwork,
     },
   ])('keeps $label in a network it rewrites', ({ encrypted }) => {

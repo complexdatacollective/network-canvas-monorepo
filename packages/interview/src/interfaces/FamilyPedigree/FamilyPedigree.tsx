@@ -386,15 +386,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // interview's key and decrypted with it to be shown. Until the passphrase
   // is entered, people are shown by labels, and nothing that could write a
   // name can be done: the participant is asked for it, as other stages with
-  // encrypted names ask. When no passphrase can ever open the interview's
-  // protected answers, the family stays as it is.
-  const {
-    unlocked,
-    passphraseChosen,
-    encryptionUnavailable,
-    lockedNotice,
-    requirePassphrase,
-  } = usePassphrase();
+  // encrypted names ask.
+  const { unlocked, passphraseChosen, requirePassphrase } = usePassphrase();
   const reportUnreadable = useReportUnreadable();
   const personVariables = useMemo(
     () => codebook.node?.[config.personType]?.variables ?? {},
@@ -1139,15 +1132,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   }, [menuFromFocus, menuPersonId, reveal]);
 
   // Anything that could write what the study encrypts waits for the
-  // passphrase, and asks for it instead, saying why. When no passphrase can
-  // be entered, it says so instead.
-  const passphraseNotice = encryptionUnavailable
-    ? lockedNotice
-    : runtimeMessages.protectedAnswersLocked;
+  // passphrase, and asks for it instead, saying why.
+  const passphraseNotice = runtimeMessages.protectedAnswersLocked;
   const askForPassphrase = () => {
     requirePassphrase();
     setAnnouncement(intl.formatMessage(passphraseNotice));
-    if (!encryptionUnavailable) setPassphraseOpen(true);
+    setPassphraseOpen(true);
   };
 
   const openAddPanel = (relation: Relation, anchor: Person) => {
@@ -1239,8 +1229,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const shownBeforeNext = useRef<ShownRecommendations>(new Set());
   const completeEnoughToLeave = (direction: Direction) => {
     if (direction !== 'forwards' || !progress || !completeness) return true;
-    // A family no passphrase can unlock can never be completed.
-    if (detailsLocked && encryptionUnavailable) return true;
     // Only the family's own prompt asks for it to be complete.
     if (nomination) return true;
     if (progress.items.length === 0) return true;
@@ -1325,7 +1313,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       decrypted ?? decryptedNames,
     );
     if (toWrite.size > 0 && namesLocked) {
-      if (direction === 'backwards' || encryptionUnavailable) return true;
+      if (direction === 'backwards') return true;
       askForPassphrase();
       return false;
     }
@@ -1467,7 +1455,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           formFields.map((field) => field.variable),
           personVariables,
           getDecryptionScope(store.getState),
-          encryptionUnavailable,
         )
       : undefined;
     if (details?.status === 'locked') {
@@ -2659,11 +2646,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   <p className="text-sm">
                     <AppMessage message={passphraseNotice} />
                   </p>
-                  {!encryptionUnavailable && (
-                    <Button size="sm" onClick={() => setPassphraseOpen(true)}>
-                      <AppMessage message={runtimeMessages.passphrase} />
-                    </Button>
-                  )}
+                  <Button size="sm" onClick={() => setPassphraseOpen(true)}>
+                    <AppMessage message={runtimeMessages.passphrase} />
+                  </Button>
                 </div>
               </Alert>
             )}
@@ -2800,14 +2785,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         <div aria-live="polite" className="sr-only">
           {announcement}
         </div>
-        {!encryptionUnavailable && (
-          <PassphraseOverlay
-            show={passphraseOpen}
-            choosing={!passphraseChosen}
-            onAccepted={() => setPassphraseOpen(false)}
-            onClose={() => setPassphraseOpen(false)}
-          />
-        )}
+        <PassphraseOverlay
+          show={passphraseOpen}
+          choosing={!passphraseChosen}
+          onAccepted={() => setPassphraseOpen(false)}
+          onClose={() => setPassphraseOpen(false)}
+        />
         <PersonDrawer
           popupRef={drawerRef}
           open={panel?.open ?? false}

@@ -353,37 +353,3 @@ export const ResumedWithProtectedAnswers: Story = {
     await submitAndWaitForAcceptance(canvas, PASSPHRASE_ACCEPTED);
   },
 };
-
-export const DamagedPassphraseRecord: Story = {
-  render: () => (
-    <EncryptedStoryInterviewShell
-      build={buildResumedInterview}
-      passphrase={PASSPHRASE}
-      currentStep={0}
-      headerIterations={1_000_000_000}
-    />
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'The record this interview keeps to check a passphrase has been damaged (here, an impossible key-stretching count), so no passphrase can be checked. The stage asks for none, says the protected answers cannot be shown or saved, and lets the participant continue.',
-      },
-    },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByText(
-        'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.',
-        {},
-        { timeout: 10_000 },
-      ),
-    ).toBeInTheDocument();
-    await expect(
-      canvas.queryByLabelText(/^Passphrase/, { selector: 'input' }),
-    ).not.toBeInTheDocument();
-    await expect(canvas.queryByText(ANY_SUCCESS)).not.toBeInTheDocument();
-    await expect(canvas.getByTestId('next-button')).toBeEnabled();
-  },
-};

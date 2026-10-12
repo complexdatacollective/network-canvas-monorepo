@@ -15,8 +15,7 @@ export type PassphraseNoticeStatus = 'locked' | 'pending';
  * Stands in for controls that read or save encrypted values while those values
  * cannot be used yet: no passphrase, or decryption under way. A locked notice
  * tells the participant to enter the passphrase, so it also brings up the
- * prompter they enter it in. When no passphrase can open the interview's
- * answers, the notice says they are unavailable and no prompter comes up.
+ * prompter they enter it in.
  */
 export default function PassphraseNotice({
   status,

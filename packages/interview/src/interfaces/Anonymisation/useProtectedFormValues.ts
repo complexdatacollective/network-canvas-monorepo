@@ -63,11 +63,6 @@ function useSameWhileUnchanged<T extends object>(next: T): T {
  * form holding an answer stored encrypted under a question the codebook no
  * longer encrypts, until that answer can be shown. An answer that can never be
  * read is left out of the values, named in `unavailable`, and reported.
- *
- * When no passphrase can ever put the key in force (a refused encryption
- * header), the form is not locked, since nothing could unlock it: every
- * encrypted question, and every question holding an encrypted answer, is
- * unavailable instead, answered or not, and the rest of the form stays usable.
  */
 export function useProtectedFormValues(
   entity: NcNode | NcEdge | null,
@@ -75,7 +70,7 @@ export function useProtectedFormValues(
   variables: Record<string, Variable>,
 ): ProtectedFormValues {
   const scope = useDecryptionScope();
-  const { requirePassphrase, encryptionUnavailable } = usePassphrase();
+  const { requirePassphrase } = usePassphrase();
   const reportUnreadable = useReportUnreadable();
   const [, rerender] = useReducer((count: number) => count + 1, 0);
 
@@ -95,7 +90,6 @@ export function useProtectedFormValues(
   const locked =
     entity !== null &&
     !scope &&
-    !encryptionUnavailable &&
     (savesEncrypted ||
       stored.some(({ attribute }) => attribute.status === 'encrypted'));
 
@@ -126,11 +120,6 @@ export function useProtectedFormValues(
   const markUnavailable = (variable: string) => {
     if (!unavailable.includes(variable)) unavailable.push(variable);
   };
-  if (encryptionUnavailable) {
-    for (const { variable } of fields) {
-      if (variables[variable]?.encrypted) markUnavailable(variable);
-    }
-  }
   for (const { variable, attribute } of stored) {
     delete values[variable];
     if (attribute.status === 'unreadable') {
@@ -138,10 +127,7 @@ export function useProtectedFormValues(
       markUnavailable(variable);
       continue;
     }
-    if (!scope) {
-      if (encryptionUnavailable) markUnavailable(variable);
-      continue;
-    }
+    if (!scope) continue;
     const outcome = readCachedOutcome(scope, attribute.value);
     if (!outcome) {
       pending.push(attribute.value);

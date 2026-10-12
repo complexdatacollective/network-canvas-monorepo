@@ -11,7 +11,7 @@ import {
   entitySecureAttributesMeta,
 } from '@codaco/shared-consts';
 
-import { createEncryptionHeader } from '../interfaces/Anonymisation/encryptionFormat';
+import { deriveInterviewKey } from '../interfaces/Anonymisation/encryptionFormat';
 import { generateSecureAttributes } from '../interfaces/Anonymisation/utils';
 import StoryInterviewShell from './StoryInterviewShell';
 
@@ -31,7 +31,6 @@ async function encryptedRawPayload(
   { interview, encryptedVariableIds, encryptedFor }: EncryptedInterview,
   passphrase: string,
   currentStep: number,
-  headerIterations: number | undefined,
 ) {
   const variables = Object.fromEntries(
     encryptedVariableIds.map((id): [string, Variable] => [
@@ -46,7 +45,7 @@ async function encryptedRawPayload(
     ]),
   );
   const payload = interview.getInterviewPayload({ currentStep });
-  const { header, key } = await createEncryptionHeader(passphrase);
+  const key = await deriveInterviewKey(passphrase, payload.id);
   const nodes = await Promise.all(
     payload.network.nodes.map(async (node) => {
       const nodeId = node[entityPrimaryKeyProperty];
@@ -64,13 +63,9 @@ async function encryptedRawPayload(
       };
     }),
   );
-  const encryption =
-    headerIterations === undefined
-      ? header
-      : { ...header, kdf: { ...header.kdf, iterations: headerIterations } };
   return SuperJSON.stringify({
     ...payload,
-    network: { ...payload.network, nodes, encryption },
+    network: { ...payload.network, nodes },
   });
 }
 
@@ -86,34 +81,23 @@ export default function EncryptedStoryInterviewShell({
   build,
   passphrase,
   currentStep,
-  headerIterations,
 }: {
   /** Stable across renders (declare it at module scope). */
   build: () => EncryptedInterview;
   passphrase: string;
   currentStep: number;
-  /**
-   * Stores the header with this iteration count in place of the one the key
-   * was derived with, as a damaged header would carry.
-   */
-  headerIterations?: number;
 }) {
   const [rawPayload, setRawPayload] = useState<string>();
 
   useEffect(() => {
     let current = true;
-    void encryptedRawPayload(
-      build(),
-      passphrase,
-      currentStep,
-      headerIterations,
-    ).then((raw) => {
+    void encryptedRawPayload(build(), passphrase, currentStep).then((raw) => {
       if (current) setRawPayload(raw);
     });
     return () => {
       current = false;
     };
-  }, [build, passphrase, currentStep, headerIterations]);
+  }, [build, passphrase, currentStep]);
 
   if (!rawPayload) return null;
 

@@ -16,10 +16,8 @@ import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
-  encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
-  outOfBoundsHeader,
   unlockWith,
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { encryptionUnlocked } from '../../store/modules/ui';
@@ -107,8 +105,7 @@ beforeAll(() => {
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 
 async function lockedStore(nodes: NcNode[]) {
-  const { header } = await encryptionFor('pw');
-  return createEncryptionStore(nodes, undefined, undefined, { header });
+  return createEncryptionStore(nodes);
 }
 
 async function unlockedStore(nodes: NcNode[]) {
@@ -282,18 +279,6 @@ describe('NodeList typeahead text', () => {
       expect(shownAndTypedAhead('copy')).toEqual(both('Answer unavailable')),
     );
     expect(shownAndTypedAhead('bob')).toEqual(both('Bob'));
-  });
-
-  it('is "Answer unavailable" when no key can ever be made, as shown', async () => {
-    const nodes = await people();
-    const { header } = await encryptionFor('pw');
-    const store = createEncryptionStore(nodes, undefined, undefined, {
-      header: outOfBoundsHeader(header),
-    });
-    renderList(store, nodes);
-    await settle();
-
-    expect(shownAndTypedAhead('alice')).toEqual(both('Answer unavailable'));
   });
 
   it('is the decrypted name once the passphrase is entered', async () => {

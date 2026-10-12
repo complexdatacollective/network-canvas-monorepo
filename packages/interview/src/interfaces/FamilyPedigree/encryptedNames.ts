@@ -132,15 +132,13 @@ type ProtectedDetails =
 /**
  * The person's values for these attributes, each decrypted where it is
  * stored encrypted, for the form that edits them. Locked while one is stored
- * encrypted and no key is in force, unless no passphrase can ever put one in
- * force: then, like a value that can never be read, it is unavailable.
+ * encrypted and no key is in force.
  */
 export async function decryptDetails(
   node: NcNode,
   attributes: readonly string[],
   variables: Record<string, Variable>,
   scope: DecryptionScope | undefined,
-  encryptionUnavailable: boolean,
 ): Promise<ProtectedDetails> {
   const values = new Map<string, string>();
   const unavailable: string[] = [];
@@ -153,11 +151,7 @@ export async function decryptDetails(
       unreadable.push(stored.reason);
       continue;
     }
-    if (!scope) {
-      if (!encryptionUnavailable) return { status: 'locked' };
-      unavailable.push(attribute);
-      continue;
-    }
+    if (!scope) return { status: 'locked' };
     const outcome = await decryptInScope(scope, stored.value);
     if (outcome.readable) {
       values.set(attribute, outcome.plaintext);

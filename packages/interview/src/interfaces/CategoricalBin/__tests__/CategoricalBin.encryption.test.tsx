@@ -33,7 +33,6 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import {
   createEncryptionStore,
   encryptionFor,
-  outOfBoundsHeader,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
@@ -145,24 +144,19 @@ function CaptureDndStore({
 
 async function renderCategoricalBin({
   unlocked = false,
-  refused = false,
   subject = person,
   others = [],
   stageVariables = variables,
 }: {
   unlocked?: boolean;
-  /** Stores a header no passphrase can open, as a damaged copy might. */
-  refused?: boolean;
   subject?: NcNode;
   others?: NcNode[];
   stageVariables?: Record<string, Variable>;
 } = {}) {
-  const { header } = await encryptionFor('pw');
   const store = createEncryptionStore(
     [subject, ...others],
     [stage],
     stageVariables,
-    { header: refused ? outOfBoundsHeader(header) : header },
   );
   if (unlocked) await unlockWith(store, 'pw');
 
@@ -234,27 +228,6 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
       expect.objectContaining({
         description: expect.stringContaining(
           'Some answers here are protected by your passphrase.',
-        ),
-      }),
-    );
-    expect(screen.queryByRole('textbox')).toBeNull();
-    expect(store.getState().session.network).toBe(before);
-  });
-
-  it('says the answer cannot be saved, without asking for a passphrase, when none can open the interview', async () => {
-    const toast = vi.spyOn(interviewToastManager, 'add');
-    const { store, dropIntoOther } = await renderCategoricalBin({
-      refused: true,
-    });
-    const before = store.getState().session.network;
-
-    await dropIntoOther();
-
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-    expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        description: expect.stringContaining(
-          'cannot be shown or saved in this interview',
         ),
       }),
     );

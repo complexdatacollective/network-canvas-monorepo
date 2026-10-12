@@ -38,8 +38,8 @@ export type BuildSyntheticPayloadOptions = {
   seedNetwork?: boolean;
   /**
    * Store the seeded network's encrypted answers as schema 8 wrote them: each
-   * value replaced by ciphertext with an IV and a salt of its own beside it,
-   * and no encryption header on the network. Needs `seedNetwork`.
+   * value replaced by ciphertext with an IV and a salt of its own beside it.
+   * Needs `seedNetwork`.
    */
   schema8Encryption?: boolean;
   stageMetadata?: unknown;
@@ -70,9 +70,8 @@ function withSchema8Encryption(
   network: Network,
   codebook: ProtocolPayload['codebook'],
 ): Network {
-  const { encryption: _header, ...unprotected } = network;
   return {
-    ...unprotected,
+    ...network,
     nodes: network.nodes.map((node) => {
       const variables = codebook.node?.[node.type]?.variables ?? {};
       const encrypted = Object.keys(node[entityAttributesProperty]).filter(

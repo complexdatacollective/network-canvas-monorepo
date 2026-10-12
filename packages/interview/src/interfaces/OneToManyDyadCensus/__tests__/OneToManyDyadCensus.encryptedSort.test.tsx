@@ -24,7 +24,6 @@ import type {
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
-  encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
   unlockWith,
@@ -111,9 +110,7 @@ async function renderCensus({
   unlocked = false,
 }: { removeAfterConsideration?: boolean; unlocked?: boolean } = {}) {
   const stage = stageWith(removeAfterConsideration);
-  const { header } = await encryptionFor('pw');
   const store = createEncryptionStore(await people(), [stage], undefined, {
-    header,
     edgeTypes,
   });
   if (unlocked) await unlockWith(store, 'pw');

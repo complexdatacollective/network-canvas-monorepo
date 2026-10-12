@@ -46,14 +46,12 @@ export type OutcomeOf = (value: EncryptedValue) => DecryptOutcome | undefined;
 /**
  * Why a stored ciphertext can never be shown: written by schema 8's
  * experimental per-value format, stored without the metadata to decrypt it,
- * refused by the interview's key, or under an encryption header outside the
- * runtime's bounds, which no key is ever derived from.
+ * or refused by the interview's key.
  */
 export type UnreadableReason =
   | 'legacy-format'
   | 'missing-metadata'
-  | 'decryption-failed'
-  | 'refused-header';
+  | 'decryption-failed';
 
 export type StoredEncryptedAttribute =
   | { status: 'encrypted'; value: EncryptedValue }
