@@ -52,7 +52,7 @@ services:
       valkey:
         condition: service_healthy
       garage:
-        condition: service_started
+        condition: service_healthy
       external-postgres:
         condition: service_healthy
     networks:
@@ -64,7 +64,7 @@ services:
       valkey:
         condition: service_healthy
       garage:
-        condition: service_started
+        condition: service_healthy
       external-postgres:
         condition: service_healthy
     networks:
@@ -73,8 +73,8 @@ services:
 
   migrate:
     depends_on: !override
-      garage-init:
-        condition: service_completed_successfully
+      garage:
+        condition: service_healthy
       external-postgres:
         condition: service_healthy
     networks:

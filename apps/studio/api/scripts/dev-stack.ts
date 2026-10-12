@@ -104,7 +104,6 @@ function renderEnvLocal(): string {
     ['S3_ACCESS_KEY_ID', DEV.s3AccessKeyId],
     ['S3_SECRET_ACCESS_KEY', DEV.s3SecretAccessKey],
     ['GARAGE_RPC_SECRET', DEV.garageRpcSecret],
-    ['GARAGE_ADMIN_TOKEN', DEV.garageAdminToken],
     // The Mailpit container `docker-compose.local.yml` adds, by service name:
     // the worker reaches it over the stack's own network.
     ['SMTP_URL', `smtp://mailpit:${DEV.smtpPort}`],
@@ -190,8 +189,9 @@ function waitForHealthy(): void {
 }
 
 /**
- * The schema, the Garage bootstrap it depends on, and — while the instance has
- * no owner — the first-run setup token. Its output is the point, not its exit
+ * The schema and — while the instance has no owner — the first-run setup
+ * token. It waits for Garage to report healthy, which Garage does only once it
+ * has created its layout, key and bucket. Its output is the point, not its exit
  * code, so it is printed whole.
  */
 function migrate(): void {
@@ -203,12 +203,12 @@ function migrate(): void {
 }
 
 /**
- * `--profile migrate` because the two one-shots are profile-gated: without it
- * `down` leaves `garage-init` behind — `migrate` depends on it, so Compose
- * creates it as an ordinary container rather than a `--rm` one — and the next
- * `up` then fails with a container attached to a network that no longer
- * exists. It is not an orphan (the file still declares it), so
- * `--remove-orphans` does not reach it either.
+ * `--profile migrate` keeps the profile-gated `migrate` one-shot in the model
+ * `down` acts on, so a container an interrupted `run` left behind goes with
+ * the rest rather than holding the network the next `up` recreates.
+ * `--remove-orphans` is what reaches the `garage-init` container a stack
+ * brought up before Garage bootstrapped itself still has: the file no longer
+ * declares that service, so it is an orphan now.
  */
 function down(removeVolumes: boolean): void {
   const result = compose.run(

@@ -35,8 +35,8 @@ rm -f "$TOKEN_FILE" "$WORK_DIR/cookies" "$WORK_DIR/migrate.log" \
 # down, a variant interrupted — leaves containers, volumes and a network behind
 # under this project name. Starting on top of them is not a partial repeat: the
 # database already has an owner, so there is no setup token to spend, and the
-# object store was bootstrapped under credentials this run has just replaced,
-# so its bootstrap fails. `--remove-orphans` inside `down.sh` reaches another
+# object store holds a key and bucket bootstrapped under credentials this run
+# has just replaced. `--remove-orphans` inside `down.sh` reaches another
 # variant's stubs as well as this one's. There is never a leftover worth
 # keeping here; the model is up, assert, down.
 if [ -n "$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT")" ]; then
@@ -160,7 +160,6 @@ S3_BUCKET=$S3_BUCKET
 S3_ACCESS_KEY_ID=$S3_ACCESS_KEY_ID
 S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY
 GARAGE_RPC_SECRET=$(hex 32)
-GARAGE_ADMIN_TOKEN=$(hex 32)
 DATABASE_URL=$DATABASE_URL
 S3_ENDPOINT=$S3_ENDPOINT
 REDIS_URL=$REDIS_URL
@@ -177,7 +176,6 @@ EMAIL_FROM=
 # Read only by variants/external-bucket.yml, whose stub is a second Garage
 # with secrets of its own.
 EXTERNAL_GARAGE_RPC_SECRET=$(hex 32)
-EXTERNAL_GARAGE_ADMIN_TOKEN=$(hex 32)
 # Read only by variants/external-bucket-azure.yml, whose stub is Azurite
 # serving this one account.
 EXTERNAL_AZURITE_ACCOUNT=$EXTERNAL_AZURITE_ACCOUNT
