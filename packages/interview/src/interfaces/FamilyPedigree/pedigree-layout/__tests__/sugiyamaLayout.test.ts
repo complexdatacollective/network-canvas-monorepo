@@ -429,6 +429,37 @@ describe('siblings who share donors', () => {
   });
 });
 
+describe('turning a block round to uncross its lines', () => {
+  it('never seats someone between two partners', () => {
+    // Ma and Pa's four children, three of whom Xan also raises. Turning the
+    // parents' row round, then turning the couple round within it, must
+    // keep Xan beside the couple, not between them.
+    const tie = (
+      parentIndex: number,
+      edgeType: 'biological' | 'social' = 'biological',
+    ) => ({ parentIndex, edgeType });
+    const ped: PedigreeInput = {
+      id: ['k0', 'k1', 'k2', 'k3', 'ma', 'pa', 'xan'],
+      parents: [
+        [tie(4), tie(5), tie(6, 'social')],
+        [tie(4), tie(5)],
+        [tie(4), tie(5), tie(6, 'social')],
+        [tie(4), tie(5), tie(6, 'social')],
+        [],
+        [],
+        [],
+      ],
+      partners: [{ partnerIndex1: 4, partnerIndex2: 5, isActive: true }],
+    };
+    const layout = sugiyamaLayout(ped);
+    const row = layout.nid
+      .map((ids, layer) => ids.slice(0, layout.n[layer]))
+      .find((ids) => ids.includes(4))!
+      .map((index) => ped.id[index]!);
+    expect(Math.abs(row.indexOf('ma') - row.indexOf('pa'))).toBe(1);
+  });
+});
+
 describe('sugiyamaLayout (output encoding)', () => {
   it('nuclear family produces valid PedigreeLayout with 2 levels', () => {
     const result = sugiyamaLayout(nuclearFamily);

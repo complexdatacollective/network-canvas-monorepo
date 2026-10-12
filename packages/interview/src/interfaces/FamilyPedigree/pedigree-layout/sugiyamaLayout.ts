@@ -1902,6 +1902,10 @@ function reverseBlocks(
           current = candidate;
           currentCrossings = candidateCrossings;
           improvedThisPass = true;
+          // The layer's blocks and chains lie elsewhere now: they are found
+          // again on the next pass, as turning round a run found before
+          // could seat someone between two partners.
+          break;
         }
       }
     }
