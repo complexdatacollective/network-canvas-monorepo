@@ -2624,6 +2624,11 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     );
     assert.equal(step.env.NEON_API_KEY, '${{ secrets.NEON_API_KEY }}');
     assert.equal(step.env.NEON_PROJECT_ID, '${{ secrets.NEON_PROJECT_ID }}');
+    // Pull requests sharing a head branch share its database; the script
+    // needs this one's number to find the others.
+    assert.equal(step.env.PR_NUMBER, '${{ github.event.pull_request.number }}');
+    assert.equal(step.env.GITHUB_TOKEN, '${{ github.token }}');
+    assert.match(step.run, /--pr "\$PR_NUMBER"/);
     // Branch names reach the script through the environment, never inlined
     // into the shell, where a crafted name could run commands.
     assert.doesNotMatch(step.run, /\$\{\{/);

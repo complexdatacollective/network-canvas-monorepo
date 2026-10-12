@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 
 import {
+  createGitHub,
   createNeon,
   createNetlify,
   planProvision,
@@ -120,7 +121,7 @@ function fakeApis({ branches, env = {} }) {
   async function fetchImpl(url, { method = 'GET', body } = {}) {
     const { pathname, searchParams } = new URL(url);
     const payload = body ? JSON.parse(body) : undefined;
-    calls.push({ method, pathname, payload });
+    calls.push({ method, pathname, payload, query: searchParams });
 
     if (pathname === '/api/v2/projects/p/branches' && method === 'GET') {
       return respond(200, { branches: state.branches });
@@ -287,7 +288,10 @@ test('provisioning a new preview copies the base, scopes its values to the branc
     apis.calls.some(
       (call) =>
         call.pathname === '/api/v1/sites/site/builds' &&
-        call.payload.branch === 'feature',
+        // createSiteBuild reads the branch from the query; without it,
+        // Netlify builds production.
+        call.query.get('branch') === 'feature' &&
+        call.payload === undefined,
     ),
   );
 });
@@ -408,4 +412,103 @@ test('teardown keeps a preview that other previews copy', async () => {
   assert.equal(result.deleted, false);
   assert.ok(apis.state.branches.includes(schema9));
   assert.match(lines.join('\n'), /::warning::Keeping preview\/schema-9/);
+});
+
+test('a pull request retargeted onto a base with no preview loses its old one', async () => {
+  const apis = fakeApis({ branches: [production], env: productionOnlyEnv });
+  await provision({
+    ...apis,
+    head: 'feature',
+    base: 'main',
+    log: () => {},
+    mask: () => {},
+  });
+
+  const result = await provision({
+    ...apis,
+    head: 'feature',
+    base: 'hotfix/x',
+    log: () => {},
+    mask: () => {},
+  });
+
+  assert.equal(result.action, 'unavailable');
+  assert.ok(!apis.state.branches.some((b) => b.name === 'preview/feature'));
+  assert.equal(
+    branchValue(apis.state, 'PREVIEW_DATABASE_BRANCH', 'feature'),
+    undefined,
+    'the marker that would let the preview migrate the old copy is gone',
+  );
+});
+
+test('a head branch shared with another open pull request keeps its database', async () => {
+  const existing = {
+    id: 'br-f',
+    name: 'preview/feature',
+    parent_id: 'br-main',
+  };
+  const others = [{ number: 7, base: 'main' }];
+
+  for (const base of ['schema-9', 'hotfix/x']) {
+    const apis = fakeApis({
+      branches: [production, schema9, existing],
+      env: productionOnlyEnv,
+    });
+    const lines = [];
+    const result = await provision({
+      ...apis,
+      head: 'feature',
+      base,
+      otherPullRequests: others,
+      log: (line) => lines.push(line),
+      mask: () => {},
+    });
+    assert.equal(result.action, 'shared', base);
+    assert.ok(apis.state.branches.includes(existing), base);
+    assert.ok(
+      apis.calls.every((call) => call.method === 'GET'),
+      `nothing is written for a pull request into ${base}`,
+    );
+    assert.match(lines.join('\n'), /#7 \(into main\)/);
+  }
+
+  const apis = fakeApis({
+    branches: [production, existing],
+    env: productionOnlyEnv,
+  });
+  const result = await teardown({
+    ...apis,
+    head: 'feature',
+    otherPullRequests: others,
+    log: () => {},
+  });
+  assert.equal(result.deleted, false);
+  assert.ok(apis.state.branches.includes(existing));
+  assert.ok(apis.calls.every((call) => call.method === 'GET'));
+});
+
+test('other open pull requests are looked up by head branch, leaving out this one', async () => {
+  const requests = [];
+  const github = createGitHub({
+    token: 't',
+    repository: 'complexdatacollective/network-canvas-monorepo',
+    fetchImpl: async (url) => {
+      requests.push(new URL(url));
+      return new Response(
+        JSON.stringify([
+          { number: 12, base: { ref: 'schema-9' } },
+          { number: 7, base: { ref: 'main' } },
+        ]),
+      );
+    },
+  });
+
+  assert.deepEqual(await github.otherOpenPullRequests('feature', 12), [
+    { number: 7, base: 'main' },
+  ]);
+  assert.equal(
+    requests[0].searchParams.get('head'),
+    'complexdatacollective:feature',
+  );
+  assert.equal(requests[0].searchParams.get('state'), 'open');
 });

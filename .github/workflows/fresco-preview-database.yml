@@ -13,6 +13,8 @@ on:
 
 permissions:
   contents: read
+  # To find other open pull requests from the same head branch.
+  pull-requests: read
 
 concurrency:
   group: fresco-preview-database-${{ github.event.pull_request.head.ref }}
@@ -60,11 +62,13 @@ jobs:
           NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_FRESCO }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: >-
           node scripts/ci/fresco-preview-database.mjs provision
-          --head "$HEAD_REF" --base "$BASE_REF"
+          --pr "$PR_NUMBER" --head "$HEAD_REF" --base "$BASE_REF"
 
   teardown:
     name: Tear down
@@ -85,5 +89,9 @@ jobs:
           NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID_FRESCO }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: node scripts/ci/fresco-preview-database.mjs teardown --head "$HEAD_REF"
+        run: >-
+          node scripts/ci/fresco-preview-database.mjs teardown
+          --pr "$PR_NUMBER" --head "$HEAD_REF"

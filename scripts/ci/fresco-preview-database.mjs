@@ -58,19 +58,19 @@ export function planProvision({ branches, head, base }) {
   }
 
   const name = previewBranchName(head);
+  const existing = branches.find((branch) => branch.name === name) ?? null;
   const parent = parentBranchFor(branches, base);
   if (!parent) {
     return {
       action: 'unavailable',
       name,
+      existing,
       reason:
         `${base} has no preview database (${previewBranchName(base)}), so ` +
         `there is nothing to copy for this pull request. A pull request for ` +
         `${base} that changes Fresco creates one.`,
     };
   }
-  const existing = branches.find((branch) => branch.name === name);
-
   if (!existing) return { action: 'create', name, parent, existing: null };
   if (existing.parent_id === parent.id) {
     return { action: 'keep', name, parent, existing };
@@ -230,22 +230,81 @@ export function createNetlify({ token, siteId, fetchImpl = fetch }) {
       }
     },
     async triggerBuild(gitBranch) {
-      return call(`${NETLIFY_API}/sites/${siteId}/builds`, {
+      // createSiteBuild takes the branch as a query parameter, and builds
+      // production without one. Netlify has no call that re-runs a skipped
+      // Deploy Preview, so this is a branch deploy of the same branch, which
+      // reads the same branch-scoped database; the pull request's next push
+      // builds its Deploy Preview as usual.
+      const query = new URLSearchParams({ branch: gitBranch });
+      return call(`${NETLIFY_API}/sites/${siteId}/builds?${query}`, {
         method: 'POST',
-        body: { branch: gitBranch },
       });
     },
   };
 }
 
-export async function provision({ neon, netlify, head, base, log, mask }) {
+export function createGitHub({ token, repository, fetchImpl = fetch }) {
+  const owner = repository.split('/')[0];
+  return {
+    /** Open pull requests from `head`, other than pull request `exclude`. */
+    async otherOpenPullRequests(head, exclude) {
+      const query = new URLSearchParams({
+        state: 'open',
+        head: `${owner}:${head}`,
+        per_page: '100',
+      });
+      const pulls = await request(
+        fetchImpl,
+        `https://api.github.com/repos/${repository}/pulls?${query}`,
+        { token },
+      );
+      return pulls
+        .filter((pull) => pull.number !== exclude)
+        .map((pull) => ({ number: pull.number, base: pull.base.ref }));
+    },
+  };
+}
+
+/**
+ * Netlify scopes values to a git branch, not to a pull request, so pull
+ * requests that share a head branch share its preview database. While more
+ * than one is open, none of them may replace or remove it.
+ */
+function sharedWarning(name, head, others) {
+  const list = others
+    .map((pull) => `#${pull.number} (into ${pull.base})`)
+    .join(', ');
+  return (
+    `::warning::Leaving ${name} as it is: ${head} is also the head of ` +
+    `${list}, and those pull requests share its preview database. It is ` +
+    `replaced or removed once ${head} backs a single open pull request.`
+  );
+}
+
+export async function provision({
+  neon,
+  netlify,
+  head,
+  base,
+  otherPullRequests = [],
+  log,
+  mask,
+}) {
   const plan = planProvision({
     branches: await neon.listBranches(),
     head,
     base,
   });
+  if (plan.existing && plan.action !== 'keep' && otherPullRequests.length > 0) {
+    log(sharedWarning(plan.name, head, otherPullRequests));
+    return { action: 'shared', name: plan.name, parent: null, build: false };
+  }
   if (plan.action === 'unavailable') {
     log(`::warning::${plan.reason}`);
+    // A pull request retargeted onto such a base still has the database it
+    // copied from its old one; left in place, its marker would keep the
+    // preview building against that copy.
+    if (plan.existing) await teardown({ neon, netlify, head, log });
     return { action: plan.action, name: plan.name, parent: null, build: false };
   }
 
@@ -307,7 +366,17 @@ export async function provision({ neon, netlify, head, base, log, mask }) {
   };
 }
 
-export async function teardown({ neon, netlify, head, log }) {
+export async function teardown({
+  neon,
+  netlify,
+  head,
+  otherPullRequests = [],
+  log,
+}) {
+  if (otherPullRequests.length > 0) {
+    log(sharedWarning(previewBranchName(head), head, otherPullRequests));
+    return { deleted: false, name: previewBranchName(head) };
+  }
   // Remove the values first, so no build starts against a deleted database.
   for (const key of [...DATABASE_KEYS, PREVIEW_DATABASE_KEY]) {
     await netlify.deleteBranchValues({ key, gitBranch: head });
@@ -356,9 +425,17 @@ async function runCli() {
     token: requiredEnv('NETLIFY_AUTH_TOKEN'),
     siteId: requiredEnv('NETLIFY_SITE_ID'),
   });
+  const github = createGitHub({
+    token: requiredEnv('GITHUB_TOKEN'),
+    repository: requiredEnv('GITHUB_REPOSITORY'),
+  });
   const log = (line) => console.log(line);
   const mask = (secret) => console.log(`::add-mask::${secret}`);
   const head = option(args, '--head');
+  const otherPullRequests = await github.otherOpenPullRequests(
+    head,
+    Number(option(args, '--pr')),
+  );
 
   let summary;
   if (command === 'provision') {
@@ -367,16 +444,25 @@ async function runCli() {
       netlify,
       head,
       base: option(args, '--base'),
+      otherPullRequests,
       log,
       mask,
     });
     summary =
       result.action === 'unavailable'
         ? `No preview database: the base branch has none to copy.`
-        : `Preview database \`${result.name}\` (${result.action}), copied ` +
-          `from \`${result.parent}\`.`;
+        : result.action === 'shared'
+          ? `Preview database \`${result.name}\` left as it is: another open pull request shares its head branch.`
+          : `Preview database \`${result.name}\` (${result.action}), copied ` +
+            `from \`${result.parent}\`.`;
   } else if (command === 'teardown') {
-    const result = await teardown({ neon, netlify, head, log });
+    const result = await teardown({
+      neon,
+      netlify,
+      head,
+      otherPullRequests,
+      log,
+    });
     summary = result.deleted
       ? `Deleted preview database \`${result.name}\`.`
       : `Preview database \`${result.name}\` was not deleted.`;
