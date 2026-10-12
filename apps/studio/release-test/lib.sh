@@ -75,9 +75,12 @@ use_deployment() {
   export COMPOSE_PATH_SEPARATOR=':'
 }
 
-# `docker compose` with every profile, for teardown: `migrate` depends on
-# `garage-init`, which Compose creates as an ordinary container, and a
-# plain `down` leaves it holding the network (stack-test/down.sh says why).
+# `docker compose` with every profile, for teardown and diagnostics, so the
+# profile-gated `migrate` is in the model they act on (api/scripts/dev-stack.ts
+# says why on its `down`). Every run, run C's included, applies this checkout's
+# compose file — only the images are the previous release's — so there is no
+# `garage-init` from an older file to tear down; `--remove-orphans` on the
+# teardown and `clear_project` would reach one regardless.
 compose_all() {
   docker compose --profile migrate "$@"
 }

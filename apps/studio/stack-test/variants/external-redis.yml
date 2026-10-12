@@ -48,7 +48,7 @@ services:
       postgres:
         condition: service_healthy
       garage:
-        condition: service_started
+        condition: service_healthy
       external-valkey:
         condition: service_healthy
     networks:
@@ -60,7 +60,7 @@ services:
       postgres:
         condition: service_healthy
       garage:
-        condition: service_started
+        condition: service_healthy
       external-valkey:
         condition: service_healthy
     networks:

@@ -20,22 +20,6 @@ import { importResource, selectResource } from './data-source.js';
 // - Choosing "Image" discards both circle keys — the schema refuses a
 //   background holding either kind's keys alongside the other's — and swaps in
 //   the resource picker at data-field-name="background.image".
-export async function setConcentricCirclesBackground(
-  editor: StageEditor,
-  opts: { circles: number; skewed?: boolean },
-): Promise<void> {
-  await editor
-    .field('background.concentricCircles')
-    .getByRole('spinbutton')
-    .fill(String(opts.circles));
-  if (opts.skewed) {
-    await editor
-      .field('background.skewedTowardCenter')
-      .getByRole('switch')
-      .click();
-  }
-}
-
 export async function setImageBackground(
   editor: StageEditor,
   page: Page,

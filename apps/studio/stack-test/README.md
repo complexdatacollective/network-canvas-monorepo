@@ -27,15 +27,15 @@ map and a `ports` list that a merging override would otherwise keep. That is a
 floor on testing this, not on deploying it — a self-hoster deleting a service
 by hand needs neither.
 
-| Variant                 | What is replaced                        | With                                                                  |
-| ----------------------- | --------------------------------------- | --------------------------------------------------------------------- |
-| `reference`             | nothing                                 | —                                                                     |
-| `external-postgres`     | the `postgres` service                  | a Postgres on a separate Docker network, named by `DATABASE_URL`      |
-| `external-bucket`       | the `garage` and `garage-init` services | a second Garage on that network, named by the five `S3_*`             |
-| `external-bucket-azure` | the `garage` and `garage-init` services | Azurite on that network, selected by `STUDIO_OBJECT_STORE=azure-blob` |
-| `external-redis`        | the `valkey` service                    | a second Valkey on that network, named by `REDIS_URL`                 |
-| `own-proxy`             | the `traefik` service and its ports     | nginx carrying the configuration block from `docs/self-host/swap.md`  |
-| `two-api`               | nothing: a second `api` is added        | `api-b` and a server list naming both, from `docs/self-host/run.md`   |
+| Variant                 | What is replaced                    | With                                                                  |
+| ----------------------- | ----------------------------------- | --------------------------------------------------------------------- |
+| `reference`             | nothing                             | —                                                                     |
+| `external-postgres`     | the `postgres` service              | a Postgres on a separate Docker network, named by `DATABASE_URL`      |
+| `external-bucket`       | the `garage` service                | a second Garage on that network, named by the five `S3_*`             |
+| `external-bucket-azure` | the `garage` service                | Azurite on that network, selected by `STUDIO_OBJECT_STORE=azure-blob` |
+| `external-redis`        | the `valkey` service                | a second Valkey on that network, named by `REDIS_URL`                 |
+| `own-proxy`             | the `traefik` service and its ports | nginx carrying the configuration block from `docs/self-host/swap.md`  |
+| `two-api`               | nothing: a second `api` is added    | `api-b` and a server list naming both, from `docs/self-host/run.md`   |
 
 ## What the scripts do
 
@@ -62,9 +62,9 @@ saw; a failure exits non-zero after printing `docker compose ps` and the
 last 200 lines of the logs.
 
 **`down.sh --variant <name>`** removes every container, both networks and all
-of the volumes. `--profile migrate` is why it works: `migrate` depends on
-`garage-init`, so Compose creates that as an ordinary container and a plain
-`down` leaves it holding the network — the same trap `dev:stack:down` documents.
+of the volumes. `--profile migrate` is why it works: in `external-bucket-azure`
+`migrate` depends on the variant's own one-shot, so Compose creates that as an
+ordinary container and a plain `down` leaves it holding the network.
 
 **`participants.sh --variant <name>`** walks a participant through an
 interview on the built images (#1899). `api/scripts/e2e-participant-links.ts`
@@ -96,13 +96,13 @@ what makes a swap a real one: the stack reaches the institution's service
 across a boundary rather than over the bridge its own services share, and
 nothing on that boundary is in `TRUSTED_PROXIES`.
 
-**`external-bucket` bootstraps its stub with the stack's own `garage-init`
-script**, referenced as a Compose config rather than copied, so there is one
-bootstrap to keep in step rather than two. That script addresses the admin API
-as `http://garage`, which is why the stub carries `garage` as a network alias
-on the external network — where the stack's own Garage, disabled by a profile,
-does not exist. Its region is deliberately not the stack Garage's, so a request
-still being signed for the store it replaced would fail rather than pass by
+**`external-bucket`'s stub bootstraps itself the way the stack's Garage
+does**: the same image and digest, started with the same
+`--single-node --default-bucket` flags and the same `GARAGE_DEFAULT_*`
+environment keys, fed from the `S3_*` values the swap names, and the same
+health check, which `migrate` waits on. There is no bootstrap script to keep in
+step. Its region is deliberately not the stack Garage's, so a request still
+being signed for the store it replaced would fail rather than pass by
 coincidence.
 
 **`external-bucket-azure` swaps the provider, not only the address.** Azure
@@ -116,8 +116,8 @@ stack's Garage. The stub is Azurite serving one generated account, set through
 `AZURITE_ACCOUNTS`, which also disables the emulator's well-known
 `devstoreaccount1` — so, like external-bucket's region, a request signed for
 any other store fails rather than passing by coincidence. Studio never creates
-the container, so a one-shot does, in the `migrate` profile where `garage-init`
-was: it runs from the `studio-api` image, which already carries
+the container, so a one-shot does, in the `migrate` profile so that the first
+`migrate` waits on it: it runs from the `studio-api` image, which already carries
 `@azure/storage-blob`, with its script inline in the override.
 
 **`own-proxy` extracts its nginx configuration from `docs/self-host/swap.md` at

@@ -41,8 +41,9 @@ services:
 
   # Creates the container. A storage account's container exists before Studio
   # is pointed at it — Studio never creates one — and this is the stub reaching
-  # that state. Profile `migrate` like the `garage-init` it replaces, so it
-  # runs as part of `docker compose run --rm migrate` and not on a plain `up`.
+  # that state. Profile `migrate`, so it runs as part of
+  # `docker compose run --rm migrate` — as a dependency the first `migrate`
+  # waits on — and not on a plain `up`.
   #
   # The studio-api image, because it already carries `@azure/storage-blob` in
   # /app/node_modules; the script is mounted beside them so the import
@@ -65,16 +66,13 @@ services:
       external-azurite:
         condition: service_started
 
-  # "Then delete the `garage` and `garage-init` services…" — a profile no
-  # command enables, which `assert.sh` holds by asserting neither container
-  # exists.
+  # "Then delete the `garage` service…" — a profile no command enables, which
+  # `assert.sh` holds by asserting the container does not exist.
   garage:
-    profiles: [unused]
-  garage-init:
     profiles: [unused]
 
   api:
-    # The base file's `garage: service_started` entry would survive a merging
+    # The base file's `garage: service_healthy` entry would survive a merging
     # override and then fail the command, because no profile enables it.
     depends_on: !override
       postgres:
@@ -95,7 +93,7 @@ services:
       - default
       - external
 
-  # "…and the `garage-init` entry in `migrate`'s `depends_on`". Replaced by the
+  # "…and the `depends_on` entries naming it". `migrate`'s is replaced by the
   # stub's own one-shot.
   migrate:
     depends_on: !override

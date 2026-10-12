@@ -166,8 +166,9 @@ The store holds nothing worth backing up, as with the rate-limit counters.
 pnpm --filter @codaco/studio-api dev
 ```
 
-One command. It brings up the backing services in Docker, bootstraps the
-object store, resets and reseeds the database, and then runs the server, the
+One command. It brings up the backing services in Docker and waits for them
+to be healthy (Garage creates its bucket before it reports healthy), resets
+and reseeds the database, and then runs the server, the
 worker and the client together under one process group.
 
 You need Docker Engine 25.0 or newer with the Compose plugin at v2.23.1 or
@@ -192,7 +193,8 @@ instead.
 | Mailpit  | `127.0.0.1:1025`, `:8025` | SMTP sink and its inbox at <http://localhost:8025>       |
 
 `pnpm --filter @codaco/studio-api dev:object-stores` starts only Garage and
-Azurite, bootstraps Garage's bucket and exits — enough for the object-store
+Azurite, waits for Garage to report healthy (by then it has created its
+bucket) and exits — enough for the object-store
 contract suites (`src/storage/*/__tests__/`), which is what CI runs before the
 server suite.
 
@@ -261,9 +263,8 @@ docker compose -p studio-dev exec garage /garage bucket info studio-dev
 ```
 
 (The binary is `/garage` rather than something on a `PATH`: the image is built
-`FROM scratch` and has no shell, which is also why the stack bootstraps the
-bucket through Garage's admin API rather than by running a command in the
-container.)
+`FROM scratch` and has no shell, so a command is run in it by `exec` with the
+binary's full path.)
 
 The server's asset integration tests run against this Garage and skip when no
 object store is reachable; its database integration tests skip when no Postgres
@@ -1288,8 +1289,8 @@ with the token it prints.
 Decided 2026-08-11 on #1245, and reshaped by the 2026-09-15 ruling on #1909
 into one compose stack. **`apps/studio/docker-compose.yml` is the whole
 deployment, and it is the same file in both topologies** — Traefik as the only
-ingress, `web`, `api`, `worker`, Valkey, Postgres, Garage, and `migrate` and
-`garage-init` as profile-gated one-shots. What differs between the topologies
+ingress, `web`, `api`, `worker`, Valkey, Postgres, Garage, and `migrate` as a
+profile-gated one-shot. What differs between the topologies
 is which paths exist, not which file is run.
 
 The stack and its routing table are drawn in

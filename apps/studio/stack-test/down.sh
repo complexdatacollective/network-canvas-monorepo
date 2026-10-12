@@ -4,13 +4,13 @@
 #
 #   apps/studio/stack-test/down.sh --variant reference
 #
-# `--profile migrate` is not optional. `migrate` depends on `garage-init` — and
-# on the external-bucket variants' own one-shots — so Compose creates those as
-# ordinary containers rather than `--rm` ones, and a plain `down` leaves them
+# `--profile migrate` is not optional. `migrate` depends on the
+# external-bucket-azure variant's own one-shot, so Compose creates that as an
+# ordinary container rather than a `--rm` one, and a plain `down` leaves it
 # behind holding the network. The next `up` then fails against a container
-# attached to a network that no longer exists. They are not orphans either
-# (the files still declare them), so `--remove-orphans` does not reach them.
-# See the same note on `down` in api/scripts/dev-stack.ts.
+# attached to a network that no longer exists. It is not an orphan either (the
+# file still declares it), so `--remove-orphans` does not reach it. See the
+# note on `down` in api/scripts/dev-stack.ts.
 #
 # Volumes always go: a variant cycle must start from an empty database, or the
 # first-run setup this suite asserts would already be spent.
@@ -43,7 +43,6 @@ S3_BUCKET=studio
 S3_ACCESS_KEY_ID=unused
 S3_SECRET_ACCESS_KEY=unused
 GARAGE_RPC_SECRET=unused
-GARAGE_ADMIN_TOKEN=unused
 DATABASE_URL=
 S3_ENDPOINT=
 REDIS_URL=
@@ -55,7 +54,6 @@ AZURE_CLIENT_ID=
 SMTP_URL=
 EMAIL_FROM=
 EXTERNAL_GARAGE_RPC_SECRET=unused
-EXTERNAL_GARAGE_ADMIN_TOKEN=unused
 EXTERNAL_AZURITE_ACCOUNT=unused
 EXTERNAL_AZURITE_KEY=unused
 EXTERNAL_NETWORK=$EXTERNAL_NETWORK

@@ -39,7 +39,7 @@ to clear away staged files that were abandoned.
   `s3:PutObject` it already has, and `s3:ListBucket` if it is not there yet.
   `s3:ListBucket` is granted on the bucket (`arn:aws:s3:::your-bucket`) and
   the others on its objects (`arn:aws:s3:::your-bucket/*`). Garage, in the
-  stack, needs nothing: `garage-init` gives its key read, write and owner on
+  stack, needs nothing: Garage gives its key read, write and owner on
   the bucket, which covers both.
 - **A bucket that keeps versions.** Add a lifecycle rule that expires
   noncurrent versions under `staging/`, as
@@ -54,6 +54,32 @@ policy. A key that cannot delete still lets authors add files to a stage and
 save it, but the API refuses to discard a staged file, and staged files are
 never cleared away from the bucket. The API and the worker log a warning for
 each one they could not delete, so the logs show it.
+
+**Garage now sets itself up, and its admin API is off.** The stack's Garage
+moves from 2.1 to 2.4, which creates its layout, access key and bucket itself
+each time it starts. The `garage-init` one-shot that did this through Garage's
+admin API is gone, and with it `GARAGE_ADMIN_TOKEN`. Nothing is migrated: this
+step needs the new `docker-compose.yml` and nothing else. Garage reuses its
+volume, and a volume `garage-init` set up is accepted as it is. Garage now has
+a health check, and `api`, `worker` and `migrate` wait for it.
+
+- **Delete `GARAGE_ADMIN_TOKEN` from `.env`.** Nothing reads it, so leaving it
+  does no harm.
+- **Remove the old container.** Earlier runs of `docker compose run --rm migrate`
+  left a stopped `garage-init` container behind, which Compose now reports as
+  an orphan. `docker compose up -d --remove-orphans` removes it, and the
+  `up -d` in step 4 below does not, because it names its services.
+- **Keep `S3_SECRET_ACCESS_KEY` as it is.** The old `garage-init` kept the
+  secret it had already stored for the key and ignored a changed one in
+  `.env`. Garage now refuses to start on a mismatch, with an error that names
+  the key.
+- **A hand-edited cluster layout** is the one case that fails. If you changed
+  Garage's layout yourself, so that its version is above 1, Garage will not
+  start, and its error says why.
+
+The key format is also relaxed. A new key id is any 8 or more letters, digits,
+`-`, `_` or `.`, and a secret any 16 or more printable ASCII characters. Keys
+that start with `GK` stay valid.
 
 **An instance with no object store** can no longer stage a file at all: adding
 a file to a stage is refused, without the offer to try again, while staging
