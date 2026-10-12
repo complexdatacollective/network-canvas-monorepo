@@ -51,12 +51,12 @@
       - text: Julie
       - radio "Another or unknown carrier - matrix check"
       - text: Another or unknown carrier - matrix check
-    - text: Is this your twin - matrix check Triplets count as twins - matrix check New sibling cannot be identical to you - matrix check
+    - text: Is this your twin - matrix check Triplets count as twins - matrix check New sibling cannot be identical to you, so not Identical twin option - matrix check - matrix check
     - radiogroup "Is this your twin - matrix check":
       - radio "Not twins - matrix check" [checked]
       - text: Not twins - matrix check
       - radio "Identical twin option - matrix check" [disabled]
-      - text: Identical twin option - matrix check New sibling cannot be identical to you - matrix check
+      - text: Identical twin option - matrix check New sibling cannot be identical to you, so not Identical twin option - matrix check - matrix check
       - radio "Fraternal twin option - matrix check"
       - text: Fraternal twin option - matrix check
       - radio "Twins of unknown kind - matrix check"
