@@ -546,9 +546,12 @@ export function markSessionFinished(
       if (!existingRow) return;
       const prepared = await prepareSessionFinish(existingRow, finish);
       const recorded = await db.transaction('rw', db.sessions, async () => {
-        // Throwing here aborts the transaction before anything is put.
+        // Throwing anywhere in here, before the callback resolves, aborts
+        // the transaction and rolls back anything it put; the signal is
+        // checked after each of its waits, as teardown can land in any.
         signal?.throwIfAborted();
         const latest = await db.sessions.get(id);
+        signal?.throwIfAborted();
         // A session deleted in the gap stays deleted.
         if (!latest) return true;
         const updated = withSessionFinish(latest, prepared);
@@ -559,6 +562,7 @@ export function markSessionFinished(
           finishedAt: now,
           lastUpdatedAt: now,
         });
+        signal?.throwIfAborted();
         return true;
       });
       if (recorded) return;

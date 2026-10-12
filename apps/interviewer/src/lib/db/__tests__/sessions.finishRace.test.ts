@@ -156,4 +156,81 @@ describe('recording a finish while another tab migrates the session', () => {
     expect(session.finishedAt).toBeNull();
     expect(session.finishStageId ?? null).toBeNull();
   });
+
+  it('writes no finish when the interview is torn down while the transaction reads the session', async () => {
+    const created = await createSession({
+      protocolHash: 'old-hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: networkWith('Ada'),
+    });
+
+    // The second read is the one inside the transaction, after its own
+    // abort check: the Shell is torn down while it is in flight.
+    const teardown = new AbortController();
+    const read = db.sessions.get.bind(db.sessions);
+    let reads = 0;
+    const spy = vi
+      .spyOn(db.sessions, 'get')
+      .mockImplementation((...args: Parameters<typeof db.sessions.get>) => {
+        reads += 1;
+        if (reads === 2) teardown.abort();
+        return read(...args);
+      });
+
+    try {
+      const outcome = await markSessionFinished(
+        created.id,
+        { stageId: 'finish', outcome: 'ineligible' },
+        teardown.signal,
+      ).then(
+        () => 'resolved',
+        (error: unknown) => error,
+      );
+      expect(outcome).toMatchObject({ name: 'AbortError' });
+    } finally {
+      spy.mockRestore();
+    }
+
+    const session = await decryptSession((await db.sessions.get(created.id))!);
+    expect(session.finishedAt).toBeNull();
+    expect(session.finishStageId ?? null).toBeNull();
+  });
+
+  it('rolls the finish back when the interview is torn down while it is being written', async () => {
+    const created = await createSession({
+      protocolHash: 'old-hash',
+      protocolName: 'Study',
+      caseId: 'case-1',
+      initialNetwork: networkWith('Ada'),
+    });
+
+    const teardown = new AbortController();
+    const write = db.sessions.put.bind(db.sessions);
+    const spy = vi
+      .spyOn(db.sessions, 'put')
+      .mockImplementation((...args: Parameters<typeof db.sessions.put>) => {
+        const written = write(...args);
+        teardown.abort();
+        return written;
+      });
+
+    try {
+      const outcome = await markSessionFinished(
+        created.id,
+        { stageId: 'finish', outcome: 'ineligible' },
+        teardown.signal,
+      ).then(
+        () => 'resolved',
+        (error: unknown) => error,
+      );
+      expect(outcome).toMatchObject({ name: 'AbortError' });
+    } finally {
+      spy.mockRestore();
+    }
+
+    const session = await decryptSession((await db.sessions.get(created.id))!);
+    expect(session.finishedAt).toBeNull();
+    expect(session.finishStageId ?? null).toBeNull();
+  });
 });
