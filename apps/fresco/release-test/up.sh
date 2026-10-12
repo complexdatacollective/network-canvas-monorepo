@@ -46,6 +46,7 @@ done
 FRESCO_DISABLE_ANALYTICS="true"
 FRESCO_REQUIRE_TWO_FACTOR="false"
 FRESCO_NODE_TLS_REJECT_UNAUTHORIZED="1"
+FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION="WHEN_SUPPORTED"
 RELAY_SINK_SCRIPT="relay-sink.mjs"
 
 # The bundled Garage's secrets. Fixed test values in Garage's own formats,
@@ -64,6 +65,14 @@ case "$LANE" in
     PROJECT="fresco-release-test-upgrade"
     FRESCO_PORT=3210 POSTGRES_PORT=5533 STORAGE_PORT=9310
     SINK_HTTPS_PORT=9440 SINK_HTTP_PORT=9450
+    # Without --keep-data this is the released baseline. Releases made
+    # before the fix presign uploads with the checksum of an empty body, which
+    # Garage rejects, so that image is told through the SDK's environment
+    # setting to leave it out. The pending image does so in code, and gets
+    # the SDK default here so a regression in that code still fails the run.
+    if [ "$KEEP_DATA" != "true" ]; then
+      FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION="WHEN_REQUIRED"
+    fi
     ;;
   fresh)
     PROJECT="fresco-release-test-fresh"
@@ -124,6 +133,7 @@ fi
 export LANE FRESCO_IMAGE="$IMAGE" FRESCO_PORT POSTGRES_PORT STORAGE_PORT \
   SINK_HTTPS_PORT SINK_HTTP_PORT FRESCO_DISABLE_ANALYTICS \
   FRESCO_REQUIRE_TWO_FACTOR FRESCO_NODE_TLS_REJECT_UNAUTHORIZED \
+  FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION \
   RELAY_SINK_SCRIPT GARAGE_ACCESS_KEY_ID GARAGE_SECRET_ACCESS_KEY \
   GARAGE_RPC_SECRET GARAGE_ADMIN_TOKEN
 compose() {

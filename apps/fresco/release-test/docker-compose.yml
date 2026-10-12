@@ -12,7 +12,7 @@
 # GARAGE_ADMIN_TOKEN: fixed test values that up.sh exports), and the
 # per-lane deployment switches below — FRESCO_DISABLE_ANALYTICS,
 # FRESCO_REQUIRE_TWO_FACTOR, FRESCO_NODE_TLS_REJECT_UNAUTHORIZED,
-# RELAY_SINK_SCRIPT. up.sh sets all of them; the defaults here are the
+# FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION, RELAY_SINK_SCRIPT. up.sh sets all of them; the defaults here are the
 # disabled-analytics, no-two-factor deployment the first two lanes test, so a
 # compose invocation that forgets one is the safe configuration rather than a
 # quietly weakened one.
@@ -63,6 +63,9 @@ services:
       # sends — which is what that lane asserts on — and no lane that asserts
       # silence sets it.
       NODE_TLS_REJECT_UNAUTHORIZED: ${FRESCO_NODE_TLS_REJECT_UNAUTHORIZED:-1}
+      # The SDK's own default unless up.sh says otherwise. Only the upgrade
+      # lane's released baseline overrides it: see up.sh.
+      AWS_REQUEST_CHECKSUM_CALCULATION: ${FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION:-WHEN_SUPPORTED}
       COOKIE_SECURE: 'false'
       # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),
       # which would make the 127.0.0.1 healthcheck below unreachable.
