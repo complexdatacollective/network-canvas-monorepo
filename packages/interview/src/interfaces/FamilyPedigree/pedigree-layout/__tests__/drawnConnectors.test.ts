@@ -1165,11 +1165,19 @@ describe('a child with many parent ties beside their birth parents', () => {
     );
     // More lines end on the child than its usual places for them.
     expect(auxiliary.length).toBeGreaterThan(6);
-    const ends = auxiliary.map((id) => {
-      const lines = auxiliaryLinesFrom(connectors, id);
-      expect(lines, `a line from ${id}`).toHaveLength(1);
-      const segments = auxiliarySegments(lines[0]!);
-      expect(segments.length, `${id}'s line has length`).toBeGreaterThan(0);
+    // Each tie is drawn by one line: a couple's (the birth parents') by one
+    // line from the two of them.
+    for (const id of auxiliary) {
+      expect(
+        connectors.auxiliaryLines.filter((line) =>
+          (line.ownerIds ?? []).includes(id),
+        ),
+        `a line from ${id}`,
+      ).toHaveLength(1);
+    }
+    const ends = connectors.auxiliaryLines.map((line) => {
+      const segments = auxiliarySegments(line);
+      expect(segments.length, 'the line has length').toBeGreaterThan(0);
       const last = segments[segments.length - 1]!;
       // It reaches the child's symbol.
       expect(Math.abs(last.x2 - ego.x)).toBeLessThan(DIMENSIONS.nodeWidth / 2);

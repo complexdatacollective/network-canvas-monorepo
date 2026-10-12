@@ -1158,7 +1158,7 @@ describe('a participant with birth parents, separated adoptive parents and their
             [father!, 'egoFather'],
           ] as const) {
             expect(line.endpointIds?.[1]).toBe('ego');
-            expect(line.edgeType).toBe('donor');
+            expect(line.edgeType).toBe('biological');
             expectAt(line.points[0]!, drawing.centre(id));
             // Straight down out of the parent's own symbol.
             expect(line.points[1]!.x).toBeCloseTo(line.points[0]!.x, 5);

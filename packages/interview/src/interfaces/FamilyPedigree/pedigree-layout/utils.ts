@@ -95,14 +95,11 @@ export function ancestor(me: number, parents: ParentConnection[][]): number[] {
   return indices;
 }
 
-/** A parent link that passes on genes: a biological parent or a donor, as
- * recorded (`ParentConnection.isGenetic`), whatever line it is drawn with.
- * Social, adoptive and surrogate links do not, even a carrier's drawn as a
- * biological parent's. */
+/** A parent link that passes on genes: a biological parent or a donor.
+ * Social, adoptive and surrogate links do not. */
 function isGeneticConnection(connection: ParentConnection): boolean {
   return (
-    connection.isGenetic ??
-    (connection.edgeType === 'biological' || connection.edgeType === 'donor')
+    connection.edgeType === 'biological' || connection.edgeType === 'donor'
   );
 }
 

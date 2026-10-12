@@ -437,8 +437,10 @@ describe('computeConnectors', () => {
     expect(connectors.groupLines[0]!.isActive).toBe(true);
   });
 
-  it('descends from genetic contributor when only one parent is biological', () => {
-    // Parent 0 (biological) at pos 0, Parent 1 (social) at pos 2
+  it('descends from the one biological parent, the social partner drawing a line of their own', () => {
+    // Parent 0 (biological) at pos 0, Parent 1 (social) at pos 2: the child
+    // descends from parent 0 alone (the layout names them as a single
+    // parent).
     const socialLayout: PedigreeLayout = {
       n: [2, 1],
       nid: [
@@ -451,7 +453,7 @@ describe('computeConnectors', () => {
       ],
       fam: [
         [0, 0],
-        [1, 0],
+        [-1, 0],
       ],
       group: [
         [1, 0],
@@ -475,6 +477,9 @@ describe('computeConnectors', () => {
     const pc = connectors.parentChildLines[0]!;
     // Descent should be from parent 0's position (x=0), not midpoint (x=1)
     expect(pc.parentLink[0]!.x1).toBeCloseTo(0, 1);
+    expect(connectors.auxiliaryLines.map((line) => line.edgeType)).toEqual([
+      'social',
+    ]);
   });
 
   it('descends from couple midpoint when both parents are biological', () => {
@@ -646,18 +651,17 @@ describe('computeConnectors', () => {
     expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(1.25, 5);
   });
 
-  it('social parent connector connects to sibling bar when social parent of ALL siblings', () => {
-    // mom(0) + stepdad(1) couple, biodad(2) is biological to both children
-    // stepdad(1) is social parent of both children (3,4)
-    // biodad(2) is unpartnered biological parent of both children
-    const socialAllLayout: PedigreeLayout = {
+  // mom(0) and biodad(2), birth parents never recorded as partners, seated
+  // side by side; stepdad(1), mom's partner, raises children 3 and 4.
+  const blended = (stepdadRaises: number[]) => {
+    const blendedLayout: PedigreeLayout = {
       n: [3, 2],
       nid: [
-        [0, 1, 2],
+        [2, 0, 1],
         [3, 4, 0],
       ],
       pos: [
-        [0, 1, 3],
+        [0, 1, 2],
         [0, 1, 0],
       ],
       fam: [
@@ -665,7 +669,7 @@ describe('computeConnectors', () => {
         [1, 1, 0],
       ],
       group: [
-        [1, 0, 0],
+        [1, 1, 0],
         [0, 0, 0],
       ],
       twins: null,
@@ -674,92 +678,51 @@ describe('computeConnectors', () => {
         [false, false, false],
       ],
     };
-    const socialAllParents: ParentConnection[][] = [
-      [],
-      [],
-      [],
-      [
-        { parentIndex: 0, edgeType: 'biological' },
-        { parentIndex: 1, edgeType: 'social' },
-        { parentIndex: 2, edgeType: 'biological' },
-      ],
-      [
-        { parentIndex: 0, edgeType: 'biological' },
-        { parentIndex: 1, edgeType: 'social' },
-        { parentIndex: 2, edgeType: 'biological' },
-      ],
+    const childParents = (child: number): ParentConnection[] => [
+      { parentIndex: 0, edgeType: 'biological' },
+      ...(stepdadRaises.includes(child)
+        ? [{ parentIndex: 1, edgeType: 'social' } as const]
+        : []),
+      { parentIndex: 2, edgeType: 'biological' },
     ];
-    const activePairs = new Set(['0,1']);
-    const connectors = computeConnectors(
-      socialAllLayout,
+    const pairs = new Set(['0,1']);
+    return computeConnectors(
+      blendedLayout,
       scaling,
-      socialAllParents,
-      activePairs,
+      [[], [], [], childParents(3), childParents(4)],
+      pairs,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      pairs,
     );
-    const bioAux = connectors.auxiliaryLines.filter(
-      (l) => l.edgeType === 'biological',
+  };
+
+  it('draws a line from a social parent of every sibling to each child, never joining the line of descent', () => {
+    const connectors = blended([3, 4]);
+    const social = connectors.auxiliaryLines.filter(
+      (l) => l.edgeType === 'social',
     );
-    expect(bioAux.length).toBe(1);
-    // Connects to sibling bar y = 1 - 0.25 = 0.75
-    expect(endOf(bioAux[0]!).y).toBeCloseTo(0.75, 5);
+    expect(social.length).toBe(2);
+    // Each ends at a child, under their symbol: y = 1 + 0.25 = 1.25.
+    for (const line of social) expect(endOf(line).y).toBeCloseTo(1.25, 5);
+    // The birth parents' line of descent comes down from each of them.
+    expect(
+      connectors.auxiliaryLines.filter((l) => l.edgeType === 'biological'),
+    ).toEqual([]);
+    expect(connectors.parentChildLines[0]!.parentLink.length).toBeGreaterThan(
+      2,
+    );
   });
 
-  it('social parent connector connects directly to child when social parent of only SOME siblings', () => {
-    // mom(0) + stepdad(1) couple, biodad1(2) bio to child3 only, biodad2(3) bio to child4 only
-    const socialSomeLayout: PedigreeLayout = {
-      n: [4, 2],
-      nid: [
-        [0, 1, 2, 3],
-        [4, 5, 0, 0],
-      ],
-      pos: [
-        [0, 1, 3, 4],
-        [0, 1, 0, 0],
-      ],
-      fam: [
-        [0, 0, 0, 0],
-        [1, 1, 0, 0],
-      ],
-      group: [
-        [1, 0, 0, 0],
-        [0, 0, 0, 0],
-      ],
-      twins: null,
-      groupMember: [
-        [false, false, false, false],
-        [false, false, false, false],
-      ],
-    };
-    const socialSomeParents: ParentConnection[][] = [
-      [],
-      [],
-      [],
-      [],
-      [
-        { parentIndex: 0, edgeType: 'biological' },
-        { parentIndex: 1, edgeType: 'social' },
-        { parentIndex: 2, edgeType: 'biological' },
-      ],
-      [
-        { parentIndex: 0, edgeType: 'biological' },
-        { parentIndex: 1, edgeType: 'social' },
-        { parentIndex: 3, edgeType: 'biological' },
-      ],
-    ];
-    const activePairs = new Set(['0,1']);
-    const connectors = computeConnectors(
-      socialSomeLayout,
-      scaling,
-      socialSomeParents,
-      activePairs,
+  it('draws a line from a social parent of some siblings to each of those children', () => {
+    const connectors = blended([3]);
+    const social = connectors.auxiliaryLines.filter(
+      (l) => l.edgeType === 'social',
     );
-    const bioAux = connectors.auxiliaryLines.filter(
-      (l) => l.edgeType === 'biological',
-    );
-    expect(bioAux.length).toBe(2);
-    // Each connects directly to child: y = 1 + 0.25 = 1.25
-    expect(endOf(bioAux[0]!).y).toBeCloseTo(1.25, 5);
-    expect(endOf(bioAux[1]!).y).toBeCloseTo(1.25, 5);
+    expect(social.length).toBe(1);
+    expect(endOf(social[0]!).y).toBeCloseTo(1.25, 5);
   });
 
   it('slashSide is set correctly for inactive group lines', () => {

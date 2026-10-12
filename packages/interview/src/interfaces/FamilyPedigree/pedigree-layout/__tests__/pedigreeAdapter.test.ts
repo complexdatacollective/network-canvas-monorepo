@@ -5,6 +5,7 @@ import {
   computeLayoutMetrics,
   type LayoutDimensions,
 } from '../layoutDimensions';
+import { lineOwnersOf } from '../lineOwners';
 import {
   buildConnectorData,
   pedigreeLayoutToPositions,
@@ -84,10 +85,10 @@ describe('toPedigreeInput', () => {
     expect(input.parents[motherIdx]).toHaveLength(0);
   });
 
-  test('promotes the gestational carrier to a primary parent when the child has no primary parent', () => {
+  test('keeps a gestational carrier’s tie as recorded, and draws the line of descent from her when the child has no other parent', () => {
     // Donor-conceived child carried by a gestational carrier ("single parent,
-    // two donors"). Per NSGC nomenclature the child descends from the carrier;
-    // the carrier's edge is promoted so it anchors the line of descent.
+    // two donors"). Per NSGC nomenclature the child descends from the
+    // carrier; the donors draw lines of their own.
     const nodes = makeNodes([
       { id: 'eggDonor' },
       { id: 'spermDonor' },
@@ -114,16 +115,22 @@ describe('toPedigreeInput', () => {
       (p) => p.parentIndex === idToIndex.get('eggDonor')!,
     );
 
-    // The promoted edge is a primary one the renderer draws solid, never
-    // 'social', which it dashes.
-    expect(carrierConn?.edgeType).toBe('biological');
+    expect(carrierConn?.edgeType).toBe('surrogate');
     expect(eggConn?.edgeType).toBe('donor');
+    const { descent, lines } = lineOwnersOf(input.parents, [])[
+      idToIndex.get('child')!
+    ]!;
+    expect(descent).toStrictEqual({
+      parents: [idToIndex.get('carrier')!],
+      kind: 'surrogate',
+    });
+    expect(lines.map((line) => line.kind)).toStrictEqual(['donor', 'donor']);
   });
 
-  test('a carrier drawn as the parent of a surrogacy child gave them no genes', () => {
+  test('a carrier the line of descent comes from gave the child no genes', () => {
     // The surrogate's own child and the child she carried for donors are
-    // partners. Her line to the surrogacy child is drawn solid, but they
-    // share no genetic ancestor, so their partnership is not consanguineous.
+    // partners. The surrogacy child descends from her, but they share no
+    // genetic ancestor, so their partnership is not consanguineous.
     const nodes = makeNodes([
       { id: 'carrier' },
       { id: 'carriersPartner' },
@@ -156,7 +163,7 @@ describe('toPedigreeInput', () => {
     const carried = input.parents[index('surrogacyChild')]!.find(
       (p) => p.parentIndex === index('carrier'),
     );
-    expect(carried?.edgeType).toBe('biological');
+    expect(carried?.edgeType).toBe('surrogate');
     expect(
       areConsanguineous(
         index('ownChild'),
@@ -166,7 +173,7 @@ describe('toPedigreeInput', () => {
     ).toBe(false);
   });
 
-  test('an adopted child’s birth parent, drawn as a donor, still gave them genes', () => {
+  test('an adopted child’s birth parent keeps their recorded tie, and gave them genes', () => {
     const nodes = makeNodes([
       { id: 'birthMum' },
       { id: 'adoptiveMum' },
@@ -192,7 +199,7 @@ describe('toPedigreeInput', () => {
       input.parents[index('adopted')]!.find(
         (p) => p.parentIndex === index('birthMum'),
       )?.edgeType,
-    ).toBe('donor');
+    ).toBe('biological');
     expect(
       areConsanguineous(index('adopted'), index('birthSibling'), input.parents),
     ).toBe(true);
@@ -263,7 +270,7 @@ describe('toPedigreeInput', () => {
     expect(typeFrom('steve')).toBe('adoptive');
   });
 
-  test('draws a birth parent outside the adoptive family as a donor', () => {
+  test('keeps a birth parent outside the adoptive family as recorded, the line of descent coming from the adopters', () => {
     const edges = makeEdges([
       { from: 'ann', to: 'child', relationshipType: 'adoptive' },
       { from: 'bob', to: 'child', relationshipType: 'adoptive' },
@@ -282,7 +289,16 @@ describe('toPedigreeInput', () => {
     const cara = input.parents[idToIndex.get('child')!]!.find(
       (p) => p.parentIndex === idToIndex.get('cara'),
     );
-    expect(cara?.edgeType).toBe('donor');
+    expect(cara?.edgeType).toBe('biological');
+    const { descent, lines } = lineOwnersOf(input.parents, input.partners)[
+      idToIndex.get('child')!
+    ]!;
+    expect(descent?.parents.toSorted((a, b) => a - b)).toStrictEqual(
+      [idToIndex.get('ann')!, idToIndex.get('bob')!].toSorted((a, b) => a - b),
+    );
+    expect(lines).toStrictEqual([
+      { parents: [idToIndex.get('cara')!], kind: 'biological' },
+    ]);
   });
 
   test('leaves the surrogate auxiliary when the child also has a primary parent', () => {

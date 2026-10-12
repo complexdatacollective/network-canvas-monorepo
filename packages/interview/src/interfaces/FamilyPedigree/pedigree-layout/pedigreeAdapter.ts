@@ -19,7 +19,6 @@ import type {
   Relation,
   ScalingParams,
 } from './types';
-import { relativeRaisers } from './utils';
 
 export type ConnectorRenderData = {
   connectors: PedigreeConnectors;
@@ -99,67 +98,8 @@ export function toPedigreeInput(
         parentIndex: parentIdx,
         edgeType: relationshipType,
         isGestationalCarrier,
-        // Kept as recorded: the drawn type may change below.
-        isGenetic:
-          relationshipType === 'biological' || relationshipType === 'donor',
       });
     }
-  }
-
-  // A birth parent of an adopted child who is outside the adoptive family is
-  // drawn as a donor: their edge becomes auxiliary, so the child is placed
-  // under the adoptive parents, as standard pedigree nomenclature has it. A
-  // birth parent who is the partner of one of the child's adoptive parents (a
-  // step-parent adoption) raises the child in that family, so their edge stays
-  // biological and the child descends from them within the couple. A child
-  // adopted by a relative (see `relativeRaisers`) stays in their birth
-  // family, so their birth parents stay parents too; the layout draws the
-  // relatives' adoptive lines beside the birth family.
-  const partnersOf = new Map<number, Set<number>>();
-  for (const { partnerIndex1: a, partnerIndex2: b } of partnerConnections) {
-    partnersOf.set(a, new Set([...(partnersOf.get(a) ?? []), b]));
-    partnersOf.set(b, new Set([...(partnersOf.get(b) ?? []), a]));
-  }
-  const raisedByRelatives = relativeRaisers(parents, partnerConnections);
-  for (let i = 0; i < n; i++) {
-    const adoptiveParents = parents[i]!.filter(
-      (p) => p.edgeType === 'adoptive',
-    ).map((p) => p.parentIndex);
-    if (adoptiveParents.length === 0) continue;
-    if (raisedByRelatives[i]!.size > 0) continue;
-    for (const p of parents[i]!) {
-      if (p.edgeType !== 'biological') continue;
-      const raisesChild = adoptiveParents.some(
-        (adoptive) => partnersOf.get(p.parentIndex)?.has(adoptive) ?? false,
-      );
-      if (!raisesChild) {
-        p.edgeType = 'donor';
-        p.isBirthParent = true;
-      }
-    }
-  }
-
-  // A child with no primary (biological/social/adoptive) parent — e.g. a
-  // donor-conceived child carried by a gestational carrier ("single parent, two
-  // donors") — descends from the carrier. Promote the carrier's edge to
-  // 'biological', the primary type for the parent who gave birth, so it
-  // anchors the line of descent and is drawn solid, as the carrier's line of
-  // descent is in standard pedigree nomenclature (never 'social', which is
-  // drawn dashed). The gamete donors remain auxiliary. Without this the child
-  // has only auxiliary parents, forms no family unit, and renders no line of
-  // descent at all. The carrier's link stays non-genetic (`isGenetic`), so
-  // the line drawn never makes the child a blood relative of the carrier's
-  // own children.
-  for (let i = 0; i < n; i++) {
-    const hasPrimaryParent = parents[i]!.some(
-      (p) =>
-        p.edgeType === 'biological' ||
-        p.edgeType === 'social' ||
-        p.edgeType === 'adoptive',
-    );
-    if (hasPrimaryParent) continue;
-    const carrier = parents[i]!.find((p) => p.isGestationalCarrier);
-    if (carrier) carrier.edgeType = 'biological';
   }
 
   return {

@@ -496,12 +496,14 @@ describe('auxiliary lines keep clear of every other line', () => {
       ],
     );
 
-  it('routes two birth parents’ lines to an adopted child without crossing', () => {
+  it('draws one line from two former partners who are an adopted child’s birth parents', () => {
     const { connectors } = adoptedBirthParents();
-    const [chloe] = auxOf(connectors, 'chloe');
-    const [tyler] = auxOf(connectors, 'tyler');
-    expect(chloe && tyler).toBeTruthy();
-    expect(crossCount(chloe!.points, tyler!.points)).toBe(0);
+    const lines = connectors.auxiliaryLines.filter(
+      (line) => line.edgeType === 'biological',
+    );
+    expect(lines.map((line) => [...(line.ownerIds ?? [])].sort())).toEqual([
+      ['chloe', 'tyler'],
+    ]);
   });
 
   // The unnamed stand-ins fill each missing genetic parent, as the

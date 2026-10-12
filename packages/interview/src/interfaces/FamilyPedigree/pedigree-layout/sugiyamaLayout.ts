@@ -1,4 +1,10 @@
 import { kindepth } from './kindepth';
+import {
+  type ChildLines,
+  isBirthTie,
+  lineOwnersOf,
+  ownerKey,
+} from './lineOwners';
 import type {
   ParentConnection,
   PedigreeInput,
@@ -44,15 +50,9 @@ type PedigreeGraph = {
   parentEdgeTypes: Map<string, PedigreeEdgeType>;
   /** Each person's twins. */
   twinsOf: Map<number, Set<number>>;
+  /** Who each child's lines come from (see `lineOwnersOf`). */
+  owners: ChildLines[];
 };
-
-function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
-  return (
-    edgeType === 'biological' ||
-    edgeType === 'social' ||
-    edgeType === 'adoptive'
-  );
-}
 
 function isAuxiliaryEdge(edgeType: PedigreeEdgeType): boolean {
   return edgeType === 'donor' || edgeType === 'surrogate';
@@ -88,128 +88,58 @@ function placementParents(ped: PedigreeInput): ParentConnection[][] {
 function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   const n = ped.id.length;
   const placed = placementParents(ped);
+  const owners = lineOwnersOf(ped.parents, ped.partners ?? []);
+  const isPlaced = (child: number, parent: number) =>
+    placed[child]!.some((p) => p.parentIndex === parent);
+  const tiesOf = (child: number, parentIndexes: number[]) =>
+    placed[child]!.filter((p) => parentIndexes.includes(p.parentIndex));
+  const descentParentsOf = (child: number) =>
+    owners[child]!.descent?.parents ?? [];
 
-  // 1. Assign layers (1-based). A child's generation comes from its primary
-  // parents, and from all of its parents only when it has none, as in step
-  // 3b: a donor may be a generation younger than the parents who raise the
-  // child, or one of them may be the child's birth parent. Every donor and
-  // surrogate is lined up with the child's primary parents, whether or not
-  // their own parents are shown, so a donor shared by two families brings
-  // both onto the donor's row.
-  const generationParents = placed.map((pConns) => {
-    const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
-    return primary.length > 0 ? primary : pConns;
+  // 1. Assign layers (1-based). A child's generation comes from the owners
+  // of their line of descent, and from all of their parents only when they
+  // have none. Everyone else who draws a line to the child is lined up with
+  // the owners of the line of descent, whether or not their own parents are
+  // shown, so a donor shared by two families brings both onto the donor's
+  // row.
+  const generationParents = placed.map((pConns, child) => {
+    const descent = tiesOf(child, descentParentsOf(child));
+    return descent.length > 0 ? descent : pConns;
   });
-  const alignedAuxiliaryParents = placed.map((pConns, i) =>
-    generationParents[i] === pConns
+  const alignedParents = placed.map((pConns, child) =>
+    generationParents[child] === pConns
       ? []
-      : pConns.filter((p) => isAuxiliaryEdge(p.edgeType)),
+      : pConns.filter((p) => !descentParentsOf(child).includes(p.parentIndex)),
   );
-  const depth = kindepth(generationParents, true, alignedAuxiliaryParents);
+  const depth = kindepth(generationParents, true, alignedParents);
   const layers = depth.map((d) => d + 1);
 
-  // 3. Build partner groups from all sources, deduplicating by sorted key
+  // 3. Partner groups: every recorded partnership, and the two birth
+  // parents with no partnership recorded who own a line together, who are
+  // seated side by side as a pair (never drawn as partners: the connectors
+  // draw a partnership line only for a recorded partnership).
   const groupMap = new Map<string, PartnerGroup>();
-
-  // From explicit partners array
-  if (ped.partners) {
-    for (const p of ped.partners) {
-      const members = [p.partnerIndex1, p.partnerIndex2];
-      const key = partnerGroupKey(members);
-      if (!groupMap.has(key)) {
-        groupMap.set(key, {
-          members: [...members].toSorted((a, b) => a - b),
-          isActive: p.isActive,
-        });
-      }
+  for (const p of ped.partners ?? []) {
+    const members = [p.partnerIndex1, p.partnerIndex2];
+    const key = partnerGroupKey(members);
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        members: [...members].toSorted((a, b) => a - b),
+        isActive: p.isActive,
+      });
     }
   }
-
-  // From relation entries with code=4
-  if (ped.relation) {
-    for (const r of ped.relation) {
-      if (r.code !== 4) continue;
-      const members = [r.id1, r.id2];
-      const key = partnerGroupKey(members);
+  for (let child = 0; child < n; child++) {
+    const { descent, lines } = owners[child]!;
+    for (const owner of [...(descent ? [descent] : []), ...lines]) {
+      if (owner.parents.length !== 2) continue;
+      if (!owner.parents.every((parent) => isPlaced(child, parent))) continue;
+      const key = partnerGroupKey(owner.parents);
       if (!groupMap.has(key)) {
         groupMap.set(key, {
-          members: [...members].toSorted((a, b) => a - b),
+          members: [...owner.parents].toSorted((a, b) => a - b),
           isActive: true,
         });
-      }
-    }
-  }
-
-  // Explicit partner edges are authoritative. Implicit co-parent inference is
-  // only a fallback for parents whose partnership was not recorded.
-  const explicitPartnerPairs = new Set(groupMap.keys());
-
-  // From implicit co-parent detection
-  for (let i = 0; i < n; i++) {
-    const pConns = placed[i]!;
-    if (pConns.length === 0) continue;
-    const primaryParents = pConns
-      .filter((p) => isPrimaryEdge(p.edgeType))
-      .map((p) => p.parentIndex);
-    if (primaryParents.length < 2) continue;
-
-    // For multi-parent scenarios, create pairwise groups — but only for
-    // pairs that share the same edge type (both biological or both social).
-    // Mixed pairs (bio + social) are not partnerships. Also skip siblings.
-    for (let a = 0; a < primaryParents.length; a++) {
-      for (let b = a + 1; b < primaryParents.length; b++) {
-        const pa = primaryParents[a]!;
-        const pb = primaryParents[b]!;
-
-        const hasExplicitPartnerAmongOtherParents = (parent: number) =>
-          primaryParents.some(
-            (candidate) =>
-              candidate !== parent &&
-              candidate !== (parent === pa ? pb : pa) &&
-              explicitPartnerPairs.has(partnerGroupKey([parent, candidate])),
-          );
-
-        // A pair inferred here is seated side by side, never drawn as
-        // partners (the connectors draw a partnership line only for a
-        // recorded partnership). When both co-parents have an explicit
-        // partnership to another parent of this child, do not pair them: two
-        // social parents may each be an ex-partner of the same biological
-        // parent, who sits between them. When only one has, the other still
-        // sits beside them — a stand-in beside the mother whose partner also
-        // raises the child — so the child's line of descent can drop from
-        // midway between the two.
-        if (
-          hasExplicitPartnerAmongOtherParents(pa) &&
-          hasExplicitPartnerAmongOtherParents(pb)
-        ) {
-          continue;
-        }
-
-        const edgeA = pConns.find(
-          (p) => p.parentIndex === pa && isPrimaryEdge(p.edgeType),
-        )?.edgeType;
-        const edgeB = pConns.find(
-          (p) => p.parentIndex === pb && isPrimaryEdge(p.edgeType),
-        )?.edgeType;
-        if (edgeA !== edgeB) continue;
-
-        const parentsOfA = new Set(ped.parents[pa]!.map((p) => p.parentIndex));
-        const parentsOfB = new Set(ped.parents[pb]!.map((p) => p.parentIndex));
-        const areSiblings =
-          parentsOfA.size > 0 &&
-          parentsOfB.size > 0 &&
-          [...parentsOfA].some((p) => parentsOfB.has(p));
-
-        if (areSiblings) continue;
-
-        const members = [pa, pb];
-        const key = partnerGroupKey(members);
-        if (!groupMap.has(key)) {
-          groupMap.set(key, {
-            members: [...members].toSorted((c, d) => c - d),
-            isActive: true,
-          });
-        }
       }
     }
   }
@@ -229,9 +159,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   const { constrain, settle } = layerConstraints(n);
   for (let i = 0; i < n; i++) {
     for (const p of placed[i]!) {
-      if (isPrimaryEdge(p.edgeType) || isAuxiliaryEdge(p.edgeType)) {
-        constrain([[p.parentIndex, i]], 1);
-      }
+      constrain([[p.parentIndex, i]], 1);
     }
   }
   for (const group of partnerGroups) {
@@ -247,13 +175,12 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     }
   }
   for (let i = 0; i < n; i++) {
-    const pConns = placed[i]!;
-    for (const aux of pConns.filter((p) => isAuxiliaryEdge(p.edgeType))) {
-      for (const p of pConns.filter((q) => isPrimaryEdge(q.edgeType))) {
+    for (const other of alignedParents[i]!) {
+      for (const owner of descentParentsOf(i)) {
         constrain(
           [
-            [p.parentIndex, aux.parentIndex],
-            [aux.parentIndex, p.parentIndex],
+            [owner, other.parentIndex],
+            [other.parentIndex, owner],
           ],
           0,
         );
@@ -262,74 +189,26 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   }
   settle(layers);
 
-  // 4. Build family units. A child belongs to a partner group when every
-  // member is one of its primary parents. A child with three or more primary
-  // parents can match several groups (its biological parents' couple, and a
-  // parent's partner who is a social parent); it descends from the group most
-  // strongly its parents — a social parent weighs less than a biological or
-  // adoptive one — and from the first such group on a tie.
-  const parentWeight = (edgeType: PedigreeEdgeType) =>
-    edgeType === 'social' ? 1 : 2;
-  const familyGroupOf = new Map<number, PartnerGroup>();
-  for (let i = 0; i < n; i++) {
-    const primaryEdges = placed[i]!.filter((p) => isPrimaryEdge(p.edgeType));
-    let bestWeight = 0;
-    for (const group of partnerGroups) {
-      let weight = 0;
-      for (const member of group.members) {
-        const edge = primaryEdges.find((p) => p.parentIndex === member);
-        if (!edge) {
-          weight = 0;
-          break;
-        }
-        weight += parentWeight(edge.edgeType);
-      }
-      if (weight > bestWeight) {
-        bestWeight = weight;
-        familyGroupOf.set(i, group);
-      }
-    }
-  }
-
+  // 4. Family units: the children whose lines of descent come from one
+  // owner (a couple, a pair, or one parent), with that owner's group.
   const familyUnits: FamilyUnit[] = [];
-  for (const group of partnerGroups) {
-    const children: number[] = [];
-    for (let i = 0; i < n; i++) {
-      if (familyGroupOf.get(i) === group) children.push(i);
+  const unitByOwner = new Map<string, FamilyUnit>();
+  for (let child = 0; child < n; child++) {
+    const descent = owners[child]!.descent;
+    if (!descent) continue;
+    if (!descent.parents.every((parent) => isPlaced(child, parent))) continue;
+    const key = ownerKey(descent);
+    let unit = unitByOwner.get(key);
+    if (!unit) {
+      const parentGroup =
+        descent.parents.length === 2
+          ? groupMap.get(partnerGroupKey(descent.parents))!
+          : { members: [...descent.parents], isActive: true };
+      unit = { parentGroup, children: [] };
+      unitByOwner.set(key, unit);
+      familyUnits.push(unit);
     }
-
-    if (children.length > 0) {
-      familyUnits.push({ parentGroup: group, children });
-    }
-  }
-
-  // Handle single-parent families: group children who share the same sole
-  // primary parent and aren't already covered by a partner-group family unit.
-  const singleParentChildren = new Map<number, number[]>();
-  for (let i = 0; i < n; i++) {
-    const pConns = placed[i]!;
-    if (pConns.length === 0) continue;
-    const primaryParents = pConns
-      .filter((p) => isPrimaryEdge(p.edgeType))
-      .map((p) => p.parentIndex);
-    if (primaryParents.length !== 1) continue;
-
-    const parentIdx = primaryParents[0]!;
-    const alreadyCovered = familyUnits.some((fu) => fu.children.includes(i));
-    if (alreadyCovered) continue;
-
-    if (!singleParentChildren.has(parentIdx)) {
-      singleParentChildren.set(parentIdx, []);
-    }
-    singleParentChildren.get(parentIdx)!.push(i);
-  }
-
-  for (const [parentIdx, children] of singleParentChildren) {
-    const singleGroup: PartnerGroup = {
-      members: [parentIdx],
-      isActive: true,
-    };
-    familyUnits.push({ parentGroup: singleGroup, children });
+    unit.children.push(child);
   }
 
   // 5. Build sibling groups
@@ -399,6 +278,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     extraParents,
     parentEdgeTypes,
     twinsOf,
+    owners,
   };
 }
 
@@ -1233,9 +1113,13 @@ function buildConstraintBlocks(
     );
     const tieOf = (parent: number, to = child) =>
       graph.parentEdgeTypes.get(`${parent}-${to}`) ?? 'biological';
-    // The places of the children a parent is a donor or surrogate to.
+    // A birth tie drawn by a line of its own: a helper's.
+    const isHelperTie = (parent: number, to: number) =>
+      isBirthTie(tieOf(parent, to)) &&
+      !(graph.owners[to]?.descent?.parents.includes(parent) ?? false);
+    // The places of the children a parent is a helper to.
     const runOf = (aux: number) =>
-      siblings.flatMap((c, k) => (isAuxiliaryEdge(tieOf(aux, c)) ? [k] : []));
+      siblings.flatMap((c, k) => (isHelperTie(aux, c) ? [k] : []));
     // The tie whose line the parent is seated for.
     const lineTieOf = (aux: number) => {
       const [first] = runOf(aux);
@@ -1250,9 +1134,7 @@ function buildConstraintBlocks(
     const holdsSecondTie = (aux: number) =>
       runOf(aux).length > 0 &&
       siblings.some(
-        (c) =>
-          graph.extraParents.get(c)?.includes(aux) &&
-          !isAuxiliaryEdge(tieOf(aux, c)),
+        (c) => graph.extraParents.get(c)?.includes(aux) && !isHelperTie(aux, c),
       );
     const sideOfChild = (aux: number) => {
       if (parentOfAll(aux) || holdsSecondTie(aux)) return 0;
@@ -1272,9 +1154,7 @@ function buildConstraintBlocks(
       );
       if (coupleOnLayer.length === 0) continue; // couple not on this layer
       const coupleSet = new Set(coupleOnLayer);
-      const isDonor = isAuxiliaryEdge(
-        graph.parentEdgeTypes.get(`${aux}-${child}`) ?? 'biological',
-      );
+      const isDonor = isHelperTie(aux, child);
       const others = new Set(extras.filter((x) => x !== aux));
       const childSide = sideOfChild(aux);
       // The lines that would end on the child's edge on one side of their
@@ -1330,26 +1210,6 @@ function buildConstraintBlocks(
             : othersRight <= othersLeft
           : right < left;
 
-      // An adopted child's birth parents who were never partners are seated
-      // side by side, so that their lines come down from each of them and
-      // join before the child (see `computeConnectors`) without passing
-      // anyone; but never between partners, which would split a recorded
-      // partnership (each then keeps a line of their own).
-      const birthParent = (parent: number) =>
-        graph.parents[child]!.some(
-          (p) => p.parentIndex === parent && p.isBirthParent,
-        );
-      const mateIn = (blockNodes: number[]) =>
-        birthParent(aux)
-          ? extras.find(
-              (other) =>
-                other !== aux &&
-                birthParent(other) &&
-                !partnered(other, aux) &&
-                blockNodes.includes(other),
-            )
-          : undefined;
-
       if (assigned.has(aux) || inRealSibship.has(aux) || spousesOf.has(aux)) {
         // Placed already by steps 1–2, or for another child. Only a donor
         // or surrogate seated by steps 1–2 is moved beside the parents.
@@ -1358,40 +1218,6 @@ function buildConstraintBlocks(
         const donorBlock = blocks.find((b) => b.nodes.includes(aux));
         const coupleBlock = blockHolding(coupleOnLayer);
         if (!donorBlock || donorBlock === coupleBlock) continue;
-        // Beside the other birth parent, where they sit at an end of the
-        // parents' block.
-        const mate = mateIn(coupleBlock.nodes);
-        if (mate !== undefined && !donorBlock.nodes.includes(mate)) {
-          const mateAt = coupleBlock.nodes.indexOf(mate);
-          const atEnd =
-            mateAt === 0
-              ? 'left'
-              : mateAt === coupleBlock.nodes.length - 1
-                ? 'right'
-                : undefined;
-          if (atEnd !== undefined) {
-            coupleBlock.nodes =
-              atEnd === 'right'
-                ? [
-                    ...coupleBlock.nodes,
-                    ...movePartnerAnchorToBoundary(
-                      donorBlock.nodes,
-                      aux,
-                      'left',
-                    ),
-                  ]
-                : [
-                    ...movePartnerAnchorToBoundary(
-                      donorBlock.nodes,
-                      aux,
-                      'right',
-                    ),
-                    ...coupleBlock.nodes,
-                  ];
-            blocks.splice(blocks.indexOf(donorBlock), 1);
-            continue;
-          }
-        }
         // The donor's block joins the parents' block at the end nearer the
         // couple, so its line passes everyone between that end and them (on
         // a tie, the side holding fewer of the child's lines, else the
@@ -1440,38 +1266,6 @@ function buildConstraintBlocks(
       if (isDonor) seatedDonors.add(aux);
 
       const targetBlock = blockHolding(coupleOnLayer);
-
-      // Beside the other birth parent: beyond them where no partner of
-      // theirs sits there, else between them and the couple; failing both,
-      // past the end of their chain of partnerships nearer the couple.
-      const mate = mateIn(targetBlock.nodes);
-      if (mate !== undefined) {
-        const row = targetBlock.nodes;
-        const mateAt = row.indexOf(mate);
-        const coupleAt = row.findIndex((node) => coupleSet.has(node));
-        const outward = mateAt < coupleAt ? -1 : 1;
-        const free = (side: -1 | 1) => {
-          const neighbour = row[mateAt + side];
-          return neighbour === undefined || !partnered(mate, neighbour);
-        };
-        const beside = (side: -1 | 1) => (side < 0 ? mateAt : mateAt + 1);
-        let at: number;
-        if (free(outward)) at = beside(outward);
-        else if (free(-outward as -1 | 1)) at = beside(-outward as -1 | 1);
-        else {
-          let k = mateAt;
-          while (
-            row[k - outward] !== undefined &&
-            partnered(row[k]!, row[k - outward]!)
-          ) {
-            k -= outward;
-          }
-          at = outward < 0 ? k + 1 : k;
-        }
-        row.splice(at, 0, aux);
-        assigned.add(aux);
-        continue;
-      }
 
       // Seat the parent immediately adjacent to the couple, on the side
       // whose seat costs the drawing least (see `seatCost`). When the couple
@@ -1623,20 +1417,6 @@ function collectLayerEdges(
     for (const child of childrenOnLower) {
       edges.push([descentX, pos.get(child)!, 'descent']);
       coveredChildren.add(child);
-      // A partner whose tie to the child differs from the couple's other
-      // ties (a social parent beside a birth parent) is joined to the child
-      // by a line of their own, which can cross other lines too.
-      const ties = parentsOnUpper.map(
-        (p) => graph.parentEdgeTypes.get(`${p}-${child}`) ?? 'biological',
-      );
-      if (new Set(ties).size > 1) {
-        const descentTie = ties.includes('biological') ? 'biological' : ties[0];
-        parentsOnUpper.forEach((p, k) => {
-          if (ties[k] !== descentTie) {
-            edges.push([pos.get(p)!, pos.get(child)!, 'other']);
-          }
-        });
-      }
     }
 
     const extraChildren = new Map<number, number[]>();
@@ -1663,9 +1443,13 @@ function collectLayerEdges(
       // The lines of a donor who also holds another tie into the sibship
       // (raising another of the children, say) all count as an extra
       // parent's lines (see `HELPER_CROSSING_WEIGHT`).
-      const secondTie = [...byTie.keys()].some((tie) => !isAuxiliaryEdge(tie));
+      const descentKind =
+        graph.owners[children[0]!]?.descent?.kind ?? 'biological';
+      const joins = (tie: PedigreeEdgeType) =>
+        isBirthTie(tie) && isBirthTie(descentKind);
+      const secondTie = [...byTie.keys()].some((tie) => !joins(tie));
       for (const [tie, tied] of byTie) {
-        const helper = isAuxiliaryEdge(tie);
+        const helper = joins(tie);
         const line = helper && !secondTie ? 'helper' : 'other';
         if (
           (tied.length === childrenOnLower.length || helper) &&
@@ -2150,10 +1934,8 @@ function encodePedigreeLayout(
       );
       if (inFamilyUnit) continue;
 
-      const primaryParents = graph.parents[node]!.filter((p) =>
-        isPrimaryEdge(p.edgeType),
-      ).map((p) => p.parentIndex);
-      const parentsAbove = primaryParents.filter((p) => {
+      const descentParents = graph.owners[node]?.descent?.parents ?? [];
+      const parentsAbove = descentParents.filter((p) => {
         const loc = nodeLocation.get(p);
         return loc?.layer === layer - 1;
       });
@@ -2498,17 +2280,15 @@ function encodePedigreeLayout(
     const layerFam: number[] = [];
     for (let col = 0; col < n[layer]!; col++) {
       const node = nid[layer]![col]!;
-      const primaryParents = graph.parents[node]!.filter((p) =>
-        isPrimaryEdge(p.edgeType),
-      ).map((p) => p.parentIndex);
+      const descentParents = graph.owners[node]?.descent?.parents ?? [];
 
-      if (primaryParents.length === 0 || layer === 0) {
+      if (descentParents.length === 0 || layer === 0) {
         layerFam.push(0);
         continue;
       }
 
       // Check if parents are on the layer directly above
-      const parentsAbove = primaryParents.filter((p) => {
+      const parentsAbove = descentParents.filter((p) => {
         const loc = nodeLocation.get(p);
         return loc?.layer === layer - 1;
       });

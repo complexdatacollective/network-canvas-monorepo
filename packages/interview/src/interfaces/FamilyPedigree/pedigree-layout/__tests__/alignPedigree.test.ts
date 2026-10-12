@@ -942,9 +942,11 @@ describe('a participant with two partners', () => {
     expect(columnOf(3)).not.toBe(you);
   });
 
-  it('assigns each child to the couple they descend from', () => {
+  it('assigns each child to the owners of their line of descent', () => {
     expect(famOf(4)).toBe(coupleFam(0, 1));
-    expect(famOf(5)).toBe(coupleFam(0, 2));
+    // Cleo descends from You, her one birth parent; Alex, who raises her,
+    // draws a line of his own.
+    expect(famOf(5)).toBe(-(columnOf(0) + 1));
     // Sky descends from her biological parents, not her social parent's couple.
     expect(famOf(6)).toBe(coupleFam(2, 3));
   });
@@ -1252,9 +1254,10 @@ describe('partnership chains', () => {
     });
   });
 
-  it('gives a child two equally strong couples the first one recorded', () => {
+  it('gives a child raised by two step-parents a line of descent from their birth parent alone', () => {
     // parent – stepA and parent – stepB; the child is parent's biological
-    // child and a social child of both step-parents.
+    // child and a social child of both step-parents, whichever partnership
+    // was recorded first.
     const childOf = (partners: PedigreeInput['partners']) => {
       const ped: PedigreeInput = {
         id: ['parent', 'stepA', 'stepB', 'child'],
@@ -1264,11 +1267,10 @@ describe('partnership chains', () => {
       const result = alignPedigree(ped);
       const level = result.nid.findIndex((row) => row.includes(3));
       const fam = result.fam[level]![result.nid[level]!.indexOf(3)]!;
-      const above = result.nid[level - 1]!;
-      return [above[fam - 1], above[fam]].toSorted((a, b) => a! - b!);
+      return fam < 0 ? result.nid[level - 1]![-fam - 1] : undefined;
     };
-    expect(childOf([couple(0, 1), couple(0, 2)])).toStrictEqual([0, 1]);
-    expect(childOf([couple(0, 2), couple(0, 1)])).toStrictEqual([0, 2]);
+    expect(childOf([couple(0, 1), couple(0, 2)])).toBe(0);
+    expect(childOf([couple(0, 2), couple(0, 1)])).toBe(0);
   });
 });
 
@@ -1482,16 +1484,28 @@ describe('a person with three partners', () => {
     );
   });
 
-  it('joins each parent to a child whose parents are not a couple', () => {
-    // A biological parent and an unpartnered step-parent: no partnership
-    // line to descend from.
-    expectDirectLinesForChildrenWithoutFamily(
-      {
-        id: ['parent', 'step', 'kid'],
-        parents: [[], [], [sp(0), { parentIndex: 1, edgeType: 'social' }]],
-      },
-      1,
+  it('joins a step-parent who is no partner to the child by a line of their own', () => {
+    // A biological parent and an unpartnered step-parent: the child
+    // descends from the birth parent, and the step-parent draws a line.
+    const input: PedigreeInput = {
+      id: ['parent', 'step', 'kid'],
+      parents: [[], [], [sp(0), { parentIndex: 1, edgeType: 'social' }]],
+    };
+    expectDirectLinesForChildrenWithoutFamily(input, 0);
+    const conn = computeConnectors(
+      alignPedigree(input),
+      defaultScaling,
+      input.parents,
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      input.id,
+      new Set(),
     );
+    expect(
+      conn.auxiliaryLines.map((line) => [line.endpointIds, line.edgeType]),
+    ).toStrictEqual([[['step', 'kid'], 'social']]);
   });
 
   it('draws each direct line with its own relationship', () => {
@@ -1514,10 +1528,6 @@ describe('a person with three partners', () => {
       ],
     };
     const result = alignPedigree(input);
-    const level = result.nid.findIndex((row) => row.includes(4));
-    for (const kid of [4, 5]) {
-      expect(result.fam[level]![result.nid[level]!.indexOf(kid)]).toBe(0);
-    }
     const conn = computeConnectors(
       result,
       defaultScaling,
@@ -1678,8 +1688,7 @@ describe('a person with three partners', () => {
   );
 
   it('keeps an adoptive relationship on a direct line', () => {
-    // No partnerships recorded; kidC's adoptive parents are inferred as a
-    // couple, and it is the one that cannot sit together.
+    // No partnerships recorded: kidC's adoptive parents are no couple.
     const adoptive = (parentIndex: number): ParentConnection => ({
       parentIndex,
       edgeType: 'adoptive',
@@ -1697,8 +1706,6 @@ describe('a person with three partners', () => {
       ],
     };
     const result = alignPedigree(input);
-    const level = result.nid.findIndex((row) => row.includes(6));
-    expect(result.fam[level]![result.nid[level]!.indexOf(6)]).toBe(0);
     const conn = computeConnectors(
       result,
       defaultScaling,
@@ -1716,7 +1723,14 @@ describe('a person with three partners', () => {
         line.edgeType,
       ]),
     );
-    expect(lines.get('parent→kidC')).toBe('adoptive');
+    // Two adopters with no partnership: the child descends from the first
+    // recorded, by a dashed line, and the other draws a line of their own.
+    const descent = conn.parentChildLines.find((line) =>
+      line.uplineChildIds?.includes('kidC'),
+    );
+    expect(descent?.parentIds).toStrictEqual(['parent']);
+    expect(descent?.edgeType).toBe('adoptive');
+    expect(lines.get('parent→kidC')).toBeUndefined();
     expect(lines.get('c→kidC')).toBe('adoptive');
   });
 });
@@ -1830,15 +1844,22 @@ describe('every parent is joined to their child', () => {
   // primary parent has a line of its own, to the child or to its sibling bar.
   const expectEveryParentJoined = (ped: PedigreeInput) => {
     const result = alignPedigree(ped);
+    const pairs = new Set(
+      (ped.partners ?? []).map(
+        ({ partnerIndex1: a, partnerIndex2: b }) =>
+          `${Math.min(a, b)},${Math.max(a, b)}`,
+      ),
+    );
     const conn = computeConnectors(
       result,
       defaultScaling,
       ped.parents,
-      undefined,
+      pairs,
       undefined,
       undefined,
       undefined,
       ped.id,
+      pairs,
     );
     const direct = new Set(
       conn.auxiliaryLines.map((line) => line.endpointIds?.join('→')),
@@ -2680,15 +2701,22 @@ describe('a child adopted by a relative', () => {
       const col = result.nid[layer]!.indexOf(person);
       return { layer, col, fam: result.fam[layer]![col]! };
     };
+    const pairs = new Set(
+      (input.partners ?? []).map(
+        ({ partnerIndex1: a, partnerIndex2: b }) =>
+          `${Math.min(a, b)},${Math.max(a, b)}`,
+      ),
+    );
     const conn = computeConnectors(
       result,
       defaultScaling,
       input.parents,
-      undefined,
+      pairs,
       undefined,
       undefined,
       undefined,
       nodeIds,
+      pairs,
     );
     const edgeTo = (id: string, from: string) =>
       input.parents[nodeIds.indexOf(id)]!.find(
@@ -2769,8 +2797,10 @@ describe('a child adopted by a relative', () => {
         { source: 'bob', target: 'kid', kind: 'adoptive' },
       ],
     );
-    expect(edgeTo('kid', 'mum')).toBe('donor');
-    expect(edgeTo('kid', 'dad')).toBe('donor');
+    // The birth parents keep their recorded tie, drawn by the couple's own
+    // line to the child.
+    expect(edgeTo('kid', 'mum')).toBe('biological');
+    expect(edgeTo('kid', 'dad')).toBe('biological');
     expect(at('kid').layer).toBe(at('ann').layer + 1);
     const descent = conn.parentChildLines.find((line) =>
       line.uplineChildIds?.includes('kid'),
@@ -2780,9 +2810,14 @@ describe('a child adopted by a relative', () => {
     expect(
       conn.auxiliaryLines.filter((line) => line.edgeType === 'adoptive'),
     ).toEqual([]);
+    expect(
+      conn.auxiliaryLines
+        .filter((line) => line.edgeType === 'biological')
+        .map((line) => [...(line.ownerIds ?? [])].sort()),
+    ).toEqual([['dad', 'mum']]);
   });
 
-  it('is drawn under the birth parent and a step-parent who adopts, who is no relative', () => {
+  it('descends from the birth parents when a step-parent who is no relative adopts', () => {
     // mum and dad are kid's birth parents, never recorded as partners;
     // steve, mum's partner, adopted kid (a step-parent adoption).
     const { at, conn, edgeTo } = lay(
@@ -2794,8 +2829,10 @@ describe('a child adopted by a relative', () => {
         { source: 'steve', target: 'kid', kind: 'adoptive' },
       ],
     );
+    // A birth parent partnered with the adopter keeps the child in the
+    // birth family: their line of descent comes from the two birth parents.
     expect(edgeTo('kid', 'mum')).toBe('biological');
-    expect(at('kid').fam).toBe(Math.min(at('mum').col, at('steve').col) + 1);
+    expect(at('kid').fam).toBe(Math.min(at('mum').col, at('dad').col) + 1);
     expect(
       conn.auxiliaryLines
         .filter((line) => line.edgeType === 'adoptive')
