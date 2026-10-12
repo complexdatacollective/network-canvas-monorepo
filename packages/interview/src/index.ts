@@ -13,8 +13,6 @@ export type {
   InterviewAnalyticsMetadata,
   InterviewerFlags,
   InterviewPayload,
-  ProtocolLocaleChange,
-  ProtocolLocaleChangeHandler,
   ProtocolPayload,
   ResolvedAsset,
   SessionFinish,

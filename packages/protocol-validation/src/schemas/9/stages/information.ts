@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { duplicateIdRefinement } from '../../../utils/validation-helpers.ts';
 import { assetReference } from '../asset-reference.ts';
-import { localizedString } from '../localized-string.ts';
+import { localizedString, nonBlankText } from '../localized-string.ts';
 import { baseStageSchema } from './base.ts';
 
 const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
@@ -12,7 +12,7 @@ const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 const textItemSchema = z.strictObject({
   id: z.string(),
   type: z.literal('text'),
-  content: localizedString(z.string().min(1), 'markdown'),
+  content: localizedString(nonBlankText(), 'markdown'),
   description: z.string().optional(),
 });
 
@@ -21,7 +21,7 @@ const assetItemSchema = z.strictObject({
   id: z.string(),
   type: z.literal('asset'),
   content: assetReference(),
-  description: localizedString(z.string(), 'plain').optional(),
+  description: localizedString(nonBlankText(), 'plain').optional(),
   size: ItemSizeSchema.optional(),
 });
 
@@ -34,6 +34,6 @@ export type Item = z.infer<typeof ItemSchema>;
 
 export const informationStage = baseStageSchema.extend({
   type: z.literal('Information'),
-  title: localizedString(z.string().min(1), 'plain'),
+  title: localizedString(nonBlankText(), 'plain'),
   items: z.array(ItemSchema).superRefine(duplicateIdRefinement('Items')),
 });

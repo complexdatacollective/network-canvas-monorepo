@@ -735,8 +735,15 @@ const LibraryPanel = ({
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
-  const { protocols } = useProtocolLibrary();
-  const [tab, setTab] = useState<Tab>('recent');
+  const { protocols, isLoaded } = useProtocolLibrary();
+  // Null until the library has loaded. The opening tab is then chosen once:
+  // Templates when there is nothing recent to show, Recent otherwise. Deciding
+  // only once means removing the last protocol later does not move the
+  // researcher off the tab they are on.
+  const [tab, setTab] = useState<Tab | null>(null);
+  if (tab === null && isLoaded) {
+    setTab(protocols.length === 0 ? 'templates' : 'recent');
+  }
   const recentLayout = useMemo(
     () => new ListLayout<LibraryPanelItem>({ gap: 0 }),
     [],
@@ -757,7 +764,7 @@ const LibraryPanel = ({
   // by the time the dialog closes the menu item that opened it is long gone,
   // and the dialog's own opener capture would have nothing usable to return to.
   const infoFocusRef = useRef<ResolveMenuFocus | null>(null);
-  const activeTab = tab;
+  const activeTab = tab ?? 'recent';
   const handleDownload = useCallback(
     async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
       setDownloadingIds((prev) => new Set(prev).add(protocol.id));

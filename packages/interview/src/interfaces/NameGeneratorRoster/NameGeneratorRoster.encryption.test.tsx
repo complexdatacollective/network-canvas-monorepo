@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import {
   afterEach,
@@ -29,7 +29,6 @@ import {
   encryptedVariables,
   encryptionFor,
   NODE_TYPE,
-  outOfBoundsHeader,
   unlockWith,
 } from '../Anonymisation/__tests__/encryptionFixtures';
 import { readEncryptedAttribute } from '../Anonymisation/decryptionScope';
@@ -117,23 +116,14 @@ const stage: StageProps<'NameGeneratorRoster'>['stage'] = {
 const PASSPHRASE = 'roster passphrase';
 
 /**
- * Renders the roster in an interview where no passphrase has been chosen yet,
- * or (`resumed`) one chosen earlier whose key is in force unless `locked`, or
- * (`refused`) one whose header no passphrase can open.
+ * Renders the roster in an interview where no passphrase has been entered
+ * yet, or (`resumed`) one whose key is in force unless `locked`.
  */
 async function renderRoster(
-  interview: 'fresh' | 'refused' | { resumed: true; locked: boolean },
+  interview: 'fresh' | { resumed: true; locked: boolean },
   variables?: Record<string, Variable>,
 ) {
-  const { header } = await encryptionFor(PASSPHRASE);
-  const store = createEncryptionStore([], [stage], variables, {
-    header:
-      interview === 'fresh'
-        ? undefined
-        : interview === 'refused'
-          ? outOfBoundsHeader(header)
-          : header,
-  });
+  const store = createEncryptionStore([], [stage], variables);
   if (typeof interview === 'object' && !interview.locked) {
     await unlockWith(store, PASSPHRASE);
   }
@@ -185,25 +175,6 @@ async function renderRoster(
 }
 
 describe('NameGeneratorRoster adding people whose answers are encrypted', () => {
-  it('says why no one can be added when no passphrase can open the interview', async () => {
-    const toast = vi.spyOn(interviewToastManager, 'add');
-    const { store, draggable } = await renderRoster('refused');
-
-    expect(draggable()).toEqual([]);
-    await waitFor(() => expect(toast).toHaveBeenCalled());
-    render(
-      <InterviewI18nProvider requestedLocale="en">
-        {toast.mock.calls.map(([options], index) => (
-          <p key={index}>{options.description}</p>
-        ))}
-      </InterviewI18nProvider>,
-    );
-    expect(
-      screen.getByText(/cannot be shown or saved in this interview/),
-    ).toBeInTheDocument();
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-  });
-
   it('lets no one be dragged in, and asks for the passphrase, before one is entered', async () => {
     const toast = vi.spyOn(interviewToastManager, 'add');
     const { store, draggable, dropAlice } = await renderRoster('fresh');

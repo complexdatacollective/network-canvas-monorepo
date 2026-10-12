@@ -28,8 +28,7 @@ const UNAVAILABLE = 'Answer unavailable';
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;
 
 async function lockedStore(nodes: NcNode[]) {
-  const { header } = await encryptionFor('pw');
-  return createEncryptionStore(nodes, undefined, undefined, { header });
+  return createEncryptionStore(nodes);
 }
 
 function renderLabel(store: EncryptionStore, node: NcNode) {
@@ -187,10 +186,7 @@ describe('useNodeLabel with encrypted labels', () => {
       age: { name: 'age', label: 'age', type: 'number', component: 'Number' },
     };
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const { header } = await encryptionFor('pw');
-    const store = createEncryptionStore([node], undefined, unmarkedVariables, {
-      header,
-    });
+    const store = createEncryptionStore([node], undefined, unmarkedVariables);
 
     const { result, seen } = renderLabel(store, node);
     await waitFor(() => expect(result.current).toBe('🔒'));

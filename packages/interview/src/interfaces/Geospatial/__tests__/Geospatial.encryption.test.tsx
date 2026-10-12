@@ -129,10 +129,7 @@ const person: NcNode = {
 };
 
 async function renderGeospatial({ unlocked = false } = {}) {
-  const { header } = await encryptionFor('pw');
-  const store = createEncryptionStore([person], [stage], variables, {
-    header,
-  });
+  const store = createEncryptionStore([person], [stage], variables);
   if (unlocked) await unlockWith(store, 'pw');
 
   render(

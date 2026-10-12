@@ -142,17 +142,9 @@ test.describe('a Spanish browser', () => {
     await expect(
       page.getByText('Thanks for taking part.', { exact: true }),
     ).toBeVisible();
-    // The protocol declares only en-US, so its content stays in en-US while
-    // the built-in controls follow the browser.
     await expect
       .poll(async () => (await storedResearch(page)).sessions)
-      .toEqual([
-        expect.objectContaining({
-          caseId: 'Caso Á-17',
-          localePreference: null,
-          locale: 'en-US',
-        }),
-      ]);
+      .toEqual([expect.objectContaining({ caseId: 'Caso Á-17' })]);
     // The exit dialog's words are the protocol's, so in English.
     await interviewNav.exitInterview();
     const before = await storedResearch(page);
@@ -279,7 +271,7 @@ test.describe('a Spanish browser', () => {
 test.describe('the language chooser stage', () => {
   test.use({ locale: 'en-US' });
 
-  test('a chosen language switches the interview at once and stays with the session across a reload', async ({
+  test('a chosen language switches the interview at once, survives a reload in the same tab, and is never stored with the session', async ({
     page,
     protocol,
     interviewNav,
@@ -302,11 +294,6 @@ test.describe('the language chooser stage', () => {
     await expect(page.getByRole('option')).toHaveCount(2);
     const spanish = page.getByRole('option', { name: 'español', exact: true });
     await expect(spanish).toHaveAttribute('aria-selected', 'false');
-    await expect
-      .poll(async () => (await storedResearch(page)).sessions)
-      .toEqual([
-        expect.objectContaining({ localePreference: null, locale: 'en-US' }),
-      ]);
 
     await spanish.click();
     await expect(spanish).toHaveAttribute('aria-selected', 'true');
@@ -320,11 +307,16 @@ test.describe('the language chooser stage', () => {
     ).toBeVisible();
     // The participant's choice never changes Interviewer's own language.
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    // The choice is kept in this tab's sessionStorage, not with the session.
     await expect
-      .poll(async () => (await storedResearch(page)).sessions)
-      .toEqual([
-        expect.objectContaining({ localePreference: 'es', locale: 'es' }),
-      ]);
+      .poll(() =>
+        page.evaluate(() =>
+          Object.entries(sessionStorage).filter(([key]) =>
+            key.startsWith('network-canvas:interview-locale-preference:'),
+          ),
+        ),
+      )
+      .toEqual([[expect.any(String), 'es']]);
 
     await page.reload();
     await interviewNav.waitForStage();
@@ -333,9 +325,9 @@ test.describe('the language chooser stage', () => {
     ).toBeVisible();
     await expect(spanish).toHaveAttribute('aria-selected', 'true');
     await expect(interview).toHaveAttribute('lang', 'es');
-    expect((await storedResearch(page)).sessions).toEqual([
-      expect.objectContaining({ localePreference: 'es', locale: 'es' }),
-    ]);
+    const [session] = (await storedResearch(page)).sessions;
+    expect(session).not.toHaveProperty('localePreference');
+    expect(session).not.toHaveProperty('locale');
   });
 });
 

@@ -33,6 +33,8 @@ type ComposeService = {
   environment?: Record<string, string>;
   secrets?: string[];
   stop_grace_period?: string;
+  healthcheck?: { test?: string[] };
+  depends_on?: Record<string, { condition?: string }>;
 };
 /** A `traefik-api-servers` config, as the file provider reads it. */
 type ApiServers = {
@@ -125,14 +127,13 @@ function declared(source: string): Set<string> {
 }
 
 describe('the reference compose stack', () => {
-  it('is exactly the nine services the stack is specified as', () => {
+  it('is exactly the eight services the stack is specified as', () => {
     // Adding a service is a change to what a self-hoster runs, what the
     // self-host guide documents, and what the platform deploys. Failing here
     // is the prompt to do all three.
     expect(Object.keys(compose.services).sort()).toEqual([
       'api',
       'garage',
-      'garage-init',
       'migrate',
       'postgres',
       'traefik',
@@ -140,6 +141,29 @@ describe('the reference compose stack', () => {
       'web',
       'worker',
     ]);
+  });
+
+  it('starts the Studio processes only once Garage has bootstrapped itself', () => {
+    // Garage creates its layout, the access key and the bucket before it
+    // reports healthy, so depending on `service_healthy` is depending on the
+    // bucket existing — there is no bootstrap one-shot to wait for instead.
+    // `service_started` would let `migrate` and the API meet a store with no
+    // bucket yet.
+    expect(compose.services.garage!.healthcheck?.test).toEqual([
+      'CMD',
+      '/garage',
+      'health',
+      '--quiet',
+    ]);
+    for (const name of ['api', 'worker', 'migrate']) {
+      expect({
+        name,
+        garage: compose.services[name]!.depends_on?.garage,
+      }).toEqual({
+        name,
+        garage: { condition: 'service_healthy' },
+      });
+    }
   });
 
   it('pins every third-party image by tag and digest', () => {

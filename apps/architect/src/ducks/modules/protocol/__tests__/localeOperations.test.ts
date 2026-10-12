@@ -791,10 +791,10 @@ describe('the interview’s shared words', () => {
   const withBack = (back: Record<string, string>): CurrentProtocol =>
     ({
       ...monolingual(),
-      interfaceText: { interview: { back } },
+      interfaceText: { navigation: { back } },
     }) as unknown as CurrentProtocol;
   const backOf = (protocol: CurrentProtocol) =>
-    protocol.interfaceText?.interview?.back;
+    protocol.interfaceText?.navigation?.back;
 
   it('follow a language change while they are Network Canvas’s', () => {
     expect(

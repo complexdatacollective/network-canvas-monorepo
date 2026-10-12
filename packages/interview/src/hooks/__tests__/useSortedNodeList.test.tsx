@@ -16,7 +16,6 @@ import {
 import {
   createEncryptionStore,
   encryptedVariables,
-  encryptionFor,
   makeEncryptedPerson,
   unlockWith,
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
@@ -83,8 +82,7 @@ const named = async () => [
 ];
 
 async function lockedStore(nodes: NcNode[]) {
-  const { header } = await encryptionFor('pw');
-  return createEncryptionStore(nodes, undefined, undefined, { header });
+  return createEncryptionStore(nodes);
 }
 
 async function unlockedStore(nodes: NcNode[]) {

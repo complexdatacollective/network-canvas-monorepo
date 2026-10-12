@@ -11,8 +11,6 @@ const session = (lastUpdated: string) =>
     exportTime: null,
     lastUpdated,
     network: { ego: { _uid: 'ego-1' }, nodes: [], edges: [] },
-    localePreference: null,
-    locale: null,
   }) as unknown as SessionSnapshot;
 
 const change = { immediate: false, unloading: false };

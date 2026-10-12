@@ -84,8 +84,6 @@ const sessions: StoredSessionRow[] = protocols.map((protocol) => ({
   finishedAt: null,
   exportedAt: null,
   currentStep: 0,
-  localePreference: null,
-  locale: null,
 }));
 const reload = async () => {};
 

@@ -6,7 +6,9 @@ import type { SqlError } from 'effect/sql';
 
 import {
   CURRENT_SCHEMA_VERSION,
-  migrateProtocol,
+  type CurrentProtocol,
+  migrateProtocolWithSessions,
+  type SessionMigrator,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
@@ -35,6 +37,10 @@ export class MigrationTargetError extends Schema.TaggedError<MigrationTargetErro
 }
 
 // The name is a migration dependency: v7 documents had no name field.
+//
+// Also hands back the migrated protocol and the migrator for the sessions
+// recorded against the stored version, for the upgrade that carries pinned
+// in-flight interviews across with their version (`upgrade-pinned.ts`).
 export const migrateStoredVersionToDraft: (
   teamId: string,
   params: { versionId: string; draftId?: string },
@@ -44,6 +50,8 @@ export const migrateStoredVersionToDraft: (
     protocolId: string;
     fromSchemaVersion: number;
     toSchemaVersion: number;
+    protocol: CurrentProtocol;
+    migrateSession: SessionMigrator;
   },
   MigrationTargetError | SqlError.SqlError,
   Transaction
@@ -110,7 +118,7 @@ export const migrateStoredVersionToDraft: (
       : versionRow.name;
   // Both schemas require an `apikey` asset's `value`, which a stored document
   // never carries, so a placeholder goes in and comes straight back out.
-  const migrated = migrateProtocol(
+  const { protocol: migrated, migrateSession } = migrateProtocolWithSessions(
     withPlaceholderAssetKeys(document),
     CURRENT_SCHEMA_VERSION,
     { name },
@@ -145,5 +153,7 @@ export const migrateStoredVersionToDraft: (
     protocolId: versionRow.protocolId,
     fromSchemaVersion: versionRow.schemaVersion,
     toSchemaVersion: CURRENT_SCHEMA_VERSION,
+    protocol: migrated,
+    migrateSession,
   };
 }, sqlErrorsOnlyBeside);

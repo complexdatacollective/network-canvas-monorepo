@@ -6,10 +6,8 @@ import {
   egoProperty,
   entityPrimaryKeyProperty,
   finishOutcomeProperty,
-  interviewLocaleProperty,
   ncCaseProperty,
   ncFinishOutcomeProperty,
-  ncInterviewLocaleProperty,
   ncProtocolNameProperty,
   ncSessionProperty,
   protocolName,
@@ -38,8 +36,6 @@ const printableAttribute = (attribute: string) => {
       return ncSessionProperty;
     case protocolName:
       return ncProtocolNameProperty;
-    case interviewLocaleProperty:
-      return ncInterviewLocaleProperty;
     case finishOutcomeProperty:
       return ncFinishOutcomeProperty;
     case entityPrimaryKeyProperty:
@@ -66,7 +62,6 @@ export function* egoListRows(
     [sessionExportTimeProperty]: sessionVariables[sessionExportTimeProperty],
     [appVersionProperty]: sessionVariables[appVersionProperty],
     [commitHashProperty]: sessionVariables[commitHashProperty],
-    [interviewLocaleProperty]: sessionVariables[interviewLocaleProperty],
     [finishOutcomeProperty]: sessionVariables[finishOutcomeProperty],
   };
   const columns = planEgoColumns(codebook.ego?.variables, network.ego, {

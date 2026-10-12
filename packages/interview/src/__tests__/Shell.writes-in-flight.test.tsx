@@ -53,8 +53,6 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
-    localePreference: null,
-    locale: null,
     localeOptions: [getLocaleMetadata('en')],
     network: {
       ego: {
@@ -149,7 +147,6 @@ async function renderShell(
     <Shell
       payload={payload}
       onSync={onSync}
-      onProtocolLocaleChange={() => Promise.resolve()}
       requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}

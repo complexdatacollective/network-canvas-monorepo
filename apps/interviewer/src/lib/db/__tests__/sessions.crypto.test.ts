@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
-import type { NcEncryptionHeader, NcNetwork } from '@codaco/shared-consts';
+import type { NcNetwork } from '@codaco/shared-consts';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -51,24 +51,11 @@ const initialNetwork: NcNetwork = {
 const bytes = (length: number, offset: number) =>
   Array.from({ length }, (_, index) => (index * 37 + offset) % 256);
 
-const encryptionHeader: NcEncryptionHeader = {
-  version: 1,
-  method: 'AES-256-GCM',
-  kdf: {
-    algorithm: 'PBKDF2',
-    hash: 'SHA-256',
-    iterations: 600_000,
-    salt: bytes(16, 1),
-  },
-  check: { iv: bytes(12, 2), data: bytes(48, 3) },
-};
-
-// The header is the only record of the participant's salt and check value:
-// dropping it makes the interview ask for a new passphrase, and every answer
-// encrypted under the old one becomes unreadable. A schema 8 interview that
-// later gains a passphrase holds both value shapes, so this one does too.
-const networkWithEncryptionHeader: NcNetwork = {
-  encryption: encryptionHeader,
+// Nothing about the key is stored: the interview derives it from the
+// participant's passphrase and the session's id, so the repo must keep each
+// value, its `{ iv }` and the session's id as they are. A schema 8 interview
+// that later gains a passphrase holds both value shapes, so this one does too.
+const encryptedNetwork: NcNetwork = {
   ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
   nodes: [
     {
@@ -276,11 +263,11 @@ describe('sessions repo — participant passphrase encryption', () => {
 
   it.each([
     {
-      label: 'the encryption header and IV-only values',
-      network: networkWithEncryptionHeader,
+      label: 'IV-only values',
+      network: encryptedNetwork,
     },
     {
-      label: 'schema 8 values without a header',
+      label: 'schema 8 values',
       network: schema8EncryptedNetwork,
     },
   ])(
@@ -796,8 +783,6 @@ describe('sessions repo — an unreadable stored network fails closed', () => {
       finishedAt: null,
       exportedAt: null,
       currentStep: 2,
-      localePreference: null,
-      locale: null,
     };
   }
 

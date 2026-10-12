@@ -9,19 +9,32 @@
 const DASHES_OPENING_A_LINE = /^([^\S\n]*)(-+)/gm;
 
 /**
- * An ampersand that opens a character reference (`&amp;`, `&#73;`), which
- * markdown would render as the character it names. A lone ampersand is
- * already text, so it is left as it is.
+ * An `&` the renderer would decode: typed as `&lt;`, it would be shown as `<`.
+ * A bare `&` is text to markdown, so it is left readable.
  */
-const AMPERSAND_OPENING_A_REFERENCE = /&(?=#?[a-z\d]+;)/gi;
+const CHARACTER_REFERENCE = /&(?=#\d{1,7};|#x[\da-f]{1,6};|[a-z][a-z\d]*;)/gi;
+
+const LINE_SO_FAR_IS_BLANK = /(^|\n)[^\S\n]*$/;
 
 /**
- * A `>` opening a line, which CommonMark reads as a block quote. It is written
- * as `&gt;` rather than `\>`, because Architect's rich text editor reads every
- * `>` in stored markdown as `&gt;` before parsing it, which would turn `\>`
- * into the escaped text `&gt;`.
+ * The interview renderer passes raw HTML through and then sanitises it, so a
+ * typed `<IRB OR ETHICS BOARD HERE>` was read as an unknown element and dropped
+ * from the participant's screen. `<` can open HTML or an autolink almost
+ * anywhere, so every one is escaped. `>` means something only where it opens a
+ * line (a block quote) or closes a bracket, and is escaped only there: the
+ * comparison in an option label like `A > B` stays readable in the lists that
+ * show the stored source. Both are written as character references, the form
+ * the sample protocol stores, so text saved again comes back unchanged.
  */
-const ANGLE_BRACKET_OPENING_A_LINE = /^([^\S\n]*)>/gm;
+const escapeAngleBrackets = (value: string): string =>
+  value
+    .replace(/>/g, (bracket, offset: number) => {
+      const before = value.slice(0, offset);
+      return LINE_SO_FAR_IS_BLANK.test(before) || before.includes('<')
+        ? '&gt;'
+        : bracket;
+    })
+    .replaceAll('<', '&lt;');
 
 /**
  * Plain text as markdown that renders it as written, the way Architect's rich
@@ -29,13 +42,8 @@ const ANGLE_BRACKET_OPENING_A_LINE = /^([^\S\n]*)>/gm;
  * around a word rather than becoming emphasis.
  */
 export const escapeMarkdownText = (value: string): string =>
-  value
+  escapeAngleBrackets(value.replace(CHARACTER_REFERENCE, '&amp;'))
     .replace(/\\/g, '\\\\')
-    .replace(AMPERSAND_OPENING_A_REFERENCE, '\\&')
-    // Every `<`, because one opens raw HTML or an autolink, which the
-    // renderer's sanitiser would remove or turn into a link.
-    .replace(/</g, '\\<')
-    .replace(ANGLE_BRACKET_OPENING_A_LINE, '$1&gt;')
     .replace(/(^\d+)+(\.)/g, '$1\\$2')
     .replace(/\*/g, '\\*')
     .replace(/_/g, '\\_')

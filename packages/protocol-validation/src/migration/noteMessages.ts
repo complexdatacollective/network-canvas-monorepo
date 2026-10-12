@@ -422,6 +422,20 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: tieStrengthDeclineLabel. Tie-Strength Census is the name of an interface (stage type) where participants rate the strength of the relationship between pairs of people; one option lets them decline to rate it. "No relationship" is a literal English default written into protocol data: keep it in English.',
   },
+  schema9InformationTitle: {
+    id: 'protocolValidation.migrationNotes.schema9.informationTitle',
+    defaultMessage:
+      'The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: informationTitle. Information is the name of an interface (stage type) that shows text and media to participants.',
+  },
+  schema9ParticipantTextNotBlank: {
+    id: 'protocolValidation.migrationNotes.schema9.participantTextNotBlank',
+    defaultMessage:
+      'Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator\'s form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone; a Family Pedigree\'s prompt now uses the name of the stage, and each of its nomination prompts uses the name of its attribute. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.',
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance: participantTextNotBlank. Narrative, Name Generator, Family Pedigree and Information are names of interfaces (stage types). A Narrative preset is a saved view of the network that participants can switch between. A node is a person or thing participants name; its node type is the kind of node, such as person. A Family Pedigree is a stage where participants draw their family tree; its nomination prompts then ask who in the family something applies to, each setting an attribute. A hint is extra guidance under a question; a scale is a slider participants answer on. "Preset", "Preset 1", "Add" and "Add Person" are literal English defaults written into protocol data: keep them in English.',
+  },
   schema9EncryptedAttributeRules: {
     id: 'protocolValidation.migrationNotes.schema9.encryptedAttributeRules',
     defaultMessage:
@@ -607,6 +621,8 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9IntroductionPanelText,
       migrationNoteMessages.schema9OtherBinText,
       migrationNoteMessages.schema9TieStrengthDeclineLabel,
+      migrationNoteMessages.schema9InformationTitle,
+      migrationNoteMessages.schema9ParticipantTextNotBlank,
       migrationNoteMessages.schema9EncryptedAttributeRules,
       migrationNoteMessages.schema9FamilyPedigree,
       migrationNoteMessages.schema9FamilyPedigreeLabels,

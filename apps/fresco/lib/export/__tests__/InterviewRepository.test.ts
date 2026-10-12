@@ -8,7 +8,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 import {
-  networkWithEncryptionHeader,
+  encryptedNetwork,
   schema8EncryptedNetwork,
 } from '~/lib/__tests__/encryptedNetworks';
 
@@ -46,7 +46,6 @@ const row = (
   startTime: new Date('2026-01-01'),
   ...finish,
   network: networkValue,
-  locale: null,
   protocol: { hash: 'protocol-hash' },
 });
 
@@ -172,11 +171,11 @@ describe('PrismaInterviewRepository', () => {
 
   it.each([
     {
-      label: 'the encryption header and IV-only values',
-      stored: networkWithEncryptionHeader,
+      label: 'IV-only values',
+      stored: encryptedNetwork,
     },
     {
-      label: 'schema 8 values without a header',
+      label: 'schema 8 values',
       stored: schema8EncryptedNetwork,
     },
   ])('exports a network with $label unchanged', async ({ stored }) => {

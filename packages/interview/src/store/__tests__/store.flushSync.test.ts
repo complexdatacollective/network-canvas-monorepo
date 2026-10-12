@@ -3,18 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import type {
-  InterviewPayload,
-  ProtocolLocaleChangeHandler,
-} from '../../contract/types';
-import { setLocalePreference, updateEgo } from '../modules/session';
+import type { InterviewPayload } from '../../contract/types';
+import { updateEgo } from '../modules/session';
 import { store as createStore } from '../store';
 
 const patch = { set: { agrees: true }, unset: [] };
 
-function makeInterview(
-  onProtocolLocaleChange: ProtocolLocaleChangeHandler = () => Promise.resolve(),
-) {
+function makeInterview() {
   const payload: InterviewPayload = {
     session: {
       id: 'session-1',
@@ -27,8 +22,6 @@ function makeInterview(
         edges: [],
         ego: { _uid: 'ego-1', [entityAttributesProperty]: {} },
       },
-      localePreference: null,
-      locale: null,
       localeOptions: [getLocaleMetadata('en')],
     },
     protocol: {
@@ -51,10 +44,7 @@ function makeInterview(
   };
   const onSync = vi.fn(() => Promise.resolve());
   return {
-    interview: createStore(payload, {
-      onSync,
-      onProtocolLocaleChange,
-    }),
+    interview: createStore(payload, { onSync }),
     onSync,
   };
 }
@@ -139,33 +129,6 @@ describe('store flushSync', () => {
     expect(await hasSettled(interview.flushSync({ unloading: true }))).toBe(
       true,
     );
-  });
-
-  it('says the interview language was not stored when recording it is refused', async () => {
-    vi.spyOn(console, 'error').mockImplementation(vi.fn());
-    const onProtocolLocaleChange = vi
-      .fn<ProtocolLocaleChangeHandler>()
-      .mockRejectedValue(new Error('offline'));
-    const { interview } = makeInterview(onProtocolLocaleChange);
-    interview.dispatch(setLocalePreference('en'));
-
-    await expect(interview.flushSync()).resolves.toBe(false);
-    expect(onProtocolLocaleChange).toHaveBeenCalledTimes(2);
-    vi.restoreAllMocks();
-  });
-
-  it('hands over once a refused interview language is stored on trying again', async () => {
-    vi.spyOn(console, 'error').mockImplementation(vi.fn());
-    const onProtocolLocaleChange = vi
-      .fn<ProtocolLocaleChangeHandler>()
-      .mockRejectedValueOnce(new Error('offline'))
-      .mockResolvedValue(undefined);
-    const { interview } = makeInterview(onProtocolLocaleChange);
-    interview.dispatch(setLocalePreference('en'));
-
-    await expect(interview.flushSync()).resolves.toBe(true);
-    expect(onProtocolLocaleChange).toHaveBeenCalledTimes(2);
-    vi.restoreAllMocks();
   });
 
   it('says the session was not stored when the host refuses to sync it', async () => {

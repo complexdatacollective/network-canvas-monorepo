@@ -51,8 +51,7 @@ function AnonymisationInner(props: AnonymisationProps) {
   const {
     stage: { explanationText, validation },
   } = props;
-  const { unlocked, passphraseChosen, encryptionUnavailable, unlock } =
-    usePassphrase();
+  const { unlocked, passphraseChosen, unlock } = usePassphrase();
   // Once a passphrase has been chosen in this interview, this stage only asks
   // for it again: it is checked, not chosen, so it needs no confirmation and
   // the length rules do not apply to it.
@@ -73,14 +72,14 @@ function AnonymisationInner(props: AnonymisationProps) {
   // From an effect rather than after the check, so that a check still under
   // way when the participant leaves cannot mark the next stage ready.
   useEffect(() => {
-    if (unlocked || encryptionUnavailable) updateReady(true);
-  }, [unlocked, encryptionUnavailable, updateReady]);
+    if (unlocked) updateReady(true);
+  }, [unlocked, updateReady]);
 
   useBeforeNext(async (direction) => {
     if (direction === 'backwards') {
       return true;
     }
-    if (unlocked || encryptionUnavailable) {
+    if (unlocked) {
       return true;
     }
 
@@ -122,14 +121,6 @@ function AnonymisationInner(props: AnonymisationProps) {
               createMessageError(runtimeMessages.passphraseIncorrect),
             ],
           },
-        };
-      }
-      if (outcome === 'unavailable') {
-        return {
-          success: false,
-          formErrors: [
-            createMessageError(runtimeMessages.protectedAnswersUnavailable),
-          ],
         };
       }
       return { success: true };
@@ -188,17 +179,7 @@ function AnonymisationInner(props: AnonymisationProps) {
             />
 
             <AnimatePresence mode="popLayout">
-              {encryptionUnavailable ? (
-                <motion.div key="unavailable">
-                  <Alert variant="warning">
-                    <AlertDescription>
-                      <AppMessage
-                        message={runtimeMessages.protectedAnswersUnavailable}
-                      />
-                    </AlertDescription>
-                  </Alert>
-                </motion.div>
-              ) : unlocked ? (
+              {unlocked ? (
                 <motion.div
                   key="success"
                   initial={{ opacity: 0, scale: 0.9 }}

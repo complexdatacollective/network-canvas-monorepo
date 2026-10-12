@@ -63,8 +63,7 @@ async function renderNodeForm({
   stages?: Parameters<typeof createEncryptionStore>[1];
   variables?: Record<string, Variable>;
 }) {
-  const { header } = await encryptionFor('pw');
-  const store = createEncryptionStore(stored, stages, variables, { header });
+  const store = createEncryptionStore(stored, stages, variables);
   if (unlocked) await unlockWith(store, 'pw');
   const onClose = vi.fn();
 

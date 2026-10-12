@@ -51,6 +51,7 @@ export const readParticipantSession = Effect.fn(
       const protocol = yield* participantProtocolPayload({
         protocolId: context.protocolId,
         protocolVersionId: context.protocolVersionId,
+        schemaVersion: context.schemaVersion,
         publishedAt: context.publishedAt,
       });
       const analytics =

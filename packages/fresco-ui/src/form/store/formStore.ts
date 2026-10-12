@@ -589,6 +589,17 @@ export type FormStoreApi = Mutate<
   [['zustand/immer', never]]
 >;
 
+/**
+ * The document's own reading of a path. A caller's document is declared as a
+ * map of `FieldValue`, so every node within it is itself one.
+ */
+const readDocumentAt = (
+  document: Record<string, unknown>,
+  path: ObjectPath,
+): FieldValue =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  readObjectPath(document, path) as FieldValue;
+
 export const createFormStore = (
   storeOptions: FormStoreOptions = {},
 ): FormStoreApi => {
@@ -668,9 +679,10 @@ export const createFormStore = (
       return readObjectPath(formValues, fieldPath) as FieldValue;
     const document = storeOptions.getInitialValues?.();
     if (document === undefined) return undefined;
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const documented = readObjectPath(document, fieldPath) as FieldValue;
-    return documentWithFieldsInside(fieldPath, documented);
+    return documentWithFieldsInside(
+      fieldPath,
+      readDocumentAt(document, fieldPath),
+    );
   };
 
   /**
@@ -854,10 +866,7 @@ export const createFormStore = (
           const moved = new Map<string, FieldState>();
           records.forEach((field, fieldName) => {
             const path = resolveStoredFieldPath(fieldName, field);
-            // A caller's document is declared as a map of `FieldValue`, so
-            // every node within it is itself one.
-            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-            const documented = readObjectPath(document, path) as FieldValue;
+            const documented = readDocumentAt(document, path);
             if (isEqual(field.initialValue, documented)) return;
             moved.set(fieldName, { ...field, initialValue: documented });
           });
@@ -1127,12 +1136,23 @@ export const createFormStore = (
           // mounted (Architect's undo/redo). The write is parked in dormant
           // storage for the field's next registration: it is not validated,
           // owns no errors, and stays out of the form's output until then.
+          //
+          // A path nothing has held yet is measured against the document's
+          // own reading of it, the baseline `rebaseToDocument` gives a parked
+          // field: a host restating on opening a value the document already
+          // holds has changed nothing, and measured against nothing it would
+          // report a freshly opened form dirty.
+          const existing = dormantRecords.get(fieldName);
+          const document = storeOptions.getInitialValues?.();
+          const initialValue =
+            existing === undefined && document !== undefined
+              ? readDocumentAt(document, fieldPath)
+              : existing?.initialValue;
           set((state) => {
-            const existing = dormantRecords.get(fieldName);
             dormantRecords.set(fieldName, {
               path: existing?.path ?? fieldPath,
               submissionErrorKey: existing?.submissionErrorKey,
-              initialValue: existing?.initialValue,
+              initialValue,
               validation: existing?.validation,
               value,
               meta: {

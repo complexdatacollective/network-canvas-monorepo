@@ -710,6 +710,63 @@ describe('v8 to v9 Family Pedigree migration', () => {
     });
   });
 
+  // Schema 8 accepted text of only spaces here, which showed no words.
+  describe('text that shows nothing', () => {
+    it.each([' ', '\t', '\u00a0', '\u200b'])(
+      'gives a prompt of %j the name of the stage',
+      (blank) => {
+        const migrated = migrateValid(
+          schema8Protocol([schema8Pedigree({ censusPrompt: blank })]),
+        );
+        expect(pedigreeOf(migrated).prompt).toEqual(en('Your family'));
+      },
+    );
+
+    // The prompt is markdown and the name plain text.
+    it('escapes the name of the stage, so it shows as written', () => {
+      const migrated = migrateValid(
+        schema8Protocol([
+          schema8Pedigree({ label: 'Your *family*', censusPrompt: ' ' }),
+        ]),
+      );
+      expect(
+        messageText(String(asRecord(pedigreeOf(migrated).prompt).en)),
+      ).toBe('Your \\*family\\*');
+    });
+
+    it.each([' ', '\t', '\u00a0', '\u200b'])(
+      'gives a question about the family of %j the name of its attribute',
+      (blank) => {
+        const migrated = migrateValid(
+          schema8Protocol([
+            schema8Pedigree({
+              nominationPrompts: [
+                { id: 'condition', text: blank, variable: 'hasCondition' },
+                {
+                  id: 'tested',
+                  text: 'Who was tested?',
+                  variable: 'hadTesting',
+                },
+              ],
+            }),
+          ]),
+        );
+        expect(pedigreeOf(migrated).nominationPrompts).toEqual([
+          {
+            id: 'condition',
+            text: en('hasCondition'),
+            attribute: 'hasCondition',
+          },
+          {
+            id: 'tested',
+            text: en('Who was tested?'),
+            attribute: 'hadTesting',
+          },
+        ]);
+      },
+    );
+  });
+
   // Schema 8 did not check the name attribute's type, so the name could share
   // an attribute with sex at birth or a nomination prompt, each answer
   // overwriting the other. Nothing tells the answers apart afterwards.
@@ -746,16 +803,15 @@ describe('v8 to v9 Family Pedigree migration', () => {
       });
     });
 
-    it('keeps an empty hint, which schema 9 accepts', () => {
+    // An empty hint showed nothing, and schema 9 refuses one.
+    it('leaves out an empty hint', () => {
       const pedigree = schema8Pedigree();
       (pedigree.nodeConfig as Fields).form = [
         { variable: 'living', prompt: 'Living?', hint: '' },
       ];
       const migrated = migrateValid(schema8Protocol([pedigree]));
       expect(pedigreeOf(migrated).form).toEqual({
-        fields: [
-          { variable: 'living', prompt: en('Living?'), hint: { en: '' } },
-        ],
+        fields: [{ variable: 'living', prompt: en('Living?') }],
       });
     });
 

@@ -379,6 +379,23 @@ describe('FormStore', () => {
       expect(store.getState().fields.has('email')).toBe(false);
       expect(selectIsFormDirty(store.getState())).toBe(true);
     });
+
+    // A host restating, for a path no field renders, the value the document
+    // already holds there — an editor normalising what it was handed on
+    // opening — has changed nothing. Measured against nothing instead, it
+    // made a freshly opened dialog ask to discard work nobody had done.
+    it('is false when a host writes the document’s own value to a path no field holds', () => {
+      const documented = createFormStore({
+        getInitialValues: () => ({ highlight: { allowHighlighting: true } }),
+      });
+      documented.getState().setFieldValue('highlight.allowHighlighting', true);
+
+      expect(selectIsFormDirty(documented.getState())).toBe(false);
+
+      documented.getState().setFieldValue('highlight.allowHighlighting', false);
+
+      expect(selectIsFormDirty(documented.getState())).toBe(true);
+    });
   });
 
   describe('Field value updates', () => {

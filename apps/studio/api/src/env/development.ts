@@ -39,16 +39,15 @@ export const DEV = {
   // disagree, and `garage` is the name Garage itself defaults to.
   s3Region: 'garage',
   s3Bucket: 'studio-dev',
-  // Garage's key format: `GK` and 24 hex characters, then 64 hex characters
-  // of secret. Fixed rather than generated so the value in `.env.development`
-  // is the value the container is bootstrapped with.
+  // Garage's own key format, `GK` and 24 hex characters, then 64 hex
+  // characters of secret — stricter than the 8- and 16-character minimums
+  // Garage now imports, and still valid. Fixed rather than generated so the
+  // value in `.env.development` is the value the container bootstraps with.
   s3AccessKeyId: 'GK000000000000000073646576',
   s3SecretAccessKey:
     '0000000000000000000000000073747564696f2d6465762d6e6f742d70726f64',
   garageRpcSecret:
     '000000000000000000000073747564696f2d6465762d6761726167652d727063',
-  garageAdminToken:
-    '00000000000000000073747564696f2d6465762d6761726167652d61646d696e',
   valkeyPort: 63790,
   // Azurite, Azure Blob Storage's emulator, from docker-compose.dev.yml. The
   // development server never stores assets in it — it runs on Garage, like the

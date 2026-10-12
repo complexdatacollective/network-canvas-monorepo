@@ -39,8 +39,7 @@ afterEach(() => {
 });
 
 async function lockedStore(nodes: NcNode[]) {
-  const { header } = await encryptionFor(PASSPHRASE);
-  return createEncryptionStore(nodes, undefined, undefined, { header });
+  return createEncryptionStore(nodes);
 }
 
 function renderDecrypted(store: EncryptionStore, initialNodes: NcNode[]) {

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+
 import type { RichTextContent } from '../markdownAdapter.ts';
 import {
   markdownToRichTextContent,
@@ -117,6 +119,82 @@ describe('RichText markdown adapter', () => {
     expect(roundTrip('A > B')).toBe('A > B');
   });
 
+  /**
+   * Text the researcher typed is text, whatever characters it contains.
+   *
+   * The renderer every interview runs passes raw HTML through and then
+   * sanitises it, so an unescaped `<IRB OR ETHICS BOARD HERE>` reached the
+   * participant as an unknown element and was dropped outright: the consent
+   * form read "received ethics clearance through, today." Each case is read
+   * back by that renderer, so the assertion is about what the participant is
+   * shown rather than about one spelling of the escape.
+   */
+  describe('characters the renderer would read as markup', () => {
+    const paragraph = (text: string): RichTextContent => ({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+    });
+
+    const shownToParticipant = (text: string) =>
+      getMarkdownLabelText(richTextContentToMarkdown(paragraph(text)));
+
+    it.each([
+      'Ethics clearance through, <IRB OR ETHICS BOARD HERE> today.',
+      '<b>not bold</b>',
+      '<https://example.com>',
+      '<!-- a comment -->',
+      'Line one <br> line two',
+      '> 5 years',
+      'Fish &amp; chips, &lt;tags&gt;, &#60; and &copy;',
+      'Fish & chips',
+      'Saved to C:\\Users\\<name>\\&lt;file&gt;',
+    ])('shows the participant %s exactly as typed', (text) => {
+      expect(shownToParticipant(text)).toBe(text);
+    });
+
+    it('stores a bracketed placeholder in the same form as the sample protocol', () => {
+      expect(
+        richTextContentToMarkdown(
+          paragraph('ethics clearance through, <IRB OR ETHICS BOARD HERE>'),
+        ),
+      ).toBe('ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;');
+    });
+
+    /**
+     * Escaped only where markdown would read them, as the dash is: the stored
+     * source is what the read-only lists show the researcher.
+     */
+    it('leaves comparisons and ampersands that markdown reads as text alone', () => {
+      expect(richTextContentToMarkdown(paragraph('A > B'))).toBe('A > B');
+      expect(richTextContentToMarkdown(paragraph('Over 18 & under 65'))).toBe(
+        'Over 18 & under 65',
+      );
+      expect(richTextContentToMarkdown(paragraph('> 5 years'))).toBe(
+        '&gt; 5 years',
+      );
+    });
+
+    it.each([
+      // The Consent Form stage of packages/protocols/sample/protocol.json.
+      'received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;',
+      'Fish &amp;amp; chips',
+      '&gt; 5 years',
+    ])('re-saves stored escaped text %s unchanged', (stored) => {
+      expect(roundTrip(stored)).toBe(stored);
+      expect(roundTrip(stored, true)).toBe(stored);
+    });
+
+    /**
+     * A protocol saved before this was fixed holds the bracket raw. The editor
+     * already showed it as text, so saving it again writes what was shown.
+     */
+    it('repairs a placeholder an earlier save stored raw', () => {
+      expect(roundTrip('through, <IRB OR ETHICS BOARD HERE> today.')).toBe(
+        'through, &lt;IRB OR ETHICS BOARD HERE&gt; today.',
+      );
+    });
+  });
+
   it('escapes markdown metacharacters and leading ordered markers', () => {
     const content: RichTextContent = {
       type: 'doc',
@@ -165,12 +243,12 @@ describe('RichText markdown adapter', () => {
   // autolink, a character reference or a block quote is the same text when
   // the stored markdown is opened again, and is stored the same way again.
   it.each([
-    ['<img>', '\\<img>'],
-    ['<https://example.org>', '\\<https://example.org>'],
-    ['Isabel &amp; Irene', 'Isabel \\&amp; Irene'],
+    ['<img>', '&lt;img&gt;'],
+    ['<https://example.org>', '&lt;https://example.org&gt;'],
+    ['Isabel &amp; Irene', 'Isabel &amp;amp; Irene'],
     ['Isabel & Irene', 'Isabel & Irene'],
     ['> 65', '&gt; 65'],
-    ['18 < age > 65', '18 \\< age > 65'],
+    ['18 < age > 65', '18 &lt; age &gt; 65'],
   ])('stores %s as text it reads back', (text, stored) => {
     const content: RichTextContent = {
       type: 'doc',

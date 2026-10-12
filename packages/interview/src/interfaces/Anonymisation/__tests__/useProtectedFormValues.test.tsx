@@ -19,10 +19,8 @@ import { useProtectedFormValues } from '../useProtectedFormValues';
 import {
   createEncryptionStore,
   encryptedVariables,
-  encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
-  outOfBoundsHeader,
   unlockWith,
 } from './encryptionFixtures';
 
@@ -40,18 +38,7 @@ async function lockedStore(
   nodes: NcNode[],
   variables: Record<string, Variable> = encryptedVariables,
 ) {
-  const { header } = await encryptionFor('pw');
-  return createEncryptionStore(nodes, undefined, variables, { header });
-}
-
-async function refusedStore(
-  nodes: NcNode[],
-  variables: Record<string, Variable> = encryptedVariables,
-) {
-  const { header } = await encryptionFor('pw');
-  return createEncryptionStore(nodes, undefined, variables, {
-    header: outOfBoundsHeader(header),
-  });
+  return createEncryptionStore(nodes, undefined, variables);
 }
 
 function renderValuesFor(
@@ -145,32 +132,6 @@ describe('useProtectedFormValues', () => {
     expect(store.getState().ui.showPassphrasePrompter).toBe(true);
   });
 
-  it('makes every protected question unavailable, answered or not, when no passphrase can open the interview', async () => {
-    const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const unnamed: NcNode = {
-      [entityPrimaryKeyProperty]: 'n2',
-      type: NODE_TYPE,
-      [entityAttributesProperty]: { age: 30 },
-    };
-    const store = await refusedStore([alice, unnamed]);
-
-    const answered = renderValuesFor(store, alice);
-    expect(answered.result.current).toEqual({
-      status: 'ready',
-      values: { age: 40 },
-      unavailable: ['name'],
-    });
-    answered.unmount();
-
-    const unanswered = renderValuesFor(store, unnamed);
-    expect(unanswered.result.current).toEqual({
-      status: 'ready',
-      values: { age: 30 },
-      unavailable: ['name'],
-    });
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-  });
-
   it('waits for the passphrase to show an answer stored encrypted under a question the codebook no longer protects', async () => {
     const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
     const store = await lockedStore([alice], unmarkedVariables);
@@ -187,20 +148,6 @@ describe('useProtectedFormValues', () => {
       values: { name: 'Alice', age: 40 },
       unavailable: [],
     });
-  });
-
-  it('makes an answer stored encrypted under a question the codebook no longer protects unavailable when no passphrase can open the interview', async () => {
-    const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const store = await refusedStore([alice], unmarkedVariables);
-
-    const { result } = renderValuesFor(store, alice, unmarkedVariables);
-
-    expect(result.current).toEqual({
-      status: 'ready',
-      values: { age: 40 },
-      unavailable: ['name'],
-    });
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 
   it('reports an answer the key cannot decrypt as unavailable, without asking for the passphrase again', async () => {

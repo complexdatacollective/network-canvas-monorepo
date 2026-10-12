@@ -98,7 +98,16 @@ describe('TranslationTable: texts with versions', () => {
     renderTable();
 
     expect(messageCell('English')).toHaveAccessibleDescription(
-      /Your brothers and sisters.*Brothers and sisters of \[Name\]/,
+      /Your brothers and sisters.*Brothers and sisters of Name/,
+    );
+    // The placeholder is drawn as the pill the editor draws, not as text in
+    // brackets.
+    const pill = messageCell('English')
+      .closest('td')
+      ?.querySelector('[data-token="name"]');
+    expect(pill).toHaveTextContent('Name');
+    expect(messageCell('English').closest('td')).not.toHaveTextContent(
+      '[Name]',
     );
     expect(screen.queryByRole('textbox', { name: cellName('English') })).toBe(
       null,
@@ -123,7 +132,7 @@ describe('TranslationTable: texts with versions', () => {
     await leaveCell(user, 'French');
     expect(listItem(store)).toEqual({ en: SIBLINGS });
     expect(messageCell('French')).toHaveAccessibleDescription(
-      /Vos frères et sœurs.*Frères et sœurs de \[Name\]/,
+      /Vos frères et sœurs.*Frères et sœurs de Name/,
     );
 
     await save(user);
@@ -157,7 +166,7 @@ describe('TranslationTable: texts with versions', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('textbox', {
-          name: /Throughout the interview › Exit button English$/,
+          name: /Interview navigation › Exit button English$/,
         }),
       ).toHaveFocus(),
     );
@@ -234,7 +243,7 @@ describe('TranslationTable: texts with versions', () => {
     await leaveCell(user, 'English');
     expect(
       await screen.findByText(
-        'This text exists only in English. Translate it into another language before clearing it.',
+        'This is the only translation, and it is in English. Add a translation in another language before clearing it.',
       ),
     ).toBeInTheDocument();
 

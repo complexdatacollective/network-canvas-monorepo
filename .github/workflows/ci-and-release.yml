@@ -709,15 +709,17 @@ jobs:
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
       # Starts the dev Garage and Azurite from the dev compose stack (project
-      # `studio-dev`) and bootstraps Garage's bucket. The object-store contract
-      # suite inside the Studio server suite runs against both and, like the
-      # Postgres and Valkey suites, refuses to skip under CI; the `asset
-      # storage` suite in src/__tests__/assets.test.ts, which used to skip here
-      # for want of a store, now runs too. A step rather than a `services:`
-      # entry because Garage needs a mounted configuration file and a bootstrap
-      # one-shot, which the compose stack already defines. `continue-on-error`
-      # and an `id:` like the seeding steps below, so a failure here is
-      # reported by name rather than only as the Studio suite failing after it.
+      # `studio-dev`), and waits for Garage — which creates its own bucket as
+      # it starts — to report healthy. The object-store contract suite inside
+      # the Studio server suite runs against both and, like the Postgres and
+      # Valkey suites, refuses to skip under CI; the `asset storage` suite in
+      # src/__tests__/assets.test.ts, which used to skip here for want of a
+      # store, now runs too. A step rather than a `services:` entry because
+      # Garage needs a mounted configuration file and its own start command,
+      # which the compose stack already defines and a service container cannot
+      # take. `continue-on-error` and an `id:` like the seeding steps below, so
+      # a failure here is reported by name rather than only as the Studio suite
+      # failing after it.
       - name: Start the dev object stores
         id: object-stores
         continue-on-error: true
@@ -1057,13 +1059,15 @@ jobs:
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
       # Starts the dev Garage and Azurite from the dev compose stack (project
-      # `studio-dev`) and bootstraps Garage's bucket. The object-store contract
-      # suite inside the Studio server suite runs against both and, like the
-      # Postgres and Valkey suites, refuses to skip under CI; the `asset
-      # storage` suite in src/__tests__/assets.test.ts, which used to skip here
-      # for want of a store, now runs too. A step rather than a `services:`
-      # entry because Garage needs a mounted configuration file and a bootstrap
-      # one-shot, which the compose stack already defines.
+      # `studio-dev`), and waits for Garage — which creates its own bucket as
+      # it starts — to report healthy. The object-store contract suite inside
+      # the Studio server suite runs against both and, like the Postgres and
+      # Valkey suites, refuses to skip under CI; the `asset storage` suite in
+      # src/__tests__/assets.test.ts, which used to skip here for want of a
+      # store, now runs too. A step rather than a `services:` entry because
+      # Garage needs a mounted configuration file and its own start command,
+      # which the compose stack already defines and a service container cannot
+      # take.
       - name: Start the dev object stores
         run: pnpm --filter @codaco/studio-api dev:object-stores
       - name: Run the Studio server suite

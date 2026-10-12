@@ -49,7 +49,6 @@ vi.mock('@codaco/interview', () => ({
   Shell: (props: {
     requestedLocales: readonly string[];
     payload: InterviewPayload;
-    onProtocolLocaleChange: unknown;
   }) => {
     shell(props);
     return (
@@ -76,8 +75,6 @@ const payload: InterviewPayload = {
       nodes: [],
       edges: [],
     },
-    localePreference: null,
-    locale: null,
     localeOptions: [
       { locale: 'en', label: 'English', direction: 'ltr' },
       { locale: 'fr-CA', label: 'français (Canada)', direction: 'ltr' },
@@ -184,7 +181,6 @@ describe('Fresco hands the interview the request’s languages, never its own', 
         requestedLocales: serializedRequest,
         catalog: interviewCatalog,
         payload,
-        onProtocolLocaleChange: expect.any(Function),
       }),
     );
     const props = shell.mock.lastCall?.[0];

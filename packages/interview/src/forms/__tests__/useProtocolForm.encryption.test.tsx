@@ -190,8 +190,6 @@ async function makeStore(
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
-    localePreference: null,
-    locale: null,
     promptIndex: 0,
     network: {
       ego: {
@@ -200,7 +198,6 @@ async function makeStore(
       },
       nodes,
       edges: [],
-      encryption: (await encryptionFor(PASSPHRASE)).header,
     },
   };
   const protocolState: ProtocolPayload = {

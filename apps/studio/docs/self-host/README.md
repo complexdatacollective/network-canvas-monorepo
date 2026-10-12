@@ -10,19 +10,18 @@ The compose file you run is the compose file the managed service runs.
 
 ## What you are running
 
-Nine service blocks: seven long-running containers and two one-shots.
+Eight service blocks: seven long-running containers and one one-shot.
 
-| Service       | What it is                                                                                                              |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `traefik`     | the only published ports. Terminates TLS, gets the certificate, routes by path                                          |
-| `web`         | nginx serving the built client and the maintenance page. It proxies nothing                                             |
-| `api`         | the Studio server: HTTP, the RPC surface, the public API and the WebSocket                                              |
-| `worker`      | background jobs, cron schedules and every message Studio sends. No published port                                       |
-| `postgres`    | Postgres 18. All of Studio's data                                                                                       |
-| `garage`      | the S3-compatible object store interview assets live in                                                                 |
-| `valkey`      | Redis-compatible. Rate-limit counters, and nothing else — no persistence, no backup                                     |
-| `migrate`     | one-shot. Applies this build's migrations (creating the schema on a new database), and prints the first-run setup token |
-| `garage-init` | one-shot. Creates the bucket and its access key. `migrate` runs it for you                                              |
+| Service    | What it is                                                                                                              |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `traefik`  | the only published ports. Terminates TLS, gets the certificate, routes by path                                          |
+| `web`      | nginx serving the built client and the maintenance page. It proxies nothing                                             |
+| `api`      | the Studio server: HTTP, the RPC surface, the public API and the WebSocket                                              |
+| `worker`   | background jobs, cron schedules and every message Studio sends. No published port                                       |
+| `postgres` | Postgres 18. All of Studio's data                                                                                       |
+| `garage`   | the S3-compatible object store interview assets live in. It creates its own bucket and access key on start              |
+| `valkey`   | Redis-compatible. Rate-limit counters, and nothing else — no persistence, no backup                                     |
+| `migrate`  | one-shot. Applies this build's migrations (creating the schema on a new database), and prints the first-run setup token |
 
 `postgres`, `garage` and `valkey` are each swappable for a managed service
 from `.env` — `garage` for any S3-compatible bucket or for Azure Blob Storage —

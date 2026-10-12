@@ -16,7 +16,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   type NcEdge,
-  type NcEncryptionHeader,
   type NcNode,
   type VariableValue,
 } from '@codaco/shared-consts';
@@ -303,10 +302,10 @@ type StoreOptions = {
   chosenFraming?: FramingId;
   network?: { nodes: NcNode[]; edges: NcEdge[] };
   /**
-   * Store names encrypted, in an interview protected by this header, with
-   * the key of its passphrase in force once the passphrase has been entered.
+   * Store names encrypted, with the key of the interview's passphrase in
+   * force once the passphrase has been entered.
    */
-  encryption?: { header: NcEncryptionHeader; key?: CryptoKey };
+  encryption?: { key?: CryptoKey };
 };
 
 function makeStore({
@@ -330,7 +329,6 @@ function makeStore({
         network: {
           ...network,
           ego: { [entityAttributesProperty]: {} },
-          ...(encryption ? { encryption: encryption.header } : {}),
         },
         stageMetadata: chosenFraming ? { 0: { framing: chosenFraming } } : {},
       } as never,
@@ -338,6 +336,7 @@ function makeStore({
         FORM_IS_READY: false,
         encryptionKeyId: null,
         showPassphrasePrompter: false,
+        localePreference: null,
       },
     },
     middleware: (g) => g({ serializableCheck: false }),
@@ -540,7 +539,7 @@ describe('NarrativePedigreeView — encrypted names', () => {
   it('asks for the passphrase, and describes the person by how they are related until it is entered', async () => {
     const { store } = renderView({
       network: await encryptedNetwork(),
-      encryption: { header: (await encryptionFor('secret')).header },
+      encryption: {},
     });
     expect(
       await screen.findByRole('button', { name: 'Focus on Father' }),

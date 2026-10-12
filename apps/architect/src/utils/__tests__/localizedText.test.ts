@@ -24,6 +24,14 @@ describe('withTranslation', () => {
     });
   });
 
+  // The schema refuses a translation of characters that show nothing, so
+  // keeping one would leave the protocol invalid.
+  it('removes the translation when only invisible characters are left', () => {
+    expect(
+      withTranslation({ en: 'Yes', fr: 'Oui' }, 'fr', '\u200b\u00a0'),
+    ).toEqual({ en: 'Yes' });
+  });
+
   it('leaves no translation at all as an empty string map', () => {
     expect(withTranslation({ en: 'Yes' }, 'en', ' ')).toEqual({});
   });

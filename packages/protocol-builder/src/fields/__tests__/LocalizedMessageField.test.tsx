@@ -13,6 +13,7 @@ import type {
 import type { ProtocolLocalization } from '../../localization/localizedText.ts';
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
 import LocalizedMessageField, {
+  LocalizedMessageVersionsSummary,
   localizedMessageValidation,
 } from '../LocalizedMessageField.tsx';
 
@@ -256,5 +257,30 @@ describe('LocalizedMessageField', () => {
         expect(saved.current).toBeDefined();
       });
     });
+  });
+});
+
+describe('LocalizedMessageVersionsSummary', () => {
+  it('shows each placeholder as a pill with its label, among the words', () => {
+    render(
+      <p data-testid="summary">
+        <LocalizedMessageVersionsSummary
+          message="{isYou, select, true {Your brothers and sisters} other {Brothers and sisters of {name}}}"
+          declaration={{
+            isYou: { kind: 'select', cases: ['true'] },
+            name: { kind: 'text' },
+          }}
+          locale="en"
+        />
+      </p>,
+    );
+
+    const summary = screen.getByTestId('summary');
+    const pills = summary.querySelectorAll('[data-token]');
+    expect(pills).toHaveLength(1);
+    expect(pills[0]).toHaveAttribute('data-token', 'name');
+    expect(pills[0]).toHaveTextContent('Name');
+    expect(summary).toHaveTextContent('Brothers and sisters of Name');
+    expect(summary).not.toHaveTextContent('[Name]');
   });
 });

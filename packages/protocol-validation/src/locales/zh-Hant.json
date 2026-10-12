@@ -94,6 +94,8 @@
   "protocolValidation.migrationNotes.schema9.pedigreeWording": "「家族譜系」階段本身的文字現在屬於該階段，因此您可以變更它，並像協定的其他內容一樣翻譯它：詢問每個人姓名的問題及其提示，以及在家庭必須完整時列出仍缺少內容的清單。它一開始就是訪談一直顯示的文字。",
   "protocolValidation.migrationNotes.schema9.rosterPanelTitle": "「名冊資料名字產生器」階段現在有一個面板標題，顯示在參與者從中選擇人員的清單上方，因此您可以變更它，並像協定的其他內容一樣進行翻譯。其初始內容就是訪談一直以來在此處顯示的標題：「Available to add」。",
   "protocolValidation.migrationNotes.schema9.tieStrengthDeclineLabel": "在「關係強度普查」階段中，用於拒絕評價某段關係的選項標籤現在必須包含文字。若它只含空格，現在會顯示為「No relationship」。",
+  "protocolValidation.migrationNotes.schema9.informationTitle": "資訊階段的標題現在必須包含文字。若標題原本只含空格，現在會改以其階段標籤作為標題。",
+  "protocolValidation.migrationNotes.schema9.participantTextNotBlank": "參與者看到的其他一些文字現在也必須包含文字。若其中某項只含空格，敘事預設檢視的標籤現在會顯示為「Preset」加上其位置，例如「Preset 1」；名字產生器中用於新增節點的表單標題現在會顯示為「Add」加上節點類型的名稱，例如「Add Person」，或只顯示「Add」；家族譜系的提示現在會改用階段的名稱，而家族譜系的每個提名提示則改用其對應屬性的名稱。資訊階段中只含空格的文字區塊會被移除；說明文字、量表任一端的標籤，以及圖片、音訊或影片的描述，若只含空格，也同樣會被移除。",
   "protocolValidation.rule.additionalAttributes": "固定屬性",
   "protocolValidation.rule.component": "輸入控制項",
   "protocolValidation.rule.differentFrom": "與另一個屬性不同",

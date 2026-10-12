@@ -188,7 +188,7 @@ const previewOptions = (options: readonly unknown[]): PreviewOption[] =>
     ];
   });
 
-/** The preview has no participant whose language choice could be recorded. */
+/** The preview has no participant whose language choice could be kept. */
 const ignoreLocaleChange = () => undefined;
 
 const NO_REQUESTED_LOCALES: readonly string[] = [];
@@ -224,9 +224,7 @@ function PreviewProtocolLanguage({
       localeOptions={localeOptions}
       requestedLocales={NO_REQUESTED_LOCALES}
       localePreference={locale}
-      recordedLocale={locale}
       onLocalePreferenceChange={ignoreLocaleChange}
-      onLocaleRecorded={ignoreLocaleChange}
     >
       {/* The field's language boundary, as the interview Shell's region is:
           everything inside, the participant's popups included, takes the

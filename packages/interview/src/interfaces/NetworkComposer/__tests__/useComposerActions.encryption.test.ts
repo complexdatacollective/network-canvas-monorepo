@@ -56,17 +56,12 @@ const stage: StageProps<'NetworkComposer'>['stage'] = {
 
 type Store = ReturnType<typeof createEncryptionStore>;
 
-/**
- * An interview whose passphrase was chosen earlier, holding `nodes`, with its
- * key in force unless `locked`.
- */
+/** An interview holding `nodes`, with its key in force unless `locked`. */
 async function makeStore({
   nodes = [],
   locked = false,
 }: { nodes?: NcNode[]; locked?: boolean } = {}): Promise<Store> {
-  const store = createEncryptionStore(nodes, [stage], variables, {
-    header: (await encryptionFor(PASSPHRASE)).header,
-  });
+  const store = createEncryptionStore(nodes, [stage], variables);
   if (!locked) await unlockWith(store, PASSPHRASE);
   return store;
 }

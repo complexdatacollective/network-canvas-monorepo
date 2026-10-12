@@ -19,9 +19,7 @@
 //
 // An upgrade from a release that predates protocol languages also changes
 // exports in ways that follow exactly from that upgrade, and those are
-// reconciled rather than reported: the interview's recorded language (null or
-// a language tag) in the interview API, the ego CSV and GraphML; a protocol's
-// schemaVersion moving to 9; codebook text held as { en: <message> }; the
+// reconciled rather than reported: a protocol's schemaVersion moving to 9; codebook text held as { en: <message> }; the
 // labels the migration gives entity types and attributes from their names;
 // empty optional text it leaves out; and the GraphML protocol and codebook
 // hashes of a protocol it rewrote. Each is undone in the current file only
@@ -52,10 +50,7 @@ import {
 import { join, relative, resolve } from 'node:path';
 
 import { escapeMessageText } from '../../../../packages/protocol-validation/src/localization/messageSyntax.ts';
-import {
-  ncFinishOutcomeProperty,
-  ncInterviewLocaleProperty,
-} from '../../../../packages/shared-consts/src/export-process.ts';
+import { ncFinishOutcomeProperty } from '../../../../packages/shared-consts/src/export-process.ts';
 
 const DIFF_EXCERPT_LINES = 60;
 
@@ -63,7 +58,6 @@ const DIFF_EXCERPT_LINES = 60;
 // writes text as messages in English.
 const SCHEMA_WITH_LANGUAGES = 9;
 const MIGRATED_LOCALE = 'en';
-const LANGUAGE_TAG = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/;
 // Attribute values are matched whole: the normalizer's own <VOLATILE> mask
 // puts a ">" inside one.
 const GRAPH_START_TAG = /<graph\b(?:[^>"]|"[^"]*")*>/g;
@@ -181,9 +175,6 @@ function normalizeContent(name, text) {
 
 const isRecord = (value) =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const isLanguageTag = (value) =>
-  typeof value === 'string' && LANGUAGE_TAG.test(value);
 
 const unquote = (cell) => cell.replace(/^"|"$/g, '');
 
@@ -333,19 +324,6 @@ function reconcileInterviewJson(baselineText, currentText) {
     finishTally,
   );
   differences.push(...finishFieldDifferences(finishTally, () => 'interview'));
-  for (const field of ['locale', 'localePreference']) {
-    const value = data[field];
-    if (
-      field in data &&
-      !(field in baseline.data) &&
-      (value === null || isLanguageTag(value))
-    ) {
-      delete data[field];
-      differences.push(
-        `interview ${field} recorded as ${JSON.stringify(value)}`,
-      );
-    }
-  }
   const upgrade = upgradedProtocol(baseline, current);
   if (upgrade) {
     const tally = { wrapped: 0, labelsAdded: 0, emptyLeftOut: 0 };
@@ -372,11 +350,9 @@ function reconcileInterviewJson(baselineText, currentText) {
 }
 
 // Columns an upgrade adds to the ego CSV, with the values each may hold in
-// it: the interview's recorded language, empty until it is recorded; and its
-// finish outcome, empty for every interview finished before the upgrade (see
-// the header).
+// it: the interview's finish outcome, empty for every interview finished
+// before the upgrade (see the header).
 const ADDED_CSV_COLUMNS = [
-  { name: ncInterviewLocaleProperty, accepts: isLanguageTag },
   { name: ncFinishOutcomeProperty, accepts: () => false },
 ];
 
@@ -454,17 +430,6 @@ function reconcileGraphml(baselineText, currentText, upgradedProtocols) {
     const baselineTag = baselineTags[index];
     index += 1;
     let reconciled = tag;
-    const locale = attributeOf(tag, 'nc:interviewLocale');
-    if (
-      isLanguageTag(locale) &&
-      attributeOf(baselineTag, 'nc:interviewLocale') === undefined
-    ) {
-      reconciled = reconciled.replace(
-        attributePattern('nc:interviewLocale'),
-        '',
-      );
-      differences.add(`nc:interviewLocale recorded as "${locale}"`);
-    }
     const protocolName = attributeOf(tag, 'nc:protocolName');
     if (
       protocolName !== undefined &&

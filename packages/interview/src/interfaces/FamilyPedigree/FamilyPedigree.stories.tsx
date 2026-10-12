@@ -16,14 +16,13 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
-  type NcEncryptionHeader,
 } from '@codaco/shared-consts';
 
 import type { SessionSnapshot, SyncHandler } from '../..';
 import { choosePassphraseInPrompter } from '../../storybook-support/passphraseSteps';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 import {
-  createEncryptionHeader,
+  deriveInterviewKey,
   type EncryptedBytes,
   encryptValue,
 } from '../Anonymisation/encryptionFormat';
@@ -43,11 +42,10 @@ const NICKNAME_PROMPT = 'Nickname';
 
 /**
  * What an earlier visit left in an interview protected with a passphrase:
- * the encryption header made when the passphrase was chosen, and names
- * stored encrypted with its key, by person id, each bound to that person.
+ * names stored encrypted with the interview's key, by person id, each bound
+ * to that person.
  */
 type EarlierProtection = {
-  header: NcEncryptionHeader;
   names: Record<string, EncryptedBytes>;
 };
 
@@ -308,7 +306,6 @@ export function buildInterview({
     if (name) name.encrypted = true;
   }
   if (protection) {
-    payload.network.encryption = protection.header;
     // Names saved encrypted on the earlier visit.
     for (const [personId, encrypted] of Object.entries(protection.names)) {
       const node = payload.network.nodes.find(
@@ -326,23 +323,23 @@ export function buildInterview({
 
 /**
  * The interview `options` build, as an earlier visit protected with
- * `passphrase` left it: the header made when the passphrase was chosen, and
- * each of `names` (by person id) encrypted with its key as that person's
- * name.
+ * `passphrase` left it: each of `names` (by person id) encrypted with the
+ * interview's key as that person's name.
  */
 async function protectNames(
   options: StoryOptions,
   passphrase: string,
   names: Record<string, string>,
 ): Promise<EarlierProtection> {
-  const pedigree = buildInterview(options).protocol.stages.find(
+  const payload = buildInterview(options);
+  const pedigree = payload.protocol.stages.find(
     (candidate) => candidate.type === 'FamilyPedigree',
   );
   if (pedigree?.type !== 'FamilyPedigree') {
     throw new Error('The interview has no pedigree stage');
   }
   const variableId = pedigree.nodeConfiguration.nameAttribute;
-  const { header, key } = await createEncryptionHeader(passphrase);
+  const key = await deriveInterviewKey(passphrase, payload.id);
   const encrypted = await Promise.all(
     Object.entries(names).map(
       async ([nodeId, name]): Promise<[string, EncryptedBytes]> => [
@@ -351,14 +348,11 @@ async function protectNames(
       ],
     ),
   );
-  return { header, names: Object.fromEntries(encrypted) };
+  return { names: Object.fromEntries(encrypted) };
 }
 
 const isEarlierProtection = (value: unknown): value is EarlierProtection =>
-  typeof value === 'object' &&
-  value !== null &&
-  'header' in value &&
-  'names' in value;
+  typeof value === 'object' && value !== null && 'names' in value;
 
 function PedigreeStory({
   family,

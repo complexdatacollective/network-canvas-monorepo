@@ -6,10 +6,7 @@ import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
-import {
-  isEncryptionUnavailableError,
-  isPassphraseRequiredError,
-} from '../interfaces/Anonymisation/utils';
+import { isPassphraseRequiredError } from '../interfaces/Anonymisation/utils';
 
 /** The settled action a dispatched network-write thunk resolves to. */
 type WriteResult = {
@@ -17,16 +14,10 @@ type WriteResult = {
   error?: { name?: string };
 };
 
-/**
- * Why a write was refused, from its serialised error. A passphrase is asked
- * for only while one could still be entered.
- */
+/** Why a write was refused, from its serialised error. */
 function refusalMessage(
   error: { name?: string } | undefined,
 ): MessageDescriptor {
-  if (isEncryptionUnavailableError(error)) {
-    return runtimeMessages.protectedAnswersUnavailable;
-  }
   return isPassphraseRequiredError(error)
     ? runtimeMessages.protectedAnswersNotSaved
     : formMessages.submitFailed;

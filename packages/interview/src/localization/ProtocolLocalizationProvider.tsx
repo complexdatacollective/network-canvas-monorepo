@@ -6,7 +6,6 @@ import {
   type ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -88,9 +87,7 @@ export function ProtocolLocalizationProvider({
   localeOptions,
   requestedLocales,
   localePreference,
-  recordedLocale,
   onLocalePreferenceChange,
-  onLocaleRecorded,
   children,
 }: {
   localization: LocalizationDeclaration;
@@ -98,11 +95,7 @@ export function ProtocolLocalizationProvider({
   requestedLocales: readonly string[];
   /** The participant's stated preference, or null to follow the browser. */
   localePreference: LocaleTag | null;
-  /** The locale the session last recorded as shown. */
-  recordedLocale: LocaleTag | null;
   onLocalePreferenceChange: (locale: LocaleTag) => void;
-  /** Called after render when the locale shown differs from `recordedLocale`. */
-  onLocaleRecorded: (locale: LocaleTag) => void;
   children: ReactNode;
 }) {
   const intl = useAppIntl();
@@ -136,10 +129,6 @@ export function ProtocolLocalizationProvider({
 
   const metadata = options.find((option) => option.locale === locale);
   invariant(metadata, `No locale option describes "${locale}"`);
-
-  useEffect(() => {
-    if (recordedLocale !== locale) onLocaleRecorded(locale);
-  }, [locale, recordedLocale, onLocaleRecorded]);
 
   const setLocale = useCallback(
     (next: LocaleTag) => {

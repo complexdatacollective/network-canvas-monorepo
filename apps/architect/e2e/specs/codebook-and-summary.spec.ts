@@ -424,7 +424,7 @@ test('prints each protocol text in every protocol language', async ({
   // language participants using French see it in instead.
   await expect(
     section
-      .getByText(/^Not translated yet\. Participants see the .+ text\.$/)
+      .getByText(/^Not translated yet\. Participants see it in .+\.$/)
       .first(),
   ).toBeVisible();
 });

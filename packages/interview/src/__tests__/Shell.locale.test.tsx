@@ -18,11 +18,7 @@ import {
 } from '@codaco/shared-consts';
 
 import ActionButton from '../components/ActionButton';
-import type {
-  InterviewPayload,
-  ProtocolLocaleChangeHandler,
-  SyncHandler,
-} from '../contract/types';
+import type { InterviewPayload, SyncHandler } from '../contract/types';
 import { interviewCatalogSource } from '../i18n/catalog';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
@@ -110,16 +106,24 @@ const titles = {
   ar: 'السؤال الأصلي',
 };
 
-function makePayload(localePreference: string | null = null) {
+const PREFERENCE_KEY_PREFIX = 'network-canvas:interview-locale-preference:';
+
+// A language chosen earlier in this tab, as the Shell keeps it.
+function holdPreference(locale: string, interviewId = 'locale-session') {
+  window.sessionStorage.setItem(
+    `${PREFERENCE_KEY_PREFIX}${interviewId}`,
+    locale,
+  );
+}
+
+function makePayload(id = 'locale-session') {
   return {
     session: {
-      id: 'locale-session',
+      id,
       startTime: '2026-01-01T00:00:00.000Z',
       finishTime: null,
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
-      localePreference,
-      locale: null,
       localeOptions: localization.locales.map((locale) =>
         getLocaleMetadata(locale),
       ),
@@ -158,7 +162,6 @@ const payload = makePayload();
 
 const handlers = {
   onSync: () => Promise.resolve(),
-  onProtocolLocaleChange: () => Promise.resolve(),
   onFinish: () => Promise.resolve(),
   onRequestAsset: () => Promise.resolve(''),
   analytics: { installationId: 'test', hostApp: 'test' },
@@ -231,10 +234,11 @@ describe('Shell interview languages', () => {
   ])(
     'shows the stated preference $preference, and uses it for built-in text only when a catalog has it',
     async ({ preference, next, title }) => {
+      holdPreference(preference);
       render(
         <Shell
           {...handlers}
-          payload={makePayload(preference)}
+          payload={makePayload()}
           requestedLocales={['es-MX']}
           disableAnalytics
         />,
@@ -325,81 +329,12 @@ describe('Shell interview languages', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('records the language shown once, through the locale handler alone', async () => {
+  it('applies a stated preference at once without writing to the host', async () => {
     const onSync = vi.fn<SyncHandler>(() => Promise.resolve());
-    const onProtocolLocaleChange = vi.fn<ProtocolLocaleChangeHandler>(() =>
-      Promise.resolve(),
-    );
-    const view = render(
-      <Shell
-        {...handlers}
-        onSync={onSync}
-        onProtocolLocaleChange={onProtocolLocaleChange}
-        payload={payload}
-        requestedLocales={['es']}
-        flags={{ isE2E: true }}
-        disableAnalytics
-      />,
-    );
-    await screen.findByRole('heading', { name: titles.es });
-    await waitFor(() =>
-      expect(onProtocolLocaleChange).toHaveBeenCalledWith('locale-session', {
-        locale: 'es',
-        localePreference: null,
-      }),
-    );
-    expect(liveStore().getState().session.locale).toBe('es');
-
-    view.rerender(
-      <Shell
-        {...handlers}
-        onSync={onSync}
-        onProtocolLocaleChange={onProtocolLocaleChange}
-        payload={payload}
-        requestedLocales={['es']}
-        flags={{ isE2E: true }}
-        disableAnalytics
-      />,
-    );
-    await act(async () => undefined);
-
-    expect(onProtocolLocaleChange).toHaveBeenCalledTimes(1);
-    expect(onSync).not.toHaveBeenCalled();
-  });
-
-  it('does not record again when a resumed session already shows the same language', async () => {
-    const onProtocolLocaleChange = vi.fn<ProtocolLocaleChangeHandler>(() =>
-      Promise.resolve(),
-    );
-    const resumed = makePayload();
-    render(
-      <Shell
-        {...handlers}
-        onProtocolLocaleChange={onProtocolLocaleChange}
-        payload={{
-          ...resumed,
-          session: { ...resumed.session, locale: 'ja' },
-        }}
-        requestedLocales={['ja']}
-        disableAnalytics
-      />,
-    );
-    await screen.findByRole('heading', { name: titles.ja });
-    await act(async () => undefined);
-
-    expect(onProtocolLocaleChange).not.toHaveBeenCalled();
-  });
-
-  it('applies a stated preference at once and saves it through the locale handler alone', async () => {
-    const onSync = vi.fn<SyncHandler>(() => Promise.resolve());
-    const onProtocolLocaleChange = vi.fn<ProtocolLocaleChangeHandler>(() =>
-      Promise.resolve(),
-    );
     render(
       <Shell
         {...handlers}
         onSync={onSync}
-        onProtocolLocaleChange={onProtocolLocaleChange}
         payload={payload}
         requestedLocales={['en-GB']}
         flags={{ isE2E: true }}
@@ -411,9 +346,6 @@ describe('Shell interview languages', () => {
       name: /^Nombre elegido por el estudio/,
     });
     await user.type(input, 'Retained answer');
-    await waitFor(() =>
-      expect(onProtocolLocaleChange).toHaveBeenCalledTimes(1),
-    );
     const networkBefore = structuredClone(
       liveStore().getState().session.network,
     );
@@ -422,13 +354,6 @@ describe('Shell interview languages', () => {
 
     await expectVisibleHeading(titles.es);
     expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
-    await waitFor(() =>
-      expect(onProtocolLocaleChange).toHaveBeenCalledTimes(2),
-    );
-    expect(onProtocolLocaleChange).toHaveBeenLastCalledWith('locale-session', {
-      locale: 'es',
-      localePreference: 'es',
-    });
     expect(onSync).not.toHaveBeenCalled();
     expect(liveStore().getState().session.network).toEqual(networkBefore);
     expect(
@@ -439,9 +364,7 @@ describe('Shell interview languages', () => {
   });
 
   it('replaces a held preference with the language the host states, keeping unsaved input', async () => {
-    const onProtocolLocaleChange = vi.fn<ProtocolLocaleChangeHandler>(() =>
-      Promise.resolve(),
-    );
+    holdPreference('es');
     function Host() {
       const [stated, setStated] = useState<string | undefined>(undefined);
       return (
@@ -449,8 +372,7 @@ describe('Shell interview languages', () => {
           <button onClick={() => setStated('ja')}>State Japanese</button>
           <Shell
             {...handlers}
-            onProtocolLocaleChange={onProtocolLocaleChange}
-            payload={makePayload('es')}
+            payload={makePayload()}
             requestedLocales={['en-GB']}
             statedLocale={stated}
             flags={{ isE2E: true }}
@@ -471,13 +393,7 @@ describe('Shell interview languages', () => {
 
     await expectVisibleHeading(titles.ja);
     expect(screen.getByRole('main')).toHaveAttribute('lang', 'ja');
-    expect(liveStore().getState().session.localePreference).toBe('ja');
-    await waitFor(() =>
-      expect(onProtocolLocaleChange).toHaveBeenLastCalledWith(
-        'locale-session',
-        { locale: 'ja', localePreference: 'ja' },
-      ),
-    );
+    expect(liveStore().getState().ui.localePreference).toBe('ja');
     expect(
       screen.getByRole('textbox', { name: /^Nombre elegido por el estudio/ }),
     ).toBe(input);
@@ -539,7 +455,7 @@ describe('Shell interview languages', () => {
     expect(window.__interviewStore).toBe(store);
     const after = store.getState();
     expect(after.protocol).toEqual(before.protocol);
-    expect(after.session).toEqual({ ...before.session, locale: 'es' });
+    expect(after.session).toEqual(before.session);
     expect(payload).toEqual(original);
     expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
   });
@@ -655,5 +571,135 @@ describe('Shell interview languages', () => {
   it('retains provider-optional English for standalone shared controls', () => {
     render(<ActionButton iconName="add-a-person" />);
     expect(screen.getByRole('button', { name: 'Add a person' })).toBeVisible();
+  });
+});
+
+describe("Shell participant's language choice", () => {
+  function renderShell(interviewPayload: InterviewPayload = payload) {
+    return render(
+      <Shell
+        {...handlers}
+        payload={interviewPayload}
+        requestedLocales={['en-GB']}
+        flags={{ isE2E: true }}
+        disableAnalytics
+      />,
+    );
+  }
+
+  it('keeps the choice when the same interview is opened again in this tab', async () => {
+    const first = renderShell();
+    await expectVisibleHeading(titles.en);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Prefer Spanish' }));
+    await expectVisibleHeading(titles.es);
+    first.unmount();
+
+    renderShell(makePayload());
+
+    await expectVisibleHeading(titles.es);
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
+    expect(liveStore().getState().ui.localePreference).toBe('es');
+  });
+
+  it('does not carry a choice into another interview', async () => {
+    const first = renderShell();
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: 'Prefer Spanish' }),
+    );
+    await expectVisibleHeading(titles.es);
+    first.unmount();
+
+    renderShell(makePayload('another-session'));
+
+    await expectVisibleHeading(titles.en);
+    await act(async () => undefined);
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+    expect(liveStore().getState().ui.localePreference).toBeNull();
+  });
+
+  it('ignores a kept choice the protocol does not declare', async () => {
+    holdPreference('de');
+    renderShell();
+
+    await expectVisibleHeading(titles.en);
+    await act(async () => undefined);
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+    expect(liveStore().getState().ui.localePreference).toBeNull();
+  });
+
+  it('tells a host that follows the language what the participant chose', async () => {
+    const onLocalePreferenceChange = vi.fn();
+    render(
+      <Shell
+        {...handlers}
+        payload={payload}
+        requestedLocales={['en-GB']}
+        onLocalePreferenceChange={onLocalePreferenceChange}
+        flags={{ isE2E: true }}
+        disableAnalytics
+      />,
+    );
+    await expectVisibleHeading(titles.en);
+    expect(onLocalePreferenceChange).not.toHaveBeenCalled();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Prefer Spanish' }));
+
+    await expectVisibleHeading(titles.es);
+    expect(onLocalePreferenceChange).toHaveBeenCalledExactlyOnceWith('es');
+  });
+
+  it('never sends the choice, or the language shown, to the host', async () => {
+    const onSync = vi.fn<SyncHandler>(() => Promise.resolve());
+    render(
+      <Shell
+        {...handlers}
+        onSync={onSync}
+        payload={payload}
+        requestedLocales={['en-GB']}
+        flags={{ isE2E: true }}
+        disableAnalytics
+      />,
+    );
+    const user = userEvent.setup();
+    await user.click(
+      await screen.findByRole('button', { name: 'Prefer Spanish' }),
+    );
+    await expectVisibleHeading(titles.es);
+    await act(async () => undefined);
+    const { session } = liveStore().getState();
+    expect(session).not.toHaveProperty('localePreference');
+    expect(session).not.toHaveProperty('locale');
+    expect(onSync).not.toHaveBeenCalled();
+  });
+
+  it('still changes language, in memory, when storage refuses access', async () => {
+    const getItem = vi
+      .spyOn(Storage.prototype, 'getItem')
+      .mockImplementation(() => {
+        throw new DOMException('Access denied', 'SecurityError');
+      });
+    const setItem = vi
+      .spyOn(Storage.prototype, 'setItem')
+      .mockImplementation(() => {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      });
+    try {
+      renderShell();
+      await expectVisibleHeading(titles.en);
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: 'Prefer Spanish' }));
+
+      await expectVisibleHeading(titles.es);
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
+      expect(liveStore().getState().ui.localePreference).toBe('es');
+      expect(getItem).toHaveBeenCalled();
+      expect(setItem).toHaveBeenCalled();
+    } finally {
+      getItem.mockRestore();
+      setItem.mockRestore();
+    }
   });
 });

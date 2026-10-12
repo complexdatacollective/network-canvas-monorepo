@@ -5,8 +5,8 @@
 The documentation now covers translated protocols. A new Translating Your
 Protocol page explains how to choose the language a protocol is written in,
 add and remove languages, set the default language, find missing translations,
-translate in the translation table, which shows every text beside its
-translation into each language, change the language a protocol's text is recorded as, for a protocol upgraded
+translate in the translation table, which shows everything participants see
+beside its translation into each language, change the language a protocol's text is recorded as, for a protocol upgraded
 from an earlier version, preview each language, print every translation in
 the protocol summary, and how participants get their language. It explains
 that languages have no order and are always listed alphabetically, that a
@@ -23,8 +23,7 @@ where each label is shown and that every Network Composer field needs a label.
 A new page documents the Language Chooser interface, including how to manage
 the protocol's languages from its editor in Architect. The preview, Fresco and
 Interviewer guides describe how an interview's language follows the
-participant's browser rather than a settings menu, the Data Export page and
-the Export Data Dictionary describe the new interview language column, and the
-schema 9 notes and Fresco upgrade guide describe what the upgrade to schema 9
+participant's browser rather than a settings menu, and that the language is
+neither saved with the interview nor exported, and the schema 9 notes and Fresco upgrade guide describe what the upgrade to schema 9
 does to a protocol's text. Pages that listed three interface languages now
 list all ten.

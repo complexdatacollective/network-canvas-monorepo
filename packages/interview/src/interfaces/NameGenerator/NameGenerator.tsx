@@ -80,8 +80,7 @@ const NameGenerator = (props: NameGeneratorProps) => {
   const interfaceRef = useRef<HTMLDivElement>(null);
 
   const { isLastPrompt, promptIndex } = usePrompts();
-  const { requirePassphrase, unlocked, encryptionUnavailable } =
-    usePassphrase();
+  const { requirePassphrase, unlocked } = usePassphrase();
   const { showToast } = useInterviewToast();
 
   const [selectedNode, setSelectedNode] = useState<NcNode | null>(null);
@@ -193,7 +192,6 @@ const NameGenerator = (props: NameGeneratorProps) => {
     minNodesNotice,
     maxNodesNotice,
     isLastPrompt,
-    writesEncrypted: useEncryption,
   });
 
   /**
@@ -241,18 +239,17 @@ const NameGenerator = (props: NameGeneratorProps) => {
 
   // When a node is tapped, trigger editing. The form decrypts what it shows,
   // and is not opened at all while answers it would encrypt could not be saved
-  // until a passphrase is entered. Where none ever could be, it opens with
-  // those questions shown as unavailable, so the rest can still be changed.
+  // until a passphrase is entered.
   const handleSelectNode = useCallback(
     (node: NcNode) => {
       if (!form) return;
-      if (encryptionLocked && !encryptionUnavailable) {
+      if (encryptionLocked) {
         requirePassphrase();
         return;
       }
       setSelectedNode(node);
     },
-    [form, encryptionLocked, encryptionUnavailable, requirePassphrase],
+    [form, encryptionLocked, requirePassphrase],
   );
 
   const clearSelectedNode = useCallback(() => setSelectedNode(null), []);

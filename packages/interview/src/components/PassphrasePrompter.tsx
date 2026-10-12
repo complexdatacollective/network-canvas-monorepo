@@ -42,11 +42,7 @@ export default function PassphrasePrompter({
 }: PassphrasePrompterProps) {
   const intl = useAppIntl();
   const isRtl = useDirection() === 'rtl';
-  const { showPassphrasePrompter, passphraseChosen, encryptionUnavailable } =
-    usePassphrase();
-  // No passphrase can open a refused header, so none is offered, whatever
-  // raised the prompter.
-  const offerPassphrase = showPassphrasePrompter && !encryptionUnavailable;
+  const { showPassphrasePrompter, passphraseChosen } = usePassphrase();
   // Whether the open dialog chooses the interview's passphrase or asks for
   // it, fixed when it opens so that it does not change while it closes.
   const [overlay, setOverlay] = useState({ show: false, choosing: false });
@@ -65,7 +61,7 @@ export default function PassphrasePrompter({
       <TooltipProvider>
         <Tooltip open={showTooltip} onOpenChange={setShowTooltip}>
           <AnimatePresence>
-            {offerPassphrase && (
+            {showPassphrasePrompter && (
               <TooltipTrigger
                 render={
                   <motion.button

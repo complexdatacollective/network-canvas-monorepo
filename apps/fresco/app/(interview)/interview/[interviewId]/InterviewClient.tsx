@@ -10,7 +10,6 @@ import {
   type FinishHandler,
   type InterviewAnalyticsMetadata,
   type InterviewPayload,
-  type ProtocolLocaleChangeHandler,
   type StepChangeHandler,
   type SyncHandler,
 } from '@codaco/interview';
@@ -19,7 +18,6 @@ import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 
 import { createInterviewSyncHandler } from './createInterviewSyncHandler';
-import { createProtocolLocaleChangeHandler } from './createProtocolLocaleChangeHandler';
 import type { InterviewView } from './mapInterviewPayload';
 
 type Props = {
@@ -38,8 +36,6 @@ type Props = {
 // never write anything back: a sync would replace the stored network with that
 // empty one.
 const discardSync: SyncHandler = () => Promise.resolve();
-const discardLocaleChange: ProtocolLocaleChangeHandler = () =>
-  Promise.resolve();
 
 export default function InterviewClient({
   payload,
@@ -89,14 +85,6 @@ export default function InterviewClient({
             getCurrentStep: () => currentStepRef.current,
           }),
     [view, payload.session.id, initialSyncRevision],
-  );
-
-  const onProtocolLocaleChange = useMemo<ProtocolLocaleChangeHandler>(
-    () =>
-      view === 'completed'
-        ? discardLocaleChange
-        : createProtocolLocaleChangeHandler(),
-    [view],
   );
 
   // Once this resolves the Shell shows the interview's completed state in
@@ -149,7 +137,6 @@ export default function InterviewClient({
       currentStep={currentStep}
       onStepChange={onStepChange}
       onSync={onSync}
-      onProtocolLocaleChange={onProtocolLocaleChange}
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
       flags={flags}

@@ -25,7 +25,7 @@ const messages = defineMessages({
     id: 'architect.localization.translationTableDialog.title',
     defaultMessage: 'Translation table',
     description:
-      'Title of the dialog, opened from the Languages page, that shows every participant-facing text of a protocol beside its translation into each language.',
+      'Title of the dialog, opened from the Languages page, that shows every participant-facing localized string of a protocol beside its translation into each language.',
   },
 });
 

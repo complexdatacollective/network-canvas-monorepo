@@ -2,22 +2,26 @@
 #
 # A second Garage — the same image and digest as the stack's — stands in for a
 # managed bucket, on a network of its own with its own credentials, its own
-# region and its own RPC and admin secrets. The five `S3_*` variables in the
-# environment file `up.sh` writes are the whole swap; everything below is the
-# tidying the guide describes as following it.
+# region and its own RPC secret. The five `S3_*` variables in the environment
+# file `up.sh` writes are the whole swap; everything below is the tidying the
+# guide describes as following it.
 #
-# The stub is bootstrapped by the SAME script the stack's `garage-init` runs —
-# the `garage-init` config declared inline in `docker-compose.yml`, referenced
-# rather than copied. That script addresses the admin API as `http://garage`,
-# so the stub carries `garage` as a network alias on the external network,
-# where the stack's own Garage does not exist. A copy of the script here would
-# be a second bootstrap to keep in step with the one deployments run, which is
-# the opposite of testing the contract.
+# The stub bootstraps itself with the SAME flags and environment keys the
+# stack's `garage` service starts with — `--single-node --default-bucket` and
+# the three `GARAGE_DEFAULT_*` values, fed from the `S3_*` the swap names — so
+# the store Studio is pointed at is created the way a deployment's own is,
+# with no second bootstrap to keep in step. The flag is not interpolated here
+# as it is there: this variant always names an access key.
 
 services:
   external-garage:
-    image: dxflrs/garage:v2.1.0@sha256:4c9b34c113e61358466e83fd6e7d66e6d18657ede14b776eb78a93ee8da7cf6a
+    image: dxflrs/garage:v2.4.1@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
     restart: unless-stopped
+    command: /garage server --single-node --default-bucket
+    environment:
+      GARAGE_DEFAULT_ACCESS_KEY: ${S3_ACCESS_KEY_ID}
+      GARAGE_DEFAULT_SECRET_KEY: ${S3_SECRET_ACCESS_KEY}
+      GARAGE_DEFAULT_BUCKET: ${S3_BUCKET}
     # A volume for the same reason the stack's Garage has one: the image is
     # built FROM scratch and carries no /var/lib/garage for Garage to write
     # its metadata and data directories into.
@@ -29,48 +33,24 @@ services:
         # Garage refuses a configuration file carrying secrets that is readable
         # by anyone but its owner, and Compose's default for a config is 0444.
         mode: 0400
+    # The stack's own check, unchanged. Garage creates its layout, the key and
+    # the bucket before it starts serving, so a healthy stub holds the bucket.
+    healthcheck:
+      test: ['CMD', '/garage', 'health', '--quiet']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
-      external:
-        aliases:
-          # What `garage-init` asks for. Only containers on this network see
-          # it, and the stack's own `garage` is disabled below, so no name
-          # resolves to two stores.
-          - garage
-
-  # `garage-init`'s script, its image and its environment keys, against the
-  # stub. Profile `migrate` like the one it mirrors, so it runs as part of
-  # `docker compose run --rm migrate` and not on a plain `up`.
-  external-garage-init:
-    image: curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6
-    profiles: [migrate]
-    entrypoint: ['/bin/sh', '/garage-init.sh']
-    environment:
-      GARAGE_ADMIN_TOKEN: ${EXTERNAL_GARAGE_ADMIN_TOKEN}
-      STUDIO_OBJECT_STORE: ${STUDIO_OBJECT_STORE}
-      S3_BUCKET: ${S3_BUCKET}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
-    configs:
-      - source: garage-init
-        target: /garage-init.sh
-    networks:
-      # Only the external network: `garage` must resolve to the stub and to
-      # nothing else.
       - external
-    depends_on:
-      external-garage:
-        condition: service_started
 
-  # "Then delete the `garage` and `garage-init` services…" — a profile no
-  # command enables, which `assert.sh` holds by asserting neither container
-  # exists.
+  # "Then delete the `garage` service…" — a profile no command enables, which
+  # `assert.sh` holds by asserting the container does not exist.
   garage:
-    profiles: [unused]
-  garage-init:
     profiles: [unused]
 
   api:
-    # The base file's `garage: service_started` entry would survive a merging
+    # The base file's `garage: service_healthy` entry would survive a merging
     # override and then fail the command, because no profile enables it.
     depends_on: !override
       postgres:
@@ -91,15 +71,15 @@ services:
       - default
       - external
 
-  # "…and the `garage-init` entry in `migrate`'s `depends_on`". Replaced by the
-  # stub's own one-shot: a managed bucket exists before Studio is pointed at
-  # it, and this is the stub reaching that state.
+  # "…and the `depends_on` entries naming it". `migrate`'s is replaced by one
+  # on the stub: a managed bucket exists before Studio is pointed at it, and a
+  # healthy stub is one that has created it.
   migrate:
     depends_on: !override
       postgres:
         condition: service_healthy
-      external-garage-init:
-        condition: service_completed_successfully
+      external-garage:
+        condition: service_healthy
     networks:
       - default
       - external
@@ -121,11 +101,6 @@ configs:
       # names, so a request still being signed for the stack's own store would
       # be refused here rather than pass by coincidence.
       s3_region = "${S3_REGION}"
-      root_domain = ".s3.external"
-
-      [admin]
-      api_bind_addr = "[::]:3903"
-      admin_token = "${EXTERNAL_GARAGE_ADMIN_TOKEN}"
 
 volumes:
   external-garage-data:

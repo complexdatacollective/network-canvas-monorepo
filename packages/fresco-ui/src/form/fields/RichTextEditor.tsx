@@ -73,6 +73,7 @@ import {
   multilineContentVariants,
   stateVariants,
 } from '../../styles/controlVariants';
+import { tokenPillClasses } from '../../TokenPill';
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
 import { cva, cx } from '../../utils/cva';
@@ -274,12 +275,6 @@ export type RichTextEditorToken = Readonly<{
 /** The node type a token is held as: `{ type: 'token', attrs: { id } }`. */
 const TOKEN_NODE = 'token';
 
-const tokenChipClasses = cx(
-  'mx-0.5 rounded-full border px-2 py-px whitespace-nowrap',
-  'border-primary/40 bg-primary/10 font-semibold',
-  '[&.ProseMirror-selectednode]:outline-primary [&.ProseMirror-selectednode]:outline-2',
-);
-
 /** The ids of the tokens `doc` holds, one per line, for the toolbar to compare. */
 const placedTokenIds = (doc: ProseMirrorNode): string => {
   const ids = new Set<string>();
@@ -331,11 +326,14 @@ const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
       ];
     },
 
+    // Drawn with the classes `TokenPill` draws a placeholder with in text
+    // that is only read, so the two look alike. Plain DOM, not a React node
+    // view, which draws a render late.
     renderHTML({ node, HTMLAttributes }): DOMOutputSpec {
       return [
         'span',
         mergeAttributes(HTMLAttributes, {
-          class: tokenChipClasses,
+          class: tokenPillClasses(),
           contenteditable: 'false',
         }),
         labelOf(node.attrs.id),
@@ -767,7 +765,7 @@ const editorContainerVariants = cva({
 });
 
 const toolbarStyles = cx(
-  'bg-surface-1 text-surface-1-contrast publish-colors order-1 flex w-max min-w-full items-center gap-1 border-b border-current/10 px-6 py-2',
+  'bg-surface-1 text-surface-1-contrast publish-colors order-1 flex w-max min-w-full items-center gap-1 self-stretch border-b border-current/10 px-6 py-2',
 );
 
 const toolbarGroupStyles = cx('flex items-center');

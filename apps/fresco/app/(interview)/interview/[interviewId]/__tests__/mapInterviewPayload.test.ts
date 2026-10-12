@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { createInitialNetwork } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
-  networkWithEncryptionHeader,
+  encryptedNetwork,
   schema8EncryptedNetwork,
 } from '~/lib/__tests__/encryptedNetworks';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
@@ -48,8 +48,6 @@ function makeSource(
     stageMetadata: null,
     isSynthetic: false,
     syncRevision: 7,
-    localePreference: null,
-    locale: null,
     finishStageId: null,
     finishOutcome: null,
     protocol: {
@@ -144,16 +142,13 @@ describe('mapInterviewPayload', () => {
     expect(payload.protocol.interfaceText).toBeUndefined();
   });
 
-  it('carries the stored locale fields into the session', () => {
-    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
-    const { payload } = mapReady({
-      ...source,
-      localePreference: 'fr',
-      locale: 'en',
-    });
+  it('hands the interview no language: the language shown is not interview data', () => {
+    const { payload } = mapReady(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+    );
 
-    expect(payload.session.localePreference).toBe('fr');
-    expect(payload.session.locale).toBe('en');
+    expect(payload.session).not.toHaveProperty('localePreference');
+    expect(payload.session).not.toHaveProperty('locale');
   });
 
   it('carries a finished interview’s finish stage into the session', () => {
@@ -179,10 +174,16 @@ describe('mapInterviewPayload', () => {
     expect(payload.session.finishStageId).toBeNull();
   });
 
-  it('refuses a protocol row stored below the compatible version rather than mislabelling it', () => {
+  // The deploy migration leaves a protocol it cannot migrate in place, so the
+  // page must be able to tell the participant it cannot be opened rather than
+  // fail with an application error.
+  it('reports a protocol row stored below the compatible version as unreadable rather than mislabelling it', () => {
     const staleVersion = COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1;
 
-    expect(() => mapInterviewPayload(makeSource(staleVersion))).toThrow(
+    const result = mapInterviewPayload(makeSource(staleVersion));
+
+    expect(result).toMatchObject({ success: false, unreadable: 'protocol' });
+    expect(result.success ? undefined : String(result.error)).toMatch(
       new RegExp(
         `Test Protocol.+protocol-1.+${staleVersion}.+${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}`,
         's',
@@ -190,10 +191,15 @@ describe('mapInterviewPayload', () => {
     );
   });
 
-  it('refuses a protocol row stored above the compatible version', () => {
-    expect(() =>
-      mapInterviewPayload(makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1)),
-    ).toThrow(/must be migrated/);
+  it('reports a protocol row stored above the compatible version as unreadable', () => {
+    const result = mapInterviewPayload(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1),
+    );
+
+    expect(result).toMatchObject({ success: false, unreadable: 'protocol' });
+    expect(result.success ? undefined : String(result.error)).toMatch(
+      /must be migrated/,
+    );
   });
 
   describe('stored participant data', () => {
@@ -353,11 +359,11 @@ describe('mapInterviewPayload', () => {
 
   it.each([
     {
-      label: 'the encryption header and IV-only values',
-      stored: networkWithEncryptionHeader,
+      label: 'IV-only values',
+      stored: encryptedNetwork,
     },
     {
-      label: 'schema 8 values without a header',
+      label: 'schema 8 values',
       stored: schema8EncryptedNetwork,
     },
   ])('hands the interview a network with $label unchanged', ({ stored }) => {
@@ -412,8 +418,6 @@ function makeFinishedSource(): NonNullable<GetInterviewByIdQuery> {
     finishTime: new Date('2026-01-03T00:00:00.000Z'),
     finishStageId: 'finish-completed',
     finishOutcome: 'completed',
-    localePreference: 'fr',
-    locale: 'fr',
     network: {
       nodes: [
         {
@@ -535,8 +539,6 @@ describe('mapInterviewForViewer', () => {
       expect(result.payload.session).toMatchObject({
         finishTime: '2026-01-03T00:00:00.000Z',
         finishStageId: 'finish-completed',
-        localePreference: 'fr',
-        locale: 'fr',
       });
     },
   );

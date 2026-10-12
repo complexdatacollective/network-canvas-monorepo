@@ -10,17 +10,15 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type { NcEncryptionHeader } from '@codaco/shared-consts';
+import type { NcNode } from '@codaco/shared-consts';
 
 import type { InterviewPayload } from '../../contract/types';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import {
   createEncryptionStore,
-  encryptionFor,
-  outOfBoundsHeader,
+  makeEncryptedPerson,
 } from '../../interfaces/Anonymisation/__tests__/encryptionFixtures';
 import { unlockEncryption } from '../../interfaces/Anonymisation/unlockEncryption';
-import type { NavigationOrientation } from '../../Shell';
 import { setShowPassphrasePrompter } from '../../store/modules/ui';
 import type { StageProps } from '../../types';
 import PassphrasePrompter from '../PassphrasePrompter';
@@ -83,10 +81,10 @@ function holdKeyDerivation() {
 }
 
 async function openPrompter({
-  header,
+  nodes = [],
   stages = [informationStage],
-}: { header?: NcEncryptionHeader; stages?: Stages } = {}) {
-  const store = createEncryptionStore([], stages, undefined, { header });
+}: { nodes?: NcNode[]; stages?: Stages } = {}) {
+  const store = createEncryptionStore(nodes, stages);
   store.dispatch(setShowPassphrasePrompter(true));
 
   render(
@@ -153,14 +151,13 @@ describe('PassphrasePrompter in an interview without a passphrase', () => {
     );
     expect(first).toHaveFocus();
     expect(deriveKey).not.toHaveBeenCalled();
-    expect(store.getState().session.network.encryption).toBeUndefined();
+    expect(store.getState().ui.encryptionKeyId).toBeNull();
 
     await choose(user, dialog, 'eight888');
 
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
-    expect(store.getState().session.network.encryption).toBeDefined();
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
     expect(deriveKey).toHaveBeenCalledTimes(1);
   });
@@ -176,7 +173,7 @@ describe('PassphrasePrompter in an interview without a passphrase', () => {
       expect.stringContaining('must be the same as'),
     );
     expect(deriveKey).not.toHaveBeenCalled();
-    expect(store.getState().session.network.encryption).toBeUndefined();
+    expect(store.getState().ui.encryptionKeyId).toBeNull();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
@@ -200,15 +197,20 @@ describe('PassphrasePrompter in an interview without a passphrase', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
-    expect(store.getState().session.network.encryption).toBeDefined();
+    expect(store.getState().ui.encryptionKeyId).not.toBeNull();
   });
 });
 
+/** An interview holding an answer encrypted with the passphrase `pw`. */
+const protectedAnswers = async () => [
+  await makeEncryptedPerson('n1', 'Alice', 'pw'),
+];
+
 describe('PassphrasePrompter in an interview whose passphrase has been chosen', () => {
-  it('asks for it once, without length rules, and turns away any other even when no answer is encrypted yet', async () => {
-    const { header } = await encryptionFor('pw');
+  it('asks for it once, without length rules, and turns away any other that does not decrypt its answers', async () => {
+    const nodes = await protectedAnswers();
     const { store, user, dialog, passphrase, submit } = await openPrompter({
-      header,
+      nodes,
     });
 
     expect(dialog).toHaveAccessibleName('Passphrase');
@@ -218,7 +220,6 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     expect(passphrase).not.toHaveAccessibleDescription(
       expect.stringContaining('Enter at least'),
     );
-    expect(store.getState().session.network.nodes).toEqual([]);
 
     await user.type(passphrase, 'no');
     await user.click(submit);
@@ -237,7 +238,6 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     // Back on the field to correct, not on its show-passphrase toggle.
     expect(passphrase).toHaveFocus();
     expect(store.getState().ui.encryptionKeyId).toBeNull();
-    expect(store.getState().session.network.encryption).toEqual(header);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     await user.clear(passphrase);
@@ -248,12 +248,19 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
-    expect(store.getState().session.network.encryption).toEqual(header);
+    // Nothing was stored to check it.
+    expect(store.getState().session.network.nodes).toEqual(nodes);
+    expect(Object.keys(store.getState().session.network).sort()).toEqual([
+      'edges',
+      'ego',
+      'nodes',
+    ]);
   });
 
   it('opens again empty after a passphrase was turned away', async () => {
-    const { header } = await encryptionFor('pw');
-    const { user, passphrase, submit } = await openPrompter({ header });
+    const { user, passphrase, submit } = await openPrompter({
+      nodes: await protectedAnswers(),
+    });
 
     await user.type(passphrase, 'not-the-passphrase');
     await user.click(submit);
@@ -280,8 +287,9 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
   // Until the exit animation ends the field is still mounted, so only the
   // close itself can empty it.
   it('opens again empty when reopened while it is still closing', async () => {
-    const { header } = await encryptionFor('pw');
-    const { user, passphrase, submit } = await openPrompter({ header });
+    const { user, passphrase, submit } = await openPrompter({
+      nodes: await protectedAnswers(),
+    });
 
     await user.type(passphrase, 'not-the-passphrase');
     await user.click(submit);
@@ -301,9 +309,8 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
   });
 
   it('says it is checking the passphrase, and starts no second check while it does', async () => {
-    const { header } = await encryptionFor('pw');
     const { store, user, dialog, passphrase, submit } = await openPrompter({
-      header,
+      nodes: await protectedAnswers(),
     });
     const status = within(dialog).getByRole('status');
     expect(status).toBeEmptyDOMElement();
@@ -351,31 +358,4 @@ describe('PassphrasePrompter in an interview whose passphrase has been chosen', 
     await unlockEncryption(store, 'pw');
     expect(deriveKey).toHaveBeenCalledTimes(2);
   });
-});
-
-const orientations: NavigationOrientation[] = ['horizontal', 'vertical'];
-
-describe('PassphrasePrompter in an interview whose answers no passphrase can open', () => {
-  it.each(orientations)(
-    'offers no passphrase in %s navigation, even when raised',
-    async (orientation) => {
-      const { header } = await encryptionFor('pw');
-      const store = createEncryptionStore([], [informationStage], undefined, {
-        header: outOfBoundsHeader(header),
-      });
-      store.dispatch(setShowPassphrasePrompter(true));
-
-      render(
-        <Provider store={store}>
-          <InterviewI18nProvider requestedLocale="en">
-            <PassphrasePrompter orientation={orientation} />
-          </InterviewI18nProvider>
-        </Provider>,
-      );
-
-      expect(
-        screen.queryByRole('button', { name: 'Passphrase' }),
-      ).not.toBeInTheDocument();
-    },
-  );
 });

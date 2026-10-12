@@ -56,8 +56,6 @@ function makeSession(id: string): StoredSession {
     network,
     stageMetadata: { '0': { automaticLayout: true } },
     isSynthetic: false,
-    localePreference: null,
-    locale: null,
   };
 }
 

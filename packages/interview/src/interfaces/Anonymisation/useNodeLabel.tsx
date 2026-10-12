@@ -29,7 +29,6 @@ export function useNodeLabeller(outcomeOf: OutcomeOf) {
   const intl = useAppIntl();
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
   const resolve = useResolveLocalizedString();
-  const { encryptionUnavailable } = usePassphrase();
   const unavailable = intl.formatMessage(runtimeMessages.answerUnavailable);
 
   return useCallback(
@@ -45,16 +44,9 @@ export function useNodeLabeller(outcomeOf: OutcomeOf) {
         typeLabel: codebook ? resolve(codebook.label).text : '',
         unavailable,
         outcomeOf,
-        encryptionUnavailable,
       });
     },
-    [
-      getCodebookForNodeType,
-      resolve,
-      unavailable,
-      outcomeOf,
-      encryptionUnavailable,
-    ],
+    [getCodebookForNodeType, resolve, unavailable, outcomeOf],
   );
 }
 

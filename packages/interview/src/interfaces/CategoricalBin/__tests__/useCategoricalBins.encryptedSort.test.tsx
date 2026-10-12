@@ -18,7 +18,6 @@ import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalizati
 import {
   createEncryptionStore,
   encryptedVariables,
-  encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
   unlockWith,
@@ -52,7 +51,6 @@ const ids = (nodes: readonly NcNode[]) =>
   nodes.map((node) => node[entityPrimaryKeyProperty]);
 
 async function unlockedStore(nodes: NcNode[]) {
-  const { header } = await encryptionFor('pw');
   const store = createEncryptionStore(
     nodes,
     [
@@ -73,7 +71,6 @@ async function unlockedStore(nodes: NcNode[]) {
       },
     ],
     variables,
-    { header },
   );
   await unlockWith(store, 'pw');
   return store;

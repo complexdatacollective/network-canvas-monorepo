@@ -51,8 +51,6 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-09-06T00:00:00.000Z',
-    localePreference: null,
-    locale: null,
     localeOptions: ['en', 'en-GB', 'es'].map((locale) =>
       getLocaleMetadata(locale),
     ),
@@ -96,7 +94,6 @@ function makeView(
 ) {
   const store = createStore(payload, {
     onSync: () => Promise.resolve(),
-    onProtocolLocaleChange: () => Promise.resolve(),
   });
   return (locale: string) => (
     <AnimationProvider disableAnimations reducedMotion="always">
@@ -106,9 +103,7 @@ function makeView(
           localeOptions={payload.session.localeOptions}
           requestedLocales={[locale]}
           localePreference={null}
-          recordedLocale={null}
           onLocalePreferenceChange={() => undefined}
-          onLocaleRecorded={() => undefined}
         >
           <Provider store={store}>
             <ContractProvider

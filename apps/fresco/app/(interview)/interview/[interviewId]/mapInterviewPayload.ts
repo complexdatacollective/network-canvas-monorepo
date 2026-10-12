@@ -100,15 +100,21 @@ export function mapInterviewPayload(
   // (scripts/migrate-protocols.ts), so every row that reaches an interview
   // should already match the runtime. Stamping a literal instead would
   // mislabel any row that does not, handing the interview a document it cannot
-  // read while claiming it can; refuse loudly instead.
+  // read while claiming it can; refuse instead. The deploy migration leaves a
+  // protocol it cannot migrate in place, so such a row is unreadable to this
+  // runtime and is reported the way a damaged one is, not thrown.
   const { schemaVersion } = protocol;
   if (schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
-    throw new Error(
-      `Protocol "${protocol.name}" (id=${protocol.id}) is stored as schema ` +
-        `version ${schemaVersion}, but this version of Fresco runs protocol ` +
-        `schema version ${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}. It must be ` +
-        `migrated before an interview using it can be started.`,
-    );
+    return {
+      success: false,
+      unreadable: 'protocol',
+      error: new Error(
+        `Protocol "${protocol.name}" (id=${protocol.id}) is stored as schema ` +
+          `version ${schemaVersion}, but this version of Fresco runs protocol ` +
+          `schema version ${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}. It must be ` +
+          `migrated before an interview using it can be started.`,
+      ),
+    };
   }
 
   const storedProtocol = parseStoredProtocol(protocol);
@@ -155,8 +161,6 @@ export function mapInterviewPayload(
       lastUpdated: session.lastUpdated.toISOString(),
       network: stored.data.network,
       stageMetadata: stored.data.stageMetadata ?? undefined,
-      localePreference: session.localePreference,
-      locale: session.locale,
       localeOptions: storedProtocol.data.localization.locales.map((locale) =>
         getLocaleMetadata(locale),
       ),

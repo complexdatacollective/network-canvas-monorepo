@@ -91,10 +91,8 @@ function comparesEncryptedValues(
  * passphrase, so a value is never checked against ciphertext. That is when
  * `passphraseNeeded` is true, for a modal form to offer the passphrase that
  * the navigation cannot while the modal is open. A stored value its key
- * cannot read is left out, as if unanswered, and so is every encrypted value
- * under an encryption header no passphrase can open: no rule then waits for a
- * passphrase that could not be entered, and each comparison with a protected
- * answer is skipped as it is for an unanswered one. A run that waited
+ * cannot read is left out, as if unanswered: each comparison with it is
+ * skipped as it is for an unanswered one. A run that waited
  * compares with the network as it is once the wait is over, since people can
  * be added or changed elsewhere on the stage meanwhile. For every other form
  * it is the network as stored.

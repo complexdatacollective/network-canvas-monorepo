@@ -88,7 +88,7 @@ describe('hashProtocol', () => {
   it('changes when the interview’s shared wording changes', () => {
     const wording = (fr: string) => ({
       ...localizedProtocol(),
-      interfaceText: { interview: { continue: { en: 'Continue', fr } } },
+      interfaceText: { navigation: { continue: { en: 'Continue', fr } } },
     });
     expect(hashProtocol(wording('Suivant'))).not.toBe(
       hashProtocol(wording('Continuer')),

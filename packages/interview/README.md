@@ -111,7 +111,6 @@ import {
   type AssetRequestHandler,
   type FinishHandler,
   type InterviewPayload,
-  type ProtocolLocaleChangeHandler,
   type SyncHandler,
 } from '@codaco/interview';
 import { useCallback, useMemo, useState } from 'react';
@@ -150,9 +149,9 @@ export default function InterviewClient({
   );
 
   // Persist state on every reducer commit. Receives a `SessionSnapshot` —
-  // POST it to your server, write to IndexedDB, anything. Do not store its
-  // `locale` or `localePreference` from here; `onProtocolLocaleChange` below
-  // owns those two fields.
+  // POST it to your server, write to IndexedDB, anything. It carries no
+  // language: the language shown is not interview data, and the engine keeps
+  // the participant's choice itself.
   //
   // The engine offers every change as it happens and never batches on your
   // behalf: only you know what one write costs. A local write can take them
@@ -169,20 +168,6 @@ export default function InterviewClient({
         },
         { waitMs: 3000 },
       ),
-    [],
-  );
-
-  // Persists the interview language. Called when the participant picks a
-  // language on a LanguageChooser stage, and whenever the language shown
-  // differs from the stored `locale`. Write only these two fields, in their
-  // own request, so a later `onSync` write cannot overwrite them.
-  const onProtocolLocaleChange: ProtocolLocaleChangeHandler = useCallback(
-    async (interviewId, { locale, localePreference }) => {
-      await fetch(`/interview/${interviewId}/locale`, {
-        method: 'POST',
-        body: JSON.stringify({ locale, localePreference }),
-      });
-    },
     [],
   );
 
@@ -216,7 +201,6 @@ export default function InterviewClient({
       currentStep={currentStep}
       onStepChange={onStepChange}
       onSync={onSync}
-      onProtocolLocaleChange={onProtocolLocaleChange}
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
     />
@@ -237,25 +221,25 @@ different stages without re-creating the Redux store: only the
 
 ### Shell props
 
-| Prop                            | Type                                                                  | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ------------------------------- | --------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `requestedLocales`              | `readonly string[]`                                                   | yes      | The participant's browser languages, most preferred first: `navigator.languages` on the client, the parsed `Accept-Language` header on the server (`parseAcceptLanguage` from `@codaco/protocol-validation`). Until the participant states a preference, these choose both the protocol language and the interface language. See _Language_ below.                                                                                                                                                                                  |
-| `payload`                       | `InterviewPayload`                                                    | yes      | `{ session, protocol }` — see the type for shape. The store is created once per `payload.session.id`; pass a stable reference.                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `currentStep`                   | `number`                                                              | yes      | The stage index the participant is on. Owned by the host.                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `onStepChange`                  | `(step: number) => void`                                              | yes      | Fired whenever the participant navigates. The host should mirror `step` into its own state.                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `onSync`                        | `(id, session, opts) => Promise`                                      | yes      | Called after every Redux commit — the engine does not batch. `session` is a `SessionSnapshot`. Persist however you like; wrap in `createDebouncedSyncHandler` if writes are expensive. `opts.immediate` marks writes that must not be deferred (exit, finish); `opts.unloading` additionally marks the ones the document may not survive (hidden, pagehide). A change to `locale` or `localePreference` alone never triggers it, and a host persisting the snapshot must not write those two fields (see `onProtocolLocaleChange`). |
-| `onProtocolLocaleChange`        | `(id, { locale, localePreference }) => Promise`                       | yes      | Persists the session's two language fields, which `onSync` never writes. Called when the participant states a preference, and whenever the language shown differs from the stored `locale`. Calls for one interview run one at a time, in order. A rejected call is logged and the next one still runs.                                                                                                                                                                                                                             |
-| `onFinish`                      | `(id, { stageId, outcome }, AbortSignal) => Promise`                  | yes      | Called when the participant confirms Finish on a finish stage, with that stage's id and outcome (`completed`, `ineligible` or `terminated`). Record both with the finish time, and pass the stage id back as `session.finishStageId`. When it resolves, the interview shows its completed state. The signal aborts if the user navigates away mid-flight.                                                                                                                                                                           |
-| `onRequestAsset`                | `(assetId) => Promise<url>`                                           | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `analytics`                     | `InterviewAnalyticsMetadata`                                          | yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`.                                                                                                                                                                                                                                                                                                                                                                                     |
-| `posthogClient`                 | A posthog-js client (needs `capture`, `captureException`, `register`) | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`.                                                                                                                                                                                                                                                                                                             |
-| `disableAnalytics`              | `boolean`                                                             | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs.                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `finishConfirmationDescription` | `ReactNode`                                                           | no       | Host-specific explanation shown in the finish confirmation dialog. Defaults to no explanation: the dialog's title asks whether to finish. A subscribed message component can keep a host override responsive to language changes.                                                                                                                                                                                                                                                                                                   |
-| `completedActions`              | `readonly { label: ReactNode; onAction: () => void }[]`               | no       | The actions offered on the completed state of a finished interview, in order, the first as the primary one: Interviewer's "Exit", or a preview's "Start again" and "Back". Without any the completed state offers no action.                                                                                                                                                                                                                                                                                                        |
-| `reviewMode`                    | `boolean`                                                             | no       | Show a finished interview's stages instead of its completed state, stopping before its finish stage. The host supplies non-persisting sync and finish handlers.                                                                                                                                                                                                                                                                                                                                                                     |
-| `catalog`                       | `InterviewCatalog`                                                    | no       | The interface language's messages from `loadInterviewCatalog`, given the same `requestedLocales` and the session's `localePreference`. Lets the interview render, and hydrate, without waiting for that language to download. Used only while it matches the negotiated language.                                                                                                                                                                                                                                                   |
-| `statedLocale`                  | `string`                                                              | no       | A language the host states on the participant's behalf, as a `LanguageChooser` stage would. Each time it changes it replaces the session's `localePreference` in place, keeping the step, the prompt and unsaved input, and is saved through `onProtocolLocaleChange`. A language the protocol does not declare is ignored. Architect's preview passes its toolbar's choice once a preference is held, which `requestedLocales` cannot override.                                                                                    |
-| `flags`                         | `{ isE2E?, isDevelopment? }`                                          | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Prop                            | Type                                                                  | Required | Notes                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------- | --------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `requestedLocales`              | `readonly string[]`                                                   | yes      | The participant's browser languages, most preferred first: `navigator.languages` on the client, the parsed `Accept-Language` header on the server (`parseAcceptLanguage` from `@codaco/protocol-validation`). Until the participant states a preference, these choose both the protocol language and the interface language. See _Language_ below.                                            |
+| `payload`                       | `InterviewPayload`                                                    | yes      | `{ session, protocol }` — see the type for shape. The store is created once per `payload.session.id`; pass a stable reference.                                                                                                                                                                                                                                                                |
+| `currentStep`                   | `number`                                                              | yes      | The stage index the participant is on. Owned by the host.                                                                                                                                                                                                                                                                                                                                     |
+| `onStepChange`                  | `(step: number) => void`                                              | yes      | Fired whenever the participant navigates. The host should mirror `step` into its own state.                                                                                                                                                                                                                                                                                                   |
+| `onSync`                        | `(id, session, opts) => Promise`                                      | yes      | Called after every Redux commit — the engine does not batch. `session` is a `SessionSnapshot`. Persist however you like; wrap in `createDebouncedSyncHandler` if writes are expensive. `opts.immediate` marks writes that must not be deferred (exit, finish); `opts.unloading` additionally marks the ones the document may not survive (hidden, pagehide).                                  |
+| `onFinish`                      | `(id, { stageId, outcome }, AbortSignal) => Promise`                  | yes      | Called when the participant confirms Finish on a finish stage, with that stage's id and outcome (`completed`, `ineligible` or `terminated`). Record both with the finish time, and pass the stage id back as `session.finishStageId`. When it resolves, the interview shows its completed state. The signal aborts if the user navigates away mid-flight.                                     |
+| `onRequestAsset`                | `(assetId) => Promise<url>`                                           | yes      | Resolve a protocol asset to a URL. Called lazily as stages mount.                                                                                                                                                                                                                                                                                                                             |
+| `analytics`                     | `InterviewAnalyticsMetadata`                                          | yes      | Host metadata attached as super-properties on every event: `installationId` (anonymous host UUID), `hostApp` (e.g. `"Fresco"`), `hostVersion?`.                                                                                                                                                                                                                                               |
+| `posthogClient`                 | A posthog-js client (needs `capture`, `captureException`, `register`) | no       | Pre-initialised PostHog client. When provided, the package emits events through it without modifying its config. When absent, the package lazy-initialises its own named instance against `ph-relay.networkcanvas.com`.                                                                                                                                                                       |
+| `disableAnalytics`              | `boolean`                                                             | no       | When `true`, all event emission is suppressed (no `posthog-js` import). Default `false`. Use for E2E and synthetic-interview runs.                                                                                                                                                                                                                                                            |
+| `finishConfirmationDescription` | `ReactNode`                                                           | no       | Host-specific explanation shown in the finish confirmation dialog. Defaults to no explanation: the dialog's title asks whether to finish. A subscribed message component can keep a host override responsive to language changes.                                                                                                                                                             |
+| `completedActions`              | `readonly { label: ReactNode; onAction: () => void }[]`               | no       | The actions offered on the completed state of a finished interview, in order, the first as the primary one: Interviewer's "Exit", or a preview's "Start again" and "Back". Without any the completed state offers no action.                                                                                                                                                                  |
+| `reviewMode`                    | `boolean`                                                             | no       | Show a finished interview's stages instead of its completed state, stopping before its finish stage. The host supplies non-persisting sync and finish handlers.                                                                                                                                                                                                                               |
+| `catalog`                       | `InterviewCatalog`                                                    | no       | The interface language's messages from `loadInterviewCatalog`, given the same `requestedLocales`. Lets the interview render, and hydrate, without waiting for that language to download. Used only while it matches the negotiated language.                                                                                                                                                  |
+| `statedLocale`                  | `string`                                                              | no       | A language the host states on the participant's behalf, as a `LanguageChooser` stage would. Each time it changes it replaces the participant's preference in place, keeping the step, the prompt and unsaved input. A language the protocol does not declare is ignored. Architect's preview passes its toolbar's choice once a preference is held, which `requestedLocales` cannot override. |
+| `onLocalePreferenceChange`      | `(locale: string) => void`                                            | no       | Told the preference the interview now holds whenever it changes: chosen on a `LanguageChooser` stage, stated through `statedLocale`, or restored from the tab's `sessionStorage`. For a host whose own controls follow the interview's language, as Architect's preview toolbar does. The language is not interview data: do not store it with the session or export it.                      |
+| `flags`                         | `{ isE2E?, isDevelopment? }`                                          | no       | `isE2E: true` exposes `window.__interviewStore` for Playwright fixtures. `isDevelopment: true` enables redux-logger.                                                                                                                                                                                                                                                                          |
 
 The package replaces a previous `onError` callback with internal `posthog.captureException` calls; render errors and asset-load failures are reported via the resolved analytics client (or suppressed when `disableAnalytics` is `true`). The host does not need to wire its own error sink.
 
@@ -276,8 +260,9 @@ Both start from the same two inputs:
   `navigator.languages` on the client, or the parsed `Accept-Language` header on
   the server (`parseAcceptLanguage` from `@codaco/protocol-validation`),
   serialised to the client so both render alike.
-- The session's `localePreference`, the language the participant picked on a
-  `LanguageChooser` stage. It is `null` until they pick one.
+- The participant's `localePreference`, the language they picked on a
+  `LanguageChooser` stage. It is `null` until they pick one. It is not part of
+  the session: see _Where the choice is kept_ below.
 
 How each language is chosen:
 
@@ -294,7 +279,7 @@ Requests match by best fit, one at a time, so `es-MX` matches a declared `es`,
 `pt-PT` a declared `pt-BR`, and `zh-TW` a declared `zh-Hant`. The matching uses
 CLDR's language data, so it also treats a few languages as acceptable
 substitutes for one another, such as Swiss German for German. Until a
-preference is stated, both languages are chosen afresh on every load, so a
+preference is held, both languages are chosen afresh on every load, so a
 resumed interview on a device with other languages can show a different one.
 
 The language shown is not the only one a participant can see. For each piece of
@@ -310,9 +295,24 @@ The `LanguageChooser` stage is the only control a participant has over the
 language; the settings menu has none. Choosing a language applies at once, to
 protocol text and the interface alike, and sets `localePreference`. Leaving the
 preselected language alone states no preference. A host can state one on
-the participant's behalf with `statedLocale`, with the same effect. The package stores nothing
-itself and reads no browser or storage globals: `requestedLocales` is the only
+the participant's behalf with `statedLocale`, with the same effect. The package
+reads no browser language globals: `requestedLocales` is the only language
 input it takes from the environment.
+
+#### Where the choice is kept
+
+The language an interview is shown in is not interview data. Neither the
+participant's choice nor the language shown is part of `SessionPayload` or the
+`SessionSnapshot` passed to `onSync`, and no host stores or exports either.
+
+The engine holds the choice in its own state, and keeps it in the tab's
+`window.sessionStorage` under
+`network-canvas:interview-locale-preference:<interview id>`, so reloading the
+page or resuming the interview in the same tab keeps it. It is gone once the
+tab closes, and is never shared between interviews or tabs. A kept language
+the protocol no longer declares is ignored. When storage is unavailable or
+refuses access (a private window, blocked site data, a sandboxed frame), the
+choice lasts as long as the interview stays mounted.
 
 The interface currently supports `en`, `en-GB`, `es`, `zh-Hans`, `zh-Hant`,
 `de`, `nl`, `pt-BR`, `it`, and `fr`. Regional requests match to them, such as
@@ -330,7 +330,7 @@ every language available by precaching every chunk of its build, as a PWA's
 service worker does.
 
 A host can take that download off the interview's path with
-`loadInterviewCatalog(requestedLocales, localePreference)` from
+`loadInterviewCatalog(requestedLocales)` from
 `@codaco/interview/catalog`, which negotiates exactly as `Shell` does and
 resolves to `{ locale, messages }`. The entry carries no React, so a server
 can import it: a server-rendered host awaits it and passes the result as
@@ -347,21 +347,11 @@ language names, each written in itself. Built-in interface text follows the
 interface language described above, so it can be in a different language from
 the region's. The package leaves the host document's language to the host.
 
-##### Session language fields
+##### Language options
 
-Three fields on the session payload carry the language:
-
-| Field              | Persisted | Purpose                                                                                                                                                          |
-| ------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `localePreference` | yes       | The participant's stated choice, or `null`. The only stored value that decides the language shown.                                                               |
-| `locale`           | yes       | The protocol language last shown. Used for export only (the exported interview language); it never chooses a language. `null` until the engine first reports it. |
-| `localeOptions`    | no        | Presentation metadata (`{ locale, label, direction }`) for each language the protocol declares, in any order. Present on `SessionPayload` only; never persisted. |
-
-Persist the first two through `onProtocolLocaleChange`, not `onSync`.
-`SessionSnapshot`, the type `onSync` receives, still includes both fields, but
-changing them alone never calls `onSync`, and a host writing a snapshot must
-leave them alone. That keeps a late general write from overwriting a language
-the participant just chose.
+`SessionPayload.localeOptions` carries presentation metadata
+(`{ locale, label, direction }`) for each language the protocol declares. It is
+never persisted, and no other session field carries a language.
 
 Derive `localeOptions` with `getLocaleMetadata` from
 `@codaco/protocol-validation`, one entry for each of
@@ -385,8 +375,8 @@ Hosts rendering exported controls outside `Shell`, such as an inline
   in a language that has not loaded yet suspends, so render it under one.
 - `ProtocolLocalizationProvider` supplies the protocol language. It takes
   `localization` (the protocol's declaration), `localeOptions`,
-  `requestedLocales`, `localePreference`, `recordedLocale`,
-  `onLocalePreferenceChange` and `onLocaleRecorded`. Controls that render
+  `requestedLocales`, `localePreference` and `onLocalePreferenceChange`.
+  Controls that render
   protocol-authored text throw outside it.
 
 Hosts that already own an i18n provider can instead add
@@ -469,10 +459,6 @@ export async function loadInterviewPayload(
       // … the rest of SessionPayload — see the type for the full shape
       network: interview.network ?? createInitialNetwork(),
       stageMetadata: interview.stageMetadata,
-      // Stored language fields (null on a new interview). Written back only
-      // through `onProtocolLocaleChange`.
-      localePreference: interview.localePreference,
-      locale: interview.locale,
       // Not stored: derived on each load, one entry per declared language, in
       // any order (the interview sorts them).
       localeOptions: protocol.localization.locales.map((locale) =>
@@ -624,11 +610,7 @@ type SessionSnapshot = {
   promptIndex?: number;
   stageMetadata?: StageMetadata;
   stageRequiresEncryption?: boolean;
-  // The participant's stated language. Persisted; the only stored value that
-  // decides which protocol translation is shown.
-  localePreference: LocaleTag | null;
-  // The protocol language last shown. Persisted for export only.
-  locale: LocaleTag | null;
+  // No language: the language shown is not interview data (see Language).
 };
 
 // What a host passes to start or resume an interview.
@@ -670,17 +652,6 @@ type SyncHandler = (
   interviewId: string,
   session: SessionSnapshot,
   options: SyncOptions,
-) => Promise<void>;
-
-type ProtocolLocaleChange = Readonly<{
-  locale: LocaleTag;
-  localePreference: LocaleTag | null;
-}>;
-// Persists `locale` and `localePreference`; SyncHandler never writes them.
-// Calls for one interview are made one at a time, in order.
-type ProtocolLocaleChangeHandler = (
-  interviewId: string,
-  change: ProtocolLocaleChange,
 ) => Promise<void>;
 
 // Batching is the host's decision. This wraps a handler so ordinary changes

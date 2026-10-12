@@ -3,7 +3,6 @@ import { v4 as uuid } from 'uuid';
 import {
   getInterviewProgress,
   getLastAvailableAuthoredStageIndex,
-  type ProtocolLocaleChange,
   type SessionFinish,
 } from '@codaco/interview';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -25,7 +24,6 @@ import type {
   SessionStatusKind,
   StoredSession,
   StoredSessionLite,
-  StoredSessionPatch,
 } from './types';
 
 // Status reflects interview *completion*, not export. `finishedAt` is the
@@ -289,8 +287,6 @@ export async function createSession(args: {
     network: args.initialNetwork,
     stageMetadata: undefined,
     isSynthetic: args.isSynthetic ?? false,
-    localePreference: null,
-    locale: null,
   };
   const row = await encryptSession(session);
   await db.sessions.put(row);
@@ -402,15 +398,15 @@ const PROTOCOL_BOUND_FIELDS = [
   'resumeStageOverrideIndex',
 ] as const;
 
-type FullStatePatch = StoredSessionPatch &
+type FullStatePatch = Partial<StoredSession> &
   Pick<StoredSession, 'network' | 'currentStep'> & {
     stageMetadata: StoredSession['stageMetadata'];
   };
 
-const isFullState = (patch: StoredSessionPatch): patch is FullStatePatch =>
+const isFullState = (patch: Partial<StoredSession>): patch is FullStatePatch =>
   FULL_STATE_FIELDS.every((field) => Object.hasOwn(patch, field));
 
-const isProtocolBound = (patch: StoredSessionPatch) =>
+const isProtocolBound = (patch: Partial<StoredSession>) =>
   PROTOCOL_BOUND_FIELDS.some((field) => Object.hasOwn(patch, field));
 
 /**
@@ -436,7 +432,7 @@ const isProtocolBound = (patch: StoredSessionPatch) =>
  */
 export function updateSession(
   id: string,
-  patch: StoredSessionPatch,
+  patch: Partial<StoredSession>,
   basis: SessionWriteBasis,
 ): Promise<StoredSession | undefined> {
   return enqueueSessionMutation(id, async () => {
@@ -474,44 +470,16 @@ export function updateSession(
     // migration — possibly in another tab — may have moved this session to
     // another protocol, or the session may have been deleted. Decide against
     // the freshest stored row, and drop the write entirely rather than
-    // resurrect a deleted session. The locale fields are committed from it
-    // too: only `setSessionLocale` writes them, and another tab may have just
-    // done so.
+    // resurrect a deleted session.
     return db.transaction('rw', db.sessions, async () => {
       const latest = await db.sessions.get(id);
       if (!latest) return undefined;
       if (partialBound && latest.protocolHash !== basis.protocolHash) {
         throw new SessionProtocolChangedError(id);
       }
-      const owned = {
-        protocolHash: full ? basis.protocolHash : latest.protocolHash,
-        localePreference: latest.localePreference,
-        locale: latest.locale,
-      };
-      await db.sessions.put({ ...row, ...owned });
-      return { ...updated, ...owned };
-    });
-  });
-}
-
-// Joins the per-id chain, so a participant's language changes are stored in
-// the order they were made.
-//
-// `lastUpdatedAt` is left alone: the interview records the language it shows
-// as soon as it opens, and a language is not interview data. Advancing the
-// timestamp would make merely reopening an interview, or choosing a
-// language, move it ahead of interviews that were actually worked on in the
-// lists that sort by it.
-export function setSessionLocale(
-  id: string,
-  change: ProtocolLocaleChange,
-): Promise<void> {
-  return enqueueSessionMutation(id, async () => {
-    // Plaintext fields only, so no key is needed; `update` skips a session
-    // that has been deleted rather than recreating it.
-    await db.sessions.update(id, {
-      localePreference: change.localePreference,
-      locale: change.locale,
+      const protocolHash = full ? basis.protocolHash : latest.protocolHash;
+      await db.sessions.put({ ...row, protocolHash });
+      return { ...updated, protocolHash };
     });
   });
 }

@@ -34,8 +34,6 @@ function sessionWith(name: string): SessionSnapshot {
       edges: [],
       ego: { _uid: 'ego-1', attributes: {} },
     },
-    localePreference: null,
-    locale: null,
   };
 }
 
@@ -385,28 +383,6 @@ describe('createInterviewSyncHandler', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(bodies[1]?.network).toEqual(sessionWith('third').network);
     expect(bodies[1]?.syncRevision).toBe(2);
-  });
-
-  it('never sends the locale fields, which only the locale route writes', async () => {
-    const { apply } = makeServer();
-    const { fetchMock, bodies } = makeAutoFetch(apply);
-    vi.stubGlobal('fetch', fetchMock);
-
-    const onSync = createInterviewSyncHandler({
-      interviewId: 'interview-1',
-      initialSyncRevision: 0,
-      getCurrentStep: () => 0,
-    });
-
-    await onSync(
-      'interview-1',
-      { ...sessionWith('chosen'), localePreference: 'fr', locale: 'fr' },
-      ORDINARY,
-    );
-
-    expect(bodies[0]).not.toHaveProperty('locale');
-    expect(bodies[0]).not.toHaveProperty('localePreference');
-    expect(bodies[0]?.network).toEqual(sessionWith('chosen').network);
   });
 
   it('refuses a sync for an interview it does not belong to', async () => {

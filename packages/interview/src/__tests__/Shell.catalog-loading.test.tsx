@@ -98,8 +98,6 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
-    localePreference: null,
-    locale: null,
     localeOptions: [getLocaleMetadata('en')],
     network: {
       ego: {
@@ -133,7 +131,6 @@ const payload = {
 
 const handlers = {
   onSync: () => Promise.resolve(),
-  onProtocolLocaleChange: () => Promise.resolve(),
   onFinish: () => Promise.resolve(),
   onRequestAsset: () => Promise.resolve(''),
   analytics: { installationId: 'test', hostApp: 'test' },

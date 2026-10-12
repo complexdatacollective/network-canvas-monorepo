@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type { NcEncryptionHeader } from '@codaco/shared-consts';
+import type { NcNode } from '@codaco/shared-consts';
 
 import { AnalyticsContext } from '../../../analytics/AnalyticsContext';
 import type { Tracker } from '../../../analytics/tracker';
@@ -17,8 +17,7 @@ import Anonymisation from '../Anonymisation';
 import { unlockEncryption } from '../unlockEncryption';
 import {
   createEncryptionStore,
-  encryptionFor,
-  outOfBoundsHeader,
+  makeEncryptedPerson,
   unlockWith,
 } from './encryptionFixtures';
 
@@ -101,10 +100,10 @@ function holdKeyDerivation() {
 }
 
 function renderStage({
-  header,
+  nodes = [],
   validation,
 }: {
-  header?: NcEncryptionHeader;
+  nodes?: NcNode[];
   validation?: AnonymisationStage['validation'];
 } = {}) {
   const stage: AnonymisationStage = {
@@ -117,21 +116,16 @@ function renderStage({
     },
     validation,
   };
-  const store = createEncryptionStore(
-    [],
-    [
-      stage,
-      {
-        id: 'next-screen',
-        type: 'Information',
-        label: { en: 'Next screen' },
-        title: { en: 'Next screen' },
-        items: [],
-      },
-    ],
-    undefined,
-    { header },
-  );
+  const store = createEncryptionStore(nodes, [
+    stage,
+    {
+      id: 'next-screen',
+      type: 'Information',
+      label: { en: 'Next screen' },
+      title: { en: 'Next screen' },
+      items: [],
+    },
+  ]);
 
   const onStepChange = vi.fn();
   let moveForward: () => Promise<void> = () => Promise.resolve();
@@ -202,8 +196,6 @@ const confirmField = () =>
   screen.queryByLabelText(/^Confirm Passphrase/, { selector: 'input' });
 const submitButton = () => screen.getByRole('button', { name: 'Submit' });
 const PASSPHRASE_ACCEPTED = 'Passphrase accepted! Click "Next" to continue.';
-const UNAVAILABLE =
-  'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.';
 
 const successMessage = (text: string) => screen.findByText(text);
 const anySuccessMessage = () =>
@@ -225,6 +217,11 @@ async function enter(
   return { first, second };
 }
 
+/** An answer encrypted with the passphrase `pw`, as an earlier visit left it. */
+const protectedAnswers = async () => [
+  await makeEncryptedPerson('n1', 'Alice', 'pw'),
+];
+
 describe('Anonymisation in an interview without a passphrase', () => {
   it('has the participant choose one of at least eight characters, confirmed, and puts it in force', async () => {
     const { store, user } = renderStage();
@@ -245,13 +242,11 @@ describe('Anonymisation in an interview without a passphrase', () => {
       expect.stringContaining('Enter at least 8 characters.'),
     );
     expect(deriveKey).not.toHaveBeenCalled();
-    expect(store.getState().session.network.encryption).toBeUndefined();
 
     await enter(user, 'eight888');
     await user.click(submitButton());
 
     expect(await successMessage(PASSPHRASE_ACCEPTED)).toBeInTheDocument();
-    expect(store.getState().session.network.encryption).toBeDefined();
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
     expect(store.getState().ui.FORM_IS_READY).toBe(true);
     expect(deriveKey).toHaveBeenCalledTimes(1);
@@ -269,7 +264,7 @@ describe('Anonymisation in an interview without a passphrase', () => {
       expect.stringContaining('must be the same as'),
     );
     expect(deriveKey).not.toHaveBeenCalled();
-    expect(store.getState().session.network.encryption).toBeUndefined();
+    expect(store.getState().ui.encryptionKeyId).toBeNull();
   });
 
   it('holds the passphrase to the stage’s own minimum length when it is below the default', async () => {
@@ -286,7 +281,7 @@ describe('Anonymisation in an interview without a passphrase', () => {
     await user.click(submitButton());
 
     expect(await successMessage(PASSPHRASE_ACCEPTED)).toBeInTheDocument();
-    expect(store.getState().session.network.encryption).toBeDefined();
+    expect(store.getState().ui.encryptionKeyId).not.toBeNull();
   });
 
   it('holds the passphrase to the stage’s own minimum length when it is above the default', async () => {
@@ -301,7 +296,7 @@ describe('Anonymisation in an interview without a passphrase', () => {
       expect.stringContaining('Enter at least 10 characters.'),
     );
     expect(deriveKey).not.toHaveBeenCalled();
-    expect(store.getState().session.network.encryption).toBeUndefined();
+    expect(store.getState().ui.encryptionKeyId).toBeNull();
   });
 
   it('checks the passphrase when Next is pressed, says so while it does, and moves on once it is in force', async () => {
@@ -337,16 +332,15 @@ describe('Anonymisation in an interview without a passphrase', () => {
     });
 
     expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
-    expect(store.getState().session.network.encryption).toBeDefined();
+    expect(store.getState().ui.encryptionKeyId).not.toBeNull();
     expect(deriveKey).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('Anonymisation in an interview whose passphrase has been chosen', () => {
-  it('asks for it once, without length rules, turns away any other even when no answer is encrypted yet, and lets the participant try again', async () => {
-    const { header } = await encryptionFor('pw');
+  it('asks for it once, without length rules, turns away any other that does not decrypt its answers, and lets the participant try again', async () => {
     const { store, onStepChange, next, user } = renderStage({
-      header,
+      nodes: await protectedAnswers(),
       validation: { minLength: 12 },
     });
 
@@ -358,7 +352,6 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
     expect(field).not.toHaveAccessibleDescription(
       expect.stringContaining('Enter at least'),
     );
-    expect(store.getState().session.network.nodes).toEqual([]);
 
     await user.type(field, 'no');
     await user.click(submitButton());
@@ -373,7 +366,6 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
       expect.stringContaining('Too short'),
     );
     expect(store.getState().ui.encryptionKeyId).toBeNull();
-    expect(store.getState().session.network.encryption).toEqual(header);
 
     // Turned away on Next, the participant stays here, with the field
     // focused to try again.
@@ -408,15 +400,15 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
     observer.disconnect();
     expect([...shown]).toEqual([PASSPHRASE_ACCEPTED]);
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
-    expect(store.getState().session.network.encryption).toEqual(header);
 
     await next();
     expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
   });
 
   it('says it is checking the passphrase, and checks it once when Next is pressed during the check', async () => {
-    const { header } = await encryptionFor('pw');
-    const { store, onStepChange, startNext, user } = renderStage({ header });
+    const { store, onStepChange, startNext, user } = renderStage({
+      nodes: await protectedAnswers(),
+    });
     const field = await passphraseField();
     const status = screen.getByRole('status');
     expect(status).toBeEmptyDOMElement();
@@ -455,16 +447,20 @@ describe('Anonymisation in an interview whose passphrase has been chosen', () =>
 
 describe('Anonymisation once the passphrase is in force', () => {
   it('says the passphrase is accepted instead of asking for it, on a return visit', async () => {
-    const { header } = await encryptionFor('pw');
-    const { store, onStepChange, next } = renderStage({ header });
+    const { store, onStepChange, next } = renderStage({
+      nodes: await protectedAnswers(),
+    });
     await act(() => unlockWith(store, 'pw'));
 
     const success = await successMessage(PASSPHRASE_ACCEPTED);
     expect(success).toBeInTheDocument();
     expect(store.getState().ui.FORM_IS_READY).toBe(true);
-    expect(
-      screen.queryByLabelText(/^Passphrase/, { selector: 'input' }),
-    ).toBeNull();
+    // The form leaves with an exit animation, which a loaded machine slows.
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText(/^Passphrase/, { selector: 'input' }),
+      ).toBeNull(),
+    );
     expect(screen.queryByText(VERIFY_LINE)).toBeNull();
 
     await next();
@@ -474,8 +470,9 @@ describe('Anonymisation once the passphrase is in force', () => {
 
 describe('Anonymisation left while the passphrase is being checked', () => {
   it('does not mark the next stage ready once the check ends', async () => {
-    const { header } = await encryptionFor('pw');
-    const { store, unmount, user } = renderStage({ header });
+    const { store, unmount, user } = renderStage({
+      nodes: await protectedAnswers(),
+    });
     const field = await passphraseField();
 
     const { deriveKey, release } = holdKeyDerivation();
@@ -493,35 +490,5 @@ describe('Anonymisation left while the passphrase is being checked', () => {
 
     expect(store.getState().ui.encryptionKeyId).not.toBeNull();
     expect(store.getState().ui.FORM_IS_READY).toBe(false);
-  });
-});
-
-describe('Anonymisation in an interview whose encryption header is out of bounds', () => {
-  it('says protected answers are unavailable, asks for no passphrase, reports it once, and lets the participant move on', async () => {
-    const { header } = await encryptionFor('pw');
-    const refused = outOfBoundsHeader(header);
-    const deriveKey = vi.spyOn(crypto.subtle, 'deriveKey');
-    const { store, onStepChange, next, captureException } = renderStage({
-      header: refused,
-    });
-
-    expect(await screen.findByText(UNAVAILABLE)).toBeInTheDocument();
-    expect(
-      screen.queryByLabelText(/^Passphrase/, { selector: 'input' }),
-    ).toBeNull();
-    expect(screen.queryByText(VERIFY_LINE)).toBeNull();
-    expect(anySuccessMessage()).toBeNull();
-    expect(store.getState().ui.FORM_IS_READY).toBe(true);
-    expect(captureException).toHaveBeenCalledTimes(1);
-    expect(captureException.mock.calls[0]?.[1]).toEqual({
-      feature: 'encrypted-attributes',
-      reason: 'refused-header',
-    });
-
-    await next();
-    expect(onStepChange).toHaveBeenCalledWith(1, expect.anything());
-    expect(deriveKey).not.toHaveBeenCalled();
-    expect(store.getState().session.network.encryption).toEqual(refused);
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
   });
 });

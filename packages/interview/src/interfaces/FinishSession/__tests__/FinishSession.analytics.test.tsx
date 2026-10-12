@@ -37,8 +37,6 @@ const payload = {
     exportTime: null,
     lastUpdated: '2026-10-07T00:00:00.000Z',
     network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
-    localePreference: null,
-    locale: null,
     localeOptions: [getLocaleMetadata('en')],
   },
   protocol: {
@@ -85,7 +83,6 @@ function renderFinish(onFinish: FinishHandler) {
   const tracker = { track: vi.fn(), captureException: vi.fn() };
   const store = createStore(payload, {
     onSync: () => Promise.resolve(),
-    onProtocolLocaleChange: () => Promise.resolve(),
   });
   render(
     <AnimationProvider disableAnimations reducedMotion="always">
@@ -95,9 +92,7 @@ function renderFinish(onFinish: FinishHandler) {
           localeOptions={payload.session.localeOptions}
           requestedLocales={['en']}
           localePreference={null}
-          recordedLocale={null}
           onLocalePreferenceChange={() => undefined}
-          onLocaleRecorded={() => undefined}
         >
           <Provider store={store}>
             <AnalyticsContext.Provider value={tracker}>

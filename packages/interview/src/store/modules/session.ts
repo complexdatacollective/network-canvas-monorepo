@@ -3,14 +3,13 @@ import { invariant } from 'es-toolkit';
 import { find, get } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
-import type { Codebook, LocaleTag } from '@codaco/protocol-validation';
+import type { Codebook } from '@codaco/protocol-validation';
 import {
   type EntityPrimaryKey,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   entitySecureAttributesMeta,
   type NcEdge,
-  type NcEncryptionHeader,
   type NcEntity,
   type NcNetwork,
   type NcNode,
@@ -23,9 +22,7 @@ import {
   getDecryptionScope,
   rememberEncryptedWrite,
 } from '../../interfaces/Anonymisation/decryptionScope';
-import { isUsableEncryptionHeader } from '../../interfaces/Anonymisation/encryptionFormat';
 import {
-  EncryptionUnavailableError,
   generateSecureAttributes,
   PassphraseRequiredError,
 } from '../../interfaces/Anonymisation/utils';
@@ -130,16 +127,12 @@ export type SessionState = {
   promptIndex?: number;
   stageMetadata?: StageMetadata; // Used as temporary storage by DyadCensus/TieStrengthCensus
   stageRequiresEncryption?: boolean; // Set to true by the stage if it detects that nodes it creates require encryption
-  localePreference: LocaleTag | null;
-  locale: LocaleTag | null;
 };
 
 const actionTypes = {
   updatePrompt: 'SESSION/UPDATE_PROMPT',
   transitionStage: 'SESSION/TRANSITION_STAGE',
   updateStageMetadata: 'SESSION/UPDATE_STAGE_METADATA',
-  setLocalePreference: 'SESSION/SET_LOCALE_PREFERENCE',
-  recordLocale: 'SESSION/RECORD_LOCALE',
   addNode: 'NETWORK/ADD_NODE' as const,
   addNodesAndEdges: 'NETWORK/ADD_NODES_AND_EDGES' as const,
   deleteNode: 'NETWORK/DELETE_NODE' as const,
@@ -154,7 +147,6 @@ const actionTypes = {
   toggleEdge: 'NETWORK/TOGGLE_EDGE' as const,
   deleteEdge: 'NETWORK/DELETE_EDGE' as const,
   updateEgo: 'NETWORK/UPDATE_EGO' as const,
-  setEncryptionHeader: 'NETWORK/SET_ENCRYPTION_HEADER' as const,
 };
 
 const initialState = {} as SessionState;
@@ -162,16 +154,11 @@ const initialState = {} as SessionState;
 /**
  * The scope holding the key an encrypted write must use. Throwing rejects the
  * whole write, so a patch that mixes encrypted and plain values is never
- * applied in part. The error says whether a passphrase could still put the
- * key in force.
+ * applied in part.
  */
 function requireDecryptionScope(getState: () => RootState): DecryptionScope {
   const scope = getDecryptionScope(getState);
   if (scope) return scope;
-  const header = getState().session.network.encryption;
-  if (header !== undefined && !isUsableEncryptionHeader(header)) {
-    throw new EncryptionUnavailableError();
-  }
   throw new PassphraseRequiredError();
 }
 
@@ -476,15 +463,6 @@ export const restoreNodeAttributes = createAction<{
   snapshot: NodeAttributeSnapshot;
 }>(actionTypes.restoreNodeAttributes);
 
-/**
- * Records how this interview's encryption key is derived and checked. Written
- * once, when the first passphrase is accepted; a header already in place is
- * never replaced, because every stored value depends on it.
- */
-export const setEncryptionHeader = createAction<NcEncryptionHeader>(
-  actionTypes.setEncryptionHeader,
-);
-
 export const updatePrompt = createAction<number>(actionTypes.updatePrompt);
 /**
  * Signals that the host-controlled `currentStep` has changed and any
@@ -731,17 +709,6 @@ export const updateStageMetadata = createAction<{
   currentStep: number;
   metadata: StageMetadataEntry;
 }>(actionTypes.updateStageMetadata);
-
-/**
- * The participant chose a language. The choice is also the language now shown,
- * so both fields change together and the host hears about it once.
- */
-export const setLocalePreference = createAction<LocaleTag>(
-  actionTypes.setLocalePreference,
-);
-
-/** Records the protocol translation shown, for exports. */
-export const recordLocale = createAction<LocaleTag>(actionTypes.recordLocale);
 
 function newNodeFrom(
   network: NcNetwork,
@@ -1014,17 +981,6 @@ const sessionReducer = createReducer(initialState, (builder) => {
     });
   });
 
-  builder.addCase(setEncryptionHeader, (state, action) => {
-    invariant(
-      !state.network.encryption,
-      'This interview already has an encryption header',
-    );
-    return withLastUpdated({
-      ...state,
-      network: { ...state.network, encryption: action.payload },
-    });
-  });
-
   builder.addCase(updatePrompt, (state, action) => {
     return {
       ...state,
@@ -1157,27 +1113,6 @@ const sessionReducer = createReducer(initialState, (builder) => {
         [currentStep]: metadata,
       },
     });
-  });
-
-  // Neither locale action touches `lastUpdated`: they are not interview data,
-  // and the general sync route does not write them.
-  builder.addCase(setLocalePreference, (state, action) => {
-    if (
-      state.localePreference === action.payload &&
-      state.locale === action.payload
-    ) {
-      return state;
-    }
-    return {
-      ...state,
-      localePreference: action.payload,
-      locale: action.payload,
-    };
-  });
-
-  builder.addCase(recordLocale, (state, action) => {
-    if (state.locale === action.payload) return state;
-    return { ...state, locale: action.payload };
   });
 
   builder.addCase(updateEgo.fulfilled, (state, action) => {

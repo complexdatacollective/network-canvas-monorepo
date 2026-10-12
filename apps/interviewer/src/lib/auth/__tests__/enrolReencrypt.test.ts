@@ -65,8 +65,6 @@ function makeSession(): StoredSession {
     network,
     stageMetadata: undefined,
     isSynthetic: false,
-    localePreference: null,
-    locale: null,
   };
 }
 

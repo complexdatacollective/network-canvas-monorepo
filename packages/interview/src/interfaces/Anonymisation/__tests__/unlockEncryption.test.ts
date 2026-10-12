@@ -17,13 +17,13 @@ import {
 } from '../decryptionScope';
 import { decryptValue } from '../encryptionFormat';
 import { installEncryptionKey, unlockEncryption } from '../unlockEncryption';
+import { generateSecureAttributes } from '../utils';
 import {
   createEncryptionStore,
   encryptedVariables,
   encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
-  outOfBoundsHeader,
 } from './encryptionFixtures';
 
 afterEach(() => {
@@ -36,7 +36,6 @@ type Store = ReturnType<typeof createEncryptionStore>;
 function resume(store: Store, onSync?: SyncHandler) {
   const { network } = store.getState().session;
   return createEncryptionStore(network.nodes, undefined, undefined, {
-    header: network.encryption,
     onSync,
   });
 }
@@ -69,32 +68,21 @@ function cryptoKeysIn(value: unknown, path = '$'): string[] {
 }
 
 describe('unlocking an interview', () => {
-  it('makes the first passphrase entered the interview’s, and accepts only that one afterwards', async () => {
+  it('makes the first passphrase the interview’s, and once an answer is encrypted accepts only that one', async () => {
     const store = createEncryptionStore([]);
-    expect(store.getState().session.network.encryption).toBeUndefined();
 
     await expect(unlockEncryption(store, 'first passphrase')).resolves.toBe(
       'chosen',
     );
-    const { encryption } = store.getState().session.network;
-    expect(encryption).toMatchObject({
-      version: 1,
-      method: 'AES-256-GCM',
-      kdf: { algorithm: 'PBKDF2', hash: 'SHA-256', iterations: 600_000 },
-    });
-    expect(encryption?.kdf.salt).toHaveLength(16);
     expect(getDecryptionScope(store.getState)).toBeDefined();
+    await addPerson(store, 'Alice');
 
-    // Resumed with no answers encrypted yet, the check value alone turns a
-    // different passphrase away.
     const resumed = resume(store);
-    expect(resumed.getState().session.network.nodes).toEqual([]);
     await expect(unlockEncryption(resumed, 'second passphrase')).resolves.toBe(
       'incorrect',
     );
     expect(getDecryptionScope(resumed.getState)).toBeUndefined();
     expect(resumed.getState().ui.encryptionKeyId).toBeNull();
-    expect(resumed.getState().session.network.encryption).toEqual(encryption);
 
     await expect(unlockEncryption(resumed, 'first passphrase')).resolves.toBe(
       'verified',
@@ -102,17 +90,85 @@ describe('unlocking an interview', () => {
     expect(getDecryptionScope(resumed.getState)).toBeDefined();
   });
 
-  it('never creates a second header when two passphrases are entered at once', async () => {
+  it('accepts any passphrase while no answer is encrypted, since nothing exists for it to be wrong about', async () => {
+    const store = createEncryptionStore([]);
+    await expect(unlockEncryption(store, 'first passphrase')).resolves.toBe(
+      'chosen',
+    );
+
+    // Resumed before any answer was encrypted, nothing was stored that
+    // a passphrase could be checked against.
+    const resumed = resume(store);
+    expect(resumed.getState().session.network.nodes).toEqual([]);
+    await expect(unlockEncryption(resumed, 'second passphrase')).resolves.toBe(
+      'chosen',
+    );
+    expect(getDecryptionScope(resumed.getState)).toBeDefined();
+  });
+
+  it('turns away a wrong passphrase by trying to decrypt a stored answer', async () => {
+    const alice = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const store = createEncryptionStore([alice]);
+    const dispatch = vi.spyOn(store, 'dispatch');
+
+    await expect(unlockEncryption(store, 'not pw')).resolves.toBe('incorrect');
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'ui/passphraseRejected' }),
+    );
+    expect(getDecryptionScope(store.getState)).toBeUndefined();
+
+    await expect(unlockEncryption(store, 'pw')).resolves.toBe('verified');
+    expect(getDecryptionScope(store.getState)).toBeDefined();
+  });
+
+  it('turns away the right passphrase for answers encrypted in another interview', async () => {
+    const { key } = await encryptionFor('pw', 'another-session');
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { name: 'Alice' },
+        encryptedVariables,
+        key,
+        'n1',
+      );
+    const copied: NcNode = {
+      [entityPrimaryKeyProperty]: 'n1',
+      type: NODE_TYPE,
+      [entityAttributesProperty]: encryptedAttributes,
+      [entitySecureAttributesMeta]: secureAttributes,
+    };
+    const store = createEncryptionStore([copied]);
+
+    await expect(unlockEncryption(store, 'pw')).resolves.toBe('incorrect');
+    expect(getDecryptionScope(store.getState)).toBeUndefined();
+  });
+
+  it('accepts the right passphrase when one stored answer is damaged', async () => {
+    const damaged = await makeEncryptedPerson('n1', 'Alice', 'pw');
+    const name = damaged[entityAttributesProperty].name;
+    if (!Array.isArray(name)) throw new Error('expected a ciphertext');
+    const [first = 0, ...rest] = name as number[];
+    damaged[entityAttributesProperty].name = [first ^ 1, ...rest];
+    const intact = await makeEncryptedPerson('n2', 'Bob', 'pw');
+    const store = createEncryptionStore([damaged, intact]);
+
+    await expect(unlockEncryption(store, 'not pw')).resolves.toBe('incorrect');
+    await expect(unlockEncryption(store, 'pw')).resolves.toBe('verified');
+  });
+
+  it('checks a second passphrase entered at once against the first', async () => {
     const store = createEncryptionStore([]);
 
-    const [first, second] = await Promise.all([
+    const [first, second, third] = await Promise.all([
       unlockEncryption(store, 'first passphrase'),
       unlockEncryption(store, 'second passphrase'),
+      unlockEncryption(store, 'first passphrase'),
     ]);
 
     expect(first).toBe('chosen');
-    // The second is checked against the header the first created.
+    // Nothing is stored yet, so each later one is checked against the key
+    // already in force.
     expect(second).toBe('incorrect');
+    expect(third).toBe('verified');
   });
 
   it('derives the key once when the passphrase is set, and once when it is entered again', async () => {
@@ -157,6 +213,7 @@ describe('unlocking an interview', () => {
       FORM_IS_READY: false,
       encryptionKeyId: expect.any(String),
       showPassphrasePrompter: false,
+      localePreference: null,
     });
 
     expect(synced.length).toBeGreaterThan(0);
@@ -174,17 +231,16 @@ describe('unlocking an interview', () => {
     expect(cryptoKeysIn(synced)).toEqual([]);
     expect(JSON.stringify(synced)).not.toContain('DO NOT PERSIST');
     expect(JSON.stringify(synced)).not.toContain('Alice');
-    expect(Object.keys(persisted?.network.encryption ?? {}).sort()).toEqual([
-      'check',
-      'kdf',
-      'method',
-      'version',
+    // Nothing about the key is stored with the network.
+    expect(Object.keys(persisted?.network ?? {}).sort()).toEqual([
+      'edges',
+      'ego',
+      'nodes',
     ]);
 
-    // What was persisted parses as a network, header included, so a host
-    // validating it keeps it.
+    // What was persisted parses as a network, so a host validating it keeps
+    // every encrypted answer and its metadata.
     const parsed = NcNetworkSchema.parse(persisted?.network);
-    expect(parsed.encryption).toEqual(persisted?.network.encryption);
     expect(parsed.nodes).toHaveLength(1);
     expect(parsed.nodes[0]?.[entitySecureAttributesMeta]).toEqual(
       storedAlice?.[entitySecureAttributesMeta],
@@ -193,10 +249,8 @@ describe('unlocking an interview', () => {
 
   it('discards what the previous key decrypted when another is put in force', async () => {
     const person = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const { header, key } = await encryptionFor('pw');
-    const store = createEncryptionStore([person], undefined, undefined, {
-      header,
-    });
+    const { key } = await encryptionFor('pw');
+    const store = createEncryptionStore([person]);
 
     installEncryptionKey(store, key);
     const first = getDecryptionScope(store.getState);
@@ -217,7 +271,7 @@ describe('unlocking an interview', () => {
 });
 
 describe('an interview with answers in the schema 8 format', () => {
-  it('loads, reads its old answers as unreadable, and writes new answers in the current format once a passphrase is chosen', async () => {
+  it('loads, reads its old answers as unreadable, accepts any passphrase, and writes new answers in the current format', async () => {
     const legacy: NcNode = {
       [entityPrimaryKeyProperty]: 'legacy-1',
       type: NODE_TYPE,
@@ -233,10 +287,12 @@ describe('an interview with answers in the schema 8 format', () => {
       reason: 'legacy-format',
     });
 
+    // The old answer can never be decrypted, so it says nothing about the
+    // passphrase: it is not tried, and the passphrase becomes the
+    // interview's.
     await expect(unlockEncryption(store, 'new passphrase')).resolves.toBe(
       'chosen',
     );
-    expect(store.getState().session.network.encryption).toBeDefined();
 
     const result = await addPerson(store, 'Carol');
     expect(addNode.fulfilled.match(result)).toBe(true);
@@ -265,27 +321,5 @@ describe('an interview with answers in the schema 8 format', () => {
 
     // The old answer is left as it was.
     expect(store.getState().session.network.nodes[0]).toEqual(legacy);
-  });
-});
-
-describe('an interview whose encryption header is out of bounds', () => {
-  it('turns every passphrase away as unavailable, without deriving a key, counting a rejection or replacing the header', async () => {
-    const header = outOfBoundsHeader((await encryptionFor('pw')).header);
-    const store = createEncryptionStore([], undefined, undefined, { header });
-    const importKey = vi.spyOn(crypto.subtle, 'importKey');
-    const deriveKey = vi.spyOn(crypto.subtle, 'deriveKey');
-    const dispatch = vi.spyOn(store, 'dispatch');
-
-    await expect(unlockEncryption(store, 'pw')).resolves.toBe('unavailable');
-    await expect(unlockEncryption(store, 'another')).resolves.toBe(
-      'unavailable',
-    );
-
-    expect(importKey).not.toHaveBeenCalled();
-    expect(deriveKey).not.toHaveBeenCalled();
-    expect(dispatch).not.toHaveBeenCalled();
-    expect(store.getState().session.network.encryption).toEqual(header);
-    expect(store.getState().ui.encryptionKeyId).toBeNull();
-    expect(getDecryptionScope(store.getState)).toBeUndefined();
   });
 });

@@ -28,8 +28,6 @@ function createStore() {
     finishTime: null,
     exportTime: null,
     lastUpdated: new Date().toISOString(),
-    localePreference: null,
-    locale: null,
     network: createInitialNetwork(),
     promptIndex: 0,
   };

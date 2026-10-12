@@ -4,11 +4,13 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
 import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
+import { interfaceMessages } from '../../interfaces/messages';
 import { InterfaceTextOverlay } from '../InterfaceTextOverlay';
 import { ProtocolLocalizationProvider } from '../ProtocolLocalizationProvider';
 
@@ -36,9 +38,7 @@ function Interview({
         )}
         requestedLocales={['es']}
         localePreference={null}
-        recordedLocale={null}
         onLocalePreferenceChange={vi.fn()}
-        onLocaleRecorded={vi.fn()}
       >
         <InterfaceTextOverlay interfaceText={interfaceText}>
           {children}
@@ -65,7 +65,7 @@ describe('InterfaceTextOverlay', () => {
     render(
       <Interview
         interfaceText={{
-          interview: { back: { en: 'Previous', es: 'Anterior' } },
+          navigation: { back: { en: 'Previous', es: 'Anterior' } },
         }}
       >
         <Buttons />
@@ -89,7 +89,7 @@ describe('InterfaceTextOverlay', () => {
     render(
       <Interview
         interfaceText={{
-          interview: { back: { en: 'Previous', es: 'Anterior' } },
+          navigation: { back: { en: 'Previous', es: 'Anterior' } },
         }}
       >
         <Buttons />
@@ -100,6 +100,35 @@ describe('InterfaceTextOverlay', () => {
       screen.getAllByRole('button').map((button) => button.textContent),
     ).toEqual(['Anterior', catalogWording[1]]);
     expect(catalogWording[0]).not.toBe('Anterior');
+  });
+
+  // One wording serves every catalog message it stands in for.
+  it('shows one text wherever any message it stands in for is asked for', () => {
+    function Words() {
+      const intl = useAppIntl();
+      return (
+        <ul>
+          <li>{intl.formatMessage(commonMessages.genericError)}</li>
+          <li>{intl.formatMessage(formMessages.submitFailed)}</li>
+          <li>{intl.formatMessage(interfaceMessages.discardChanges)}</li>
+        </ul>
+      );
+    }
+
+    render(
+      <Interview
+        interfaceText={{
+          messages: { error: { en: 'Oops', es: 'Vaya' } },
+          buttons: { yes: { en: 'Yes', es: 'Vale' } },
+        }}
+      >
+        <Words />
+      </Interview>,
+    );
+
+    expect(
+      screen.getAllByRole('listitem').map((item) => item.textContent),
+    ).toEqual(['Vaya', 'Vaya', 'Vale']);
   });
 
   // A comparison rule's message chooses its sentence by whether the other

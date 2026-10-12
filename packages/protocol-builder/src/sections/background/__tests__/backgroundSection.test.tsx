@@ -1,7 +1,8 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import SubjectSection from '../../subject-picker/SubjectSection.tsx';
 import { background } from '../background.tsx';
 import {
   CANVAS_IMAGE_ID,
@@ -240,5 +241,70 @@ describe('what the participant sees behind the nodes', () => {
       }),
     ).toHaveDisplayValue('');
     expect(await harness.submit()).toBeNull();
+  });
+
+  /**
+   * Choosing the node type resets the stage to its interface's template, and
+   * a Sociogram's template draws circles. The type control has to follow that
+   * reset: left on Image, it showed an empty picker over a background still
+   * holding a ring count, and the image chosen next was saved beside it — a
+   * background of both kinds, which the schema refuses with nothing on screen
+   * to explain why.
+   */
+  it('follows the background a node type change resets the stage to', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'Sociogram', position: 0 },
+      sections: (
+        <>
+          <SubjectSection entity="node" />
+          <Background />
+        </>
+      ),
+      assets: canvasImageAssets,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('option', { name: /Image/ }),
+    );
+    await screen.findByRole('button', { name: 'Select an image' });
+
+    // Nothing on the stage is the researcher's work yet, so there is no
+    // question to answer: the pick is the change.
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'person' })).toBeChecked(),
+    );
+
+    expect(
+      await screen.findByRole('option', { name: /Concentric Circles/ }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(
+      screen.getByRole('spinbutton', { name: 'Number of concentric circles' }),
+    ).toHaveDisplayValue('4');
+    expect(
+      screen.queryByRole('button', { name: 'Select an image' }),
+    ).not.toBeInTheDocument();
+
+    await harness.user.click(screen.getByRole('option', { name: /Image/ }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Select an image' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: CANVAS_IMAGE_NAME }),
+    );
+
+    await screen.findByRole('button', { name: 'Change the image' });
+
+    // The stage is not saveable yet — a Sociogram created from scratch has no
+    // prompts — so the save is the moment the editor checks the whole stage,
+    // and the background must not be among what it refuses.
+    expect(await harness.submit()).toBeNull();
+    expect(harness.problems()).not.toContain(
+      'concentricCircles cannot be set when background has an image.',
+    );
+    expect(harness.outline()).toContainEqual({
+      title: 'Background',
+      state: 'Finished',
+    });
   });
 });

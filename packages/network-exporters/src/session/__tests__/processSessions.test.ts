@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import {
   entityAttributesProperty,
   entitySecureAttributesMeta,
-  type NcEncryptionHeader,
 } from '@codaco/shared-consts';
 
 import { DatabaseError } from '../../errors';
@@ -28,7 +27,6 @@ const mkSession = (
     ego: { _uid: ego, [entityAttributesProperty]: {} },
   },
   protocolHash: hash,
-  locale: null,
   finishOutcome: 'completed',
 });
 
@@ -50,21 +48,6 @@ const opts: ExportOptions = {
     useScreenLayoutCoordinates: false,
     screenLayoutHeight: 0,
     screenLayoutWidth: 0,
-  },
-};
-
-const encryptionHeader: NcEncryptionHeader = {
-  version: 1,
-  method: 'AES-256-GCM',
-  kdf: {
-    algorithm: 'PBKDF2',
-    hash: 'SHA-256',
-    iterations: 600_000,
-    salt: [168, 29, 241, 116, 83, 207, 14, 155, 70, 222, 37, 129, 193, 48],
-  },
-  check: {
-    iv: [183, 56, 249, 21, 142, 97, 208, 63, 125, 30, 164, 245],
-    data: [92, 167, 18, 234, 79, 146, 31, 203, 58, 121, 190, 5],
   },
 };
 
@@ -156,21 +139,18 @@ describe('processSessions', () => {
 
   it.each([
     {
-      label: 'metadata without a salt, under an encryption header',
+      label: 'metadata without a salt',
       metadata: { iv: [15, 243, 77] },
-      header: encryptionHeader,
     },
     {
-      label: 'schema 8 metadata with a salt, without a header',
+      label: 'schema 8 metadata with a salt',
       metadata: { iv: [15, 243, 77], salt: [44, 130, 213] },
-      header: undefined,
     },
   ])(
     'processes a network with encrypted values: $label',
-    async ({ metadata, header }) => {
+    async ({ metadata }) => {
       const session = mkSession('s1', 'hA');
       session.network = {
-        ...(header ? { encryption: header } : {}),
         nodes: [
           {
             _uid: 'node-1',

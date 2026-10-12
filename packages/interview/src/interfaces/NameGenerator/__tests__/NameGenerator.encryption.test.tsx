@@ -22,7 +22,6 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataProvider } from '../../../contexts/StageMetadataContext';
 import useInterviewNavigation from '../../../hooks/useInterviewNavigation';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
-import { interviewToastManager } from '../../../toast/interviewToastManager';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import {
   createEncryptionStore,
@@ -30,7 +29,6 @@ import {
   encryptionFor,
   makeEncryptedPerson,
   NODE_TYPE,
-  outOfBoundsHeader,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
@@ -96,18 +94,12 @@ async function renderNameGenerator({
   nodes = [],
   stages,
   unlocked = false,
-  refused = false,
 }: {
   nodes?: NcNode[];
   stages?: Stages;
   unlocked?: boolean;
-  /** Stores a header no passphrase can open, as a damaged copy might. */
-  refused?: boolean;
 } = {}) {
-  const { header } = await encryptionFor('pw');
-  const store = createEncryptionStore(nodes, stages, undefined, {
-    header: refused ? outOfBoundsHeader(header) : header,
-  });
+  const store = createEncryptionStore(nodes, stages);
   if (unlocked) await unlockWith(store, 'pw');
 
   const [stage] = store.getState().protocol.stages;
@@ -173,137 +165,6 @@ async function storedName(node: NcNode | undefined) {
   const { key } = await encryptionFor('pw');
   return decryptValue(key, stored.value, stored.value);
 }
-
-/** A name generator asking for at least two people, then another screen. */
-const twoPeopleStages: Stages = [
-  {
-    id: 'stage-1',
-    type: 'NameGenerator',
-    minNodesNotice: {
-      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
-    },
-    label: { en: 'Name generator' },
-    subject: { entity: 'node', type: NODE_TYPE },
-    behaviours: { minNodes: 2 },
-    form: {
-      title: { en: 'Add a person' },
-      fields: [
-        {
-          variable: asEntityAttributeReference('name'),
-          prompt: { en: 'Name' },
-        },
-        { variable: asEntityAttributeReference('age'), prompt: { en: 'Age' } },
-      ],
-    },
-    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
-  },
-  {
-    id: 'next-screen',
-    type: 'Information',
-    label: { en: 'Next screen' },
-    title: { en: 'Next screen' },
-    items: [],
-  },
-];
-
-/**
- * As `twoPeopleStages`, but the form asks only for an age, so an encrypted
- * name can only arrive with a row from the stage's panel.
- */
-const panelEncryptsStages: Stages = [
-  {
-    id: 'stage-1',
-    type: 'NameGenerator',
-    minNodesNotice: {
-      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
-    },
-    externalDataError: { en: 'External data could not be loaded.' },
-    label: { en: 'Name generator' },
-    subject: { entity: 'node', type: NODE_TYPE },
-    behaviours: { minNodes: 2 },
-    form: {
-      title: { en: 'Add a person' },
-      fields: [
-        { variable: asEntityAttributeReference('age'), prompt: { en: 'Age' } },
-      ],
-    },
-    panels: [
-      { id: 'panel-1', title: { en: 'Roster' }, dataSource: 'roster-asset' },
-    ],
-    prompts: [{ id: 'prompt-1', text: { en: 'Name people' } }],
-  },
-  ...twoPeopleStages.slice(1),
-];
-
-describe('NameGenerator under an encryption header no passphrase can open', () => {
-  it('says why no one can be added, and lets the participant move on short of the minimum', async () => {
-    const toast = vi.spyOn(interviewToastManager, 'add');
-    const person = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const { store, onStepChange, next } = await renderNameGenerator({
-      nodes: [person],
-      stages: twoPeopleStages,
-      refused: true,
-    });
-
-    expect(screen.getByRole('button', { name: 'Add a person' })).toBeDisabled();
-    await waitFor(() => expect(toast).toHaveBeenCalled());
-    render(
-      <InterviewI18nProvider requestedLocale="en">
-        {toast.mock.calls.map(([options], index) => (
-          <p key={index}>{options.description}</p>
-        ))}
-      </InterviewI18nProvider>,
-    );
-    expect(
-      screen.getByText(/cannot be shown or saved in this interview/),
-    ).toBeInTheDocument();
-
-    await next();
-
-    expect(onStepChange).toHaveBeenCalled();
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-    toast.mockRestore();
-  });
-
-  // Only the panel's rows are refused, and the panel says why. The form still
-  // adds people, so the minimum can still be met and still holds.
-  it('keeps the form open and the minimum in force when only the panel would save encrypted answers', async () => {
-    const { onStepChange, next } = await renderNameGenerator({
-      stages: panelEncryptsStages,
-      refused: true,
-    });
-
-    expect(
-      await screen.findByText(/cannot be shown or saved in this interview/),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add a person' })).toBeEnabled();
-
-    await next();
-
-    expect(onStepChange).not.toHaveBeenCalled();
-  });
-
-  it('opens a tapped person with their protected answers shown as unavailable', async () => {
-    const person = await makeEncryptedPerson('n1', 'Alice', 'pw');
-    const { store } = await renderNameGenerator({
-      nodes: [person],
-      refused: true,
-    });
-
-    act(() => {
-      tapNode?.(person);
-    });
-
-    const name = await screen.findByRole('textbox', { name: 'Name' });
-    expect(name).toHaveValue('Answer unavailable');
-    expect(name).toHaveAttribute('readonly');
-    expect(screen.getByRole('spinbutton', { name: 'Age' })).toHaveValue(40);
-    expect(
-      screen.queryByRole('button', { name: 'Enter a new answer' }),
-    ).toBeNull();
-    expect(store.getState().ui.showPassphrasePrompter).toBe(false);
-  });
-});
 
 describe('NameGenerator asking for encrypted answers', () => {
   it('takes no new answers, and opens no one for editing, until the passphrase is entered', async () => {

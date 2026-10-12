@@ -40,8 +40,6 @@ const session = (name: string): SessionSnapshot => ({
     edges: [],
   },
   stageMetadata: {},
-  localePreference: null,
-  locale: null,
 });
 
 const handlersFor = (step = 1) => {

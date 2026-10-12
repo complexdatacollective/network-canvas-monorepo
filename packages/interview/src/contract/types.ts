@@ -4,7 +4,6 @@ import type {
   CurrentProtocol,
   FinishOutcome,
   LocaleMetadata,
-  LocaleTag,
 } from '@codaco/protocol-validation';
 import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
 
@@ -47,9 +46,12 @@ export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
  * persisted session state used by the reducer, but is kept explicit so the
  * public contract does not expose Redux internals.
  *
- * The two locale fields are owned by `ProtocolLocaleChangeHandler`, not by the
- * general sync route: a change to either reaches the host only through that
- * handler, and a host persisting a `SyncHandler` snapshot must not write them.
+ * The interview's language is not interview data, so it is not part of the
+ * session and no host stores it. The language shown follows the browser's
+ * languages until the participant chooses one on a language chooser stage;
+ * the engine holds that choice for the session and keeps it in the tab's
+ * `sessionStorage`, keyed by interview id, so a reload in the same tab keeps
+ * it.
  */
 export type SessionSnapshot = {
   id: string;
@@ -61,17 +63,6 @@ export type SessionSnapshot = {
   promptIndex?: number;
   stageMetadata?: StageMetadata;
   stageRequiresEncryption?: boolean;
-  /**
-   * The language the participant chose on a language chooser stage. The only
-   * stored value that decides which protocol translation is shown; `null`
-   * until a choice is made, and the browser's languages decide until then.
-   */
-  localePreference: LocaleTag | null;
-  /**
-   * The protocol translation last shown, recorded for exports only and never
-   * used to choose one. `null` until the engine first reports it.
-   */
-  locale: LocaleTag | null;
 };
 
 /**
@@ -136,22 +127,6 @@ export type SyncHandler = (
   interviewId: string,
   session: SessionSnapshot,
   options: SyncOptions,
-) => Promise<void>;
-
-export type ProtocolLocaleChange = Readonly<{
-  locale: LocaleTag;
-  localePreference: LocaleTag | null;
-}>;
-
-/**
- * Persists the session's locale fields. Called once when the participant
- * states a preference, and once whenever the language shown differs from the
- * stored `locale` (a resumed interview on a device with different languages).
- * Calls for one interview are made one at a time, in order.
- */
-export type ProtocolLocaleChangeHandler = (
-  interviewId: string,
-  change: ProtocolLocaleChange,
 ) => Promise<void>;
 
 /**

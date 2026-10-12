@@ -210,13 +210,11 @@ async function InterviewContent({
   // render and hydration choose the same protocol language.
   const requestedLocales = await getRequestedLocales();
   // The interview's own messages, in the language its Shell will negotiate
-  // from the same request and the participant's stated language, travel with
-  // the page: otherwise hydration waits on a separate download before the
-  // participant sees anything.
-  const catalog = await loadInterviewCatalog(
-    requestedLocales,
-    payload.session.localePreference,
-  );
+  // from the same request, travel with the page: otherwise hydration waits on
+  // a separate download before the participant sees anything. A language the
+  // participant chose earlier in this tab is kept only in the browser, so the
+  // Shell loads that language's messages itself when it differs.
+  const catalog = await loadInterviewCatalog(requestedLocales);
 
   return (
     <InterviewClient
