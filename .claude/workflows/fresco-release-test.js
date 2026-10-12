@@ -204,6 +204,9 @@ const bareDigest = (value) => {
   return clean ? clean.replace(/^sha256:/i, '').toLowerCase() : null;
 };
 
+// The only version a release can carry: no prefix, no pre-release, no build.
+const STABLE_VERSION = /^\d+\.\d+\.\d+$/;
+
 // A version as a build stamp or manifest may carry it ("v4.1.2" or "4.1.2").
 const stripV = (value) => {
   const clean = shaped(value, VERSION, 64);
@@ -433,7 +436,13 @@ const RELEASE_BRANCH_SCHEMA = {
     version: { type: 'string' },
     baseVersion: { type: 'string' },
     releasesFresco: { type: 'boolean' },
-    error: { type: 'string' },
+    consumedChangesets: {
+      type: 'array',
+      maxItems: 500,
+      items: { type: 'string', maxLength: 200 },
+    },
+    consumedChangesetsAt: { type: 'string', maxLength: 64 },
+    error: { type: 'string', maxLength: 500 },
   },
   required: ['ok'],
 };
@@ -870,14 +879,15 @@ if (skipBuild) {
     'skipBuild: validating existing fresco-release-test:pending against its stamp',
   );
 }
-// Run only when the caller pinned no version. Its answer is a script's own
-// JSON, validated in code below; the agent decides nothing.
-const detectReleaseBranch = () =>
+// Run only when the caller pinned no version, and again before the verdict
+// when the pin came from it. Its answer is a script's own JSON, validated in
+// code below; the agent decides nothing.
+const detectReleaseBranch = (label = 'release-branch') =>
   agent(
     `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once: node ${SCRIPTS}/release-branch-version.mjs
-It prints ONE line of JSON and nothing else. Return its fields verbatim: ok, onReleaseBranch, head, branch, version, baseVersion, releasesFresco — omitting any the line does not carry or carries as null. On a non-zero exit it prints {"ok":false,"error":"..."} instead — return ok:false with that error. Do not fetch, check out or change anything.`,
+It prints ONE line of JSON and nothing else. Return its fields verbatim: ok, onReleaseBranch, head, branch, version, baseVersion, releasesFresco, consumedChangesets, consumedChangesetsAt — omitting any the line does not carry or carries as null. On a non-zero exit it prints {"ok":false,"error":"..."} instead — return ok:false with that error. Do not fetch, check out or change anything.`,
     {
-      label: 'release-branch',
+      label,
       phase: 'Build',
       schema: RELEASE_BRANCH_SCHEMA,
       ...MECHANICAL,
@@ -892,14 +902,46 @@ const [build, released, releaseBranch] = await parallel([
 // one does: the build stamp must report it, and the build must be of the very
 // commit the branch points at. Anything short of an unambiguous release-branch
 // answer leaves the run unpinned, and so never certifying.
+//
+// The release branch has already consumed the changesets it releases, so the
+// working tree no longer says what the release ships; the script names them
+// and the main commit they can still be read from. Without that list every
+// coverage check below would pass over an empty set, so a release branch that
+// cannot supply it pins nothing.
+const releaseBranchChangesets = (answer) => {
+  if (answer?.ok !== true || answer.onReleaseBranch !== true) return null;
+  const at = shaped(answer.consumedChangesetsAt, COMMIT, 40);
+  const raw = Array.isArray(answer.consumedChangesets)
+    ? answer.consumedChangesets
+    : [];
+  const names = raw.map((name) => shaped(name, CHANGESET_NAME, 200));
+  if (!at || names.length === 0 || names.some((name) => !name)) return null;
+  return {
+    at,
+    names: [...new Set(names)].toSorted((a, b) => a.localeCompare(b)),
+  };
+};
+const consumedChangesets = releaseBranchChangesets(releaseBranch);
 const inferredHead = shaped(releaseBranch?.head, COMMIT, 40);
 const inferredVersion =
   releaseBranch?.ok === true &&
   releaseBranch.onReleaseBranch === true &&
   releaseBranch.releasesFresco === true &&
-  inferredHead
-    ? stripV(releaseBranch.version)
+  inferredHead &&
+  consumedChangesets
+    ? shaped(releaseBranch.version, STABLE_VERSION, 64)
     : null;
+// The release-branch agent's error is relayed text: printable, bounded, and
+// quoted as its report, never as the workflow's own words.
+const relayedError = (value) => {
+  if (typeof value !== 'string' || !value.trim())
+    return 'the release-branch agent returned no result';
+  const printable = value
+    .replace(/[^ -~]/g, ' ')
+    .replace(/"/g, "'")
+    .trim();
+  return `the release-branch check reported: "${printable.length > 200 ? `${printable.slice(0, 200)}...` : printable}"`;
+};
 const expectedVersion = pinnedVersion ?? inferredVersion;
 const expectedVersionSource = pinnedVersion
   ? 'args'
@@ -909,12 +951,20 @@ const expectedVersionSource = pinnedVersion
 const unpinnedReason = expectedVersion
   ? null
   : !releaseBranch || releaseBranch.ok !== true
-    ? `and whether this checkout is the Version Packages branch could not be determined (${releaseBranch?.error ?? 'the release-branch agent returned no result'})`
+    ? `and whether this checkout is the Version Packages branch could not be determined (${relayedError(releaseBranch?.error)})`
     : releaseBranch.onReleaseBranch !== true
       ? 'and this checkout is not the Version Packages branch (changeset-release/main), so none could be inferred'
       : releaseBranch.releasesFresco !== true
         ? 'and the Version Packages branch does not release Fresco'
-        : 'and the Version Packages branch reported no usable Fresco version';
+        : !consumedChangesets
+          ? 'and the Version Packages branch did not say which changesets it consumed, so what it releases could not be accounted for'
+          : 'and the Version Packages branch reported no usable Fresco version';
+// Told to every agent that reads the pending changesets. On the release branch
+// .changeset/ no longer holds them, and an agent that read only the directory
+// would account for a release that ships nothing.
+const consumedChangesetsNote = consumedChangesets
+  ? `\nThis checkout is the Version Packages branch: Changesets has already consumed (deleted) the changesets this release ships, so .changeset/ no longer holds them. They are pending changesets for every purpose here, exactly like any file still in .changeset/: ${consumedChangesets.names.join(', ')}. Read each one with: git show ${consumedChangesets.at}:.changeset/<name>.md\n`
+  : '';
 if (inferredVersion)
   log(
     `expectedVersion ${inferredVersion} inferred from the Version Packages branch at ${inferredHead.slice(0, 12)}`,
@@ -1449,7 +1499,7 @@ Read them with the shell rather than by eye: node -e 'const s=require("./${AUDIT
     );
     upgradeLane.diffVerdict = await agent(
       `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. A freshly re-run diff of exactly those files is at ${AUDIT_DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${AUDIT_DIFF_WORK}/diffs/). Use that one — it describes the files as they stand now; ignore any other summary in that directory.
-Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
+Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships.${consumedChangesetsNote} Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
 - anticipated: explained by a specific pending changeset. Put that changeset's file name without the .md extension in "changeset". An entry naming a changeset that does not exist is treated as unanticipated.
 - unanticipated: everything else. Structural changes to graph data (missing nodes/edges/attributes, changed values) are unanticipated unless a changeset explicitly covers them.
 Every file the summary lists must appear exactly once across the two lists, and you must not invent entries for files it does not list — the workflow compares your entries against the summary on disk and fails the run if any file is unclassified. An empty diff (all identical, nothing one-sided) is pass:true with both lists empty. pass=false if anything is unanticipated.`,
@@ -1479,9 +1529,9 @@ Report, exactly:
 - suspectSnapshots: how many of those files, across BOTH directories, are unusable. Count a file if ANY of these holds: it is smaller than 64 bytes; it is byte-identical to a different snapshot in the same directory (compare checksums, e.g. cksum, within each directory); or it does not contain its own <id> anywhere in its contents (grep -q -- "<id>" on that file). A count of files is not evidence that each one holds the interview it is named for, which is what this reports.
 - baselineUiExport / upgradedUiExport: whether ${BASELINE_DIR}/ui-export.zip and ${UPGRADED_DIR}/ui-export.zip exist.
 - diffSummaryExists: whether ${DIFF_SUMMARY} exists (you are not reading its contents, only noting that the capture produced it).
-- changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README.
-- changesetPackages: for each of those files, the package names its front matter bumps — the quoted names between the two "---" lines at the top, verbatim and without the release type. Report them as they are written; the workflow compares them against a list of its own and a normalised or guessed name would defeat that.
-Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".`,
+- changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README${consumedChangesets ? ', followed by every consumed changeset named below' : ''}.
+- changesetPackages: for each of those changesets, the package names its front matter bumps — the quoted names between the two "---" lines at the top, verbatim and without the release type. Report them as they are written; the workflow compares them against a list of its own and a normalised or guessed name would defeat that.
+Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".${consumedChangesetsNote}`,
     {
       label: 'audit-artifacts',
       phase: 'Audit',
@@ -1494,7 +1544,7 @@ Set ok:true if you completed the audit (missing artifacts are a normal result, n
   report = await agent(
     `You are the release-gate critic for a Fresco release test. The pending build was tested two ways: an upgrade from the released image (seed → migrate → verify → export diff) and a fresh-deployment setup.
 ${asData('Full structured results', { build, released, upgradeLane, freshLane })}
-
+${consumedChangesetsNote}
 Also read EVERY pending changeset (.changeset/*.md in your working directory, excluding README) and return one changesetCoverage entry for each, named by its file name without .md — omit none, because the workflow compares your list against the files on disk:
 - "covered": EVERY Fresco-facing behaviour the changeset describes was exercised by a check above. Say which check covered which behaviour. A changeset often describes several changes in several bullets; if any one of them went unexercised the entry is "untested", not "covered" — partial coverage is not coverage.
 - "untested": it ships behaviour that reaches Fresco and some or all of that behaviour went unexercised. Say what went unexercised.
@@ -1529,6 +1579,13 @@ Then verify nothing remains: docker ps -a and docker volume ls filtered for "fre
   }
 }
 
+// The bot regenerates the Version Packages PR whenever main moves, so an
+// inferred pin is asked again now: a verdict for the head the run started from
+// would approve a commit that is no longer the one being merged.
+const releaseBranchRecheck = inferredVersion
+  ? await detectReleaseBranch('release-branch-recheck')
+  : null;
+
 // ---------------------------------------------------------------------------
 // Synthesis, in code. The critic is a narrator and a cross-checker; it is
 // never the gate. Everything below decides the verdict from the structured
@@ -1544,16 +1601,39 @@ const unaccounted = [];
 // Neither: hygiene and environment notes that must stay visible.
 const warnings = [];
 
+if (inferredVersion) {
+  const recheckedChangesets = releaseBranchChangesets(releaseBranchRecheck);
+  const recheckedHead = shaped(releaseBranchRecheck?.head, COMMIT, 40);
+  if (!releaseBranchRecheck || releaseBranchRecheck.ok !== true)
+    unaccounted.push(
+      `the Version Packages branch could not be checked again before the verdict (${relayedError(releaseBranchRecheck?.error)}), so nothing shows the run still tested the PR head`,
+    );
+  else if (
+    releaseBranchRecheck.onReleaseBranch !== true ||
+    releaseBranchRecheck.releasesFresco !== true ||
+    recheckedHead?.toLowerCase() !== inferredHead.toLowerCase() ||
+    shaped(releaseBranchRecheck.version, STABLE_VERSION, 64) !==
+      inferredVersion ||
+    recheckedChangesets?.at.toLowerCase() !==
+      consumedChangesets.at.toLowerCase() ||
+    recheckedChangesets.names.join('\n') !== consumedChangesets.names.join('\n')
+  )
+    unaccounted.push(
+      `the Version Packages branch changed while the run was under way (it started at ${inferredHead.slice(0, 12)}, releasing Fresco ${inferredVersion}; it is now ${recheckedHead?.slice(0, 12) ?? 'unidentified'}) — this run tested a commit that is no longer the PR head; fetch origin, check out the new head and rerun`,
+    );
+}
+
 const audit = auditResult?.ok === true ? auditResult : null;
 if (!audit)
   unaccounted.push(
     `the artifact audit did not run (${auditResult?.error ?? 'agent returned no result'}) — no agent claim below is bound to anything on disk`,
   );
-const knownChangesets = new Set(
-  (audit?.changesets ?? [])
+const knownChangesets = new Set([
+  ...(audit?.changesets ?? [])
     .map((name) => shaped(name, CHANGESET_NAME, 200))
     .filter(Boolean),
-);
+  ...(consumedChangesets?.names ?? []),
+]);
 
 // --- checklist accounting ---------------------------------------------------
 

@@ -26,11 +26,28 @@
 //
 // Versions are read from committed trees, not the working tree. A dirty tree
 // never certifies, and the commit is what the release will build.
+//
+// The release branch has already consumed the changesets it releases:
+// Changesets deletes each one it versions, so the working tree no longer
+// carries what the release ships. They are reported by name with the main tip
+// they can still be read from, so the release test can account for them. A
+// release branch whose consumed changesets cannot be listed fails.
+//
+// Origin is only trusted as the canonical repository: anything ls-remote says
+// about another remote says nothing about the Version Packages PR.
 import { execFileSync, spawnSync } from 'node:child_process';
 
 const RELEASE_BRANCH = 'changeset-release/main';
 const MAIN = 'main';
 const MANIFEST = 'apps/fresco/package.json';
+const CHANGESET_DIR = '.changeset';
+// The workflow's own CHANGESET_NAME shape; a name outside it could not be
+// relayed, so it fails here rather than being dropped there.
+const CHANGESET_NAME = /^[\w.-]+$/;
+const CANONICAL_ORIGIN =
+  /^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)complexdatacollective\/network-canvas-monorepo(?:\.git)?$/i;
+// Set only by the tests, whose origin is a local bare repository.
+const TEST_ORIGIN = process.env.RELEASE_BRANCH_TEST_ORIGIN_URL;
 
 const git = (...args) =>
   execFileSync('git', args, {
@@ -77,6 +94,49 @@ const remoteHeads = () => {
   return heads;
 };
 
+// The URL origin resolves to after any insteadOf rewriting, which is the URL
+// ls-remote will actually contact.
+const trustedOrigin = () => {
+  const url = tryGit('ls-remote', '--get-url', 'origin');
+  const trusted = TEST_ORIGIN
+    ? url === TEST_ORIGIN
+    : CANONICAL_ORIGIN.test(url ?? '');
+  return { url, trusted };
+};
+
+const consumedChangesets = (base) => {
+  const deleted = execFileSync(
+    'git',
+    [
+      'diff',
+      '--name-only',
+      '--no-renames',
+      '--diff-filter=D',
+      '-z',
+      base,
+      'HEAD',
+      '--',
+      `${CHANGESET_DIR}/`,
+    ],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  )
+    .split('\0')
+    .filter(Boolean);
+  const names = [];
+  for (const path of deleted) {
+    const file = path.slice(CHANGESET_DIR.length + 1);
+    if (file.includes('/') || !file.endsWith('.md')) continue;
+    const name = file.slice(0, -'.md'.length);
+    if (name.toLowerCase() === 'readme') continue;
+    if (!CHANGESET_NAME.test(name))
+      throw new Error(
+        `the release branch consumed a changeset whose name the release test cannot carry (${JSON.stringify(file)})`,
+      );
+    names.push(name);
+  }
+  return names;
+};
+
 const isAncestor = (ancestor, descendant) => {
   const { status } = spawnSync(
     'git',
@@ -113,6 +173,11 @@ try {
   const head = git('rev-parse', '--verify', 'HEAD^{commit}');
   const branch = tryGit('symbolic-ref', '--short', '-q', 'HEAD');
   const trackedReleaseHead = commitAt(`refs/remotes/origin/${RELEASE_BRANCH}`);
+  const origin = trustedOrigin();
+  if (!origin.trusted)
+    fail(
+      `origin resolves to ${JSON.stringify(origin.url ?? 'nothing')}, not the canonical repository complexdatacollective/network-canvas-monorepo on github.com, so it cannot identify the Version Packages PR; point origin at the canonical repository and rerun`,
+    );
   const remote = remoteHeads();
   const releaseHead = remote?.get(RELEASE_BRANCH) ?? null;
   const onReleaseBranch = releaseHead !== null && head === releaseHead;
@@ -121,10 +186,10 @@ try {
   if (!onReleaseBranch && looksLikeReleaseBranch)
     fail(
       !remote
-        ? 'could not reach origin — fetch access is required to identify the Version Packages PR; restore access to origin and rerun'
+        ? 'could not reach origin - fetch access is required to identify the Version Packages PR; restore access to origin and rerun'
         : !releaseHead
-          ? `origin has no ${RELEASE_BRANCH} — there is no Version Packages PR to test`
-          : `HEAD is not origin's ${RELEASE_BRANCH} (${releaseHead.slice(0, 12)}) — this checkout is not the Version Packages PR; fetch origin, check out the PR head and rerun`,
+          ? `origin has no ${RELEASE_BRANCH} - there is no Version Packages PR to test`
+          : `HEAD is not origin's ${RELEASE_BRANCH} (${releaseHead.slice(0, 12)}) - this checkout is not the Version Packages PR; fetch origin, check out the PR head and rerun`,
     );
   if (!onReleaseBranch) {
     print({ ok: true, onReleaseBranch: false, head, branch });
@@ -134,11 +199,11 @@ try {
   const mainTip = commitAt(`refs/remotes/origin/${MAIN}`);
   if (!mainTip || mainTip !== remote.get(MAIN))
     fail(
-      `origin/${MAIN} is not origin's current ${MAIN} — fetch origin and rerun`,
+      `origin/${MAIN} is not origin's current ${MAIN} - fetch origin and rerun`,
     );
   if (!isAncestor(mainTip, head))
     fail(
-      `the Version Packages PR does not contain origin/${MAIN}'s tip, so it is stale — wait for the release bot to regenerate it, then fetch origin and rerun`,
+      `the Version Packages PR does not contain origin/${MAIN}'s tip, so it is stale - wait for the release bot to regenerate it, then fetch origin and rerun`,
     );
   const version = versionAt('HEAD');
   const baseVersion = versionAt(mainTip);
@@ -155,6 +220,11 @@ try {
     fail(
       `the release branch moves Fresco backwards, from ${baseVersion} to ${version}`,
     );
+  const consumed = consumedChangesets(mainTip);
+  if (!consumed.length)
+    fail(
+      `the release branch consumed no changesets from origin/${MAIN}, so nothing says what it releases`,
+    );
   print({
     ok: true,
     onReleaseBranch: true,
@@ -163,6 +233,8 @@ try {
     version,
     baseVersion,
     releasesFresco: order > 0,
+    consumedChangesets: consumed,
+    consumedChangesetsAt: mainTip,
   });
 } catch (error) {
   print({ ok: false, error: String(error?.message ?? error).split('\n')[0] });

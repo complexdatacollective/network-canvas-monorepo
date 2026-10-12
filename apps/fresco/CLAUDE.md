@@ -449,9 +449,19 @@ release branch (named `changeset-release/main`, or at the local tracking ref)
 but is not origin's current head, an unreachable origin, a PR that does not
 contain main's tip (wait for the bot to regenerate it), a downgrade, or a
 version that is not stable semver leaves the run unpinned rather than inferring
-anything. An inferred pin binds exactly as a passed one does, and also
-requires the image to be built from that branch head; `expectedVersionSource`
-reports which it was (`args`, `release-branch`, or `null` when unpinned). Each lane is bound to that build by the image id
+anything. So does an origin that is not the canonical
+`complexdatacollective/network-canvas-monorepo` on github.com (after any
+`insteadOf` rewriting), since nothing it says identifies the Version Packages
+PR. The release branch has already consumed (deleted) the changesets it ships,
+so the script also names every changeset it deleted relative to main's tip;
+the diff judge, audit and critic read them from that commit, and the coverage
+gates count them as pending. A branch that consumed none pins nothing. An
+inferred pin binds exactly as a passed one does, and also requires the image
+to be built from that branch head. Because the bot regenerates the PR whenever
+main moves, the branch is checked again after the lanes finish; if its head,
+version or consumed changesets changed, or the check fails, the run is
+`incomplete`. `expectedVersionSource` reports which it was (`args`,
+`release-branch`, or `null` when unpinned). Each lane is bound to that build by the image id
 docker reports for its Fresco container (`/api/health` names no version, on
 purpose). Other args:
 `skipBuild` (reuse the previous image, revalidated against its stamp),
