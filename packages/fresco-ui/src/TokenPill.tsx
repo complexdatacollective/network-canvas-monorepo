@@ -18,7 +18,9 @@ type TokenPillProps = Omit<ComponentPropsWithoutRef<'span'>, 'children'> & {
  */
 export const tokenPillClasses = (className?: string) =>
   cx(
-    'mx-0.5 rounded-full border px-2 py-px whitespace-nowrap',
+    // A long label wraps like the words around it, each line drawn as the
+    // pill, so a narrow column or table cell is never pushed wider.
+    'mx-0.5 rounded-full border box-decoration-clone px-2 py-px',
     'border-primary/40 bg-primary/10 font-semibold',
     'data-selected:outline-primary data-selected:outline-2',
     '[&.ProseMirror-selectednode]:outline-primary [&.ProseMirror-selectednode]:outline-2',
