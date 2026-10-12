@@ -8,6 +8,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
+import { interviewCatalogSource } from '../i18n/catalog';
 import { InterviewI18nProvider } from '../i18n/InterviewI18nProvider';
 import { submitRegisteredForm } from './submitRegisteredForm';
 
@@ -23,6 +24,14 @@ beforeAll(() => {
       unobserve() {}
       disconnect() {}
     },
+  );
+});
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
   );
 });
 

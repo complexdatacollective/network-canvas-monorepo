@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': patch
+'@codaco/studio-api': patch
 ---
 
 Studio's rate limits are constants with a single source of truth, not settings.

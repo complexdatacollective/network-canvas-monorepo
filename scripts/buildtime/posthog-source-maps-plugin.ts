@@ -15,9 +15,18 @@ import type { Plugin } from 'vite';
  * writeBundle hook. Processing the completed output directory from the parent
  * hook includes both ordinary chunks and those worker assets. This still runs
  * before vite-plugin-pwa's closeBundle hook calculates precache revisions.
+ *
+ * Release mode defaults to `symbol-set` (bind the uploaded symbol sets to the
+ * release), which @posthog/plugin-utils 2 no longer does by default. Its new
+ * `event` default injects a release id into every chunk and needs a
+ * posthog-cli with `release resolve` and `--release-mode`, plus SDKs that read
+ * the injected id; callers opt into it explicitly.
  */
 export function createPostHogSourceMapsPlugin(options: PluginConfig): Plugin {
-  const config = resolveConfig(options);
+  const config = resolveConfig({
+    ...options,
+    sourcemaps: { releaseMode: 'symbol-set', ...options.sourcemaps },
+  });
   const sourcemap = config.sourcemaps.deleteAfterUpload ? 'hidden' : true;
 
   return {

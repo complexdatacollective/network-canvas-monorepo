@@ -1,8 +1,13 @@
-import type { CatalogMessages } from '@codaco/app-i18n/locales';
+import type { CatalogLoaders } from '@codaco/app-i18n/locales';
 
-import enGB from './en-GB.json';
-import es from './es.json';
-
-export const protocolUtilitiesCatalogs: Readonly<
-  Record<string, CatalogMessages>
-> = { 'en-GB': enGB, es };
+export const protocolUtilitiesCatalogLoaders: CatalogLoaders = {
+  'en-GB': () => import('./en-GB.json'),
+  'es': () => import('./es.json'),
+  'zh-Hans': () => import('./zh-Hans.json'),
+  'zh-Hant': () => import('./zh-Hant.json'),
+  'de': () => import('./de.json'),
+  'nl': () => import('./nl.json'),
+  'pt-BR': () => import('./pt-BR.json'),
+  'it': () => import('./it.json'),
+  'fr': () => import('./fr.json'),
+};

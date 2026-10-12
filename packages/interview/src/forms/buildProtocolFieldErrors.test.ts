@@ -19,8 +19,22 @@ describe('buildProtocolFieldErrors', () => {
       {
         component: 'RadioGroup',
         field_index: 0,
-        message: 'Choose another color',
       },
     ]);
+  });
+
+  it('carries no rendered message, which can hold protocol-authored text', () => {
+    const entries = buildProtocolFieldErrors(
+      {
+        fieldErrors: {
+          colour: ['PROTOCOL_AUTHORED_MESSAGE', 'ANOTHER_AUTHORED_MESSAGE'],
+        },
+      },
+      [{ variable: 'colour' }],
+      { colour: 'Text' },
+      {},
+    );
+    expect(JSON.stringify(entries)).not.toContain('AUTHORED_MESSAGE');
+    expect(entries).toEqual([{ field_index: 0, component: 'Text' }]);
   });
 });

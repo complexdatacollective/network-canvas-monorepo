@@ -1,7 +1,7 @@
 ---
-'@codaco/studio-server': patch
-'@codaco/studio-client': patch
-'@codaco/studio-rpc': patch
+'@codaco/studio-api': patch
+'@codaco/studio-web': patch
+'@codaco/studio-contract': patch
 '@codaco/studio-sync': patch
 ---
 

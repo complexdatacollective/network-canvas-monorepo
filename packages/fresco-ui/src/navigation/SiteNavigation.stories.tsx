@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Monitor, Search } from 'lucide-react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
+import { siteLocales } from '@codaco/shared-consts';
+
 import Button from '../Button';
 import SiteNavigation from './SiteNavigation';
 import type { SiteNavigationLocale } from './SiteNavigation';
@@ -96,7 +98,7 @@ const meta = {
     },
     locale: {
       control: 'select',
-      options: ['en-US', 'en-GB', 'es'],
+      options: siteLocales,
     },
     site: {
       control: 'radio',
@@ -183,7 +185,7 @@ export const ResourcesGrouped: Story = {
 export const ResourcesExpanded: Story = {
   args: {
     activeItemId: 'documentation',
-    containerWidth: 1280,
+    containerWidth: 1408,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

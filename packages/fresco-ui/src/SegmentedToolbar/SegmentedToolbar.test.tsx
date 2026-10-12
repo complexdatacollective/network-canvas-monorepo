@@ -639,21 +639,42 @@ describe('SegmentedToolbar — overflowing lane', () => {
   const CONTENT_WIDTH = 505;
   const HIDDEN = CONTENT_WIDTH - LANE_WIDTH;
 
-  const layOutLane = (lane: HTMLElement, contentWidth: number) => {
+  /**
+   * Lays the segments out end to end across `contentWidth`. `scrollWidth`
+   * matches unless given separately, as it is when a hand-off's transforms
+   * leave it overshooting what the segments occupy.
+   */
+  const layOutLane = (
+    lane: HTMLElement,
+    contentWidth: number,
+    scrollWidth = contentWidth,
+  ) => {
     let scrollLeft = 0;
+    const segments = [...lane.children];
+    segments.forEach((segment, index) => {
+      const width = contentWidth / segments.length;
+      Object.defineProperty(segment, 'offsetLeft', {
+        configurable: true,
+        get: () => index * width,
+      });
+      Object.defineProperty(segment, 'offsetWidth', {
+        configurable: true,
+        get: () => width,
+      });
+    });
     Object.defineProperty(lane, 'clientWidth', {
       configurable: true,
       get: () => LANE_WIDTH,
     });
     Object.defineProperty(lane, 'scrollWidth', {
       configurable: true,
-      get: () => contentWidth,
+      get: () => scrollWidth,
     });
     Object.defineProperty(lane, 'scrollLeft', {
       configurable: true,
       get: () => scrollLeft,
       set: (next: number) => {
-        scrollLeft = Math.min(Math.max(next, 0), contentWidth - LANE_WIDTH);
+        scrollLeft = Math.min(Math.max(next, 0), scrollWidth - LANE_WIDTH);
         lane.dispatchEvent(new Event('scroll'));
       },
     });
@@ -777,6 +798,62 @@ describe('SegmentedToolbar — overflowing lane', () => {
     expect(
       frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
     ).toBe('0px');
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  });
+
+  it('returns to its start when every control fits but scrollWidth still overshoots', () => {
+    const { rerender } = render(toolbar('Download', { restAt: 'end' }));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const frame = lane.parentElement;
+    const scrollLeft = layOutLane(lane, LANE_WIDTH, LANE_WIDTH + 80);
+    lane.scrollLeft = 80;
+
+    rerender(toolbar('Print', { restAt: 'end' }));
+
+    expect(scrollLeft()).toBe(0);
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe('0px');
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  });
+
+  it('returns a start-aligned lane to its start when every control fits after a hand-off', () => {
+    const { rerender } = render(toolbar('Download'));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const frame = lane.parentElement;
+    const scrollLeft = layOutLane(lane, LANE_WIDTH, LANE_WIDTH + 80);
+    lane.scrollLeft = 80;
+    expect(scrollLeft()).toBe(80);
+
+    rerender(toolbar('Print'));
+
+    expect(scrollLeft()).toBe(0);
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe('0px');
+    expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
+      '0px',
+    );
+  });
+
+  it('pulls a start-aligned lane back to its true end when it is scrolled past it', () => {
+    const { rerender } = render(toolbar('Download'));
+    const lane = screen.getByRole('toolbar', { name: 'Page actions' });
+    const frame = lane.parentElement;
+    const scrollLeft = layOutLane(lane, CONTENT_WIDTH, CONTENT_WIDTH + 100);
+    lane.scrollLeft = HIDDEN + 100;
+    expect(scrollLeft()).toBe(HIDDEN + 100);
+
+    rerender(toolbar('Print'));
+
+    expect(scrollLeft()).toBe(HIDDEN);
+    expect(
+      frame?.style.getPropertyValue('--scroll-area-overflow-x-start'),
+    ).toBe(`${HIDDEN}px`);
     expect(frame?.style.getPropertyValue('--scroll-area-overflow-x-end')).toBe(
       '0px',
     );

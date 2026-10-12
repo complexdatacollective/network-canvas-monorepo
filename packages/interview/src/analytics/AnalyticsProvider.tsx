@@ -1,6 +1,5 @@
 'use client';
 
-import type { PostHog } from 'posthog-js';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -15,11 +14,16 @@ import {
 } from './entityIds';
 import { resolveClient } from './resolveClient';
 import { computeSuperProperties } from './superProperties';
-import { createTracker, NULL_TRACKER, type Tracker } from './tracker';
+import {
+  type AnalyticsClient,
+  createTracker,
+  NULL_TRACKER,
+  type Tracker,
+} from './tracker';
 
 type AnalyticsProviderProps = {
   analytics: InterviewAnalyticsMetadata;
-  posthogClient?: PostHog;
+  posthogClient?: AnalyticsClient;
   disableAnalytics: boolean;
   payload: InterviewPayload;
   onTrackerChange?: (tracker: Tracker) => void;

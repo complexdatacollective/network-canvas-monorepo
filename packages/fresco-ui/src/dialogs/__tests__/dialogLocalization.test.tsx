@@ -2,14 +2,23 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 
-import { commonCatalogs, commonMessages } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders, commonMessages } from '@codaco/app-i18n/common';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider, AppMessage } from '@codaco/app-i18n/react';
 
-import { frescoUiCatalogs } from '../../locales/catalogs';
+import { frescoUiCatalogLoaders } from '../../locales/catalogs';
 import DialogProvider from '../DialogProvider';
 import useDialog from '../useDialog';
+
+const catalogs = createCatalogSource(
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+);
+await catalogs.load('es');
 
 // Held at module scope: built inside the click handler, these read to the
 // linter as components defined during render. Both still track the active
@@ -50,10 +59,7 @@ it('keeps queued dialog defaults, actions and a rejected action live across loca
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
-      messages={mergeCatalogs(
-        commonCatalogs[locale] ?? {},
-        frescoUiCatalogs[locale] ?? {},
-      )}
+      messages={catalogs.peek(locale)}
     >
       <DialogProvider>
         <Trigger fail={fail} />
@@ -98,10 +104,7 @@ it.each(['sync', 'async'] as const)(
       <AppI18nProvider
         locale={locale}
         locales={ecosystemLocales}
-        messages={mergeCatalogs(
-          commonCatalogs[locale] ?? {},
-          frescoUiCatalogs[locale] ?? {},
-        )}
+        messages={catalogs.peek(locale)}
       >
         <DialogProvider>
           <Trigger fail={fail} describeError={false} />

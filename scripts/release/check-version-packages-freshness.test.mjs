@@ -16,11 +16,11 @@ const PRUNE = join(scriptDir, 'prune-ignored-changesets.mjs');
 const IGNORED = [
   '@codaco/documentation',
   'networkcanvas.com',
-  '@codaco/studio-client',
-  '@codaco/studio-server',
+  '@codaco/studio-web',
+  '@codaco/studio-api',
 ];
 
-const STUDIO = `---\n'@codaco/studio-client': minor\n'@codaco/studio-server': minor\n---\n\nstudio change`;
+const STUDIO = `---\n'@codaco/studio-web': minor\n'@codaco/studio-api': minor\n---\n\nstudio change`;
 const DOCS = `---\n"@codaco/documentation": patch\n---\n\ndocs change`;
 // The changeset #1574 landed 48 seconds before #1558 merged on 2026-09-01.
 const CLEAN_ICONS = `---\n"@codaco/fresco-ui": patch\n"fresco": patch\n---\n\nreject unsupported icons`;

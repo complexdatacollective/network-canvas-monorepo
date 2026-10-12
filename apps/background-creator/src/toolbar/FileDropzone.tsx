@@ -18,7 +18,18 @@ export function FileDropzone({
   const dialogs = useDialog();
 
   const onDrop = useCallback(
-    (accepted: File[]) => {
+    (accepted: File[], fileRejections: readonly FileRejection[]) => {
+      // With `multiple: false`, react-dropzone accepts the first file of a
+      // multi-file drop and rejects the rest as too-many-files; `onDropRejected`
+      // explains that drop, so open nothing here.
+      const tooManyFilesCode: string = ErrorCode.TooManyFiles;
+      if (
+        fileRejections.some(({ errors }) =>
+          errors.some(({ code }) => code === tooManyFilesCode),
+        )
+      ) {
+        return;
+      }
       const file = accepted[0];
       if (file) void openDroppedFileFlow(dialogs, file);
     },

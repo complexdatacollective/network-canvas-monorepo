@@ -1,6 +1,14 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 // --- Module mocks (must appear before imports that use them) ---
 
@@ -46,6 +54,7 @@ vi.mock('es-toolkit', () => ({
 
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
+import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import GeospatialSearch from '../GeospatialSearch';
 
@@ -99,6 +108,14 @@ const openAndSearch = async (
   await user.type(input, query);
   return input;
 };
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('GeospatialSearch', () => {
   beforeEach(() => {

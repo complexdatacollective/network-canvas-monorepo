@@ -304,7 +304,7 @@ describe('NetworkComposer quick-add honours codebook validation', () => {
 
 describe('NetworkComposer quick-add submission lifecycle', () => {
   it('treats a dotted protocol target variable containing a dangerous segment as opaque', async () => {
-    const onCreate = vi.fn(async () => {});
+    const onCreate = vi.fn(async () => true);
 
     render(
       <AddNodeInput
@@ -326,10 +326,10 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
   });
 
   it('waits for node creation before accepting another submission', async () => {
-    let finishCreate: (() => void) | undefined;
+    let finishCreate: ((created: boolean) => void) | undefined;
     const onCreate = vi.fn(
       () =>
-        new Promise<void>((resolve) => {
+        new Promise<boolean>((resolve) => {
           finishCreate = resolve;
         }),
     );
@@ -355,12 +355,34 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
     expect(onCreate).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      finishCreate?.();
+      finishCreate?.(true);
     });
     await waitFor(() => {
       expect(input).toBeEnabled();
       expect(input).toHaveValue('');
       expect(input).toHaveFocus();
     });
+  });
+
+  it('keeps a name that was not saved, ready to submit again', async () => {
+    const onCreate = vi.fn(async () => false);
+
+    render(
+      <AddNodeInput
+        entityLabel="Person"
+        targetVariable={QUICK_ADD_VAR}
+        onCreate={onCreate}
+      />,
+    );
+
+    const input = screen.getByRole('textbox', { name: /person name/i });
+    await userEvent.type(input, 'Alice');
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => {
+      expect(onCreate).toHaveBeenCalledWith('Alice');
+      expect(input).toBeEnabled();
+    });
+    expect(input).toHaveValue('Alice');
   });
 });

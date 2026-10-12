@@ -73,10 +73,9 @@ const ProtocolCard = ({
 
           Wrapping rules are not a bound, though: this heading measured 549px
           for a 400-character unbroken token inside a 720px viewport — and this
-          cover is not only a print page. `ProtocolRouteGuard` renders
-          `SummaryPage` as the WHOLE read-only view a tab gets when it loses the
-          protocol lock, so an over-long legacy name would dominate the only
-          screen that tab has. Clamp it to the three lines a name at the product
+          cover is not only a print page. It heads the Summary page a
+          researcher reads on screen, so an over-long legacy name would
+          dominate it. Clamp it to the three lines a name at the product
           cap already occupies (measured at the cover's 396px box), with the
           full value on `title`.
 

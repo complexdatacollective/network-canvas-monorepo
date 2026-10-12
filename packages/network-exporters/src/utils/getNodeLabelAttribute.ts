@@ -1,13 +1,16 @@
 import type { NodeDefinition } from '@codaco/protocol-validation';
-import type {
-  NcNode,
-  VariableValue,
-  EntityAttributesProperty,
+import {
+  type NcNode,
+  type VariableValue,
+  entityAttributesProperty,
 } from '@codaco/shared-consts';
+
+import { hasEncryptedValue } from './general';
 
 const isValidLabelCandidate = (
   value: VariableValue | undefined,
   variableDefinition?: NonNullable<NodeDefinition['variables']>[string],
+  isEncrypted = false,
 ) => {
   if (value === undefined || value === '') {
     return false;
@@ -26,7 +29,7 @@ const isValidLabelCandidate = (
       variableDefinition.type === 'datetime' ||
       variableDefinition.type === 'location'
     ) {
-      if (variableDefinition.encrypted) {
+      if (isEncrypted) {
         return true;
       }
 
@@ -39,8 +42,10 @@ const isValidLabelCandidate = (
 
 export const getNodeLabelAttribute = (
   codebookVariables: NodeDefinition['variables'],
-  nodeAttributes: NcNode[EntityAttributesProperty],
+  node: NcNode,
 ): string | null => {
+  const nodeAttributes = node[entityAttributesProperty];
+
   const variableCalledName = Object.entries(codebookVariables ?? {}).find(
     ([, variable]) => variable.name.toLowerCase() === 'name',
   );
@@ -50,6 +55,7 @@ export const getNodeLabelAttribute = (
     isValidLabelCandidate(
       nodeAttributes[variableCalledName[0]],
       variableCalledName[1],
+      hasEncryptedValue(node, variableCalledName[0]),
     )
   ) {
     return variableCalledName[0];
@@ -62,6 +68,7 @@ export const getNodeLabelAttribute = (
       isValidLabelCandidate(
         nodeAttributes[attribute],
         codebookVariables?.[attribute],
+        hasEncryptedValue(node, attribute),
       ),
   );
 
@@ -87,6 +94,7 @@ export const getNodeLabelAttribute = (
       isValidLabelCandidate(
         nodeAttributes[variableKey],
         codebookVariables?.[variableKey],
+        hasEncryptedValue(node, variableKey),
       )
     ) {
       return variableKey;

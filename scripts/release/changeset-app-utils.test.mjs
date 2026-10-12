@@ -7,14 +7,17 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { test } from 'vitest';
 
 import {
   BUNDLED_RUNTIME_DEPENDENTS,
   classifyChangeset,
+  GATED_PRODUCT_DIRS,
   GATED_PRODUCT_PACKAGES,
+  GATED_PRODUCT_RELEASE_LANES,
   isMixedChangeset,
   isMultiProductLaneChangeset,
   missingBundlingApps,
@@ -134,9 +137,9 @@ test('releaseLaneForProduct maps only separately gated products', () => {
   assert.equal(releaseLaneForProduct('@codaco/interviewer'), null);
   assert.equal(releaseLaneForProduct('@codaco/documentation'), 'documentation');
   assert.equal(releaseLaneForProduct('@codaco/interview'), null);
-  assert.equal(releaseLaneForProduct('@codaco/studio-client'), 'studio');
-  assert.equal(releaseLaneForProduct('@codaco/studio-rpc'), 'studio');
-  assert.equal(releaseLaneForProduct('@codaco/studio-server'), 'studio');
+  assert.equal(releaseLaneForProduct('@codaco/studio-web'), 'studio');
+  assert.equal(releaseLaneForProduct('@codaco/studio-contract'), 'studio');
+  assert.equal(releaseLaneForProduct('@codaco/studio-api'), 'studio');
   assert.equal(releaseLaneForProduct('@codaco/studio-sync'), 'studio');
 });
 
@@ -151,13 +154,13 @@ test('isMultiProductLaneChangeset allows products in one release lane', () => {
   };
   const studioLane = {
     releases: [
-      { name: '@codaco/studio-server', type: 'minor' },
+      { name: '@codaco/studio-api', type: 'minor' },
       { name: '@codaco/studio-sync', type: 'patch' },
     ],
   };
   const studioPlusDocs = {
     releases: [
-      { name: '@codaco/studio-server', type: 'minor' },
+      { name: '@codaco/studio-api', type: 'minor' },
       { name: '@codaco/documentation', type: 'patch' },
     ],
   };
@@ -312,7 +315,12 @@ test('UNRELEASED_PACKAGES holds every workspace with no release path at all', ()
   }
 
   // And nothing with a release path is swept in, which would refuse a
-  // changeset the release lanes need.
+  // changeset the release lanes need. A name that is not a workspace is
+  // trivially absent from the list, so each one must also be a workspace or
+  // a rename would leave this loop passing while proving nothing.
+  const workspaceNames = new Set(
+    workspaceManifests().map(({ manifest }) => manifest.name),
+  );
   for (const name of [
     '@codaco/architect',
     '@codaco/art',
@@ -322,10 +330,10 @@ test('UNRELEASED_PACKAGES holds every workspace with no release path at all', ()
     '@codaco/interface-images',
     '@codaco/interview',
     '@codaco/interviewer',
-    '@codaco/studio-client',
-    '@codaco/studio-rpc',
-    '@codaco/studio-server',
+    '@codaco/studio-api',
+    '@codaco/studio-contract',
     '@codaco/studio-sync',
+    '@codaco/studio-web',
     'fresco',
     'networkcanvas.com',
     // Deployed by hand from its own `wrangler` config, and its changesets on
@@ -333,9 +341,34 @@ test('UNRELEASED_PACKAGES holds every workspace with no release path at all', ()
     'posthog-proxy-worker',
     'development-protocol-worker',
   ]) {
+    assert.ok(workspaceNames.has(name), `${name} is not a workspace`);
     assert.ok(
       !UNRELEASED_PACKAGES.includes(name),
       `${name} has a release path and must not be refused`,
+    );
+  }
+});
+
+test('the Studio lane is exactly the Studio workspaces, each at its directory', () => {
+  const root = fileURLToPath(new URL('../..', import.meta.url));
+  const studio = workspaceManifests().filter(({ directory }) => {
+    const path = relative(root, directory);
+    return (
+      path.startsWith('apps/studio/') || path.startsWith('packages/studio-')
+    );
+  });
+  assert.ok(studio.length > 0, 'no Studio workspace found');
+
+  assert.deepEqual(
+    new Set(GATED_PRODUCT_RELEASE_LANES.studio),
+    new Set(studio.map(({ manifest }) => manifest.name)),
+  );
+  for (const { directory, manifest } of studio) {
+    assert.ok(GATED_PRODUCT_PACKAGES.includes(manifest.name));
+    assert.equal(
+      GATED_PRODUCT_DIRS[manifest.name],
+      relative(root, directory),
+      `${manifest.name} is mapped to the wrong directory`,
     );
   }
 });

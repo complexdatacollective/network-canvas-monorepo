@@ -21,11 +21,11 @@
 // `--filter=...[<base>]` would run art on every pull request whether or not
 // the diff touched it. Negations subtract from that union instead, which is
 // exactly the intersection a shard needs — the same mechanism that already
-// keeps `@codaco/studio-server` out of the workspace run. So a shard passes a
+// keeps `@codaco/studio-api` out of the workspace run. So a shard passes a
 // `--filter=!<pkg>` for every test-carrying package it does NOT own, and the
 // affected selector stays untouched and authoritative.
 //
-// `@codaco/studio-server` gets its exclusion for free: it belongs to no
+// `@codaco/studio-api` gets its exclusion for free: it belongs to no
 // bucket (it has its own `test-studio-server` job), so every shard negates it.
 //
 // Verified by EXECUTING turbo 2.10.4, not with `--dry` — `--dry`'s `packages`
@@ -63,7 +63,7 @@
 // Two hand placements override the packing:
 //
 //   * `@codaco/studio-sync` is pinned to the shard that starts Postgres, since
-//     it is the only workspace suite outside `@codaco/studio-server` that
+//     it is the only workspace suite outside `@codaco/studio-api` that
 //     needs a database.
 //   * `@codaco/site-navigation-element` pays a fixed `playwright install
 //     --with-deps chromium` before its (tiny) suite, so it is weighted by that
@@ -103,7 +103,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const NOT_SHARDED = {
   // Wall-clock-budgeted conformance suite with its own dedicated runner; see
   // the `test-studio-server` job.
-  '@codaco/studio-server': 'runs in the test-studio-server job',
+  '@codaco/studio-api': 'runs in the test-studio-server job',
 };
 
 /**
@@ -127,6 +127,8 @@ export const TEST_SHARDS = [
       // local measurement (one file, 0.5s) scaled for CI rather than read off
       // a sharded run, because this shard had not run it yet.
       { name: '@codaco/protocol-builder-core', seconds: 4 },
+      { name: '@codaco/studio-contract', seconds: 4 },
+      { name: '@codaco/effect-query', seconds: 4 },
     ],
   },
   {
@@ -157,7 +159,7 @@ export const TEST_SHARDS = [
     packages: [
       { name: '@codaco/interviewer', seconds: 100.9 },
       { name: 'fresco', seconds: 66.9 },
-      { name: '@codaco/studio-client', seconds: 48.8 },
+      { name: '@codaco/studio-web', seconds: 48.8 },
       { name: '@codaco/site-navigation-element', seconds: 27.7 },
       { name: '@codaco/art', seconds: 10.3 },
       { name: '@codaco/documentation', seconds: 7.9 },

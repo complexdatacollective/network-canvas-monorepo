@@ -40,10 +40,14 @@ const narrowTo =
 
 export type BasePrompt = z.infer<typeof promptSchema>;
 
+// The interview stamps `value` onto the node when it joins the prompt and
+// clears it when it leaves, so a non-boolean target would have collected data
+// (including encrypted text) overwritten by, then erased with, a plain boolean.
 const AdditionalAttributesSchema = z.array(
   z.strictObject({
     variable: entityAttributeReference({
       subject: 'stageSubject',
+      requireType: ['boolean'],
       usage: 'unvalidatedAttribute',
     }),
     value: z.boolean(),

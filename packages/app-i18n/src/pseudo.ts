@@ -5,7 +5,9 @@ import type { IntlShape } from 'react-intl';
 import { PSEUDO_LOCALE } from './locales.ts';
 import type { CatalogMessages } from './locales.ts';
 import { createAppIntl } from './messages.ts';
-import type { AppIntlErrorHandler } from './messages.ts';
+import type { AppIntlErrorHandler, MessageDescriptor } from './messages.ts';
+
+type FormatMessage = IntlShape['formatMessage'];
 
 const ACCENTS: Readonly<Record<string, string>> = {
   a: 'á',
@@ -172,7 +174,14 @@ export function createPseudoIntl(options: {
   });
   const cache = new Map<string, MessageFormatElement[]>();
 
-  const formatMessage = ((descriptor, values, opts) => {
+  // react-intl 11+ overloads formatMessage per argument contract, which no
+  // longer types an implementation's parameters contextually; these are the
+  // untyped overload's, the one every curated descriptor resolves to.
+  const formatMessage = ((
+    descriptor: MessageDescriptor,
+    values?: Parameters<FormatMessage>[1],
+    opts?: Parameters<FormatMessage>[2],
+  ) => {
     const id = descriptor.id;
     const source =
       (id === undefined ? undefined : options.messages?.[id]) ??
@@ -194,7 +203,7 @@ export function createPseudoIntl(options: {
     }
     const pseudoDescriptor = { ...descriptor, defaultMessage: pseudo };
     return intl.formatMessage(pseudoDescriptor, values, opts);
-  }) as IntlShape['formatMessage'];
+  }) as FormatMessage;
 
   return { ...intl, formatMessage };
 }

@@ -1,13 +1,24 @@
 import { act, cleanup, render, within } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { describeRule } from '@codaco/protocol-builder/rules/ruleDescription';
 import RulePreview from '@codaco/protocol-builder/rules/RulePreview';
 import type { Codebook } from '@codaco/protocol-validation';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
+
+// The provider shows a language once its catalog has loaded. Loading these
+// up front lets a switch to either render synchronously, as the assertions
+// below expect.
+beforeAll(() =>
+  Promise.all([
+    architectCatalogSource.load('es'),
+    architectCatalogSource.load('en-GB'),
+  ]),
+);
 
 beforeEach(() => {
   localStorage.clear();

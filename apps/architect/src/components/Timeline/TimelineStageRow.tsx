@@ -1,6 +1,12 @@
 import { Trash2 } from 'lucide-react';
-import { Reorder, type Variants } from 'motion/react';
-import { useCallback, useRef, type MouseEvent, type PointerEvent } from 'react';
+import { Reorder, useDragControls, type Variants } from 'motion/react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -9,6 +15,7 @@ import { useKeyboardReorder } from '@codaco/fresco-ui/dnd/useKeyboardReorder';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { cx } from '~/utils/cva';
@@ -27,6 +34,19 @@ const chromeMessages = defineMessages({
     defaultMessage: 'Edit stage {position, number}: {stageName}',
     description:
       'Researcher-facing explanatory text in components / Timeline / TimelineStageRow.',
+  },
+  viewStage: {
+    id: 'architect.chrome.timeline.timelineStageRow.viewStage',
+    defaultMessage:
+      'View stage {position, number}: {stageName}, {interfaceName}',
+    description:
+      'Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it.',
+  },
+  viewStageWithoutInterface: {
+    id: 'architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface',
+    defaultMessage: 'View stage {position, number}: {stageName}',
+    description:
+      'Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it. Used when the stage type has no known name.',
   },
 });
 const messages = defineMessages({
@@ -129,8 +149,21 @@ const TimelineStageRow = ({
   variants,
 }: TimelineStageRowProps) => {
   const intl = useAppIntl();
+  const readOnly = useProtocolReadOnly();
   const pointerStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
+
+  // `dragListener={false}` only stops the NEXT pointer-down from starting a
+  // drag; a gesture already in flight when the protocol turns read-only keeps
+  // reordering the list. `stop()` rather than `cancel()`: it ends the gesture
+  // the way a release would — the row animates back to its origin and
+  // `onDragEnd` still fires, so the timeline's commit can discard the order
+  // the interrupted drag left behind. `cancel()` skips both, leaving the row
+  // displaced.
+  const dragControls = useDragControls();
+  useEffect(() => {
+    if (readOnly) dragControls.stop();
+  }, [readOnly, dragControls]);
 
   const stageName =
     stage.label || intl.formatMessage(finalMessages.untitledStage);
@@ -141,13 +174,19 @@ const TimelineStageRow = ({
   // not know — an imported protocol can carry one — in which case the label
   // says what it can rather than inventing a name.
   const interfaceName = interfaceDisplayName(stage.type, intl);
+  const withInterface = readOnly
+    ? chromeMessages.viewStage
+    : chromeMessages.editStage;
+  const withoutInterface = readOnly
+    ? chromeMessages.viewStageWithoutInterface
+    : chromeMessages.editStage76e56;
   const openControlLabel = interfaceName
-    ? intl.formatMessage(chromeMessages.editStage, {
+    ? intl.formatMessage(withInterface, {
         position: position,
         stageName: stageName,
         interfaceName: interfaceName,
       })
-    : intl.formatMessage(chromeMessages.editStage76e56, {
+    : intl.formatMessage(withoutInterface, {
         position: position,
         stageName: stageName,
       });
@@ -215,6 +254,11 @@ const TimelineStageRow = ({
       className={cx(timelineRowGrid, 'group relative cursor-pointer p-4')}
       variants={variants}
       onPointerDown={handleRowPointerDown}
+      // Reorder.Item hard-codes `drag` to the group's axis, so the listener is
+      // what turns it off. Without a listener motion also leaves `touch-action`
+      // and `user-select` alone, so the row scrolls and selects like any other.
+      dragListener={!readOnly}
+      dragControls={dragControls}
       onDragStart={() => {
         didDrag.current = true;
       }}
@@ -239,9 +283,9 @@ const TimelineStageRow = ({
         type="button"
         ref={setOpenControl}
         aria-label={openControlLabel}
-        aria-keyshortcuts={reorder['aria-keyshortcuts']}
+        aria-keyshortcuts={readOnly ? undefined : reorder['aria-keyshortcuts']}
         onClick={handleOpenFromButton}
-        onKeyDown={reorder.onKeyDown}
+        onKeyDown={readOnly ? undefined : reorder.onKeyDown}
         className="focusable block w-full max-w-44 justify-self-end"
       >
         <StageTypeImage
@@ -306,7 +350,10 @@ const TimelineStageRow = ({
               stageName: stageName,
             })}
             color="destructive"
-            className={revealOnRowInterest}
+            disabled={readOnly}
+            // `invisible` rather than unmounted, for the same reason the
+            // control is `opacity-0` at rest: the row never changes size.
+            className={readOnly ? 'invisible' : revealOnRowInterest}
             onClick={(event) => {
               event.stopPropagation();
               onDelete(stage.id);

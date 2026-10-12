@@ -1,17 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import {
-  type ColumnDef,
-  getCoreRowModel,
-  getSortedRowModel,
   type HeaderContext,
   type SortingState,
-  useReactTable,
+  useTable,
 } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
 import { expect, within } from 'storybook/test';
 
 import { DataTableColumnHeader } from './DataTable/ColumnHeader';
 import { DataTable } from './DataTable/DataTable';
+import {
+  dataTableFeatures,
+  type DataTableFeatures,
+} from './DataTable/features';
+import { type DataTableColumnDef } from './DataTable/types';
 import {
   Table,
   TableBody,
@@ -48,15 +50,24 @@ const sampleData = [
 
 type SampleRow = (typeof sampleData)[number];
 
-function NameHeader({ column, table }: HeaderContext<SampleRow, unknown>) {
+function NameHeader({
+  column,
+  table,
+}: HeaderContext<DataTableFeatures, SampleRow>) {
   return <DataTableColumnHeader column={column} table={table} title="Name" />;
 }
 
-function EmailHeader({ column, table }: HeaderContext<SampleRow, unknown>) {
+function EmailHeader({
+  column,
+  table,
+}: HeaderContext<DataTableFeatures, SampleRow>) {
   return <DataTableColumnHeader column={column} table={table} title="Email" />;
 }
 
-function RoleHeader({ column, table }: HeaderContext<SampleRow, unknown>) {
+function RoleHeader({
+  column,
+  table,
+}: HeaderContext<DataTableFeatures, SampleRow>) {
   return <DataTableColumnHeader column={column} table={table} title="Role" />;
 }
 
@@ -64,7 +75,7 @@ function SortableDataTableExample() {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'name', desc: false },
   ]);
-  const columns = useMemo<ColumnDef<SampleRow>[]>(
+  const columns = useMemo<DataTableColumnDef<SampleRow>[]>(
     () => [
       {
         accessorKey: 'name',
@@ -85,14 +96,15 @@ function SortableDataTableExample() {
     [],
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data: sampleData,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    // Every row on one page: this example renders without pagination.
+    manualPagination: true,
   });
 
   return <DataTable table={table} showPagination={false} />;
@@ -373,7 +385,7 @@ export const Responsive: Story = {
 };
 
 function RightToLeftDataTableExample() {
-  const columns = useMemo<ColumnDef<(typeof rtlData)[number]>[]>(
+  const columns = useMemo<DataTableColumnDef<(typeof rtlData)[number]>[]>(
     () => [
       { accessorKey: 'name', header: 'الاسم' },
       { accessorKey: 'role', header: 'الدور' },
@@ -381,13 +393,13 @@ function RightToLeftDataTableExample() {
     [],
   );
 
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data: rtlData,
     columns,
     manualPagination: true,
     pageCount: 12,
     state: { pagination: { pageIndex: 3, pageSize: 25 } },
-    getCoreRowModel: getCoreRowModel(),
   });
 
   return <DataTable table={table} />;

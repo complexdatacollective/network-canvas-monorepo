@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode, useState } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { InterviewPayload, SessionPayload } from '@codaco/interview';
@@ -8,6 +8,7 @@ import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-s
 import { InterviewerI18nProvider } from '~/i18n/InterviewerI18nProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const navigateMock = vi.fn();
 const useSearchMock = vi.fn(() => '');
@@ -72,9 +73,35 @@ vi.mock('~/lib/installationId', () => ({
   getInstallationId: () => 'test-install',
 }));
 
+// The app-level analytics context as the route sees it. `client` lags
+// `enabled`: the provider flips the opt-in state first and resolves its
+// posthog-js client afterwards, and the client stays null for good in builds
+// with analytics disabled or when the load fails.
+const { analyticsContext, fakeAnalyticsClient } = vi.hoisted(() => {
+  const client = {
+    capture: vi.fn(),
+    captureException: vi.fn(),
+    register: vi.fn(),
+  };
+  const context: {
+    enabled: boolean;
+    client: typeof client | null;
+    captureException: typeof client.captureException;
+  } = {
+    enabled: false,
+    client: null,
+    captureException: vi.fn(),
+  };
+  return { analyticsContext: context, fakeAnalyticsClient: client };
+});
+vi.mock('~/lib/analytics/AnalyticsProvider', () => ({
+  useAnalytics: () => analyticsContext,
+}));
+
 type CapturedShellProps = {
   currentStep: number;
   disableAnalytics: boolean;
+  posthogClient?: unknown;
   finishConfirmationDescription: ReactNode;
   requestedLocale: string;
   localePreference: string | null;
@@ -122,6 +149,12 @@ vi.mock('@codaco/interview', async (importOriginal) => {
 });
 
 import { InterviewRoute } from '../Interview';
+
+// The locale cases switch between these synchronously, as a device that has
+// already loaded them would.
+await Promise.all(
+  ['es', 'en-GB'].map((locale) => interviewerCatalogSource.load(locale)),
+);
 
 function makeSession(overrides: Record<string, unknown> = {}) {
   return {
@@ -698,6 +731,43 @@ describe('InterviewRoute finish flow', () => {
     expect(shellMock).not.toHaveBeenCalled();
   });
 
+  it('refuses to open a session whose stored data cannot be read, and reports it', async () => {
+    const cause = new Error('stored network failed to parse');
+    getSessionMock.mockRejectedValue(cause);
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /interview could not be opened/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+    expect(updateSessionMock).not.toHaveBeenCalled();
+    expect(updateSettingsMock).not.toHaveBeenCalled();
+    expect(analyticsContext.captureException).toHaveBeenCalledWith(cause, {
+      feature: 'interview-load',
+    });
+  });
+
+  it('clears authorization when returning home from an unreadable session', async () => {
+    // Fails after entry was authorized, so the stale id must be cleared.
+    getProtocolByHashMock.mockRejectedValue(new Error('protocol unreadable'));
+
+    render(<InterviewRoute sessionId="s1" />);
+    const button = await screen.findByRole('button', { name: /return home/i });
+    expect(
+      screen.getByRole('heading', { name: /interview could not be opened/i }),
+    ).toBeInTheDocument();
+
+    setAuthorizedInterviewIdMock.mockClear();
+    await invoke(() => button.click());
+
+    expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true });
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+
   it('applies the exit gate from the completion screen', async () => {
     getSettingsMock.mockResolvedValue({
       requireUnlockOnEnter: false,
@@ -719,5 +789,113 @@ describe('InterviewRoute finish flow', () => {
     await invoke(() => screen.getByRole('button', { name: /exit/i }).click());
 
     expect(navigateMock).not.toHaveBeenCalledWith('/', { replace: true });
+  });
+});
+
+describe('InterviewRoute session change', () => {
+  beforeEach(() => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+  });
+
+  it('unmounts the previous interview while the next one loads, and fails closed if it cannot be read', async () => {
+    let rejectNextSession!: (cause: unknown) => void;
+    getSessionMock.mockImplementation((id: string) =>
+      id === 's1'
+        ? Promise.resolve(makeSession())
+        : new Promise((_resolve, reject) => {
+            rejectNextSession = reject;
+          }),
+    );
+
+    const { rerender } = render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    shellMock.mockClear();
+    updateSessionMock.mockClear();
+
+    useRouteMock.mockReturnValue([true, { sessionId: 's2' }]);
+    rerender(<InterviewRoute sessionId="s2" />);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // A Shell left mounted here would be handed handlers bound to s2, so its
+    // next step change would write s1's progress into s2.
+    act(() => {
+      shellMock.mock.calls
+        .at(-1)?.[0]
+        .onStepChange(1, { progress: 50, totalSteps: 4 });
+    });
+    expect(screen.queryByTestId('shell-mounted')).not.toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+    expect(updateSessionMock).not.toHaveBeenCalled();
+
+    await act(async () => {
+      rejectNextSession(new Error('stored network failed to parse'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(
+      await screen.findByRole('heading', {
+        name: /interview could not be opened/i,
+      }),
+    ).toBeInTheDocument();
+    expect(shellMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('InterviewRoute analytics wiring', () => {
+  beforeEach(() => {
+    getSettingsMock.mockResolvedValue({
+      requireUnlockOnEnter: false,
+      requireUnlockOnExit: false,
+      requireUnlockOnExport: false,
+    });
+  });
+
+  afterEach(() => {
+    analyticsContext.enabled = false;
+    analyticsContext.client = null;
+  });
+
+  // The Shell's contract for "analytics on, no client" is to start its own
+  // posthog-js instance from the default entrypoint, which the app never
+  // bundles deliberately: it carries the remote script loader the CSP forbids,
+  // is not opted out by default, and knows nothing of the app's super
+  // properties. The Shell must therefore stay off until the app's client is
+  // attached, however long that takes.
+  it('keeps Shell analytics off while opted in but the client has not resolved', async () => {
+    analyticsContext.enabled = true;
+    analyticsContext.client = null;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().posthogClient).toBeUndefined();
+    expect(lastShellProps().disableAnalytics).toBe(true);
+  });
+
+  it('enables Shell analytics only with the app client attached', async () => {
+    analyticsContext.enabled = true;
+    analyticsContext.client = fakeAnalyticsClient;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().posthogClient).toBe(fakeAnalyticsClient);
+    expect(lastShellProps().disableAnalytics).toBe(false);
+  });
+
+  it('keeps Shell analytics off after an opt-out even though the client stays loaded', async () => {
+    analyticsContext.enabled = false;
+    analyticsContext.client = fakeAnalyticsClient;
+
+    render(<InterviewRoute sessionId="s1" />);
+
+    expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
+    expect(lastShellProps().disableAnalytics).toBe(true);
   });
 });

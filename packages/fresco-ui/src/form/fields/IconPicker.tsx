@@ -12,6 +12,7 @@ import { type ComponentPropsWithRef, useMemo, useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
+import { useComboboxTriggerEscape } from '../../hooks/useComboboxTriggerEscape';
 import Icon, { type InterviewerIconName } from '../../Icon';
 import customIcons from '../../icons/customIcons';
 import Surface from '../../layout/Surface';
@@ -128,7 +129,15 @@ export default function IconPicker({
 }: IconPickerProps) {
   const intl = useAppIntl();
   const [query, setQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
+  const {
+    open: isOpen,
+    onOpenChange,
+    onTriggerKeyDown,
+  } = useComboboxTriggerEscape({
+    onOpenChange: (open) => {
+      if (!open) setQuery('');
+    },
+  });
   const portalContainer = usePortalContainer();
 
   const selectedName = isIconName(value) ? value : undefined;
@@ -179,15 +188,14 @@ export default function IconPicker({
         if (nextValue && !disabled && !readOnly) onChange?.(nextValue);
       }}
       onInputValueChange={setQuery}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        if (!open) setQuery('');
-      }}
+      open={isOpen}
+      onOpenChange={onOpenChange}
       disabled={disabled || readOnly}
       name={name}
     >
       <Combobox.Trigger
         id={id}
+        onKeyDown={onTriggerKeyDown}
         onBlur={onBlur}
         onFocus={onFocus}
         // `Field` names the control through `aria-labelledby`; a caller using

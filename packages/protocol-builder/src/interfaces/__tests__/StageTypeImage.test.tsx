@@ -1,13 +1,19 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import { STAGE_TYPES } from '../../stage-types.ts';
 import { interfaceDisplayName } from '../interfaceNames.ts';
 import StageTypeImage, { defaultStageImage } from '../StageTypeImage.tsx';
+
+const catalogs = createCatalogSource(protocolBuilderCatalogLoaders);
+await catalogs.load('es');
 
 describe('StageTypeImage', () => {
   it('renders the generated screenshot for every stage type', () => {
@@ -103,7 +109,7 @@ it('updates localized preview names and preserves explicitly decorative images',
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
-      messages={protocolBuilderCatalogs[locale]}
+      messages={catalogs.peek(locale)}
     >
       <StageTypeImage type="NetworkComposer" />
       <StageTypeImage type="Information" alt="" />

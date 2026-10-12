@@ -115,6 +115,10 @@
     "defaultMessage": "Add additional skip logic options for handling ordinal and categorical attributes.",
     "description": "One complete Markdown bullet in schema 7 migration approval guidance: categoricalSkipLogic. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
   },
+  "protocolValidation.migrationNotes.schema8.additionalAttributesBoolean": {
+    "defaultMessage": "A name generator prompt's `additionalAttributes` must reference boolean attributes. The interview sets each one when a node is added to the prompt and clears it when the node is removed, so a non-boolean target had any value collected for it elsewhere overwritten with true/false and then erased. Entries referencing a non-boolean attribute are removed.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: additionalAttributesBoolean. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
   "protocolValidation.migrationNotes.schema8.anonymisationInterface": {
     "defaultMessage": "New experimental interface: \"anonymisation interface\". Allows the participant to encrypt sensitive/identifiable information, so that it cannot be read by the researcher. Not enabled by default. Contact the team for details.",
     "description": "One complete Markdown bullet in schema 8 migration approval guidance: anonymisationInterface. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."

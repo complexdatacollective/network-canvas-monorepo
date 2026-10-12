@@ -110,11 +110,17 @@ export function git(args, cwd) {
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
+// The repository a hook inspects is the one the session runs in. The hook
+// event's `cwd` names it directly, so it wins. The project-dir variables only
+// locate the scripts: in a Claude Code worktree session `CLAUDE_PROJECT_DIR`
+// is the main checkout, not the worktree, and a hook rooted there would check
+// another session's uncommitted work. They are the fallback for an event
+// without a cwd, and `process.cwd()` covers manual runs with no event at all.
 export function resolveRepoRoot(input = {}, env = process.env) {
   const candidates = [
+    input.cwd,
     env.CLAUDE_PROJECT_DIR,
     env.CODEX_PROJECT_DIR,
-    input.cwd,
     process.cwd(),
   ];
   for (const candidate of candidates) {

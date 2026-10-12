@@ -45,6 +45,9 @@ export type PedigreeLayout = {
   n: number[];
   nid: number[][]; // integer person indices (no .5)
   pos: number[][]; // optimized x-coordinates
+  /** Each person's family on the level above: the 1-based column of a
+   * couple's left partner, the negated 1-based column of a single parent, or
+   * 0 for none. */
   fam: number[][];
   group: number[][]; // replaces spouse: 0=none, >0=parent group membership
   twins: number[][] | null; // 0=none, 1=MZ, 2=DZ, 3=unknown
@@ -74,8 +77,9 @@ type ArcPath = {
 export type ParentGroupConnector = {
   type: 'parent-group';
   segment: LineSegment;
-  /** Vertical endpoint leads for a routed, non-adjacent partnership. */
-  endpointSegments?: [LineSegment, LineSegment];
+  /** Leads joining each partner to a routed partnership line: partners who
+   * are not side by side, or who sit on different rows. */
+  endpointSegments?: LineSegment[];
   double: boolean;
   isActive: boolean;
   doubleSegment?: LineSegment;
@@ -97,8 +101,7 @@ export type ParentChildConnector = {
 
 export type AuxiliaryConnector = {
   type: 'auxiliary';
-  // Relationship types plus a layout-only kind for parents with no partner.
-  edgeType: RelationshipType | 'unpartnered-parent';
+  edgeType: RelationshipType;
   segment: LineSegment;
   endpointIds?: [string | undefined, string | undefined];
 };

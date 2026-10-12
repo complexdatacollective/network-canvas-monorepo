@@ -2,10 +2,12 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { parse } from '@formatjs/icu-messageformat-parser';
 import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
@@ -591,6 +593,41 @@ export const messages = defineMessages({ blank: { ${descriptor} } });
     }
   });
 
+  it('rejects an argument that only a plural one arm can show', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'app-i18n-onearm-'));
+    writeFileSync(
+      join(dir, 'migrated.ts'),
+      `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({
+  migrated: {
+    id: 'demo.migrated',
+    defaultMessage: '{count, plural, one {{name} was migrated.} other {# were migrated.}}',
+    description: 'Names the protocol when only one was migrated.',
+  },
+});
+`,
+    );
+    await expect(extractMessages(collectSourceFiles(dir))).rejects.toThrow(
+      /"demo\.migrated" uses \{name\} only in a plural "one" arm/,
+    );
+
+    writeFileSync(
+      join(dir, 'migrated.ts'),
+      `import { defineMessages } from 'react-intl';
+export const messages = defineMessages({
+  migrated: {
+    id: 'demo.migrated',
+    defaultMessage: '{count, plural, =1 {{name} was migrated.} one {# was migrated.} other {# were migrated.}}',
+    description: 'Names the protocol when only one was migrated.',
+  },
+});
+`,
+    );
+    await expect(
+      extractMessages(collectSourceFiles(dir)),
+    ).resolves.toHaveProperty('demo.migrated');
+  });
+
   it('rejects FormatJS’s structured description form', async () => {
     // The extractor writes the object straight through, and en.json would then
     // fail its own freshness check on every run: two parses of the same object
@@ -624,5 +661,53 @@ export const messages = defineMessages({
       writeFileSync(join(dir, name), 'export {};\n');
     }
     expect(collectSourceFiles(dir)).toEqual([join(dir, 'component.tsx')]);
+  });
+});
+
+describe('checkCatalogLoaders', () => {
+  const localesDir = () => {
+    const dir = mkdtempSync(join(tmpdir(), 'catalog-loaders-'));
+    writeFileSync(join(dir, 'en.json'), '{}');
+    writeFileSync(join(dir, 'es.json'), '{"a.hello":"Hola {name}"}');
+    writeFileSync(join(dir, 'de.json'), '{"a.hello":"Hallo {name}"}');
+    writeFileSync(join(dir, 'es.source.json'), '{"a.hello":"Hello {name}"}');
+    return dir;
+  };
+  const moduleOf = (path: string) => async () => ({
+    default: JSON.parse(readFileSync(path, 'utf8')) as Record<string, string>,
+  });
+
+  it('passes loaders wired to their own files, compiled or not', async () => {
+    const dir = localesDir();
+    expect(
+      await checkCatalogLoaders(dir, {
+        es: moduleOf(join(dir, 'es.json')),
+        // What a build hands back once the catalog plugin has compiled it.
+        de: async () => ({ default: { 'a.hello': parse('Hallo {name}') } }),
+      }),
+    ).toEqual([]);
+  });
+
+  it('fails a loader wired to another locale’s file', async () => {
+    const dir = localesDir();
+    expect(
+      await checkCatalogLoaders(dir, {
+        es: moduleOf(join(dir, 'de.json')),
+        de: moduleOf(join(dir, 'de.json')),
+      }),
+    ).toEqual(['loader for es does not load es.json']);
+  });
+
+  it('fails a committed catalog nothing loads, and a loader with no catalog', async () => {
+    const dir = localesDir();
+    expect(
+      await checkCatalogLoaders(dir, {
+        es: moduleOf(join(dir, 'es.json')),
+        fr: moduleOf(join(dir, 'es.json')),
+      }),
+    ).toEqual([
+      'no loader for the committed de catalog',
+      'loader for fr has no committed catalog',
+    ]);
   });
 });

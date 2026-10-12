@@ -192,10 +192,13 @@ export default function ModalPopup({
     const boundary =
       popupElement?.closest('[data-base-ui-portal]') ?? popupElement;
 
-    // A sibling portal that is NOT a dialog — a Select listbox, a Combobox, a
-    // Popover, a Tooltip opened from inside this popup — is part of this
-    // interaction, not somewhere focus has "moved on" to. Only another dialog,
-    // or a control back on the page, counts as focus being claimed elsewhere.
+    // A popup opened from inside this one (a Select listbox, a Combobox, a
+    // Popover, a Tooltip) is part of this interaction, not somewhere focus has
+    // "moved on" to. Those portal into this popup's own portal node (`Modal`
+    // points `usePortalContainer` at it), so they sit inside `boundary`, and a
+    // Popover's own `role="dialog"` does not count as another dialog. Only a
+    // dialog outside it, or a control back on the page, counts as focus being
+    // claimed elsewhere.
     const activeDialog = active?.closest?.(
       '[role="dialog"], [role="alertdialog"]',
     );

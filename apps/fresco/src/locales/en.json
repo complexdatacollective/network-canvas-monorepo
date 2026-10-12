@@ -796,8 +796,8 @@
     "description": "Researcher-facing S3ConfigForm: The S3-compatible endpoint URL"
   },
   "fresco.S3ConfigForm.theURLBrowsersUseToReachThis": {
-    "defaultMessage": "The URL browsers use to reach this storage. For MinIO behind your reverse proxy, this is your Fresco domain (see deployment docs). For AWS S3 or R2, this is usually the same as the Endpoint URL.",
-    "description": "Researcher-facing S3ConfigForm: The URL browsers use to reach this storage. For MinIO behind your reverse proxy, this is your Fresco domain (see deploym"
+    "defaultMessage": "The URL browsers use to reach this storage. For the storage bundled with Fresco's Docker deployment, this is your Fresco domain. For AWS S3 or R2, this is usually the same as the Endpoint URL.",
+    "description": "Researcher-facing S3ConfigForm: hint under the Public URL field. The bundled storage is served through the reverse proxy on the Fresco domain, so its public URL is that domain; for AWS S3 or Cloudflare R2 it usually matches the Endpoint URL."
   },
   "fresco.S3ConfigForm.theseS3SettingsAreConfiguredViaEnvironment": {
     "defaultMessage": "These S3 settings are configured via environment variables and cannot be changed here.",
@@ -1430,6 +1430,10 @@
   "fresco.actions.interviews.copyInvalidParticipantIdentifier": {
     "defaultMessage": "Invalid participant identifier",
     "description": "Researcher-facing actions / interviews: Invalid participant identifier"
+  },
+  "fresco.actions.interviews.copyProtocolCouldNotBeRead": {
+    "defaultMessage": "This protocol could not be read, so interviews cannot be started with it.",
+    "description": "Researcher-facing actions / interviews: the protocol's stored stages, codebook or experiments do not parse, so no interview was created."
   },
   "fresco.actions.interviews.copyProtocolIsStoredUnderASchemaVersion": {
     "defaultMessage": "Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.",
@@ -3234,6 +3238,10 @@
   "fresco.syntheticGeneration.technicalDetails": {
     "defaultMessage": "Technical details",
     "description": "Disclosure label for the original, untranslated generation diagnostic."
+  },
+  "fresco.syntheticGeneration.unreadableProtocol": {
+    "defaultMessage": "This protocol could not be read, so no interviews were generated.",
+    "description": "The selected protocol's stored data does not parse, so generation was refused before creating anything."
   },
   "fresco.tableFilters.NuqsClearFilterslabel": {
     "defaultMessage": "Clear Filters",

@@ -1,0 +1,5 @@
+# Artikel auf der CHI 2016: Participant-Aided Sociograms von Papier auf den Bildschirm
+
+Zentrale Netzwerkmaße für Hochrisikogruppen und schwer erreichbare Gruppen müssen weiterhin durch direkte Befragung erhoben werden, und das auf Papier zu tun, ist langsam und aufwendig. Dieser Artikel beschreibt netCanvas, die erste Version von Network Canvas, die das papierbasierte Participant-Aided Sociogram in ein Touchscreen-Werkzeug verwandelt. Es vereinfacht die Dateneingabe, erfordert weniger Eingriffe und Vorbereitung durch die Interviewenden, macht Daten leichter wiederverwendbar und zeigt das Netzwerk, während es gezeichnet wird.
+
+Das Team testete es in einer Gesundheitsverhaltensstudie mit einer schwer erreichbaren Hochrisikopopulation, verglich Papier und Touchscreen mit denselben Teilnehmenden und kam zu dem Schluss, dass die Netzwerkerfassung per Touchscreen mittlerweile eine praktikable Alternative ist, selbst bei hochsensiblen Daten. [Artikel lesen](https://doi.org/10.1145/2858036.2858368).

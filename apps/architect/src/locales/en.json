@@ -424,16 +424,20 @@
     "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
   },
   "architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn": {
-    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to switch to a read-only view.",
+    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to keep looking through the protocol read-only.",
     "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
   },
   "architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn6aa3d": {
-    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to switch to a read-only view.",
+    "defaultMessage": "This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to keep looking through the protocol read-only.",
     "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
   },
   "architect.chrome.protocolLockBanner.thisProtocolIsOpenInAnother": {
-    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. You are viewing it here in read-only mode. Close the other tab to continue editing in this one.",
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy, so it is read-only here. You can look through every page, but nothing can be changed. Close the other tab to edit it in this one.",
     "description": "Researcher-facing explanatory text in components / ProtocolLockBanner."
+  },
+  "architect.chrome.protocolRouteGuard.editingRestored": {
+    "defaultMessage": "The other tab is no longer editing this protocol, so you can edit it here again.",
+    "description": "Screen-reader announcement made when a tab that was showing a protocol read-only, because another tab was editing it, becomes able to edit it."
   },
   "architect.chrome.protocolSummary.assetBadge.assetNotFound": {
     "defaultMessage": "Asset {id} not found",
@@ -462,6 +466,14 @@
   "architect.chrome.timeline.timelineStageRow.editStage76e56": {
     "defaultMessage": "Edit stage {position, number}: {stageName}",
     "description": "Researcher-facing explanatory text in components / Timeline / TimelineStageRow."
+  },
+  "architect.chrome.timeline.timelineStageRow.viewStage": {
+    "defaultMessage": "View stage {position, number}: {stageName}, {interfaceName}",
+    "description": "Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it."
+  },
+  "architect.chrome.timeline.timelineStageRow.viewStageWithoutInterface": {
+    "defaultMessage": "View stage {position, number}: {stageName}",
+    "description": "Accessible name of the control that opens a stage on the timeline while this tab can only view the protocol, because another tab is editing it. Used when the stage type has no known name."
   },
   "architect.codebook.codebook.createEdgeType": {
     "defaultMessage": "Create edge type",
@@ -1171,6 +1183,14 @@
     "defaultMessage": "Connections",
     "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
   },
+  "architect.home.demoSubtitle.dyadCensus": {
+    "defaultMessage": "Dyad Census",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.egoForm": {
+    "defaultMessage": "Ego Form",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
   "architect.home.demoSubtitle.information": {
     "defaultMessage": "Information",
     "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
@@ -1185,6 +1205,18 @@
   },
   "architect.home.demoSubtitle.ordinalBin": {
     "defaultMessage": "Ordinal Bin",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.quickAdd": {
+    "defaultMessage": "Quick Add",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.roster": {
+    "defaultMessage": "Roster",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.tieStrength": {
+    "defaultMessage": "Tie Strength",
     "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
   },
   "architect.home.home.architectIsTheProtocolDesignerFor": {
@@ -1387,10 +1419,6 @@
     "defaultMessage": "Your protocols are saved only on this device. They are never uploaded to a server.",
     "description": "Visible text in components / Home / LibraryPanel."
   },
-  "architect.home.timelineScript.config.categoricalBin": {
-    "defaultMessage": "Categorical Bin",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
   "architect.home.timelineScript.config.closeOut": {
     "defaultMessage": "Close out",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
@@ -1423,24 +1451,8 @@
     "defaultMessage": "Group membership",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
   },
-  "architect.home.timelineScript.config.information": {
-    "defaultMessage": "Information",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
   "architect.home.timelineScript.config.keyMoments": {
     "defaultMessage": "Key moments",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.nameGenerator": {
-    "defaultMessage": "Name Generator",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.narrative": {
-    "defaultMessage": "Narrative",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.ordinalBin": {
-    "defaultMessage": "Ordinal Bin",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
   },
   "architect.home.timelineScript.config.relationshipType": {
@@ -1473,6 +1485,10 @@
   },
   "architect.home.timelineScript.config.welcome": {
     "defaultMessage": "Welcome",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.whoKnowsWhom": {
+    "defaultMessage": "Who knows whom",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
   },
   "architect.home.transitMap.protocolTimeline": {
@@ -3052,8 +3068,8 @@
     "description": "The label text in components / TypeEditor / TypeEditor."
   },
   "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": {
-    "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Works With\".}}",
-    "description": "Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data."
+    "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Colleagues\".}}",
+    "description": "Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. The field accepts only the letters A–Z and a–z, digits and the symbols . _ - : — so each translated example must contain no spaces and no accented or non-Latin letters. Where no example in your language fits, keep the English name and add a translation in parentheses after the closing quote."
   },
   "architect.typeEditor.typeEditor.typeColor": {
     "defaultMessage": "Type color",

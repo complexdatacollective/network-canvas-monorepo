@@ -8,11 +8,12 @@ import {
 } from '@testing-library/react';
 import { useDragControls } from 'motion/react';
 import { Provider } from 'react-redux';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import Codebook from '~/components/Codebook/Codebook';
 import Option, { OptionsContext } from '~/components/Form/arrayFields/Option';
 import VariableRoleConflictsAlert from '~/components/VariableRoleConflictsAlert';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
@@ -45,6 +46,11 @@ vi.mock('~/components/Codebook/EgoType', () => ({ default: () => null }));
 vi.mock('~/selectors/issues', () => ({
   getVariableRoleConflicts: () => largeCounts.conflicts,
 }));
+
+// The provider shows a language once its catalog has loaded. Loading
+// Spanish up front lets a switch to it render synchronously, as the
+// assertions below expect.
+beforeAll(() => architectCatalogSource.load('es'));
 
 beforeEach(() => {
   localStorage.clear();

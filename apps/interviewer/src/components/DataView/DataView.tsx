@@ -1,4 +1,4 @@
-import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { useTable } from '@tanstack/react-table';
 import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { type ReactNode, useMemo } from 'react';
@@ -7,6 +7,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
+import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import { getInterviewProgress } from '@codaco/interview';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 
@@ -221,7 +222,8 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     },
   });
 
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data: rows,
     columns,
     state: { columnFilters, globalFilter, sorting, pagination },
@@ -236,7 +238,6 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
     enableSortingRemoval: false,
-    getCoreRowModel: getCoreRowModel(),
   });
 
   return (

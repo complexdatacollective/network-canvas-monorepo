@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import { Redacted } from 'effect';
 
 import type {
   ResourceDescriptorSchema,
@@ -23,12 +23,12 @@ import {
 
 import type { ArchitectStore } from './architectStore.ts';
 
-type Descriptor = z.output<typeof ResourceDescriptorSchema>;
-type Failure = z.output<typeof ResourceGatewayFailureSchema>;
-type Inspection = z.output<typeof ResourceInspectionSchema>;
-type ListInput = z.output<typeof ResourceListInputSchema>;
-type Preview = z.output<typeof ResourcePreviewSchema>;
-type StageRequest = z.output<typeof StageResourceInputSchema>['request'];
+type Descriptor = (typeof ResourceDescriptorSchema)['Type'];
+type Failure = (typeof ResourceGatewayFailureSchema)['Type'];
+type Inspection = (typeof ResourceInspectionSchema)['Type'];
+type ListInput = (typeof ResourceListInputSchema)['Type'];
+type Preview = (typeof ResourcePreviewSchema)['Type'];
+type StageRequest = (typeof StageResourceInputSchema)['Type']['request'];
 
 export type ResourceOutcome<TData> =
   | Readonly<{ status: 'ok'; data: TData }>
@@ -79,7 +79,7 @@ export class ResourceBridge {
   readonly #byRequest = new Map<string, string>();
   /** Which edit imported each staged resource, by resource id. */
   readonly #staged = new Map<string, string>();
-  readonly #pickedAs = new Map<string, string>();
+  readonly #pickedAs = new Map<string, Redacted.Redacted>();
 
   constructor(store: ArchitectStore) {
     this.#store = store;
@@ -123,7 +123,10 @@ export class ResourceBridge {
     }
 
     if (request.kind === 'secret') {
-      const action = addApiKeyAsset(request.name, request.value);
+      const action = addApiKeyAsset(
+        Redacted.value(request.name),
+        Redacted.value(request.value),
+      );
       this.#store.dispatch(action);
       return {
         status: 'ok',
@@ -137,8 +140,12 @@ export class ResourceBridge {
     // imports of different pictures both called `portrait.png` must stay two
     // assets wherever the protocol is opened next.
     const openedFor = getActiveProtocolId(this.#store.getState());
-    const source = await contentAddressedSource(request.bytes, request.source);
-    const file = new File([request.bytes], source, {
+    const bytes = new Uint8Array(Redacted.value(request.bytes));
+    const source = await contentAddressedSource(
+      bytes,
+      Redacted.value(request.source),
+    );
+    const file = new File([bytes], source, {
       type: request.contentType,
     });
     // Hashing is the one part of this that takes long enough for the
@@ -154,7 +161,9 @@ export class ResourceBridge {
     }
     try {
       const imported = await this.#store
-        .dispatch(importAssetAsync({ file, name: request.name }))
+        .dispatch(
+          importAssetAsync({ file, name: Redacted.value(request.name) }),
+        )
         .unwrap();
       this.#pickedAs.set(imported.id, request.source);
       return { status: 'ok', data: this.#record(key, editId, imported.id) };
@@ -245,7 +254,10 @@ export class ResourceBridge {
       const value = entry?.type === 'apikey' ? entry.value : undefined;
       return {
         status: 'ok',
-        data: { descriptor, ...(value === undefined ? {} : { value }) },
+        data: {
+          descriptor,
+          ...(value === undefined ? {} : { value: Redacted.make(value) }),
+        },
       };
     }
     if (descriptor.kind !== 'network' && descriptor.kind !== 'geojson') {
@@ -260,7 +272,9 @@ export class ResourceBridge {
         status: 'ok',
         data: {
           descriptor,
-          ...(variableNames === null ? {} : { variableNames }),
+          ...(variableNames === null
+            ? {}
+            : { variableNames: Redacted.make(variableNames) }),
         },
       };
     } catch {
@@ -288,7 +302,7 @@ export class ResourceBridge {
         resourceId,
       );
     }
-    return { status: 'ok', data: { resourceId, url } };
+    return { status: 'ok', data: { resourceId, url: Redacted.make(url) } };
   }
 
   #record(key: string, editId: string, resourceId: string): StagedResource {
@@ -318,7 +332,7 @@ export class ResourceBridge {
       descriptors.push({
         id,
         kind: entry.type,
-        name: entry.name,
+        name: Redacted.make(entry.name),
         status:
           owner === undefined ? ('committed' as const) : ('staged' as const),
         ...(entry.type === 'apikey'
@@ -326,7 +340,7 @@ export class ResourceBridge {
           : {
               source:
                 (owner === undefined ? undefined : this.#pickedAs.get(id)) ??
-                entry.source,
+                Redacted.make(entry.source),
             }),
       });
     }
@@ -337,7 +351,7 @@ export class ResourceBridge {
     const entry = getAssetManifest(this.#store.getState())[resourceId];
     return entry === undefined || entry.type === 'apikey'
       ? {}
-      : { source: entry.source };
+      : { source: Redacted.make(entry.source) };
   }
 
   #descriptor(
@@ -370,13 +384,10 @@ function requestKey(editId: string, kind: string, requestId: string): string {
  * file is.
  */
 async function contentAddressedSource(
-  bytes: Blob,
+  bytes: Uint8Array<ArrayBuffer>,
   source: string,
 ): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    await bytes.arrayBuffer(),
-  );
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
   const hex = [...new Uint8Array(digest)]
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');

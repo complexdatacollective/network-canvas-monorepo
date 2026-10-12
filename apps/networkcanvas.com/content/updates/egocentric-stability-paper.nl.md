@@ -1,0 +1,5 @@
+# Artikel in Network Science: hoe stabiel zijn persoonlijke netwerken in de loop van de tijd?
+
+Wanneer mensen meer dan eens over hun netwerken worden geïnterviewd, verdwijnen veel van de personen die ze noemen tussen twee interviews en komen ze later weer terug. Dit artikel onderzoekt of die verandering echte wisselingen in het leven van mensen weerspiegelt, of het interview zelf: respondenten die zich laten leiden door hoe een netwerk volgens hen eruit hoort te zien, of die minder personen noemen om het interview korter te maken.
+
+Op basis van drie meetmomenten van een panelstudie onder jonge mannen die seks hebben met mannen in Chicago, verzameld met het touchscreen-sociogram van Network Canvas, vonden de auteurs weinig verandering in de gemiddelde netwerkgrootte tussen de meetmomenten. Tussen het eerste en het tweede meetmoment traden kleine maar significante veranderingen op, vooral bij mensen met de grootste netwerken. Tussen het tweede en het derde meetmoment veranderden netwerkgrootte, samenstelling en dichtheid vrijwel niet. [Lees het artikel](https://doi.org/10.1017/nws.2019.27).

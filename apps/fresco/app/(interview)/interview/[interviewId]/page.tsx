@@ -5,18 +5,25 @@ import { Suspense } from 'react';
 import SuperJSON from 'superjson';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
 import type { ActivityLocalization } from '~/i18n/activityDetails';
+import { getFrescoI18nInitialization } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { captureEvent, flushPostHog } from '~/lib/posthog-server';
+import {
+  captureEvent,
+  captureException,
+  flushPostHog,
+} from '~/lib/posthog-server';
 import { getAppSetting, getDisableAnalytics } from '~/queries/appSettings';
 import {
   getInterviewById,
   type GetInterviewByIdQuery,
 } from '~/queries/interviews';
 
+import { ErrorMessage } from '../_components/ErrorMessage';
 import InterviewClient from './InterviewClient';
 import { mapInterviewPayload } from './mapInterviewPayload';
 
@@ -78,6 +85,37 @@ async function InterviewContent({
     redirect('/interview/finished');
   }
 
+  const mapped = mapInterviewPayload(interview);
+
+  if (!mapped.success) {
+    // Starting anyway would hand the client a network built without the stored
+    // one, which its first sync would replace, or run it against an empty
+    // design. The report carries no interview id: the id is the participant's
+    // access link, and the report leaves the deployment.
+    after(async () => {
+      await captureException(mapped.error, {
+        context:
+          mapped.unreadable === 'protocol'
+            ? 'interview.load.protocolUnreadable'
+            : 'interview.load.unreadable',
+      });
+      await flushPostHog();
+    });
+
+    return (
+      <ErrorMessage
+        title="This interview could not be opened"
+        message={
+          mapped.unreadable === 'protocol'
+            ? 'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
+            : 'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
+        }
+      />
+    );
+  }
+
+  // Recorded only once the interview can actually be opened: a refusal above
+  // must not leave an activity entry claiming it was.
   after(async () => {
     try {
       const message = session
@@ -125,13 +163,17 @@ async function InterviewContent({
     }
   });
 
-  const { payload, assetUrls, initialStep, initialSyncRevision } =
-    mapInterviewPayload(interview);
+  const { payload, assetUrls, initialStep, initialSyncRevision } = mapped;
 
   const installationId = (await getAppSetting('installationId')) ?? 'unknown';
   // Use the same helper as the rest of the app, so a DISABLE_ANALYTICS
   // environment override also opts the interview runtime out of telemetry.
   const disableAnalytics = (await getDisableAnalytics()) ?? false;
+  // The interview's own messages, in the language its Shell will negotiate
+  // from Fresco's, travel with the page: otherwise hydration waits on a
+  // separate download before the participant sees anything.
+  const { locale } = await getFrescoI18nInitialization();
+  const catalog = await loadInterviewCatalog(locale);
 
   return (
     <InterviewClient
@@ -141,6 +183,7 @@ async function InterviewContent({
       initialSyncRevision={initialSyncRevision}
       installationId={installationId}
       disableAnalytics={disableAnalytics}
+      catalog={catalog}
     />
   );
 }

@@ -1,12 +1,36 @@
 ---
 name: ci-and-e2e-policy
-description: 'Use when working on CI configuration in the network-canvas monorepo, or when interpreting a CI result — which E2E suites run and why, how the two-job pixel/native split works, verdict reuse on generated release branches, Storybook interaction-test determinism, Chromatic and TurboSnap wiring, and the E2E visual snapshot baseline workflow. Keywords: CI, quality gate, E2E selection, affected E2E, release-e2e-policy, e2e-native, merge group, Chromatic, TurboSnap, preview-stats.json, optimizeDeps, test:storybook, visual baseline, snapshot PR, E2E status comment.'
+description: 'Use when working on CI configuration in the network-canvas monorepo, or when interpreting a CI result — which E2E suites run and why, how the two-job pixel/native split works, verdict reuse on generated release branches, Storybook interaction-test determinism, Chromatic and TurboSnap wiring, and the E2E visual snapshot baseline workflow. Keywords: CI, quality gate, E2E selection, affected E2E, release-e2e-policy, e2e-native, merge group, Chromatic, TurboSnap, preview-stats.json, optimizeDeps, test:storybook, visual baseline, snapshot PR, E2E status comment, integration branch, schema-9, pull_request branches.'
 ---
 
 # CI and E2E policy
 
 How this repository decides what CI runs, and the constraints that keep each
 suite deterministic.
+
+#### Which pull requests get CI
+
+Pull requests into `main` and into long-lived integration branches run the same
+CI. Name an integration branch `integration/<name>`; schema-version branches
+(`schema-<n>`, such as `schema-9`) are covered too. The trigger is a branch
+pattern (`pull_request: branches: [main, 'integration/**', 'schema-*']` in
+`.github/workflows/ci-and-release.yml`), so a new branch that follows the
+convention needs no workflow change. GitHub reads the workflow from the pull
+request's merge with its base, so the integration branch itself must contain
+this trigger: cut a new one from `main`, and merge the change into an older one
+before expecting CI on its pull requests.
+
+A pull request into an integration branch gets full CI but no merge queue and no
+required checks, because the rulesets target only `main`: `quality` is advisory
+there, and the pull request merges when its author decides. `push` stays
+`[main]`, so no release, publish, deploy or mirror job ever runs for an
+integration base. One branch can back pull requests into several bases, so
+nothing that remembers earlier runs, reports or release PRs may key on the
+branch alone: runs are titled `PR #<n> → <base> · <title>` (the workflow's
+`run-name`) and are matched on that title, Pages reports are keyed by pull
+request number, and a generated release branch counts as a release PR only when
+it targets `main`. Chromatic stays `main`-only: its zero-snapshot statuses exist
+to satisfy required contexts that only `main` has.
 
 #### Storybook interaction tests
 
@@ -98,8 +122,8 @@ on the build page).
 #### Affected E2E checks
 
 CI runs the Architect, Interview, and Interviewer E2E suites on feature PRs
-targeting `main` when the cumulative PR diff touches the suite subject or
-anything in its workspace dependency closure. A change to `@codaco/interview`,
+(into `main` or an integration branch) when the cumulative PR diff touches the
+suite subject or anything in its workspace dependency closure. A change to `@codaco/interview`,
 for example, runs all downstream suites; an Architect-only change runs
 Architect E2E. The classifier treats `docs/`, `.changeset/`, and Markdown as
 inert, and fails closed for root configs, workflows, scripts, the lockfile,
@@ -139,11 +163,13 @@ Each PR run upserts one sticky **E2E status** comment (the informational
 suite jobs, where Reason is the policy's per-suite selection explanation
 (the witness changed path, lane membership, or reuse). Only FAILED jobs
 publish their Playwright report, to GitHub Pages at
-`https://complexdatacollective.github.io/network-canvas-monorepo/<job-name>/<branch-slug>/`;
-each branch keeps only its latest run's report, and a later green run removes
-the stale one. Every report run also sweeps directories whose slug matches no
-live branch, so reports for merged or deleted branches disappear on the next
-publish from any branch.
+`https://complexdatacollective.github.io/network-canvas-monorepo/<job-name>/<branch-slug>-pr<number>/`;
+each pull request keeps only its latest run's report (the number is in the key
+because one branch can back pull requests into several bases), and a later
+green run removes the stale one, along with any report the same branch
+published under the older number-less key. Every report run also sweeps
+directories that match no live branch and no open pull request, so reports for
+merged or deleted branches disappear on the next publish from any branch.
 
 Generated release branches use equivalence reuse: a suite is skipped when the
 newest equivalent native pull-request verdict across the generated release
@@ -209,13 +235,13 @@ documentation. CI and Netlify consume those files without regenerating them.
 Playwright's arm64 Linux Chromium crashes (`SIGILL`, reported as
 `Target crashed`) as soon as a decoded video frame is presented — a visible
 `<video>`, or `drawImage` of one onto a canvas. Decode itself is fine, and
-Firefox and WebKit are unaffected. So on an Apple-silicon dev VM,
-`apps/architect`'s `00-sample-protocol.spec.ts` always stops at step 04, the
-first `.mov` upload, and its remaining steps report "did not run".
+Firefox and WebKit are unaffected. So on an Apple-silicon dev VM, any Chromium
+step that presents a video frame crashes the page.
 
 This is an environment limitation, diagnosed and recorded in
 `dev-vm/README.md`'s troubleshooting list; it is not a product or test defect.
-CI runs on x86_64 and executes the whole spec, so that spec's video coverage is
-real but CI-only. Do not skip, weaken or re-point the spec to accommodate a
-local run, and do not spend time re-diagnosing it: record it as known and rely
-on CI for the verdict.
+No CI e2e suite presents a video frame: Architect's video authoring is covered
+only by the agent-driven `architect-release-test`, which uploads and shows the
+sample protocol's videos and refuses to run its build on Linux arm64. Run that
+from the macOS host or an x86-64 machine, and do not spend time re-diagnosing
+the crash.

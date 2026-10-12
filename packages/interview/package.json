@@ -21,7 +21,9 @@
     ".": "./src/index.ts",
     "./contract": "./src/contract/index.ts",
     "./protocol-schema-version": "./src/protocolSchemaVersion.ts",
+    "./protocol-payload": "./src/contract/protocolPayload.ts",
     "./locales": "./src/locales/catalogs.ts",
+    "./catalog": "./src/i18n/catalog.ts",
     "./styles.css": "./src/styles.css"
   },
   "publishConfig": {
@@ -38,9 +40,17 @@
         "types": "./dist/protocol-schema-version.d.ts",
         "default": "./dist/protocol-schema-version.js"
       },
+      "./protocol-payload": {
+        "types": "./dist/protocol-payload.d.ts",
+        "default": "./dist/protocol-payload.js"
+      },
       "./locales": {
         "types": "./dist/locales/catalogs.d.ts",
         "default": "./dist/locales.js"
+      },
+      "./catalog": {
+        "types": "./dist/i18n/catalog.d.ts",
+        "default": "./dist/catalog.js"
       },
       "./styles.css": "./dist/styles.css"
     },
@@ -76,10 +86,10 @@
     "d3-force": "^3.0.0",
     "es-toolkit": "catalog:",
     "html-to-image": "^1.11.13",
-    "immer": "^11.1.8",
+    "immer": "^11.1.18",
     "lucide-react": "catalog:",
-    "mapbox-gl": "^3.25.0",
-    "ohash": "^2.0.11",
+    "mapbox-gl": "^3.32.0",
+    "ohash": "^2.0.12",
     "posthog-js": "catalog:",
     "react-redux": "catalog:",
     "redux-logger": "catalog:",
@@ -109,6 +119,7 @@
     "@testing-library/user-event": "^14.6.7",
     "@types/concaveman": "^1.1.6",
     "@types/d3-force": "^3.0.10",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -116,7 +127,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
-    "chalk": "5.6.2",
+    "chalk": "^6.0.1",
     "chromatic": "catalog:",
     "jsdom": "catalog:",
     "playwright": "catalog:",

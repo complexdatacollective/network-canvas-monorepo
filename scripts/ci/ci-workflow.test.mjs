@@ -1,5 +1,16 @@
 import assert from 'node:assert/strict';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 
 import { test } from 'vitest';
 import { parse } from 'yaml';
@@ -37,6 +48,11 @@ const refreshWorkflow = parse(
     'utf8',
   ),
 );
+const WORKFLOW_DIR = new URL('../../.github/workflows/', import.meta.url);
+// Every turbo invocation in CI is capped by this, set at the top of each
+// workflow, rather than by a flag at each call site.
+const TURBO_CAP =
+  /^env:\n(?:[^\S\n][^\n]*\n)*?[^\S\n]+TURBO_CONCURRENCY: '1'$/m;
 const parsedWorkflow = parse(workflow);
 const snapshotWorkflow = readFileSync(
   new URL(
@@ -67,8 +83,14 @@ function job(name) {
   )?.groups?.body;
 }
 
-test('full CI runs on PRs to main while merge groups request only quality', () => {
-  assert.match(workflow, /^  pull_request:\n    branches: \[main\]$/m);
+test('full CI runs on PRs to main and integration branches while merge groups request only quality', () => {
+  assert.match(
+    workflow,
+    /^ {2}pull_request:\n(?: {4}#.*\n)*? {4}branches: \[main, 'integration\/\*\*', 'schema-\*'\]$/m,
+  );
+  // Pushes stay main-only: the release, publish, deploy and mirror jobs are
+  // reached from this trigger, and an integration branch must never release.
+  assert.match(workflow, /^ {2}push:\n {4}branches: \[main\]$/m);
   assert.match(workflow, /^  merge_group:\n    types: \[checks_requested\]$/m);
 
   for (const jobName of [
@@ -91,6 +113,340 @@ test('full CI runs on PRs to main while merge groups request only quality', () =
   assert.ok(quality, 'quality job exists');
   assert.match(quality, /if \[\[ "\$EVENT_NAME" == "merge_group" \]\]; then/);
   assert.match(quality, /PR quality verdicts are authoritative/);
+});
+
+test('release, publish, deploy and mirror jobs never run for an integration base', () => {
+  // Every job below is reachable only from a push to (or a dispatch on) main,
+  // directly or through a `needs:` chain rooted in a job that is. A
+  // pull_request event, whatever its base, can start none of them.
+  for (const jobName of [
+    'release',
+    'product-release-pr',
+    'apps-release-detect',
+  ]) {
+    assert.match(
+      job(jobName),
+      /if: github\.ref == 'refs\/heads\/main' && github\.event_name == 'push'/,
+      `${jobName} runs only for a push to main`,
+    );
+  }
+  assert.match(
+    job('legacy-release-detect'),
+    /github\.ref == 'refs\/heads\/main'\n\s+&& \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\)/,
+  );
+  for (const [jobName, root] of [
+    ['apps-release-architect', 'apps-release-detect'],
+    ['apps-release-interviewer', 'apps-release-detect'],
+    ['apps-release-background-creator', 'apps-release-detect'],
+    ['apps-release-fresco', 'apps-release-detect'],
+    ['apps-release-documentation', 'apps-release-detect'],
+    ['apps-release-website', 'apps-release-detect'],
+    ['interviewer-release-build', 'legacy-release-detect'],
+    ['architect-release-build', 'legacy-release-detect'],
+    ['interviewer-mirror', 'legacy-release-detect'],
+    ['architect-mirror', 'legacy-release-detect'],
+    ['interviewer-release-publish', 'legacy-release-detect'],
+    ['architect-release-publish', 'legacy-release-detect'],
+  ]) {
+    const body = job(jobName);
+    assert.ok(body, `${jobName} exists`);
+    assert.match(body, new RegExp(`needs[:\\s\\[][^]*?${root}`));
+    assert.match(
+      body,
+      new RegExp(`needs\\.${root}\\.outputs\\.\\w+_released == 'true'`),
+      `${jobName} is gated on ${root}'s release decision`,
+    );
+  }
+});
+
+// One branch can back pull requests into several bases (say `schema-9` and
+// `main`), and their merge trees differ. These two tests run the real
+// carry-forward script and the real report-key script against stand-ins for
+// GitHub, and fail if a verdict or a report crosses from one pull request to
+// the other.
+test('carry-forward-statuses copies a verdict only from runs of the same pull request and base', async () => {
+  const script =
+    parsedWorkflow.jobs['carry-forward-statuses'].steps[0].with.script;
+  const AsyncFunction = async function () {}.constructor;
+  // The title GitHub gives a pull request run, rendered from the workflow's
+  // own `run-name` format string.
+  const format = parsedWorkflow['run-name'].match(/format\('([^']+)'/)?.[1];
+  assert.ok(format, 'the workflow titles pull request runs with run-name');
+  const titleOf = (number, base, prTitle) =>
+    format.replace('{0}', number).replace('{1}', base).replace('{2}', prTitle);
+  // Both pull requests from the branch are open, so GitHub lists BOTH on every
+  // one of the branch's runs: `pull_requests` cannot tell the runs apart, and
+  // the title is the only thing that can.
+  const run = (id, number, base, jobConclusion, displayTitle) => ({
+    id,
+    run_number: id,
+    head_sha: `sha-${id}`,
+    html_url: `https://example.test/runs/${id}`,
+    display_title:
+      displayTitle ??
+      (number === null ? 'a push' : titleOf(number, base, 'Release')),
+    pull_requests: [
+      { number: 5, base: { ref: 'main' } },
+      { number: 7, base: { ref: 'schema-9' } },
+    ],
+    jobConclusion,
+  });
+  const execute = async (runs, env) => {
+    const created = [];
+    const github = {
+      rest: {
+        actions: {
+          listWorkflowRunsForRepo: async () => ({
+            data: { workflow_runs: runs },
+          }),
+          listJobsForWorkflowRun: async ({ run_id: runId }) => ({
+            data: {
+              jobs: [
+                {
+                  name: 'docs-preview-checks',
+                  conclusion: runs.find(({ id }) => id === runId).jobConclusion,
+                  html_url: `https://example.test/jobs/${runId}`,
+                },
+              ],
+            },
+          }),
+        },
+        checks: { create: async (args) => created.push(args) },
+      },
+    };
+    const saved = { ...process.env };
+    Object.assign(process.env, {
+      FLAG_DOCS: 'false',
+      FLAG_WEBSITE: 'true',
+      PR_HEAD_REF: 'changeset-release/documentation',
+      PR_HEAD_SHA: 'sha-current',
+      PR_NUMBER: '5',
+      PR_BASE_REF: 'main',
+      ...env,
+    });
+    try {
+      await new AsyncFunction('github', 'context', 'core', script)(
+        github,
+        {
+          repo: { owner: 'o', repo: 'r' },
+          runId: 999,
+          sha: 'sha-current',
+        },
+        { info() {} },
+      );
+    } finally {
+      for (const key of Object.keys(process.env)) {
+        if (!(key in saved)) delete process.env[key];
+      }
+      Object.assign(process.env, saved);
+    }
+    return created;
+  };
+
+  // The newest run is the other pull request's (same branch, base schema-9)
+  // and failed; the older run is this pull request's and passed. Only the
+  // latter may be carried.
+  let created = await execute(
+    [run(3, 7, 'schema-9', 'failure'), run(2, 5, 'main', 'success')],
+    {},
+  );
+  assert.equal(created.length, 1);
+  assert.equal(created[0].conclusion, 'success');
+  assert.match(created[0].output.summary, /#2\b/);
+
+  // Nothing from another pull request is ever carried.
+  created = await execute([run(3, 7, 'schema-9', 'success')], {});
+  assert.deepEqual(created, []);
+
+  // A pull request retargeted to another base starts over.
+  created = await execute([run(2, 5, 'main', 'success')], {
+    PR_BASE_REF: 'schema-9',
+  });
+  assert.deepEqual(created, []);
+
+  // PR #55 is not PR #5, and a run with a title this workflow did not give
+  // it (one started before `run-name` existed) cannot be proven to match.
+  created = await execute([run(2, 55, 'main', 'success')], {});
+  assert.deepEqual(created, []);
+  created = await execute(
+    [run(2, 5, 'main', 'success', 'Release the documentation site')],
+    {},
+  );
+  assert.deepEqual(created, []);
+});
+
+test('e2e-report keys a pull request report by its number and sweeps by open pull request', () => {
+  const meta = parsedWorkflow.jobs['e2e-report'].steps.find(
+    ({ id }) => id === 'meta',
+  );
+  const dir = mkdtempSync(join(tmpdir(), 'e2e-report-meta-'));
+  try {
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    // `git ls-remote` lists two branches; `gh api` lists the open pull
+    // requests, one of them from a branch that is gone.
+    writeFileSync(
+      join(bin, 'git'),
+      '#!/bin/sh\nprintf "aaa\\trefs/heads/feat/x\\nbbb\\trefs/heads/gh-pages\\n"\n',
+      { mode: 0o755 },
+    );
+    writeFileSync(
+      join(bin, 'gh'),
+      '#!/bin/sh\nif [ "$GH_FAIL" = 1 ]; then exit 1; fi\nprintf "feat/x\\t11\\nfeat/x\\t12\\ngone/branch\\t13\\n"\n',
+      { mode: 0o755 },
+    );
+    const execute = (env) => {
+      const output = join(dir, 'output');
+      writeFileSync(output, '');
+      rmSync(join(dir, 'live-slugs.txt'), { force: true });
+      const result = spawnSync('bash', ['-e', '-c', meta.run], {
+        encoding: 'utf8',
+        env: {
+          PATH: `${bin}:${process.env.PATH}`,
+          GITHUB_OUTPUT: output,
+          GITHUB_REPOSITORY: 'o/r',
+          GH_TOKEN: 'token',
+          RUNNER_TEMP: dir,
+          REF: 'feat/x',
+          ...env,
+        },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      const outputs = Object.fromEntries(
+        readFileSync(output, 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => line.split(/=(.*)/s).slice(0, 2)),
+      );
+      const live = existsSync(join(dir, 'live-slugs.txt'))
+        ? readFileSync(join(dir, 'live-slugs.txt'), 'utf8')
+            .split('\n')
+            .filter(Boolean)
+        : null;
+      return { outputs, live };
+    };
+
+    const first = execute({ PR_NUMBER: '11' });
+    const second = execute({ PR_NUMBER: '12' });
+    const push = execute({ PR_NUMBER: '' });
+    // Two pull requests from one branch never share a directory ...
+    assert.notEqual(first.outputs.slug, second.outputs.slug);
+    assert.match(first.outputs.slug, /^feat-x-[0-9a-f]{8}-pr11$/);
+    assert.match(second.outputs.slug, /^feat-x-[0-9a-f]{8}-pr12$/);
+    // ... the number-less key is still reported so the old directory can be
+    // dropped, and a run with no pull request keeps using it.
+    assert.equal(first.outputs.legacy_slug, push.outputs.slug);
+    assert.match(first.outputs.legacy_slug, /^feat-x-[0-9a-f]{8}$/);
+    // Every open pull request's key is live, so the sweep keeps its report;
+    // the key of a pull request that is no longer open is not.
+    for (const key of [first.outputs.slug, second.outputs.slug]) {
+      assert.ok(first.live.includes(key), `${key} is live`);
+    }
+    assert.ok(first.live.includes(first.outputs.legacy_slug));
+    assert.ok(!first.live.some((key) => key.endsWith('-pr99')));
+    assert.ok(first.live.some((key) => key.startsWith('gone-branch-')));
+
+    // A failed pull-request listing removes the file: the sweep is skipped
+    // rather than deleting every pull request's report on doubt.
+    assert.equal(execute({ PR_NUMBER: '11', GH_FAIL: '1' }).live, null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  const merge = parsedWorkflow.jobs['e2e-report'].steps.find(
+    ({ id }) => id === 'merge',
+  );
+  assert.match(merge.env.LEGACY_SLUG, /steps\.meta\.outputs\.legacy_slug/);
+  assert.match(
+    merge.run,
+    /local legacy="merged\/\$job\/\$LEGACY_SLUG"[\s\S]*?rm -rf "\$legacy"/,
+    'a report under the old number-less key is dropped',
+  );
+});
+
+test('a rerun of an older run never updates reports or the comment for a retargeted pull request', () => {
+  const guard = parsedWorkflow.jobs['e2e-report'].steps.find(
+    ({ id }) => id === 'guard',
+  );
+  const dir = mkdtempSync(join(tmpdir(), 'e2e-report-guard-'));
+  try {
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    // The pull request as GitHub reports it now: `<head sha> <base ref>`.
+    writeFileSync(
+      join(bin, 'gh'),
+      '#!/bin/sh\nif [ -z "$LIVE" ]; then exit 1; fi\necho "$LIVE"\n',
+      { mode: 0o755 },
+    );
+    const current = (live) => {
+      const output = join(dir, 'output');
+      writeFileSync(output, '');
+      const result = spawnSync('bash', ['-e', '-c', guard.run], {
+        encoding: 'utf8',
+        env: {
+          PATH: `${bin}:${process.env.PATH}`,
+          GITHUB_OUTPUT: output,
+          GITHUB_REPOSITORY: 'o/r',
+          GH_TOKEN: 'token',
+          PR_NUMBER: '5',
+          EVENT_HEAD_SHA: 'aaa',
+          EVENT_BASE_REF: 'main',
+          LIVE: live,
+        },
+      });
+      assert.equal(result.status, 0, result.stderr);
+      return readFileSync(output, 'utf8').trim();
+    };
+    assert.equal(current('aaa main'), 'current=true');
+    // The head moved on.
+    assert.equal(current('bbb main'), 'current=false');
+    // Same head, but the pull request now targets another base: the older
+    // run describes a different merge tree and shares this one's report key.
+    assert.equal(current('aaa schema-9'), 'current=false');
+    // An API failure proceeds, as before.
+    assert.equal(current(''), 'current=true');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert.match(
+    guard.env.EVENT_BASE_REF,
+    /github\.event\.pull_request\.base\.ref/,
+  );
+});
+
+test('every reader of earlier runs, releases or release PRs is scoped to the base it describes', () => {
+  // Jobs and steps keyed on a release branch's NAME must also require the
+  // base main: the same branch can back a pull request into an integration
+  // branch, and that is not the release PR.
+  for (const jobName of [
+    'docs-preview-checks',
+    'website-preview-checks',
+    'version-packages-freshness',
+  ]) {
+    assert.match(
+      job(jobName),
+      /github\.base_ref == 'main'/,
+      `${jobName} requires the release PR's base`,
+    );
+  }
+  assert.match(
+    parsedWorkflow.jobs['e2e-policy'].steps.find(({ id }) => id === 'policy')
+      .env.BASE_REF,
+    /github\.base_ref/,
+    'the E2E policy is told the pull request base',
+  );
+  assert.match(
+    parsedWorkflow.jobs.detect.steps.find(({ id }) => id === 'flags').env
+      .HEAD_REF,
+    /github\.base_ref == 'main' && github\.head_ref/,
+    'only a pull request into main counts as the Studio release PR',
+  );
+  // Lookups of "the" release PR by head branch name.
+  assert.match(
+    job('version-packages-freshness'),
+    /pulls\?state=open&base=main&head=/,
+  );
+  assert.match(job('release'), /--base main --head changeset-release\/main/);
 });
 
 test('superseded CI runs are cancelled for every pull request', () => {
@@ -594,10 +950,7 @@ test('short quality checks share one setup without joining the critical path', (
   assert.match(support, /pnpm check:changesets/);
   assert.match(support, /pnpm check:compat-protocols/);
   assert.match(support, /pnpm check:mapbox-tokens/);
-  assert.match(
-    support,
-    /pnpm --filter @codaco\/studio-server check:schema-docs/,
-  );
+  assert.match(support, /pnpm --filter @codaco\/studio-api check:schema-docs/);
   // Through turbo, so the guard suite is cached like every other test task.
   assert.match(support, /turbo run \/\/#test:scripts/);
   assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
@@ -674,18 +1027,18 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   // nor the sharding can be quietly re-broken.
   assert.match(
     testJob,
-    /pnpm exec turbo run test --concurrency=1 \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
+    /pnpm exec turbo run test \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
     'the affected path scopes to the PR base and to this shard',
   );
   // The fallback runs whenever the diff touches anything outside the turbo
   // input trees — including an edit to this very workflow file, which is how
   // most changes to the job itself are exercised. Without its own assertion,
   // a shard restriction dropped or misquoted here would leave every shard
-  // running the whole workspace, and only the generic --concurrency=1 check
+  // running the whole workspace, and no other assertion
   // would have looked at the line.
   assert.match(
     testJob,
-    /pnpm exec turbo run test --concurrency=1 "\$\{SHARD_FILTERS\[@\]\}"/,
+    /pnpm exec turbo run test "\$\{SHARD_FILTERS\[@\]\}"/,
     'the full-suite fallback is scoped to this shard too',
   );
   // Both invocations, and no others: a third turbo run without the shard
@@ -796,26 +1149,114 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   );
 });
 
-test('workspace test suites run one at a time', () => {
+test('every CI turbo invocation is capped at one task, job-wide', () => {
   // Every vitest sizes its fork pool to the runner's CPUs, so one suite
   // already fills the 4-vCPU runner; concurrent suites starve each other
   // into 20s timeouts without shortening the job (PR #1801).
-  const testJob = job('test');
-  assert.ok(testJob, 'test job exists');
-  const testRuns =
-    testJob.match(/pnpm exec turbo run test\b(?:[^\n]*\\\n)*[^\n]*/g) ?? [];
-  assert.ok(testRuns.length >= 2, 'test job runs turbo test on both branches');
-  for (const run of testRuns) {
-    assert.match(run, /--concurrency=1/, `capped: ${run}`);
+  //
+  // This used to be asserted per invocation, which is how `quality-support`
+  // came to run `turbo run typecheck` uncapped and kill the runner on a pull
+  // request that invalidated six packages at once (#2023). The cap is now one
+  // variable per workflow, so this guards that rather than each call site.
+  let capped = 0;
+  for (const file of readdirSync(WORKFLOW_DIR)) {
+    const source = readFileSync(new URL(file, WORKFLOW_DIR), 'utf8');
+
+    // A per-invocation flag would override the workflow's variable and drift
+    // from it, which is the arrangement #2023 replaced. The continuation group
+    // matters: these commands are routinely wrapped across `\`-continued
+    // lines, and `test:storybook` was written that way until this change, so a
+    // line-bounded pattern would miss the most likely way the flag comes back.
+    assert.doesNotMatch(
+      source,
+      /turbo run(?:[^\n]*\\\n)*[^\n]*--concurrency/,
+      `${file} passes --concurrency at a call site instead of setting TURBO_CONCURRENCY`,
+    );
+
+    if (!/exec turbo run/.test(source)) continue;
+    assert.match(
+      source,
+      TURBO_CAP,
+      `${file} runs turbo without setting TURBO_CONCURRENCY`,
+    );
+    capped += 1;
   }
+  // A rename of a workflow that runs turbo must not silently empty this loop.
+  assert.ok(
+    capped >= 5,
+    `expected every turbo workflow to be capped, saw ${capped}`,
+  );
 
   const seedJob = job('seed-turbo-cache');
   assert.ok(seedJob, 'seed-turbo-cache job exists');
-  assert.match(seedJob, /pnpm exec turbo run test --concurrency=1/);
+  assert.match(seedJob, /pnpm exec turbo run test/);
   assert.doesNotMatch(
     seedJob,
     /turbo run (?:build|typecheck)[^\n]*\btest\b/,
     'the seed does not run tests in the same turbo invocation as build or typecheck',
+  );
+});
+
+test('turbo runs at the one version the root package.json pins', () => {
+  // A step that fetches its own turbo drifts from the installed one: the
+  // Studio image pruned with 2.10.4, change detection listed packages with
+  // 2.9.6 and the Netlify deploy-preview ignore commands queried with 2.10.4,
+  // so a turbo.json key that only the installed 2.11.5 knew failed the Studio
+  // stack build, silently emptied change detection, and built every preview
+  // the ignore commands should have skipped.
+  const pinned = rootPackage.devDependencies.turbo;
+  assert.match(
+    pinned,
+    /^\d+\.\d+\.\d+$/,
+    'root package.json pins turbo exactly, so a fetch of that version matches the lockfile',
+  );
+
+  const actionDir = new URL('../../.github/actions/', import.meta.url);
+  const dockerfile = new URL('../../apps/studio/Dockerfile', import.meta.url);
+  const appsDir = new URL('../../apps/', import.meta.url);
+  const netlifyConfigs = readdirSync(appsDir)
+    .map((app) => new URL(`${app}/netlify.toml`, appsDir))
+    .filter((url) => existsSync(url));
+  const sources = [
+    ...readdirSync(WORKFLOW_DIR).map((file) => new URL(file, WORKFLOW_DIR)),
+    ...readdirSync(actionDir, { recursive: true })
+      .filter((file) => file.endsWith('.yml'))
+      .map((file) => new URL(file, actionDir)),
+    dockerfile,
+    ...netlifyConfigs,
+  ];
+  for (const url of sources) {
+    assert.doesNotMatch(
+      readFileSync(url, 'utf8'),
+      /(?<![\w-])turbo@\d/,
+      `${url.pathname} hard-codes a turbo version instead of reading the root pin`,
+    );
+  }
+
+  // The callers without an install must read the pin, not drop turbo.
+  const readsPin = /require\('\.\/package\.json'\)\.devDependencies\.turbo/;
+  assert.match(readFileSync(dockerfile, 'utf8'), readsPin);
+  assert.match(readFileSync(dockerfile, 'utf8'), /dlx "turbo@\$\(node -p/);
+  assert.match(job('detect'), readsPin);
+  assert.match(job('detect'), /npx --yes "turbo@\$\{TURBO_VERSION\}" ls/);
+
+  // Each ignore command has already changed to the repository root, so
+  // ./package.json is the root manifest.
+  let ignoreCommands = 0;
+  for (const url of netlifyConfigs) {
+    const source = readFileSync(url, 'utf8');
+    if (!source.includes('query affected')) continue;
+    assert.match(
+      source,
+      /npx --yes \\"turbo@\$\(node -p \\"require\('\.\/package\.json'\)\.devDependencies\.turbo\\"\)\\" query affected/,
+      `${url.pathname} queries turbo without reading the root pin`,
+    );
+    ignoreCommands += 1;
+  }
+  // A move of the Netlify configs must not silently empty this loop.
+  assert.ok(
+    ignoreCommands >= 5,
+    `expected the five Netlify ignore commands, saw ${ignoreCommands}`,
   );
 });
 
@@ -1118,7 +1559,7 @@ test('release-side jobs stop once their main commit has been superseded', () => 
   );
   assert.match(
     releaseJob,
-    /gh pr list --repo "\$GITHUB_REPOSITORY" --state open \\\n\s+--head changeset-release\/main --json number/,
+    /gh pr list --repo "\$GITHUB_REPOSITORY" --state open \\\n\s+--base main --head changeset-release\/main --json number/,
   );
   assert.match(releaseJob, /gh pr close "\$number"/);
 
@@ -1156,14 +1597,14 @@ test('a stale Version Packages PR cannot merge', () => {
   assert.match(condition, /github\.event_name == 'merge_group'/);
   assert.match(
     condition,
-    /github\.event_name == 'pull_request'\s+&& github\.head_ref == 'changeset-release\/main'/,
+    /github\.event_name == 'pull_request'\s+&& github\.base_ref == 'main'\s+&& github\.head_ref == 'changeset-release\/main'/,
   );
   // The queue batches entries, each built on the ones ahead of it, and a
   // group's ref names only its last PR — membership must come from ancestry
   // of the open release PR's head, never from the ref suffix.
   assert.match(
     freshness,
-    /pulls\?state=open&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
+    /pulls\?state=open&base=main&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
   );
   assert.match(
     freshness,
@@ -1563,13 +2004,16 @@ test('the studio-stack job runs every variant through up, assert and down', () =
   assert.ok(studioStack, 'studio-stack job exists');
 
   const variants = stackTestVariants();
-  // The reference stack and every swap docs/self-host/swap.md documents.
+  // The reference stack, every swap docs/self-host/swap.md documents, and the
+  // stack with a second API replica (docs/self-host/run.md).
   assert.deepEqual(variants, [
     'external-bucket',
+    'external-bucket-azure',
     'external-postgres',
     'external-redis',
     'own-proxy',
     'reference',
+    'two-api',
   ]);
 
   for (const variant of variants) {
@@ -1593,6 +2037,23 @@ test('the studio-stack job runs every variant through up, assert and down', () =
     variants.length,
     'each down.sh step is if: always()',
   );
+});
+
+// The object-store contract suite inside @codaco/studio-api#test refuses to
+// skip under CI, so every job that runs that suite has to start the dev Garage
+// and Azurite before it — in the job, ahead of the suite, not merely somewhere.
+test('every job running the Studio server suite starts its object stores first', () => {
+  for (const name of ['test-studio-server', 'seed-turbo-cache']) {
+    const body = job(name);
+    assert.ok(body, `${name} job exists`);
+    const start = body.indexOf(
+      'pnpm --filter @codaco/studio-api dev:object-stores',
+    );
+    const suite = body.indexOf("turbo run '@codaco/studio-api#test'");
+    assert.ok(suite > -1, `${name} runs the Studio server suite`);
+    assert.ok(start > -1, `${name} starts the dev object stores`);
+    assert.ok(start < suite, `${name} starts them before the suite runs`);
+  }
 });
 
 test('the stack-test scripts and the workflow agree on the variant list', () => {
@@ -1632,6 +2093,234 @@ test('own-proxy has a guide block to extract its configuration from', () => {
     );
   }
 });
+
+function runDetectFlag(pkg, env) {
+  const detectJob = job('detect');
+  const definition = detectJob.match(
+    /^(?<indent> +)flag\(\) \{\n[\s\S]*?^\k<indent>\}$/m,
+  );
+  assert.ok(definition, 'detect defines flag()');
+  const body = definition[0]
+    .split('\n')
+    .map((line) => line.slice(definition.groups.indent.length))
+    .join('\n');
+  const script = [
+    'set -eo pipefail',
+    `npx() {
+      case "$*" in
+        *"--filter=@codaco/known..."*) echo '{"packages":{"items":[{"path":"packages/known"}]}}' ;;
+        *) echo "x No package found with name '$*' in workspace" >&2; return 1 ;;
+      esac
+    }`,
+    body,
+    `result=$(flag ${JSON.stringify(pkg)})`,
+    'echo "result=$result"',
+  ].join('\n');
+  return spawnSync('bash', ['-c', script], {
+    encoding: 'utf8',
+    env: {
+      PATH: process.env.PATH,
+      TURBO_VERSION: '0.0.0',
+      PREV: '',
+      CURR: 'HEAD',
+      FORCE_RUN: 'false',
+      WORKFLOW_CHANGED: 'false',
+      ...env,
+    },
+  });
+}
+
+test('detect fails closed on a flag naming no workspace package', () => {
+  const known = runDetectFlag('@codaco/known', {});
+  assert.equal(known.status, 0, known.stderr);
+  assert.match(known.stdout, /^result=true$/m);
+
+  for (const forced of [
+    {},
+    { FORCE_RUN: 'true' },
+    { WORKFLOW_CHANGED: 'true' },
+    { PREV: 'HEAD' },
+  ]) {
+    const unknown = runDetectFlag('@codaco/renamed-away', forced);
+    assert.notEqual(
+      unknown.status,
+      0,
+      `a stale name answers ${unknown.stdout} under ${JSON.stringify(forced)}`,
+    );
+    assert.doesNotMatch(unknown.stdout, /^result=/m);
+    assert.match(
+      unknown.stderr,
+      /::error::detect: '@codaco\/renamed-away' names no workspace package/,
+    );
+  }
+});
+
+// ── Flags that decide what the quality gate requires ──────────────────────
+//
+// `quality` requires a conditional job only when its detect flag is true and
+// reads no earlier run's verdict, so every such flag must be judged on the
+// whole pull request. A push-to-push flag would let an unrelated push after a
+// failing run skip the job and pass the gate.
+
+// The detect outputs `quality` requires a job on, each proved cumulative by
+// `runGateSelection` below.
+const GATE_FLAGS = ['studio', 'studio_upgrade'];
+
+test('every job quality requires on a detect flag is decided by a cumulative flag', () => {
+  const qualityJob = job('quality');
+  const needs = qualityJob
+    .match(/^ {4}needs:\n(?<list>(?: {6}- \S+\n)+)/m)
+    ?.groups?.list.match(/(?<=- )\S+/g);
+  assert.ok(needs?.length, 'quality lists its needs');
+  // Flags read by the `if:` of a job quality needs, and flags quality itself
+  // reads to decide whether a job is required.
+  const selecting = new Set();
+  for (const name of needs) {
+    const condition = job(name)?.match(/^ {4}if: [\s\S]*?(?=^ {4}\S)/m)?.[0];
+    for (const [, flag] of condition?.matchAll(
+      /needs\.detect\.outputs\.(\w+)/g,
+    ) ?? []) {
+      selecting.add(flag);
+    }
+  }
+  const required = new Set(
+    [...qualityJob.matchAll(/needs\.detect\.outputs\.(\w+)/g)].map(
+      ([, flag]) => flag,
+    ),
+  );
+  assert.deepEqual(
+    [...selecting].sort((a, b) => a.localeCompare(b)),
+    GATE_FLAGS,
+    'a job quality needs is selected by a detect flag not proved cumulative',
+  );
+  assert.deepEqual(
+    [...required].sort((a, b) => a.localeCompare(b)),
+    GATE_FLAGS,
+    'quality requires a job on a detect flag not proved cumulative',
+  );
+});
+
+// Runs detect's gate block — the merge base, the studio flag (which also
+// defines the stack's path list) and the upgrade flag — against a throwaway
+// repository. `flag` is stubbed by the package's paths — studio-api and
+// studio-sync stand in for its dependency closure — and diffs over whatever
+// PREV it is handed, so the block's merge-base range is exercised for real.
+// Each entry of `pushes` is one commit; PREV is the last push's parent, as on
+// a `synchronize`, and origin/main is the commit before the first push.
+function runGateSelection({ headRef = '', pushes = [] }) {
+  const detectJob = job('detect');
+  const block = detectJob.match(
+    /^(?<indent> +)gate_base="\$PREV"\n[\s\S]*?^\k<indent>studio_upgrade=false\n[\s\S]*?^\k<indent>fi$/m,
+  );
+  assert.ok(block, 'detect computes the gate flags in one block');
+  const stub = [
+    'flag() {',
+    '  [[ -z "$PREV" ]] && { echo true; return; }',
+    '  git diff --quiet "$PREV" "$CURR" -- apps/studio/api packages/studio-sync && echo false || echo true',
+    '}',
+  ].join('\n');
+  const body = [
+    stub,
+    block[0]
+      .split('\n')
+      .map((line) => line.slice(block.groups.indent.length))
+      .join('\n'),
+    ...GATE_FLAGS.map((flag) => `echo "${flag}=$${flag}"`),
+  ].join('\n');
+  const repo = mkdtempSync(join(tmpdir(), 'gate-flags-detect-'));
+  try {
+    const git = (...args) =>
+      execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8' }).trim();
+    git('init', '-q');
+    git('config', 'user.email', 'ci@example.org');
+    git('config', 'user.name', 'CI');
+    writeFileSync(join(repo, 'README'), 'base\n');
+    git('add', '-A');
+    git('commit', '-qm', 'base');
+    git('update-ref', 'refs/remotes/origin/main', 'HEAD');
+    for (const [index, changed] of pushes.entries()) {
+      for (const file of changed) {
+        mkdirSync(dirname(join(repo, file)), { recursive: true });
+        writeFileSync(join(repo, file), `push ${index}\n`);
+      }
+      git('add', '-A');
+      git('commit', '-q', '--allow-empty', '-m', `push ${index}`);
+    }
+    const result = spawnSync('bash', ['-c', `set -eo pipefail\n${body}`], {
+      cwd: repo,
+      encoding: 'utf8',
+      env: {
+        PATH: process.env.PATH,
+        GITHUB_EVENT_NAME: 'pull_request',
+        GITHUB_BASE_REF: 'main',
+        HEAD_REF: headRef,
+        FORCE_RUN: 'false',
+        // The push-to-push answer, set so a flag that leans on it shows.
+        WORKFLOW_CHANGED: 'false',
+        PREV: git('rev-parse', 'HEAD^1'),
+        CURR: git('rev-parse', 'HEAD'),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return Object.fromEntries(
+      GATE_FLAGS.map((flag) => [
+        flag,
+        result.stdout.match(new RegExp(`^${flag}=(?<value>.*)$`, 'm'))?.groups
+          ?.value,
+      ]),
+    );
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+}
+
+test('detect selects studio-stack on the whole pull request', () => {
+  // Anything in the api image's package graph, the stack's files outside it,
+  // and the workflow that defines the job — each on its own.
+  for (const file of [
+    'apps/studio/api/src/server.ts',
+    'packages/studio-sync/src/jobs.ts',
+    'apps/studio/Dockerfile',
+    'apps/studio/docker-compose.yml',
+    'apps/studio/docker-compose.local.yml',
+    'apps/studio/.env.example',
+    'apps/studio/stack-test/run.sh',
+    'apps/studio/docs/self-host/upgrade.md',
+    '.github/workflows/ci-and-release.yml',
+    '.dockerignore',
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'patches/some-package.patch',
+    'turbo.json',
+  ]) {
+    assert.equal(
+      runGateSelection({ pushes: [[file]] }).studio,
+      'true',
+      `a change to ${file} selects studio-stack`,
+    );
+    // The gap this guards: a later push that touches nothing the stack reads
+    // still runs it, so a failed stack test cannot be skipped past.
+    assert.equal(
+      runGateSelection({ pushes: [[file], ['README.md']] }).studio,
+      'true',
+      `an unrelated push after a change to ${file} still selects studio-stack`,
+    );
+  }
+  // Studio's web app is not in the api image's graph and does not select it,
+  // nor do the upgrade lane's own inputs.
+  for (const file of [
+    'apps/studio/web/src/main.tsx',
+    'apps/studio/release-test/run.sh',
+  ]) {
+    assert.equal(runGateSelection({ pushes: [[file]] }).studio, 'false');
+  }
+  assert.equal(
+    runGateSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] })
+      .studio,
+    'false',
+  );
+}, 120_000);
 
 test('studio-stack is selected by detect and required by the quality gate', () => {
   const detectJob = job('detect');
@@ -1690,5 +2379,266 @@ test('studio-stack is selected by detect and required by the quality gate', () =
     qualityJob,
     /if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_STACK_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
     'quality fails when a required studio-stack did not succeed',
+  );
+});
+
+// ── The Studio upgrade lane (#1901) ────────────────────────────────────────
+//
+// `apps/studio/release-test/run.sh` is the whole lane; the job runs it and
+// nothing else, so these tests pin what selects it, what it is given, and
+// that the gate cannot read a job that never ran as a pass.
+
+test('detect selects the upgrade lane whenever what the api image is built from changes, and for its own inputs', () => {
+  const detectJob = job('detect');
+  assert.match(
+    detectJob,
+    /studio_upgrade: \$\{\{ steps\.flags\.outputs\.studio_upgrade \}\}/,
+    'detect publishes the studio_upgrade flag',
+  );
+  assert.match(
+    detectJob,
+    /HEAD_REF: \$\{\{ github\.base_ref == 'main' && github\.head_ref \|\| '' \}\}/,
+    'detect receives the head ref of a pull request into main',
+  );
+
+  // Every Studio release PR, whatever it changed.
+  assert.equal(
+    runGateSelection({
+      headRef: 'changeset-release/studio',
+      pushes: [['README.md']],
+    }).studio_upgrade,
+    'true',
+  );
+  // Anything in the api image's package graph, the stack's files, the lane's
+  // own inputs and the workflow that defines the job — each on its own.
+  for (const file of [
+    'apps/studio/api/migrations/0002_next/delta.sql',
+    'apps/studio/api/src/secrets/verify.ts',
+    'apps/studio/api/scripts/sync-fingerprint.ts',
+    'apps/studio/api/scripts/apply.ts',
+    'packages/studio-sync/src/jobs.ts',
+    'apps/studio/docs/self-host/upgrade.md',
+    'apps/studio/docs/self-host/backup.md',
+    'apps/studio/Dockerfile',
+    'apps/studio/docker-compose.yml',
+    'apps/studio/docker-compose.local.yml',
+    'apps/studio/release-test/run.sh',
+    'apps/studio/release-test/window.mjs',
+    'apps/studio/web/public/maintenance.html',
+    '.github/workflows/ci-and-release.yml',
+    '.dockerignore',
+    'package.json',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    'patches/some-package.patch',
+    'turbo.json',
+  ]) {
+    assert.equal(
+      runGateSelection({ pushes: [[file]] }).studio_upgrade,
+      'true',
+      `a change to ${file} selects the upgrade lane`,
+    );
+    assert.equal(
+      runGateSelection({ pushes: [[file], ['README.md']] }).studio_upgrade,
+      'true',
+      `an unrelated push after a change to ${file} still selects the lane`,
+    );
+  }
+  // Judged on the whole pull request: a later push that touches nothing the
+  // lane reads still runs it, so a failed lane cannot be skipped past.
+  assert.equal(
+    runGateSelection({
+      pushes: [['apps/studio/api/src/db/migrate.ts'], ['README.md']],
+    }).studio_upgrade,
+    'true',
+    'an unrelated push after an upgrade-path push still selects the lane',
+  );
+  // Studio's web app is not in the api image's graph and does not select it.
+  assert.equal(
+    runGateSelection({ pushes: [['apps/studio/web/src/main.tsx']] })
+      .studio_upgrade,
+    'false',
+  );
+  // Nothing outside Studio selects it.
+  assert.equal(
+    runGateSelection({ pushes: [['apps/architect/x.ts'], ['README.md']] })
+      .studio_upgrade,
+    'false',
+  );
+}, 120_000);
+
+test('studio-upgrade runs the lane and is required by the quality gate', () => {
+  const upgrade = job('studio-upgrade');
+  assert.ok(upgrade, 'studio-upgrade job exists');
+  assert.ok(
+    existsSync(
+      new URL('../../apps/studio/release-test/run.sh', import.meta.url),
+    ),
+    'apps/studio/release-test/run.sh exists on disk',
+  );
+  assert.match(
+    upgrade,
+    /run: apps\/studio\/release-test\/run\.sh --runs A,B\n/,
+  );
+  assert.match(
+    upgrade,
+    /needs\.detect\.outputs\.studio_upgrade == 'true'/,
+    'the job is gated on its flag',
+  );
+  for (const excluded of ['merge_group', 'push']) {
+    assert.match(
+      upgrade,
+      new RegExp(`github\\.event_name != '${excluded}'`),
+      `the job never runs on ${excluded}`,
+    );
+  }
+  // Run C pulls a tagged release's images from ghcr.io, logging in with the
+  // job's token, which needs the permission to read packages.
+  assert.match(upgrade, /packages: read/);
+  assert.match(upgrade, /GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
+  // build-next.sh seals against history and run C checks out a tag.
+  assert.match(upgrade, /fetch-depth: 0/);
+
+  const qualityJob = job('quality');
+  assert.match(qualityJob, /^ {6}- studio-upgrade$/m, 'quality needs the job');
+  assert.match(
+    qualityJob,
+    /STUDIO_UPGRADE_REQUIRED: \$\{\{ needs\.detect\.outputs\.studio_upgrade \}\}/,
+  );
+  assert.match(
+    qualityJob,
+    /STUDIO_UPGRADE_RESULT: \$\{\{ needs\.studio-upgrade\.result \}\}/,
+  );
+  assert.match(
+    qualityJob,
+    /if \[\[ "\$STUDIO_UPGRADE_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_UPGRADE_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
+    'quality fails when a required studio-upgrade did not succeed',
+  );
+});
+
+// PostHog resolves a minified stack frame by matching the chunk ID injected
+// into the bundle at build time against an uploaded map, so maps are only
+// useful when they come from the very build that produced the deployed
+// artefact. Each app below both wires `withPostHogConfig`/the Vite plugin into
+// its build config and is deployed from a build this workflow runs, so the
+// credentials have to reach that build step — silently losing them turns every
+// future exception in that app back into unresolved frames.
+const SOURCE_MAP_UPLOADING_RELEASES = {
+  'apps-release-architect': '@codaco/architect',
+  'apps-release-interviewer': '@codaco/interviewer',
+  'apps-release-documentation': '@codaco/documentation',
+  'apps-release-website': 'networkcanvas.com',
+  'refresh-website-after-classic-release': 'networkcanvas.com',
+};
+
+test('every production build that uploads source maps gets the credentials', () => {
+  for (const [jobName, filter] of Object.entries(
+    SOURCE_MAP_UPLOADING_RELEASES,
+  )) {
+    const steps = parsedWorkflow.jobs[jobName]?.steps;
+    assert.ok(steps, `${jobName} exists`);
+
+    const buildStep = steps.find((step) =>
+      step.run?.includes(`--filter=${filter}`),
+    );
+    assert.ok(buildStep, `${jobName} builds ${filter}`);
+
+    assert.equal(
+      buildStep.env?.POSTHOG_PERSONAL_API_KEY,
+      '${{ secrets.POSTHOG_PERSONAL_API_KEY }}',
+      `${jobName}'s build step receives POSTHOG_PERSONAL_API_KEY`,
+    );
+    assert.equal(
+      buildStep.env?.POSTHOG_PROJECT_ID,
+      '${{ secrets.POSTHOG_PROJECT_ID }}',
+      `${jobName}'s build step receives POSTHOG_PROJECT_ID`,
+    );
+  }
+});
+
+test('a Fresco preview on Netlify migrates only its own database', () => {
+  // Deploy previews used to read the production DATABASE_URL and run the
+  // production build. A preview of the schema-9 branch that ran
+  // setup-database.ts migrated the sandbox's protocols and interviews to a
+  // schema main refuses to run, and every interview link on the live
+  // deployment failed (12 Oct 2026). Previews now get a Neon branch of their
+  // base's database, and build-preview.ts migrates it only when
+  // PREVIEW_DATABASE_BRANCH names the preview's own branch.
+  const toml = readFileSync(
+    new URL('../../apps/fresco/netlify.toml', import.meta.url),
+    'utf8',
+  );
+
+  const commands = new Map();
+  let section = null;
+  for (const line of toml.split('\n')) {
+    const header = /^\[([^\]]+)\]\s*$/.exec(line);
+    if (header) {
+      section = header[1];
+      continue;
+    }
+    const command = /^command\s*=\s*"([^"]*)"\s*$/.exec(line);
+    if (command && section) commands.set(section, command[1]);
+  }
+
+  const scriptBody = (command) => {
+    const script = /^pnpm (?:run )?([\w:-]+)$/.exec(command)?.[1];
+    assert.ok(script, `"${command}" is not a pnpm script call`);
+    const body = frescoPackage.scripts[script];
+    assert.ok(body, `apps/fresco/package.json has no "${script}" script`);
+    return body;
+  };
+
+  assert.match(
+    scriptBody(commands.get('build')),
+    /setup-database/,
+    'the production build must still run setup-database.ts',
+  );
+  for (const context of ['context.deploy-preview', 'context.branch-deploy']) {
+    assert.equal(
+      scriptBody(commands.get(context)),
+      'tsx ./scripts/build-preview.ts',
+      `${context} must decide through build-preview.ts whether to migrate`,
+    );
+  }
+
+  const previewWorkflow = parse(
+    readFileSync(new URL('fresco-preview-database.yml', WORKFLOW_DIR), 'utf8'),
+  );
+  assert.deepEqual(previewWorkflow.on.pull_request.types, [
+    'opened',
+    'reopened',
+    'synchronize',
+    'edited',
+    'closed',
+  ]);
+  const steps = [
+    ...previewWorkflow.jobs.provision.steps,
+    ...previewWorkflow.jobs.teardown.steps,
+  ].filter((step) => step.run?.includes('fresco-preview-database.mjs'));
+  assert.equal(steps.length, 2, 'one provision step and one teardown step');
+  for (const step of steps) {
+    assert.equal(
+      step.env.NETLIFY_SITE_ID,
+      '${{ secrets.NETLIFY_SITE_ID_FRESCO }}',
+    );
+    assert.equal(step.env.NEON_API_KEY, '${{ secrets.NEON_API_KEY }}');
+    assert.equal(step.env.NEON_PROJECT_ID, '${{ secrets.NEON_PROJECT_ID }}');
+    // Pull requests sharing a head branch share its database; the script
+    // needs this one's number to find the others.
+    assert.equal(step.env.PR_NUMBER, '${{ github.event.pull_request.number }}');
+    assert.equal(step.env.GITHUB_TOKEN, '${{ github.token }}');
+    assert.match(step.run, /--pr "\$PR_NUMBER"/);
+    // Branch names reach the script through the environment, never inlined
+    // into the shell, where a crafted name could run commands.
+    assert.doesNotMatch(step.run, /\$\{\{/);
+  }
+  assert.match(
+    previewWorkflow.jobs.provision.if,
+    /github\.event\.action != 'closed'/,
+  );
+  assert.match(
+    previewWorkflow.jobs.teardown.if,
+    /github\.event\.action == 'closed'/,
   );
 });

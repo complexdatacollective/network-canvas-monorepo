@@ -117,6 +117,24 @@ describe('localized layout navigation', () => {
         'https://networkcanvas.com/es/get-started/',
       );
     }
+    // Updates lives on the website, another origin from here, so it opens in a
+    // new tab like the other cross-host resource links.
+    for (const link of screen.getAllByRole('link', { name: 'Novedades' })) {
+      expect(link).toHaveAttribute(
+        'href',
+        'https://networkcanvas.com/es/updates/',
+      );
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noreferrer');
+    }
+    cleanup();
+
+    renderWithIntl(<Header />, 'es');
+    for (const link of screen.getAllByRole('link', { name: 'Novedades' })) {
+      expect(link).toHaveAttribute('href', '/updates');
+      expect(link).not.toHaveAttribute('target');
+      expect(link).not.toHaveAttribute('rel');
+    }
   });
 
   it('marks animated navigation for its pre-hydration entrance state', () => {
@@ -166,6 +184,9 @@ describe('localized layout navigation', () => {
     expect(
       screen.getByRole('link', { name: 'Política de privacidad' }),
     ).toBeInTheDocument();
+    const updatesLink = screen.getByRole('link', { name: 'Novedades' });
+    expect(updatesLink).toHaveAttribute('href', '/es/updates/');
+    expect(updatesLink).toHaveAttribute('target', '_self');
     expect(
       screen.getByText(/Derechos de autor de Complex Data Collective/),
     ).toBeInTheDocument();

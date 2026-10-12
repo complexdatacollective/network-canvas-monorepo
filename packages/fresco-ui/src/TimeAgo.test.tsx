@@ -3,13 +3,19 @@ import userEvent from '@testing-library/user-event';
 import { Profiler } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
-import { frescoUiCatalogs } from './locales/catalogs';
+import { frescoUiCatalogLoaders } from './locales/catalogs';
 import TimeAgo from './TimeAgo';
 
 const DAY_MS = 86400000;
+
+const catalogs = createCatalogSource(frescoUiCatalogLoaders);
+await catalogs.load('es');
 
 // Captures the rendered text at every React commit: the flicker this guards
 // against was the first committed frame being empty (NoSSRWrapper's mount
@@ -37,7 +43,7 @@ describe('TimeAgo', () => {
       <AppI18nProvider
         locale={locale}
         locales={ecosystemLocales}
-        messages={frescoUiCatalogs[locale]}
+        messages={catalogs.peek(locale)}
       >
         <TimeAgo date={date} />
       </AppI18nProvider>
@@ -68,7 +74,7 @@ describe('TimeAgo', () => {
       <AppI18nProvider
         locale="es"
         locales={ecosystemLocales}
-        messages={frescoUiCatalogs.es}
+        messages={catalogs.peek('es')}
       >
         <TimeAgo date={new Date(Date.now() - 30_000)} />
       </AppI18nProvider>,

@@ -1,11 +1,12 @@
-import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 import { render, type RenderResult } from '@testing-library/react';
 import { useMemo, type ReactNode } from 'react';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
-import { ProtocolBuilderProvider } from '../../../state/context.ts';
+import {
+  ProtocolBuilderProvider,
+  type ProtocolBuilderAdapter,
+} from '../../../state/context.ts';
 import {
   ResourceClientProvider,
   useResourceClient,
@@ -23,7 +24,7 @@ import {
 export const TEST_EDIT_ID = 'edit-under-test';
 
 export type ResourceContextFrameProps = Readonly<{
-  client: ProtocolBuilderClient;
+  adapter: ProtocolBuilderAdapter;
   protocolId: string;
   /** Which edit this is; `TEST_EDIT_ID` unless a test needs a second one. */
   editId?: string;
@@ -31,7 +32,7 @@ export type ResourceContextFrameProps = Readonly<{
 }>;
 
 /**
- * A resource control in the context it really reads: the package's own client
+ * A resource control in the context it really reads: the package's own adapter
  * context, with the staging tracker around it that every resource control is
  * given, and the dialog provider a browser opens into.
  *
@@ -42,19 +43,12 @@ export type ResourceContextFrameProps = Readonly<{
  * wants `renderResourceEditor` instead, which mounts the whole of it.
  */
 export function ResourceContextFrame({
-  client,
+  adapter,
   protocolId,
   editId = TEST_EDIT_ID,
   children,
 }: ResourceContextFrameProps) {
-  const value = useMemo(
-    () => ({
-      client,
-      protocolId,
-      utils: createTanstackQueryUtils(client),
-    }),
-    [client, protocolId],
-  );
+  const value = useMemo(() => ({ adapter, protocolId }), [adapter, protocolId]);
 
   return (
     <DialogProvider>
@@ -68,12 +62,12 @@ export function ResourceContextFrame({
 }
 
 export function renderInResourceContext(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
   children: ReactNode,
 ): RenderResult {
   return render(
-    <ResourceContextFrame client={client} protocolId={protocolId}>
+    <ResourceContextFrame adapter={adapter} protocolId={protocolId}>
       {children}
     </ResourceContextFrame>,
   );
@@ -87,7 +81,7 @@ export function renderInResourceContext(
  * whenever what the edit has staged changes.
  */
 export function renderResourceClient(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
 ): () => ResourceClient {
   const seen: { current: ResourceClient | undefined } = { current: undefined };
@@ -97,7 +91,7 @@ export function renderResourceClient(
     return null;
   }
 
-  renderInResourceContext(client, protocolId, <Probe />);
+  renderInResourceContext(adapter, protocolId, <Probe />);
 
   return () => {
     if (seen.current === undefined) {

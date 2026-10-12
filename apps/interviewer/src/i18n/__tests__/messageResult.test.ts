@@ -6,12 +6,13 @@ import {
   createMessageError,
   formatMessageError,
 } from '@codaco/app-i18n/messages';
+import type { LocalizedMessage } from '~/i18n/messageResult';
 import { enrolWithPin } from '~/lib/auth/api';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 const spanish = createAppIntl({
   locale: 'es',
-  messages: interviewerCatalogs.es,
+  messages: await interviewerCatalogSource.load('es'),
 });
 
 beforeEach(() => localStorage.clear());
@@ -23,7 +24,7 @@ describe('localized authentication failures', () => {
     expect(result.localizedMessage?.descriptor.id).toBe(
       'interviewer.vault.pinLength',
     );
-    const message = result.localizedMessage ?? {
+    const message: LocalizedMessage = result.localizedMessage ?? {
       descriptor: commonMessages.genericError,
     };
     const storedError = createMessageError(message.descriptor, message.values);

@@ -13,6 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { test } from 'vitest';
+import { parse } from 'yaml';
 
 import { vendorSharedVitestConfig } from '../release/mirror-app.mjs';
 import { resolveManifest } from '../release/resolve-manifest.mjs';
@@ -32,6 +33,23 @@ const dependencyGroups = [
   'peerDependencies',
   'optionalDependencies',
 ];
+
+test('Vitest resolves a single peer dependency context across the workspace', () => {
+  const lockfile = parse(
+    readFileSync(path.join(repoRoot, 'pnpm-lock.yaml'), 'utf8'),
+  );
+  const resolutions = Object.keys(lockfile.snapshots).filter((key) =>
+    key.startsWith('vitest@'),
+  );
+
+  // Two peer contexts load Vitest twice and register its Chai plugins twice,
+  // breaking rejected-error assertions even when both copies have the same version.
+  assert.equal(
+    resolutions.length,
+    1,
+    `Vitest must have one workspace resolution to avoid duplicate assertion plugins: ${resolutions.join(', ')}`,
+  );
+});
 
 function collectWorkspaceManifests(directory) {
   const manifests = [];

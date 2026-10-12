@@ -41,19 +41,22 @@ export default definePreview({
      * Outermost inside the locale, and the reason it exists is the a11y check
      * rather than the look of a story.
      *
-     * Every dialog in this package fades in. The a11y addon runs axe the
-     * moment a play function returns, so a play that opens a dialog and
-     * asserts on what is inside it is measured while that fade is still
-     * running — and axe reads the composited colour of a half-transparent
-     * element. That is reported as `color-contrast`, on a control whose
-     * contrast is fine: 1.01 between `#f1f0fb` text and `#efeef9` behind it is
-     * not a palette, it is an element at opacity 0. Four stories failed that
-     * way, and which four varied between runs.
+     * Every dialog in this package fades in, and a row dialog morphs out of
+     * the row that opened it through a shared `layoutId`. The a11y addon runs
+     * axe the moment a play function returns, so a play that opens a dialog
+     * and asserts on what is inside it would be measured while that fade is
+     * still running — and axe reads the composited colour of a
+     * half-transparent element. That is reported as `color-contrast`, on a
+     * control whose contrast is fine: 1.01 between `#f1f0fb` text and
+     * `#efeef9` behind it is not a palette, it is an element at opacity 0.
      *
      * `disableAnimationsForAutomation` is fresco-ui's own detection of a
      * driven browser — WebDriver, Chromatic, `?disableAnimations=1` — and it
-     * turns off both Motion and Base UI's animation bookkeeping. A person
-     * reading this Storybook sees every animation as before.
+     * turns off Motion, layout and `layoutId` animations included, along with
+     * Base UI's animation bookkeeping, so a dialog is drawn settled on the
+     * frame it opens. It does not reach plain CSS transitions; a control's
+     * own short colour or focus-ring transition still runs. A person reading
+     * this Storybook sees every animation as before.
      */
     (Story) => (
       <AnimationProvider disableAnimationsForAutomation>

@@ -1,6 +1,6 @@
 'use client';
 
-import { type Table } from '@tanstack/react-table';
+import { type RowData, type Table } from '@tanstack/react-table';
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,6 +14,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '../Button';
 import SelectField from '../form/fields/Select/Native';
 import Paragraph from '../typography/Paragraph';
+import { type DataTableFeatures } from './features';
 import { pageSizes } from './types';
 
 const messages = defineMessages({
@@ -55,17 +56,18 @@ const messages = defineMessages({
   },
 });
 
-type DataTablePaginationProps<TData> = {
-  table: Table<TData>;
+type DataTablePaginationProps<TData extends RowData> = {
+  table: Table<DataTableFeatures, TData>;
 };
 
-export function DataTablePagination<TData>({
+export function DataTablePagination<TData extends RowData>({
   table,
 }: DataTablePaginationProps<TData>) {
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
   const intl = useAppIntl();
   const pageCount = table.getPageCount();
+  const pagination = table.atoms.pagination.get();
   const showPageCount = pageCount > 0;
 
   return (
@@ -82,7 +84,7 @@ export function DataTablePagination<TData>({
           name="pageSize"
           aria-label={intl.formatMessage(messages.rowsPerPage)}
           size="sm"
-          value={`${table.getState().pagination.pageSize}`}
+          value={`${pagination.pageSize}`}
           onChange={(value) => {
             table.setPageSize(Number(value));
           }}
@@ -94,13 +96,13 @@ export function DataTablePagination<TData>({
             label: intl.formatNumber(size),
             value: size,
           }))}
-          placeholder={intl.formatNumber(table.getState().pagination.pageSize)}
+          placeholder={intl.formatNumber(pagination.pageSize)}
         />
       </div>
       {showPageCount && (
         <div className="flex items-center justify-center text-sm font-medium">
           {intl.formatMessage(messages.pageOf, {
-            page: table.getState().pagination.pageIndex + 1,
+            page: pagination.pageIndex + 1,
             pageCount,
           })}
         </div>

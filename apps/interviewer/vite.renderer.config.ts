@@ -20,7 +20,7 @@ const ARRAYBUFFER_QUERY_RE = /(\?|&)arraybuffer(?:&|$)/;
 
 // Resolves `import.meta.glob('...', { query: '?arraybuffer', ... })` entries
 // (used to bundle the sample/development protocols' media assets — see
-// src/lib/protocol/bundledProtocols.ts) into a module exporting the file's raw
+// src/lib/protocol/bundledSampleProtocol.ts) into a module exporting the file's raw
 // bytes as a `Uint8Array`, inlined as base64 at transform time. Vite has no
 // built-in `?arraybuffer` query (only `?url` and `?raw`); `?url` would require
 // a runtime `fetch` to read the bytes, which a bundled/offline install must
@@ -66,9 +66,7 @@ export const appVersion = pkg.version;
 // else stays 'self'.
 export const CSP_DIRECTIVES = [
   "default-src 'self'",
-  // posthog-js loads its remote project config and enabled SDK extensions
-  // (including exception autocapture) as scripts from our controlled relay.
-  `script-src 'self' ${POSTHOG_RELAY_ORIGIN}`,
+  "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   // Protocol audio/video assets are decrypted to Blobs and played via object

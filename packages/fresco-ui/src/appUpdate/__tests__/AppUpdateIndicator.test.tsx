@@ -89,6 +89,36 @@ describe('AppUpdateIndicator', () => {
     await waitFor(() => expect(onInstall).toHaveBeenCalledOnce());
   });
 
+  it('cannot be closed while the update installs, and can again once it fails', async () => {
+    let finish: (installed: boolean) => void = () => undefined;
+    const onInstall = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderAvailableUpdate(onInstall);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Install and reload' }));
+    const dialog = screen.getByRole('dialog');
+
+    expect(
+      within(dialog).queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    finish(false);
+    expect(
+      await screen.findByText(/update could not be applied/i),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('dialog')).getAllByRole('button', {
+        name: 'Close',
+      }),
+    ).not.toHaveLength(0);
+  });
+
   it('offers a retry when activation fails', async () => {
     const onInstall = vi.fn().mockResolvedValue(false);
     renderAvailableUpdate(onInstall);

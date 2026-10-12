@@ -79,6 +79,29 @@ describe('Dropzone', () => {
     expect(onDrop).not.toHaveBeenCalled();
   });
 
+  it('does not open the file picker from a click or key press while disabled', () => {
+    const openPicker = vi.spyOn(HTMLInputElement.prototype, 'click');
+    render(<Dropzone accepts={['.json']} onDrop={vi.fn()} disabled />);
+    const dropzone = screen.getByRole('button', { name: 'Upload file' });
+
+    fireEvent.click(dropzone);
+    fireEvent.keyDown(dropzone, { key: 'Enter', code: 'Enter' });
+    fireEvent.keyDown(dropzone, { key: ' ', code: 'Space' });
+
+    expect(openPicker).not.toHaveBeenCalled();
+    openPicker.mockRestore();
+  });
+
+  it('opens the file picker from a click while enabled', () => {
+    const openPicker = vi.spyOn(HTMLInputElement.prototype, 'click');
+    render(<Dropzone accepts={['.json']} onDrop={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Upload file' }));
+
+    expect(openPicker).toHaveBeenCalled();
+    openPicker.mockRestore();
+  });
+
   it('stays in the tab order while an import is running', async () => {
     // The control disables itself for the duration of an import, and
     // react-dropzone answers a disabled dropzone by omitting `tabIndex`

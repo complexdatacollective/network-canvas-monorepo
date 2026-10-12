@@ -345,6 +345,11 @@ export default function AppUpdateIndicator({
       <Dialog
         open={open}
         closeDialog={() => setOpen(false)}
+        // Installing activates the new version and reloads whatever happens to
+        // the dialog, so it cannot be left as if the install had been called
+        // off. The install times out rather than hanging, and a failure
+        // releases it.
+        dismissible={installState !== 'installing'}
         title={intl.formatMessage(
           isAvailable
             ? messages.updateAvailableTitle

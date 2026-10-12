@@ -3,6 +3,7 @@ import { motion, type Variants } from 'motion/react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { cx } from '~/utils/cva';
 
 import { timelineRowGrid } from './rowLayout';
@@ -50,16 +51,25 @@ const InsertButton = ({
   variants,
 }: InsertButtonProps) => {
   const intl = useAppIntl();
+  const readOnly = useProtocolReadOnly();
   return (
     <motion.button
       type="button"
+      // Read-only keeps the resting dot, so the spine and every row stay where
+      // they are, but there is nothing to reveal: dropping `group` is what
+      // silences the hover styling on the children, and the point is hidden
+      // from assistive technology rather than announced once per stage as a
+      // dimmed "Add stage here".
+      disabled={readOnly}
+      aria-hidden={readOnly || undefined}
       aria-label={intl.formatMessage(messages.addStageHereBeforeStage, {
         position: position,
         nextStageName: nextStageName,
       })}
       className={cx(
         timelineRowGrid,
-        'focusable group cursor-pointer px-4 py-1',
+        'focusable px-4 py-1',
+        !readOnly && 'group cursor-pointer',
       )}
       onClick={onClick}
       variants={variants}

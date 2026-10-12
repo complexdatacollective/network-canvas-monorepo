@@ -10,9 +10,12 @@ export function isRightToLeft(element: HTMLElement): boolean {
 
 export function measureHorizontalOverflow(
   element: HTMLElement,
-  { excludePadding = false }: { excludePadding?: boolean } = {},
+  {
+    excludePadding = false,
+    scrollWidth = element.scrollWidth,
+  }: { excludePadding?: boolean; scrollWidth?: number } = {},
 ): HorizontalOverflow {
-  const hidden = Math.max(0, element.scrollWidth - element.clientWidth);
+  const hidden = Math.max(0, scrollWidth - element.clientWidth);
   if (hidden === 0) return { left: 0, right: 0, inlineEnd: 0 };
 
   const styles = getComputedStyle(element);
@@ -28,6 +31,39 @@ export function measureHorizontalOverflow(
     right: Math.max(0, right - padRight),
     inlineEnd: rightToLeft ? left : right,
   };
+}
+
+/**
+ * The width a scroll container's content spans in layout: from the start of
+ * its first in-flow child to the end of its last, plus its inline padding.
+ *
+ * `scrollWidth` also counts transformed and out-of-flow descendants, so it
+ * runs past this while children animate, and Chrome does not always shrink it
+ * back once they settle. Offset geometry ignores transforms, and children
+ * taken out of flow (such as Motion's `popLayout` exits) are skipped. Taking
+ * the span rather than the last child's end holds in either direction, since
+ * a right-to-left row overflows to negative offsets.
+ */
+export function measureRestingScrollWidth(element: HTMLElement): number {
+  let start = Number.POSITIVE_INFINITY;
+  let end = Number.NEGATIVE_INFINITY;
+
+  for (const child of element.children) {
+    if (!(child instanceof HTMLElement)) continue;
+    const { display, position } = getComputedStyle(child);
+    if (display === 'none' || position === 'absolute' || position === 'fixed') {
+      continue;
+    }
+    start = Math.min(start, child.offsetLeft);
+    end = Math.max(end, child.offsetLeft + child.offsetWidth);
+  }
+
+  const styles = getComputedStyle(element);
+  const padding =
+    (Number.parseFloat(styles.paddingLeft) || 0) +
+    (Number.parseFloat(styles.paddingRight) || 0);
+
+  return Math.max(0, end - start) + padding;
 }
 
 export function setHorizontalOverflowVariables(

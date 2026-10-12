@@ -1,48 +1,8 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
-import type { ConfigMessage, MessageConfig } from '~/i18n/formatConfig';
-import categoricalIcon from '~/images/landing/categorical.svg';
-import interfaceIcon from '~/images/landing/interface.svg';
-import menuOrdIcon from '~/images/landing/menu-ord.svg';
-import menuSociogramIcon from '~/images/landing/menu-sociogram.svg';
-import nameGeneratorIcon from '~/images/landing/name-generator.svg';
-import relationshipIcon from '~/images/landing/relationship.svg';
+import type { StageType } from '@codaco/protocol-validation';
+import type { ConfigMessage } from '~/i18n/formatConfig';
+
 const configMessages = defineMessages({
-  information: {
-    id: 'architect.home.timelineScript.config.information',
-    defaultMessage: 'Information',
-    description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
-  },
-  nameGenerator: {
-    id: 'architect.home.timelineScript.config.nameGenerator',
-    defaultMessage: 'Name Generator',
-    description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
-  },
-  ordinalBin: {
-    id: 'architect.home.timelineScript.config.ordinalBin',
-    defaultMessage: 'Ordinal Bin',
-    description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
-  },
-  categoricalBin: {
-    id: 'architect.home.timelineScript.config.categoricalBin',
-    defaultMessage: 'Categorical Bin',
-    description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
-  },
-  sociogram: {
-    id: 'architect.home.timelineScript.config.sociogram',
-    defaultMessage: 'Sociogram',
-    description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
-  },
-  narrative: {
-    id: 'architect.home.timelineScript.config.narrative',
-    defaultMessage: 'Narrative',
-    description:
-      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
-  },
   welcome: {
     id: 'architect.home.timelineScript.config.welcome',
     defaultMessage: 'Welcome',
@@ -103,9 +63,21 @@ const configMessages = defineMessages({
     description:
       'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
   },
+  whoKnowsWhom: {
+    id: 'architect.home.timelineScript.config.whoKnowsWhom',
+    defaultMessage: 'Who knows whom',
+    description:
+      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+  },
   trustLevel: {
     id: 'architect.home.timelineScript.config.trustLevel',
     defaultMessage: 'Trust level',
+    description:
+      'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
+  },
+  sociogram: {
+    id: 'architect.home.timelineScript.config.sociogram',
+    defaultMessage: 'Sociogram',
     description:
       'Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated.',
   },
@@ -141,66 +113,9 @@ const configMessages = defineMessages({
   },
 });
 
-export type StageKind =
-  | 'info'
-  | 'namegen'
-  | 'cat'
-  | 'ordbin'
-  | 'sociogram'
-  | 'narrative';
-
-type StageMeta = {
-  key: StageKind;
-  label: string;
-  color: string;
-  icon: string;
-};
-
-export const STAGE_META: Record<StageKind, MessageConfig<StageMeta>> = {
-  info: {
-    key: 'info',
-    label: configMessages.information,
-    color: 'hsl(237 79% 67%)',
-    icon: interfaceIcon,
-  },
-  namegen: {
-    key: 'namegen',
-    label: configMessages.nameGenerator,
-    color: 'hsl(342 77% 51%)',
-    icon: nameGeneratorIcon,
-  },
-  ordbin: {
-    key: 'ordbin',
-    label: configMessages.ordinalBin,
-    color: 'hsl(27 93% 54%)',
-    icon: menuOrdIcon,
-  },
-  cat: {
-    key: 'cat',
-    label: configMessages.categoricalBin,
-    color: 'hsl(103 46% 56%)',
-    icon: categoricalIcon,
-  },
-  sociogram: {
-    key: 'sociogram',
-    label: configMessages.sociogram,
-    color: 'hsl(46 100% 47%)',
-    icon: menuSociogramIcon,
-  },
-  narrative: {
-    key: 'narrative',
-    label: configMessages.narrative,
-    color: 'hsl(237 79% 67%)',
-    icon: relationshipIcon,
-  },
-};
-
-export type TimelineStop = {
-  key: StageKind;
-  label: string;
-  sub: string;
-};
-
+// `sub` is written here rather than read from `INTERFACE_NAMES`: those are the
+// New Stage screen's names, deliberately long enough to pick an interface by
+// ("Name Generator (using forms)"), and this is a tracking-wide 12px caption.
 const demoSubtitleMessages = defineMessages({
   information: {
     id: 'architect.home.demoSubtitle.information',
@@ -208,9 +123,27 @@ const demoSubtitleMessages = defineMessages({
     description:
       'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
   },
+  egoForm: {
+    id: 'architect.home.demoSubtitle.egoForm',
+    defaultMessage: 'Ego Form',
+    description:
+      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
+  },
   nameGenerator: {
     id: 'architect.home.demoSubtitle.nameGenerator',
     defaultMessage: 'Name Generator',
+    description:
+      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
+  },
+  quickAdd: {
+    id: 'architect.home.demoSubtitle.quickAdd',
+    defaultMessage: 'Quick Add',
+    description:
+      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
+  },
+  roster: {
+    id: 'architect.home.demoSubtitle.roster',
+    defaultMessage: 'Roster',
     description:
       'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
   },
@@ -223,6 +156,18 @@ const demoSubtitleMessages = defineMessages({
   ordinalBin: {
     id: 'architect.home.demoSubtitle.ordinalBin',
     defaultMessage: 'Ordinal Bin',
+    description:
+      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
+  },
+  dyadCensus: {
+    id: 'architect.home.demoSubtitle.dyadCensus',
+    defaultMessage: 'Dyad Census',
+    description:
+      'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
+  },
+  tieStrength: {
+    id: 'architect.home.demoSubtitle.tieStrength',
+    defaultMessage: 'Tie Strength',
     description:
       'Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol.',
   },
@@ -240,92 +185,103 @@ const demoSubtitleMessages = defineMessages({
   },
 });
 
+export type TimelineStop = {
+  type: StageType;
+  label: string;
+  sub: string;
+};
+
 export const TIMELINE_SCRIPT: (Omit<TimelineStop, 'label' | 'sub'> & {
   label: ConfigMessage;
   sub: ConfigMessage;
 })[] = [
   {
-    key: 'info',
+    type: 'Information',
     label: configMessages.welcome,
     sub: demoSubtitleMessages.information,
   },
   {
-    key: 'info',
+    type: 'Information',
     label: configMessages.consent,
     sub: demoSubtitleMessages.information,
   },
   {
-    key: 'info',
+    type: 'EgoForm',
     label: configMessages.demographics,
-    sub: demoSubtitleMessages.information,
+    sub: demoSubtitleMessages.egoForm,
   },
   {
-    key: 'namegen',
+    type: 'NameGenerator',
     label: configMessages.closeTies,
     sub: demoSubtitleMessages.nameGenerator,
   },
   {
-    key: 'namegen',
+    type: 'NameGeneratorQuickAdd',
     label: configMessages.weakTies,
-    sub: demoSubtitleMessages.nameGenerator,
+    sub: demoSubtitleMessages.quickAdd,
   },
   {
-    key: 'namegen',
+    type: 'NameGeneratorRoster',
     label: configMessages.supportNetwork,
-    sub: demoSubtitleMessages.nameGenerator,
+    sub: demoSubtitleMessages.roster,
   },
   {
-    key: 'cat',
+    type: 'CategoricalBin',
     label: configMessages.relationshipType,
     sub: demoSubtitleMessages.categoricalBin,
   },
   {
-    key: 'cat',
+    type: 'CategoricalBin',
     label: configMessages.groupMembership,
     sub: demoSubtitleMessages.categoricalBin,
   },
   {
-    key: 'ordbin',
+    type: 'OrdinalBin',
     label: configMessages.contactFrequency,
     sub: demoSubtitleMessages.ordinalBin,
   },
   {
-    key: 'ordbin',
+    type: 'OrdinalBin',
     label: configMessages.closeness,
     sub: demoSubtitleMessages.ordinalBin,
   },
   {
-    key: 'ordbin',
-    label: configMessages.trustLevel,
-    sub: demoSubtitleMessages.ordinalBin,
+    type: 'DyadCensus',
+    label: configMessages.whoKnowsWhom,
+    sub: demoSubtitleMessages.dyadCensus,
   },
   {
-    key: 'sociogram',
+    type: 'TieStrengthCensus',
+    label: configMessages.trustLevel,
+    sub: demoSubtitleMessages.tieStrength,
+  },
+  {
+    type: 'Sociogram',
     label: configMessages.sociogram,
     sub: demoSubtitleMessages.connections,
   },
   {
-    key: 'sociogram',
+    type: 'Sociogram',
     label: configMessages.supportPaths,
     sub: demoSubtitleMessages.connections,
   },
   {
-    key: 'narrative',
+    type: 'Narrative',
     label: configMessages.storyExchange,
     sub: demoSubtitleMessages.narrative,
   },
   {
-    key: 'narrative',
+    type: 'Narrative',
     label: configMessages.keyMoments,
     sub: demoSubtitleMessages.narrative,
   },
   {
-    key: 'info',
+    type: 'Information',
     label: configMessages.debrief,
     sub: demoSubtitleMessages.information,
   },
   {
-    key: 'info',
+    type: 'Information',
     label: configMessages.closeOut,
     sub: demoSubtitleMessages.information,
   },

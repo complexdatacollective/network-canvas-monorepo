@@ -7,6 +7,18 @@ import {
 } from './entityIds';
 import type { SuperProperties } from './PROPERTY_KEYS';
 
+/**
+ * The slice of a posthog-js client this package drives. Structural rather
+ * than posthog-js's `PostHog` class because every posthog-js entrypoint
+ * (`posthog-js`, `posthog-js/dist/module.no-external`, …) declares its own
+ * class with private members, so a host built on one entrypoint could not
+ * pass its client where another's class is demanded.
+ */
+export type AnalyticsClient = Pick<
+  PostHog,
+  'capture' | 'captureException' | 'register'
+>;
+
 export type EventProps = {
   [key: string]: unknown;
 };
@@ -17,7 +29,7 @@ export type Tracker = {
 };
 
 type CreateTrackerArgs = {
-  client: PostHog;
+  client: AnalyticsClient;
   superProperties: SuperProperties;
   distinctId: string;
   ownsInstance: boolean;

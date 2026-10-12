@@ -168,6 +168,32 @@ describe('NarrativePedigree node labels', () => {
     );
   });
 
+  it('shows a relationship label for a name that is still encrypted', () => {
+    const { nodesMap, edgesMap, egoId } = buildTestNetwork();
+    const uncle = nodesMap.get('uncle');
+    if (!uncle) throw new Error('Expected the uncle node');
+    nodesMap.set('uncle', {
+      ...uncle,
+      [entityAttributesProperty]: {
+        ...uncle[entityAttributesProperty],
+        [NAME_VAR]: [12, 34, 56],
+      },
+    });
+
+    const displayLabels = computeNodeDisplayLabels(
+      nodesMap,
+      edgesMap,
+      variableConfig,
+      'gamete',
+      egoId,
+    );
+
+    const label = displayLabels.get('uncle');
+    expect(typeof label).toBe('string');
+    expect(label).not.toMatch(/\d/);
+    expect(label).not.toBe('');
+  });
+
   describe('ego identification', () => {
     it('exactly one node shows "You" (the ego)', () => {
       const { nodesMap, edgesMap, egoId } = buildTestNetwork();

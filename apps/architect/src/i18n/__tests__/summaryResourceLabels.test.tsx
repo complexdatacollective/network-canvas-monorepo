@@ -6,7 +6,7 @@ import {
   screen,
   within,
 } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import Table from '~/components/Assets/Table';
@@ -16,6 +16,7 @@ import AssetManifest from '~/lib/ProtocolSummary/components/AssetManifest';
 import Contents from '~/lib/ProtocolSummary/components/Contents';
 import MapOptions from '~/lib/ProtocolSummary/components/Stage/MapOptions';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
@@ -33,6 +34,11 @@ const networkAttributes = vi.hoisted(() => [
 vi.mock('~/utils/protocols/assetTools', () => ({
   getNetworkVariables: vi.fn(async () => networkAttributes),
 }));
+
+// The provider shows a language once its catalog has loaded. Loading
+// Spanish up front lets a switch to it render synchronously, as the
+// assertions below expect.
+beforeAll(() => architectCatalogSource.load('es'));
 
 beforeEach(() => {
   localStorage.clear();

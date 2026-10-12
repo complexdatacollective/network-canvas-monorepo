@@ -1,6 +1,7 @@
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { Fingerprint, KeyRound, RectangleEllipsis } from 'lucide-react';
 import {
+  type ReactNode,
   useCallback,
   useEffect,
   useId,
@@ -15,6 +16,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import ResetFormWhenClosed from '@codaco/fresco-ui/form/ResetFormWhenClosed';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
@@ -110,6 +112,20 @@ type AuthenticationDialogCancellationProps =
 
 export type AuthenticationDialogProps = AuthenticationDialogBaseProps &
   AuthenticationDialogCancellationProps;
+
+/**
+ * Hands its children whether the enclosing form is submitting. The form store
+ * sits outside the dialog it belongs to, so the dialog's own controls cannot
+ * read it where the dialog is written.
+ */
+function WhileSubmitting({
+  children,
+}: {
+  children: (isSubmitting: boolean) => ReactNode;
+}) {
+  const isSubmitting = useFormStore((state) => state.isSubmitting);
+  return children(isSubmitting);
+}
 
 export function AuthenticationDialog(props: AuthenticationDialogProps) {
   const intl = useAppIntl();
@@ -469,73 +485,91 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
       {authenticationDialog}
       <FormStoreProvider>
         <ResetFormWhenClosed open={recoveryDialogOpen} />
-        <Dialog
-          open={recoveryDialogOpen}
-          title={intl.formatMessage(messages.recoverWithPassphrase)}
-          closeDialog={closeRecoveryDialog}
-          footer={
-            <>
-              {allowDestructiveRecovery ? (
-                <Button
-                  type="button"
-                  color="destructive"
-                  onClick={openResetDialog}
-                >
-                  {intl.formatMessage(messages.recoverByResetting)}
-                </Button>
-              ) : null}
-              <Button type="button" onClick={closeRecoveryDialog}>
-                {intl.formatMessage(commonMessages.cancel)}
-              </Button>
-              <SubmitButton
-                form={recoveryFormId}
-                submittingText={intl.formatMessage(messages.unlocking)}
-              >
-                {intl.formatMessage(messages.unlock)}
-              </SubmitButton>
-            </>
-          }
-        >
-          <UnlockLayout
-            emblem={
-              <UnlockEmblem icon={RectangleEllipsis} seed="recovery-unlock" />
-            }
-          >
-            <BaseDialog.Description render={<Paragraph emphasis="muted" />}>
-              {intl.formatMessage(
-                limited ? messages.limitedRecovery : messages.recovery,
-              )}
-            </BaseDialog.Description>
-            <FormWithoutProvider
-              id={recoveryFormId}
-              onSubmit={async (values): Promise<FormSubmissionResult> => {
-                const phrase =
-                  typeof values.passphrase === 'string'
-                    ? values.passphrase
-                    : '';
-                const result = await runAuthenticationAttempt(
-                  () => authenticateWithRecovery(phrase),
-                  () => setRecoveryOpen(false),
-                );
-                if (result.ok) {
-                  return { success: true };
-                }
-                return {
-                  success: false,
-                  formErrors: [
-                    createMessageError(
-                      result.localizedMessage?.descriptor ??
-                        messages.incorrectPassphrase,
-                      result.localizedMessage?.values,
-                    ),
-                  ],
-                };
+        <WhileSubmitting>
+          {(isSubmitting) => (
+            <Dialog
+              open={recoveryDialogOpen}
+              title={intl.formatMessage(messages.recoverWithPassphrase)}
+              closeDialog={() => {
+                if (!isSubmitting) closeRecoveryDialog();
               }}
+              // Unlocking with the recovery passphrase unlocks the app whatever
+              // happens to this dialog, so it cannot be left mid-way as if the
+              // unlock had been called off.
+              dismissible={!isSubmitting}
+              footer={
+                <>
+                  {allowDestructiveRecovery ? (
+                    <Button
+                      type="button"
+                      color="destructive"
+                      disabled={isSubmitting}
+                      onClick={openResetDialog}
+                    >
+                      {intl.formatMessage(messages.recoverByResetting)}
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={closeRecoveryDialog}
+                  >
+                    {intl.formatMessage(commonMessages.cancel)}
+                  </Button>
+                  <SubmitButton
+                    form={recoveryFormId}
+                    submittingText={intl.formatMessage(messages.unlocking)}
+                  >
+                    {intl.formatMessage(messages.unlock)}
+                  </SubmitButton>
+                </>
+              }
             >
-              <PasswordUnlockField autoFocus />
-            </FormWithoutProvider>
-          </UnlockLayout>
-        </Dialog>
+              <UnlockLayout
+                emblem={
+                  <UnlockEmblem
+                    icon={RectangleEllipsis}
+                    seed="recovery-unlock"
+                  />
+                }
+              >
+                <BaseDialog.Description render={<Paragraph emphasis="muted" />}>
+                  {intl.formatMessage(
+                    limited ? messages.limitedRecovery : messages.recovery,
+                  )}
+                </BaseDialog.Description>
+                <FormWithoutProvider
+                  id={recoveryFormId}
+                  onSubmit={async (values): Promise<FormSubmissionResult> => {
+                    const phrase =
+                      typeof values.passphrase === 'string'
+                        ? values.passphrase
+                        : '';
+                    const result = await runAuthenticationAttempt(
+                      () => authenticateWithRecovery(phrase),
+                      () => setRecoveryOpen(false),
+                    );
+                    if (result.ok) {
+                      return { success: true };
+                    }
+                    return {
+                      success: false,
+                      formErrors: [
+                        createMessageError(
+                          result.localizedMessage?.descriptor ??
+                            messages.incorrectPassphrase,
+                          result.localizedMessage?.values,
+                        ),
+                      ],
+                    };
+                  }}
+                >
+                  <PasswordUnlockField autoFocus />
+                </FormWithoutProvider>
+              </UnlockLayout>
+            </Dialog>
+          )}
+        </WhileSubmitting>
       </FormStoreProvider>
       <RecoverByResettingDialog
         open={allowRecovery && allowDestructiveRecovery && resetOpen}

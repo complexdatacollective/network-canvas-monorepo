@@ -744,7 +744,7 @@ loss. Existing schema-8 manifests still assemble exactly as fielded, then the
 single canonical v8-to-v9 migration adds the `und` declaration while producing
 the combined schema-9 contract.
 
-The shipped `apps/studio/server/scripts/protocol-demo.ts` is part of this
+The shipped `apps/studio/api/scripts/protocol-demo.ts` is part of this
 compatibility surface. Its edit step must select and update a localized prompt
 entry rather than filtering for `typeof prompt.text === 'string'`, and its diff
 display must resolve localized stage labels explicitly. The demo must complete

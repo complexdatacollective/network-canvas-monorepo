@@ -18,6 +18,7 @@ import {
 
 import ActionButton from '../components/ActionButton';
 import type { InterviewPayload } from '../contract/types';
+import { interviewCatalogSource } from '../i18n/catalog';
 import Shell from '../Shell';
 import { updateStageMetadata } from '../store/modules/session';
 
@@ -124,9 +125,17 @@ const handlers = {
   analytics: { installationId: 'test', hostApp: 'test' },
 };
 
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
+
 describe('Shell built-in interface language', () => {
   it.each([
-    { preference: 'fr', expectedLocale: 'es', expectedChoice: '__automatic' },
+    { preference: 'ja', expectedLocale: 'es', expectedChoice: '__automatic' },
     {
       preference: 'not_a_locale',
       expectedLocale: 'es',
@@ -141,7 +150,7 @@ describe('Shell built-in interface language', () => {
         <Shell
           {...handlers}
           payload={payload}
-          requestedLocale={['fr', 'es-MX']}
+          requestedLocale={['ja', 'es-MX']}
           localePreference={preference}
           disableAnalytics
         />,
@@ -345,7 +354,19 @@ describe('Shell built-in interface language', () => {
       within(language)
         .getAllByRole('option')
         .map((option) => option.getAttribute('value')),
-    ).toEqual(['__automatic', 'en', 'en-GB', 'es']);
+    ).toEqual([
+      '__automatic',
+      'en',
+      'en-GB',
+      'es',
+      'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
+      'pt-BR',
+      'it',
+      'fr',
+    ]);
     await user.selectOptions(language, 'es');
     expect(onLocaleChange).toHaveBeenLastCalledWith('es');
     expect(screen.getByRole('main')).toHaveAttribute('lang', 'es');
@@ -396,7 +417,7 @@ describe('Shell built-in interface language', () => {
       <Shell
         {...handlers}
         payload={payload}
-        requestedLocale="de"
+        requestedLocale="ja"
         disableAnalytics
       />,
     );

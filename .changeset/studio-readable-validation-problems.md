@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-client': patch
+'@codaco/studio-web': patch
 ---
 
 Every problem listed under Validation in the protocol editor now reads as a

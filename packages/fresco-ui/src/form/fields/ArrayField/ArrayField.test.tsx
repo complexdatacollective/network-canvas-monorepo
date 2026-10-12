@@ -11,14 +11,18 @@ import { MotionConfig } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders } from '@codaco/app-i18n/common';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+  mergeCatalogs,
+} from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
 import DialogProvider from '../../../dialogs/DialogProvider';
 import Surface from '../../../layout/Surface';
-import { frescoUiCatalogs } from '../../../locales/catalogs';
+import { frescoUiCatalogLoaders } from '../../../locales/catalogs';
 import ArrayField, {
   ArrayFieldDragHandle,
   stripManagedProperties,
@@ -31,6 +35,12 @@ type Item = {
   id?: string;
   label: string;
 };
+
+const catalogs = createCatalogSource(
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+);
+await catalogs.load('es');
 
 function TestItem({
   item,
@@ -908,8 +918,7 @@ describe('ArrayField', () => {
           locale={locale}
           locales={ecosystemLocales}
           messages={mergeCatalogs(
-            commonCatalogs[locale] ?? {},
-            frescoUiCatalogs[locale] ?? {},
+            catalogs.peek(locale) ?? {},
             locale === 'es' ? { [promptLabel.id]: 'pregunta' } : {},
           )}
         >

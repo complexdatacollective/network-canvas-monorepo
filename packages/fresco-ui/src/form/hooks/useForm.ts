@@ -40,6 +40,13 @@ export function useForm(config: FormConfig) {
    * off the commit instead.
    */
   const requestedErrorsRef = useRef<FlattenedErrors | null>(null);
+  /**
+   * Whether a submission is running, from the start of `handleSubmit` to its
+   * `finally`. A ref rather than the store's `isSubmitting`: the callback
+   * would read that from the render before the submission began, and a second
+   * submit event can arrive before React re-renders.
+   */
+  const submissionInFlightRef = useRef(false);
 
   const registerForm = useFormStore((state) => state.registerForm);
   const validateForm = useFormStore((state) => state.validateForm);
@@ -54,11 +61,23 @@ export function useForm(config: FormConfig) {
   const submitInvalidHandler = useFormStore(
     (state) => state.submitInvalidHandler,
   );
+  const isSubmitting = useFormStore((state) => state.isSubmitting);
 
   // Keep errors ref in sync with store using useEffect
   useLayoutEffect(() => {
     errorsRef.current = errors;
   }, [errors]);
+
+  /**
+   * A store reset (`ResetFormWhenClosed` runs one when its dialog closes)
+   * clears `isSubmitting`, but the submission it interrupted is still running
+   * and still holds the guard. Report it as submitting again, so the form
+   * shows busy and disabled rather than a submit control that does nothing.
+   * A layout effect, so the cleared state is never painted.
+   */
+  useLayoutEffect(() => {
+    if (submissionInFlightRef.current && !isSubmitting) setSubmitting(true);
+  }, [isSubmitting, setSubmitting]);
 
   /**
    * Run the invalid-submit handler once React has COMMITTED the errors.
@@ -112,6 +131,13 @@ export function useForm(config: FormConfig) {
     async (e: SyntheticEvent) => {
       e.preventDefault();
       e.stopPropagation();
+
+      // `SubmitButton` and fields disable themselves while submitting, but a
+      // submit can still come from `requestSubmit()`, another submit control,
+      // or Enter in an input that is not a field. Running it would validate
+      // and call `onSubmit` again, saving the same values twice.
+      if (submissionInFlightRef.current) return;
+      submissionInFlightRef.current = true;
       setSubmitting(true);
 
       try {
@@ -149,6 +175,7 @@ export function useForm(config: FormConfig) {
           fieldErrors: {},
         });
       } finally {
+        submissionInFlightRef.current = false;
         setSubmitting(false);
       }
     },

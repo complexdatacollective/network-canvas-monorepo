@@ -1,5 +1,5 @@
 import type { ParentConnection } from './types';
-import { chaseup } from './utils';
+import { chaseup, layerConstraints } from './utils';
 
 /**
  * Compute the generational depth of each subject in a pedigree.
@@ -60,15 +60,55 @@ export function kindepth(
 
   // --- Alignment: adjust depths so parent group members are on the same line ---
 
-  // Collect all parent groups (unique sets of parents who share children)
+  // Push every child below each of its parents after a move, repeating
+  // because a pushed child pushes its own children in turn.
+  const pushChildrenBelowParents = () => {
+    for (let pass = 0; pass < n; pass++) {
+      let changed = false;
+      for (let j = 0; j < n; j++) {
+        for (const p of parents[j]!) {
+          if (depth[j]! <= depth[p.parentIndex]!) {
+            depth[j] = depth[p.parentIndex]! + 1;
+            changed = true;
+          }
+        }
+      }
+      if (!changed) break;
+    }
+  };
+
+  // Collect all parent groups (unique sets of parents who share children).
+  // A child sits below each of its parents, so parents who would have to be
+  // level with, or above, their own descendants cannot all share a row: a
+  // daughter carrying her mother's baby, or two groups that cross one
+  // another's lines of descent. Each parent joins its group only if the
+  // groups kept so far can still all be aligned; the parents are tried from
+  // the shallowest, so an ancestor is kept ahead of a descendant.
+  const { constrain } = layerConstraints(n);
+  for (let i = 0; i < n; i++) {
+    for (const p of parents[i]!) constrain([[p.parentIndex, i]], 1);
+  }
   const groupSet = new Set<string>();
   const groups: number[][] = [];
 
   for (let i = 0; i < n; i++) {
     if (parents[i]!.length < 2) continue;
-    const memberIndices = parents[i]!.map((p) => p.parentIndex).toSorted(
-      (a, b) => a - b,
-    );
+    const [anchor, ...rest] = [
+      ...new Set(parents[i]!.map((p) => p.parentIndex)),
+    ].toSorted((a, b) => depth[a]! - depth[b]! || a - b);
+    const memberIndices = [
+      anchor!,
+      ...rest.filter((m) =>
+        constrain(
+          [
+            [anchor!, m],
+            [m, anchor!],
+          ],
+          0,
+        ),
+      ),
+    ].toSorted((a, b) => a - b);
+    if (memberIndices.length < 2) continue;
     const key = memberIndices.join(',');
     if (!groupSet.has(key)) {
       groupSet.add(key);
@@ -118,6 +158,8 @@ export function kindepth(
     const badAppearances = groups.filter((g) => g.includes(bad)).length;
     if (abad.length === 1 && badAppearances === 1) {
       depth[bad] = depth[good]!;
+      // A marry-in may still have children of their own outside this group.
+      pushChildrenBelowParents();
     } else {
       let agood = chaseup([good], parents);
 
@@ -162,27 +204,7 @@ export function kindepth(
           depth[idx] = depth[idx]! + shift;
         }
 
-        // Repair: ensure all children are below their parents
-        for (let i = 0; i <= n; i++) {
-          const atLevel: number[] = [];
-          for (let j = 0; j < n; j++) {
-            if (depth[j] === i) atLevel.push(j);
-          }
-
-          let anyChild = false;
-          for (let j = 0; j < n; j++) {
-            const personParents = parents[j]!;
-            if (personParents.length === 0) continue;
-            const hasParentAtLevel = personParents.some((p) =>
-              atLevel.includes(p.parentIndex),
-            );
-            if (hasParentAtLevel) {
-              anyChild = true;
-              depth[j] = Math.max(i + 1, depth[j]!);
-            }
-          }
-          if (!anyChild) break;
-        }
+        pushChildrenBelowParents();
       }
     }
 

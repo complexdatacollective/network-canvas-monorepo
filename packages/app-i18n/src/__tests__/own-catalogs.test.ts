@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
@@ -13,7 +14,7 @@ import {
   readTranslationSources,
 } from '../catalog-guards.ts';
 import type { ExtractedCatalog } from '../catalog-guards.ts';
-import { commonCatalogs } from '../common.ts';
+import { commonCatalogLoaders } from '../common.ts';
 import { ecosystemLocales } from '../locales.ts';
 
 const srcDir = join(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -46,8 +47,8 @@ describe('the package’s own common.* catalogs', () => {
       if (locale === SOURCE_LOCALE) continue;
 
       expect(
-        Object.keys(commonCatalogs),
-        `commonCatalogs has no entry for ${locale}`,
+        Object.keys(commonCatalogLoaders),
+        `commonCatalogLoaders has no entry for ${locale}`,
       ).toContain(locale);
 
       const path = join(srcDir, 'locales', `${locale}.json`);
@@ -69,5 +70,11 @@ describe('the package’s own common.* catalogs', () => {
           : checkFullLocale(committedEn, catalog, sources);
       expect(issues, `common catalog issues for ${locale}`).toEqual([]);
     }
+  });
+
+  it('loads each locale from its own committed catalog', async () => {
+    expect(
+      await checkCatalogLoaders(join(srcDir, 'locales'), commonCatalogLoaders),
+    ).toEqual([]);
   });
 });

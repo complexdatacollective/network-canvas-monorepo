@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-client': patch
+'@codaco/studio-web': patch
 ---
 
 Study state, audit outcome and member role chips use the shared `Badge`'s

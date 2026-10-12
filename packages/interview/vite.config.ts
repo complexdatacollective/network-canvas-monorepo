@@ -117,7 +117,8 @@ const interfaceImagesNoInlinePlugin = (): Plugin => ({
 // serialized from the render, leaving every mapping a line short).
 //
 // Deciding per chunk from its constituent modules, rather than by naming
-// entries, is what pins the `contract` and `protocol-schema-version` bundles'
+// entries, is what pins the `contract`, `protocol-schema-version` and
+// `protocol-payload` bundles'
 // server safety: they stay unmarked only for as long as no module carrying the
 // directive is reachable from them, and the moment one is, the emitted file
 // says so.
@@ -225,21 +226,29 @@ export default defineConfig({
     // is unaffected — no JS here imports `.css`; `src/styles.css` is copied
     // verbatim by cssCopyPlugin and consumed via the `./styles.css` export.
     lib: {
-      // Three entries: the main (React) public API, a server-safe `contract`
-      // bundle re-exporting only React-free utilities/types, and the standalone
-      // protocol schema compatibility constant. The React code (`Shell`,
-      // contexts) is reachable only from `index`, so it never lands in the
-      // `contract` bundle — letting server (RSC) code import the contract
-      // without evaluating any module-level `createContext`. The
-      // `protocol-schema-version` entry is its own bundle so a host's Node
-      // scripts can import just that constant.
+      // The main (React) public API, plus React-free entries a server can
+      // import: the `contract` bundle of utilities/types, the per-language
+      // `locales` loaders, and the `catalog` loader a server host awaits to
+      // hand `Shell` its messages. The React code (`Shell`, contexts) is
+      // reachable only from `index`, so it never lands in those bundles —
+      // letting server (RSC) code import them without evaluating any
+      // module-level `createContext`. `catalog` and `index` share one catalog
+      // source through a common chunk, so a language loaded through either is
+      // loaded for both. The `protocol-schema-version` and `protocol-payload`
+      // entries are their own bundles so a host's Node-loaded code can import
+      // just that constant or the payload converter.
       entry: {
         'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
+        'catalog': resolve(__dirname, 'src/i18n/catalog.ts'),
         'index': resolve(__dirname, 'src/index.ts'),
         'contract': resolve(__dirname, 'src/contract/index.ts'),
         'protocol-schema-version': resolve(
           __dirname,
           'src/protocolSchemaVersion.ts',
+        ),
+        'protocol-payload': resolve(
+          __dirname,
+          'src/contract/protocolPayload.ts',
         ),
       },
       formats: ['es'],

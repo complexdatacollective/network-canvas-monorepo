@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { useCallback, useEffect, useState } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
@@ -35,12 +36,12 @@ const UNREACHABLE = createMessageError(resourceFailureMessages.unreachable);
  * knows how to show and offer a retry for.
  */
 async function readResourceBytes(
-  resolve: () => Promise<ResourceResult<Readonly<{ url: string }>>>,
+  resolve: () => Promise<ResourceResult<Readonly<{ url: Redacted.Redacted }>>>,
 ): Promise<ResourceResult<Uint8Array>> {
   const resolved = await resolve();
   if (resolved.status !== 'ok') return resolved;
   try {
-    const response = await fetch(resolved.data.url);
+    const response = await fetch(Redacted.value(resolved.data.url));
     if (!response.ok) {
       return resourceFailure('unavailable', UNREACHABLE, { retryable: true });
     }

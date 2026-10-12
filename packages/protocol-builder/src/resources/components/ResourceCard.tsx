@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import type { ReactNode } from 'react';
 
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -50,7 +51,7 @@ export default function ResourceCard({
           <ResourcePreview
             resourceId={descriptor.id}
             kind={descriptor.kind}
-            name={descriptor.name}
+            name={Redacted.value(descriptor.name)}
             className="w-full"
           />
         )}

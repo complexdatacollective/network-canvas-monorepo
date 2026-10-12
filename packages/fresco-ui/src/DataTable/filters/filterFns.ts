@@ -1,4 +1,8 @@
-import { type Row } from '@tanstack/react-table';
+import {
+  type Row,
+  type RowData,
+  type TableFeatures,
+} from '@tanstack/react-table';
 
 import {
   type DateFilterValue,
@@ -6,8 +10,11 @@ import {
   type RangeFilterValue,
 } from './types';
 
-export function rangeFilterFn<TData>(
-  row: Row<TData>,
+export function rangeFilterFn<
+  TFeatures extends TableFeatures,
+  TData extends RowData,
+>(
+  row: Row<TFeatures, TData>,
   columnId: string,
   filterValue: RangeFilterValue,
 ): boolean {
@@ -15,8 +22,11 @@ export function rangeFilterFn<TData>(
   return value >= filterValue.min && value <= filterValue.max;
 }
 
-export function dateFilterFn<TData>(
-  row: Row<TData>,
+export function dateFilterFn<
+  TFeatures extends TableFeatures,
+  TData extends RowData,
+>(
+  row: Row<TFeatures, TData>,
   columnId: string,
   filterValue: DateFilterValue,
 ): boolean {
@@ -28,20 +38,18 @@ export function dateFilterFn<TData>(
   return date >= from && date <= to;
 }
 
-export function booleanFilterFn<TData>(
-  row: Row<TData>,
-  columnId: string,
-  filterValue: boolean,
-): boolean {
+export function booleanFilterFn<
+  TFeatures extends TableFeatures,
+  TData extends RowData,
+>(row: Row<TFeatures, TData>, columnId: string, filterValue: boolean): boolean {
   const value = row.getValue(columnId);
   return filterValue ? !!value : !value;
 }
 
-export function textFilterFn<TData>(
-  row: Row<TData>,
-  columnId: string,
-  filterValue: string,
-): boolean {
+export function textFilterFn<
+  TFeatures extends TableFeatures,
+  TData extends RowData,
+>(row: Row<TFeatures, TData>, columnId: string, filterValue: string): boolean {
   const query = filterValue.trim().toLowerCase();
   if (query.length === 0) return true;
   const cell = row.getValue(columnId);
@@ -49,8 +57,11 @@ export function textFilterFn<TData>(
   return String(cell).toLowerCase().includes(query);
 }
 
-export function facetedFilterFn<TData>(
-  row: Row<TData>,
+export function facetedFilterFn<
+  TFeatures extends TableFeatures,
+  TData extends RowData,
+>(
+  row: Row<TFeatures, TData>,
   columnId: string,
   filterValue: string[],
 ): boolean {
@@ -59,6 +70,7 @@ export function facetedFilterFn<TData>(
 }
 
 export function operatorFilterFn<
+  TFeatures extends TableFeatures,
   TData extends {
     network: {
       nodes: { type: string; count: number }[];
@@ -66,7 +78,7 @@ export function operatorFilterFn<
     };
   },
 >(
-  row: Row<TData>,
+  row: Row<TFeatures, TData>,
   _columnId: string,
   filterValue: OperatorFilterValue,
 ): boolean {

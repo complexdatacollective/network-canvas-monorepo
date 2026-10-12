@@ -1,12 +1,18 @@
 import { createLogger } from 'redux-logger';
 
+import type { SecretRedactors } from '../redactSecrets';
+
 const isTest = import.meta.env?.MODE === 'test';
 
-const logger = createLogger({
-  level: 'info',
-  collapsed: true,
-  logger: console,
-  predicate: () => !isTest,
-});
-
-export default logger;
+export const createLoggerMiddleware = ({
+  redactAction,
+  redactState,
+}: SecretRedactors) =>
+  createLogger({
+    level: 'info',
+    collapsed: true,
+    logger: console,
+    predicate: () => !isTest,
+    actionTransformer: redactAction,
+    stateTransformer: redactState,
+  });

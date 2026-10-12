@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-client': patch
+'@codaco/studio-web': patch
 ---
 
 Merge `@codaco/protocol-builder`'s own message catalog into the one the Studio

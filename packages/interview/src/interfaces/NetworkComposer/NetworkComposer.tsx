@@ -3,7 +3,7 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { AnimatePresence, useReducedMotion } from 'motion/react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -17,7 +17,6 @@ import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   isNetworkComposerStageMetadata,
-  type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -27,6 +26,8 @@ import { useAutoLayout } from '../../canvas/useAutoLayout';
 import { createCanvasStore } from '../../canvas/useCanvasStore';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useVariableLabels } from '../../forms/buildVariableLabels';
+import { useValidationNetwork } from '../../forms/useValidationNetwork';
+import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import { useNodeMeasurement } from '../../hooks/useNodeMeasurement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
@@ -42,9 +43,14 @@ import {
   getStageMetadata,
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
-import { updateNode, updateStageMetadata } from '../../store/modules/session';
+import { updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
+import { isAttributeEncrypted } from '../Anonymisation/isAttributeEncrypted';
+import type { PassphraseNoticeStatus } from '../Anonymisation/PassphraseNotice';
+import { usePassphrase } from '../Anonymisation/usePassphrase';
+import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../messages';
 import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
 import ComposerDrawer from './ComposerDrawer';
@@ -57,14 +63,6 @@ import { useComposerStore, createComposerStore } from './useComposerStore';
 import { createUndoStore } from './useUndoStore';
 
 type NetworkComposerProps = StageProps<'NetworkComposer'>;
-
-const isPosition = (value: unknown): value is { x: number; y: number } =>
-  typeof value === 'object' &&
-  value !== null &&
-  'x' in value &&
-  'y' in value &&
-  typeof value.x === 'number' &&
-  typeof value.y === 'number';
 
 const hasGroupValue = (raw: unknown, value: string): boolean => {
   if (raw == null) return false;
@@ -83,7 +81,10 @@ type DrawerEditor = {
   form: ComposerForm | undefined;
   subject: Subject;
   attributes: NcNode[typeof entityAttributesProperty];
+  passphraseStatus?: PassphraseNoticeStatus;
 };
+
+const NO_ATTRIBUTES: DrawerEditor['attributes'] = {};
 
 const NetworkComposer = (stageProps: NetworkComposerProps) => {
   const intl = useAppIntl();
@@ -111,8 +112,48 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     ? 'AUTOMATIC'
     : 'MANUAL';
 
-  const nodes = useStageSelector(getNetworkNodesForType);
-  const edges = useStageSelector(getNetworkEdges);
+  // People and relationships whose deletion has been asked for. A deletion
+  // waits its turn in the history, so until it is made they are shown as
+  // gone, and cannot be selected again.
+  const [deleting, setDeleting] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const storedNodes = useStageSelector(getNetworkNodesForType);
+  const storedEdges = useStageSelector(getNetworkEdges);
+  const nodes = useMemo(
+    () =>
+      deleting.size === 0
+        ? storedNodes
+        : storedNodes.filter(
+            (node) => !deleting.has(node[entityPrimaryKeyProperty]),
+          ),
+    [storedNodes, deleting],
+  );
+  const edges = useMemo(
+    () =>
+      deleting.size === 0
+        ? storedEdges
+        : storedEdges.filter(
+            (edge) =>
+              !deleting.has(edge[entityPrimaryKeyProperty]) &&
+              !deleting.has(edge.from) &&
+              !deleting.has(edge.to),
+          ),
+    [storedEdges, deleting],
+  );
+  const deleteEntities = useCallback(
+    (ids: readonly string[], remove: () => Promise<void>) => {
+      setDeleting((current) => new Set([...current, ...ids]));
+      void remove().finally(() => {
+        setDeleting((current) => {
+          const next = new Set(current);
+          for (const id of ids) next.delete(id);
+          return next;
+        });
+      });
+    },
+    [],
+  );
 
   const codebook = useSelector(getCodebook);
   const nodeLabel =
@@ -151,15 +192,44 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     stage.nodeForm?.fields ?? [],
   );
   const baseValidationContext = useStageSelector(getValidationContext);
+  const quickAddValidationNetwork = useValidationNetwork(
+    baseValidationContext,
+    baseValidationContext.stageSubject,
+    [stage.quickAdd],
+    // A new person, so the rules read only the others' stored answers.
+    undefined,
+  );
   const quickAddValidationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject
       ? {
           codebook: baseValidationContext.codebook,
-          network: baseValidationContext.network,
+          ...quickAddValidationNetwork,
           stageSubject: baseValidationContext.stageSubject,
           variableLabels: nodeFormVariableLabels,
         }
       : undefined;
+
+  // Names added here, and values edited in the drawer, are stored encrypted
+  // when their variables are marked encrypted, which needs a working
+  // passphrase.
+  const { passphrase, passphraseInvalid, requirePassphrase, isEnabled } =
+    usePassphrase();
+  const quickAddEncrypted = isAttributeEncrypted(
+    isEnabled,
+    stageVariables,
+    stage.quickAdd,
+  );
+  const writesEncrypted =
+    quickAddEncrypted ||
+    (stage.nodeForm?.fields ?? []).some((field) =>
+      isAttributeEncrypted(isEnabled, stageVariables, field.variable),
+    );
+  const addNodeLocked = quickAddEncrypted && (!passphrase || passphraseInvalid);
+  const { showToast } = useInterviewToast();
+
+  useEffect(() => {
+    if (writesEncrypted) requirePassphrase();
+  }, [writesEncrypted, requirePassphrase]);
 
   const canvasStoreRef = useRef(createCanvasStore());
   const canvasStore = canvasStoreRef.current;
@@ -174,6 +244,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
     subjectType: stage.subject.type,
     quickAdd: stage.quickAdd,
     layoutVariable: stage.layoutVariable,
+    useEncryption: quickAddEncrypted,
     currentStep,
     undoStore,
     dispatch,
@@ -249,41 +320,28 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const handleNodeDragEnd = useCallback(
     (nodeId: string, position: { x: number; y: number }) => {
-      const node = nodes.find((n) => n[entityPrimaryKeyProperty] === nodeId);
-      const rawPrev = node?.[entityAttributesProperty]?.[layoutVariable];
-      const previous = isPosition(rawPrev) ? rawPrev : null;
-
-      if (previous !== null) {
-        void actions.repositionNode(nodeId, position, previous);
-      } else {
-        // Node has no persisted layout position yet (e.g. auto-positioned by
-        // the simulation). No meaningful prior position to restore, so fall
-        // back to a direct update without an undo entry.
-        void dispatch(
-          updateNode({
-            nodeId,
-            attributePatch: {
-              set: { [layoutVariable]: position },
-              unset: [],
-            },
-            currentStep,
-          }),
-        );
-      }
+      void actions.repositionNode(nodeId, position);
     },
-    [actions, nodes, dispatch, layoutVariable, currentStep],
+    [actions],
   );
 
   // Nodes are added by name from the tool palette (not by tapping the canvas),
   // each landing on the next free grid cell from the top-left.
   const handleAddNode = useCallback(
     async (name: string) => {
-      const occupied = nodes
-        .map((n) => n[entityAttributesProperty]?.[layoutVariable])
-        .filter(isPosition);
-      await actions.createNodeAt(name, nextGridPosition(occupied));
+      try {
+        await actions.createNodeAt(name, nextGridPosition);
+        return true;
+      } catch (error) {
+        showToast({
+          description: intl.formatMessage(rejectedWriteMessage(error)),
+          variant: 'destructive',
+          anchor: 'forward',
+        });
+        return false;
+      }
     },
-    [nodes, layoutVariable, actions],
+    [actions, showToast, intl],
   );
 
   const handleBackgroundTap = useCallback(() => {
@@ -351,30 +409,9 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       // Complete: tap on a different node — toggle the edge undo-aware.
       const source = pendingEdgeSource;
       setPendingEdgeSource(null);
-
-      // Read live edges at call time to avoid stale-closure bugs.
-      let currentEdges: NcEdge[] = [];
-      dispatch((_, getState) => {
-        const { session: sessionState } = getState() as {
-          session: { network: { edges: NcEdge[] } };
-        };
-        currentEdges = sessionState.network.edges;
-      });
-
-      const existing = currentEdges.find(
-        (e) =>
-          e.type === edgeType &&
-          ((e.from === source && e.to === tappedId) ||
-            (e.from === tappedId && e.to === source)),
-      );
-
-      if (existing) {
-        actions.deleteEdgeById(existing[entityPrimaryKeyProperty]);
-      } else {
-        await actions.connect(source, tappedId, edgeType);
-      }
+      await actions.toggleEdge(source, tappedId, edgeType);
     },
-    [composerStore, dispatch, actions],
+    [composerStore, actions],
   );
 
   const handleEdgeTap = useCallback(
@@ -423,18 +460,19 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         const {
           selectedNodeIds: nodeIds,
           selectedEdgeId: edgeId,
-          clearSelection,
+          deselectDeleted,
         } = composerStore.getState();
         if (nodeIds.size > 0) {
-          actions.deleteNodesById([...nodeIds]);
-          clearSelection();
+          const ids = [...nodeIds];
+          deleteEntities(ids, () => actions.deleteNodesById(ids));
+          deselectDeleted();
         } else if (edgeId !== null) {
-          actions.deleteEdgeById(edgeId);
-          clearSelection();
+          deleteEntities([edgeId], () => actions.deleteEdgeById(edgeId));
+          deselectDeleted();
         }
       }
     },
-    [composerStore, undoStore, actions],
+    [composerStore, undoStore, actions, deleteEntities],
   );
 
   const handleToggleAutomaticLayout = useCallback(
@@ -568,6 +606,22 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         ) ?? null)
       : null;
 
+  // The drawer shows and edits plaintext, and its title is the quick-add
+  // name, so both are read through the passphrase.
+  const drawerFields = useMemo(
+    () => [...(stage.nodeForm?.fields ?? []), { variable: stage.quickAdd }],
+    [stage.nodeForm, stage.quickAdd],
+  );
+  const selectedNodeValues = useProtectedFormValues(
+    selectedNode,
+    drawerFields,
+    stageVariables,
+  );
+  const selectedNodePassphraseStatus: PassphraseNoticeStatus | undefined =
+    selectedNodeValues.status === 'ready'
+      ? undefined
+      : selectedNodeValues.status;
+
   const selectedEdge =
     selectedEdgeId !== null
       ? (edges.find((e) => e[entityPrimaryKeyProperty] === selectedEdgeId) ??
@@ -585,7 +639,11 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   // no form to edit (it then shows an empty state).
   const currentEditor: DrawerEditor | null = (() => {
     if (selectedNode !== null) {
-      const rawName = selectedNode[entityAttributesProperty]?.[stage.quickAdd];
+      const attributes =
+        selectedNodeValues.status === 'ready'
+          ? selectedNodeValues.values
+          : NO_ATTRIBUTES;
+      const rawName = attributes[stage.quickAdd];
       const title =
         typeof rawName === 'string' && rawName.trim() !== ''
           ? rawName
@@ -596,7 +654,8 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         title,
         form: stage.nodeForm,
         subject: stage.subject,
-        attributes: selectedNode[entityAttributesProperty],
+        attributes,
+        passphraseStatus: selectedNodePassphraseStatus,
       };
     }
     if (selectedEdge !== null) {
@@ -640,6 +699,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         nodeLabel={nodeLabel}
         quickAddTargetVariable={stage.quickAdd}
         onAddNode={handleAddNode}
+        addNodeLocked={addNodeLocked}
         quickAddValidationProps={quickAddValidationProps}
         quickAddValidationContext={quickAddValidationContext}
         groupVariable={groupVariable}
@@ -744,21 +804,21 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
             form={editor.form}
             subject={editor.subject}
             attributes={editor.attributes}
-            onSave={(id, data) => {
-              if (editor.kind === 'node') {
-                void actions.updateNodeAttributes(id, data, `node-attr:${id}`);
-              } else {
-                void actions.updateEdgeAttributes(id, data, `edge-attr:${id}`);
-              }
-            }}
+            passphraseStatus={editor.passphraseStatus}
+            onSave={(id, data) =>
+              editor.kind === 'node'
+                ? actions.updateNodeAttributes(id, data, `node-attr:${id}`)
+                : actions.updateEdgeAttributes(id, data, `edge-attr:${id}`)
+            }
             onDelete={(id) => {
               if (editor.kind === 'node') {
-                actions.deleteNodeById(id);
+                deleteEntities([id], () => actions.deleteNodeById(id));
               } else {
-                actions.deleteEdgeById(id);
+                deleteEntities([id], () => actions.deleteEdgeById(id));
               }
-              composerStore.getState().clearSelection();
+              composerStore.getState().deselectDeleted();
             }}
+            guardDraft={composerStore.getState().guardDraft}
           />
         )}
       </ComposerDrawer>

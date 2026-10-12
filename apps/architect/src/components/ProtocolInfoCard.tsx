@@ -27,6 +27,7 @@ import {
   updateProtocolDescription,
   updateProtocolName,
 } from '~/ducks/modules/activeProtocol';
+import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
 import { useRunOnce } from '~/hooks/useRunOnce';
 import { getProtocol, getProtocolName } from '~/selectors/protocol';
 import countGraphemes from '~/utils/countGraphemes';
@@ -186,6 +187,7 @@ const describeAllowance = (
 const ProtocolInfoCard = () => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
+  const readOnly = useProtocolReadOnly();
   const name = useSelector(getProtocolName);
   const protocol = useSelector(getProtocol);
   const description = protocol?.description ?? '';
@@ -378,6 +380,23 @@ const ProtocolInfoCard = () => {
     }
   }, [description]);
 
+  // Demotion to read-only discards any uncommitted draft. The controls are
+  // disabled, so nothing will commit it, and when editing returns the reloaded
+  // protocol can carry the same name and description — leaving the effects
+  // above with no change to run on and the re-enabled fields showing text that
+  // was never saved.
+  useEffect(() => {
+    if (!readOnly) {
+      return;
+    }
+    setLocalName(name ?? '');
+    setLocalDescription(description);
+    setNotice(null);
+    lastAnnouncedThreshold.current = announceThresholdFor(
+      PROTOCOL_NAME_MAX_LENGTH - countGraphemes(name ?? ''),
+    );
+  }, [readOnly, name, description]);
+
   return (
     <ProtocolCard
       background={
@@ -437,9 +456,13 @@ const ProtocolInfoCard = () => {
               className: cx(
                 'text-navy-taupe placeholder:text-navy-taupe/50 focus-visible:ring-sea-green field-sizing-content w-full resize-none rounded-sm border-none bg-transparent p-0 font-black outline-none focus-visible:ring-2 focus-visible:outline-none',
                 'max-h-[3lh] overflow-hidden wrap-break-word',
+                // WebKit on iOS greys a disabled field's text through this
+                // property rather than `color`, which would fade the title.
+                'disabled:[-webkit-text-fill-color:currentColor]',
                 protocolNameSizeClass(nameGraphemes),
               ),
             })}
+            disabled={readOnly}
             value={localName}
             onChange={(e) => handleNameChange(e.target.value)}
             onKeyDown={(e) => {
@@ -449,6 +472,11 @@ const ProtocolInfoCard = () => {
               }
             }}
             onBlur={() => {
+              // A control that becomes disabled while focused can still blur
+              // before the draft above is discarded; that blur must not commit.
+              if (readOnly) {
+                return;
+              }
               const trimmed = localName.trim();
               if (!trimmed) {
                 setLocalName(name ?? '');
@@ -540,10 +568,11 @@ const ProtocolInfoCard = () => {
           placeholder={intl.formatMessage(
             messages.enterADescriptionForYourProtocol,
           )}
+          disabled={readOnly}
           value={localDescription}
           onChange={(value) => setLocalDescription(value ?? '')}
           onBlur={() => {
-            if (localDescription !== description) {
+            if (!readOnly && localDescription !== description) {
               dispatch(
                 updateProtocolDescription({
                   description: localDescription,

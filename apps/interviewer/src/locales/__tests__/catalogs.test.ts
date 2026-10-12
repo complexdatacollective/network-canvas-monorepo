@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
@@ -19,9 +20,19 @@ import { createAppIntl } from '@codaco/app-i18n/messages';
 
 import { interviewerProductionLocales } from '../../i18n/locales';
 import { buildDeleteProtocolMessage } from '../../routes/deleteProtocolMessage';
-import { interviewerCatalogs } from '../catalogs';
+import {
+  interviewerCatalogLoaders,
+  interviewerCatalogSource,
+} from '../catalogs';
+import de from '../de.json';
 import enGb from '../en-GB.json';
 import es from '../es.json';
+import fr from '../fr.json';
+import italian from '../it.json';
+import nl from '../nl.json';
+import ptBR from '../pt-BR.json';
+import zhHans from '../zh-Hans.json';
+import zhHant from '../zh-Hant.json';
 
 const src = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const source = JSON.parse(
@@ -29,6 +40,13 @@ const source = JSON.parse(
 ) as ExtractedCatalog;
 const localesDir = join(src, 'locales');
 const esSources = readTranslationSources(localesDir, 'es');
+const zhHansSources = readTranslationSources(localesDir, 'zh-Hans');
+const zhHantSources = readTranslationSources(localesDir, 'zh-Hant');
+const deSources = readTranslationSources(localesDir, 'de');
+const nlSources = readTranslationSources(localesDir, 'nl');
+const ptBRSources = readTranslationSources(localesDir, 'pt-BR');
+const italianSources = readTranslationSources(localesDir, 'it');
+const frSources = readTranslationSources(localesDir, 'fr');
 const enGbSources = readTranslationSources(localesDir, 'en-GB');
 
 describe('the complete administration catalog', () => {
@@ -44,7 +62,38 @@ describe('the complete administration catalog', () => {
   it('ships full Spanish with valid ICU and identical placeholder semantics', () => {
     expect(checkFullLocale(source, es, esSources)).toEqual([]);
   });
-  it('ships only reviewed British differences and inherits the English base', () => {
+  it('ships full Simplified Chinese with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, zhHans, zhHansSources)).toEqual([]);
+  });
+  it('ships full Traditional Chinese with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, zhHant, zhHantSources)).toEqual([]);
+  });
+
+  it('ships full German with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, de, deSources)).toEqual([]);
+  });
+
+  it('ships full Dutch with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, nl, nlSources)).toEqual([]);
+  });
+
+  it('ships full Brazilian Portuguese with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, ptBR, ptBRSources)).toEqual([]);
+  });
+
+  it('ships full Italian with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, italian, italianSources)).toEqual([]);
+  });
+
+  it('ships full French with valid ICU and identical placeholder semantics', () => {
+    expect(checkFullLocale(source, fr, frSources)).toEqual([]);
+  });
+  it('loads each committed catalog through its own locale loader', async () => {
+    expect(
+      await checkCatalogLoaders(localesDir, interviewerCatalogLoaders),
+    ).toEqual([]);
+  });
+  it('ships only reviewed British differences and inherits the English base', async () => {
     expect(checkOverrideLocale(source, enGb, enGbSources)).toEqual([]);
     expect(Object.keys(enGb).length).toBeGreaterThan(0);
     expect(Object.keys(enGb).length).toBeLessThan(Object.keys(source).length);
@@ -52,7 +101,7 @@ describe('the complete administration catalog', () => {
       expect(value).not.toBe(source[id]?.defaultMessage);
     const intl = createAppIntl({
       locale: 'en-GB',
-      messages: interviewerCatalogs['en-GB'],
+      messages: await interviewerCatalogSource.load('en-GB'),
     });
     expect(
       intl.formatMessage({
@@ -69,16 +118,23 @@ describe('the complete administration catalog', () => {
       'en',
       'en-GB',
       'es',
+      'zh-Hans',
+      'zh-Hant',
+      'de',
+      'nl',
+      'pt-BR',
+      'it',
+      'fr',
     ]);
     for (const entry of interviewerProductionLocales)
       expect(
         ecosystemLocales.find(({ locale }) => locale === entry.locale),
       ).toEqual(entry);
   });
-  it('renders Spanish counts, deletion consequences, and shared controls', () => {
+  it('renders Spanish counts, deletion consequences, and shared controls', async () => {
     const intl = createAppIntl({
       locale: 'es',
-      messages: interviewerCatalogs.es,
+      messages: await interviewerCatalogSource.load('es'),
     });
     const countMessage = {
       id: 'interviewer.deckCard.interviewCount',
@@ -94,10 +150,10 @@ describe('the complete administration catalog', () => {
     );
     expect(intl.formatMessage(commonMessages.cancel)).toBe('Cancelar');
   });
-  it('formats large stage totals, missing totals and singular generation progress', () => {
+  it('formats large stage totals, missing totals and singular generation progress', async () => {
     const intl = createAppIntl({
       locale: 'es',
-      messages: interviewerCatalogs.es,
+      messages: await interviewerCatalogSource.load('es'),
     });
     const stage = { id: 'interviewer.dataViewColumns.stepProgress' };
     expect(

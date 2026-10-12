@@ -11,6 +11,7 @@ import {
 
 import Node from '../../components/ConnectedNode';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { writeSubmissionResult } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -33,15 +34,16 @@ const AlterForm = (props: StageProps<'AlterForm'>) => {
   const [isFormReady, setIsFormReady] = useState(false);
 
   const handleUpdateItem = useCallback(
-    (id: string, attributePatch: AttributePatch) => {
-      void dispatch(
-        updateNode({
-          nodeId: id,
-          attributePatch,
-          currentStep,
-        }),
-      );
-    },
+    async (id: string, attributePatch: AttributePatch) =>
+      writeSubmissionResult(
+        await dispatch(
+          updateNode({
+            nodeId: id,
+            attributePatch,
+            currentStep,
+          }),
+        ),
+      ),
     [dispatch, currentStep],
   );
 

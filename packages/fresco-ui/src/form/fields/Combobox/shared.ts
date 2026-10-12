@@ -8,7 +8,7 @@ import {
   textSizeVariants,
   wrapperPaddingVariants,
 } from '../../../styles/controlVariants';
-import { compose } from '../../../utils/cva';
+import { cva } from '../../../utils/cva';
 
 export type ComboboxOption = {
   value: string | number;
@@ -17,13 +17,15 @@ export type ComboboxOption = {
 };
 
 // Trigger variants - composed from shared control variants (same as Select)
-export const comboboxTriggerVariants = compose(
-  textSizeVariants,
-  heightVariants,
-  controlVariants,
-  inputControlVariants,
-  inlineSpacingVariants,
-  wrapperPaddingVariants,
-  stateVariants,
-  interactiveStateVariants,
-);
+export const comboboxTriggerVariants = cva({
+  composes: [
+    textSizeVariants,
+    heightVariants,
+    controlVariants,
+    inputControlVariants,
+    inlineSpacingVariants,
+    wrapperPaddingVariants,
+    stateVariants,
+    interactiveStateVariants,
+  ],
+});

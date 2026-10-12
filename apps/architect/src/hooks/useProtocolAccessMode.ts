@@ -1,6 +1,7 @@
 import { useLocation } from 'wouter';
 
 import { useNestedEditorOpen } from '~/components/DialogForm/nestedDraftRegistry';
+import { useStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useAppSelector } from '~/ducks/hooks';
 import { getProtocolOwnedHere } from '~/ducks/modules/app';
 import { getProtocol } from '~/selectors/protocol';
@@ -20,37 +21,37 @@ import { isStageEditorPath } from './useProtocolNavGuard';
  *   `/protocol` route can be written, because every reducer under
  *   `activeProtocol` no-ops against a null present. The route must not render.
  * - `editable`: this tab holds the cross-tab editor lock. Normal editing.
- * - `read-only`: this tab does not own the saved copy. It may show the protocol
- *   but must not offer editing — including undo and redo, which mutate the
- *   protocol and would be reverted on screen without ever reaching disk.
- * - `held-stage-editor`: this tab does not own the saved copy but is in the
- *   stage editor (e.g. a bfcache restore re-claimed the protocol and a peer
- *   answered "held"). The stage draft is not part of the protocol and exists
- *   only here, so the editor stays mounted rather than being replaced
- *   underneath it — the banner explains that changes cannot be saved, and
- *   offers the real ways out. Keyed on the route, not on whether the draft is
- *   currently dirty: a dirty check flips back to clean the moment the user
- *   undoes to the committed values, which would tear the editor away mid-edit.
+ * - `read-only`: this tab does not own the saved copy. Every page still
+ *   renders, so the researcher can browse the whole protocol, but no control
+ *   on it may edit — including undo and redo, which mutate the protocol and
+ *   would be reverted on screen without ever reaching disk. Pages ask
+ *   `useProtocolReadOnly`.
+ * - `held-stage-editor`: this tab does not own the saved copy, but the stage
+ *   editor on screen was granted its stage before that happened (the tab was
+ *   demoted mid-edit, or a bfcache restore re-claimed the protocol and a peer
+ *   answered "held"). Its draft is not part of the protocol and exists only
+ *   here, so the editor keeps it rather than being made read-only underneath
+ *   it — the banner explains that changes cannot be saved, and offers the real
+ *   ways out. Keyed on the editor having been granted the stage, not on
+ *   whether its draft is currently dirty: a dirty check flips back to clean
+ *   the moment the user undoes to the committed values. A stage editor OPENED
+ *   in a tab that did not own the protocol was never granted the stage, holds
+ *   no draft, and is plain `read-only`.
  * - `held-nested-editor`: the same situation somewhere else in the protocol —
  *   a variable, entity-type, resource or rule editor open over the Codebook or
  *   the Resources page. Its draft lives in its own form store and reaches
- *   neither the protocol nor the stage draft (#1387), and it is rendered from
- *   the route tree, so swapping in the read-only view unmounts it without its
- *   own close confirmation ever running. Keyed on an editor being OPEN rather
- *   than dirty, for the same stability reason as above.
+ *   neither the protocol nor the stage draft (#1387). Keyed on an editor being
+ *   OPEN rather than dirty, for the same stability reason as above.
  *
- *   This mode keeps a whole page of live controls mounted in a tab whose
- *   writes are dropped, which is safe on two counts that a later change could
- *   quietly remove. Every editor that registers a nested draft is a modal
- *   `Dialog`, and fresco-ui's `Modal` makes the rest of the document `inert`
- *   while one is open, so nothing behind it is reachable by pointer, keyboard
- *   or assistive technology; and the editor's own commit — the one control
- *   that IS reachable — is refused (`useRefusedNestedCommit`). A nested editor
- *   that is not modal would break the first, and would need the controls
- *   behind it gated on `=== 'editable'` before it could register here. The
- *   stage timeline is the one to check first: its reorder and delete both
- *   write the protocol with no lock check of their own, relying entirely on
- *   this hook having replaced the route.
+ *   This mode leaves the editor's controls live in a tab whose writes are
+ *   dropped, which is safe on two counts that a later change could quietly
+ *   remove. Every editor that registers a nested draft is a modal `Dialog`,
+ *   and fresco-ui's `Modal` makes the rest of the document `inert` while one
+ *   is open, so nothing behind it is reachable by pointer, keyboard or
+ *   assistive technology; and the editor's own commit — the one control that
+ *   IS reachable — is refused (`useRefusedNestedCommit`). A nested editor that
+ *   is not modal would break the first. Once it closes, the page behind it is
+ *   `read-only` like any other.
  */
 export type ProtocolAccessMode =
   | 'no-protocol'
@@ -64,14 +65,16 @@ export const useProtocolAccessMode = (): ProtocolAccessMode => {
   const hasProtocol = useAppSelector((state) => getProtocol(state) !== null);
   const ownedHere = useAppSelector(getProtocolOwnedHere);
   const nestedEditorOpen = useNestedEditorOpen();
+  const stageEditorGranted = useStageDraft((beacon) => beacon.editing);
 
   if (!hasProtocol) return 'no-protocol';
   if (ownedHere) return 'editable';
-  // Two editors hold work that lives outside the protocol itself, and neither
-  // may be replaced by the read-only view while it does. Everywhere else an
-  // accepted edit is already in the canonical row, so there is nothing to lose
-  // by switching.
-  if (isStageEditorPath(location)) return 'held-stage-editor';
+  // Two editors can hold work that lives outside the protocol itself, and
+  // neither may be made read-only while it does. Everywhere else an accepted
+  // edit is already in the canonical row, so there is nothing to lose.
+  if (isStageEditorPath(location) && stageEditorGranted) {
+    return 'held-stage-editor';
+  }
   if (nestedEditorOpen) return 'held-nested-editor';
   return 'read-only';
 };

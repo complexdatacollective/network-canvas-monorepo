@@ -1,17 +1,18 @@
 'use client';
 import { motion, type Variants } from 'motion/react';
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import Form from '@codaco/fresco-ui/form/Form';
 import type {
+  FormSubmissionResult,
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
 import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
+import { useValidationNetwork } from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import {
@@ -45,7 +46,9 @@ type QuickNodeFormProps = {
   disabled: boolean;
   targetVariable: string;
   onShowForm?: () => void;
-  addNode: (attributes: NcNode[EntityAttributesProperty]) => Promise<void>;
+  addNode: (
+    attributes: NcNode[EntityAttributesProperty],
+  ) => Promise<FormSubmissionResult>;
 };
 
 const QuickNodeForm = ({
@@ -56,7 +59,6 @@ const QuickNodeForm = ({
 }: QuickNodeFormProps) => {
   const intl = useAppIntl();
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
-  const [successfulSubmissionCount, setSuccessfulSubmissionCount] = useState(0);
 
   // Derive the target variable's validation props directly from its
   // codebook definition — quick-add renders its own QuickAddField and only
@@ -91,17 +93,24 @@ const QuickNodeForm = ({
   // reach a participant. With nothing authored to offer, the comparison
   // validators' complete label-free sentences are the correct output.
   const baseValidationContext = useStageSelector(getValidationContext);
+  const validationNetwork = useValidationNetwork(
+    baseValidationContext,
+    baseValidationContext.stageSubject,
+    [targetVariable],
+    // A new person, so the rules read only the others' stored answers.
+    undefined,
+  );
   const validationContext: ValidationContext | undefined =
     baseValidationContext.stageSubject
       ? {
           codebook: baseValidationContext.codebook,
-          network: baseValidationContext.network,
+          ...validationNetwork,
           stageSubject: baseValidationContext.stageSubject,
           currentEntityAttributes: newNodeAttributes,
         }
       : undefined;
 
-  const handleSubmit: FormSubmitHandler = useCallback(
+  const handleAdd: FormSubmitHandler = useCallback(
     async (values) => {
       if (disabled) {
         return {
@@ -110,7 +119,12 @@ const QuickNodeForm = ({
         };
       }
 
-      const patchResult = formValuesToAttributePatch(values, [targetVariable]);
+      // A new person: the form showed no stored values.
+      const patchResult = formValuesToAttributePatch(
+        values,
+        [targetVariable],
+        {},
+      );
       if (!patchResult.success) {
         return {
           success: false,
@@ -118,15 +132,10 @@ const QuickNodeForm = ({
         };
       }
 
-      await addNode({
+      return addNode({
         ...newNodeAttributes,
         ...patchResult.patch.set,
       });
-      setSuccessfulSubmissionCount((count) => count + 1);
-
-      return {
-        success: true,
-      };
     },
     [disabled, addNode, newNodeAttributes, targetVariable],
   );
@@ -142,19 +151,17 @@ const QuickNodeForm = ({
         layout
         data-testid="quick-add-form"
       >
-        <Form onSubmit={handleSubmit}>
-          <QuickAddField
-            name={targetVariable}
-            disabled={disabled}
-            placeholder={intl.formatMessage(
-              interfaceMessages.quickLabelPlaceholder,
-            )}
-            onShowInput={onShowForm ?? undefined}
-            successfulSubmissionCount={successfulSubmissionCount}
-            {...validationProps}
-            validationContext={validationContext}
-          />
-        </Form>
+        <QuickAddField
+          name={targetVariable}
+          disabled={disabled}
+          placeholder={intl.formatMessage(
+            interfaceMessages.quickLabelPlaceholder,
+          )}
+          onShowInput={onShowForm ?? undefined}
+          onAdd={handleAdd}
+          {...validationProps}
+          validationContext={validationContext}
+        />
       </motion.div>
     </>
   );

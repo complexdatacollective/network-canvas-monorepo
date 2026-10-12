@@ -157,6 +157,27 @@ export const runtimeMessages = defineMessages({
     defaultMessage: 'Enter your passphrase...',
     description: 'Placeholder for the interview decryption passphrase input.',
   },
+  passphraseIncorrect: {
+    id: 'interview.runtime.passphraseIncorrect',
+    defaultMessage:
+      'This passphrase does not match the one used earlier in this interview. Check it and try again.',
+    description:
+      'Inline error under the passphrase input when the entered passphrase cannot unlock the information already saved in the interview.',
+  },
+  protectedAnswersLocked: {
+    id: 'interview.runtime.protectedAnswersLocked',
+    defaultMessage:
+      'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.',
+    description:
+      'Shown in place of questions whose answers are protected by the interview passphrase, and as a brief notice when such an answer is asked for, until that passphrase is entered.',
+  },
+  protectedAnswersNotSaved: {
+    id: 'interview.runtime.protectedAnswersNotSaved',
+    defaultMessage:
+      'Your answers have not been saved. Enter your passphrase, then try again.',
+    description:
+      'Error when answers protected by the interview passphrase could not be saved because no working passphrase has been entered.',
+  },
   offlineTaskTitle: {
     id: 'interview.runtime.offlineTaskTitle',
     defaultMessage: 'This task needs an internet connection',

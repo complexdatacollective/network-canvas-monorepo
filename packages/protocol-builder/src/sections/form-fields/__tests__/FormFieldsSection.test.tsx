@@ -1,4 +1,5 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
+import { Effect } from 'effect';
 import { type ComponentProps, useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -20,7 +21,6 @@ import {
   offeredAttributes,
   openAttributePicker,
 } from '../../../testing/attributePicker.ts';
-import type { InMemoryClient } from '../../../testing/host/createInMemoryHost.ts';
 import { fixtureMessage } from '../../../testing/i18n.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
@@ -2096,12 +2096,11 @@ describe('the codebook an attribute a form field collects lives in', () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
-      client: (host) => {
+      adapter: (host) => {
         let raced = false;
-        const acquireLock: InMemoryClient['acquireLock'] = async (
-          ...args: Parameters<InMemoryClient['acquireLock']>
+        const acquireLock = (
+          input: Parameters<typeof host.handle.AcquireLock>[0],
         ) => {
-          const [input] = args;
           if (!raced && input.sectionId === person) {
             raced = true;
             // Between the editor's last render and the lock it is asking for
@@ -2119,13 +2118,10 @@ describe('the codebook an attribute a form field collects lives in', () => {
               },
             });
           }
-          return host.client.acquireLock(...args);
+          return host.handle.AcquireLock(input);
         };
-        return new Proxy(host.client, {
-          get: (target, property) =>
-            property === 'acquireLock'
-              ? acquireLock
-              : Reflect.get(target, property),
+        return host.adapterWith({
+          AcquireLock: (input) => Effect.suspend(() => acquireLock(input)),
         });
       },
     });
@@ -2173,12 +2169,11 @@ describe('the codebook an attribute a form field collects lives in', () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
-      client: (host) => {
+      adapter: (host) => {
         let raced = false;
-        const acquireLock: InMemoryClient['acquireLock'] = async (
-          ...args: Parameters<InMemoryClient['acquireLock']>
+        const acquireLock = (
+          input: Parameters<typeof host.handle.AcquireLock>[0],
         ) => {
-          const [input] = args;
           if (!raced && input.sectionId === person) {
             raced = true;
             // Between the rules editor's last render and the lock its save is
@@ -2196,13 +2191,10 @@ describe('the codebook an attribute a form field collects lives in', () => {
               },
             });
           }
-          return host.client.acquireLock(...args);
+          return host.handle.AcquireLock(input);
         };
-        return new Proxy(host.client, {
-          get: (target, property) =>
-            property === 'acquireLock'
-              ? acquireLock
-              : Reflect.get(target, property),
+        return host.adapterWith({
+          AcquireLock: (input) => Effect.suspend(() => acquireLock(input)),
         });
       },
     });

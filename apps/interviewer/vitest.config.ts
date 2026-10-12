@@ -147,6 +147,11 @@ export default defineConfig({
             '@codaco/interview > redux-logger',
             'chromatic/isChromatic',
             'jszip',
+            // Reached through @codaco/interview: OnlineStatusProvider imports
+            // its package entry, which pulls in Shell → analytics →
+            // resolveClient's lazy import of the no-external build. Resolvable
+            // from this root because the app depends on posthog-js itself.
+            'posthog-js/dist/module.no-external',
             'zod',
             'zod/mini',
           ],

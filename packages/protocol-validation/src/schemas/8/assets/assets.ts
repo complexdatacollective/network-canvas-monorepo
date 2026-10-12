@@ -7,21 +7,18 @@ const baseAssetSchema = z.strictObject({
 
 // source is written verbatim as a zip entry name on export, so reject path
 // separators and parent-directory segments to prevent zip-slip entry names.
-// Exported so a host staging a file can refuse the name before it promotes
-// one the manifest would then reject.
-export const assetSourceSchema = z
-  .string()
-  .refine(
-    (source) =>
-      source.length > 0 &&
-      source !== '..' &&
-      !source.includes('/') &&
-      !source.includes('\\'),
-    {
-      message:
-        'Asset source must be a filename without path separators or ".."',
-    },
+export function isSafeAssetSource(source: string): boolean {
+  return (
+    source.length > 0 &&
+    source !== '..' &&
+    !source.includes('/') &&
+    !source.includes('\\')
   );
+}
+
+export const assetSourceSchema = z.string().refine(isSafeAssetSource, {
+  message: 'Asset source must be a filename without path separators or ".."',
+});
 
 const videoAudioAssetSchema = baseAssetSchema.extend({
   type: z.enum(['video', 'audio']),

@@ -262,12 +262,11 @@ describe('NavDrawer focus handoff', () => {
 
       const trigger = frameDocument.getElementById('trigger');
       if (!trigger) throw new Error('#trigger not rendered');
-      trigger.focus();
       // Focus inside a frame also focuses the frame ELEMENT in the page around
-      // it, which is a real browser's behaviour and not one this test is about.
-      // Dropped here so the ambient document has no focus owner of its own and
-      // the return target can only come from the drawer's own document.
-      frame.blur();
+      // it, as a browser does, so the ambient document's focus owner is the
+      // `<iframe>`. The restore below has to come from the drawer's own
+      // document regardless.
+      trigger.focus();
       trigger.click();
       await waitFor(() =>
         expect(frameDocument.querySelector('[role="dialog"]')).not.toBeNull(),
@@ -285,7 +284,7 @@ describe('NavDrawer focus handoff', () => {
       // Nowhere to hand off to in THIS document, so the restore had to run.
       // Suppressed instead, focus falls to the body of the drawer's own
       // document and the next Tab restarts at the top of it.
-      expect(frameDocument.activeElement).not.toBe(frameDocument.body);
+      await waitFor(() => expect(frameDocument.activeElement).toBe(trigger));
     } finally {
       ambientLanding.remove();
       frame.remove();

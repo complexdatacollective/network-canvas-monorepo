@@ -6,13 +6,24 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import ArchitectLocaleSwitcher from '../ArchitectLocaleSwitcher';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
+
+// The provider shows a language once its catalog has loaded. Loading these
+// up front lets a switch to either render synchronously, as the assertions
+// below expect.
+beforeAll(() =>
+  Promise.all([
+    architectCatalogSource.load('es'),
+    architectCatalogSource.load('en-GB'),
+  ]),
+);
 
 beforeEach(() => {
   localStorage.clear();
@@ -23,8 +34,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// The only combobox on the page; its accessible name follows the language.
-const trigger = () => screen.getByRole('combobox');
+// The search box in the open popover is a combobox too; the trigger is the
+// one outside it. Its accessible name follows the language.
+const trigger = () => {
+  const element = screen
+    .getAllByRole('combobox')
+    .find((combobox) => !combobox.closest('[role="dialog"]'));
+  if (!element) throw new Error('no switcher trigger');
+  return element;
+};
 
 const open = async () => {
   fireEvent.click(trigger());

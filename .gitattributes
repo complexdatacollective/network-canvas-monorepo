@@ -1,0 +1,5 @@
+# Every byte of a Studio migration is hashed into its manifest, and a released
+# migration's hashes are recorded in every database that applied it (#1901).
+# Never convert line endings there: a CRLF checkout would make the build refuse
+# every migration as edited.
+apps/studio/api/migrations/** -text

@@ -651,6 +651,29 @@ describe('SyntheticInterview', () => {
 
       expect(() => si.getNetwork()).toThrow(/prompt index 5/);
     });
+
+    it('nominates a manual node on the prompts it names', () => {
+      const si = new SyntheticInterview();
+      const nt = si.addNodeType();
+      const stage = si.addStage('NameGenerator', {
+        subject: { entity: 'node', type: nt.id },
+      });
+      stage.addPrompt({ text: 'Prompt 1' });
+      stage.addPrompt({ text: 'Prompt 2' });
+      si.addManualNode(stage.id, nt.id, 'seeded', {}, { promptIndices: [1] });
+      si.addManualNode(stage.id, nt.id, 'unprompted', {});
+
+      const protocol = si.getProtocol();
+      const stageConfig = protocol.stages[0] as { prompts: { id: string }[] };
+      const nodes = new Map(
+        si.getNetwork().nodes.map((n) => [n[entityPrimaryKeyProperty], n]),
+      );
+
+      expect(nodes.get('seeded')?.promptIDs).toEqual([
+        stageConfig.prompts[1]!.id,
+      ]);
+      expect(nodes.get('unprompted')?.promptIDs).toEqual([]);
+    });
   });
 
   describe('NameGeneratorQuickAdd', () => {
@@ -2094,8 +2117,8 @@ describe('validation rules on generated nodes', () => {
 
     expect(byName).toEqual([
       {
-        name: 'Mohammad Crist',
-        label: 'Mohammad',
+        name: 'Nikita Crist',
+        label: 'Nikita',
         age: 61,
         small: -44,
         active: true,
@@ -2105,8 +2128,8 @@ describe('validation rules on generated nodes', () => {
         position: { x: 0.1, y: 0.1 },
       },
       {
-        name: 'Laury Wisozk',
-        label: 'Maybelle',
+        name: 'Lilliana Wisozk',
+        label: 'Moises',
         age: 19,
         small: 8,
         active: false,
@@ -2116,8 +2139,8 @@ describe('validation rules on generated nodes', () => {
         position: { x: 0.27, y: 0.33 },
       },
       {
-        name: 'Clinton Leffler',
-        label: 'Esther',
+        name: 'Collin Leffler',
+        label: 'Emelia',
         age: 56,
         small: -26,
         active: true,
@@ -2127,8 +2150,8 @@ describe('validation rules on generated nodes', () => {
         position: { x: 0.44000000000000006, y: 0.56 },
       },
       {
-        name: 'Lynette Hilll',
-        label: 'Hannah',
+        name: 'Lola Hilll',
+        label: 'Georgianna',
         age: 51,
         small: -4,
         active: true,

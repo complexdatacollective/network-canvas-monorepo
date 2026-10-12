@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { useId } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -47,10 +48,12 @@ export default function ResourceChoiceCard({
           aria-current={current ? 'true' : undefined}
           aria-describedby={detailId}
           onClick={() => onSelect(descriptor)}
-          title={descriptor.name}
+          title={Redacted.value(descriptor.name)}
           className="cursor-pointer text-left text-lg leading-tight font-semibold outline-none after:absolute after:inset-0 disabled:cursor-not-allowed"
         >
-          <span className="line-clamp-2 wrap-anywhere">{descriptor.name}</span>
+          <span className="line-clamp-2 wrap-anywhere">
+            {Redacted.value(descriptor.name)}
+          </span>
         </button>
         <div
           id={detailId}

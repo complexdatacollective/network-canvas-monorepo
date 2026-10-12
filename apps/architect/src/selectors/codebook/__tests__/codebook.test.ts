@@ -57,6 +57,7 @@ describe('codebook selectors', () => {
           { id: 'stage-1', type: 'Information', ...fields } as unknown as Stage,
           {},
           fields,
+          true,
         );
       };
 

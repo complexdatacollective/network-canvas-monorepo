@@ -32,7 +32,7 @@ function fixture({ changesets = {} } = {}) {
   mkdirSync(join(repoRoot, '.changeset'));
   writeFileSync(
     join(repoRoot, '.changeset', 'config.json'),
-    JSON.stringify({ ignore: ['@codaco/studio-client'] }),
+    JSON.stringify({ ignore: ['@codaco/studio-web'] }),
   );
   writeFileSync(join(repoRoot, '.changeset', 'README.md'), 'readme');
   for (const [name, body] of Object.entries(changesets)) {
@@ -42,7 +42,7 @@ function fixture({ changesets = {} } = {}) {
     'established': { name: '@codaco/established', version: '1.2.0' },
     'app-i18n': { name: '@codaco/app-i18n', version: '0.1.0' },
     'internal': { name: '@codaco/internal', version: '0.0.1', private: true },
-    'studio': { name: '@codaco/studio-client', version: '0.3.0' },
+    'studio': { name: '@codaco/studio-web', version: '0.3.0' },
   };
   for (const [dir, manifest] of Object.entries(manifests)) {
     mkdirSync(join(repoRoot, 'packages', dir), { recursive: true });
@@ -319,7 +319,7 @@ test('--publish-path-only leaves a version-PR run alone without consulting npm',
 test('--publish-path-only still checks when only ignored-lane changesets remain', async () => {
   const repoRoot = fixture({
     changesets: {
-      'studio.md': `---\n"@codaco/studio-client": minor\n---\n\nstudio`,
+      'studio.md': `---\n"@codaco/studio-web": minor\n---\n\nstudio`,
     },
   });
   const { url } = await registry();

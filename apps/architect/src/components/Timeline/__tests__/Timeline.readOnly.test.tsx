@@ -1,0 +1,382 @@
+import { configureStore } from '@reduxjs/toolkit';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import type { DragControls, HTMLMotionProps, PanInfo } from 'motion/react';
+import type { ReactNode } from 'react';
+import { Provider } from 'react-redux';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { actionCreators as protocolActions } from '~/ducks/modules/activeProtocol';
+import { rootReducer } from '~/ducks/modules/root';
+import { ProtocolReadOnlyContext } from '~/hooks/useProtocolReadOnly';
+import { getProtocol } from '~/selectors/protocol';
+import { developmentProtocol } from '~/templates/development-protocol';
+
+import Timeline from '../Timeline';
+
+// The new-stage screen is a full wizard; what matters here is only whether the
+// timeline asked for it to open, and where.
+vi.mock('../../Screens/NewStageScreen', () => ({
+  default: ({
+    open,
+    insertAtIndex,
+  }: {
+    open: boolean;
+    insertAtIndex?: number;
+  }) =>
+    open ? (
+      <div data-testid="new-stage-screen">{`insert at ${insertAtIndex}`}</div>
+    ) : null,
+}));
+
+// jsdom does no layout, so motion's pointer gesture never decides that a row
+// has crossed its neighbour and never ends a drag. The real Reorder components
+// stay; these wrappers only record what that gesture would call on them, so a
+// test can play a drag from the outside.
+const gesture = vi.hoisted(() => {
+  const state: {
+    values: unknown[];
+    dragControls: Map<unknown, DragControls>;
+    dragEnds: Map<unknown, () => void>;
+    moveRow: (from: number, to: number) => void;
+    endDrag: (value: unknown) => void;
+    reset: () => void;
+  } = {
+    values: [],
+    dragControls: new Map(),
+    dragEnds: new Map(),
+    moveRow: () => {},
+    endDrag: (value) => {
+      const end = state.dragEnds.get(value);
+      if (!end) throw new Error('No row is registered for that stage');
+      end();
+    },
+    reset: () => {
+      state.values = [];
+      state.dragControls.clear();
+      state.dragEnds.clear();
+    },
+  };
+  return state;
+});
+
+vi.mock('motion/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('motion/react')>();
+  const idle = { x: 0, y: 0 };
+  const settled: PanInfo = {
+    point: idle,
+    delta: idle,
+    offset: idle,
+    velocity: idle,
+  };
+
+  type GroupProps = Omit<HTMLMotionProps<'ul'>, 'values' | 'children'> & {
+    children?: ReactNode;
+    values: unknown[];
+    onReorder: (order: unknown[]) => void;
+  };
+  type ItemProps = Omit<
+    HTMLMotionProps<'div'>,
+    'value' | 'layout' | 'children'
+  > & {
+    children?: ReactNode;
+    as: 'div';
+    value: unknown;
+  };
+
+  const Group = (props: GroupProps) => {
+    gesture.values = props.values;
+    gesture.moveRow = (from, to) => {
+      const next = [...props.values];
+      next.splice(to, 0, ...next.splice(from, 1));
+      props.onReorder(next);
+    };
+    return <actual.Reorder.Group {...props} />;
+  };
+
+  const Item = (props: ItemProps) => {
+    gesture.dragEnds.set(props.value, () =>
+      props.onDragEnd?.(new MouseEvent('pointerup'), settled),
+    );
+    if (props.dragControls) {
+      gesture.dragControls.set(props.value, props.dragControls);
+    }
+    return <actual.Reorder.Item {...props} />;
+  };
+
+  return { ...actual, Reorder: { ...actual.Reorder, Group, Item } };
+});
+
+const makeStore = () => {
+  const protocol = structuredClone(developmentProtocol);
+  // The first three stages carry no skip logic, so no reorder or delete is
+  // refused by the skip-destination guards and every outcome below is down to
+  // the lock alone.
+  protocol.stages = protocol.stages.slice(0, 3);
+  const store = configureStore({
+    reducer: rootReducer,
+    middleware: (getDefault) =>
+      getDefault({ serializableCheck: false, immutableCheck: false }),
+  });
+  store.dispatch(protocolActions.setActiveProtocol(protocol));
+  return store;
+};
+
+const stageIds = (store: ReturnType<typeof makeStore>) =>
+  getProtocol(store.getState())?.stages.map((stage) => stage.id);
+
+const withReadOnly = (readOnly: boolean | null, tree: ReactNode) =>
+  readOnly === null ? (
+    tree
+  ) : (
+    <ProtocolReadOnlyContext value={readOnly}>{tree}</ProtocolReadOnlyContext>
+  );
+
+const renderTimeline = (readOnly: boolean | null) => {
+  const store = makeStore();
+  const tree = (
+    <Provider store={store}>
+      <Timeline />
+    </Provider>
+  );
+  const { rerender } = render(withReadOnly(readOnly, tree));
+  const setReadOnly = (next: boolean) => rerender(withReadOnly(next, tree));
+  return { store, setReadOnly };
+};
+
+const nth = <T,>(items: readonly T[], index: number): T => {
+  const item = items[index];
+  if (item === undefined) throw new Error(`No item at ${index}`);
+  return item;
+};
+
+const addAfterLastButton = () =>
+  screen.getByRole('button', { name: 'Add new stage' });
+// By label, not by role: an accessible name is empty for a node hidden from
+// assistive technology, which is the very state under test.
+const insertButtons = () => screen.queryAllByLabelText(/^Add stage here/);
+const openControls = (verb: 'Edit' | 'View') =>
+  within(screen.getByRole('list')).getAllByRole('button', {
+    name: new RegExp(`^${verb} stage`),
+  });
+const deleteControls = () =>
+  screen.getAllByRole('button', { name: /^Delete stage/, hidden: true });
+
+describe('Timeline while another tab owns the protocol', () => {
+  it('cannot be added to', () => {
+    renderTimeline(true);
+
+    expect(addAfterLastButton()).toBeDisabled();
+    fireEvent.click(addAfterLastButton());
+
+    // One insertion point above each of the three stages, none of them
+    // operable and none of them announced as a control.
+    expect(insertButtons()).toHaveLength(3);
+    for (const insert of insertButtons()) {
+      expect(insert).toBeDisabled();
+      expect(insert).toHaveAttribute('aria-hidden', 'true');
+      fireEvent.click(insert);
+    }
+    const announced = screen
+      .getAllByRole('button')
+      .map((button) => button.getAttribute('aria-label'));
+    expect(announced.some((label) => label?.startsWith('Add stage here'))).toBe(
+      false,
+    );
+    expect(screen.queryByTestId('new-stage-screen')).not.toBeInTheDocument();
+  });
+
+  it('cannot be reordered from the keyboard', () => {
+    const { store } = renderTimeline(true);
+    const before = stageIds(store);
+
+    fireEvent.keyDown(nth(openControls('View'), 0), { key: 'ArrowDown' });
+
+    expect(stageIds(store)).toEqual(before);
+  });
+
+  it('cannot have a stage deleted', () => {
+    const { store } = renderTimeline(true);
+    const before = stageIds(store);
+
+    const controls = deleteControls();
+    expect(controls).toHaveLength(3);
+    for (const control of controls) {
+      expect(control).toBeDisabled();
+      fireEvent.click(control);
+    }
+
+    expect(globalThis.__architectDialogMocks.confirm).not.toHaveBeenCalled();
+    expect(stageIds(store)).toEqual(before);
+  });
+
+  it('closes a new-stage screen that was open when another tab took over', () => {
+    const { setReadOnly } = renderTimeline(false);
+    fireEvent.click(addAfterLastButton());
+    expect(screen.getByTestId('new-stage-screen')).toBeInTheDocument();
+
+    setReadOnly(true);
+    expect(screen.queryByTestId('new-stage-screen')).not.toBeInTheDocument();
+
+    // And it stays closed when this tab can edit again.
+    setReadOnly(false);
+    expect(screen.queryByTestId('new-stage-screen')).not.toBeInTheDocument();
+  });
+
+  it('still lets every stage be opened', () => {
+    renderTimeline(true);
+
+    expect(openControls('View')).toHaveLength(3);
+    for (const control of openControls('View')) {
+      expect(control).toBeEnabled();
+    }
+  });
+
+  it('names the controls that open a stage for viewing, not editing', () => {
+    renderTimeline(true);
+
+    expect(
+      within(screen.getByRole('list')).queryAllByRole('button', {
+        name: /^Edit stage/,
+      }),
+    ).toHaveLength(0);
+  });
+
+  it('names them for editing again once this tab can edit', () => {
+    const { setReadOnly } = renderTimeline(true);
+    expect(openControls('View')).toHaveLength(3);
+
+    setReadOnly(false);
+
+    expect(openControls('Edit')).toHaveLength(3);
+    expect(
+      within(screen.getByRole('list')).queryAllByRole('button', {
+        name: /^View stage/,
+      }),
+    ).toHaveLength(0);
+  });
+});
+
+describe('Timeline outside the guard', () => {
+  it('opens the new-stage screen from the add control and from an insertion point', () => {
+    renderTimeline(null);
+
+    fireEvent.click(addAfterLastButton());
+    expect(screen.getByTestId('new-stage-screen')).toHaveTextContent(
+      'insert at 3',
+    );
+
+    expect(insertButtons()).toHaveLength(3);
+    for (const insert of insertButtons()) {
+      expect(insert).toBeEnabled();
+      expect(insert).not.toHaveAttribute('aria-hidden');
+    }
+    fireEvent.click(nth(insertButtons(), 1));
+    expect(screen.getByTestId('new-stage-screen')).toHaveTextContent(
+      'insert at 1',
+    );
+  });
+
+  it('moves a stage down from the keyboard', () => {
+    const { store } = renderTimeline(null);
+    const [firstId, secondId, ...rest] = stageIds(store) ?? [];
+
+    fireEvent.keyDown(nth(openControls('Edit'), 0), { key: 'ArrowDown' });
+
+    expect(stageIds(store)).toEqual([secondId, firstId, ...rest]);
+  });
+
+  it('deletes a stage once confirmed', async () => {
+    const { store } = renderTimeline(null);
+    const [firstId, ...rest] = stageIds(store) ?? [];
+
+    const firstDelete = nth(deleteControls(), 0);
+    expect(firstDelete).toBeEnabled();
+    fireEvent.click(firstDelete);
+
+    expect(globalThis.__architectDialogMocks.confirm).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(stageIds(store)).toEqual(rest));
+    expect(stageIds(store)).not.toContain(firstId);
+  });
+});
+
+// A drag is a pointer gesture that outlives the render it started in. Another
+// tab can take the protocol while one is under way, and `dragListener={false}`
+// only refuses the NEXT pointer-down: the gesture in flight carries on
+// reordering and still ends in `onDragEnd`.
+describe('Timeline when another tab takes the protocol during a drag', () => {
+  beforeEach(() => {
+    gesture.reset();
+  });
+
+  const renderedLabels = () =>
+    within(screen.getByRole('list'))
+      .getAllByRole('heading', { level: 4 })
+      .map((heading) => heading.textContent);
+  const protocolLabels = (store: ReturnType<typeof makeStore>) =>
+    getProtocol(store.getState())?.stages.map((stage) => stage.label);
+  const announcements = () =>
+    screen
+      .queryAllByRole('status')
+      .map((region) => region.textContent)
+      .join('');
+
+  it('commits and announces the move when this tab still holds the protocol', () => {
+    const { store } = renderTimeline(false);
+    const [first, second, ...rest] = stageIds(store) ?? [];
+    const [dragged] = gesture.values;
+
+    act(() => gesture.moveRow(0, 1));
+    act(() => gesture.endDrag(dragged));
+
+    expect(stageIds(store)).toEqual([second, first, ...rest]);
+    expect(renderedLabels()).toEqual(protocolLabels(store));
+    expect(announcements()).toBe('Moved stage 1 to position 2 of 3.');
+  });
+
+  it('discards the move when the drag ends after the protocol went read-only', () => {
+    const { store, setReadOnly } = renderTimeline(false);
+    const before = stageIds(store);
+    const labels = protocolLabels(store);
+    const [dragged] = gesture.values;
+
+    act(() => gesture.moveRow(0, 1));
+    expect(renderedLabels()).not.toEqual(labels);
+
+    setReadOnly(true);
+    act(() => gesture.endDrag(dragged));
+
+    expect(stageIds(store)).toEqual(before);
+    expect(renderedLabels()).toEqual(labels);
+    expect(announcements()).toBe('');
+  });
+
+  it('ignores further crossings from a drag that outlives the lock', () => {
+    const { setReadOnly, store } = renderTimeline(false);
+    const labels = protocolLabels(store);
+
+    setReadOnly(true);
+    act(() => gesture.moveRow(0, 1));
+
+    expect(renderedLabels()).toEqual(labels);
+  });
+
+  it('stops the gesture on every row as soon as the protocol goes read-only', () => {
+    const { setReadOnly } = renderTimeline(false);
+    const stops = [...gesture.dragControls.values()].map((controls) =>
+      vi.spyOn(controls, 'stop'),
+    );
+    expect(stops).toHaveLength(3);
+    for (const stop of stops) expect(stop).not.toHaveBeenCalled();
+
+    setReadOnly(true);
+
+    for (const stop of stops) expect(stop).toHaveBeenCalledTimes(1);
+  });
+});

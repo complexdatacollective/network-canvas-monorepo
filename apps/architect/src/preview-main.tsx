@@ -11,9 +11,15 @@ import {
   initializeArchitectDocument,
   PreviewDocumentMetadata,
 } from './i18n/documentMetadata';
+import { loadStartupLocale } from './i18n/imperative';
 
-initializeArchitectDocument(true);
 registerPwaBuildLease(__PWA_BUILD_ID__);
+
+// Fetched alongside the service-worker handoff below and awaited before the
+// first render, with the same failure handling as main.tsx.
+const startupLocaleReady = loadStartupLocale()
+  .catch(() => undefined)
+  .then(() => initializeArchitectDocument(true));
 
 async function startPreview(): Promise<void> {
   // A preview navigation can receive the newest NetworkOnly HTML from an older
@@ -21,6 +27,7 @@ async function startPreview(): Promise<void> {
   // deferred preview chunks and offline fallbacks belong to that new shell.
   // Explicit no-reload mode keeps the popup on its original navigation.
   await applyFreshLoadServiceWorkerUpdate({ reload: false });
+  await startupLocaleReady;
 
   const root = document.getElementById('root');
   if (!root) {

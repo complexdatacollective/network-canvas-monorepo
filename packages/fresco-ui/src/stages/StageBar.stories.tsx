@@ -104,7 +104,7 @@ export const InNarrowContainer: Story = {
 export const AllStageTypes: Story = {
   args: { stages: mixedSequence },
   render: () => (
-    <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+    <dl className="tablet-portrait:grid-cols-2 grid gap-x-8 gap-y-4">
       {(Object.keys(STAGE_TYPE_COLORS) as StageType[]).map((type) => {
         const { color, contrast } = stageTypeColorStyle(type);
         const StageIcon = stageTypeIcon(type);

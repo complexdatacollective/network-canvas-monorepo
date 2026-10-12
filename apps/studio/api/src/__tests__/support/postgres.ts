@@ -1,0 +1,127 @@
+import { randomUUID } from 'node:crypto';
+
+import { Effect, Layer } from 'effect';
+import pg from 'pg';
+
+import type { JobPayload, JobQueueName } from '@codaco/studio-sync/jobs';
+import { TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
+
+import { Database } from '../../db/client.ts';
+import { createOwnerPool } from '../../db/pool.ts';
+import { UntenantedScope } from '../../db/tenant.ts';
+import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
+import { Jobs } from '../../jobs/jobs.ts';
+import { JOB_SCHEMA } from '../../jobs/queues.ts';
+import { CI } from './env.ts';
+
+const PROBE_TIMEOUT_MS = 3000;
+
+function unavailable(reason: string): null {
+  if (CI) throw new Error(`the Studio database suites cannot run: ${reason}`);
+  return null;
+}
+
+export async function reachableDb(): Promise<DbEnv | null> {
+  const { db } = readEnv();
+  // Local only, the same refusal scripts/db-reset.ts makes: these suites run
+  // garbage collection's unqualified DELETEs.
+  if (!db) return unavailable('DATABASE_URL is not set');
+  if (!isLocalDatabase(db.url)) {
+    return unavailable(`${db.url} is not a local database`);
+  }
+  const pool = createOwnerPool(db);
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    const probe = pool.query(TENANT_ROLES_SQL);
+    // When the timeout wins the race, `pool.end()` below rejects this query, and
+    // an unhandled rejection fails the run.
+    probe.catch(() => undefined);
+    await Promise.race([
+      probe,
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error('probe timeout')),
+          PROBE_TIMEOUT_MS,
+        );
+      }),
+    ]);
+    return db;
+  } catch (err) {
+    return unavailable(`${db.url} is unreachable (${String(err)})`);
+  } finally {
+    clearTimeout(timer);
+    await pool.end();
+  }
+}
+
+export async function seedTeam(db: pg.Pool, teamId: string): Promise<void> {
+  await db.query(
+    `INSERT INTO teams (id, name, slug) VALUES ($1, $1, $1)
+     ON CONFLICT (id) DO NOTHING`,
+    [teamId],
+  );
+}
+
+export async function createScratchDatabase(
+  db: DbEnv,
+): Promise<{ db: DbEnv; pool: pg.Pool; dispose: () => Promise<void> }> {
+  const name = `studio_test_db_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
+
+  const admin = createOwnerPool(db);
+  try {
+    await admin.query(`create database ${pg.escapeIdentifier(name)}`);
+  } finally {
+    await admin.end();
+  }
+
+  const url = new URL(db.url);
+  url.pathname = `/${name}`;
+  const scratchDb = { url: url.toString() };
+  const pool = createOwnerPool(scratchDb);
+
+  return {
+    db: scratchDb,
+    pool,
+    dispose: async () => {
+      await pool.end();
+      const cleanup = createOwnerPool(db);
+      try {
+        await cleanup.query(
+          `drop database if exists ${pg.escapeIdentifier(name)} with (force)`,
+        );
+      } finally {
+        await cleanup.end();
+      }
+    },
+  };
+}
+
+export async function enqueueAsApplication<Queue extends JobQueueName>(
+  db: DbEnv,
+  queue: Queue,
+  payload: JobPayload<Queue>,
+  options: { schema?: string } = {},
+): Promise<string> {
+  return Effect.runPromise(
+    Effect.scoped(
+      Effect.flatMap(Jobs, (jobs) =>
+        UntenantedScope.open(jobs.enqueue(queue, payload)),
+      ).pipe(
+        Effect.orDie,
+        Effect.provide(
+          Jobs.layer({ schema: options.schema ?? JOB_SCHEMA }).pipe(
+            Layer.provideMerge(
+              Layer.orDie(
+                Database.layer({
+                  url: db.url,
+                  maxConnections: 2,
+                  applicationName: 'studio-test-enqueue',
+                }),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}

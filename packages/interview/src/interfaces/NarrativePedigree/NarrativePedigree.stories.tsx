@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
@@ -77,7 +78,26 @@ type Story = StoryObj<typeof meta>;
  * mitochondrial-replacement-therapy (MRT) case, which is not participant-
  * reachable, see the **Mitochondrial donation (MRT)** story.
  */
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const condition = await canvas.findByRole('button', {
+      name: "Huntington's Disease",
+    });
+    await userEvent.click(condition);
+    await expect(condition).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Focus on You' }),
+    );
+    await expect(
+      canvas.getByRole('button', { name: 'Clear focus' }),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Clear focus' }));
+    await expect(
+      canvas.queryByRole('button', { name: 'Clear focus' }),
+    ).not.toBeInTheDocument();
+  },
+};
 
 /**
  * The same family with an added **mitochondrial replacement therapy (MRT)**
@@ -96,4 +116,13 @@ export const Default: Story = {};
  */
 export const MitochondrialDonation: Story = {
   args: { includeMrtBranch: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Mitochondrial Myopathy' }),
+    );
+    await expect(
+      await canvas.findByRole('button', { name: 'Focus on Chloe Nolan' }),
+    ).toBeVisible();
+  },
 };

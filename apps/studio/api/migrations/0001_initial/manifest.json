@@ -1,0 +1,12 @@
+{
+  "version": "0001_initial",
+  "ordinal": 1,
+  "fingerprint": "3591929961fd37ec95efd20da86f4cfcdd0b6b7fccf2ef8d55008cbb9d8edd68",
+  "drops": [],
+  "artefacts": {
+    "delta.sql": "d4baff64f4949a3ebcb5242843496f95ffe8ba22dc2754af1c5e6441cf33a25e",
+    "sidecars.sql": "f767807f824ff3f7c725ea1d7b7f4b83f795cb31b8cc8026880bee77858669d0",
+    "snapshot.json": "6f43b44fbecba7c660e68deb97d12206af05b4cdb062ea64cadfc1aaca3009db"
+  },
+  "combined": "edc5d21530289e77edcee67d15c8f3da079717ed7650d1f628b96684c38fb235"
+}

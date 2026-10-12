@@ -82,7 +82,7 @@ Faithful per-API lookup alone still yields a broken `package.json`. Handle these
 
 - **Package consolidation.** `@effect/platform`, `@effect/rpc`, `@effect/cluster`, and others merged into the core `effect` package — remove them from `package.json` and rewrite their imports per the Import Map. Packages that remain separate (`@effect/platform-*`, `@effect/sql-*`, `@effect/ai-*`, `@effect/opentelemetry`, `@effect/vitest`, …) stay as dependencies.
 - **Version alignment.** All Effect ecosystem packages share one version number in v4. Every remaining `effect` / `@effect/*` dependency must be on the same matching version.
-- **Unstable modules.** Some functionality only exists under `effect/unstable/*` import paths (e.g. `effect/unstable/http`, `effect/unstable/rpc`). These are correct v4 imports — use them where the reference maps to them; they may receive breaking changes in minor releases.
+- **Unstable modules.** Some functionality only exists under `effect/*` import paths (e.g. `effect/http`, `effect/rpc`). These are correct v4 imports — use them where the reference maps to them; they may receive breaking changes in minor releases.
 
 ## Delegating to Sub-Agents
 

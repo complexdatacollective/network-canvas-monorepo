@@ -204,7 +204,7 @@ it('ends the edit when the host opens another stage in the same editor', async (
   };
   const editorOn = (stage: ProtocolSectionId) => (
     <DialogProvider>
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <StageEditor
           target={{ sectionId: stage }}
           registry={registry}

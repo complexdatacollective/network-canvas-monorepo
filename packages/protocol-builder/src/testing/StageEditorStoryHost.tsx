@@ -138,7 +138,7 @@ export function StageEditorStoryHost({
   const stage = sectionId({ kind: 'stage', stageId });
   return (
     <DialogProvider>
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
           {/*
             Named, because the editor below mounts live regions of its own: a

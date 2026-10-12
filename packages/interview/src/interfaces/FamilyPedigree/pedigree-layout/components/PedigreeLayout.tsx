@@ -104,20 +104,23 @@ export default function PedigreeLayout({
   // produces a bounding box ~1.2× the node size. Add inset so nodes and edges
   // are shifted inward, preventing diamond tips from being clipped.
   const diamondInset = Math.ceil(nodeWidth * 0.1);
-  const routedConnectorMinY = Math.min(
+  // Routed partnership lines can run above the top row, and a partnership
+  // across rows can drop beside the outermost people; make room for both.
+  const routedSegments = connectorData.connectors.groupLines.flatMap((line) => [
+    line.segment,
+    ...(line.endpointSegments ?? []),
+  ]);
+  const routedXs = routedSegments.flatMap((segment) => [
+    segment.x1,
+    segment.x2,
+  ]);
+  const routedConnectorInset = -Math.min(
     0,
-    ...connectorData.connectors.groupLines.flatMap((line) => [
-      line.segment.y1,
-      line.segment.y2,
-      ...(line.endpointSegments ?? []).flatMap((segment) => [
-        segment.y1,
-        segment.y2,
-      ]),
-    ]),
+    ...routedSegments.flatMap((segment) => [segment.y1, segment.y2]),
   );
-  const routedConnectorInset = -routedConnectorMinY;
+  const routedConnectorInsetX = -Math.min(0, ...routedXs);
 
-  let totalWidth = 0;
+  let totalWidth = Math.max(0, ...routedXs);
   let totalHeight = 0;
   for (const pos of positions.values()) {
     const rightEdge = pos.x + metrics.containerWidth;
@@ -126,7 +129,7 @@ export default function PedigreeLayout({
     if (bottomEdge > totalHeight) totalHeight = bottomEdge;
   }
 
-  totalWidth += diamondInset * 2;
+  totalWidth += diamondInset * 2 + routedConnectorInsetX;
   totalHeight += diamondInset * 2 + routedConnectorInset;
 
   const edgeColor = 'var(--edge-1)';
@@ -141,7 +144,7 @@ export default function PedigreeLayout({
         color={edgeColor}
         width={totalWidth}
         height={totalHeight}
-        offsetX={diamondInset}
+        offsetX={diamondInset + routedConnectorInsetX}
         offsetY={diamondInset + routedConnectorInset}
         highlightedNodeIds={highlightedNodeIds}
         highlightedEdgeKeys={highlightedEdgeKeys}
@@ -156,7 +159,7 @@ export default function PedigreeLayout({
             className="absolute"
             style={{
               top: pos.y + diamondInset + routedConnectorInset,
-              left: pos.x + diamondInset,
+              left: pos.x + diamondInset + routedConnectorInsetX,
               width: metrics.containerWidth,
               height: metrics.containerHeight,
             }}

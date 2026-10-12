@@ -2,9 +2,9 @@
  * @codaco/tailwind-config/studio — the Studio product's CSS entry
  *
  * The same foundation `fresco.css` bundles — Tailwind, the colour triplets,
- * the token surface, the shared utilities and plugins, and the default theme
- * every semantic variable falls back to — plus the studio theme, and NOT the
- * interview theme, which Studio has no region for.
+ * the token surface, the shared utilities and plugins, the default theme
+ * every semantic variable falls back to, and the interview theme for the
+ * participant pages that host an interview — plus the studio theme.
  *
  * The studio theme scopes its overrides to `[data-theme-studio]`, so the
  * attribute belongs on Studio's `<html>` (see `index.html`). Keeping the
@@ -34,6 +34,7 @@
    `[data-theme-studio]`, with dark keyed off the same `[data-theme='dark']`
    attribute the default theme uses. */
 @import './themes/default.css';
+@import './themes/interview.css';
 @import './themes/studio.css';
 
 /* Custom Tailwind plugins, loaded from TypeScript source. Tailwind compiles

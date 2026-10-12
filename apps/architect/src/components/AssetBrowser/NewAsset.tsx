@@ -3,11 +3,7 @@ import AutoFileDrop from '../Form/AutoFileDrop';
 type NewAssetProps = {
   type?: string | null;
   onCreate?: (ids: string[]) => void;
-};
-
-type AutoFileDropProps = {
-  type?: string | null;
-  onDrop: (ids: string[]) => void;
+  disabled?: boolean;
 };
 
 /**
@@ -15,17 +11,24 @@ type AutoFileDropProps = {
  *
  * Value should be assetId
  */
-const NewAsset = ({ type = null, onCreate }: NewAssetProps) => {
+const NewAsset = ({
+  type = null,
+  onCreate,
+  disabled = false,
+}: NewAssetProps) => {
   const handleDrop = (ids: string[]) => {
     if (onCreate) {
       onCreate(ids);
     }
   };
 
-  const AutoFileDropTyped =
-    AutoFileDrop as React.ComponentType<AutoFileDropProps>;
-
-  return <AutoFileDropTyped type={type} onDrop={handleDrop} />;
+  return (
+    <AutoFileDrop
+      type={type ?? undefined}
+      onDrop={handleDrop}
+      disabled={disabled}
+    />
+  );
 };
 
 export default NewAsset;

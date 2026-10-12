@@ -7,7 +7,7 @@ import Surface, {
   surfaceSpacingVariants,
 } from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import { compose, cva, cx } from '@codaco/fresco-ui/utils/cva';
+import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 type PanelProps = React.HTMLAttributes<HTMLDivElement> & {
   title: string;
@@ -21,10 +21,9 @@ const panelHeadingOwnVariants = cva({
   base: 'border-background flex shrink-0 grow-0 flex-col justify-center border-b-3 text-center',
 });
 
-const headingClassNames = compose(
-  surfaceSpacingVariants,
-  panelHeadingOwnVariants,
-);
+const headingClassNames = cva({
+  composes: [surfaceSpacingVariants, panelHeadingOwnVariants],
+});
 
 /**
  * Renders a side panel, with a title and `props.children`.

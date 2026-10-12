@@ -11,19 +11,19 @@ import { InlineGridLayout } from '@codaco/fresco-ui/collection/layout/InlineGrid
 import type {
   CollectionProps,
   ItemProps,
+  Key,
 } from '@codaco/fresco-ui/collection/types';
 import type { DragMetadata, DropCallback } from '@codaco/fresco-ui/dnd/types';
 import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
+import { readNodeLabelSource } from '../interfaces/Anonymisation/nodeLabel';
+import { useDecryptedOutcomes } from '../interfaces/Anonymisation/useDecryptionScope';
+import { useNodeLabeller } from '../interfaces/Anonymisation/useNodeLabel';
 import { makeGetCodebookVariablesForNodeType } from '../selectors/protocol';
-import { getNodeLabelAttribute } from '../utils/getNodeLabelAttribute';
+import { getShouldEncryptNames } from '../store/modules/protocol';
 import Node from './ConnectedNode';
 
 // Props that NodeList always provides internally — consumers can't override these
@@ -151,6 +151,61 @@ const NodeList = memo(
       });
     }, [animationKey, containerRef, safeAnimate]);
 
+    const keyExtractor = useCallback(
+      (node: NcNode) => node[entityPrimaryKeyProperty],
+      [],
+    );
+
+    const getCodebookVariablesForNodeType = useSelector(
+      makeGetCodebookVariablesForNodeType,
+    );
+    const encryptionEnabled = useSelector(getShouldEncryptNames);
+
+    // Typeahead and drag announcements use the label each node shows, read
+    // by the same function: the plaintext of an encrypted name once it is
+    // decrypted, and only the locked or failed label otherwise, so neither
+    // names a node by an answer it hides.
+    const labelSources = useMemo(
+      () =>
+        new Map(
+          displayItems.map((node) => [
+            node,
+            readNodeLabelSource(
+              node,
+              getCodebookVariablesForNodeType(node.type),
+              encryptionEnabled,
+            ),
+          ]),
+        ),
+      [displayItems, getCodebookVariablesForNodeType, encryptionEnabled],
+    );
+    const encryptedLabels = useMemo(
+      () =>
+        [...labelSources.values()].flatMap((source) =>
+          source.status === 'encrypted' ? [source.value] : [],
+        ),
+      [labelSources],
+    );
+    const labelNode = useNodeLabeller(useDecryptedOutcomes(encryptedLabels));
+
+    // The collection reads each node's typeahead text only when its items
+    // change, so they are handed over anew whenever a label changes: as each
+    // name decrypts, and when the passphrase stops being in force.
+    const labels = useMemo(() => {
+      const texts = new Map(
+        displayItems.map((node) => [
+          node[entityPrimaryKeyProperty],
+          labelNode(node, labelSources.get(node)),
+        ]),
+      );
+      return {
+        items: [...displayItems],
+        textOf: (node: NcNode) =>
+          texts.get(node[entityPrimaryKeyProperty]) ?? labelNode(node),
+        ofKey: (key: Key) => texts.get(String(key)),
+      };
+    }, [displayItems, labelSources, labelNode]);
+
     // Build drag and drop hooks if accepts or onDrop is provided
     const { dragAndDropHooks } = useDragAndDrop<NcNode>({
       announcedName,
@@ -169,33 +224,8 @@ const NodeList = memo(
         );
         return node ? { ...node, itemType } : { itemType };
       },
+      getItemAnnouncedName: labels.ofKey,
     });
-
-    const keyExtractor = useCallback(
-      (node: NcNode) => node[entityPrimaryKeyProperty],
-      [],
-    );
-
-    const getCodebookVariablesForNodeType = useSelector(
-      makeGetCodebookVariablesForNodeType,
-    );
-
-    const textValueExtractor = useCallback(
-      (node: NcNode) => {
-        const codebookVariables = getCodebookVariablesForNodeType(node.type);
-        const labelAttrId = getNodeLabelAttribute(
-          codebookVariables,
-          node[entityAttributesProperty],
-        );
-        if (labelAttrId) {
-          const value = node[entityAttributesProperty][labelAttrId];
-          if (typeof value === 'string') return value;
-          if (typeof value === 'number') return String(value);
-        }
-        return node[entityPrimaryKeyProperty];
-      },
-      [getCodebookVariablesForNodeType],
-    );
 
     // Styling classes including drop state styling via data attributes
     const containerClasses = cx(
@@ -245,9 +275,9 @@ const NodeList = memo(
             {...collectionProps}
             key={displayAnimationKey}
             id={id ?? 'node-list'}
-            items={displayItems}
+            items={labels.items}
             keyExtractor={keyExtractor}
-            textValueExtractor={textValueExtractor}
+            textValueExtractor={labels.textOf}
             layout={layout}
             renderItem={renderItemOverride ?? defaultRenderItem}
             dragAndDropHooks={dragAndDropHooks}

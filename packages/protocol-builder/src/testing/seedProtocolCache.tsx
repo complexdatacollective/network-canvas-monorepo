@@ -1,7 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { Redacted } from 'effect';
 import { useRef, type ReactNode } from 'react';
 
 import { useProtocolBuilderContext } from '../state/context.ts';
+import type { CachedSection } from '../state/hooks.ts';
 import type { InMemoryProtocolStore } from './host/protocolStore.ts';
 
 export type SeedProtocolCacheProps = Readonly<{
@@ -26,20 +28,20 @@ export type SeedProtocolCacheProps = Readonly<{
  */
 export function SeedProtocolCache({ store, children }: SeedProtocolCacheProps) {
   const queryClient = useQueryClient();
-  const { protocolId, utils } = useProtocolBuilderContext();
+  const { protocolId, adapter } = useProtocolBuilderContext();
   const seeded = useRef(false);
 
   if (!seeded.current) {
     seeded.current = true;
     const sectionIds = store.sectionIds();
-    queryClient.setQueryData(
-      utils.listSections.queryKey({ input: { protocolId } }),
-      { sectionIds },
-    );
+    queryClient.setQueryData(adapter.rpcKey('ListSections', { protocolId }), {
+      sectionIds,
+    });
     for (const id of sectionIds) {
-      queryClient.setQueryData(
-        utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
-        store.read(id),
+      const { document, revision } = store.read(id);
+      queryClient.setQueryData<CachedSection>(
+        adapter.rpcKey('GetSection', { protocolId, sectionId: id }),
+        { document: Redacted.make(document), revision },
       );
     }
   }

@@ -7,7 +7,6 @@ import { useToast } from '@codaco/fresco-ui/Toast';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { updateSettings } from '~/lib/db/api';
 
-import { loadBundledSampleProtocol } from './bundledProtocols';
 import {
   type ImportPhase,
   type ImportProgressEvent,
@@ -180,6 +179,11 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
           const bundled = await loadBundledDevelopmentProtocol();
           result = await importBundledProtocol(bundled, onProgress);
         } else {
+          // Dynamically imported so the sample's inlined media stays out of
+          // the initial load. The chunk is precached, so this still resolves
+          // offline; the pending card covers the load.
+          const { loadBundledSampleProtocol } =
+            await import('./bundledSampleProtocol');
           const bundled = await loadBundledSampleProtocol();
           result = await importBundledProtocol(bundled, onProgress);
         }

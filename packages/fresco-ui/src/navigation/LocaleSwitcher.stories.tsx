@@ -250,9 +250,36 @@ export const KeyboardWithoutSearch: Story = {
       name: 'Interface language',
     });
     await expect(within(popup).queryByRole('textbox')).not.toBeInTheDocument();
+    // Base UI moves focus into the list on the next animation frame, and a
+    // key pressed before then lands on the trigger instead.
+    const list = within(popup).getByRole('listbox');
+    await waitFor(() => expect(list).toHaveFocus());
 
     await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}');
-    await expect(trigger).toHaveTextContent('English (UK)');
+    await waitFor(() => expect(trigger).toHaveTextContent('English (UK)'));
+  },
+};
+
+/**
+ * Shift+Tab out of the list leaves it open with focus on the trigger. The
+ * arrow keys there go back into the list, as they reach the search box when
+ * there is one.
+ */
+export const KeyboardBackIntoTheList: Story = {
+  play: async ({ canvasElement }) => {
+    const { trigger, popup } = await openSwitcher(canvasElement);
+    const list = within(popup).getByRole('listbox');
+    await waitFor(() => expect(list).toHaveFocus());
+
+    // Where Shift+Tab out of the list puts focus.
+    trigger.focus();
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+    await userEvent.keyboard('{ArrowDown}');
+    await expect(list).toHaveFocus();
+
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{Enter}');
+    await waitFor(() => expect(trigger).toHaveTextContent('English (UK)'));
   },
 };
 

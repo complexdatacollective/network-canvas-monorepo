@@ -1,11 +1,6 @@
-import { type ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, RowData, SortFnOption } from '@tanstack/react-table';
 
-// Type-only side-effect import (erased entirely, so it never reaches Vite's
-// runtime resolver) so the `ColumnMeta` module augmentation reaches every
-// consumer of this file (directly or transitively, e.g. `ColumnHeader.tsx`
-// via `filters/types.ts`) — see the comment in ./tanstack-table.d.ts for why
-// this can't just rely on fresco-ui's own tsconfig `include`.
-import type * as _tanstackTable from './tanstack-table';
+import type { DataTableFeatures } from './features';
 
 export type Option = {
   label: string;
@@ -14,13 +9,21 @@ export type Option = {
 };
 
 /**
- * A stricter `ColumnDef` that requires `sortingFn` on every sortable column.
- * Columns that set `enableSorting: false` are exempt.
+ * A column definition for a table built from `dataTableFeatures`.
  */
-export type StrictColumnDef<TData, TValue = unknown> =
-  | (ColumnDef<TData, TValue> & { enableSorting: false })
-  | (ColumnDef<TData, TValue> & {
-      sortingFn: NonNullable<ColumnDef<TData, TValue>['sortingFn']>;
+export type DataTableColumnDef<
+  TData extends RowData,
+  TValue = unknown,
+> = ColumnDef<DataTableFeatures, TData, TValue>;
+
+/**
+ * A stricter `DataTableColumnDef` that requires `sortFn` on every sortable
+ * column. Columns that set `enableSorting: false` are exempt.
+ */
+export type StrictColumnDef<TData extends RowData, TValue = unknown> =
+  | (DataTableColumnDef<TData, TValue> & { enableSorting: false })
+  | (DataTableColumnDef<TData, TValue> & {
+      sortFn: SortFnOption<DataTableFeatures, TData>;
     });
 
 export type DataTableSearchableColumn<TData> = {

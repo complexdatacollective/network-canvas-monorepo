@@ -141,7 +141,7 @@ export function FieldStoryHost({
 
   return (
     <DialogProvider>
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
         <ResourceClientProvider>
           <StageEditSession
             target={target}

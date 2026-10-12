@@ -28,12 +28,12 @@ test('every workspace test suite belongs to exactly one shard', () => {
 
 test('the Studio server suite is in no bucket, so every shard negates it', () => {
   assert.ok(
-    !shardedPackages().includes('@codaco/studio-server'),
+    !shardedPackages().includes('@codaco/studio-api'),
     'the wall-clock-budgeted Studio suite keeps its own dedicated job',
   );
   for (const { shard } of TEST_SHARDS) {
     assert.ok(
-      shardFilters(shard).includes('--filter=!@codaco/studio-server'),
+      shardFilters(shard).includes('--filter=!@codaco/studio-api'),
       `shard ${shard} excludes the Studio server suite`,
     );
   }
@@ -68,14 +68,14 @@ test('the shards partition the workspace suites with no overlap or gap', () => {
   const all = workspaceTestPackages(REPO_ROOT);
   assert.deepEqual(
     [...assigned].sort(),
-    all.filter((name) => name !== '@codaco/studio-server').sort(),
+    all.filter((name) => name !== '@codaco/studio-api').sort(),
     'the buckets cover every workspace test suite but the Studio server one',
   );
 });
 
 test('exactly one shard carries the only suite that needs Postgres', () => {
   // packages/studio-sync's conformance suite connects to 54318 and refuses to
-  // skip under CI; it is the only workspace suite outside @codaco/studio-server
+  // skip under CI; it is the only workspace suite outside @codaco/studio-api
   // that needs a database, which is why only its shard starts one.
   const withPostgres = TEST_SHARDS.filter((s) => s.postgres === true);
   assert.equal(withPostgres.length, 1, 'one shard declares Postgres');
@@ -93,14 +93,14 @@ test('exactly one shard carries the only suite that needs Postgres', () => {
 });
 
 test('a deliberately-unsharded package added to a bucket fails the check', () => {
-  // The drift this catches: a rebalance drops @codaco/studio-server into a
+  // The drift this catches: a rebalance drops @codaco/studio-api into a
   // bucket. It is not a duplicate, it IS a workspace test package, and it is
   // no longer unassigned — so every other arm of the guard passes it. But the
   // shard that owns it stops negating it, and the wall-clock-budgeted suite
   // runs there as well as in its dedicated job.
   const rogue = {
     shard: 99,
-    packages: [{ name: '@codaco/studio-server', seconds: 590 }],
+    packages: [{ name: '@codaco/studio-api', seconds: 590 }],
   };
   TEST_SHARDS.push(rogue);
   try {

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { useMemo, type ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +7,7 @@ import {
   ActionToolbarProvider,
   useActionToolbar,
 } from '~/components/ProjectNav/ActionToolbar';
+import { ProtocolReadOnlyContext } from '~/hooks/useProtocolReadOnly';
 
 const mocks = vi.hoisted(() => ({ dispatch: vi.fn(), setLocation: vi.fn() }));
 
@@ -76,6 +77,35 @@ describe('<ExperimentsPage />', () => {
     expect(toolbars).toHaveLength(1);
     expect(toolbars[0]).toHaveAccessibleName('Experiments actions');
     expect(screen.getByRole('button', { name: 'Go Back' })).toBeInTheDocument();
+  });
+
+  it('turns the switch on and off outside the guard', () => {
+    mocks.dispatch.mockClear();
+    renderInWorkspace(<ExperimentsPage />);
+
+    const toggle = screen.getByRole('switch', { name: 'Encrypted Attributes' });
+    expect(toggle).toBeEnabled();
+    fireEvent.click(toggle);
+
+    expect(mocks.dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  // The page stays readable while another tab owns the protocol; only the
+  // switch that edits it is withdrawn, and "Go Back" is navigation.
+  it('disables the switch while another tab owns the protocol', () => {
+    mocks.dispatch.mockClear();
+    renderInWorkspace(
+      <ProtocolReadOnlyContext value>
+        <ExperimentsPage />
+      </ProtocolReadOnlyContext>,
+    );
+
+    const toggle = screen.getByRole('switch', { name: 'Encrypted Attributes' });
+    expect(toggle).toBeDisabled();
+    fireEvent.click(toggle);
+
+    expect(mocks.dispatch).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Go Back' })).toBeEnabled();
   });
 
   it("does not put a second toolbar on screen beside another route's", () => {

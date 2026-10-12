@@ -3,15 +3,22 @@ import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+  mergeCatalogs,
+} from '@codaco/app-i18n/locales';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 
-import { frescoUiCatalogs } from '../locales/catalogs';
+import { frescoUiCatalogLoaders } from '../locales/catalogs';
 import Field from './Field/Field';
 import InputField from './fields/InputField';
 import Form from './Form';
 import SubmitButton from './SubmitButton';
+
+const catalogs = createCatalogSource(frescoUiCatalogLoaders);
+await catalogs.load('es');
 
 const messages = defineMessages({
   taken: {
@@ -74,7 +81,7 @@ it('reformats submitted field/form errors while preserving their refusal, values
       locales={ecosystemLocales}
       manageDocument={false}
       messages={mergeCatalogs(
-        frescoUiCatalogs[locale] ?? {},
+        catalogs.peek(locale) ?? {},
         locale === 'es' ? spanish : {},
       )}
     >
@@ -122,7 +129,7 @@ it('reformats the shared submit-throw fallback after the operation has failed', 
       locale={locale}
       locales={ecosystemLocales}
       manageDocument={false}
-      messages={frescoUiCatalogs[locale]}
+      messages={catalogs.peek(locale)}
     >
       <Form onSubmit={submit}>
         <SubmitButton>Submit</SubmitButton>
@@ -176,7 +183,7 @@ it('updates an existing error after whole-form validation finishes across a loca
       locale={locale}
       locales={ecosystemLocales}
       messages={mergeCatalogs(
-        frescoUiCatalogs[locale] ?? {},
+        catalogs.peek(locale) ?? {},
         locale === 'es' ? spanish : {},
       )}
       manageDocument={false}

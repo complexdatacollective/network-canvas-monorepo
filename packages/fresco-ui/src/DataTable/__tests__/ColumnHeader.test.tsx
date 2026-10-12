@@ -1,23 +1,18 @@
-import {
-  getCoreRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type SortingState,
-} from '@tanstack/react-table';
+import { useTable, type SortingState } from '@tanstack/react-table';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { DataTableColumnHeader } from '../ColumnHeader';
+import { dataTableFeatures, type DataTableFeatures } from '../features';
 
 type Row = { name: string };
 
 const Harness = ({ sorting }: { sorting: SortingState }) => {
-  const table = useReactTable<Row>({
+  const table = useTable<DataTableFeatures, Row>({
+    features: dataTableFeatures,
     data: [{ name: 'Ada' }, { name: 'Grace' }],
     columns: [{ accessorKey: 'name', header: 'Name', enableSorting: true }],
     state: { sorting },
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
   });
 
   const column = table.getColumn('name')!;

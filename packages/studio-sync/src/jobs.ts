@@ -1,45 +1,21 @@
 // Studio's background-job declarations (#1895): which queues exist, how each
-// retries and expires, what a job on it may carry, and what the two database
-// roles may do with the job tables.
-//
-// It lives beside rls.ts for the same reason the roles do — a queue is part of
-// the schema, installed once by apply-schema and verified by every process at
-// boot through the fingerprint — and it imports no pg-boss. pg-boss is a server
-// dependency; this package is also compiled into contexts that never run a job,
-// and the declarations are plain data either way. The server checks them
-// against pg-boss's own `Queue` type at compile time (src/jobs/queues.ts), so
-// the absence of the import costs no safety.
-import { z } from 'zod';
+// retries and expires, when the recurring ones run, and what a job on each may
+// carry.
+import { Predicate, Schema, type SchemaAST } from 'effect';
 
-import { TENANT_ROLES } from './rls.ts';
+import type { CurrentProtocol } from '@codaco/protocol-validation';
 
-/** pg-boss owns this schema outright; nothing of Studio's lives in it. */
-export const JOB_SCHEMA = 'pgboss';
-
-/**
- * pg-boss's per-queue options, mirrored rather than imported. Every field is
- * the same name and meaning pg-boss gives it; `src/jobs/queues.ts` in the
- * server fails to compile if that stops being true.
- */
 export type JobQueueOptions = {
-  policy?:
-    | 'standard'
-    | 'short'
-    | 'singleton'
-    | 'stately'
-    | 'exclusive'
-    | 'key_strict_fifo';
+  policy?: 'standard' | 'singleton';
   retryLimit?: number;
   retryDelay?: number;
   retryBackoff?: boolean;
-  /** Only meaningful with `retryBackoff`; pg-boss rejects it otherwise. */
   retryDelayMax?: number;
   expireInSeconds?: number;
   retentionSeconds?: number;
   /** `0` keeps completed jobs forever. */
   deleteAfterSeconds?: number;
   deadLetter?: string;
-  notify?: boolean;
   warningQueueSize?: number;
 };
 
@@ -49,15 +25,8 @@ export type JobQueueDeclaration = {
 };
 
 /**
- * Every queue Studio declares, in the order they must be created: a queue's
- * `deadLetter` is a foreign key to another queue's name, so a target has to
- * exist before the queue that names it. Consumers that land later (#1521,
- * #1291, #1305, #1520, #1268) add theirs here rather than creating queues of
- * their own at run time.
- *
- * `partition` is deliberately absent everywhere: a dedicated table per queue
- * only pays for itself at a volume none of these reach, and it would make a
- * queue's shape a migration rather than a row.
+ * A `deadLetter` must name another queue in this list; the server refuses the
+ * whole list at module load otherwise.
  */
 export const JOB_QUEUES = [
   {
@@ -85,17 +54,15 @@ export const JOB_QUEUES = [
       retryDelayMax: 1800,
       expireInSeconds: 60,
       deadLetter: 'invitation-delivery-dead-letter',
-      notify: true,
     },
   },
   {
     // A sign-in link is useless once it expires, so a failed send is worth two
     // quick retries and nothing more: no dead letter, and both the job and its
     // record are gone within minutes — which holds only because the worker
-    // runs pg-boss's maintenance pass every minute (src/jobs/worker.ts in the
-    // server). Deletion happens on that pass alone, so at pg-boss's own
-    // 24-hour default this row, whose payload is the magic link itself, would
-    // outlive the link by most of a day.
+    // sweeps retention every minute. Deletion happens on that sweep alone, so
+    // at a day-scale retention this row, whose payload is the magic link
+    // itself, would outlive the link by most of a day.
     name: 'sign-in-email',
     options: {
       policy: 'standard',
@@ -106,7 +73,6 @@ export const JOB_QUEUES = [
       expireInSeconds: 30,
       retentionSeconds: 600,
       deleteAfterSeconds: 60,
-      notify: true,
     },
   },
   {
@@ -135,6 +101,44 @@ export const JOB_QUEUES = [
       expireInSeconds: 3600,
     },
   },
+  {
+    // The daily check for a newer Studio release (#1901). `singleton` because
+    // two runs alongside each other would both read the same manifest and
+    // race for the one-email-per-version claim; the claim is correct on its
+    // own, but a second run has nothing to add. A missed day is picked up by
+    // tomorrow's run, so a failed fetch retries only twice. The expiry is the
+    // outer bound on one attempt and sits above the manifest fetch's own bound
+    // (20s) plus the SMTP transport's (10s connect, 10s greeting, 20s socket),
+    // so a slow send is never reaped while it is still running: a reaped
+    // attempt would release the version's claim and a second email would follow.
+    name: 'update-check',
+    options: {
+      policy: 'singleton',
+      retryLimit: 2,
+      expireInSeconds: 120,
+      retentionSeconds: 7 * 24 * 3600,
+      deleteAfterSeconds: 24 * 3600,
+    },
+  },
+  {
+    name: 'session-completed',
+    options: {
+      policy: 'standard',
+    },
+  },
+  {
+    name: 'analytics-delivery',
+    options: {
+      policy: 'standard',
+      retryLimit: 20,
+      retryDelay: 5,
+      retryBackoff: true,
+      retryDelayMax: 3600,
+      expireInSeconds: 60,
+      retentionSeconds: 7 * 24 * 3600,
+      deleteAfterSeconds: 3600,
+    },
+  },
 ] as const satisfies readonly JobQueueDeclaration[];
 
 export type JobQueueName = (typeof JOB_QUEUES)[number]['name'];
@@ -145,41 +149,258 @@ export type JobSchedule = {
   tz: string;
 };
 
-/**
- * Recurring work, registered by the worker through pg-boss's own cron, which
- * coordinates across worker replicas. Hourly is well inside every retention
- * bound the sweep enforces.
- */
 export const JOB_SCHEDULES = [
   { queue: 'protocol-store-gc', cron: '0 * * * *', tz: 'UTC' },
   // Every minute, because the thing it summarises is a one-minute window: a
   // longer cadence would leave a burst unrecorded for as long as the cadence,
   // and the job does nothing at all when no window was suppressed.
   { queue: 'denied-attempts-summary', cron: '* * * * *', tz: 'UTC' },
+  // Daily, at a fixed minute off the hour. The minute is the same for every
+  // instance, so the manifest host sees them arrive together; that is accepted
+  // (no jitter, by decision, 16 Sep 2026). The off-the-hour minute only keeps
+  // the check clear of the top-of-the-hour crons, and a fixed minute rather
+  // than a random one keeps the schedule row from changing on each boot.
+  { queue: 'update-check', cron: '23 4 * * *', tz: 'UTC' },
 ] as const satisfies readonly JobSchedule[];
 
+const RowId = Schema.String.check(Schema.isUUID());
+
+/**
+ * Effect 4 ships no string-shaped URL check, and a payload column has to stay a
+ * string.
+ */
+const isUrlString = Schema.makeFilter<string>(
+  (value) => (URL.canParse(value) ? undefined : 'a URL'),
+  { expected: 'a URL' },
+);
+
+const isPlainPrototype = (prototype: unknown): boolean =>
+  prototype === null ||
+  (Predicate.isObject(prototype) && Object.getPrototypeOf(prototype) === null);
+
+/**
+ * An empty `Schema.Struct` admits any non-nullish value and passes keys through,
+ * so a queue that carries nothing has to check for a plain empty object itself.
+ */
+const isEmptyObject = Schema.makeFilter<Schema.Struct<{}>['Type']>(
+  (value) =>
+    Predicate.isObject(value) &&
+    isPlainPrototype(Object.getPrototypeOf(value)) &&
+    Reflect.ownKeys(value).length === 0
+      ? undefined
+      : 'an object with no properties',
+  { expected: 'an object with no properties' },
+);
+
 /** The delivery row's id; the handler loads the address under its own role. */
-export const InvitationDeliveryJobSchema = z.strictObject({
-  deliveryId: z.uuid(),
+export const InvitationDeliveryJobSchema = Schema.Struct({
+  deliveryId: RowId,
 });
-export type InvitationDeliveryJob = z.infer<typeof InvitationDeliveryJobSchema>;
+export type InvitationDeliveryJob = typeof InvitationDeliveryJobSchema.Type;
 
 /** The documented exception to identifiers-only — see JOB_PAYLOAD_POLICY. */
-export const SignInEmailJobSchema = z.strictObject({
-  email: z.string().min(1),
-  url: z.url(),
+export const SignInEmailJobSchema = Schema.Struct({
+  email: Schema.RedactedFromValue(Schema.String.check(Schema.isMinLength(1))),
+  url: Schema.RedactedFromValue(Schema.String.check(isUrlString)),
 });
-export type SignInEmailJob = z.infer<typeof SignInEmailJobSchema>;
+export type SignInEmailJob = typeof SignInEmailJobSchema.Type;
+
+export const SessionCompletedJobSchema = Schema.Struct({
+  sessionId: RowId,
+});
+export type SessionCompletedJob = typeof SessionCompletedJobSchema.Type;
 
 /** The sweep visits every tenant; there is nothing to address it at. */
-export const ProtocolStoreGcJobSchema = z.strictObject({});
-export type ProtocolStoreGcJob = z.infer<typeof ProtocolStoreGcJobSchema>;
+export const ProtocolStoreGcJobSchema = Schema.Struct({}).check(isEmptyObject);
+export type ProtocolStoreGcJob = typeof ProtocolStoreGcJobSchema.Type;
 
 /** The run scans every suppressed window there is; nothing addresses it. */
-export const DeniedAttemptsSummaryJobSchema = z.strictObject({});
-export type DeniedAttemptsSummaryJob = z.infer<
-  typeof DeniedAttemptsSummaryJobSchema
+export const DeniedAttemptsSummaryJobSchema = Schema.Struct({}).check(
+  isEmptyObject,
+);
+export type DeniedAttemptsSummaryJob =
+  typeof DeniedAttemptsSummaryJobSchema.Type;
+
+/** The check reads one fixed manifest; there is nothing to address it at. */
+export const UpdateCheckJobSchema = Schema.Struct({}).check(isEmptyObject);
+export type UpdateCheckJob = typeof UpdateCheckJobSchema.Type;
+
+const MintedId = Schema.String.check(
+  Schema.isPattern(/^[A-Za-z0-9_-]{1,64}$/, {
+    expected: 'an identifier Studio minted',
+  }),
+);
+
+const OccurredAt = Schema.Number.check(Schema.isInt(), Schema.isGreaterThan(0));
+
+const Count = Schema.Number.check(
+  Schema.isInt(),
+  Schema.isGreaterThanOrEqualTo(0),
+);
+
+export const USAGE_TEAM_ROLES = ['owner', 'admin', 'member'] as const;
+
+const UsageTeamRole = Schema.Literals(USAGE_TEAM_ROLES);
+
+const UsageTeamRoles = Schema.Array(UsageTeamRole).check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(USAGE_TEAM_ROLES.length),
+);
+
+export const USAGE_PARTICIPATION_MODES = ['managed', 'anonymous'] as const;
+
+type InterfaceType = CurrentProtocol['stages'][number]['type'];
+
+const DECLARED_INTERFACE_TYPES = [
+  'AlterEdgeForm',
+  'AlterForm',
+  'Anonymisation',
+  'CategoricalBin',
+  'DyadCensus',
+  'EgoForm',
+  'FamilyPedigree',
+  'Geospatial',
+  'Information',
+  'NameGenerator',
+  'NameGeneratorQuickAdd',
+  'NameGeneratorRoster',
+  'Narrative',
+  'NarrativePedigree',
+  'NetworkComposer',
+  'OneToManyDyadCensus',
+  'OrdinalBin',
+  'Sociogram',
+  'TieStrengthCensus',
+] as const satisfies readonly InterfaceType[];
+
+type UndeclaredInterfaceType = Exclude<
+  InterfaceType,
+  (typeof DECLARED_INTERFACE_TYPES)[number]
 >;
+
+export const INTERFACE_TYPES: [UndeclaredInterfaceType] extends [never]
+  ? typeof DECLARED_INTERFACE_TYPES
+  : never = DECLARED_INTERFACE_TYPES;
+
+export const UsageInterfaceType = Schema.Literals(INTERFACE_TYPES);
+
+const UsageInterfaceTypes = Schema.Array(UsageInterfaceType).check(
+  Schema.isMaxLength(INTERFACE_TYPES.length),
+);
+
+const ResearcherFields = {
+  occurredAt: OccurredAt,
+  accountId: MintedId,
+};
+
+const TeamResearcherFields = {
+  ...ResearcherFields,
+  teamId: MintedId,
+};
+
+const InterviewFields = {
+  occurredAt: OccurredAt,
+  teamId: MintedId,
+  sessionId: RowId,
+  studyId: MintedId,
+  waveId: MintedId,
+};
+
+export const ResearcherSignedUpEventSchema = Schema.Struct({
+  event: Schema.Literal('researcher_signed_up'),
+  ...ResearcherFields,
+});
+
+export const ResearcherSignedInEventSchema = Schema.Struct({
+  event: Schema.Literal('researcher_signed_in'),
+  ...ResearcherFields,
+});
+
+export const TeamInvitationSentEventSchema = Schema.Struct({
+  event: Schema.Literal('team_invitation_sent'),
+  ...TeamResearcherFields,
+  invitationId: MintedId,
+  role: UsageTeamRole,
+});
+
+export const TeamInvitationAcceptedEventSchema = Schema.Struct({
+  event: Schema.Literal('team_invitation_accepted'),
+  ...TeamResearcherFields,
+  invitationId: MintedId,
+  role: UsageTeamRole,
+});
+
+export const TeamMemberRoleChangedEventSchema = Schema.Struct({
+  event: Schema.Literal('team_member_role_changed'),
+  ...TeamResearcherFields,
+  memberId: MintedId,
+  previousRoles: UsageTeamRoles,
+  newRoles: UsageTeamRoles,
+});
+
+export const StudyCreatedEventSchema = Schema.Struct({
+  event: Schema.Literal('study_created'),
+  ...TeamResearcherFields,
+  studyId: MintedId,
+  protocolId: MintedId,
+  participationMode: Schema.Literals(USAGE_PARTICIPATION_MODES),
+});
+
+export const ProtocolCreatedEventSchema = Schema.Struct({
+  event: Schema.Literal('protocol_created'),
+  ...TeamResearcherFields,
+  protocolId: MintedId,
+});
+
+export const ProtocolDraftCommittedEventSchema = Schema.Struct({
+  event: Schema.Literal('protocol_draft_committed'),
+  ...TeamResearcherFields,
+  protocolId: MintedId,
+  interfaceTypes: UsageInterfaceTypes,
+  operationCount: Count,
+});
+
+export const InterviewStartedEventSchema = Schema.Struct({
+  event: Schema.Literal('interview_started'),
+  ...InterviewFields,
+  resumed: Schema.Boolean,
+});
+
+export const InterviewCompletedEventSchema = Schema.Struct({
+  event: Schema.Literal('interview_completed'),
+  ...InterviewFields,
+  nodeCount: Count,
+  edgeCount: Count,
+});
+
+export const UsageEventSchema = Schema.Union([
+  ResearcherSignedUpEventSchema,
+  ResearcherSignedInEventSchema,
+  TeamInvitationSentEventSchema,
+  TeamInvitationAcceptedEventSchema,
+  TeamMemberRoleChangedEventSchema,
+  StudyCreatedEventSchema,
+  ProtocolCreatedEventSchema,
+  ProtocolDraftCommittedEventSchema,
+  InterviewStartedEventSchema,
+  InterviewCompletedEventSchema,
+]);
+export type UsageEvent = typeof UsageEventSchema.Type;
+
+export const AnalyticsDeliveryJobSchema = Schema.Struct({
+  usage: UsageEventSchema,
+});
+export type AnalyticsDeliveryJob = typeof AnalyticsDeliveryJobSchema.Type;
+
+const TRACEPARENT =
+  /^00-(?!0{32})[0-9a-f]{32}-(?!0{16})[0-9a-f]{16}-[0-9a-f]{2}$/;
+
+export const JobCorrelationSchema = Schema.Struct({
+  traceparent: Schema.String.check(
+    Schema.isPattern(TRACEPARENT, { expected: 'a W3C traceparent' }),
+  ),
+});
+export type JobCorrelation = typeof JobCorrelationSchema.Type;
 
 export const JOB_PAYLOAD_SCHEMAS = {
   'invitation-delivery': InvitationDeliveryJobSchema,
@@ -189,14 +410,28 @@ export const JOB_PAYLOAD_SCHEMAS = {
   'sign-in-email': SignInEmailJobSchema,
   'protocol-store-gc': ProtocolStoreGcJobSchema,
   'denied-attempts-summary': DeniedAttemptsSummaryJobSchema,
-} as const satisfies Record<JobQueueName, z.ZodType>;
+  'update-check': UpdateCheckJobSchema,
+  'session-completed': SessionCompletedJobSchema,
+  'analytics-delivery': AnalyticsDeliveryJobSchema,
+} as const satisfies Record<JobQueueName, Schema.Struct<Schema.Struct.Fields>>;
 
-export type JobPayload<Queue extends JobQueueName> = z.infer<
-  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]
->;
+export type JobPayload<Queue extends JobQueueName> =
+  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Type'];
+
+export type EncodedJobPayload<Queue extends JobQueueName> =
+  (typeof JOB_PAYLOAD_SCHEMAS)[Queue]['Encoded'];
+
+/**
+ * `Schema.Struct` strips an undeclared key by default; a field the policy forbids
+ * must be refused, not silently dropped.
+ */
+export const JOB_PAYLOAD_PARSE_OPTIONS = {
+  onExcessProperty: 'error',
+} as const satisfies SchemaAST.ParseOptions;
 
 export type JobPayloadPolicy =
   | { kind: 'identifiers' }
+  | { kind: 'usage-event'; reason: string }
   | { kind: 'exception'; reason: string };
 
 /**
@@ -219,40 +454,11 @@ export const JOB_PAYLOAD_POLICY = {
   },
   'protocol-store-gc': { kind: 'identifiers' },
   'denied-attempts-summary': { kind: 'identifiers' },
+  'update-check': { kind: 'identifiers' },
+  'session-completed': { kind: 'identifiers' },
+  'analytics-delivery': {
+    kind: 'usage-event',
+    reason:
+      'The event is sent to Codaco as it was recorded, so a later change to the rows it names cannot change what was counted. It carries only what leaves the process: identifiers Studio minted, fixed codes defined in source, counts, booleans and a timestamp.',
+  },
 } as const satisfies Record<JobQueueName, JobPayloadPolicy>;
-
-// Interpolated into DDL, so it is checked rather than trusted: the scratch
-// schemas the suites provision compose this name themselves.
-const SCHEMA_NAME = /^[a-z_][a-z0-9_]*$/;
-
-/**
- * What the two roles may do inside pg-boss's schema.
- *
- * The application may create a job and learn its id, and nothing more — it
- * cannot read a payload, retry, cancel or delete one, which keeps every team's
- * queued work invisible to the role that serves requests. The worker runs as
- * maintenance, which owns the schema's use outright because pg-boss's fetch,
- * completion and supervision paths write to every table in it.
- *
- * The column list on `job_common` is the two columns the insert reads back
- * rather than writes: `id` for its RETURNING, and `start_after` for the notify
- * clause a notify-enabled queue appends. Nothing else needs a SELECT — a
- * column a statement only writes is covered by the INSERT above, and ON
- * CONFLICT arbitration reads the index rather than the column. Hashed into the
- * schema fingerprint, so widening this is a schema change.
- */
-export function jobGrantsSql(schema: string): string {
-  if (!SCHEMA_NAME.test(schema)) {
-    throw new Error(`invalid job schema name: ${JSON.stringify(schema)}`);
-  }
-  const { app, maintenance } = TENANT_ROLES;
-  return [
-    `GRANT USAGE ON SCHEMA ${schema} TO ${app}, ${maintenance};`,
-    `GRANT SELECT ON ${schema}.queue, ${schema}.version TO ${app};`,
-    `GRANT INSERT ON ${schema}.job, ${schema}.job_common TO ${app};`,
-    `GRANT SELECT (id, start_after) ON ${schema}.job_common TO ${app};`,
-    `GRANT ALL ON ALL TABLES IN SCHEMA ${schema} TO ${maintenance};`,
-    `GRANT ALL ON ALL SEQUENCES IN SCHEMA ${schema} TO ${maintenance};`,
-    `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA ${schema} TO ${maintenance};`,
-  ].join('\n');
-}

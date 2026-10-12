@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': minor
+'@codaco/studio-api': minor
 ---
 
 Studio can now be self-hosted from documentation alone. A guide under
@@ -15,7 +15,7 @@ service has to meet; the outbound hosts are also a checked-in list, and a test
 refuses to let the two disagree. `apps/studio/docs/topology.md` draws the stack
 and its routing table.
 
-`pnpm --filter @codaco/studio-server dev:stack` runs that same stack on this
+`pnpm --filter @codaco/studio-api dev:stack` runs that same stack on this
 machine: it builds both images from the checkout, brings up the complete
 compose file on `https://localhost` behind Traefik, runs the `migrate` one-shot
 and hands back its first-run setup token. It exists so the routing table, the

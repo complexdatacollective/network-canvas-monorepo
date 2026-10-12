@@ -679,6 +679,56 @@ describe('Wizard Dialog setBeforeNext', () => {
     expect(screen.getByText('Before next step')).toBeInTheDocument();
   });
 
+  it('cannot be left while beforeNext runs, even in the same task as Continue, and moves on once it completes', async () => {
+    let finish: (proceed: boolean) => void = () => undefined;
+    const handler = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const onResult = vi.fn();
+
+    render(
+      <DialogProvider>
+        <TestBeforeNext onResult={onResult} handler={handler} />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByText('Open'));
+    await screen.findByRole('dialog');
+
+    const next = screen.getByTestId('wizard-next');
+    const cancel = screen.getByTestId('wizard-cancel');
+    // Before React renders the busy state, so neither button is disabled.
+    act(() => {
+      next.click();
+      next.click();
+      cancel.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(cancel).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(onResult).not.toHaveBeenCalled();
+    expect(handler).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      finish(true);
+    });
+    expect(await screen.findByText('Set Data 2')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-cancel')).toBeEnabled();
+  });
+
   it('should allow navigation when beforeNext returns true', async () => {
     const handler = vi.fn().mockResolvedValue(true);
     const onResult = vi.fn();

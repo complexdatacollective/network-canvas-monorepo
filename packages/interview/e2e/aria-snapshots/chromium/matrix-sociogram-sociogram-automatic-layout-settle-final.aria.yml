@@ -1,12 +1,12 @@
 - main:
   - application "Placement area":
     - img
-    - button "Mohammad Crist"
-    - button "Laury Wisozk"
-    - button "Clinton Leffler"
-    - button "Lynette Hilll"
-    - button "Cloyd Bayer"
-    - button "Arnold Schowalter-Haag"
+    - button "Nikita Crist"
+    - button "Lilliana Wisozk"
+    - button "Collin Leffler"
+    - button "Lola Hilll"
+    - button "Ciara Bayer"
+    - button "Art Schowalter-Haag"
   - button "Hide instructions" [expanded]
   - status:
     - heading "Place people in the circles based on how close you are to them." [level=4]

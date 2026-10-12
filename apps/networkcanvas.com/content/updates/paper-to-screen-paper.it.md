@@ -1,0 +1,5 @@
+# Articolo a CHI 2016: dal cartaceo allo schermo con i sociogrammi assistiti dal partecipante
+
+Le principali misure di rete per gruppi ad alto rischio e difficili da raggiungere devono ancora essere raccolte chiedendo direttamente alle persone, e farlo su carta è lento e gravoso. Questo articolo descrive netCanvas, la prima versione di Network Canvas, che trasforma il sociogramma cartaceo assistito dal partecipante in uno strumento touchscreen. Semplifica l’inserimento dei dati, richiede meno interventi e preparazione da parte di chi conduce l’intervista, rende i dati più facili da riutilizzare e mostra la rete mentre viene disegnata.
+
+Il team lo ha testato in uno studio sui comportamenti di salute con una popolazione ad alto rischio e difficile da raggiungere, confrontando carta e touchscreen con gli stessi partecipanti, e ha concluso che la rilevazione delle reti su touchscreen è ormai un’alternativa valida, anche per dati altamente sensibili. [Leggi l’articolo](https://doi.org/10.1145/2858036.2858368).

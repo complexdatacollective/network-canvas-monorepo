@@ -97,7 +97,7 @@ describe('ProtocolLockBanner', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('describes the read-only view and how to get editing back', () => {
+  it('says the protocol can be browsed but not changed, and how to get editing back', () => {
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
     renderBanner(store);
@@ -105,14 +105,13 @@ describe('ProtocolLockBanner', () => {
     const banner = screen.getByRole('status');
     // No claim that changes are being saved, and no dead end: closing the other
     // tab releases the protocol and this tab reclaims it.
-    expect(banner).toHaveTextContent(/read-only mode/i);
-    expect(banner).toHaveTextContent(
-      /Close the other tab to continue editing/i,
-    );
+    expect(banner).toHaveTextContent(/read-only here/i);
+    expect(banner).toHaveTextContent(/look through every page/i);
+    expect(banner).toHaveTextContent(/Close the other tab to edit it/i);
     expect(banner).not.toHaveTextContent(/saved automatically/i);
   });
 
-  it('takes focus when the read-only view replaces what the user was looking at', () => {
+  it('takes focus when the page goes read-only under the user', () => {
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
     renderBanner(store);
@@ -124,7 +123,12 @@ describe('ProtocolLockBanner', () => {
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
     // An editor open on a stage, holding an edit the researcher made: what
     // "Discard Changes" is offered about.
-    publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
+    publishStageDraft(
+      editedStage,
+      { label: 'A' },
+      { label: 'A, edited' },
+      true,
+    );
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
     expect(readStageDraft().dirty).toBe(true);
@@ -136,8 +140,8 @@ describe('ProtocolLockBanner', () => {
     expect(banner).toHaveTextContent(
       /Close the other tab to carry on editing/i,
     );
-    // Focus is left alone here: nothing has been replaced and the user may be
-    // mid-keystroke.
+    // Focus is left alone here: the editor keeps its controls and the user may
+    // be mid-keystroke.
     expect(banner).not.toHaveFocus();
 
     fireEvent.click(screen.getByRole('button', { name: 'Discard Changes' }));
@@ -151,7 +155,12 @@ describe('ProtocolLockBanner', () => {
   // them looking for a tab that no longer exists.
   it('stops blaming the other tab once it has closed and a choice is outstanding', () => {
     mockLocation.mockReturnValue('/protocol/stage/stage-1');
-    publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
+    publishStageDraft(
+      editedStage,
+      { label: 'A' },
+      { label: 'A, edited' },
+      true,
+    );
     store.dispatch(setProtocolLockState('reclaim-blocked'));
 
     renderBanner(store);
@@ -188,7 +197,7 @@ describe('ProtocolLockBanner', () => {
       /unsaved changes in the editor you have open/i,
     );
     expect(banner).toHaveTextContent(
-      /close that editor to switch to a read-only view/i,
+      /close that editor to keep looking through the protocol read-only/i,
     );
     expect(banner).not.toHaveTextContent(/changes to this stage/i);
     expect(

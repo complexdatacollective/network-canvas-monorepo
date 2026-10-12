@@ -11,6 +11,7 @@ import {
   type InterviewPayload,
   Shell,
 } from '@codaco/interview';
+import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import {
   type AssetUrlOwner,
   createAssetUrlOwner,
@@ -84,6 +85,13 @@ export function ProtocolPreview({ waves, backHref }: ProtocolPreviewProps) {
       owner.release();
     };
   }, []);
+
+  // The interview's messages load while the protocol downloads and installs,
+  // rather than once the Shell mounts. A failure here is retried by the Shell
+  // itself.
+  useEffect(() => {
+    loadInterviewCatalog(locale).catch(() => undefined);
+  }, [locale]);
 
   useEffect(() => {
     if (!wave) return;

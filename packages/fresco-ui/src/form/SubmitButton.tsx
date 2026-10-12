@@ -37,18 +37,21 @@ type SubmitButtonProps = ComponentProps<typeof MotionButton> & {
 export default function SubmitButton({
   children,
   submittingText,
+  disabled,
   ...props
 }: SubmitButtonProps) {
   const isSubmitting = useFormStore((state) => state.isSubmitting);
 
+  // `disabled` and `aria-busy` follow the spread: a caller's own `disabled`
+  // (even `false`) must add to the submitting state, never replace it.
   return (
     <MotionButton
       color="primary"
       type="submit"
-      disabled={isSubmitting}
-      aria-busy={isSubmitting}
       icon={isSubmitting ? <Loader2 className="animate-spin" /> : undefined}
       {...props}
+      disabled={isSubmitting || disabled}
+      aria-busy={isSubmitting}
     >
       {isSubmitting && submittingText !== undefined ? submittingText : children}
     </MotionButton>

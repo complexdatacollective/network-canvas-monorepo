@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   type ComponentPropsWithRef,
+  type KeyboardEvent,
   type ReactElement,
   useEffect,
   useId,
@@ -25,6 +26,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button, type ButtonProps, IconButton } from '../Button';
 import InputField from '../form/fields/InputField';
+import { useComboboxTriggerEscape } from '../hooks/useComboboxTriggerEscape';
 import Surface from '../layout/Surface';
 import { ArrowSvg } from '../Popover';
 import {
@@ -215,6 +217,35 @@ export default function LocaleSwitcher({
     state: Exclude<LocaleSwitcherSaveState, 'idle'>;
     key: number;
   } | null>(null);
+  const {
+    open,
+    onOpenChange,
+    onTriggerKeyDown: closeOnTriggerEscape,
+  } = useComboboxTriggerEscape({
+    defaultOpen,
+    onOpenChange: (nextOpen) => {
+      if (!nextOpen) {
+        setQuery('');
+        setNotice(null);
+      }
+    },
+  });
+  // Base UI answers ArrowDown/ArrowUp on the trigger of an open combobox by
+  // focusing its search input. Without a search box there is none, so once
+  // focus is back on the trigger (Shift+Tab out of the list leaves the list
+  // open) the arrows went nowhere. They go to the list instead, which is
+  // where opening put focus in the first place.
+  const onTriggerKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    closeOnTriggerEscape(event);
+    if (
+      !searchable &&
+      open &&
+      (event.key === 'ArrowDown' || event.key === 'ArrowUp')
+    ) {
+      event.preventDefault();
+      listRef.current?.focus();
+    }
+  };
   useEffect(() => {
     if (saveState === 'idle') {
       setNotice(null);
@@ -264,7 +295,7 @@ export default function LocaleSwitcher({
     <Combobox.Root
       items={items}
       value={selected}
-      defaultOpen={defaultOpen}
+      open={open}
       onValueChange={(next) => {
         if (next !== null) choose(next.value);
       }}
@@ -277,16 +308,12 @@ export default function LocaleSwitcher({
       onInputValueChange={(next, details) => {
         if (details.reason === 'input-change') setQuery(next);
       }}
-      onOpenChange={(open) => {
-        if (!open) {
-          setQuery('');
-          setNotice(null);
-        }
-      }}
+      onOpenChange={onOpenChange}
     >
       {display === 'icon' ? (
         <Combobox.Trigger
           aria-label={triggerName}
+          onKeyDown={onTriggerKeyDown}
           render={
             renderTrigger ?? (
               <IconButton
@@ -305,6 +332,7 @@ export default function LocaleSwitcher({
       ) : (
         <Combobox.Trigger
           aria-label={triggerName}
+          onKeyDown={onTriggerKeyDown}
           render={
             renderTrigger ?? (
               <Button

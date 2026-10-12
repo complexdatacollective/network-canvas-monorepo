@@ -79,7 +79,7 @@
  * `--base-hue` is the per-mode neutral hue knob. The default theme declares it
  * on `:root` (290) as the hue its neutrals derive from, and an app theme
  * overriding it is already an established move (see
- * `apps/studio/client/src/styles/studio-theme.css`). Studio redeclares it in
+ * `apps/studio/web/src/styles/studio-theme.css`). Studio redeclares it in
  * each mode's block, so every neutral below follows the mode. Brand tokens
  * anchor to `--cyber-grape-hue` / `--sea-green-hue` / `--mustard-hue` from
  * `shared/colors.css` instead, which is what keeps them out of the retint.

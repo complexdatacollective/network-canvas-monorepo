@@ -1,0 +1,14 @@
+{
+  "common.back": "上一步",
+  "common.cancel": "取消",
+  "common.close": "關閉",
+  "common.confirm": "確認",
+  "common.continue": "繼續",
+  "common.delete": "刪除",
+  "common.done": "完成",
+  "common.genericError": "發生錯誤。",
+  "common.loading": "正在載入…",
+  "common.retry": "再試一次",
+  "common.save": "儲存",
+  "common.search": "搜尋"
+}

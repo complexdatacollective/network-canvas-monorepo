@@ -26,6 +26,7 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcNode } from '@codaco/shared-consts';
 
+import { interviewCatalogSource } from '../../../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../../../i18n/InterviewI18nProvider';
 import { FamilyPedigreeContext } from '../../../FamilyPedigreeContext';
 import { createFamilyPedigreeStore, type VariableConfig } from '../../../store';
@@ -177,6 +178,23 @@ vi.mock('../../../../../selectors/protocol', () => ({
 // would read real Redux state, so it returns null and the caller falls back to
 // its no-fields path. Everything else — including the validation-rule
 // resolution PersonNameField depends on — stays real.
+// Decrypting stored values for validation reads the passphrase from Redux;
+// this pedigree has none to decrypt.
+vi.mock('../../../../../forms/useValidationNetwork', async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import('../../../../../forms/useValidationNetwork')
+    >();
+  return {
+    ...actual,
+    useValidationNetwork: ({ network }: { network: unknown }) => ({ network }),
+  };
+});
+
+vi.mock('../../../../Anonymisation/usePassphrase', () => ({
+  usePassphrase: () => ({ isEnabled: false }),
+}));
+
 vi.mock('../../../../../selectors/forms', async (importOriginal) => {
   const actual =
     await importOriginal<typeof import('../../../../../selectors/forms')>();
@@ -300,6 +318,14 @@ async function openEditDialog(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByText('person'));
   await user.click(await screen.findByTestId('pedigree-menu-edit'));
 }
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
 
 describe('PedigreeView — person editor dialog', () => {
   it('renders the real person fields inside the dialog (issue #1390)', async () => {

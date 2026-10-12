@@ -40,9 +40,9 @@ const messages = defineMessages({
   thisNameIdentifiesTheTypeIn: {
     id: 'architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn',
     defaultMessage:
-      '{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be "Person", "Place", or "Organization".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be "Friends" or "Works With".}}',
+      '{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be "Person", "Place", or "Organization".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be "Friends" or "Colleagues".}}',
     description:
-      'Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data.',
+      'Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data. The field accepts only the letters A–Z and a–z, digits and the symbols . _ - : — so each translated example must contain no spaces and no accented or non-Latin letters. Where no example in your language fits, keep the English name and add a translation in parentheses after the closing quote.',
   },
   enterANameForThisType: {
     id: 'architect.typeEditor.typeEditor.enterANameForThisType',

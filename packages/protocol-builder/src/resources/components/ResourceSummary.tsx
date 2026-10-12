@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import type { ReactNode } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -95,12 +96,14 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
   const intl = useAppIntl();
   const { descriptor, counts, variableNames, dimensions, durationSeconds } =
     inspection;
+  const attributes =
+    variableNames === undefined ? undefined : Redacted.value(variableNames);
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-3">
         <Heading level="h4" margin="none">
-          {descriptor.name}
+          {Redacted.value(descriptor.name)}
         </Heading>
         {/*
           The type's own colour, which is what the protocol's resource library
@@ -125,7 +128,7 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
         */}
         {descriptor.status === 'staged' && descriptor.source !== undefined && (
           <Detail term={intl.formatMessage(messages.fileTerm)}>
-            {descriptor.source}
+            {Redacted.value(descriptor.source)}
           </Detail>
         )}
         {descriptor.byteLength !== undefined && (
@@ -143,9 +146,9 @@ export default function ResourceSummary({ inspection }: ResourceSummaryProps) {
             </Detail>
           </>
         )}
-        {variableNames !== undefined && variableNames.length > 0 && (
+        {attributes !== undefined && attributes.length > 0 && (
           <Detail term={intl.formatMessage(messages.attributesTerm)}>
-            {variableNames.join(', ')}
+            {attributes.join(', ')}
           </Detail>
         )}
         {dimensions !== undefined && (

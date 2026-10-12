@@ -1,6 +1,6 @@
 ---
-'@codaco/studio-server': minor
-'@codaco/studio-rpc': minor
+'@codaco/studio-api': minor
+'@codaco/studio-contract': minor
 ---
 
 Researchers can have a language preference stored on their account, so the

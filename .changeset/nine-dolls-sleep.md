@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': minor
+'@codaco/studio-api': minor
 ---
 
 Studio ships a reference Docker Compose stack: Traefik as the only ingress,
@@ -24,7 +24,7 @@ names a file whose contents are inserted into a `DATABASE_URL` that carries no
 password, so the password appears in neither `docker inspect` nor any process
 environment. Setting both is refused at boot.
 
-Local development is one command. `pnpm --filter @codaco/studio-server dev`
+Local development is one command. `pnpm --filter @codaco/studio-api dev`
 brings up the same stack's Postgres, Garage, Valkey and a Mailpit sink,
 bootstraps the bucket, resets and seeds the database, and runs the server, the
 worker and the client together; `dev:down` stops it. The hand-rolled

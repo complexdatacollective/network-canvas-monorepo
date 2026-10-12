@@ -1,0 +1,5 @@
+# Artigo na Network Science: qual é a estabilidade das redes pessoais ao longo do tempo?
+
+Quando as pessoas são entrevistadas mais de uma vez sobre suas redes, muitas das pessoas que elas citam desaparecem e reaparecem de uma entrevista para outra. Este artigo investiga se essa mudança reflete uma rotatividade real na vida das pessoas ou a própria entrevista: respondentes que se ancoram no que acham que uma rede deve ser, ou que citam menos pessoas para encurtar a entrevista.
+
+Com base em três ondas de um estudo em painel realizado em Chicago com homens jovens que fazem sexo com homens, coletado com o sociograma em tela sensível ao toque do Network Canvas, os autores encontraram pouca mudança no tamanho médio das redes entre as ondas. Houve mudanças pequenas, porém significativas, entre a primeira e a segunda onda, principalmente entre as pessoas com as maiores redes, e quase nenhuma entre a segunda e a terceira no tamanho, na composição ou na densidade das redes. [Leia o artigo](https://doi.org/10.1017/nws.2019.27).

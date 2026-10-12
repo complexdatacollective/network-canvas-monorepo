@@ -69,6 +69,7 @@
     "clean": "rm -rf .turbo node_modules dist"
   },
   "dependencies": {
+    "@codaco/shared-consts": "workspace:^",
     "@formatjs/cli-lib": "catalog:",
     "@formatjs/icu-messageformat-parser": "catalog:",
     "@formatjs/intl-localematcher": "catalog:",

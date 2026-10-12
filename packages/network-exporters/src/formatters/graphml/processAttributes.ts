@@ -7,6 +7,7 @@ import type { EdgeWithResequencedID, NodeWithResequencedID } from '../../input';
 import type { ExportOptions } from '../../options';
 import {
   getEntityAttributes,
+  hasEncryptedValue,
   isCategoricalOptionSelected,
 } from '../../utils/general';
 import {
@@ -38,17 +39,19 @@ async function processAttributes(
 
   for (const [key, value] of Object.entries(entityAttributes)) {
     const codebookEntry = variables?.[key];
+    const variableIsEncrypted = hasEncryptedValue(entity, key);
 
     if (!codebookEntry) {
       const externalKey = externalKeyIds.get(key);
       if (!externalKey) {
         throw new Error(`Missing GraphML key for external attribute: ${key}`);
       }
-      createDomDataElement(externalKey, stringifyValue(value));
+      createDomDataElement(
+        externalKey,
+        variableIsEncrypted ? 'ENCRYPTED' : stringifyValue(value),
+      );
       continue;
     }
-
-    const variableIsEncrypted = codebookEntry.encrypted;
 
     switch (codebookEntry.type) {
       case 'categorical': {

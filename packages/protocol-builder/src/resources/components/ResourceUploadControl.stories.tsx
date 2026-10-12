@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { Redacted } from 'effect';
 import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
@@ -44,7 +45,7 @@ function UploadControlHost({
   const [imported, setImported] = useState('Nothing has been imported yet.');
 
   return (
-    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+    <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
       <ResourceClientProvider>
         <main className="mx-auto flex max-w-2xl flex-col gap-4 p-6">
           <Paragraph intent="smallText" emphasis="muted" aria-live="polite">
@@ -55,7 +56,7 @@ function UploadControlHost({
             disabled={disabled}
             onStaged={(descriptor) =>
               setImported(
-                `${descriptor.name} was staged as ${descriptor.id}, and is not saved yet.`,
+                `${Redacted.value(descriptor.name)} was staged as ${descriptor.id}, and is not saved yet.`,
               )
             }
           />

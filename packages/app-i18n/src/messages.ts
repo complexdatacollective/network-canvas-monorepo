@@ -3,8 +3,8 @@
 import {
   createIntl,
   createIntlCache,
-  defineMessage,
-  defineMessages,
+  defineMessage as defineIntlMessage,
+  defineMessages as defineIntlMessages,
 } from 'react-intl/server';
 import type {
   IntlConfig,
@@ -14,7 +14,30 @@ import type {
 
 import type { CatalogMessages } from './locales.ts';
 
-export { defineMessage, defineMessages };
+/**
+ * react-intl 11+ gives every helper result an ICU argument contract, and a
+ * call without explicit generics gets the empty one — so a descriptor whose
+ * message has placeholders could no longer be formatted with its values.
+ * Contracts are opt-in upstream (written by eslint-plugin-formatjs's
+ * `enforce-message-types` autofix, which only recognises react-intl's own
+ * modules), so the curated API pins react-intl's untyped helper signatures:
+ * readonly descriptors, values checked at runtime and by the
+ * `formatjs/enforce-placeholders` lint rule rather than by the type system.
+ *
+ * Re-typed, not wrapped: the bindings stay react-intl's own functions, so the
+ * build transform and extraction see the same calls they always did.
+ */
+type DefineMessages = <
+  K extends PropertyKey,
+  T = MessageDescriptor,
+  U extends Record<K, T> = Record<K, T>,
+>(
+  messages: U,
+) => { readonly [P in keyof U]: Readonly<U[P]> };
+type DefineMessage = <T extends MessageDescriptor>(message: T) => Readonly<T>;
+
+export const defineMessages: DefineMessages = defineIntlMessages;
+export const defineMessage: DefineMessage = defineIntlMessage;
 export type { IntlShape, MessageDescriptor };
 export { createMessageError, formatMessageError } from './messageErrors.ts';
 export type { MessageErrorValues } from './messageErrors.ts';

@@ -1,10 +1,11 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import Stage from '~/lib/ProtocolSummary/components/Stage/Stage';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
 import Variables from '~/lib/ProtocolSummary/components/Variables';
+import { architectCatalogSource } from '~/locales/catalogs';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
@@ -24,6 +25,11 @@ const protocol = {
     },
   ],
 } satisfies CurrentProtocol;
+
+// The provider shows a language once its catalog has loaded. Loading
+// Spanish up front lets a switch to it render synchronously, as the
+// assertions below expect.
+beforeAll(() => architectCatalogSource.load('es'));
 
 beforeEach(() => {
   localStorage.clear();

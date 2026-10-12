@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { VARIABLE_TYPES, getVariableTypeLabel } from '~/config/variables';
-import { architectCatalogs } from '~/locales/catalogs';
+import { architectCatalogSource } from '~/locales/catalogs';
 import {
   assertCompressedSizeWithinLimit,
   MAX_COMPRESSED_BYTES,
@@ -15,7 +15,10 @@ import {
 } from '~/utils/protocolImportErrors';
 import { createValidations } from '~/utils/validations';
 
-const spanish = createAppIntl({ locale: 'es', messages: architectCatalogs.es });
+const spanish = createAppIntl({
+  locale: 'es',
+  messages: await architectCatalogSource.load('es'),
+});
 
 beforeEach(() => {
   localStorage.clear();

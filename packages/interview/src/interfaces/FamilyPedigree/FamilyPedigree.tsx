@@ -3,6 +3,7 @@
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
@@ -17,6 +18,7 @@ import {
 import { useTrack } from '../../analytics/useTrack';
 import Prompts from '../../components/Prompts/Prompts';
 import { useContractFlags } from '../../contract/context';
+import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -28,6 +30,8 @@ import {
 import { toggleNodeAttributes } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import PassphraseNotice from '../Anonymisation/PassphraseNotice';
+import { useDecryptedNodes } from '../Anonymisation/useDecryptedNodes';
 import { buildPedigreeDialog } from './buildPedigreeDialog';
 import PedigreeChecklist from './components/PedigreeChecklist';
 import EgoCellWizard from './components/wizards/EgoCellWizard';
@@ -159,9 +163,26 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
     biologicalSexVariable,
   };
 
+  // The nomination steps show the committed relatives from Redux, where
+  // encrypted names are stored as ciphertext.
+  const committedNodes = useMemo(
+    () =>
+      isNetworkCommitted
+        ? [...buildOverrideNodesMap(allNodes, nodeType, memberIds).values()]
+        : [],
+    [isNetworkCommitted, allNodes, nodeType, memberIds],
+  );
+  const decryptedCommittedNodes = useDecryptedNodes(committedNodes, [
+    nodeLabelVariable,
+  ]);
+  const plaintextCommittedNodes =
+    decryptedCommittedNodes.status === 'ready'
+      ? decryptedCommittedNodes.nodes
+      : null;
   const reduxNodesMap = useMemo(
-    () => buildOverrideNodesMap(allNodes, nodeType, memberIds),
-    [allNodes, nodeType, memberIds],
+    () =>
+      new Map((plaintextCommittedNodes ?? []).map((node) => [node._uid, node])),
+    [plaintextCommittedNodes],
   );
   const reduxEdgesMap = useMemo(
     () => buildOverrideEdgesMap(allEdges, edgeType),
@@ -371,8 +392,15 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       confirmLabel: <AppMessage message={messages.finalize} />,
       cancelLabel: <AppMessage message={messages.keepEditing} />,
       intent: 'default',
-      onConfirm: async () => {
-        await finalizeNetwork();
+      // Cancelling abandons the write before it is committed (the session
+      // commits the pedigree only when the write is fulfilled), so the
+      // participant may keep editing instead of waiting it out.
+      abortable: true,
+      onConfirm: async (signal) => {
+        const refused = await finalizeNetwork(signal);
+        const failure = refused && writeFailureMessage(refused);
+        // Keeps the dialog open with the reason, and the pedigree unsaved.
+        if (failure) throw new Error(createMessageError(failure));
       },
     });
 
@@ -530,14 +558,18 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
           ) : (
             <>
               {isNetworkCommitted && currentStepIndex > 0 ? (
-                <PedigreeView
-                  overrideNodes={reduxNodesMap}
-                  overrideEdges={reduxEdgesMap}
-                  activeNominationVariable={
-                    allPrompts[currentStepIndex]?.variable ?? null
-                  }
-                  onToggleAttribute={handleToggleAttribute}
-                />
+                decryptedCommittedNodes.status === 'ready' ? (
+                  <PedigreeView
+                    overrideNodes={reduxNodesMap}
+                    overrideEdges={reduxEdgesMap}
+                    activeNominationVariable={
+                      allPrompts[currentStepIndex]?.variable ?? null
+                    }
+                    onToggleAttribute={handleToggleAttribute}
+                  />
+                ) : (
+                  <PassphraseNotice status={decryptedCommittedNodes.status} />
+                )
               ) : (
                 <PedigreeView isFinalized={isNetworkCommitted} />
               )}
@@ -550,23 +582,26 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                   boundaries={boundaries}
                 />
               )}
-              {showResetOption && (
-                <div className="absolute bottom-4 flex flex-col items-center gap-2">
-                  <Paragraph emphasis="muted" margin="none">
-                    <AppMessage message={messages.finalized} />
-                  </Paragraph>
-                  <Button
-                    size="sm"
-                    color="destructive"
-                    onClick={() => void handleResetPedigree()}
-                  >
-                    <AppMessage message={messages.resetPedigree} />
-                  </Button>
-                </div>
-              )}
             </>
           )}
         </div>
+        {/* Below the canvas rather than floating over it: a pedigree tall
+            enough to reach the bottom of the stage would otherwise have its
+            last generation covered by this notice. */}
+        {showResetOption && (
+          <div className="flex shrink-0 flex-col items-center gap-2 pb-4">
+            <Paragraph emphasis="muted" margin="none">
+              <AppMessage message={messages.finalized} />
+            </Paragraph>
+            <Button
+              size="sm"
+              color="destructive"
+              onClick={() => void handleResetPedigree()}
+            >
+              <AppMessage message={messages.resetPedigree} />
+            </Button>
+          </div>
+        )}
         {showQuickStart && (
           <EgoCellWizard
             egoId={egoId}

@@ -88,7 +88,7 @@ activate schema 9 until the consumer stack is ready.
 - `apps/interviewer/src/lib/db/**`
 - `apps/fresco/lib/db/schema.prisma`
 - `apps/fresco/scripts/migrate-protocols.ts`
-- `apps/studio/server/src/protocol/{sectionize,assemble,validate,migrate}.ts`
+- `apps/studio/api/src/protocol/{sectionize,assemble,validate,migrate}.ts`
 - `packages/network-exporters/src/input.ts`
 
 **Work:**
@@ -926,11 +926,11 @@ activate schema 9 until the consumer stack is ready.
 - `packages/interview/src/protocolSchemaVersion.ts`
 - Architect schema-version constants and protocol source-authoring plugin
 - Interviewer and Fresco compatibility uses already derived from Interview
-- `apps/studio/server/src/protocol/sectionize.ts`
-- `apps/studio/server/src/protocol/assemble.ts`
-- `apps/studio/server/src/protocol/validate.ts`
-- `apps/studio/server/src/protocol/migrate.ts`
-- `apps/studio/server/scripts/protocol-demo.ts`
+- `apps/studio/api/src/protocol/sectionize.ts`
+- `apps/studio/api/src/protocol/assemble.ts`
+- `apps/studio/api/src/protocol/validate.ts`
+- `apps/studio/api/src/protocol/migrate.ts`
+- `apps/studio/api/scripts/protocol-demo.ts`
 - Studio protocol round-trip, diff, validation, migration, and publish tests
 - Any residual schema-version fixtures or documentation
 
@@ -968,7 +968,7 @@ activate schema 9 until the consumer stack is ready.
 - All modern hosts report schema 9 from their single source of truth.
 - Studio round-trips the complete schema-9 settings section without dropping
   localization.
-- `pnpm --filter @codaco/studio-server protocol-demo` completes its localized
+- `pnpm --filter @codaco/studio-api protocol-demo` completes its localized
   edit, diff, validation, and publish sequence.
 - No current host constructs or accepts a schema-8-shaped `CurrentProtocol`;
   Fresco's storage boundary explicitly adapts versioned older rows instead.
@@ -1001,8 +1001,8 @@ pnpm --filter @codaco/interviewer test
 pnpm --filter @codaco/interviewer typecheck
 pnpm --filter fresco test
 pnpm --filter fresco typecheck
-pnpm --filter @codaco/studio-server test
-pnpm --filter @codaco/studio-server typecheck
+pnpm --filter @codaco/studio-api test
+pnpm --filter @codaco/studio-api typecheck
 ```
 
 Use the actual package scripts if a filter name or test script differs at

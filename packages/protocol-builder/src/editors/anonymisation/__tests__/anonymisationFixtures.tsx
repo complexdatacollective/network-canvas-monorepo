@@ -3,10 +3,9 @@ import { screen, within } from '@testing-library/react';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type {
-  InMemoryClient,
-  InMemoryHost,
-} from '../../../testing/host/createInMemoryHost.ts';
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
+import { beforeCall } from '../../../testing/host/beforeCall.ts';
+import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 
 const nodeSection = (typeId: string) =>
@@ -89,33 +88,25 @@ export const collaboratorSets = (
  * "A write of this section's own is in flight" is a state with rules of its
  * own — every box disabled, and a collaborator's move on another type deferred
  * rather than dropped — and a test can only stand in it if it decides when the
- * host answers. `inner` is the client the rest of the fixture would have used,
- * so a protocol seeded as already protecting something can be gated too.
+ * host answers. `inner` is the adapter the rest of the fixture would have
+ * used, so a protocol seeded as already protecting something can be gated too.
  */
 export const heldWrites = (
-  inner: (host: InMemoryHost) => InMemoryClient = (host) => host.client,
+  inner: (host: InMemoryHost) => ProtocolBuilderAdapter = (host) =>
+    host.adapter,
 ): Readonly<{
   release: () => void;
-  client: (host: InMemoryHost) => InMemoryClient;
+  adapter: (host: InMemoryHost) => ProtocolBuilderAdapter;
 }> => {
   const gate = Promise.withResolvers<void>();
   return {
     release: () => {
       gate.resolve();
     },
-    client: (host: InMemoryHost) => {
-      const client = inner(host);
-      const submit: InMemoryClient['submit'] = async (
-        ...args: Parameters<InMemoryClient['submit']>
-      ) => {
-        await gate.promise;
-        return client.submit(...args);
-      };
-      return new Proxy(client, {
-        get: (target, property) =>
-          property === 'submit' ? submit : Reflect.get(target, property),
-      });
-    },
+    adapter: (host: InMemoryHost) =>
+      beforeCall(inner(host), (tag) =>
+        tag === 'Submit' ? gate.promise : undefined,
+      ),
   };
 };
 
@@ -150,7 +141,7 @@ export const switchOnType = async (
  */
 export const alreadyProtecting =
   (variableId: string, typeId = 'person') =>
-  (host: InMemoryHost): InMemoryClient => {
+  (host: InMemoryHost): ProtocolBuilderAdapter => {
     const section = nodeSection(typeId);
     const definition = host.store.read(section).document;
     const variables = definition.variables;
@@ -165,5 +156,5 @@ export const alreadyProtecting =
       ...definition,
       variables: { ...variables, [variableId]: { ...held, encrypted: true } },
     });
-    return host.client;
+    return host.adapter;
   };

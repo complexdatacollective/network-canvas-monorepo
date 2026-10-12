@@ -108,7 +108,7 @@ describe('the anonymisation sections, read in Spanish', () => {
       stageId: 'anonymisation-1',
       locale: 'es',
       registry: anonymisationStageEditor,
-      client: alreadyProtecting('name'),
+      adapter: alreadyProtecting('name'),
     });
     await waitFor(() =>
       expect(

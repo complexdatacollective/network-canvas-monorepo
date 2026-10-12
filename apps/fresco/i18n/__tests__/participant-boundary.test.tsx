@@ -5,7 +5,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import ParticipantLayout from '~/app/(interview)/layout';
 import { frescoLocales } from '~/i18n/locales';
-import { frescoCatalogs } from '~/src/locales/catalogs';
+import { frescoCatalogSource } from '~/src/locales/catalogs';
 
 vi.mock('~/app/(interview)/_components/EndSessionRecording', () => ({
   default: () => null,
@@ -18,14 +18,14 @@ function ParticipantContent() {
   );
 }
 
+// Loaded up front, so every render and formatter below has Spanish
+// synchronously.
+const es = await frescoCatalogSource.load('es');
+
 describe('Fresco participant locale boundary', () => {
   it('keeps the real interview layout on its independent default inside a Spanish researcher host', () => {
     render(
-      <AppI18nProvider
-        locale="es"
-        locales={frescoLocales}
-        messages={frescoCatalogs.es}
-      >
+      <AppI18nProvider locale="es" locales={frescoLocales} messages={es}>
         <ParticipantLayout>
           <ParticipantContent />
         </ParticipantLayout>

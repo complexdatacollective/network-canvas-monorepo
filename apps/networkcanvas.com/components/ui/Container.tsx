@@ -14,8 +14,12 @@ type ContainerProps = {
   className?: string;
   children: ReactNode;
   maxWidth?: keyof typeof maxWidths;
-  /** Vertical rhythm around the container; `none` lets the caller set it. */
-  margin?: 'default' | 'none';
+  /**
+   * Vertical rhythm around the container. `bottom` keeps it below only, for a
+   * container that sits close under a page introduction; `none` lets the
+   * caller set it.
+   */
+  margin?: 'default' | 'bottom' | 'none';
 } & Omit<ComponentPropsWithoutRef<'div'>, 'children' | 'className'>;
 
 export function Container({
@@ -31,6 +35,7 @@ export function Container({
       {...props}
       className={cn(
         margin === 'default' && 'tablet-landscape:my-32 my-20',
+        margin === 'bottom' && 'tablet-landscape:mb-32 mb-20',
         'tablet-landscape:px-10 mx-auto w-full px-6',
         maxWidths[maxWidth],
         className,

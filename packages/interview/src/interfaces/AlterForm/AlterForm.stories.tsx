@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, screen, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 import type { ComponentType } from '@codaco/protocol-validation';
 
+import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 const FIELD_PRESETS: { component: ComponentType; prompt: string }[] = [
@@ -221,5 +223,133 @@ export const WithValidation: Story = {
           'Demonstrates form fields with validation rules including required fields, min/max values, length constraints, and selection limits. Try advancing without completing the form to see validation errors.',
       },
     },
+  },
+};
+
+const PASSPHRASE = 'correct horse battery staple';
+
+function buildProtectedInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({ name: 'name', type: 'text' });
+  const nickname = person.addVariable({
+    name: 'nickname',
+    type: 'text',
+    component: 'Text',
+    encrypted: true,
+  });
+  const age = person.addVariable({
+    name: 'age',
+    type: 'number',
+    component: 'Number',
+  });
+
+  const stage = interview.addStage('AlterForm', {
+    label: 'Alter Form (Protected)',
+    subject: { entity: 'node', type: person.id },
+    introductionPanel: {
+      title: 'About Each Person',
+      text: 'Please provide details about each person.',
+    },
+  });
+  stage.addFormField({
+    variable: nickname.id,
+    component: 'Text',
+    prompt: 'What nickname do you use for this person?',
+  });
+  stage.addFormField({
+    variable: age.id,
+    component: 'Number',
+    prompt: 'How old are they?',
+  });
+  interview.addManualNode(stage.id, person.id, 'alice', {
+    [name.id]: 'Alice',
+    [nickname.id]: 'Ali',
+    [age.id]: 34,
+  });
+
+  interview.addInformationStage({
+    title: 'Complete',
+    text: 'After the main stage.',
+  });
+
+  return { interview, encryptedVariableIds: [nickname.id] };
+}
+
+const renderProtectedInterview = () => (
+  <EncryptedStoryInterviewShell
+    build={buildProtectedInterview}
+    passphrase={PASSPHRASE}
+    currentStep={0}
+  />
+);
+
+const openLockedSlide = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  await userEvent.click(
+    await canvas.findByTestId('next-button', {}, { timeout: 10_000 }),
+  );
+
+  await expect(
+    await canvas.findByText(
+      /Some answers here are protected by your passphrase/,
+    ),
+  ).toBeInTheDocument();
+  await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument();
+  await expect(canvas.queryByRole('spinbutton')).not.toBeInTheDocument();
+  await expect(
+    await canvas.findByRole('button', { name: 'Enter your Passphrase' }),
+  ).toBeInTheDocument();
+};
+
+export const ProtectedAnswersLocked: Story = {
+  render: renderProtectedInterview,
+  parameters: {
+    docs: {
+      description: {
+        story: `The person's nickname is protected with a passphrase ("${PASSPHRASE}") that is not in memory, as after the interview is resumed. Their form stays closed, with the reason shown, until the passphrase is entered.`,
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await openLockedSlide(canvasElement);
+  },
+};
+
+export const ProtectedAnswersUnlocked: Story = {
+  render: renderProtectedInterview,
+  parameters: {
+    docs: {
+      description: {
+        story: `As in Protected Answers Locked, until the passphrase ("${PASSPHRASE}") is entered through the prompter; the form then opens on the decrypted answers.`,
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await openLockedSlide(canvasElement);
+
+    await userEvent.click(
+      within(canvasElement).getByRole('button', {
+        name: 'Enter your Passphrase',
+      }),
+    );
+    // The label also carries a visual required marker.
+    await userEvent.type(
+      await screen.findByLabelText(/^Passphrase/, { selector: 'input' }),
+      PASSPHRASE,
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Submit passphrase' }),
+    );
+
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('textbox', {
+        name: /What nickname do you use for this person/,
+      }),
+    ).toHaveValue('Ali');
+    await expect(
+      canvas.getByRole('spinbutton', { name: /How old are they/ }),
+    ).toHaveValue(34);
   },
 };

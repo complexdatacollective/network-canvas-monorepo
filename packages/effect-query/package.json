@@ -1,0 +1,41 @@
+{
+  "name": "@codaco/effect-query",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TanStack Query over an Effect RpcClient: one adapter bound per app that turns a flat rpc client into typed query, infinite-query, mutation and stream hooks.",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "packages/effect-query"
+  },
+  "type": "module",
+  "exports": {
+    "./adapter": "./src/adapter.ts",
+    "./errors": "./src/errors.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "@codaco/vitest-config": "workspace:^",
+    "@tanstack/react-query": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@types/react": "catalog:",
+    "effect": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "catalog:",
+    "effect": "catalog:",
+    "react": "catalog:"
+  }
+}

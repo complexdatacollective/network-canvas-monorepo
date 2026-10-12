@@ -113,7 +113,7 @@ function Editor({
   });
 
   return (
-    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+    <ProtocolBuilder adapter={host.adapter} protocolId={host.protocolId}>
       <SeedProtocolCache store={host.store}>
         <ResourceClientProvider>
           <StageEditSession target={target} formId="stage-form">

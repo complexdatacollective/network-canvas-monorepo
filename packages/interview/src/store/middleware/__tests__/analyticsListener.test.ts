@@ -8,10 +8,12 @@ import protocol from '../../modules/protocol';
 import session, {
   addEdge,
   addNode,
+  addNodesAndEdges,
   addNodeToPrompt,
   deleteEdge,
   deleteNode,
   removeNodeFromPrompt,
+  restoreNode,
 } from '../../modules/session';
 import ui, { setPassphrase, setPassphraseInvalid } from '../../modules/ui';
 import { createAnalyticsListenerMiddleware } from '../analyticsListener';
@@ -45,7 +47,11 @@ function buildStore(
         hash: 'h',
         schemaVersion: 8,
         codebook: {
-          node: { person: { name: 'Person', color: 'blue', variables: {} } },
+          node: {
+            venue: { name: 'Venue', color: 'green', variables: {} },
+            person: { name: 'Person', color: 'blue', variables: {} },
+          },
+          edge: { knows: { name: 'Knows', color: 'red', variables: {} } },
         },
         stages: [
           { id: 's0', type: 'Information' },
@@ -61,7 +67,7 @@ function buildStore(
 }
 
 describe('analyticsListener — global entity events', () => {
-  it('emits node_added with node_id and node_type when addNode fulfills', async () => {
+  it('emits node_added with node_id and the node type’s codebook position when addNode fulfills', async () => {
     const tracker = makeTracker();
     const store = buildStore(tracker);
     await store.dispatch(
@@ -77,9 +83,49 @@ describe('analyticsListener — global entity events', () => {
       'node_added',
       expect.objectContaining({
         node_id: expect.any(String),
-        node_type: 'person',
+        node_type_index: 1,
       }),
     );
+  });
+
+  it('emits node_added and edge_created for each entity a batch adds', async () => {
+    const tracker = makeTracker();
+    const store = buildStore(tracker);
+    await store.dispatch(
+      addNodesAndEdges({
+        nodes: [
+          { type: 'person', modelData: { _uid: 'a' } },
+          { type: 'person', modelData: { _uid: 'b' } },
+        ],
+        edges: [{ from: 'a', to: 'b', type: 'knows' }],
+        currentStep: 1,
+      }),
+    );
+
+    const calls = tracker.track.mock.calls;
+    expect(calls.filter(([name]) => name === 'node_added')).toEqual([
+      ['node_added', { node_id: 'a', node_type_index: 1 }],
+      ['node_added', { node_id: 'b', node_type_index: 1 }],
+    ]);
+    expect(calls.filter(([name]) => name === 'edge_created')).toEqual([
+      ['edge_created', { edge_id: expect.any(String), edge_type_index: 0 }],
+    ]);
+  });
+
+  it('emits node_added when undo or redo restores a removed node', () => {
+    const tracker = makeTracker();
+    const store = buildStore(tracker);
+    store.dispatch(
+      restoreNode({
+        _uid: 'node-1',
+        type: 'person',
+        [entityAttributesProperty]: {},
+      }),
+    );
+    expect(tracker.track).toHaveBeenCalledWith('node_added', {
+      node_id: 'node-1',
+      node_type_index: 1,
+    });
   });
 
   it('emits node_removed on deleteNode', () => {
@@ -91,7 +137,7 @@ describe('analyticsListener — global entity events', () => {
     });
   });
 
-  it('emits edge_created with edge_id and edge_type when addEdge fulfills', async () => {
+  it('emits edge_created with edge_id and the edge type’s codebook position when addEdge fulfills', async () => {
     const tracker = makeTracker();
     const store = buildStore(tracker, {
       nodes: [
@@ -125,7 +171,7 @@ describe('analyticsListener — global entity events', () => {
     expect(edgeCall).toBeTruthy();
     expect(edgeCall?.[1]).toMatchObject({
       edge_id: expect.any(String),
-      edge_type: 'knows',
+      edge_type_index: 0,
     });
   });
 

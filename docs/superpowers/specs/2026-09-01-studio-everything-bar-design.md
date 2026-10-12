@@ -514,7 +514,7 @@ distributed with the features, binding and display are centralized.
 
 ### 5.4 Entity search
 
-One new query procedure in `@codaco/studio-rpc`:
+One new query procedure in `@codaco/studio-contract`:
 
 ```ts
 search.entities({ query, context: { studyId?, teamId? }, limit?, cursor? }) -> {

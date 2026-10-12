@@ -12,6 +12,7 @@ import type {
 } from '@formatjs/icu-messageformat-parser';
 
 import { runtimeCatalogLocale } from './compileCatalog.ts';
+import type { CatalogLoaders } from './locales.ts';
 
 /** One extracted message: English source text plus translator context. */
 export type ExtractedMessage = Readonly<{
@@ -64,6 +65,64 @@ export function collectSourceFiles(dir: string): string[] {
     .map((entry) => join(dir, entry))
     .toSorted();
 }
+
+const argumentNames = (
+  elements: readonly MessageFormatElement[],
+  into: Set<string> = new Set(),
+): Set<string> => {
+  for (const element of elements) {
+    switch (element.type) {
+      case TYPE.argument:
+      case TYPE.number:
+      case TYPE.date:
+      case TYPE.time:
+        into.add(element.value);
+        break;
+      case TYPE.select:
+      case TYPE.plural:
+        into.add(element.value);
+        for (const option of Object.values(element.options)) {
+          argumentNames(option.value, into);
+        }
+        break;
+      case TYPE.tag:
+        argumentNames(element.children, into);
+        break;
+      default:
+        break;
+    }
+  }
+  return into;
+};
+
+const argumentsOnlyInOneArm = (
+  elements: readonly MessageFormatElement[],
+): string[] => {
+  const found: string[] = [];
+  for (const element of elements) {
+    if (element.type === TYPE.plural) {
+      const { one, ...rest } = element.options;
+      if (one !== undefined) {
+        const elsewhere = new Set([element.value]);
+        for (const option of Object.values(rest)) {
+          argumentNames(option.value, elsewhere);
+        }
+        for (const name of argumentNames(one.value)) {
+          if (!elsewhere.has(name)) found.push(name);
+        }
+      }
+    }
+    if (element.type === TYPE.select || element.type === TYPE.plural) {
+      for (const option of Object.values(element.options)) {
+        found.push(...argumentsOnlyInOneArm(option.value));
+      }
+    }
+    if (element.type === TYPE.tag) {
+      found.push(...argumentsOnlyInOneArm(element.children));
+    }
+  }
+  return found;
+};
 
 /**
  * Programmatic FormatJS extraction with the package's conventions enforced:
@@ -162,6 +221,12 @@ export async function extractMessages(
     if (typeof description !== 'string') {
       throw new Error(
         `extractMessages: "${id}" has a non-string description; write it as prose for translators`,
+      );
+    }
+    const oneArmOnly = argumentsOnlyInOneArm(parse(defaultMessage));
+    if (oneArmOnly.length > 0) {
+      throw new Error(
+        `extractMessages: "${id}" uses {${oneArmOnly.join('}, {')}} only in a plural "one" arm; write it as "=1" so languages without a "one" category still show it`,
       );
     }
     catalog[id] = { defaultMessage, description };
@@ -485,6 +550,71 @@ export function readTranslationSources(
     throw new Error(`${path} is not a map of message id to English source`);
   }
   return lookupTable(parsed);
+}
+
+/**
+ * A catalog's messages in one comparable form. A loaded catalog holds ICU
+ * strings or, where the build compiled it, their parsed AST; parsing the
+ * strings makes the two forms of one catalog equal.
+ */
+const parsedMessages = (
+  catalog: Readonly<Record<string, unknown>>,
+): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(catalog).map(([id, message]) => [
+      id,
+      typeof message === 'string' ? parse(message) : message,
+    ]),
+  );
+
+/**
+ * A package's runtime loaders against the catalogs committed in
+ * `localesDir`. Issues (empty = pass).
+ *
+ * Every other guard here reads the catalog files from disk, so none of them
+ * can see the wiring between a locale and the file its loader imports: a
+ * loader pointed at a neighbour's file, or a catalog file nobody loads,
+ * passes all of them while the interface renders the wrong language or
+ * silently falls back to English. This loads each one and compares.
+ */
+export async function checkCatalogLoaders(
+  localesDir: string,
+  loaders: CatalogLoaders,
+): Promise<string[]> {
+  const onDisk = readdirSync(localesDir)
+    .map((fileName) => runtimeCatalogLocale(fileName))
+    .filter((locale) => locale !== undefined);
+  const issues: string[] = [];
+  for (const locale of onDisk) {
+    if (loaders[locale] === undefined) {
+      issues.push(`no loader for the committed ${locale} catalog`);
+    }
+  }
+  for (const [locale, loader] of Object.entries(loaders)) {
+    if (loader === undefined) continue;
+    if (!onDisk.includes(locale)) {
+      issues.push(`loader for ${locale} has no committed catalog`);
+      continue;
+    }
+    const committed: unknown = JSON.parse(
+      readFileSync(join(localesDir, `${locale}.json`), 'utf8'),
+    );
+    if (!isSources(committed)) {
+      issues.push(`${locale}.json is not a map of message id to ICU string`);
+      continue;
+    }
+    const { default: loaded } = await loader();
+    // Compared as JSON because that is what a compiled catalog is: the build
+    // serialises the parsed AST into the module, dropping anything JSON cannot
+    // carry, so a structural comparison would flag that difference instead.
+    if (
+      JSON.stringify(parsedMessages(loaded)) !==
+      JSON.stringify(parsedMessages(committed))
+    ) {
+      issues.push(`loader for ${locale} does not load ${locale}.json`);
+    }
+  }
+  return issues;
 }
 
 /** One id whose recorded English was written or rewritten by a stamp. */

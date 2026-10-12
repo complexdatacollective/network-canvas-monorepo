@@ -7,4 +7,3 @@ const config = defineConfig({
 });
 
 export const { cva, cx } = config;
-export type { VariantProps } from 'cva';

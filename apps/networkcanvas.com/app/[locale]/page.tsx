@@ -13,7 +13,11 @@ import { Tools } from '~/components/sections/Tools';
 import { VideoSection } from '~/components/sections/VideoSection';
 import { WhatNext } from '~/components/sections/WhatNext';
 import { routing } from '~/lib/i18n/routing';
-import { loadSiteContent } from '~/lib/siteContent';
+import {
+  latestNewsItems,
+  loadSiteContent,
+  loadUpdates,
+} from '~/lib/siteContent';
 
 type HomePageProps = {
   params: Promise<{ locale: string }>;
@@ -24,12 +28,14 @@ export default async function HomePage({ params }: HomePageProps) {
   if (!hasLocale(routing.locales, locale)) notFound();
 
   setRequestLocale(locale);
-  const { newsItems, grants, publications, coreTeam } =
-    await loadSiteContent(locale);
+  const [{ grants, publications, coreTeam }, updates] = await Promise.all([
+    loadSiteContent(locale),
+    loadUpdates(locale),
+  ]);
 
   return (
-    <main className="relative isolate">
-      <HomepageEntrance newsItems={newsItems}>
+    <div className="relative isolate">
+      <HomepageEntrance newsItems={latestNewsItems(updates)}>
         <Tools />
         <VideoSection />
 
@@ -40,9 +46,8 @@ export default async function HomePage({ params }: HomePageProps) {
         <CoreTeam members={coreTeam} />
         <Institutions />
         <WhatNext />
-
-        <Footer />
       </HomepageEntrance>
-    </main>
+      <Footer />
+    </div>
   );
 }

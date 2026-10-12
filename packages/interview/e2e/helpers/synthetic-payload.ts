@@ -1,18 +1,15 @@
 import { v4 as uuid } from 'uuid';
 
 import type { SyntheticInterview } from '@codaco/protocol-utilities';
-import {
-  CurrentProtocolSchema,
-  hashProtocol,
-} from '@codaco/protocol-validation';
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   StageMetadataSchema,
 } from '@codaco/shared-consts';
 
+import { currentProtocolToPayload } from '../../src/contract/protocolPayload.js';
 import type {
   ProtocolPayload,
-  ResolvedAsset,
   SessionPayload,
 } from '../../src/contract/types.js';
 
@@ -99,21 +96,10 @@ export function buildSyntheticPayload(
       `Synthetic protocol "${opts.protocolName}" failed CurrentProtocolSchema:\n${parsed.error.message}`,
     );
   }
-  const { assetManifest: _manifest, ...protocolBody } = parsed.data;
-
-  const resolvedAssets: ResolvedAsset[] = (opts.assets ?? []).map((a) =>
-    a.type === 'apikey'
-      ? { assetId: a.assetId, name: a.name, type: a.type, value: a.value }
-      : { assetId: a.assetId, name: a.name, type: a.type, source: a.source },
-  );
-
-  const protocol: ProtocolPayload = {
-    ...protocolBody,
+  const protocol = currentProtocolToPayload(parsed.data, {
     id: uuid(),
-    hash: hashProtocol(parsed.data),
     importedAt: new Date().toISOString(),
-    assets: resolvedAssets,
-  };
+  });
 
   const session: SessionPayload = {
     id: uuid(),

@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': minor
+'@codaco/studio-api': minor
 '@codaco/studio-sync': minor
 ---
 

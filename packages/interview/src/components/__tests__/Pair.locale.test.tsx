@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
   entityAttributesProperty,
@@ -7,6 +7,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { interviewCatalogSource } from '../../i18n/catalog';
 import { InterviewI18nProvider } from '../../i18n/InterviewI18nProvider';
 import Pair from '../Pair';
 
@@ -22,6 +23,14 @@ const person = (id: string, name?: string): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   [entityAttributesProperty]: name === undefined ? {} : { name },
   type: 'person',
+});
+
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es'].map((locale) => interviewCatalogSource.load(locale)),
+  );
 });
 
 describe('pair accessibility language', () => {

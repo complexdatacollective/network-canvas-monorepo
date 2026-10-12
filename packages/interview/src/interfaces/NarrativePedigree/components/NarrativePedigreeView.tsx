@@ -17,9 +17,14 @@ import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
 import type { NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
-import type { Codebook, NodeColorReference } from '@codaco/protocol-validation';
+import type {
+  Codebook,
+  FramingId,
+  NodeColorReference,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  isFamilyPedigreeStageMetadata,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -34,6 +39,9 @@ import {
 } from '../../../selectors/session';
 import { getCodebook, getStages } from '../../../store/modules/protocol';
 import type { StageProps } from '../../../types';
+import { useDecryptedNodes } from '../../Anonymisation/useDecryptedNodes';
+import { useCachedOutcomes } from '../../Anonymisation/useDecryptionScope';
+import { useNodeLabeller } from '../../Anonymisation/useNodeLabel';
 import { messages as familyMessages } from '../../FamilyPedigree/messages';
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import { computeNodeDisplayLabels } from '../../FamilyPedigree/pedigree-layout/components/PedigreeNode';
@@ -95,33 +103,46 @@ type SourceStageConfig = {
  * a FamilyPedigree (a misconfigured protocol — the view then renders empty).
  */
 function makeSourceConfigSelector(sourceStageId: string) {
-  return createSelector(getStages, getCodebook, (stages, codebook) => {
-    const source = stages.find(
-      (s) => s.id === sourceStageId && s.type === 'FamilyPedigree',
-    );
-    if (!source || source.type !== 'FamilyPedigree') {
-      return null;
-    }
+  return createSelector(
+    getStages,
+    getCodebook,
+    getActiveSession,
+    (stages, codebook, session) => {
+      const sourceIndex = stages.findIndex(
+        (s) => s.id === sourceStageId && s.type === 'FamilyPedigree',
+      );
+      const source = stages[sourceIndex];
+      if (!source || source.type !== 'FamilyPedigree') {
+        return null;
+      }
 
-    const { nodeConfig, edgeConfig } = source;
-    const config: SourceStageConfig = {
-      nodeType: nodeConfig.type,
-      edgeType: edgeConfig.type,
-      nodeLabelVariable: nodeConfig.nodeLabelVariable,
-      egoVariable: nodeConfig.egoVariable,
-      relationshipVariable: nodeConfig.relationshipVariable,
-      relationshipTypeVariable: edgeConfig.relationshipTypeVariable,
-      isActiveVariable: edgeConfig.isActiveVariable,
-      isGestationalCarrierVariable: edgeConfig.isGestationalCarrierVariable,
-      gameteRoleVariable: edgeConfig.gameteRoleVariable,
-      biologicalSexVariable: nodeConfig.biologicalSexVariable,
-    };
+      const { nodeConfig, edgeConfig } = source;
+      const config: SourceStageConfig = {
+        nodeType: nodeConfig.type,
+        edgeType: edgeConfig.type,
+        nodeLabelVariable: nodeConfig.nodeLabelVariable,
+        egoVariable: nodeConfig.egoVariable,
+        relationshipVariable: nodeConfig.relationshipVariable,
+        relationshipTypeVariable: edgeConfig.relationshipTypeVariable,
+        isActiveVariable: edgeConfig.isActiveVariable,
+        isGestationalCarrierVariable: edgeConfig.isGestationalCarrierVariable,
+        gameteRoleVariable: edgeConfig.gameteRoleVariable,
+        biologicalSexVariable: nodeConfig.biologicalSexVariable,
+      };
 
-    const shapeDefinition =
-      (codebook as Codebook).node?.[nodeConfig.type]?.shape ?? null;
+      const shapeDefinition =
+        (codebook as Codebook).node?.[nodeConfig.type]?.shape ?? null;
+      const metadata = session?.stageMetadata?.[sourceIndex];
+      const framing: FramingId =
+        source.framing?.mode === 'fixed'
+          ? source.framing.value
+          : ((isFamilyPedigreeStageMetadata(metadata)
+              ? metadata.selectedFraming
+              : undefined) ?? 'gamete');
 
-    return { config, shapeDefinition };
-  });
+      return { config, shapeDefinition, framing };
+    },
+  );
 }
 
 // The node and edge ids the source FamilyPedigree committed to its private
@@ -319,10 +340,20 @@ export default function NarrativePedigreeView({
     );
   }, [graph, focalId, shownDiseases, statusesByDisease, resolveSexFn]);
 
-  const nodesMap = useMemo(
-    () => new Map(pedigreeNodes.map((n) => [n._uid, n])),
-    [pedigreeNodes],
+  // Names are only for display, so the genetics above works from the stored
+  // nodes and, until the names are decrypted, the diagram shows each person's
+  // relationship instead. The names are the only protected answers shown.
+  const decrypted = useDecryptedNodes(
+    pedigreeNodes,
+    sourceConfig ? [sourceConfig.config.nodeLabelVariable] : [],
   );
+  const plaintextNodes = decrypted.status === 'ready' ? decrypted.nodes : null;
+  const nodesMap = useMemo(() => {
+    const plaintext = new Map(plaintextNodes?.map((n) => [n._uid, n]));
+    return new Map(
+      pedigreeNodes.map((n) => [n._uid, plaintext.get(n._uid) ?? n]),
+    );
+  }, [pedigreeNodes, plaintextNodes]);
   const edgesMap = useMemo(
     () => new Map(pedigreeEdges.map((e) => [e._uid, e])),
     [pedigreeEdges],
@@ -339,11 +370,11 @@ export default function NarrativePedigreeView({
       nodesMap,
       edgesMap,
       variableConfig,
-      'gamete',
+      sourceConfig?.framing ?? 'gamete',
       egoId,
       intl,
     );
-  }, [nodesMap, edgesMap, variableConfig, egoId, intl]);
+  }, [nodesMap, edgesMap, variableConfig, sourceConfig?.framing, egoId, intl]);
 
   const resolveShape = (node: NcNode): NodeShape => {
     if (!sourceConfig?.shapeDefinition) return 'square';
@@ -353,11 +384,16 @@ export default function NarrativePedigreeView({
     );
   };
 
-  const labelFor = (node: RenderableNode): string => {
-    if (node.id === egoId) return intl.formatMessage(familyMessages.you);
+  const labelNode = useNodeLabeller(useCachedOutcomes());
+
+  // The one label a person is shown, named and announced by.
+  const labelFor = (node: NcNode): string => {
+    if (node._uid === egoId) return intl.formatMessage(familyMessages.you);
     // displayLabels already prefers the person's name (collected by the
-    // FamilyPedigree) and falls back to a derived relationship label.
-    return displayLabels.get(node.id) ?? '';
+    // FamilyPedigree) and falls back to a derived relationship label. With
+    // no relationship to derive one from (no ego), the person shows the
+    // label any node does.
+    return displayLabels.get(node._uid) ?? labelNode(node);
   };
 
   // Plain-text per-node disease-status summary for screen readers. The visual
@@ -437,9 +473,7 @@ export default function NarrativePedigreeView({
     const focalProps: ComponentPropsWithoutRef<'div'> = {
       'role': 'button',
       'tabIndex': 0,
-      'aria-label': intl.formatMessage(messages.focusOn, {
-        name: label || node.id,
-      }),
+      'aria-label': intl.formatMessage(messages.focusOn, { name: label }),
       'aria-describedby': statusSummaryId,
       // Disabled (but still announced, with its status) until a condition is
       // chosen — focusing only makes sense for a single shown condition.
@@ -535,13 +569,10 @@ export default function NarrativePedigreeView({
     return diseases.find((d) => d.id === selectedDiseaseId)?.label ?? null;
   }, [selectedDiseaseId, diseases]);
 
-  const focalLabel = useMemo(() => {
-    if (focalId === null) return null;
-    const node = pedigreeNodes.find((n) => n._uid === focalId);
-    if (!node) return focalId;
-    if (node._uid === egoId) return intl.formatMessage(familyMessages.you);
-    return displayLabels.get(node._uid) || focalId;
-  }, [focalId, pedigreeNodes, displayLabels, egoId, intl]);
+  // The focused person as the diagram labels them; null when no one shown is
+  // focused.
+  const focalNode = focalId === null ? undefined : nodesMap.get(focalId);
+  const focalLabel = focalNode ? labelFor(focalNode) : null;
 
   // Snapshot heading: the stage label, then the shown condition, then the focal
   // person when one is set — e.g. "Inheritance Pathways: Huntington's Disease —
@@ -640,16 +671,16 @@ export default function NarrativePedigreeView({
         <AppMessage
           message={
             selectedDiseaseId === null
-              ? focalId === null
+              ? focalLabel === null
                 ? messages.showingAll
                 : messages.showingAllFocused
-              : focalId === null
+              : focalLabel === null
                 ? messages.showingCondition
                 : messages.showingFocused
           }
           values={{
             condition: selectedDiseaseLabel ?? selectedDiseaseId ?? '',
-            name: focalLabel ?? focalId ?? '',
+            name: focalLabel ?? '',
           }}
         />
       </div>

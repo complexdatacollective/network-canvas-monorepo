@@ -1,15 +1,13 @@
 ---
-'@codaco/studio-server': minor
-'@codaco/studio-client': minor
+'@codaco/studio-api': minor
+'@codaco/studio-web': minor
 ---
 
 Studio now ships as two container images instead of one. `studio-api` carries
 the server, and its entrypoint chooses the process: `serve` for HTTP, RPC and
-the WebSocket endpoint, `worker` for background jobs, and `migrate`, which
-creates the schema in an empty database from statements the build renders — so
-a deployment no longer needs a repository checkout to provision one.
-`maintenance on|off` and `rotate-secrets` are named but not yet implemented and
-exit with a message saying so. `studio-web` is nginx serving the built client,
+the WebSocket endpoint, `worker` for background jobs, `migrate`, which creates
+and upgrades the schema — so a deployment no longer needs a repository checkout
+to provision one — and `maintenance on|off` and `rotate-secrets`. `studio-web` is nginx serving the built client,
 its hashed assets under a year-long immutable cache, and a static maintenance
 page for the seconds an upgrade replaces the API.
 
@@ -28,7 +26,7 @@ in a checkout.
 
 Both processes answer `GET /healthz` (liveness) and `GET /readyz`, which
 reports each dependency — the database, the schema fingerprint, the object
-store, and, on the worker, the pg-boss connection — and answers 503 naming the
+store, and, on the worker, the job queue — and answers 503 naming the
 one that failed. The worker serves them on a loopback-only listener, on the new
 `WORKER_HEALTH_PORT` (default 3001), so a container healthcheck can ask a
 process that answers nothing else whether it is working.

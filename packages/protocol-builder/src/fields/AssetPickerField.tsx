@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -18,7 +19,7 @@ import {
   stateVariants,
 } from '@codaco/fresco-ui/styles/controlVariants';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { compose, cx } from '@codaco/fresco-ui/utils/cva';
+import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 import { useResourceClient } from '../resources/client.tsx';
 import ResourceBrowserDialog from '../resources/components/ResourceBrowserDialog.tsx';
@@ -48,12 +49,14 @@ const INTERVIEW_NETWORK = 'existing';
  * so the three rules that would clip a region are lifted at the call site: the
  * box wraps, wraps its text, and is free to shrink.
  */
-const pickerChromeVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-);
+const pickerChromeVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+  ],
+});
 
 const messages = defineMessages({
   /**
@@ -285,7 +288,9 @@ export default function AssetPickerField({
     action.clear();
     onChange?.(chosen.id);
     setStatus(
-      createMessageError(messages.selectedAnnouncement, { name: chosen.name }),
+      createMessageError(messages.selectedAnnouncement, {
+        name: Redacted.value(chosen.name),
+      }),
     );
   };
 

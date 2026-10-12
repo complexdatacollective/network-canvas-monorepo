@@ -3,12 +3,21 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 
-import { commonMessages, commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { commonCatalogLoaders, commonMessages } from '@codaco/app-i18n/common';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 
-import { frescoUiCatalogs } from './locales/catalogs';
+import { frescoUiCatalogLoaders } from './locales/catalogs';
 import { Toaster, useToast } from './Toast';
+
+const catalogs = createCatalogSource(
+  commonCatalogLoaders,
+  frescoUiCatalogLoaders,
+);
+await catalogs.load('es');
 
 function LiveTitle() {
   const intl = useAppIntl();
@@ -31,10 +40,7 @@ it('updates the notification region and an existing rich title when the locale c
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
-      messages={mergeCatalogs(
-        commonCatalogs[locale] ?? {},
-        frescoUiCatalogs[locale] ?? {},
-      )}
+      messages={catalogs.peek(locale)}
     >
       <Toast.Provider>
         <Trigger />

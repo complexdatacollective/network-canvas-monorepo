@@ -7,7 +7,7 @@ import {
   Users,
 } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -190,7 +190,18 @@ const Home = () => {
     },
     [dispatch, openDialog, runAction],
   );
-  const onDrop = (files: File[]) => {
+  const onDrop = (files: File[], fileRejections: readonly FileRejection[]) => {
+    // With `multiple: false`, react-dropzone accepts the first file of a
+    // multi-file drop and rejects the rest as too-many-files. Which file came
+    // "first" is arbitrary to the researcher, so a multi-file drop opens nothing.
+    const tooManyFilesCode: string = ErrorCode.TooManyFiles;
+    if (
+      fileRejections.some(({ errors }) =>
+        errors.some(({ code }) => code === tooManyFilesCode),
+      )
+    ) {
+      return;
+    }
     const file = files[0];
     if (file) {
       void handleOpenLocalFile(file);

@@ -125,7 +125,7 @@ Three mechanisms account for it.
 
 The session, controller, compound-edit request, auxiliary codebook sessions,
 and epoch-stamped command outcomes are replaced by one contract, defined
-contract-first with `@orpc/contract` (already used by `@codaco/studio-rpc`)
+contract-first with `@orpc/contract` (already used by `@codaco/studio-contract`)
 and exported by the package. Studio serves it over its transport; Architect
 serves the same contract in-process with an oRPC router client, no network;
 the in-memory proof host serves it for tests and Storybook. Hosts never see
@@ -405,9 +405,9 @@ read whole.
    committed protocol and app state; `pnpm knip` clean; no compatibility
    wrapper survives.
 
-Studio's adapter tracks PR 1 as it lands: `@codaco/studio-client` implements
+Studio's adapter tracks PR 1 as it lands: `@codaco/studio-web` implements
 the contract against PR 1's head, and the contract types move from
-`@codaco/studio-rpc` to the package (or `studio-rpc` re-exports them) in the
+`@codaco/studio-contract` to the package (or `studio-rpc` re-exports them) in the
 same PR, so there is one definition.
 
 ## Review rules for this work

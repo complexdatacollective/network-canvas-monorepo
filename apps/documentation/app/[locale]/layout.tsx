@@ -6,6 +6,7 @@ import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getNow, getTimeZone, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 
+import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import type { Messages } from '~/app/types';
 import { locales } from '~/app/types';
 import { LayoutComponent } from '~/components/Layout';
@@ -68,23 +69,32 @@ export default async function MainLayout(props: MainLayoutProps) {
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className="flex min-h-dvh flex-col">
-        <PostHogClientProvider>
-          <ThemeProvider
-            enableSystem
-            enableColorScheme
-            attribute="data-theme"
-            storageKey="nc-docs-site"
-          >
-            <NextIntlClientProvider
-              timeZone={timeZone}
-              now={now}
-              locale={locale}
-              messages={messages.default}
+        {/* Outermost, so every `motion` component in the docs inherits it.
+            `reducedMotion="user"` is the provider's default: motion then drops
+            transform and layout animations by itself for a reader who prefers
+            reduced motion, and keeps the simple ones. It belongs here rather
+            than in each component, because a component reading the preference
+            to pick its own props would serialise an answer the server cannot
+            know into the markup it sends. */}
+        <AnimationProvider>
+          <PostHogClientProvider>
+            <ThemeProvider
+              enableSystem
+              enableColorScheme
+              attribute="data-theme"
+              storageKey="nc-docs-site"
             >
-              <LayoutComponent>{children}</LayoutComponent>
-            </NextIntlClientProvider>
-          </ThemeProvider>
-        </PostHogClientProvider>
+              <NextIntlClientProvider
+                timeZone={timeZone}
+                now={now}
+                locale={locale}
+                messages={messages.default}
+              >
+                <LayoutComponent>{children}</LayoutComponent>
+              </NextIntlClientProvider>
+            </ThemeProvider>
+          </PostHogClientProvider>
+        </AnimationProvider>
       </body>
       <GoogleAnalytics gaId={env.NEXT_PUBLIC_GA_ID} />
     </html>

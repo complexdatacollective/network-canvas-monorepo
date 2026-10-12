@@ -1,6 +1,6 @@
 'use client';
 
-import type { Table } from '@tanstack/react-table';
+import type { RowData, Table } from '@tanstack/react-table';
 import { Search, X } from 'lucide-react';
 import { type ReactNode } from 'react';
 
@@ -10,6 +10,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '../Button';
 import InputField from '../form/fields/InputField';
 import { DataTableFacetedFilter } from './DataTableFacetedFilter';
+import { type DataTableFeatures } from './features';
 import {
   type DataTableFilterableColumn,
   type DataTableSearchableColumn,
@@ -29,14 +30,14 @@ const messages = defineMessages({
   },
 });
 
-type DataTableToolbarProps<TData> = {
-  table: Table<TData>;
+type DataTableToolbarProps<TData extends RowData> = {
+  table: Table<DataTableFeatures, TData>;
   filterableColumns?: DataTableFilterableColumn<TData>[];
   searchableColumns?: DataTableSearchableColumn<TData>[];
   children?: ReactNode;
 };
 
-export function DataTableToolbar<TData>({
+export function DataTableToolbar<TData extends RowData>({
   table,
   filterableColumns = [],
   searchableColumns = [],
@@ -45,7 +46,7 @@ export function DataTableToolbar<TData>({
   // TanStack Table returns a mutable ref with stable identity, defeating React Compiler memoization.
   'use no memo';
   const intl = useAppIntl();
-  const isFiltered = table.getState().columnFilters?.length > 0;
+  const isFiltered = table.atoms.columnFilters.get().length > 0;
 
   if (
     searchableColumns.length === 0 &&

@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { ArrowRight } from 'lucide-react';
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 import * as mapboxgl from 'mapbox-gl/esm';
@@ -104,7 +105,11 @@ export default function MapPreviewDialog({
       (inspection) => {
         setStatus('loading');
         setKeyUnreadable(inspection.value === undefined);
-        setAccessToken(inspection.value);
+        setAccessToken(
+          inspection.value === undefined
+            ? undefined
+            : Redacted.value(inspection.value),
+        );
       },
     );
   }, [clear, resources, run, tokenAssetId]);

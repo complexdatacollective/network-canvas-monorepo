@@ -1,0 +1,5 @@
+# Article à CHI 2016 : faire passer les sociogrammes assistés par le participant du papier à l’écran
+
+Les mesures de réseau essentielles pour les groupes à haut risque et difficiles à atteindre doivent encore être recueillies en interrogeant directement les personnes, et le faire sur papier est lent et lourd. Cet article décrit netCanvas, la première version de Network Canvas, qui transforme le sociogramme papier assisté par le participant en un outil tactile. Il simplifie la saisie des données, demande moins d’intervention et de préparation de la part de l’enquêteur, facilite la réutilisation des données et montre le réseau au fur et à mesure qu’il est dessiné.
+
+L’équipe l’a testé dans une étude sur un comportement de santé auprès d’une population à haut risque et difficile à atteindre, en comparant le papier et l’écran tactile avec les mêmes participants, et a conclu que la saisie tactile des réseaux est désormais une solution de rechange viable, même pour des données très sensibles. [Lire l’article](https://doi.org/10.1145/2858036.2858368).

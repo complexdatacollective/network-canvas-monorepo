@@ -1,13 +1,13 @@
+import { Redacted, Schema } from 'effect';
 // @vitest-environment node
-// A staged file crosses the wire as multipart form data, and jsdom's
-// `FormData` is invisible to Node's `Response`: encoding one there yields the
-// string "[object FormData]" and the host refuses the request as malformed.
-// Nothing here renders.
-import { safe } from '@orpc/client';
+// jsdom's realm has a `Uint8Array` of its own, which the contract's
+// `instanceof` check refuses.
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
-import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+import {
+  ResourceDescriptorSchema,
+  type ProtocolEvent,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -18,7 +18,9 @@ import {
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
 import { createWebSocketHost } from '../../testing/host/websocketHost.ts';
+import { attempt } from '../attempt.ts';
 import { streamProtocolEvents } from '../channel.ts';
+import type { ProtocolBuilderAdapter } from '../context.ts';
 
 /** The edit these calls are made from: one editor, open throughout. */
 const EDIT = 'edit-1';
@@ -32,16 +34,22 @@ const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 const ASSETS = sectionId({ kind: 'assets' });
 
-async function base64Of(blob: Blob): Promise<string> {
-  return Buffer.from(await blob.arrayBuffer()).toString('base64');
+function base64Of(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString('base64');
 }
 
 /** Everything a procedure answered with, as text a secret could hide in. */
 function wholeAnswer(value: unknown): string {
   return JSON.stringify(value, (_key, item: unknown) =>
-    typeof item === 'bigint' ? item.toString() : item,
+    typeof item === 'bigint'
+      ? item.toString()
+      : Redacted.isRedacted(item)
+        ? Redacted.value(item)
+        : item,
   );
 }
+
+const plainDescriptor = Schema.encodeSync(ResourceDescriptorSchema);
 
 const HOLDER = {
   sessionId: 'holder-session',
@@ -51,7 +59,7 @@ const HOLDER = {
 
 type Served = Readonly<{
   host: InMemoryHost;
-  client: ProtocolBuilderClient;
+  adapter: ProtocolBuilderAdapter;
   close(): Promise<void>;
 }>;
 
@@ -63,8 +71,9 @@ afterEach(async () => {
 
 /**
  * The same contract served two ways. Every assertion below runs against both,
- * so a claim that holds in Architect's in-process router and not over Studio's
- * wire — or the other way round — fails here rather than in a host.
+ * so a claim that holds in process and not across the socket protocol and
+ * serialization Studio's editor uses — or the other way round — fails here
+ * rather than in a host.
  */
 const hosts: readonly Readonly<{ name: string; serve(): Promise<Served> }>[] = [
   {
@@ -75,7 +84,7 @@ const hosts: readonly Readonly<{ name: string; serve(): Promise<Served> }>[] = [
       });
       return Promise.resolve({
         host,
-        client: host.client,
+        adapter: host.adapter,
         close: () => Promise.resolve(),
       });
     },
@@ -86,7 +95,11 @@ const hosts: readonly Readonly<{ name: string; serve(): Promise<Served> }>[] = [
       const served = await createWebSocketHost({
         sections: sectionsFromProtocol(FIXTURE),
       });
-      return { host: served.host, client: served.client, close: served.close };
+      return {
+        host: served.host,
+        adapter: served.adapter,
+        close: served.close,
+      };
     },
   },
 ];
@@ -99,99 +112,105 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
   };
 
   it('refuses a submit from a caller that does not hold the lock', async () => {
-    const { host, client } = await open();
-    const before = await client.getSection({
+    const { host, adapter } = await open();
+    const before = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
 
-    const { definedError, isSuccess } = await safe(
-      client.submit({
-        protocolId: host.protocolId,
-        requestId: nextRequestId(),
-        sectionId: INFORMATION,
-        document: { ...before.document, label: 'Renamed without the lock' },
-        revision: before.revision,
+    const { refusal, isSuccess } = await attempt(adapter, 'Submit', {
+      protocolId: host.protocolId,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: Redacted.make({
+        ...Redacted.value(before.document),
+        label: 'Renamed without the lock',
       }),
-    );
+      revision: before.revision,
+    });
 
     expect(isSuccess).toBe(false);
-    expect(definedError?.code).toBe('NOT_LOCK_HOLDER');
-    const after = await client.getSection({
+    expect(refusal?._tag).toBe('NotLockHolder');
+    const after = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    expect(after.document.label).toBe(before.document.label);
+    expect(Redacted.value(after.document).label).toBe(
+      Redacted.value(before.document).label,
+    );
   });
 
   it('opens read-only behind a holder, and names them', async () => {
-    const { host, client } = await open();
-    await host.asCollaborator(HOLDER).acquireLock({
+    const { host, adapter } = await open();
+    await host.asCollaborator(HOLDER).rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
 
-    const result = await client.acquireLock({
+    const result = await adapter.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
 
     expect(result.lock).toBe('readOnly');
-    expect(result.lock === 'readOnly' && result.holder.displayName).toBe(
-      'Grace',
-    );
+    expect(
+      result.lock === 'readOnly' && Redacted.value(result.holder.displayName),
+    ).toBe('Grace');
   });
 
   it('registers a created stage in the stage order', async () => {
-    const { host, client } = await open();
-    const template = await client.getSection({
+    const { host, adapter } = await open();
+    const template = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    const { id: _id, ...withoutId } = template.document;
+    const { id: _id, ...withoutId } = Redacted.value(template.document);
 
-    const created = await client.create({
+    const created = await adapter.rpcCall('Create', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: withoutId,
+      document: Redacted.make(withoutId),
       position: 0,
     });
-    const stage = await client.getSection({
+    const stage = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: created.sectionId,
     });
-    const order = await client.getSection({
+    const order = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: STAGE_ORDER,
     });
 
-    expect(stage.document.id).toBe(String(stage.document.id));
-    expect(order.document.stages).toContain(stage.document.id);
-    expect(
-      Array.isArray(order.document.stages) && order.document.stages[0],
-    ).toBe(stage.document.id);
+    const stageDocument = Redacted.value(stage.document);
+    const stages = Redacted.value(order.document).stages;
+    expect(stageDocument.id).toBe(String(stageDocument.id));
+    expect(stages).toContain(stageDocument.id);
+    expect(Array.isArray(stages) && stages[0]).toBe(stageDocument.id);
   });
 
   it('replays the revisions after a cursor', async () => {
-    const { host, client } = await open();
+    const { host, adapter } = await open();
     const writer = host.asCollaborator(HOLDER);
-    const held = await writer.acquireLock({
+    const held = await writer.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    await writer.submit({
+    await writer.rpcCall('Submit', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
-      document: { ...held.document, label: 'Written before anyone watched' },
+      document: Redacted.make({
+        ...Redacted.value(held.document),
+        label: 'Written before anyone watched',
+      }),
       revision: held.revision,
     });
 
     const seen: ProtocolEvent[] = [];
     const controller = new AbortController();
     const channel = streamProtocolEvents(
-      client,
+      adapter,
       host.protocolId,
       (event) => seen.push(event),
       controller.signal,
@@ -208,90 +227,89 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     expect(revision?.type === 'revision' && revision.sectionId).toBe(
       INFORMATION,
     );
-    expect(revision?.type === 'revision' && revision.document?.label).toBe(
-      'Written before anyone watched',
-    );
+    expect(
+      revision?.type === 'revision' &&
+        revision.document !== undefined &&
+        Redacted.value(revision.document).label,
+    ).toBe('Written before anyone watched');
   });
 
   it('removes a stage and its place in the stage order in one revision', async () => {
-    const { host, client } = await open();
-    const before = await client.getSection({
+    const { host, adapter } = await open();
+    const before = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: STAGE_ORDER,
     });
 
-    const deleted = await client.delete({
+    const deleted = await adapter.rpcCall('Delete', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
 
-    const order = await client.getSection({
+    const order = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: STAGE_ORDER,
     });
     expect(deleted.changedSections).toEqual([INFORMATION, STAGE_ORDER]);
-    expect(order.document.stages).not.toContain('information-1');
-    expect(
-      Array.isArray(before.document.stages) && before.document.stages,
-    ).toContain('information-1');
-    expect(order.revision.sequence).toBe(deleted.revision.sequence);
-    const { definedError } = await safe(
-      client.getSection({
-        protocolId: host.protocolId,
-        sectionId: INFORMATION,
-      }),
+    expect(Redacted.value(order.document).stages).not.toContain(
+      'information-1',
     );
-    expect(definedError?.code).toBe('SECTION_NOT_FOUND');
+    const stagesBefore = Redacted.value(before.document).stages;
+    expect(Array.isArray(stagesBefore) && stagesBefore).toContain(
+      'information-1',
+    );
+    expect(order.revision.sequence).toBe(deleted.revision.sequence);
+    const { refusal } = await attempt(adapter, 'GetSection', {
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+    });
+    expect(refusal?._tag).toBe('SectionNotFound');
   });
 
   it('stages a file, promotes it with the section that names it, and hands its bytes back', async () => {
-    const { host, client } = await open();
-    const bytes = new Blob(
-      [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])],
-      {
-        type: 'image/png',
-      },
-    );
+    const { host, adapter } = await open();
+    const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 
-    const staged = await client.resources.stage({
+    const staged = await adapter.rpcCall('ResourcesStage', {
       protocolId: host.protocolId,
       editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Nook',
-        source: 'nook.png',
+        name: Redacted.make('Nook'),
+        source: Redacted.make('nook.png'),
         contentType: 'image/png',
-        bytes,
+        bytes: Redacted.make(bytes),
       },
     });
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
     const resourceId = staged.data.descriptor.id;
-    expect(staged.data.descriptor).toMatchObject({
+    expect(plainDescriptor(staged.data.descriptor)).toMatchObject({
       kind: 'image',
       name: 'Nook',
       status: 'staged',
       source: 'nook.png',
-      byteLength: bytes.size,
+      byteLength: bytes.byteLength,
     });
 
-    const inspected = await client.resources.inspect({
+    const inspected = await adapter.rpcCall('ResourcesInspect', {
       protocolId: host.protocolId,
       editId: EDIT,
       resourceId,
     });
-    expect(inspected.status === 'ok' && inspected.data.descriptor.name).toBe(
-      'Nook',
-    );
+    expect(
+      inspected.status === 'ok' &&
+        Redacted.value(inspected.data.descriptor.name),
+    ).toBe('Nook');
 
     // The section naming the resource and the resource itself are one
     // revision: promotion happens as part of the submit that references it.
-    const held = await client.acquireLock({
+    const held = await adapter.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    const written = await client.submit({
+    const written = await adapter.rpcCall('Submit', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -302,7 +320,9 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     expect(written.promoted).toHaveLength(1);
     expect(written.revision.sequence).toBeGreaterThan(0n);
 
-    const listed = await client.resources.list({ protocolId: host.protocolId });
+    const listed = await adapter.rpcCall('ResourcesList', {
+      protocolId: host.protocolId,
+    });
     if (listed.status !== 'ok') throw new Error(listed.failure.message);
     // The manifest records a name, a type and a source; what the researcher
     // imported it as is the host's to keep, and a committed image a media
@@ -310,22 +330,24 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     // The manifest names the bytes by their content, not by the filename the
     // researcher picked: two imports called `nook.png` are two assets, and a
     // protocol that carried both under one name could only export one of them.
-    const committed = await committedSource(bytes, 'nook.png');
-    expect(listed.data.resources).toContainEqual(
+    const committed = committedSource(bytes, 'nook.png');
+    expect(
+      listed.data.resources.map((descriptor) => plainDescriptor(descriptor)),
+    ).toContainEqual(
       expect.objectContaining({
         id: resourceId,
         name: 'Nook',
         status: 'committed',
         source: committed,
         contentType: 'image/png',
-        byteLength: bytes.size,
+        byteLength: bytes.byteLength,
       }),
     );
-    const manifest = await client.getSection({
+    const manifest = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: ASSETS,
     });
-    expect(manifest.document[resourceId]).toMatchObject({
+    expect(Redacted.value(manifest.document)[resourceId]).toMatchObject({
       name: 'Nook',
       type: 'image',
       source: committed,
@@ -334,32 +356,34 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
 
     // The whole point of the wire leg: the bytes the researcher imported are
     // the bytes the host committed, having crossed a real socket.
-    const preview = await client.resources.preview({
+    const preview = await adapter.rpcCall('ResourcesPreview', {
       protocolId: host.protocolId,
       editId: EDIT,
       resourceId,
     });
     if (preview.status !== 'ok') throw new Error(preview.failure.message);
-    expect(preview.data.url.endsWith(await base64Of(bytes))).toBe(true);
-    expect(preview.data.url.startsWith('data:image/png;base64,')).toBe(true);
+    expect(Redacted.value(preview.data.url).endsWith(base64Of(bytes))).toBe(
+      true,
+    );
+    expect(
+      Redacted.value(preview.data.url).startsWith('data:image/png;base64,'),
+    ).toBe(true);
   });
 
   it('promotes a staged file with the stage being created, not a later submit', async () => {
-    const { host, client } = await open();
-    const bytes = new Blob([new Uint8Array([137, 80, 78, 71])], {
-      type: 'image/png',
-    });
-    const staged = await client.resources.stage({
+    const { host, adapter } = await open();
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    const staged = await adapter.rpcCall('ResourcesStage', {
       protocolId: host.protocolId,
       editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
         contentKind: 'image',
-        name: 'Nook',
-        source: 'nook.png',
+        name: Redacted.make('Nook'),
+        source: Redacted.make('nook.png'),
         contentType: 'image/png',
-        bytes,
+        bytes: Redacted.make(bytes),
       },
     });
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
@@ -367,67 +391,69 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
 
     // A stage being ADDED has no revision to submit, so the create is the only
     // place its imported file can become part of the protocol.
-    const created = await client.create({
+    const created = await adapter.rpcCall('Create', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       kind: 'stage',
-      document: {
+      document: Redacted.make({
         type: 'Information',
         label: 'Information',
         title: 'Welcome',
         items: [{ id: 'item-1', type: 'asset', content: resourceId }],
-      },
+      }),
       promote: { editId: EDIT, resourceIds: [resourceId] },
     });
     expect(created.promoted).toEqual([
       expect.objectContaining({ id: resourceId, status: 'committed' }),
     ]);
 
-    const manifest = await client.getSection({
+    const manifest = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: ASSETS,
     });
-    expect(manifest.document[resourceId]).toMatchObject({
+    expect(Redacted.value(manifest.document)[resourceId]).toMatchObject({
       name: 'Nook',
       type: 'image',
-      source: await committedSource(bytes, 'nook.png'),
+      source: committedSource(bytes, 'nook.png'),
     });
     expect(manifest.revision.sequence).toBe(created.revision.sequence);
 
-    const section = await client.getSection({
+    const section = await adapter.rpcCall('GetSection', {
       protocolId: host.protocolId,
       sectionId: created.sectionId,
     });
     expect(section.revision.sequence).toBe(created.revision.sequence);
 
-    const preview = await client.resources.preview({
+    const preview = await adapter.rpcCall('ResourcesPreview', {
       protocolId: host.protocolId,
       editId: EDIT,
       resourceId,
     });
     if (preview.status !== 'ok') throw new Error(preview.failure.message);
-    expect(preview.data.url.endsWith(await base64Of(bytes))).toBe(true);
+    expect(Redacted.value(preview.data.url).endsWith(base64Of(bytes))).toBe(
+      true,
+    );
   });
 
   it('forgets a staged resource that is discarded', async () => {
-    const { host, client } = await open();
-    const staged = await client.resources.stage({
+    const { host, adapter } = await open();
+    const staged = await adapter.rpcCall('ResourcesStage', {
       protocolId: host.protocolId,
       editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
         contentKind: 'network',
-        name: 'A roster',
-        source: 'roster.csv',
+        name: Redacted.make('A roster'),
+        source: Redacted.make('roster.csv'),
         contentType: 'text/csv',
-        bytes: new Blob(['name\nAda\n'], { type: 'text/csv' }),
+        bytes: Redacted.make(new TextEncoder().encode('name\nAda\n')),
       },
     });
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
     const resourceId = staged.data.descriptor.id;
 
-    const discarded = await client.resources.discard({
+    const discarded = await adapter.rpcCall('ResourcesDiscard', {
       protocolId: host.protocolId,
       editId: EDIT,
       resourceId,
@@ -437,7 +463,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     // leaving a result no branch of the union matches.
     expect(discarded).toStrictEqual({ status: 'ok' });
 
-    const again = await client.resources.discard({
+    const again = await adapter.rpcCall('ResourcesDiscard', {
       protocolId: host.protocolId,
       editId: EDIT,
       resourceId,
@@ -452,13 +478,13 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
       },
     });
 
-    const listed = await client.resources.list({
+    const listed = await adapter.rpcCall('ResourcesList', {
       protocolId: host.protocolId,
       editId: EDIT,
       status: 'staged',
     });
     expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
-    const inspected = await client.resources.inspect({
+    const inspected = await adapter.rpcCall('ResourcesInspect', {
       protocolId: host.protocolId,
       editId: EDIT,
       resourceId,
@@ -482,14 +508,18 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
    * either way.
    */
   it('hands an API key back through inspect, staged and promoted alike', async () => {
-    const { host, client } = await open();
+    const { host, adapter } = await open();
     const value = 'pk.a-key-a-researcher-pasted';
 
-    const staged = await client.resources.stage({
+    const staged = await adapter.rpcCall('ResourcesStage', {
       protocolId: host.protocolId,
       editId: EDIT,
       requestId: 'request-1',
-      request: { kind: 'secret', name: 'Mapbox token', value },
+      request: {
+        kind: 'secret',
+        name: Redacted.make('Mapbox token'),
+        value: Redacted.make(value),
+      },
     });
     if (staged.status !== 'ok') throw new Error(staged.failure.message);
     const resourceId = staged.data.descriptor.id;
@@ -497,20 +527,22 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     // the id, and a picker has no use for the value.
     expect(wholeAnswer(staged)).not.toContain(value);
 
-    const stagedInspection = await client.resources.inspect({
+    const stagedInspection = await adapter.rpcCall('ResourcesInspect', {
       protocolId: host.protocolId,
       editId: EDIT,
       resourceId,
     });
     expect(
-      stagedInspection.status === 'ok' && stagedInspection.data.value,
+      stagedInspection.status === 'ok' &&
+        stagedInspection.data.value !== undefined &&
+        Redacted.value(stagedInspection.data.value),
     ).toBe(value);
 
-    const held = await client.acquireLock({
+    const held = await adapter.rpcCall('AcquireLock', {
       protocolId: host.protocolId,
       sectionId: INFORMATION,
     });
-    const promoted = await client.submit({
+    const promoted = await adapter.rpcCall('Submit', {
       protocolId: host.protocolId,
       requestId: nextRequestId(),
       sectionId: INFORMATION,
@@ -521,9 +553,13 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     // A promotion needs nothing but the resource ids the write names.
     expect(promoted.promoted).toHaveLength(1);
 
-    const listed = await client.resources.list({ protocolId: host.protocolId });
+    const listed = await adapter.rpcCall('ResourcesList', {
+      protocolId: host.protocolId,
+    });
     if (listed.status !== 'ok') throw new Error(listed.failure.message);
-    expect(listed.data.resources).toContainEqual(
+    expect(
+      listed.data.resources.map((descriptor) => plainDescriptor(descriptor)),
+    ).toContainEqual(
       expect.objectContaining({
         id: resourceId,
         kind: 'apikey',
@@ -535,12 +571,14 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     // for is not carried to every picker that lists the protocol's resources.
     expect(wholeAnswer(listed)).not.toContain(value);
 
-    const committedInspection = await client.resources.inspect({
+    const committedInspection = await adapter.rpcCall('ResourcesInspect', {
       protocolId: host.protocolId,
       resourceId,
     });
     expect(
-      committedInspection.status === 'ok' && committedInspection.data.value,
+      committedInspection.status === 'ok' &&
+        committedInspection.data.value !== undefined &&
+        Redacted.value(committedInspection.data.value),
     ).toBe(value);
   });
 });

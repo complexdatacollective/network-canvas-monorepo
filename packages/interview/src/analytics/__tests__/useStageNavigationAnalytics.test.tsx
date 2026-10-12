@@ -8,7 +8,7 @@ import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import { AnalyticsContext } from '../AnalyticsContext';
-import type { Tracker } from '../tracker';
+import { NULL_TRACKER, type Tracker } from '../tracker';
 import { useStageNavigationAnalytics } from '../useStageNavigationAnalytics';
 
 function makeWrapper(tracker: Tracker, stages: Array<{ type: string }>) {
@@ -90,24 +90,66 @@ describe('useStageNavigationAnalytics', () => {
     expect(typeof exitCall?.[1].duration_ms).toBe('number');
   });
 
-  it('emits interview_finished when entering FinishSession stage', () => {
+  it('does not report the interview finished on reaching the finish stage', () => {
     const tracker = { track: vi.fn(), captureException: vi.fn() };
     const wrapper = makeWrapper(tracker, [
       { type: 'Information' },
-      { type: 'NameGenerator' },
       { type: 'FinishSession' },
     ]);
     renderHook(
       () =>
         useStageNavigationAnalytics({
-          stage_index: 2,
+          stage_index: 1,
           stage_type: 'FinishSession',
         }),
       { wrapper },
     );
-    expect(tracker.track).toHaveBeenCalledWith('interview_finished', {
-      stage_count: 3,
+    expect(tracker.track).not.toHaveBeenCalledWith(
+      'interview_finished',
+      expect.anything(),
+    );
+  });
+
+  it('starts recording only once a tracker arrives, so the start is not lost', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const stages = [{ type: 'Information' }, { type: 'NameGenerator' }];
+    let current: Tracker = NULL_TRACKER;
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        protocol: {
+          id: 'p',
+          hash: 'h',
+          schemaVersion: 8,
+          codebook: {},
+          stages,
+        } as never,
+      },
+      middleware: (g) => g({ serializableCheck: false }),
     });
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <Provider store={store}>
+        <AnalyticsContext.Provider value={current}>
+          {children}
+        </AnalyticsContext.Provider>
+      </Provider>
+    );
+    const { rerender } = renderHook(
+      () =>
+        useStageNavigationAnalytics({
+          stage_index: 0,
+          stage_type: 'Information',
+        }),
+      { wrapper },
+    );
+
+    current = tracker;
+    rerender();
+
+    expect(tracker.track.mock.calls.map(([name]) => name)).toEqual([
+      'interview_started',
+      'stage_entered',
+    ]);
   });
 
   it('does not record an unavailable render-gated step before recovery', () => {

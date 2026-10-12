@@ -2,7 +2,10 @@ import { DirectionProvider } from '@base-ui/react/direction-provider';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import {
+  createCatalogSource,
+  ecosystemLocales,
+} from '@codaco/app-i18n/locales';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 
 import {
@@ -10,7 +13,10 @@ import {
   useAccessibilityAnnouncements,
 } from '../dnd/useAccessibilityAnnouncements';
 import SegmentedCodeField from '../form/fields/SegmentedCodeField';
-import { frescoUiCatalogs } from '../locales/catalogs';
+import { frescoUiCatalogLoaders } from '../locales/catalogs';
+
+const catalogs = createCatalogSource(frescoUiCatalogLoaders);
+await catalogs.load('es');
 
 describe('controls embedded in a separately localized region', () => {
   it('marks an out-of-tree live region with its own language without replacing it or changing the document', () => {
@@ -32,7 +38,7 @@ describe('controls embedded in a separately localized region', () => {
       <AppI18nProvider
         locale={locale}
         locales={ecosystemLocales}
-        messages={frescoUiCatalogs[locale]}
+        messages={catalogs.peek(locale)}
         manageDocument={false}
       >
         <DirectionProvider direction="ltr">
@@ -62,7 +68,7 @@ describe('controls embedded in a separately localized region', () => {
       <AppI18nProvider
         locale={locale}
         locales={ecosystemLocales}
-        messages={frescoUiCatalogs[locale]}
+        messages={catalogs.peek(locale)}
         manageDocument={false}
       >
         <SegmentedCodeField

@@ -1,0 +1,6 @@
+{
+  "networkExporters.stage.fetching": "Obtendo os dados das entrevistas...",
+  "networkExporters.stage.formatting": "Preparando as sessões...",
+  "networkExporters.stage.generating": "Gerando arquivos...",
+  "networkExporters.stage.outputting": "Gravando os arquivos de saída..."
+}

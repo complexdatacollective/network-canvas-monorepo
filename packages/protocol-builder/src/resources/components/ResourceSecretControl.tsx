@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -316,7 +317,7 @@ export default function ResourceSecretControl({
         requestId.current = uuid();
         setStatus(
           createMessageError(messages.addedAnnouncement, {
-            name: staged.name,
+            name: Redacted.value(staged.name),
           }),
         );
         onStaged(staged);

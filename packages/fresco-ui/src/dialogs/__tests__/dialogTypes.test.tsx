@@ -1,8 +1,20 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '../../form/Field/Field';
+import InputField from '../../form/fields/InputField';
+import type {
+  FormSubmissionResult,
+  FormSubmitHandler,
+} from '../../form/store/types';
 import type {
   AcknowledgeDialog,
   AnyDialog,
@@ -588,9 +600,11 @@ describe('confirm with async onConfirm', () => {
   function AsyncConfirmTestComponent({
     onResult,
     onConfirmFn,
+    abortable,
   }: {
     onResult: (result: unknown) => void;
     onConfirmFn: (signal: AbortSignal) => void | Promise<void>;
+    abortable?: boolean;
   }) {
     const { confirm } = useDialog();
 
@@ -601,6 +615,7 @@ describe('confirm with async onConfirm', () => {
         confirmLabel: 'Run Action',
         cancelLabel: 'Cancel',
         onConfirm: onConfirmFn,
+        abortable,
       });
       onResult(result);
     };
@@ -672,10 +687,173 @@ describe('confirm with async onConfirm', () => {
     expect(loadingButton).toBeDisabled();
 
     const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-    expect(cancelButton).not.toBeDisabled();
+    expect(cancelButton).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('should return false when user cancels during async action', async () => {
+  it('cannot be cancelled or dismissed while an action that ignores its signal runs, and resolves as confirmed once it completes', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+    let finishWork: () => void = () => undefined;
+    let workCompleted = false;
+
+    render(
+      <DialogProvider>
+        <AsyncConfirmTestComponent
+          onResult={(r) => (capturedResult = r)}
+          // Like a server action: once started it runs to completion.
+          onConfirmFn={() =>
+            new Promise<void>((resolve) => {
+              finishWork = () => {
+                workCompleted = true;
+                resolve();
+              };
+            })
+          }
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Open Async Confirm' }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Run Action' }));
+    await screen.findByRole('button', { name: 'Please wait...' });
+
+    // Every way out is refused while the work runs.
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.keyboard('{Escape}');
+    await user.click(document.body);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(capturedResult).toBe('not-set');
+
+    // The work completes, and the confirm says so.
+    await act(async () => {
+      finishWork();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(workCompleted).toBe(true);
+    expect(capturedResult).toBe(true);
+  });
+
+  it('refuses a Cancel made in the same task as the confirming click, and runs the action once', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+    let finishWork: () => void = () => undefined;
+    let runs = 0;
+
+    render(
+      <DialogProvider>
+        <AsyncConfirmTestComponent
+          onResult={(r) => (capturedResult = r)}
+          onConfirmFn={() =>
+            new Promise<void>((resolve) => {
+              runs += 1;
+              finishWork = resolve;
+            })
+          }
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Open Async Confirm' }),
+    );
+    const run = await screen.findByRole('button', { name: 'Run Action' });
+    const cancel = screen.getByRole('button', { name: 'Cancel' });
+    // Before React renders the pending state, so neither button is disabled.
+    act(() => {
+      run.click();
+      run.click();
+      cancel.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(capturedResult).toBe('not-set');
+    expect(runs).toBe(1);
+
+    await act(async () => {
+      finishWork();
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(capturedResult).toBe(true);
+  });
+
+  it('can be cancelled again once a failed action has settled', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+    let failWork: () => void = () => undefined;
+
+    render(
+      <DialogProvider>
+        <AsyncConfirmTestComponent
+          onResult={(r) => (capturedResult = r)}
+          onConfirmFn={() =>
+            new Promise<void>((_resolve, reject) => {
+              failWork = () => reject(new Error('Not deleted.'));
+            })
+          }
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Open Async Confirm' }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Run Action' }));
+    expect(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    ).toBeDisabled();
+
+    await act(async () => {
+      failWork();
+    });
+    expect(await screen.findByText('Not deleted.')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(capturedResult).toBe(false);
+  });
+
+  it('shows an AbortError the dialog did not cause as a failure, so the dialog is not left waiting', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <DialogProvider>
+        <AsyncConfirmTestComponent
+          onResult={() => undefined}
+          onConfirmFn={async () => {
+            await Promise.resolve();
+            throw new DOMException('The request timed out', 'AbortError');
+          }}
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Open Async Confirm' }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Run Action' }));
+
+    expect(await screen.findByText('An error occurred')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Run Action' })).toBeEnabled();
+  });
+
+  it('should return false when user cancels during an abortable async action', async () => {
     const user = userEvent.setup();
     let capturedResult: unknown = 'not-set';
 
@@ -683,6 +861,7 @@ describe('confirm with async onConfirm', () => {
       <DialogProvider>
         <AsyncConfirmTestComponent
           onResult={(r) => (capturedResult = r)}
+          abortable
           onConfirmFn={async (signal) => {
             await new Promise<void>((_resolve, reject) => {
               signal.addEventListener('abort', () => {
@@ -713,6 +892,44 @@ describe('confirm with async onConfirm', () => {
     });
 
     expect(capturedResult).toBe(false);
+  });
+
+  it('aborts an abortable action and resolves as dismissed on Escape', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+    let aborted = false;
+
+    render(
+      <DialogProvider>
+        <AsyncConfirmTestComponent
+          onResult={(r) => (capturedResult = r)}
+          abortable
+          onConfirmFn={(signal) =>
+            new Promise<void>((_resolve, reject) => {
+              signal.addEventListener('abort', () => {
+                aborted = true;
+                reject(new DOMException('Aborted', 'AbortError'));
+              });
+            })
+          }
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Open Async Confirm' }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Run Action' }));
+    await screen.findByRole('button', { name: 'Please wait...' });
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+
+    await user.keyboard('{Escape}');
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    expect(aborted).toBe(true);
+    expect(capturedResult).toBeNull();
   });
 
   it('should show error message when async onConfirm throws', async () => {
@@ -800,5 +1017,136 @@ describe('confirm with async onConfirm', () => {
 
     expect(callbackCalled).toBe(true);
     expect(capturedResult).toBe(true);
+  });
+});
+
+describe('form dialog onSubmit', () => {
+  function FormDialogTestComponent({
+    onResult,
+    onSubmit,
+  }: {
+    onResult: (result: unknown) => void;
+    onSubmit?: FormSubmitHandler;
+  }) {
+    const { openDialog } = useDialog();
+
+    const handleClick = async () => {
+      onResult(
+        await openDialog({
+          type: 'form',
+          title: 'Rename',
+          children: <Field component={InputField} name="name" label="Name" />,
+          onSubmit,
+        }),
+      );
+    };
+
+    return (
+      <button type="button" onClick={handleClick}>
+        Open Form
+      </button>
+    );
+  }
+
+  it('keeps the dialog open with the values and the error when the submission is refused, and closes once it succeeds', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+    let accept = false;
+
+    render(
+      <DialogProvider>
+        <FormDialogTestComponent
+          onResult={(r) => (capturedResult = r)}
+          onSubmit={async () =>
+            accept
+              ? { success: true }
+              : { success: false, formErrors: ['The name was not saved.'] }
+          }
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open Form' }));
+    await user.type(await screen.findByRole('textbox'), 'Alice');
+    await user.click(screen.getByTestId('dialog-submit'));
+
+    expect(await screen.findByText('The name was not saved.')).toBeVisible();
+    expect(screen.getByRole('textbox')).toHaveValue('Alice');
+    expect(capturedResult).toBe('not-set');
+
+    accept = true;
+    await user.click(screen.getByTestId('dialog-submit'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    expect(capturedResult).toEqual({ name: 'Alice' });
+  });
+
+  it('cannot be cancelled or dismissed while the submission is under way', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+    const pending: ((result: FormSubmissionResult) => void)[] = [];
+
+    render(
+      <DialogProvider>
+        <FormDialogTestComponent
+          onResult={(r) => (capturedResult = r)}
+          onSubmit={() =>
+            new Promise((resolve) => {
+              pending.push(resolve);
+            })
+          }
+        />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open Form' }));
+    await user.type(await screen.findByRole('textbox'), 'Alice');
+    await user.click(screen.getByTestId('dialog-submit'));
+    await waitFor(() => expect(pending).toHaveLength(1));
+
+    expect(screen.getByTestId('dialog-cancel')).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: 'Close' }),
+    ).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByTestId('dialog-cancel'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(capturedResult).toBe('not-set');
+
+    // Once a refused submission settles the participant may leave again.
+    await act(async () => {
+      pending[0]?.({ success: false, formErrors: ['Not saved.'] });
+    });
+    expect(await screen.findByText('Not saved.')).toBeVisible();
+    await user.click(screen.getByTestId('dialog-cancel'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(capturedResult).toBeNull();
+  });
+
+  it('closes with the values on submit when no onSubmit is given', async () => {
+    const user = userEvent.setup();
+    let capturedResult: unknown = 'not-set';
+
+    render(
+      <DialogProvider>
+        <FormDialogTestComponent onResult={(r) => (capturedResult = r)} />
+      </DialogProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open Form' }));
+    await user.type(await screen.findByRole('textbox'), 'Alice');
+    await user.click(screen.getByTestId('dialog-submit'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+
+    expect(capturedResult).toEqual({ name: 'Alice' });
   });
 });

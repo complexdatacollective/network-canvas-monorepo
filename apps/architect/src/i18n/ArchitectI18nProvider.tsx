@@ -10,9 +10,13 @@ import {
 } from 'react';
 
 import { PSEUDO_LOCALE } from '@codaco/app-i18n/locales';
-import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
+import {
+  AppI18nProvider,
+  useAppIntl,
+  useLocaleCatalog,
+} from '@codaco/app-i18n/react';
 
-import { architectCatalogs } from '../locales/catalogs';
+import { architectCatalogSource } from '../locales/catalogs';
 import { installArchitectIntl } from './imperative';
 import { architectLocales } from './locales';
 import {
@@ -87,13 +91,18 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
     () => ({ preference, automaticLocale, saveState, setLocale }),
     [preference, automaticLocale, saveState, setLocale],
   );
+  // The startup language is loaded before the first render (main.tsx,
+  // preview-main.tsx), so this only waits on a switch — during which the
+  // previous language stays on screen.
+  const catalog = useLocaleCatalog(architectCatalogSource, locale);
 
   return (
     <PreferenceContext.Provider value={value}>
       <AppI18nProvider
-        locale={locale}
+        locale={catalog.locale}
         locales={architectLocales}
-        messages={architectCatalogs[locale]}
+        messages={catalog.messages}
+        loadFailure={catalog.failure}
         onLocaleChange={setLocale}
       >
         <ImperativeFormatter />

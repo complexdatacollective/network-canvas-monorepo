@@ -8,21 +8,21 @@ import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/a
 import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBuildLease';
 
 import App from './App';
+import { startupLocale } from './i18n/preference';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
 } from './lib/pwa/fileLaunchQueue';
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
-import {
-  announceLoadingScreen,
-  removeLoadingScreen,
-} from './lib/pwa/loadingScreen';
+import { announceLoadingScreen } from './lib/pwa/loadingScreen';
+import { LoadingScreenHandoff } from './lib/pwa/LoadingScreenHandoff';
 import { initSwipeNavigationGuard } from './lib/pwa/swipeNavigationGuard';
 import { initVisualViewportSizing } from './lib/pwa/visualViewportSizing';
 import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './lib/storage';
+import { interviewerCatalogSource } from './locales/catalogs';
 
 announceLoadingScreen();
 
@@ -49,12 +49,19 @@ if (import.meta.hot) {
 initFileLaunchCapture();
 
 async function startApp(): Promise<void> {
-  await applyFreshLoadServiceWorkerUpdate({
-    reload: false,
-    shouldSkip: () =>
-      window.location.pathname.startsWith('/interview/') ||
-      hasPendingLaunchFiles(),
-  });
+  await Promise.all([
+    applyFreshLoadServiceWorkerUpdate({
+      reload: false,
+      shouldSkip: () =>
+        window.location.pathname.startsWith('/interview/') ||
+        hasPendingLaunchFiles(),
+    }),
+    // Load the startup language before the first render, alongside the update
+    // check rather than after it, so a non-English device never paints English
+    // first. A failure here must not stop the app mounting: the provider tries
+    // again, and if that fails too the app runs in English and says so.
+    interviewerCatalogSource.load(startupLocale()).catch(() => undefined),
+  ]);
 
   // Do not request at startup: Firefox may show a permission prompt, while
   // WebKit and Chromium judge silent grants using interaction/engagement
@@ -78,16 +85,9 @@ async function startApp(): Promise<void> {
   root.render(
     <StrictMode>
       <App />
+      <LoadingScreenHandoff />
     </StrictMode>,
   );
-
-  // Hand off from the static first-paint loader (index.html's #app-loading) to
-  // React. Deferred to after the first commit paints so there's no flash of
-  // blank between the loader disappearing and React's own content (AuthGate's
-  // Spinner, then App's fade-in) painting — the loader cross-fades into the app.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(removeLoadingScreen);
-  });
 }
 
 void startApp();

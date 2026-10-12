@@ -4,6 +4,7 @@ import type { Codebook } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  entitySecureAttributesMeta,
   type NcNode,
 } from '@codaco/shared-consts';
 
@@ -241,6 +242,85 @@ describe('processEntityVariables', () => {
         rating_10: true,
         rating_100: false,
       });
+    });
+  });
+
+  describe('encrypted values', () => {
+    const codebookWithName = (encrypted: boolean): Codebook => ({
+      node: {
+        person: {
+          name: 'person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            'name-uuid': { name: 'name', type: 'text', encrypted },
+          },
+        },
+      },
+    });
+
+    it('exports a value saved as ciphertext as ENCRYPTED, though the codebook no longer asks for encryption', () => {
+      const node: NcNode = {
+        [entityPrimaryKeyProperty]: '1',
+        type: 'person',
+        [entityAttributesProperty]: {
+          'name-uuid': [12, 34, 56],
+          'external-uuid': [78, 90],
+        },
+        [entitySecureAttributesMeta]: {
+          'name-uuid': { iv: [1], salt: [2] },
+          'external-uuid': { iv: [3], salt: [4] },
+        },
+      };
+
+      const result = processEntityVariables(
+        node,
+        'node',
+        codebookWithName(false),
+        mockExportOptions,
+      );
+
+      expect(result[entityAttributesProperty]).toEqual({
+        'name': 'ENCRYPTED',
+        'external-uuid': 'ENCRYPTED',
+      });
+    });
+
+    it('exports a value saved as plaintext as itself, though the codebook now asks for encryption', () => {
+      const node: NcNode = {
+        [entityPrimaryKeyProperty]: '1',
+        type: 'person',
+        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
+      };
+
+      const result = processEntityVariables(
+        node,
+        'node',
+        codebookWithName(true),
+        mockExportOptions,
+      );
+
+      expect(result[entityAttributesProperty]).toEqual({ name: 'Alice' });
+    });
+
+    it('exports a plaintext value as itself, though metadata from an encrypted value it replaced was left with it', () => {
+      const node: NcNode = {
+        [entityPrimaryKeyProperty]: '1',
+        type: 'person',
+        [entityAttributesProperty]: { 'name-uuid': 'Alice' },
+        [entitySecureAttributesMeta]: {
+          'name-uuid': { iv: [1], salt: [2] },
+        },
+      };
+
+      const result = processEntityVariables(
+        node,
+        'node',
+        codebookWithName(true),
+        mockExportOptions,
+      );
+
+      expect(result[entityAttributesProperty]).toEqual({ name: 'Alice' });
     });
   });
 });

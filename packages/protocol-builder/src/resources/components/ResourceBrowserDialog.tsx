@@ -1,3 +1,4 @@
+import { Redacted } from 'effect';
 import { useCallback, useRef } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -158,7 +159,9 @@ function ResourceBrowserBody({
   const readExistingNames = useCallback(async () => {
     const listed = await readLibrary();
     return listed.status === 'ok'
-      ? resourceOk(listed.data.map((descriptor) => descriptor.name))
+      ? resourceOk(
+          listed.data.map((descriptor) => Redacted.value(descriptor.name)),
+        )
       : listed;
   }, [readLibrary]);
 

@@ -76,7 +76,7 @@ type TestStore = ReturnType<typeof createTestStore>;
 // A stage editor that has been typed into: what the researcher would lose,
 // published exactly as the editor's own chrome publishes it.
 const openDirtyStageDraft = () => {
-  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
+  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' }, true);
 };
 
 const renderDialog = (store: TestStore) =>

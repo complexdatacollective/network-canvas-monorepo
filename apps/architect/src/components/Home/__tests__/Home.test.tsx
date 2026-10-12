@@ -3,12 +3,18 @@ import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 const openFileDialogMock = vi.hoisted(() => vi.fn());
+type DropHandler = (
+  files: File[],
+  fileRejections: { file: File; errors: { code: string; message: string }[] }[],
+) => void;
+
 const dropzoneRef = vi.hoisted(() => ({
-  onDrop: undefined as ((files: File[]) => void) | undefined,
+  onDrop: undefined as DropHandler | undefined,
 }));
 
-vi.mock('react-dropzone', () => ({
-  useDropzone: (options: { onDrop: (files: File[]) => void }) => {
+vi.mock('react-dropzone', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useDropzone: (options: { onDrop: DropHandler }) => {
     dropzoneRef.onDrop = options.onDrop;
     return {
       getRootProps: () => ({}),
@@ -130,7 +136,7 @@ describe('<Home />', () => {
     render(<Home />);
 
     await act(async () => {
-      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')]);
+      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')], []);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
@@ -140,6 +146,34 @@ describe('<Home />', () => {
       { file: expect.any(File), migrationApproved: false },
       { file: expect.any(File), migrationApproved: true },
     ]);
+  });
+
+  it('opens nothing when several protocols are dropped at once', async () => {
+    const { openLocalNetcanvas } =
+      await import('~/ducks/modules/userActions/userActions');
+    vi.mocked(openLocalNetcanvas).mockClear();
+    dispatchMock.mockReset();
+
+    render(<Home />);
+
+    // The shape react-dropzone (>= 19) reports for a two-file drop with
+    // `multiple: false`: the first file accepted, the surplus rejected.
+    const surplus = new File(['{}'], 'second.netcanvas');
+    await act(async () => {
+      dropzoneRef.onDrop?.(
+        [new File(['{}'], 'first.netcanvas')],
+        [
+          {
+            file: surplus,
+            errors: [{ code: 'too-many-files', message: 'Too many files' }],
+          },
+        ],
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(openLocalNetcanvas).not.toHaveBeenCalled();
+    expect(dispatchMock).not.toHaveBeenCalled();
   });
 
   it('keeps the loading overlay off while a protocol-open dialog is awaited', async () => {
@@ -160,7 +194,7 @@ describe('<Home />', () => {
     render(<Home />);
 
     await act(async () => {
-      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')]);
+      dropzoneRef.onDrop?.([new File(['{}'], 'protocol.netcanvas')], []);
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 

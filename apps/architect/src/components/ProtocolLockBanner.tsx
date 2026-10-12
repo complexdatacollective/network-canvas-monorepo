@@ -30,21 +30,21 @@ const chromeMessages = defineMessages({
   thisProtocolIsOpenInAnother: {
     id: 'architect.chrome.protocolLockBanner.thisProtocolIsOpenInAnother',
     defaultMessage:
-      'This protocol is open in another tab, which holds the saved copy. You are viewing it here in read-only mode. Close the other tab to continue editing in this one.',
+      'This protocol is open in another tab, which holds the saved copy, so it is read-only here. You can look through every page, but nothing can be changed. Close the other tab to edit it in this one.',
     description:
       'Researcher-facing explanatory text in components / ProtocolLockBanner.',
   },
   thisProtocolHasBeenOpenedIn: {
     id: 'architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn',
     defaultMessage:
-      'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to switch to a read-only view.',
+      'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes in the editor you have open. Close the other tab to carry on editing here, or close that editor to keep looking through the protocol read-only.',
     description:
       'Researcher-facing explanatory text in components / ProtocolLockBanner.',
   },
   thisProtocolHasBeenOpenedIn6aa3d: {
     id: 'architect.chrome.protocolLockBanner.thisProtocolHasBeenOpenedIn6aa3d',
     defaultMessage:
-      'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to switch to a read-only view.',
+      'This protocol has been opened in another tab, which now holds the saved copy. Nothing you change here can be saved, including any unsaved changes to this stage. Close the other tab to carry on editing here, or discard your changes to keep looking through the protocol read-only.',
     description:
       'Researcher-facing explanatory text in components / ProtocolLockBanner.',
   },
@@ -69,12 +69,13 @@ const messages = defineMessages({
 
 // Shown across the protocol editor whenever this tab does not own the saved
 // copy of the open protocol. Both tabs share one library row, so only the tab
-// holding the lock edits it; this tab shows a read-only view of the protocol
-// instead (see ProtocolRouteGuard). Non-blocking, so the protocol stays
-// readable, with the thing that actually resolves the situation spelled out.
+// holding the lock edits it; every page here still renders, with its editing
+// controls disabled (`useProtocolReadOnly`). Non-blocking, so the protocol
+// stays browsable, with the thing that actually resolves the situation spelled
+// out.
 //
 // Five situations, five whole messages (never assembled fragments, so they can
-// be localised): another tab holds the protocol and this one is reading it;
+// be localised): another tab holds the protocol and this one is browsing it;
 // another tab holds it while a stage editor here still has the researcher's
 // work in it; another tab holds it while some other editor here does; and, once
 // the other tab has closed, either an outstanding choice about stage changes
@@ -95,12 +96,12 @@ const ProtocolLockBanner = () => {
   const nestedEditorOpen = useNestedEditorOpen();
   const bannerRef = useRef<HTMLDivElement>(null);
 
-  // Entering the read-only view replaces whatever the user was looking at, so
-  // focus has to go somewhere deliberate rather than falling back to <body>.
-  // The banner is the explanation of what just happened and sits above the new
-  // content, so it takes focus; from there Tab reaches the page. Deliberately
-  // not done for 'held-stage-editor', where nothing is replaced and the user
-  // may be mid-keystroke.
+  // Going read-only disables every editing control on the page at once, very
+  // likely including the one that has focus, which would otherwise fall back to
+  // <body> with nothing to say why. The banner is the explanation of what just
+  // happened and sits above the page, so it takes focus; from there Tab reaches
+  // the page. Deliberately not done for the held modes, where an editor keeps
+  // its controls and the user may be mid-keystroke.
   useEffect(() => {
     if (mode !== 'read-only') return;
     bannerRef.current?.focus();
@@ -141,10 +142,10 @@ const ProtocolLockBanner = () => {
   // explanation because the editor it is about is on the screen behind it — so
   // the banner has to be able to put either one back.
   //
-  // A held stage editor offers the discard that is its way to the read-only
-  // view. A held NESTED editor offers nothing: what resolves it is finishing or
-  // cancelling the editor already on screen, and a discard here would clear the
-  // STAGE draft, which is not what the message is about. Read-only offers
+  // A held stage editor offers the discard that is its way to browsing the
+  // protocol read-only. A held NESTED editor offers nothing: what resolves it
+  // is finishing or cancelling the editor already on screen, and a discard here
+  // would clear the STAGE draft, which is not what the message is about. Read-only offers
   // nothing either — the toolbar already carries the only way out, and two
   // controls with one accessible name is worse for anyone navigating by name.
   const action = readOnly

@@ -4,11 +4,12 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useRoute } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
@@ -19,38 +20,14 @@ import {
 } from './interviewRecoveryRestriction';
 import StepUpAuthDialog, { type StepUpResult } from './StepUpAuthDialog';
 
-const AUTHORIZED_INTERVIEW_ID_STORAGE_KEY =
-  'interviewer:authorized-interview-id';
-
-function readAuthorizedInterviewId(): string | null {
-  try {
-    return window.sessionStorage.getItem(AUTHORIZED_INTERVIEW_ID_STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function persistAuthorizedInterviewId(sessionId: string | null) {
-  try {
-    if (sessionId === null) {
-      window.sessionStorage.removeItem(AUTHORIZED_INTERVIEW_ID_STORAGE_KEY);
-    } else {
-      window.sessionStorage.setItem(
-        AUTHORIZED_INTERVIEW_ID_STORAGE_KEY,
-        sessionId,
-      );
-    }
-  } catch {
-    // The in-memory authorization still works if storage is unavailable.
-  }
-}
-
 type StepUpAuthContextValue = {
   requireFreshUnlock: () => Promise<StepUpResult>;
-  // The interview whose entry gate has already been satisfied in this tab.
-  // Lets InterviewRoute skip the enter gate when a lock/unlock cycle or hard
-  // refresh remounts the same interview — Welcome back already authenticated
-  // the user, so a second step-up prompt would be redundant.
+  // The interview whose entry gate has already been satisfied in this unlock
+  // session. Lets InterviewRoute skip the enter gate when a lock/unlock cycle
+  // or hard refresh remounts the same interview — the lock screen has just
+  // authenticated the user, so a second step-up prompt would be redundant.
+  // Held in memory only: a value read back from browser storage would let
+  // anyone who can write that storage choose which interview skips the gate.
   getAuthorizedInterviewId: () => string | null;
   setAuthorizedInterviewId: (sessionId: string | null) => void;
 };
@@ -61,22 +38,44 @@ export function StepUpAuthProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const { closeAllDialogs } = useDialog();
   const [location] = useLocation();
+  const [onInterviewRoute, interviewRouteParams] = useRoute(
+    '/interview/:sessionId',
+  );
+  const routedInterviewId = onInterviewRoute
+    ? interviewRouteParams.sessionId
+    : null;
   const [open, setOpen] = useState(false);
   const [allowDestructiveRecovery, setAllowDestructiveRecovery] =
     useState(true);
   const pendingResolve = useRef<((r: StepUpResult) => void) | null>(null);
   const prevKind = useRef(auth.kind);
-  const authorizedInterviewId = useRef<string | null>(
-    readAuthorizedInterviewId(),
-  );
+  const authorizedInterviewId = useRef<string | null>(null);
+  const kindAtLastAuthorizationCheck = useRef(auth.kind);
   const getAuthorizedInterviewId = useCallback(
     () => authorizedInterviewId.current,
     [],
   );
   const setAuthorizedInterviewId = useCallback((sessionId: string | null) => {
     authorizedInterviewId.current = sessionId;
-    persistAuthorizedInterviewId(sessionId);
   }, []);
+
+  // Unlocking at the lock screen is a fresh authentication. When it happens
+  // on an interview's route — an idle lock inside the interview, or a hard
+  // refresh of it (a secured vault always starts locked) — it satisfies that
+  // interview's entry gate. A layout effect, so the authorization is in place
+  // before the interview route that mounts in the same commit runs its
+  // (passive) enter-gate effect.
+  useLayoutEffect(() => {
+    const previous = kindAtLastAuthorizationCheck.current;
+    kindAtLastAuthorizationCheck.current = auth.kind;
+    if (
+      previous === 'locked' &&
+      auth.kind === 'unlocked' &&
+      routedInterviewId !== null
+    ) {
+      authorizedInterviewId.current = routedInterviewId;
+    }
+  }, [auth.kind, routedInterviewId]);
 
   const handleResolve = useCallback((result: StepUpResult) => {
     setOpen(false);

@@ -6,10 +6,14 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { interviewerProductionLocales } from '~/i18n/locales';
 import type { ProtocolWithCounts, StoredSessionLite } from '~/lib/db/types';
 import type { PendingImport } from '~/lib/protocol/useProtocolImport';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import type { DeckEntry } from '../deckEntries';
 import { ProtocolDeck } from '../ProtocolDeck';
+
+// The renders below show Spanish synchronously, as a device that has already
+// loaded it would, so its catalog loads before any of them.
+await interviewerCatalogSource.load('es');
 
 // Keep the real deck/carousel, keyed selection and memo dependencies. The
 // per-card interview-start form is not part of this read-only ordering test.
@@ -59,7 +63,7 @@ describe('ProtocolDeck active-locale sorting', () => {
         <AppI18nProvider
           locale={locale}
           locales={interviewerProductionLocales}
-          messages={interviewerCatalogs[locale]}
+          messages={interviewerCatalogSource.peek(locale)}
         >
           <ProtocolDeck
             protocols={protocols}

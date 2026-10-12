@@ -440,7 +440,7 @@ credentials: 'omit', cache: 'no-store', redirect: 'error' })`. POST bodies
      carried: `VariableNameSchema` is an unbounded NMTOKEN, so a subject key
      of 85 characters or more overruns a host's 128-character
      node-identifier limit (Studio's `nodes_identifier_lengths_check`,
-     `apps/studio/server/src/network/schema.ts:151-157`) with or without
+     `apps/studio/api/src/network/schema.ts:151-157`) with or without
      this amendment. Bounding that is a pre-existing question about the
      protocol's own keys, not one the amendment creates or settles.
    - No byte of the id reaches the `_uid`, so no id byte can reach a

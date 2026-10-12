@@ -394,21 +394,21 @@ const SUMMARY_SENTENCES = defineMessages({
   unusable: {
     id: 'protocolBuilder.ruleSet.summaryUnusable',
     defaultMessage:
-      '{count, plural, one {Rule {position, number} cannot be used as it stands. Open it to fix it, or delete it.} other {# of these rules cannot be used as they stand. Open each marked rule to fix it, or delete it.}}',
+      '{count, plural, =1 {Rule {position, number} cannot be used as it stands. Open it to fix it, or delete it.} other {# of these rules cannot be used as they stand. Open each marked rule to fix it, or delete it.}}',
     description:
       'The one error a rule-set field shows when its rules are exactly as the researcher wrote them and the protocol still cannot use them where they sit. count is how many rules are affected; position is the 1-based position of the single affected rule, as the researcher counts the rows on screen. Each row also carries its own message saying what is wrong with it.',
   },
   codebook: {
     id: 'protocolBuilder.ruleSet.summaryCodebook',
     defaultMessage:
-      "{count, plural, one {Rule {position, number} no longer works with this protocol's codebook. Open it to fix it, or delete it.} other {# of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.}}",
+      "{count, plural, =1 {Rule {position, number} no longer works with this protocol's codebook. Open it to fix it, or delete it.} other {# of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.}}",
     description:
       'The one error a rule-set field shows when a rule was finished and the protocol moved under it — an attribute or a type it names has been renamed, retyped or deleted. The codebook is the protocol’s definition of the node types, edge types and attributes a study records. count is how many rules are affected; position is the 1-based position of the single affected rule.',
   },
   unfinished: {
     id: 'protocolBuilder.ruleSet.summaryUnfinished',
     defaultMessage:
-      '{count, plural, one {Rule {position, number} is not finished. Open it to fill in every part, or delete it.} other {# of these rules are not finished. Open each marked rule to fill in every part, or delete it.}}',
+      '{count, plural, =1 {Rule {position, number} is not finished. Open it to fill in every part, or delete it.} other {# of these rules are not finished. Open each marked rule to fill in every part, or delete it.}}',
     description:
       'The one error a rule-set field shows when a rule was never completed. count is how many rules are affected; position is the 1-based position of the single affected rule.',
   },

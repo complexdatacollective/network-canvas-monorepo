@@ -136,10 +136,10 @@ export function computeNodeDisplayLabels(
   for (const [nodeId, node] of nodes) {
     if (nodeId === egoId) continue;
 
-    const storedName = node[entityAttributesProperty][
-      variableConfig.nodeLabelVariable
-    ] as string | undefined;
-    if (storedName) {
+    // A name that is still encrypted is not a string; fall back to the role.
+    const storedName =
+      node[entityAttributesProperty][variableConfig.nodeLabelVariable];
+    if (typeof storedName === 'string' && storedName !== '') {
       labels.set(nodeId, storedName);
       continue;
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { MotionConfig } from 'motion/react';
+import { MotionConfig, MotionGlobalConfig } from 'motion/react';
 import type { ComponentProps, ReactNode } from 'react';
 
 declare global {
@@ -14,9 +14,10 @@ type ReducedMotion = ComponentProps<typeof MotionConfig>['reducedMotion'];
 export type AnimationProviderProps = {
   children: ReactNode;
   /**
-   * Disable both Motion animations and Base UI's animation bookkeeping.
-   * Intended for deterministic automated hosts such as Playwright and
-   * Storybook visual tests.
+   * Disable both Motion animations, layout animations included, and Base UI's
+   * animation bookkeeping. Intended for deterministic automated hosts such as
+   * Playwright and Storybook visual tests. Once set it stays set for the life
+   * of the page, because Motion's layout animations read a page-wide flag.
    */
   disableAnimations?: boolean;
   /**
@@ -60,9 +61,16 @@ export function AnimationProvider({
 
   // This must happen synchronously, before descendants mount and register Base
   // UI transition callbacks. Automated hosts are long-lived and only move from
-  // animations enabled to disabled, so intentionally keep the flag sticky.
+  // animations enabled to disabled, so intentionally keep both flags sticky.
+  //
+  // `MotionConfig`'s `skipAnimations` below is not enough for Motion on its
+  // own: layout and `layoutId` animations run in Motion's projection engine,
+  // which reads only the global flag. Without it a dialog opened from a row
+  // that shares its `layoutId` still crossfades in, at an opacity an a11y
+  // check reads as failed contrast.
   if (animationsDisabled) {
     globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
+    MotionGlobalConfig.skipAnimations = true;
   }
 
   return (

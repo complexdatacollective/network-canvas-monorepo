@@ -4,6 +4,6 @@
   "architect.summary.label.selectionColor": "Selection Color",
   "architect.typeEditor.typeEditor.chooseAColorForThisType": "Choose a color for this {entity, select, node {node} edge {edge} other {ego}} type.",
   "architect.typeEditor.typeEditor.color": "Color",
-  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Works With\".}}",
+  "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Colleagues\".}}",
   "architect.typeEditor.typeEditor.typeColor": "Type color"
 }

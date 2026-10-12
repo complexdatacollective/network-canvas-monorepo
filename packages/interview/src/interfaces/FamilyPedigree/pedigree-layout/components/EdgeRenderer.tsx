@@ -176,7 +176,6 @@ function renderInactiveGroupLine(
 
 function getAuxiliaryStyle(edgeType: AuxiliaryConnector['edgeType']) {
   switch (edgeType) {
-    case 'unpartnered-parent':
     case 'social':
     case 'adoptive':
       return { strokeDasharray: DASHED_PATTERN, strokeWidth: EDGE_WIDTH };

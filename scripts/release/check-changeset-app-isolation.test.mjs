@@ -72,14 +72,14 @@ test('allows normal-lane apps to share a changeset', () => {
 
 test('allows the studio packages to share a changeset within their lane', () => {
   const cwd = fixture({
-    'studio.md': `---\n"@codaco/studio-server": minor\n"@codaco/studio-rpc": patch\n"@codaco/studio-sync": patch\n---\n\nstudio change`,
+    'studio.md': `---\n"@codaco/studio-api": minor\n"@codaco/studio-contract": patch\n"@codaco/studio-sync": patch\n---\n\nstudio change`,
   });
   assert.equal(run(cwd).status, 0);
 });
 
 test('fails when a changeset mixes a studio package with the normal lane', () => {
   const cwd = fixture({
-    'mixed-studio.md': `---\n"@codaco/studio-server": minor\n"@codaco/protocol-validation": patch\n---\n\nmixed`,
+    'mixed-studio.md': `---\n"@codaco/studio-api": minor\n"@codaco/protocol-validation": patch\n---\n\nmixed`,
   });
   const res = run(cwd);
   assert.equal(res.status, 1);

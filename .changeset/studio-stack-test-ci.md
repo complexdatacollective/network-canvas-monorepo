@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': patch
+'@codaco/studio-api': patch
 ---
 
 The self-host stack is tested. `apps/studio/stack-test` stands the reference

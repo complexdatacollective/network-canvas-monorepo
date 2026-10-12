@@ -23,6 +23,13 @@ const protocolGalleryUrl =
     ? 'https://protocolgallery.networkcanvas.com'
     : undefined);
 
+// The year the bundle was built, inlined into every bundle so the prerendered
+// HTML and the client's hydration render the same text. Reading the clock during
+// render instead makes a static export mismatch for any visitor whose local year
+// differs from the build machine's — guaranteed for everyone from 1 January
+// until the next deploy — which React reports as the #418 hydration error.
+const buildYear = String(new Date().getFullYear());
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   ...(process.env.NODE_ENV === 'development'
@@ -68,6 +75,7 @@ const nextConfig: NextConfig = {
     ...(protocolGalleryUrl
       ? { NEXT_PUBLIC_PROTOCOL_GALLERY_URL: protocolGalleryUrl }
       : {}),
+    NEXT_PUBLIC_BUILD_YEAR: buildYear,
   },
 };
 

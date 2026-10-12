@@ -3,35 +3,39 @@
 import { Sparkles } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { useTranslations } from 'next-intl';
-import type { ReactNode } from 'react';
+import { useId } from 'react';
 
-import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { Link } from '~/lib/i18n/navigation';
+import { SiteLink } from '~/components/ui/SiteLink';
 import type { NewsItem as NewsItemRecord } from '~/lib/siteContent';
 
-function NewsLink({
-  children,
+function NewsEntry({
+  title,
   href,
   tabIndex,
 }: {
-  children: ReactNode;
+  title: string;
   href: string;
   tabIndex?: number;
 }) {
-  const isInternal = href.startsWith('/');
+  const t = useTranslations('News');
+  const titleId = useId();
+  const linkId = useId();
 
   return (
-    <NativeLink
-      href={href}
-      render={isInternal ? <Link href={href} /> : undefined}
-      target={isInternal ? undefined : '_blank'}
-      rel={isInternal ? undefined : 'noreferrer'}
-      tabIndex={tabIndex}
-      className="text-cerulean-blue font-bold"
-    >
-      {children}
-    </NativeLink>
+    <>
+      <span id={titleId}>{title}</span>{' '}
+      <SiteLink
+        id={linkId}
+        href={href}
+        tabIndex={tabIndex}
+        aria-labelledby={`${linkId} ${titleId}`}
+        className="text-cerulean-blue font-bold"
+      >
+        {t('readMore')}
+      </SiteLink>
+    </>
   );
 }
 
@@ -44,17 +48,16 @@ function NewsItem({
   href: string;
   duplicate?: boolean;
 }) {
-  const t = useTranslations('News');
-
   return (
     <span
       aria-hidden={duplicate || undefined}
       className="text-base-sm text-text/80 inline-flex shrink-0 items-center gap-2 whitespace-nowrap"
     >
-      {title}
-      <NewsLink href={href} tabIndex={duplicate ? -1 : undefined}>
-        {t('fullStory')}
-      </NewsLink>
+      <NewsEntry
+        title={title}
+        href={href}
+        tabIndex={duplicate ? -1 : undefined}
+      />
     </span>
   );
 }
@@ -71,8 +74,20 @@ export function NewsTicker({
 }: {
   newsItems: readonly NewsItemRecord[];
 }) {
-  const t = useTranslations('News');
-  const shouldReduceMotion = useReducedMotion() === true;
+  const prefersReducedMotion = useReducedMotion() === true;
+  // The branch below chooses between two different element trees, so it must
+  // not depend on the preference until after hydration: `useReducedMotion()`
+  // answers `null` on the server (motion learns the preference from
+  // `matchMedia`, which the server cannot read) and `true` on a client that
+  // prefers reduced motion. Reading it during the first client render made the
+  // server send the marquee and a reduced-motion visitor render a single item
+  // over it — a structural mismatch, which React throws as a hydration error
+  // and discards the whole tree for. Gating on hydration keeps the first client
+  // render identical to the server's; the marquee's own
+  // `motion-reduce:animate-none` means that frame is already motionless, so
+  // these visitors never see it move.
+  const hasHydrated = useHasHydrated();
+  const shouldReduceMotion = hasHydrated && prefersReducedMotion;
   const activeNewsItem = newsItems[0];
 
   return (
@@ -107,7 +122,7 @@ export function NewsTicker({
             key={item.id}
             className="text-base-sm text-text/80"
           >
-            {item.title} <NewsLink href={item.href}>{t('fullStory')}</NewsLink>
+            <NewsEntry title={item.title} href={item.href} />
           </Paragraph>
         ))}
       </div>

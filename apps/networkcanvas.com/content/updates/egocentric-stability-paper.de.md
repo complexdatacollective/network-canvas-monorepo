@@ -1,0 +1,5 @@
+# Artikel in Network Science: Wie stabil sind persönliche Netzwerke im Zeitverlauf?
+
+Wenn Menschen mehr als einmal zu ihren Netzwerken befragt werden, verschwinden viele der genannten Personen zwischen den Interviews und tauchen wieder auf. Dieser Artikel fragt, ob sich darin tatsächliche Veränderungen im Leben der Menschen zeigen oder das Interview selbst: etwa, dass sich Befragte an einer Vorstellung davon orientieren, wie ein Netzwerk aussehen sollte, oder weniger Personen nennen, um das Interview zu verkürzen.
+
+Anhand von drei mit dem Touchscreen-Soziogramm von Network Canvas erhobenen Wellen einer Chicagoer Panelstudie mit jungen Männern, die Sex mit Männern haben, stellten die Autorinnen und Autoren über die Wellen hinweg kaum Veränderungen der durchschnittlichen Netzwerkgröße fest. Zwischen der ersten und zweiten Welle zeigten sich kleine, aber signifikante Veränderungen, überwiegend bei Personen mit den größten Netzwerken, und zwischen der zweiten und dritten Welle fast keine, weder bei Größe, Zusammensetzung noch Dichte des Netzwerks. [Artikel lesen](https://doi.org/10.1017/nws.2019.27).

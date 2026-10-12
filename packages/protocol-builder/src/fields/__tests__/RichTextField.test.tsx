@@ -229,3 +229,52 @@ describe('a multi-line rich text field', () => {
     });
   });
 });
+
+/**
+ * A bracketed placeholder is text the researcher typed, and the interview
+ * renderer drops any unescaped tag it does not allow — the consent form read
+ * "received ethics clearance through, today." So the saved markdown is what
+ * the editor showed, in the form the sample protocol stores it.
+ */
+describe('angle brackets in a rich text field', () => {
+  const STORED =
+    'received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;';
+
+  it('saves a typed placeholder escaped', async () => {
+    const field = renderField({});
+    const editor = await field.editor();
+
+    await field.user.click(editor);
+    await field.user.type(
+      editor,
+      'Ethics clearance through, <IRB OR ETHICS BOARD HERE> today.',
+    );
+
+    expect(await field.save()).toEqual({
+      prompt:
+        'Ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt; today.',
+    });
+  });
+
+  it('shows a stored placeholder as the brackets it stands for', async () => {
+    const field = renderField({ initialValue: STORED });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe(
+      'received ethics clearance through, <IRB OR ETHICS BOARD HERE>',
+    );
+    expect(await field.save()).toEqual({ prompt: STORED });
+  });
+
+  it('keeps a stored placeholder escaped when the text around it is edited', async () => {
+    const field = renderField({ initialValue: STORED });
+    const editor = await field.editor();
+
+    // The caret starts where the document does, so the typed text leads.
+    await field.user.type(editor, 'I understand it ');
+
+    expect(await field.save()).toEqual({
+      prompt: `I understand it ${STORED}`,
+    });
+  });
+});

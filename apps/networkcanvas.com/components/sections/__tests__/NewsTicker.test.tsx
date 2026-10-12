@@ -39,9 +39,14 @@ describe('NewsTicker', () => {
     expect(desktopTicker).toHaveClass('tablet-portrait:flex', 'hidden');
     expect(mobileTicker).toHaveClass('tablet-portrait:hidden', 'flex');
     expect(screen.getAllByText('Fixture-only research news')).toHaveLength(3);
-    expect(screen.getAllByRole('link', { name: '[Full story]' })).toHaveLength(
-      2,
-    );
+    expect(
+      screen.getAllByRole('link', {
+        name: '[Read more] Fixture-only research news',
+      }),
+    ).toHaveLength(2);
+    expect(
+      screen.queryByRole('link', { name: '[Read more]' }),
+    ).not.toBeInTheDocument();
     const duplicate = container.querySelector('[aria-hidden="true"] a');
     expect(duplicate).toHaveAttribute('tabindex', '-1');
     expect(container.querySelector('.animate-marquee')).toHaveClass(
@@ -90,7 +95,7 @@ describe('NewsTicker', () => {
     renderWithIntl(<NewsTicker newsItems={newsItems} />, 'es');
 
     expect(screen.getAllByText('Últimas noticias:')).toHaveLength(2);
-    expect(screen.getAllByText('[Leer la nota completa]')).toHaveLength(3);
+    expect(screen.getAllByText('[Leer más]')).toHaveLength(3);
   });
 
   it('localizes internal news links to the current homepage locale', () => {
@@ -98,20 +103,22 @@ describe('NewsTicker', () => {
       <NewsTicker
         newsItems={[
           {
-            id: 'announcement',
+            id: 'summer-2026',
             title: 'Release announcement',
-            href: '/summer-2026-update',
+            href: '/updates#summer-2026',
           },
         ]}
       />,
       'en-GB',
     );
 
-    const links = screen.getAllByRole('link', { name: '[Full story]' });
+    const links = screen.getAllByRole('link', {
+      name: '[Read more] Release announcement',
+    });
     expect(links).toHaveLength(2);
     expect(
       links.every(
-        (link) => link.getAttribute('href') === '/en-GB/summer-2026-update',
+        (link) => link.getAttribute('href') === '/en-GB/updates#summer-2026',
       ),
     ).toBe(true);
     expect(links.every((link) => link.getAttribute('target') === null)).toBe(

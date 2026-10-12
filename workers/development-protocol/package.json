@@ -9,7 +9,7 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "@octokit/types": "^16.0.0"
+    "@octokit/types": "^18.0.0"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",

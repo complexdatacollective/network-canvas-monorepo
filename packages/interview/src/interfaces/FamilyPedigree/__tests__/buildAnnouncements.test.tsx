@@ -1,14 +1,17 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { Provider } from 'react-redux';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { asEntityAttributeReference } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
+import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import type * as sessionSelectors from '../../../selectors/session';
 import type * as interviewStore from '../../../store/store';
 import type { StageProps } from '../../../types';
+import { createEncryptionStore } from '../../Anonymisation/__tests__/encryptionFixtures';
 import FamilyPedigree from '../FamilyPedigree';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
 import type * as edgeUtils from '../utils/edgeUtils';
@@ -74,6 +77,7 @@ vi.mock('../utils/nodeUtils', async (importOriginal) => ({
   getEgoVariable: () => 'isEgo',
   getRelationshipVariable: () => 'relationship',
   getBiologicalSexVariable: () => 'biologicalSex',
+  getNodeForm: () => undefined,
 }));
 vi.mock('../utils/edgeUtils', async (importOriginal) => ({
   ...(await importOriginal<typeof edgeUtils>()),
@@ -166,13 +170,25 @@ const props = {
   getNavigationHelpers: () => ({ moveForward: vi.fn(), moveBackward: vi.fn() }),
 } satisfies StageProps<'FamilyPedigree'>;
 
+// Loaded before anything renders, as a host loads a language before it
+// mounts an interview, so renders in these languages are synchronous.
+beforeAll(async () => {
+  await Promise.all(
+    ['es', 'en-GB'].map((locale) => interviewCatalogSource.load(locale)),
+  );
+});
+
 describe('FamilyPedigree build announcements', () => {
   it('consumes add, remove and completion events while later actions use the current language', async () => {
     const user = userEvent.setup();
+    // Passphrase state and the codebook's encrypted flags come from Redux.
+    const store = createEncryptionStore([], [], {});
     const view = (locale: string) => (
-      <InterviewI18nProvider requestedLocale={locale}>
-        <FamilyPedigree {...props} />
-      </InterviewI18nProvider>
+      <Provider store={store}>
+        <InterviewI18nProvider requestedLocale={locale}>
+          <FamilyPedigree {...props} />
+        </InterviewI18nProvider>
+      </Provider>
     );
     const { rerender } = render(view('en'));
     await user.click(screen.getByRole('button', { name: 'Add relative' }));

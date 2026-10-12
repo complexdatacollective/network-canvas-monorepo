@@ -154,7 +154,10 @@ export const useProtocolTabLock = (
           return;
         }
 
-        if (!readStageDraft().open) {
+        // A stage editor this tab opened while the other tab held the protocol
+        // was never granted its stage: it holds no draft and simply re-opens
+        // for editing once the reclaim lands (`StageEditorPage`).
+        if (!readStageDraft().editing) {
           void finishReclaim();
           return;
         }
@@ -182,9 +185,9 @@ export const useProtocolTabLock = (
   // Followed rather than read: a draft undone by hand back to the values the
   // editor opened on releases a blocked reclaim, and nothing dispatches when
   // that happens.
-  const draftOpen = useSyncExternalStore(
+  const draftEditing = useSyncExternalStore(
     subscribeToStageDraft,
-    () => readStageDraft().open,
+    () => readStageDraft().editing,
   );
   const draftDirty = useSyncExternalStore(
     subscribeToStageDraft,
@@ -216,7 +219,7 @@ export const useProtocolTabLock = (
     // by the researcher's own decision. Either way it is closing that answers
     // this.
     if (nestedEditorOpen) return;
-    if (draftOpen && draftDirty) return;
+    if (draftEditing && draftDirty) return;
     // Closing the editor below clears the draft, which re-runs this effect
     // while the reclaim it started is still in flight.
     if (resolvingBlockedReclaim.current) return;
@@ -232,14 +235,14 @@ export const useProtocolTabLock = (
       dispatch(setProtocolLockState('owned'));
       return;
     }
-    if (draftOpen) {
+    if (draftEditing) {
       closeEditorAndReclaim();
       return;
     }
     void finishReclaim();
   }, [
     lockState,
-    draftOpen,
+    draftEditing,
     draftDirty,
     nestedEditorOpen,
     dispatch,

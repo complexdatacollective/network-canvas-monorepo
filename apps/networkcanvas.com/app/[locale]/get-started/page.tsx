@@ -32,6 +32,13 @@ export async function generateMetadata({
         'en-US': 'https://networkcanvas.com/en-US/get-started',
         'en-GB': 'https://networkcanvas.com/en-GB/get-started',
         'es': 'https://networkcanvas.com/es/get-started',
+        'zh-Hans': 'https://networkcanvas.com/zh-Hans/get-started',
+        'zh-Hant': 'https://networkcanvas.com/zh-Hant/get-started',
+        'de': 'https://networkcanvas.com/de/get-started',
+        'nl': 'https://networkcanvas.com/nl/get-started',
+        'pt-BR': 'https://networkcanvas.com/pt-BR/get-started',
+        'it': 'https://networkcanvas.com/it/get-started',
+        'fr': 'https://networkcanvas.com/fr/get-started',
       },
     },
   };
@@ -56,14 +63,13 @@ export default async function GetStartedPage({ params }: GetStartedPageProps) {
   ];
 
   return (
-    <main className="relative isolate">
+    <div className="relative isolate">
       <HomepagePageBackground target="[data-get-started-weave-target]" />
-      <div>
-        <GetStartedIntro />
+      <GetStartedIntro>
         <WorkflowPath workflow="design" apps={designApps} />
         <WorkflowPath workflow="collect" apps={collectApps} />
-        <Footer />
-      </div>
-    </main>
+      </GetStartedIntro>
+      <Footer />
+    </div>
   );
 }

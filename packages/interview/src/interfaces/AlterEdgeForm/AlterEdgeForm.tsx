@@ -12,6 +12,7 @@ import {
 } from '@codaco/shared-consts';
 
 import Node from '../../components/ConnectedNode';
+import { writeSubmissionResult } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -67,14 +68,15 @@ const AlterEdgeForm = (props: StageProps<'AlterEdgeForm'>) => {
   const [isFormReady, setIsFormReady] = useState(false);
 
   const handleUpdateItem = useCallback(
-    (id: string, attributePatch: AttributePatch) => {
-      void dispatch(
-        updateEdge({
-          edgeId: id,
-          attributePatch,
-        }),
-      );
-    },
+    async (id: string, attributePatch: AttributePatch) =>
+      writeSubmissionResult(
+        await dispatch(
+          updateEdge({
+            edgeId: id,
+            attributePatch,
+          }),
+        ),
+      ),
     [dispatch],
   );
 

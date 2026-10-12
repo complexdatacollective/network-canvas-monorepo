@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-server': minor
+'@codaco/studio-api': minor
 ---
 
 Studio encrypts its secrets at rest in the application, and says plainly what it does not. A secret is a value that would let someone act as Studio or as a researcher's integration, and there are three: webhook signing secrets, the API keys researchers store as protocol assets, and OAuth access, refresh and id tokens. All three are now AES-256-GCM ciphertext with the owning row's identity bound in, so one moved to another row stops opening rather than decrypting as that row's secret.

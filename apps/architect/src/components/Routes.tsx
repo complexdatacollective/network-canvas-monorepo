@@ -14,14 +14,13 @@ import Protocol from '~/components/Protocol';
 import ProtocolRouteGuard from '~/components/ProtocolRouteGuard';
 import RouteFocus from '~/components/RouteFocus';
 
-// Every `/protocol` route is wrapped by ProtocolRouteGuard, which decides
-// whether this tab may edit the protocol at all before any editor mounts. It
-// wraps the whole Switch rather than each route so a route added below is
-// covered without having to remember to opt in.
+// Every `/protocol` route is wrapped by ProtocolRouteGuard, which sends a tab
+// with no protocol home and tells every page whether this tab may edit the
+// protocol. It wraps the whole Switch rather than each route so a route added
+// below is covered without having to remember to opt in.
 //
-// RouteFocus sits OUTSIDE the guard so it covers the read-only view the guard
-// substitutes for the editor as well — that substitution is a destination too.
-// Every route below owns a `data-route-focus-target` heading for it to land on.
+// Every route below owns a `data-route-focus-target` heading for RouteFocus to
+// land on.
 const Routes = () => {
   return (
     <ActionToolbarProvider>

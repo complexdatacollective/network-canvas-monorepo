@@ -1,3 +1,5 @@
+import { Redacted } from 'effect';
+
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -35,7 +37,7 @@ export default function ResourcePreviewBand({
         <ResourcePreview
           resourceId={descriptor.id}
           kind={framedKind}
-          name={descriptor.name}
+          name={Redacted.value(descriptor.name)}
           presentational={presentational}
           className={cx(
             'col-start-1 row-start-1 w-full object-contain object-center',

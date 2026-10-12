@@ -28,6 +28,13 @@ export async function generateMetadata({
         'en-US': 'https://networkcanvas.com/en-US/summer-2026-update',
         'en-GB': 'https://networkcanvas.com/en-GB/summer-2026-update',
         'es': 'https://networkcanvas.com/es/summer-2026-update',
+        'zh-Hans': 'https://networkcanvas.com/zh-Hans/summer-2026-update',
+        'zh-Hant': 'https://networkcanvas.com/zh-Hant/summer-2026-update',
+        'de': 'https://networkcanvas.com/de/summer-2026-update',
+        'nl': 'https://networkcanvas.com/nl/summer-2026-update',
+        'pt-BR': 'https://networkcanvas.com/pt-BR/summer-2026-update',
+        'it': 'https://networkcanvas.com/it/summer-2026-update',
+        'fr': 'https://networkcanvas.com/fr/summer-2026-update',
       },
     },
     openGraph: {

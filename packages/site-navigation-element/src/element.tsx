@@ -19,11 +19,23 @@ const ACTIVE_ITEMS: readonly SiteNavigationItemId[] = [
   'community',
   'documentation',
   'protocolGallery',
+  'updates',
   'resources',
   'software',
   'getStarted',
 ];
-const LOCALES: readonly SiteNavigationLocale[] = ['en-US', 'en-GB', 'es'];
+const LOCALES: readonly SiteNavigationLocale[] = [
+  'en-US',
+  'en-GB',
+  'es',
+  'zh-Hans',
+  'zh-Hant',
+  'de',
+  'nl',
+  'pt-BR',
+  'it',
+  'fr',
+];
 const THEMES = ['light', 'dark', 'auto'] as const;
 type Theme = (typeof THEMES)[number];
 

@@ -1,12 +1,9 @@
-import type { CatalogMessages } from '@codaco/app-i18n/locales';
-
-import enGbOverrides from './en-GB.json';
-import es from './es.json';
+import type { CatalogLoaders } from '@codaco/app-i18n/locales';
 
 /**
- * This package's own message catalogs, one entry per non-source locale of
+ * This package's own message catalogs, one loader per non-source locale of
  * `ecosystemLocales`. Hosts merge these under their own app catalogs
- * (`mergeCatalogs(commonCatalogs[locale], frescoUiCatalogs[locale], appCatalog)`)
+ * (`createCatalogSource(commonCatalogLoaders, frescoUiCatalogLoaders, appLoaders)`)
  * so every `frescoUi.*` id resolves in the active language.
  *
  * English is deliberately absent: every descriptor carries its own
@@ -16,7 +13,14 @@ import es from './es.json';
  * en-GB is an override catalog — only the ids whose British form differs from
  * the source; everything else falls through to the English default.
  */
-export const frescoUiCatalogs: Readonly<Record<string, CatalogMessages>> = {
-  'en-GB': enGbOverrides as CatalogMessages,
-  es,
+export const frescoUiCatalogLoaders: CatalogLoaders = {
+  'en-GB': () => import('./en-GB.json'),
+  'es': () => import('./es.json'),
+  'zh-Hans': () => import('./zh-Hans.json'),
+  'zh-Hant': () => import('./zh-Hant.json'),
+  'de': () => import('./de.json'),
+  'nl': () => import('./nl.json'),
+  'pt-BR': () => import('./pt-BR.json'),
+  'it': () => import('./it.json'),
+  'fr': () => import('./fr.json'),
 };

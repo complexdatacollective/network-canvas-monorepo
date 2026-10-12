@@ -317,7 +317,7 @@ export const WithCustomClassName: Story = {
   args: {
     items: createMockNodes(4),
     nodeSize: 'md',
-    className: 'bg-slate-800 p-4',
+    className: 'bg-surface-1 p-4',
   },
   parameters: {
     docs: {

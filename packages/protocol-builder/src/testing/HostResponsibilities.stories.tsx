@@ -10,9 +10,9 @@ import { hostResponsibilities } from './hostResponsibilities.ts';
  * What a host has to serve for the editors in this Storybook to work at all.
  *
  * Every row is a procedure `@codaco/protocol-builder-core/contract` declares,
- * found by asking
- * the contract rather than by anybody writing the list down — so a procedure
- * added to the contract appears here, and one removed disappears. See
+ * found by asking the group for its tags rather than by anybody writing the
+ * list down — so a procedure added to the group appears here, and one removed
+ * disappears. See
  * `hostResponsibilities.ts` for why that matters more than it sounds.
  */
 function HostResponsibilities() {
@@ -26,10 +26,10 @@ function HostResponsibilities() {
         in-process.
       </Paragraph>
       <dl className="flex flex-col gap-4">
-        {hostResponsibilities().map(({ path, responsibility }) => (
-          <div key={path} className="flex flex-col gap-1">
+        {hostResponsibilities().map(({ tag, responsibility }) => (
+          <div key={tag} className="flex flex-col gap-1">
             <dt className="font-bold">
-              <code>{path}</code>
+              <code>{tag}</code>
             </dt>
             <dd className="m-0">{responsibility}</dd>
           </div>
@@ -47,7 +47,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The minimum a host must serve, read off the package’s own oRPC contract. The list is derived at render time from `@codaco/protocol-builder-core/contract`, so it cannot describe a host the package does not actually ask for: a procedure the contract gains appears here with nothing edited, and a sentence left behind for a procedure the contract has dropped is a thrown error rather than a stale line.',
+          'The minimum a host must serve, read off the package’s own rpc group. The list is derived at render time from `@codaco/protocol-builder-core/contract`, so it cannot describe a host the package does not actually ask for: a procedure the group gains appears here with nothing edited, and a sentence left behind for a procedure the group has dropped is a thrown error rather than a stale line.',
       },
     },
   },
@@ -72,7 +72,7 @@ export const EveryProcedure: Story = {
 
     const terms = await canvas.findAllByRole('term');
     await expect(terms.map((term) => term.textContent)).toEqual(
-      expected.map(({ path }) => path),
+      expected.map(({ tag }) => tag),
     );
 
     for (const { responsibility } of expected) {

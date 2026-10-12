@@ -5,9 +5,13 @@ import { expect, it, vi } from 'vitest';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { interviewerProductionLocales } from '~/i18n/locales';
-import { interviewerCatalogs } from '~/locales/catalogs';
+import { interviewerCatalogSource } from '~/locales/catalogs';
 
 import { PinUnlockForm } from './PinUnlockForm';
+
+// The renders below show Spanish synchronously, as a device that has already
+// loaded it would, so its catalog loads before any of them.
+await interviewerCatalogSource.load('es');
 
 it('reformats a submitted PIN error without resubmitting and preserves focus for a successful retry', async () => {
   const verifyPin = vi.fn(async () => ({ ok: false }));
@@ -16,7 +20,7 @@ it('reformats a submitted PIN error without resubmitting and preserves focus for
     <AppI18nProvider
       locale={locale}
       locales={interviewerProductionLocales}
-      messages={interviewerCatalogs[locale]}
+      messages={interviewerCatalogSource.peek(locale)}
     >
       <FormStoreProvider>
         <PinUnlockForm formId="live-pin" verifyPin={verifyPin} />

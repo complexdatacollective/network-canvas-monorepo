@@ -26,8 +26,15 @@ for the major you are on and the major you are going to.
 ```bash
 set -a && . ./.env && set +a
 docker compose run --rm --no-deps api maintenance on
-docker compose stop api worker
+docker compose stop $(docker compose config --services | grep '^api') worker
 ```
+
+The `stop` line names every API replica, `api` and any other whose name
+starts with `api` (see
+[Running more than one API](./run.md#running-more-than-one-api)), so nothing
+is left writing to the database you are about to copy. It finds them in the
+`docker-compose.override.yml` Compose reads on its own; if you run Compose
+with `-f`, that section says what to pass instead.
 
 **Dump, using the new major's client.** A throwaway container of the new image
 on the stack's network, so the client is version 19 and the server is still 18:
@@ -69,7 +76,7 @@ docker compose exec -T postgres pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 **Bring the instance back and check it.**
 
 ```bash
-docker compose up -d api worker
+docker compose up -d $(docker compose config --services | grep '^api') worker
 docker compose run --rm migrate          # a no-op on a current database
 docker compose run --rm --no-deps api maintenance off
 curl https://studio.example.org/readyz
@@ -89,7 +96,8 @@ rm -rf pgupgrade
 
 Until then it is an untouched copy of the database as the previous major left
 it, and rolling back is putting the image digest and the volume name back and
-running `docker compose up -d postgres api worker`.
+running
+`docker compose up -d postgres $(docker compose config --services | grep '^api') worker`.
 
 Both the dump files and the volume you keep are full copies of the database:
 hold them to the same rule as a backup — encrypted storage, and removed when

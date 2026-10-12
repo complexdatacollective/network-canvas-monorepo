@@ -25,10 +25,11 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 # VITE_DISABLE_ANALYTICS=true skips client.ts's posthog.init entirely. The
-# production CSP allows PostHog's controlled relay under both connect-src and
-# script-src, but E2E must not depend on live analytics requests or their
-# non-deterministic timing. Reuse the app's build-time analytics gate so the
-# build under test never initializes PostHog at all.
+# production CSP allows PostHog's controlled relay under connect-src only
+# (script-src is 'self'; the analytics extensions ship in the app bundle), but
+# E2E must not depend on live analytics requests or their non-deterministic
+# timing. Reuse the app's build-time analytics gate so the build under test
+# never initializes PostHog at all.
 docker run --rm \
   -e CI=true \
   -e VITE_DISABLE_ANALYTICS=true \

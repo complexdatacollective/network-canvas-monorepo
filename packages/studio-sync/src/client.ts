@@ -8,7 +8,24 @@ import {
   contentHash,
   type SectionDoc,
 } from './apply.ts';
-import { LeaseRejectedError, type SyncServer } from './server.ts';
+import type {
+  CommitParams,
+  CommitResult,
+  Lease,
+  ResumeResult,
+} from './server.ts';
+import { LeaseRejectedError } from './server.ts';
+
+export type SyncTransport = {
+  acquire(
+    draftId: string,
+    sectionId: string,
+    owner: string,
+  ): Promise<Lease | null>;
+  resume(draftId: string, owner: string): Promise<ResumeResult>;
+  getSection(hash: string): Promise<SectionDoc>;
+  commit(params: CommitParams): Promise<CommitResult>;
+};
 
 type PendingBatch = { clientSeq: bigint; commands: Command[] };
 
@@ -32,10 +49,10 @@ export class SyncClient {
   private sections = new Map<string, SectionState>();
 
   readonly owner: string;
-  private server: SyncServer;
+  private server: SyncTransport;
   private draftId: string;
 
-  constructor(owner: string, server: SyncServer, draftId: string) {
+  constructor(owner: string, server: SyncTransport, draftId: string) {
     this.owner = owner;
     this.server = server;
     this.draftId = draftId;

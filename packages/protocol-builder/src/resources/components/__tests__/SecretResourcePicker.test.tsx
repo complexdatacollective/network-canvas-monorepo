@@ -1,10 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Redacted } from 'effect';
 import { describe, expect, it, vi } from 'vitest';
 
 import Button from '@codaco/fresco-ui/Button';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
@@ -14,10 +14,13 @@ import { renderResourceEditor } from './renderResourceEditor.tsx';
 import { renderInResourceContext, TEST_EDIT_ID } from './resourceContext.tsx';
 import {
   createResourceHost,
+  plainDescriptor,
+  resourceProcedures,
   stagedResources,
   withResourceProcedures,
   withSubmitsCounted,
   type CommittedResource,
+  type ResourceProcedures,
 } from './resourceHost.ts';
 
 const SECRET = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJzZWNyZXQifQ';
@@ -71,7 +74,7 @@ function keyField() {
   );
 }
 
-type StageInput = Parameters<ProtocolBuilderClient['resources']['stage']>[0];
+type StageInput = Parameters<NonNullable<ResourceProcedures['stage']>>[0];
 
 /**
  * The in-memory host, with the two answers a test about staging a key needs to
@@ -98,34 +101,37 @@ function keyRecorder() {
     },
   };
 
-  const wrap = (host: InMemoryHost): ProtocolBuilderClient =>
-    withResourceProcedures(host.client, {
-      stage: async (input) => {
-        staging.push(input);
-        if (control.refuseNextStage) {
-          control.refuseNextStage = false;
-          return refusal;
-        }
-        return host.client.resources.stage(input);
-      },
-      list: async (input) => {
-        if (control.heldList !== undefined) await control.heldList;
-        if (control.refuseNextList) {
-          control.refuseNextList = false;
-          return refusal;
-        }
-        return host.client.resources.list(input);
-      },
-    });
+  const procedures = (host: InMemoryHost): ResourceProcedures => ({
+    stage: async (input) => {
+      staging.push(input);
+      if (control.refuseNextStage) {
+        control.refuseNextStage = false;
+        return refusal;
+      }
+      return host.adapter.rpcCall('ResourcesStage', input);
+    },
+    list: async (input) => {
+      if (control.heldList !== undefined) await control.heldList;
+      if (control.refuseNextList) {
+        control.refuseNextList = false;
+        return refusal;
+      }
+      return host.adapter.rpcCall('ResourcesList', input);
+    },
+  });
 
   return {
-    wrap,
+    procedures,
+    wrap: (host: InMemoryHost) =>
+      withResourceProcedures(host, procedures(host)),
     control,
     /** The request ids the editor staged under, in the order it sent them. */
     requestIds: (): string[] => staging.map((input) => input.requestId),
     stagedNames: (): string[] =>
       staging.map((input) =>
-        input.request.kind === 'secret' ? input.request.name : '',
+        input.request.kind === 'secret'
+          ? Redacted.value(input.request.name)
+          : '',
       ),
     stagings: (): number => staging.length,
   };
@@ -137,7 +143,7 @@ function renderKeyPicker(
 ) {
   return renderResourceEditor({
     resources,
-    client: keys.wrap,
+    adapter: keys.wrap,
     children: keyField(),
   });
 }
@@ -145,7 +151,7 @@ function renderKeyPicker(
 /** The same recorder over a host of its own, for the control on its own. */
 function keyControlHost(keys: ReturnType<typeof keyRecorder>) {
   const host = createResourceHost();
-  return { host, client: keys.wrap(host) };
+  return { host, adapter: keys.wrap(host) };
 }
 
 describe('the secret resource picker', () => {
@@ -194,10 +200,13 @@ describe('the secret resource picker', () => {
     const key = keyRecorder();
     let submits = () => 0;
     renderResourceEditor({
-      client: (host) => {
-        const counted = withSubmitsCounted(key.wrap(host));
+      adapter: (host) => {
+        const counted = withSubmitsCounted(
+          host,
+          resourceProcedures(key.procedures(host)),
+        );
         submits = counted.submits;
-        return counted.client;
+        return counted.adapter;
       },
       actions: ({ formId }) => (
         <Button type="submit" form={formId}>
@@ -229,10 +238,13 @@ describe('the secret resource picker', () => {
     const key = keyRecorder();
     let submits = () => 0;
     renderResourceEditor({
-      client: (host) => {
-        const counted = withSubmitsCounted(key.wrap(host));
+      adapter: (host) => {
+        const counted = withSubmitsCounted(
+          host,
+          resourceProcedures(key.procedures(host)),
+        );
         submits = counted.submits;
-        return counted.client;
+        return counted.adapter;
       },
       actions: ({ formId }) => (
         <Button type="submit" form={formId}>
@@ -406,7 +418,7 @@ describe('the secret resource picker', () => {
   it('refuses a name a key staged since the browser opened already has', async () => {
     const user = userEvent.setup();
     const key = keyRecorder();
-    const { client, editId, host } = renderKeyPicker(key);
+    const { adapter, editId, host } = renderKeyPicker(key);
 
     await user.click(
       await screen.findByRole('button', { name: 'Select an API key' }),
@@ -421,14 +433,18 @@ describe('the secret resource picker', () => {
     // The researcher can, everywhere else in the protocol. Staged through the
     // host directly because the open browser hides the rest of the editor from
     // this test exactly as it does from the researcher.
-    const elsewhere = await client.resources.stage({
+    const elsewhere = await adapter.rpcCall('ResourcesStage', {
       protocolId: host.protocolId,
       // The same edit: the other field is another picker in THIS stage editor,
       // and a key staged for a different edit is one the check would rightly
       // not see.
       editId,
       requestId: 'another-field',
-      request: { kind: 'secret', name: 'Mapbox', value: SECOND_SECRET },
+      request: {
+        kind: 'secret',
+        name: Redacted.make('Mapbox'),
+        value: Redacted.make(SECOND_SECRET),
+      },
     });
     expect(elsewhere.status).toBe('ok');
     const before = key.stagings();
@@ -544,10 +560,10 @@ describe('the warning beside the key input', () => {
  */
 describe('the control a key is typed into', () => {
   function renderControl(keys: ReturnType<typeof keyRecorder>) {
-    const { host, client } = keyControlHost(keys);
+    const { host, adapter } = keyControlHost(keys);
     const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
     renderInResourceContext(
-      client,
+      adapter,
       host.protocolId,
       <ResourceSecretControl onStaged={staged} />,
     );
@@ -567,7 +583,7 @@ describe('the control a key is typed into', () => {
     expect(inputValues()).toEqual(['', '']);
     expect(document.body.innerHTML).not.toContain(SECRET);
     // Only the descriptor, which is what a stage field stores.
-    expect(staged.mock.calls[0]?.[0]).toEqual({
+    expect(plainDescriptor(staged.mock.calls[0]![0])).toEqual({
       id: 'staged-resource-1',
       kind: 'apikey',
       name: 'Mapbox key',
@@ -590,7 +606,9 @@ describe('the control a key is typed into', () => {
     // descriptor and lose the key the researcher just added.
     expect(new Set(key.requestIds()).size).toBe(2);
     expect(key.stagedNames()).toEqual(['Mapbox key', 'Fieldwork key']);
-    expect(staged.mock.calls.map(([descriptor]) => descriptor)).toEqual([
+    expect(
+      staged.mock.calls.map(([descriptor]) => plainDescriptor(descriptor)),
+    ).toEqual([
       expect.objectContaining({ id: 'staged-resource-1', name: 'Mapbox key' }),
       expect.objectContaining({
         id: 'staged-resource-2',
@@ -616,10 +634,11 @@ describe('a key edited after an uncertain failure', () => {
     const host = createResourceHost();
     const recorded = keys.wrap(host);
     let calls = 0;
-    const client = withResourceProcedures(recorded, {
+    const adapter = withResourceProcedures(host, {
+      ...keys.procedures(host),
       stage: async (input) => {
         calls += 1;
-        const staged = await recorded.resources.stage(input);
+        const staged = await recorded.rpcCall('ResourcesStage', input);
         return calls === 1
           ? {
               status: 'failed' as const,
@@ -632,7 +651,7 @@ describe('a key edited after an uncertain failure', () => {
           : staged;
       },
     });
-    return { ...keys, host, client };
+    return { ...keys, host, adapter };
   }
 
   it('settles the id it is abandoning, so the host is left holding nothing', async () => {
@@ -640,7 +659,7 @@ describe('a key edited after an uncertain failure', () => {
     const key = lossyKeyControl();
     const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
     renderInResourceContext(
-      key.client,
+      key.adapter,
       key.host.protocolId,
       <ResourceSecretControl onStaged={staged} />,
     );
@@ -659,7 +678,7 @@ describe('a key edited after an uncertain failure', () => {
 
     await waitFor(async () =>
       expect(
-        await stagedResources(key.client, key.host.protocolId, TEST_EDIT_ID),
+        await stagedResources(key.adapter, key.host.protocolId, TEST_EDIT_ID),
       ).toEqual([]),
     );
   });
@@ -669,7 +688,7 @@ describe('a key edited after an uncertain failure', () => {
     const key = lossyKeyControl();
     const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
     renderInResourceContext(
-      key.client,
+      key.adapter,
       key.host.protocolId,
       <ResourceSecretControl onStaged={staged} />,
     );
@@ -694,7 +713,7 @@ describe('a key edited after an uncertain failure', () => {
     await waitFor(() => expect(staged).toHaveBeenCalledTimes(1));
 
     expect(new Set(key.requestIds()).size).toBe(2);
-    expect(staged.mock.calls[0]?.[0]).toMatchObject({
+    expect(plainDescriptor(staged.mock.calls[0]![0])).toMatchObject({
       name: 'Mapbox production key',
     });
   });
@@ -706,7 +725,7 @@ describe('a key edited after an uncertain failure', () => {
     const key = { ...keys, ...keyControlHost(keys) };
     const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
     renderInResourceContext(
-      key.client,
+      key.adapter,
       key.host.protocolId,
       <ResourceSecretControl onStaged={staged} />,
     );

@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   checkCatalogFreshness,
+  checkCatalogLoaders,
   checkFullLocale,
   checkOverrideLocale,
   collectSourceFiles,
@@ -17,9 +18,9 @@ import {
   readTranslationSources,
 } from '@codaco/app-i18n/catalog-guards';
 import type { ExtractedCatalog } from '@codaco/app-i18n/catalog-guards';
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { ecosystemLocales, loadCatalog } from '@codaco/app-i18n/locales';
 
-import { frescoUiCatalogs } from '../catalogs';
+import { frescoUiCatalogLoaders } from '../catalogs';
 
 const localesDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const srcDir = dirname(localesDir);
@@ -35,6 +36,17 @@ const SOURCE_LOCALE = 'en';
 const overrideLocales = ecosystemLocales
   .map((entry) => entry.locale)
   .filter((locale) => locale !== SOURCE_LOCALE);
+
+/**
+ * Every catalog this package ships, loaded through its own loaders — the path a
+ * host takes — so what a locale actually serves is what gets inspected.
+ */
+const loadedCatalogs = await Promise.all(
+  Object.keys(frescoUiCatalogLoaders).map(async (locale) => ({
+    locale,
+    messages: await loadCatalog(locale, frescoUiCatalogLoaders),
+  })),
+);
 
 describe('the package’s own frescoUi.* catalogs', () => {
   it('keeps src/locales/en.json fresh (regenerate with pnpm i18n:extract)', async () => {
@@ -57,15 +69,13 @@ describe('the package’s own frescoUi.* catalogs', () => {
     // so no `common.*` id may be declared — or translated — here.
     const ids = [
       ...Object.keys(committedEn),
-      ...Object.values(frescoUiCatalogs).flatMap((catalog) =>
-        Object.keys(catalog),
-      ),
+      ...loadedCatalogs.flatMap(({ messages }) => Object.keys(messages)),
     ];
     expect(ids.filter((id) => id.startsWith('common.'))).toEqual([]);
   });
 
   it('ships a catalog for every non-source ecosystem locale', () => {
-    expect(Object.keys(frescoUiCatalogs).toSorted()).toEqual(
+    expect(Object.keys(frescoUiCatalogLoaders).toSorted()).toEqual(
       overrideLocales.toSorted(),
     );
   });
@@ -97,5 +107,11 @@ describe('the package’s own frescoUi.* catalogs', () => {
           : checkFullLocale(committedEn, catalog, sources);
       expect(issues, `frescoUi catalog issues for ${locale}`).toEqual([]);
     }
+  });
+
+  it('loads each locale from its own committed catalog', async () => {
+    expect(
+      await checkCatalogLoaders(localesDir, frescoUiCatalogLoaders),
+    ).toEqual([]);
   });
 });

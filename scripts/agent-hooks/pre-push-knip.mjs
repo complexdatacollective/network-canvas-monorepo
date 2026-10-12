@@ -39,7 +39,8 @@ import {
   run,
 } from './lib.mjs';
 
-const root = resolveRepoRoot({});
+// Git runs the hook from the top level of the repository being pushed.
+const root = resolveRepoRoot({ cwd: process.cwd() });
 const shas = [...new Set(process.argv.slice(2).filter(Boolean))];
 if (shas.length === 0) process.exit(0);
 

@@ -111,7 +111,7 @@ truth for the underlying action.
 ### 4.1 `audit_events` table
 
 Add an `AUDIT_TABLES` schema module under
-`apps/studio/server/src/audit/schema.ts`, registered with the existing Studio
+`apps/studio/api/src/audit/schema.ts`, registered with the existing Studio
 schema and fingerprint pipeline.
 
 | Column           | PostgreSQL type | Contract                                                   |
@@ -222,7 +222,7 @@ renderer, redaction policy, fixture, or wire allowlist for a version already
 emitted. All historical versions are retained for the installation lifetime.
 An exhaustive registry test fails when a union member lacks any entry, when an
 entry lacks one of these artifacts, or when a previously shipped pair is
-removed. Responses exposed through `@codaco/studio-rpc` select the matching
+removed. Responses exposed through `@codaco/studio-contract` select the matching
 versioned output schema as the wire allowlist. Unknown future pairs still use
 the safe generic presentation described in section 10 and never fall back to a
 different known version's renderer or disclosure policy.
@@ -450,12 +450,12 @@ an unbounded rate.
 
 Create:
 
-- `apps/studio/server/src/audit/events.ts` — discriminated event inputs and
+- `apps/studio/api/src/audit/events.ts` — discriminated event inputs and
   registry;
-- `apps/studio/server/src/audit/store.ts` — append and team query operations;
-- `apps/studio/server/src/audit/schema.ts` — Drizzle table plus immutable/RLS
+- `apps/studio/api/src/audit/store.ts` — append and team query operations;
+- `apps/studio/api/src/audit/schema.ts` — Drizzle table plus immutable/RLS
   sidecar; and
-- `apps/studio/server/src/audit/render.ts` — server-controlled presentation
+- `apps/studio/api/src/audit/render.ts` — server-controlled presentation
   fields or keys used by the client.
 
 The core method has the shape:
@@ -663,7 +663,7 @@ without an event or is rejected consistently; it never creates a false
 
 ## 9. Internal API
 
-Add these SPA procedures to `@codaco/studio-rpc`:
+Add these SPA procedures to `@codaco/studio-contract`:
 
 ```text
 audit.list({
@@ -831,7 +831,7 @@ The schema work must:
 - register the table and sidecar in the Studio schema assembly;
 - include the table in forced-RLS and schema-inventory tests;
 - run the immutable privilege revocation after the generic access grant;
-- regenerate `apps/studio/server/src/db/fingerprint.generated.ts`, the Studio
+- regenerate `apps/studio/api/src/db/fingerprint.generated.ts`, the Studio
   schema README section, and `apps/studio/schema-erd.svg`; and
 - document the deployment's schema-fingerprint transition.
 

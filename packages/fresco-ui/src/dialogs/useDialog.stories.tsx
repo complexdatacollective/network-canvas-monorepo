@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { action } from 'storybook/actions';
-import { fn } from 'storybook/test';
+import { expect, fn, screen, userEvent, within } from 'storybook/test';
 
 import Button from '../Button';
+import Field from '../form/Field/Field';
+import InputField from '../form/fields/InputField';
 import { withDialogProvider } from '../storybook-support/withDialogProvider';
 import useDialog from './useDialog';
 
@@ -149,6 +151,61 @@ export const NestedDialogs: Story = {
         </Button>
       </div>
     );
+  },
+};
+
+/**
+ * A form dialog's `onSubmit` acts on the values before the dialog closes. A
+ * failed result keeps the dialog open with the values as typed and the error
+ * shown, so the participant can retry; here the first save is refused and the
+ * second succeeds.
+ */
+export const FormDialogWithRefusedSubmit: Story = {
+  render: () => {
+    const { openDialog } = useDialog();
+
+    const openFormDialog = async () => {
+      let attempts = 0;
+      const result = await openDialog({
+        type: 'form',
+        title: 'Rename item',
+        children: <Field component={InputField} name="name" label="Name" />,
+        onSubmit: async () => {
+          attempts += 1;
+          return attempts === 1
+            ? {
+                success: false,
+                formErrors: ['The name was not saved. Submit again to retry.'],
+              }
+            : { success: true };
+        },
+      });
+
+      action('console.log')('form result:', result);
+    };
+
+    return (
+      <div
+        className={
+          'flex h-screen items-center justify-center gap-4 [background-image:linear-gradient(90deg,oklch(var(--surface-1))_20%,transparent_10%)] bg-size-[25px]'
+        }
+      >
+        <Button onClick={openFormDialog}>Rename item</Button>
+      </div>
+    );
+  },
+  play: async () => {
+    await userEvent.click(screen.getByRole('button', { name: 'Rename item' }));
+    const dialog = await screen.findByRole('dialog');
+    await userEvent.type(within(dialog).getByRole('textbox'), 'Alice');
+    await userEvent.click(within(dialog).getByTestId('dialog-submit'));
+
+    await expect(
+      await within(dialog).findByText(
+        'The name was not saved. Submit again to retry.',
+      ),
+    ).toBeVisible();
+    await expect(within(dialog).getByRole('textbox')).toHaveValue('Alice');
   },
 };
 

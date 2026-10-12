@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -156,7 +156,19 @@ export function ProtocolDeck({
   const didInitialScroll = useRef(false);
   const [sectionHeight, setSectionHeight] = useState(0);
   const handleDrop = useCallback(
-    (files: File[]) => {
+    (files: File[], fileRejections: readonly FileRejection[]) => {
+      // With `multiple: false`, react-dropzone accepts the first file of a
+      // multi-file drop and rejects the rest as too-many-files. Which file
+      // came "first" is arbitrary to the user, so a multi-file drop imports
+      // nothing.
+      const tooManyFilesCode: string = ErrorCode.TooManyFiles;
+      if (
+        fileRejections.some(({ errors }) =>
+          errors.some(({ code }) => code === tooManyFilesCode),
+        )
+      ) {
+        return;
+      }
       const file = files[0];
       if (file) onImportFile(file);
     },

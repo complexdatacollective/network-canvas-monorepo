@@ -1,0 +1,5 @@
+# Articolo su Network Science: quanto sono stabili le reti personali nel tempo?
+
+Quando le persone vengono intervistate sulle proprie reti più di una volta, molte di quelle che nominano escono e rientrano tra un’intervista e l’altra. Questo articolo si chiede se tale cambiamento rifletta un reale avvicendamento nella vita delle persone oppure l’intervista stessa: chi risponde che si ancora a ciò che una rete dovrebbe essere, o che nomina meno persone per abbreviare l’intervista.
+
+Usando tre ondate di uno studio panel condotto a Chicago su giovani uomini che hanno rapporti sessuali con uomini, raccolto con il sociogramma touchscreen di Network Canvas, gli autori hanno rilevato pochi cambiamenti nella dimensione media delle reti da un’ondata all’altra. Tra la prima e la seconda ondata sono emersi cambiamenti lievi ma significativi, soprattutto tra le persone con le reti più ampie, mentre tra la seconda e la terza non ce n’è stato quasi nessuno per dimensione, composizione o densità della rete. [Leggi l’articolo](https://doi.org/10.1017/nws.2019.27).

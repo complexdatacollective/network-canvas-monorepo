@@ -1,9 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
 
+import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStoryInterviewShell';
+import { expectMaskedPassphraseField } from '../../storybook-support/expectMaskedPassphraseField';
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 type StoryArgs = {
@@ -111,5 +114,96 @@ export const DetailedInstructions: Story = {
       '',
       '> Your passphrase is never stored. It is used only to derive the encryption key.',
     ].join('\n'),
+  },
+};
+
+const PASSPHRASE = 'correct horse battery staple';
+
+function buildResumedInterview() {
+  const interview = new SyntheticInterview();
+  const person = interview.addNodeType({ name: 'Person' });
+  const name = person.addVariable({
+    name: 'name',
+    type: 'text',
+    encrypted: true,
+  });
+  interview.addStage('Anonymisation', {
+    explanationText: {
+      title: 'Protect your answers',
+      body: 'Enter the passphrase you chose earlier in this interview.',
+    },
+  });
+  const generator = interview.addStage('NameGeneratorQuickAdd', {
+    subject: { entity: 'node', type: person.id },
+    quickAdd: name.id,
+  });
+  generator.addPrompt({ text: 'Who do you spend your free time with?' });
+  interview.addManualNode(
+    generator.id,
+    person.id,
+    'alice',
+    { [name.id]: 'Alice' },
+    { promptIndices: [0] },
+  );
+  return { interview, encryptedVariableIds: [name.id] };
+}
+
+export const ResumedWithProtectedAnswers: Story = {
+  render: () => (
+    <EncryptedStoryInterviewShell
+      build={buildResumedInterview}
+      passphrase={PASSPHRASE}
+      currentStep={0}
+    />
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story: `The interview already holds answers protected with a passphrase ("${PASSPHRASE}") that is no longer in memory. A different passphrase is turned away with the reason under the field; the original one is accepted.`,
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // Each label also carries a visual required marker.
+    const passphrase = await canvas.findByLabelText(
+      /^Passphrase/,
+      { selector: 'input' },
+      { timeout: 10_000 },
+    );
+    const confirm = canvas.getByLabelText(/^Confirm Passphrase/, {
+      selector: 'input',
+    });
+    const submit = canvas.getByRole('button', { name: 'Submit' });
+
+    for (const field of [passphrase, confirm]) {
+      await expectMaskedPassphraseField(field);
+    }
+
+    await userEvent.type(passphrase, 'not the passphrase');
+    await userEvent.type(confirm, 'not the passphrase');
+    await userEvent.click(submit);
+
+    await waitFor(() =>
+      expect(passphrase).toHaveAttribute('aria-invalid', 'true'),
+    );
+    await expect(passphrase).toHaveAccessibleDescription(
+      expect.stringContaining(
+        'This passphrase does not match the one used earlier in this interview.',
+      ),
+    );
+    await expect(
+      canvas.queryByText(/Passphrase set successfully/),
+    ).not.toBeInTheDocument();
+
+    await userEvent.clear(passphrase);
+    await userEvent.type(passphrase, PASSPHRASE);
+    await userEvent.clear(confirm);
+    await userEvent.type(confirm, PASSPHRASE);
+    await userEvent.click(submit);
+
+    await expect(
+      await canvas.findByText(/Passphrase set successfully/),
+    ).toBeInTheDocument();
   },
 };

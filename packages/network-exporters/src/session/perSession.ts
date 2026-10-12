@@ -22,4 +22,4 @@ export const perSession =
             new SessionProcessingError({ cause, stage, sessionId: getId(s) }),
         ),
       ),
-    );
+    ).pipe(Effect.map(([values, errors]) => [errors, values] as const));

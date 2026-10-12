@@ -1,5 +1,13 @@
 type Position = { x: number; y: number };
 
+export const isPosition = (value: unknown): value is Position =>
+  typeof value === 'object' &&
+  value !== null &&
+  'x' in value &&
+  'y' in value &&
+  typeof value.x === 'number' &&
+  typeof value.y === 'number';
+
 // Normalised-canvas grid for placing newly added nodes. Reading order from the
 // top-left, wrapping into rows. Kept clear of the vertical tool palette (left
 // edge) and the attribute drawer (right edge) so fresh nodes land in view.

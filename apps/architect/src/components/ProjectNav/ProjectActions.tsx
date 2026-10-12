@@ -28,7 +28,10 @@ import {
   isProtocolSourceAuthoringEnabled,
   saveProtocolSource,
 } from '~/templates/source-authoring';
-import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
+import {
+  downloadActiveProtocol,
+  downloadSavedProtocol,
+} from '~/utils/downloadActiveProtocol';
 import { getStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
 
@@ -163,7 +166,9 @@ const messages = defineMessages({
  * - `locked`: another tab owns the saved copy, so autosave is refused and the
  *   library write behind any change here is dropped. Undo and redo go too: they
  *   mutate the protocol, so offering them would rewind what is on screen and
- *   never reach disk. Only actions that read the protocol are left.
+ *   never reach disk. Only actions that read the protocol are left, and
+ *   Download reads the saved copy the other tab is writing rather than this
+ *   tab's own.
  */
 export type ProjectActionsMode = 'authoring' | 'report' | 'locked';
 
@@ -234,13 +239,18 @@ const ProjectActions = ({
   const runDownload = useCallback(async () => {
     setIsExporting(true);
     try {
-      const downloaded = await downloadActiveProtocol(dispatch, openDialog);
+      // Reading, so offered in every mode — but a tab that does not own the
+      // saved copy writes that copy, not its own possibly stale one.
+      const downloaded =
+        mode === 'locked' && activeProtocolId
+          ? await downloadSavedProtocol(dispatch, openDialog, activeProtocolId)
+          : await downloadActiveProtocol(dispatch, openDialog);
       if (!downloaded) return;
       setDownloadSuccess(true);
     } finally {
       setIsExporting(false);
     }
-  }, [dispatch, openDialog]);
+  }, [activeProtocolId, dispatch, mode, openDialog]);
   const handleDownload = useSingleFlight(runDownload);
 
   const runSaveSource = useCallback(async () => {

@@ -13,7 +13,7 @@ import {
   inputControlVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { compose, cva, cx } from '../../utils/cva';
+import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 
@@ -261,13 +261,15 @@ const colorPickerOwnVariants = cva({
   base: 'w-full min-w-0 flex-wrap justify-start text-wrap',
 });
 
-const colorPickerVariants = compose(
-  controlVariants,
-  inputControlVariants,
-  groupSpacingVariants,
-  stateVariants,
-  colorPickerOwnVariants,
-);
+const colorPickerVariants = cva({
+  composes: [
+    controlVariants,
+    inputControlVariants,
+    groupSpacingVariants,
+    stateVariants,
+    colorPickerOwnVariants,
+  ],
+});
 
 /**
  * A palette of colour swatches, chosen one at a time.

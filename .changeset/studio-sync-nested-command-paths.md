@@ -1,6 +1,6 @@
 ---
 '@codaco/studio-sync': minor
-'@codaco/studio-rpc': minor
+'@codaco/studio-contract': minor
 ---
 
 A section command can now address a value nested inside a section document, not

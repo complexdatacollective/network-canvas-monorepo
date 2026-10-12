@@ -10,11 +10,13 @@ import { useDispatch } from 'react-redux';
 import { NULL_TRACKER, type Tracker } from '../analytics/tracker';
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import { createAnalyticsListenerMiddleware } from './middleware/analyticsListener';
-import logger from './middleware/logger';
+import { createLoggerMiddleware } from './middleware/logger';
 import { createSyncMiddleware } from './middleware/syncMiddleware';
+import { createWritesInFlightMiddleware } from './middleware/writesInFlight';
 import protocol from './modules/protocol';
 import session from './modules/session';
 import ui from './modules/ui';
+import { createSecretRedactors } from './redactSecrets';
 
 const rootReducer = combineReducers({
   session,
@@ -36,13 +38,29 @@ export const store = (
   const { middleware: syncMiddleware, flush } = createSyncMiddleware({
     onSync: options.onSync,
   });
+  const {
+    middleware: writesInFlightMiddleware,
+    writesSettled,
+    trackWrite,
+  } = createWritesInFlightMiddleware();
+  // A write still protecting its answers is stored before they are handed to
+  // the host, and the result says whether every write under way was stored,
+  // so finishing or closing can stay when one was refused. While the page
+  // unloads there is no time to wait for them.
+  const flushSync = async (flushOptions?: { unloading?: boolean }) => {
+    const settling = flushOptions?.unloading ? undefined : writesSettled();
+    const stored = (await settling) ?? true;
+    await flush(flushOptions);
+    return stored;
+  };
   const tracker = options.tracker ?? NULL_TRACKER;
   const analyticsMiddleware = createAnalyticsListenerMiddleware({
     tracker,
   }).middleware;
+  const redactors = createSecretRedactors(protocolPayload);
 
   // Object.assign rather than a cast so the store's inferred type (dispatch
-  // thunk overloads included) survives alongside the added flushSync.
+  // thunk overloads included) survives alongside the added functions.
   return Object.assign(
     configureStore({
       reducer: rootReducer,
@@ -52,7 +70,8 @@ export const store = (
             ignoredActions: ['dialogs/addDialog', 'dialogs/open/pending'],
           },
         }).concat(
-          ...(options.isDevelopment ? [logger] : []),
+          ...(options.isDevelopment ? [createLoggerMiddleware(redactors)] : []),
+          writesInFlightMiddleware,
           syncMiddleware,
           analyticsMiddleware,
           ...(options.extraMiddleware ?? []),
@@ -61,8 +80,17 @@ export const store = (
         session: sessionPayload,
         protocol: protocolPayload,
       },
+      // Redux Toolkit turns DevTools on unless told otherwise, which would
+      // show a production interview's passphrase to anyone running the
+      // extension.
+      devTools: options.isDevelopment
+        ? {
+            actionSanitizer: redactors.redactAction,
+            stateSanitizer: redactors.redactState,
+          }
+        : false,
     }),
-    { flushSync: flush },
+    { flushSync, writesSettled, trackWrite },
   );
 };
 

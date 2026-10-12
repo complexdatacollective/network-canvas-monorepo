@@ -158,12 +158,27 @@ describe('GetStartedIntro', () => {
     expect(container.firstElementChild).toHaveAttribute(
       'data-entrance-pending',
     );
-    expect(container.firstElementChild?.firstElementChild).toHaveAttribute(
-      'data-initial',
-      'false',
-    );
+    const motionRoots = container.querySelectorAll('[data-animate="controls"]');
+    expect(motionRoots).toHaveLength(2);
+    for (const root of motionRoots) {
+      expect(root).toHaveAttribute('data-initial', 'false');
+    }
     expect(animationControls.set).not.toHaveBeenCalled();
     expect(animationControls.start).not.toHaveBeenCalled();
+  });
+
+  it('renders the header before main, with the intro and page content inside main', () => {
+    motionPreference.reduced = false;
+    renderWithIntl(
+      <GetStartedIntro>
+        <p>Page content</p>
+      </GetStartedIntro>,
+    );
+    const main = screen.getByRole('main');
+
+    expect(main).not.toContainElement(screen.getByText('Header'));
+    expect(main).toContainElement(screen.getByRole('heading', { level: 1 }));
+    expect(main.lastElementChild).toHaveTextContent('Page content');
   });
 
   it('starts the coordinated entrance after normal-motion hydration', () => {

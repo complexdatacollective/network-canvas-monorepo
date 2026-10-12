@@ -13,11 +13,18 @@ import type {
   CustomFieldValidation,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
+import type { StageSubject } from '@codaco/protocol-validation';
+import type { NcNetwork } from '@codaco/shared-consts';
 
+import PassphraseRecovery from '../../../components/PassphraseRecovery';
 import {
   buildVariableLabels,
   useVariableLabels,
 } from '../../../forms/buildVariableLabels';
+import {
+  savingNeedsPassphrase,
+  useValidationNetwork,
+} from '../../../forms/useValidationNetwork';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -25,6 +32,7 @@ import {
   validationPropsFor,
 } from '../../../selectors/forms';
 import { getCodebook } from '../../../store/modules/protocol';
+import { usePassphrase } from '../../Anonymisation/usePassphrase';
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
 import { messages } from '../messages';
 import {
@@ -135,49 +143,79 @@ export default function PersonNameField({
   // an error message.
   const formVariableLabels = useVariableLabels(nodeForm ?? []);
 
-  const validationContext = useMemo<ValidationContext>(() => {
+  const network = useMemo<NcNetwork>(() => {
     const localIds = new Set(pedigreeNodes.keys());
     return {
+      ...baseValidationContext.network,
+      nodes: [
+        ...baseValidationContext.network.nodes.filter(
+          (node) => !localIds.has(node._uid),
+        ),
+        ...pedigreeNodes.values(),
+      ],
+    };
+  }, [baseValidationContext.network, pedigreeNodes]);
+  const stageSubject = useMemo<StageSubject>(
+    () => ({ entity: 'node', type: nodeType }),
+    [nodeType],
+  );
+  // Names already in the interview network may be stored encrypted; `unique`
+  // must compare with their plaintext, as every other form does.
+  const validationNetwork = useValidationNetwork(
+    { codebook, network },
+    stageSubject,
+    [nodeLabelVariable],
+    currentEntityId,
+  );
+
+  // Each person is entered in a modal wizard, with the node form's answers
+  // about them, so the passphrase those answers can need is offered here.
+  const { isEnabled } = usePassphrase();
+  const offersPassphrase = savingNeedsPassphrase(
+    nodeVariables,
+    [nodeLabelVariable, ...(nodeForm ?? []).map((field) => field.variable)],
+    isEnabled,
+    currentEntityId,
+  );
+
+  const validationContext = useMemo<ValidationContext>(
+    () => ({
       ...baseValidationContext,
-      stageSubject: { entity: 'node', type: nodeType },
+      ...validationNetwork,
+      stageSubject,
       variableLabels: {
         ...formVariableLabels,
         ...buildVariableLabels([{ variable: nodeLabelVariable, label }]),
       },
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
-      network: {
-        ...baseValidationContext.network,
-        nodes: [
-          ...baseValidationContext.network.nodes.filter(
-            (node) => !localIds.has(node._uid),
-          ),
-          ...pedigreeNodes.values(),
-        ],
-      },
-    };
-  }, [
-    baseValidationContext,
-    currentEntityId,
-    formVariableLabels,
-    label,
-    nodeLabelVariable,
-    nodeType,
-    pedigreeNodes,
-  ]);
+    }),
+    [
+      baseValidationContext,
+      validationNetwork,
+      stageSubject,
+      currentEntityId,
+      formVariableLabels,
+      label,
+      nodeLabelVariable,
+    ],
+  );
 
   return (
-    <Field
-      name="name"
-      label={label}
-      component={InputField}
-      placeholder={placeholder}
-      hint={validationProps.required === true ? undefined : hint}
-      initialValue={initialValue}
-      autoFocus={autoFocus}
-      showValidationHints
-      {...validationProps}
-      custom={pendingUniqueValidation}
-      validationContext={validationContext}
-    />
+    <>
+      {offersPassphrase && <PassphraseRecovery />}
+      <Field
+        name="name"
+        label={label}
+        component={InputField}
+        placeholder={placeholder}
+        hint={validationProps.required === true ? undefined : hint}
+        initialValue={initialValue}
+        autoFocus={autoFocus}
+        showValidationHints
+        {...validationProps}
+        custom={pendingUniqueValidation}
+        validationContext={validationContext}
+      />
+    </>
   );
 }

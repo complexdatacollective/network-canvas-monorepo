@@ -1,0 +1,6 @@
+{
+  "networkExporters.stage.fetching": "Récupération des données d’entretien…",
+  "networkExporters.stage.formatting": "Mise en forme des sessions…",
+  "networkExporters.stage.generating": "Génération des fichiers…",
+  "networkExporters.stage.outputting": "Écriture des fichiers de sortie…"
+}

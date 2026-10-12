@@ -104,6 +104,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # One task at a time on every CI runner; see the `env` block and the `test`
+  # job in ci-and-release.yml for the measurements behind the cap.
+  TURBO_CONCURRENCY: '1'
+
 jobs:
   # Fails a bad tag before a build is spent on it. Split from the deploy so the
   # concurrency group below can be keyed on the major line: two runs for the
@@ -154,8 +159,9 @@ jobs:
     concurrency:
       group: architect-archive-v${{ needs.resolve.outputs.major }}
       cancel-in-progress: false
+    # CLOUDFLARE_API_TOKEN is scoped to the deploy step alone, so the tag's
+    # dependency install, its build, and the setup/cache actions never see it.
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       # Pinned: an archive deploy that silently changes shape between runs is
       # the failure this whole lane exists to avoid.
@@ -231,6 +237,8 @@ jobs:
           echo "hostname=$(echo "$result" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).hostname")" >>"$GITHUB_OUTPUT"
 
       - name: Deploy archive
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
           pnpm dlx "wrangler@${WRANGLER_VERSION}" deploy \

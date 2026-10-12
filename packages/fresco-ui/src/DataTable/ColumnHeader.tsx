@@ -1,6 +1,6 @@
 'use client';
 
-import { type Column, type Table } from '@tanstack/react-table';
+import { type Column, type RowData, type Table } from '@tanstack/react-table';
 import {
   ArrowDown,
   ArrowDown01,
@@ -27,6 +27,7 @@ import {
 } from '../DropdownMenu';
 import { Popover, PopoverContent } from '../Popover';
 import { cx } from '../utils/cva';
+import { type DataTableFeatures } from './features';
 import BooleanFilter from './filters/BooleanFilter';
 import DateFilter from './filters/DateFilter';
 import FacetedFilter from './filters/FacetedFilter';
@@ -71,13 +72,13 @@ const messages = defineMessages({
   },
 });
 
-type DataTableColumnHeaderProps<TData, TValue> = {
-  column: Column<TData, TValue>;
+type DataTableColumnHeaderProps<TData extends RowData, TValue> = {
+  column: Column<DataTableFeatures, TData, TValue>;
   title: ReactNode;
-  table?: Table<TData>;
+  table?: Table<DataTableFeatures, TData>;
 } & Omit<React.HTMLAttributes<HTMLDivElement>, 'title'>;
 
-export function DataTableColumnHeader<TData, TValue>({
+export function DataTableColumnHeader<TData extends RowData, TValue>({
   column,
   title,
   table,
@@ -90,9 +91,9 @@ export function DataTableColumnHeader<TData, TValue>({
   const filterConfig = meta?.filterConfig;
   const hasFilter = !!meta?.filterType && !!filterConfig;
 
-  const sortingFn = column.columnDef.sortingFn;
+  const sortFn = column.columnDef.sortFn;
   const isStringSortFn =
-    typeof sortingFn === 'string' && stringSortFns.has(sortingFn);
+    typeof sortFn === 'string' && stringSortFns.has(sortFn);
 
   const isFiltered = column.getIsFiltered();
   const canSort = column.getCanSort();

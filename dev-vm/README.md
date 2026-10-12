@@ -223,7 +223,7 @@ mailbox` in the browser log just before. It is not memory (it happens on an
   `--disable-features=UseMultiPlaneFormatForSoftwareVideo` all still crash.
   Matches the unresolved https://github.com/microsoft/playwright/issues/30409;
   there is no flag or newer build to adopt (1.63.0 is current), and the guest's
-  apt has no chromium of its own. Consequence: `apps/architect`'s
-  `00-sample-protocol.spec.ts` stops at step 04, where it uploads `01.mov`, so
-  steps 04-17 cannot run here. CI runs the whole spec on x86_64 and passes it,
-  so leave it alone rather than re-investigating or weakening the spec.
+  apt has no chromium of its own. Consequence: nothing that presents a decoded
+  video frame in Chromium can run here — including the `architect-release-test`
+  sample build, which refuses this host. Run that from the macOS host instead
+  of re-investigating.

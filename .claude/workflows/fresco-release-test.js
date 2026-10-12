@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Release-test the pending Fresco build locally in Docker: upgrade path from the released image (seed, migrate, export diff) plus fresh-deployment setup verification',
   whenToUse:
-    'Before approving a Fresco release (merging the Version Packages PR). Requires Docker. Release gates must consume the `releasable` field, which is true only for a full-coverage "go" run with expectedVersion pinned and matched. Optional args: { expectedVersion, keepStack, skipBuild, releasedImage, allowDirty }.',
+    'Before approving a Fresco release (merging the Version Packages PR). Requires Docker. Release gates must consume the `releasable` field, which is true only for a full-coverage "go" run with expectedVersion pinned and matched. Run from the Version Packages branch (changeset-release/main) and expectedVersion is inferred from the Fresco version that branch releases. Optional args: { expectedVersion, keepStack, skipBuild, releasedImage, allowDirty }.',
   phases: [
     {
       title: 'Build',
@@ -118,13 +118,15 @@ const allowDirty = flag('allowDirty');
 // The version this run certifies — the version the Version Packages PR bumps
 // Fresco to, which bundle-pending-packages.mjs bakes into the staged tree.
 // Without it the run cannot certify: nothing proves the image under test is
-// the build the release will publish.
+// the build the release will publish. When the caller pins none, it is
+// inferred from the checkout if that is the Version Packages branch, and a
+// run from that branch is bound to it either way (see the Build phase).
 if (
   rawArgs.expectedVersion !== undefined &&
   typeof rawArgs.expectedVersion !== 'string'
 )
   throw new Error('args.expectedVersion must be a version string');
-const expectedVersion = rawArgs.expectedVersion
+const pinnedVersion = rawArgs.expectedVersion
   ? rawArgs.expectedVersion.trim().replace(/^v/i, '')
   : null;
 
@@ -201,6 +203,9 @@ const bareDigest = (value) => {
   const clean = shaped(value, IMAGE_ID, 128);
   return clean ? clean.replace(/^sha256:/i, '').toLowerCase() : null;
 };
+
+// The only version a release can carry: no prefix, no pre-release, no build.
+const STABLE_VERSION = /^\d+\.\d+\.\d+$/;
 
 // A version as a build stamp or manifest may carry it ("v4.1.2" or "4.1.2").
 const stripV = (value) => {
@@ -415,6 +420,29 @@ const BUILD_SCHEMA = {
     commit: { type: 'string' },
     dirty: { type: 'boolean' },
     error: { type: 'string' },
+  },
+  required: ['ok'],
+};
+
+// release-branch-version.mjs's JSON line, relayed verbatim.
+const RELEASE_BRANCH_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    ok: { type: 'boolean' },
+    onReleaseBranch: { type: 'boolean' },
+    head: { type: 'string' },
+    branch: { type: 'string' },
+    version: { type: 'string' },
+    baseVersion: { type: 'string' },
+    releasesFresco: { type: 'boolean' },
+    consumedChangesets: {
+      type: 'array',
+      maxItems: 500,
+      items: { type: 'string', maxLength: 200 },
+    },
+    consumedChangesetsAt: { type: 'string', maxLength: 64 },
+    error: { type: 'string', maxLength: 500 },
   },
   required: ['ok'],
 };
@@ -851,9 +879,130 @@ if (skipBuild) {
     'skipBuild: validating existing fresco-release-test:pending against its stamp',
   );
 }
-const [build, released] = await parallel(
-  skipBuild ? [validateReusedImage, buildTasks[1]] : buildTasks,
+// Run on every invocation, and again before the verdict when the run is
+// bound to the release branch. Its answer is a script's own JSON, validated
+// in code below; the agent decides nothing.
+const detectReleaseBranch = (label = 'release-branch') =>
+  agent(
+    `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once: node ${SCRIPTS}/release-branch-version.mjs
+It prints ONE line of JSON and nothing else. Return its fields verbatim: ok, onReleaseBranch, head, branch, version, baseVersion, releasesFresco, consumedChangesets, consumedChangesetsAt — omitting any the line does not carry or carries as null. On a non-zero exit it prints {"ok":false,"error":"..."} instead — return ok:false with that error. Do not fetch, check out or change anything.`,
+    {
+      label,
+      phase: 'Build',
+      schema: RELEASE_BRANCH_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+const [build, released, releaseBranch] = await parallel([
+  ...(skipBuild ? [validateReusedImage, buildTasks[1]] : buildTasks),
+  detectReleaseBranch,
+]);
+
+// A run from the release branch is bound to it whether or not the caller
+// pinned a version: the build must be of the very commit the branch points at,
+// and that commit must still be the branch head when the verdict is reached.
+// An unpinned run takes its version from the branch; anything short of an
+// unambiguous release-branch answer leaves it unpinned, and so never
+// certifying. A pinned run must agree with the branch.
+//
+// The release branch has already consumed the changesets it releases, so the
+// working tree no longer says what the release ships; the script names them
+// and the main commit they can still be read from. Without that list every
+// coverage check below would pass over an empty set, so a release branch that
+// cannot supply it pins nothing.
+const releaseBranchChangesets = (answer) => {
+  if (answer?.ok !== true || answer.onReleaseBranch !== true) return null;
+  const at = shaped(answer.consumedChangesetsAt, COMMIT, 40);
+  const raw = Array.isArray(answer.consumedChangesets)
+    ? answer.consumedChangesets
+    : [];
+  const names = raw.map((name) => shaped(name, CHANGESET_NAME, 200));
+  if (!at || names.length === 0 || names.some((name) => !name)) return null;
+  return {
+    at,
+    names: [...new Set(names)].toSorted((a, b) => a.localeCompare(b)),
+  };
+};
+const onReleaseBranch =
+  releaseBranch?.ok === true && releaseBranch.onReleaseBranch === true;
+const consumedChangesets = releaseBranchChangesets(releaseBranch);
+const releaseHead = onReleaseBranch
+  ? shaped(releaseBranch.head, COMMIT, 40)
+  : null;
+const branchVersion = onReleaseBranch
+  ? shaped(releaseBranch.version, STABLE_VERSION, 64)
+  : null;
+const inferredVersion =
+  !pinnedVersion &&
+  releaseBranch?.releasesFresco === true &&
+  releaseHead &&
+  consumedChangesets
+    ? branchVersion
+    : null;
+const boundToReleaseBranch = Boolean(
+  inferredVersion || (pinnedVersion && onReleaseBranch),
 );
+// The release-branch agent's error is relayed text: printable, bounded, and
+// quoted as its report, never as the workflow's own words.
+const relayedError = (value) => {
+  if (typeof value !== 'string' || !value.trim())
+    return 'the release-branch agent returned no result';
+  const printable = value
+    .replace(/[^ -~]/g, ' ')
+    .replace(/"/g, "'")
+    .trim();
+  return `the release-branch check reported: "${printable.length > 200 ? `${printable.slice(0, 200)}...` : printable}"`;
+};
+const expectedVersion = pinnedVersion ?? inferredVersion;
+const expectedVersionSource = pinnedVersion
+  ? 'args'
+  : inferredVersion
+    ? 'release-branch'
+    : null;
+const unpinnedReason = expectedVersion
+  ? null
+  : !releaseBranch || releaseBranch.ok !== true
+    ? `and whether this checkout is the Version Packages branch could not be determined (${relayedError(releaseBranch?.error)})`
+    : releaseBranch.onReleaseBranch !== true
+      ? 'and this checkout is not the Version Packages branch (changeset-release/main), so none could be inferred'
+      : releaseBranch.releasesFresco !== true
+        ? 'and the Version Packages branch does not release Fresco'
+        : !consumedChangesets
+          ? 'and the Version Packages branch did not say which changesets it consumed, so what it releases could not be accounted for'
+          : 'and the Version Packages branch reported no usable Fresco version';
+// A pinned run is certified only if it can be shown not to be the release
+// branch, or to be bound to it: otherwise the changesets the branch has
+// already consumed would go uncounted.
+const releaseBranchProblems = !pinnedVersion
+  ? []
+  : !releaseBranch || releaseBranch.ok !== true
+    ? [
+        `whether this checkout is the Version Packages branch could not be determined (${relayedError(releaseBranch?.error)}), so changesets it may already have consumed are unaccounted for`,
+      ]
+    : !onReleaseBranch
+      ? []
+      : [
+          ...(releaseHead
+            ? []
+            : [
+                'the Version Packages branch reported no usable head commit, so the build cannot be bound to it',
+              ]),
+          ...(consumedChangesets
+            ? []
+            : [
+                'the Version Packages branch did not say which changesets it consumed, so what it releases could not be accounted for',
+              ]),
+        ];
+// Told to every agent that reads the pending changesets. On the release branch
+// .changeset/ no longer holds them, and an agent that read only the directory
+// would account for a release that ships nothing.
+const consumedChangesetsNote = consumedChangesets
+  ? `\nThis checkout is the Version Packages branch: Changesets has already consumed (deleted) the changesets this release ships, so .changeset/ no longer holds them. They are pending changesets for every purpose here, exactly like any file still in .changeset/: ${consumedChangesets.names.join(', ')}. Read each one with: git show ${consumedChangesets.at}:.changeset/<name>.md\n`
+  : '';
+if (inferredVersion)
+  log(
+    `expectedVersion ${inferredVersion} inferred from the Version Packages branch at ${releaseHead.slice(0, 12)}`,
+  );
 
 // The protocol fixtures every script-driven lane imports: the one an interview
 // is conducted with, and the damaged ones. Built rather than committed — a
@@ -916,6 +1065,7 @@ if (!build?.ok || !released?.ok) {
     untestedShippedChanges: [],
     presentationOnlyChanges: [],
     expectedVersion,
+    expectedVersionSource,
     testedVersion: null,
     pendingImage: build ? { ...build } : null,
     releasedImage: released?.image ?? releasedImage,
@@ -943,6 +1093,21 @@ if (!buildVersion)
 if (expectedVersion && buildVersion && buildVersion !== expectedVersion)
   provenanceFailures.push(
     `the pending image is version ${buildVersion}, but this run certifies ${expectedVersion} — the wrong build is under test`,
+  );
+if (boundToReleaseBranch && releaseHead) {
+  const buildCommit = shaped(build.commit, COMMIT, 40)?.toLowerCase();
+  if (!buildCommit || !releaseHead.toLowerCase().startsWith(buildCommit))
+    provenanceFailures.push(
+      `this run is bound to the Version Packages branch at ${releaseHead}, but the pending image was built from ${build.commit ?? 'an unreported commit'} — the wrong build is under test`,
+    );
+}
+if (pinnedVersion && onReleaseBranch && branchVersion !== pinnedVersion)
+  provenanceFailures.push(
+    `this run certifies ${pinnedVersion}, but the Version Packages branch it runs from carries Fresco ${branchVersion ?? 'with no usable version'} — the wrong version is pinned`,
+  );
+if (pinnedVersion && onReleaseBranch && releaseBranch.releasesFresco !== true)
+  provenanceFailures.push(
+    `this run certifies ${pinnedVersion}, but the Version Packages branch it runs from does not release Fresco — merging it would not deploy the build under test`,
   );
 
 // Deliberately gives the agent nothing to decide. The reading is a
@@ -992,13 +1157,13 @@ ${BROWSER_HOWTO}
 
 Do, in order, recording one check per numbered item:
 1. Setup wizard: create the administrator account (username ${ADMIN_USER}, password ${ADMIN_PASSWORD}; choose the Password authentication method).
-2. Storage step: choose "S3 / S3-Compatible" and enter: Endpoint URL http://minio:9000, Public URL http://localhost:9310, Bucket fresco-test, Region us-east-1, Access Key ID minioadmin, Secret Access Key minioadmin. (This mirrors the documented production bundled-MinIO setup.)
+2. Storage step: the storage provider is already set to "S3 / S3-Compatible" and every field is filled in and locked, because the deployment configures storage through its environment, as the documented production bundled-Garage setup does. Confirm the form shows Endpoint URL http://garage:3900, Public URL http://localhost:9310, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, and a Secret Access Key that is masked rather than shown; then press Continue.
 3. Protocol step: stage the seed protocol with: bash ${HARNESS}/stage-fixture.sh --lane upgrade --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas — then inject it per AGENT_NOTES (fetch the printed URL → File → set input.files → dispatch change). Confirm the import succeeded via the presigned PUTs in the network log AND the protocol appearing (dashboard count or psql per AGENT_NOTES) — the dropzone UI may not visibly react.
 4. Finish the wizard to the dashboard.
 5. In settings, generate ${SYNTHETIC_COUNT} synthetic interviews via the Synthetic Interview Data section (native select + number input per AGENT_NOTES); wait for the completion toast.
 6. In settings, enable the interview data API if it has an enable toggle, and create an API token. Record the token value in apiToken.
 7. Snapshot the API: mkdir -p ${BASELINE_DIR}, then for each documented interview-data API endpoint run curl -fsS -H "Authorization: Bearer <token>" ${UPGRADE_URL}<path> and save to ${BASELINE_DIR}/api-<last-path-segment>.json. You MUST snapshot at least ${REQUIRED_API_PATHS.join(' and ')} — if the settings page documents different paths for those collections, snapshot what it documents AND say so in notes, because the workflow requires these and will fail the run otherwise. Snapshot any further documented endpoints too. Record the exact paths you used in apiPaths. Then, because the interview COLLECTION endpoint returns metadata only, snapshot the stored network payload of EVERY interview: take the ids from the collection response and curl /api/v1/interview/<id> for each, saving to ${BASELINE_DIR}/api-interview-<id>.json. Record how many succeeded in networkSnapshots. This item fails unless all ${SYNTHETIC_COUNT} per-interview snapshots were saved.
-8. Export ALL interviews via the interviews page UI, capturing the zip with the blob-hook technique in AGENT_NOTES: run bash ${HARNESS}/enable-captures.sh --lane upgrade, install the createObjectURL hook, drive the export menu + "Confirm File Export Options" dialog (leave every format toggle on), PUT the captured blob to <capture base>/baseline-ui-export.zip, and curl it to ${BASELINE_DIR}/ui-export.zip on the host. THIS ITEM MAY BE SKIPPED: if no blob is captured, set uiExportCaptured:false, mark this check "skipped" with the reason, and continue — the API snapshots still enable the diff. Set uiExportCaptured:true only if ${BASELINE_DIR}/ui-export.zip actually exists on the host afterwards.
+8. Export ALL interviews via the interviews page UI, capturing the zip with the blob-hook technique in AGENT_NOTES: run bash ${HARNESS}/enable-captures.sh --lane upgrade --name baseline-ui-export.zip (it prints a JSON line with a presigned putUrl and getUrl), install the createObjectURL hook, drive the export menu + "Confirm File Export Options" dialog (leave every format toggle on), PUT the captured blob to that putUrl, and curl its getUrl to ${BASELINE_DIR}/ui-export.zip on the host. THIS ITEM MAY BE SKIPPED: if no blob is captured, set uiExportCaptured:false, mark this check "skipped" with the reason, and continue — the API snapshots still enable the diff. Set uiExportCaptured:true only if ${BASELINE_DIR}/ui-export.zip actually exists on the host afterwards.
 9. Record the dashboard counts (protocols, participants, interviews) in counts.
 ${CHECK_DISCIPLINE}
 Set area="seed" and pass=true only if every item passed or was legitimately skipped. Keep notes short.`,
@@ -1044,8 +1209,7 @@ Set area="seed" and pass=true only if every item passed or was legitimately skip
   const swap = await agent(
     `Upgrade the running release-test stack to the pending image, exactly as a deployment would:
 Run: bash ${HARNESS}/up.sh --lane upgrade --image ${pendingImage} --keep-data
-(Bash timeout 480000.) Then run: FRESCO_IMAGE=${pendingImage} docker compose -p fresco-release-test-upgrade -f ${HARNESS}/docker-compose.yml logs --tail 200 fresco
-(The FRESCO_IMAGE prefix is required: the compose file refuses interpolation without it, and up.sh's export does not survive into your shell.)
+(Bash timeout 480000.) Then run: docker logs --tail 200 fresco-release-test-upgrade-fresco-1
 Inspect the logs for the migration/startup sequence (prisma migrate deploy, protocol/data migrations, server start). Return ok:true with the "imageId" field of up.sh's last stdout line verbatim, or ok:false with the decisive failing log lines in "error". Any migration error, stack trace, or crash-loop is a failure even if the container eventually reports healthy.`,
     {
       label: 'upgrade-swap',
@@ -1071,7 +1235,7 @@ ${BROWSER_HOWTO}
 Record one check per numbered item:
 1. mkdir -p ${UPGRADED_DIR}, then snapshot the API exactly as the baseline did: ${asData('paths', apiPaths)}, with curl -fsS -H "Authorization: Bearer ${apiToken ?? '<no usable token was recorded — create one in settings and say so in notes>'}" ${UPGRADE_URL}<path> saved to ${UPGRADED_DIR}/api-<last-path-segment>.json (same filenames as in ${BASELINE_DIR}).
 2. Snapshot every per-interview payload exactly as the baseline did: for each api-interview-<id>.json in ${BASELINE_DIR}, curl /api/v1/interview/<id> to ${UPGRADED_DIR}/api-interview-<id>.json (these carry the stored network; the collection endpoint is metadata only). Record how many succeeded in networkSnapshots; this item fails unless every baseline snapshot has an upgraded counterpart.
-3. In the browser, export ALL interviews from the interviews page with the SAME options as the baseline export (every format toggle on), using the blob-hook capture in AGENT_NOTES (enable-captures.sh --lane upgrade is idempotent; install the hook BEFORE triggering the export); PUT the blob to <capture base>/upgraded-ui-export.zip and curl it to ${UPGRADED_DIR}/ui-export.zip. THIS ITEM MAY BE SKIPPED, and ONLY when ${BASELINE_DIR}/ui-export.zip does not exist — check first; without a baseline archive there is nothing to compare against. Set uiExportCaptured:true only if ${UPGRADED_DIR}/ui-export.zip actually exists on the host afterwards.
+3. In the browser, export ALL interviews from the interviews page with the SAME options as the baseline export (every format toggle on), using the blob-hook capture in AGENT_NOTES (run enable-captures.sh --lane upgrade --name upgraded-ui-export.zip for a fresh putUrl/getUrl pair; install the hook BEFORE triggering the export); PUT the blob to that putUrl and curl its getUrl to ${UPGRADED_DIR}/ui-export.zip. THIS ITEM MAY BE SKIPPED, and ONLY when ${BASELINE_DIR}/ui-export.zip does not exist — check first; without a baseline archive there is nothing to compare against. Set uiExportCaptured:true only if ${UPGRADED_DIR}/ui-export.zip actually exists on the host afterwards.
 4. Verify the export COMMITTED its status — the zip blob is assembled before the post-export commit action runs, so a captured blob alone does not prove it: wait for the export success toast (note that Fresco shows the SUCCESS toast even when some interviews failed to export, naming how many — if it names any, this item FAILS: the archive is incomplete), then run docker exec fresco-release-test-upgrade-postgres-1 psql -U postgres -t -c 'SELECT max("exportTime") FROM "Interview";' and confirm the value is from the last few minutes (this export, not the baseline one). A captured blob with a stale or null exportTime is a FAILURE. THIS ITEM MAY BE SKIPPED, and ONLY when item 3 was skipped — there was no export whose status could be committed; the per-interview API snapshots carry the comparison instead.
 5. Run: node ${HARNESS}/scripts/diff-exports.mjs ${BASELINE_DIR} ${UPGRADED_DIR} --work ${DIFF_WORK} --out ${DIFF_SUMMARY} — this item passes only if the command exits 0 and ${DIFF_SUMMARY} exists.
 ${CHECK_DISCIPLINE}
@@ -1097,7 +1261,7 @@ Record one check per numbered item:
 7. A persisted interview still RESUMES on the upgraded build — open one seeded incomplete interview at its /interview/<id> URL (id from the interviews table or psql per AGENT_NOTES) and verify the interview shell renders its current stage without an error screen.
 8. A sync round-trip still succeeds: the sync middleware only fires on a session STATE CHANGE, so an untouched stage sends nothing — use the shell's forward/back navigation control (shell chrome, not stage content) to advance or step the stage, and confirm a request to /interview/<id>/sync succeeds in the network log. THIS ITEM MAY BE SKIPPED, and only when stage validation blocks navigation in both directions so no state change can be produced; say so in notes.
 Do NOT interact with stage content; items 7 and 8 exercise Fresco's payload mapping and schema-version compatibility gate, not interview behaviour (the interview package covers that).
-Then, separately from the checks: the participant-facing interview route starts analytics by a different path from the dashboard, so it needs its own reading. Open that same /interview/<id> URL in a FRESH tab (an interview needs no sign-in). The tab must be one you opened yourself just now: this instance ran the released image until the swap, and a log carrying its traffic would describe the wrong build. Wait until the interview shell has rendered its stage AND the tab's network log contains that page's own document request — that is what tells you the log is recording; do not read it before then. Then read the FULL log and report two things. networkLogEntries: how many requests it holds in total, of any host. externalHosts: the distinct hostnames among them that are NOT localhost or 127.0.0.1, as bare hostnames with no scheme or port (an empty array if there are none; everything this deployment needs, MinIO included, is served from localhost). Report what the log shows and nothing else — do not filter for what looks like analytics, and do not report an empty log as an empty host list. The workflow decides what they mean. Do not turn either into a ninth check.
+Then, separately from the checks: the participant-facing interview route starts analytics by a different path from the dashboard, so it needs its own reading. Open that same /interview/<id> URL in a FRESH tab (an interview needs no sign-in). The tab must be one you opened yourself just now: this instance ran the released image until the swap, and a log carrying its traffic would describe the wrong build. Wait until the interview shell has rendered its stage AND the tab's network log contains that page's own document request — that is what tells you the log is recording; do not read it before then. Then read the FULL log and report two things. networkLogEntries: how many requests it holds in total, of any host. externalHosts: the distinct hostnames among them that are NOT localhost or 127.0.0.1, as bare hostnames with no scheme or port (an empty array if there are none; everything this deployment needs, Garage included, is served from localhost). Report what the log shows and nothing else — do not filter for what looks like analytics, and do not report an empty log as an empty host list. The workflow decides what they mean. Do not turn either into a ninth check.
 ${CHECK_DISCIPLINE}
 Set area="integrity".`,
     {
@@ -1190,15 +1354,15 @@ Record one check per numbered item, in order:
 1. Visiting ${FRESH_URL} redirects to the setup wizard.
 2. Account step rejects a weak password (try "password") with visible validation feedback (choose the Password authentication method).
 3. Account creation succeeds with username ${ADMIN_USER}, password ${ADMIN_PASSWORD}.
-4. Storage step accepts the S3 configuration: Endpoint URL http://minio:9000, Public URL http://localhost:9311, Bucket fresco-test, Region us-east-1, keys minioadmin/minioadmin.
-5. Protocol step: stage the protocol with bash ${HARNESS}/stage-fixture.sh --lane fresh --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas and inject per AGENT_NOTES; the presigned MinIO PUTs (network log) and the imported protocol prove the storage pipeline.
+4. Storage step: the storage provider is already set to "S3 / S3-Compatible" and every field is filled in and locked, because the deployment configures storage through its environment, as the documented production bundled-Garage setup does. Confirm the form shows Endpoint URL http://garage:3900, Public URL http://localhost:9311, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, and a Secret Access Key that is masked rather than shown; then press Continue. This item fails if any field is editable or the secret is readable.
+5. Protocol step: stage the protocol with bash ${HARNESS}/stage-fixture.sh --lane fresh --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas and inject per AGENT_NOTES; the presigned Garage PUTs (network log) and the imported protocol prove the storage pipeline.
 6. Completing the wizard lands on the dashboard.
 7. Sign out; sign-in rejects a wrong password; sign-in succeeds with the right one.
 8. The setup wizard is no longer reachable once configured (navigating to /setup does not offer account creation again).
 9. The uploaded protocol is listed on the protocols page.
 10. In settings, create an API token (enable the data API if needed) and curl one documented endpoint with it: well-formed JSON.
 11. Analytics stay off: this stack sets DISABLE_ANALYTICS, so the settings privacy section must show analytics disabled AND read-only (an environment-locked notice rather than an operable switch).
-Then, separately from the checks: read this tab's FULL network log — every request it recorded, attempted, failed and blocked alike — and report two things. networkLogEntries: how many requests the log holds in total, of any host. externalHosts: the distinct hostnames among them that are NOT localhost or 127.0.0.1, as bare hostnames with no scheme or port (an empty array if there are none; everything this deployment needs, MinIO included, is served from localhost). Report what the log shows and nothing else — do not filter for what looks like analytics, and do not report an empty log as an empty host list. The workflow decides what they mean. Do not turn either into a twelfth check.
+Then, separately from the checks: read this tab's FULL network log — every request it recorded, attempted, failed and blocked alike — and report two things. networkLogEntries: how many requests the log holds in total, of any host. externalHosts: the distinct hostnames among them that are NOT localhost or 127.0.0.1, as bare hostnames with no scheme or port (an empty array if there are none; everything this deployment needs, Garage included, is served from localhost). Report what the log shows and nothing else — do not filter for what looks like analytics, and do not report an empty log as an empty host list. The workflow decides what they mean. Do not turn either into a twelfth check.
 ${CHECK_DISCIPLINE}
 Set area="freshSetup".`,
     {
@@ -1376,7 +1540,7 @@ Read them with the shell rather than by eye: node -e 'const s=require("./${AUDIT
     );
     upgradeLane.diffVerdict = await agent(
       `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. A freshly re-run diff of exactly those files is at ${AUDIT_DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${AUDIT_DIFF_WORK}/diffs/). Use that one — it describes the files as they stand now; ignore any other summary in that directory.
-Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
+Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships.${consumedChangesetsNote} Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
 - anticipated: explained by a specific pending changeset. Put that changeset's file name without the .md extension in "changeset". An entry naming a changeset that does not exist is treated as unanticipated.
 - unanticipated: everything else. Structural changes to graph data (missing nodes/edges/attributes, changed values) are unanticipated unless a changeset explicitly covers them.
 Every file the summary lists must appear exactly once across the two lists, and you must not invent entries for files it does not list — the workflow compares your entries against the summary on disk and fails the run if any file is unclassified. An empty diff (all identical, nothing one-sided) is pass:true with both lists empty. pass=false if anything is unanticipated.`,
@@ -1406,9 +1570,9 @@ Report, exactly:
 - suspectSnapshots: how many of those files, across BOTH directories, are unusable. Count a file if ANY of these holds: it is smaller than 64 bytes; it is byte-identical to a different snapshot in the same directory (compare checksums, e.g. cksum, within each directory); or it does not contain its own <id> anywhere in its contents (grep -q -- "<id>" on that file). A count of files is not evidence that each one holds the interview it is named for, which is what this reports.
 - baselineUiExport / upgradedUiExport: whether ${BASELINE_DIR}/ui-export.zip and ${UPGRADED_DIR}/ui-export.zip exist.
 - diffSummaryExists: whether ${DIFF_SUMMARY} exists (you are not reading its contents, only noting that the capture produced it).
-- changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README.
-- changesetPackages: for each of those files, the package names its front matter bumps — the quoted names between the two "---" lines at the top, verbatim and without the release type. Report them as they are written; the workflow compares them against a list of its own and a normalised or guessed name would defeat that.
-Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".`,
+- changesets: the base names of every .changeset/*.md file WITHOUT the .md extension, excluding README${consumedChangesets ? ', followed by every consumed changeset named below' : ''}.
+- changesetPackages: for each of those changesets, the package names its front matter bumps — the quoted names between the two "---" lines at the top, verbatim and without the release type. Report them as they are written; the workflow compares them against a list of its own and a normalised or guessed name would defeat that.
+Set ok:true if you completed the audit (missing artifacts are a normal result, not an error), or ok:false with what stopped you in "error".${consumedChangesetsNote}`,
     {
       label: 'audit-artifacts',
       phase: 'Audit',
@@ -1421,7 +1585,7 @@ Set ok:true if you completed the audit (missing artifacts are a normal result, n
   report = await agent(
     `You are the release-gate critic for a Fresco release test. The pending build was tested two ways: an upgrade from the released image (seed → migrate → verify → export diff) and a fresh-deployment setup.
 ${asData('Full structured results', { build, released, upgradeLane, freshLane })}
-
+${consumedChangesetsNote}
 Also read EVERY pending changeset (.changeset/*.md in your working directory, excluding README) and return one changesetCoverage entry for each, named by its file name without .md — omit none, because the workflow compares your list against the files on disk:
 - "covered": EVERY Fresco-facing behaviour the changeset describes was exercised by a check above. Say which check covered which behaviour. A changeset often describes several changes in several bullets; if any one of them went unexercised the entry is "untested", not "covered" — partial coverage is not coverage.
 - "untested": it ships behaviour that reaches Fresco and some or all of that behaviour went unexercised. Say what went unexercised.
@@ -1456,6 +1620,14 @@ Then verify nothing remains: docker ps -a and docker volume ls filtered for "fre
   }
 }
 
+// The bot regenerates the Version Packages PR whenever main moves, so an
+// inferred pin is asked again now: a verdict for the head the run started from
+// would approve a commit that is no longer the one being merged.
+const releaseBranchRecheck =
+  boundToReleaseBranch && releaseHead && consumedChangesets
+    ? await detectReleaseBranch('release-branch-recheck')
+    : null;
+
 // ---------------------------------------------------------------------------
 // Synthesis, in code. The critic is a narrator and a cross-checker; it is
 // never the gate. Everything below decides the verdict from the structured
@@ -1471,16 +1643,40 @@ const unaccounted = [];
 // Neither: hygiene and environment notes that must stay visible.
 const warnings = [];
 
+unaccounted.push(...releaseBranchProblems);
+if (boundToReleaseBranch && releaseHead && consumedChangesets) {
+  const recheckedChangesets = releaseBranchChangesets(releaseBranchRecheck);
+  const recheckedHead = shaped(releaseBranchRecheck?.head, COMMIT, 40);
+  if (!releaseBranchRecheck || releaseBranchRecheck.ok !== true)
+    unaccounted.push(
+      `the Version Packages branch could not be checked again before the verdict (${relayedError(releaseBranchRecheck?.error)}), so nothing shows the run still tested the PR head`,
+    );
+  else if (
+    releaseBranchRecheck.onReleaseBranch !== true ||
+    releaseBranchRecheck.releasesFresco !== releaseBranch.releasesFresco ||
+    recheckedHead?.toLowerCase() !== releaseHead.toLowerCase() ||
+    shaped(releaseBranchRecheck.version, STABLE_VERSION, 64) !==
+      branchVersion ||
+    recheckedChangesets?.at.toLowerCase() !==
+      consumedChangesets.at.toLowerCase() ||
+    recheckedChangesets.names.join('\n') !== consumedChangesets.names.join('\n')
+  )
+    unaccounted.push(
+      `the Version Packages branch changed while the run was under way (it started at ${releaseHead.slice(0, 12)}, carrying Fresco ${branchVersion ?? 'with no usable version'}; it is now ${recheckedHead?.slice(0, 12) ?? 'unidentified'}) — this run tested a commit that is no longer the PR head; fetch origin, check out the new head and rerun`,
+    );
+}
+
 const audit = auditResult?.ok === true ? auditResult : null;
 if (!audit)
   unaccounted.push(
     `the artifact audit did not run (${auditResult?.error ?? 'agent returned no result'}) — no agent claim below is bound to anything on disk`,
   );
-const knownChangesets = new Set(
-  (audit?.changesets ?? [])
+const knownChangesets = new Set([
+  ...(audit?.changesets ?? [])
     .map((name) => shaped(name, CHANGESET_NAME, 200))
     .filter(Boolean),
-);
+  ...(consumedChangesets?.names ?? []),
+]);
 
 // --- checklist accounting ---------------------------------------------------
 
@@ -2448,10 +2644,10 @@ const COMPONENT_PACKAGES = [
 const OTHER_APPLICATIONS = [
   '@codaco/architect',
   '@codaco/interviewer',
-  '@codaco/studio-client',
-  '@codaco/studio-server',
-  '@codaco/studio-rpc',
+  '@codaco/studio-api',
+  '@codaco/studio-contract',
   '@codaco/studio-sync',
+  '@codaco/studio-web',
   'posthog-proxy-worker',
 ];
 const packagesOf = new Map(
@@ -2563,7 +2759,7 @@ const verdict = failures.length
 const coverageGaps = [];
 if (!expectedVersion)
   coverageGaps.push(
-    'no expectedVersion was pinned, so nothing binds the tested image to the version being released',
+    `no expectedVersion was pinned, ${unpinnedReason}, so nothing binds the tested image to the version being released`,
   );
 if (releasedImage !== DEFAULT_RELEASED_IMAGE)
   coverageGaps.push(
@@ -2617,6 +2813,7 @@ return {
   untestedShippedChanges,
   presentationOnlyChanges,
   expectedVersion,
+  expectedVersionSource,
   testedVersion: buildVersion,
   pendingImage: { ...build },
   releasedImage: pulledDigest ?? releasedImage,

@@ -1,4 +1,5 @@
 import { act, screen, waitFor } from '@testing-library/react';
+import { Redacted } from 'effect';
 import { useEffect, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -74,7 +75,9 @@ function RosterColumnsSection({
         setUnreadable(true);
         return;
       }
-      const roster = JSON.parse(previewText(result.data.url)) as unknown;
+      const roster = JSON.parse(
+        previewText(Redacted.value(result.data.url)),
+      ) as unknown;
       const nodes =
         typeof roster === 'object' && roster !== null && 'nodes' in roster
           ? roster.nodes
@@ -135,7 +138,7 @@ function ResourceListSection() {
       <ul>
         {listed.map((resource) => (
           <li key={resource.id}>
-            {`${resource.id}: ${resource.name}, ${resource.kind}, ${resource.status}`}
+            {`${resource.id}: ${Redacted.value(resource.name)}, ${resource.kind}, ${resource.status}`}
           </li>
         ))}
       </ul>

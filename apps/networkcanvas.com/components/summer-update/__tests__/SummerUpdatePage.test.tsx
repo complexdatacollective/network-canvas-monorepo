@@ -647,15 +647,15 @@ describe('SummerUpdatePage', () => {
       throw new Error('Hero focal text did not render');
     }
 
-    expect(hero).toHaveClass(
-      'relative',
-      'm-0!',
-      'min-h-svh',
-      'flex-col',
-      'overflow-hidden',
-    );
+    expect(hero).toHaveClass('relative', 'm-0!', 'flex-col', 'overflow-hidden');
     expect(hero.querySelector('.min-h-screen')).not.toBeInTheDocument();
-    expect(hero.querySelector('.bg-linear-to-b')).toHaveClass(
+    // The backdrop sits behind the header as well as the hero, and the two
+    // fill the first screen between them.
+    const heroWeave = screen.getByTestId('hero-weave');
+    const heroBackdrop = heroWeave.closest('.min-h-svh');
+    expect(heroBackdrop).toHaveAttribute('aria-hidden');
+    expect(heroBackdrop).not.toContainElement(hero);
+    expect(heroBackdrop?.querySelector('.bg-linear-to-b')).toHaveClass(
       'from-slate-blue/25',
       'via-sea-serpent/10',
       'to-transparent',
@@ -671,8 +671,6 @@ describe('SummerUpdatePage', () => {
     expect(projectName.parentElement).toHaveAttribute(
       'data-homepage-weave-target',
     );
-    const heroWeave = within(hero).getByTestId('hero-weave');
-    expect(heroWeave).toBeInTheDocument();
     expect(heroWeave.parentElement).toHaveClass('entrance-motion-item');
     expect(hero.querySelectorAll('[class*="z-"]')).toHaveLength(0);
     expect(hero.querySelectorAll('.relative')).toHaveLength(0);

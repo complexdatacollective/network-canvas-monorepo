@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { interviewerProductionLocales } from '~/i18n/locales';
-import { interviewerCatalogs } from '~/locales/catalogs';
 
 import { ExportDialog } from '../ExportDialog';
 import type { ExportFlow } from '../useSessionMutations';
@@ -19,11 +18,7 @@ const building: ExportFlow = {
 const idle: ExportFlow = { phase: 'idle' };
 
 const view = (flow: ExportFlow) => (
-  <AppI18nProvider
-    locale="en"
-    locales={interviewerProductionLocales}
-    messages={interviewerCatalogs.en}
-  >
+  <AppI18nProvider locale="en" locales={interviewerProductionLocales}>
     <ExportDialog
       flow={flow}
       onCancelBuild={vi.fn()}

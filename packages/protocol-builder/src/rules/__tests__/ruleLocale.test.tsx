@@ -2,13 +2,13 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { ecosystemLocales, loadCatalog } from '@codaco/app-i18n/locales';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
 import { QueryRuleSetField } from '../../fields/RuleSetField.tsx';
-import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { protocolBuilderCatalogLoaders } from '../../locales/catalogs.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import {
   attributeField,
@@ -48,11 +48,13 @@ const alterRule = {
   },
 };
 
+const spanishMessages = await loadCatalog('es', protocolBuilderCatalogLoaders);
+
 const inSpanish = (rule: unknown) => (
   <AppI18nProvider
     locale="es"
     locales={ecosystemLocales}
-    messages={protocolBuilderCatalogs.es}
+    messages={spanishMessages}
   >
     <RulePreview
       description={describeRule({ rule, codebook: testCodebook, intl: esIntl })}
@@ -64,7 +66,7 @@ describe('a rule read in Spanish', () => {
   it('ships Spanish for the ids this directory declares', () => {
     // Checked first so a merge that has not landed this directory's catalog
     // entries fails saying so, rather than as an unexplained missing string.
-    expect(Object.keys(protocolBuilderCatalogs.es ?? {})).toEqual(
+    expect(Object.keys(spanishMessages)).toEqual(
       expect.arrayContaining([
         ruleSubjectMessages.alterAttribute.id,
         'protocolBuilder.ruleDescription.alterGreaterThan',
@@ -184,7 +186,7 @@ function LocaleSwitchingRuleList({ locale }: { locale: 'en' | 'es' }) {
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
-      messages={locale === 'es' ? protocolBuilderCatalogs.es : undefined}
+      messages={locale === 'es' ? spanishMessages : undefined}
     >
       <RuleEditorHost sections={ruleSections()}>
         <BuilderSection title="Skip logic">

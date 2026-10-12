@@ -11,6 +11,7 @@ import ProtocolDetailPage from '../protocol-gallery/[slug]/page';
 import ProtocolGalleryPage from '../protocol-gallery/page';
 import PublicationsPage from '../publications/page';
 import SummerUpdateRoute from '../summer-2026-update/page';
+import UpdatesPage from '../updates/page';
 
 vi.mock('next-intl/server', async () => {
   const { loadLocaleMessages } = await import('~/lib/i18n/messages');
@@ -100,6 +101,7 @@ const pages: ReadonlyArray<{
   { name: 'publications', render: () => PublicationsPage({ params }) },
   { name: 'get started', render: () => GetStartedPage({ params }) },
   { name: 'summer 2026 update', render: () => SummerUpdateRoute({ params }) },
+  { name: 'updates', render: () => UpdatesPage({ params }) },
   { name: 'protocol gallery', render: () => ProtocolGalleryPage({ params }) },
   {
     name: 'protocol detail',

@@ -1,0 +1,111 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the published OpenAPI document > matches the committed snapshot 1`] = `
+{
+  "components": {
+    "schemas": {
+      "NotFoundEncoded": {
+        "additionalProperties": false,
+        "properties": {
+          "_tag": {
+            "enum": [
+              "NotFound",
+            ],
+            "type": "string",
+          },
+          "detail": {
+            "type": "string",
+          },
+          "instance": {
+            "type": "string",
+          },
+          "status": {
+            "type": "integer",
+          },
+          "title": {
+            "type": "string",
+          },
+          "type": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "_tag",
+          "type",
+          "title",
+          "status",
+        ],
+        "type": "object",
+      },
+      "Status": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+          },
+          "version": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "name",
+          "version",
+        ],
+        "type": "object",
+      },
+    },
+    "securitySchemes": {},
+  },
+  "info": {
+    "title": "Network Canvas Studio API",
+    "version": "v1",
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/status": {
+      "get": {
+        "operationId": "status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status",
+                },
+              },
+            },
+            "description": "Status",
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundEncoded",
+                },
+              },
+            },
+            "description": "NotFound",
+          },
+        },
+        "security": [],
+        "summary": "Instance status",
+        "tags": [
+          "status",
+        ],
+      },
+    },
+  },
+  "security": [],
+  "servers": [
+    {
+      "url": "/api/v1",
+    },
+  ],
+  "tags": [
+    {
+      "name": "status",
+    },
+  ],
+}
+`;

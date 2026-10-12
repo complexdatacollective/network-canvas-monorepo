@@ -1,0 +1,5 @@
+# Article dans Network Science : les réseaux personnels sont-ils stables dans le temps ?
+
+Lorsque des personnes sont interrogées plusieurs fois sur leurs réseaux, beaucoup des personnes qu’elles citent disparaissent puis réapparaissent d’un entretien à l’autre. Cet article cherche à savoir si ce changement reflète un véritable renouvellement dans la vie des gens, ou l’entretien lui-même : des répondants qui s’ancrent sur l’idée qu’ils se font de ce à quoi un réseau devrait ressembler, ou qui citent moins de personnes pour raccourcir l’entretien.
+
+À partir de trois vagues d’une étude de panel menée à Chicago auprès de jeunes hommes ayant des rapports sexuels avec des hommes, réalisée avec le sociogramme tactile de Network Canvas, les auteurs ont constaté peu de changement dans la taille moyenne des réseaux d’une vague à l’autre. De petits changements, mais significatifs, sont apparus entre la première et la deuxième vague, surtout chez les personnes dont le réseau est le plus grand, et presque aucun entre la deuxième et la troisième, que ce soit pour la taille, la composition ou la densité du réseau. [Lire l’article](https://doi.org/10.1017/nws.2019.27).

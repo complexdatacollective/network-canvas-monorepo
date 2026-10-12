@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
+import { createCatalogSource } from '@codaco/app-i18n/locales';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 
 import {
   type ConstraintReasonCode,
   SyntheticDataConstraintError,
 } from '../generateNetwork/constraints/error.ts';
-import { protocolUtilitiesCatalogs } from '../locales/catalogs.ts';
+import { protocolUtilitiesCatalogLoaders } from '../locales/catalogs.ts';
 import { formatConstraintConflictReason } from '../messages.ts';
 import { SyntheticInterview } from '../SyntheticInterview.ts';
+
+const LOCALES = ['en', 'en-GB', 'es'];
+
+const catalogs = createCatalogSource(protocolUtilitiesCatalogLoaders);
+await Promise.all(LOCALES.map((locale) => catalogs.load(locale)));
 
 type RefusalCase = {
   name: string;
@@ -151,7 +157,7 @@ const refusals: RefusalCase[] = [
   },
 ];
 
-describe.each(['en', 'en-GB', 'es'])(
+describe.each(LOCALES)(
   'SyntheticInterview refusal guidance in %s',
   (locale) => {
     it.each(refusals)(
@@ -180,7 +186,7 @@ describe.each(['en', 'en-GB', 'es'])(
         const diagnostic = caught.message;
         const intl = createAppIntl({
           locale,
-          messages: protocolUtilitiesCatalogs[locale],
+          messages: catalogs.peek(locale),
         });
         expect(formatConstraintConflictReason(conflict, intl)).toBe(
           locale === 'es' ? refusal.spanish : refusal.english,

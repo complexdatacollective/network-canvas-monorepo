@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-client': minor
+'@codaco/studio-web': minor
 ---
 
 Studio's interface can now be shown in a language other than English. Every

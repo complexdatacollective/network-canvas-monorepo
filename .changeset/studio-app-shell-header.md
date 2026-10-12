@@ -1,5 +1,5 @@
 ---
-'@codaco/studio-client': minor
+'@codaco/studio-web': minor
 ---
 
 Studio's masthead becomes the application shell. Every authenticated screen sat

@@ -1,0 +1,6 @@
+{
+  "networkExporters.stage.fetching": "正在获取访谈数据…",
+  "networkExporters.stage.formatting": "正在格式化会话…",
+  "networkExporters.stage.generating": "正在生成文件…",
+  "networkExporters.stage.outputting": "正在写入输出…"
+}

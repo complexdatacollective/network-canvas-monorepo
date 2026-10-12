@@ -1,8 +1,8 @@
 import { act, render, screen, type RenderResult } from '@testing-library/react';
+import { Redacted } from 'effect';
 import { expect, vi } from 'vitest';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
-
+import type { ProtocolBuilderAdapter } from '../../../state/context.ts';
 import ResourcePreview from '../ResourcePreview.tsx';
 import { deferred, type Deferred } from './asyncControls.ts';
 import { ResourceContextFrame, TEST_EDIT_ID } from './resourceContext.tsx';
@@ -24,7 +24,7 @@ const PREVIEW_NAME = 'Leased image';
  * answer.
  */
 export type PreviewHost = Readonly<{
-  client: ProtocolBuilderClient;
+  adapter: ProtocolBuilderAdapter;
   protocolId: string;
   /** Stages an image and answers with its id. */
   image(source: string): Promise<string>;
@@ -53,7 +53,7 @@ export function createPreviewHost(): PreviewHost {
   let callsAfterGone = 0;
   const expiries: (number | undefined)[] = [];
 
-  const client = withResourceProcedures(host.client, {
+  const adapter = withResourceProcedures(host, {
     preview: async (input) => {
       if (gone) callsAfterGone += 1;
       const waiting = held;
@@ -70,7 +70,7 @@ export function createPreviewHost(): PreviewHost {
           },
         };
       }
-      const result = await host.client.resources.preview(input);
+      const result = await host.adapter.rpcCall('ResourcesPreview', input);
       if (result.status !== 'ok') return result;
       issued += 1;
       const expiresAt =
@@ -80,7 +80,9 @@ export function createPreviewHost(): PreviewHost {
         status: 'ok' as const,
         data: {
           resourceId: result.data.resourceId,
-          url: `${result.data.url}#url-${issued}`,
+          url: Redacted.make(
+            `${Redacted.value(result.data.url)}#url-${issued}`,
+          ),
           ...(expiresAt === undefined ? {} : { expiresAt }),
         },
       };
@@ -88,9 +90,9 @@ export function createPreviewHost(): PreviewHost {
   });
 
   return {
-    client,
+    adapter,
     protocolId,
-    image: (source) => stageImage(client, protocolId, source),
+    image: (source) => stageImage(adapter, protocolId, source),
     urlsLastFor: (ms) => {
       livesForMs = ms;
     },
@@ -119,11 +121,11 @@ function sequentialImageIds(): () => string {
 }
 
 async function stageImage(
-  client: ProtocolBuilderClient,
+  adapter: ProtocolBuilderAdapter,
   protocolId: string,
   source: string,
 ): Promise<string> {
-  const staged = await client.resources.stage({
+  const staged = await adapter.rpcCall('ResourcesStage', {
     protocolId,
     // The very edit the preview under test is mounted in: a file staged for
     // any other one is not a file this preview may resolve.
@@ -132,10 +134,12 @@ async function stageImage(
     request: {
       kind: 'content',
       contentKind: 'image',
-      name: source,
-      source,
+      name: Redacted.make(source),
+      source: Redacted.make(source),
       contentType: 'image/png',
-      bytes: new Blob([`png-${source}`], { type: 'image/png' }),
+      bytes: Redacted.make(
+        new Uint8Array(new TextEncoder().encode(`png-${source}`)),
+      ),
     },
   });
   if (staged.status !== 'ok') throw new Error('could not stage the image');
@@ -157,7 +161,7 @@ export function previewOf(
   name: string = PREVIEW_NAME,
 ) {
   return (
-    <ResourceContextFrame client={host.client} protocolId={host.protocolId}>
+    <ResourceContextFrame adapter={host.adapter} protocolId={host.protocolId}>
       <ResourcePreview resourceId={resourceId} kind="image" name={name} />
     </ResourceContextFrame>
   );

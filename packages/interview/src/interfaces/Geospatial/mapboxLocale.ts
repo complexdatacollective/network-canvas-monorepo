@@ -1,3 +1,9 @@
+// mapbox-gl's self-contained declarations (3.26+) type features against the
+// global `GeoJSON` namespace without importing it, so the program has to load
+// @types/geojson itself; without it `GeoJSONFeature` has no members. It lives
+// here rather than in `useMapbox.ts`, whose `'use client'` directive must stay
+// the first line and which imports this module.
+/// <reference types="geojson" />
 import type { Map, MapOptions } from 'mapbox-gl/esm';
 
 import type { IntlShape } from '@codaco/app-i18n/messages';

@@ -165,8 +165,8 @@ edge.
 - **Separately gated products** are Documentation, networkcanvas.com, and
   Studio. Documentation and Website keep independent stable-semver release PRs,
   production deploys, and Git tags. The Studio lane covers all four Studio
-  workspace packages (`@codaco/studio-client`, `@codaco/studio-server`,
-  `@codaco/studio-rpc`, `@codaco/studio-sync`); its release PR records versions
+  workspace packages (`@codaco/studio-web`, `@codaco/studio-api`,
+  `@codaco/studio-contract`, `@codaco/studio-sync`); its release PR records versions
   and changelogs only — Studio has no automated production deploy lane yet.
 - **One release lane per changeset.** A normal-lane changeset may combine
   libraries, Architect, Background Creator, Interviewer, and Fresco. A Studio
@@ -268,6 +268,12 @@ Network Canvas uses a protocol-based system where:
 Before adding code for any feature, fix, or refactor, search for the existing package, module, helper, component, or pattern. Prefer reuse, composition, or a focused extension over a parallel implementation. If nothing fits, state what you checked and why the new code belongs in its chosen package.
 
 **Immediately before the first code edit that changes a user-facing interface, interaction, or user-visible output, invoke the `developing-network-canvas-ui` skill once for that implementation task.** Do not invoke it for backend, schema, worker, CI, tooling, dependency, test-only, or documentation changes unless they alter a user-facing surface, and do not re-invoke it for follow-up messages within the same implementation task.
+
+**Whenever you write, change, or accept a translation — any non-English text in
+a locale catalog, website or documentation messages, localized content, or a
+protocol's localization — invoke the `verifying-translations` skill before
+committing it.** Every translation must pass adversarial reverse translation
+before it is accepted; stamping a catalog is not verification.
 
 ### Code Standards
 
