@@ -213,6 +213,18 @@ describe('what a translation must show', () => {
     expect(notice).toEqual({ count: { kind: 'plural', required: [{}] } });
   });
 
+  // English says "one more person" without the number, which other
+  // languages' "one" cannot.
+  it('requires a number the original shows in any of its versions', () => {
+    expect(
+      requirePlacements(
+        NOTICE,
+        '{count, plural, one {Add one more person} other {Add # more people}}',
+        'en',
+      ),
+    ).toEqual({ count: { kind: 'plural', required: [{}] } });
+  });
+
   it('requires text only where the original shows it in every version', () => {
     expect(
       requirePlacements(
