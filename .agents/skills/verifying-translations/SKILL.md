@@ -17,14 +17,14 @@ another way" is not this process.
 Any change that puts non-English text in front of a reader, or accepts existing
 non-English text against new English:
 
-| Surface                                              | Where                                                                                              |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| App and package UI catalogs                          | `apps/*/src/locales/<tag>.json`, `packages/*/src/locales/<tag>.json`                               |
-| Re-accepting a translation after its English changed | catalog guard failure → `i18n:stamp` (see `packages/app-i18n/README.md`, "Translation provenance") |
-| Website and documentation messages                   | `apps/networkcanvas.com/messages/`, `apps/documentation/messages/`                                 |
-| Website content                                      | `apps/networkcanvas.com/content/**/<id>.<locale>.md`                                               |
-| Protocol text                                        | per-locale values in a protocol's `localization` (templates, samples, fixtures users see)          |
-| A new language anywhere                              | all of the above                                                                                   |
+| Surface                                              | Where                                                                                               |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| App and package UI catalogs                          | `apps/**/src/locales/<tag>.json` (including `apps/studio/web`), `packages/*/src/locales/<tag>.json` |
+| Re-accepting a translation after its English changed | catalog guard failure → `i18n:stamp` (see `packages/app-i18n/README.md`, "Translation provenance")  |
+| Website and documentation messages                   | `apps/networkcanvas.com/messages/`, `apps/documentation/messages/`                                  |
+| Website content                                      | `apps/networkcanvas.com/content/**/<id>.<locale>.md`                                                |
+| Protocol text                                        | per-locale values in a protocol's `localization` (templates, samples, fixtures users see)           |
+| A new language anywhere                              | all of the above                                                                                    |
 
 One string, one locale, or a one-word fix is still translation work. Size does
 not change the rule.
@@ -38,15 +38,16 @@ any text is out of scope.
 Three different agents. The translator may be you; the other two are always
 fresh subagents.
 
-**Fresh means no inherited conversation.** A subagent that starts with your
-transcript has seen the English and your reasoning, and the check is void.
+**Blind means no route to the English.** The back-translator must not be able
+to learn the source by any channel, and both reviewers judge only what their
+prompt contains. Close every channel:
 
-| Harness     | Start a fresh reviewer with                                                          |
-| ----------- | ------------------------------------------------------------------------------------ |
-| Claude Code | the Agent tool with a named `subagent_type` (e.g. `general-purpose`), never `fork`   |
-| Codex       | `spawn_agent` with `fork_turns: "none"` (the default `"all"` copies your transcript) |
-
-Each reviewer's prompt then carries only the inputs its step allows.
+| Channel                | How to close it                                                                                                                                                                               |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inherited conversation | Claude Code: the Agent tool with a named `subagent_type` (e.g. `general-purpose`), never `fork`. Codex: `spawn_agent` with `fork_turns: "none"` (the default `"all"` copies your transcript). |
+| Tools and the checkout | The prompt says: use no tools, read no files, search nothing; work only from the text below. A reviewer that greps the repo finds the English catalog.                                        |
+| The prompt             | Only the inputs step 2 or step 3 lists.                                                                                                                                                       |
+| Tokens inside the text | Mask them (step 2).                                                                                                                                                                           |
 
 ```dot
 digraph loop {
@@ -81,7 +82,9 @@ section, so a reviewer can see what the comparator was told.
 Inputs: the English, its context note, and the existing translations for that
 locale on the same surface (grep them for the same concepts). Match their
 register (formal/informal "you") and terminology. Keep ICU placeholders,
-plural/select branches, rich-text tags and Markdown structure intact.
+select arms, exact plural arms (`=0`), rich-text tags and Markdown structure
+intact. Plural categories follow the target locale's CLDR rules, not English's:
+Polish needs `few` and `many` where English has only `one` and `other`.
 
 ### 2. Blind back-translate
 
@@ -90,7 +93,7 @@ decides whether the check means anything:
 
 | Gives it                                                                  | Never gives it                                                                     |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| The source language's name and the target-language text, masked (below)   | The English source, or any paraphrase or gist of it                                |
+| The name of the language the text is in, and the text, masked (below)     | The English source, or any paraphrase or gist of it                                |
 | An opaque id (`t01`, `t02`, …)                                            | Real message ids or keys (`interview.passphrase.locked` is the meaning in English) |
 | The UI element kind: button, heading, error message, answer option        | Context notes or `description`s (they are English and explain the meaning)         |
 | For an answer option, the question it answers, **in the target language** | Earlier translations or earlier back-translations                                  |
@@ -111,15 +114,20 @@ receives the English, the context note, the translation (tokens restored), the
 locale's existing translations of the same concepts with its register, and the
 back-translation **with the back-translator's notes, pasted verbatim**, never
 summarized by you, since you are the one being checked. Instruct it to find
-problems, not to confirm quality. Every check below needs an input it has; if
-one is missing, the round cannot come back clean on that check. It reports each
-finding with severity and a proposed fix:
+problems, not to confirm quality. It reports each finding with severity and a
+proposed fix:
 
 - meaning drift, omission or addition
 - ambiguity: the back-translation could mean something the English does not
 - register and terminology inconsistent with that locale's existing translations
-- ICU parity: placeholders, every plural/select branch
-- UI fit: length, truncation risk, tone for the audience (participant or researcher)
+- ICU parity: the same placeholders, select arms and exact plural arms as the
+  English; plural categories correct for the target locale
+- tone for the audience (participant or researcher), and length against the
+  English: a translation much longer than the English on a constrained element
+  (button, tab, label, toast) is a finding
+
+A length finding is settled by looking at the rendered surface in that locale,
+not by the comparator's estimate or yours.
 
 ### 4. Decide
 
@@ -170,6 +178,7 @@ is sixteen short agent runs, a few minutes of wall-clock time.
 - Real message ids, keys, context notes or `description`s in the back-translator's input
 - Unmasked placeholder names, select keys or tag names in the back-translator's input
 - A reviewer spawned with your conversation (`fork`, or Codex's default `fork_turns`)
+- A reviewer prompt that leaves it free to read files, run tools or search
 - Summarizing the back-translator's output for the comparator instead of pasting it
 - "Looks right to me" as the comparison step
 - Re-running a changed string through the same agents that saw the earlier round
