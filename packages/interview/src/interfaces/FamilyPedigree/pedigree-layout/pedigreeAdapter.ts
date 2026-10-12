@@ -7,6 +7,8 @@ import {
   type LayoutDimensions,
 } from './layoutDimensions';
 import type {
+  LineSegment,
+  ParentChildConnector,
   ParentConnection,
   PartnerConnection,
   PedigreeConnectors,
@@ -299,6 +301,9 @@ export function buildConnectorData(
     for (const pl of pc.parentLink) {
       transformSegment(pl, sx, sy, xOffset);
     }
+    for (const segment of runSegments(pc)) {
+      transformSegment(segment, sx, sy, xOffset);
+    }
   }
 
   for (const ti of connectors.twinIndicators) {
@@ -355,6 +360,7 @@ export function buildConnectorData(
       for (const ul of pc.uplines) shiftSegment(ul, -rawMinX, 0);
       if (pc.siblingBar) shiftSegment(pc.siblingBar, -rawMinX, 0);
       for (const pl of pc.parentLink) shiftSegment(pl, -rawMinX, 0);
+      for (const segment of runSegments(pc)) shiftSegment(segment, -rawMinX, 0);
     }
     for (const ti of connectors.twinIndicators) {
       if (ti.segment) shiftSegment(ti.segment, -rawMinX, 0);
@@ -390,6 +396,7 @@ export function buildConnectorData(
       for (const ul of pc.uplines) shiftSegment(ul, 0, -rawMinY);
       if (pc.siblingBar) shiftSegment(pc.siblingBar, 0, -rawMinY);
       for (const pl of pc.parentLink) shiftSegment(pl, 0, -rawMinY);
+      for (const segment of runSegments(pc)) shiftSegment(segment, 0, -rawMinY);
     }
     for (const ti of connectors.twinIndicators) {
       if (ti.segment) shiftSegment(ti.segment, 0, -rawMinY);
@@ -405,6 +412,10 @@ export function buildConnectorData(
 
   return { connectors };
 }
+
+/** The stems and sub-bars of a sibship's runs. */
+const runSegments = (pc: ParentChildConnector): LineSegment[] =>
+  (pc.runs ?? []).flatMap((run) => [run.stem, ...(run.bar ? [run.bar] : [])]);
 
 function transformSegment(
   seg: { x1: number; y1: number; x2: number; y2: number },

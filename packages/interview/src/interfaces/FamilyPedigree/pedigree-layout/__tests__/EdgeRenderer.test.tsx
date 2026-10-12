@@ -437,6 +437,88 @@ function makeCoupleBar(
   };
 }
 
+/** The rendered polyline running upright through the point (x, y). */
+function uprightStrokeAt(
+  container: HTMLElement,
+  x: number,
+  y: number,
+): SVGElement | undefined {
+  return Array.from(container.querySelectorAll('polyline')).find((polyline) => {
+    const points = (polyline.getAttribute('points') ?? '')
+      .trim()
+      .split(/\s+/)
+      .map((pair) => {
+        const [px, py] = pair.split(',').map(Number);
+        return { x: px!, y: py! };
+      });
+    return points
+      .slice(1)
+      .some(
+        (to, k) =>
+          points[k]!.x === x &&
+          to.x === x &&
+          Math.min(points[k]!.y, to.y) <= y &&
+          Math.max(points[k]!.y, to.y) >= y,
+      );
+  });
+}
+
+describe('PedigreeEdgeSvg — a run of the sibship hanging from its own stem', () => {
+  // Child 1 and child 2 share a donor the third child does not: they hang
+  // from a sub-bar at y=130, on a stem down from the sibling bar at x=40.
+  const connector = makeParentChildConnector({
+    uplines: [
+      seg(20, 150, 20, 130),
+      seg(60, 150, 60, 130),
+      seg(180, 150, 180, 100),
+    ],
+    uplineChildIds: ['child1', 'child2', 'child3'],
+    siblingBar: seg(40, 100, 180, 100),
+    parentLink: [seg(100, 60, 100, 100)],
+    parentIds: ['parent1'],
+    runs: [{ stem: seg(40, 100, 40, 130), bar: seg(20, 130, 60, 130) }],
+  });
+  const draw = (lit?: string) =>
+    render(
+      <PedigreeEdgeSvg
+        connectorData={makeConnectorData([connector])}
+        color="black"
+        width={300}
+        height={300}
+        {...(lit
+          ? {
+              highlightedNodeIds: new Set([lit, 'parent1']),
+              highlightedEdgeKeys: new Set([edgeKey('parent1', lit)]),
+            }
+          : {})}
+      />,
+    ).container;
+
+  test('draws the stem and the sub-bar', () => {
+    const container = draw();
+    expect(uprightStrokeAt(container, 40, 115)).toBeDefined();
+    expect(barStrokeAt(container, 50, 130)).toBeDefined();
+    expect(barStrokeAt(container, 30, 130)).toBeDefined();
+  });
+
+  test('lights the way down the stem to a contributing child of the run, and dims the rest', () => {
+    const container = draw('child1');
+    expect(isLineDimmed(uprightStrokeAt(container, 40, 115)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 70, 100)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 30, 130)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 50, 130)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 140, 100)!)).toBe(true);
+  });
+
+  test('dims the stem and its sub-bar when only a child outside the run contributes', () => {
+    const container = draw('child3');
+    expect(isLineDimmed(uprightStrokeAt(container, 40, 115)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 30, 130)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 70, 100)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 140, 100)!)).toBe(false);
+  });
+});
+
 describe('PedigreeEdgeSvg — couple bar per-segment dimming', () => {
   test('the contributing-parent half is bright; the other half is dimmed', () => {
     // Only the left parent contributes.

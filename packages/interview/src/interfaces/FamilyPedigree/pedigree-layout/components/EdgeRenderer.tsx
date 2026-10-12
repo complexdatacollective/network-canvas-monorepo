@@ -551,6 +551,10 @@ function renderParentChild(
     const allSegments = [
       ...conn.parentLink,
       ...(conn.siblingBar ? [conn.siblingBar] : []),
+      ...(conn.runs ?? []).flatMap((run) => [
+        run.stem,
+        ...(run.bar ? [run.bar] : []),
+      ]),
       ...conn.uplines,
     ];
     const points = segmentsToPolylinePoints(allSegments);
@@ -586,10 +590,24 @@ function renderParentChild(
   const barY = conn.siblingBar?.y1;
   const descentX =
     barY === undefined ? undefined : descentJunctionX(conn.parentLink, barY);
-  const uplineJunctions = conn.uplines.map((ul, i) => ({
-    x: ul.y2 === barY ? ul.x2 : ul.x1,
-    childId: conn.uplineChildIds?.[i],
-  }));
+  // A child hanging from a run's sub-bar meets the sibling bar where the
+  // run's stem leaves it.
+  const runOf = (ul: LineSegment) =>
+    (conn.runs ?? []).find(
+      (run) =>
+        Math.abs(ul.y2 - run.stem.y2) < 1e-6 &&
+        (run.bar
+          ? ul.x2 >= Math.min(run.bar.x1, run.bar.x2) - 1e-6 &&
+            ul.x2 <= Math.max(run.bar.x1, run.bar.x2) + 1e-6
+          : Math.abs(ul.x2 - run.stem.x2) < 1e-6),
+    );
+  const uplineJunctions = conn.uplines.map((ul, i) => {
+    const run = runOf(ul);
+    return {
+      x: run ? run.stem.x1 : ul.y2 === barY ? ul.x2 : ul.x1,
+      childId: conn.uplineChildIds?.[i],
+    };
+  });
 
   // The sibling bar lights toward a child only when one of THESE parents
   // actually transmits to it — i.e. there is a highlighted parent→child edge,
@@ -613,52 +631,83 @@ function renderParentChild(
   // from the descent out to the FARTHEST contributing child's upline; beyond
   // that it is dimmed only when a non-contributing sibling pulls the bar
   // further out in that direction. A stub leading to no sibling stays bright.
-  const sideReach = (
-    onSide: (x: number) => boolean,
-    pickFar: 'min' | 'max',
-  ) => {
-    let contributingReach: number | undefined;
-    let hasNonContributing = false;
-    for (const { x, childId } of uplineJunctions) {
-      if (descentX === undefined || !onSide(x)) continue;
-      if (childContributes(childId)) {
-        contributingReach =
-          contributingReach === undefined
-            ? x
-            : pickFar === 'min'
-              ? Math.min(contributingReach, x)
-              : Math.max(contributingReach, x);
-      } else {
-        hasNonContributing = true;
+  // A run's sub-bar is lit the same way from its stem.
+  const barDimming =
+    (
+      from: number | undefined,
+      junctions: { x: number; childId: string | undefined }[],
+    ) =>
+    (segStart: number, segEnd: number): boolean => {
+      // No derivable descent → fall back to the family-level shared dim.
+      if (from === undefined) return sharedDimmed;
+      const sideReach = (
+        onSide: (x: number) => boolean,
+        pickFar: 'min' | 'max',
+      ) => {
+        let contributingReach: number | undefined;
+        let hasNonContributing = false;
+        for (const { x, childId } of junctions) {
+          if (!onSide(x)) continue;
+          if (childContributes(childId)) {
+            contributingReach =
+              contributingReach === undefined
+                ? x
+                : pickFar === 'min'
+                  ? Math.min(contributingReach, x)
+                  : Math.max(contributingReach, x);
+          } else {
+            hasNonContributing = true;
+          }
+        }
+        return { contributingReach, hasNonContributing };
+      };
+      const mid = (segStart + segEnd) / 2;
+      if (mid < from) {
+        const { contributingReach, hasNonContributing } = sideReach(
+          (x) => x < from,
+          'min',
+        );
+        const reach = contributingReach ?? from;
+        if (segStart >= reach) return false; // within contributing reach
+        return hasNonContributing; // beyond reach: dim only toward a sibling
       }
-    }
-    return { contributingReach, hasNonContributing };
-  };
-
-  const isBarSubSegmentDimmed = (segStart: number, segEnd: number): boolean => {
-    // No derivable descent → fall back to the family-level shared dim.
-    if (descentX === undefined) return sharedDimmed;
-    const mid = (segStart + segEnd) / 2;
-    if (mid < descentX) {
       const { contributingReach, hasNonContributing } = sideReach(
-        (x) => x < descentX,
-        'min',
+        (x) => x > from,
+        'max',
       );
-      const reach = contributingReach ?? descentX;
-      if (segStart >= reach) return false; // within contributing reach
-      return hasNonContributing; // beyond reach: dim only toward a sibling
-    }
-    const { contributingReach, hasNonContributing } = sideReach(
-      (x) => x > descentX,
-      'max',
-    );
-    const reach = contributingReach ?? descentX;
-    if (segEnd <= reach) return false;
-    return hasNonContributing;
-  };
+      const reach = contributingReach ?? from;
+      if (segEnd <= reach) return false;
+      return hasNonContributing;
+    };
+  const isBarSubSegmentDimmed = barDimming(descentX, uplineJunctions);
 
   const splitXs = descentX !== undefined ? [descentX] : [];
   for (const { x } of uplineJunctions) splitXs.push(x);
+
+  // Each run's stem and sub-bar: bright while any of its children
+  // contributes.
+  const runPieces = (conn.runs ?? []).flatMap((run) => {
+    const junctions = conn.uplines.flatMap((ul, i) =>
+      runOf(ul) === run
+        ? [{ x: ul.x2, childId: conn.uplineChildIds?.[i] }]
+        : [],
+    );
+    const stemDimmed = highlightActive
+      ? !junctions.some(({ childId }) => childContributes(childId))
+      : sharedDimmed;
+    return [
+      { segment: run.stem, dimmed: stemDimmed },
+      ...(run.bar
+        ? highlightActive
+          ? splitBar(
+              run.bar,
+              [run.stem.x1, ...junctions.map(({ x }) => x)],
+              barDimming(run.stem.x1, junctions),
+            )
+          : [{ segment: run.bar, dimmed: sharedDimmed }]
+        : []),
+    ];
+  });
 
   // Every piece of the connector, dimmed or not; the pieces of each shade are
   // then drawn as polylines, so a line that runs on (a descent straight down
@@ -679,6 +728,7 @@ function renderParentChild(
         : [{ segment: conn.siblingBar, dimmed: sharedDimmed }]
       : []),
     ...conn.parentLink.map((segment) => ({ segment, dimmed: sharedDimmed })),
+    ...runPieces,
   ];
 
   return (

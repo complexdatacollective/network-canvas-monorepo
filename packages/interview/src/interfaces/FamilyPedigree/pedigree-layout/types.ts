@@ -143,14 +143,27 @@ export type ParentChildConnector = {
   parentLink: LineSegment[];
   parentIds?: string[];
   uplineChildIds?: (string | undefined)[];
+  /** The runs of two or more children who share donors or surrogates the
+   * rest of the sibship does not: each hangs from a sub-bar of its own, on a
+   * stem down from the sibling bar, and those donors' lines end on the stem.
+   * The children's uplines end on the sub-bar. */
+  runs?: SibshipRun[];
+};
+
+export type SibshipRun = {
+  /** From the sibling bar down to the sub-bar. */
+  stem: LineSegment;
+  /** Absent when the run is a pair of twins, who hang from one point. */
+  bar?: LineSegment;
 };
 
 export type AuxiliaryConnector = {
   type: 'auxiliary';
   edgeType: PedigreeEdgeType;
   /** The line's course, from the parent's centre to its end on the child's
-   * top edge (continuing to their centre, under their symbol) or on the
-   * sibling bar it joins. */
+   * top edge (continuing to their centre, under their symbol), on the
+   * sibling bar it joins, or on the stem of the run of children it joins (a
+   * lone child's line up), which it meets from the side. */
   points: Point[];
   /** Where the line crosses another line, in order along it: it is drawn
    * hopping over the other line there. */

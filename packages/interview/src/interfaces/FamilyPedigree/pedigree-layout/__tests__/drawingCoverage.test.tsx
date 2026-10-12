@@ -30,6 +30,7 @@ import type {
 } from '../types';
 import { coordinates, drawnMarks, markPlaces } from './drawnMarks';
 import { INTERFACE_DIMENSIONS } from './fixtures';
+import { type Drawing, type HelperTie, strictLineFaults } from './lineFaults';
 
 const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
@@ -61,7 +62,28 @@ function draw(
       y: position.y + DIMENSIONS.nodeHeight / 2,
     };
   };
-  return { connectors, centre };
+  // The donors' and surrogates' ties as drawn (an adopted child's birth
+  // parent outside the adoptive family is drawn as a donor).
+  const helperTies: HelperTie[] = input.parents.flatMap((conns, child) =>
+    conns.flatMap((p) =>
+      p.edgeType === 'donor' || p.edgeType === 'surrogate'
+        ? [
+            {
+              parent: indexToId[p.parentIndex]!,
+              child: indexToId[child]!,
+              kind: p.edgeType,
+            },
+          ]
+        : [],
+    ),
+  );
+  const drawing: Drawing = {
+    size: DIMENSIONS.nodeWidth,
+    connectors,
+    centre,
+    shapeOf: () => shape,
+  };
+  return { connectors, centre, helperTies, drawing };
 }
 
 const parent = (
@@ -96,6 +118,19 @@ const onSegment = (p: Point, s: LineSegment) =>
   close(p.y, s.y2) &&
   p.x >= Math.min(s.x1, s.x2) - 0.5 &&
   p.x <= Math.max(s.x1, s.x2) + 0.5;
+
+const distanceTo = (p: Point, s: LineSegment) => {
+  const [dx, dy] = [s.x2 - s.x1, s.y2 - s.y1];
+  const length2 = dx * dx + dy * dy;
+  const t =
+    length2 === 0
+      ? 0
+      : Math.max(
+          0,
+          Math.min(1, ((p.x - s.x1) * dx + (p.y - s.y1) * dy) / length2),
+        );
+  return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy));
+};
 
 /** Every recorded tie the drawing does not account for. */
 function unaccounted(
@@ -184,13 +219,39 @@ function unaccounted(
           }) satisfies LineSegment,
       ),
     ]);
+    // Or, for a donor or surrogate of some of the sibship (round 3, 12 Oct
+    // 2026), onto the line of descent of the child's run below the bar: the
+    // stem of the sub-bar the child hangs from, or the child's own line up.
+    const ownUpline = sibship.flatMap((pc) =>
+      pc.uplines.filter((_, k) => pc.uplineChildIds?.[k] === c),
+    )[0]!;
+    const stems = [
+      ownUpline,
+      ...sibship.flatMap((pc) =>
+        (pc.runs ?? [])
+          .filter((run) =>
+            run.bar
+              ? onSegment(childTop, run.bar)
+              : close(childTop.x, run.stem.x2) &&
+                close(childTop.y, run.stem.y2),
+          )
+          .map((run) => run.stem),
+      ),
+    ];
+    const strictlyWithin = (point: Point, s: LineSegment) =>
+      distanceTo(point, s) < 0.5 &&
+      Math.min(
+        Math.hypot(point.x - s.x1, point.y - s.y1),
+        Math.hypot(point.x - s.x2, point.y - s.y2),
+      ) > 0.5;
     return aux.some((l) => {
       if (l.endpointIds?.[0] !== p || l.endpointIds[1] !== undefined) {
         return false;
       }
       const end = l.points.at(-1)!;
       return (
-        close(end.y, childTop.y) && bars.some((bar) => onSegment(end, bar))
+        (close(end.y, childTop.y) && bars.some((bar) => onSegment(end, bar))) ||
+        stems.some((stem) => strictlyWithin(end, stem))
       );
     });
   };
@@ -432,6 +493,43 @@ describe('the drawing accounts for every recorded tie', () => {
         'biological tie bob→sib is not drawn',
       ]);
     }
+    // A donor to some of a sibship is accounted for by their line onto the
+    // stem of those children's run: taken away, or moved onto another
+    // child's line up, it accounts for neither child.
+    {
+      const { people, links } =
+        families['a donor to two of three half-siblings']!;
+      const { connectors, centre } = draw(people, links);
+      const without = {
+        ...connectors,
+        auxiliaryLines: connectors.auxiliaryLines.filter(
+          (line) => line.endpointIds?.[0] !== 'paul',
+        ),
+      };
+      const notDrawn = [
+        'donor tie paul→ego is not drawn',
+        'donor tie paul→ruby is not drawn',
+      ];
+      expect(unaccounted(links, without, centre)).toEqual(notDrawn);
+      const theo = connectors.parentChildLines.flatMap((pc) =>
+        pc.uplines.filter((_, k) => pc.uplineChildIds?.[k] === 'theo'),
+      )[0]!;
+      const moved = {
+        ...connectors,
+        auxiliaryLines: connectors.auxiliaryLines.map((line) =>
+          line.endpointIds?.[0] === 'paul'
+            ? {
+                ...line,
+                points: [
+                  ...line.points.slice(0, -1),
+                  { x: theo.x2, y: (theo.y2 + centre('theo').y) / 2 - 20 },
+                ],
+              }
+            : line,
+        ),
+      };
+      expect(unaccounted(links, moved, centre)).toEqual(notDrawn);
+    }
     const { people, links } = families['a step parent and a donor']!;
     const { connectors, centre } = draw(people, links);
     const without = {
@@ -454,6 +552,27 @@ describe('the drawing accounts for every recorded tie', () => {
       'jo→ego draws nothing',
     );
   });
+});
+
+/** Families whose lines still fail the strict checks for reasons outside
+ * the donor rule (12 Oct 2026): a dashed adoptive line into a grandchild
+ * adopted by her grandparents, and the lines into a participant with six
+ * parents. */
+const KNOWN_LINE_FAULTS = new Set([
+  'a granddaughter adopted by her grandparents, with a former partner',
+  'step parents and adoptive parents who separated',
+]);
+
+describe('the lines pass the strict line checks', () => {
+  for (const [name, { people, links }] of Object.entries(families)) {
+    if (KNOWN_LINE_FAULTS.has(name)) continue;
+    for (const shape of ['circle', 'square'] as const) {
+      it(`${name} (${shape}s)`, () => {
+        const { drawing, helperTies } = draw(people, links, shape);
+        expect(strictLineFaults(drawing, helperTies, people)).toEqual([]);
+      });
+    }
+  }
 });
 
 describe('the drawing draws no partnership that was not recorded', () => {

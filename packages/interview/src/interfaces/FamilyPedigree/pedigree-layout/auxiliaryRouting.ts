@@ -6,8 +6,10 @@ import type { LineSegment, PedigreeSymbolShape, Point } from './types';
  * any other parent the child's family does not name.
  *
  * Such a line ends on the child's top edge, off the child's own line up to
- * their parents and between any adoption brackets, or on a sibling bar away
- * from every child's line. It is drawn straight when a straight line passes
+ * their parents and between any adoption brackets, on a sibling bar away
+ * from every child's line, or, for a donor or surrogate of some of a
+ * sibship, on the stem of their run (or a lone child's line up), which it
+ * meets from the side in a T. It is drawn straight when a straight line passes
  * clear of everyone and every other line; otherwise it is routed
  * orthogonally, like the lines of descent, through the gaps between rows.
  * The lines are routed one after another and then each again against all
@@ -74,7 +76,20 @@ export type RouteEnd =
       layer: number;
       /** Where along the bar a line may join it. */
       joins: number[];
+    }
+  | {
+      /** A point on a run's stem, or a lone child's line up, below the
+       * sibling bar: the line meets it from the side, level, in a T. */
+      kind: 'stem';
+      x: number;
+      y: number;
+      /** The children's row. */
+      layer: number;
     };
+
+/** How far a line runs level into a stem it meets, as fractions of the box
+ * width: far enough for its end to read as a T on the stem. */
+const STEM_APPROACHES = [0.25, 0.4, 0.6];
 
 const ON = 0.004; // about a pixel
 // The brackets as PersonNode draws them, a sixth of the symbol's width
@@ -547,6 +562,9 @@ const COST = {
   crossBar: 300,
   crossUpline: 300,
   crossOther: 10,
+  /** A line to a stem that crosses a sibling bar on its way (to a run in
+   * the middle of a sibship) hops it most legibly square on. */
+  crossBarAslant: 5,
   nearCorner: 50,
   /** A line a few degrees off upright reads as drawn by mistake. */
   nearlyUpright: 3,
@@ -679,6 +697,9 @@ function courseCoster(
               : line.kind === 'upline'
                 ? COST.crossUpline
                 : COST.crossOther;
+        if (end.kind === 'stem' && line.kind === 'bar' && dx > ON) {
+          cost += COST.crossBarAslant;
+        }
       }
       for (const vertex of [
         { x: line.segment.x1, y: line.segment.y1 },
@@ -911,25 +932,39 @@ export function routeOptions(
         ? end.joins
         : [];
   const targets =
-    end.kind === 'child'
-      ? attachments.map((x) => {
-          // Into the child from above, down to their centre. A straight line
-          // ends where it meets the symbol's edge, which at this distance
-          // from the centre may fall short of the box's top edge.
-          const shortfall = edgeDepth(end.shape, (x - end.x) / boxw);
-          return {
-            x,
-            entry: { x, y: end.layer },
-            meet: { x, y: end.layer + shortfall * boxh },
-            tail: [{ x, y: end.layer + boxh / 2 }],
-          };
-        })
-      : joins.map((x) => ({
-          x,
-          entry: { x, y: end.bar.y1 },
-          meet: { x, y: end.bar.y1 },
-          tail: [] as Point[],
-        }));
+    end.kind === 'stem'
+      ? [-1, 1].flatMap((side) =>
+          STEM_APPROACHES.map((reach) => {
+            const at = { x: end.x + side * reach * boxw, y: end.y };
+            return {
+              x: at.x,
+              entry: at,
+              meet: at,
+              tail: [{ x: end.x, y: end.y }],
+            };
+          }),
+        )
+      : end.kind === 'child'
+        ? attachments.map((x) => {
+            // Into the child from above, down to their centre. A straight line
+            // ends where it meets the symbol's edge, which at this distance
+            // from the centre may fall short of the box's top edge.
+            const shortfall = edgeDepth(end.shape, (x - end.x) / boxw);
+            return {
+              x,
+              entry: { x, y: end.layer },
+              meet: { x, y: end.layer + shortfall * boxh },
+              tail: [{ x, y: end.layer + boxh / 2 }],
+            };
+          })
+        : end.kind === 'bar'
+          ? joins.map((x) => ({
+              x,
+              entry: { x, y: end.bar.y1 },
+              meet: { x, y: end.bar.y1 },
+              tail: [] as Point[],
+            }))
+          : [];
 
   const gapLanes = (layer: number, fractions: number[]) =>
     fractions.map((f) => layer + boxh + f * (1 - boxh));
@@ -993,12 +1028,18 @@ export function routeOptions(
   if (rowsBetween >= 1) {
     const lastGap = childLayer - 1;
     const lanesAboveEnd =
-      end.kind === 'bar'
+      end.kind === 'bar' || end.kind === 'stem'
         ? gapLanes(lastGap, UPPER_LANES)
         : gapLanes(lastGap, [...UPPER_LANES, ...LOWER_LANES]);
     if (rowsBetween === 1) {
       for (const target of targets) {
-        for (const x of startXs) {
+        // A line to a stem may drop straight from the parent to the height
+        // it meets the stem at, crossing a sibling bar on its way square on.
+        const drops =
+          end.kind === 'stem' && Math.abs(target.x - from.x) < 0.4 * boxw
+            ? [target.x]
+            : [];
+        for (const x of [...startXs, ...drops]) {
           for (const y of lanesAboveEnd) {
             candidates.push({
               points: [
@@ -1019,7 +1060,7 @@ export function routeOptions(
       // on the rows between, down that, and across to the child.
       const lanesBelowStart = gapLanes(from.layer, UPPER_LANES);
       const towardX =
-        end.kind === 'child' ? end.x : (end.bar.x1 + end.bar.x2) / 2;
+        end.kind === 'bar' ? (end.bar.x1 + end.bar.x2) / 2 : end.x;
       const between = scene.rowXs.slice(from.layer + 1, childLayer).flat();
       // Midway between two people, or just clear of one (beside a line of
       // descent that comes down between them).

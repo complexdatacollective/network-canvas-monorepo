@@ -536,7 +536,7 @@ describe('computeConnectors', () => {
     expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(0.75, 5);
   });
 
-  it('auxiliary connector connects directly to child when donor is parent of only SOME siblings', () => {
+  it('auxiliary connector meets the child’s own line up when donor is parent of only SOME siblings', () => {
     // 2 parents (0,1) + 2 donors (2,3) + 2 children (4,5)
     // Donor2 has donor edge to child4 only, Donor3 has donor edge to child5 only
     const donorSomeLayout: PedigreeLayout = {
@@ -585,9 +585,19 @@ describe('computeConnectors', () => {
       donorSomeParents,
     );
     expect(connectors.auxiliaryLines.length).toBe(2);
-    // Each connects directly to child: y = childLevel(1) + boxh/2(0.25) = 1.25
-    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(1.25, 5);
-    expect(endOf(connectors.auxiliaryLines[1]!).y).toBeCloseTo(1.25, 5);
+    // Each meets the line of descent of the one child they gave to (round
+    // 3, 12 Oct 2026): that child's own line up, from the side, below the
+    // sibling bar (y = childLevel(1) - legh(0.25) = 0.75) and above the
+    // child's top (y = 1).
+    connectors.auxiliaryLines.forEach((line, k) => {
+      const end = endOf(line);
+      expect(end.x).toBeCloseTo(k, 5);
+      expect(end.y).toBeGreaterThan(0.75 + 0.05);
+      expect(end.y).toBeLessThan(1 - 0.05);
+      const before = line.points.at(-2)!;
+      expect(before.y).toBeCloseTo(end.y, 5);
+      expect(before.x).not.toBeCloseTo(end.x, 1);
+    });
   });
 
   it('auxiliary connector connects directly to child when single child in family', () => {
