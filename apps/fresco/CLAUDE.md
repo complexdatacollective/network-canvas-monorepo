@@ -150,6 +150,16 @@ pull request is retargeted, and deleted when it closes (unless another
 preview is still copied from it). Its connection strings and a
 `PREVIEW_DATABASE_BRANCH` marker are set as Netlify values scoped to that git
 branch.
+Netlify scopes values to a git branch, not to a pull request, so pull requests
+that share a head branch share one database: while more than one is open,
+none of them replaces or removes it. Retargeting a pull request onto a base
+that has no preview database removes its copy of the old base.
+
+The workflow builds a newly provisioned preview itself, because Netlify
+skipped the build for that push. Netlify has no call that re-runs a skipped
+Deploy Preview, so that first build is a branch deploy
+(`<branch>--fresco-next.netlify.app`); later pushes build the pull request's
+Deploy Preview as usual. Both read the same database.
 
 Previews and branch deploys build with `build:preview`
 (`scripts/build-preview.ts`). It runs the full `build:platform`, migrations
