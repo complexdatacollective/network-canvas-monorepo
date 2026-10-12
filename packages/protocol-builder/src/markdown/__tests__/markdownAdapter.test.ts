@@ -243,12 +243,12 @@ describe('RichText markdown adapter', () => {
   // autolink, a character reference or a block quote is the same text when
   // the stored markdown is opened again, and is stored the same way again.
   it.each([
-    ['<img>', '\\<img>'],
-    ['<https://example.org>', '\\<https://example.org>'],
-    ['Isabel &amp; Irene', 'Isabel \\&amp; Irene'],
+    ['<img>', '&lt;img&gt;'],
+    ['<https://example.org>', '&lt;https://example.org&gt;'],
+    ['Isabel &amp; Irene', 'Isabel &amp;amp; Irene'],
     ['Isabel & Irene', 'Isabel & Irene'],
     ['> 65', '&gt; 65'],
-    ['18 < age > 65', '18 \\< age > 65'],
+    ['18 < age > 65', '18 &lt; age &gt; 65'],
   ])('stores %s as text it reads back', (text, stored) => {
     const content: RichTextContent = {
       type: 'doc',
