@@ -890,27 +890,40 @@ export function routePedigree(
   };
   let nextFamilyKey = maxcol + 1;
   for (let i = 1; i < maxlev; i++) {
+    // Children are grouped by their sibship (see `lineOwnersOf`), never by
+    // the owner of their line of descent alone, and, since such a sibship's
+    // bar is drawn in one style, by the kind of that line too.
     const sibships = new Map<string, number[]>();
-    const routedSibships = new Map<string, number[]>();
+    const routedSibships = new Map<
+      string,
+      { pairKey: string; columns: number[] }
+    >();
     for (let j = 0; j < (layout.n[i] ?? 0); j++) {
       if ((layout.fam[i]?.[j] ?? 0) !== 0 || layout.groupMember[i]?.[j]) {
         continue;
       }
-      const descent = descentOwnerOf(layout.nid[i]![j]!);
-      if (!descent) continue;
+      const { descent, sibship: named } = owners[layout.nid[i]![j]!] ?? {
+        lines: [],
+      };
+      if (!descent || named === undefined) continue;
+      const sibship = `${named}:${descent.kind}`;
       const [a, b] = descent.parents;
       const couple =
         a !== undefined && b !== undefined
           ? `${Math.min(a, b)},${Math.max(a, b)}`
           : undefined;
       if (couple !== undefined && routedCouples.get(couple)?.layer === i - 1) {
-        routedSibships.set(couple, [...(routedSibships.get(couple) ?? []), j]);
+        const routed = routedSibships.get(sibship) ?? {
+          pairKey: couple,
+          columns: [],
+        };
+        routed.columns.push(j);
+        routedSibships.set(sibship, routed);
         continue;
       }
-      const key = `${ownerKey(descent)}:${descent.kind}`;
-      sibships.set(key, [...(sibships.get(key) ?? []), j]);
+      sibships.set(sibship, [...(sibships.get(sibship) ?? []), j]);
     }
-    for (const [pairKey, columns] of routedSibships) {
+    for (const [sibship, { pairKey, columns }] of routedSibships) {
       const target =
         columns.reduce((sum, j) => sum + layout.pos[i]![j]!, 0) /
         columns.length;
@@ -920,11 +933,7 @@ export function routePedigree(
         target,
       );
       if (x === undefined) {
-        for (const j of columns) {
-          const descent = descentOwnerOf(layout.nid[i]![j]!)!;
-          const key = `${ownerKey(descent)}:${descent.kind}`;
-          sibships.set(key, [...(sibships.get(key) ?? []), j]);
-        }
+        sibships.set(sibship, [...(sibships.get(sibship) ?? []), ...columns]);
         continue;
       }
       const famId = nextFamilyKey++;

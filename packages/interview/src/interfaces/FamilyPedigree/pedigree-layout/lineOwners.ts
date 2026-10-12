@@ -19,9 +19,12 @@ export type LineOwner = {
 };
 
 /** A child's lines: their one line of descent, and a line for every other
- * owner of a tie to them. */
+ * owner of a tie to them. `sibship` names the sibship the child is drawn in,
+ * with any line of descent: children with the same `sibship` hang from one
+ * line of descent, and no others do (see `lineOwnersOf`). */
 export type ChildLines = {
   descent?: LineOwner;
+  sibship?: string;
   lines: LineOwner[];
 };
 
@@ -90,6 +93,17 @@ export const ownerKey = (owner: LineOwner) =>
  * a donor does. A child with no biological parent recorded has their
  * carrier as their birth owner, with a partner who is the other genetic
  * parent.
+ *
+ * A child's sibship (`sibship`) follows from the same rule, and is the one
+ * definition the layout and the connectors group children by: the children
+ * whose line of descent comes from the same owner and stands for the same
+ * biological parents. A line of descent from the biological parents
+ * themselves stands for no one else, so their children are one sibship,
+ * with any children the same owner adopted or raises; a line from a carrier
+ * stands for the biological parents of the children she carried, so a
+ * carrier who carried for two unrelated couples carries two sibships, each
+ * with a line of descent of its own; children with no biological parent
+ * recorded are one sibship under the person who carried them.
  *
  * Within raising kinds, the owner is the recorded couple who both hold the
  * kind chosen, or failing those the parent recorded first. Every other tie
@@ -255,6 +269,19 @@ export function lineOwnersOf(
         kind: tie.edgeType,
       });
     }
-    return { ...(descent ? { descent } : {}), lines };
+    // The sibship: the owner of the line of descent, and the biological
+    // parents it stands for who are not among its owners.
+    if (!descent) return { lines };
+    const standsFor = biologicalOwner[child]!.map((p) => p.parentIndex)
+      .filter((parent) => !descent.parents.includes(parent))
+      .toSorted((a, b) => a - b);
+    return {
+      descent,
+      sibship:
+        standsFor.length > 0
+          ? `${ownerKey(descent)} for ${standsFor.join('+')}`
+          : ownerKey(descent),
+      lines,
+    };
   });
 }

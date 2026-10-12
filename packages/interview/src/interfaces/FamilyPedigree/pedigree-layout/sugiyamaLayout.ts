@@ -209,23 +209,24 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   }
   settle(layers);
 
-  // 4. Family units: the children whose lines of descent come from one
-  // owner (a couple, a pair, or one parent), with that owner's group.
+  // 4. Family units: one per sibship (see `lineOwnersOf`), with the group
+  // of the owner of its line of descent (a couple, a pair, or one parent).
+  // Two sibships whose lines of descent come from the same owner are two
+  // units.
   const familyUnits: FamilyUnit[] = [];
-  const unitByOwner = new Map<string, FamilyUnit>();
+  const unitBySibship = new Map<string, FamilyUnit>();
   for (let child = 0; child < n; child++) {
-    const descent = owners[child]!.descent;
-    if (!descent) continue;
+    const { descent, sibship } = owners[child]!;
+    if (!descent || sibship === undefined) continue;
     if (!descent.parents.every((parent) => isPlaced(child, parent))) continue;
-    const key = ownerKey(descent);
-    let unit = unitByOwner.get(key);
+    let unit = unitBySibship.get(sibship);
     if (!unit) {
       const parentGroup =
         descent.parents.length === 2
           ? groupMap.get(partnerGroupKey(descent.parents))!
           : { members: [...descent.parents], isActive: true };
       unit = { parentGroup, children: [] };
-      unitByOwner.set(key, unit);
+      unitBySibship.set(sibship, unit);
       familyUnits.push(unit);
     }
     unit.children.push(child);
@@ -2354,6 +2355,18 @@ function encodePedigreeLayout(
           layerFam.push(0);
         }
       }
+    }
+    // A family names one sibship: where two sibships would take the same
+    // family (two from one carrier, say), the first seated keeps it, and the
+    // other is left to the connectors, which draw it as a sibship of its own
+    // (see `routePedigree`).
+    const claimedBy = new Map<number, FamilyUnit | undefined>();
+    for (let col = 0; col < layerFam.length; col++) {
+      const value = layerFam[col]!;
+      if (value === 0) continue;
+      const unit = graph.familyOf.get(nid[layer]![col]!);
+      if (!claimedBy.has(value)) claimedBy.set(value, unit);
+      else if (claimedBy.get(value) !== unit) layerFam[col] = 0;
     }
     fam.push(layerFam);
   }

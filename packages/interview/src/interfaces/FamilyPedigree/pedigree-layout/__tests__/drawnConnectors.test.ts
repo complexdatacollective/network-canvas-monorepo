@@ -687,7 +687,13 @@ function auxiliaryLineFaults(
 describe('auxiliary and direct parent lines', () => {
   const scenarios: Record<
     string,
-    { people: string[]; links: Link[]; adopted?: string[] }
+    {
+      people: string[];
+      links: Link[];
+      adopted?: string[];
+      /** The strict checks' faults no seating can avoid, if any. */
+      unavoidable?: string[];
+    }
   > = {
     'a surrogate grandmother': {
       people: ['ego', 'hannah', 'ben', 'margaret', 'george'],
@@ -765,7 +771,17 @@ describe('auxiliary and direct parent lines', () => {
         ['phil', 'biological', 'ben'],
       ],
     },
+    // Becky carried both, but Ego's biological parent is Marcus and Leo has
+    // none recorded, so they are two sibships (Josh, 12 Oct 2026), each
+    // under Becky with its own line of descent, and every line into each
+    // converges on their top. Marcus's line ends on Ego and Marcus and
+    // Julian's line on Leo, while Julian's own line ends on Ego: whichever
+    // side Leo sits, the couple's line, starting between the two partners,
+    // must cross one partner's line to Ego.
     'an egg donor and a surrogate of twins': {
+      unavoidable: [
+        "marcus and julian's social line crosses marcus's biological line, of its own owner",
+      ],
       people: ['ego', 'leo', 'marcus', 'julian', 'eggdonor', 'becky'],
       links: [
         ['marcus', 'biological', 'ego'],
@@ -795,7 +811,9 @@ describe('auxiliary and direct parent lines', () => {
     },
   };
 
-  for (const [name, { people, links, adopted }] of Object.entries(scenarios)) {
+  for (const [name, { people, links, adopted, unavoidable }] of Object.entries(
+    scenarios,
+  )) {
     for (const shape of ['circle', 'square'] as const) {
       it(`are drawn clear of everyone and every other line: ${name} (${shape}s)`, () => {
         const { connectors, centre } = draw(people, links, shape);
@@ -812,7 +830,7 @@ describe('auxiliary and direct parent lines', () => {
           centre,
           shapeOf: () => shape,
         };
-        expect(strictLineFaults(drawing, family)).toEqual([]);
+        expect(strictLineFaults(drawing, family)).toEqual(unavoidable ?? []);
       });
     }
   }
@@ -1271,6 +1289,58 @@ function overlappingDescents(connectors: PedigreeConnectors) {
   }
   return found;
 }
+
+describe('a carrier who carried for two unrelated couples', () => {
+  // Gail carried Ego for Amy and Rob, and Sib for Sam and Pat. Ego and Sib
+  // share no biological parent, so they are two sibships (Josh, 12 Oct
+  // 2026), each with its own line of descent from Gail, the one person who
+  // carried every child in it.
+  it('draws two sibships, each couple joining only their own child', () => {
+    const { connectors, centre } = draw(
+      ['amy', 'rob', 'gail', 'sam', 'pat', 'ego', 'sib'],
+      [
+        ['amy', 'partner', 'rob'],
+        ['sam', 'partner', 'pat'],
+        ['amy', 'biological', 'ego'],
+        ['rob', 'biological', 'ego'],
+        ['gail', 'surrogate', 'ego', { carrier: true }],
+        ['sam', 'biological', 'sib'],
+        ['pat', 'biological', 'sib'],
+        ['gail', 'surrogate', 'sib', { carrier: true }],
+      ],
+    );
+    expect(sibshipOf(connectors, ['ego', 'sib']).sharesOneBar).toBe(false);
+    for (const line of connectors.parentChildLines) {
+      const reached = line.uplineChildIds ?? [];
+      expect(
+        reached.includes('ego') && reached.includes('sib'),
+        `one line reaching ${reached.join(', ')}`,
+      ).toBe(false);
+    }
+    // Each couple's one line ends on their own child.
+    const endsOn = (points: { x: number; y: number }[], child: string) => {
+      const end = points.at(-1)!;
+      const at = centre(child);
+      return (
+        Math.abs(end.x - at.x) <= DIMENSIONS.nodeWidth / 2 + 1 &&
+        Math.abs(end.y - at.y) <= DIMENSIONS.nodeHeight / 2 + 1
+      );
+    };
+    for (const [parent, child, other] of [
+      ['amy', 'ego', 'sib'],
+      ['rob', 'ego', 'sib'],
+      ['sam', 'sib', 'ego'],
+      ['pat', 'sib', 'ego'],
+    ] as const) {
+      const theirs = connectors.auxiliaryLines.filter((line) =>
+        (line.ownerIds ?? []).includes(parent),
+      );
+      expect(theirs, `lines from ${parent}`).toHaveLength(1);
+      expect(endsOn(theirs[0]!.points, child), `${parent}'s line`).toBe(true);
+      expect(endsOn(theirs[0]!.points, other), `${parent}'s line`).toBe(false);
+    }
+  });
+});
 
 describe('each child hangs from their own family’s single line of descent', () => {
   // A child's birth parents who were never recorded as partners (here, a

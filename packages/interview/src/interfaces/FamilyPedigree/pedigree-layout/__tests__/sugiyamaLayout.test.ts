@@ -71,6 +71,46 @@ describe('buildPedigreeGraph', () => {
     expect(graph.layers[2]).toBe(graph.layers[0]);
   });
 
+  it('one carrier for two unrelated couples carries two sibships, one family unit each', () => {
+    // Gail carried Ego for Amy and Rob, and Sib for Sam and Pat. A sibship
+    // is the children who share their biological parents (Josh, 12 Oct
+    // 2026): Ego and Sib share none, so they are two sibships, though both
+    // lines of descent come from Gail.
+    const carried = (parentIndex: number) => ({
+      parentIndex,
+      edgeType: 'surrogate' as const,
+      isGestationalCarrier: true,
+    });
+    const graph = buildPedigreeGraph({
+      id: ['amy', 'rob', 'gail', 'sam', 'pat', 'ego', 'sib'],
+      parents: [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [
+          { parentIndex: 0, edgeType: 'biological' },
+          { parentIndex: 1, edgeType: 'biological' },
+          carried(2),
+        ],
+        [
+          { parentIndex: 3, edgeType: 'biological' },
+          { parentIndex: 4, edgeType: 'biological' },
+          carried(2),
+        ],
+      ],
+      partners: [
+        { partnerIndex1: 0, partnerIndex2: 1, isActive: true },
+        { partnerIndex1: 3, partnerIndex2: 4, isActive: true },
+      ],
+    });
+    expect(graph.owners[5]!.descent?.parents).toEqual([2]);
+    expect(graph.owners[6]!.descent?.parents).toEqual([2]);
+    expect(graph.familyUnits.map((unit) => unit.children)).toEqual([[5], [6]]);
+    expect(graph.siblingGroups).toHaveLength(0);
+  });
+
   it('single parent: 1 parent + 1 child', () => {
     const graph = buildPedigreeGraph(singleParent);
 
