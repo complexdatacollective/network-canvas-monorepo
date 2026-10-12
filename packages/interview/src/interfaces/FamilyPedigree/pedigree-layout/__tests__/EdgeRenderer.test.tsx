@@ -51,8 +51,8 @@ function makeParentChildConnector(
   return {
     type: 'parent-child',
     edgeType: 'biological',
+    // A lone child: the line runs straight down to them, with no bar.
     uplines: [seg(50, 100, 50, 150)],
-    siblingBar: seg(30, 100, 70, 100),
     parentLink: [seg(50, 80, 50, 100)],
     parentIds: ['parent1', 'parent2'],
     uplineChildIds: ['child1'],
@@ -104,7 +104,7 @@ describe('PedigreeEdgeSvg — descent connector with non-transmitting co-parent 
    *
    * The descent connector's upline to child1 should be BRIGHT because
    * edgeKey('transmittingParent', 'child1') ∈ highlightedEdgeKeys.
-   * The sibling bar / parentLink should also be BRIGHT for the same reason.
+   * The line down from the parents should also be BRIGHT for the same reason.
    */
   const TRANSMITTING = 'transmittingParent';
   const NON_TRANSMITTING = 'nonTransmittingParent';
@@ -133,7 +133,7 @@ describe('PedigreeEdgeSvg — descent connector with non-transmitting co-parent 
     );
   });
 
-  test('the sibling bar and parent link are NOT dimmed', () => {
+  test('the line down from the parents is NOT dimmed', () => {
     const connector = makeParentChildConnector({
       parentIds: [TRANSMITTING, NON_TRANSMITTING],
       uplineChildIds: [CHILD],
@@ -438,6 +438,31 @@ function makeCoupleBar(
   };
 }
 
+/** A partnership line with one child's line of descent dropping from its
+ * middle (from its lower rail, when it has two). */
+function makeCoupleWithChild(
+  bar: ParentGroupConnector,
+  childId = 'child',
+): ConnectorRenderData {
+  const railY = (bar.doubleSegment ?? bar.segment).y1;
+  return {
+    connectors: {
+      groupLines: [bar],
+      parentChildLines: [
+        makeParentChildConnector({
+          uplines: [seg(100, 150, 100, 100)],
+          parentLink: [seg(100, railY, 100, 100)],
+          parentIds: bar.partnerIds ? [...bar.partnerIds] : [],
+          uplineChildIds: [childId],
+        }),
+      ],
+      auxiliaryLines: [],
+      twinIndicators: [],
+      duplicateArcs: [],
+    },
+  };
+}
+
 /** The rendered polyline running upright through the point (x, y). */
 function uprightStrokeAt(
   container: HTMLElement,
@@ -522,12 +547,12 @@ describe('PedigreeEdgeSvg — a run of the sibship hanging from its own stem', (
 
 describe('PedigreeEdgeSvg — couple bar per-segment dimming', () => {
   test('the contributing-parent half is bright; the other half is dimmed', () => {
-    // Only the left parent contributes.
-    const highlightedNodeIds = new Set(['leftParent']);
+    // Only the left parent contributes to the couple's child.
+    const highlightedNodeIds = new Set(['leftParent', 'child']);
 
     const { container } = render(
       <PedigreeEdgeSvg
-        connectorData={makeGroupConnectorData([makeCoupleBar()])}
+        connectorData={makeCoupleWithChild(makeCoupleBar())}
         color="black"
         width={300}
         height={300}
@@ -560,11 +585,11 @@ describe('PedigreeEdgeSvg — couple bar per-segment dimming', () => {
   });
 
   test('both parents contributing → both halves bright', () => {
-    const highlightedNodeIds = new Set(['leftParent', 'rightParent']);
+    const highlightedNodeIds = new Set(['leftParent', 'rightParent', 'child']);
 
     const { container } = render(
       <PedigreeEdgeSvg
-        connectorData={makeGroupConnectorData([makeCoupleBar()])}
+        connectorData={makeCoupleWithChild(makeCoupleBar())}
         color="black"
         width={300}
         height={300}
@@ -693,7 +718,7 @@ describe('PedigreeEdgeSvg — couple bar transmission (edge-key path, #9)', () =
 
     const { container } = render(
       <PedigreeEdgeSvg
-        connectorData={makeGroupConnectorData([bar])}
+        connectorData={makeCoupleWithChild(bar)}
         color="black"
         width={300}
         height={300}
@@ -745,7 +770,7 @@ describe('PedigreeEdgeSvg — consanguineous double couple bar', () => {
 
     const { container } = render(
       <PedigreeEdgeSvg
-        connectorData={makeGroupConnectorData([bar])}
+        connectorData={makeCoupleWithChild(bar)}
         color="black"
         width={300}
         height={300}
@@ -1467,5 +1492,290 @@ describe('PedigreeEdgeSvg — a run inside another run', () => {
     expect(isLineDimmed(uprightStrokeAt(container, 40, 150)!)).toBe(false);
     expect(isLineDimmed(uprightStrokeAt(container, 20, 150)!)).toBe(true);
     expect(isLineDimmed(barStrokeAt(container, 90, 100)!)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// One rule for every piece: a piece is lit if and only if a lit tie's course
+// passes through it, whatever the line's style or the piece's kind.
+// ---------------------------------------------------------------------------
+
+describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course passes through it', () => {
+  const dashedStroke = (el: SVGElement | undefined) =>
+    el?.getAttribute('stroke-dasharray');
+  const draw = (
+    connectorData: ConnectorRenderData,
+    lit: string[],
+    people: string[] = lit.flatMap((edge) => edge.split('->')),
+  ) =>
+    render(
+      <PedigreeEdgeSvg
+        connectorData={connectorData}
+        color="black"
+        width={500}
+        height={300}
+        highlightedNodeIds={new Set(people)}
+        highlightedEdgeKeys={new Set(lit)}
+      />,
+    ).container;
+  const withLines = (
+    parentChildLines: ParentChildConnector[],
+    extra: Partial<ConnectorRenderData['connectors']> = {},
+  ): ConnectorRenderData => ({
+    connectors: {
+      groupLines: [],
+      parentChildLines,
+      auxiliaryLines: [],
+      twinIndicators: [],
+      duplicateArcs: [],
+      ...extra,
+    },
+  });
+
+  // Children 1 and 2, conceived with a donor, are raised by two adoptive
+  // parents: the line of descent is dashed. They hang from a sub-bar at
+  // y=130 on a stem at x=40, which the donor's line meets at y=115.
+  const adoptiveRun = makeParentChildConnector({
+    edgeType: 'adoptive',
+    uplines: [
+      seg(20, 150, 20, 130),
+      seg(60, 150, 60, 130),
+      seg(180, 150, 180, 100),
+    ],
+    uplineChildIds: ['child1', 'child2', 'child3'],
+    siblingBar: seg(40, 100, 180, 100),
+    parentLink: [seg(100, 60, 100, 100)],
+    parentIds: ['gran', 'grandad'],
+    runs: [{ stem: seg(40, 100, 40, 130), bar: seg(20, 130, 60, 130) }],
+  });
+  const donorToStem: AuxiliaryConnector = {
+    type: 'auxiliary',
+    edgeType: 'donor',
+    points: [
+      { x: 10, y: 0 },
+      { x: 10, y: 115 },
+      { x: 40, y: 115 },
+    ],
+    endpointIds: ['donor', undefined],
+  };
+
+  test('a dashed line of descent carries a donor’s lit tie down from where the donor’s line meets it', () => {
+    const container = draw(
+      withLines([adoptiveRun], { auxiliaryLines: [donorToStem] }),
+      [edgeKey('donor', 'child1')],
+    );
+    expect(isLineDimmed(uprightStrokeAt(container, 40, 125)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 30, 130)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 20, 140)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 40, 105)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 50, 130)!)).toBe(true);
+    expect(isLineDimmed(uprightStrokeAt(container, 60, 140)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 70, 100)!)).toBe(true);
+    // Lit or dim, the line keeps its dashes.
+    expect(dashedStroke(uprightStrokeAt(container, 40, 125))).toBe('8 8');
+    expect(dashedStroke(uprightStrokeAt(container, 40, 105))).toBe('8 8');
+  });
+
+  test('an adoptive line of descent stays dim when no tie through it is lit, however many of its people are highlighted', () => {
+    // Grandparents raising their grandchildren are on the focal lineage
+    // through the children's parent, not through the adoption.
+    const container = draw(
+      withLines([adoptiveRun]),
+      [edgeKey('grandad', 'parent')],
+      ['gran', 'grandad', 'parent', 'child1', 'child2', 'child3'],
+    );
+    expect(isLineDimmed(uprightStrokeAt(container, 100, 80)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 140, 100)!)).toBe(true);
+    expect(isLineDimmed(uprightStrokeAt(container, 180, 140)!)).toBe(true);
+  });
+
+  test('dashed co-parents’ drops each carry only their own parent’s tie', () => {
+    const connector = makeParentChildConnector({
+      edgeType: 'social',
+      uplines: [seg(50, 150, 50, 100)],
+      siblingBar: undefined,
+      parentLink: [
+        seg(0, 25, 0, 62),
+        seg(100, 25, 100, 62),
+        seg(0, 62, 50, 62),
+        seg(50, 62, 100, 62),
+        seg(50, 62, 50, 100),
+      ],
+      parentLinkParentIds: [['ann'], ['bob'], ['ann'], ['bob'], ['ann', 'bob']],
+      parentIds: ['ann', 'bob'],
+      uplineChildIds: ['child1'],
+    });
+    const container = draw(
+      withLines([connector]),
+      [edgeKey('ann', 'child1')],
+      ['ann', 'bob', 'child1'],
+    );
+    expect(isLineDimmed(uprightStrokeAt(container, 0, 40)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 25, 62)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 50, 80)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 100, 40)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 75, 62)!)).toBe(true);
+  });
+
+  // Two social co-parents' lines that join at (100, 50) and run on as one
+  // line down to the child.
+  const joinedSocial: AuxiliaryConnector[] = [
+    {
+      type: 'auxiliary',
+      edgeType: 'social',
+      points: [
+        { x: 0, y: 0 },
+        { x: 0, y: 50 },
+        { x: 100, y: 50 },
+        { x: 100, y: 100 },
+      ],
+      endpointIds: ['lead', 'child'],
+      joinsAt: 2,
+    },
+    {
+      type: 'auxiliary',
+      edgeType: 'social',
+      points: [
+        { x: 200, y: 0 },
+        { x: 200, y: 50 },
+        { x: 100, y: 50 },
+        { x: 100, y: 100 },
+      ],
+      endpointIds: ['mate', 'child'],
+      joinsAt: 2,
+    },
+  ];
+
+  test('a dashed joined tail and each lead-in are lit by their own lit ties, not by their people being highlighted', () => {
+    const container = draw(
+      withLines([], { auxiliaryLines: joinedSocial }),
+      [edgeKey('mate', 'child')],
+      ['lead', 'mate', 'child'],
+    );
+    expect(isLineDimmed(uprightStrokeAt(container, 100, 75)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 200, 25)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 0, 25)!)).toBe(true);
+
+    const none = draw(
+      withLines([], { auxiliaryLines: joinedSocial }),
+      [],
+      ['lead', 'mate', 'child'],
+    );
+    expect(isLineDimmed(uprightStrokeAt(none, 100, 75)!)).toBe(true);
+    expect(isLineDimmed(uprightStrokeAt(none, 200, 25)!)).toBe(true);
+  });
+
+  test('a donor’s line ending on a line of descent is lit only when a lit tie enters there', () => {
+    const solidRun = makeParentChildConnector({
+      ...adoptiveRun,
+      edgeType: 'biological',
+      parentIds: ['parent1'],
+    });
+    // The donor is on the focal lineage through someone else entirely.
+    const elsewhere = draw(
+      withLines([solidRun], { auxiliaryLines: [donorToStem] }),
+      [edgeKey('parent1', 'child3'), edgeKey('donor', 'someoneElse')],
+    );
+    expect(isLineDimmed(uprightStrokeAt(elsewhere, 10, 50)!)).toBe(true);
+
+    const here = draw(
+      withLines([solidRun], { auxiliaryLines: [donorToStem] }),
+      [edgeKey('donor', 'child2')],
+    );
+    expect(isLineDimmed(uprightStrokeAt(here, 10, 50)!)).toBe(false);
+  });
+
+  // Dad (x=200) has a child with Ann (x=0) and a child with Bea (x=400);
+  // each couple's line of descent drops from the middle of their
+  // partnership line.
+  const twoPartnerships = (isActive = true) =>
+    withLines(
+      [
+        makeParentChildConnector({
+          uplines: [seg(100, 150, 100, 100)],
+          siblingBar: undefined,
+          parentLink: [seg(100, 50, 100, 100)],
+          parentIds: ['ann', 'dad'],
+          uplineChildIds: ['childA'],
+        }),
+        makeParentChildConnector({
+          uplines: [seg(300, 150, 300, 100)],
+          siblingBar: undefined,
+          parentLink: [seg(300, 50, 300, 100)],
+          parentIds: ['dad', 'bea'],
+          uplineChildIds: ['childB'],
+        }),
+      ],
+      {
+        groupLines: [
+          makeCoupleBar({
+            segment: seg(0, 50, 200, 50),
+            partnerIds: ['ann', 'dad'],
+            descentXPositions: [100],
+            isActive,
+          }),
+          makeCoupleBar({
+            segment: seg(200, 50, 400, 50),
+            partnerIds: ['dad', 'bea'],
+            descentXPositions: [300],
+          }),
+        ],
+      },
+    );
+
+  test('a partner’s half of a partnership line lights only for a lit tie to a child of that partnership', () => {
+    const container = draw(
+      twoPartnerships(),
+      [edgeKey('dad', 'childA')],
+      ['dad', 'childA'],
+    );
+    expect(isLineDimmed(barStrokeAt(container, 150, 50)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 50, 50)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 250, 50)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 350, 50)!)).toBe(true);
+    expect(isLineDimmed(uprightStrokeAt(container, 100, 75)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 300, 75)!)).toBe(true);
+  });
+
+  test('a couple’s line carries both partners’ ties, from where it leaves their partnership line', () => {
+    // An aunt and uncle with no children of their own raise their niece:
+    // one line leaves the middle of their partnership line for her.
+    const container = draw(
+      withLines([], {
+        groupLines: [
+          makeCoupleBar({
+            partnerIds: ['aunt', 'uncle'],
+            descentXPositions: undefined,
+          }),
+        ],
+        auxiliaryLines: [
+          {
+            type: 'auxiliary',
+            edgeType: 'adoptive',
+            points: [
+              { x: 100, y: 50 },
+              { x: 100, y: 120 },
+              { x: 300, y: 120 },
+              { x: 300, y: 200 },
+            ],
+            endpointIds: ['aunt', 'niece'],
+          },
+        ],
+      }),
+      [edgeKey('uncle', 'niece')],
+    );
+    expect(isLineDimmed(uprightStrokeAt(container, 100, 80)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 150, 50)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 50, 50)!)).toBe(true);
+  });
+
+  test('a former partnership line is lit only along the lit tie’s course', () => {
+    const container = draw(
+      twoPartnerships(false),
+      [edgeKey('ann', 'childA')],
+      ['ann', 'dad', 'childA'],
+    );
+    expect(isLineDimmed(barStrokeAt(container, 10, 50)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 190, 50)!)).toBe(true);
   });
 });
