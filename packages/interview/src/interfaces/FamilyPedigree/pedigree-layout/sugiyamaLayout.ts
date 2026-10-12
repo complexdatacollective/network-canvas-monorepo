@@ -1157,32 +1157,44 @@ function buildConstraintBlocks(
     const familyUnit = graph.familyOf.get(child)!;
     // The side of the sibship the child sits on (see `sibshipOrder`): -1
     // left, 1 right, 0 the middle (an only child). A parent of every child
-    // in the sibship joins its bar instead, from either side. A donor's or
-    // surrogate's line meets the line of descent of the run of children
-    // they gave to, so it is the side of that run.
+    // in the sibship in the same way joins its bar instead, from either
+    // side. A donor's or surrogate's line meets the line of descent of the
+    // run of children they gave to, so it is the side of that run; a parent
+    // who is a donor to some children and raises others is seated for that
+    // line, as their other lines end on each child they raise.
     const siblings = sibshipOrder(
       familyUnit.children.filter(
         (c) => graph.layers[c] === graph.layers[child],
       ),
       graph,
     );
+    const tieOf = (parent: number, to = child) =>
+      graph.parentEdgeTypes.get(`${parent}-${to}`) ?? 'biological';
+    // The places of the children a parent is a donor or surrogate to.
+    const runOf = (aux: number) =>
+      siblings.flatMap((c, k) => (isAuxiliaryEdge(tieOf(aux, c)) ? [k] : []));
+    // The tie whose line the parent is seated for.
+    const lineTieOf = (aux: number) => {
+      const [first] = runOf(aux);
+      return first === undefined ? tieOf(aux) : tieOf(aux, siblings[first]!);
+    };
     const parentOfAll = (aux: number) =>
-      siblings.every((c) => graph.extraParents.get(c)?.includes(aux));
+      siblings.every(
+        (c) =>
+          graph.extraParents.get(c)?.includes(aux) &&
+          tieOf(aux, c) === lineTieOf(aux),
+      );
     const sideOfChild = (aux: number) => {
       if (parentOfAll(aux)) return 0;
       const middle = (siblings.length - 1) / 2;
-      if (!isAuxiliaryEdge(tieOf(aux))) {
+      const run = runOf(aux);
+      if (run.length === 0) {
         return Math.sign(siblings.indexOf(child) - middle);
       }
-      const run = siblings.flatMap((c, k) =>
-        isAuxiliaryEdge(tieOf(aux, c)) ? [k] : [],
-      );
       return Math.sign(
         run.reduce((sum, k) => sum + k, 0) / run.length - middle,
       );
     };
-    const tieOf = (parent: number, to = child) =>
-      graph.parentEdgeTypes.get(`${parent}-${to}`) ?? 'biological';
     for (const aux of extras) {
       if (!nodeSet.has(aux)) continue;
       const coupleOnLayer = familyUnit.parentGroup.members.filter((m) =>
@@ -1435,11 +1447,7 @@ function buildConstraintBlocks(
       );
       // Past the donors already seated on that side whose runs lie nearer
       // the middle of the sibship.
-      const run = isDonor
-        ? siblings.flatMap((c, k) =>
-            isAuxiliaryEdge(tieOf(aux, c)) ? [k] : [],
-          )
-        : [];
+      const run = runOf(aux);
       const place =
         run.length > 0 && !parentOfAll(aux)
           ? run.reduce((sum, k) => sum + k, 0) / run.length
@@ -1569,28 +1577,34 @@ function collectLayerEdges(
     }
     for (const [extra, children] of extraChildren) {
       const at = pos.get(extra)!;
-      // A donor's or surrogate's line meets the line of descent of the
+      // One line for each kind of tie the parent has to these children. A
+      // donor's or surrogate's line meets the line of descent of the
       // children they gave to once, at the run they sit together in, and a
-      // parent of every child joins the sibship's bar: either way it ends at
-      // the near end of those children.
-      const helper = children.every((child) =>
-        isAuxiliaryEdge(
-          graph.parentEdgeTypes.get(`${extra}-${child}`) ?? 'biological',
-        ),
-      );
-      if (
-        (children.length === childrenOnLower.length || helper) &&
-        children.length > 1
-      ) {
-        const theirs = children.map((c) => pos.get(c)!);
-        edges.push([
-          at,
-          at < descentX ? Math.min(...theirs) : Math.max(...theirs),
-          helper ? 'helper' : 'other',
-        ]);
-      } else {
-        for (const child of children) {
-          edges.push([at, pos.get(child)!, helper ? 'helper' : 'other']);
+      // parent of every child in the same way joins the sibship's bar:
+      // either way it ends at the near end of those children. Any other
+      // line ends on each child.
+      const byTie = new Map<PedigreeEdgeType, number[]>();
+      for (const child of children) {
+        const tie =
+          graph.parentEdgeTypes.get(`${extra}-${child}`) ?? 'biological';
+        byTie.set(tie, [...(byTie.get(tie) ?? []), child]);
+      }
+      for (const [tie, tied] of byTie) {
+        const helper = isAuxiliaryEdge(tie);
+        if (
+          (tied.length === childrenOnLower.length || helper) &&
+          tied.length > 1
+        ) {
+          const theirs = tied.map((c) => pos.get(c)!);
+          edges.push([
+            at,
+            at < descentX ? Math.min(...theirs) : Math.max(...theirs),
+            helper ? 'helper' : 'other',
+          ]);
+        } else {
+          for (const child of tied) {
+            edges.push([at, pos.get(child)!, helper ? 'helper' : 'other']);
+          }
         }
       }
       const nearest = parentPositions.reduce((best, p) =>
@@ -1625,13 +1639,19 @@ function collectLayerEdges(
  * What two crossed lines of descent cost, against 1 for any crossing with an
  * extra parent's line. Crossed lines of descent put each child under the
  * other family's parents, where the drawing reads as the wrong parentage, so
- * any number of extra parents' crossings short of this is preferred. A
- * donor's or surrogate's line crossing a line of descent costs the same: it
- * meets the line of descent of the children they gave to from the side of
- * their run, so it crosses one only to reach a run in the middle of a
- * sibship.
+ * any number of extra parents' crossings short of this is preferred.
  */
 const DESCENT_CROSSING_WEIGHT = 4;
+/**
+ * What a donor's or surrogate's line crossing a line of descent costs. It
+ * meets the line of descent of the children they gave to from the side of
+ * their run (Josh, 12 Oct 2026), so it crosses one only to reach a run in
+ * the middle of a sibship; from the wrong side it comes in under the
+ * sibling bar, which no number of other parents' crossings outweighs (a
+ * donor who also raises another of the children is seated for the donor's
+ * line, though the other line then crosses more).
+ */
+const HELPER_CROSSING_WEIGHT = 2 * DESCENT_CROSSING_WEIGHT;
 
 function countCrossings(
   layerOrdering: number[][],
@@ -1659,9 +1679,11 @@ function countCrossings(
         if ((u1 < u2 && v1 > v2) || (u1 > u2 && v1 < v2)) {
           const lines = new Set([line1, line2]);
           crossings +=
-            lines.has('descent') && !lines.has('other')
-              ? DESCENT_CROSSING_WEIGHT
-              : 1;
+            !lines.has('descent') || lines.has('other')
+              ? 1
+              : lines.has('helper')
+                ? HELPER_CROSSING_WEIGHT
+                : DESCENT_CROSSING_WEIGHT;
         }
       }
     }

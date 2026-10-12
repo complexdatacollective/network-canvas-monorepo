@@ -414,6 +414,42 @@ describe('a donor’s line meets the line of descent of the children they gave t
     return { nodes, edges };
   }
 
+  /** A couple's first two children were conceived with Paul as donor, and
+   * Luis raises them; Paul also raises their third child, Luis's own. Paul
+   * is a parent of every child, but a donor to two of them only. Recorded
+   * with the donor-conceived children first, or last. */
+  function donorWhoRaisesAnother(order: string[]) {
+    const nodes = [
+      ...order.map((id) =>
+        id === 'ego'
+          ? person('ego', { name: 'Maya', sex: ['female'], isEgo: true })
+          : id === 'ruby'
+            ? woman('ruby', 'Ruby')
+            : man('theo', 'Theo'),
+      ),
+      mother(),
+      man('luis', 'Luis'),
+      man('paul', 'Paul'),
+    ];
+    const edges = [
+      link('hannah', 'luis', 'partner', { current: true }),
+      ...order.flatMap((child) =>
+        child === 'theo'
+          ? [
+              birth(child),
+              link('luis', child, 'biological', { carrier: false }),
+              link('paul', child, 'social', { carrier: false }),
+            ]
+          : [
+              birth(child),
+              link('luis', child, 'social', { carrier: false }),
+              donor('paul', child),
+            ],
+      ),
+    ];
+    return { nodes, edges };
+  }
+
   const families = {
     'a donor to two of three half-siblings': halfSiblings,
     'a donor to two siblings added apart': addedApart,
@@ -450,6 +486,23 @@ describe('a donor’s line meets the line of descent of the children they gave t
         ...faultsOfSiblingGrouping(drawing, ties),
       ]).toEqual([]);
     });
+
+    // Paul is a parent of all three children, but a donor to two: his
+    // donor's line meets their run's stem from the outer side.
+    for (const order of [
+      ['ego', 'ruby', 'theo'],
+      ['theo', 'ego', 'ruby'],
+    ]) {
+      it(`passes the strict checks of the donor's line: a donor to two children who raises the third, recorded ${order.join(', ')} (${size}px symbols)`, () => {
+        const { nodes, edges } = donorWhoRaisesAnother(order);
+        const drawing = drawAsInterface(nodes, edges, size);
+        const ties = helperTiesOf(edges);
+        expect([
+          ...faultsOfHelperLines(drawing, ties, idsOf(nodes)),
+          ...faultsOfSiblingGrouping(drawing, ties),
+        ]).toEqual([]);
+      });
+    }
 
     it(`reaches the two half-siblings who share a donor by one line, and the third by their own line up (${size}px symbols)`, () => {
       const { nodes, edges } = halfSiblings();
