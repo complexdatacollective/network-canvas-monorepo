@@ -582,13 +582,21 @@ recreating the canonical sample protocol through Architect's own UI.
   diagnosing only — never use it to change app state, call app internals, or
   write IndexedDB/localStorage, because that would bypass the UI under test.
 - Navigation and click results usually return only a link to a snapshot
-  file; call browser_snapshot for the tree.
+  file; call browser_snapshot for the tree. Tool "filename" arguments resolve
+  against the repository root: never pass one except as a path under
+  .playwright-mcp/, so no run output lands in the working tree.
 - Refs go stale after every re-render, and an open modal marks everything
   behind it aria-hidden. Take a fresh snapshot before acting on an earlier
   ref, or target controls with a role selector instead, e.g.
   getByRole('button', { name: 'Upload file' }); add exact: true where a name
   is ambiguous ("Return to Start Screen" also matches the logo button).
 - Architect's dialogs are in-page modals, not browser dialogs.
+- browser_type replaces a field's content unless you pass slowly: true, which
+  types key by key and appends. Rich-text editors need slowly: true, with
+  Enter between paragraphs; their markdown shortcuts (**bold**, "* ", "1. ")
+  work while typing.
+- Radio inputs sit under labels that intercept clicks: click the label text,
+  and add exact: true where names overlap ("No" also matches "Node").
 - To upload a file, click the control that opens the native file chooser; the
   tool result then reports a "[File chooser]" modal state, which you answer
   with browser_file_upload { paths: ["<absolute path>"] }. The browser can
@@ -659,7 +667,11 @@ ${sampleSourceNote}
    their text, subject, variables each prompt reads or writes, forms and their
    fields, panels and data sources, backgrounds, layout, behaviours, sort and
    search options, filter and skip logic, content items with the assets they
-   show. Give exact text and values from the file. Say which codebook entries
+   show. Give exact text and values from the file, and say where the order
+   of selections matters (e.g. the edge types a preset displays). Every
+   resource is uploaded once, before any stage is built, so describe a
+   stage's resources as selections from the library, never as uploads. Say
+   which codebook entries
    already exist from earlier stages and which this stage introduces. Do not
    describe internal ids or JSON keys; describe what a person sets.
    weight: 1 for an Information stage, 2 for a stage that reuses existing
@@ -678,7 +690,8 @@ Run directory: ${analysis.workDir}
    worker serving an older build, so first evaluate
    (await navigator.serviceWorker.getRegistration())?.unregister(), reload,
    and wait for the start screen.
-2. Create a new protocol named exactly "${protocolName}".
+2. Create a new protocol named exactly "${protocolName}", and give it the
+   specification's protocol description through the editor.
 3. Add every asset below to the protocol's resource library through the UI,
    uploading each file through the file chooser, and give each the name
    listed (rename it in the app if the app names it differently). Confirm
@@ -699,6 +712,10 @@ The canonical file is ${analysis.canonicalPath}; read it whenever the plan
 leaves a detail open — it is the specification, and exact text and values
 matter.
 Protocol to edit: "${protocolName}" (open it from the start screen's list).
+
+Every resource the specification uses is already in the protocol's resource
+library: select it there wherever a stage needs one, and never upload a file
+again — a second copy is a divergence from the specification.
 
 Codebook plan (create entries only where your stages first need them; reuse
 existing node types, edge types and variables rather than duplicating them):
@@ -1006,8 +1023,16 @@ const runSampleBuild = async () => {
     );
   }
 
+  // The audit's inspection of the exported protocol outranks a builder's
+  // self-report: a stage a builder called partial but the audit matched to
+  // the specification was built.
+  const auditMatched = (index) =>
+    comparison &&
+    comparison.stages.some((s) => s.index === index && s.fidelity === 'match');
   const unbuilt = analysis.stages.filter(
-    (s) => (stageStatus.get(s.index) || {}).status !== 'built',
+    (s) =>
+      !auditMatched(s.index) &&
+      (stageStatus.get(s.index) || {}).status !== 'built',
   );
   add(
     'stages',
