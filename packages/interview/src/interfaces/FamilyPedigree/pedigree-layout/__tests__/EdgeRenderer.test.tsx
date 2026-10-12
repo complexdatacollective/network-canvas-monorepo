@@ -1164,8 +1164,6 @@ describe('PedigreeLayout — highlightedEdgeKeys prop forwarded', () => {
 describe('auxiliary lines that cross another line', () => {
   test('hop over each crossing with a half circle, and are drawn whole elsewhere', () => {
     const hopped = auxiliaryPath({
-      type: 'auxiliary',
-      edgeType: 'donor',
       points: [
         { x: 0, y: 0 },
         { x: 100, y: 0 },
