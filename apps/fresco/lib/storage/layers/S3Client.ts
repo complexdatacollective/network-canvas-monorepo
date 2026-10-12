@@ -10,41 +10,17 @@ async function getS3Config(): Promise<S3StorageConfig> {
   return config;
 }
 
-type S3ClientOptions = {
-  endpoint: string;
-  region: string;
-  accessKeyId: string;
-  secretAccessKey: string;
-};
-
-export function createS3Client({
-  endpoint,
-  region,
-  accessKeyId,
-  secretAccessKey,
-}: S3ClientOptions): S3Client {
+function makeClient(endpoint: string, config: S3StorageConfig): S3Client {
   return new S3Client({
     endpoint,
-    region,
-    credentials: { accessKeyId, secretAccessKey },
-    // Required for bucket-in-path URLs that the reverse-proxy path route
-    // depends on, and for S3-compatible stores without virtual-host buckets.
-    forcePathStyle: true,
-    // By default the SDK signs a CRC32 of an empty body into every presigned
-    // PUT URL. The browser then uploads a real body, and stores that verify
-    // the checksum (Garage among them) reject it as InvalidDigest. Checksums
-    // are sent only where an operation requires one.
-    requestChecksumCalculation: 'WHEN_REQUIRED',
-    responseChecksumValidation: 'WHEN_REQUIRED',
-  });
-}
-
-function makeClient(endpoint: string, config: S3StorageConfig): S3Client {
-  return createS3Client({
-    endpoint,
     region: config.region,
-    accessKeyId: config.accessKeyId,
-    secretAccessKey: config.secretAccessKey,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+    // Required for MinIO and for bucket-in-path URLs that the reverse-proxy
+    // path route depends on.
+    forcePathStyle: true,
   });
 }
 

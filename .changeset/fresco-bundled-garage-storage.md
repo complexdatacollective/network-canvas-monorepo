@@ -15,7 +15,3 @@ storage step needs no manual preparation. The deployment needs Docker Engine
 This release does not migrate existing files. A deployment that already runs
 the bundled MinIO and switches to the new compose file loses its MinIO service;
 the files stay in the `minio` Docker volume until the operator moves them.
-
-Uploads to S3-compatible services that reject the AWS SDK's default checksum
-on presigned uploads, Garage among them, now succeed: Fresco sends a checksum
-only when the service requires one.
