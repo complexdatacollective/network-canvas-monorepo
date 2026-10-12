@@ -1,4 +1,4 @@
-import { describe, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 /**
  * Families drawn exactly as the interface draws them: read from the network
