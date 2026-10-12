@@ -17,7 +17,7 @@ import { createRequire } from 'node:module';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { lane } from './lanes.mjs';
+import { lane, STORAGE } from './lanes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = join(here, '..', '..', '..', '..');
@@ -161,7 +161,7 @@ const sampleProtocol = join(
  * The setup wizard, end to end, leaving the browser on the dashboard.
  *
  * Storage is configured through the wizard rather than by environment
- * variables, exactly as a bundled-MinIO deployment does, so this exercises the
+ * variables, exactly as a bundled-Garage deployment does, so this exercises the
  * path a self-hoster actually takes.
  */
 export async function completeSetup(
@@ -215,18 +215,18 @@ export async function completeSetup(
     await page.getByRole('button', { name: 'Create account' }).click();
   });
 
-  // Storage: the bundled-MinIO configuration this lane's compose file serves.
+  // Storage: the bundled-Garage configuration this lane's compose file serves.
   await advance(2, async () => {
     await page.getByRole('option', { name: /S3/ }).click();
     await fillStable(
       page,
       [
-        ['s3Endpoint', 'http://minio:9000'],
-        ['s3PublicUrl', `http://localhost:${config.minioPort}`],
-        ['s3Bucket', 'fresco-test'],
-        ['s3Region', 'us-east-1'],
-        ['s3AccessKeyId', 'minioadmin'],
-        ['s3SecretAccessKey', 'minioadmin'],
+        ['s3Endpoint', STORAGE.endpoint],
+        ['s3PublicUrl', `http://localhost:${config.storagePort}`],
+        ['s3Bucket', STORAGE.bucket],
+        ['s3Region', STORAGE.region],
+        ['s3AccessKeyId', STORAGE.accessKeyId],
+        ['s3SecretAccessKey', STORAGE.secretAccessKey],
       ].map(([name, value]) => [page.locator(`input[name="${name}"]`), value]),
     );
     await page
@@ -304,7 +304,7 @@ export async function waitForImportToast(
  * Uploads a .netcanvas through the page's own file input.
  *
  * Playwright can operate the real input, so this lane does not need the
- * MinIO-staging dance AGENT_NOTES describes for the in-app browser — which
+ * storage-staging dance AGENT_NOTES describes for the in-app browser — which
  * matters beyond convenience: the damaged-archive fixtures have to reach the
  * import the way a researcher's file does.
  */

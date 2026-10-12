@@ -22,9 +22,11 @@ done
 [ -n "$LANES" ] || LANES="upgrade fresh analytics twofactor"
 
 for lane in $LANES; do
-  # Interpolation values are irrelevant for `down`, but compose warns on unset
-  # variables — provide the defaults.
-  FRESCO_IMAGE="unused" docker compose \
+  # Interpolation values are irrelevant for `down`, but compose refuses to load
+  # the file while a required one is unset — provide placeholders.
+  FRESCO_IMAGE="unused" GARAGE_ACCESS_KEY_ID="unused" \
+    GARAGE_SECRET_ACCESS_KEY="unused" GARAGE_RPC_SECRET="unused" \
+    GARAGE_ADMIN_TOKEN="unused" docker compose \
     -p "fresco-release-test-$lane" -f "$SCRIPT_DIR/docker-compose.yml" \
     down -v --remove-orphans
 done
