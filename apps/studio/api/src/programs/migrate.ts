@@ -1,5 +1,6 @@
-import { Console, Effect, Layer, Schema } from 'effect';
+import { Console, Effect, Layer, Ref, Schema } from 'effect';
 
+import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import { MaintenanceDatabase, OwnerDatabase } from '../db/client.ts';
@@ -13,6 +14,10 @@ import { OwnerScope, Transaction } from '../db/tenant.ts';
 import { Environment } from '../env.ts';
 import { InstallationIdentity } from '../platform/installation-identity.ts';
 import { ObservabilityLive } from '../platform/tracing.ts';
+import {
+  type PinnedUpgradeCounts,
+  upgradePinnedStudies,
+} from '../protocol/upgrade-pinned.ts';
 import { SecretsCipher } from '../secrets/services.ts';
 import { verifyStoredKeys } from '../secrets/verify.ts';
 import {
@@ -85,6 +90,35 @@ const keyringCheckedBeforeCommit = Effect.gen(function* () {
   yield* sql.unsafe('RESET ROLE');
 });
 
+class PinnedUpgradeRefused extends Schema.TaggedError<PinnedUpgradeRefused>()(
+  'PinnedUpgradeRefused',
+  { cause: Schema.Defect() },
+) {
+  override get message(): string {
+    return `${deepestMessage(this.cause) ?? String(this.cause)}\n${NOTHING_APPLIED}`;
+  }
+}
+
+/**
+ * After the keyring check, in the same transaction: every protocol version a
+ * study that is not closed still runs, stored below the schema this release's
+ * interview runtime executes, is migrated and published, and the waves and
+ * in-flight sessions pinned to it move onto the result
+ * (`protocol/upgrade-pinned.ts`). A version or session that cannot be carried
+ * across rolls the upgrade back, so no study is left pinned to a protocol
+ * this release cannot run. What it did is recorded for printing once the
+ * transaction has committed.
+ */
+const pinnedStudiesUpgradedBeforeCommit = (
+  done: Ref.Ref<PinnedUpgradeCounts | null>,
+) =>
+  upgradePinnedStudies().pipe(
+    Effect.flatMap((counts) => Ref.set(done, counts)),
+    Effect.catchTag('PinnedUpgradeFailed', (cause) =>
+      Effect.fail(new PinnedUpgradeRefused({ cause })),
+    ),
+  );
+
 /**
  * Rendered beside the bundle at build time by `scripts/render-migrations.ts`;
  * decoded and verified by `readVerifiedMigrations`.
@@ -122,16 +156,20 @@ const migrate = (document: Effect.Effect<string, unknown>) =>
     ).pipe(Effect.provide(owner));
     yield* resolveInstallation;
 
-    // A refusal of the keyring, of a statement or of the COMMIT already names
-    // itself and says whether anything was applied; anything else is
-    // reported as Postgres or the runner put it.
+    // A refusal of the keyring, of the pinned-version upgrade, of a statement
+    // or of the COMMIT already names itself and says whether anything was
+    // applied; anything else is reported as Postgres or the runner put it.
+    const upgraded = yield* Ref.make<PinnedUpgradeCounts | null>(null);
     yield* migrateDatabaseEffect(migrations, {
       log: (line) => Effect.runSync(Console.log(line)),
       appliedBy: STUDIO_VERSION,
-      beforeCommit: keyringCheckedBeforeCommit,
+      beforeCommit: keyringCheckedBeforeCommit.pipe(
+        Effect.andThen(pinnedStudiesUpgradedBeforeCommit(upgraded)),
+      ),
     }).pipe(
       Effect.mapError((cause) =>
-        cause instanceof KeyringRefusedUpgrade
+        cause instanceof KeyringRefusedUpgrade ||
+        cause instanceof PinnedUpgradeRefused
           ? cause
           : new MigrateFailed({ cause }),
       ),
@@ -142,6 +180,13 @@ const migrate = (document: Effect.Effect<string, unknown>) =>
     yield* Console.log(
       'Stored secrets are readable with the configured keyring.',
     );
+    const counts = yield* Ref.get(upgraded);
+    if (counts !== null && counts.versions > 0) {
+      yield* Console.log(
+        `Upgraded ${counts.versions} pinned protocol version(s) to schema ${CURRENT_SCHEMA_VERSION}: ` +
+          `${counts.waves} wave(s) and ${counts.sessions} in-flight interview session(s) moved onto the migrated versions.`,
+      );
+    }
     yield* resolveInstallation;
 
     // On the OWNER scope, because neither application role holds INSERT on the
