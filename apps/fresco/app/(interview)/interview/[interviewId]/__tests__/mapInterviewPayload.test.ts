@@ -174,10 +174,16 @@ describe('mapInterviewPayload', () => {
     expect(payload.session.finishStageId).toBeNull();
   });
 
-  it('refuses a protocol row stored below the compatible version rather than mislabelling it', () => {
+  // The deploy migration leaves a protocol it cannot migrate in place, so the
+  // page must be able to tell the participant it cannot be opened rather than
+  // fail with an application error.
+  it('reports a protocol row stored below the compatible version as unreadable rather than mislabelling it', () => {
     const staleVersion = COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1;
 
-    expect(() => mapInterviewPayload(makeSource(staleVersion))).toThrow(
+    const result = mapInterviewPayload(makeSource(staleVersion));
+
+    expect(result).toMatchObject({ success: false, unreadable: 'protocol' });
+    expect(result.success ? undefined : String(result.error)).toMatch(
       new RegExp(
         `Test Protocol.+protocol-1.+${staleVersion}.+${COMPATIBLE_PROTOCOL_SCHEMA_VERSION}`,
         's',
@@ -185,10 +191,15 @@ describe('mapInterviewPayload', () => {
     );
   });
 
-  it('refuses a protocol row stored above the compatible version', () => {
-    expect(() =>
-      mapInterviewPayload(makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1)),
-    ).toThrow(/must be migrated/);
+  it('reports a protocol row stored above the compatible version as unreadable', () => {
+    const result = mapInterviewPayload(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION + 1),
+    );
+
+    expect(result).toMatchObject({ success: false, unreadable: 'protocol' });
+    expect(result.success ? undefined : String(result.error)).toMatch(
+      /must be migrated/,
+    );
   });
 
   describe('stored participant data', () => {
