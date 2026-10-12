@@ -8,8 +8,8 @@
 # Driven by up.sh / down.sh with a compose project name per lane, so every
 # lane runs side by side. Interpolated variables: FRESCO_IMAGE, FRESCO_PORT,
 # POSTGRES_PORT, STORAGE_PORT, SINK_HTTPS_PORT, SINK_HTTP_PORT, the Garage
-# secrets (GARAGE_ACCESS_KEY_ID, GARAGE_SECRET_ACCESS_KEY, GARAGE_RPC_SECRET:
-# fixed test values that up.sh exports), and the
+# key (GARAGE_ACCESS_KEY_ID, GARAGE_SECRET_ACCESS_KEY: fixed test values that
+# up.sh exports), and the
 # per-lane deployment switches below — FRESCO_DISABLE_ANALYTICS,
 # FRESCO_REQUIRE_TWO_FACTOR, FRESCO_NODE_TLS_REJECT_UNAUTHORIZED,
 # FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION, RELAY_SINK_SCRIPT. up.sh sets all of them; the defaults here are the
@@ -107,7 +107,6 @@ services:
     image: dxflrs/garage:v2.4.1@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
     command: ['/garage', 'server', '--single-node', '--default-bucket']
     environment:
-      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?Set GARAGE_RPC_SECRET (up.sh exports it)}
       GARAGE_DEFAULT_ACCESS_KEY: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID (up.sh exports it)}
       GARAGE_DEFAULT_SECRET_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY (up.sh exports it)}
       GARAGE_DEFAULT_BUCKET: assets
@@ -186,9 +185,14 @@ configs:
       metadata_dir = "/var/lib/garage/meta"
       data_dir = "/var/lib/garage/data"
 
-      # The node-to-node port. Required even with one node, and never
-      # published. Its secret comes from GARAGE_RPC_SECRET.
-      rpc_bind_addr = "[::]:3901"
+      # Garage's node-to-node port. A single node has no peers, but Garage
+      # still requires the port and its secret, and the garage command-line
+      # tool talks to the server through it. Bound to the container's own
+      # loopback, nothing outside the container can reach it, so the secret
+      # protects nothing and is fixed here rather than generated.
+      rpc_bind_addr = "127.0.0.1:3901"
+      rpc_public_addr = "127.0.0.1:3901"
+      rpc_secret = "0000000000000000000000000000000000000000000000000000000000000000"
 
       # Garage only accepts requests signed for the region it names. us-east-1
       # is what the setup wizard suggests and what S3 clients default to.

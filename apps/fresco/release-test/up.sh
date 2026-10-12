@@ -49,7 +49,7 @@ FRESCO_NODE_TLS_REJECT_UNAUTHORIZED="1"
 FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION="WHEN_SUPPORTED"
 RELAY_SINK_SCRIPT="relay-sink.mjs"
 
-# The bundled Garage's secrets. Fixed test values in Garage's own formats,
+# The bundled Garage's access key. Fixed test values in Garage's own formats,
 # the same for every lane: each lane's Garage is private to its stack, and the
 # setup wizard (fresco-driver.mjs, the workflow's setup prompts) and the
 # fixture/capture scripts all sign with this key. scripts/lanes.mjs holds the
@@ -57,7 +57,6 @@ RELAY_SINK_SCRIPT="relay-sink.mjs"
 # scripts/release-test/fresco-release-test-storage.test.mjs fails if they drift.
 GARAGE_ACCESS_KEY_ID="GK7e57000000000000000000a1"
 GARAGE_SECRET_ACCESS_KEY="7e57000000000000000000000000000000000000000000000000000000000000"
-GARAGE_RPC_SECRET="7e57000000000000000000000000000000000000000000000000000000000001"
 
 case "$LANE" in
   upgrade)
@@ -133,8 +132,7 @@ export LANE FRESCO_IMAGE="$IMAGE" FRESCO_PORT POSTGRES_PORT STORAGE_PORT \
   SINK_HTTPS_PORT SINK_HTTP_PORT FRESCO_DISABLE_ANALYTICS \
   FRESCO_REQUIRE_TWO_FACTOR FRESCO_NODE_TLS_REJECT_UNAUTHORIZED \
   FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION \
-  RELAY_SINK_SCRIPT GARAGE_ACCESS_KEY_ID GARAGE_SECRET_ACCESS_KEY \
-  GARAGE_RPC_SECRET
+  RELAY_SINK_SCRIPT GARAGE_ACCESS_KEY_ID GARAGE_SECRET_ACCESS_KEY
 compose() {
   docker compose -p "$PROJECT" -f "$SCRIPT_DIR/docker-compose.yml" "$@"
 }

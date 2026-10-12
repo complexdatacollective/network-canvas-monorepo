@@ -4,10 +4,9 @@
 
 The Docker deployment (`docker-compose.prod.yml`) now bundles
 [Garage](https://garagehq.deuxfleurs.fr) for file storage instead of MinIO,
-whose image is no longer published on Docker Hub. A new deployment needs three
-values in `.env` — `GARAGE_ACCESS_KEY_ID`, `GARAGE_SECRET_ACCESS_KEY` and
-`GARAGE_RPC_SECRET` — and the compose file prints the commands that generate
-them. Garage creates the `assets` bucket and its access key itself when it
+whose image is no longer published on Docker Hub. A new deployment needs two
+values in `.env`, `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY`, and
+the compose file prints the commands that generate them. Garage creates the `assets` bucket and its access key itself when it
 starts, so the setup wizard's storage step needs no manual preparation. The deployment needs Docker Engine
 25 or later and Docker Compose 2.23.1 or later.
 

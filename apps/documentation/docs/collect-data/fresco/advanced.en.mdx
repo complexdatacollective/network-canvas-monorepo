@@ -121,12 +121,11 @@ This configuration needs **Docker Engine 25 or newer** and **Docker Compose v2.2
 
 #### 1. Generate the storage secrets
 
-Garage needs three values in your `.env`. They have no defaults, and the stack will not start without them. Generate each one on your host:
+Garage needs two values in your `.env`. They have no defaults, and the stack will not start without them. Generate each one on your host:
 
 ```bash
 echo "GK$(openssl rand -hex 12)"   # GARAGE_ACCESS_KEY_ID
 openssl rand -hex 32               # GARAGE_SECRET_ACCESS_KEY
-openssl rand -hex 32               # GARAGE_RPC_SECRET
 ```
 
 Then add the results to `.env`:
@@ -134,10 +133,9 @@ Then add the results to `.env`:
 ```bash
 GARAGE_ACCESS_KEY_ID=GK...       # GK followed by 24 hex characters
 GARAGE_SECRET_ACCESS_KEY=...     # 64 hex characters
-GARAGE_RPC_SECRET=...            # Garage's internal secret
 ```
 
-Treat all three like passwords. Fresco uses the access key and secret to reach the bucket; the RPC secret stays inside the stack.
+Treat both like passwords: together they give full access to your stored files.
 
 #### 2. Enter the storage settings in the setup wizard
 

@@ -37,8 +37,6 @@ const REGION = 'us-east-1';
 const ACCESS_KEY_ID = 'GK7264a84895442c56d7af713e';
 const SECRET_ACCESS_KEY =
   '44ddf3da7d056e03767853bba63c422fd60365b6a613c6d367b2b83ab94e55eb';
-const RPC_SECRET =
-  '335eb119d65bbe23d71cc90755bdc7ef73c35f5e1afd7118c914b904850618f5';
 
 // The browser uploads and downloads straight from the store through presigned
 // URLs, which is cross-origin from `next dev`. Any origin, so a dev server that
@@ -76,7 +74,6 @@ const composeEnvironment: Record<string, string> = {
 
   GARAGE_ACCESS_KEY_ID: ACCESS_KEY_ID,
   GARAGE_SECRET_ACCESS_KEY: SECRET_ACCESS_KEY,
-  GARAGE_RPC_SECRET: RPC_SECRET,
 };
 
 const composeFlags = [

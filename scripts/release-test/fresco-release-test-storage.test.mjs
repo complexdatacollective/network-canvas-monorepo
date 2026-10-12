@@ -110,12 +110,7 @@ test('up.sh hands Garage the key the harness signs with', () => {
   // at start-up rather than here.
   assert.match(STORAGE.accessKeyId, /^GK[0-9a-f]{24}$/);
   assert.match(STORAGE.secretAccessKey, /^[0-9a-f]{64}$/);
-  assert.match(value('GARAGE_RPC_SECRET') ?? '', /^[0-9a-f]{64}$/);
-  for (const name of [
-    'GARAGE_ACCESS_KEY_ID',
-    'GARAGE_SECRET_ACCESS_KEY',
-    'GARAGE_RPC_SECRET',
-  ])
+  for (const name of ['GARAGE_ACCESS_KEY_ID', 'GARAGE_SECRET_ACCESS_KEY'])
     assert.match(
       /\nexport (?:[^\n\\]|\\\n)*/.exec(up)?.[0] ?? '',
       new RegExp(String.raw`\b${name}\b`),

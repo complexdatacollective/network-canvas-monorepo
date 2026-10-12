@@ -10,13 +10,11 @@
 #   ACME_EMAIL           - email for Let's Encrypt certificate notifications
 #   GARAGE_ACCESS_KEY_ID      - storage access key: GK followed by 24 lowercase hex characters
 #   GARAGE_SECRET_ACCESS_KEY  - storage secret key: 64 lowercase hex characters
-#   GARAGE_RPC_SECRET         - Garage's internal secret: 64 hex characters
 #
 # Generate each one with:
 #
 #   echo "GK$(openssl rand -hex 12)"   # GARAGE_ACCESS_KEY_ID
 #   openssl rand -hex 32               # GARAGE_SECRET_ACCESS_KEY
-#   openssl rand -hex 32               # GARAGE_RPC_SECRET
 #
 # Garage creates the access key and the 'assets' bucket from these on its
 # first start. Requires Docker Engine 25 or newer and Docker Compose v2.23.1 or
@@ -148,7 +146,6 @@ services:
     command: ['/garage', 'server', '--single-node', '--default-bucket']
     restart: always
     environment:
-      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?Set GARAGE_RPC_SECRET in .env (openssl rand -hex 32)}
       GARAGE_DEFAULT_ACCESS_KEY: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID in .env (GK followed by 24 hex characters)}
       GARAGE_DEFAULT_SECRET_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY in .env (openssl rand -hex 32)}
       GARAGE_DEFAULT_BUCKET: assets
@@ -185,9 +182,14 @@ configs:
       metadata_dir = "/var/lib/garage/meta"
       data_dir = "/var/lib/garage/data"
 
-      # The node-to-node port. Required even with one node, and never
-      # published. Its secret comes from GARAGE_RPC_SECRET.
-      rpc_bind_addr = "[::]:3901"
+      # Garage's node-to-node port. A single node has no peers, but Garage
+      # still requires the port and its secret, and the garage command-line
+      # tool talks to the server through it. Bound to the container's own
+      # loopback, nothing outside the container can reach it, so the secret
+      # protects nothing and is fixed here rather than generated.
+      rpc_bind_addr = "127.0.0.1:3901"
+      rpc_public_addr = "127.0.0.1:3901"
+      rpc_secret = "0000000000000000000000000000000000000000000000000000000000000000"
 
       # Garage only accepts requests signed for the region it names. us-east-1
       # is what the setup wizard suggests and what S3 clients default to.
