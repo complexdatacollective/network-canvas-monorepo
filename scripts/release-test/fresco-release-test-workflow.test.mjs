@@ -2244,6 +2244,17 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
         encoding: 'utf8',
       }),
     );
+  // A refusal exits non-zero with ok:false, so the run is left unpinned.
+  const refusal = () => {
+    const { status, stdout } = spawnSync(process.execPath, [script], {
+      cwd: work,
+      encoding: 'utf8',
+    });
+    assert.equal(status, 1, stdout);
+    const result = JSON.parse(stdout);
+    assert.equal(result.ok, false, stdout);
+    return result.error;
+  };
   try {
     mkdirSync(join(work, 'apps/fresco'), { recursive: true });
     git('init', '-q', '-b', 'work');
@@ -2280,9 +2291,43 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
 
     // The branch by name, releasing other packages only.
     git('checkout', '-q', '-b', 'changeset-release/main', 'origin/main');
+    git(
+      'update-ref',
+      'refs/remotes/origin/changeset-release/main',
+      git('rev-parse', 'HEAD'),
+    );
     const unbumped = detect();
     assert.equal(unbumped.onReleaseBranch, true);
     assert.equal(unbumped.releasesFresco, false);
+
+    // The branch by name, carrying a commit the PR does not: not the PR.
+    commitVersion('4.1.9');
+    assert.match(refusal(), /HEAD is not origin\/changeset-release\/main/);
+
+    // The branch by name with its tracking ref never fetched.
+    git('update-ref', '-d', 'refs/remotes/origin/changeset-release/main');
+    assert.match(refusal(), /fetch origin/);
+
+    // A release branch that moves Fresco backwards.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    git(
+      'update-ref',
+      'refs/remotes/origin/changeset-release/main',
+      commitVersion('4.1.0'),
+    );
+    assert.match(refusal(), /backwards, from 4\.1\.1 to 4\.1\.0/);
+
+    // A base whose version is not stable semver proves nothing about the bump.
+    git('update-ref', 'refs/remotes/origin/main', commitVersion('next'));
+    git(
+      'update-ref',
+      'refs/remotes/origin/changeset-release/main',
+      commitVersion('4.2.0'),
+    );
+    assert.match(
+      refusal(),
+      /merge base with origin\/main has no stable semver/,
+    );
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
