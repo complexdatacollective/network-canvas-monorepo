@@ -1391,3 +1391,81 @@ describe('PedigreeEdgeSvg — two co-parents’ lines that join', () => {
     ).toBe(true);
   });
 });
+
+describe('PedigreeEdgeSvg — a run inside another run', () => {
+  // A donor gave to children 1-3, who hang from a sub-bar at y=120 on a
+  // stem at x=60; a surrogate carried children 1 and 2, who hang from a
+  // sub-bar at y=140 on a stem at x=30 down from the first sub-bar. The
+  // donor's line meets the outer stem at y=110. Child 4 hangs from the
+  // sibling bar.
+  const connector = makeParentChildConnector({
+    uplines: [
+      seg(20, 160, 20, 140),
+      seg(40, 160, 40, 140),
+      seg(100, 160, 100, 120),
+      seg(180, 160, 180, 100),
+    ],
+    uplineChildIds: ['child1', 'child2', 'child3', 'child4'],
+    siblingBar: seg(60, 100, 180, 100),
+    parentLink: [seg(120, 60, 120, 100)],
+    parentIds: ['parent1'],
+    runs: [
+      { stem: seg(60, 100, 60, 120), bar: seg(20, 120, 100, 120) },
+      { stem: seg(30, 120, 30, 140), bar: seg(20, 140, 40, 140) },
+    ],
+  });
+  const draw = (edges: string[]) =>
+    render(
+      <PedigreeEdgeSvg
+        connectorData={{
+          connectors: {
+            groupLines: [],
+            parentChildLines: [connector],
+            auxiliaryLines: [
+              {
+                type: 'auxiliary',
+                edgeType: 'donor',
+                points: [
+                  { x: 0, y: 0 },
+                  { x: 0, y: 110 },
+                  { x: 60, y: 110 },
+                ],
+                endpointIds: ['donor', undefined],
+              },
+            ],
+            twinIndicators: [],
+            duplicateArcs: [],
+          },
+        }}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={new Set(edges.flatMap((edge) => edge.split('->')))}
+        highlightedEdgeKeys={new Set(edges)}
+      />,
+    ).container;
+
+  test('lights the way from the sibling bar down both stems to a contributing child of the inner run', () => {
+    const container = draw([edgeKey('parent1', 'child1')]);
+    expect(isLineDimmed(barStrokeAt(container, 90, 100)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 60, 115)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 45, 120)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 30, 130)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 25, 140)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 35, 140)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 80, 120)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 150, 100)!)).toBe(true);
+  });
+
+  test('carries a donor’s lineage from the outer stem down the inner one', () => {
+    const container = draw([edgeKey('donor', 'child2')]);
+    expect(isLineDimmed(uprightStrokeAt(container, 60, 105)!)).toBe(true);
+    expect(isLineDimmed(uprightStrokeAt(container, 60, 115)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 45, 120)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 30, 130)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 35, 140)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 40, 150)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 20, 150)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 90, 100)!)).toBe(true);
+  });
+});

@@ -268,19 +268,20 @@ function unaccounted(
     const ownUpline = sibship.flatMap((pc) =>
       pc.uplines.filter((_, k) => pc.uplineChildIds?.[k] === c),
     )[0]!;
-    const stems = [
-      ownUpline,
-      ...sibship.flatMap((pc) =>
-        (pc.runs ?? [])
-          .filter((run) =>
-            run.bar
-              ? onSegment(childTop, run.bar)
-              : close(childTop.x, run.stem.x2) &&
-                close(childTop.y, run.stem.y2),
-          )
-          .map((run) => run.stem),
-      ),
-    ];
+    // The stems of the runs the child is in: the one they hang from, the
+    // one that run hangs from in turn (a run inside another), and so on up.
+    const runs = sibship.flatMap((pc) => pc.runs ?? []);
+    const stems = [ownUpline];
+    for (let top: Point | undefined = childTop; top;) {
+      const at: Point = top;
+      const run = runs.find((candidate) =>
+        candidate.bar
+          ? onSegment(at, candidate.bar)
+          : close(at.x, candidate.stem.x2) && close(at.y, candidate.stem.y2),
+      );
+      top = run ? { x: run.stem.x1, y: run.stem.y1 } : undefined;
+      if (run) stems.push(run.stem);
+    }
     const strictlyWithin = (point: Point, s: LineSegment) =>
       distanceTo(point, s) < 0.5 &&
       Math.min(
@@ -467,6 +468,43 @@ const families: Record<string, { people: string[]; links: PedigreeLink[] }> = {
       parent('carrier', 'surrogate', 'ruby', true),
       parent('hannah', 'biological', 'theo', true),
       parent('theoDonor', 'donor', 'theo'),
+    ],
+  },
+  'an egg donor, a sperm donor and a surrogate for two of three children Hannah raises':
+    {
+      people: ['ego', 'hannah', 'egg', 'sperm', 'carrier', 'ruby', 'theo'],
+      links: [
+        ...['ego', 'ruby'].flatMap((child) => [
+          parent('hannah', 'social', child),
+          parent('egg', 'donor', child),
+          parent('sperm', 'donor', child),
+          parent('carrier', 'surrogate', child, true),
+        ]),
+        parent('hannah', 'social', 'theo'),
+      ],
+    },
+  'a surrogate for one of a donor’s two children, the other recorded first': {
+    people: ['ruby', 'theo', 'ego', 'hannah', 'paul', 'carrier'],
+    links: [
+      parent('hannah', 'biological', 'ruby', true),
+      parent('paul', 'donor', 'ruby'),
+      parent('hannah', 'biological', 'theo', true),
+      parent('hannah', 'biological', 'ego'),
+      parent('paul', 'donor', 'ego'),
+      parent('carrier', 'surrogate', 'ego', true),
+    ],
+  },
+  'a surrogate for two of a donor’s three children': {
+    people: ['ego', 'hannah', 'paul', 'carrier', 'ruby', 'theo', 'mia'],
+    links: [
+      ...['ego', 'ruby'].flatMap((child) => [
+        parent('hannah', 'biological', child),
+        parent('paul', 'donor', child),
+        parent('carrier', 'surrogate', child, true),
+      ]),
+      parent('hannah', 'biological', 'theo', true),
+      parent('paul', 'donor', 'theo'),
+      parent('hannah', 'biological', 'mia', true),
     ],
   },
   'a granddaughter adopted by her grandparents, with a former partner': {

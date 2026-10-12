@@ -739,12 +739,17 @@ function seatPartnershipTangle(
 }
 
 /**
- * A sibship's children in the order they are seated: grouped by the donors
- * and surrogates they share, so that each group is one run of the sibship
- * whose donors' lines meet its line of descent once; the groups in the order
- * their first children were recorded, and the children of a group in the
- * order recorded. Twins sit together, from where the first of them was
- * recorded, in the group of that twin.
+ * A sibship's children in the order they are seated: the children of each
+ * donor or surrogate side by side, so that their line meets the line of
+ * descent of that run of children once. Where one donor gave to some of
+ * another's children, the smaller run sits inside the larger (Josh, 12 Oct
+ * 2026: siblings grouped by donor). The groups, and the children outside
+ * any group, in the order their first children were recorded; children who
+ * share all their donors (none, say) together. Twins sit together, from
+ * where the first of them was recorded, in the group of that twin.
+ *
+ * Two donors whose children overlap without one run holding the other
+ * cannot both have one run: the larger (or first recorded) keeps its run.
  */
 function sibshipOrder(members: number[], graph: PedigreeGraph): number[] {
   const memberSet = new Set(members);
@@ -761,17 +766,72 @@ function sibshipOrder(members: number[], graph: PedigreeGraph): number[] {
     for (const member of set) placed.add(member);
     units.push(set.toSorted((a, b) => a - b));
   }
-  const helpersOf = (child: number) =>
-    graph.parents[child]!.filter((p) => isAuxiliaryEdge(p.edgeType))
-      .map((p) => `${p.parentIndex}:${p.edgeType}`)
-      .toSorted()
-      .join(',');
-  const groups = new Map<string, number[][]>();
-  for (const unit of units) {
-    const key = helpersOf(unit[0]!);
-    groups.set(key, [...(groups.get(key) ?? []), unit]);
+  const helpersOf = (unit: number[]) =>
+    graph.parents[unit[0]!]!.filter((p) => isAuxiliaryEdge(p.edgeType)).map(
+      (p) => `${p.parentIndex}:${p.edgeType}`,
+    );
+  const keyOf = (unit: number[]) => helpersOf(unit).toSorted().join(',');
+  // Each helper's children, as places among the units; helpers with the
+  // same children are one group.
+  const byChildren = new Map<string, number[]>();
+  for (const helper of new Set(units.flatMap(helpersOf))) {
+    const theirs = units.flatMap((unit, k) =>
+      helpersOf(unit).includes(helper) ? [k] : [],
+    );
+    byChildren.set(theirs.join(','), theirs);
   }
-  return [...groups.values()].flat(2);
+  // The groups kept as runs: each inside another or apart from it.
+  const kept: Set<number>[] = [];
+  for (const group of [...byChildren.values()].toSorted(
+    (a, b) => b.length - a.length || a[0]! - b[0]!,
+  )) {
+    if (group.length < 2 || group.length === units.length) continue;
+    const set = new Set(group);
+    const nests = (other: Set<number>) => {
+      const shared = group.filter((k) => other.has(k)).length;
+      return shared === 0 || shared === set.size || shared === other.size;
+    };
+    if (kept.every(nests)) kept.push(set);
+  }
+  // The places in order: the largest groups among them (each in order, the
+  // groups inside it seated within it), and the rest grouped by their
+  // donors, all by their first place.
+  const order = (places: number[]): number[] => {
+    const inner = kept.filter(
+      (group) =>
+        group.size < places.length &&
+        [...group].every((k) => places.includes(k)),
+    );
+    const outermost = inner.filter(
+      (group) =>
+        !inner.some(
+          (other) =>
+            other !== group &&
+            other.size > group.size &&
+            [...group].every((k) => other.has(k)),
+        ),
+    );
+    const items: number[][] = outermost.map((group) =>
+      places.filter((k) => group.has(k)),
+    );
+    const loose = new Map<string, number[]>();
+    for (const k of places) {
+      if (outermost.some((group) => group.has(k))) continue;
+      const key = keyOf(units[k]!);
+      loose.set(key, [...(loose.get(key) ?? []), k]);
+    }
+    items.push(...loose.values());
+    return items
+      .toSorted((a, b) => a[0]! - b[0]!)
+      .flatMap((item) =>
+        outermost.some(
+          (group) => group.size === item.length && group.has(item[0]!),
+        )
+          ? order(item)
+          : item,
+      );
+  };
+  return order(units.map((_, k) => k)).flatMap((k) => units[k]!);
 }
 
 function buildConstraintBlocks(

@@ -64,6 +64,9 @@ export type RoutingScene = {
   lines: DrawnLine[];
   /** The x of everyone on each row, for finding a way down between them. */
   rowXs: number[][];
+  /** By the row above each gap: the height of the highest sibling bar in
+   * the gap below it, where a sibship's runs raised it above the middle. */
+  barTops?: Map<number, number>;
 };
 
 export type RouteEnd =
@@ -91,6 +94,10 @@ export type RouteEnd =
       y: number;
       /** The children's row. */
       layer: number;
+      /** For a stem below the sub-bar of a run it is inside: where that
+       * sub-bar runs, which a line may come in under from beyond its end
+       * rather than cross. */
+      under?: [number, number];
     };
 
 /** How far a line runs level into a stem it meets, as fractions of the box
@@ -1115,17 +1122,27 @@ export function routeOptions(
         : [];
   const targets =
     end.kind === 'stem'
-      ? [-1, 1].flatMap((side) =>
-          STEM_APPROACHES.map((reach) => {
-            const at = { x: end.x + side * reach * boxw, y: end.y };
+      ? [-1, 1].flatMap((side) => {
+          const reaches = STEM_APPROACHES.map((reach) => reach * boxw);
+          // From beyond the end of the sub-bar above, so as to come in
+          // under it.
+          if (end.under) {
+            const beyond =
+              side < 0
+                ? end.x - end.under[0] + STEM_APPROACHES[0]! * boxw
+                : end.under[1] - end.x + STEM_APPROACHES[0]! * boxw;
+            if (beyond > reaches.at(-1)!) reaches.push(beyond);
+          }
+          return reaches.map((reach) => {
+            const at = { x: end.x + side * reach, y: end.y };
             return {
               x: at.x,
               entry: at,
               meet: at,
               tail: [{ x: end.x, y: end.y }],
             };
-          }),
-        )
+          });
+        })
       : end.kind === 'child'
         ? attachments.map((x) => {
             // Into the child from above, down to their centre. A straight line
@@ -1148,8 +1165,16 @@ export function routeOptions(
             }))
           : [];
 
+  // The lanes above the sibling bars keep above the highest of them.
   const gapLanes = (layer: number, fractions: number[]) =>
-    fractions.map((f) => layer + boxh + f * (1 - boxh));
+    fractions.map((f) => {
+      const top = layer + boxh;
+      const barTop = Math.min(
+        scene.barTops?.get(layer) ?? Infinity,
+        top + 0.5 * (1 - boxh),
+      );
+      return f < 0.5 ? top + 2 * f * (barTop - top) : top + f * (1 - boxh);
+    });
   const childLayer = end.layer;
   const rowsBetween = childLayer - from.layer;
 
@@ -1215,6 +1240,18 @@ export function routeOptions(
             endX: target.x,
           });
         }
+      }
+    }
+    if (end.kind === 'stem' && rowsBetween === 1) {
+      // Straight down from the parent to the height it meets the stem at,
+      // crossing any bar on its way square on, and level into the stem.
+      for (const exit of exits) {
+        const last = exit.at(-1)!;
+        if (Math.abs(last.x - end.x) < STEM_APPROACHES[0]! * boxw) continue;
+        candidates.push({
+          points: [...exit, { x: last.x, y: end.y }, { x: end.x, y: end.y }],
+          endX: last.x,
+        });
       }
     }
     if (rowsBetween >= 1) {

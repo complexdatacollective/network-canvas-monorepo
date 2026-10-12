@@ -516,9 +516,12 @@ export function faultsOfHelperLines(
           faults.push(`${name} does not end on a stem`);
         } else {
           stemEnds.push({ name, end, stem });
-          if (end.y < barY + 0.1 * size || end.y > lowest - 0.1 * size) {
+          // Clear of the bar the stem hangs from (the sibling bar, or the
+          // sub-bar of the run it is inside) and of the run below.
+          const above = Math.max(barY, upperEnd(stem).y);
+          if (end.y < above + 0.1 * size || end.y > lowest - 0.1 * size) {
             faults.push(
-              `${name} ends ${((end.y - barY) / size).toFixed(2)} of a symbol below the sibling bar, not clear of it and the run`,
+              `${name} ends ${((end.y - above) / size).toFixed(2)} of a symbol below the bar above it, not clear of it and the run`,
             );
           }
           const from = line.points.at(-2)!;
@@ -631,7 +634,9 @@ export function faultsOfHelperLines(
 }
 
 /** Siblings who share their donors and surrogates who do not sit side by
- * side: the children of each set of donors are one run in their sibship. */
+ * side: the children of each set of donors are one run in their sibship,
+ * and so are the children of each donor (a donor who gave to some of
+ * another's children has a run inside theirs). */
 export function faultsOfSiblingGrouping(
   drawing: Drawing,
   ties: HelperTie[],
@@ -660,8 +665,48 @@ export function faultsOfSiblingGrouping(
       }
       runs.push(set);
     }
+    // Each donor's children side by side.
+    for (const helper of new Set(
+      ties.map((tie) => `${tie.parent}:${tie.kind}`),
+    )) {
+      const places = siblings.flatMap((id, k) =>
+        donorsOf(id).split(',').includes(helper) ? [k] : [],
+      );
+      if (
+        places.length > 1 &&
+        places.at(-1)! - places[0]! + 1 > places.length
+      ) {
+        faults.push(`${helper}'s children do not sit side by side`);
+      }
+    }
   }
   return faults;
+}
+
+/** Sub-bars that run on past the lines hanging from them: each end of a
+ * run's sub-bar is where a child's line up, or the stem of a run inside it,
+ * comes down from it. */
+export function faultsOfRunBars(drawing: Drawing): string[] {
+  return drawing.connectors.parentChildLines.flatMap((line) => {
+    const runs = line.runs ?? [];
+    const hanging = [
+      ...line.uplines.map(upperEnd),
+      ...runs.map((run) => upperEnd(run.stem)),
+    ];
+    return runs.flatMap((run) =>
+      run.bar
+        ? [
+            { x: run.bar.x1, y: run.bar.y1 },
+            { x: run.bar.x2, y: run.bar.y2 },
+          ]
+            .filter((end) => !hanging.some((top) => near(top, end)))
+            .map(
+              (end) =>
+                `a sub-bar of ${(line.parentIds ?? []).join('+')}'s children runs on to ${end.x.toFixed(1)},${end.y.toFixed(1)} with nothing hanging from it`,
+            )
+        : [],
+    );
+  });
 }
 
 /**
@@ -777,6 +822,7 @@ export function strictLineFaults(
     ),
     ...faultsOfHelperLines(drawing, ties, people),
     ...faultsOfSiblingGrouping(drawing, ties),
+    ...faultsOfRunBars(drawing),
     ...faultsOfCoParentDescents(drawing),
   ];
 }

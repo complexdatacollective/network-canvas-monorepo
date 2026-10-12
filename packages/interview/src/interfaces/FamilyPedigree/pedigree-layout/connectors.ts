@@ -43,6 +43,12 @@ const SUB_BAR_RISE = 0.2;
 /** The same for a run whose stem two or more lines meet: lower, so that
  * the lowest of them comes in clear of the sub-bar. */
 const CROWDED_SUB_BAR_RISE = 0.1;
+/** How far apart the lines meeting one stem end, at least, as a fraction of
+ * a symbol's height. */
+const JUNCTION_GAP = 0.22;
+/** How much of the gap between the parents' row and the children's a
+ * sibship's bar may be raised into, at most, to give its runs' stems room. */
+const MAX_LEG_SHARE = 0.8;
 /** How far the lines meeting a run's stem keep from the sibling bar above
  * and the sub-bar below, as fractions of a symbol's height: a line coming
  * in nearer the sub-bar runs beside it on its way. */
@@ -64,8 +70,15 @@ type SibshipRunPlan = {
   stemX: number;
   topY: number;
   bottomY: number;
+  /** How far the lines meeting the stem keep from the bar above it, as a
+   * fraction of a symbol's height: further below the sub-bar of a run it
+   * is inside, which runs on either side of it, than below the sibling
+   * bar. */
+  topClearance: number;
   /** The stem and sub-bar drawn for a run of two or more. */
   drawn?: SibshipRun;
+  /** For a run inside another: where that run's sub-bar runs. */
+  under?: [number, number];
 };
 
 function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
@@ -478,25 +491,32 @@ export function computeConnectors(
     return { uplines, siblingBar, minTarget, maxTarget };
   };
 
-  // Each child in a run of their sibship (keyed "level,column"): the
-  // children beside them who share the donors and surrogates the rest of
-  // the sibship does not. Those donors' lines meet the run's line of
-  // descent: the stem of its sub-bar, or a lone child's line up.
-  const runOfChild = new Map<string, SibshipRunPlan>();
+  // The runs each child is in (keyed "level,column"), outermost first: the
+  // children beside them who share a donor or surrogate the rest of the
+  // sibship does not. Those donors' lines meet the run's line of descent:
+  // the stem of its sub-bar, or a lone child's line up.
+  const runsOfChild = new Map<string, SibshipRunPlan[]>();
   // The donors and surrogates of the child at column j on level i, as
   // "index:type".
   const helpersAt = (i: number, j: number) =>
     (parents[layout.nid[i]![j]!] ?? [])
       .filter((p) => !isPrimaryEdge(p.edgeType))
       .map((p) => `${p.parentIndex}:${p.edgeType}`);
-  // The sibship at `columns` on level i forked into its runs: the children
-  // beside one another (no one sitting between them) who share the same
-  // donors and surrogates, leaving out those who are every child's, and the
-  // same style of line. A run of two or more children hangs from a sub-bar
-  // on a stem of its own down from the sibling bar; their uplines are made
-  // to end on the sub-bar. A run keeps clear of `avoidX`, where the line of
-  // descent meets the bar, so the two never read as one line. Returns the
-  // runs, where each child's line meets the sibling bar, and the bar.
+  // The sibship at `columns` on level i forked into its runs: for each donor
+  // or surrogate who is not every child's, the children they gave to (or
+  // carried) beside one another (no one sitting between them) with the same
+  // style of line; donors who gave to the same children share a run. Where
+  // one donor gave to some of another's children, the smaller run hangs
+  // inside the larger: from its sub-bar, on a stem of its own. A run of two
+  // or more children hangs from a sub-bar on a stem down from the sibling
+  // bar (or the sub-bar of the run it is inside); their uplines are made to
+  // end on the sub-bar. Each stem is long enough for the lines that meet
+  // it to come in apart and clear of the bars above and below, the sibling
+  // bar raised where the gap below it is too short. A run keeps clear of
+  // `avoidX`, where the line of descent meets the bar, so the two never
+  // read as one line, and a run inside another clear of that one's stem.
+  // Returns the runs, where each child's line meets the sibling bar, the
+  // bar, and the height of the bar.
   const forkRuns = (
     i: number,
     columns: number[],
@@ -504,80 +524,183 @@ export function computeConnectors(
     styleOf: (k: number) => string,
     avoidX?: number,
   ) => {
-    const barY = i - legh;
     const sets = columns.map((j) => helpersAt(i, j));
     const common = new Set(
       (sets[0] ?? []).filter((h) => sets.every((set) => set.includes(h))),
     );
-    const keys = sets.map((set) =>
-      [...new Set(set.filter((h) => !common.has(h)))].toSorted().join(','),
-    );
     const targets = uplines.map((upline) => upline.x2);
-    const runs: SibshipRunPlan[] = [];
-    let current: (SibshipRunPlan & { key: string }) | undefined;
-    columns.forEach((j, k) => {
-      const key = keys[k]!;
-      if (key === '') {
-        current = undefined;
-        return;
-      }
-      if (
-        current &&
-        current.key === key &&
-        styleOf(current.ks.at(-1)!) === styleOf(k) &&
-        current.columns.at(-1) === j - 1
-      ) {
-        current.ks.push(k);
-        current.columns.push(j);
-        return;
-      }
-      current = {
-        key,
-        id: `${i},${j}`,
-        ks: [k],
-        columns: [j],
-        helpers: new Set(key.split(',')),
-        stemX: targets[k]!,
-        topY: barY,
-        bottomY:
-          i -
-          legh *
-            (key.split(',').length > 1 ? CROWDED_SUB_BAR_RISE : SUB_BAR_RISE),
+    // Each helper's children, in stretches side by side.
+    type Stretch = { ks: number[]; helpers: string[] };
+    const candidates: Stretch[] = [];
+    for (const helper of new Set(sets.flat())) {
+      if (common.has(helper)) continue;
+      let stretch: number[] = [];
+      const close = () => {
+        if (stretch.length > 0)
+          candidates.push({ ks: stretch, helpers: [helper] });
+        stretch = [];
       };
-      runs.push(current);
-    });
+      sets.forEach((set, k) => {
+        if (!set.includes(helper)) return;
+        const last = stretch.at(-1);
+        if (
+          last !== undefined &&
+          !(
+            last === k - 1 &&
+            columns[k] === columns[last]! + 1 &&
+            styleOf(last) === styleOf(k)
+          )
+        ) {
+          close();
+        }
+        stretch.push(k);
+      });
+      close();
+    }
     // Twins hang from one point, so a run holds every twin of its children
     // or is no run (its donors' lines then end on each child).
-    const whole = runs.filter((run) =>
-      run.ks.every((k) =>
+    const holdsTwins = ({ ks }: Stretch) =>
+      ks.every((k) =>
         targets.every(
-          (t, other) =>
-            Math.abs(t - targets[k]!) > 1e-9 || run.ks.includes(other),
+          (t, other) => Math.abs(t - targets[k]!) > 1e-9 || ks.includes(other),
         ),
-      ),
+      );
+    // The runs: each inside another or apart from it. A stretch overlapping
+    // a run without being inside it is cut where that run ends (its donors
+    // then reach it by a line to each part: the ruling cannot give them
+    // one).
+    const kept: Stretch[] = [];
+    const queue = candidates.filter(holdsTwins);
+    const bySize = (a: Stretch, b: Stretch) =>
+      b.ks.length - a.ks.length || a.ks[0]! - b.ks[0]!;
+    queue.sort(bySize);
+    while (queue.length > 0) {
+      const stretch = queue.shift()!;
+      const same = kept.find((run) => run.ks.join() === stretch.ks.join());
+      if (same) {
+        same.helpers.push(...stretch.helpers);
+        continue;
+      }
+      const crossed = kept.find((run) => {
+        const shared = stretch.ks.filter((k) => run.ks.includes(k)).length;
+        return (
+          shared > 0 && shared < stretch.ks.length && shared < run.ks.length
+        );
+      });
+      if (!crossed) {
+        kept.push({ ks: [...stretch.ks], helpers: [...stretch.helpers] });
+        continue;
+      }
+      const inside = stretch.ks.filter((k) => crossed.ks.includes(k));
+      const outside = stretch.ks.filter((k) => !crossed.ks.includes(k));
+      queue.push(
+        { ks: inside, helpers: stretch.helpers },
+        { ks: outside, helpers: stretch.helpers },
+      );
+      queue.sort(bySize);
+    }
+    const runs: SibshipRunPlan[] = kept.map((run) => ({
+      id: `${i},${columns[run.ks[0]!]},${columns[run.ks.at(-1)!]}`,
+      ks: run.ks,
+      columns: run.ks.map((k) => columns[k]!),
+      helpers: new Set(run.helpers),
+      stemX: targets[run.ks[0]!]!,
+      topY: 0,
+      bottomY: 0,
+      topClearance: STEM_TOP_CLEARANCE,
+    }));
+    const parentOf = new Map<SibshipRunPlan, SibshipRunPlan>();
+    for (const run of runs) {
+      const around = runs
+        .filter(
+          (other) =>
+            other.ks.length > run.ks.length &&
+            run.ks.every((k) => other.ks.includes(k)),
+        )
+        .toSorted((a, b) => a.ks.length - b.ks.length)[0];
+      if (around) {
+        parentOf.set(run, around);
+        run.topClearance = STEM_BOTTOM_CLEARANCE;
+        const xs = around.ks.map((k) => targets[k]!);
+        run.under = [Math.min(...xs), Math.max(...xs)];
+      }
+    }
+    const insideOf = (run: SibshipRunPlan) =>
+      runs.filter((other) => parentOf.get(other) === run);
+    // How long a run's stem must be for its lines to come in apart and clear
+    // of the bars, and how far above the children its sub-bar runs.
+    const need = (run: SibshipRunPlan) =>
+      (run.topClearance +
+        Math.max(run.helpers.size - 1, 0) * JUNCTION_GAP +
+        STEM_BOTTOM_CLEARANCE) *
+      boxh;
+    const rise = (run: SibshipRunPlan) =>
+      legh * (run.helpers.size > 1 ? CROWDED_SUB_BAR_RISE : SUB_BAR_RISE);
+    const depth = (run: SibshipRunPlan): number => {
+      const inner = insideOf(run);
+      return (
+        need(run) +
+        (inner.length > 0 ? Math.max(...inner.map(depth)) : rise(run))
+      );
+    };
+    const outermost = runs.filter((run) => !parentOf.has(run));
+    const leg = Math.min(
+      Math.max(legh, ...outermost.map(depth)),
+      Math.max(legh, MAX_LEG_SHARE * (1 - boxh)),
     );
+    const barY = i - leg;
+    // Each run's stem from the bar above it, shared out down the gap to the
+    // children in proportion to what each run on the way needs.
+    const place = (run: SibshipRunPlan, topY: number) => {
+      run.topY = topY;
+      const inner = insideOf(run);
+      run.bottomY =
+        inner.length > 0
+          ? topY + (need(run) * (i - topY)) / depth(run)
+          : i - rise(run);
+      for (const other of inner) place(other, run.bottomY);
+    };
+    for (const run of outermost) place(run, barY);
+    // Stems, sub-bars and the children's lines up, outermost runs first.
     const joinOf = [...targets];
-    for (const run of whole) {
-      if (run.ks.length < 2) continue;
+    for (let k = 0; k < uplines.length; k++) {
+      uplines[k] = { ...uplines[k]!, y2: barY };
+    }
+    const forked = runs
+      .filter((run) => run.ks.length > 1)
+      .toSorted((a, b) => b.ks.length - a.ks.length);
+    for (const run of forked) {
       const xs = run.ks.map((k) => targets[k]!);
       const [from, to] = [Math.min(...xs), Math.max(...xs)];
       const clearance = 0.3 * boxw;
+      const avoid = parentOf.get(run)?.stemX ?? avoidX;
       let stemX = (from + to) / 2;
-      if (avoidX !== undefined && Math.abs(stemX - avoidX) < clearance) {
+      if (avoid !== undefined && Math.abs(stemX - avoid) < clearance) {
         stemX =
-          [avoidX - clearance, avoidX + clearance]
+          [avoid - clearance, avoid + clearance]
             .filter((x) => x >= from - 1e-9 && x <= to + 1e-9)
             .toSorted((a, b) => Math.abs(a - stemX) - Math.abs(b - stemX))[0] ??
           stemX;
       }
       run.stemX = stemX;
-      const { bottomY } = run;
+    }
+    for (const run of forked) {
+      // The sub-bar spans what hangs from it: the children's own lines up,
+      // and the stems of the runs inside it in place of their children's.
+      const xs = run.ks.map(
+        (k) =>
+          insideOf(run).find(
+            (inner) => inner.ks.length > 1 && inner.ks.includes(k),
+          )?.stemX ?? targets[k]!,
+      );
+      const [from, to] = [Math.min(...xs), Math.max(...xs)];
+      const { topY, bottomY, stemX } = run;
       for (const k of run.ks) {
         uplines[k] = { ...uplines[k]!, y2: bottomY };
-        joinOf[k] = stemX;
+        if (!parentOf.has(run)) joinOf[k] = stemX;
       }
       run.drawn = {
-        stem: { type: 'line', x1: stemX, y1: barY, x2: stemX, y2: bottomY },
+        stem: { type: 'line', x1: stemX, y1: topY, x2: stemX, y2: bottomY },
         ...(to - from > 1e-9
           ? {
               bar: {
@@ -601,11 +724,22 @@ export function computeConnectors(
       y2: barY,
     };
     const register = () => {
-      for (const run of whole) {
-        for (const j of run.columns) runOfChild.set(`${i},${j}`, run);
-      }
+      columns.forEach((j, k) => {
+        const chain = runs
+          .filter((run) => run.ks.includes(k))
+          .toSorted((a, b) => b.ks.length - a.ks.length);
+        if (chain.length > 0) runsOfChild.set(`${i},${j}`, chain);
+      });
     };
-    return { runs: whole, joinOf, siblingBar, minTarget, maxTarget, register };
+    return {
+      runs,
+      joinOf,
+      siblingBar,
+      minTarget,
+      maxTarget,
+      register,
+      leg,
+    };
   };
   // The drawn runs among the children `ks` of a sibship.
   const drawnRuns = (runs: SibshipRunPlan[], ks: number[]) => {
@@ -826,6 +960,9 @@ export function computeConnectors(
      * they are. */
     coParentXs?: [number, number];
     coParentIds?: [string, string];
+    /** How far above the children's row the sibling bar runs, where its
+     * runs raised it (see `forkRuns`). */
+    leg?: number;
   }[] = [];
   // A line of descent from its parents to the bar, its level run (if any)
   // at `runY`.
@@ -841,7 +978,7 @@ export function computeConnectors(
           link.startY,
           i,
           boxh,
-          legh,
+          link.leg ?? legh,
           runY,
         )
       : buildParentLink(
@@ -850,7 +987,7 @@ export function computeConnectors(
           link.startY,
           i,
           boxh,
-          legh,
+          link.leg ?? legh,
           branch,
           runY,
         );
@@ -1109,6 +1246,7 @@ export function computeConnectors(
           childX: x1,
           parentX: descentX,
           startY,
+          leg: fork.leg,
           ...(coParentXs ? { coParentXs } : {}),
           ...(coParentIds ? { coParentIds } : {}),
         };
@@ -1266,7 +1404,7 @@ export function computeConnectors(
         if (group.length < 2) continue;
         const order = leastCrossingStack(group);
         const parentBottomY = i - 1 + boxh;
-        const barY = i - legh;
+        const barY = Math.min(...order.map((link) => i - (link.leg ?? legh)));
         order.forEach((link, lane) => {
           const runY =
             parentBottomY +
@@ -1384,10 +1522,11 @@ export function computeConnectors(
         if (pc.edgeType === 'donor' || pc.edgeType === 'surrogate') {
           // One line carries one relationship, so a person who is a donor to
           // one child and a surrogate to another is grouped twice.
-          const run = runOfChild.get(`${i},${j}`);
-          const viaRun = run?.helpers.has(`${pc.parentIndex}:${pc.edgeType}`)
-            ? run
-            : undefined;
+          const viaRun = runsOfChild
+            .get(`${i},${j}`)
+            ?.find((run) =>
+              run.helpers.has(`${pc.parentIndex}:${pc.edgeType}`),
+            );
           const key = `${pc.parentIndex},${pc.edgeType},${viaRun ? `run ${viaRun.id}` : sibship}`;
           const existing = auxConnections.get(key);
           if (existing) {
@@ -1599,7 +1738,14 @@ export function computeConnectors(
     brackets: [],
     lines: [],
     rowXs: layout.pos.map((row, layer) => row.slice(0, layout.n[layer] ?? 0)),
+    barTops: new Map(),
   };
+  for (const line of parentChildLines) {
+    if (!line.siblingBar) continue;
+    const y = line.siblingBar.y1;
+    const above = Math.ceil(y) - 1;
+    scene.barTops!.set(above, Math.min(scene.barTops!.get(above) ?? y, y));
+  }
   for (let i = 0; i < maxlev; i++) {
     for (let j = 0; j < (layout.n[i] ?? 0); j++) {
       const personIndex = layout.nid[i]![j]!;
@@ -1767,10 +1913,12 @@ export function computeConnectors(
   const plans = unpaired.filter((plan) => !pairedAway.has(plan));
 
   // Where each line joining a run's stem ends on it (by plan): the lines to
-  // one run spread down the stem between the sibling bar and the sub-bar,
-  // a fifth of a symbol apart at least, the line from the parent nearest
-  // the stem highest, so that lines from one side need not cross; raised,
-  // where the stem has room, until the lowest keeps clear of the sub-bar.
+  // one run spread down the stem between the bar above it and the sub-bar,
+  // `JUNCTION_GAP` apart (the stem is made long enough: see `forkRuns`), the
+  // line from the parent nearest the stem highest, so that lines from one
+  // side need not cross; raised, where the stem has room, until the lowest
+  // keeps clear of the sub-bar. Never off the stem: where it is too short
+  // for them (its bar can be raised only so far), closer together.
   const junctionOf = new Map<number, number>();
   const byRun = groupBy(
     plans.flatMap((plan, index) => (plan.run ? [index] : [])),
@@ -1784,17 +1932,22 @@ export function computeConnectors(
           Math.abs(plans[b]!.from.x - run.stemX) ||
         plans[a]!.from.x - plans[b]!.from.x,
     );
-    const spacing = Math.max(
-      (run.bottomY - run.topY) / (ordered.length + 1),
-      0.22 * boxh,
-    );
+    const stem = run.bottomY - run.topY;
+    const room = stem - (run.topClearance + STEM_BOTTOM_CLEARANCE) * boxh;
+    let spacing = Math.max(stem / (ordered.length + 1), JUNCTION_GAP * boxh);
+    if (ordered.length > 1 && (ordered.length - 1) * spacing > room) {
+      spacing = Math.max(
+        room / (ordered.length - 1),
+        stem / (ordered.length + 1),
+      );
+    }
     const middle = (run.topY + run.bottomY) / 2;
     const half = ((ordered.length - 1) / 2) * spacing;
     const rise = Math.max(
       0,
       Math.min(
         middle + half - (run.bottomY - STEM_BOTTOM_CLEARANCE * boxh),
-        middle - half - (run.topY + STEM_TOP_CLEARANCE * boxh),
+        middle - half - (run.topY + run.topClearance * boxh),
       ),
     );
     ordered.forEach((index, m) => {
@@ -1944,6 +2097,7 @@ export function computeConnectors(
           x: run.stemX,
           y: junctionOf.get(planIndex)!,
           layer: conn.childLevel,
+          ...(run.under ? { under: run.under } : {}),
         },
         undefined,
       );

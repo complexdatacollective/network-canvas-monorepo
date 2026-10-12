@@ -10,6 +10,7 @@ import type {
   ParentChildConnector,
   ParentGroupConnector,
   Point,
+  SibshipRun,
 } from '../types';
 
 export const EDGE_WIDTH = 5;
@@ -617,20 +618,33 @@ function renderParentChild(
   const descentX =
     barY === undefined ? undefined : descentJunctionX(conn.parentLink, barY);
   // A child hanging from a run's sub-bar meets the sibling bar where the
-  // run's stem leaves it.
-  const runOf = (ul: LineSegment) =>
-    (conn.runs ?? []).find(
-      (run) =>
-        Math.abs(ul.y2 - run.stem.y2) < 1e-6 &&
-        (run.bar
-          ? ul.x2 >= Math.min(run.bar.x1, run.bar.x2) - 1e-6 &&
-            ul.x2 <= Math.max(run.bar.x1, run.bar.x2) + 1e-6
-          : Math.abs(ul.x2 - run.stem.x2) < 1e-6),
+  // stem of the outermost run they are in leaves it (a run inside another
+  // hangs from that one's sub-bar).
+  const runs = conn.runs ?? [];
+  const runAt = (p: Point) =>
+    runs.find((run) =>
+      run.bar
+        ? onLevel(p, run.bar)
+        : Math.abs(p.x - run.stem.x2) < 1e-6 &&
+          Math.abs(p.y - run.stem.y2) < 1e-6,
     );
+  // The runs a child's line up hangs from, innermost first.
+  const chainOf = (ul: LineSegment): SibshipRun[] => {
+    const chain: SibshipRun[] = [];
+    for (
+      let run = runAt({ x: ul.x2, y: ul.y2 });
+      run && !chain.includes(run);
+      run = runAt({ x: run.stem.x1, y: run.stem.y1 })
+    ) {
+      chain.push(run);
+    }
+    return chain;
+  };
+  const runChains = conn.uplines.map(chainOf);
   const uplineJunctions = conn.uplines.map((ul, i) => {
-    const run = runOf(ul);
+    const outermost = runChains[i]!.at(-1);
     return {
-      x: run ? run.stem.x1 : ul.y2 === barY ? ul.x2 : ul.x1,
+      x: outermost ? outermost.stem.x1 : ul.y2 === barY ? ul.x2 : ul.x1,
       childId: conn.uplineChildIds?.[i],
     };
   });
@@ -735,35 +749,64 @@ function renderParentChild(
   for (const { x } of uplineJunctions) splitXs.push(x);
   for (const { point } of barJoins) splitXs.push(point.x);
 
+  // The donors' lines a run's children are reached through from above it:
+  // those meeting the sibling bar or the stem of a run the run is inside.
+  const joinsOnStem = (run: SibshipRun) =>
+    helperJoins.filter(({ point }) => onUpright(point, run.stem));
+  const joinsAbove = (chain: SibshipRun[]) => [
+    ...barJoins,
+    ...chain.flatMap(joinsOnStem),
+  ];
+
   // Each run's stem and sub-bar: bright while any of its children
   // contributes, through the parents' line of descent from the top of the
-  // stem or a donor's line from where it meets the stem.
-  const runPieces = (conn.runs ?? []).flatMap((run) => {
-    const junctions = conn.uplines.flatMap((ul, i) =>
-      runOf(ul) === run
-        ? [{ x: ul.x2, childId: conn.uplineChildIds?.[i] }]
-        : [],
-    );
-    const stemJoins = helperJoins.filter(({ point }) =>
-      onUpright(point, run.stem),
-    );
+  // stem, a donor's line from above it, or a donor's line from where it
+  // meets the stem.
+  const runPieces = runs.flatMap((run) => {
+    const above = (() => {
+      const outer: SibshipRun[] = [];
+      for (
+        let at = runAt({ x: run.stem.x1, y: run.stem.y1 });
+        at && !outer.includes(at);
+        at = runAt({ x: at.stem.x1, y: at.stem.y1 })
+      ) {
+        outer.push(at);
+      }
+      return joinsAbove(outer);
+    })();
+    const own = joinsOnStem(run);
+    // The children below it, each where their way down meets its sub-bar:
+    // their own line up, or the stem of the run inside it they are in.
+    const junctions = conn.uplines.flatMap((ul, i) => {
+      const chain = runChains[i]!;
+      const at = chain.indexOf(run);
+      if (at < 0) return [];
+      return [
+        {
+          x: at === 0 ? ul.x2 : chain[at - 1]!.stem.x1,
+          childId: conn.uplineChildIds?.[i],
+        },
+      ];
+    });
+    const fromAbove = (childId: string | undefined) =>
+      childContributes(childId) || transmitsThrough(above, childId);
     const contributes = (childId: string | undefined) =>
-      childContributes(childId) || transmitsThrough(stemJoins, childId);
+      fromAbove(childId) || transmitsThrough(own, childId);
     let stem: { segment: LineSegment; dimmed: boolean }[] = [
       { segment: run.stem, dimmed: sharedDimmed },
     ];
     if (highlightActive) {
-      const litFrom = stemJoins
+      const litFrom = own
         .filter((join) =>
           junctions.some(({ childId }) => transmitsThrough([join], childId)),
         )
         .map(({ point }) => point.y);
-      if (junctions.some(({ childId }) => childContributes(childId))) {
+      if (junctions.some(({ childId }) => fromAbove(childId))) {
         stem = [{ segment: run.stem, dimmed: false }];
       } else if (litFrom.length > 0) {
-        const [above, below] = cutUpright(run.stem, Math.min(...litFrom));
+        const [top, below] = cutUpright(run.stem, Math.min(...litFrom));
         stem = [
-          { segment: above, dimmed: true },
+          { segment: top, dimmed: true },
           { segment: below, dimmed: false },
         ];
       } else {
@@ -785,8 +828,8 @@ function renderParentChild(
   });
 
   // Each child's line up: lit when the parents' tie to them transmits, or a
-  // donor's whose line meets their run's stem, the sibling bar, or (below
-  // that point) their own line up.
+  // donor's whose line meets the sibling bar, the stem of a run they are in,
+  // or (below that point) their own line up.
   const uplinePieces = conn.uplines.flatMap((ul, i) => {
     const childId = conn.uplineChildIds?.[i];
     const dimmed = isDescentSegmentDimmed(
@@ -796,12 +839,9 @@ function renderParentChild(
       highlightedEdgeKeys,
     );
     if (!dimmed) return [{ segment: ul, dimmed }];
-    const run = runOf(ul);
-    const above = run
-      ? helperJoins.filter(({ point }) => onUpright(point, run.stem))
-      : barJoins;
-    if (transmitsThrough(above, childId))
+    if (transmitsThrough(joinsAbove(runChains[i]!), childId)) {
       return [{ segment: ul, dimmed: false }];
+    }
     const own = helperJoins
       .filter(
         (join) =>

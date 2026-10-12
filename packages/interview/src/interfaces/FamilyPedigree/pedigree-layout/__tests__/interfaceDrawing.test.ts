@@ -450,7 +450,97 @@ describe('a donor’s line meets the line of descent of the children they gave t
     return { nodes, edges };
   }
 
+  /** Hannah raises three children: the first two were conceived with an
+   * egg donor and a sperm donor and carried by a surrogate, so three lines
+   * meet the stem of their run; the third is her birth child. */
+  function threeHelpersForTwo() {
+    const nodes = [
+      person('ego', { name: 'Maya', sex: ['male'], isEgo: true }),
+      mother(),
+      woman('eggDonor'),
+      man('spermDonor'),
+      woman('carrier'),
+      woman('ruby', 'Ruby'),
+      man('theo', 'Theo'),
+    ];
+    const edges = [
+      ...['ego', 'ruby'].flatMap((child) => [
+        link('hannah', child, 'social', { carrier: false }),
+        donor('eggDonor', child),
+        donor('spermDonor', child),
+        link('carrier', child, 'surrogate', { carrier: true }),
+      ]),
+      birth('theo'),
+    ];
+    return { nodes, edges };
+  }
+
+  /** Paul was the donor for Hannah's first two children, and a surrogate
+   * carried the first of them only; the third has neither. Recorded in
+   * the order given. */
+  function surrogateForOneOfADonorsTwo(order: string[]) {
+    const nodes = [
+      ...order.map((id) =>
+        id === 'ego'
+          ? person('ego', { name: 'Maya', sex: ['male'], isEgo: true })
+          : id === 'ruby'
+            ? woman('ruby', 'Ruby')
+            : man('theo', 'Theo'),
+      ),
+      mother(),
+      man('paul', 'Paul'),
+      woman('carrier'),
+    ];
+    const edges = order.flatMap((child) =>
+      child === 'ego'
+        ? [
+            link('hannah', child, 'biological', { carrier: false }),
+            donor('paul', child),
+            link('carrier', child, 'surrogate', { carrier: true }),
+          ]
+        : child === 'ruby'
+          ? [birth(child), donor('paul', child)]
+          : [birth(child)],
+    );
+    return { nodes, edges };
+  }
+
+  /** Paul was the donor for Hannah's first three children, and a surrogate
+   * carried the first two; the fourth has neither. */
+  function surrogateForTwoOfADonorsThree() {
+    const nodes = [
+      person('ego', { name: 'Maya', sex: ['male'], isEgo: true }),
+      mother(),
+      man('paul', 'Paul'),
+      woman('carrier'),
+      woman('ruby', 'Ruby'),
+      man('theo', 'Theo'),
+      woman('mia', 'Mia'),
+    ];
+    const edges = [
+      ...['ego', 'ruby'].flatMap((child) => [
+        link('hannah', child, 'biological', { carrier: false }),
+        donor('paul', child),
+        link('carrier', child, 'surrogate', { carrier: true }),
+      ]),
+      birth('theo'),
+      donor('paul', 'theo'),
+      birth('mia'),
+    ];
+    return { nodes, edges };
+  }
+
   const families = {
+    'an egg donor, a sperm donor and a surrogate for two of three children':
+      threeHelpersForTwo,
+    'a surrogate for one of a donor’s two children': () =>
+      surrogateForOneOfADonorsTwo(['ego', 'ruby', 'theo']),
+    'a surrogate for one of a donor’s two children, recorded apart': () =>
+      surrogateForOneOfADonorsTwo(['ego', 'theo', 'ruby']),
+    'a surrogate for one of a donor’s two children, the other recorded first':
+      () => surrogateForOneOfADonorsTwo(['ruby', 'theo', 'ego']),
+    'a surrogate for two of a donor’s three children':
+      surrogateForTwoOfADonorsThree,
     'a donor to two of three half-siblings': halfSiblings,
     'a donor to two siblings added apart': addedApart,
     'a couple with a surrogate for two of three children': coupleWithSurrogate,
@@ -503,6 +593,59 @@ describe('a donor’s line meets the line of descent of the children they gave t
         ]).toEqual([]);
       });
     }
+
+    it(`gives a donor one line when a surrogate carried some of their children, whichever was recorded first (${size}px symbols)`, () => {
+      for (const order of [
+        ['ego', 'ruby', 'theo'],
+        ['ego', 'theo', 'ruby'],
+        ['ruby', 'theo', 'ego'],
+      ]) {
+        const { nodes, edges } = surrogateForOneOfADonorsTwo(order);
+        const drawing = drawAsInterface(nodes, edges, size);
+        const reached = (parent: string) =>
+          drawing.connectors.auxiliaryLines
+            .filter((line) => line.endpointIds?.[0] === parent)
+            .map((line) =>
+              [...childrenReachedBy(drawing.connectors, line)].toSorted(),
+            );
+        expect(reached('paul')).toEqual([['ego', 'ruby']]);
+        expect(reached('carrier')).toEqual([['ego']]);
+      }
+    });
+
+    // A donor whose children overlap another's without either holding all
+    // the other's: no nesting gives both one run, so the surrogate, whose
+    // children cross the donor's run, reaches each part by a line of its
+    // own (the ruling cannot be met here; reported, 12 Oct 2026).
+    it(`reaches each part of a surrogate's children that crosses a donor's run by a line of its own (${size}px symbols)`, () => {
+      const nodes = [
+        person('ego', { name: 'Maya', sex: ['male'], isEgo: true }),
+        mother(),
+        man('paul', 'Paul'),
+        woman('carrier'),
+        woman('ruby', 'Ruby'),
+        man('theo', 'Theo'),
+      ];
+      const edges = [
+        birth('ego'),
+        donor('paul', 'ego'),
+        link('hannah', 'ruby', 'biological', { carrier: false }),
+        donor('paul', 'ruby'),
+        link('carrier', 'ruby', 'surrogate', { carrier: true }),
+        link('hannah', 'theo', 'biological', { carrier: false }),
+        link('carrier', 'theo', 'surrogate', { carrier: true }),
+      ];
+      const drawing = drawAsInterface(nodes, edges, size);
+      const reached = (parent: string) =>
+        drawing.connectors.auxiliaryLines
+          .filter((line) => line.endpointIds?.[0] === parent)
+          .map((line) =>
+            [...childrenReachedBy(drawing.connectors, line)].toSorted(),
+          )
+          .toSorted((a, b) => a.join().localeCompare(b.join()));
+      expect(reached('paul')).toEqual([['ego', 'ruby']]);
+      expect(reached('carrier')).toEqual([['ruby'], ['theo']]);
+    });
 
     it(`reaches the two half-siblings who share a donor by one line, and the third by their own line up (${size}px symbols)`, () => {
       const { nodes, edges } = halfSiblings();
