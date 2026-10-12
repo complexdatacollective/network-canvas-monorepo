@@ -1,11 +1,27 @@
 'use client';
 
-import { createContext, type ReactNode, useContext, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useState,
+} from 'react';
 
 const PortalContainerContext = createContext<HTMLElement | null>(null);
 
 export function PortalContainerProvider({ children }: { children: ReactNode }) {
   const [container, setContainer] = useState<HTMLElement | null>(null);
+  // Ignores the null React passes when the node detaches. A Suspense boundary
+  // that re-suspends detaches every ref below it during the commit, and a
+  // state update scheduled from there re-renders the boundary at sync priority
+  // straight away. That render reveals the hidden content again, and the
+  // reveal re-attaches the ref. Each round commits with a sync update
+  // pending, so a boundary that stays suspended ends in React error #185
+  // (maximum update depth) instead of waiting for its data.
+  const attachContainer = useCallback((node: HTMLElement | null) => {
+    if (node !== null) setContainer(node);
+  }, []);
   return (
     <PortalContainerContext.Provider value={container}>
       {children}
@@ -32,7 +48,7 @@ export function PortalContainerProvider({ children }: { children: ReactNode }) {
        * instead of asking every consumer to.
        */}
       <div
-        ref={setContainer}
+        ref={attachContainer}
         className="pointer-events-none fixed inset-0 isolate z-3000 [&>*]:pointer-events-auto"
       />
     </PortalContainerContext.Provider>
