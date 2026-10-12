@@ -68,11 +68,11 @@ export const translationText = (
 
 /**
  * `value` with the translation for `locale` replaced by `text`, keeping every
- * other translation. Blank text — empty, or only whitespace — removes that
- * translation, so the language reads as missing rather than as text a
- * participant would see as nothing. The protocol builder's helper decides
- * that, so Architect and the package editors agree; a string left with no
- * translation is `{}` here, where the builder's is absent.
+ * other translation. Blank text — empty, or only characters that show
+ * nothing — removes that translation, so the language reads as missing rather
+ * than as text a participant would see as nothing. The protocol builder's
+ * helper decides that, so Architect and the package editors agree; a string
+ * left with no translation is `{}` here, where the builder's is absent.
  */
 export const withTranslation = (
   value: LocalizedString | undefined,

@@ -5,14 +5,17 @@ import {
   EdgeDefinitionSchema,
   NodeDefinitionSchema,
 } from '../codebook/definitions.ts';
-import { FormFieldSchema } from '../common/forms.ts';
+import { FormFieldSchema, FormSchema } from '../common/forms.ts';
 import { IntroductionPanelSchema } from '../common/introductionPanel.ts';
 import { panelSchema } from '../common/panels.ts';
 import { promptSchema } from '../common/prompts.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 import { anonymisationStage } from '../stages/anonymisation.ts';
+import { familyPedigreeStage } from '../stages/family-pedigree.ts';
+import { informationStage } from '../stages/information.ts';
 import { nameGeneratorRosterStage } from '../stages/name-generator-roster.ts';
 import { narrativePedigreeStage } from '../stages/narrative-pedigree.ts';
+import { narrativeStage } from '../stages/narrative.ts';
 import { networkComposerStage } from '../stages/network-composer.ts';
 import { ComponentTypes } from '../variables/types.ts';
 import { VariableSchema } from '../variables/variable.ts';
@@ -96,14 +99,23 @@ describe('a form field prompt', () => {
     ).toEqual([['prompt', 'fr']]);
   });
 
-  it('still lets the hint be empty', () => {
-    expect(
-      FormFieldSchema.safeParse({
-        ...field({ en: 'Age?' }),
-        hint: { en: '' },
-      }).success,
-    ).toBe(true);
+  it('needs no hint', () => {
+    expect(issuesOf(FormFieldSchema, field({ en: 'Age?' }))).toEqual([]);
   });
+
+  // A blank translation would be chosen over falling back to another
+  // language, and show no hint in that language.
+  it.each([['empty text', ''] as const, ...BLANK_TRANSLATIONS])(
+    'rejects a hint translation of %s',
+    (_n, text) => {
+      expect(
+        issuesOf(FormFieldSchema, {
+          ...field({ en: 'Age?' }),
+          hint: { en: 'Say if unsure.', fr: text },
+        }).map(({ path }) => path),
+      ).toContainEqual(['hint', 'fr']);
+    },
+  );
 });
 
 describe('a Network Composer field caption', () => {
@@ -261,7 +273,175 @@ const REQUIRED_TEXT_SITES: readonly {
     }),
     path: ['diseases', 0, 'label'],
   },
+  {
+    name: 'a Name Generator form title',
+    schema: FormSchema,
+    valid: (title) => ({
+      title,
+      fields: [{ variable: 'name', prompt: localized('Name?') }],
+    }),
+    path: ['title'],
+  },
+  {
+    name: 'an Information text item',
+    schema: informationStage,
+    valid: (content) => ({
+      id: 'info',
+      type: 'Information',
+      label: localized('Welcome'),
+      title: localized('Welcome'),
+      items: [{ id: 'item', type: 'text', content }],
+    }),
+    path: ['items', 0, 'content'],
+  },
+  // Optional, but text that is given must say something in every language.
+  {
+    name: 'an Information media description',
+    schema: informationStage,
+    valid: (description) => ({
+      id: 'info',
+      type: 'Information',
+      label: localized('Welcome'),
+      title: localized('Welcome'),
+      items: [{ id: 'item', type: 'asset', content: 'image', description }],
+    }),
+    path: ['items', 0, 'description'],
+  },
 ];
+
+const composerField = (field: Record<string, unknown>) => ({
+  id: 'composer',
+  type: 'NetworkComposer',
+  label: localized('Compose'),
+  subject: { entity: 'node', type: 'person' },
+  quickAdd: 'name',
+  layoutVariable: 'layout',
+  background: { concentricCircles: 4 },
+  edges: [],
+  ...networkComposerWords(),
+  nodeForm: {
+    fields: [{ variable: 'age', label: localized('Age'), ...field }],
+  },
+});
+
+// Stages too large to build valid by hand here: each is checked only for the
+// refusal of a blank translation at the string's own path.
+const BLANK_REFUSED_SITES: readonly {
+  name: string;
+  schema: { safeParse: (value: unknown) => unknown };
+  holding: (text: Record<string, string>) => unknown;
+  path: readonly PropertyKey[];
+}[] = [
+  {
+    name: 'a Narrative preset label',
+    schema: narrativeStage,
+    holding: (label) => ({
+      id: 'narrative',
+      type: 'Narrative',
+      label: localized('Narrative'),
+      subject: { entity: 'node', type: 'person' },
+      presets: [{ id: 'preset', label, layoutVariable: 'layout' }],
+    }),
+    path: ['presets', 0, 'label'],
+  },
+  {
+    name: 'a Narrative highlight label',
+    schema: narrativeStage,
+    holding: (label) => ({
+      id: 'narrative',
+      type: 'Narrative',
+      label: localized('Narrative'),
+      subject: { entity: 'node', type: 'person' },
+      presets: [
+        {
+          id: 'preset',
+          label: localized('Preset 1'),
+          layoutVariable: 'layout',
+          highlight: [{ variable: 'close', label }],
+        },
+      ],
+    }),
+    path: ['presets', 0, 'highlight', 0, 'label'],
+  },
+  {
+    name: 'a Family Pedigree prompt',
+    schema: familyPedigreeStage,
+    holding: (prompt) => ({
+      id: 'pedigree',
+      type: 'FamilyPedigree',
+      label: localized('Family'),
+      subject: { entity: 'node', type: 'person' },
+      prompt,
+    }),
+    path: ['prompt'],
+  },
+  {
+    name: 'a Family Pedigree question about the family',
+    schema: familyPedigreeStage,
+    holding: (text) => ({
+      id: 'pedigree',
+      type: 'FamilyPedigree',
+      label: localized('Family'),
+      subject: { entity: 'node', type: 'person' },
+      prompt: localized('Who is in your family?'),
+      nominationPrompts: [{ id: 'q', text, attribute: 'hasCondition' }],
+    }),
+    path: ['nominationPrompts', 0, 'text'],
+  },
+  {
+    name: 'a Network Composer field hint',
+    schema: networkComposerStage,
+    holding: (hint) =>
+      composerField({ component: ComponentTypes.Number, hint }),
+    path: ['nodeForm', 'fields', 0, 'hint'],
+  },
+  {
+    name: 'a Network Composer scale end label',
+    schema: networkComposerStage,
+    holding: (minLabel) =>
+      composerField({
+        component: ComponentTypes.VisualAnalogScale,
+        parameters: { minLabel },
+      }),
+    path: ['nodeForm', 'fields', 0, 'parameters', 'minLabel'],
+  },
+];
+
+describe.each(BLANK_REFUSED_SITES)('$name', ({ schema, holding, path }) => {
+  it.each(BLANK_TRANSLATIONS)(
+    'rejects a translation of %s beside one with text',
+    (_n, text) => {
+      expect(
+        issuesOf(schema, holding({ en: 'Text', fr: text })),
+      ).toContainEqual({
+        message: 'Text cannot be blank.',
+        path: [...path, 'fr'],
+      });
+    },
+  );
+});
+
+describe('a scale attribute end label', () => {
+  const scale = (maxLabel: Record<string, string>) => ({
+    name: 'Closeness',
+    label: 'Closeness',
+    type: 'scalar',
+    component: ComponentTypes.VisualAnalogScale,
+    parameters: { minLabel: localized('Not close'), maxLabel },
+  });
+
+  it('accepts a label with text', () => {
+    expect(VariableSchema.safeParse(scale({ en: 'Very close' })).success).toBe(
+      true,
+    );
+  });
+
+  it.each(BLANK_TRANSLATIONS)('rejects a translation of %s', (_n, text) => {
+    expect(
+      VariableSchema.safeParse(scale({ en: 'Very close', fr: text })).success,
+    ).toBe(false);
+  });
+});
 
 describe.each(REQUIRED_TEXT_SITES)('$name', ({ schema, valid, path }) => {
   it('accepts text', () => {

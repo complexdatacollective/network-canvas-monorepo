@@ -300,7 +300,7 @@ const NominationPromptSchema = z.strictObject({
     .refine((id) => id !== FAMILY_PEDIGREE_BUILD_PROMPT_ID, {
       message: `Nomination prompt id "${FAMILY_PEDIGREE_BUILD_PROMPT_ID}" is reserved for building the family`,
     }),
-  text: localizedString(z.string().min(1), 'markdown'),
+  text: localizedString(nonBlankText(), 'markdown'),
   attribute: entityAttributeReference({
     subject: 'stageSubject',
     usage: 'unvalidatedAttribute',
@@ -771,7 +771,7 @@ export const familyPedigreeStage = baseStageSchema
   .extend({
     type: z.literal('FamilyPedigree'),
     subject: NodeStageSubjectSchema,
-    prompt: localizedString(z.string().min(1), 'markdown'),
+    prompt: localizedString(nonBlankText(), 'markdown'),
     nodeConfiguration: NodeConfigurationSchema,
     edgeConfiguration: EdgeConfigurationSchema,
     // Which words describe family members, or `participantPreference` to let

@@ -12,7 +12,7 @@ const ItemSizeSchema = z.enum(['SMALL', 'MEDIUM', 'LARGE']);
 const textItemSchema = z.strictObject({
   id: z.string(),
   type: z.literal('text'),
-  content: localizedString(z.string().min(1), 'markdown'),
+  content: localizedString(nonBlankText(), 'markdown'),
   description: z.string().optional(),
 });
 
@@ -21,7 +21,7 @@ const assetItemSchema = z.strictObject({
   id: z.string(),
   type: z.literal('asset'),
   content: assetReference(),
-  description: localizedString(z.string(), 'plain').optional(),
+  description: localizedString(nonBlankText(), 'plain').optional(),
   size: ItemSizeSchema.optional(),
 });
 

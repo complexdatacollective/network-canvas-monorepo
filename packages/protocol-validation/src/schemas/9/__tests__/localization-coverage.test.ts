@@ -93,16 +93,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site([...personVariable('category'), 'options', 1, 'label'], 'markdown'),
   site([...personVariable('strength'), 'options', 0, 'label'], 'markdown'),
   site([...personVariable('strength'), 'options', 1, 'label'], 'markdown'),
-  site(
-    [...personVariable('closeness'), 'parameters', 'minLabel'],
-    'markdown',
-    true,
-  ),
-  site(
-    [...personVariable('closeness'), 'parameters', 'maxLabel'],
-    'markdown',
-    true,
-  ),
+  site([...personVariable('closeness'), 'parameters', 'minLabel'], 'markdown'),
+  site([...personVariable('closeness'), 'parameters', 'maxLabel'], 'markdown'),
   site([...personVariable('flag'), 'options', 0, 'label'], 'markdown'),
   site([...personVariable('flag'), 'options', 1, 'label'], 'markdown'),
   site(['codebook', 'node', 'relative', 'label'], 'plain'),
@@ -165,12 +157,12 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(1, 'title'), 'plain'),
   site(stage(1, 'items', 0, 'content'), 'markdown'),
-  site(stage(1, 'items', 1, 'description'), 'plain', true),
+  site(stage(1, 'items', 1, 'description'), 'plain'),
 
   site(stage(2, 'introductionPanel', 'title'), 'plain'),
   site(stage(2, 'introductionPanel', 'text'), 'markdown'),
   site(stage(2, 'form', 'fields', 0, 'prompt'), 'markdown'),
-  site(stage(2, 'form', 'fields', 0, 'hint'), 'markdown', true),
+  site(stage(2, 'form', 'fields', 0, 'hint'), 'markdown'),
 
   site(stage(3, 'form', 'title'), 'plain'),
   site(stage(3, 'form', 'fields', 0, 'prompt'), 'markdown'),
@@ -202,17 +194,9 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   // The composer's own scale end labels are separate sites from the codebook
   // scalar's, and override them.
   site(stage(7, 'nodeForm', 'fields', 0, 'label'), 'markdown'),
-  site(stage(7, 'nodeForm', 'fields', 0, 'hint'), 'markdown', true),
-  site(
-    stage(7, 'nodeForm', 'fields', 0, 'parameters', 'minLabel'),
-    'markdown',
-    true,
-  ),
-  site(
-    stage(7, 'nodeForm', 'fields', 0, 'parameters', 'maxLabel'),
-    'markdown',
-    true,
-  ),
+  site(stage(7, 'nodeForm', 'fields', 0, 'hint'), 'markdown'),
+  site(stage(7, 'nodeForm', 'fields', 0, 'parameters', 'minLabel'), 'markdown'),
+  site(stage(7, 'nodeForm', 'fields', 0, 'parameters', 'maxLabel'), 'markdown'),
   site(stage(7, 'nodeForm', 'fields', 1, 'label'), 'markdown'),
   site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), 'markdown'),
   // The Network Composer's own words, which Network Canvas supplies.
@@ -305,7 +289,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       : messageSite(stage(18, 'wording', key), argumentsOf);
   }),
   site(stage(18, 'form', 'fields', 0, 'prompt'), 'markdown'),
-  site(stage(18, 'form', 'fields', 0, 'hint'), 'markdown', true),
+  site(stage(18, 'form', 'fields', 0, 'hint'), 'markdown'),
   site(stage(18, 'nominationPrompts', 0, 'text'), 'markdown'),
 
   site(stage(19, 'diseases', 0, 'label'), 'plain'),

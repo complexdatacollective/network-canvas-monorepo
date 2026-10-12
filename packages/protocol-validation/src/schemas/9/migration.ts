@@ -1,7 +1,10 @@
 import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
-import { escapeMessageText } from '../../localization/messageSyntax.ts';
+import {
+  escapeMessageText,
+  messageText,
+} from '../../localization/messageSyntax.ts';
 import { createMigration } from '../../migration/index.ts';
 import type { SessionDocument } from '../../migration/session.ts';
 import { collectEntityAttributeReferences } from '../../utils/collectEntityAttributeReferences.ts';
@@ -672,6 +675,140 @@ const addComposerCaptions = (protocol: unknown) => {
   }
 };
 
+/**
+ * Plain text as the markdown that shows it as written: a schema 8 string, or
+ * each translation of text already localized.
+ */
+const asMarkdownText = (text: string | Record<string, unknown>): unknown => {
+  if (typeof text === 'string') return escapeMarkdownText(text);
+  return Object.fromEntries(
+    Object.entries(text).map(([locale, message]) => [
+      locale,
+      typeof message === 'string'
+        ? escapeMessageText(escapeMarkdownText(messageText(message)))
+        : message,
+    ]),
+  );
+};
+
+/**
+ * Schema 9 requires a Narrative preset's label, and the label of each
+ * attribute it highlights, to say something, where schema 8 accepted a preset
+ * label of only spaces, which showed a preset with no name. A preset label
+ * that shows nothing takes the default the 7 to 8 migration gives a missing
+ * one, "Preset" and its position; a highlight label, the attribute's name, as
+ * `addHighlightLabels` gives one. Text already localized loses only its
+ * translations that show nothing, which then fall back to another.
+ */
+const repairNarrativeLabels = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  const { codebook } = protocol;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'Narrative') continue;
+    if (!Array.isArray(stage.presets)) continue;
+    const variables = subjectVariables(codebook, 'node', stage.subject);
+    stage.presets.forEach((preset: unknown, index: number) => {
+      if (!isRecord(preset)) return;
+      preset.label = shownText(preset.label) ?? `Preset ${index + 1}`;
+      if (!Array.isArray(preset.highlight)) return;
+      for (const highlight of preset.highlight) {
+        if (!isRecord(highlight) || typeof highlight.variable !== 'string') {
+          continue;
+        }
+        highlight.label =
+          shownText(highlight.label) ??
+          nameOrKey(variables[highlight.variable], highlight.variable);
+      }
+    });
+  }
+};
+
+/**
+ * Schema 9 requires the title of a Name Generator's form to say something,
+ * where schema 8 accepted a title of only spaces, which showed a form with no
+ * heading. One that shows nothing takes the default the 7 to 8 migration
+ * gives a missing one: "Add" and the name of the stage's node type, or "Add"
+ * alone. Text already localized loses only its translations that show
+ * nothing, which then fall back to another.
+ */
+const repairFormTitles = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  const { codebook } = protocol;
+  const types = isRecord(codebook) ? codebook.node : undefined;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'NameGenerator') continue;
+    if (!isRecord(stage.form)) continue;
+    const subjectType = isRecord(stage.subject) ? stage.subject.type : '';
+    const definition =
+      isRecord(types) && typeof subjectType === 'string'
+        ? types[subjectType]
+        : undefined;
+    const name = isRecord(definition) ? definition.name : undefined;
+    stage.form.title =
+      shownText(stage.form.title) ??
+      (typeof name === 'string' && !isBlankText(name) ? `Add ${name}` : 'Add');
+  }
+};
+
+/**
+ * Schema 9 requires a Family Pedigree's prompt, and each of its nomination
+ * prompts, to say something, where schema 8 accepted text of only spaces,
+ * which showed a prompt with no words. A prompt that shows nothing takes the
+ * stage's name, and a nomination prompt the name of the attribute it sets,
+ * as a form field's question does; both are markdown, so the name is escaped
+ * to show as written. Text already localized loses only its translations that
+ * show nothing, which then fall back to another.
+ */
+const repairFamilyPedigreeText = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  const { codebook } = protocol;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'FamilyPedigree') continue;
+    // Text that is missing is left for validation to report.
+    if (stage.prompt !== undefined) {
+      const label = shownText(stage.label);
+      stage.prompt =
+        shownText(stage.prompt) ??
+        (label === undefined ? stage.prompt : asMarkdownText(label));
+    }
+    if (!Array.isArray(stage.nominationPrompts)) continue;
+    const variables = subjectVariables(codebook, 'node', stage.subject);
+    for (const question of stage.nominationPrompts) {
+      if (!isRecord(question) || typeof question.attribute !== 'string') {
+        continue;
+      }
+      if (question.text === undefined) continue;
+      question.text =
+        shownText(question.text) ??
+        escapeMarkdownText(
+          nameOrKey(variables[question.attribute], question.attribute),
+        );
+    }
+  }
+};
+
+/**
+ * Schema 9 requires the text of an Information stage's text item to say
+ * something, where schema 8 accepted text of only spaces, which showed
+ * nothing. Such an item is removed, so the stage still shows nothing in its
+ * place. Text already localized loses only its translations that show
+ * nothing, which then fall back to another.
+ */
+const repairInformationTextItems = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'Information') continue;
+    if (!Array.isArray(stage.items)) continue;
+    stage.items = stage.items.flatMap((item: unknown) => {
+      if (!isRecord(item) || item.type !== 'text') return [item];
+      // Content that is missing is left for validation to report.
+      if (item.content === undefined) return [item];
+      const content = shownText(item.content);
+      return content === undefined ? [] : [{ ...item, content }];
+    });
+  }
+};
+
 // The id the appended finish stage takes, unless a schema 8 stage already
 // has it. Deterministic, so migrating one document twice gives one result.
 const FINISH_STAGE_ID = 'finish';
@@ -742,9 +879,9 @@ type SiteChange =
   | { kind: 'keep' };
 
 /**
- * An empty string follows the site's own rule: where the field accepts empty
- * text it is kept as data, and where it does not, an optional field is left
- * out. A required field is wrapped regardless, so validation reports what
+ * A string that shows nothing follows the site's own rule: where the field
+ * accepts it, it is kept as data, and where it does not, an optional field is
+ * left out. A required field is wrapped regardless, so validation reports what
  * schema 8 already rejected.
  *
  * Schema 8 typed every site as a string except the end labels of a Network
@@ -753,7 +890,8 @@ type SiteChange =
  * A non-string anywhere else was already invalid and is left for validation.
  *
  * Text that is already localized is kept, so a document written in schema 9
- * form comes through with its text in the languages it declares. A string in
+ * form comes through with its text in the languages it declares, less any
+ * translation of an optional text that shows nothing. A string in
  * such a document is recorded in its default language.
  */
 const localizeSite = (
@@ -767,7 +905,19 @@ const localizeSite = (
     }
     return { kind: 'remove' };
   }
-  // Text already localized, in a document written in schema 9 form.
+  // Text already localized, in a document written in schema 9 form. An
+  // optional text loses its translations that show nothing, which schema 9
+  // rejects, so those languages fall back to another; text left with none is
+  // left out, as it would have shown nothing.
+  if (site.optional && isRecord(site.value)) {
+    const shown = withoutBlankText(site.value);
+    if (shown === undefined) return { kind: 'remove' };
+    if (isRecord(shown) && site.schema.safeParse(shown).success) {
+      return Object.keys(shown).length === Object.keys(site.value).length
+        ? { kind: 'keep' }
+        : { kind: 'set', value: shown };
+    }
+  }
   if (site.schema.safeParse(site.value).success) return { kind: 'keep' };
   return site.looseContainer && site.optional
     ? { kind: 'remove' }
@@ -869,6 +1019,7 @@ const migrationV8toV9 = createMigration({
 - On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other's text, or "Other" for the label and "Please specify" for the question.
 - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
 - The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.
+- Some other text that participants see must now contain some text. Where it contained only spaces, the label of a Narrative preset now reads "Preset" followed by its position, such as "Preset 1"; the title of a Name Generator's form for adding a node now reads "Add" followed by the name of the node type, such as "Add Person", or "Add" alone; a Family Pedigree's prompt now uses the name of the stage, and each of its nomination prompts uses the name of its attribute. A block of text on an Information stage that contained only spaces is removed, as is any hint, label at either end of a scale, or description of an image, audio or video that contained only spaces.
 - Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.
 - Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
 - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
@@ -902,6 +1053,10 @@ const migrationV8toV9 = createMigration({
     addSuppliedStageText(migrated, localization);
     repairIntroductionPanels(migrated, localization);
     repairInformationTitles(migrated);
+    repairInformationTextItems(migrated);
+    repairNarrativeLabels(migrated);
+    repairFormTitles(migrated);
+    repairFamilyPedigreeText(migrated);
     repairOtherBinText(migrated, localization);
     repairTieStrengthDeclineLabels(migrated, localization);
 

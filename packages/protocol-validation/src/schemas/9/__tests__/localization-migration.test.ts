@@ -599,13 +599,15 @@ describe('v8 to v9 localization migration', () => {
   });
 
   describe('empty text', () => {
-    it('keeps empty text where the field accepts it', () => {
+    // Every text a participant sees must say something, so an empty hint,
+    // which showed nothing, is left out rather than kept as data.
+    it('leaves out an empty hint', () => {
       const document = schema8Protocol();
       const field = [...stagePath(document, 'egoForm'), 'form', 'fields', 0];
       setAt(document, [...field, 'hint'], '');
 
       const migrated = migrateProtocol(document, 9);
-      expect(getAt(migrated, [...field, 'hint'])).toEqual({ en: '' });
+      expect(getAt(migrated, field)).not.toHaveProperty('hint');
     });
 
     // A participant chooses between options by their labels, so an empty one
