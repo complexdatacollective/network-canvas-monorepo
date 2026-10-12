@@ -31,9 +31,7 @@ function makeProps(overrides: Partial<ProviderProps> = {}): ProviderProps {
     localeOptions,
     requestedLocales: [],
     localePreference: null,
-    recordedLocale: null,
     onLocalePreferenceChange: vi.fn(),
-    onLocaleRecorded: vi.fn(),
     ...overrides,
   };
 }
@@ -144,34 +142,6 @@ describe('ProtocolLocalizationProvider', () => {
 
     expect(latest().locale).toBe('ar');
     expect(latest().metadata.direction).toBe('rtl');
-  });
-
-  it('records the language it shows once, and not when the session already has it', () => {
-    const onLocaleRecorded = vi.fn();
-    const { rerender } = renderLocale(
-      makeProps({ requestedLocales: ['es'], onLocaleRecorded }),
-    );
-    expect(onLocaleRecorded).toHaveBeenCalledTimes(1);
-    expect(onLocaleRecorded).toHaveBeenCalledWith('es');
-
-    rerender(
-      makeProps({
-        requestedLocales: ['es'],
-        recordedLocale: 'es',
-        onLocaleRecorded,
-      }),
-    );
-    expect(onLocaleRecorded).toHaveBeenCalledTimes(1);
-
-    const onResumedRecorded = vi.fn();
-    renderLocale(
-      makeProps({
-        requestedLocales: ['ar'],
-        recordedLocale: 'ar',
-        onLocaleRecorded: onResumedRecorded,
-      }),
-    );
-    expect(onResumedRecorded).not.toHaveBeenCalled();
   });
 
   it('refuses locale options that do not describe each declared locale once', () => {

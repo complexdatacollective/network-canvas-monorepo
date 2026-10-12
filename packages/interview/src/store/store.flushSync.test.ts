@@ -17,8 +17,6 @@ function makeInterview() {
       finishTime: null,
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
-      localePreference: null,
-      locale: null,
       localeOptions: [getLocaleMetadata('en')],
       network: {
         nodes: [],
@@ -48,7 +46,6 @@ function makeInterview() {
   return {
     interview: createStore(payload, {
       onSync,
-      onProtocolLocaleChange: () => Promise.resolve(),
     }),
     onSync,
   };

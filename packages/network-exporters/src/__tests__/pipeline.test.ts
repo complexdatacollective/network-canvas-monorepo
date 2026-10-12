@@ -106,7 +106,6 @@ describe('exportPipeline', () => {
         ego: { _uid: 'ego-1', [entityAttributesProperty]: {} },
       },
       protocolHash: 'h1',
-      locale: null,
       finishOutcome: 'completed',
     };
 
@@ -165,7 +164,6 @@ describe('exportPipeline', () => {
         ego: { _uid: 'ego-2', [entityAttributesProperty]: {} },
       },
       protocolHash: 'h2',
-      locale: null,
       finishOutcome: 'completed',
     };
 
@@ -211,7 +209,6 @@ describe('exportPipeline', () => {
           ego: { _uid: 'ego', [entityAttributesProperty]: {} },
         },
         protocolHash: 'hA',
-        locale: null,
         finishOutcome: 'completed',
       },
       {
@@ -225,7 +222,6 @@ describe('exportPipeline', () => {
           ego: { _uid: 'ego', [entityAttributesProperty]: {} },
         },
         protocolHash: 'hMISSING',
-        locale: null,
         finishOutcome: 'completed',
       },
     ];

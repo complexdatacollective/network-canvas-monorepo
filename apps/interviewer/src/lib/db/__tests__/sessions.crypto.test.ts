@@ -796,8 +796,6 @@ describe('sessions repo — an unreadable stored network fails closed', () => {
       finishedAt: null,
       exportedAt: null,
       currentStep: 2,
-      localePreference: null,
-      locale: null,
     };
   }
 

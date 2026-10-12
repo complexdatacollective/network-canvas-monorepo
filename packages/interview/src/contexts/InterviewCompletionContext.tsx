@@ -36,23 +36,16 @@ const InterviewCompletionContext =
 export function InterviewCompletionProvider({
   initialCompletion,
   completedActions = NO_ACTIONS,
-  onComplete,
   children,
 }: {
   initialCompletion: InterviewCompletion | null;
   completedActions?: readonly CompletedAction[];
-  /** Called once the host has recorded the finish, before the state shows. */
-  onComplete?: () => void;
   children: ReactNode;
 }) {
   const [completion, setCompletion] = useState(initialCompletion);
-  const complete = useCallback(
-    (stageId: string) => {
-      onComplete?.();
-      setCompletion({ stageId, finishedHere: true });
-    },
-    [onComplete],
-  );
+  const complete = useCallback((stageId: string) => {
+    setCompletion({ stageId, finishedHere: true });
+  }, []);
   const value = useMemo(
     () => ({ completion, complete, completedActions }),
     [completion, complete, completedActions],

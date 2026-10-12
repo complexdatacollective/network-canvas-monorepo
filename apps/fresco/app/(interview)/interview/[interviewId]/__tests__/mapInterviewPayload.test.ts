@@ -48,8 +48,6 @@ function makeSource(
     stageMetadata: null,
     isSynthetic: false,
     syncRevision: 7,
-    localePreference: null,
-    locale: null,
     finishStageId: null,
     finishOutcome: null,
     protocol: {
@@ -144,16 +142,13 @@ describe('mapInterviewPayload', () => {
     expect(payload.protocol.interfaceText).toBeUndefined();
   });
 
-  it('carries the stored locale fields into the session', () => {
-    const source = makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION);
-    const { payload } = mapReady({
-      ...source,
-      localePreference: 'fr',
-      locale: 'en',
-    });
+  it('hands the interview no language: the language shown is not interview data', () => {
+    const { payload } = mapReady(
+      makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+    );
 
-    expect(payload.session.localePreference).toBe('fr');
-    expect(payload.session.locale).toBe('en');
+    expect(payload.session).not.toHaveProperty('localePreference');
+    expect(payload.session).not.toHaveProperty('locale');
   });
 
   it('carries a finished interview’s finish stage into the session', () => {
@@ -412,8 +407,6 @@ function makeFinishedSource(): NonNullable<GetInterviewByIdQuery> {
     finishTime: new Date('2026-01-03T00:00:00.000Z'),
     finishStageId: 'finish-completed',
     finishOutcome: 'completed',
-    localePreference: 'fr',
-    locale: 'fr',
     network: {
       nodes: [
         {
@@ -535,8 +528,6 @@ describe('mapInterviewForViewer', () => {
       expect(result.payload.session).toMatchObject({
         finishTime: '2026-01-03T00:00:00.000Z',
         finishStageId: 'finish-completed',
-        localePreference: 'fr',
-        locale: 'fr',
       });
     },
   );

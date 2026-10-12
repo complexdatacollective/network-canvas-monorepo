@@ -28,8 +28,6 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
-    localePreference: null,
-    locale: null,
     localeOptions: [getLocaleMetadata('en')],
     network: {
       ego: {
@@ -113,7 +111,6 @@ function ControlledShell() {
       currentStep={currentStep}
       onStepChange={setCurrentStep}
       onSync={() => Promise.resolve()}
-      onProtocolLocaleChange={() => Promise.resolve()}
       requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
@@ -135,7 +132,6 @@ function ControlledReviewShell() {
       currentStep={currentStep}
       onStepChange={setCurrentStep}
       onSync={() => Promise.resolve()}
-      onProtocolLocaleChange={() => Promise.resolve()}
       requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
@@ -157,7 +153,6 @@ function ControlledNoActiveStageReviewShell() {
       currentStep={currentStep}
       onStepChange={setCurrentStep}
       onSync={() => Promise.resolve()}
-      onProtocolLocaleChange={() => Promise.resolve()}
       requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}

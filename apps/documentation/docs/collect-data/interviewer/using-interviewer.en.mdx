@@ -157,7 +157,7 @@ A protocol can be written in more than one language (see [Translating Your Proto
 
 The interview's own built-in words, such as the labels of its navigation, are shown in the interview's language when Interviewer has it, otherwise in the first of the device's or browser's languages that Interviewer has, and otherwise in English. The buttons and messages that every stage shares, such as Back, Continue and validation messages, are not built in: the protocol holds them as its interview text, and they are shown in the language of the protocol's text, like the rest of it (see [Words Network Canvas supplies](/en/design-protocols/translating-your-protocol#words-network-canvas-supplies)).
 
-The only way for a participant to change the language during an interview is a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage in the protocol. Interviewer saves their choice with the interview, so it is used again when the interview is resumed. Exported data records the language each interview was shown in: see [Interview language](/en/analyze-data/data-export#interview-language).
+The only way for a participant to change the language during an interview is a [Language Chooser](/en/design-protocols/interface-documentation/language-chooser) stage in the protocol. Their choice lasts until the browser tab is closed, so it is used again if the page is reloaded or the interview is resumed in the same tab. It isn't saved with the interview or included in exported data: a resumed interview in a new tab starts again from the device's or browser's languages.
 
 </AppOnly>
 

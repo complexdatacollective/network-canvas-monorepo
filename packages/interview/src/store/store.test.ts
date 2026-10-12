@@ -54,8 +54,6 @@ const payload: InterviewPayload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
-    localePreference: null,
-    locale: null,
     localeOptions: [getLocaleMetadata('en')],
     network: createInitialNetwork(),
   },
@@ -107,7 +105,6 @@ function createInterview(isDevelopment: boolean) {
   };
   const interview = store(payload, {
     onSync: () => Promise.resolve(),
-    onProtocolLocaleChange: () => Promise.resolve(),
     isDevelopment,
     extraMiddleware: [recordActions],
   });

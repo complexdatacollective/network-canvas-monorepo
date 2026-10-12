@@ -66,14 +66,9 @@ ended early. That outcome is saved with each interview and exported.
   and the stages menu no longer lists finish stages. A review of a protocol
   with nothing before its finish stage shows that stage's text read-only,
   with an **Exit review** button when the host passes `onExit`.
-- A finished interview is shown in the language of whoever opens it, but
-  never reports a language change: `onProtocolLocaleChange` is not called once
-  the interview is finished, so the language it was taken in, which exports
-  read, is kept.
 - A host that lets a finished interview be changed passes the new
   `openFinishedAsActive` Shell prop. The interview then opens at its stages
-  rather than in its completed state, and keeps reporting language changes
-  until it is finished again.
+  rather than in its completed state.
 - A finish stage with no heading or text, which only an Architect preview of a
   protocol still being written can have, shows the Finish button alone, and
   its completed state puts focus on the finished notice.
@@ -85,7 +80,7 @@ ended early. That outcome is saved with each interview and exported.
 **Exports (`@codaco/network-exporters`, `@codaco/shared-consts`)**
 
 - Each interview's outcome is exported: CSV ego files have a
-  `networkCanvasFinishOutcome` column after `networkCanvasInterviewLocale`, and
+  `networkCanvasFinishOutcome` column after `COMMIT_HASH`, and
   GraphML graphs an `nc:finishOutcome` attribute. **Breaking:**
   `InterviewExportInput` requires `finishOutcome`; pass `null` for an interview with no recorded
   outcome, whose CSV cell is then empty and whose GraphML attribute is left

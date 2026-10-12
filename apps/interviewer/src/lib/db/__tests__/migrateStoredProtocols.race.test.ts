@@ -220,8 +220,6 @@ describe('the sweep against concurrent writers', () => {
       exportedAt: null,
       currentStep: 1,
       network: { ego: { _uid: 'ego', attributes: {} }, nodes: [], edges: [] },
-      localePreference: null,
-      locale: null,
     };
     await db.sessions.put(await encryptSession(session));
 

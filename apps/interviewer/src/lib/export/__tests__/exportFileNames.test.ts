@@ -54,7 +54,6 @@ const session: InterviewExportInput = {
   finishTime: new Date(1000),
   finishOutcome: 'completed',
   protocolHash: 'hash-1',
-  locale: null,
   network: {
     nodes: Object.keys(nodeTypeNames).map((type) => ({
       [entityPrimaryKeyProperty]: `node-${type}`,

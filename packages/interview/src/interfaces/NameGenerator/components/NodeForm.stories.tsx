@@ -230,8 +230,6 @@ const mockSession = {
   finishTime: null,
   exportTime: null,
   lastUpdated: new Date().toISOString(),
-  localePreference: null,
-  locale: null,
   network: {
     nodes: [
       {

@@ -24,7 +24,7 @@ The list contains exactly the languages your protocol is written in, in alphabet
 
 The language the interview is currently shown in is already selected. When the participant picks another one, the change happens straight away: your protocol's text switches to that language, including the interview's buttons and messages that your protocol holds (see [Interview text](/en/design-protocols/translating-your-protocol#interview-text)), and so does every later screen of the interview. The participant can change their mind as often as they like before moving on. A text with no translation in the language they pick appears in another of your protocol's languages (see [The default language and which translation participants see](/en/design-protocols/translating-your-protocol#the-default-language-and-which-translation-participants-see)).
 
-The participant can always move on to the next screen, even if they don't pick a language. If they leave the selected language as it is, the interview keeps choosing its language from the language settings of their device or browser, as it did before this screen. Once they pick a language, the interview keeps it, including when the interview is resumed later.
+The participant can always move on to the next screen, even if they don't pick a language. If they leave the selected language as it is, the interview keeps choosing its language from the language settings of their device or browser, as it did before this screen. Once they pick a language, the interview keeps it until the browser tab is closed, including if the page is reloaded. The choice isn't saved with the interview, so an interview resumed in a new tab or on another device starts again from that device's or browser's language settings.
 
 The interview's own built-in words are available in a fixed set of languages. If the participant picks a language that Network Canvas doesn't have, your protocol's text is shown in that language, and the built-in words are shown in a language from the participant's device or browser settings if Network Canvas has one, or otherwise in English.
 
@@ -41,7 +41,7 @@ The stage editor has these sections:
 
 ## Data
 
-The Language Chooser does not create nodes or edges, and it doesn't add anything to the participant's network. The language the interview was shown in is recorded with each interview and included in your exported data. See [Interview language](/en/analyze-data/data-export#interview-language).
+The Language Chooser does not create nodes or edges, and it doesn't add anything to the participant's network. The participant's choice is not saved with the interview or included in your exported data. It lasts for the rest of their visit in that browser tab, including if they reload the page.
 
 ### Best Practices
 

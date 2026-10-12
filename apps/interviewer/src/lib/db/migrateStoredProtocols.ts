@@ -348,9 +348,7 @@ const sessionUnchanged = (
   current.lastUpdatedAt === read.lastUpdatedAt &&
   current.finishedAt === read.finishedAt &&
   current.exportedAt === read.exportedAt &&
-  current.currentStep === read.currentStep &&
-  current.localePreference === read.localePreference &&
-  current.locale === read.locale;
+  current.currentStep === read.currentStep;
 
 /**
  * Inside the migration's transaction: the protocol's sessions must be exactly

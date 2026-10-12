@@ -46,7 +46,6 @@ const row = (
   startTime: new Date('2026-01-01'),
   ...finish,
   network: networkValue,
-  locale: null,
   protocol: { hash: 'protocol-hash' },
 });
 

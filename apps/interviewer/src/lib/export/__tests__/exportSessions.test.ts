@@ -25,7 +25,6 @@ function seedDb() {
       finishedAt: 1722776400000,
       network: { nodes: [], edges: [], ego: {} },
       protocolHash: 'hash-1',
-      locale: 'fr',
       finishStageId: 'finish-ineligible',
       finishOutcome: 'ineligible',
     },
@@ -101,7 +100,6 @@ describe('runExport via the export worker', () => {
     if (!start) throw new Error('start message not posted');
     expect(start.type).toBe('start');
     expect(start.data.sessions.map((s) => s.id)).toEqual(['s1']);
-    expect(start.data.sessions.map((s) => s.locale)).toEqual(['fr']);
     expect(start.data.sessions.map((s) => s.finishOutcome)).toEqual([
       'ineligible',
     ]);
@@ -146,7 +144,6 @@ describe('runExport via the export worker', () => {
         finishedAt: 1722776400000,
         network,
         protocolHash: 'hash-1',
-        locale: null,
         finishStageId: 'finish-terminated',
         finishOutcome: 'terminated',
       },
@@ -158,7 +155,6 @@ describe('runExport via the export worker', () => {
         finishedAt: 1722776400000,
         network,
         protocolHash: 'hash-1',
-        locale: null,
       },
       {
         id: 'unfinished',
@@ -167,7 +163,6 @@ describe('runExport via the export worker', () => {
         finishedAt: null,
         network,
         protocolHash: 'hash-1',
-        locale: null,
       },
     ]);
     getProtocolsByHashes.mockResolvedValue([

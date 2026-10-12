@@ -133,28 +133,6 @@ document, and every `<data>` element uses the allocated ID. If the same external
 attribute appears on more than one entity kind, GraphML emits one `for="all"`
 key rather than conflicting node and edge keys.
 
-### Interview language
-
-Each interview is exported with the language it was last shown in, taken from
-`InterviewExportInput.locale`. The value is a BCP 47 tag, and `null` means the
-runtime never reported one.
-
-- **CSV**: the ego file has a `networkCanvasInterviewLocale` column, written
-  after the other session columns (`APP_VERSION`, `COMMIT_HASH`) and before the
-  variable columns. The cell is empty when the language is `null`.
-- **GraphML**: the `<graph>` element has an `nc:interviewLocale` attribute,
-  omitted when the language is `null`.
-
-The CSV column is always present, so the language an interview was held in never
-changes the headers or keys an analysis is built from.
-
-Only the printed name `networkCanvasInterviewLocale` is reserved. A variable
-whose column would have that name is written as `networkCanvasInterviewLocale_2`
-in the ego CSV and reported once per protocol as a `column-renamed` warning in
-`ExportReturn.warnings`. A variable named `interviewLocale` is exported
-unchanged, and GraphML never renames one, because the language is an attribute
-of the graph rather than a key.
-
 ### How an interview ended
 
 Each interview is exported with the outcome of the finish stage it ended at,
@@ -163,7 +141,8 @@ taken from `InterviewExportInput.finishOutcome`: `completed`, `ineligible` or
 before finish outcomes were recorded.
 
 - **CSV**: the ego file has a `networkCanvasFinishOutcome` column, written
-  after `networkCanvasInterviewLocale`. The cell is empty when the outcome is
+  after the other session columns (`APP_VERSION`, `COMMIT_HASH`) and before
+  the variable columns. The cell is empty when the outcome is
   `null`.
 - **GraphML**: the `<graph>` element has an `nc:finishOutcome` attribute,
   omitted when the outcome is `null`.
@@ -226,8 +205,6 @@ export const PrismaInterviewRepository = Layer.succeed(InterviewRepository, {
         finishTime: row.finishTime,
         network: NcNetworkSchema.parse(row.network),
         protocolHash: row.protocolHash,
-        // The language last shown, or null if the runtime never reported one
-        locale: row.locale,
         finishOutcome: row.finishOutcome,
       }));
 

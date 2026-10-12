@@ -17,11 +17,7 @@ import type {
 import { Shell } from '@codaco/interview';
 import { getLocaleMetadata } from '@codaco/protocol-validation';
 
-import {
-  mockFinish,
-  mockProtocolLocaleChange,
-  mockSync,
-} from './mockCallbacks';
+import { mockFinish, mockSync } from './mockCallbacks';
 import {
   createInterview as createInterviewHook,
   getAllowStageNavigation,
@@ -199,7 +195,6 @@ function MountedInterview({
       {...shellProps}
       payload={payload}
       onSync={mockSync}
-      onProtocolLocaleChange={mockProtocolLocaleChange}
       onFinish={mockFinish}
       onRequestAsset={mockAssetReq}
       // Every production host (Interviewer, Fresco, the website preview)

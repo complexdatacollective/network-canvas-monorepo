@@ -28,7 +28,6 @@ const mkSession = (
     ego: { _uid: ego, [entityAttributesProperty]: {} },
   },
   protocolHash: hash,
-  locale: null,
   finishOutcome: 'completed',
 });
 

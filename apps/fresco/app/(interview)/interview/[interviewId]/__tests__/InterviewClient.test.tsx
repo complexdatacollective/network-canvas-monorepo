@@ -2,11 +2,7 @@ import { cleanup, render } from '@testing-library/react';
 import type * as Nuqs from 'nuqs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type {
-  InterviewPayload,
-  ProtocolLocaleChangeHandler,
-  SyncHandler,
-} from '@codaco/interview';
+import type { InterviewPayload, SyncHandler } from '@codaco/interview';
 import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { createInitialNetwork } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
@@ -16,7 +12,6 @@ import type { InterviewView } from '../mapInterviewPayload';
 
 type ShellHandlers = {
   onSync: SyncHandler;
-  onProtocolLocaleChange: ProtocolLocaleChangeHandler;
   openFinishedAsActive?: boolean;
 };
 
@@ -43,8 +38,6 @@ const payload: InterviewPayload = {
     exportTime: null,
     lastUpdated: '2026-10-02T00:00:00.000Z',
     network: createInitialNetwork(),
-    localePreference: null,
-    locale: 'en',
     localeOptions: [{ locale: 'en', label: 'English', direction: 'ltr' }],
   },
   protocol: {
@@ -81,8 +74,8 @@ function renderClient(view: InterviewView): ShellHandlers {
   return props;
 }
 
-/** Ask the Shell's handlers for one write each, as a store change would. */
-async function writeThrough({ onSync, onProtocolLocaleChange }: ShellHandlers) {
+/** Ask the Shell's sync handler for a write, as a store change would. */
+async function writeThrough({ onSync }: ShellHandlers) {
   await onSync(
     payload.session.id,
     {
@@ -92,15 +85,9 @@ async function writeThrough({ onSync, onProtocolLocaleChange }: ShellHandlers) {
       exportTime: payload.session.exportTime,
       lastUpdated: payload.session.lastUpdated,
       network: payload.session.network,
-      localePreference: null,
-      locale: 'en',
     },
     { immediate: true, unloading: false },
   );
-  await onProtocolLocaleChange(payload.session.id, {
-    locale: 'fr',
-    localePreference: 'fr',
-  });
 }
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -140,7 +127,7 @@ describe('InterviewClient', () => {
     { view: 'active', openFinishedAsActive: false },
     { view: 'editable-finished', openFinishedAsActive: true },
   ])(
-    'writes sync and language changes through for the $view view',
+    'writes sync changes through for the $view view',
     async ({ view, openFinishedAsActive }) => {
       const handlers = renderClient(view);
 
@@ -149,7 +136,6 @@ describe('InterviewClient', () => {
       expect(handlers.openFinishedAsActive).toBe(openFinishedAsActive);
       expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
         `/interview/${payload.session.id}/sync`,
-        `/interview/${payload.session.id}/locale`,
       ]);
     },
   );

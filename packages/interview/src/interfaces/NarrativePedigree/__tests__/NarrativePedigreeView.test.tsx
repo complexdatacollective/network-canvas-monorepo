@@ -338,6 +338,7 @@ function makeStore({
         FORM_IS_READY: false,
         encryptionKeyId: null,
         showPassphrasePrompter: false,
+        localePreference: null,
       },
     },
     middleware: (g) => g({ serializableCheck: false }),

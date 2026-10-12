@@ -62,7 +62,6 @@ const interview = (
   startTime: new Date('2025-01-01'),
   finishTime: finishOutcome ? new Date('2025-01-02') : null,
   protocolHash: 'protocol-1',
-  locale: 'en',
   finishOutcome,
   network: {
     nodes: [],
@@ -135,7 +134,6 @@ describe('an export of sessions that ended in different ways', () => {
       'sessionExported',
       'APP_VERSION',
       'COMMIT_HASH',
-      'networkCanvasInterviewLocale',
       'networkCanvasFinishOutcome',
       'finishOutcome',
       'networkCanvasFinishOutcome_2',

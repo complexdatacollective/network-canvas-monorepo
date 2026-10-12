@@ -12,8 +12,6 @@ function makeSession(): SessionSnapshot {
     exportTime: null,
     lastUpdated: new Date().toISOString(),
     network: createInitialNetwork(),
-    localePreference: null,
-    locale: null,
   };
 }
 

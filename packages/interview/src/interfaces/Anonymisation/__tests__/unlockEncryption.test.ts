@@ -157,6 +157,7 @@ describe('unlocking an interview', () => {
       FORM_IS_READY: false,
       encryptionKeyId: expect.any(String),
       showPassphrasePrompter: false,
+      localePreference: null,
     });
 
     expect(synced.length).toBeGreaterThan(0);

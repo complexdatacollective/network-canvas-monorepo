@@ -8,7 +8,6 @@ import {
   codebookHashProperty,
   edgeSourceProperty,
   finishOutcomeProperty,
-  interviewLocaleProperty,
   protocolName,
   protocolProperty,
   sessionExportTimeProperty,
@@ -97,13 +96,6 @@ export const setUpXml = (
     graph.setAttribute(
       'nc:sessionFinishTime',
       sessionVariables[sessionFinishTimeProperty],
-    );
-  }
-
-  if (sessionVariables[interviewLocaleProperty]) {
-    graph.setAttribute(
-      'nc:interviewLocale',
-      sessionVariables[interviewLocaleProperty],
     );
   }
 

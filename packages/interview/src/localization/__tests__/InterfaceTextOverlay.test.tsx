@@ -36,9 +36,7 @@ function Interview({
         )}
         requestedLocales={['es']}
         localePreference={null}
-        recordedLocale={null}
         onLocalePreferenceChange={vi.fn()}
-        onLocaleRecorded={vi.fn()}
       >
         <InterfaceTextOverlay interfaceText={interfaceText}>
           {children}

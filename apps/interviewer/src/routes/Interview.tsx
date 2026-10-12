@@ -31,7 +31,6 @@ import {
   createDebouncedSyncHandler,
   type FinishHandler,
   type InterviewPayload,
-  type ProtocolLocaleChangeHandler,
   type SessionPayload,
   Shell,
   type StepChangeHandler,
@@ -58,7 +57,6 @@ import {
   getSession,
   getSettings,
   markSessionFinished,
-  setSessionLocale,
   updateSession,
   updateSettings,
 } from '~/lib/db/api';
@@ -225,13 +223,7 @@ const loadFailureCopy = {
 };
 
 const discardSessionChanges: SyncHandler = () => Promise.resolve();
-const discardLocaleChange: ProtocolLocaleChangeHandler = () =>
-  Promise.resolve();
 const discardFinish: FinishHandler = () => Promise.resolve();
-// The per-session write chain in `setSessionLocale` keeps one interview's
-// locale writes in order.
-const saveLocaleChange: ProtocolLocaleChangeHandler = (id, change) =>
-  setSessionLocale(id, change);
 
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const intl = useAppIntl();
@@ -664,9 +656,6 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
         currentStep={currentStep}
         onStepChange={handleStepChange}
         onSync={readOnly ? discardSessionChanges : handleSync}
-        onProtocolLocaleChange={
-          readOnly ? discardLocaleChange : saveLocaleChange
-        }
         onFinish={readOnly ? discardFinish : handleFinish}
         onRequestAsset={state.resolver}
         analytics={analytics}
@@ -781,8 +770,6 @@ function hydrateSession(
     network: stored.network,
     promptIndex: 0,
     stageMetadata: stored.stageMetadata,
-    localePreference: stored.localePreference,
-    locale: stored.locale,
     localeOptions: localization.locales.map((locale) =>
       getLocaleMetadata(locale),
     ),
