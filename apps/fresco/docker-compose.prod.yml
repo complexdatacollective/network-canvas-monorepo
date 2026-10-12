@@ -65,10 +65,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      # No healthcheck to wait on (see the garage service); Fresco reaches
-      # storage only when a request needs it.
+      # Without this, a Garage that cannot set itself up would leave Fresco
+      # running, healthy by its own check, with every file operation failing.
       garage:
-        condition: service_started
+        condition: service_healthy
     restart: always
     networks:
       - fresco_network
@@ -162,8 +162,15 @@ services:
     configs:
       - source: garage-config
         target: /etc/garage.toml
-    # No healthcheck: the image is built FROM scratch and has no shell to run
-    # one with.
+    # The image has no shell, but the check is Garage's own binary: it asks
+    # the node over RPC and fails while the node is down or restarting, which
+    # is what a failed set-up (such as a changed secret) leaves it doing.
+    healthcheck:
+      test: ['CMD', '/garage', 'health', '--quiet']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - fresco_network
     # Traefik rule-length priority makes the PathPrefix rule win for /assets/*;
