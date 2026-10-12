@@ -2231,6 +2231,16 @@ test('a pinned run from the release branch must pin the version it carries', asy
   );
 });
 
+test('a pinned run from a release branch that does not release Fresco is not certified', async () => {
+  const { result } = await run(fromReleaseBranch({ releasesFresco: false }));
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('does not release Fresco')),
+    JSON.stringify(result.failures),
+  );
+});
+
 test('a pinned run from the release branch must build its head', async () => {
   const { result } = await run(fromReleaseBranch({ head: 'f'.repeat(40) }));
   assert.equal(result.verdict, 'no-go');
@@ -2757,6 +2767,43 @@ test('release-branch-version.mjs recognises the Version Packages branch', () => 
     publish('main', commit('4.1.1', [DOCS]));
     publish('changeset-release/main', released('4.1.2'));
     assert.match(refusal(), /consumed no changesets/);
+
+    // A release branch that deleted a separately gated lane's changeset.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    publish('main', onMain('4.1.1'));
+    publish('changeset-release/main', commit('4.1.2', [], false));
+    assert.match(
+      refusal(),
+      /deleted quiet-docs, a changeset owned by a separately gated release lane/,
+    );
+
+    // The app-release guard's rules against origin's fresco@ tags.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    const releaseBase = git('rev-parse', 'HEAD');
+    publish('changeset-release/main', released('4.1.2'));
+    git('push', '-q', 'origin', 'HEAD:refs/tags/fresco@4.1.2');
+    assert.match(refusal(), /fresco@4\.1\.2 is already released/);
+    git('push', '-q', 'origin', ':refs/tags/fresco@4.1.2');
+
+    // A hotfix released 4.1.3 and was never merged back into main.
+    git('checkout', '-q', '--detach', releaseBase);
+    const hotfix = released('4.1.3');
+    git('tag', '-a', '-m', 'hotfix', 'fresco@4.1.3', hotfix);
+    git('push', '-q', 'origin', 'refs/tags/fresco@4.1.3');
+    git('checkout', '-q', 'changeset-release/main');
+    assert.match(refusal(), /not newer than the released fresco@4\.1\.3/);
+    publish('changeset-release/main', released('4.1.4'));
+    assert.match(refusal(), /does not contain the released fresco@4\.1\.3/);
+
+    // A release branch that contains the hotfix may release past it.
+    git('checkout', '-q', '-B', 'changeset-release/main', hotfix);
+    publish('changeset-release/main', released('4.1.4'));
+    const pastHotfix = detect();
+    assert.equal(pastHotfix.releasesFresco, true);
+    assert.deepEqual(pastHotfix.consumedChangesets, [
+      'brave-otters',
+      'calm-owls',
+    ]);
 
     // A base whose version is not stable semver proves nothing about the bump.
     publish('main', onMain('next'));

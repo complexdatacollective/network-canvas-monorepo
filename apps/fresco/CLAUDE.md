@@ -457,11 +457,16 @@ so the script also names every changeset it deleted relative to main's tip;
 the diff judge, audit and critic read them from that commit, and the coverage
 gates count them as pending. A branch that consumed none, or that still
 carries a changeset the normal lane owns (the merge-time freshness guard's
-predicate: a stale PR updated by merging main rather than regenerated), pins
-nothing. The branch is checked on every run, pinned or not, and a run from it
-is bound to it either way: the image must be built from the branch head, a
-passed `expectedVersion` must equal the version the branch carries, and its
-consumed changesets are counted. Because the bot regenerates the PR whenever
+predicate: a stale PR updated by merging main rather than regenerated), or that
+deleted a changeset a separately gated lane (Documentation, Website, Studio)
+still needs, pins nothing. Neither does a Fresco version the app-release guard
+would skip: one whose `fresco@` tag already exists on origin, one not newer
+than origin's newest `fresco@` tag, or a branch that does not contain that
+tag's commit (an unmerged hotfix; merge it into main and wait for the PR to
+regenerate). The branch is checked on every run, pinned or not, and a run from
+it is bound to it either way: the image must be built from the branch head, a
+passed `expectedVersion` must equal the version the branch carries, the branch
+must release Fresco, and its consumed changesets are counted. Because the bot regenerates the PR whenever
 main moves, the branch is checked again after the lanes finish; if its head,
 version or consumed changesets changed, or the check fails, the run is
 `incomplete`. A pinned run whose checkout cannot be identified (the check

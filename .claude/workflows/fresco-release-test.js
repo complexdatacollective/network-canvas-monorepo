@@ -1105,6 +1105,10 @@ if (pinnedVersion && onReleaseBranch && branchVersion !== pinnedVersion)
   provenanceFailures.push(
     `this run certifies ${pinnedVersion}, but the Version Packages branch it runs from carries Fresco ${branchVersion ?? 'with no usable version'} — the wrong version is pinned`,
   );
+if (pinnedVersion && onReleaseBranch && releaseBranch.releasesFresco !== true)
+  provenanceFailures.push(
+    `this run certifies ${pinnedVersion}, but the Version Packages branch it runs from does not release Fresco — merging it would not deploy the build under test`,
+  );
 
 // Deliberately gives the agent nothing to decide. The reading is a
 // deterministic script's own JSON — what the sink recorded, and whether the

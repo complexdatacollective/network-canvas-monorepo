@@ -22,7 +22,10 @@
 // predates main's newest commit (a hotfix released since, say) is stale and
 // fails. A version ahead of main's reports releasesFresco:true; the same version
 // (the PR releases other packages only) reports releasesFresco:false; a version
-// that moves backwards, or is not stable semver on either side, fails.
+// that moves backwards, or is not stable semver on either side, fails. A
+// version ahead of main's must also pass the app-release guard's tag rules
+// against origin's fresco@ tags (not already released, newer than the newest
+// release, containing its commit), or merging the PR would release nothing.
 //
 // Versions are read from committed trees, not the working tree. A dirty tree
 // never certifies, and the commit is what the release will build.
@@ -34,18 +37,24 @@
 // release branch whose consumed changesets cannot be listed fails, and so does
 // one that still carries a changeset the normal lane owns (the merge-time
 // freshness guard's own predicate): containing main's tip is not enough when
-// the PR was updated by merging main rather than regenerated.
+// the PR was updated by merging main rather than regenerated. So does one that
+// deleted a separately gated lane's changeset, which that lane still needs.
 //
 // Origin is only trusted as the canonical repository: anything ls-remote says
 // about another remote says nothing about the Version Packages PR.
 import { execFileSync, spawnSync } from 'node:child_process';
 
-import { parseChangeset } from '../../../../scripts/release/changeset-app-utils.mjs';
+import {
+  isIgnoredLaneChangeset,
+  parseChangeset,
+} from '../../../../scripts/release/changeset-app-utils.mjs';
 import { unconsumedChangesets } from '../../../../scripts/release/check-version-packages-freshness.mjs';
 
 const RELEASE_BRANCH = 'changeset-release/main';
 const MAIN = 'main';
 const MANIFEST = 'apps/fresco/package.json';
+// The app-release guard's tag prefix (PKG_NAME@VERSION) for Fresco.
+const RELEASE_TAG_PREFIX = 'fresco@';
 const CHANGESET_DIR = '.changeset';
 // The workflow's own CHANGESET_NAME shape; a name outside it could not be
 // relayed, so it fails here rather than being dropped there.
@@ -100,6 +109,34 @@ const remoteHeads = () => {
   return heads;
 };
 
+// Origin's released Fresco tags as version -> peeled commit, or null when
+// origin cannot be reached. Local tags may predate a hotfix released since.
+const remoteReleaseTags = () => {
+  const { status, stdout } = spawnSync(
+    'git',
+    ['ls-remote', '--tags', 'origin', `refs/tags/${RELEASE_TAG_PREFIX}*`],
+    {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      timeout: 60_000,
+    },
+  );
+  if (status !== 0) return null;
+  const tags = new Map();
+  const peeled = new Map();
+  for (const line of stdout.split('\n')) {
+    const [sha, ref] = line.trim().split(/\s+/);
+    const prefix = `refs/tags/${RELEASE_TAG_PREFIX}`;
+    if (!sha || !ref?.startsWith(prefix)) continue;
+    const name = ref.slice(prefix.length);
+    if (name.endsWith('^{}')) peeled.set(name.slice(0, -'^{}'.length), sha);
+    else tags.set(name, sha);
+  }
+  for (const [version, sha] of peeled) tags.set(version, sha);
+  return tags;
+};
+
 // The URL origin resolves to after any insteadOf rewriting, which is the URL
 // ls-remote will actually contact.
 const trustedOrigin = () => {
@@ -128,6 +165,7 @@ const consumedChangesets = (base) => {
   )
     .split('\0')
     .filter(Boolean);
+  const ignored = ignoredAt(base);
   const names = [];
   for (const path of deleted) {
     const file = path.slice(CHANGESET_DIR.length + 1);
@@ -137,6 +175,17 @@ const consumedChangesets = (base) => {
     if (!CHANGESET_NAME.test(name))
       throw new Error(
         `the release branch consumed a changeset whose name the release test cannot carry (${JSON.stringify(file)})`,
+      );
+    // Separately gated lanes keep their changesets until their own release
+    // PR; a head that deleted one would drop it from that lane for good.
+    if (
+      isIgnoredLaneChangeset(
+        parseChangeset(git('show', `${base}:${path}`)),
+        ignored,
+      )
+    )
+      throw new Error(
+        `the release branch deleted ${name}, a changeset owned by a separately gated release lane, which the Version Packages PR must leave in place`,
       );
     names.push(name);
   }
@@ -255,6 +304,42 @@ try {
     fail(
       `the release branch moves Fresco backwards, from ${baseVersion} to ${version}`,
     );
+  // The app-release guard skips a version whose tag exists, one not newer than
+  // the newest released tag, and a tree missing that tag's commit (an
+  // unmerged hotfix): merging such a head would consume its changesets
+  // without deploying Fresco.
+  if (order > 0) {
+    const tags = remoteReleaseTags();
+    if (!tags)
+      fail(
+        "could not list origin's Fresco release tags - fetch access is required to check the release against what is live; restore access to origin and rerun",
+      );
+    if (tags.has(version))
+      fail(`${RELEASE_TAG_PREFIX}${version} is already released`);
+    const newest = [...tags.keys()]
+      .map((tag) => ({ tag, parsed: parseStable(tag) }))
+      .filter(({ parsed: p }) => p)
+      .reduce(
+        (top, entry) =>
+          !top || compareStable(entry.parsed, top.parsed) > 0 ? entry : top,
+        null,
+      );
+    if (newest && compareStable(parsed, newest.parsed) <= 0)
+      fail(
+        `the release branch carries Fresco ${version}, which is not newer than the released ${RELEASE_TAG_PREFIX}${newest.tag} - a hotfix has released past it; merge the hotfix branch into ${MAIN}, then rerun once the Version Packages PR regenerates`,
+      );
+    if (newest) {
+      const released = tags.get(newest.tag);
+      if (!commitAt(released))
+        fail(
+          `${RELEASE_TAG_PREFIX}${newest.tag} (${released.slice(0, 12)}) is not in this clone - fetch origin --tags and rerun`,
+        );
+      if (!isAncestor(released, head))
+        fail(
+          `the release branch does not contain the released ${RELEASE_TAG_PREFIX}${newest.tag}, so the release lane would refuse to deploy it - merge the hotfix branch into ${MAIN}, then rerun once the Version Packages PR regenerates`,
+        );
+    }
+  }
   const consumed = consumedChangesets(mainTip);
   if (!consumed.length)
     fail(
