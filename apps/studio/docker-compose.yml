@@ -42,16 +42,16 @@
 #                  so put the managed instance's password there. Then delete
 #                  the `postgres` service and the `postgres-data` volume.
 #   Object store   set `S3_ENDPOINT` and the other four `S3_*` variables. Then
-#                  delete the `garage` service, the `garage-init` one-shot,
-#                  the `depends_on` entries naming them in `api`, `worker`
-#                  and `migrate`, the `garage-config` and `garage-init`
-#                  configs, and the `garage-data` volume.
+#                  delete the `garage` service, the `depends_on` entries
+#                  naming it in `api`, `worker` and `migrate`, the
+#                  `garage-config` config, and the `garage-data` volume.
 #                  Or, for Azure Blob Storage, which does not speak S3: set
 #                  `STUDIO_OBJECT_STORE=azure-blob`, the `AZURE_STORAGE_*`
 #                  variables, and empty every `S3_*` value, `S3_ENDPOINT`
 #                  included if a managed bucket set it (an empty access key
-#                  also stops `S3_ENDPOINT` defaulting to Garage — see below). The
-#                  Garage tidying is then the same.
+#                  also stops `S3_ENDPOINT` defaulting to Garage, and Garage
+#                  creating a key and bucket — see below). The Garage tidying
+#                  is then the same.
 #   Rate limiting  set `REDIS_URL`; any Redis 7-compatible server works. The
 #                  same server holds the rate-limit counters and carries the
 #                  `studio:protocol-events` doorbell that tells every API
@@ -215,11 +215,10 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
-      # Started, not healthy: the Garage image is scratch-based and can run no
-      # healthcheck. The API tolerates an unreachable object store (asset
-      # routes refuse and readiness reports it) rather than failing to boot.
+      # Healthy means bootstrapped: Garage creates its layout, key and bucket
+      # before it starts serving, so a healthy Garage has the bucket.
       garage:
-        condition: service_started
+        condition: service_healthy
 
   # The same image, the same environment, a different command. It routes no
   # traffic and publishes no port; its health listener binds 127.0.0.1 inside
@@ -248,7 +247,7 @@ services:
       valkey:
         condition: service_healthy
       garage:
-        condition: service_started
+        condition: service_healthy
 
   # Rate-limit counters (#1909), and the `studio:protocol-events` doorbell the
   # API replicas ring each other on when a protocol changes. Nothing here is
@@ -286,11 +285,28 @@ services:
       retries: 10
 
   # Single-node Garage: the S3-compatible store asset bytes live in. It
-  # publishes no port — only the API and the bootstrap one-shot below reach
-  # it, over this network.
+  # publishes no port — only the Studio processes reach it, over this network.
+  #
+  # It bootstraps itself, idempotently, on every start: `--single-node`
+  # applies a one-node layout the first time, and `--default-bucket` imports
+  # the access key below and creates the bucket with read, write and owner on
+  # it. A volume an earlier release bootstrapped through its admin API is
+  # already in that state and is left as it is. A key whose secret has since
+  # changed in `.env` is refused, by name, rather than kept silently.
+  #
+  # The flag is interpolated so that an empty `S3_ACCESS_KEY_ID` drops it: an
+  # Azure Blob deployment empties the `S3_*` values, and Garage then runs
+  # holding nothing until the service is deleted. A string rather than a list
+  # because Compose splits it into arguments itself — there is no shell in the
+  # image — and an empty substitution leaves no empty argument behind.
   garage:
-    image: dxflrs/garage:v2.1.0@sha256:4c9b34c113e61358466e83fd6e7d66e6d18657ede14b776eb78a93ee8da7cf6a
+    image: dxflrs/garage:v2.4.1@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
     restart: unless-stopped
+    command: /garage server --single-node ${S3_ACCESS_KEY_ID:+--default-bucket}
+    environment:
+      GARAGE_DEFAULT_ACCESS_KEY: ${S3_ACCESS_KEY_ID}
+      GARAGE_DEFAULT_SECRET_KEY: ${S3_SECRET_ACCESS_KEY}
+      GARAGE_DEFAULT_BUCKET: ${S3_BUCKET}
     volumes:
       - garage-data:/var/lib/garage
     configs:
@@ -300,30 +316,14 @@ services:
         # readable by anyone but its owner. Compose's default for a config is
         # 0444, which that check rejects.
         mode: 0400
-    # No healthcheck: the image is built FROM scratch and has no shell, so
-    # there is nothing to run one with. `garage-init` waits for the admin API
-    # itself.
-
-  # Applies the cluster layout, imports the access key and creates the bucket,
-  # through Garage's admin API — the image has no shell to run `garage` in.
-  # Every step is idempotent, because `migrate` depends on this one and so it
-  # runs on every schema application rather than only the first.
-  garage-init:
-    image: curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6
-    profiles: [migrate]
-    entrypoint: ['/bin/sh', '/garage-init.sh']
-    environment:
-      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
-      STUDIO_OBJECT_STORE: ${STUDIO_OBJECT_STORE}
-      S3_BUCKET: ${S3_BUCKET}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
-    configs:
-      - source: garage-init
-        target: /garage-init.sh
-    depends_on:
-      garage:
-        condition: service_started
+    # The image has no shell, but the check is Garage's own binary: it asks
+    # the node over RPC and fails while the cluster is unavailable.
+    healthcheck:
+      test: ['CMD', '/garage', 'health', '--quiet']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # `docker compose run --rm migrate`. Applies, in one transaction, every
   # migration this image carries that the database has not recorded: all of
@@ -333,8 +333,8 @@ services:
   # message names the remedy. The upgrade sequence is
   # docs/self-host/upgrade.md. On an instance that still has no owner it also prints the
   # first-run setup token, so its output is worth reading rather than only its
-  # exit code. It bootstraps Garage first, through the dependency below, so a
-  # first run is one command.
+  # exit code. It waits for Garage, which bootstraps itself, so a first run is
+  # one command.
   migrate:
     image: ${STUDIO_API_IMAGE}
     profiles: [migrate]
@@ -344,8 +344,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      garage-init:
-        condition: service_completed_successfully
+      garage:
+        condition: service_healthy
 
 configs:
   # Traefik's routing table. Inline so a self-hoster downloads two files
@@ -448,151 +448,6 @@ configs:
       [s3_api]
       api_bind_addr = "[::]:3900"
       s3_region = "${S3_REGION}"
-      root_domain = ".s3.garage"
-
-      [admin]
-      api_bind_addr = "[::]:3903"
-      admin_token = "${GARAGE_ADMIN_TOKEN}"
-
-  garage-init:
-    # Every `$$` below is one literal `$` in the script: Compose interpolates
-    # the content of a config exactly as it interpolates the rest of this file,
-    # so an unescaped `$VAR` would be replaced with the empty string here and
-    # never reach the shell.
-    content: |
-      # Bootstraps a single-node Garage through its admin API (v2). The image
-      # is FROM scratch, so there is no `garage` binary to run in it and no
-      # shell to run one with; this runs in a curl image on the same network.
-      #
-      # No jq in that image either. Every value read here is a flat scalar, so
-      # the JSON is split on its structural characters and the wanted key
-      # matched as a whole line — which does not depend on where the field
-      # sits in the document.
-      set -eu
-
-      # Any other provider leaves the stack's Garage holding nothing, and
-      # empties the S3_* values this would import. Succeeding here keeps that
-      # swap a change to `.env` alone: `migrate` still waits on this one-shot
-      # until the Garage services are deleted.
-      if [ "$${STUDIO_OBJECT_STORE:-}" != s3 ]; then
-          echo "garage-init: STUDIO_OBJECT_STORE is '$${STUDIO_OBJECT_STORE:-}', not s3, so Garage holds nothing; skipping"
-          exit 0
-      fi
-
-      ADMIN="http://garage:3903"
-
-      fail() {
-          echo "garage-init: $$1" >&2
-          exit 1
-      }
-
-      # Sets STATUS and BODY. A non-2xx is not fatal here: two callers read a
-      # "not found" as "not created yet" and carry on.
-      request() {
-          _method="$$1"
-          _path="$$2"
-          _body="$${3:-}"
-          if [ -n "$$_body" ]; then
-              _response=$$(curl -sS -X "$$_method" "$$ADMIN$$_path" \
-                  -H "Authorization: Bearer $$GARAGE_ADMIN_TOKEN" \
-                  -H 'Content-Type: application/json' \
-                  -d "$$_body" -w '\n%{http_code}') || fail "$$_method $$_path could not be sent"
-          else
-              _response=$$(curl -sS -X "$$_method" "$$ADMIN$$_path" \
-                  -H "Authorization: Bearer $$GARAGE_ADMIN_TOKEN" \
-                  -w '\n%{http_code}') || fail "$$_method $$_path could not be sent"
-          fi
-          STATUS=$$(printf '%s' "$$_response" | tail -n 1)
-          BODY=$$(printf '%s' "$$_response" | sed '$$d')
-      }
-
-      # As above, but a non-2xx stops the run and says what was asked and what
-      # came back: a half-bootstrapped object store is worse than none.
-      require() {
-          request "$$1" "$$2" "$${3:-}"
-          case "$$STATUS" in
-          2*) ;;
-          *) fail "$$1 $$2 returned $$STATUS: $$BODY" ;;
-          esac
-      }
-
-      # $$1 key, $$2 document, $$3 a basic regular expression the value must
-      # match whole. Garage pretty-prints its responses, so the whitespace
-      # around the key, the colon and the value is all optional.
-      string_field() {
-          printf '%s' "$$2" | tr ',{}[]' '\n\n\n\n\n' |
-              sed -n "s/^[[:space:]]*\"$$1\"[[:space:]]*:[[:space:]]*\"\\($$3\\)\"[[:space:]]*\$$/\\1/p" |
-              head -n 1
-      }
-
-      number_field() {
-          printf '%s' "$$2" | tr ',{}[]' '\n\n\n\n\n' |
-              sed -n "s/^[[:space:]]*\"$$1\"[[:space:]]*:[[:space:]]*\\([0-9][0-9]*\\)[[:space:]]*\$$/\\1/p" |
-              head -n 1
-      }
-
-      echo 'garage-init: waiting for Garage to answer its admin API...'
-      attempt=0
-      until curl -sS -f -o /dev/null \
-          -H "Authorization: Bearer $$GARAGE_ADMIN_TOKEN" \
-          "$$ADMIN/v2/GetClusterStatus"; do
-          attempt=$$((attempt + 1))
-          [ "$$attempt" -lt 60 ] || fail "Garage's admin API at $$ADMIN did not answer after 60 attempts"
-          sleep 1
-      done
-
-      # A node id is a 64-character hex public key, which nothing else in the
-      # status document is.
-      require GET /v2/GetClusterStatus
-      node_id=$$(string_field id "$$BODY" '[0-9a-f]\{64\}')
-      [ -n "$$node_id" ] || fail "could not read this node's id from GetClusterStatus: $$BODY"
-
-      # The layout version increments only when a layout is applied, and only
-      # this script ever writes one, so a version above zero means the node
-      # already has its role. A previous run that staged a role but failed
-      # before applying it leaves the version at zero, and is redone here.
-      require GET /v2/GetClusterLayout
-      layout_version=$$(number_field version "$$BODY")
-      [ -n "$$layout_version" ] || fail "could not read the layout version from GetClusterLayout: $$BODY"
-
-      if [ "$$layout_version" -eq 0 ]; then
-          echo "garage-init: assigning node $$node_id a role"
-          # Capacity is advertised, not reserved: with one node it only has to
-          # be large enough for Garage to shard across its partitions.
-          require POST /v2/UpdateClusterLayout \
-              "{\"roles\":[{\"id\":\"$$node_id\",\"zone\":\"studio\",\"capacity\":107374182400,\"tags\":[]}]}"
-          require POST /v2/ApplyClusterLayout "{\"version\":$$((layout_version + 1))}"
-      else
-          echo "garage-init: cluster layout version $$layout_version is already applied"
-      fi
-
-      request GET "/v2/GetKeyInfo?id=$$S3_ACCESS_KEY_ID"
-      if [ "$$STATUS" = 200 ]; then
-          echo "garage-init: access key $$S3_ACCESS_KEY_ID already exists"
-      else
-          echo "garage-init: importing access key $$S3_ACCESS_KEY_ID"
-          require POST /v2/ImportKey \
-              "{\"accessKeyId\":\"$$S3_ACCESS_KEY_ID\",\"secretAccessKey\":\"$$S3_SECRET_ACCESS_KEY\",\"name\":\"studio\"}"
-      fi
-
-      # `id` is the bucket's own identifier — the access keys listed in the
-      # same document carry theirs under `accessKeyId`.
-      request GET "/v2/GetBucketInfo?globalAlias=$$S3_BUCKET"
-      if [ "$$STATUS" = 200 ]; then
-          echo "garage-init: bucket $$S3_BUCKET already exists"
-      else
-          echo "garage-init: creating bucket $$S3_BUCKET"
-          require POST /v2/CreateBucket "{\"globalAlias\":\"$$S3_BUCKET\"}"
-      fi
-      bucket_id=$$(string_field id "$$BODY" '[0-9a-f]\{64\}')
-      [ -n "$$bucket_id" ] || fail "could not read the id of bucket $$S3_BUCKET: $$BODY"
-
-      # Granting a permission that is already granted is a no-op, so this runs
-      # unconditionally rather than reading the current grants back first.
-      require POST /v2/AllowBucketKey \
-          "{\"bucketId\":\"$$bucket_id\",\"accessKeyId\":\"$$S3_ACCESS_KEY_ID\",\"permissions\":{\"read\":true,\"write\":true,\"owner\":true}}"
-
-      echo "garage-init: bucket $$S3_BUCKET is ready for key $$S3_ACCESS_KEY_ID"
 
 secrets:
   postgres_password:

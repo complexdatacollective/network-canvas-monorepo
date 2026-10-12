@@ -12,7 +12,7 @@ workflows and staging — is
 
 ## The compose stack
 
-Seven long-running containers and two one-shots on one network. Three of them —
+Seven long-running containers and one one-shot on one network. Three of them —
 the database, the object store and the rate-limit store — are swappable for an
 institution's own service from `.env`, and the ingress is swappable
 by reproducing the routing table below in another proxy. See
@@ -31,11 +31,10 @@ flowchart TB
         worker["<b>worker</b><br>studio-api worker<br>jobs and cron · no port"]
 
         postgres[("<b>postgres</b><br>Postgres 18")]
-        garage[("<b>garage</b><br>S3-compatible object store")]
+        garage[("<b>garage</b><br>S3-compatible object store<br>bootstraps itself")]
         valkey[("<b>valkey</b><br>Redis-compatible<br>rate-limit counters")]
 
         migrate["<b>migrate</b> · one-shot<br>docker compose run --rm migrate<br>schema · setup token"]
-        garageinit["<b>garage-init</b> · one-shot<br>layout · key · bucket"]
     end
 
     subgraph volumes["Named volumes"]
@@ -64,8 +63,7 @@ flowchart TB
     worker --> valkey
 
     migrate --> postgres
-    migrate -.->|depends on| garageinit
-    garageinit --> garage
+    migrate --> garage
 
     traefik -.- vacme
     postgres -.- vpg

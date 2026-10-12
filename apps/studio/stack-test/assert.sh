@@ -171,12 +171,10 @@ case "$VARIANT" in
     ;;
   external-bucket)
     equals "the stack's garage container is gone" '' "$(container_id garage)"
-    equals "the stack's garage-init container is gone" '' "$(container_id garage-init)"
     differs 'the stub object store is running' '' "$(container_id external-garage)"
     ;;
   external-bucket-azure)
     equals "the stack's garage container is gone" '' "$(container_id garage)"
-    equals "the stack's garage-init container is gone" '' "$(container_id garage-init)"
     differs 'the stub blob store is running' '' "$(container_id external-azurite)"
     ;;
   external-redis)

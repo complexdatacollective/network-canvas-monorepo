@@ -179,6 +179,11 @@ taken while the instance was open, `maintenance off` changes nothing.
 `globals.sql` will report that roles it is creating already exist, on a host
 that has run Studio before. That is expected and not a failure.
 
+The object-store copy holds Garage's access key and its secret, so `.env` must
+carry the `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` the backup was taken
+under. Garage refuses to start on a stored key whose secret differs from
+`.env`'s, and the error names the key.
+
 If the images `.env` names are not the release that took the backup,
 `/readyz` names the schema — `failed: the database schema is not this build’s`
 — and the instance stays closed rather than serve it. Put the matching image

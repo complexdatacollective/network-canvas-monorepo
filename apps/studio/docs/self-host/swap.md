@@ -3,13 +3,13 @@
 Four parts of the stack are meant to be replaced by an institution's own
 service. Three are set in `.env`; the fourth is a routing table.
 
-| Element                | The swap                                                                     | Then delete                                                                                      |
-| ---------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Database               | `DATABASE_URL`                                                               | the `postgres` service and the `postgres-data` volume                                            |
-| Object store           | `S3_ENDPOINT` and the four other `S3_*`                                      | `garage`, `garage-init`, their two configs, the volume, and the `depends_on` entries naming them |
-| Object store, on Azure | `STUDIO_OBJECT_STORE=azure-blob` and the `AZURE_STORAGE_*`; empty the `S3_*` | the same as above                                                                                |
-| Rate-limit store       | `REDIS_URL`                                                                  | the `valkey` service and the `depends_on` entries naming it                                      |
-| Ingress                | reproduce the routing table below                                            | the `traefik` service, its two configs and the published ports                                   |
+| Element                | The swap                                                                     | Then delete                                                              |
+| ---------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Database               | `DATABASE_URL`                                                               | the `postgres` service and the `postgres-data` volume                    |
+| Object store           | `S3_ENDPOINT` and the four other `S3_*`                                      | `garage`, its config, the volume, and the `depends_on` entries naming it |
+| Object store, on Azure | `STUDIO_OBJECT_STORE=azure-blob` and the `AZURE_STORAGE_*`; empty the `S3_*` | the same as above                                                        |
+| Rate-limit store       | `REDIS_URL`                                                                  | the `valkey` service and the `depends_on` entries naming it              |
+| Ingress                | reproduce the routing table below                                            | the `traefik` service, its two configs and the published ports           |
 
 Deleting the replaced service is tidying, not part of the swap: each of the
 three elements defaults to the stack's own service, so setting its variables
@@ -98,16 +98,22 @@ gone, and the worker logs one for each abandoned file on every hourly run.
 If the bucket keeps versions, add the lifecycle rule
 [the requirements](./requirements.md#an-object-store) describe.
 
-Then delete the `garage` and `garage-init` services, the `garage-config` and
-`garage-init` configs, the `garage-data` volume, and the `depends_on` entries
-naming them — `garage` in `api` and `worker`, `garage-init` in `migrate` —
-the two `GARAGE_*` variables are read only by those containers. Your
-provider's own mirroring or versioning replaces the volume
-copy in [Back up and restore](./backup.md).
+Then delete the `garage` service, the `garage-config` config, the
+`garage-data` volume, and the `depends_on` entries naming `garage` in `api`,
+`worker` and `migrate`. `GARAGE_RPC_SECRET` is read only by that container.
+Your provider's own mirroring or versioning replaces the volume copy in
+[Back up and restore](./backup.md).
+
+Until you delete it, the stack's Garage still starts, and creates a key and a
+bucket of its own under your provider's names. It holds nothing you use, but
+`api`, `worker` and `migrate` wait for it to be healthy, so it has to accept
+them: a key ID of at least eight letters, digits, `-`, `_` or `.`, and a
+secret of at least 16 printable characters. The keys S3-compatible providers
+issue meet that.
 
 This swap is exercised in CI by `apps/studio/stack-test`, variant
 `external-bucket`: the stack runs against an S3-compatible store on another
-network, signing for a different region, with `garage` and `garage-init` gone —
+network, signing for a different region, with `garage` gone —
 and an asset is written through `/storage` and read back, not only probed by
 `/readyz`.
 
@@ -202,25 +208,23 @@ then is. `AZURE_CLIENT_ID` has no meaning here and is refused beside one.
 
 ### Then
 
-Delete the `garage` and `garage-init` services, the `garage-config` and
-`garage-init` configs, the `garage-data` volume, and the `depends_on` entries
-naming them (`garage` in `api` and `worker`, `garage-init` in `migrate`),
-exactly as for a managed bucket — and ignore the two
-`GARAGE_*` variables. Blob versioning or object replication on the account
-replaces the volume copy in [Back up and restore](./backup.md). With
+Delete the `garage` service, the `garage-config` config, the `garage-data`
+volume, and the `depends_on` entries naming `garage` in `api`, `worker` and
+`migrate`, exactly as for a managed bucket — and ignore `GARAGE_RPC_SECRET`.
+Blob versioning or object replication on the account replaces the volume copy
+in [Back up and restore](./backup.md). With
 versioning on, add the lifecycle rule for `staging/` that
 [the requirements](./requirements.md#an-object-store) describe.
 
 As with the other swaps, this is tidying rather than part of the swap: until
-you delete them, the stack's Garage runs empty and `garage-init` sees
-that `STUDIO_OBJECT_STORE` is not `s3` and exits without bootstrapping it, so
-`migrate` still runs.
+you delete it, the stack's Garage runs empty: with `S3_ACCESS_KEY_ID` empty it
+creates no key and no bucket, and `migrate` still runs.
 
 This swap is exercised in CI by `apps/studio/stack-test`, variant
 `external-bucket-azure`: the stack runs against Azurite, Microsoft's Blob
 Storage emulator, on another network, serving an account of its own and
 signed in to with a connection string, with the `S3_*` values emptied and
-`garage` and `garage-init` gone — and is held to the same assertions as every
+`garage` gone — and is held to the same assertions as every
 other variant, including writing an asset through
 `/storage` and reading it back.
 
