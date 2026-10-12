@@ -152,8 +152,10 @@ preview is still copied from it). Its connection strings and a
 branch.
 Netlify scopes values to a git branch, not to a pull request, so pull requests
 that share a head branch share one database: while more than one is open,
-none of them replaces or removes it. Retargeting a pull request onto a base
-that has no preview database removes its copy of the old base.
+none of them replaces or removes it. A pull request that stops changing
+Fresco, or is retargeted onto a base that has no preview database, loses its
+copy. When a branch's database is created, the open pull requests into that
+branch that found nothing to copy are provisioned in the same run.
 
 The workflow builds a newly provisioned preview itself, because Netlify
 skipped the build for that push. Netlify has no call that re-runs a skipped
