@@ -347,6 +347,88 @@ describe('minimizeCrossings', () => {
   });
 });
 
+/**
+ * Round 3 (Josh, 12 Oct 2026, amending ruling 27): a donor's line meets the
+ * line of descent of the children they gave to once, so siblings are
+ * grouped by their donors and surrogates, the groups in the order their
+ * first children were added and each group in the order added; and each
+ * donor sits on the side of the run of children they gave to, a donor of a
+ * run further out further out.
+ */
+describe('siblings who share donors', () => {
+  const bio = (parentIndex: number) => ({
+    parentIndex,
+    edgeType: 'biological' as const,
+  });
+  const donor = (parentIndex: number) => ({
+    parentIndex,
+    edgeType: 'donor' as const,
+  });
+  /** The people of the row someone sits on, left to right. */
+  const rowOf = (ped: PedigreeInput, person: string) => {
+    const layout = sugiyamaLayout(ped);
+    const row = layout.nid
+      .map((ids, layer) => ids.slice(0, layout.n[layer]))
+      .find((ids) => ids.includes(ped.id.indexOf(person)))!;
+    return row.map((index) => ped.id[index]!);
+  };
+  const eitherWay = (row: string[]) => [row, row.toReversed()];
+
+  it('sit together, in the order their first child was added', () => {
+    // Ruby, who shares Paul with the participant, was added after Theo.
+    const ped: PedigreeInput = {
+      id: ['ego', 'hannah', 'paul', 'theo', 'theoDonor', 'ruby'],
+      parents: [
+        [bio(1), donor(2)],
+        [],
+        [],
+        [bio(1), donor(4)],
+        [],
+        [bio(1), donor(2)],
+      ],
+    };
+    expect(eitherWay(['ego', 'ruby', 'theo'])).toContainEqual(
+      rowOf(ped, 'ego'),
+    );
+  });
+
+  it('have each run’s donor seated on its side, the outer runs’ outermost', () => {
+    const ped: PedigreeInput = {
+      id: [
+        'ego',
+        'hannah',
+        'paul',
+        'ruby',
+        'theo',
+        'tom',
+        'theoDonor',
+        'mia',
+        'miaDonor',
+      ],
+      parents: [
+        [bio(1), donor(2)],
+        [],
+        [],
+        [bio(1), donor(2)],
+        [bio(1), donor(6)],
+        [bio(1), donor(6)],
+        [],
+        [bio(1), donor(8)],
+        [],
+      ],
+    };
+    const children = rowOf(ped, 'ego');
+    expect(eitherWay(['ego', 'ruby', 'theo', 'tom', 'mia'])).toContainEqual(
+      children,
+    );
+    const parents =
+      children[0] === 'ego'
+        ? rowOf(ped, 'hannah')
+        : rowOf(ped, 'hannah').toReversed();
+    expect(parents).toEqual(['paul', 'hannah', 'theoDonor', 'miaDonor']);
+  });
+});
+
 describe('sugiyamaLayout (output encoding)', () => {
   it('nuclear family produces valid PedigreeLayout with 2 levels', () => {
     const result = sugiyamaLayout(nuclearFamily);
