@@ -934,6 +934,66 @@ describe('a participant with birth parents, separated adoptive parents and their
           ),
         ).toBe(true);
       });
+
+      it(`still finds any other hop a fault (${label})`, () => {
+        const { nodes, edges } = sixParents();
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        const withHop = (id: string, hop: { x: number; y: number }) => ({
+          ...drawing,
+          connectors: {
+            ...drawing.connectors,
+            auxiliaryLines: drawing.connectors.auxiliaryLines.map((line) =>
+              line.endpointIds?.[0] === id
+                ? { ...line, hops: [...(line.hops ?? []), hop] }
+                : line,
+            ),
+          },
+        });
+        const [denise] = linesFrom(drawing, 'denise');
+        const [lauren] = linesFrom(drawing, 'lauren');
+        // Denise's line hops nothing it cannot avoid: anywhere along it.
+        const middle = segmentsOf(denise!.points)[1]!;
+        expect(
+          faultsOfLinesInto(
+            withHop('denise', {
+              x: (middle.x1 + middle.x2) / 2,
+              y: (middle.y1 + middle.y2) / 2,
+            }),
+            'ego',
+          ),
+        ).toContain("denise's social line crosses a line");
+        // A second hop on Lauren's line, or her one hop moved off the line
+        // down to Jack, is a fault too.
+        const ego = drawing.centre('ego');
+        expect(
+          faultsOfLinesInto(
+            withHop('lauren', { x: ego.x + size, y: lauren!.hops![0]!.y }),
+            'ego',
+          ),
+        ).toContain("lauren's social line crosses a line");
+        const moved = {
+          ...drawing,
+          connectors: {
+            ...drawing.connectors,
+            auxiliaryLines: drawing.connectors.auxiliaryLines.map((line) =>
+              line === lauren
+                ? { ...line, hops: [{ x: ego.x + size, y: line.hops![0]!.y }] }
+                : line,
+            ),
+          },
+        };
+        expect(faultsOfLinesInto(moved, 'ego')).toContain(
+          "lauren's social line crosses a line",
+        );
+      });
+
+      it(`passes the strict line checks (${label})`, () => {
+        const { nodes, edges } = sixParents();
+        const drawing = drawAsInterface(nodes, edges, size, everyone);
+        expect(
+          strictLineFaults(drawing, helperTiesOf(edges), idsOf(nodes)),
+        ).toEqual([]);
+      });
     }
   }
 });

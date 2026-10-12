@@ -99,9 +99,42 @@ function sharedTail(a: Point[], b: Point[]): number {
 }
 
 /**
+ * Whether a hop on a line from a parent (at `parentX`) into a child is the
+ * one crossing the drawing cannot avoid: over an upright piece of another
+ * family's line of descent, which comes down from a point on the parents'
+ * rows between the parent and the child (as the line from a social parent
+ * on the far side of their own partner crosses the line of descent from
+ * that couple to their child).
+ */
+function isUnavoidableHop(
+  drawing: Drawing,
+  parentX: number,
+  childId: string,
+  hop: Point,
+): boolean {
+  const childX = drawing.centre(childId).x;
+  const [from, to] = [Math.min(parentX, childX), Math.max(parentX, childX)];
+  if (hop.x <= from + 0.5 || hop.x >= to - 0.5) return false;
+  return drawing.connectors.parentChildLines.some((line) => {
+    if (line.uplineChildIds?.includes(childId)) return false;
+    const top = line.parentLink[0];
+    if (!top) return false;
+    const topX = upperEnd(top).x;
+    if (topX <= from + 0.5 || topX >= to - 0.5) return false;
+    return [...line.parentLink, ...line.uplines].some(
+      (piece) =>
+        isUpright(piece) &&
+        !isLevel(piece) &&
+        distanceToSegment(hop, piece) < ON_LINE,
+    );
+  });
+}
+
+/**
  * Everything wrong with the lines that end on one child: their ends on one
  * edge of the child out of their parents' left-to-right order, a crossing among them or over another
- * line, two ends closer than a fifth of a symbol (or an end within the
+ * line (but for one hop the drawing cannot avoid: see `isUnavoidableHop`),
+ * two ends closer than a fifth of a symbol (or an end within the
  * centre clearance of the child's own line of descent), and two lines
  * closer than a quarter of a symbol away from the child.
  *
@@ -197,7 +230,12 @@ export function faultsOfLinesInto(drawing: Drawing, childId: string): string[] {
     }
   }
   for (const line of lines) {
-    if (line.hops.length > 0) faults.push(`${line.name} crosses a line`);
+    const unavoidable = line.hops.filter((hop) =>
+      isUnavoidableHop(drawing, line.parentX, childId, hop),
+    );
+    if (line.hops.length > (unavoidable.length > 0 ? 1 : 0)) {
+      faults.push(`${line.name} crosses a line`);
+    }
   }
   for (let i = 0; i < lines.length; i++) {
     for (let j = i + 1; j < lines.length; j++) {

@@ -695,15 +695,8 @@ describe('the drawing accounts for every recorded tie', () => {
   });
 });
 
-/** Families whose lines still fail the strict checks (12 Oct 2026): the
- * lines into a participant with six parents. */
-const KNOWN_LINE_FAULTS = new Set([
-  'step parents and adoptive parents who separated',
-]);
-
 describe('the lines pass the strict line checks', () => {
   for (const [name, { people, links }] of Object.entries(families)) {
-    if (KNOWN_LINE_FAULTS.has(name)) continue;
     for (const shape of ['circle', 'square'] as const) {
       it(`${name} (${shape}s)`, () => {
         const { drawing, helperTies } = draw(people, links, shape);
