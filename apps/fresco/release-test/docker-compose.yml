@@ -1,9 +1,9 @@
 # Local release-testing stack: Fresco (any image: the released GHCR image or
 # the locally built pending image) + PostgreSQL + Garage, on plain localhost
 # ports — no Traefik/TLS, unlike the production compose files this mirrors
-# (docker-compose.prod.yml). Storage is deliberately NOT env-pinned: real
-# deployments enter the S3 endpoint/public URL in the setup wizard, and the
-# release test verifies that path.
+# (docker-compose.prod.yml). Storage is configured the way that file does it:
+# the fresco service is given the Garage key and endpoint, so the setup
+# wizard's storage step is locked, and the release test verifies that path.
 #
 # Driven by up.sh / down.sh with a compose project name per lane, so every
 # lane runs side by side. Interpolated variables: FRESCO_IMAGE, FRESCO_PORT,
@@ -66,6 +66,17 @@ services:
       # The SDK's own default unless up.sh says otherwise. Only the upgrade
       # lane's released baseline overrides it: see up.sh.
       AWS_REQUEST_CHECKSUM_CALCULATION: ${FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION:-WHEN_SUPPORTED}
+      # The production file's storage settings, except the public URL: browsers
+      # on the host reach Garage on its published port rather than through a
+      # reverse proxy. scripts/release-test/fresco-release-test-storage.test.mjs
+      # fails if the rest drift from production.
+      STORAGE_PROVIDER: s3
+      S3_ENDPOINT: http://garage:3900
+      S3_PUBLIC_URL: http://localhost:${STORAGE_PORT:-9310}
+      S3_BUCKET: assets
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID (up.sh exports it)}
+      S3_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY (up.sh exports it)}
       COOKIE_SECURE: 'false'
       # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),
       # which would make the 127.0.0.1 healthcheck below unreachable.
@@ -116,7 +127,7 @@ services:
       - source: garage-config
         target: /etc/garage.toml
     # Browsers on the host PUT and GET directly through presigned URLs signed
-    # for this published port (the wizard's Public URL).
+    # for this published port (the fresco service's S3_PUBLIC_URL).
     ports:
       - '${STORAGE_PORT:-9310}:3900'
 
@@ -202,8 +213,8 @@ configs:
       rpc_public_addr = "127.0.0.1:3901"
       rpc_secret = "0000000000000000000000000000000000000000000000000000000000000000"
 
-      # Garage only accepts requests signed for the region it names. us-east-1
-      # is what the setup wizard suggests and what S3 clients default to.
+      # Garage only accepts requests signed for the region it names, so this
+      # must match the fresco service's S3_REGION.
       [s3_api]
       api_bind_addr = "[::]:3900"
       s3_region = "us-east-1"

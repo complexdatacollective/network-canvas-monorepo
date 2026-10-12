@@ -13,7 +13,7 @@
 /** @typedef {'upgrade'|'fresh'|'analytics'|'twofactor'} Lane */
 
 /**
- * The bundled Garage every lane runs, as the setup wizard is told about it.
+ * The bundled Garage every lane runs, as the app is configured for it.
  *
  * The key pair is the fixed test key up.sh hands each lane's Garage, and
  * `scripts/release-test/fresco-release-test-storage.test.mjs` fails when the

@@ -51,8 +51,8 @@ RELAY_SINK_SCRIPT="relay-sink.mjs"
 
 # The bundled Garage's access key. Fixed test values in Garage's own formats,
 # the same for every lane: each lane's Garage is private to its stack, and the
-# setup wizard (fresco-driver.mjs, the workflow's setup prompts) and the
-# fixture/capture scripts all sign with this key. scripts/lanes.mjs holds the
+# app (through the compose file's S3_* settings) and the fixture/capture
+# scripts all sign with this key. scripts/lanes.mjs holds the
 # same key pair as STORAGE, and
 # scripts/release-test/fresco-release-test-storage.test.mjs fails if they drift.
 GARAGE_ACCESS_KEY_ID="GK7e57000000000000000000a1"

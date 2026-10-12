@@ -116,7 +116,7 @@ test('up.sh hands Garage the key the harness signs with', () => {
       new RegExp(String.raw`\b${name}\b`),
       `up.sh does not export ${name} to compose`,
     );
-  // The bucket and region the wizard has to repeat.
+  // The bucket and region the app is given.
   const garage = prod.services.garage;
   assert.equal(garage.environment.GARAGE_DEFAULT_BUCKET, STORAGE.bucket);
   assert.match(
@@ -125,13 +125,68 @@ test('up.sh hands Garage the key the harness signs with', () => {
   );
 });
 
-// The agent-driven lanes are told the wizard's values in prose; the workflow
-// script cannot import lanes.mjs, so its copies are bound here.
+// The app is given production's storage settings, from the same key Garage
+// is. Only the public URL differs: the browser reaches this Garage on its
+// published port, not through a reverse proxy on the app's domain.
+test('the app is configured for its storage as production does', () => {
+  const [prodEnv, testEnv] = [prod, releaseTest].map((compose) =>
+    Object.fromEntries(
+      Object.entries(compose.services.fresco.environment)
+        .filter(([key]) => key === 'STORAGE_PROVIDER' || key.startsWith('S3_'))
+        .map(([key, value]) => [key, interpolated(value)]),
+    ),
+  );
+  assert.deepEqual(Object.keys(testEnv).toSorted(), [
+    'S3_ACCESS_KEY_ID',
+    'S3_BUCKET',
+    'S3_ENDPOINT',
+    'S3_PUBLIC_URL',
+    'S3_REGION',
+    'S3_SECRET_ACCESS_KEY',
+    'STORAGE_PROVIDER',
+  ]);
+  assert.equal(prodEnv.S3_PUBLIC_URL, 'https://${FRESCO_DOMAIN}');
+  assert.equal(testEnv.S3_PUBLIC_URL, 'http://localhost:${STORAGE_PORT:-9310}');
+  const withoutPublicUrl = ({ S3_PUBLIC_URL: _, ...env }) => env;
+  assert.deepEqual(withoutPublicUrl(testEnv), withoutPublicUrl(prodEnv));
+
+  const garage = prod.services.garage.environment;
+  assert.equal(
+    prodEnv.S3_ACCESS_KEY_ID,
+    interpolated(garage.GARAGE_DEFAULT_ACCESS_KEY),
+  );
+  assert.equal(
+    prodEnv.S3_SECRET_ACCESS_KEY,
+    interpolated(garage.GARAGE_DEFAULT_SECRET_KEY),
+  );
+  assert.equal(prodEnv.S3_BUCKET, garage.GARAGE_DEFAULT_BUCKET);
+  assert.match(
+    prod.configs['garage-config'].content,
+    new RegExp(`\\ns3_region = "${prodEnv.S3_REGION}"\\n`),
+  );
+  assert.deepEqual(
+    {
+      endpoint: prodEnv.S3_ENDPOINT,
+      bucket: prodEnv.S3_BUCKET,
+      region: prodEnv.S3_REGION,
+    },
+    {
+      endpoint: STORAGE.endpoint,
+      bucket: STORAGE.bucket,
+      region: STORAGE.region,
+    },
+  );
+});
+
+// The agent-driven lanes are told the values the locked storage step shows, in
+// prose; the workflow script cannot import lanes.mjs, so its copies are bound
+// here. The secret is never among them: the step must not show it.
 test('the workflow tells the setup agents the storage the stack serves', () => {
   const source = read('.claude/workflows/fresco-release-test.js');
+  assert.doesNotMatch(source, new RegExp(STORAGE.secretAccessKey));
   const steps = [
     ...source.matchAll(
-      /Endpoint URL (\S+), Public URL http:\/\/localhost:(\d+), Bucket (\S+), Region (\S+), Access Key ID (\S+), Secret Access Key ([0-9a-f]+)\./g,
+      /Endpoint URL (\S+), Public URL http:\/\/localhost:(\d+), Bucket (\S+), Region (\S+), Access Key ID (\S+), and a Secret Access Key that is masked/g,
     ),
   ];
   assert.deepEqual(
@@ -141,15 +196,14 @@ test('the workflow tells the setup agents the storage the stack serves', () => {
     ),
     'expected one storage step for each agent-driven lane',
   );
-  for (const [, endpoint, , bucket, region, key, secret] of steps)
+  for (const [, endpoint, , bucket, region, key] of steps)
     assert.deepEqual(
-      { endpoint, bucket, region, key, secret },
+      { endpoint, bucket, region, key },
       {
         endpoint: STORAGE.endpoint,
         bucket: STORAGE.bucket,
         region: STORAGE.region,
         key: STORAGE.accessKeyId,
-        secret: STORAGE.secretAccessKey,
       },
     );
 });

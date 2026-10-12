@@ -992,7 +992,7 @@ ${BROWSER_HOWTO}
 
 Do, in order, recording one check per numbered item:
 1. Setup wizard: create the administrator account (username ${ADMIN_USER}, password ${ADMIN_PASSWORD}; choose the Password authentication method).
-2. Storage step: choose "S3 / S3-Compatible" and enter: Endpoint URL http://garage:3900, Public URL http://localhost:9310, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, Secret Access Key 7e57000000000000000000000000000000000000000000000000000000000000. (This mirrors the documented production bundled-Garage setup.)
+2. Storage step: the storage provider is already set to "S3 / S3-Compatible" and every field is filled in and locked, because the deployment configures storage through its environment, as the documented production bundled-Garage setup does. Confirm the form shows Endpoint URL http://garage:3900, Public URL http://localhost:9310, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, and a Secret Access Key that is masked rather than shown; then press Continue.
 3. Protocol step: stage the seed protocol with: bash ${HARNESS}/stage-fixture.sh --lane upgrade --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas — then inject it per AGENT_NOTES (fetch the printed URL → File → set input.files → dispatch change). Confirm the import succeeded via the presigned PUTs in the network log AND the protocol appearing (dashboard count or psql per AGENT_NOTES) — the dropzone UI may not visibly react.
 4. Finish the wizard to the dashboard.
 5. In settings, generate ${SYNTHETIC_COUNT} synthetic interviews via the Synthetic Interview Data section (native select + number input per AGENT_NOTES); wait for the completion toast.
@@ -1189,7 +1189,7 @@ Record one check per numbered item, in order:
 1. Visiting ${FRESH_URL} redirects to the setup wizard.
 2. Account step rejects a weak password (try "password") with visible validation feedback (choose the Password authentication method).
 3. Account creation succeeds with username ${ADMIN_USER}, password ${ADMIN_PASSWORD}.
-4. Storage step accepts the S3 configuration: Endpoint URL http://garage:3900, Public URL http://localhost:9311, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, Secret Access Key 7e57000000000000000000000000000000000000000000000000000000000000.
+4. Storage step: the storage provider is already set to "S3 / S3-Compatible" and every field is filled in and locked, because the deployment configures storage through its environment, as the documented production bundled-Garage setup does. Confirm the form shows Endpoint URL http://garage:3900, Public URL http://localhost:9311, Bucket assets, Region us-east-1, Access Key ID GK7e57000000000000000000a1, and a Secret Access Key that is masked rather than shown; then press Continue. This item fails if any field is editable or the secret is readable.
 5. Protocol step: stage the protocol with bash ${HARNESS}/stage-fixture.sh --lane fresh --file "${SEED_PROTOCOL}" --name sample-v4.netcanvas and inject per AGENT_NOTES; the presigned Garage PUTs (network log) and the imported protocol prove the storage pipeline.
 6. Completing the wizard lands on the dashboard.
 7. Sign out; sign-in rejects a wrong password; sign-in succeeds with the right one.

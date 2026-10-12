@@ -160,9 +160,9 @@ const sampleProtocol = join(
 /**
  * The setup wizard, end to end, leaving the browser on the dashboard.
  *
- * Storage is configured through the wizard rather than by environment
- * variables, exactly as a bundled-Garage deployment does, so this exercises the
- * path a self-hoster actually takes.
+ * Storage is configured by environment variables, exactly as a bundled-Garage
+ * deployment does, so the storage step only has to show those values, locked,
+ * and move on.
  */
 export async function completeSetup(
   page,
@@ -215,25 +215,42 @@ export async function completeSetup(
     await page.getByRole('button', { name: 'Create account' }).click();
   });
 
-  // Storage: the bundled-Garage configuration this lane's compose file serves.
-  await advance(2, async () => {
-    await page.getByRole('option', { name: /S3/ }).click();
-    await fillStable(
-      page,
-      [
-        ['s3Endpoint', STORAGE.endpoint],
-        ['s3PublicUrl', `http://localhost:${config.storagePort}`],
-        ['s3Bucket', STORAGE.bucket],
-        ['s3Region', STORAGE.region],
-        ['s3AccessKeyId', STORAGE.accessKeyId],
-        ['s3SecretAccessKey', STORAGE.secretAccessKey],
-      ].map(([name, value]) => [page.locator(`input[name="${name}"]`), value]),
+  // Storage: the bundled-Garage configuration this lane's compose file gives
+  // the app. Every field has to be locked to that value, and the secret must
+  // not be shown, or the deployment would be asking for what it already has.
+  const expected = {
+    s3Endpoint: STORAGE.endpoint,
+    s3PublicUrl: `http://localhost:${config.storagePort}`,
+    s3Bucket: STORAGE.bucket,
+    s3Region: STORAGE.region,
+    s3AccessKeyId: STORAGE.accessKeyId,
+  };
+  for (const [name, value] of Object.entries(expected)) {
+    const input = page.locator(`input[name="${name}"]`);
+    await input.waitFor();
+    const [shown, disabled] = [
+      await input.inputValue(),
+      await input.isDisabled(),
+    ];
+    if (shown !== value || !disabled)
+      throw new Error(
+        `the storage step's ${name} should be locked to ${value}; it shows "${shown}"${disabled ? '' : ' and is editable'}`,
+      );
+  }
+  const secret = page.locator('input[name="s3SecretAccessKey"]');
+  if (
+    !(await secret.isDisabled()) ||
+    (await secret.inputValue()) === STORAGE.secretAccessKey
+  )
+    throw new Error(
+      "the storage step's secret key should be locked and must not be shown",
     );
-    await page
-      .getByRole('button', { name: /Save|Submit|Continue|Next/ })
-      .first()
-      .click();
-  });
+  await advance(2, () =>
+    page
+      .locator('form')
+      .getByRole('button', { name: 'Continue', exact: true })
+      .click(),
+  );
 
   // Protocol. The import streams the file through storage, and the wizard's
   // Continue is enabled throughout — so moving on immediately would abandon an

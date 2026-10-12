@@ -67,7 +67,7 @@ if (
 const { storagePort, baseUrl } = lane(values.lane);
 
 // The host reaches the lane's Garage on its published port, which is also the
-// wizard's Public URL — so a URL signed here is one the browser can use.
+// app's S3_PUBLIC_URL — so a URL signed here is one the browser can use.
 const client = new S3Client({
   endpoint: `http://localhost:${storagePort}`,
   region: STORAGE.region,

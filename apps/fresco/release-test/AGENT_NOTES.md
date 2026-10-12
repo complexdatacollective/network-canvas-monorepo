@@ -96,9 +96,11 @@ via `/signin` in the new tab.
 
 ## Misc verified facts
 
-- Setup wizard storage step: choose "S3 / S3-Compatible"; fields are named
-  `s3Endpoint`, `s3PublicUrl`, `s3Bucket`, `s3Region`, `s3AccessKeyId`,
-  `s3SecretAccessKey`.
+- Setup wizard storage step: storage comes from the compose file's
+  `STORAGE_PROVIDER`/`S3_*` settings, so "S3 / S3-Compatible" is preselected
+  and the fields (`s3Endpoint`, `s3PublicUrl`, `s3Bucket`, `s3Region`,
+  `s3AccessKeyId`, `s3SecretAccessKey`) are disabled, the secret masked;
+  the form's Continue button moves on.
 - Synthetic interview generation: settings → Synthetic Interview Data; the
   protocol picker is a native `<select name="Protocol">`; the count field is a
   number input; a toast confirms "Generation complete". "Simulate participant

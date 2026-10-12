@@ -17,14 +17,15 @@
 #   openssl rand -hex 32               # GARAGE_SECRET_ACCESS_KEY
 #
 # Garage creates the access key and the 'assets' bucket from these on its
-# first start. Requires Docker Engine 25 or newer and Docker Compose v2.23.1 or
+# first start, and Fresco is given the same values (see the fresco service's
+# `environment:` block), so the setup wizard's storage step is already filled
+# in and the key is never stored in Fresco's database. Requires Docker Engine 25 or newer and Docker Compose v2.23.1 or
 # newer: Garage's configuration is carried inline in this file, which older
 # versions cannot read.
 #
 # FRESCO_DOMAIN is the single source of truth for this deployment's domain: the
 # app's PUBLIC_URL is derived from it automatically (see the fresco service's
-# `environment:` block), so you do not set PUBLIC_URL yourself. During Fresco
-# setup, set the storage "Public URL" to https://<FRESCO_DOMAIN> as well.
+# `environment:` block), so you do not set PUBLIC_URL yourself.
 
 services:
   # Bundled reverse proxy: terminates TLS (automatic Let's Encrypt
@@ -77,6 +78,16 @@ services:
       # FRESCO_DOMAIN is the only place the deployment domain is set; the app's
       # public URL is derived from it here (overrides any PUBLIC_URL in .env).
       PUBLIC_URL: https://${FRESCO_DOMAIN}
+      # The bundled Garage below. Set here rather than in the setup wizard so
+      # the key stays in .env instead of the database; the wizard shows these
+      # values and cannot change them.
+      STORAGE_PROVIDER: s3
+      S3_ENDPOINT: http://garage:3900
+      S3_PUBLIC_URL: https://${FRESCO_DOMAIN}
+      S3_BUCKET: assets
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID in .env (GK followed by 24 hex characters)}
+      S3_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY in .env (openssl rand -hex 32)}
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.middlewares.fresco-hsts.headers.stsseconds=63072000'
@@ -103,8 +114,9 @@ services:
 
   # Optional: S3-compatible storage using Garage (https://garagehq.deuxfleurs.fr).
   # If you prefer UploadThing, remove the garage service, the garage-config
-  # config, the garage-data volume and the fresco service's dependency on
-  # garage, and configure UploadThing during Fresco setup instead.
+  # config, the garage-data volume, and the fresco service's dependency on
+  # garage and its STORAGE_PROVIDER and S3_* settings, and configure
+  # UploadThing during Fresco setup instead.
   #
   # Garage stays PRIVATE: no published ports, no anonymous bucket access.
   # Browsers reach it through the bundled Traefik reverse proxy via a path
@@ -128,13 +140,9 @@ services:
   #     proxy_pass http://garage:3900;
   #   }
   #
-  # During Fresco setup, select "S3 / S3-Compatible" and use:
-  #   Endpoint URL:      http://garage:3900       (internal - containers only)
-  #   Public URL:        https://<your domain>    (your Fresco domain)
-  #   Bucket Name:       assets
-  #   Region:            us-east-1
-  #   Access Key ID:     value of GARAGE_ACCESS_KEY_ID (set in .env)
-  #   Secret Access Key: value of GARAGE_SECRET_ACCESS_KEY (set in .env)
+  # The fresco service is configured for this Garage: the endpoint is
+  # internal (http://garage:3900, reachable only by containers), and the
+  # public URL is your Fresco domain.
   #
   # The bucket name occupies /assets/ on your domain; 'assets' is verified not
   # to collide with any of Fresco's own routes, so it is fixed here.
@@ -199,8 +207,8 @@ configs:
       rpc_public_addr = "127.0.0.1:3901"
       rpc_secret = "0000000000000000000000000000000000000000000000000000000000000000"
 
-      # Garage only accepts requests signed for the region it names. us-east-1
-      # is what the setup wizard suggests and what S3 clients default to.
+      # Garage only accepts requests signed for the region it names, so this
+      # must match the fresco service's S3_REGION.
       [s3_api]
       api_bind_addr = "[::]:3900"
       s3_region = "us-east-1"

@@ -109,11 +109,11 @@ If your institution requires multi-factor authentication for every administrator
 
 ## Storage configuration
 
-How you configure storage depends on which compose file you chose. With the bundled Garage storage, you enter the storage settings in Fresco's setup wizard. With an external S3-compatible service or UploadThing, you set them as environment variables in your `.env` file. **Environment variables take precedence** over anything entered in the dashboard and lock the matching storage settings, so when you use them your `.env` is the single source of truth for storage.
+How you configure storage depends on which compose file you chose. With the bundled Garage storage, the compose file configures Fresco's storage for you from two values in your `.env` file. With an external S3-compatible service or UploadThing, you set the storage variables in `.env` yourself. **Environment variables take precedence** over anything entered in the dashboard and lock the matching storage settings, so when you use them your `.env` is the single source of truth for storage.
 
 ### Self-hosted storage with Garage
 
-Used by [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml). [Garage](https://garagehq.deuxfleurs.fr) is a lightweight S3-compatible object store. It runs as a **private** container with no published ports. Browsers reach it through the bundled Traefik proxy via a path route (`/assets/*` → `garage:3900`) on your Fresco domain — path-style S3 URLs put the bucket name in the path. Garage sets itself up when it starts: it creates your access key and the `assets` bucket if they don't exist yet.
+Used by [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml). [Garage](https://garagehq.deuxfleurs.fr) is a lightweight S3-compatible object store. It runs as a **private** container with no published ports. Browsers reach it through the bundled Traefik proxy via a path route (`/assets/*` → `garage:3900`) on your Fresco domain — path-style S3 URLs put the bucket name in the path. Garage sets itself up when it starts: it creates your access key and the `assets` bucket if they don't exist yet. Fresco is given the same key, so you don't enter any storage settings yourself, and the key stays in `.env` rather than in Fresco's database.
 
 Earlier versions of this compose file bundled MinIO; it now bundles Garage.
 
@@ -121,7 +121,7 @@ This configuration needs **Docker Engine 25 or newer** and **Docker Compose v2.2
 
 #### 1. Generate the storage secrets
 
-Garage needs two values in your `.env`. They have no defaults, and the stack will not start without them. Generate each one on your host:
+Garage and Fresco both use two values from your `.env`. They have no defaults, and the stack will not start without them. Generate each one on your host:
 
 ```bash
 echo "GK$(openssl rand -hex 12)"   # GARAGE_ACCESS_KEY_ID
@@ -137,11 +137,9 @@ GARAGE_SECRET_ACCESS_KEY=...     # 64 hex characters
 
 Treat both like passwords: together they give full access to your stored files.
 
-#### 2. Enter the storage settings in the setup wizard
+#### 2. Continue through the storage step
 
-You don't need `STORAGE_PROVIDER` or the `S3_*` variables for this configuration. If you set any of them, they lock the matching wizard fields, so they must then hold the same values as the table below.
-
-When the [setup wizard](#access-fresco) reaches the storage step, choose **S3 / S3-Compatible** and enter:
+When the [setup wizard](#access-fresco) reaches the storage step, **S3 / S3-Compatible** is already selected and its settings are filled in and locked:
 
 | **Field**             | **Value**                                                                       |
 | --------------------- | ------------------------------------------------------------------------------- |
@@ -150,7 +148,9 @@ When the [setup wizard](#access-fresco) reaches the storage step, choose **S3 / 
 | **Bucket Name**       | `assets`                                                                        |
 | **Region**            | `us-east-1`                                                                     |
 | **Access Key ID**     | Your `GARAGE_ACCESS_KEY_ID` value                                               |
-| **Secret Access Key** | Your `GARAGE_SECRET_ACCESS_KEY` value                                           |
+| **Secret Access Key** | Your `GARAGE_SECRET_ACCESS_KEY` value, hidden                                   |
+
+Select **Continue**. These settings come from the `fresco` service in `docker-compose.prod.yml`, which takes precedence over `.env`, so setting `STORAGE_PROVIDER` or the `S3_*` variables in `.env` has no effect with this configuration.
 
 <TipBox>
 
@@ -164,18 +164,8 @@ Garage does not offer server-side encryption. Protocol assets are stored in the 
 
 If the access key may have been exposed, replace it. Garage only adds keys and never removes them, so the old key keeps full access to your files until you delete it yourself. The replacement needs a new ID as well as a new secret: a deleted key ID can't be used again, and if you change only the secret of an existing key ID, Garage refuses to start.
 
-Fresco's storage settings can't be changed in the dashboard once a protocol has been uploaded, so you give Fresco the new key through `.env` instead. Fresco reads `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` from `.env` and uses them in place of the key you entered in the setup wizard.
-
 1. Generate a new `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY` with the commands above, and note the old key ID.
-2. In `.env`, replace `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY` with the new values, and set `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` to the same new values:
-
-   ```bash
-   GARAGE_ACCESS_KEY_ID=GK...       # the new key ID
-   GARAGE_SECRET_ACCESS_KEY=...     # the new secret
-   S3_ACCESS_KEY_ID=GK...           # the same new key ID
-   S3_SECRET_ACCESS_KEY=...         # the same new secret
-   ```
-
+2. In `.env`, replace `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY` with the new values.
 3. Run `docker compose -f docker-compose.prod.yml up -d`. Garage adds the new key at startup and gives it access to the `assets` bucket, and Fresco restarts using it.
 4. Delete the old key:
 
@@ -199,14 +189,14 @@ S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 ```
 
-| **Variable**                                    | **Details**                                                                                                                                                                          |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **STORAGE_PROVIDER**                            | Set to `s3` for an S3-compatible bucket. When set, the provider is fixed and the storage settings UI is locked.                                                                      |
-| **S3_ENDPOINT**                                 | Your service's S3 API endpoint.                                                                                                                                                      |
-| **S3_PUBLIC_URL**                               | The URL browsers use to reach the storage. For an external service this is usually the same as `S3_ENDPOINT`. (For the bundled Garage setup above it is your Fresco domain instead.) |
-| **S3_BUCKET**                                   | An existing bucket name.                                                                                                                                                             |
-| **S3_REGION**                                   | The bucket's region (for example `us-east-1`; use `auto` for Cloudflare R2).                                                                                                         |
-| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credentials with read and write access to the bucket.                                                                                                                                |
+| **Variable**                                    | **Details**                                                                                                                                                                   |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **STORAGE_PROVIDER**                            | Set to `s3` for an S3-compatible bucket. When set, the provider is fixed and the storage settings UI is locked.                                                               |
+| **S3_ENDPOINT**                                 | Your service's S3 API endpoint.                                                                                                                                               |
+| **S3_PUBLIC_URL**                               | The URL browsers use to reach the storage. For an external service this is usually the same as `S3_ENDPOINT`. (The bundled Garage setup above sets it to your Fresco domain.) |
+| **S3_BUCKET**                                   | An existing bucket name.                                                                                                                                                      |
+| **S3_REGION**                                   | The bucket's region (for example `us-east-1`; use `auto` for Cloudflare R2).                                                                                                  |
+| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credentials with read and write access to the bucket.                                                                                                                         |
 
 Bucket requirements on your S3 service:
 
