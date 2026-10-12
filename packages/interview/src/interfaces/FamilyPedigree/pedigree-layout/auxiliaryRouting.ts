@@ -1242,7 +1242,7 @@ export function routeOptions(
         }
       }
     }
-    if (end.kind === 'stem' && rowsBetween === 1) {
+    if (end.kind === 'stem' && end.under && rowsBetween === 1) {
       // Straight down from the parent to the height it meets the stem at,
       // crossing any bar on its way square on, and level into the stem.
       for (const exit of exits) {
@@ -1284,6 +1284,35 @@ export function routeOptions(
                 ],
                 endX: target.x,
               });
+            }
+          }
+          // Or down across the sibling bar square on further from the
+          // stem, where crossing it there crosses nothing else (a line of
+          // descent meeting the bar nearer the stem, say), and level into
+          // the stem below it.
+          if (end.kind === 'stem' && !fromStem) {
+            const side = Math.sign(target.x - end.x);
+            if (side !== 0 && Math.sign(from.x - end.x) === side) {
+              for (let k = 1; k <= 8; k++) {
+                const down = target.x + side * k * 0.5 * boxw;
+                if (side * (down - from.x) > 0) break;
+                for (const exit of exits) {
+                  const last = exit.at(-1)!;
+                  for (const y of lanesAboveEnd) {
+                    candidates.push({
+                      points: [
+                        ...exit,
+                        { x: last.x, y },
+                        { x: down, y },
+                        { x: down, y: end.y },
+                        target.entry,
+                        ...target.tail,
+                      ],
+                      endX: target.x,
+                    });
+                  }
+                }
+              }
             }
           }
         }

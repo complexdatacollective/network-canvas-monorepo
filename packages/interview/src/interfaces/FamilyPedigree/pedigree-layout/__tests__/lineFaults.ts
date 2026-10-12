@@ -421,9 +421,11 @@ function siblingsOf(drawing: Drawing, childId: string): string[] {
  * side reached by separate lines; a line to some of a sibship that does not
  * end on the stem of their run (or a lone child's line up) below the
  * sibling bar and above the sub-bar (or the child), in a T (from the outer
- * side, for a run at one end of its sibship); a line to all of a sibship that does not end on its
+ * side, for a run at one end of its sibship, unless the donor holds
+ * another tie into it); a line to all of a sibship that does not end on its
  * bar; a crossing, but for one hop over the sibling bar by the line to a
- * run with siblings on both sides; two lines ending on one stem closer
+ * run with siblings on both sides, or one hop over the sibship's line of
+ * descent by a donor who holds another tie into it; two lines ending on one stem closer
  * than a fifth of a symbol; and a line passing through someone or running
  * within a quarter of a symbol of a line of descent away from its ends and
  * its hop.
@@ -491,6 +493,22 @@ export function faultsOfHelperLines(
           : [];
       });
       const barY = bars[0]?.y1;
+      // A donor who also holds another tie into the sibship (raising
+      // another of the children, say) sits wherever all their lines cross
+      // least, so their donor's line may come in from inside the sibship,
+      // hopping one line of descent on the way.
+      const secondTie =
+        connectors.auxiliaryLines.some(
+          (other) =>
+            other.endpointIds?.[0] === parent &&
+            other.edgeType !== kind &&
+            siblings.includes(other.endpointIds[1] ?? ''),
+        ) ||
+        connectors.parentChildLines.some(
+          (pc) =>
+            pc.parentIds?.includes(parent) &&
+            pc.uplineChildIds?.some((id) => siblings.includes(id ?? '')),
+        );
       if (siblings.length > 1 && toChild) {
         faults.push(`${name} ends on ${first}, not on their line of descent`);
       } else if (toAll) {
@@ -542,12 +560,18 @@ export function faultsOfHelperLines(
             : !others.some((x) => x > Math.max(...xs))
               ? 1
               : 0;
-          if (outerSide !== 0 && Math.sign(from.x - end.x) !== outerSide) {
+          if (
+            !secondTie &&
+            outerSide !== 0 &&
+            Math.sign(from.x - end.x) !== outerSide
+          ) {
             faults.push(`${name} meets the stem from inside the sibship`);
           }
         }
       }
-      // Hops: only one, over the sibling bar, by a line to a middle run.
+      // Hops: only one, over the sibling bar, by a line to a middle run, or
+      // over the sibship's line of descent, by a donor with another tie
+      // into it.
       const hops = line.hops ?? [];
       const xs = [...reached].map((id) => drawing.centre(id).x);
       const others = siblings
@@ -557,9 +581,18 @@ export function faultsOfHelperLines(
         others.some((x) => x < Math.min(...xs)) &&
         others.some((x) => x > Math.max(...xs));
       const allowedHop =
-        middle &&
         hops.length === 1 &&
-        bars.some((bar) => distanceToSegment(hops[0]!, bar) < ON_LINE);
+        ((middle &&
+          bars.some((bar) => distanceToSegment(hops[0]!, bar) < ON_LINE)) ||
+          (secondTie &&
+            descentPieces({
+              ...connectors,
+              parentChildLines: connectors.parentChildLines.filter((pc) =>
+                pc.uplineChildIds?.some((id) => siblings.includes(id ?? '')),
+              ),
+            }).some(
+              (piece) => distanceToSegment(hops[0]!, piece.segment) < ON_LINE,
+            )));
       if (hops.length > 0 && !allowedHop) {
         faults.push(`${name} crosses a line`);
       }

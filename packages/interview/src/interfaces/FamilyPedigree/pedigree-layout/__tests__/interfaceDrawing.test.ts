@@ -578,7 +578,9 @@ describe('a donor’s line meets the line of descent of the children they gave t
     });
 
     // Paul is a parent of all three children, but a donor to two: his
-    // donor's line meets their run's stem from the outer side.
+    // donor's line meets their run's stem once, from whichever side his
+    // seat gives it (he also raises Theo, so all his lines decide where he
+    // sits).
     for (const order of [
       ['ego', 'ruby', 'theo'],
       ['theo', 'ego', 'ruby'],
@@ -591,6 +593,23 @@ describe('a donor’s line meets the line of descent of the children they gave t
           ...faultsOfHelperLines(drawing, ties, idsOf(nodes)),
           ...faultsOfSiblingGrouping(drawing, ties),
         ]).toEqual([]);
+      });
+    }
+
+    // Paul's seat is decided by what all his lines cross, not by his
+    // donor's run alone: on the run's side his social line to Theo crosses
+    // Luis's lines and the line of descent (four crossings). On Theo's side
+    // his donor's line hops one line of descent and crosses Luis's line to
+    // Ruby, which, with Luis's lines closing round the run's stem, is the
+    // fewest any route can make (as drawn before the round 1 fixes).
+    for (const order of [
+      ['ego', 'ruby', 'theo'],
+      ['theo', 'ego', 'ruby'],
+    ]) {
+      it(`seats a donor who raises another child where their lines cross least, recorded ${order.join(', ')} (${size}px symbols)`, () => {
+        const { nodes, edges } = donorWhoRaisesAnother(order);
+        const drawing = drawAsInterface(nodes, edges, size);
+        expect(crossingsOf(drawing, 'paul')).toBeLessThanOrEqual(2);
       });
     }
 
@@ -614,9 +633,10 @@ describe('a donor’s line meets the line of descent of the children they gave t
     });
 
     // A donor whose children overlap another's without either holding all
-    // the other's: no nesting gives both one run, so the surrogate, whose
-    // children cross the donor's run, reaches each part by a line of its
-    // own (the ruling cannot be met here; reported, 12 Oct 2026).
+    // the other's: no seating gives both one run. Josh's ruling (12 Oct
+    // 2026): the helper with more children (or the first recorded) keeps
+    // the run and its stem, and the other draws a line to each of their
+    // children's own lines, so the surrogate reaches Ruby and Theo apart.
     it(`reaches each part of a surrogate's children that crosses a donor's run by a line of its own (${size}px symbols)`, () => {
       const nodes = [
         person('ego', { name: 'Maya', sex: ['male'], isEgo: true }),
@@ -831,6 +851,39 @@ const expectAt = (p: { x: number; y: number }, q: { x: number; y: number }) => {
 
 const crossesSegment = (line: AuxiliaryConnector, segment: LineSegment) =>
   segmentsOf(line.points).some((piece) => crossing(piece, segment));
+
+/** How many times a person's own lines (to the children they are a donor,
+ * surrogate, or social or adoptive parent of) cross any other drawn line:
+ * another person's line, a line of descent or a partnership line. */
+function crossingsOf(drawing: Drawing, personId: string): number {
+  const { connectors } = drawing;
+  const others: LineSegment[] = [
+    ...connectors.auxiliaryLines
+      .filter((line) => line.endpointIds?.[0] !== personId)
+      .flatMap((line) => segmentsOf(line.points)),
+    ...connectors.parentChildLines.flatMap((line) => [
+      ...line.parentLink,
+      ...(line.siblingBar ? [line.siblingBar] : []),
+      ...(line.runs ?? []).flatMap((run) => [
+        run.stem,
+        ...(run.bar ? [run.bar] : []),
+      ]),
+      ...line.uplines,
+    ]),
+    ...connectors.groupLines.flatMap((line) => [
+      line.segment,
+      ...(line.endpointSegments ?? []),
+    ]),
+  ];
+  return connectors.auxiliaryLines
+    .filter((line) => line.endpointIds?.[0] === personId)
+    .flatMap((line) => segmentsOf(line.points))
+    .reduce(
+      (sum, piece) =>
+        sum + others.filter((other) => crossing(piece, other)).length,
+      0,
+    );
+}
 
 describe('a couple who adopt a relative’s child', () => {
   for (const size of SYMBOL_SIZES) {
