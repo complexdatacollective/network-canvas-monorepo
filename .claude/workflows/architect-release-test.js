@@ -73,10 +73,16 @@ if (
 }
 
 // Paths agents report back are reused in later agents' shell commands, which
-// single-quote them, so they may hold spaces but no quotes or shell syntax.
-const isPlainPath = (path) =>
+// single-quote them. Inside single quotes only a quote or a control character
+// (a newline ends the command) is special, so those are what is refused —
+// asset names such as "NC-Type and Mark Pos@4x.png" are legitimate.
+const isQuotablePath = (path) =>
   typeof path === 'string' &&
-  /^\/[A-Za-z0-9 ._/-]+$/.test(path) &&
+  path.startsWith('/') &&
+  ![...path].some((ch) => {
+    const code = ch.charCodeAt(0);
+    return ch === "'" || code < 0x20 || code === 0x7f;
+  }) &&
   !path.split('/').includes('..');
 
 const CHECKS_SCHEMA = {
@@ -1045,12 +1051,12 @@ const runSampleBuild = async () => {
     analysis.workDir,
     analysis.canonicalPath,
     ...analysis.assets.map((a) => a.path),
-  ].filter((path) => !isPlainPath(path));
+  ].filter((path) => !isQuotablePath(path));
   if (unsafePaths.length) {
     add(
       'analysis',
       'blocked',
-      `The analyst reported paths later agents cannot safely quote in shell commands: ${unsafePaths.map((p) => JSON.stringify(p)).join(', ')}.`,
+      `The analyst reported paths later agents cannot safely single-quote in shell commands (relative, a ".." segment, a quote or a control character): ${unsafePaths.map((p) => JSON.stringify(p)).join(', ')}.`,
     );
     return { checks, notes, appDefects, detail: null };
   }
