@@ -11,10 +11,13 @@
 # configured in the Netlify dashboard before the first deploy, so this check
 # passes and the build runs as normal.
 #
-# Deploy previews and branch deploys have no database of their own: when they
-# build, they read the production one. netlify.toml therefore gives them
-# `build:branch-preview`, which never runs `setup-database.ts`, so a preview
-# can never migrate the data the production deploy serves.
+# Our own fresco-next site sets both variables for production only. A pull
+# request's deploy preview gets branch-scoped values from
+# .github/workflows/fresco-preview-database.yml, which copies its base's
+# database into a Neon branch for it. Until that has run — on the first push,
+# or for a pull request that does not change Fresco — the preview has no
+# database and this script skips it; the workflow triggers the build once the
+# values exist.
 
 set -u
 

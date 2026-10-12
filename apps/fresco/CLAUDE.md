@@ -129,6 +129,36 @@ Netlify's `fresco-next` and `fresco-sandbox` deploys are built by Netlify rather
 than by this publisher, so they upload only if those two variables are also set
 on the Netlify site.
 
+## Deploy previews and their databases
+
+The `fresco-next` Netlify site (fresco-sandbox.networkcanvas.dev) is the
+sandbox for `main`. Its `DATABASE_URL` and `DATABASE_URL_UNPOOLED` are set for
+**production only**; a deploy preview never sees that database. On 12 Oct 2026
+previews still shared it, and every build of the `schema-9` preview migrated
+the sandbox's protocols and interviews to schema 9, which main refuses to run,
+so every interview link on the sandbox failed.
+
+Each pull request that changes Fresco gets its own database instead, from
+`.github/workflows/fresco-preview-database.yml`
+(`scripts/ci/fresco-preview-database.mjs`): a Neon branch, in the
+`fresco-sandbox-dev` project, copied from the database of the pull request's
+**base**. A pull request into `main` copies main's database (the project's
+default branch); one into `schema-9` copies `preview/schema-9`, so stacked pull
+requests stack their databases. The branch is named `preview/<git branch>`,
+created when the pull request opens, kept across pushes, replaced when the
+pull request is retargeted, and deleted when it closes (unless another
+preview is still copied from it). Its connection strings and a
+`PREVIEW_DATABASE_BRANCH` marker are set as Netlify values scoped to that git
+branch.
+
+Previews and branch deploys build with `build:preview`
+(`scripts/build-preview.ts`). It runs the full `build:platform`, migrations
+included, only when `PREVIEW_DATABASE_BRANCH` is `preview/<the branch being
+built>`; otherwise it builds without touching the database. A self-hosted
+deployment whose previews share its production database therefore never
+migrates it from a preview. A pull request into a branch that has no preview
+database gets none, and its preview is skipped by `netlify-should-build.sh`.
+
 ## Hotfix releases (when main is ahead)
 
 The normal lane always mirrors `main`, so it can only ship a patch together

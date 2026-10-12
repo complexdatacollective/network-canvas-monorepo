@@ -2556,11 +2556,14 @@ test('every production build that uploads source maps gets the credentials', () 
   }
 });
 
-test('only the production Fresco build on Netlify migrates the database', () => {
-  // Deploy previews and branch deploys read the production DATABASE_URL. A
-  // preview of the schema-9 branch that ran setup-database.ts migrated the
-  // sandbox's protocols and interviews to a schema main refuses to run, and
-  // every interview link on the live deployment failed (12 Oct 2026).
+test('a Fresco preview on Netlify migrates only its own database', () => {
+  // Deploy previews used to read the production DATABASE_URL and run the
+  // production build. A preview of the schema-9 branch that ran
+  // setup-database.ts migrated the sandbox's protocols and interviews to a
+  // schema main refuses to run, and every interview link on the live
+  // deployment failed (12 Oct 2026). Previews now get a Neon branch of their
+  // base's database, and build-preview.ts migrates it only when
+  // PREVIEW_DATABASE_BRANCH names the preview's own branch.
   const toml = readFileSync(
     new URL('../../apps/fresco/netlify.toml', import.meta.url),
     'utf8',
@@ -2578,25 +2581,59 @@ test('only the production Fresco build on Netlify migrates the database', () => 
     if (command && section) commands.set(section, command[1]);
   }
 
-  const migrates = (command) => {
+  const scriptBody = (command) => {
     const script = /^pnpm (?:run )?([\w:-]+)$/.exec(command)?.[1];
     assert.ok(script, `"${command}" is not a pnpm script call`);
     const body = frescoPackage.scripts[script];
     assert.ok(body, `apps/fresco/package.json has no "${script}" script`);
-    return body.includes('setup-database');
+    return body;
   };
 
-  assert.ok(
-    migrates(commands.get('build')),
+  assert.match(
+    scriptBody(commands.get('build')),
+    /setup-database/,
     'the production build must still run setup-database.ts',
   );
   for (const context of ['context.deploy-preview', 'context.branch-deploy']) {
-    const command = commands.get(context);
-    assert.ok(command, `${context} must override the production build command`);
     assert.equal(
-      migrates(command),
-      false,
-      `${context} must not run setup-database.ts against the shared database`,
+      scriptBody(commands.get(context)),
+      'tsx ./scripts/build-preview.ts',
+      `${context} must decide through build-preview.ts whether to migrate`,
     );
   }
+
+  const previewWorkflow = parse(
+    readFileSync(new URL('fresco-preview-database.yml', WORKFLOW_DIR), 'utf8'),
+  );
+  assert.deepEqual(previewWorkflow.on.pull_request.types, [
+    'opened',
+    'reopened',
+    'synchronize',
+    'edited',
+    'closed',
+  ]);
+  const steps = [
+    ...previewWorkflow.jobs.provision.steps,
+    ...previewWorkflow.jobs.teardown.steps,
+  ].filter((step) => step.run?.includes('fresco-preview-database.mjs'));
+  assert.equal(steps.length, 2, 'one provision step and one teardown step');
+  for (const step of steps) {
+    assert.equal(
+      step.env.NETLIFY_SITE_ID,
+      '${{ secrets.NETLIFY_SITE_ID_FRESCO }}',
+    );
+    assert.equal(step.env.NEON_API_KEY, '${{ secrets.NEON_API_KEY }}');
+    assert.equal(step.env.NEON_PROJECT_ID, '${{ secrets.NEON_PROJECT_ID }}');
+    // Branch names reach the script through the environment, never inlined
+    // into the shell, where a crafted name could run commands.
+    assert.doesNotMatch(step.run, /\$\{\{/);
+  }
+  assert.match(
+    previewWorkflow.jobs.provision.if,
+    /github\.event\.action != 'closed'/,
+  );
+  assert.match(
+    previewWorkflow.jobs.teardown.if,
+    /github\.event\.action == 'closed'/,
+  );
 });
