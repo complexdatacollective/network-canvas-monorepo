@@ -52,8 +52,9 @@ downloads the result as a user would, validates it, and compares it with the
 canonical protocol, attributing each difference to the app, to a driver
 slip, or to data no user sets. It also runs `scripts/check-built-protocol.mjs`
 on the export, which checks the generated fields the comparison cannot see
-(content-addressed asset names, entity colours, form-field ids, the
-modification stamp). One repair pass retries what the drivers got wrong
+(each asset's export entry, entity colours, form-field ids, the
+modification stamp); builders leave colours to the app, and any invariant
+problem fails or blocks the slice. One repair pass retries what the drivers got wrong
 before the final audit. Fidelity passes only when that final audit
 accounts for every planned stage exactly once and explains every divergence.
 App defects, and failed exports or validation, from either audit round

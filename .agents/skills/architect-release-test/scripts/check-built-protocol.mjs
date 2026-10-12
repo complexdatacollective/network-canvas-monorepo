@@ -7,13 +7,11 @@
 // Usage: node check-built-protocol.mjs <extracted .netcanvas directory>
 // Prints {"problems": [...]} and exits 1 when there are any.
 
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
-const CONTENT_ADDRESSED = /^([0-9a-f]{64})\.[a-z0-9]+$/i;
 const EXTENSIONS = {
   image: /\.(png|svg|jpe?g|gif)$/i,
   video: /\.(mov|mp4)$/i,
@@ -25,9 +23,8 @@ const EXTENSIONS = {
 const isRecord = (value) =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-// `readAsset` returns an asset file's bytes by its source name, or null when
-// the export does not contain it.
-export function checkBuiltProtocol(built, readAsset) {
+// `hasAsset` says whether the export contains a file by its source name.
+export function checkBuiltProtocol(built, hasAsset) {
   const problems = [];
   if (!isRecord(built)) return ['protocol.json is not an object'];
 
@@ -44,10 +41,13 @@ export function checkBuiltProtocol(built, readAsset) {
     );
   }
 
-  // Sources are named by a hash of their bytes so that two imports of
-  // different files with the same name stay two assets; the extension must
-  // fit the type or export entries and preview MIME types break.
+  // Export names each file after its asset id (`entryNameFor` in
+  // apps/architect/src/utils/bundleProtocol.ts) so two uploads that share a
+  // filename cannot overwrite each other in the zip: every source must be
+  // that id-derived name, unique, present, and carry an extension that fits
+  // its type, or export entries and preview MIME types break.
   const manifest = isRecord(built.assetManifest) ? built.assetManifest : {};
+  const sources = new Set();
   for (const [id, entry] of Object.entries(manifest)) {
     if (!isRecord(entry)) {
       problems.push(`assetManifest[${id}] is not an object`);
@@ -68,23 +68,26 @@ export function checkBuiltProtocol(built, readAsset) {
         `assetManifest[${id}].source ${JSON.stringify(source)} does not carry a ${String(type)} extension`,
       );
     }
-    const hash = CONTENT_ADDRESSED.exec(source);
-    if (!hash) {
+    const stem = id.replace(/[^A-Za-z0-9._-]/g, '_').replace(/\.{2,}/g, '_');
+    const dot = source.lastIndexOf('.');
+    const base = dot > 0 ? source.slice(0, dot) : source;
+    const suffix = base.startsWith(`${stem}-`)
+      ? base.slice(stem.length + 1)
+      : null;
+    if (base !== stem && !(suffix && /^\d+$/.test(suffix))) {
       problems.push(
-        `assetManifest[${id}].source ${JSON.stringify(source)} is not a content-addressed name`,
+        `assetManifest[${id}].source ${JSON.stringify(source)} is not named after its asset id`,
       );
-      continue;
     }
-    const bytes = readAsset(source);
-    if (bytes === null) {
+    if (sources.has(source)) {
+      problems.push(
+        `assetManifest[${id}].source ${JSON.stringify(source)} is shared with another asset`,
+      );
+    }
+    sources.add(source);
+    if (!hasAsset(source)) {
       problems.push(
         `assetManifest[${id}].source ${JSON.stringify(source)} is not in the export`,
-      );
-    } else if (
-      createHash('sha256').update(bytes).digest('hex') !== hash[1].toLowerCase()
-    ) {
-      problems.push(
-        `assetManifest[${id}].source ${JSON.stringify(source)} does not match the hash of its contents`,
       );
     }
   }
@@ -145,10 +148,9 @@ if (
     process.exitCode = 2;
   } else {
     const built = JSON.parse(readFileSync(join(dir, 'protocol.json'), 'utf8'));
-    const problems = checkBuiltProtocol(built, (source) => {
-      const path = join(dir, 'assets', source);
-      return existsSync(path) ? readFileSync(path) : null;
-    });
+    const problems = checkBuiltProtocol(built, (source) =>
+      existsSync(join(dir, 'assets', source)),
+    );
     process.stdout.write(`${JSON.stringify({ problems }, null, 2)}\n`);
     process.exitCode = problems.length ? 1 : 0;
   }

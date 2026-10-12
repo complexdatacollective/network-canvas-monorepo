@@ -648,7 +648,13 @@ recreating the canonical sample protocol through Architect's own UI.
 `;
 
 const sampleSourceNote = `The specification is the sample protocol at git ref "${sampleRef}"
-(packages/protocols/sample: protocol.json plus assets/).`;
+(packages/protocols/sample: protocol.json plus assets/).
+Generated values are not part of what a person reproduces: leave every node
+and edge type's colour as Architect assigns it (the specification's colours
+were set by hand over its history, and a fresh build is checked for the
+app's own sequence instead), and ignore ids, asset file names and
+timestamps. The audit checks those with the invariant checker, not by
+comparison.`;
 
 const analysisPrompt = `${pwOps('analyst')}
 ## Your task — analyse the specification (no browser needed)
@@ -672,7 +678,7 @@ ${sampleSourceNote}
    documentation (apps/documentation/docs/design-protocols) for each
    interface type it uses, so your plan uses the app's own vocabulary.
 3. codebookPlan: describe every node type, edge type and ego variable — name,
-   colour/icon where set, and each variable's name, type, options (labels and
+   icon where set (never colour), and each variable's name, type, options (labels and
    values) and validation — and say which stage first needs each, because
    Architect creates codebook entries from inside stage editors.
 4. assets: every assetManifest entry — its name, type, the absolute path of
@@ -781,7 +787,11 @@ Run directory: ${analysis.workDir} (write your files under it)
    from the repository root. Set invariantsChecked true only when it ran
    against the exported files (false if export was blocked), and report
    each problem it prints as a protocolDiscrepancies entry with area
-   "invariants", attributed like any other discrepancy.
+   "invariants". Attribute it "app" unless the builders' log shows they set
+   the value themselves ("driver"); never "non-user-facing" — these are the
+   values the comparison ignores, so the checker is their only test. Do not
+   compare entity colours, ids, asset file names or timestamps with the
+   specification.
 5. For every discrepancy, attribute it: "driver" when the builders' log shows
    they skipped or mis-set it; "app" when the app evidently failed to author
    or persist something a user set (corroborate with the builders' log or
@@ -1139,7 +1149,7 @@ const runSampleBuild = async () => {
 
     const residual = discrepanciesOf(comparison);
     const nonUserFacing = residual.filter(
-      (r) => r.attribution === 'non-user-facing',
+      (r) => r.attribution === 'non-user-facing' && r.area !== 'invariants',
     );
     if (nonUserFacing.length) {
       notes.push(
@@ -1148,8 +1158,15 @@ const runSampleBuild = async () => {
           .join('; ')}`,
       );
     }
+    // A broken generated-field invariant is never explained away: unless it
+    // is attributed to the app (and fails above) it holds fidelity blocked.
     const gaps = [
       ...auditGaps(analysis, comparison),
+      ...residual
+        .filter(
+          (d) => d.area === 'invariants' && d.attribution === 'non-user-facing',
+        )
+        .map((d) => `${d.where}: ${d.summary}`),
       ...comparison.stages
         .filter((s) => s.fidelity === 'missing')
         .map((s) => `stage ${s.index} "${s.label}" missing`),
