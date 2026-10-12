@@ -1403,6 +1403,78 @@ describe('co-parents with no recorded partnership', () => {
     expect(lines[0]!.points.slice(-2)).toEqual(lines[1]!.points.slice(-2));
   });
 
+  it("stacks another family's level line where it crosses the fewest of the lines down from each of them", () => {
+    // Cara's line of descent runs level from her (at 3) to her child (at
+    // -0.5), under both Ann (at 0) and Bob (at 1). With Cara's level line
+    // above theirs, Ann's and Bob's lines down each cross it; with theirs
+    // above, only the one line down to their child does.
+    const layout: PedigreeLayout = {
+      n: [3, 2],
+      nid: [
+        [0, 1, 3],
+        [4, 2],
+      ],
+      pos: [
+        [0, 1, 3],
+        [-0.5, 0.5],
+      ],
+      fam: [
+        [0, 0, 0],
+        [-3, 0],
+      ],
+      group: [
+        [0, 0, 0],
+        [0, 0],
+      ],
+      twins: null,
+      groupMember: [
+        [false, false, false],
+        [false, false],
+      ],
+    };
+    const connectors = computeConnectors(
+      layout,
+      scaling,
+      [
+        [],
+        [],
+        bothBiological,
+        [],
+        [{ parentIndex: 3, edgeType: 'biological' }],
+      ],
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      ['ann', 'bob', 'c1', 'cara', 'd1'],
+      new Set(),
+    );
+    const linkOf = (parent: string) =>
+      connectors.parentChildLines.find((line) =>
+        line.parentIds?.includes(parent),
+      )!.parentLink;
+    // Where an upright piece of one line passes through a level piece of
+    // the other, away from both their ends.
+    const crossings = (a: LineSegment[], b: LineSegment[]) =>
+      a.flatMap((s) =>
+        b.filter((t) => {
+          const [up, level] =
+            s.x1 === s.x2 && t.y1 === t.y2
+              ? [s, t]
+              : t.x1 === t.x2 && s.y1 === s.y2
+                ? [t, s]
+                : [];
+          if (!up || !level) return false;
+          const inside = (v: number, p: number, q: number) =>
+            v > Math.min(p, q) + 1e-9 && v < Math.max(p, q) - 1e-9;
+          return (
+            inside(up.x1, level.x1, level.x2) && inside(level.y1, up.y1, up.y2)
+          );
+        }),
+      ).length;
+    expect(crossings(linkOf('ann'), linkOf('cara'))).toBe(1);
+  });
+
   it('keeps the partnership line of a recorded partnership', () => {
     const connectors = draw(sideBySide(true), new Set(['0,1']));
     expect(connectors.groupLines).toHaveLength(1);

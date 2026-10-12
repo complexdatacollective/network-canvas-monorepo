@@ -2446,13 +2446,23 @@ type DescentRun = {
   coParentXs?: [number, number];
 };
 
+/** Where a line of descent's level run reaches, from end to end: from
+ * the parents (each of two co-parents with no partnership line) to above
+ * the children. */
+const spanOf = (run: DescentRun) =>
+  [
+    Math.min(run.childX, run.parentX, ...(run.coParentXs ?? [])),
+    Math.max(run.childX, run.parentX, ...(run.coParentXs ?? [])),
+  ] as const;
+
+/** Where a line of descent comes down from its parents to its level run:
+ * from each of two co-parents with no partnership line, or from the one
+ * point it starts at. */
+const dropsOf = (run: DescentRun) => run.coParentXs ?? [run.parentX];
+
 /** The runs in groups whose level spans overlap or meet, each in order. */
 function overlappingRuns<T extends DescentRun>(runs: T[]): T[][] {
-  const span = (run: T) =>
-    [
-      Math.min(run.childX, run.parentX, ...(run.coParentXs ?? [])),
-      Math.max(run.childX, run.parentX, ...(run.coParentXs ?? [])),
-    ] as const;
+  const span = spanOf;
   const sorted = runs.toSorted((a, b) => span(a)[0] - span(b)[0]);
   const groups: T[][] = [];
   let reach = -Infinity;
@@ -2471,20 +2481,23 @@ function overlappingRuns<T extends DescentRun>(runs: T[]): T[][] {
 
 /**
  * The runs stacked from the parents' row down in the order where the fewest
- * pieces cross: a lower run's drop from its parents crosses every higher run
- * it passes through, and a higher run's drop to its children every lower run.
- * A drop meeting a run's end counts as a crossing, since it would join it.
- * On a tie the given order is kept.
+ * pieces cross: a lower run's drops from its parents (one from each of two
+ * co-parents) cross every higher run they pass through, and a higher run's
+ * drop to its children every lower run. A drop meeting a run's end counts as
+ * a crossing, since it would join it. On a tie the given order is kept.
  */
 function leastCrossingStack<T extends DescentRun>(runs: T[]): T[] {
-  const within = (x: number, run: T) =>
-    x >= Math.min(run.childX, run.parentX) - 1e-9 &&
-    x <= Math.max(run.childX, run.parentX) + 1e-9;
+  const within = (x: number, run: T) => {
+    const [from, to] = spanOf(run);
+    return x >= from - 1e-9 && x <= to + 1e-9;
+  };
   const crossings = (stack: T[]) => {
     let count = 0;
     for (let a = 0; a < stack.length; a++) {
       for (let b = a + 1; b < stack.length; b++) {
-        if (within(stack[b]!.parentX, stack[a]!)) count++;
+        for (const x of dropsOf(stack[b]!)) {
+          if (within(x, stack[a]!)) count++;
+        }
         if (within(stack[a]!.childX, stack[b]!)) count++;
       }
     }
