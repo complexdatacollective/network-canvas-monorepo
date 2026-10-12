@@ -778,10 +778,12 @@ function renderPartnershipLine(
 }
 
 /**
- * A line of descent, its pieces of each shade drawn as polylines, so a line
- * that runs on (a descent straight down into an only child, say) is one
- * stroke with no seams at its joins, and a dashed one keeps its rhythm
- * through them. A dashed line differs from a solid one only in its stroke.
+ * A line of descent, drawn as strokes that each run away from its owners,
+ * one shade apiece. A line that runs on (a descent straight down into an
+ * only child, say) is one stroke with no seams at its joins. A dashed line
+ * differs from a solid one only in its stroke, and keeps one dash rhythm
+ * along its whole course however it is shaded: each stroke takes up the
+ * pattern where the course from the owners has reached by its start.
  */
 function renderParentChild(
   conn: ParentChildConnector,
@@ -790,26 +792,28 @@ function renderParentChild(
   pieces: Shaded[],
 ) {
   const dashed = conn.edgeType === 'social' || conn.edgeType === 'adoptive';
+  const strokes = descentStrokes(pieces);
   return (
     <g key={`pc-${idx}`}>
       {[true, false].map((lit) => {
-        const chains = segmentsToPolylinePoints(
-          pieces
-            .filter((piece) => piece.lit === lit)
-            .map((piece) => piece.segment),
-        );
-        if (chains.length === 0) return null;
+        const shaded = strokes.filter((stroke) => stroke.lit === lit);
+        if (shaded.length === 0) return null;
         const shade = lit ? 'bright' : 'dim';
         return (
           <g key={`pc-${idx}-${shade}`} {...(lit ? {} : DIMMED)}>
-            {chains.map((points, i) => (
+            {shaded.map(({ points, reached }, i) => (
               <polyline
                 key={`pc-${idx}-${shade}-${i}`}
-                points={points}
+                points={points.map((p) => `${p.x},${p.y}`).join(' ')}
                 fill="none"
                 stroke={lit ? color : dimColor(color)}
                 strokeWidth={EDGE_WIDTH}
-                {...(dashed ? { strokeDasharray: DASHED_PATTERN } : {})}
+                {...(dashed
+                  ? {
+                      strokeDasharray: DASHED_PATTERN,
+                      strokeDashoffset: reached,
+                    }
+                  : {})}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
@@ -821,61 +825,123 @@ function renderParentChild(
   );
 }
 
+/** One stroke of a line of descent: its points, away from the owners, and
+ * how far the course from them has run where it starts. */
+type DescentStroke = { points: Point[]; lit: boolean; reached: number };
+
 /**
- * Convert line segments into connected polylines: segments that share an
- * endpoint, in either direction, join one chain; points a chain runs
- * straight through are dropped, and so are segments of no length. Returns
- * one point string per chain.
+ * A line of descent's pieces as strokes. The pieces are cut wherever
+ * another piece ends on them, so every junction is a point of the network;
+ * the course runs from the network's topmost loose ends (the owners' drops)
+ * outward, each piece is turned to run away from them, and pieces of one
+ * shade that continue each other join one stroke, dropping the points a
+ * stroke runs straight through.
  */
-function segmentsToPolylinePoints(segments: LineSegment[]): string[] {
-  type P = { x: number; y: number };
-  const same = (a: P, b: P) =>
-    Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
-  const chains: P[][] = [];
+function descentStrokes(pieces: Shaded[]): DescentStroke[] {
+  const same = (a: Point, b: Point) =>
+    Math.abs(a.x - b.x) < EPSILON && Math.abs(a.y - b.y) < EPSILON;
+  const ends = (s: LineSegment): [Point, Point] => [
+    { x: s.x1, y: s.y1 },
+    { x: s.x2, y: s.y2 },
+  ];
+  const whole = pieces.filter(({ segment: s }) => !same(...ends(s)));
+  const cut: { from: Point; to: Point; lit: boolean }[] = whole.flatMap(
+    ({ segment, lit }) => {
+      const [from, to] = ends(segment);
+      const at = whole
+        .flatMap((other) => ends(other.segment))
+        .map((point) => fractionAlong(point, segment))
+        .filter((t): t is number => t !== undefined && t > 1e-9 && t < 1 - 1e-9)
+        .toSorted((p, q) => p - q);
+      const stops = [0, ...at, 1].filter(
+        (t, k, all) => k === 0 || t - all[k - 1]! > 1e-9,
+      );
+      const point = (t: number) => ({
+        x: from.x + (to.x - from.x) * t,
+        y: from.y + (to.y - from.y) * t,
+      });
+      return stops
+        .slice(1)
+        .map((t, k) => ({ from: point(stops[k]!), to: point(t), lit }));
+    },
+  );
+  if (cut.length === 0) return [];
 
-  // Joins chain `b` onto chain `a` where their ends meet; false when they don't.
-  const join = (a: P[], b: P[]): boolean => {
-    const [aFirst, aLast] = [a[0]!, a[a.length - 1]!];
-    const [bFirst, bLast] = [b[0]!, b[b.length - 1]!];
-    if (same(aLast, bFirst)) a.push(...b.slice(1));
-    else if (same(aLast, bLast)) a.push(...b.toReversed().slice(1));
-    else if (same(aFirst, bLast)) a.unshift(...b.slice(0, -1));
-    else if (same(aFirst, bFirst)) a.unshift(...b.slice(1).toReversed());
-    else return false;
-    return true;
+  // How far the course has run on reaching each point: from the topmost
+  // loose ends, along the pieces, the shortest way.
+  const points: Point[] = [];
+  const indexOf = (p: Point) => {
+    const found = points.findIndex((q) => same(p, q));
+    if (found >= 0) return found;
+    points.push(p);
+    return points.length - 1;
   };
-
-  for (const seg of segments) {
-    if (seg.x1 === seg.x2 && seg.y1 === seg.y2) continue;
-    const piece = [
-      { x: seg.x1, y: seg.y1 },
-      { x: seg.x2, y: seg.y2 },
-    ];
-    if (!chains.some((chain) => join(chain, piece))) chains.push(piece);
-  }
-
-  // Chains that came to meet as pieces were added join up too.
-  for (let i = 0; i < chains.length; i++) {
-    for (let j = chains.length - 1; j > i; j--) {
-      if (join(chains[i]!, chains[j]!)) {
-        chains.splice(j, 1);
-        j = chains.length;
+  const edges = cut.map((piece) => ({
+    ...piece,
+    a: indexOf(piece.from),
+    b: indexOf(piece.to),
+    length: Math.hypot(piece.to.x - piece.from.x, piece.to.y - piece.from.y),
+  }));
+  const degree = points.map(
+    (_, k) => edges.filter(({ a, b }) => a === k || b === k).length,
+  );
+  const loose = points.filter((_, k) => degree[k] === 1);
+  const top = Math.min(...(loose.length ? loose : points).map((p) => p.y));
+  const reached = points.map((p, k) =>
+    (loose.length ? degree[k] === 1 : true) && Math.abs(p.y - top) < EPSILON
+      ? 0
+      : Infinity,
+  );
+  for (let settled = false; !settled;) {
+    settled = true;
+    for (const { a, b, length } of edges) {
+      if (reached[a]! + length < reached[b]! - EPSILON) {
+        reached[b] = reached[a]! + length;
+        settled = false;
+      } else if (reached[b]! + length < reached[a]! - EPSILON) {
+        reached[a] = reached[b]! + length;
+        settled = false;
       }
     }
   }
 
-  return chains.map((chain) => {
-    const kept = chain.filter((point, k) => {
+  const away = edges
+    .map(({ a, b, lit }) =>
+      reached[a]! <= reached[b]! ? { a, b, lit } : { a: b, b: a, lit },
+    )
+    .toSorted((p, q) => reached[p.a]! - reached[q.a]!);
+  const strokes: (DescentStroke & { last: number })[] = [];
+  const continued = new Set<number>();
+  for (const { a, b, lit } of away) {
+    const on = strokes.find(
+      (stroke) => stroke.lit === lit && stroke.last === a && !continued.has(a),
+    );
+    if (on) {
+      continued.add(a);
+      on.points.push(points[b]!);
+      on.last = b;
+    } else {
+      strokes.push({
+        points: [points[a]!, points[b]!],
+        lit,
+        reached: Number.isFinite(reached[a]) ? reached[a]! : 0,
+        last: b,
+      });
+    }
+  }
+  return strokes.map(({ points: chain, lit, reached: from }) => ({
+    lit,
+    reached: from,
+    points: chain.filter((point, k) => {
       if (k === 0 || k === chain.length - 1) return true;
       const before = chain[k - 1]!;
       const after = chain[k + 1]!;
       const turn =
         (point.x - before.x) * (after.y - point.y) -
         (point.y - before.y) * (after.x - point.x);
-      return Math.abs(turn) > 1e-6;
-    });
-    return kept.map((p) => `${p.x},${p.y}`).join(' ');
-  });
+      return Math.abs(turn) > EPSILON;
+    }),
+  }));
 }
 
 /** Identifies a parent→child link in `highlightedEdgeKeys`. */

@@ -353,7 +353,7 @@ describe('PedigreeEdgeSvg — sibling bar per-segment dimming', () => {
     expect(isLineDimmed(outerStub!)).toBe(true);
   });
 
-  test('with highlight props undefined (FamilyPedigree path), the sibling bar is a single bright segment', () => {
+  test('with highlight props undefined (FamilyPedigree path), the whole sibling bar is bright', () => {
     const { container } = render(
       <PedigreeEdgeSvg
         connectorData={makeConnectorData([makeSplitConnector()])}
@@ -366,11 +366,13 @@ describe('PedigreeEdgeSvg — sibling bar per-segment dimming', () => {
     expect(container.querySelectorAll('[data-edge-dimmed="true"]').length).toBe(
       0,
     );
-    // The whole bar [0, 200] is drawn by one stroke.
-    const wholeBar = barStrokeAt(container, 0, 100);
-    expect(wholeBar).toBeDefined();
-    expect(barStrokeAt(container, 200, 100)).toBe(wholeBar);
-    expect(wholeBar!.getAttribute('stroke')).toBe('black');
+    // The whole bar [0, 200] is drawn bright, by strokes that run away from
+    // where the parents' drop meets it.
+    for (const x of [0, 60, 140, 200]) {
+      expect(barStrokeAt(container, x, 100)?.getAttribute('stroke')).toBe(
+        'black',
+      );
+    }
   });
 
   // Regression: a child can be in highlightedNodeIds for a reason unrelated to
@@ -1574,6 +1576,65 @@ describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course pass
     // Lit or dim, the line keeps its dashes.
     expect(dashedStroke(uprightStrokeAt(container, 40, 125))).toBe('8 8');
     expect(dashedStroke(uprightStrokeAt(container, 40, 105))).toBe('8 8');
+  });
+
+  test('a dashed line keeps one dash rhythm along its whole course, however it is shaded', () => {
+    // How far the course has run from the parents' drop (100,60) when it
+    // reaches each point a stroke may start at: down the drop, along the
+    // sibling bar either way, down the run's stem, and along its sub-bar.
+    const reached: Record<string, number> = {
+      '100,60': 0,
+      '100,100': 40,
+      '40,100': 100,
+      '40,115': 115,
+      '40,130': 130,
+      '20,130': 150,
+      '60,130': 150,
+      '180,100': 120,
+    };
+    const rhythmFaults = (container: HTMLElement) =>
+      Array.from(container.querySelectorAll('polyline'))
+        .filter((stroke) => stroke.getAttribute('stroke-dasharray') === '8 8')
+        .flatMap((stroke) => {
+          const start = (stroke.getAttribute('points') ?? '')
+            .trim()
+            .split(/\s+/)[0]!;
+          const expected = reached[start];
+          const offset = Number(stroke.getAttribute('stroke-dashoffset') ?? 0);
+          if (expected === undefined) {
+            return [
+              `a stroke starts at ${start}, not where the course reaches it first`,
+            ];
+          }
+          const drift = (((offset - expected) % 16) + 16) % 16;
+          return Math.min(drift, 16 - drift) < 1e-6
+            ? []
+            : [
+                `the stroke from ${start} restarts the dashes (offset ${offset}, course ${expected})`,
+              ];
+        });
+    // Partly lit: the donor's tie lights the stem below the donor's line,
+    // the sub-bar to child 1 and child 1's line up.
+    expect(
+      rhythmFaults(
+        draw(withLines([adoptiveRun], { auxiliaryLines: [donorToStem] }), [
+          edgeKey('donor', 'child1'),
+        ]),
+      ),
+    ).toEqual([]);
+    // Unshaded, the line still reads as one course from the parents down.
+    expect(
+      rhythmFaults(
+        render(
+          <PedigreeEdgeSvg
+            connectorData={withLines([adoptiveRun])}
+            color="black"
+            width={500}
+            height={300}
+          />,
+        ).container,
+      ),
+    ).toEqual([]);
   });
 
   test('an adoptive line of descent stays dim when no tie through it is lit, however many of its people are highlighted', () => {
