@@ -34,7 +34,7 @@ const CurrentFormatNodeSchema = z.object({
  * is stored with it.
  */
 const EncryptedNetworkSchema = z.object({
-  encryption: z.undefined(),
+  encryption: z.never().optional(),
   nodes: z.tuple([CurrentFormatNodeSchema]),
 });
 

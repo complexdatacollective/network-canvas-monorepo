@@ -12,7 +12,7 @@ import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 const BACKGROUND_IMAGE = path.resolve(
   import.meta.dirname,
-  '../../fixtures/files/sample-protocol/responsive-political-compass.svg',
+  '../../fixtures/files/background-image.svg',
 );
 
 // A stage being ADDED arrives with a name already proposed for it, so it holds

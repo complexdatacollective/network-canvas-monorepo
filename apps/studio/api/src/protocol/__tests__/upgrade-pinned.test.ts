@@ -247,8 +247,11 @@ describe.skipIf(!storeDb)('upgradePinnedStudies', () => {
 
   const guardState = async () =>
     store.rows<{ enabled: string }>(
+      // pg_trigger spans the database, and other test files create their
+      // own interview_sessions tables in parallel: read this test's table.
       `SELECT tgenabled::text AS enabled FROM pg_trigger
-       WHERE tgname = 'interview_sessions_writable'`,
+       WHERE tgname = 'interview_sessions_writable'
+         AND tgrelid = 'interview_sessions'::regclass`,
     );
 
   const payloadFor = (
