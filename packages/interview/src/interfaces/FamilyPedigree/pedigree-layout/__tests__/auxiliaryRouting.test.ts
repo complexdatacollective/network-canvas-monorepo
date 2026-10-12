@@ -6,7 +6,6 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { alignPedigree } from '../alignPedigree';
 import {
   courseCost,
   type DrawnLine,
@@ -14,11 +13,7 @@ import {
   type RoutingScene,
 } from '../auxiliaryRouting';
 import type { LayoutDimensions } from '../layoutDimensions';
-import {
-  buildConnectorData,
-  pedigreeLayoutToPositions,
-  toPedigreeInput,
-} from '../pedigreeAdapter';
+import { drawPedigree } from '../pedigreeAdapter';
 import type {
   LineSegment,
   PedigreeConnectors,
@@ -34,19 +29,14 @@ function draw(
   links: PedigreeLink[],
   shapes: Record<string, PedigreeSymbolShape> = {},
 ) {
-  const { input, indexToId, idToIndex } = toPedigreeInput(people, links);
-  const layout = alignPedigree(input);
-  const { connectors } = buildConnectorData(
-    layout,
+  const { positions: topLeft, connectorData } = drawPedigree({
+    nodeIds: people,
     links,
-    DIMENSIONS,
-    input.parents,
-    idToIndex,
-    people,
-    indexToId,
-    new Map(Object.entries(shapes)),
-  );
-  const topLeft = pedigreeLayoutToPositions(layout, indexToId, DIMENSIONS);
+    dimensions: DIMENSIONS,
+    nodeNames: new Map(people.map((id) => [id, id])),
+    nodeShapes: new Map(Object.entries(shapes)),
+  });
+  const { connectors } = connectorData;
   const centre = (personId: string) => {
     const position = topLeft.get(personId);
     if (!position) throw new Error(`${personId} is not drawn`);
@@ -138,7 +128,7 @@ const partners = (a: string, b: string, isActive = true): PedigreeLink => ({
 
 describe('every recorded tie is drawn as a line', () => {
   it.each(['identicalTwin', 'fraternalTwin', 'unknownZygosityTwin'] as const)(
-    'draws the line from the surrogate of %s pair',
+    'draws the parents’ line to the line of descent from the surrogate of a %s pair',
     (kind) => {
       const { connectors } = draw(
         ['ego', 'mum', 'dad', 'arjun', 'lena'],
@@ -153,11 +143,18 @@ describe('every recorded tie is drawn as a line', () => {
           { source: 'ego', target: 'arjun', kind },
         ],
       );
-      const lenas = connectors.auxiliaryLines.filter(
-        (line) => line.endpointIds?.[0] === 'lena',
+      // The twins' line of descent comes from the one who carried them
+      // (Round 5, ruling 2), and their parents' line joins it.
+      const descent = connectors.parentChildLines.find((line) =>
+        line.uplineChildIds?.includes('ego'),
       );
-      expect(lenas.length).toBeGreaterThan(0);
-      for (const line of lenas) {
+      expect(descent?.parentIds).toEqual(['lena']);
+      const parents = connectors.auxiliaryLines.filter((line) =>
+        (line.ownerIds ?? []).includes('mum'),
+      );
+      expect(parents.length).toBeGreaterThan(0);
+      for (const line of parents) {
+        expect(line.ownerIds).toEqual(expect.arrayContaining(['mum', 'dad']));
         expect(line.points.length).toBeGreaterThanOrEqual(2);
         const [first, last] = [line.points[0]!, line.points.at(-1)!];
         expect(Math.hypot(last.x - first.x, last.y - first.y)).toBeGreaterThan(
@@ -199,7 +196,7 @@ describe('every recorded tie is drawn as a line', () => {
     const costAcross = (kind: DrawnLine['kind']) =>
       courseCost(
         { person: 0, x: 0, layer: 0 },
-        { kind: 'child', person: 1, x: 0, layer: 1, attachments: [0] },
+        { kind: 'child', person: 1, x: 0, layer: 1 },
         'owner',
         { ...scene, lines: [{ segment: across, kind }] },
         [
@@ -213,7 +210,7 @@ describe('every recorded tie is drawn as a line', () => {
     expect(costAcross('other')).toBeGreaterThan(
       courseCost(
         { person: 0, x: 0, layer: 0 },
-        { kind: 'child', person: 1, x: 0, layer: 1, attachments: [0] },
+        { kind: 'child', person: 1, x: 0, layer: 1 },
         'owner',
         scene,
         [
@@ -224,10 +221,10 @@ describe('every recorded tie is drawn as a line', () => {
     );
   });
 
-  it('routes a line to a child it is offered no place on', () => {
+  it('routes a line to the middle of the top of a child', () => {
     const { points } = routeLine(
       { person: 0, x: 0, layer: 0 },
-      { kind: 'child', person: 1, x: 1, layer: 1, attachments: [] },
+      { kind: 'child', person: 1, x: 1, layer: 1 },
       'owner',
       scene,
     );
@@ -239,7 +236,7 @@ describe('every recorded tie is drawn as a line', () => {
 describe('where auxiliary lines meet a symbol', () => {
   const W = DIMENSIONS.nodeWidth;
 
-  it('spreads the lines into one child across its top edge, in the order of their parents', () => {
+  it('brings the lines into one child to a single point on its top, each from the side of its parent', () => {
     const { connectors, centre, boxOf } = draw(
       ['ego', 'beth', 'jo', 'tom'],
       [
@@ -250,18 +247,28 @@ describe('where auxiliary lines meet a symbol', () => {
       ],
       { ego: 'square', beth: 'circle', jo: 'circle', tom: 'square' },
     );
-    const ends = ['jo', 'tom'].map((from) => {
+    const top = { x: centre('ego').x, y: boxOf('ego').top };
+    // The direction each line arrives from, as an angle off straight down,
+    // negative from the left.
+    const arrivals = ['jo', 'tom'].map((from) => {
       const line = connectors.auxiliaryLines.find(
         (l) => l.endpointIds?.[0] === from,
       )!;
-      return { from, x: edgeCrossing(line.points, boxOf('ego'), true).x };
+      const at = line.points.findIndex(
+        (p) => Math.hypot(p.x - top.x, p.y - top.y) < 1,
+      );
+      expect(at, from).toBeGreaterThan(0);
+      const before = line.points[at - 1]!;
+      return { from, angle: Math.atan2(before.x - top.x, top.y - before.y) };
     });
-    const byEnd = ends.toSorted((a, b) => a.x - b.x).map((end) => end.from);
+    const byArrival = arrivals
+      .toSorted((a, b) => a.angle - b.angle)
+      .map((end) => end.from);
     const byParent = ['jo', 'tom'].toSorted(
       (a, b) => centre(a).x - centre(b).x,
     );
-    expect(byEnd).toEqual(byParent);
-    expect(Math.abs(ends[0]!.x - ends[1]!.x)).toBeGreaterThanOrEqual(0.25 * W);
+    expect(byArrival).toEqual(byParent);
+    expect(arrivals[0]!.angle).not.toBeCloseTo(arrivals[1]!.angle, 1);
   });
 
   it('ends a line into a square on the flat part of its top edge', () => {
@@ -555,9 +562,17 @@ describe('auxiliary lines keep clear of every other line', () => {
     const boxes = people.map(boxOf);
     const segments = drawnSegments(connectors);
     const faults: string[] = [];
+    // A corner under a symbol is hidden; one on its edge is where the lines
+    // into a child converge, at its top.
+    const grown = boxes.map((box) => ({
+      left: box.left - 1,
+      right: box.right + 1,
+      top: box.top - 1,
+      bottom: box.bottom + 1,
+    }));
     connectors.auxiliaryLines.forEach((line, k) => {
       for (const corner of line.points.slice(1, -1)) {
-        if (boxes.some((box) => inside(corner, box))) continue;
+        if (grown.some((box) => inside(corner, box))) continue;
         for (const b of segments) {
           if (b.line === `aux:${k}`) continue;
           const d = pointToSegment(corner, b.segment);

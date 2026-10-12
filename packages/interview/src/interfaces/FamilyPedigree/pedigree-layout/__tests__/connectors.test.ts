@@ -998,7 +998,7 @@ describe('computeConnectors', () => {
     });
   });
 
-  it('joins a sibling who adopted the child by a line below the row, into the child from below', () => {
+  it('joins a sibling who adopted the child by a line below the row, into the middle of the child’s bottom', () => {
     // Jade (2) adopted her sibling (3), who stays in their birth sibship, so
     // she sits on the child's row.
     const sameRowLayout: PedigreeLayout = {
@@ -1053,13 +1053,15 @@ describe('computeConnectors', () => {
         expect(points[k]!.y).toBeGreaterThan(rowBottom);
       }
     }
-    // It ends in the child, coming up from below, off their centre.
+    // It ends in the child, coming up from below into the middle of their
+    // bottom, where every line into them from below converges (Round 5,
+    // ruling 4).
     const last = endOf(connectors.auxiliaryLines[0]!);
     const beforeLast = points[points.length - 2]!;
     expect(last.y).toBeCloseTo(1 + scaling.boxHeight / 2, 5);
     expect(beforeLast.x).toBeCloseTo(last.x, 5);
     expect(beforeLast.y).toBeGreaterThan(last.y);
-    expect(Math.abs(last.x - 2)).toBeGreaterThan(0.01);
+    expect(last.x).toBeCloseTo(2, 5);
   });
 });
 

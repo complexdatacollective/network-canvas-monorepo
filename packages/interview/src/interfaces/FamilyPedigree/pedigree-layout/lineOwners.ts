@@ -7,9 +7,11 @@ import { relativeRaisers } from './utils';
 
 /**
  * Whoever a line in the drawing comes from: one person, a recorded couple
- * whose two partners hold the same kind of tie to the child, or two birth
- * parents with no partnership recorded (a pair). `parents` holds one person,
- * or the two of a couple or a pair in the order their ties were recorded.
+ * whose two partners both hold birth ties, or both the same raising tie, to
+ * the child, or two birth parents with no partnership recorded (a pair).
+ * `parents` holds one person, or the two of a couple or a pair in the order
+ * their ties were recorded. `kind` is the style the line is drawn in: one of
+ * the birth kinds for a line that carries birth ties, or its raising kind.
  */
 export type LineOwner = {
   parents: number[];
@@ -28,6 +30,33 @@ export type ChildLines = {
 export const isBirthTie = (kind: PedigreeEdgeType) =>
   kind === 'biological' || kind === 'donor' || kind === 'surrogate';
 
+/**
+ * Whether a tie is a birth tie, and who carried the child, are read from the
+ * tie's recorded kind and its carried flag here and nowhere else (Round 5
+ * ruling 1, Josh, 12 Oct 2026). Carrying the pregnancy is a birth tie,
+ * whatever else the parent is to the child: an adoptive or social parent who
+ * carried is drawn as the child's carrier, solid. Every other tie is drawn
+ * as recorded. The layout reads each tie through this as it takes the
+ * family in, so every later reader of a tie's kind sees the kind it is
+ * drawn as.
+ */
+export function drawnKind(
+  kind: PedigreeEdgeType,
+  carried: boolean,
+): PedigreeEdgeType {
+  return carried && !isBirthTie(kind) ? 'surrogate' : kind;
+}
+
+/** Who carried the child, whatever the kind of their tie (a biological
+ * parent, a donor who carried, a surrogate, or a parent who raises the child
+ * and carried): read from the carried flag. */
+const carrierAmong = (conns: ParentConnection[]) =>
+  conns.find((p) => p.isGestationalCarrier === true);
+
+/** A tie that passes on genes: a biological parent's or a donor's. */
+const isGenetic = (p: ParentConnection) =>
+  p.edgeType === 'biological' || p.edgeType === 'donor';
+
 /** The key two owners with the same parents share, whatever the kind. */
 export const ownerKey = (owner: LineOwner) =>
   owner.parents.toSorted((a, b) => a - b).join('+');
@@ -38,18 +67,28 @@ export const ownerKey = (owner: LineOwner) =>
  * read it.
  *
  * The line of descent comes from:
- * 1. the birth parents, when someone who raises the child is a relative of
- *    a birth parent (ruling 18, widened);
+ * 1. the birth owners (below), when someone who raises the child is a
+ *    relative of a birth parent (ruling 18, widened);
  * 2. otherwise the adopters, when the child was adopted and no birth parent
- *    is partnered with an adopter (ruling 12);
- * 3. otherwise the biological parents, and failing those the carrier;
+ *    (a biological parent, or whoever carried the child) is partnered with
+ *    an adopter (ruling 12);
+ * 3. otherwise the birth owners;
  * 4. otherwise the raisers, adoptive before social.
  *
- * Within the kind chosen, the owner is the recorded couple who both hold it,
- * or (for birth parents only) the two who hold it with no partnership
- * recorded, or failing those the parent recorded first. Every other tie is
- * drawn by a line of its owner's: a recorded couple who both hold that kind
- * of tie, two birth parents with no partnership recorded, or one person.
+ * The birth owners (Round 5 ruling 2, after Bennett et al. 2022, Fig. 5):
+ * whoever carried the pregnancy, with their partner when that partner is
+ * the child's other genetic parent (their partnership line then carries the
+ * line of descent), or with the other biological parent as a pair when
+ * both are the child's biological parents and no partnership is recorded
+ * between them. With no carrier recorded, the biological parents: the
+ * recorded couple who both hold the tie, or the two who hold it with no
+ * partnership recorded, or failing those the parent recorded first.
+ *
+ * Within raising kinds, the owner is the recorded couple who both hold the
+ * kind chosen, or failing those the parent recorded first. Every other tie
+ * is drawn by a line of its owner's: a recorded couple who both hold that
+ * kind of tie, two birth parents with no partnership recorded, or one
+ * person.
  */
 export function lineOwnersOf(
   parents: ParentConnection[][],
@@ -62,24 +101,20 @@ export function lineOwnersOf(
     );
   const raisedByRelatives = relativeRaisers(parents, partners);
 
-  // The owner among parents holding one kind of tie: a recorded couple,
-  // two birth parents with no partnership recorded, or the first.
-  function ownerAmong(holding: ParentConnection[]): LineOwner {
-    const kind = holding[0]!.edgeType;
+  // The owners' ties among parents holding one kind of tie: a recorded
+  // couple, two biological parents with no partnership recorded, or the
+  // first.
+  function ownerAmong(holding: ParentConnection[]): ParentConnection[] {
+    if (holding.length === 0) return [];
     for (const a of holding) {
       for (const b of holding) {
-        if (a !== b && partnered(a.parentIndex, b.parentIndex)) {
-          return { parents: [a.parentIndex, b.parentIndex], kind };
-        }
+        if (a !== b && partnered(a.parentIndex, b.parentIndex)) return [a, b];
       }
     }
-    if (holding.length === 2 && kind === 'biological') {
-      return {
-        parents: [holding[0]!.parentIndex, holding[1]!.parentIndex],
-        kind,
-      };
+    if (holding.length === 2 && holding[0]!.edgeType === 'biological') {
+      return [holding[0]!, holding[1]!];
     }
-    return { parents: [holding[0]!.parentIndex], kind };
+    return [holding[0]!];
   }
 
   return parents.map((conns, child) => {
@@ -88,41 +123,60 @@ export function lineOwnersOf(
     const biological = ofKind(['biological']);
     const adopters = ofKind(['adoptive']);
     const raisers = [...adopters, ...ofKind(['social'])];
-    const carriers = conns.filter(
-      (p) => p.edgeType === 'surrogate' && p.isGestationalCarrier,
-    );
 
-    let chosen: ParentConnection[] = [];
+    // The birth owners' ties: the carrier's, with a partner who is the
+    // other genetic parent, or with the other biological parent of a pair.
+    const birthTies = (): ParentConnection[] => {
+      const carrier = carrierAmong(conns);
+      if (!carrier) return ownerAmong(biological);
+      const others = conns.filter((p) => p !== carrier);
+      const partner = others.find(
+        (p) => isGenetic(p) && partnered(p.parentIndex, carrier.parentIndex),
+      );
+      if (partner) return [carrier, partner];
+      const otherBiological = others.filter((p) => p.edgeType === 'biological');
+      if (carrier.edgeType === 'biological' && otherBiological.length === 1) {
+        return [carrier, otherBiological[0]!];
+      }
+      return [carrier];
+    };
+
+    let descentTies: ParentConnection[] = [];
     if (raisedByRelatives[child]!.size > 0) {
-      chosen = biological;
+      descentTies = birthTies();
     } else if (
       adopters.length > 0 &&
-      !biological.some((birth) =>
-        adopters.some((adopter) =>
-          partnered(birth.parentIndex, adopter.parentIndex),
-        ),
+      !conns.some(
+        (birth) =>
+          (birth.edgeType === 'biological' || birth === carrierAmong(conns)) &&
+          adopters.some((adopter) =>
+            partnered(birth.parentIndex, adopter.parentIndex),
+          ),
       )
     ) {
-      chosen = adopters;
-    } else if (biological.length > 0) {
-      chosen = biological;
-    } else if (carriers.length > 0) {
-      chosen = carriers;
+      descentTies = ownerAmong(adopters);
+    } else if (carrierAmong(conns) || biological.length > 0) {
+      descentTies = birthTies();
     } else if (raisers.length > 0) {
-      chosen = ofKind([raisers[0]!.edgeType]);
+      descentTies = ownerAmong(ofKind([raisers[0]!.edgeType]));
     }
 
-    const descent = chosen.length > 0 ? ownerAmong(chosen) : undefined;
+    const descent: LineOwner | undefined =
+      descentTies.length > 0
+        ? {
+            parents: descentTies
+              .toSorted((a, b) => conns.indexOf(a) - conns.indexOf(b))
+              .map((p) => p.parentIndex),
+            // A line of descent carrying a carrier's tie and a genetic one is
+            // drawn as the genetic parent's (both are birth ties).
+            kind:
+              descentTies.find((p) => p.edgeType === 'biological')?.edgeType ??
+              descentTies[0]!.edgeType,
+          }
+        : undefined;
 
     // Every other tie, by owner.
-    const rest = conns.filter(
-      (p) =>
-        !(
-          descent &&
-          descent.parents.includes(p.parentIndex) &&
-          p.edgeType === descent.kind
-        ),
-    );
+    const rest = conns.filter((p) => !descentTies.includes(p));
     const lines: LineOwner[] = [];
     const drawn = new Set<ParentConnection>();
     for (const tie of rest) {

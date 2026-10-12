@@ -9,16 +9,11 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { alignPedigree } from '../alignPedigree';
 import { EDGE_WIDTH, formerPartnerBreak } from '../components/EdgeRenderer';
 import PedigreeLayout from '../components/PedigreeLayout';
 import { computeConnectors } from '../connectors';
 import type { LayoutDimensions } from '../layoutDimensions';
-import {
-  buildConnectorData,
-  pedigreeLayoutToPositions,
-  toPedigreeInput,
-} from '../pedigreeAdapter';
+import { drawPedigree } from '../pedigreeAdapter';
 import type {
   LineSegment,
   ParentConnection,
@@ -37,7 +32,6 @@ import {
   hopCount,
   strictLineFaults,
 } from './lineFaults';
-import { check } from './pendingRebuild';
 
 const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
@@ -48,19 +42,14 @@ function draw(
   links: PedigreeLink[],
   shape: PedigreeSymbolShape = 'circle',
 ) {
-  const { input, indexToId, idToIndex } = toPedigreeInput(people, links);
-  const layout = alignPedigree(input);
-  const { connectors } = buildConnectorData(
-    layout,
+  const { positions: topLeft, connectorData } = drawPedigree({
+    nodeIds: people,
     links,
-    DIMENSIONS,
-    input.parents,
-    idToIndex,
-    people,
-    indexToId,
-    new Map(people.map((id) => [id, shape])),
-  );
-  const topLeft = pedigreeLayoutToPositions(layout, indexToId, DIMENSIONS);
+    dimensions: DIMENSIONS,
+    nodeNames: new Map(people.map((id) => [id, id])),
+    nodeShapes: new Map(people.map((id) => [id, shape])),
+  });
+  const { connectors } = connectorData;
   const centre = (personId: string): Point => {
     const position = topLeft.get(personId);
     if (!position) throw new Error(`${personId} is not drawn`);
@@ -280,8 +269,11 @@ function unaccounted(
         Math.hypot(point.x - s.x1, point.y - s.y1),
         Math.hypot(point.x - s.x2, point.y - s.y2),
       ) > 0.5;
+    // (A couple's line joins a line of descent for both of them: the
+    // carrier's, when someone else carried the couple's children.)
     return aux.some((l) => {
-      if (l.endpointIds?.[0] !== p || l.endpointIds[1] !== undefined) {
+      const owners = l.ownerIds ?? [l.endpointIds?.[0]];
+      if (!owners.includes(p) || l.endpointIds?.[1] !== undefined) {
         return false;
       }
       const end = l.points.at(-1)!;
@@ -780,7 +772,7 @@ describe('the drawing accounts for every recorded tie', () => {
 describe('the lines pass the strict line checks', () => {
   for (const [name, { people, links }] of Object.entries(families)) {
     for (const shape of ['circle', 'square'] as const) {
-      check(`${name} (${shape}s)`, () => {
+      it(`${name} (${shape}s)`, () => {
         const { drawing, family } = draw(people, links, shape);
         expect(strictLineFaults(drawing, family)).toEqual([]);
       });
@@ -796,10 +788,15 @@ describe('the lines pass the strict line checks', () => {
 const HOPS: Record<string, number> = {
   // Lauren's line hops the line down to Jack.
   'step parents and adoptive parents who separated': 1,
-  // Hannah's social lines hop the carrier's line of descent.
-  'an egg donor, a sperm donor and a surrogate for two of three children Hannah raises': 2,
+  // Hannah's social line to the participant hops their sister's line up.
+  'an egg donor, a sperm donor and a surrogate for two of three children Hannah raises': 1,
   // The carrier's line hops the donor's bar.
   'a surrogate for one of a donor’s two children, the other recorded first': 1,
+  // The children the surrogate carried hang from her (Round 5, ruling 2),
+  // so a line to them from beyond the donor crosses one of the donor's
+  // lines whichever way the three parents sit: here Hannah's hops Paul's
+  // line to Theo.
+  'a surrogate for two of a donor’s three children': 1,
   // The birth parents' line to the participant hops their sibling's line
   // up: the two parents' lines run as one there, and each draws the hop.
   'two siblings adopted together, with the same birth parents': 2,
@@ -810,7 +807,7 @@ const HOPS: Record<string, number> = {
 describe('the lines cross no more often than the fewest crossings found', () => {
   for (const [name, { people, links }] of Object.entries(families)) {
     for (const shape of ['circle', 'square'] as const) {
-      check(`hops: ${name} (${shape}s)`, () => {
+      it(`hops: ${name} (${shape}s)`, () => {
         const { connectors } = draw(people, links, shape);
         expect(hopCount(connectors)).toBe(HOPS[name] ?? 0);
       });

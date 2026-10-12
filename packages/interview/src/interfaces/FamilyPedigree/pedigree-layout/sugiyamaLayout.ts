@@ -1203,8 +1203,8 @@ type SeatingCost = [
   order: number,
 ];
 
-/** Whether one seating costs less than another. */
-function lessCost(x: SeatingCost, y: SeatingCost): boolean {
+/** Whether one cost, compared step by step, is less than another. */
+function lessCost(x: readonly number[], y: readonly number[]): boolean {
   for (let i = 0; i < x.length; i++) {
     if (Math.abs(x[i]! - y[i]!) > 1e-9) return x[i]! < y[i]!;
   }
@@ -1343,14 +1343,17 @@ function seatingCost(
       }
     }
 
-    // Each helper beside the owners of their child's line of descent:
-    // between them sit only the child's parents and their partners.
+    // Each helper beside the owners of their child's line of descent, or
+    // beside another helper of the same family (Josh, 12 Oct 2026): between
+    // them sit only parents of the family's children, and their partners.
     for (const child of layerOrdering[k + 1]!) {
       const unit = graph.familyOf.get(child);
       if (!unit || !descentPoint.has(unit)) continue;
       const owners = unit.parentGroup.members.filter(onUpper);
       const parentsOfChild = new Set(
-        graph.parents[child]!.map((p) => p.parentIndex),
+        unit.children.flatMap((sibling) =>
+          graph.parents[sibling]!.map((p) => p.parentIndex),
+        ),
       );
       for (const partner of upper) {
         if (!parentsOfChild.has(partner)) continue;
@@ -1562,9 +1565,12 @@ function refineSeating(
   ordering: number[][],
   graph: PedigreeGraph,
   iterationCap: number,
+  /** Every seating the search weighs is offered here, with its cost. */
+  weigh: (seating: number[][], cost: SeatingCost) => void = () => undefined,
 ): number[][] {
   let current = ordering.map((layer) => [...layer]);
   let currentCost = seatingCost(current, graph);
+  weigh(current, currentCost);
   const partnered = (a: number | undefined, b: number | undefined) =>
     a !== undefined &&
     b !== undefined &&
@@ -1709,6 +1715,7 @@ function refineSeating(
         const followed = barycentricSweep(moved, graph, 'down', layer + 1);
         for (const candidate of [moved, followed]) {
           const cost = seatingCost(candidate, graph);
+          weigh(candidate, cost);
           if (lessCost(cost, currentCost)) {
             current = candidate;
             currentCost = cost;
@@ -1728,7 +1735,13 @@ function refineSeating(
   return current;
 }
 
-function minimizeCrossings(graph: PedigreeGraph): number[][] {
+/**
+ * The seatings the search found, cheapest first by `seatingCost`, at most
+ * `count` of them: the one it settled on first, then the cheapest others it
+ * weighed on the way. Which is drawn is decided by what each costs once its
+ * lines are routed (see `alignPedigree`).
+ */
+function seatingsOf(graph: PedigreeGraph, count: number): number[][][] {
   const maxLayer = Math.max(...graph.layers);
 
   // Step 1: Initial ordering
@@ -1759,8 +1772,30 @@ function minimizeCrossings(graph: PedigreeGraph): number[][] {
   }
 
   // The sweeps only reorder whole blocks; the search then turns blocks
-  // round, moves extra parents and reorders sibships.
-  return refineSeating(bestOrdering, graph, 200);
+  // round, moves extra parents and reorders sibships, keeping the cheapest
+  // seatings it weighs.
+  const kept: { seating: number[][]; cost: SeatingCost; key: string }[] = [];
+  const keep = (seating: number[][], cost: SeatingCost) => {
+    if (count < 2) return;
+    const key = seating.map((row) => row.join(',')).join('|');
+    if (kept.some((other) => other.key === key)) return;
+    const at = kept.findIndex((other) => lessCost(cost, other.cost));
+    kept.splice(at < 0 ? kept.length : at, 0, { seating, cost, key });
+    kept.length = Math.min(kept.length, count);
+  };
+  const settled = refineSeating(bestOrdering, graph, 200, keep);
+  const settledKey = settled.map((row) => row.join(',')).join('|');
+  return [
+    settled,
+    ...kept
+      .filter((other) => other.key !== settledKey)
+      .map((other) => other.seating),
+  ].slice(0, count);
+}
+
+/** The seating the search settles on (see `seatingsOf`). */
+function minimizeCrossings(graph: PedigreeGraph): number[][] {
+  return seatingsOf(graph, 1)[0]!;
 }
 
 function encodePedigreeLayout(
@@ -2360,15 +2395,30 @@ function encodePedigreeLayout(
   return { n, nid, pos, fam, group, twins, groupMember };
 }
 
-function sugiyamaLayout(ped: PedigreeInput): PedigreeLayout {
+/**
+ * A family laid out, at most `count` ways: the seatings the search found,
+ * cheapest first by `seatingCost`, each with that cost.
+ */
+function sugiyamaLayouts(
+  ped: PedigreeInput,
+  count: number,
+): { layout: PedigreeLayout; cost: SeatingCost }[] {
   const graph = buildPedigreeGraph(ped);
-  const ordering = minimizeCrossings(graph);
-  return encodePedigreeLayout(graph, ordering, ped);
+  return seatingsOf(graph, count).map((ordering) => ({
+    layout: encodePedigreeLayout(graph, ordering, ped),
+    cost: seatingCost(ordering, graph),
+  }));
+}
+
+function sugiyamaLayout(ped: PedigreeInput): PedigreeLayout {
+  return sugiyamaLayouts(ped, 1)[0]!.layout;
 }
 
 export {
   buildPedigreeGraph,
   countCrossings,
+  lessCost,
   minimizeCrossings,
   sugiyamaLayout,
+  sugiyamaLayouts,
 };

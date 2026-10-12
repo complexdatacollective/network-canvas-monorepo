@@ -8,6 +8,7 @@ import {
 import { lineOwnersOf } from '../lineOwners';
 import {
   buildConnectorData,
+  drawPedigree,
   pedigreeLayoutToPositions,
   toPedigreeInput,
 } from '../pedigreeAdapter';
@@ -409,6 +410,145 @@ describe('toPedigreeInput', () => {
     const edgeTypes = result.input.parents[childIdx]!.map((p) => p.edgeType);
     expect(edgeTypes).toContain('biological');
     expect(edgeTypes).toContain('donor');
+  });
+});
+
+describe('who carried the pregnancy (Round 5, Josh, 12 Oct 2026)', () => {
+  // Whether a tie is a birth tie, and who carried, are read from the tie's
+  // kind and its carried flag in one place; every reader sees the same.
+  const ownersOf = (nodes: string[], edges: PedigreeLink[], child: string) => {
+    const { input, idToIndex } = toPedigreeInput(nodes, edges);
+    const owners = lineOwnersOf(input.parents, input.partners ?? [])[
+      idToIndex.get(child)!
+    ]!;
+    const name = (index: number) => nodes[index]!;
+    return {
+      descent: owners.descent?.parents.map(name),
+      descentKind: owners.descent?.kind,
+      lines: owners.lines.map((line) => ({
+        parents: line.parents.map(name),
+        kind: line.kind,
+      })),
+    };
+  };
+
+  test('a donor who carried the child (a traditional surrogate) is their carrier, and with no one else, their line of descent', () => {
+    const edges = makeEdges([
+      {
+        from: 'donor',
+        to: 'child',
+        relationshipType: 'donor',
+        isGestationalCarrier: true,
+      },
+    ]);
+    expect(ownersOf(['donor', 'child'], edges, 'child').descent).toEqual([
+      'donor',
+    ]);
+  });
+
+  test('the line of descent comes from whoever carried the child, not the biological couple (Bennett 3)', () => {
+    const edges = makeEdges([
+      { from: 'a', to: 'b', relationshipType: 'partner' },
+      { from: 'a', to: 'p', relationshipType: 'biological' },
+      { from: 'b', to: 'p', relationshipType: 'biological' },
+      {
+        from: 's',
+        to: 'p',
+        relationshipType: 'surrogate',
+        isGestationalCarrier: true,
+      },
+    ]);
+    const owners = ownersOf(['a', 'b', 's', 'p'], edges, 'p');
+    expect(owners.descent).toEqual(['s']);
+    expect(owners.lines).toEqual([{ parents: ['a', 'b'], kind: 'biological' }]);
+  });
+
+  test('a donor who carried owns the line of descent; the biological father and his partner draw lines of their own (Bennett 4a)', () => {
+    const edges = makeEdges([
+      { from: 'man', to: 'woman', relationshipType: 'partner' },
+      { from: 'man', to: 'p', relationshipType: 'biological' },
+      { from: 'woman', to: 'p', relationshipType: 'social' },
+      {
+        from: 'd',
+        to: 'p',
+        relationshipType: 'donor',
+        isGestationalCarrier: true,
+      },
+    ]);
+    const owners = ownersOf(['man', 'woman', 'd', 'p'], edges, 'p');
+    expect(owners.descent).toEqual(['d']);
+    expect(owners.lines).toEqual([
+      { parents: ['man'], kind: 'biological' },
+      { parents: ['woman'], kind: 'social' },
+    ]);
+  });
+
+  test('a carrier partnered with the other genetic parent shares the line of descent with them, solid (Bennett 2 and 5)', () => {
+    const edges = makeEdges([
+      { from: 'man', to: 'woman', relationshipType: 'partner' },
+      { from: 'man', to: 'p', relationshipType: 'biological' },
+      {
+        from: 'woman',
+        to: 'p',
+        relationshipType: 'social',
+        isGestationalCarrier: true,
+      },
+      { from: 'd', to: 'p', relationshipType: 'donor' },
+    ]);
+    const owners = ownersOf(['man', 'woman', 'd', 'p'], edges, 'p');
+    expect(owners.descent?.toSorted()).toEqual(['man', 'woman']);
+    expect(owners.descentKind).toBe('biological');
+    expect(owners.lines).toEqual([{ parents: ['d'], kind: 'donor' }]);
+  });
+
+  test('a parent who raises the child and carried them holds a birth tie, drawn solid; a partner who only raises keeps a dashed line (Bennett 1f)', () => {
+    const edges = makeEdges([
+      { from: 'woman', to: 'man', relationshipType: 'partner' },
+      {
+        from: 'woman',
+        to: 'p',
+        relationshipType: 'social',
+        isGestationalCarrier: true,
+      },
+      { from: 'man', to: 'p', relationshipType: 'social' },
+      { from: 'eggD', to: 'p', relationshipType: 'donor' },
+      { from: 'spermD', to: 'p', relationshipType: 'donor' },
+    ]);
+    const owners = ownersOf(
+      ['woman', 'man', 'eggD', 'spermD', 'p'],
+      edges,
+      'p',
+    );
+    expect(owners.descent).toEqual(['woman']);
+    expect(owners.descentKind).not.toBe('social');
+    expect(owners.lines).toContainEqual({ parents: ['man'], kind: 'social' });
+  });
+
+  test('the line of descent a parent shares between a child they raise and a child they carried is drawn solid', () => {
+    // Pat raises Ann (a social tie) and carried Ben (a social tie with the
+    // carried flag): one sibship, one line of descent from Pat.
+    const nodes = ['pat', 'ann', 'ben'];
+    const links: PedigreeLink[] = [
+      { source: 'pat', target: 'ann', kind: 'social' },
+      {
+        source: 'pat',
+        target: 'ben',
+        kind: 'social',
+        isGestationalCarrier: true,
+      },
+    ];
+    const { connectorData } = drawPedigree({
+      nodeIds: nodes,
+      links,
+      dimensions: TEST_DIMENSIONS,
+    });
+    const withLink = connectorData.connectors.parentChildLines.filter(
+      (line) => line.parentLink.length > 0,
+    );
+    expect(withLink).toHaveLength(1);
+    expect(['biological', 'donor', 'surrogate']).toContain(
+      withLink[0]!.edgeType,
+    );
   });
 });
 

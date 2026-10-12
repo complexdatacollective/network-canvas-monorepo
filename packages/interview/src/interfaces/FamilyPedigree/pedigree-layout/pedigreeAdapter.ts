@@ -1,11 +1,12 @@
 import type { PedigreeTwinKind } from '@codaco/protocol-validation';
 
 import { alignPedigree } from './alignPedigree';
-import { computeConnectors } from './connectors';
+import { routePedigree } from './connectors';
 import {
   computeLayoutMetrics,
   type LayoutDimensions,
 } from './layoutDimensions';
+import { drawnKind } from './lineOwners';
 import type {
   LineSegment,
   ParentChildConnector,
@@ -94,9 +95,10 @@ export function toPedigreeInput(
       const parentIdx = idToIndex.get(link.source);
       if (childIdx === undefined || parentIdx === undefined) continue;
 
+      // Each tie as it is drawn: carrying the pregnancy is a birth tie.
       parents[childIdx]!.push({
         parentIndex: parentIdx,
-        edgeType: relationshipType,
+        edgeType: drawnKind(relationshipType, isGestationalCarrier),
         isGestationalCarrier,
       });
     }
@@ -159,17 +161,20 @@ export function pedigreeLayoutToPositions(
   return positions;
 }
 
-export function buildConnectorData(
+/**
+ * A layout's connectors, routed, in layout units (columns and rows), and
+ * what their routed lines cost the drawing (see `routePedigree`).
+ */
+function routeLayout(
   layout: PedigreeLayout,
   links: readonly PedigreeLink[],
   dimensions: LayoutDimensions,
-  parents: ParentConnection[][] = [],
+  parents: ParentConnection[][],
   idToIndex?: Map<string, number>,
   nodeNames?: string[],
   indexToId?: string[],
-  /** Each person's symbol shape, by node id. */
   nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
-): ConnectorRenderData {
+) {
   const metrics = computeLayoutMetrics(dimensions);
   const boxHeight = dimensions.nodeHeight / metrics.rowHeight;
   const scaling: ScalingParams = {
@@ -200,7 +205,7 @@ export function buildConnectorData(
     }
   }
 
-  const connectors = computeConnectors(
+  return routePedigree(
     layout,
     scaling,
     parents,
@@ -214,6 +219,34 @@ export function buildConnectorData(
       ? indexToId.map((nodeId) => nodeShapes.get(nodeId))
       : undefined,
   );
+}
+
+export function buildConnectorData(
+  layout: PedigreeLayout,
+  links: readonly PedigreeLink[],
+  dimensions: LayoutDimensions,
+  parents: ParentConnection[][] = [],
+  idToIndex?: Map<string, number>,
+  nodeNames?: string[],
+  indexToId?: string[],
+  /** Each person's symbol shape, by node id. */
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
+  /** The layout's connectors, already routed (see `routeLayout`). */
+  routed?: PedigreeConnectors,
+): ConnectorRenderData {
+  const metrics = computeLayoutMetrics(dimensions);
+  const connectors =
+    routed ??
+    routeLayout(
+      layout,
+      links,
+      dimensions,
+      parents,
+      idToIndex,
+      nodeNames,
+      indexToId,
+      nodeShapes,
+    ).connectors;
 
   // Transform all coordinates to pixel space
   const sx = metrics.siblingSpacing;
@@ -404,11 +437,28 @@ export function drawPedigree({
   connectorData: ConnectorRenderData;
 } {
   const { input, indexToId, idToIndex } = toPedigreeInput(nodeIds, links);
-  const layout = alignPedigree(input);
-  const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
   const names = nodeNames
     ? indexToId.map((id) => nodeNames.get(id) ?? '')
     : undefined;
+  // Each seating weighed is drawn, and chosen by what its drawing costs.
+  const routed = new Map<PedigreeLayout, PedigreeConnectors>();
+  const layout = alignPedigree(input, {
+    drawingCost: (candidate) => {
+      const { connectors, cost } = routeLayout(
+        candidate,
+        links,
+        dimensions,
+        input.parents,
+        idToIndex,
+        names,
+        indexToId,
+        nodeShapes,
+      );
+      routed.set(candidate, connectors);
+      return cost;
+    },
+  });
+  const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
   const connectorData = buildConnectorData(
     layout,
     links,
@@ -418,6 +468,7 @@ export function drawPedigree({
     names,
     indexToId,
     nodeShapes,
+    routed.get(layout),
   );
   return { positions, connectorData };
 }

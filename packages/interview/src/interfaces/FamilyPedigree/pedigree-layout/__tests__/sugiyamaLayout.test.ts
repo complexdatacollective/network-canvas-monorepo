@@ -22,7 +22,6 @@ import {
   twoSibshipIntermarriage,
   unrelatedCouple,
 } from './fixtures';
-import { check } from './pendingRebuild';
 
 describe('buildPedigreeGraph', () => {
   it('nuclear family: 2 parents + 3 children', () => {
@@ -393,44 +392,41 @@ describe('siblings who share donors', () => {
     );
   });
 
-  check(
-    'have each run’s donor seated on its side, the outer runs’ outermost',
-    () => {
-      const ped: PedigreeInput = {
-        id: [
-          'ego',
-          'hannah',
-          'paul',
-          'ruby',
-          'theo',
-          'tom',
-          'theoDonor',
-          'mia',
-          'miaDonor',
-        ],
-        parents: [
-          [bio(1), donor(2)],
-          [],
-          [],
-          [bio(1), donor(2)],
-          [bio(1), donor(6)],
-          [bio(1), donor(6)],
-          [],
-          [bio(1), donor(8)],
-          [],
-        ],
-      };
-      const children = rowOf(ped, 'ego');
-      expect(eitherWay(['ego', 'ruby', 'theo', 'tom', 'mia'])).toContainEqual(
-        children,
-      );
-      const parents =
-        children[0] === 'ego'
-          ? rowOf(ped, 'hannah')
-          : rowOf(ped, 'hannah').toReversed();
-      expect(parents).toEqual(['paul', 'hannah', 'theoDonor', 'miaDonor']);
-    },
-  );
+  it('have each run’s donor seated on its side, the outer runs’ outermost', () => {
+    const ped: PedigreeInput = {
+      id: [
+        'ego',
+        'hannah',
+        'paul',
+        'ruby',
+        'theo',
+        'tom',
+        'theoDonor',
+        'mia',
+        'miaDonor',
+      ],
+      parents: [
+        [bio(1), donor(2)],
+        [],
+        [],
+        [bio(1), donor(2)],
+        [bio(1), donor(6)],
+        [bio(1), donor(6)],
+        [],
+        [bio(1), donor(8)],
+        [],
+      ],
+    };
+    const children = rowOf(ped, 'ego');
+    expect(eitherWay(['ego', 'ruby', 'theo', 'tom', 'mia'])).toContainEqual(
+      children,
+    );
+    const parents =
+      children[0] === 'ego'
+        ? rowOf(ped, 'hannah')
+        : rowOf(ped, 'hannah').toReversed();
+    expect(parents).toEqual(['paul', 'hannah', 'theoDonor', 'miaDonor']);
+  });
 });
 
 describe('turning a block round to uncross its lines', () => {

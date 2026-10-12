@@ -33,10 +33,13 @@ export type PedigreeSymbolShape = 'circle' | 'square' | 'diamond';
 
 export type ParentConnection = {
   parentIndex: number;
-  /** The kind of tie, as recorded. Who the child's line of descent comes
-   * from, and which ties are drawn by lines of their own, is decided from
-   * these in one place (`lineOwnersOf`). */
+  /** The kind of tie, as it is drawn (`drawnKind`): as recorded, but for a
+   * parent who raises the child and carried them, whose tie is drawn as the
+   * carrier's. Who the child's line of descent comes from, and which ties
+   * are drawn by lines of their own, is decided from these in one place
+   * (`lineOwnersOf`). */
   edgeType: PedigreeEdgeType;
+  /** This parent carried the pregnancy, whatever the kind of their tie. */
   isGestationalCarrier?: boolean;
 };
 
