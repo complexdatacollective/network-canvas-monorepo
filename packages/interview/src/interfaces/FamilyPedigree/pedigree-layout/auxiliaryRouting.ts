@@ -83,8 +83,9 @@ export type RouteEnd =
       kind: 'join';
       /** The places it may end, best first. */
       points: Point[];
-      /** The only child whose top it ends on, if it ends on one. */
-      onTopOf?: number;
+      /** The one child it reaches, if it reaches one: on their top, or at
+       * the top of their line up. */
+      reaches?: number;
       /** The children's row. */
       layer: number;
     };
@@ -544,11 +545,11 @@ function sharedRun(a: LineSegment, b: LineSegment, outside: Symbol[]): number {
 const HOP_REACH = 0.3;
 
 /**
- * How far segment `a` runs within `LINE_CLEARANCE` of segment `b` without
- * running along it (see `sharedRun`), measured in symbols, outside the
- * given boxes and away from the `exempt` points (where they cross, drawn as
- * a hop, and the ends of the line). Runs no longer than `LINE_CLEARANCE`
- * do not count.
+ * The longest stretch over which segment `a` runs within `LINE_CLEARANCE`
+ * of segment `b` without running along it (see `sharedRun`), measured in
+ * symbols, outside the given boxes and away from the `exempt` points (where
+ * they cross, drawn as a hop, and the ends of the line), which break a
+ * stretch. Stretches no longer than `LINE_CLEARANCE` do not count.
  */
 function closeRun(
   a: LineSegment,
@@ -572,6 +573,7 @@ function closeRun(
   const STEP = 0.04;
   const steps = Math.max(1, Math.ceil(length / STEP));
   let run = 0;
+  let longest = 0;
   for (let k = 0; k < steps; k++) {
     const t = (k + 0.5) / steps;
     const p = {
@@ -579,21 +581,20 @@ function closeRun(
       y: sa.y1 + t * (sa.y2 - sa.y1),
     };
     const d = distanceToSegment(p, sb);
-    if (d >= LINE_CLEARANCE || d < ON / Math.min(boxWidth, boxHeight)) continue;
     const at = { x: p.x * boxWidth, y: p.y * boxHeight };
-    if (
-      exempt.some(
+    const close =
+      d < LINE_CLEARANCE &&
+      d >= ON / Math.min(boxWidth, boxHeight) &&
+      !exempt.some(
         (q) =>
           Math.hypot((q.x - at.x) / boxWidth, (q.y - at.y) / boxHeight) <
           HOP_REACH,
-      )
-    ) {
-      continue;
-    }
-    if (outside.some((box) => strictlyInside(at, box))) continue;
-    run += length / steps;
+      ) &&
+      !outside.some((box) => strictlyInside(at, box));
+    run = close ? run + length / steps : 0;
+    longest = Math.max(longest, run);
   }
-  return run > LINE_CLEARANCE ? run : 0;
+  return longest > LINE_CLEARANCE ? longest : 0;
 }
 
 /** Where two segments cross at a point inside both, if they do. */
@@ -675,7 +676,7 @@ function courseCoster(
 ) {
   const { boxWidth: boxw, boxHeight: boxh } = scene;
   const near = boxw * JUNCTION_CLEARANCE;
-  const endPerson = end.kind === 'child' ? end.person : end.onTopOf;
+  const endPerson = end.kind === 'child' ? end.person : end.reaches;
   const ends = scene.symbols.filter(
     (symbol) => symbol.person === from || symbol.person === endPerson,
   );
@@ -1267,8 +1268,9 @@ export function routeOptions(
 
   const candidates: { points: Point[]; endX: number }[] = [];
   // Points clear of each symbol near the straight line from `a` to `b`
-  // (other than the ends'), round it: just clear of it, and twice that.
-  // Only points between the two heights: a line never climbs.
+  // (other than the ends'), round it and at the corners of a square round
+  // it (off its line of descent): just clear of it, and twice that. Only
+  // points between the two heights: a line never climbs.
   const clearOfSymbols = (a: Point, b: Point): Point[] => {
     const radii = [0.5 + LINE_CLEARANCE * 1.05, 0.5 + LINE_CLEARANCE * 2];
     const segment: LineSegment = {
@@ -1292,17 +1294,25 @@ export function routeOptions(
           ) <
             (radii[0]! + 0.25) * boxw,
       )
-      .flatMap((symbol) =>
-        radii.flatMap((r) =>
-          [0, 1, 2, 3, 4, 5, 6, 7].map((k) => {
+      .flatMap((symbol) => {
+        const x = (symbol.left + symbol.right) / 2;
+        const y = (symbol.top + symbol.bottom) / 2;
+        return radii.flatMap((r) => [
+          ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => {
             const angle = (k * Math.PI) / 4;
             return {
-              x: (symbol.left + symbol.right) / 2 + Math.cos(angle) * r * boxw,
-              y: (symbol.top + symbol.bottom) / 2 + Math.sin(angle) * r * boxh,
+              x: x + Math.cos(angle) * r * boxw,
+              y: y + Math.sin(angle) * r * boxh,
             };
           }),
-        ),
-      )
+          ...[-1, 1].flatMap((sx) =>
+            [-1, 1].map((sy) => ({
+              x: x + sx * r * boxw,
+              y: y + sy * r * boxh,
+            })),
+          ),
+        ]);
+      })
       .filter((p) => p.y > Math.min(a.y, b.y) && p.y < Math.max(a.y, b.y));
   };
   // A line leaving a couple's line of descent leaves it sideways, level, at
@@ -1373,6 +1383,25 @@ export function routeOptions(
         end.kind === 'join'
           ? gapLanes(lastGap, UPPER_LANES)
           : gapLanes(lastGap, [...UPPER_LANES, ...LOWER_LANES]);
+      // Past a symbol in the way, through a point just clear of it, level
+      // or down to a lane, across to above the target, and down into it.
+      for (const target of targets) {
+        for (const by of clearOfSymbols(start, target.meet)) {
+          for (const y of [by.y, ...lanesAboveEnd]) {
+            if (y < by.y) continue;
+            candidates.push({
+              points: [
+                start,
+                by,
+                { x: target.x, y },
+                target.entry,
+                ...target.tail,
+              ],
+              endX: target.x,
+            });
+          }
+        }
+      }
       if (rowsBetween === 1) {
         for (const target of targets) {
           for (const x of startXs) {

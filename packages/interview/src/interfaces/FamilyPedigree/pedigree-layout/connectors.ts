@@ -82,13 +82,13 @@ type SibshipRunPlan = {
 type Join = {
   points: (towardX: number) => Point[];
   straight: boolean;
-  /** The only child whose top it ends on. */
-  onTopOf?: number;
+  /** The one child it reaches: on their top, or the top of their line up. */
+  reaches?: number;
 };
-const pointJoin = (p: Point, onTopOf?: number): Join => ({
+const pointJoin = (p: Point, reaches?: number): Join => ({
   points: () => [p],
   straight: true,
-  ...(onTopOf === undefined ? {} : { onTopOf }),
+  ...(reaches === undefined ? {} : { reaches }),
 });
 
 /**
@@ -1701,8 +1701,8 @@ export function computeConnectors(
     } else if (conn.joins) {
       joins = conn.childColumns.map((col) => {
         const top = uplineTops.get(`${conn.childLevel},${col}`);
-        if (totalChildren > 1 && top) return pointJoin(top);
         const child = layout.nid[conn.childLevel]![col]!;
+        if (totalChildren > 1 && top) return pointJoin(top, child);
         return pointJoin(
           {
             x: layout.pos[conn.childLevel]![col]!,
@@ -1862,7 +1862,7 @@ export function computeConnectors(
             kind: 'join',
             points: [p],
             layer: plan.conn.childLevel,
-            ...(join.onTopOf === undefined ? {} : { onTopOf: join.onTopOf }),
+            ...(join.reaches === undefined ? {} : { reaches: join.reaches }),
           },
           plan.owner,
           scene,
@@ -1927,7 +1927,7 @@ export function computeConnectors(
           kind: 'join',
           points: join.points(from.mate ? (from.x + from.mate.x) / 2 : from.x),
           layer: conn.childLevel,
-          ...(join.onTopOf === undefined ? {} : { onTopOf: join.onTopOf }),
+          ...(join.reaches === undefined ? {} : { reaches: join.reaches }),
         },
         undefined,
         stems,
@@ -2013,7 +2013,7 @@ export function computeConnectors(
   // Two lines that still cross or crowd each other are routed together:
   // of the best few courses for each, the two that are best together. (Two
   // lines down one gap may each be clear only on the other's lane.)
-  const PAIR_OPTIONS = 8;
+  const PAIR_OPTIONS = 24;
   const costAmong = (entry: Routed, course: Course, extra: DrawnLine[]) =>
     courseCost(
       entry.from,

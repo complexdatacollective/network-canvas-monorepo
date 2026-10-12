@@ -1325,7 +1325,9 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
     let through = false;
     let past = false;
     let inBracket = false;
+    // The longest stretch beside a line of descent, and the current one.
     let besideDescent = 0;
+    let beside = 0;
     for (const s of line.segments) {
       for (const { p, length } of samples(s)) {
         for (const id of family.people) {
@@ -1357,6 +1359,7 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
           near(p, visible, 0.3 * size) ||
           near(p, line.line.points[0]!, 0.3 * size) ||
           hops.some((h) => near(p, h, 0.3 * size));
+        beside = nearEnd || underSymbol(p) ? 0 : beside;
         if (!nearEnd && !underSymbol(p)) {
           const apart = Math.min(
             Infinity,
@@ -1373,7 +1376,8 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
               )
               .map((piece) => distanceToSegment(p, piece.segment)),
           );
-          if (apart < clearance - 0.25) besideDescent += length;
+          beside = apart < clearance - 0.25 ? beside + length : 0;
+          besideDescent = Math.max(besideDescent, beside);
         }
       }
     }
@@ -1431,10 +1435,16 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
         ...joinOf(a),
         ...joinOf(b),
       ];
+      // The longest stretch close beside, and the current one; a hop, or
+      // where they meet, breaks a stretch.
       let closeRun = 0;
+      let close = 0;
       for (const s of a.segments) {
         for (const { p, length } of samples(s)) {
-          if (hops.some((h) => near(p, h, 0.3 * size))) continue;
+          if (hops.some((h) => near(p, h, 0.3 * size))) {
+            close = 0;
+            continue;
+          }
           // Inside the child's symbol, both lines are hidden.
           if (
             a.child !== undefined &&
@@ -1452,7 +1462,8 @@ function faultsOfClearance(drawing: Drawing, family: Family): string[] {
           );
           // On one course: constraint 3's.
           if (apart < 0.5) continue;
-          if (apart < clearance - 0.25) closeRun += length;
+          close = apart < clearance - 0.25 ? close + length : 0;
+          closeRun = Math.max(closeRun, close);
         }
       }
       if (closeRun > clearance) {
