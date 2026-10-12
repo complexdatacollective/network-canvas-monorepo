@@ -350,7 +350,7 @@ export const LeavingWithAnInvalidEdit: Story = {
 
     await expect(
       await screen.findByRole('dialog', { name: 'Discard changes?' }),
-    ).toHaveTextContent(/invalid data/);
+    ).toHaveTextContent(/Do you want to discard your changes\?/);
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await expect(
@@ -383,7 +383,7 @@ export const UnsavedEditInDrawer: Story = {
 
     await expect(
       await screen.findByRole('dialog', discardDialog),
-    ).toHaveTextContent(/invalid data/);
+    ).toHaveTextContent(/Do you want to discard your changes\?/);
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog', discardDialog)).toBeNull(),

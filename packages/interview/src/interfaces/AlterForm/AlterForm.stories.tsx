@@ -539,7 +539,9 @@ export const DiscardingAnswerComparedWithProtected: Story = {
     await expect(dialog).toHaveTextContent(
       'Your answers have not been saved. Enter your passphrase, then try again.',
     );
-    await expect(dialog).not.toHaveTextContent(/invalid data/);
+    await expect(dialog).not.toHaveTextContent(
+      /Do you want to discard your changes\?/,
+    );
     await userEvent.click(body.getByRole('button', { name: 'Cancel' }));
 
     await expect(
