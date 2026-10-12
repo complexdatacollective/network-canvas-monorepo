@@ -1,11 +1,19 @@
 import { it } from 'vitest';
 
 /**
- * Scaffolding for the layout engine's rebuild on the rule set
- * (rules-audit.md section 1, with Josh's Round 4 rulings): the tests of the
- * hard constraints the engine does not meet yet. Each is expected to fail
- * until the stage of the rebuild that meets it lands, and is then taken off
- * this list; the list, and this module, go once the rebuild is complete.
+ * The hard-constraint tests the rule set (rules-audit.md section 1, with
+ * Josh's Round 4 rulings) cannot meet without a scenario-specific exception.
+ * The rebuild met every other one. Each family here is a contradiction
+ * between two rulings, reported on PR #2172 for a ruling rather than built
+ * around: the seat cost's straight-line estimate against the router's one
+ * row gap (the donor who raises another child), donors' junctions crowding
+ * the bar a raising line must cross (the egg donor, sperm donor and
+ * surrogate for two of three children), three helpers with one owner and
+ * two adjacent seats (the three donors), and end spacing against line
+ * clearance at a child several owners reach from one side (the step and
+ * adoptive parents who separated, drawn as the six-parent family). Each is
+ * expected to fail until its ruling lands; the list, and this module, go
+ * with the last one.
  */
 const PENDING = new Set<string>([
   'hops: step parents and adoptive parents who separated (circles)',
