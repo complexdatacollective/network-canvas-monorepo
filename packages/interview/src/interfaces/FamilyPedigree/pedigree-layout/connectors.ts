@@ -2060,7 +2060,19 @@ export function computeConnectors(
         type: 'auxiliary',
         edgeType: conn.edgeType,
         points,
-        ...(id ? { endpointIds: [parentNodeId, childNodeId] } : {}),
+        ...(id
+          ? {
+              endpointIds: [parentNodeId, childNodeId],
+              ownerIds: [
+                conn.parentIndex,
+                ...('partnerIndex' in conn &&
+                conn.partnerIndex !== undefined &&
+                !from.mate
+                  ? [conn.partnerIndex]
+                  : []),
+              ].map((index) => id[index] ?? ''),
+            }
+          : {}),
       };
       auxiliaryLines.push(line);
       const mateLine: AuxiliaryConnector | undefined =
@@ -2070,7 +2082,10 @@ export function computeConnectors(
               edgeType: conn.edgeType,
               points: matePoints,
               ...(id
-                ? { endpointIds: [id[from.mate.person], childNodeId] }
+                ? {
+                    endpointIds: [id[from.mate.person], childNodeId],
+                    ownerIds: [id[from.mate.person] ?? ''],
+                  }
                 : {}),
             }
           : undefined;

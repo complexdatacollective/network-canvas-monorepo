@@ -178,6 +178,8 @@ export type AuxiliaryConnector = {
    * hopping over the other line there. */
   hops?: Point[];
   endpointIds?: [string | undefined, string | undefined];
+  /** Whose ties the line draws: one person, or a couple whose line it is. */
+  ownerIds?: string[];
   /** For one of two co-parents' lines that join (see `From.mate`): the
    * index of the point where the two meet. From there on both lines follow
    * one course, which is drawn once. */

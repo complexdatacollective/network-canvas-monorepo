@@ -22,7 +22,8 @@ import type {
   PedigreeSymbolShape,
 } from '../types';
 import { INTERFACE_DIMENSIONS } from './fixtures';
-import { type Drawing, faultsOfLinesInto } from './lineFaults';
+import { type Drawing, familyOf, strictLineFaults } from './lineFaults';
+import { check } from './pendingRebuild';
 
 const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
@@ -77,7 +78,7 @@ function draw(
       y: position.y + DIMENSIONS.nodeHeight / 2,
     };
   };
-  return { connectors, centre };
+  return { connectors, centre, family: familyOf(people, links) };
 }
 
 const isDashed = (edgeType: PedigreeEdgeType) =>
@@ -783,26 +784,15 @@ describe('auxiliary and direct parent lines', () => {
         ).toEqual([]);
       });
 
-      it(`end on each child in their parents' order, apart and uncrossed: ${name} (${shape}s)`, () => {
-        const { connectors, centre } = draw(people, links, shape);
+      check(`pass the strict line checks: ${name} (${shape}s)`, () => {
+        const { connectors, centre, family } = draw(people, links, shape);
         const drawing: Drawing = {
           size: DIMENSIONS.nodeWidth,
           connectors,
           centre,
           shapeOf: () => shape,
         };
-        const children = new Set(
-          connectors.auxiliaryLines.flatMap((line) =>
-            line.endpointIds?.[1] ? [line.endpointIds[1]] : [],
-          ),
-        );
-        expect(
-          [...children].flatMap((child) =>
-            faultsOfLinesInto(drawing, child).map(
-              (fault) => `${child}: ${fault}`,
-            ),
-          ),
-        ).toEqual([]);
+        expect(strictLineFaults(drawing, family)).toEqual([]);
       });
     }
   }

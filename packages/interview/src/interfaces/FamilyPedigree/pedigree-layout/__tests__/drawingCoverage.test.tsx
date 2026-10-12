@@ -31,7 +31,8 @@ import type {
 } from '../types';
 import { coordinates, drawnMarks, markPlaces } from './drawnMarks';
 import { INTERFACE_DIMENSIONS } from './fixtures';
-import { type Drawing, type HelperTie, strictLineFaults } from './lineFaults';
+import { type Drawing, familyOf, strictLineFaults } from './lineFaults';
+import { check } from './pendingRebuild';
 
 const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
@@ -63,28 +64,13 @@ function draw(
       y: position.y + DIMENSIONS.nodeHeight / 2,
     };
   };
-  // The donors' and surrogates' ties as drawn (an adopted child's birth
-  // parent outside the adoptive family is drawn as a donor).
-  const helperTies: HelperTie[] = input.parents.flatMap((conns, child) =>
-    conns.flatMap((p) =>
-      p.edgeType === 'donor' || p.edgeType === 'surrogate'
-        ? [
-            {
-              parent: indexToId[p.parentIndex]!,
-              child: indexToId[child]!,
-              kind: p.edgeType,
-            },
-          ]
-        : [],
-    ),
-  );
   const drawing: Drawing = {
     size: DIMENSIONS.nodeWidth,
     connectors,
     centre,
     shapeOf: () => shape,
   };
-  return { connectors, centre, helperTies, drawing };
+  return { connectors, centre, drawing, family: familyOf(people, links) };
 }
 
 const parent = (
@@ -585,6 +571,56 @@ const families: Record<string, { people: string[]; links: PedigreeLink[] }> = {
       parent('standIn', 'biological', 'half'),
     ],
   },
+  // Families no test drew before the rule set, where the engine's special
+  // cases broke the constraints (rules-audit.md section 4).
+  'two siblings adopted together, with different birth parents': {
+    people: ['ego', 'sib', 'helen', 'mark', 'chloe', 'tyler', 'amy', 'ben'],
+    links: [
+      partners('helen', 'mark'),
+      ...['ego', 'sib'].flatMap((child) => [
+        parent('helen', 'adoptive', child),
+        parent('mark', 'adoptive', child),
+      ]),
+      parent('chloe', 'biological', 'ego', true),
+      parent('tyler', 'biological', 'ego'),
+      parent('amy', 'biological', 'sib', true),
+      parent('ben', 'biological', 'sib'),
+    ],
+  },
+  'two siblings adopted together, with the same birth parents': {
+    people: ['ego', 'sib', 'helen', 'mark', 'chloe', 'tyler'],
+    links: [
+      partners('helen', 'mark'),
+      ...['ego', 'sib'].flatMap((child) => [
+        parent('helen', 'adoptive', child),
+        parent('mark', 'adoptive', child),
+        parent('chloe', 'biological', child, true),
+        parent('tyler', 'biological', child),
+      ]),
+    ],
+  },
+  'a stepfather who raises all his partner’s children': {
+    people: ['ego', 'sib', 'mum', 'dad', 'stepdad'],
+    links: [
+      partners('mum', 'dad', false),
+      partners('mum', 'stepdad'),
+      ...['ego', 'sib'].flatMap((child) => [
+        parent('mum', 'biological', child, true),
+        parent('dad', 'biological', child),
+        parent('stepdad', 'social', child),
+      ]),
+    ],
+  },
+  'an adopter whose partner is a social parent': {
+    people: ['ego', 'helen', 'mark', 'chloe', 'tyler'],
+    links: [
+      partners('helen', 'mark'),
+      parent('helen', 'adoptive', 'ego'),
+      parent('mark', 'social', 'ego'),
+      parent('chloe', 'biological', 'ego', true),
+      parent('tyler', 'biological', 'ego'),
+    ],
+  },
 };
 
 describe('the drawing accounts for every recorded tie', () => {
@@ -736,9 +772,9 @@ describe('the drawing accounts for every recorded tie', () => {
 describe('the lines pass the strict line checks', () => {
   for (const [name, { people, links }] of Object.entries(families)) {
     for (const shape of ['circle', 'square'] as const) {
-      it(`${name} (${shape}s)`, () => {
-        const { drawing, helperTies } = draw(people, links, shape);
-        expect(strictLineFaults(drawing, helperTies, people)).toEqual([]);
+      check(`${name} (${shape}s)`, () => {
+        const { drawing, family } = draw(people, links, shape);
+        expect(strictLineFaults(drawing, family)).toEqual([]);
       });
     }
   }
