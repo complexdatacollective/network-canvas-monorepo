@@ -304,6 +304,40 @@ const remapMergedOptionValues = (
     Object.values(value).forEach(visit);
   };
   visit(protocol.stages);
+  remapShapeMappings(protocol.codebook, merged);
+};
+
+/**
+ * Rewrites each discrete node shape mapping on a merged attribute to the value
+ * kept. An entry that then repeats an earlier one goes, as the later option
+ * does, so the shape the first option had is the one the merged option keeps.
+ */
+const remapShapeMappings = (
+  codebook: unknown,
+  merged: readonly MergedOptionValues[],
+) => {
+  if (!isRecord(codebook) || !isRecord(codebook.node)) return;
+  for (const [type, definition] of Object.entries(codebook.node)) {
+    if (!isRecord(definition) || !isRecord(definition.shape)) continue;
+    const mapping = definition.shape.dynamic;
+    if (!isRecord(mapping) || mapping.type !== 'discrete') continue;
+    if (!Array.isArray(mapping.map)) continue;
+    const attribute = merged.find(
+      (candidate) =>
+        candidate.entity === 'node' &&
+        candidate.type === type &&
+        candidate.attribute === mapping.variable,
+    );
+    if (!attribute) continue;
+    const seen = new Set<unknown>();
+    mapping.map = mapping.map.flatMap((entry: unknown) => {
+      if (!isRecord(entry)) return [entry];
+      const value = withKeptValues(entry.value, attribute.kept);
+      if (seen.has(value)) return [];
+      seen.add(value);
+      return [{ ...entry, value }];
+    });
+  }
 };
 
 /**
@@ -384,6 +418,22 @@ const repairIntroductionPanels = (
     const text = withoutBlankText(panel.text);
     if (text === undefined) Reflect.deleteProperty(panel, 'text');
     else panel.text = text;
+  }
+};
+
+/**
+ * Schema 8 accepted an Information stage whose title was only spaces, which
+ * showed a stage with no heading. Schema 9 requires the title to say
+ * something, so a title that shows nothing takes the stage's label, as an
+ * introduction panel's does; a label is required to say something already.
+ * Text already localized loses only its translations that show nothing, which
+ * then fall back to another.
+ */
+const repairInformationTitles = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'Information') continue;
+    stage.title = withoutBlankText(stage.title) ?? stage.label;
   }
 };
 
@@ -818,6 +868,7 @@ const migrationV8toV9 = createMigration({
 - An introduction panel's text is now optional, so a panel can show only its title. Text that contained only spaces is removed, so the panel shows only its title, as before. An introduction panel's title must contain some text, so a title that contained only spaces now uses the stage's name.
 - On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other's text, or "Other" for the label and "Please specify" for the question.
 - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
+- The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.
 - Skip logic and filters can no longer compare the answers to an encrypted attribute. Rules are checked without the participant's passphrase, so under schema 8 a rule like this only ever compared the encrypted text, never the answer. These rules are removed. Rules that only check whether an encrypted attribute is answered still work, so they are kept. Skip logic left with no rules is removed, so its stage now always appears: a stage that was shown only when a removed rule matched may never have appeared under schema 8. A filter left with no rules is removed, so it no longer limits what its stage or panel shows. Where other rules remain, they may now match differently: if all rules had to match, they now match at least as often as before; if any one rule could match, at most as often. Check the stages that used the removed rules. Rules in a panel that lists people from an external data file are kept, because that data is not encrypted.
 - Family Pedigree stages are converted to the redesigned Family Pedigree. If a stage had an introduction screen, the screen becomes an Information stage just before the pedigree, which is skipped whenever the pedigree is skipped.
 - The Family Pedigree answers for sex assigned at birth and for the kind of each relationship keep the values already recorded, but their labels change to the wording of the redesigned interface. A nomination prompt with the ID "pedigree", which is now reserved, is given a new ID.
@@ -850,6 +901,7 @@ const migrationV8toV9 = createMigration({
     addFormFieldPrompts(migrated);
     addSuppliedStageText(migrated, localization);
     repairIntroductionPanels(migrated, localization);
+    repairInformationTitles(migrated);
     repairOtherBinText(migrated, localization);
     repairTieStrengthDeclineLabels(migrated, localization);
 

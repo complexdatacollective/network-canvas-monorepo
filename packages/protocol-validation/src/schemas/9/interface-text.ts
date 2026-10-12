@@ -5,9 +5,11 @@ import type {
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
 import {
+  BUTTONS_INTERFACE_TEXT,
   FORMS_INTERFACE_TEXT,
   type InterfaceTextEntry,
-  INTERVIEW_INTERFACE_TEXT,
+  MESSAGES_INTERFACE_TEXT,
+  NAVIGATION_INTERFACE_TEXT,
   PASSPHRASE_INTERFACE_TEXT,
   VALIDATION_INTERFACE_TEXT,
 } from './interface-text-wording.ts';
@@ -31,10 +33,11 @@ import {
  * Canvas ships. Text that belongs to one kind of stage is that stage's
  * setting instead.
  *
- * A protocol holds only the text it can show: the `interview` group always,
- * each other group only while the protocol uses what it is for, and of the
- * validation group only the messages of the rules it uses (see
- * `INTERFACE_TEXT_GROUPS`). Architect writes and removes the groups as the
+ * A protocol holds only the text it can show: the `navigation` and
+ * `messages` groups always, the `buttons` group always but for its Yes and No
+ * (shown with forms), each other group only while the protocol uses what it
+ * is for, and of the validation group only the messages of the rules it uses
+ * (see `INTERFACE_TEXT_GROUPS`). Architect writes and removes the groups as the
  * protocol changes, with the wording Network Canvas supplies, and the
  * researcher may change and translate them like any other text.
  */
@@ -79,8 +82,8 @@ const usesPassphrase = (protocol: ProtocolDocument) =>
   ) || stagesOf(protocol).some((stage) => stage.type === 'Anonymisation');
 
 /**
- * Stage types that always show the form text: a form of their own, or a Dyad
- * Census's Yes and No.
+ * Stage types that always show the form text and the Yes and No answers: a
+ * form of their own, or a Dyad Census's Yes and No.
  */
 const FORM_STAGE_TYPES: ReadonlySet<string> = new Set([
   'EgoForm',
@@ -131,7 +134,8 @@ const holdsAForm = (value: unknown): boolean => {
 };
 
 /**
- * Whether the interview shows the form text: a stage's own form, such as a
+ * Whether the interview shows the form text and the Yes and No answers: a
+ * stage's own form, such as a
  * Network Composer's fields or a Categorical Bin's dialog, a Dyad Census's
  * Yes and No, a roster's cards, or the form that asks for a passphrase.
  */
@@ -144,40 +148,6 @@ const usesForms = (protocol: ProtocolDocument) =>
       showsAnswersOnCards(stage) ||
       holdsAForm(stage),
   );
-
-/**
- * Stage types that save each answer as it is given, and say so when a save is
- * refused, in the form text's words when the refusal has no reason of its
- * own. The others that do (a Family Pedigree, a name generator) already show
- * every form text.
- */
-const REPORTS_REFUSED_SAVES_STAGE_TYPES: ReadonlySet<string> = new Set([
-  'CategoricalBin',
-  'Geospatial',
-  'NameGeneratorRoster',
-  'NetworkComposer',
-]);
-
-const FORM_ENTRIES: ReadonlySet<string> = new Set(
-  Object.keys(FORMS_INTERFACE_TEXT),
-);
-
-const SAVE_REFUSAL_ENTRIES: ReadonlySet<string> = new Set(['submitFailed']);
-
-/**
- * The form text a protocol shows: all of it with a form, and otherwise only
- * the message for a refused save, on a stage that reports one.
- */
-const formEntriesUsed = (protocol: ProtocolDocument): ReadonlySet<string> => {
-  if (usesForms(protocol)) return FORM_ENTRIES;
-  return stagesOf(protocol).some(
-    (stage) =>
-      typeof stage.type === 'string' &&
-      REPORTS_REFUSED_SAVES_STAGE_TYPES.has(stage.type),
-  )
-    ? SAVE_REFUSAL_ENTRIES
-    : new Set();
-};
 
 /**
  * Every record the protocol holds anywhere in its codebook and stages: where
@@ -290,15 +260,32 @@ type InterfaceTextGroup = Readonly<{
   entriesUsedBy?: (protocol: ProtocolDocument) => ReadonlySet<string>;
 }>;
 
-/** Every group of interface text, and when a protocol holds it. */
+/** The buttons every interview shows; Yes and No wait for a form. */
+const ALWAYS_SHOWN_BUTTONS: ReadonlySet<string> = new Set([
+  'cancel',
+  'done',
+  'delete',
+]);
+
+const buttonsUsed = (protocol: ProtocolDocument): ReadonlySet<string> =>
+  usesForms(protocol)
+    ? new Set(Object.keys(BUTTONS_INTERFACE_TEXT))
+    : ALWAYS_SHOWN_BUTTONS;
+
+/**
+ * Every group of interface text, in the order Architect lists them, and when
+ * a protocol holds it.
+ */
 const INTERFACE_TEXT_GROUPS = {
-  interview: { entries: INTERVIEW_INTERFACE_TEXT, usedBy: () => true },
-  passphrase: { entries: PASSPHRASE_INTERFACE_TEXT, usedBy: usesPassphrase },
-  forms: {
-    entries: FORMS_INTERFACE_TEXT,
-    usedBy: (protocol) => formEntriesUsed(protocol).size > 0,
-    entriesUsedBy: formEntriesUsed,
+  navigation: { entries: NAVIGATION_INTERFACE_TEXT, usedBy: () => true },
+  buttons: {
+    entries: BUTTONS_INTERFACE_TEXT,
+    usedBy: () => true,
+    entriesUsedBy: buttonsUsed,
   },
+  messages: { entries: MESSAGES_INTERFACE_TEXT, usedBy: () => true },
+  passphrase: { entries: PASSPHRASE_INTERFACE_TEXT, usedBy: usesPassphrase },
+  forms: { entries: FORMS_INTERFACE_TEXT, usedBy: usesForms },
   validation: {
     entries: VALIDATION_INTERFACE_TEXT,
     usedBy: (protocol) => validationMessagesUsed(protocol).size > 0,
@@ -338,15 +325,17 @@ const partialGroupSchema = (
   );
 
 export const InterfaceTextSchema = z.strictObject({
-  interview: groupSchema(INTERVIEW_INTERFACE_TEXT).optional(),
+  navigation: groupSchema(NAVIGATION_INTERFACE_TEXT).optional(),
+  buttons: partialGroupSchema(BUTTONS_INTERFACE_TEXT).optional(),
+  messages: groupSchema(MESSAGES_INTERFACE_TEXT).optional(),
   passphrase: groupSchema(PASSPHRASE_INTERFACE_TEXT).optional(),
-  forms: partialGroupSchema(FORMS_INTERFACE_TEXT).optional(),
+  forms: groupSchema(FORMS_INTERFACE_TEXT).optional(),
   validation: partialGroupSchema(VALIDATION_INTERFACE_TEXT).optional(),
 });
 
 /**
  * The interface text a protocol holds, by group and name. An entry of a group
- * held only in part (`forms`, `validation`) may be absent.
+ * held only in part (`buttons`, `validation`) may be absent.
  */
 export type InterfaceText = Readonly<
   Partial<
@@ -355,20 +344,20 @@ export type InterfaceText = Readonly<
 >;
 
 /**
- * Where the protocol holds each interface text, and the message of the
+ * Where the protocol holds each interface text, and the messages of the
  * interview's (or a shared package's) catalog it stands in for: what the
- * interview overlays the protocol's text onto.
+ * interview overlays the protocol's text onto. An entry that stands in for
+ * several messages has a row for each.
  */
 export const INTERFACE_TEXT_MESSAGES: readonly Readonly<{
   group: string;
   key: string;
   id: string;
 }>[] = GROUP_NAMES.flatMap((group) =>
-  Object.entries(INTERFACE_TEXT_GROUPS[group].entries).map(([key, entry]) => ({
-    group,
-    key,
-    id: entry.id,
-  })),
+  Object.entries(INTERFACE_TEXT_GROUPS[group].entries).flatMap(
+    ([key, entry]: [string, InterfaceTextEntry]) =>
+      entry.ids.map((id) => ({ group, key, id })),
+  ),
 );
 
 /**

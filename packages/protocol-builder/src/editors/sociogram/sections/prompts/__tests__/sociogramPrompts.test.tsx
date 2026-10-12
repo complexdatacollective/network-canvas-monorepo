@@ -812,6 +812,72 @@ describe('what tapping a node does, against what the prompt already said', () =>
 });
 
 /**
+ * Opening a prompt to look at it is not an edit.
+ *
+ * Every saved shape of tap behaviour, cancelled untouched, closes without the
+ * discard confirmation. A prompt that marks nodes once opened already dirty:
+ * the dialog restates `allowHighlighting: true` on opening, and that write
+ * was measured against nothing rather than against the `true` the prompt
+ * already held.
+ */
+describe('a prompt opened and cancelled untouched', () => {
+  const DISCARD_TITLE = 'Discard your changes?';
+
+  const promptSaying = (
+    tap: Record<string, unknown>,
+  ): Record<string, unknown> => ({
+    id: 'sociogram-prompt-1',
+    text: 'Place the people who know each other close together',
+    layout: { layoutVariable: 'layout' },
+    ...tap,
+  });
+
+  it.each([
+    ['taps do nothing', {}],
+    [
+      'only highlights',
+      { highlight: { variable: 'highlighted', allowHighlighting: false } },
+    ],
+    [
+      'marks nodes',
+      { highlight: { variable: 'highlighted', allowHighlighting: true } },
+    ],
+    [
+      'draws a connection',
+      { edges: { create: 'friend', display: ['friend'] } },
+    ],
+  ])('closes without asking, for a prompt that %s', async (_name, tap) => {
+    const harness = renderStageEditor(sociogramHolding(promptSaying(tap)));
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(prompt.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText(DISCARD_TITLE)).not.toBeInTheDocument();
+  });
+
+  // The guard the cases above expect silence from does speak: without this, a
+  // Cancel that never consulted it would pass them all.
+  it('asks once the researcher has changed something', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding(
+        promptSaying({
+          highlight: { variable: 'highlighted', allowHighlighting: true },
+        }),
+      ),
+    );
+
+    const prompt = await openPrompt(harness);
+    await switchTapping(harness, prompt, false);
+    await harness.user.click(prompt.getByRole('button', { name: 'Cancel' }));
+
+    expect(await screen.findByText(DISCARD_TITLE)).toBeInTheDocument();
+  });
+});
+
+/**
  * The attribute a prompt needs, invented from inside the prompt's own picker.
  *
  * A position attribute is finished the moment it is named — there is no list

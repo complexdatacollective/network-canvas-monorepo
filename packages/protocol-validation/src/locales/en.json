@@ -359,6 +359,10 @@
     "defaultMessage": "The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol. It starts with the text the interview has always shown there.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. \"Finish Screen\" is the name Architect gives the stage type that ends an interview, where the participant reads closing text and presses Finish; use the same name Architect uses for it."
   },
+  "protocolValidation.migrationNotes.schema9.informationTitle": {
+    "defaultMessage": "The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance: informationTitle. Information is the name of an interface (stage type) that shows text and media to participants."
+  },
   "protocolValidation.migrationNotes.schema9.introductionPanelText": {
     "defaultMessage": "An introduction panel's text is now optional, so a panel can show only its title. Text that contained only spaces is removed, so the panel shows only its title, as before. An introduction panel's title must contain some text, so a title that contained only spaces now uses the stage's name.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance: introductionPanelText. An introduction panel is the screen with a title and text that opens a form or census stage before its questions. The stage name is the name shown for the stage in the list of stages."

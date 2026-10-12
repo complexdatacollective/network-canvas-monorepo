@@ -148,8 +148,8 @@
     "description": "Confirmation action that leaves an invalid form and discards its unsaved changes."
   },
   "interview.interfaces.discardChangesDescription": {
-    "defaultMessage": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?",
-    "description": "Warning when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost."
+    "defaultMessage": "Do you want to discard your changes?",
+    "description": "Question asked when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost."
   },
   "interview.interfaces.discardChangesTitle": {
     "defaultMessage": "Discard changes?",

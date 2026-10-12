@@ -128,7 +128,7 @@ export const OptionLabelsInEveryLanguage: Story = {
     ).toHaveAttribute('dir', 'rtl');
     await expect(
       canvas.getByText(
-        'Not translated yet. Participants see the English text, unless their browser also lists a language that has it.',
+        'Not translated yet. Participants see it in English, unless their browser also lists a language that has a translation.',
       ),
     ).toBeVisible();
   },

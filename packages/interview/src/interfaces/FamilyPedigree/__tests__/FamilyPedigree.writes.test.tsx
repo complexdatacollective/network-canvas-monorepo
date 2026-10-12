@@ -73,7 +73,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const REFUSED = 'An error occurred while submitting the form.';
+const REFUSED = 'An error occurred.';
 
 /** The participant and their mother, unnamed, on a pedigree stage followed
  * by an information screen. */

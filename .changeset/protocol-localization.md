@@ -55,13 +55,13 @@ In Architect:
   is a warning and never an error. A language can't be removed while it is the
   default, or while it holds the only translation of some text, and its delete
   button says why.
-- A translation table shows every text participants see beside its
+- A translation table shows everything participants see beside its
   translation into each of the protocol's languages, one column per language.
   Open translation table, on the Languages page and in the Language Chooser's
   editor, opens it in a dialog over the Languages page that fills the window.
-  The page's address records that the table is open and which texts it shows,
+  The page's address records that the table is open and what it shows,
   so Back closes it. Rows are grouped by stage, with each stage's position, name
-  and interface, then by codebook type, and each text is named the way its
+  and interface, then by codebook type, and each row is named the way its
   editor names it, such as "Page heading" or "Item 1 › Content". Each cell is
   edited where it is, formatted text with the stage editor's formatting
   buttons, and checked when you leave it. Changes stay in the table, each
@@ -74,11 +74,12 @@ In Architect:
   a cell, the arrow keys move between rows, and Ctrl+Enter moves to the next
   row. An empty cell
   shows what participants using that language see instead, tagged with that
-  text's language. A menu shows every text, the texts missing
+  translation's language. A menu shows every translation, those missing
   a translation into any language shown, or those missing one language; a
-  search finds texts by place or translation; and language columns can be
-  hidden.
-- On the Languages page, a language that some texts are not translated into
+  search finds strings by place or translation; and language columns can be
+  hidden. Placeholders show as named pills whether or not a cell is being
+  edited, and the table's scrollbars stay visible while it overflows.
+- On the Languages page, a language that some wording is not translated into
   yet is marked "Missing translations". While translations are missing, a note
   in the stage list names the languages that need them and opens the table on
   every missing translation.

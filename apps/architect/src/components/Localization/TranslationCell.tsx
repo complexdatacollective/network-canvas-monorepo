@@ -41,32 +41,32 @@ const messages = defineMessages({
     id: 'architect.localization.translationTable.shownIn',
     defaultMessage: 'Shown in {language}',
     description:
-      'Tag in an empty cell of the translation table, under the text participants see instead of the missing translation. language is the language of that text.',
+      'Tag in an empty cell of the translation table, under the wording participants see instead of the missing translation. language is the language of that wording.',
   },
   shownInUnlessBrowserLists: {
     id: 'architect.localization.translationTable.shownInUnlessBrowserLists',
     defaultMessage: 'Shown in {language}*',
     description:
-      'Tag in an empty cell of the translation table, under the text participants see instead of the missing translation, when they may see another language instead. The asterisk refers to a note below the table explaining that the participant’s browser can list a language that has the text. language is the language of the text shown.',
+      'Tag in an empty cell of the translation table, under the wording participants see instead of the missing translation, when they may see another language instead. The asterisk refers to a note below the table explaining that the participant’s browser can list a language that has a translation. language is the language of the wording shown.',
   },
   notTranslated: {
     id: 'architect.localization.translationTable.notTranslated',
-    defaultMessage: 'Not translated yet. Participants see the {language} text.',
+    defaultMessage: 'Not translated yet. Participants see it in {language}.',
     description:
       'Screen-reader description of an empty cell of the translation table, when participants see a closely related language instead, such as Brazilian Portuguese for European Portuguese. language is that language.',
   },
   notTranslatedUnlessBrowserLists: {
     id: 'architect.localization.translationTable.notTranslatedUnlessBrowserLists',
     defaultMessage:
-      'Not translated yet. Participants see the {language} text, unless their browser also lists a language that has it.',
+      'Not translated yet. Participants see it in {language}, unless their browser also lists a language that has a translation.',
     description:
-      'Screen-reader description of an empty cell of the translation table. Participants see the text in another language their web browser lists, when the text has a translation in one, and otherwise in language: the protocol’s default language, or failing that another of its languages.',
+      'Screen-reader description of an empty cell of the translation table. Participants see the wording in another language their web browser lists, when it has a translation in one, and otherwise in language: the protocol’s default language, or failing that another of its languages.',
   },
   noTranslation: {
     id: 'architect.localization.translationTable.noTranslation',
     defaultMessage: 'Not translated into any language.',
     description:
-      'Shown in an empty cell of the translation table when the text has no translation in any of the protocol’s languages.',
+      'Shown in an empty cell of the translation table when the localized string has no translation in any of the protocol’s languages.',
   },
 });
 
@@ -747,7 +747,7 @@ const MessageCell = ({
       className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
     >
       {editing ? (
-        <div className={cx(CELL_TEXT_CLASSES, 'min-w-64')}>
+        <div className={CELL_TEXT_CLASSES}>
           {fallbackShown && (
             <div className="sr-only">
               <Fallback

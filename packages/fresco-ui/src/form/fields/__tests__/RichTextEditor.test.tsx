@@ -11,6 +11,7 @@ import type { JSONContent } from '@tiptap/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { tokenPillClasses } from '../../../TokenPill';
 import Field from '../../Field/Field';
 import Form from '../../Form';
 import SubmitButton from '../../SubmitButton';
@@ -1088,6 +1089,8 @@ describe('a RichTextEditorField with tokens', () => {
     const chip = editor.querySelector('[data-token="name"]');
     expect(chip).toHaveTextContent('Name');
     expect(chip).toHaveAttribute('contenteditable', 'false');
+    // The pill read-only text shows is drawn with the same classes.
+    expect(chip?.className).toBe(tokenPillClasses());
   });
 
   it('says which required tokens the text does not include yet', async () => {

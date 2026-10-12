@@ -6,9 +6,10 @@ import { runtimeMessages } from '../i18n/runtimeMessages';
 import { interfaceMessages } from './messages';
 
 /**
- * Why a form whose answers failed their checks cannot be saved: the
- * passphrase, when a check compares them with protected answers while it has
- * not been entered, or otherwise that they are invalid.
+ * What a form whose answers failed their checks says when it cannot be left
+ * with its changes: that the passphrase is needed, when a check compares them
+ * with protected answers while it has not been entered, or otherwise only the
+ * question whether to discard them.
  */
 export function failedCheckReason(
   passphraseNeeded: boolean,
@@ -20,7 +21,7 @@ export function failedCheckReason(
 
 /**
  * The confirmation asked for before leaving a form whose changes would be
- * lost, saying why they cannot be saved (by default, that they are invalid).
+ * lost: by default, whether to discard them, or a reason they cannot be saved.
  */
 export default function discardChangesDialog(
   reason:

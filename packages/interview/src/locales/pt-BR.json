@@ -36,7 +36,7 @@
   "interview.interfaces.confirmPassphrase": "Confirmar frase secreta",
   "interview.interfaces.deselect": "Desmarcar",
   "interview.interfaces.discardChanges": "Descartar alterações",
-  "interview.interfaces.discardChangesDescription": "Este formulário contém dados inválidos e, por isso, não pode ser salvo. Se você continuar, ele será redefinido e suas alterações serão perdidas. Deseja descartar suas alterações?",
+  "interview.interfaces.discardChangesDescription": "Deseja descartar suas alterações?",
   "interview.interfaces.discardChangesTitle": "Descartar alterações?",
   "interview.interfaces.dragToReposition": "Arraste para reposicionar",
   "interview.interfaces.drawingControls": "Controles de desenho",

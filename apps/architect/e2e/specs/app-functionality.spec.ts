@@ -256,9 +256,13 @@ test('clears all stored protocols', async ({ architectPage, seed }) => {
   // "Remove all data?"; `dialog-primary` is the confirm ("Remove all") action.
   await architectPage.getByTestId('dialog-primary').click();
 
-  // `clearAllStorage()` calls `location.reload()` on success, so the recents
-  // list re-renders from a now-empty IndexedDB. LibraryPanel's Collection
-  // `emptyState` for the "recent" tab.
+  // `clearAllStorage()` calls `location.reload()` on success, so the library
+  // re-renders from a now-empty IndexedDB. With nothing recent, the panel
+  // opens on Templates; the Recent tab shows its empty state.
+  await expect(
+    architectPage.getByRole('tab', { name: 'Templates' }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await architectPage.getByRole('tab', { name: 'Recent' }).click();
   await expect(
     architectPage.getByText('No recent protocols yet.'),
   ).toBeVisible();

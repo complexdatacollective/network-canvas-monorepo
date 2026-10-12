@@ -33,7 +33,7 @@ const trilingual: CurrentProtocol = {
 const DEFAULT_REASON =
   'To remove the default language, make another language the default first.';
 const STRANDED_REASON =
-  '1 text exists only in French. Translate it into another language before removing French.';
+  '1 string has a translation only in French. Translate it into another language before removing French.';
 
 const renderLanguageList = (protocol: CurrentProtocol = trilingual) => {
   const store = configureStore({
@@ -205,7 +205,7 @@ describe('LanguageList', () => {
 
     const select = screen.getByRole('combobox', { name: 'Default language' });
     expect(select).toHaveAccessibleDescription(
-      'Participants see text in this language when it has no translation in a language they use.',
+      'Participants see this language wherever there is no translation in a language they use.',
     );
     expect(select).toHaveDisplayValue('English');
     expect(
@@ -307,7 +307,7 @@ describe('LanguageList', () => {
     const section = screen.getByRole('region', { name: 'Protocol languages' });
     expect(section).toHaveAccessibleDescription(
       expect.stringMatching(
-        /^Participants can take the interview in any of these languages\. They see each text in the first of the following languages that has a translation of it:/,
+        /^Participants can take the interview in any of these languages\. Where something is not translated, they see the first of the following languages that has a translation:/,
       ),
     );
     expect(
@@ -327,7 +327,7 @@ describe('LanguageList', () => {
       'A closely related language, such as Brazilian Portuguese for a participant using European Portuguese.',
       'Another language their browser or device lists.',
       'The protocol’s default language.',
-      'Any other language that has the text.',
+      'Any other language that has a translation.',
     ]);
     expect(
       within(section).getByRole('link', { name: 'Translating your protocol' }),
