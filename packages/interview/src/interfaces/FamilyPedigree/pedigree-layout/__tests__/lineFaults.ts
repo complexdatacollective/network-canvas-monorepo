@@ -84,8 +84,8 @@ function distanceToSegment(p: Point, s: LineSegment): number {
 }
 
 /**
- * Everything wrong with the lines that end on one child: their ends out of
- * their parents' left-to-right order, a crossing among them or over another
+ * Everything wrong with the lines that end on one child: their ends on one
+ * edge of the child out of their parents' left-to-right order, a crossing among them or over another
  * line, two ends closer than a fifth of a symbol (or an end within the
  * centre clearance of the child's own line of descent), and two lines
  * closer than a quarter of a symbol away from the child.
@@ -118,11 +118,20 @@ export function faultsOfLinesInto(drawing: Drawing, childId: string): string[] {
     });
   }
 
-  const byParent = ends.toSorted((a, b) => a.parentX - b.parentX);
-  for (let k = 0; k + 1 < byParent.length; k++) {
-    const [a, b] = [byParent[k]!, byParent[k + 1]!];
-    if (b.parentX - a.parentX > 1 && b.end.x <= a.end.x) {
-      faults.push(`${b.name} ends left of ${a.name}`);
+  // The ends on each edge of the child keep their parents' order: those on
+  // the top edge (the line of descent's among them), and those of the lines
+  // that come up into the child's bottom edge from below the row (from a
+  // relative on the child's own row). A line into one edge never meets a
+  // line into the other.
+  for (const onTop of [true, false]) {
+    const byParent = ends
+      .filter((end) => end.end.y < child.y === onTop)
+      .toSorted((a, b) => a.parentX - b.parentX);
+    for (let k = 0; k + 1 < byParent.length; k++) {
+      const [a, b] = [byParent[k]!, byParent[k + 1]!];
+      if (b.parentX - a.parentX > 1 && b.end.x <= a.end.x) {
+        faults.push(`${b.name} ends left of ${a.name}`);
+      }
     }
   }
   for (const line of lines) {

@@ -7,7 +7,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { alignPedigree } from '../alignPedigree';
-import { routeLine, type RoutingScene } from '../auxiliaryRouting';
+import {
+  courseCost,
+  type DrawnLine,
+  routeLine,
+  type RoutingScene,
+} from '../auxiliaryRouting';
 import type { LayoutDimensions } from '../layoutDimensions';
 import {
   buildConnectorData,
@@ -185,6 +190,30 @@ describe('every recorded tie is drawn as a line', () => {
     );
     expect(points.length).toBeGreaterThanOrEqual(2);
     expect(points.at(-1)).toEqual({ x: 1.5, y: 0.75 });
+  });
+
+  it('weighs crossing a partnership line as it weighs crossing a sibling bar', () => {
+    // A line straight down from a parent to a child, across one line.
+    const across: LineSegment = {
+      type: 'line',
+      x1: -1,
+      y1: 0.75,
+      x2: 1,
+      y2: 0.75,
+    };
+    const costAcross = (kind: DrawnLine['kind']) =>
+      courseCost(
+        { person: 0, x: 0, layer: 0 },
+        { kind: 'child', person: 1, x: 0, layer: 1, attachments: [0] },
+        'owner',
+        { ...scene, lines: [{ segment: across, kind }] },
+        [
+          { x: 0, y: 0.25 },
+          { x: 0, y: 1.25 },
+        ],
+      );
+    expect(costAcross('partnership')).toBe(costAcross('bar'));
+    expect(costAcross('partnership')).toBeGreaterThan(costAcross('other'));
   });
 
   it('routes a line to a child it is offered no place on', () => {

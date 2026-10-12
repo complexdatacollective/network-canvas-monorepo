@@ -2609,17 +2609,12 @@ describe('a child adopted by their own sibling', () => {
         undefined,
         nodeIds,
       );
+      // One dashed adoptive line, from the sibling or, when her partner
+      // adopted the child too, from the couple (named after her).
       const adoptiveLines = conn.auxiliaryLines
         .filter((line) => line.edgeType === 'adoptive')
         .map((line) => line.endpointIds);
-      expect(adoptiveLines).toEqual(
-        expect.arrayContaining(
-          (withPartner ? ['sis', 'sam'] : ['sis']).map((parent) => [
-            parent,
-            'kid',
-          ]),
-        ),
-      );
+      expect(adoptiveLines).toEqual([['sis', 'kid']]);
       const sibship = conn.parentChildLines.find((line) =>
         line.uplineChildIds?.includes('kid'),
       );
@@ -2702,8 +2697,9 @@ describe('a child adopted by a relative', () => {
     return { at, conn, edgeTo };
   };
   /** The child stays in their birth family: their birth parents stay parents
-   * and their line of descent comes from them; each adopter joins them by a
-   * dashed adoptive line of their own. */
+   * and their line of descent comes from them; the adopters join them by
+   * dashed adoptive lines, one from each line's parent (a couple who adopt
+   * draw one line, named after the first of them). */
   const expectInBirthFamily = (
     { at, conn, edgeTo }: ReturnType<typeof lay>,
     adopters: string[],
@@ -2729,7 +2725,7 @@ describe('a child adopted by a relative', () => {
     ).toHaveLength(adopters.length);
   };
 
-  it('stays in the birth family when grandparents adopt', () => {
+  it('stays in the birth family when grandparents adopt, with one line from the couple', () => {
     expectInBirthFamily(
       lay(
         ['g1', 'g2', 'mum', 'dad', 'kid'],
@@ -2740,11 +2736,11 @@ describe('a child adopted by a relative', () => {
           { source: 'g2', target: 'kid', kind: 'adoptive' },
         ],
       ),
-      ['g1', 'g2'],
+      ['g1'],
     );
   });
 
-  it('stays in the birth family when an aunt and her partner adopt', () => {
+  it('stays in the birth family when an aunt and her partner adopt, with one line from the couple', () => {
     expectInBirthFamily(
       lay(
         ['g1', 'g2', 'mum', 'dad', 'aunt', 'uncle', 'kid'],
@@ -2758,7 +2754,7 @@ describe('a child adopted by a relative', () => {
           { source: 'uncle', target: 'kid', kind: 'adoptive' },
         ],
       ),
-      ['aunt', 'uncle'],
+      ['aunt'],
     );
   });
 

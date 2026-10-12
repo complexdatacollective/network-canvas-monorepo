@@ -22,6 +22,11 @@ import type { LineSegment, PedigreeSymbolShape, Point } from './types';
  * along the row would read as a partnership, and one above it as a line of
  * descent. Donors and surrogates never share the child's row.
  *
+ * A couple who raise a relative's child together are joined to the child by
+ * one line, which leaves the couple's own line of descent sideways, as a T
+ * on its upright stem, or, with no line of descent, starts on their
+ * partnership line where one would drop from.
+ *
  * All coordinates are in layout units: x in columns, y in rows.
  */
 
@@ -40,8 +45,9 @@ type Symbol = {
 /** A line already drawn, which a routed line must keep clear of. */
 export type DrawnLine = {
   segment: LineSegment;
-  /** Sibling bars and uplines read as joining whatever crosses them. */
-  kind: 'bar' | 'upline' | 'other';
+  /** Sibling bars, uplines and partnership lines read as joining whatever
+   * crosses them. */
+  kind: 'bar' | 'upline' | 'partnership' | 'other';
   /** For auxiliary lines: whose line this is, so one parent's lines to
    * several children may share their way down. */
   owner?: string;
@@ -561,6 +567,9 @@ const COST = {
   throughCorner: 500,
   crossBar: 300,
   crossUpline: 300,
+  /** As much as a sibling bar: a line across a partnership line reads as
+   * coming down from the couple. */
+  crossPartnership: 300,
   crossOther: 10,
   /** A line to a stem that crosses a sibling bar on its way (to a run in
    * the middle of a sibship) hops it most legibly square on. */
@@ -696,7 +705,9 @@ function courseCoster(
               ? COST.crossBar
               : line.kind === 'upline'
                 ? COST.crossUpline
-                : COST.crossOther;
+                : line.kind === 'partnership'
+                  ? COST.crossPartnership
+                  : COST.crossOther;
         if (end.kind === 'stem' && line.kind === 'bar' && dx > ON) {
           cost += COST.crossBarAslant;
         }
@@ -812,8 +823,53 @@ function courseCoster(
 const UPPER_LANES = [0.15, 0.35, 0.42];
 const LOWER_LANES = [0.72, 0.6, 0.78];
 
-type From = { person: number; x: number; layer: number };
+type From = {
+  person: number;
+  x: number;
+  layer: number;
+  /** Where the line starts, when not at the height of the parent's centre:
+   * a couple's partnership line routed above their row, or the lower rail
+   * of a double one. */
+  y?: number;
+  /** A couple's own line of descent, from their partnership line down to
+   * their children, which the line leaves sideways from one of its upright
+   * pieces, as a T, rather than starting at `x`. (Where it offers no room,
+   * the line starts at `x` after all.) */
+  stem?: LineSegment[];
+};
 type Course = { points: Point[]; endX: number };
+
+/** Heights in the gap below a couple's row, as fractions of the gap, at
+ * which a line may leave their line of descent. */
+const STEM_LANES = [0.25, 0.15, 0.35, 0.12, 0.18];
+/** How far a line leaving a couple's line of descent keeps from either end
+ * of the upright piece it leaves, and from the couple's symbols, as a
+ * fraction of the gap: nearer, it reads as leaving the partnership line or
+ * joining the sibling bar. */
+const STEM_END_CLEARANCE = 0.1;
+
+/** The points on a couple's line of descent a line may leave it at, as a
+ * T: at a height of its own on an upright piece below the couple's row.
+ * None for a line to someone above the couple's row. */
+function stemStartsOf(from: From, end: RouteEnd, boxh: number): Point[] {
+  if (!from.stem || end.layer < from.layer) return [];
+  const gap = 1 - boxh;
+  const rowBottom = from.layer + boxh;
+  return from.stem.flatMap((piece) => {
+    if (Math.abs(piece.x2 - piece.x1) > ON) return [];
+    const top =
+      Math.max(Math.min(piece.y1, piece.y2), rowBottom) +
+      STEM_END_CLEARANCE * gap;
+    const bottom = Math.max(piece.y1, piece.y2) - STEM_END_CLEARANCE * gap;
+    return STEM_LANES.map((f) => rowBottom + f * gap)
+      .filter((y) => y >= top - 1e-9 && y <= bottom + 1e-9)
+      .map((y) => ({ x: piece.x1, y }));
+  });
+}
+
+/** The person whose symbol a line leaves: none for a line leaving a
+ * couple's line of descent. */
+const leavesSymbolOf = (from: From) => (from.stem ? -1 : from.person);
 
 /** The symbol a line leaves, unless it starts on a partnership line, and
  * the child's symbol it reaches, if it reaches one. */
@@ -826,7 +882,7 @@ function endSymbols(from: From, end: RouteEnd, scene: RoutingScene) {
         Math.abs((symbol.left + symbol.right) / 2 - x) < 1e-9,
     );
   return {
-    parentSymbol: at(from.person, from.x, from.layer),
+    parentSymbol: from.stem ? undefined : at(from.person, from.x, from.layer),
     childSymbol:
       end.kind === 'child' ? at(end.person, end.x, end.layer) : undefined,
   };
@@ -853,7 +909,12 @@ function endContextOf(
       ? {
           parent: {
             symbol: parentSymbol,
-            crossings: crossingsOf(parentSymbol, ['bar', 'upline', 'other']),
+            crossings: crossingsOf(parentSymbol, [
+              'bar',
+              'upline',
+              'partnership',
+              'other',
+            ]),
           },
         }
       : {}),
@@ -863,7 +924,11 @@ function endContextOf(
       ? {
           child: {
             symbol: childSymbol,
-            crossings: crossingsOf(childSymbol, ['bar', 'other']),
+            crossings: crossingsOf(childSymbol, [
+              'bar',
+              'partnership',
+              'other',
+            ]),
           },
         }
       : {}),
@@ -879,7 +944,7 @@ export function courseCost(
   points: Point[],
 ): number {
   return courseCoster(
-    from.person,
+    leavesSymbolOf(from),
     end,
     owner,
     scene,
@@ -916,7 +981,7 @@ export function routeOptions(
   current?: Course,
 ): (Course & { cost: number })[] {
   const { boxWidth: boxw, boxHeight: boxh } = scene;
-  const start = { x: from.x, y: from.layer + boxh / 2 };
+  const defaultStart = { x: from.x, y: from.y ?? from.layer + boxh / 2 };
   // Every line is drawn: with no place offered, a line ends at the middle of
   // the child's top edge, or of the bar.
   const attachments =
@@ -973,7 +1038,7 @@ export function routeOptions(
 
   const { parentSymbol } = endSymbols(from, end, scene);
   const costOf = courseCoster(
-    from.person,
+    leavesSymbolOf(from),
     end,
     owner,
     scene,
@@ -981,73 +1046,43 @@ export function routeOptions(
   );
 
   const candidates: { points: Point[]; endX: number }[] = [];
-  const startXs = [from.x, from.x + 0.2 * boxw, from.x - 0.2 * boxw];
-  // A straight line down to the child may leave the parent at a point on
-  // their bottom edge rather than from their centre, out of the way of the
-  // lines already leaving them.
-  const exits: Point[][] = [[start]];
-  if (parentSymbol && rowsBetween >= 1) {
-    for (const offset of [0, 0.2, -0.2, 0.32, -0.32]) {
-      const depth = edgeDepth(parentSymbol.shape, offset);
-      exits.push([
-        start,
-        { x: from.x + offset * boxw, y: from.layer + boxh * (1 - depth) },
-      ]);
-    }
-  }
-  if (rowsBetween === 0 && end.kind === 'child') {
-    // Down from the parent, along the gap below the row, up into the child.
-    for (const target of targets) {
-      const meet = { x: target.x, y: 2 * end.layer + boxh - target.meet.y };
-      for (const x of startXs) {
-        for (const y of gapLanes(end.layer, [0.18, 0.26, 0.12])) {
-          candidates.push({
-            points: [
-              start,
-              { x, y: start.y },
-              { x, y },
-              { x: target.x, y },
-              meet,
-              ...target.tail,
-            ],
-            endX: target.x,
-          });
-        }
+  // A line leaving a couple's line of descent leaves it sideways, level, at
+  // one of the heights offered on it; any other line leaves its start at
+  // any of a few lanes, and may run straight.
+  const stemStarts = stemStartsOf(from, end, boxh);
+  const fromStem = stemStarts.length > 0;
+  for (const start of fromStem ? stemStarts : [defaultStart]) {
+    const startXs = fromStem
+      ? [start.x]
+      : [start.x, start.x + 0.2 * boxw, start.x - 0.2 * boxw];
+    const firstLanes = (lanes: number[]) => (fromStem ? [start.y] : lanes);
+    // A straight line down to the child may leave the parent at a point on
+    // their bottom edge rather than from their centre, out of the way of the
+    // lines already leaving them.
+    const exits: Point[][] = fromStem ? [] : [[start]];
+    if (!fromStem && parentSymbol && rowsBetween >= 1) {
+      for (const offset of [0, 0.2, -0.2, 0.32, -0.32]) {
+        const depth = edgeDepth(parentSymbol.shape, offset);
+        exits.push([
+          start,
+          { x: from.x + offset * boxw, y: from.layer + boxh * (1 - depth) },
+        ]);
       }
     }
-  } else {
-    for (const target of targets) {
-      for (const exit of exits) {
-        candidates.push({
-          points: [...exit, target.meet, ...target.tail],
-          endX: target.x,
-        });
-      }
-    }
-  }
-  if (rowsBetween >= 1) {
-    const lastGap = childLayer - 1;
-    const lanesAboveEnd =
-      end.kind === 'bar' || end.kind === 'stem'
-        ? gapLanes(lastGap, UPPER_LANES)
-        : gapLanes(lastGap, [...UPPER_LANES, ...LOWER_LANES]);
-    if (rowsBetween === 1) {
+    if (rowsBetween === 0 && end.kind === 'child') {
+      // Down from the parent, along the gap below the row, up into the
+      // child.
       for (const target of targets) {
-        // A line to a stem may drop straight from the parent to the height
-        // it meets the stem at, crossing a sibling bar on its way square on.
-        const drops =
-          end.kind === 'stem' && Math.abs(target.x - from.x) < 0.4 * boxw
-            ? [target.x]
-            : [];
-        for (const x of [...startXs, ...drops]) {
-          for (const y of lanesAboveEnd) {
+        const meet = { x: target.x, y: 2 * end.layer + boxh - target.meet.y };
+        for (const x of startXs) {
+          for (const y of firstLanes(gapLanes(end.layer, [0.18, 0.26, 0.12]))) {
             candidates.push({
               points: [
                 start,
                 { x, y: start.y },
                 { x, y },
                 { x: target.x, y },
-                target.entry,
+                meet,
                 ...target.tail,
               ],
               endX: target.x,
@@ -1056,48 +1091,92 @@ export function routeOptions(
         }
       }
     } else {
-      // Down from the parent's row, across to a way down clear of everyone
-      // on the rows between, down that, and across to the child.
-      const lanesBelowStart = gapLanes(from.layer, UPPER_LANES);
-      const towardX =
-        end.kind === 'bar' ? (end.bar.x1 + end.bar.x2) / 2 : end.x;
-      const between = scene.rowXs.slice(from.layer + 1, childLayer).flat();
-      // Midway between two people, or just clear of one (beside a line of
-      // descent that comes down between them).
-      const clear = boxw * (0.5 + SYMBOL_MARGIN + 0.08);
-      // The ways down nearest the parent or the child, to keep the search
-      // small in a wide family.
-      const wayDown = [
-        ...new Set([
-          from.x,
-          ...targets.map((target) => target.x),
-          ...between.flatMap((x) => [x - 0.5, x + 0.5, x - clear, x + clear]),
-        ]),
-      ]
-        .toSorted(
-          (a, b) =>
-            Math.min(Math.abs(a - from.x), Math.abs(a - towardX)) -
-            Math.min(Math.abs(b - from.x), Math.abs(b - towardX)),
-        )
-        .slice(0, 12);
       for (const target of targets) {
-        for (const x of startXs) {
-          for (const y1 of lanesBelowStart) {
-            for (const down of wayDown) {
-              for (const y2 of lanesAboveEnd) {
-                candidates.push({
-                  points: [
-                    start,
-                    { x, y: start.y },
-                    { x, y: y1 },
-                    { x: down, y: y1 },
-                    { x: down, y: y2 },
-                    { x: target.x, y: y2 },
-                    target.entry,
-                    ...target.tail,
-                  ],
-                  endX: target.x,
-                });
+        for (const exit of exits) {
+          candidates.push({
+            points: [...exit, target.meet, ...target.tail],
+            endX: target.x,
+          });
+        }
+      }
+    }
+    if (rowsBetween >= 1) {
+      const lastGap = childLayer - 1;
+      const lanesAboveEnd =
+        end.kind === 'bar' || end.kind === 'stem'
+          ? gapLanes(lastGap, UPPER_LANES)
+          : gapLanes(lastGap, [...UPPER_LANES, ...LOWER_LANES]);
+      if (rowsBetween === 1) {
+        for (const target of targets) {
+          // A line to a stem may drop straight from the parent to the
+          // height it meets the stem at, crossing a sibling bar on its way
+          // square on.
+          const drops =
+            end.kind === 'stem' &&
+            !fromStem &&
+            Math.abs(target.x - from.x) < 0.4 * boxw
+              ? [target.x]
+              : [];
+          for (const x of [...startXs, ...drops]) {
+            for (const y of firstLanes(lanesAboveEnd)) {
+              candidates.push({
+                points: [
+                  start,
+                  { x, y: start.y },
+                  { x, y },
+                  { x: target.x, y },
+                  target.entry,
+                  ...target.tail,
+                ],
+                endX: target.x,
+              });
+            }
+          }
+        }
+      } else {
+        // Down from the parent's row, across to a way down clear of
+        // everyone on the rows between, down that, and across to the child.
+        const lanesBelowStart = firstLanes(gapLanes(from.layer, UPPER_LANES));
+        const towardX =
+          end.kind === 'bar' ? (end.bar.x1 + end.bar.x2) / 2 : end.x;
+        const between = scene.rowXs.slice(from.layer + 1, childLayer).flat();
+        // Midway between two people, or just clear of one (beside a line of
+        // descent that comes down between them).
+        const clear = boxw * (0.5 + SYMBOL_MARGIN + 0.08);
+        // The ways down nearest the parent or the child, to keep the search
+        // small in a wide family.
+        const wayDown = [
+          ...new Set([
+            from.x,
+            ...targets.map((target) => target.x),
+            ...between.flatMap((x) => [x - 0.5, x + 0.5, x - clear, x + clear]),
+          ]),
+        ]
+          .toSorted(
+            (a, b) =>
+              Math.min(Math.abs(a - from.x), Math.abs(a - towardX)) -
+              Math.min(Math.abs(b - from.x), Math.abs(b - towardX)),
+          )
+          .slice(0, 12);
+        for (const target of targets) {
+          for (const x of startXs) {
+            for (const y1 of lanesBelowStart) {
+              for (const down of wayDown) {
+                for (const y2 of lanesAboveEnd) {
+                  candidates.push({
+                    points: [
+                      start,
+                      { x, y: start.y },
+                      { x, y: y1 },
+                      { x: down, y: y1 },
+                      { x: down, y: y2 },
+                      { x: target.x, y: y2 },
+                      target.entry,
+                      ...target.tail,
+                    ],
+                    endX: target.x,
+                  });
+                }
               }
             }
           }
@@ -1139,7 +1218,7 @@ export function routeOptions(
   const [first] = targets;
   return [
     {
-      points: [start, first!.meet, ...first!.tail],
+      points: [defaultStart, first!.meet, ...first!.tail],
       endX: first!.x,
       cost: Number.POSITIVE_INFINITY,
     },

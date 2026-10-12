@@ -28,7 +28,7 @@ import type {
   PedigreeEdgeType,
   PedigreeSymbolShape,
 } from './types';
-import { areConsanguineous } from './utils';
+import { areConsanguineous, relativeRaisers } from './utils';
 
 const AUXILIARY_EDGE_TYPES = new Set<PedigreeEdgeType>(['donor', 'surrogate']);
 
@@ -809,6 +809,10 @@ export function computeConnectors(
     startY: number;
   }[] = [];
 
+  // Each couple's own line of descent from their partnership line, by pair
+  // key: the first family whose children descend from both of them.
+  const coupleDescents = new Map<string, ParentChildConnector>();
+
   // --- Parent-child lines ---
   for (let i = 1; i < maxlev; i++) {
     const familyIds = [...new Set(familyOf[i]!.filter((v) => v !== 0))];
@@ -1084,6 +1088,16 @@ export function computeConnectors(
           parentX: descentX,
           startY,
         });
+        if (
+          familyFrom === 'both' &&
+          groupLine &&
+          coupleLeftId !== coupleRightId
+        ) {
+          const pairKey = `${Math.min(coupleLeftId, coupleRightId)},${Math.max(coupleLeftId, coupleRightId)}`;
+          if (!coupleDescents.has(pairKey)) {
+            coupleDescents.set(pairKey, primaryPart);
+          }
+        }
         for (const [style, ks] of byStyle) {
           if (style === primaryStyle) continue;
           const toLeft = ks.filter((k) => targetOf(k) < primaryMin);
@@ -1324,12 +1338,66 @@ export function computeConnectors(
       /** A partner seated beside the parent who is the child's parent in
        * the same way: the line then comes down from the couple. */
       partnerIndex?: number;
+      /** For a couple raising a relative's child: the couple's pair key.
+       * The line then leaves the couple's own line of descent (see
+       * `coupleStartOf`). */
+      coupleKey?: string;
       edgeType: PedigreeEdgeType;
       childLevel: number;
       sibship: string;
       childColumns: number[];
     }
   >();
+  // Who raises each child who stays drawn in their birth family: relatives,
+  // and their partners raising the child with them.
+  const raisedByRelatives = relativeRaisers(
+    parents,
+    [...renderedPartnerPairs].map((pairKey) => {
+      const [a, b] = pairKey.split(',').map(Number) as [number, number];
+      return { partnerIndex1: a, partnerIndex2: b, isActive: true };
+    }),
+  );
+  // Where the line from a couple raising a relative's child starts: on the
+  // couple's own line of descent, which it leaves sideways (the router
+  // chooses the point), or, when they have no children drawn descending
+  // from them both, at the point on their partnership line a line of
+  // descent would drop from. Undefined when their partnership line has no
+  // such point (partners on different rows, or a routed line with no clear
+  // point to drop from).
+  const coupleStartOf = (
+    pairKey: string,
+  ): { x: number; y: number; stem?: LineSegment[] } | undefined => {
+    const descent = coupleDescents.get(pairKey);
+    const top = descent?.parentLink[0];
+    if (descent && top) {
+      return { x: top.x1, y: top.y1, stem: descent.parentLink };
+    }
+    const [a, b] = pairKey.split(',').map(Number) as [number, number];
+    const [at, bt] = [placeOf.get(a), placeOf.get(b)];
+    if (!at || !bt || at.layer !== bt.layer) return undefined;
+    const sideBySide =
+      Math.abs(at.col - bt.col) === 1
+        ? groupLineIndex.get(`${at.layer},${Math.min(at.col, bt.col)}`)
+        : undefined;
+    const line =
+      sideBySide === undefined
+        ? routedCouples.get(pairKey)?.connector
+        : groupLines[sideBySide];
+    if (!line) return undefined;
+    const y =
+      line.double && line.doubleSegment
+        ? line.doubleSegment.y1
+        : line.segment.y1;
+    const x =
+      sideBySide === undefined
+        ? routedDescentX(
+            line,
+            at.layer,
+            (line.segment.x1 + line.segment.x2) / 2,
+          )
+        : (layout.pos[at.layer]![at.col]! + layout.pos[bt.layer]![bt.col]!) / 2;
+    return x === undefined ? undefined : { x, y };
+  };
   /** Whether two people sit side by side joined by a partnership line, or
    * as co-parents with no partnership recorded, whose shared line starts
    * midway between them all the same. */
@@ -1380,6 +1448,36 @@ export function computeConnectors(
           }
         }
       }
+      // A child raised by relatives stays drawn in their birth family, with
+      // a line of descent from their birth parents. Two of the relatives
+      // raising them in the same way (adoptive or social) who are partners,
+      // with a partnership line drawn, are joined to the child by one line
+      // from the couple, which leaves the couple's own line of descent. A
+      // relative raising them alone, or two who are not partners, keeps a
+      // line each.
+      const coupleKeyOf = new Map<number, string>();
+      if (descentParents) {
+        const raisers = raisedByRelatives[childId] ?? new Set<number>();
+        for (const a of own) {
+          for (const b of own) {
+            if (a.parentIndex >= b.parentIndex) continue;
+            if (a.edgeType !== b.edgeType) continue;
+            if (a.edgeType !== 'adoptive' && a.edgeType !== 'social') continue;
+            if (!raisers.has(a.parentIndex) || !raisers.has(b.parentIndex)) {
+              continue;
+            }
+            if (partnerOf.has(a.parentIndex) || partnerOf.has(b.parentIndex)) {
+              continue;
+            }
+            const pairKey = `${a.parentIndex},${b.parentIndex}`;
+            if (!renderedPartnerPairs.has(pairKey)) continue;
+            if (!coupleStartOf(pairKey)) continue;
+            partnerOf.set(a.parentIndex, b.parentIndex);
+            partnerOf.set(b.parentIndex, -1);
+            coupleKeyOf.set(a.parentIndex, pairKey);
+          }
+        }
+      }
 
       for (const parentEdge of own) {
         const parentId = parentEdge.parentIndex;
@@ -1396,9 +1494,11 @@ export function computeConnectors(
         if (existing) {
           existing.childColumns.push(j);
         } else {
+          const coupleKey = coupleKeyOf.get(parentId);
           socialConnections.set(key, {
             parentIndex: parentId,
             ...(partnerId === undefined ? {} : { partnerIndex: partnerId }),
+            ...(coupleKey === undefined ? {} : { coupleKey }),
             edgeType,
             childLevel: i,
             sibship,
@@ -1442,7 +1542,7 @@ export function computeConnectors(
       ...(line.endpointSegments ?? []),
       ...(line.doubleSegment ? [line.doubleSegment] : []),
     ]) {
-      scene.lines.push({ segment, kind: 'other' });
+      scene.lines.push({ segment, kind: 'partnership' });
     }
   }
   for (const line of parentChildLines) {
@@ -1474,13 +1574,29 @@ export function computeConnectors(
         'partnerIndex' in conn && conn.partnerIndex !== undefined
           ? nodeLocation.get(conn.partnerIndex)
           : undefined;
-      const from = {
-        person: conn.parentIndex,
-        // A couple's line starts on their partnership line, between them.
-        x: partnerAt ? (parentAt.x + partnerAt.x) / 2 : parentAt.x,
-        layer: parentAt.layer,
-      };
-      const owner = `${conn.parentIndex}${partnerAt ? '+' : ''},${conn.edgeType}`;
+      // A couple raising a relative's child: their line leaves their own
+      // line of descent, or their partnership line.
+      const coupleKey = 'coupleKey' in conn ? conn.coupleKey : undefined;
+      const couple =
+        coupleKey === undefined ? undefined : coupleStartOf(coupleKey);
+      const from = couple
+        ? {
+            person: conn.parentIndex,
+            x: couple.x,
+            layer: parentAt.layer,
+            y: couple.y,
+            ...(couple.stem ? { stem: couple.stem } : {}),
+          }
+        : {
+            person: conn.parentIndex,
+            // A couple's line starts on their partnership line, between
+            // them.
+            x: partnerAt ? (parentAt.x + partnerAt.x) / 2 : parentAt.x,
+            layer: parentAt.layer,
+          };
+      // A couple's lines are theirs together, apart from either partner's
+      // own.
+      const owner = `${couple ? `couple ${coupleKey}` : `${conn.parentIndex}${partnerAt ? '+' : ''}`},${conn.edgeType}`;
       const bar = sibshipBar.get(conn.sibship);
       const totalChildren = sibshipSize.get(conn.sibship) ?? 0;
       const isParentOfAllSiblings = conn.childColumns.length >= totalChildren;
