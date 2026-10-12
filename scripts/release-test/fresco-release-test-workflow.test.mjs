@@ -2975,7 +2975,10 @@ test('the sink agents are told to report the script, not to interpret it', async
 
 test('a failed teardown warns without blocking the release', async () => {
   const r = happyPath();
-  r.teardown = { ok: false, error: 'volume fresco-release-test-upgrade_minio' };
+  r.teardown = {
+    ok: false,
+    error: 'volume fresco-release-test-upgrade_garage-data',
+  };
   const { result } = await run(r);
   assert.equal(result.verdict, 'go');
   assert.equal(result.releasable, true);
@@ -3461,7 +3464,7 @@ test('the drivers and up.sh agree about every lane', async () => {
     for (const [variable, value] of [
       ['FRESCO_PORT', config.frescoPort],
       ['POSTGRES_PORT', config.postgresPort],
-      ['MINIO_PORT', config.minioPort],
+      ['STORAGE_PORT', config.storagePort],
       ['SINK_HTTPS_PORT', config.sinkHttpsPort],
       ['SINK_HTTP_PORT', config.sinkHttpPort],
     ])

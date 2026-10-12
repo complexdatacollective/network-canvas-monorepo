@@ -198,7 +198,7 @@
   "fresco.S3ConfigForm.saveAndContinue": "保存并继续",
   "fresco.S3ConfigForm.secretAccessKey": "秘密访问密钥",
   "fresco.S3ConfigForm.theS3CompatibleEndpointURL": "兼容 S3 的端点 URL",
-  "fresco.S3ConfigForm.theURLBrowsersUseToReachThis": "浏览器访问此存储时使用的 URL。如果 MinIO 位于反向代理之后，则为您的 Fresco 域名（参见部署文档）。如果使用 AWS S3 或 R2，通常与端点 URL 相同。",
+  "fresco.S3ConfigForm.theURLBrowsersUseToReachThis": "浏览器访问此存储时使用的 URL。如果使用 Fresco Docker 部署中自带的存储，则为您的 Fresco 域名。如果使用 AWS S3 或 R2，通常与端点 URL 相同。",
   "fresco.S3ConfigForm.theseS3SettingsAreConfiguredViaEnvironment": "这些 S3 设置通过环境变量配置，无法在此处更改。",
   "fresco.S3ConfigForm.usEast1": "us-east-1",
   "fresco.S3ConfigForm.wJalrXUtnFEMIK7MDENGBPxRfiCYEXAMPLEKEY": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
