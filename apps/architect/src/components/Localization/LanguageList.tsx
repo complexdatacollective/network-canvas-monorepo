@@ -54,9 +54,9 @@ const messages = defineMessages({
   description: {
     id: 'architect.localization.languageList.description',
     defaultMessage:
-      'Participants can take the interview in any of these languages. They see each text in the first of the following languages that has a translation of it:',
+      'Participants can take the interview in any of these languages. Where something is not translated, they see the first of the following languages that has a translation:',
     description:
-      'Introduction to the list of protocol languages, shown when the protocol has more than one. Its second sentence introduces a numbered list, under it, of the languages a participant may see a text in, in the order they are tried. The list of protocol languages is in alphabetical order; its order has no effect on which language participants see.',
+      'Introduction to the list of protocol languages, shown when the protocol has more than one. Its second sentence introduces a numbered list, under it, of the languages a participant may see, in the order they are tried where something is not translated. The list of protocol languages is in alphabetical order; its order has no effect on which language participants see.',
   },
   descriptionSingle: {
     id: 'architect.localization.languageList.descriptionSingle',
@@ -74,7 +74,7 @@ const messages = defineMessages({
   defaultLanguageHint: {
     id: 'architect.localization.languageList.defaultLanguageHint',
     defaultMessage:
-      'Participants see text in this language when it has no translation in a language they use.',
+      'Participants see this language wherever there is no translation in a language they use.',
     description:
       'Hint under the list that chooses the protocol’s default language, saying what the default language does.',
   },
@@ -87,7 +87,7 @@ const messages = defineMessages({
     id: 'architect.localization.languageList.openTable',
     defaultMessage: 'Open translation table',
     description:
-      'Link under the list of protocol languages to the translation table, which shows every participant-facing text beside its translation into each language.',
+      'Link under the list of protocol languages to the translation table, which shows every participant-facing localized string beside its translation into each language.',
   },
   defaultBadge: {
     id: 'architect.localization.languageList.defaultBadge',
@@ -98,7 +98,7 @@ const messages = defineMessages({
     id: 'architect.localization.languageList.changeLanguage',
     defaultMessage: 'Change {language} to a different language',
     description:
-      'Accessible name and tooltip of the edit button in a protocol language’s row. It opens a dialog that records the text of that language as another language, for text recorded under the wrong one. language is the language name.',
+      'Accessible name and tooltip of the edit button in a protocol language’s row. It opens a dialog that records the translations written in that language as another language, for translations recorded under the wrong one. language is the language name.',
   },
   removeLanguage: {
     id: 'architect.localization.languageList.removeLanguage',
@@ -108,8 +108,10 @@ const messages = defineMessages({
   },
   coverage: {
     id: 'architect.localization.languageList.coverage',
-    defaultMessage: '{translated, number} of {total, number} texts translated',
-    description: 'How much of a protocol is translated into one language.',
+    defaultMessage:
+      '{translated, number} of {total, plural, one {# string} other {# strings}} translated',
+    description:
+      'How much of a protocol is translated into one language. total is the number of localized strings in the protocol.',
   },
   coverageLabel: {
     id: 'architect.localization.languageList.coverageLabel',
@@ -118,14 +120,14 @@ const messages = defineMessages({
   },
   noText: {
     id: 'architect.localization.languageList.noText',
-    defaultMessage: 'There is no text to translate yet.',
+    defaultMessage: 'There is nothing to translate yet.',
     description: 'Shown instead of translation progress in an empty protocol.',
   },
   missingBadge: {
     id: 'architect.localization.languageList.missingBadge',
     defaultMessage: 'Missing translations',
     description:
-      'Badge on a protocol language that some texts have not been translated into yet.',
+      'Badge on a protocol language that some localized strings have not been translated into yet.',
   },
   defaultNote: {
     id: 'architect.localization.languageList.defaultNote',
@@ -137,9 +139,9 @@ const messages = defineMessages({
   strandedNote: {
     id: 'architect.localization.languageList.strandedNote',
     defaultMessage:
-      '{count, plural, one {# text exists only in {language}. Translate it into another language before removing {language}.} other {# texts exist only in {language}. Translate them into another language before removing {language}.}}',
+      '{count, plural, one {# string has a translation only in {language}. Translate it into another language before removing {language}.} other {# strings have a translation only in {language}. Translate them into another language before removing {language}.}}',
     description:
-      'Tooltip and accessible description of the unavailable delete button of a language, saying why it cannot be removed: some text has no other translation.',
+      'Tooltip and accessible description of the unavailable delete button of a language, saying why it cannot be removed: some localized strings have no translation in another language.',
   },
 });
 

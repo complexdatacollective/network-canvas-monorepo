@@ -100,7 +100,7 @@ describe('getTranslationGroups()', () => {
       place: { kind: 'interface' },
     });
     expect(groups.at(-1)?.rows.map(({ field }) => field)).toContainEqual([
-      'interview',
+      'navigation',
       'back',
     ]);
     expect(groups.slice(0, -1)).toEqual([

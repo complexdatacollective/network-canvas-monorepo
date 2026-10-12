@@ -36,7 +36,7 @@
   "interview.interfaces.confirmPassphrase": "Confirmer la phrase secrète",
   "interview.interfaces.deselect": "Désélectionner",
   "interview.interfaces.discardChanges": "Abandonner les modifications",
-  "interview.interfaces.discardChangesDescription": "Ce formulaire contient des données non valides et ne peut donc pas être enregistré. Si vous continuez, il sera réinitialisé et vos modifications seront perdues. Voulez-vous abandonner vos modifications ?",
+  "interview.interfaces.discardChangesDescription": "Voulez-vous abandonner vos modifications ?",
   "interview.interfaces.discardChangesTitle": "Abandonner les modifications ?",
   "interview.interfaces.dragToReposition": "Faire glisser pour repositionner",
   "interview.interfaces.drawingControls": "Commandes de dessin",

@@ -28,10 +28,9 @@ export const interfaceMessages = defineMessages({
   },
   discardChangesDescription: {
     id: 'interview.interfaces.discardChangesDescription',
-    defaultMessage:
-      'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
+    defaultMessage: 'Do you want to discard your changes?',
     description:
-      'Warning when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost.',
+      'Question asked when leaving a form with invalid unsaved answers. Continuing resets the form, so its unsaved changes will be lost.',
   },
   discardChanges: {
     id: 'interview.interfaces.discardChanges',

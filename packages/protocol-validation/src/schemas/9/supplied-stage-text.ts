@@ -3,8 +3,10 @@ import type {
   LocalizationDeclaration,
 } from '../../localization/localeTag.ts';
 import {
+  BUTTONS_INTERFACE_TEXT,
   FORMS_INTERFACE_TEXT,
-  INTERVIEW_INTERFACE_TEXT,
+  MESSAGES_INTERFACE_TEXT,
+  NAVIGATION_INTERFACE_TEXT,
   PASSPHRASE_INTERFACE_TEXT,
   VALIDATION_INTERFACE_TEXT,
 } from './interface-text-wording.ts';
@@ -241,7 +243,9 @@ export const isSuppliedEnglishMessage = (message: string): boolean => {
     [
       ...Object.values(SUPPLIED_STAGE_TEXT).flat(),
       ...[
-        INTERVIEW_INTERFACE_TEXT,
+        NAVIGATION_INTERFACE_TEXT,
+        BUTTONS_INTERFACE_TEXT,
+        MESSAGES_INTERFACE_TEXT,
         PASSPHRASE_INTERFACE_TEXT,
         FORMS_INTERFACE_TEXT,
         VALIDATION_INTERFACE_TEXT,

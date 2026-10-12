@@ -40,16 +40,16 @@ const messages = defineMessages({
   onlyTranslation: {
     id: 'architect.localization.translationTable.onlyTranslation',
     defaultMessage:
-      'This text exists only in {language}. Translate it into another language before clearing it.',
+      'This is the only translation, and it is in {language}. Add a translation in another language before clearing it.',
     description:
-      'Shown in a cell of the translation table when its translation is emptied but is the only translation the text has, which cannot be removed. language is the language of the cell.',
+      'Shown in a cell of the translation table when its translation is emptied but is the only translation the localized string has, which cannot be removed. language is the language of the cell.',
   },
   textRemoved: {
     id: 'architect.localization.translationTable.textRemoved',
     defaultMessage:
-      'This translation cannot be saved, because the text or its language has been removed from the protocol.',
+      'This translation cannot be saved, because the wording it belongs to, or its language, has been removed from the protocol.',
     description:
-      'Shown above the translation table when saving fails because a translation typed into it belongs to a text, or a language, that is no longer in the protocol.',
+      'Shown above the translation table when saving fails because a translation typed into it belongs to a localized string, or a language, that is no longer in the protocol.',
   },
 });
 

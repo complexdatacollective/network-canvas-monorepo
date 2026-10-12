@@ -13,32 +13,32 @@ const messages = defineMessages({
     defaultMessage:
       'Their own language: the one they chose, or the one their browser or device is set to.',
     description:
-      'First item of the numbered list of the languages a participant may see a text in.',
+      'First item of the numbered list of the languages a participant may see, in the order they are tried.',
   },
   related: {
     id: 'architect.localization.translationFallback.related',
     defaultMessage:
       'A closely related language, such as Brazilian Portuguese for a participant using European Portuguese.',
     description:
-      'Second item of the numbered list of the languages a participant may see a text in.',
+      'Second item of the numbered list of the languages a participant may see, in the order they are tried.',
   },
   browser: {
     id: 'architect.localization.translationFallback.browser',
     defaultMessage: 'Another language their browser or device lists.',
     description:
-      'Third item of the numbered list of the languages a participant may see a text in.',
+      'Third item of the numbered list of the languages a participant may see, in the order they are tried.',
   },
   default: {
     id: 'architect.localization.translationFallback.default',
     defaultMessage: 'The protocol’s default language.',
     description:
-      'Fourth item of the numbered list of the languages a participant may see a text in.',
+      'Fourth item of the numbered list of the languages a participant may see, in the order they are tried.',
   },
   any: {
     id: 'architect.localization.translationFallback.any',
-    defaultMessage: 'Any other language that has the text.',
+    defaultMessage: 'Any other language that has a translation.',
     description:
-      'Last item of the numbered list of the languages a participant may see a text in.',
+      'Last item of the numbered list of the languages a participant may see, in the order they are tried.',
   },
   readMore: {
     id: 'architect.localization.translationFallback.readMore',
