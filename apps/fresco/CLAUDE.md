@@ -437,7 +437,14 @@ including the early one taken when the build never completes.
 
 `expectedVersion` is the version the Version Packages PR bumps Fresco to —
 the one `bundle-pending-packages.mjs` bakes into the staged tree and the one
-the build stamp records. Each lane is bound to that build by the image id
+the build stamp records. Run from the Version Packages branch itself — HEAD is
+`changeset-release/main`, or is the commit `origin/changeset-release/main`
+points at, as in a detached worktree — and it can be omitted: the workflow
+infers it from the Fresco version that branch carries
+(`release-test/scripts/release-branch-version.mjs`), provided the branch moves
+it past main's. An inferred pin binds exactly as a passed one does, and also
+requires the image to be built from that branch head; `expectedVersionSource`
+reports which it was (`args`, `release-branch`, or `null` when unpinned). Each lane is bound to that build by the image id
 docker reports for its Fresco container (`/api/health` names no version, on
 purpose). Other args:
 `skipBuild` (reuse the previous image, revalidated against its stamp),

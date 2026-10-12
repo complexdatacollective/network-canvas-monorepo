@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Release-test the pending Fresco build locally in Docker: upgrade path from the released image (seed, migrate, export diff) plus fresh-deployment setup verification',
   whenToUse:
-    'Before approving a Fresco release (merging the Version Packages PR). Requires Docker. Release gates must consume the `releasable` field, which is true only for a full-coverage "go" run with expectedVersion pinned and matched. Optional args: { expectedVersion, keepStack, skipBuild, releasedImage, allowDirty }.',
+    'Before approving a Fresco release (merging the Version Packages PR). Requires Docker. Release gates must consume the `releasable` field, which is true only for a full-coverage "go" run with expectedVersion pinned and matched. Run from the Version Packages branch (changeset-release/main) and expectedVersion is inferred from the Fresco version that branch releases. Optional args: { expectedVersion, keepStack, skipBuild, releasedImage, allowDirty }.',
   phases: [
     {
       title: 'Build',
@@ -118,13 +118,15 @@ const allowDirty = flag('allowDirty');
 // The version this run certifies — the version the Version Packages PR bumps
 // Fresco to, which bundle-pending-packages.mjs bakes into the staged tree.
 // Without it the run cannot certify: nothing proves the image under test is
-// the build the release will publish.
+// the build the release will publish. When the caller pins none, it is
+// inferred from the checkout if that is the Version Packages branch (see the
+// Build phase).
 if (
   rawArgs.expectedVersion !== undefined &&
   typeof rawArgs.expectedVersion !== 'string'
 )
   throw new Error('args.expectedVersion must be a version string');
-const expectedVersion = rawArgs.expectedVersion
+const pinnedVersion = rawArgs.expectedVersion
   ? rawArgs.expectedVersion.trim().replace(/^v/i, '')
   : null;
 
@@ -414,6 +416,23 @@ const BUILD_SCHEMA = {
     version: { type: 'string' },
     commit: { type: 'string' },
     dirty: { type: 'boolean' },
+    error: { type: 'string' },
+  },
+  required: ['ok'],
+};
+
+// release-branch-version.mjs's JSON line, relayed verbatim.
+const RELEASE_BRANCH_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    ok: { type: 'boolean' },
+    onReleaseBranch: { type: 'boolean' },
+    head: { type: 'string' },
+    branch: { type: 'string' },
+    version: { type: 'string' },
+    baseVersion: { type: 'string' },
+    releasesFresco: { type: 'boolean' },
     error: { type: 'string' },
   },
   required: ['ok'],
@@ -851,9 +870,55 @@ if (skipBuild) {
     'skipBuild: validating existing fresco-release-test:pending against its stamp',
   );
 }
-const [build, released] = await parallel(
-  skipBuild ? [validateReusedImage, buildTasks[1]] : buildTasks,
-);
+// Run only when the caller pinned no version. Its answer is a script's own
+// JSON, validated in code below; the agent decides nothing.
+const detectReleaseBranch = () =>
+  agent(
+    `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once: node ${SCRIPTS}/release-branch-version.mjs
+It prints ONE line of JSON and nothing else. Return its fields verbatim: ok, onReleaseBranch, head, branch, version, baseVersion, releasesFresco — omitting any the line does not carry or carries as null. On a non-zero exit it prints {"ok":false,"error":"..."} instead — return ok:false with that error. Do not fetch, check out or change anything.`,
+    {
+      label: 'release-branch',
+      phase: 'Build',
+      schema: RELEASE_BRANCH_SCHEMA,
+      ...MECHANICAL,
+    },
+  );
+const [build, released, releaseBranch] = await parallel([
+  ...(skipBuild ? [validateReusedImage, buildTasks[1]] : buildTasks),
+  ...(pinnedVersion ? [] : [detectReleaseBranch]),
+]);
+
+// A version inferred from the release branch binds the run exactly as a pinned
+// one does: the build stamp must report it, and the build must be of the very
+// commit the branch points at. Anything short of an unambiguous release-branch
+// answer leaves the run unpinned, and so never certifying.
+const inferredHead = shaped(releaseBranch?.head, COMMIT, 40);
+const inferredVersion =
+  releaseBranch?.ok === true &&
+  releaseBranch.onReleaseBranch === true &&
+  releaseBranch.releasesFresco === true &&
+  inferredHead
+    ? stripV(releaseBranch.version)
+    : null;
+const expectedVersion = pinnedVersion ?? inferredVersion;
+const expectedVersionSource = pinnedVersion
+  ? 'args'
+  : inferredVersion
+    ? 'release-branch'
+    : null;
+const unpinnedReason = expectedVersion
+  ? null
+  : !releaseBranch || releaseBranch.ok !== true
+    ? 'and whether this checkout is the Version Packages branch could not be determined'
+    : releaseBranch.onReleaseBranch !== true
+      ? 'and this checkout is not the Version Packages branch (changeset-release/main), so none could be inferred'
+      : releaseBranch.releasesFresco !== true
+        ? 'and the Version Packages branch does not release Fresco'
+        : 'and the Version Packages branch reported no usable Fresco version';
+if (inferredVersion)
+  log(
+    `expectedVersion ${inferredVersion} inferred from the Version Packages branch at ${inferredHead.slice(0, 12)}`,
+  );
 
 // The protocol fixtures every script-driven lane imports: the one an interview
 // is conducted with, and the damaged ones. Built rather than committed — a
@@ -916,6 +981,7 @@ if (!build?.ok || !released?.ok) {
     untestedShippedChanges: [],
     presentationOnlyChanges: [],
     expectedVersion,
+    expectedVersionSource,
     testedVersion: null,
     pendingImage: build ? { ...build } : null,
     releasedImage: released?.image ?? releasedImage,
@@ -944,6 +1010,13 @@ if (expectedVersion && buildVersion && buildVersion !== expectedVersion)
   provenanceFailures.push(
     `the pending image is version ${buildVersion}, but this run certifies ${expectedVersion} — the wrong build is under test`,
   );
+if (inferredVersion) {
+  const buildCommit = shaped(build.commit, COMMIT, 40)?.toLowerCase();
+  if (!buildCommit || !inferredHead.toLowerCase().startsWith(buildCommit))
+    provenanceFailures.push(
+      `the version was inferred from the Version Packages branch at ${inferredHead}, but the pending image was built from ${build.commit ?? 'an unreported commit'} — the wrong build is under test`,
+    );
+}
 
 // Deliberately gives the agent nothing to decide. The reading is a
 // deterministic script's own JSON — what the sink recorded, and whether the
@@ -2563,7 +2636,7 @@ const verdict = failures.length
 const coverageGaps = [];
 if (!expectedVersion)
   coverageGaps.push(
-    'no expectedVersion was pinned, so nothing binds the tested image to the version being released',
+    `no expectedVersion was pinned, ${unpinnedReason}, so nothing binds the tested image to the version being released`,
   );
 if (releasedImage !== DEFAULT_RELEASED_IMAGE)
   coverageGaps.push(
@@ -2617,6 +2690,7 @@ return {
   untestedShippedChanges,
   presentationOnlyChanges,
   expectedVersion,
+  expectedVersionSource,
   testedVersion: buildVersion,
   pendingImage: { ...build },
   releasedImage: pulledDigest ?? releasedImage,

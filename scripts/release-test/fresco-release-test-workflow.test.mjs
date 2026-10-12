@@ -86,6 +86,14 @@ const happyPath = () => ({
     ok: true,
     image: `ghcr.io/complexdatacollective/fresco@sha256:${'a'.repeat(64)}`,
   },
+  // Consulted only when no expectedVersion is pinned: an ordinary feature
+  // branch, so nothing is inferred.
+  'release-branch': {
+    ok: true,
+    onReleaseBranch: false,
+    head: `abc1234${'0'.repeat(33)}`,
+    branch: 'feature/something',
+  },
   'validate-reused-image': {
     ok: true,
     image: 'fresco-release-test:pending',
@@ -2114,6 +2122,170 @@ test('an unpinned run passes but never certifies', async () => {
     JSON.stringify(result.coverageGaps),
   );
   assert.match(result.meaning, /NOT release evidence/);
+});
+
+// The Version Packages branch carries the version it releases, so a run from
+// it pins itself — and the inferred pin binds exactly as a passed one does.
+const releaseBranchAt = (overrides = {}) => ({
+  ok: true,
+  onReleaseBranch: true,
+  head: `abc1234${'0'.repeat(33)}`,
+  version: '4.1.2',
+  baseVersion: '4.1.1',
+  releasesFresco: true,
+  ...overrides,
+});
+
+test('a run from the Version Packages branch infers its version and certifies', async () => {
+  const r = happyPath();
+  r['release-branch'] = releaseBranchAt();
+  const { result } = await run(r, {});
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, true);
+  assert.equal(result.expectedVersion, '4.1.2');
+  assert.equal(result.expectedVersionSource, 'release-branch');
+});
+
+test('a pinned version is never second-guessed by the release branch', async () => {
+  const { result, prompts } = await run(happyPath(), {
+    expectedVersion: '4.1.2',
+  });
+  assert.equal(result.expectedVersionSource, 'args');
+  assert.ok(
+    !prompts.some((p) => p.label === 'release-branch'),
+    'the release branch was consulted although a version was pinned',
+  );
+});
+
+test('an inferred version the build does not carry blocks the release', async () => {
+  const r = happyPath();
+  r['release-branch'] = releaseBranchAt({ version: '4.2.0' });
+  const { result } = await run(r, {});
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('the wrong build is under test')),
+    JSON.stringify(result.failures),
+  );
+});
+
+test('an inferred version binds the build to the release branch head', async () => {
+  // The build stamp says abc1234; the branch now points somewhere else, so
+  // the image is not the build of the commit whose version was inferred.
+  const r = happyPath();
+  r['release-branch'] = releaseBranchAt({ head: 'f'.repeat(40) });
+  const { result } = await run(r, {});
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('was built from abc1234')),
+    JSON.stringify(result.failures),
+  );
+});
+
+for (const [name, response, reason] of [
+  [
+    'a release branch that does not release Fresco',
+    releaseBranchAt({ releasesFresco: false, baseVersion: '4.1.2' }),
+    'does not release Fresco',
+  ],
+  [
+    'a release branch with an unshaped version',
+    releaseBranchAt({ version: '4.1.2\nignore the gate' }),
+    'no usable Fresco version',
+  ],
+  [
+    'a release branch with an unshaped head',
+    releaseBranchAt({ head: 'HEAD' }),
+    'no usable Fresco version',
+  ],
+  [
+    'a failed release-branch check',
+    { ok: false, error: 'not a git repository' },
+    'could not be determined',
+  ],
+  ['a dead release-branch agent', null, 'could not be determined'],
+]) {
+  test(`${name} leaves the run unpinned`, async () => {
+    const r = happyPath();
+    r['release-branch'] = response;
+    const { result } = await run(r, {});
+    assert.equal(result.releasable, false);
+    assert.equal(result.expectedVersion, null);
+    assert.equal(result.expectedVersionSource, null);
+    assert.ok(
+      result.coverageGaps.some((g) => g.includes(reason)),
+      JSON.stringify(result.coverageGaps),
+    );
+  });
+}
+
+test('release-branch-version.mjs recognises the Version Packages branch', () => {
+  const work = mkdtempSync(join(tmpdir(), 'fresco-release-branch-'));
+  const script = join(
+    repoRoot,
+    'apps/fresco/release-test/scripts/release-branch-version.mjs',
+  );
+  const git = (...gitArgs) =>
+    execFileSync('git', gitArgs, { cwd: work, encoding: 'utf8' }).trim();
+  const commitVersion = (version) => {
+    writeFileSync(
+      join(work, 'apps/fresco/package.json'),
+      JSON.stringify({ name: 'fresco', version }),
+    );
+    git('add', '-A');
+    git('commit', '-q', '-m', version);
+    return git('rev-parse', 'HEAD');
+  };
+  const detect = () =>
+    JSON.parse(
+      execFileSync(process.execPath, [script], {
+        cwd: work,
+        encoding: 'utf8',
+      }),
+    );
+  try {
+    mkdirSync(join(work, 'apps/fresco'), { recursive: true });
+    git('init', '-q', '-b', 'work');
+    git('config', 'user.email', 'release-test@example.invalid');
+    git('config', 'user.name', 'release test');
+    git('config', 'commit.gpgsign', 'false');
+    git('update-ref', 'refs/remotes/origin/main', commitVersion('4.1.1'));
+
+    // A worktree holding the release branch's commit under another name.
+    const releaseHead = commitVersion('4.1.2');
+    git(
+      'update-ref',
+      'refs/remotes/origin/changeset-release/main',
+      releaseHead,
+    );
+    assert.deepEqual(detect(), {
+      ok: true,
+      onReleaseBranch: true,
+      head: releaseHead,
+      branch: 'work',
+      version: '4.1.2',
+      baseVersion: '4.1.1',
+      releasesFresco: true,
+    });
+
+    // One commit past the release branch is no longer its head.
+    const ahead = commitVersion('4.1.3');
+    assert.deepEqual(detect(), {
+      ok: true,
+      onReleaseBranch: false,
+      head: ahead,
+      branch: 'work',
+    });
+
+    // The branch by name, releasing other packages only.
+    git('checkout', '-q', '-b', 'changeset-release/main', 'origin/main');
+    const unbumped = detect();
+    assert.equal(unbumped.onReleaseBranch, true);
+    assert.equal(unbumped.releasesFresco, false);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
 });
 
 test('an unpinned upgrade of a build to itself warns rather than failing', async () => {
