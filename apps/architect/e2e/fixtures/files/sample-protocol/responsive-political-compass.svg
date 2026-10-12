@@ -1,0 +1,100 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="100%"
+  height="100%"
+  role="img"
+  aria-labelledby="title description"
+>
+  <title id="title">Responsive political compass</title>
+  <desc id="description">
+    An unsure area and four political compass quadrants divided by economic and
+    social axes.
+  </desc>
+
+  <defs>
+    <marker
+      id="axis-arrow"
+      viewBox="0 0 10 10"
+      refX="10"
+      refY="5"
+      markerWidth="10"
+      markerHeight="10"
+      markerUnits="userSpaceOnUse"
+      orient="auto-start-reverse"
+    >
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#17142f" />
+    </marker>
+  </defs>
+
+  <style>
+    .axis {
+      stroke: #17142f;
+      stroke-width: 3;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .quadrant-label,
+    .unsure-label {
+      font-family: system-ui, sans-serif;
+      text-anchor: middle;
+    }
+
+    .unsure-label {
+      fill: #111111;
+      font-size: clamp(14px, 2.6vmin, 34px);
+      font-weight: 700;
+    }
+
+    .quadrant-label {
+      fill: #322f45;
+      font-size: clamp(13px, 2.3vmin, 30px);
+      font-weight: 500;
+      opacity: 0.38;
+    }
+  </style>
+
+  <rect x="0" y="0" width="21%" height="100%" fill="#f1f5f6" />
+
+  <rect x="23%" y="0" width="38.5%" height="50%" fill="#ffafb3" />
+  <rect x="61.5%" y="0" width="38.5%" height="50%" fill="#71cef0" />
+  <rect x="23%" y="50%" width="38.5%" height="50%" fill="#bee7b5" />
+  <rect x="61.5%" y="50%" width="38.5%" height="50%" fill="#e5c0df" />
+
+  <line
+    class="axis"
+    x1="23%"
+    y1="50%"
+    x2="100%"
+    y2="50%"
+    marker-start="url(#axis-arrow)"
+    marker-end="url(#axis-arrow)"
+  />
+  <line
+    class="axis"
+    x1="61.5%"
+    y1="0"
+    x2="61.5%"
+    y2="100%"
+    marker-start="url(#axis-arrow)"
+    marker-end="url(#axis-arrow)"
+  />
+
+  <text class="unsure-label" x="10.5%" y="6%">Unsure</text>
+
+  <text class="quadrant-label" x="42.25%" y="25%">
+    <tspan x="42.25%" dy="-0.2em">Authoritarian</tspan>
+    <tspan x="42.25%" dy="1.2em">Left</tspan>
+  </text>
+  <text class="quadrant-label" x="80.75%" y="25%">
+    <tspan x="80.75%" dy="-0.2em">Authoritarian</tspan>
+    <tspan x="80.75%" dy="1.2em">Right</tspan>
+  </text>
+  <text class="quadrant-label" x="42.25%" y="75%">
+    <tspan x="42.25%" dy="-0.2em">Libertarian</tspan>
+    <tspan x="42.25%" dy="1.2em">Left</tspan>
+  </text>
+  <text class="quadrant-label" x="80.75%" y="75%">
+    <tspan x="80.75%" dy="-0.2em">Libertarian</tspan>
+    <tspan x="80.75%" dy="1.2em">Right</tspan>
+  </text>
+</svg>
