@@ -19,13 +19,11 @@ services:
 
   # Never started in development, but Compose reads every service's `env_file`
   # when a command loads the whole model (`config`, `down`), and a checkout has
-  # no deployment `.env`.
+  # no deployment `.env`. `!reset` drops the deployment's entry rather than
+  # marking it optional: `required: false` needs Compose 2.24, newer than the
+  # 2.23.1 the deployment file supports.
   fresco:
-    env_file:
-      - path: .env
-        required: false
+    env_file: !reset []
 
   postgres:
-    env_file:
-      - path: .env
-        required: false
+    env_file: !reset []
