@@ -334,10 +334,11 @@ Harness scripts live in `apps/fresco/release-test/` (`build-image.sh`,
 `up.sh --lane upgrade|fresh|analytics|twofactor --image <ref> [--keep-data]`,
 `down.sh`,
 `stage-fixture.sh` and `enable-captures.sh` for browser-driven uploads and
-download capture via MinIO). `release-test/AGENT_NOTES.md` records the
+download capture through presigned URLs into the lane's Garage). `release-test/AGENT_NOTES.md` records the
 verified techniques for driving Fresco in the in-app browser. The directory is
-excluded from the public mirror. Storage is configured through the setup
-wizard, not env vars, matching real bundled-MinIO deployments. Every stack but
+excluded from the public mirror. Storage is configured through the compose
+file's `STORAGE_PROVIDER`/`S3_*` env vars, matching real bundled-Garage
+deployments, so the setup wizard's storage step is locked. Every stack but
 the analytics lane sets
 `DISABLE_ANALYTICS`, and a deployment with analytics disabled sends nothing
 off-box from the browser: posthog-js is loaded only once the server has
@@ -538,7 +539,7 @@ change that reopens a fail-open fails CI.
 ## Commands
 
 ```bash
-pnpm --filter fresco dev          # Postgres + MinIO via Docker, then next dev
+pnpm --filter fresco dev          # Postgres + Garage via Docker, then next dev
 pnpm --filter fresco build        # next build
 pnpm --filter fresco typecheck
 pnpm --filter fresco test        # vitest, units project

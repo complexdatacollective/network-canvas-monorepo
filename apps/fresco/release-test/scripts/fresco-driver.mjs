@@ -17,7 +17,7 @@ import { createRequire } from 'node:module';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { lane } from './lanes.mjs';
+import { lane, STORAGE } from './lanes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = join(here, '..', '..', '..', '..');
@@ -160,9 +160,9 @@ const sampleProtocol = join(
 /**
  * The setup wizard, end to end, leaving the browser on the dashboard.
  *
- * Storage is configured through the wizard rather than by environment
- * variables, exactly as a bundled-MinIO deployment does, so this exercises the
- * path a self-hoster actually takes.
+ * Storage is configured by environment variables, exactly as a bundled-Garage
+ * deployment does, so the storage step only has to show those values, locked,
+ * and move on.
  */
 export async function completeSetup(
   page,
@@ -215,25 +215,45 @@ export async function completeSetup(
     await page.getByRole('button', { name: 'Create account' }).click();
   });
 
-  // Storage: the bundled-MinIO configuration this lane's compose file serves.
-  await advance(2, async () => {
-    await page.getByRole('option', { name: /S3/ }).click();
-    await fillStable(
-      page,
-      [
-        ['s3Endpoint', 'http://minio:9000'],
-        ['s3PublicUrl', `http://localhost:${config.minioPort}`],
-        ['s3Bucket', 'fresco-test'],
-        ['s3Region', 'us-east-1'],
-        ['s3AccessKeyId', 'minioadmin'],
-        ['s3SecretAccessKey', 'minioadmin'],
-      ].map(([name, value]) => [page.locator(`input[name="${name}"]`), value]),
+  // Storage: the bundled-Garage configuration this lane's compose file gives
+  // the app. Every field has to be locked to that value, and the secret must
+  // not be shown, or the deployment would be asking for what it already has.
+  const expected = {
+    s3Endpoint: STORAGE.endpoint,
+    s3PublicUrl: `http://localhost:${config.storagePort}`,
+    s3Bucket: STORAGE.bucket,
+    s3Region: STORAGE.region,
+    s3AccessKeyId: STORAGE.accessKeyId,
+  };
+  for (const [name, value] of Object.entries(expected)) {
+    const input = page.locator(`input[name="${name}"]`);
+    await input.waitFor();
+    const [shown, disabled] = [
+      await input.inputValue(),
+      await input.isDisabled(),
+    ];
+    if (shown !== value || !disabled)
+      throw new Error(
+        `the storage step's ${name} should be locked to ${value}; it shows "${shown}"${disabled ? '' : ' and is editable'}`,
+      );
+  }
+  // The setup page renders this mask in place of the configured secret.
+  const secretMask = '••••••••';
+  const secret = page.locator('input[name="s3SecretAccessKey"]');
+  const [secretShown, secretDisabled] = [
+    await secret.inputValue(),
+    await secret.isDisabled(),
+  ];
+  if (!secretDisabled || secretShown !== secretMask)
+    throw new Error(
+      `the storage step's secret key should be locked and masked as "${secretMask}"; it shows ${secretShown === STORAGE.secretAccessKey ? 'the real secret' : `"${secretShown}"`}${secretDisabled ? '' : ' and is editable'}`,
     );
-    await page
-      .getByRole('button', { name: /Save|Submit|Continue|Next/ })
-      .first()
-      .click();
-  });
+  await advance(2, () =>
+    page
+      .locator('form')
+      .getByRole('button', { name: 'Continue', exact: true })
+      .click(),
+  );
 
   // Protocol. The import streams the file through storage, and the wizard's
   // Continue is enabled throughout — so moving on immediately would abandon an
@@ -304,7 +324,7 @@ export async function waitForImportToast(
  * Uploads a .netcanvas through the page's own file input.
  *
  * Playwright can operate the real input, so this lane does not need the
- * MinIO-staging dance AGENT_NOTES describes for the in-app browser — which
+ * storage-staging dance AGENT_NOTES describes for the in-app browser — which
  * matters beyond convenience: the damaged-archive fixtures have to reach the
  * import the way a researcher's file does.
  */

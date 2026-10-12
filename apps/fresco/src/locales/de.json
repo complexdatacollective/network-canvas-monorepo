@@ -198,7 +198,7 @@
   "fresco.S3ConfigForm.saveAndContinue": "Speichern und weiter",
   "fresco.S3ConfigForm.secretAccessKey": "Geheimer Zugriffsschlüssel",
   "fresco.S3ConfigForm.theS3CompatibleEndpointURL": "Die S3-kompatible Endpunkt-URL",
-  "fresco.S3ConfigForm.theURLBrowsersUseToReachThis": "Die URL, über die Browser diesen Speicher erreichen. Bei MinIO hinter Ihrem Reverse Proxy ist dies Ihre Fresco-Domain (siehe Dokumentation zur Bereitstellung). Bei AWS S3 oder R2 ist sie in der Regel identisch mit der Endpunkt-URL.",
+  "fresco.S3ConfigForm.theURLBrowsersUseToReachThis": "Die URL, über die Browser diesen Speicher erreichen. Beim Speicher, der mit der Docker-Bereitstellung von Fresco mitgeliefert wird, ist dies Ihre Fresco-Domain. Bei AWS S3 oder R2 ist sie in der Regel identisch mit der Endpunkt-URL.",
   "fresco.S3ConfigForm.theseS3SettingsAreConfiguredViaEnvironment": "Diese S3-Einstellungen werden über Umgebungsvariablen konfiguriert und können hier nicht geändert werden.",
   "fresco.S3ConfigForm.usEast1": "us-east-1",
   "fresco.S3ConfigForm.wJalrXUtnFEMIK7MDENGBPxRfiCYEXAMPLEKEY": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",

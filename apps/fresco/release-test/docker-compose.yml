@@ -1,16 +1,18 @@
 # Local release-testing stack: Fresco (any image: the released GHCR image or
-# the locally built pending image) + PostgreSQL + MinIO, on plain localhost
+# the locally built pending image) + PostgreSQL + Garage, on plain localhost
 # ports — no Traefik/TLS, unlike the production compose files this mirrors
-# (docker-compose.prod.yml). Storage is deliberately NOT env-pinned: real
-# deployments enter the S3 endpoint/public URL in the setup wizard, and the
-# release test verifies that path.
+# (docker-compose.prod.yml). Storage is configured the way that file does it:
+# the fresco service is given the Garage key and endpoint, so the setup
+# wizard's storage step is locked, and the release test verifies that path.
 #
 # Driven by up.sh / down.sh with a compose project name per lane, so every
 # lane runs side by side. Interpolated variables: FRESCO_IMAGE, FRESCO_PORT,
-# POSTGRES_PORT, MINIO_PORT, SINK_HTTPS_PORT, SINK_HTTP_PORT, and the
+# POSTGRES_PORT, STORAGE_PORT, SINK_HTTPS_PORT, SINK_HTTP_PORT, the Garage
+# key (GARAGE_ACCESS_KEY_ID, GARAGE_SECRET_ACCESS_KEY: fixed test values that
+# up.sh exports), and the
 # per-lane deployment switches below — FRESCO_DISABLE_ANALYTICS,
 # FRESCO_REQUIRE_TWO_FACTOR, FRESCO_NODE_TLS_REJECT_UNAUTHORIZED,
-# RELAY_SINK_SCRIPT. up.sh sets all of them; the defaults here are the
+# FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION, RELAY_SINK_SCRIPT. up.sh sets all of them; the defaults here are the
 # disabled-analytics, no-two-factor deployment the first two lanes test, so a
 # compose invocation that forgets one is the safe configuration rather than a
 # quietly weakened one.
@@ -30,10 +32,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
+      garage:
+        condition: service_started
       # Started AND listening before the app is, so a server-side analytics
       # request can never be refused rather than recorded.
       relay-sink:
@@ -63,6 +63,20 @@ services:
       # sends — which is what that lane asserts on — and no lane that asserts
       # silence sets it.
       NODE_TLS_REJECT_UNAUTHORIZED: ${FRESCO_NODE_TLS_REJECT_UNAUTHORIZED:-1}
+      # The SDK's own default unless up.sh says otherwise. Only the upgrade
+      # lane's released baseline overrides it: see up.sh.
+      AWS_REQUEST_CHECKSUM_CALCULATION: ${FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION:-WHEN_SUPPORTED}
+      # The production file's storage settings, except the public URL: browsers
+      # on the host reach Garage on its published port rather than through a
+      # reverse proxy. scripts/release-test/fresco-release-test-storage.test.mjs
+      # fails if the rest drift from production.
+      STORAGE_PROVIDER: s3
+      S3_ENDPOINT: http://garage:3900
+      S3_PUBLIC_URL: http://localhost:${STORAGE_PORT:-9310}
+      S3_BUCKET: assets
+      S3_REGION: us-east-1
+      S3_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID (up.sh exports it)}
+      S3_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY (up.sh exports it)}
       COOKIE_SECURE: 'false'
       # Next standalone binds to $HOSTNAME (default: container id -> NIC IP),
       # which would make the 127.0.0.1 healthcheck below unreachable.
@@ -91,37 +105,31 @@ services:
       timeout: 10s
       retries: 5
 
-  minio:
-    image: minio/minio:latest
-    # Browsers on the host PUT directly to MinIO via the published port; the
-    # app origin (localhost:FRESCO_PORT) differs, so CORS must allow it.
+  # The bundled Garage of docker-compose.prod.yml. Compose cannot `extends`
+  # a service whose configs live in another file, so the image, command,
+  # environment and config below are copies — and
+  # scripts/release-test/fresco-release-test-storage.test.mjs fails if any of
+  # them drifts from the production file. What differs is only what a
+  # localhost stack needs instead of Traefik: the S3 port is published, and
+  # up.sh gives the bucket a CORS rule for the app's origin
+  # (scripts/storage-urls.mjs cors), because the browser reaches storage on
+  # another port.
+  garage:
+    image: dxflrs/garage:v2.4.1@sha256:9c96caa2612d3411acc5b0e6701fb238dbfba33e533a6d7d3d811a4b12d0d020
+    command: ['/garage', 'server', '--single-node', '--default-bucket']
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-      MINIO_API_CORS_ALLOW_ORIGIN: '*'
-    command: server /data
-    ports:
-      - '${MINIO_PORT:-9310}:9000'
+      GARAGE_DEFAULT_ACCESS_KEY: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID (up.sh exports it)}
+      GARAGE_DEFAULT_SECRET_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY (up.sh exports it)}
+      GARAGE_DEFAULT_BUCKET: assets
     volumes:
-      - minio:/data
-    healthcheck:
-      test: ['CMD', 'mc', 'ready', 'local']
-      interval: 5s
-      timeout: 10s
-      retries: 5
-
-  # One-shot bucket creation, as in docker-compose.prod.yml.
-  minio-init:
-    image: minio/minio:latest
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: /bin/sh
-    command:
-      - -c
-      - |
-        mc alias set minio http://minio:9000 minioadmin minioadmin
-        mc mb --ignore-existing minio/fresco-test
+      - garage-data:/var/lib/garage
+    configs:
+      - source: garage-config
+        target: /etc/garage.toml
+    # Browsers on the host PUT and GET directly through presigned URLs signed
+    # for this published port (the fresco service's S3_PUBLIC_URL).
+    ports:
+      - '${STORAGE_PORT:-9310}:3900'
 
   # Stands in for https://ph-relay.networkcanvas.com (`@codaco/shared-consts`
   # POSTHOG_HOST) inside this network, via the alias below: Docker's embedded
@@ -176,4 +184,37 @@ services:
 
 volumes:
   postgres:
-  minio:
+  garage-data:
+
+configs:
+  garage-config:
+    content: |
+      # One node, one copy of every object. Durability on a single-host
+      # deployment comes from the volume and its backups, not from Garage.
+      replication_factor = 1
+
+      metadata_dir = "/var/lib/garage/meta"
+      data_dir = "/var/lib/garage/data"
+
+      # This node holds the only copy of everything, so it trades write speed
+      # for surviving a power cut or a hard reset. Garage's default metadata
+      # engine, LMDB, can be corrupted by an unclean shutdown; SQLite cannot,
+      # and the fsyncs keep recent writes from being lost in one.
+      db_engine = "sqlite"
+      metadata_fsync = true
+      data_fsync = true
+
+      # Garage's node-to-node port. A single node has no peers, but Garage
+      # still requires the port and its secret, and the garage command-line
+      # tool talks to the server through it. Bound to the container's own
+      # loopback, nothing outside the container can reach it, so the secret
+      # protects nothing and is fixed here rather than generated.
+      rpc_bind_addr = "127.0.0.1:3901"
+      rpc_public_addr = "127.0.0.1:3901"
+      rpc_secret = "0000000000000000000000000000000000000000000000000000000000000000"
+
+      # Garage only accepts requests signed for the region it names, so this
+      # must match the fresco service's S3_REGION.
+      [s3_api]
+      api_bind_addr = "[::]:3900"
+      s3_region = "us-east-1"

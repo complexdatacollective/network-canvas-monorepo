@@ -31,9 +31,10 @@ choosers, downloads) do NOT work in this environment.
 ## Uploading a protocol (no file chooser exists)
 
 The pane cannot operate a native file dialog. Stage the file into the lane's
-MinIO and inject it:
+Garage and inject it:
 
-1. Host: `bash apps/fresco/release-test/stage-fixture.sh --lane <lane> --file <path> --name <name>` — prints a fetch URL.
+1. Host: `bash apps/fresco/release-test/stage-fixture.sh --lane <lane> --file <path> --name <name>` — prints a presigned fetch URL (Garage has no
+   anonymous access; the signature is what lets the page read the object).
 2. Page JS:
 
 ```js
@@ -49,7 +50,7 @@ MinIO and inject it:
 })()
 ```
 
-3. Verify via the network log (presigned OPTIONS 204 + PUT 200 to MinIO) or
+3. Verify via the network log (presigned OPTIONS 200 + PUT 200 to Garage) or
    the protocols table — the dropzone UI may not visibly react.
 
 ## Capturing a download (exports) — downloads abort in the pane
@@ -57,7 +58,9 @@ MinIO and inject it:
 A real download attempt shows `[FAILED: net::ERR_ABORTED]`; that alone is NOT
 an export failure. Capture the blob instead:
 
-1. Host, once per lane: `bash apps/fresco/release-test/enable-captures.sh --lane <lane>` — prints the capture base URL.
+1. Host, once per capture: `bash apps/fresco/release-test/enable-captures.sh --lane <lane> --name <name>.zip` —
+   prints `{"putUrl":"…","getUrl":"…"}`, a presigned pair for that one
+   object (Garage has no anonymous access, so there is no public prefix).
 2. Page JS BEFORE triggering the export/download:
 
 ```js
@@ -74,8 +77,8 @@ an export failure. Capture the blob instead:
 3. Drive the export UI (menu + "Confirm File Export Options" dialog →
    "Start export process"; the export streams for ~10-30s).
 4. Page JS: check `window.__captures` has a blob, then
-   `await fetch('<capture base>/<name>.zip', { method: 'PUT', body: window.__captures.at(-1) })`.
-5. Host: `curl -fsS -o <dest> <capture base>/<name>.zip`.
+   `await fetch('<putUrl>', { method: 'PUT', body: window.__captures.at(-1) })`.
+5. Host: `curl -fsS -o <dest> '<getUrl>'` (quote it: the URL carries `&`).
 
 ## Backgrounded tabs go dead — check visibility EARLY
 
@@ -93,9 +96,11 @@ via `/signin` in the new tab.
 
 ## Misc verified facts
 
-- Setup wizard storage step: choose "S3 / S3-Compatible"; fields are named
-  `s3Endpoint`, `s3PublicUrl`, `s3Bucket`, `s3Region`, `s3AccessKeyId`,
-  `s3SecretAccessKey`.
+- Setup wizard storage step: storage comes from the compose file's
+  `STORAGE_PROVIDER`/`S3_*` settings, so "S3 / S3-Compatible" is preselected
+  and the fields (`s3Endpoint`, `s3PublicUrl`, `s3Bucket`, `s3Region`,
+  `s3AccessKeyId`, `s3SecretAccessKey`) are disabled, the secret masked;
+  the form's Continue button moves on.
 - Synthetic interview generation: settings → Synthetic Interview Data; the
   protocol picker is a native `<select name="Protocol">`; the count field is a
   number input; a toast confirms "Generation complete". "Simulate participant
