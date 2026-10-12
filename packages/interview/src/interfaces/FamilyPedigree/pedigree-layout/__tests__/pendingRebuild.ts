@@ -8,6 +8,7 @@ import { it } from 'vitest';
  * this list; the list, and this module, go once the rebuild is complete.
  */
 const PENDING = new Set<string>([
+  'hops: step parents and adoptive parents who separated (circles)',
   'seats a donor who raises another child where their lines cross least, recorded ego, ruby, theo (87px symbols)',
   'seats a donor who raises another child where their lines cross least, recorded ego, ruby, theo (96px symbols)',
   'seats a donor who raises another child where their lines cross least, recorded theo, ego, ruby (87px symbols)',

@@ -31,7 +31,12 @@ import type {
 } from '../types';
 import { coordinates, drawnMarks, markPlaces } from './drawnMarks';
 import { INTERFACE_DIMENSIONS } from './fixtures';
-import { type Drawing, familyOf, strictLineFaults } from './lineFaults';
+import {
+  type Drawing,
+  familyOf,
+  hopCount,
+  strictLineFaults,
+} from './lineFaults';
 import { check } from './pendingRebuild';
 
 const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
@@ -778,6 +783,36 @@ describe('the lines pass the strict line checks', () => {
       check(`${name} (${shape}s)`, () => {
         const { drawing, family } = draw(people, links, shape);
         expect(strictLineFaults(drawing, family)).toEqual([]);
+      });
+    }
+  }
+});
+
+/**
+ * Every crossing is drawn as a hop, and how many there are is a cost, not
+ * a fault: each family's count is pinned at the fewest found, so a change
+ * that adds one shows here. Families not listed cross nothing.
+ */
+const HOPS: Record<string, number> = {
+  // Lauren's line hops the line down to Jack.
+  'step parents and adoptive parents who separated': 1,
+  // Hannah's social lines hop the carrier's line of descent.
+  'an egg donor, a sperm donor and a surrogate for two of three children Hannah raises': 2,
+  // The carrier's line hops the donor's bar.
+  'a surrogate for one of a donor’s two children, the other recorded first': 1,
+  // The birth parents' line to the participant hops their sibling's line
+  // up: the two parents' lines run as one there, and each draws the hop.
+  'two siblings adopted together, with the same birth parents': 2,
+  // The stepfather's line to the participant hops their sibling's line up.
+  'a stepfather who raises all his partner’s children': 1,
+};
+
+describe('the lines cross no more often than the fewest crossings found', () => {
+  for (const [name, { people, links }] of Object.entries(families)) {
+    for (const shape of ['circle', 'square'] as const) {
+      check(`hops: ${name} (${shape}s)`, () => {
+        const { connectors } = draw(people, links, shape);
+        expect(hopCount(connectors)).toBe(HOPS[name] ?? 0);
       });
     }
   }

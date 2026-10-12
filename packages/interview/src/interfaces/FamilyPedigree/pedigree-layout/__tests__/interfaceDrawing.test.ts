@@ -32,6 +32,7 @@ import {
   type Family,
   familyOf,
   faultsOfOrigin,
+  hopCount,
   JUNCTION_CLEARANCE,
   strictLineFaults,
 } from './lineFaults';
@@ -566,6 +567,14 @@ describe('a donor’s line meets the line of descent of the children they gave t
       donorAndSurrogate,
   };
 
+  // Families not listed cross nothing.
+  const FEWEST_HOPS: Record<string, number> = {
+    // Hannah's social lines hop the carrier's line of descent.
+    'an egg donor, a sperm donor and a surrogate for two of three children': 2,
+    // The carrier's line hops the donor's run (Round 3).
+    'a surrogate for one of a donor’s two children, the other recorded first': 1,
+  };
+
   for (const size of SYMBOL_SIZES) {
     for (const [name, family] of Object.entries(families)) {
       for (const [shapes, everyone] of SHAPE_SETS) {
@@ -576,6 +585,19 @@ describe('a donor’s line meets the line of descent of the children they gave t
             expect(strictFaultsOf(nodes, edges, size, everyone)).toEqual([]);
           },
         );
+      }
+    }
+
+    // Every crossing is drawn as a hop, and how many there are is a cost,
+    // not a fault: each family's count is pinned at the fewest found.
+    for (const [name, family] of Object.entries(families)) {
+      for (const [shapes, everyone] of SHAPE_SETS) {
+        it(`crosses no more often than the fewest crossings found: ${name} (${shapes}, ${size}px symbols)`, () => {
+          const { nodes, edges } = family();
+          expect(
+            hopCount(drawAsInterface(nodes, edges, size, everyone).connectors),
+          ).toBe(FEWEST_HOPS[name] ?? 0);
+        });
       }
     }
 
