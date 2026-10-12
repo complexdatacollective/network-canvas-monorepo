@@ -1,6 +1,6 @@
 ---
 title: Advanced Deployment
-date: 15th June 2026
+date: 12th October 2026
 navOrder: 7
 ---
 
@@ -39,9 +39,9 @@ The supported way to self-host is with the official Docker Compose files describ
 
 To deploy Fresco, you'll need:
 
-- A host machine running Docker (with Docker Compose v2, i.e. the `docker compose` command), at least 1 GB of RAM, and enough disk space for your interview data (plus protocol assets if you self-host storage with MinIO).
+- A host machine running Docker (with Docker Compose v2, i.e. the `docker compose` command), at least 1 GB of RAM, and enough disk space for your interview data (plus protocol assets if you use the bundled Garage storage). The bundled Garage configuration needs Docker Engine 25 or newer and Docker Compose v2.23.1 or newer.
 - A registered domain name, with DNS pointing at your host, and inbound ports **80 and 443** reachable from the Internet. Traefik uses port 80 for the Let's Encrypt HTTP challenge and port 443 to serve the app over HTTPS.
-- A storage choice: bundled MinIO (included), an external S3-compatible bucket, or UploadThing — see [Choose a deployment configuration](#choose-a-deployment-configuration).
+- A storage choice: bundled Garage storage (included), an external S3-compatible bucket, or UploadThing — see [Choose a deployment configuration](#choose-a-deployment-configuration).
 - _(Optional)_ an external PostgreSQL database, if you would rather not use the bundled one.
 
 ## Choose a deployment configuration
@@ -50,7 +50,7 @@ Fresco ships three ready-to-use Docker Compose files, one per storage option. Ea
 
 | Compose file                                                                                                                 | Storage                                                                                                              | Use when                                                                                 |
 | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml)               | Bundled **MinIO**, self-hosted on this host                                                                          | You want everything inside your own infrastructure, with no external storage dependency. |
+| [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml)               | Bundled **Garage**, self-hosted on this host                                                                         | You want everything inside your own infrastructure, with no external storage dependency. |
 | [`docker-compose.external-s3.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.external-s3.yml) | An **external S3-compatible service** (AWS S3, Cloudflare R2, Backblaze B2, DigitalOcean Spaces, a managed MinIO, …) | You already have, or want to use, a managed S3 bucket.                                   |
 | [`docker-compose.uploadthing.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.uploadthing.yml) | **UploadThing** (cloud)                                                                                              | You want the simplest managed storage and are comfortable with assets stored off-host.   |
 
@@ -109,29 +109,73 @@ If your institution requires multi-factor authentication for every administrator
 
 ## Storage configuration
 
-In a Docker deployment, configure storage with environment variables in your `.env` file. The variables depend on which compose file you chose. **Environment variables take precedence** over anything entered in the dashboard and lock the storage settings UI, so your `.env` is the single source of truth for storage.
+How you configure storage depends on which compose file you chose. With the bundled Garage storage, the compose file configures Fresco's storage for you from two values in your `.env` file. With an external S3-compatible service or UploadThing, you set the storage variables in `.env` yourself. **Environment variables take precedence** over anything entered in the dashboard and lock the matching storage settings, so when you use them your `.env` is the single source of truth for storage.
 
-### Self-hosted storage with MinIO
+### Self-hosted storage with Garage
 
-Used by [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml). MinIO runs as a **private** container with no published ports. Browsers reach it through the bundled Traefik proxy via a path route (`/<bucket>/*` → `minio:9000`) on your Fresco domain — path-style S3 URLs put the bucket name in the path. The default bucket, `assets`, is created automatically by a one-shot init container.
+Used by [`docker-compose.prod.yml`](https://github.com/complexdatacollective/Fresco/blob/next/docker-compose.prod.yml). [Garage](https://garagehq.deuxfleurs.fr) is a lightweight S3-compatible object store. It runs as a **private** container with no published ports. Browsers reach it through the bundled Traefik proxy via a path route (`/assets/*` → `garage:3900`) on your Fresco domain — path-style S3 URLs put the bucket name in the path. Garage sets itself up when it starts: it creates your access key and the `assets` bucket if they don't exist yet. Fresco is given the same key, so you don't enter any storage settings yourself, and the key stays in `.env` rather than in Fresco's database.
 
-Configure Fresco to use it by setting these variables in `.env`:
+<TipBox>
 
-```bash
-STORAGE_PROVIDER=s3
-S3_ENDPOINT=http://minio:9000             # internal Docker address — containers only
-S3_PUBLIC_URL=https://your-fresco-domain  # the same domain as FRESCO_DOMAIN (served via Traefik)
-S3_BUCKET=assets
-S3_REGION=us-east-1
-S3_ACCESS_KEY_ID=minioadmin               # must match MINIO_ROOT_USER
-S3_SECRET_ACCESS_KEY=minioadmin           # must match MINIO_ROOT_PASSWORD
-```
-
-<TipBox danger>
-
-Change the default `minioadmin` credentials before running in production: set `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` in your `.env`, and make sure `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` match them. If you change `S3_BUCKET` from `assets`, the Traefik route and the bucket created at startup follow it — but because the bucket name occupies `/<bucket>/` on your Fresco domain, pick a name that cannot collide with an app route (avoid names like `dashboard`, `api`, or `setup`); the default `assets` is known to be collision-free.
+Earlier versions of this compose file bundled MinIO; it now bundles Garage. **If your deployment already runs the bundled MinIO, don't replace your compose file with this one.** Your files are not moved to Garage: they stay in the `minio` Docker volume, and protocols that use them stop working. Keep your current compose file, or move your files to another S3-compatible service yourself and switch to [`docker-compose.external-s3.yml`](#external-s3-compatible-storage).
 
 </TipBox>
+
+This configuration needs **Docker Engine 25 or newer** and **Docker Compose v2.23.1 or newer**, because Garage's configuration is written inline in the compose file, which older versions cannot read.
+
+#### 1. Generate the storage secrets
+
+Garage and Fresco both use two values from your `.env`. They have no defaults, and the stack will not start without them. Generate each one on your host:
+
+```bash
+echo "GK$(openssl rand -hex 12)"   # GARAGE_ACCESS_KEY_ID
+openssl rand -hex 32               # GARAGE_SECRET_ACCESS_KEY
+```
+
+Then add the results to `.env`:
+
+```bash
+GARAGE_ACCESS_KEY_ID=GK...       # GK followed by 24 hex characters
+GARAGE_SECRET_ACCESS_KEY=...     # 64 hex characters
+```
+
+Treat both like passwords: together they give full access to your stored files.
+
+#### 2. Continue through the storage step
+
+When the [setup wizard](#access-fresco) reaches the storage step, **S3 / S3-Compatible** is already selected and its settings are filled in and locked:
+
+| **Field**             | **Value**                                                                       |
+| --------------------- | ------------------------------------------------------------------------------- |
+| **Endpoint URL**      | `http://garage:3900` — the internal Docker address, used only by the containers |
+| **Public URL**        | `https://<your Fresco domain>` — the same domain as `FRESCO_DOMAIN`             |
+| **Bucket Name**       | `assets`                                                                        |
+| **Region**            | `us-east-1`                                                                     |
+| **Access Key ID**     | Your `GARAGE_ACCESS_KEY_ID` value                                               |
+| **Secret Access Key** | Your `GARAGE_SECRET_ACCESS_KEY` value, hidden                                   |
+
+Select **Continue**. These settings come from the `fresco` service in `docker-compose.prod.yml`, which takes precedence over `.env`, so setting `STORAGE_PROVIDER` or the `S3_*` variables in `.env` has no effect with this configuration.
+
+<TipBox>
+
+The bucket name is fixed at `assets`. It occupies `/assets/` on your Fresco domain, and `assets` is known not to collide with any of Fresco's own routes.
+
+Garage does not offer server-side encryption. Protocol assets are stored in the `garage-data` Docker volume, so to encrypt them at rest, keep that volume on an encrypted disk. Include it in your backups alongside your database.
+
+</TipBox>
+
+#### Replacing the storage access key
+
+If the access key may have been exposed, replace it. Garage only adds keys and never removes them, so the old key keeps full access to your files until you delete it yourself. The replacement needs a new ID as well as a new secret: a deleted key ID can't be used again, and if you change only the secret of an existing key ID, Garage refuses to start. Fresco waits for Garage to report healthy before it starts, so in that case `docker compose up` stops with an error saying the `garage` container is unhealthy, and `docker compose -f docker-compose.prod.yml logs garage` names the key.
+
+1. Generate a new `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY` with the commands above, and note the old key ID.
+2. In `.env`, replace `GARAGE_ACCESS_KEY_ID` and `GARAGE_SECRET_ACCESS_KEY` with the new values.
+3. Run `docker compose -f docker-compose.prod.yml up -d`. Garage adds the new key at startup and gives it access to the `assets` bucket, and Fresco restarts using it.
+4. Delete the old key:
+
+   ```bash
+   docker compose -f docker-compose.prod.yml exec garage /garage key delete --yes <old key ID>
+   ```
 
 ### External S3-compatible storage
 
@@ -149,14 +193,14 @@ S3_ACCESS_KEY_ID=
 S3_SECRET_ACCESS_KEY=
 ```
 
-| **Variable**                                    | **Details**                                                                                                                                                                         |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **STORAGE_PROVIDER**                            | Set to `s3` for an S3-compatible bucket. When set, the provider is fixed and the storage settings UI is locked.                                                                     |
-| **S3_ENDPOINT**                                 | Your service's S3 API endpoint.                                                                                                                                                     |
-| **S3_PUBLIC_URL**                               | The URL browsers use to reach the storage. For an external service this is usually the same as `S3_ENDPOINT`. (For the bundled MinIO setup above it is your Fresco domain instead.) |
-| **S3_BUCKET**                                   | An existing bucket name.                                                                                                                                                            |
-| **S3_REGION**                                   | The bucket's region (for example `us-east-1`; use `auto` for Cloudflare R2).                                                                                                        |
-| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credentials with read and write access to the bucket.                                                                                                                               |
+| **Variable**                                    | **Details**                                                                                                                                                                   |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **STORAGE_PROVIDER**                            | Set to `s3` for an S3-compatible bucket. When set, the provider is fixed and the storage settings UI is locked.                                                               |
+| **S3_ENDPOINT**                                 | Your service's S3 API endpoint.                                                                                                                                               |
+| **S3_PUBLIC_URL**                               | The URL browsers use to reach the storage. For an external service this is usually the same as `S3_ENDPOINT`. (The bundled Garage setup above sets it to your Fresco domain.) |
+| **S3_BUCKET**                                   | An existing bucket name.                                                                                                                                                      |
+| **S3_REGION**                                   | The bucket's region (for example `us-east-1`; use `auto` for Cloudflare R2).                                                                                                  |
+| **S3_ACCESS_KEY_ID** / **S3_SECRET_ACCESS_KEY** | Credentials with read and write access to the bucket.                                                                                                                         |
 
 Bucket requirements on your S3 service:
 
@@ -216,3 +260,5 @@ To update, pull the latest image and recreate the stack (substitute the compose 
 docker compose -f docker-compose.external-s3.yml pull
 docker compose -f docker-compose.external-s3.yml up -d
 ```
+
+This updates the Fresco image but keeps your compose file as it is. If your deployment runs the bundled MinIO, read [Self-hosted storage with Garage](#self-hosted-storage-with-garage) before you replace that file.

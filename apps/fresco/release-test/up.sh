@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stands up one release-test stack (Fresco + Postgres + MinIO) and blocks until
+# Stands up one release-test stack (Fresco + Postgres + Garage) and blocks until
 # the app is healthy. Four lanes exist, each a compose project of its own on
 # its own ports, so they can run side by side:
 #
@@ -46,22 +46,40 @@ done
 FRESCO_DISABLE_ANALYTICS="true"
 FRESCO_REQUIRE_TWO_FACTOR="false"
 FRESCO_NODE_TLS_REJECT_UNAUTHORIZED="1"
+FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION="WHEN_SUPPORTED"
 RELAY_SINK_SCRIPT="relay-sink.mjs"
+
+# The bundled Garage's access key. Fixed test values in Garage's own formats,
+# the same for every lane: each lane's Garage is private to its stack, and the
+# app (through the compose file's S3_* settings) and the fixture/capture
+# scripts all sign with this key. scripts/lanes.mjs holds the
+# same key pair as STORAGE, and
+# scripts/release-test/fresco-release-test-storage.test.mjs fails if they drift.
+GARAGE_ACCESS_KEY_ID="GK7e57000000000000000000a1"
+GARAGE_SECRET_ACCESS_KEY="7e57000000000000000000000000000000000000000000000000000000000000"
 
 case "$LANE" in
   upgrade)
     PROJECT="fresco-release-test-upgrade"
-    FRESCO_PORT=3210 POSTGRES_PORT=5533 MINIO_PORT=9310
+    FRESCO_PORT=3210 POSTGRES_PORT=5533 STORAGE_PORT=9310
     SINK_HTTPS_PORT=9440 SINK_HTTP_PORT=9450
+    # Without --keep-data this is the released baseline. Releases made
+    # before the fix presign uploads with the checksum of an empty body, which
+    # Garage rejects, so that image is told through the SDK's environment
+    # setting to leave it out. The pending image does so in code, and gets
+    # the SDK default here so a regression in that code still fails the run.
+    if [ "$KEEP_DATA" != "true" ]; then
+      FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION="WHEN_REQUIRED"
+    fi
     ;;
   fresh)
     PROJECT="fresco-release-test-fresh"
-    FRESCO_PORT=3211 POSTGRES_PORT=5534 MINIO_PORT=9311
+    FRESCO_PORT=3211 POSTGRES_PORT=5534 STORAGE_PORT=9311
     SINK_HTTPS_PORT=9441 SINK_HTTP_PORT=9451
     ;;
   analytics)
     PROJECT="fresco-release-test-analytics"
-    FRESCO_PORT=3212 POSTGRES_PORT=5535 MINIO_PORT=9312
+    FRESCO_PORT=3212 POSTGRES_PORT=5535 STORAGE_PORT=9312
     SINK_HTTPS_PORT=9442 SINK_HTTP_PORT=9452
     # The one enabled-analytics deployment. Its sink terminates TLS with a
     # certificate minted below, which the container would otherwise refuse —
@@ -72,7 +90,7 @@ case "$LANE" in
     ;;
   twofactor)
     PROJECT="fresco-release-test-twofactor"
-    FRESCO_PORT=3213 POSTGRES_PORT=5536 MINIO_PORT=9313
+    FRESCO_PORT=3213 POSTGRES_PORT=5536 STORAGE_PORT=9313
     SINK_HTTPS_PORT=9443 SINK_HTTP_PORT=9453
     FRESCO_REQUIRE_TWO_FACTOR="true"
     ;;
@@ -110,10 +128,11 @@ if [ "$RELAY_SINK_SCRIPT" = "relay-payload-sink.mjs" ]; then
   chmod 644 "$TLS_DIR/key.pem"
 fi
 
-export LANE FRESCO_IMAGE="$IMAGE" FRESCO_PORT POSTGRES_PORT MINIO_PORT \
+export LANE FRESCO_IMAGE="$IMAGE" FRESCO_PORT POSTGRES_PORT STORAGE_PORT \
   SINK_HTTPS_PORT SINK_HTTP_PORT FRESCO_DISABLE_ANALYTICS \
   FRESCO_REQUIRE_TWO_FACTOR FRESCO_NODE_TLS_REJECT_UNAUTHORIZED \
-  RELAY_SINK_SCRIPT
+  FRESCO_AWS_REQUEST_CHECKSUM_CALCULATION \
+  RELAY_SINK_SCRIPT GARAGE_ACCESS_KEY_ID GARAGE_SECRET_ACCESS_KEY
 compose() {
   docker compose -p "$PROJECT" -f "$SCRIPT_DIR/docker-compose.yml" "$@"
 }
@@ -143,6 +162,11 @@ compose up -d --wait --wait-timeout 300 || {
   compose logs --tail 100 fresco >&2 || true
   exit 1
 }
+
+# Garage creates its key and bucket itself; the CORS rule for the app's
+# origin is the one thing a localhost stack needs that a deployment does not.
+# Logged to stderr: stdout carries only the JSON line below.
+node "$SCRIPT_DIR/scripts/storage-urls.mjs" cors --lane "$LANE" >&2
 
 BASE_URL="http://localhost:$FRESCO_PORT"
 HEALTH="$(curl -fsS "$BASE_URL/api/health")"

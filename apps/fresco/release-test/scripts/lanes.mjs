@@ -12,12 +12,29 @@
 
 /** @typedef {'upgrade'|'fresh'|'analytics'|'twofactor'} Lane */
 
+/**
+ * The bundled Garage every lane runs, as the app is configured for it.
+ *
+ * The key pair is the fixed test key up.sh hands each lane's Garage, and
+ * `scripts/release-test/fresco-release-test-storage.test.mjs` fails when the
+ * two drift. `endpoint` is the address the Fresco container reaches Garage
+ * at; the browser and the host reach it at `http://localhost:<storagePort>`.
+ */
+export const STORAGE = {
+  endpoint: 'http://garage:3900',
+  bucket: 'assets',
+  region: 'us-east-1',
+  accessKeyId: 'GK7e57000000000000000000a1',
+  secretAccessKey:
+    '7e57000000000000000000000000000000000000000000000000000000000000',
+};
+
 export const LANES = {
   upgrade: {
     project: 'fresco-release-test-upgrade',
     frescoPort: 3210,
     postgresPort: 5533,
-    minioPort: 9310,
+    storagePort: 9310,
     sinkHttpsPort: 9440,
     sinkHttpPort: 9450,
     analytics: false,
@@ -27,7 +44,7 @@ export const LANES = {
     project: 'fresco-release-test-fresh',
     frescoPort: 3211,
     postgresPort: 5534,
-    minioPort: 9311,
+    storagePort: 9311,
     sinkHttpsPort: 9441,
     sinkHttpPort: 9451,
     analytics: false,
@@ -37,7 +54,7 @@ export const LANES = {
     project: 'fresco-release-test-analytics',
     frescoPort: 3212,
     postgresPort: 5535,
-    minioPort: 9312,
+    storagePort: 9312,
     sinkHttpsPort: 9442,
     sinkHttpPort: 9452,
     analytics: true,
@@ -47,7 +64,7 @@ export const LANES = {
     project: 'fresco-release-test-twofactor',
     frescoPort: 3213,
     postgresPort: 5536,
-    minioPort: 9313,
+    storagePort: 9313,
     sinkHttpsPort: 9443,
     sinkHttpPort: 9453,
     analytics: false,

@@ -86,6 +86,14 @@ const happyPath = () => ({
     ok: true,
     image: `ghcr.io/complexdatacollective/fresco@sha256:${'a'.repeat(64)}`,
   },
+  // Consulted only when no expectedVersion is pinned: an ordinary feature
+  // branch, so nothing is inferred.
+  'release-branch': {
+    ok: true,
+    onReleaseBranch: false,
+    head: `abc1234${'0'.repeat(33)}`,
+    branch: 'feature/something',
+  },
   'validate-reused-image': {
     ok: true,
     image: 'fresco-release-test:pending',
@@ -2116,6 +2124,707 @@ test('an unpinned run passes but never certifies', async () => {
   assert.match(result.meaning, /NOT release evidence/);
 });
 
+// The Version Packages branch carries the version it releases, so a run from
+// it pins itself — and the inferred pin binds exactly as a passed one does.
+const releaseBranchAt = (overrides = {}) => ({
+  ok: true,
+  onReleaseBranch: true,
+  head: `abc1234${'0'.repeat(33)}`,
+  version: '4.1.2',
+  baseVersion: '4.1.1',
+  releasesFresco: true,
+  consumedChangesets: ['fresco-release-blocker-fixes', 'interview-node-labels'],
+  consumedChangesetsAt: `def5678${'0'.repeat(33)}`,
+  ...overrides,
+});
+
+// A run from the release branch, which asks the branch again before the
+// verdict; the second answer is the first unless a test says otherwise.
+const fromReleaseBranch = (
+  overrides = {},
+  recheck = releaseBranchAt(overrides),
+) => {
+  const r = happyPath();
+  r['release-branch'] = releaseBranchAt(overrides);
+  r['release-branch-recheck'] = recheck;
+  return r;
+};
+
+test('a run from the Version Packages branch infers its version and certifies', async () => {
+  const { result } = await run(fromReleaseBranch(), {});
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, true);
+  assert.equal(result.expectedVersion, '4.1.2');
+  assert.equal(result.expectedVersionSource, 'release-branch');
+});
+
+test('the changesets the release branch consumed are read from main', async () => {
+  const { prompts } = await run(fromReleaseBranch(), {});
+  for (const label of ['diff-judge', 'audit-artifacts', 'release-critic']) {
+    const prompt = promptFor(prompts, label);
+    assert.match(
+      prompt,
+      /already consumed \(deleted\) the changesets this release ships/,
+      label,
+    );
+    assert.ok(
+      prompt.includes('fresco-release-blocker-fixes, interview-node-labels.'),
+      label,
+    );
+    assert.ok(
+      prompt.includes(`git show def5678${'0'.repeat(33)}:.changeset/<name>.md`),
+      label,
+    );
+  }
+});
+
+test('an ordinary checkout is not told about consumed changesets', async () => {
+  const { prompts } = await run(happyPath(), {});
+  for (const label of ['diff-judge', 'audit-artifacts', 'release-critic'])
+    assert.doesNotMatch(promptFor(prompts, label), /already consumed/, label);
+});
+
+test('a consumed changeset nobody accounted for keeps the release from certifying', async () => {
+  // The audit and the critic read only .changeset/, which no longer holds it.
+  const r = fromReleaseBranch({
+    consumedChangesets: [
+      'brave-otters',
+      'fresco-release-blocker-fixes',
+      'interview-node-labels',
+    ],
+  });
+  const { result } = await run(r, {});
+  assert.equal(result.releasable, false);
+  assert.notEqual(result.verdict, 'go');
+  assert.match(JSON.stringify(result), /brave-otters/);
+});
+
+test('a pinned run off the release branch is not bound to it', async () => {
+  const { result, prompts } = await run(happyPath());
+  assert.equal(result.expectedVersionSource, 'args');
+  assert.equal(result.releasable, true);
+  assert.ok(prompts.some((p) => p.label === 'release-branch'));
+  assert.ok(!prompts.some((p) => p.label === 'release-branch-recheck'));
+});
+
+// The documented invocation pins the version, so a pinned run from the
+// release branch is held to everything an inferred one is.
+test('a pinned run from the release branch counts what it consumed and is checked again', async () => {
+  const { result, prompts } = await run(fromReleaseBranch());
+  assert.equal(result.verdict, 'go');
+  assert.equal(result.releasable, true);
+  assert.equal(result.expectedVersionSource, 'args');
+  assert.equal(prompts.at(-1).label, 'release-branch-recheck');
+  assert.match(
+    promptFor(prompts, 'release-critic'),
+    /already consumed \(deleted\) the changesets this release ships/,
+  );
+});
+
+test('a pinned run from the release branch must pin the version it carries', async () => {
+  const { result } = await run(fromReleaseBranch({ version: '4.1.3' }));
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('the wrong version is pinned')),
+    JSON.stringify(result.failures),
+  );
+});
+
+test('a pinned run from a release branch that does not release Fresco is not certified', async () => {
+  const { result } = await run(fromReleaseBranch({ releasesFresco: false }));
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('does not release Fresco')),
+    JSON.stringify(result.failures),
+  );
+});
+
+test('a pinned run from the release branch must build its head', async () => {
+  const { result } = await run(fromReleaseBranch({ head: 'f'.repeat(40) }));
+  assert.equal(result.verdict, 'no-go');
+  assert.ok(
+    result.failures.some((f) => f.includes('was built from abc1234')),
+    JSON.stringify(result.failures),
+  );
+});
+
+test('a pinned run from a release branch regenerated meanwhile is not certified', async () => {
+  const { result } = await run(
+    fromReleaseBranch(
+      {},
+      releaseBranchAt({ head: `abc1235${'0'.repeat(33)}` }),
+    ),
+  );
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) =>
+      u.includes('changed while the run was under way'),
+    ),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+for (const [name, response, reason] of [
+  [
+    'a pinned run whose checkout could not be identified',
+    { ok: false, error: 'could not reach origin' },
+    'could not be determined',
+  ],
+  [
+    'a pinned run whose release-branch agent died',
+    null,
+    'could not be determined',
+  ],
+  [
+    'a pinned run from a release branch that names no consumed changesets',
+    releaseBranchAt({ consumedChangesets: [] }),
+    'did not say which changesets it consumed',
+  ],
+  [
+    'a pinned run from a release branch with an unshaped head',
+    releaseBranchAt({ head: 'HEAD' }),
+    'no usable head commit',
+  ],
+]) {
+  test(`${name} is not certified`, async () => {
+    const r = happyPath();
+    r['release-branch'] = response;
+    const { result, prompts } = await run(r);
+    assert.equal(result.verdict, 'incomplete');
+    assert.equal(result.releasable, false);
+    assert.ok(
+      result.unaccounted.some((u) => u.includes(reason)),
+      JSON.stringify(result.unaccounted),
+    );
+    assert.ok(!prompts.some((p) => p.label === 'release-branch-recheck'));
+  });
+}
+
+test('an unpinned run off the release branch does not ask it again', async () => {
+  const { prompts } = await run(happyPath(), {});
+  assert.ok(!prompts.some((p) => p.label === 'release-branch-recheck'));
+});
+
+test('an inferred version the build does not carry blocks the release', async () => {
+  const { result } = await run(fromReleaseBranch({ version: '4.2.0' }), {});
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('the wrong build is under test')),
+    JSON.stringify(result.failures),
+  );
+});
+
+test('an inferred version binds the build to the release branch head', async () => {
+  // The build stamp says abc1234; the branch now points somewhere else, so
+  // the image is not the build of the commit whose version was inferred.
+  const { result } = await run(fromReleaseBranch({ head: 'f'.repeat(40) }), {});
+  assert.equal(result.verdict, 'no-go');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.failures.some((f) => f.includes('was built from abc1234')),
+    JSON.stringify(result.failures),
+  );
+});
+
+for (const [name, recheck, reason] of [
+  [
+    'a release branch regenerated during the run',
+    releaseBranchAt({ head: `abc1235${'0'.repeat(33)}` }),
+    'changed while the run was under way',
+  ],
+  [
+    'a release branch now releasing another version',
+    releaseBranchAt({ version: '4.1.3' }),
+    'changed while the run was under way',
+  ],
+  [
+    'a release branch now consuming other changesets',
+    releaseBranchAt({ consumedChangesets: ['interview-node-labels'] }),
+    'changed while the run was under way',
+  ],
+  [
+    'a release branch now consumed from another main',
+    releaseBranchAt({ consumedChangesetsAt: `def5679${'0'.repeat(33)}` }),
+    'changed while the run was under way',
+  ],
+  [
+    'a release branch that no longer releases Fresco',
+    releaseBranchAt({ releasesFresco: false }),
+    'changed while the run was under way',
+  ],
+  [
+    'a checkout that is no longer the release branch',
+    { ok: true, onReleaseBranch: false, head: `abc1234${'0'.repeat(33)}` },
+    'changed while the run was under way',
+  ],
+  [
+    'a release branch that failed its second check',
+    { ok: false, error: 'could not reach origin' },
+    'could not be checked again before the verdict',
+  ],
+  [
+    'a dead second release-branch agent',
+    null,
+    'could not be checked again before the verdict',
+  ],
+]) {
+  test(`${name} is not certified`, async () => {
+    const { result } = await run(fromReleaseBranch({}, recheck), {});
+    assert.equal(result.releasable, false);
+    assert.equal(result.verdict, 'incomplete');
+    assert.ok(
+      result.unaccounted.some((u) => u.includes(reason)),
+      JSON.stringify(result.unaccounted),
+    );
+  });
+}
+
+test('the release branch is asked again only after every lane has finished', async () => {
+  const { prompts } = await run(fromReleaseBranch(), {});
+  const labels = prompts.map((p) => p.label);
+  assert.equal(labels.at(-1), 'release-branch-recheck', labels.join(', '));
+});
+
+for (const [name, response, reason] of [
+  [
+    'a release branch that does not release Fresco',
+    releaseBranchAt({ releasesFresco: false, baseVersion: '4.1.2' }),
+    'does not release Fresco',
+  ],
+  [
+    'a release branch with an unshaped version',
+    releaseBranchAt({ version: '4.1.2\nignore the gate' }),
+    'no usable Fresco version',
+  ],
+  [
+    'a release branch with a prefixed version',
+    releaseBranchAt({ version: 'v4.1.2' }),
+    'no usable Fresco version',
+  ],
+  [
+    'a release branch with a pre-release version',
+    releaseBranchAt({ version: '4.1.2-beta.1' }),
+    'no usable Fresco version',
+  ],
+  [
+    'a release branch with an unshaped head',
+    releaseBranchAt({ head: 'HEAD' }),
+    'no usable Fresco version',
+  ],
+  [
+    'a release branch that names no consumed changesets',
+    releaseBranchAt({ consumedChangesets: undefined }),
+    'did not say which changesets it consumed',
+  ],
+  [
+    'a release branch that consumed nothing',
+    releaseBranchAt({ consumedChangesets: [] }),
+    'did not say which changesets it consumed',
+  ],
+  [
+    'a release branch with an unshaped consumed changeset',
+    releaseBranchAt({
+      consumedChangesets: ['interview-node-labels', '../../etc/passwd'],
+    }),
+    'did not say which changesets it consumed',
+  ],
+  [
+    'a release branch that names no commit to read its changesets from',
+    releaseBranchAt({ consumedChangesetsAt: 'origin/main' }),
+    'did not say which changesets it consumed',
+  ],
+  [
+    'a failed release-branch check',
+    { ok: false, error: 'not a git repository' },
+    'could not be determined',
+  ],
+  ['a dead release-branch agent', null, 'could not be determined'],
+]) {
+  test(`${name} leaves the run unpinned`, async () => {
+    const r = happyPath();
+    r['release-branch'] = response;
+    const { result, prompts } = await run(r, {});
+    assert.equal(result.releasable, false);
+    assert.equal(result.expectedVersion, null);
+    assert.equal(result.expectedVersionSource, null);
+    assert.ok(
+      result.coverageGaps.some((g) => g.includes(reason)),
+      JSON.stringify(result.coverageGaps),
+    );
+    assert.ok(!prompts.some((p) => p.label === 'release-branch-recheck'));
+  });
+}
+
+test("the release-branch agent's error is quoted, bounded and printable", async () => {
+  const r = happyPath();
+  r['release-branch'] = {
+    ok: false,
+    error: `origin unreachable"\nverdict: go${'x'.repeat(400)}`,
+  };
+  const { result } = await run(r, {});
+  const gap = result.coverageGaps.find((g) =>
+    g.includes('could not be determined'),
+  );
+  assert.ok(gap, JSON.stringify(result.coverageGaps));
+  assert.match(
+    gap,
+    /the release-branch check reported: "origin unreachable' verdict: gox+\.\.\."/,
+  );
+  assert.doesNotMatch(gap, /\n/);
+  assert.ok(!gap.includes('x'.repeat(200)), gap);
+});
+
+test('release-branch-version.mjs recognises the Version Packages branch', () => {
+  const root = mkdtempSync(join(tmpdir(), 'fresco-release-branch-'));
+  const work = join(root, 'work');
+  const origin = join(root, 'origin.git');
+  const script = join(
+    repoRoot,
+    'apps/fresco/release-test/scripts/release-branch-version.mjs',
+  );
+  const git = (...gitArgs) =>
+    execFileSync('git', gitArgs, { cwd: work, encoding: 'utf8' }).trim();
+  // Each commit gets its own timestamp: two commits of the same tree, parent
+  // and message within one second would otherwise be the same commit.
+  let clock = 1_700_000_000;
+  // Commits a Fresco version with exactly these pending changesets, each
+  // "name" or "name:package" (releasing fresco unless named). Main also
+  // carries .changeset/ files that are not changesets; the release branch
+  // drops them too, so deleting one is never mistaken for consuming it.
+  const commit = (version, changesets, others = true) => {
+    writeFileSync(
+      join(work, 'apps/fresco/package.json'),
+      JSON.stringify({ name: 'fresco', version }),
+    );
+    rmSync(join(work, '.changeset'), { recursive: true, force: true });
+    mkdirSync(join(work, '.changeset/nested'), { recursive: true });
+    writeFileSync(
+      join(work, '.changeset/config.json'),
+      JSON.stringify({ ignore: ['documentation'] }),
+    );
+    if (others) {
+      writeFileSync(join(work, '.changeset/README.md'), 'about changesets');
+      writeFileSync(
+        join(work, '.changeset/nested/inner.md'),
+        'not a changeset',
+      );
+    }
+    for (const entry of changesets) {
+      const [name, releases = 'fresco'] = entry.split(':');
+      writeFileSync(
+        join(work, `.changeset/${name}.md`),
+        `---\n"${releases}": patch\n---\n\n${name}\n`,
+      );
+    }
+    git('add', '-A');
+    clock += 1;
+    execFileSync('git', ['commit', '-q', '--allow-empty', '-m', version], {
+      cwd: work,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_DATE: `${clock} +0000`,
+        GIT_COMMITTER_DATE: `${clock} +0000`,
+      },
+    });
+    return git('rev-parse', 'HEAD');
+  };
+  // main carries pending changesets; the release branch consumes the normal
+  // lane's and leaves the separately gated documentation lane's in place.
+  const DOCS = 'quiet-docs:documentation';
+  const onMain = (version, extra = []) =>
+    commit(version, ['brave-otters', 'calm-owls', DOCS, ...extra]);
+  const released = (version) => commit(version, [DOCS], false);
+  // Moves a branch on origin; a push also moves the local tracking ref.
+  const publish = (branch, rev = 'HEAD') =>
+    git('push', '-q', '-f', 'origin', `${rev}:refs/heads/${branch}`);
+  // The tests' origin is a local bare repository, which the script trusts
+  // only through its test seam; `trusting: null` runs it without the seam.
+  const scriptEnv = ({ trusting = origin, ...env } = {}) => {
+    const base = { ...process.env };
+    delete base.RELEASE_BRANCH_TEST_ORIGIN_URL;
+    return {
+      ...base,
+      ...(trusting ? { RELEASE_BRANCH_TEST_ORIGIN_URL: trusting } : {}),
+      ...env,
+    };
+  };
+  const detect = (options) =>
+    JSON.parse(
+      execFileSync(process.execPath, [script], {
+        cwd: work,
+        encoding: 'utf8',
+        env: scriptEnv(options),
+      }),
+    );
+  // A refusal exits non-zero with ok:false, so the run is left unpinned.
+  const refusal = (options) => {
+    const { status, stdout } = spawnSync(process.execPath, [script], {
+      cwd: work,
+      encoding: 'utf8',
+      env: scriptEnv(options),
+    });
+    assert.equal(status, 1, stdout);
+    const result = JSON.parse(stdout);
+    assert.equal(result.ok, false, stdout);
+    return result.error;
+  };
+  try {
+    mkdirSync(join(work, 'apps/fresco'), { recursive: true });
+    execFileSync('git', ['init', '-q', '--bare', origin]);
+    git('init', '-q', '-b', 'work');
+    git('config', 'user.email', 'release-test@example.invalid');
+    git('config', 'user.name', 'release test');
+    git('config', 'commit.gpgsign', 'false');
+    git('remote', 'add', 'origin', origin);
+    const main = onMain('4.1.1');
+    publish('main');
+
+    // A worktree holding the release branch's commit under another name.
+    const releaseHead = released('4.1.2');
+    publish('changeset-release/main');
+    assert.deepEqual(detect(), {
+      ok: true,
+      onReleaseBranch: true,
+      head: releaseHead,
+      branch: 'work',
+      version: '4.1.2',
+      baseVersion: '4.1.1',
+      releasesFresco: true,
+      consumedChangesets: ['brave-otters', 'calm-owls'],
+      consumedChangesetsAt: main,
+    });
+
+    // Without the seam, a local origin is not the canonical repository.
+    assert.match(
+      refusal({ trusting: null }),
+      /not the canonical repository complexdatacollective\/network-canvas-monorepo/,
+    );
+
+    // One commit past the release branch is no longer its head, and what it
+    // consumed marks it as a modified release candidate.
+    released('4.1.3');
+    assert.match(
+      refusal(),
+      /HEAD deleted normal-lane changesets \(brave-otters, calm-owls\) as a Version Packages head does/,
+    );
+
+    // The bot pushed a newer PR head this checkout never fetched: HEAD at the
+    // stale tracking ref is not the PR being approved.
+    git('checkout', '-q', '--detach', releaseHead);
+    const regenerated = released('4.1.2');
+    git('push', '-q', 'origin', `${regenerated}:refs/heads/scratch`);
+    git(
+      `--git-dir=${origin}`,
+      'update-ref',
+      'refs/heads/changeset-release/main',
+      regenerated,
+    );
+    git('checkout', '-q', '--detach', releaseHead);
+    assert.equal(
+      git('rev-parse', 'refs/remotes/origin/changeset-release/main'),
+      releaseHead,
+    );
+    assert.match(refusal(), /HEAD is not origin's changeset-release\/main/);
+
+    // Once the tracking ref is fetched past it, a detached checkout of the
+    // superseded head keeps neither the branch name nor the tracking ref.
+    git('fetch', '-q', 'origin');
+    assert.match(
+      refusal(),
+      /not origin's current changeset-release\/main \([0-9a-f]{12}\) - an earlier or modified release candidate/,
+    );
+
+    // Origin unreachable: a checkout at the tracking ref cannot be confirmed,
+    // while an unrelated one is plainly not the release branch, even when it
+    // consumed a separately gated lane's changeset as that lane's PR does.
+    git('checkout', '-q', '--detach', regenerated);
+    const missing = join(root, 'missing.git');
+    git('remote', 'set-url', 'origin', missing);
+    assert.match(refusal({ trusting: missing }), /could not reach origin/);
+    git('checkout', '-q', '-B', 'feature', main);
+    const feature = commit('4.1.1', ['brave-otters', 'calm-owls', 'mine']);
+    assert.deepEqual(detect({ trusting: missing }), {
+      ok: true,
+      onReleaseBranch: false,
+      head: feature,
+      branch: 'feature',
+    });
+
+    // Origin is trusted only as the canonical repository, in any of the forms
+    // GitHub hands out, and only as the URL git will actually contact. No
+    // https or ssh is allowed, so nothing here leaves the machine.
+    const offline = { trusting: null, GIT_ALLOW_PROTOCOL: 'file' };
+    for (const url of [
+      'https://github.com/complexdatacollective/network-canvas-monorepo.git',
+      'https://github.com/complexdatacollective/network-canvas-monorepo',
+      'git@github.com:complexdatacollective/network-canvas-monorepo.git',
+      'ssh://git@github.com/complexdatacollective/network-canvas-monorepo.git',
+    ]) {
+      git('remote', 'set-url', 'origin', url);
+      assert.equal(detect(offline).onReleaseBranch, false, url);
+    }
+    for (const url of [
+      'https://github.com/someone/network-canvas-monorepo.git',
+      'https://github.com/complexdatacollective/network-canvas-monorepo-fork.git',
+      'https://github.com.evil.example/complexdatacollective/network-canvas-monorepo.git',
+      'http://github.com/complexdatacollective/network-canvas-monorepo.git',
+    ]) {
+      git('remote', 'set-url', 'origin', url);
+      assert.match(refusal(offline), /not the canonical repository/, url);
+    }
+    git(
+      'config',
+      'url.https://github.com/someone/fork.git.insteadOf',
+      'https://github.com/complexdatacollective/network-canvas-monorepo.git',
+    );
+    git(
+      'remote',
+      'set-url',
+      'origin',
+      'https://github.com/complexdatacollective/network-canvas-monorepo.git',
+    );
+    assert.match(refusal(offline), /someone\/fork/);
+    git(
+      'config',
+      '--remove-section',
+      'url.https://github.com/someone/fork.git',
+    );
+    git('remote', 'set-url', 'origin', origin);
+    git('fetch', '-q', 'origin');
+
+    // A hotfix released 4.1.2 from main after the PR was generated: the PR's
+    // 4.1.2 is not ahead of what main now carries.
+    git('checkout', '-q', '--detach', main);
+    publish('main', onMain('4.1.2'));
+    git('checkout', '-q', '--detach', regenerated);
+    assert.match(refusal(), /does not contain origin\/main's tip/);
+
+    // main gained any commit the PR does not carry.
+    git('checkout', '-q', '--detach', main);
+    publish('main', onMain('4.1.1'));
+    git('checkout', '-q', '--detach', regenerated);
+    assert.match(refusal(), /stale - wait for the release bot/);
+
+    // A local origin/main behind origin's cannot stand in for main's tip.
+    const fetchedMain = git('rev-parse', 'origin/main');
+    git('checkout', '-q', '--detach', fetchedMain);
+    const pr = released('4.1.2');
+    publish('changeset-release/main');
+    git('checkout', '-q', '--detach', fetchedMain);
+    publish('main', onMain('4.1.1'));
+    git('update-ref', 'refs/remotes/origin/main', fetchedMain);
+    git('checkout', '-q', '--detach', pr);
+    assert.match(refusal(), /origin\/main is not origin's current main/);
+    git('fetch', '-q', 'origin');
+
+    // The branch by name at main's tip: main's changesets are all still there.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    publish('changeset-release/main');
+    assert.match(
+      refusal(),
+      /still carries normal-lane changesets \(brave-otters, calm-owls\)/,
+    );
+
+    // The branch by name, releasing other packages only.
+    publish('changeset-release/main', released('4.1.1'));
+    const unbumped = detect();
+    assert.equal(unbumped.onReleaseBranch, true);
+    assert.equal(unbumped.releasesFresco, false);
+    assert.deepEqual(unbumped.consumedChangesets, [
+      'brave-otters',
+      'calm-owls',
+    ]);
+
+    // The branch by name, carrying a commit the PR does not: not the PR.
+    released('4.1.9');
+    assert.match(refusal(), /HEAD is not origin's changeset-release\/main/);
+
+    // The branch by name with no PR open on origin.
+    git('push', '-q', 'origin', ':refs/heads/changeset-release/main');
+    assert.match(refusal(), /origin has no changeset-release\/main/);
+
+    // A release branch that moves Fresco backwards.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    publish('changeset-release/main', released('4.1.0'));
+    assert.match(refusal(), /backwards, from 4\.1\.1 to 4\.1\.0/);
+
+    // A stale PR brought up to date by merging main rather than regenerated:
+    // it contains main's tip, but main's newer changeset survives in it.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    released('4.1.2');
+    git('checkout', '-q', '--detach', 'origin/main');
+    publish('main', onMain('4.1.1', ['new-otter']));
+    git('checkout', '-q', 'changeset-release/main');
+    git('merge', '-q', '--no-edit', 'origin/main');
+    publish('changeset-release/main');
+    assert.match(
+      refusal(),
+      /still carries normal-lane changesets \(new-otter\), so it is stale/,
+    );
+
+    // A consumed changeset whose name the workflow cannot carry.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    publish('main', commit('4.1.1', ['brave-otters', 'odd name']));
+    publish('changeset-release/main', released('4.1.2'));
+    assert.match(refusal(), /cannot carry \("odd name\.md"\)/);
+
+    // Nothing of the normal lane's was pending, so nothing says what the
+    // branch releases.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    publish('main', commit('4.1.1', [DOCS]));
+    publish('changeset-release/main', released('4.1.2'));
+    assert.match(refusal(), /consumed no changesets/);
+
+    // A release branch that deleted a separately gated lane's changeset.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    publish('main', onMain('4.1.1'));
+    publish('changeset-release/main', commit('4.1.2', [], false));
+    assert.match(
+      refusal(),
+      /deleted quiet-docs, a changeset owned by a separately gated release lane/,
+    );
+
+    // The app-release guard's rules against origin's fresco@ tags.
+    git('checkout', '-q', '-B', 'changeset-release/main', 'origin/main');
+    const releaseBase = git('rev-parse', 'HEAD');
+    publish('changeset-release/main', released('4.1.2'));
+    git('push', '-q', 'origin', 'HEAD:refs/tags/fresco@4.1.2');
+    assert.match(refusal(), /fresco@4\.1\.2 is already released/);
+    git('push', '-q', 'origin', ':refs/tags/fresco@4.1.2');
+
+    // A hotfix released 4.1.3 and was never merged back into main.
+    git('checkout', '-q', '--detach', releaseBase);
+    const hotfix = released('4.1.3');
+    git('tag', '-a', '-m', 'hotfix', 'fresco@4.1.3', hotfix);
+    git('push', '-q', 'origin', 'refs/tags/fresco@4.1.3');
+    git('checkout', '-q', 'changeset-release/main');
+    assert.match(refusal(), /not newer than the released fresco@4\.1\.3/);
+    publish('changeset-release/main', released('4.1.4'));
+    assert.match(refusal(), /does not contain the released fresco@4\.1\.3/);
+
+    // A release branch that contains the hotfix may release past it.
+    git('checkout', '-q', '-B', 'changeset-release/main', hotfix);
+    publish('changeset-release/main', released('4.1.4'));
+    const pastHotfix = detect();
+    assert.equal(pastHotfix.releasesFresco, true);
+    assert.deepEqual(pastHotfix.consumedChangesets, [
+      'brave-otters',
+      'calm-owls',
+    ]);
+
+    // A base whose version is not stable semver proves nothing about the bump.
+    publish('main', onMain('next'));
+    publish('changeset-release/main', released('4.2.0'));
+    assert.match(refusal(), /origin\/main has no stable semver/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+  // Each step spawns git and node; the whole walk takes several seconds.
+}, 60_000);
+
 test('an unpinned upgrade of a build to itself warns rather than failing', async () => {
   const r = happyPath();
   r['up-released'].imageId = `sha256:${'b'.repeat(64)}`;
@@ -2975,7 +3684,10 @@ test('the sink agents are told to report the script, not to interpret it', async
 
 test('a failed teardown warns without blocking the release', async () => {
   const r = happyPath();
-  r.teardown = { ok: false, error: 'volume fresco-release-test-upgrade_minio' };
+  r.teardown = {
+    ok: false,
+    error: 'volume fresco-release-test-upgrade_garage-data',
+  };
   const { result } = await run(r);
   assert.equal(result.verdict, 'go');
   assert.equal(result.releasable, true);
@@ -3461,7 +4173,7 @@ test('the drivers and up.sh agree about every lane', async () => {
     for (const [variable, value] of [
       ['FRESCO_PORT', config.frescoPort],
       ['POSTGRES_PORT', config.postgresPort],
-      ['MINIO_PORT', config.minioPort],
+      ['STORAGE_PORT', config.storagePort],
       ['SINK_HTTPS_PORT', config.sinkHttpsPort],
       ['SINK_HTTP_PORT', config.sinkHttpPort],
     ])
