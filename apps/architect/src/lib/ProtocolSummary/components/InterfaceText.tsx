@@ -62,10 +62,14 @@ export const heldInterfaceText = (
       Readonly<Record<string, LocalizedString | undefined>> | undefined
     >
   > = interfaceText ?? {};
-  return INTERFACE_TEXT_MESSAGES.flatMap(({ group, key }): Entry[] => {
+  // An entry that stands in for several catalog messages is listed once.
+  const entries = new Map<string, Entry>();
+  for (const { group, key } of INTERFACE_TEXT_MESSAGES) {
     const value = held[group]?.[key];
-    return value === undefined ? [] : [{ group, key, value }];
-  });
+    if (value !== undefined)
+      entries.set(`${group}.${key}`, { group, key, value });
+  }
+  return [...entries.values()];
 };
 
 const InterfaceText = () => {

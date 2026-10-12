@@ -122,10 +122,10 @@ const save = (user: Rendered['user']) =>
   user.click(screen.getByRole('button', { name: 'Save' }));
 
 const ONLY_ENGLISH =
-  'This text exists only in English. Translate it into another language before clearing it.';
+  'This is the only translation, and it is in English. Add a translation in another language before clearing it.';
 
 const filterMenu = () =>
-  screen.getByRole('combobox', { name: 'Texts to show' });
+  screen.getByRole('combobox', { name: 'Translations to show' });
 
 /**
  * English stops being one of the protocol's languages, so its column goes
@@ -152,7 +152,7 @@ describe('TranslationTable', () => {
     expect(
       screen.getAllByRole('columnheader').map((header) => header.textContent),
     ).toEqual([
-      'Text',
+      'Location',
       expect.stringMatching(/^EnglishDefault/),
       expect.stringMatching(/^French/),
       expect.stringMatching(/^Spanish/),
@@ -171,16 +171,16 @@ describe('TranslationTable', () => {
       'Node type label',
       // The words the interview itself shows, which Network Canvas supplies
       // in all three languages.
-      'Throughout the interview › Exit button',
-      'Throughout the interview › Exit explanation',
-      'Throughout the interview › Screen error message',
-      'Throughout the interview › Missing item message',
-      'Throughout the interview › Back button',
-      'Throughout the interview › Continue button',
-      'Throughout the interview › Cancel button',
-      'Throughout the interview › Done button',
-      'Throughout the interview › Delete button',
-      'Throughout the interview › General error message',
+      'Interview navigation › Exit button',
+      'Interview navigation › Exit explanation',
+      'Interview navigation › Back button',
+      'Interview navigation › Continue button',
+      'Buttons › Cancel button',
+      'Buttons › Done button',
+      'Buttons › Delete button',
+      'Messages › Screen error message',
+      'Messages › Missing item message',
+      'Messages › Error message',
     ]);
     expect(
       screen.getByRole('rowheader', { name: 'Interview text' }),
@@ -201,7 +201,7 @@ describe('TranslationTable', () => {
     const frenchTitle = cell('1', 'Page heading', 'French');
     expect(frenchTitle).toHaveValue('');
     expect(frenchTitle).toHaveAccessibleDescription(
-      'Hello Not translated yet. Participants see the English text, unless their browser also lists a language that has it.',
+      'Hello Not translated yet. Participants see it in English, unless their browser also lists a language that has a translation.',
     );
     expect(
       screen.getByText(/^\* Unless the participant’s browser/),
@@ -355,7 +355,7 @@ describe('TranslationTable', () => {
 
     await user.type(cell('2', 'Page heading', 'French'), 'Merci');
     await user.type(
-      screen.getByRole('searchbox', { name: 'Search texts and translations' }),
+      screen.getByRole('searchbox', { name: 'Search translations' }),
       'hola',
     );
     expect(rowHeaders()).toHaveLength(1);
@@ -369,7 +369,7 @@ describe('TranslationTable', () => {
 
     await user.clear(cell('2', 'Page heading', 'English'));
     await user.type(
-      screen.getByRole('searchbox', { name: 'Search texts and translations' }),
+      screen.getByRole('searchbox', { name: 'Search translations' }),
       'hola',
     );
     await user.click(screen.getByRole('button', { name: /^Languages/ }));
@@ -399,7 +399,7 @@ describe('TranslationTable', () => {
 
     expect(
       await screen.findByText(
-        'This translation cannot be saved, because the text or its language has been removed from the protocol.',
+        'This translation cannot be saved, because the wording it belongs to, or its language, has been removed from the protocol.',
       ),
     ).toBeInTheDocument();
     expect(getProtocol(store.getState())).toBe(before);
@@ -409,33 +409,35 @@ describe('TranslationTable', () => {
   it('finds texts by a translation shown, or by the stage or type they belong to', async () => {
     const { user } = renderTable();
     const search = screen.getByRole('searchbox', {
-      name: 'Search texts and translations',
+      name: 'Search translations',
     });
 
     await user.type(search, 'hola');
-    expect(shownCount()).toHaveTextContent('Showing 1 of 17 texts');
+    expect(shownCount()).toHaveTextContent('Showing 1 of 17 strings');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Page content › Page heading',
     ]);
 
     await user.clear(search);
     await user.type(search, 'thanks');
-    expect(shownCount()).toHaveTextContent('Showing 3 of 17 texts');
+    expect(shownCount()).toHaveTextContent('Showing 3 of 17 strings');
 
     await user.clear(search);
     await user.type(search, 'nothing like this');
-    expect(screen.getByText('No texts match your search.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Nothing matches your search.'),
+    ).toBeInTheDocument();
   });
 
   it('shows only the texts missing a translation into any language shown', async () => {
     const { user } = renderTable();
 
-    expect(filterMenu()).toHaveDisplayValue('All texts');
-    expect(shownCount()).toHaveTextContent('Showing 17 of 17 texts');
+    expect(filterMenu()).toHaveDisplayValue('All translations');
+    expect(shownCount()).toHaveTextContent('Showing 17 of 17 strings');
     await user.selectOptions(filterMenu(), 'Missing in any shown language');
 
     // Both stage labels are translated into every language.
-    expect(shownCount()).toHaveTextContent('Showing 5 of 17 texts');
+    expect(shownCount()).toHaveTextContent('Showing 5 of 17 strings');
     expect(rowHeaders().map((header) => header.textContent)).toEqual([
       'Page content › Page heading',
       'Page content › Item 1 › Content',
@@ -457,8 +459,8 @@ describe('TranslationTable', () => {
     // Kept in the address, which a link to the table can carry.
     expect(window.location.search).toBe('?missing=any');
 
-    await user.selectOptions(filterMenu(), 'All texts');
-    expect(shownCount()).toHaveTextContent('Showing 17 of 17 texts');
+    await user.selectOptions(filterMenu(), 'All translations');
+    expect(shownCount()).toHaveTextContent('Showing 17 of 17 strings');
     expect(window.location.search).toBe('');
   });
 
@@ -467,7 +469,7 @@ describe('TranslationTable', () => {
 
     await user.selectOptions(filterMenu(), 'Missing Spanish');
 
-    expect(shownCount()).toHaveTextContent('Showing 2 of 17 texts');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 17 strings');
     expect(screen.getByRole('link', { name: 'Thanks' })).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Welcome' }),
@@ -476,7 +478,7 @@ describe('TranslationTable', () => {
 
     await user.selectOptions(filterMenu(), 'Missing English');
     expect(
-      screen.getByText('Every text is translated into English.'),
+      screen.getByText('Everything is translated into English.'),
     ).toBeInTheDocument();
   });
 
@@ -489,7 +491,7 @@ describe('TranslationTable', () => {
     renderTable();
 
     expect(filterMenu()).toHaveDisplayValue('Missing Spanish');
-    expect(shownCount()).toHaveTextContent('Showing 2 of 17 texts');
+    expect(shownCount()).toHaveTextContent('Showing 2 of 17 strings');
   });
 
   it('opens on every text when a link asks for a language the protocol does not have', () => {
@@ -500,8 +502,8 @@ describe('TranslationTable', () => {
     );
     renderTable();
 
-    expect(filterMenu()).toHaveDisplayValue('All texts');
-    expect(shownCount()).toHaveTextContent('Showing 17 of 17 texts');
+    expect(filterMenu()).toHaveDisplayValue('All translations');
+    expect(shownCount()).toHaveTextContent('Showing 17 of 17 strings');
   });
 
   it('shows the column of the language whose gaps it lists', async () => {

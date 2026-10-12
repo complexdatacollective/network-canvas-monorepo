@@ -36,7 +36,7 @@
   "interview.interfaces.confirmPassphrase": "Passphrase bestätigen",
   "interview.interfaces.deselect": "Auswahl aufheben",
   "interview.interfaces.discardChanges": "Änderungen verwerfen",
-  "interview.interfaces.discardChangesDescription": "Dieses Formular enthält ungültige Angaben und kann daher nicht gespeichert werden. Wenn Sie fortfahren, wird es zurückgesetzt und Ihre Änderungen gehen verloren. Möchten Sie Ihre Änderungen verwerfen?",
+  "interview.interfaces.discardChangesDescription": "Möchten Sie Ihre Änderungen verwerfen?",
   "interview.interfaces.discardChangesTitle": "Änderungen verwerfen?",
   "interview.interfaces.dragToReposition": "Zum Verschieben ziehen",
   "interview.interfaces.drawingControls": "Zeichenwerkzeuge",

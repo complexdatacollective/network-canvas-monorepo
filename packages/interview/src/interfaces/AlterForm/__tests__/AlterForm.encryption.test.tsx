@@ -471,7 +471,9 @@ describe('AlterForm comparing an answer with a protected one', () => {
           'Your answers have not been saved. Enter your passphrase, then try again.',
         ),
       ).toBeInTheDocument();
-      expect(within(dialog).queryByText(/invalid data/)).toBeNull();
+      expect(
+        within(dialog).queryByText(/Do you want to discard your changes\?/),
+      ).toBeNull();
 
       await keep();
       expect(onStepChange).not.toHaveBeenCalled();
@@ -492,7 +494,9 @@ describe('AlterForm comparing an answer with a protected one', () => {
 
       const { dialog, keep } = await discardDialogOnLeaving(leave, how);
 
-      expect(within(dialog).getByText(/invalid data/)).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(/Do you want to discard your changes\?/),
+      ).toBeInTheDocument();
       expect(within(dialog).queryByText(/Enter your passphrase/)).toBeNull();
       await keep();
     },

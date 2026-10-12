@@ -52,13 +52,17 @@ form that only one number takes, such as English "one", may leave the number
 out. Architect marks the placeholders a version still needs, and names the
 missing placeholder and its version in the error.
 
-**Interface text.** The text several stages share — Back, Continue, Cancel,
-Done and Delete; the passphrase prompt; form words; and one message for each
-answer check, held only for the checks the protocol uses — is the protocol's
+**Interface text.** The text several stages share is the protocol's
 `interfaceText`, translated in the translation table like the rest of the
-protocol. The interview shows it in the protocol's language; its own words,
-such as navigation and the language chooser, still follow the participant's
-browser.
+protocol, in six groups: interview navigation (Back, Continue, Exit interview
+and its explanation); buttons (Cancel, Done and Delete, and Yes and No when a
+stage shows a form); messages (the screen and item errors, and one error
+message that also stands in for a form that could not be submitted); the
+passphrase prompt; the discard-changes question and explanation, held with
+forms; and validation messages, one for each answer check, held only for the
+checks the protocol uses. The Yes answer is also the discard dialog's confirm
+button. The interview shows this text in the protocol's language; its own
+words, such as the language chooser, still follow the participant's browser.
 
 **Less built-in text.** Headings, labels and messages that repeated what the
 screen already showed were removed: for example the pedigree checklist's
@@ -70,7 +74,9 @@ number of people still to place.
 For developers: `@codaco/app-i18n` adds `AppIntlOverlay`, which lays a set of
 messages over a catalog in a chosen locale; `@codaco/fresco-ui`'s rich text
 editor takes a `tokens` prop to insert placeholders, each of which may be
-marked `required`, and a dialog's busy
+marked `required`, the new `TokenPill` subpath draws a placeholder the same
+way in text that is only read (`TokenPill`, `TokenizedText`), `Table` takes a
+`scrollerClassName` for its scrolling element, and a dialog's busy
 confirm button is announced through a status region;
 `@codaco/protocol-validation` adds `missingSuppliedStageText`,
 `inapplicableStageSettings`, `suppliedStageSettingApplies`,

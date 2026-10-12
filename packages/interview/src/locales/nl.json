@@ -36,7 +36,7 @@
   "interview.interfaces.confirmPassphrase": "Wachtzin bevestigen",
   "interview.interfaces.deselect": "Selectie opheffen",
   "interview.interfaces.discardChanges": "Wijzigingen verwerpen",
-  "interview.interfaces.discardChangesDescription": "Dit formulier bevat ongeldige gegevens en kan daarom niet worden opgeslagen. Als je doorgaat, wordt het formulier teruggezet en gaan je wijzigingen verloren. Wil je je wijzigingen verwerpen?",
+  "interview.interfaces.discardChangesDescription": "Wil je je wijzigingen verwerpen?",
   "interview.interfaces.discardChangesTitle": "Wijzigingen verwerpen?",
   "interview.interfaces.dragToReposition": "Slepen om te verplaatsen",
   "interview.interfaces.drawingControls": "Tekengereedschap",

@@ -46,7 +46,7 @@ describe('assembleProtocolSections', () => {
           }
         ).interfaceText ?? {},
       );
-    expect(groups()).toEqual(['interview']);
+    expect(groups()).toEqual(['navigation', 'buttons', 'messages']);
 
     sections['stage:form'] = {
       id: 'form',
@@ -55,11 +55,11 @@ describe('assembleProtocolSections', () => {
       form: { fields: [] },
     };
     sections.stageOrder = { stages: ['form', 'finish'] };
-    expect(groups()).toEqual(['interview', 'forms']);
+    expect(groups()).toEqual(['navigation', 'buttons', 'messages', 'forms']);
 
     sections.stageOrder = { stages: ['finish'] };
     delete sections['stage:form'];
-    expect(groups()).toEqual(['interview']);
+    expect(groups()).toEqual(['navigation', 'buttons', 'messages']);
   });
 
   it('rejects a missing settings section', () => {

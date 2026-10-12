@@ -1087,7 +1087,7 @@ describe('NetworkComposer side panel checking an answer against a protected one'
     [
       'says the answer is invalid once the passphrase is in force',
       false,
-      /invalid data/,
+      /Do you want to discard your changes\?/,
     ],
   ])('%s before discarding it on closing', async (_case, locked, reason) => {
     const store = await makeStore({
@@ -1112,7 +1112,9 @@ describe('NetworkComposer side panel checking an answer against a protected one'
     });
     expect(dialog).toHaveTextContent(reason);
     expect(dialog).not.toHaveTextContent(
-      locked ? /invalid data/ : /Enter your passphrase/,
+      locked
+        ? /Do you want to discard your changes\?/
+        : /Enter your passphrase/,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>

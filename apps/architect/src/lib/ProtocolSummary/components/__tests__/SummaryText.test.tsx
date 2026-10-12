@@ -73,7 +73,7 @@ describe('protocol text in the printable summary', () => {
     renderText({ en: 'Hello' }, { defaultLocale: 'en', locales: ['en', 'fr'] });
 
     const note = screen.getByText(
-      'Not translated yet. Participants see the English text.',
+      'Not translated yet. Participants see it in English.',
     );
     // The note is in Architect's language, not the missing translation's.
     expect(note.closest('dd')).not.toHaveAttribute('lang');
@@ -87,7 +87,7 @@ describe('protocol text in the printable summary', () => {
 
     expect(
       screen.getByText(
-        'Not translated yet. Participants see the English text, unless their browser also lists a language that has it.',
+        'Not translated yet. Participants see it in English, unless their browser also lists a language that has a translation.',
       ),
     ).toBeVisible();
   });

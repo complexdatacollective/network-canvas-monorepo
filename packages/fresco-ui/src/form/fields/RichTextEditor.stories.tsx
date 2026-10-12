@@ -4,6 +4,7 @@ import { action } from 'storybook/actions';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { z } from 'zod/mini';
 
+import { TokenizedText } from '../../TokenPill';
 import Field from '../Field/Field';
 import Form from '../Form';
 import SubmitButton from '../SubmitButton';
@@ -564,5 +565,145 @@ export const WithTokens: Story = {
     await waitFor(() =>
       expect(editor.querySelector('[data-token="#"]')).not.toBeNull(),
     );
+  },
+};
+
+const tokenButtons = [
+  { id: 'name', label: 'Name', required: true },
+  { id: '#', label: 'Number', required: true },
+];
+
+/**
+ * A `required` token is one the text must include. While the text leaves it
+ * out, its button carries a warning dot and says so in its name; placing the
+ * token takes the dot away.
+ *
+ * ```tsx
+ * <RichTextEditorField
+ *   tokens={[{ id: 'name', label: 'Name', required: true }]}
+ *   value={value}
+ *   onChange={setValue}
+ * />
+ * ```
+ */
+export const WithRequiredTokenNotPlaced: Story = {
+  render: (args) => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <div data-testid="editor">
+        <RichTextEditorField
+          {...args}
+          compact
+          toolbarOptions={{ bold: false, italic: false, history: false }}
+          tokens={tokenButtons}
+          changeMode="input"
+          value={tokenLine}
+          onChange={action('onChange')}
+        />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox');
+
+    // The name is in the text; the number is not.
+    await expect(
+      canvas.getByRole('button', { name: 'Insert “Name”' }),
+    ).not.toHaveAttribute('data-missing');
+    const number = canvas.getByRole('button', {
+      name: 'Insert “Number” (required in this text)',
+    });
+    await expect(number).toHaveAttribute('data-missing', 'true');
+
+    await userEvent.click(editor);
+    await userEvent.click(number);
+
+    await expect(
+      await canvas.findByRole('button', { name: 'Insert “Number”' }),
+    ).not.toHaveAttribute('data-missing');
+  },
+};
+
+const tokensInText: JSONContent = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Add ' },
+        { type: 'token', attrs: { id: 'name' } },
+        { type: 'text', text: '’s ' },
+        { type: 'token', attrs: { id: '#' } },
+        { type: 'text', text: ' parents' },
+      ],
+    },
+  ],
+};
+
+/**
+ * A document that already holds every token it must: each one shows as a pill
+ * among the words, and no button warns that a token is missing.
+ */
+export const WithTokensInTheText: Story = {
+  render: (args) => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <div data-testid="editor">
+        <RichTextEditorField
+          {...args}
+          compact
+          toolbarOptions={{ bold: false, italic: false, history: false }}
+          tokens={tokenButtons}
+          changeMode="input"
+          value={tokensInText}
+          onChange={action('onChange')}
+        />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const editor = await canvas.findByRole('textbox');
+
+    await expect(editor.querySelectorAll('[data-token]')).toHaveLength(2);
+    for (const name of ['Insert “Name”', 'Insert “Number”']) {
+      await expect(canvas.getByRole('button', { name })).not.toHaveAttribute(
+        'data-missing',
+      );
+    }
+  },
+};
+
+/**
+ * Text that is only read shows its placeholders as the same pills the editor
+ * shows. `TokenizedText` takes the text as parts, each a run of words or a
+ * token, and the labels of the tokens it may hold. A pill's words are its
+ * label, so a screen reader reads the sentence through.
+ *
+ * ```tsx
+ * import { TokenizedText } from '@codaco/fresco-ui/TokenPill';
+ *
+ * <TokenizedText
+ *   parts={['Add ', { token: 'name' }, '’s parents']}
+ *   tokens={[{ id: 'name', label: 'Name' }]}
+ * />
+ * ```
+ */
+export const ReadOnlyTokens: Story = {
+  render: () => (
+    <div className="flex w-[480px] flex-col gap-4">
+      <p data-testid="read-only">
+        <TokenizedText
+          parts={['Add ', { token: 'name' }, '’s ', { token: '#' }, ' parents']}
+          tokens={tokenButtons}
+        />
+      </p>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const text = await canvas.findByTestId('read-only');
+
+    await expect(text).toHaveTextContent('Add Name’s Number parents');
+    await expect(text.querySelectorAll('[data-token]')).toHaveLength(2);
   },
 };

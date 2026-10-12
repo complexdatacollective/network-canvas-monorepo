@@ -140,7 +140,13 @@ describe('Protocol Summary canvas wording', () => {
     const row = rowFor('Snapshot title for a condition');
     expect(row).not.toHaveTextContent('{title}');
     expect(row).not.toHaveTextContent('{condition}');
-    expect(row).toHaveTextContent(/\[.+\]: \[.+\]/);
+    // Each placeholder is drawn as a pill, named by its label.
+    expect(
+      [...row.querySelectorAll('[data-token]')].map((pill) =>
+        pill.getAttribute('data-token'),
+      ),
+    ).toEqual(['title', 'condition']);
+    expect(row).toHaveTextContent(/.+: .+/);
   });
 
   it('prints nothing for a stage whose settings hold no words', () => {

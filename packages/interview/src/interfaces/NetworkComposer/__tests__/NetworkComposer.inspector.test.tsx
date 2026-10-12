@@ -1039,7 +1039,7 @@ describe('NetworkComposer inspector — leaving an edit', () => {
     const warning = await screen.findByRole('dialog', {
       name: 'Discard changes?',
     });
-    expect(warning).toHaveTextContent(/invalid data/);
+    expect(warning).toHaveTextContent(/Do you want to discard your changes\?/);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await expect(left).resolves.toBe(false);
@@ -1104,7 +1104,7 @@ describe('NetworkComposer inspector — leaving an edit', () => {
 
       expect(
         await screen.findByRole('dialog', discardDialog),
-      ).toHaveTextContent(/invalid data/);
+      ).toHaveTextContent(/Do you want to discard your changes\?/);
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
       await waitFor(() =>

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { FORMS_INTERFACE_TEXT } from '../interface-text-wording.ts';
 import {
   INTERFACE_TEXT_MESSAGES,
   InterfaceTextSchema,
@@ -35,10 +34,19 @@ describe('the interface text a protocol holds', () => {
   it('always holds the interview’s own words, in each language Network Canvas supplies them in', () => {
     const text = interfaceTextFor(protocolWith());
 
-    expect(Object.keys(text)).toEqual(['interview']);
-    expect(text.interview?.exitInterview).toEqual({
+    expect(Object.keys(text)).toEqual(['navigation', 'buttons', 'messages']);
+    expect(text.navigation?.exitInterview).toEqual({
       en: 'Exit interview',
       fr: expect.any(String),
+    });
+    expect(Object.keys(text.messages ?? {})).toEqual([
+      'stageError',
+      'itemUnavailable',
+      'error',
+    ]);
+    expect(text.messages?.error).toEqual({
+      en: 'An error occurred.',
+      fr: 'Une erreur s’est produite.',
     });
   });
 
@@ -49,7 +57,7 @@ describe('the interface text a protocol holds', () => {
       }),
     );
 
-    expect(text.interview?.back).toEqual({ hu: 'Back' });
+    expect(text.navigation?.back).toEqual({ hu: 'Back' });
   });
 
   it('holds the passphrase text only while the protocol encrypts an attribute', () => {
@@ -59,39 +67,58 @@ describe('the interface text a protocol holds', () => {
     const decrypted = protocolWith({
       interfaceText: interfaceTextFor(encrypted),
     });
-    expect(Object.keys(interfaceTextFor(decrypted))).toEqual(['interview']);
+    expect(Object.keys(interfaceTextFor(decrypted))).toEqual([
+      'navigation',
+      'buttons',
+      'messages',
+    ]);
   });
 
-  it('holds the form text while a stage shows a form', () => {
+  it('holds the form text and the Yes and No answers while a stage shows a form', () => {
     const text = interfaceTextFor(
       protocolWith({ stages: [{ type: 'EgoForm', form: { fields: [] } }] }),
     );
-    expect(Object.keys(text)).toEqual(['interview', 'forms']);
+    expect(Object.keys(text)).toEqual([
+      'navigation',
+      'buttons',
+      'messages',
+      'forms',
+    ]);
+    expect(Object.keys(text.buttons ?? {})).toEqual([
+      'cancel',
+      'done',
+      'delete',
+      'yes',
+      'no',
+    ]);
+    expect(Object.keys(text.forms ?? {})).toEqual([
+      'discardChangesTitle',
+      'discardChangesDescription',
+    ]);
   });
 
   it('holds the form text for the forms a stage always shows, and the passphrase’s', () => {
-    // The form text a protocol holds: all of it, only the message for a
-    // refused save, or none.
-    const groups = (extra: Parameters<typeof protocolWith>[0]) => {
-      const held = interfaceTextFor(protocolWith(extra)).forms;
-      if (held === undefined) return 'none';
-      return Object.keys(held).length ===
-        Object.keys(FORMS_INTERFACE_TEXT).length
-        ? 'all'
-        : Object.keys(held).join();
+    // Whether the protocol holds the form text and the Yes and No answers.
+    const showsForms = (extra: Parameters<typeof protocolWith>[0]) => {
+      const text = interfaceTextFor(protocolWith(extra));
+      const holdsYesAndNo = text.buttons?.yes !== undefined;
+      expect(text.buttons?.no !== undefined).toBe(holdsYesAndNo);
+      expect(text.forms !== undefined).toBe(holdsYesAndNo);
+      return holdsYesAndNo;
     };
-    expect(groups({ stages: [{ type: 'NameGeneratorQuickAdd' }] })).toBe('all');
-    expect(groups({ stages: [{ type: 'Anonymisation' }] })).toBe('all');
+    expect(showsForms({ stages: [{ type: 'NameGeneratorQuickAdd' }] })).toBe(
+      true,
+    );
+    expect(showsForms({ stages: [{ type: 'Anonymisation' }] })).toBe(true);
     // A Dyad Census answers each pair with Yes or No.
-    expect(groups({ stages: [{ type: 'DyadCensus' }] })).toBe('all');
+    expect(showsForms({ stages: [{ type: 'DyadCensus' }] })).toBe(true);
     // A roster's cards show the answers in the columns it lists, as Yes and
-    // No for a yes-or-no one; one that lists none shows only names, and
-    // reports a refused save.
-    expect(groups({ stages: [{ type: 'NameGeneratorRoster' }] })).toBe(
-      'submitFailed',
+    // No for a yes-or-no one; one that lists none shows only names.
+    expect(showsForms({ stages: [{ type: 'NameGeneratorRoster' }] })).toBe(
+      false,
     );
     expect(
-      groups({
+      showsForms({
         stages: [
           {
             type: 'NameGeneratorRoster',
@@ -99,9 +126,9 @@ describe('the interface text a protocol holds', () => {
           },
         ],
       }),
-    ).toBe('submitFailed');
+    ).toBe(false);
     expect(
-      groups({
+      showsForms({
         stages: [
           {
             type: 'NameGeneratorRoster',
@@ -113,15 +140,15 @@ describe('the interface text a protocol holds', () => {
           },
         ],
       }),
-    ).toBe('all');
+    ).toBe(true);
     // A Categorical Bin asks for its "other" answer in a form dialog.
     expect(
-      groups({
+      showsForms({
         stages: [{ type: 'CategoricalBin', prompts: [{ id: 'p' }] }],
       }),
-    ).toBe('submitFailed');
+    ).toBe(false);
     expect(
-      groups({
+      showsForms({
         stages: [
           {
             type: 'CategoricalBin',
@@ -129,25 +156,23 @@ describe('the interface text a protocol holds', () => {
           },
         ],
       }),
-    ).toBe('all');
-    expect(groups({ codebook: ENCRYPTED_CODEBOOK })).toBe('all');
-    // A Geospatial stage reports a refused save, and shows no form.
-    expect(groups({ stages: [{ type: 'Geospatial' }] })).toBe('submitFailed');
-    // A stage that saves nothing a participant is told about holds none.
-    expect(groups({ stages: [{ type: 'Sociogram' }] })).toBe('none');
+    ).toBe(true);
+    expect(showsForms({ codebook: ENCRYPTED_CODEBOOK })).toBe(true);
+    // A stage that reports a refused save shows no form; the error message
+    // it reports is always held.
+    expect(showsForms({ stages: [{ type: 'Geospatial' }] })).toBe(false);
+    expect(showsForms({ stages: [{ type: 'Sociogram' }] })).toBe(false);
     // A Network Composer's name box is not a form that can be submitted, but
     // the form its inspector shows for a selected person is, once it has
-    // fields. Without one it still reports a refused save.
-    expect(groups({ stages: [{ type: 'NetworkComposer' }] })).toBe(
-      'submitFailed',
-    );
+    // fields.
+    expect(showsForms({ stages: [{ type: 'NetworkComposer' }] })).toBe(false);
     expect(
-      groups({
+      showsForms({
         stages: [{ type: 'NetworkComposer', nodeForm: { fields: [] } }],
       }),
-    ).toBe('submitFailed');
+    ).toBe(false);
     expect(
-      groups({
+      showsForms({
         stages: [
           {
             type: 'NetworkComposer',
@@ -155,7 +180,19 @@ describe('the interface text a protocol holds', () => {
           },
         ],
       }),
-    ).toBe('all');
+    ).toBe(true);
+  });
+
+  it('holds the error message whatever the protocol shows', () => {
+    for (const stages of [
+      [],
+      [{ type: 'Geospatial' }],
+      [{ type: 'EgoForm' }],
+    ]) {
+      expect(
+        interfaceTextFor(protocolWith({ stages })).messages?.error,
+      ).toEqual({ en: 'An error occurred.', fr: expect.any(String) });
+    }
   });
 
   it('holds the validation messages of only the rules the protocol uses', () => {
@@ -287,10 +324,10 @@ describe('the interface text a protocol holds', () => {
   it('keeps the researcher’s words', () => {
     const reworded = protocolWith({
       interfaceText: {
-        interview: { back: { en: 'Previous', fr: 'Précédent' } },
+        navigation: { back: { en: 'Previous', fr: 'Précédent' } },
       },
     });
-    expect(interfaceTextFor(reworded).interview?.back).toEqual({
+    expect(interfaceTextFor(reworded).navigation?.back).toEqual({
       en: 'Previous',
       fr: 'Précédent',
     });
@@ -309,24 +346,55 @@ describe('the interface text a protocol holds', () => {
       }),
     );
     expect(InterfaceTextSchema.safeParse(text).success).toBe(true);
-    // Only the message for a refused save, on a stage that shows no form.
-    const saveOnly = interfaceTextFor(
+    // A stage that shows no form holds no form text and no Yes or No.
+    const noForms = interfaceTextFor(
       protocolWith({ stages: [{ type: 'Geospatial' }] }),
     );
-    expect(Object.keys(saveOnly.forms ?? {})).toEqual(['submitFailed']);
-    expect(InterfaceTextSchema.safeParse(saveOnly).success).toBe(true);
+    expect(noForms.forms).toBeUndefined();
+    expect(Object.keys(noForms.buttons ?? {})).toEqual([
+      'cancel',
+      'done',
+      'delete',
+    ]);
+    expect(InterfaceTextSchema.safeParse(noForms).success).toBe(true);
     expect(
-      InterfaceTextSchema.safeParse({ interview: { back: { en: ' ' } } })
+      InterfaceTextSchema.safeParse({ navigation: { back: { en: ' ' } } })
+        .success,
+    ).toBe(false);
+    // The old group names are gone.
+    expect(
+      InterfaceTextSchema.safeParse({ interview: { back: { en: 'Back' } } })
         .success,
     ).toBe(false);
   });
 
   it('names a catalog message for every text', () => {
-    expect(
-      INTERFACE_TEXT_MESSAGES.find(
-        ({ group, key }) => group === 'forms' && key === 'yes',
-      )?.id,
-    ).toBe('frescoUi.booleanField.yes');
+    const idsOf = (group: string, key: string) =>
+      INTERFACE_TEXT_MESSAGES.filter(
+        (message) => message.group === group && message.key === key,
+      ).map(({ id }) => id);
+
+    expect(idsOf('navigation', 'back')).toEqual(['common.back']);
+  });
+
+  it('lets one text stand in for several catalog messages', () => {
+    const idsOf = (group: string, key: string) =>
+      INTERFACE_TEXT_MESSAGES.filter(
+        (message) => message.group === group && message.key === key,
+      ).map(({ id }) => id);
+
+    // The discard dialog’s confirm button reads as the Yes answer.
+    expect(idsOf('buttons', 'yes')).toEqual([
+      'frescoUi.booleanField.yes',
+      'interview.interfaces.discardChanges',
+    ]);
+    // The error message is the form’s and the generic one.
+    expect(idsOf('messages', 'error')).toEqual([
+      'common.genericError',
+      'frescoUi.form.submitFailed',
+    ]);
+    const ids = INTERFACE_TEXT_MESSAGES.map(({ id }) => id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 
@@ -336,7 +404,7 @@ describe('interface text after a change to the languages', () => {
     const text = interfaceTextFor(protocolWith({ localization: english }));
     const reworded = {
       ...text,
-      interview: { ...text.interview, back: { en: 'Previous' } },
+      navigation: { ...text.navigation, back: { en: 'Previous' } },
     };
 
     const updates = interfaceTextAfterLanguageChange(reworded, {
@@ -345,7 +413,7 @@ describe('interface text after a change to the languages', () => {
     });
     const updated = (key: string) =>
       updates.find(
-        (update) => update.group === 'interview' && update.key === key,
+        (update) => update.group === 'navigation' && update.key === key,
       );
 
     expect(updated('exitInterview')?.value.fr).toEqual(expect.any(String));

@@ -1,23 +1,29 @@
 import type { MessageArguments } from '../../localization/messageArguments.ts';
 import type { SuppliedWording } from './supplied-stage-setting.ts';
 
-// Generated from the interview, fresco-ui and app-i18n catalogs: the wording
-// Network Canvas supplies for the interface text a protocol holds
-// (`interface-text.ts`), each entry the catalog text of the message it
-// stands in for, in every language Network Canvas ships, with the arguments
-// the English message uses. Regenerate rather than edit by hand when a
-// catalog's wording changes.
+// The wording Network Canvas supplies for the interface text a protocol holds
+// (`interface-text.ts`), in every language Network Canvas ships, with the
+// arguments the English message uses. Each entry is the catalog text of the
+// message it stands in for, as the interview, fresco-ui and app-i18n
+// catalogs word it; the exceptions are the two entries that merge several
+// messages (`buttons.yes` and `messages.error`, see their `ids`). Update the
+// wording here when a catalog's wording changes.
 
 export type InterfaceTextEntry = Readonly<{
-  /** The message the text stands in for in the interview. */
-  id: string;
+  /**
+   * The messages the text stands in for in the interview and the controls it
+   * uses: its wording shows wherever any of them is asked for. Usually one;
+   * several where one wording serves them all (the Yes answer is also the
+   * discard dialog's confirm button).
+   */
+  ids: readonly string[];
   arguments?: MessageArguments;
   message: SuppliedWording;
 }>;
 
-export const INTERVIEW_INTERFACE_TEXT = {
+export const NAVIGATION_INTERFACE_TEXT = {
   exitInterview: {
-    id: 'interview.navigation.exitInterview',
+    ids: ['interview.navigation.exitInterview'],
     message: {
       'en': 'Exit interview',
       'de': 'Interview verlassen',
@@ -31,7 +37,7 @@ export const INTERVIEW_INTERFACE_TEXT = {
     },
   },
   exitInterviewDescription: {
-    id: 'interview.navigation.exitInterviewDescription',
+    ids: ['interview.navigation.exitInterviewDescription'],
     message: {
       'en': 'Your answers so far will be saved and you can continue later.',
       'de': 'Ihre bisherigen Antworten werden gespeichert und Sie können später weitermachen.',
@@ -45,8 +51,112 @@ export const INTERVIEW_INTERFACE_TEXT = {
       'zh-Hant': '系統會儲存您目前的回答，您可以稍後再繼續。',
     },
   },
+  back: {
+    ids: ['common.back'],
+    message: {
+      'en': 'Back',
+      'de': 'Zurück',
+      'es': 'Volver',
+      'fr': 'Retour',
+      'it': 'Indietro',
+      'nl': 'Terug',
+      'pt-BR': 'Voltar',
+      'zh-Hans': '返回',
+      'zh-Hant': '上一步',
+    },
+  },
+  continue: {
+    ids: ['common.continue'],
+    message: {
+      'en': 'Continue',
+      'de': 'Weiter',
+      'es': 'Continuar',
+      'fr': 'Continuer',
+      'it': 'Continua',
+      'nl': 'Doorgaan',
+      'pt-BR': 'Continuar',
+      'zh-Hans': '继续',
+      'zh-Hant': '繼續',
+    },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+export const BUTTONS_INTERFACE_TEXT = {
+  cancel: {
+    ids: ['common.cancel'],
+    message: {
+      'en': 'Cancel',
+      'de': 'Abbrechen',
+      'es': 'Cancelar',
+      'fr': 'Annuler',
+      'it': 'Annulla',
+      'nl': 'Annuleren',
+      'pt-BR': 'Cancelar',
+      'zh-Hans': '取消',
+      'zh-Hant': '取消',
+    },
+  },
+  done: {
+    ids: ['common.done'],
+    message: {
+      'en': 'Done',
+      'de': 'Fertig',
+      'es': 'Listo',
+      'fr': 'Terminé',
+      'it': 'Fine',
+      'nl': 'Gereed',
+      'pt-BR': 'Concluído',
+      'zh-Hans': '完成',
+      'zh-Hant': '完成',
+    },
+  },
+  delete: {
+    ids: ['common.delete'],
+    message: {
+      'en': 'Delete',
+      'de': 'Löschen',
+      'es': 'Eliminar',
+      'fr': 'Supprimer',
+      'it': 'Elimina',
+      'nl': 'Verwijderen',
+      'pt-BR': 'Excluir',
+      'zh-Hans': '删除',
+      'zh-Hant': '刪除',
+    },
+  },
+  yes: {
+    ids: ['frescoUi.booleanField.yes', 'interview.interfaces.discardChanges'],
+    message: {
+      'en': 'Yes',
+      'de': 'Ja',
+      'es': 'Sí',
+      'fr': 'Oui',
+      'it': 'Sì',
+      'nl': 'Ja',
+      'pt-BR': 'Sim',
+      'zh-Hans': '是',
+      'zh-Hant': '是',
+    },
+  },
+  no: {
+    ids: ['frescoUi.booleanField.no'],
+    message: {
+      'en': 'No',
+      'de': 'Nein',
+      'es': 'No',
+      'fr': 'Non',
+      'it': 'No',
+      'nl': 'Nee',
+      'pt-BR': 'Não',
+      'zh-Hans': '否',
+      'zh-Hant': '否',
+    },
+  },
+} as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
+
+export const MESSAGES_INTERFACE_TEXT = {
   stageError: {
-    id: 'interview.runtime.taskErrorDescription',
+    ids: ['interview.runtime.taskErrorDescription'],
     message: {
       'en': 'There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.',
       'de': 'In der Interview-Software ist ein Fehler aufgetreten, daher konnte diese Aufgabe nicht angezeigt werden. Manche Aufgaben (zum Beispiel Karten) benötigen eine Internetverbindung. Prüfen Sie daher Ihre Verbindung und laden Sie dann die Seite neu. Wenn das Problem weiterhin besteht, wenden Sie sich bitte an die Studienleitung und senden Sie ihr die Diagnoseinformationen, die Sie mit der Schaltfläche unten kopieren können. Möglicherweise können Sie das Interview fortsetzen, indem Sie auf „Weiter“ klicken.',
@@ -63,7 +173,7 @@ export const INTERVIEW_INTERFACE_TEXT = {
     },
   },
   itemUnavailable: {
-    id: 'interview.runtime.itemUnavailable',
+    ids: ['interview.runtime.itemUnavailable'],
     message: {
       'en': 'This item could not be displayed.',
       'de': 'Dieser Inhalt konnte nicht angezeigt werden.',
@@ -76,87 +186,17 @@ export const INTERVIEW_INTERFACE_TEXT = {
       'zh-Hant': '無法顯示此項目。',
     },
   },
-  back: {
-    id: 'common.back',
+  error: {
+    ids: ['common.genericError', 'frescoUi.form.submitFailed'],
     message: {
-      'en': 'Back',
-      'de': 'Zurück',
-      'es': 'Volver',
-      'fr': 'Retour',
-      'it': 'Indietro',
-      'nl': 'Terug',
-      'pt-BR': 'Voltar',
-      'zh-Hans': '返回',
-      'zh-Hant': '上一步',
-    },
-  },
-  continue: {
-    id: 'common.continue',
-    message: {
-      'en': 'Continue',
-      'de': 'Weiter',
-      'es': 'Continuar',
-      'fr': 'Continuer',
-      'it': 'Continua',
-      'nl': 'Doorgaan',
-      'pt-BR': 'Continuar',
-      'zh-Hans': '继续',
-      'zh-Hant': '繼續',
-    },
-  },
-  cancel: {
-    id: 'common.cancel',
-    message: {
-      'en': 'Cancel',
-      'de': 'Abbrechen',
-      'es': 'Cancelar',
-      'fr': 'Annuler',
-      'it': 'Annulla',
-      'nl': 'Annuleren',
-      'pt-BR': 'Cancelar',
-      'zh-Hans': '取消',
-      'zh-Hant': '取消',
-    },
-  },
-  done: {
-    id: 'common.done',
-    message: {
-      'en': 'Done',
-      'de': 'Fertig',
-      'es': 'Listo',
-      'fr': 'Terminé',
-      'it': 'Fine',
-      'nl': 'Gereed',
-      'pt-BR': 'Concluído',
-      'zh-Hans': '完成',
-      'zh-Hant': '完成',
-    },
-  },
-  delete: {
-    id: 'common.delete',
-    message: {
-      'en': 'Delete',
-      'de': 'Löschen',
-      'es': 'Eliminar',
-      'fr': 'Supprimer',
-      'it': 'Elimina',
-      'nl': 'Verwijderen',
-      'pt-BR': 'Excluir',
-      'zh-Hans': '删除',
-      'zh-Hant': '刪除',
-    },
-  },
-  genericError: {
-    id: 'common.genericError',
-    message: {
-      'en': 'Something went wrong.',
-      'de': 'Etwas ist schiefgelaufen.',
+      'en': 'An error occurred.',
+      'de': 'Es ist ein Fehler aufgetreten.',
       'es': 'Se ha producido un error.',
       'fr': 'Une erreur s’est produite.',
       'it': 'Si è verificato un errore.',
-      'nl': 'Er is iets misgegaan.',
-      'pt-BR': 'Algo deu errado.',
-      'zh-Hans': '出现问题。',
+      'nl': 'Er is een fout opgetreden.',
+      'pt-BR': 'Ocorreu um erro.',
+      'zh-Hans': '发生错误。',
       'zh-Hant': '發生錯誤。',
     },
   },
@@ -164,7 +204,7 @@ export const INTERVIEW_INTERFACE_TEXT = {
 
 export const PASSPHRASE_INTERFACE_TEXT = {
   passphrase: {
-    id: 'interview.runtime.passphrase',
+    ids: ['interview.runtime.passphrase'],
     message: {
       'en': 'Passphrase',
       'de': 'Passphrase',
@@ -178,7 +218,7 @@ export const PASSPHRASE_INTERFACE_TEXT = {
     },
   },
   choosePassphraseHelp: {
-    id: 'interview.runtime.choosePassphraseHelp',
+    ids: ['interview.runtime.choosePassphraseHelp'],
     message: {
       'en': 'Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.',
       'de': 'Einige Antworten auf dieser Seite werden durch eine Passphrase geschützt. Bewahren Sie sie sicher auf: Sie benötigen sie, um diese Antworten später anzuzeigen oder zu ändern, und sie kann nicht wiederhergestellt werden, wenn sie vergessen wird.',
@@ -195,7 +235,7 @@ export const PASSPHRASE_INTERFACE_TEXT = {
     },
   },
   passphraseIncorrect: {
-    id: 'interview.runtime.passphraseIncorrect',
+    ids: ['interview.runtime.passphraseIncorrect'],
     message: {
       'en': 'This passphrase does not match the one used earlier in this interview. Check it and try again.',
       'de': 'Diese Passphrase stimmt nicht mit der überein, die zuvor in diesem Interview verwendet wurde. Bitte prüfen Sie sie und versuchen Sie es erneut.',
@@ -212,7 +252,7 @@ export const PASSPHRASE_INTERFACE_TEXT = {
     },
   },
   protectedAnswersLocked: {
-    id: 'interview.runtime.protectedAnswersLocked',
+    ids: ['interview.runtime.protectedAnswersLocked'],
     message: {
       'en': 'Some answers here are protected by your passphrase. Enter your passphrase to see and change them.',
       'de': 'Einige Antworten hier sind durch Ihre Passphrase geschützt. Geben Sie Ihre Passphrase ein, um sie anzuzeigen und zu ändern.',
@@ -229,7 +269,7 @@ export const PASSPHRASE_INTERFACE_TEXT = {
     },
   },
   protectedAnswersNotSaved: {
-    id: 'interview.runtime.protectedAnswersNotSaved',
+    ids: ['interview.runtime.protectedAnswersNotSaved'],
     message: {
       'en': 'Your answers have not been saved. Enter your passphrase, then try again.',
       'de': 'Ihre Antworten wurden nicht gespeichert. Geben Sie Ihre Passphrase ein und versuchen Sie es dann erneut.',
@@ -244,7 +284,7 @@ export const PASSPHRASE_INTERFACE_TEXT = {
     },
   },
   protectedAnswersUnavailable: {
-    id: 'interview.runtime.protectedAnswersUnavailable',
+    ids: ['interview.runtime.protectedAnswersUnavailable'],
     message: {
       'en': 'Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know.',
       'de': 'Durch eine Passphrase geschützte Antworten können in diesem Interview nicht angezeigt oder gespeichert werden. Bitte informieren Sie die Person, die Sie für diese Studie gewonnen hat.',
@@ -261,7 +301,7 @@ export const PASSPHRASE_INTERFACE_TEXT = {
     },
   },
   answerUnavailable: {
-    id: 'interview.runtime.answerUnavailable',
+    ids: ['interview.runtime.answerUnavailable'],
     message: {
       'en': 'Answer unavailable',
       'de': 'Antwort nicht verfügbar',
@@ -275,7 +315,7 @@ export const PASSPHRASE_INTERFACE_TEXT = {
     },
   },
   answerUnavailableKept: {
-    id: 'interview.runtime.answerUnavailableKept',
+    ids: ['interview.runtime.answerUnavailableKept'],
     message: {
       'en': 'This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer.',
       'de': 'Diese Antwort wurde zuvor gespeichert, kann hier aber nicht angezeigt werden. Wenn Sie eine neue Antwort eingeben, ersetzt sie diese; lassen Sie das Feld leer, um die frühere Antwort zu behalten.',
@@ -292,7 +332,7 @@ export const PASSPHRASE_INTERFACE_TEXT = {
     },
   },
   confirmPassphrase: {
-    id: 'interview.interfaces.confirmPassphrase',
+    ids: ['interview.interfaces.confirmPassphrase'],
     message: {
       'en': 'Confirm Passphrase',
       'de': 'Passphrase bestätigen',
@@ -306,7 +346,7 @@ export const PASSPHRASE_INTERFACE_TEXT = {
     },
   },
   passphraseAccepted: {
-    id: 'interview.interfaces.passphraseAccepted',
+    ids: ['interview.interfaces.passphraseAccepted'],
     message: {
       'en': 'Passphrase accepted! Click "Next" to continue.',
       'de': 'Passphrase akzeptiert! Klicken Sie auf „Weiter“, um fortzufahren.',
@@ -322,22 +362,8 @@ export const PASSPHRASE_INTERFACE_TEXT = {
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
 export const FORMS_INTERFACE_TEXT = {
-  discardChanges: {
-    id: 'interview.interfaces.discardChanges',
-    message: {
-      'en': 'Discard changes',
-      'de': 'Änderungen verwerfen',
-      'es': 'Descartar cambios',
-      'fr': 'Abandonner les modifications',
-      'it': 'Scarta le modifiche',
-      'nl': 'Wijzigingen verwerpen',
-      'pt-BR': 'Descartar alterações',
-      'zh-Hans': '放弃更改',
-      'zh-Hant': '捨棄變更',
-    },
-  },
   discardChangesTitle: {
-    id: 'interview.interfaces.discardChangesTitle',
+    ids: ['interview.interfaces.discardChangesTitle'],
     message: {
       'en': 'Discard changes?',
       'de': 'Änderungen verwerfen?',
@@ -351,69 +377,24 @@ export const FORMS_INTERFACE_TEXT = {
     },
   },
   discardChangesDescription: {
-    id: 'interview.interfaces.discardChangesDescription',
+    ids: ['interview.interfaces.discardChangesDescription'],
     message: {
-      'en': 'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
-      'de': 'Dieses Formular enthält ungültige Angaben und kann daher nicht gespeichert werden. Wenn Sie fortfahren, wird es zurückgesetzt und Ihre Änderungen gehen verloren. Möchten Sie Ihre Änderungen verwerfen?',
-      'es': 'Este formulario contiene datos que no son válidos y no se puede guardar. Si continúas, se restablecerá y se perderán los cambios. ¿Quieres descartar los cambios?',
-      'fr': 'Ce formulaire contient des données non valides et ne peut donc pas être enregistré. Si vous continuez, il sera réinitialisé et vos modifications seront perdues. Voulez-vous abandonner vos modifications ?',
-      'it': 'Questo modulo contiene dati non validi, quindi non può essere salvato. Se continui, verrà reimpostato e le modifiche andranno perse. Vuoi scartare le modifiche?',
-      'nl': 'Dit formulier bevat ongeldige gegevens en kan daarom niet worden opgeslagen. Als je doorgaat, wordt het formulier teruggezet en gaan je wijzigingen verloren. Wil je je wijzigingen verwerpen?',
-      'pt-BR':
-        'Este formulário contém dados inválidos e, por isso, não pode ser salvo. Se você continuar, ele será redefinido e suas alterações serão perdidas. Deseja descartar suas alterações?',
-      'zh-Hans':
-        '此表单包含无效数据，因此无法保存。如果继续，表单将被重置，您的更改将会丢失。是否放弃更改？',
-      'zh-Hant':
-        '此表單含有無效的資料，因此無法儲存。如果繼續，表單將會重設，您所做的變更也會遺失。要捨棄變更嗎？',
-    },
-  },
-  yes: {
-    id: 'frescoUi.booleanField.yes',
-    message: {
-      'en': 'Yes',
-      'de': 'Ja',
-      'es': 'Sí',
-      'fr': 'Oui',
-      'it': 'Sì',
-      'nl': 'Ja',
-      'pt-BR': 'Sim',
-      'zh-Hans': '是',
-      'zh-Hant': '是',
-    },
-  },
-  no: {
-    id: 'frescoUi.booleanField.no',
-    message: {
-      'en': 'No',
-      'de': 'Nein',
-      'es': 'No',
-      'fr': 'Non',
-      'it': 'No',
-      'nl': 'Nee',
-      'pt-BR': 'Não',
-      'zh-Hans': '否',
-      'zh-Hant': '否',
-    },
-  },
-  submitFailed: {
-    id: 'frescoUi.form.submitFailed',
-    message: {
-      'en': 'An error occurred while submitting the form.',
-      'de': 'Beim Absenden des Formulars ist ein Fehler aufgetreten.',
-      'es': 'Se ha producido un error al enviar el formulario.',
-      'fr': 'Une erreur s’est produite lors de l’envoi du formulaire.',
-      'it': 'Si è verificato un errore durante l’invio del modulo.',
-      'nl': 'Er is een fout opgetreden bij het versturen van het formulier.',
-      'pt-BR': 'Ocorreu um erro ao enviar o formulário.',
-      'zh-Hans': '提交表单时发生错误。',
-      'zh-Hant': '送出表單時發生錯誤。',
+      'en': 'Do you want to discard your changes?',
+      'de': 'Möchten Sie Ihre Änderungen verwerfen?',
+      'es': '¿Quieres descartar los cambios?',
+      'fr': 'Voulez-vous abandonner vos modifications ?',
+      'it': 'Vuoi scartare le modifiche?',
+      'nl': 'Wil je je wijzigingen verwerpen?',
+      'pt-BR': 'Deseja descartar suas alterações?',
+      'zh-Hans': '是否放弃更改？',
+      'zh-Hant': '要捨棄變更嗎？',
     },
   },
 } as const satisfies Readonly<Record<string, InterfaceTextEntry>>;
 
 export const VALIDATION_INTERFACE_TEXT = {
   required: {
-    id: 'frescoUi.validation.required',
+    ids: ['frescoUi.validation.required'],
     message: {
       'en': 'You must answer this question before continuing.',
       'de': 'Sie müssen diese Frage beantworten, bevor Sie fortfahren können.',
@@ -427,7 +408,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   minLength: {
-    id: 'frescoUi.validation.minLengthError',
+    ids: ['frescoUi.validation.minLengthError'],
     arguments: { min: { kind: 'plural' } },
     message: {
       'en': '{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}',
@@ -443,7 +424,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   maxLength: {
-    id: 'frescoUi.validation.maxLengthError',
+    ids: ['frescoUi.validation.maxLengthError'],
     arguments: { max: { kind: 'plural' } },
     message: {
       'en': '{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}',
@@ -459,7 +440,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   minValue: {
-    id: 'frescoUi.validation.minValueError',
+    ids: ['frescoUi.validation.minValueError'],
     arguments: { min: { kind: 'text' } },
     message: {
       'en': 'Enter a value greater than or equal to {min}.',
@@ -474,7 +455,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   maxValue: {
-    id: 'frescoUi.validation.maxValueError',
+    ids: ['frescoUi.validation.maxValueError'],
     arguments: { max: { kind: 'text' } },
     message: {
       'en': 'Enter a value less than or equal to {max}.',
@@ -489,7 +470,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   minDate: {
-    id: 'frescoUi.validation.minDate',
+    ids: ['frescoUi.validation.minDate'],
     arguments: { min: { kind: 'text' } },
     message: {
       'en': 'Must be on or after {min}.',
@@ -504,7 +485,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   maxDate: {
-    id: 'frescoUi.validation.maxDate',
+    ids: ['frescoUi.validation.maxDate'],
     arguments: { max: { kind: 'text' } },
     message: {
       'en': 'Must be on or before {max}.',
@@ -519,7 +500,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   minSelected: {
-    id: 'frescoUi.validation.minSelectedError',
+    ids: ['frescoUi.validation.minSelectedError'],
     arguments: { count: { kind: 'plural' } },
     message: {
       'en': '{count, plural, one {Select at least # value.} other {Select at least # values.}}',
@@ -535,7 +516,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   maxSelected: {
-    id: 'frescoUi.validation.maxSelectedError',
+    ids: ['frescoUi.validation.maxSelectedError'],
     arguments: { count: { kind: 'plural' } },
     message: {
       'en': '{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}',
@@ -551,7 +532,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   unique: {
-    id: 'frescoUi.validation.uniqueError',
+    ids: ['frescoUi.validation.uniqueError'],
     message: {
       'en': 'Must be unique.',
       'de': 'Muss eindeutig sein.',
@@ -565,7 +546,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   differentFrom: {
-    id: 'frescoUi.validation.differentFromError',
+    ids: ['frescoUi.validation.differentFromError'],
     arguments: {
       hasLabel: { kind: 'select', cases: ['true'] },
       label: { kind: 'text' },
@@ -586,7 +567,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   sameAs: {
-    id: 'frescoUi.validation.sameAsError',
+    ids: ['frescoUi.validation.sameAsError'],
     arguments: {
       hasLabel: { kind: 'select', cases: ['true'] },
       label: { kind: 'text' },
@@ -607,7 +588,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   greaterThan: {
-    id: 'frescoUi.validation.greaterThanError',
+    ids: ['frescoUi.validation.greaterThanError'],
     arguments: {
       hasLabel: { kind: 'select', cases: ['true'] },
       label: { kind: 'text' },
@@ -628,7 +609,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   lessThan: {
-    id: 'frescoUi.validation.lessThanError',
+    ids: ['frescoUi.validation.lessThanError'],
     arguments: {
       hasLabel: { kind: 'select', cases: ['true'] },
       label: { kind: 'text' },
@@ -649,7 +630,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   greaterThanOrEqual: {
-    id: 'frescoUi.validation.greaterThanOrEqualError',
+    ids: ['frescoUi.validation.greaterThanOrEqualError'],
     arguments: {
       hasLabel: { kind: 'select', cases: ['true'] },
       label: { kind: 'text' },
@@ -670,7 +651,7 @@ export const VALIDATION_INTERFACE_TEXT = {
     },
   },
   lessThanOrEqual: {
-    id: 'frescoUi.validation.lessThanOrEqualError',
+    ids: ['frescoUi.validation.lessThanOrEqualError'],
     arguments: {
       hasLabel: { kind: 'select', cases: ['true'] },
       label: { kind: 'text' },

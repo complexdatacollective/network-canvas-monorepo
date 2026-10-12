@@ -36,7 +36,7 @@
   "interview.interfaces.confirmPassphrase": "Confirm Passphrase",
   "interview.interfaces.deselect": "Deselect",
   "interview.interfaces.discardChanges": "Discard changes",
-  "interview.interfaces.discardChangesDescription": "This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?",
+  "interview.interfaces.discardChangesDescription": "Do you want to discard your changes?",
   "interview.interfaces.discardChangesTitle": "Discard changes?",
   "interview.interfaces.dragToReposition": "Drag to reposition",
   "interview.interfaces.drawingControls": "Drawing controls",
