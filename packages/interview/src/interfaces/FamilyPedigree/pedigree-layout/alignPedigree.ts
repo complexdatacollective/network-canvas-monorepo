@@ -37,6 +37,16 @@ const QUICK_SEARCH_WORK = 30_000;
  * kept for the thorough searches, which decide. */
 const QUICK_SHARE = 0.7;
 
+/**
+ * The work kept for finding a drawing that breaks no hard constraint, when
+ * the best found within `LINE_SEARCH_WORK` breaks one. That budget limits
+ * how far the cost of drawings that keep every hard constraint is bettered;
+ * it is not what returns a drawing that breaks one. This is bounded all the
+ * same: some families have no drawing that keeps every hard constraint, and
+ * they too are drawn inside the frame budget (`layoutBudget.test.ts`).
+ */
+const CONSTRAINT_WORK = 150_000;
+
 type Search = 'quick' | 'thorough';
 
 /**
@@ -139,28 +149,52 @@ export function alignPedigree(
     return searched.length > 0 ? searched : ranked.slice(0, 1);
   };
   const searched = searchedOf(drawn);
-  // When no seating draws without breaking a hard constraint, how far each
-  // row sits across from the others is searched as well: the seating is
-  // the same, and each row is shifted by up to a seat either way, for the
-  // two seatings drawn best.
+  // When the best drawing breaks a hard constraint, the search goes on
+  // with work kept for that alone (`CONSTRAINT_WORK`), not with what is
+  // left of the budget: the seatings drawn best are drawn again with each
+  // row shifted by up to a seat either way, the nearest shifts first, until
+  // one draws without breaking any. That drawing is drawn again thoroughly,
+  // and kept only if it still breaks none. A drawing that breaks a hard
+  // constraint is returned only when no shift within that work draws
+  // without one.
   const [best] = searched.toSorted(compareDrawn);
   const [seatsBreak, linesCost] = best!.key;
   if (seatsBreak === 0 && breaksAHardConstraint(linesCost!)) {
+    work.limit = work.spent + CONSTRAINT_WORK;
     const shifted: Drawn[] = [];
+    let valid: Drawn | undefined;
     let shifts = 0;
     shifting: for (const { layout, key } of searched) {
       for (const by of ROW_SHIFTS) {
         for (let layer = 0; layer < layout.pos.length; layer++) {
           if (!workLeft()) break shifting;
           const moved = shiftRow(layout, layer, by);
-          keep(
-            shifted,
-            drawnOf(moved, key, 'quick', candidates.length + shifts++),
+          const entry = drawnOf(
+            moved,
+            key,
+            'quick',
+            candidates.length + shifts++,
           );
+          keep(shifted, entry);
+          if (!breaksAHardConstraint(entry.key[1]!)) {
+            valid = entry;
+            break shifting;
+          }
         }
       }
     }
-    if (shifted.length > 0) searched.push(...searchedOf(shifted));
+    if (valid) {
+      // Drawn again as a layout of its own, so the quick drawing is kept
+      // should the thorough one break a hard constraint after all.
+      const thorough = workLeft()
+        ? drawnOf({ ...valid.layout }, valid.key, 'thorough', valid.rank)
+        : undefined;
+      searched.push(
+        thorough && !breaksAHardConstraint(thorough.key[1]!) ? thorough : valid,
+      );
+    } else if (shifted.length > 0) {
+      searched.push(...searchedOf(shifted));
+    }
   }
   return searched.toSorted(compareDrawn)[0]!.layout;
 }

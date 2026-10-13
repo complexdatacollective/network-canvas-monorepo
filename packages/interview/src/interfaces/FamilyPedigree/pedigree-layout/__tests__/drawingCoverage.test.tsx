@@ -470,6 +470,10 @@ const HOPS: Record<string, number> = {
   // where his line to the participant parts and hops their sibling's line
   // up.
   'a stepfather who raises all his partner’s children': 1,
+  // Young's line of descent hops the sibling bar of the parents it comes
+  // from, and Jo's social line to Cal: the fewest found within the work
+  // allowed (a search without that bound finds a drawing with one).
+  'a woman who carries her parents’ child and raises a friend’s': 2,
 };
 
 describe('the lines cross no more often than the fewest crossings found', () => {

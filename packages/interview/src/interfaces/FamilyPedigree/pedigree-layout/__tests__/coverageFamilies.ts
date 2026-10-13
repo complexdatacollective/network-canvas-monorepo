@@ -164,6 +164,52 @@ export const coverageFamilies: Record<
       parent('son', 'biological', 'baby'),
     ],
   },
+  // A woman who is the surrogate for one child and raises another. Drawn
+  // within the work allowed for bettering a drawing, her surrogate line
+  // crossed her own social line; work is kept for finding a drawing that
+  // breaks no hard constraint, and it finds one.
+  'a woman who carries her parents’ child and raises a friend’s': {
+    people: [
+      'cal',
+      'gma',
+      'friendB',
+      'ben',
+      'dad',
+      'friendA',
+      'eve',
+      'jo',
+      'sam',
+      'amy',
+      'young',
+      'dee',
+      'gpa',
+      'mum',
+    ],
+    links: [
+      partners('gma', 'gpa'),
+      partners('mum', 'dad'),
+      partners('jo', 'sam'),
+      partners('friendA', 'friendB'),
+      parent('gma', 'biological', 'mum'),
+      parent('gpa', 'biological', 'mum'),
+      parent('gma', 'biological', 'jo', true),
+      parent('gpa', 'biological', 'jo'),
+      parent('jo', 'biological', 'dee', true),
+      parent('sam', 'biological', 'dee'),
+      parent('gma', 'biological', 'young'),
+      parent('gpa', 'biological', 'young'),
+      parent('friendA', 'biological', 'amy'),
+      parent('friendB', 'biological', 'amy'),
+      parent('friendA', 'biological', 'ben'),
+      parent('friendB', 'biological', 'ben'),
+      parent('friendA', 'biological', 'cal', true),
+      parent('friendB', 'biological', 'cal'),
+      parent('jo', 'biological', 'eve', true),
+      parent('sam', 'biological', 'eve'),
+      parent('jo', 'surrogate', 'young', true),
+      parent('jo', 'social', 'cal'),
+    ],
+  },
   'a donor to two of three half-siblings': {
     people: ['ego', 'hannah', 'paul', 'ruby', 'theo', 'theoDonor'],
     links: [
