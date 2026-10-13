@@ -32,7 +32,7 @@ const messages = defineMessages({
   showsValuesNotEditable: {
     id: 'protocolBuilder.localization.showsValuesNotEditable',
     defaultMessage:
-      'This text shows values the interview fills in, which this field cannot edit. It is kept as it is.',
+      'This text shows values the interview fills in, so it can’t be edited in this field. It is kept as it is.',
     description:
       'Shown in place of a text field when the stored text includes values filled in during the interview, such as the participant’s name, and this field cannot show them. The stored text is shown below it unchanged.',
   },

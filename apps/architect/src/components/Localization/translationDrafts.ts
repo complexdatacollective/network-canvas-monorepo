@@ -175,7 +175,7 @@ const dynamicValueProblem = (
     },
     [
       {
-        path: row.path,
+        path: [...row.path],
         value: { ...row.value, [locale]: text },
         dynamicValues: row.dynamicValues,
       },
