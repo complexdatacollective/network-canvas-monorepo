@@ -308,9 +308,11 @@ const renderProtectedInterview = () => (
 const openLockedSlide = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await expect(
+    // The notice also describes the form from a hidden element, which is
+    // not the text a participant reads.
     await canvas.findByText(
       /Some answers here are protected by your passphrase/,
-      {},
+      { ignore: 'script, style, [hidden]' },
       { timeout: 10_000 },
     ),
   ).toBeInTheDocument();
@@ -430,6 +432,12 @@ function buildComparedWithProtectedInterview() {
     validation: { differentFrom: name.id },
   });
 
+  // A stage before the form gives Back somewhere to go.
+  interview.addInformationStage({
+    title: 'Welcome',
+    text: 'Before the main stage.',
+  });
+
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form (Compared with protected)',
     subject: { entity: 'node', type: person.id },
@@ -456,7 +464,7 @@ export const DiscardingAnswerComparedWithProtected: Story = {
     <EncryptedStoryInterviewShell
       build={buildComparedWithProtectedInterview}
       passphrase={PASSPHRASE}
-      currentStep={0}
+      currentStep={1}
     />
   ),
   parameters: {
