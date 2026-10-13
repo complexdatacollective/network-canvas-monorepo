@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+
 const {
   captureExceptionMock,
   findUniqueMock,
@@ -81,6 +83,7 @@ function makeRequest(network: unknown, extra: Record<string, unknown> = {}) {
       currentStep: 2,
       lastUpdated: '2026-08-12T00:00:00.000Z',
       syncRevision: 1,
+      schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
       ...extra,
     }),
   });
@@ -227,6 +230,19 @@ describe('interview sync route', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'Invalid request body',
     });
+    expect(updateManyMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses a write from a page loaded before an upgrade, leaving the row as it is', async () => {
+    for (const extra of [
+      { schemaVersion: undefined },
+      { schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1 },
+    ]) {
+      const response = await post(
+        makeRequest(networkNamed('stale'), { syncRevision: 1, ...extra }),
+      );
+      expect(response.status).toBe(409);
+    }
     expect(updateManyMock).not.toHaveBeenCalled();
   });
 
@@ -384,8 +400,7 @@ describe('interview sync route', () => {
 
     it('refuses a write that carries no revision, rather than applying it unordered', async () => {
       // There is no shape of request that reaches the row without an order to
-      // be judged in. An upgrade takes the deployment down, so no browser is
-      // left running a bundle that does not send one.
+      // be judged in.
       const request = new NextRequest(
         'http://localhost/interview/interview-1/sync',
         {
@@ -396,6 +411,7 @@ describe('interview sync route', () => {
             network: networkNamed('unnumbered'),
             currentStep: 2,
             lastUpdated: '2026-08-12T00:00:00.000Z',
+            schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
           }),
         },
       );

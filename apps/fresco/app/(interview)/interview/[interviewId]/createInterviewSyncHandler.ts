@@ -3,6 +3,7 @@ import {
   type SessionSnapshot,
   type SyncHandler,
 } from '@codaco/interview/contract';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 
 // Matches the interval the interview engine used to apply on every host's
 // behalf, so a participant's answers reach the server at the same rate as
@@ -123,6 +124,9 @@ export function createInterviewSyncHandler({
       lastUpdated: session.lastUpdated,
       currentStep: getCurrentStep(),
       syncRevision: revision,
+      // The schema the page loaded the interview in, so the endpoint can
+      // refuse a tab left open across an upgrade that migrated it.
+      schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
     });
 
     try {

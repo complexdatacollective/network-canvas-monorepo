@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   NcNetworkSchema,
   ensureError,
@@ -73,6 +74,25 @@ const routeHandler = async (
     return invalidRequest(error);
   }
 
+  // An upgrade restarts the server but not the browsers already showing an
+  // interview, and an upgrade that migrates the protocol migrates its stored
+  // interviews too. A tab opened before it still holds the interview as the
+  // previous schema wrote it, and every write replaces the stored network and
+  // stage metadata wholesale, so its next write would undo that migration.
+  // Such a tab sends no schema version, or an older one: refuse its writes.
+  // Reloading the page starts it from the migrated interview.
+  if (
+    typeof rawPayload !== 'object' ||
+    rawPayload === null ||
+    !('schemaVersion' in rawPayload) ||
+    rawPayload.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION
+  ) {
+    return NextResponse.json(
+      { error: 'Interview was upgraded since this page loaded' },
+      { status: 409 },
+    );
+  }
+
   const Schema = z.object({
     id: z.string(),
     network: NcNetworkSchema,
@@ -88,8 +108,8 @@ const routeHandler = async (
      * is what lets the older one be discarded rather than committed last.
      *
      * Required, so there is no shape of request that reaches the row without an
-     * order to be judged in. An upgrade takes the deployment down, so there is
-     * no window in which a browser is running an older bundle against this.
+     * order to be judged in. A browser still running a bundle from before an
+     * upgrade is refused above, by its schema version.
      *
      * `lastUpdated` above is deliberately not used for this. It is a wall-clock
      * millisecond stamped by the interview reducer for a different purpose, so
