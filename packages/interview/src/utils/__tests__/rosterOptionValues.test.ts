@@ -92,6 +92,17 @@ describe('roster option values renamed by the schema 9 upgrade', () => {
     });
   });
 
+  it('reads a JSON roster answer spelled as the option was before', () => {
+    expect(
+      getVariableTypeReplacements(
+        'roster.json',
+        [row({ likes: ['Yes ', '1'], rank: ' Low', other: ' x ' })],
+        codebook,
+        subject,
+      )[0]![entityAttributesProperty],
+    ).toEqual({ likes: ['Yes', 1], rank: 'Low', other: ' x ' });
+  });
+
   it('keeps text that names no option as it is', () => {
     expect(typed({ likes: '["Maybe"]', rank: 'Middle' })).toEqual({
       likes: ['Maybe'],

@@ -401,5 +401,37 @@ export const getVariableTypeReplacements = (
   if (fileType === 'csv') {
     return withTypeReplacement(uuidData, protocolCodebook, stageSubject);
   }
-  return uuidData;
+  return withOptionValuesResolved(uuidData, protocolCodebook, stageSubject);
+};
+
+/**
+ * A JSON roster's answers are already typed, so only its categorical and
+ * ordinal answers are read again, against the codebook's options
+ * (`resolveCategoricalOption`).
+ */
+const withOptionValuesResolved = (
+  nodeList: NcNode[],
+  protocolCodebook: Codebook,
+  stageSubject: StageSubject,
+) => {
+  const codebookDefinition = getCodebookDefinition(
+    protocolCodebook,
+    stageSubject,
+  );
+  return nodeList.map((node) => {
+    const attributes = Object.fromEntries(
+      Object.entries(node[entityAttributesProperty]).map(([key, value]) => {
+        const variable = getCodebookVariable(codebookDefinition, key);
+        const resolve = (item: unknown) =>
+          resolveCategoricalOption(variable, item);
+        return [
+          key,
+          (Array.isArray(value)
+            ? value.map(resolve)
+            : resolve(value)) as AttributeValue,
+        ];
+      }),
+    );
+    return { ...node, [entityAttributesProperty]: attributes };
+  });
 };
