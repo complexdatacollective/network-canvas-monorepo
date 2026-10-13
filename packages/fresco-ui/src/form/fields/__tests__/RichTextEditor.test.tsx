@@ -10,6 +10,7 @@ import type { JSONContent } from '@tiptap/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { withSafeTypingIntoRichText } from '../../../testing/withSafeTypingIntoRichText';
 import Field from '../../Field/Field';
 import Form from '../../Form';
 import SubmitButton from '../../SubmitButton';
@@ -124,7 +125,7 @@ describe('RichTextEditorField', () => {
     // just made read-only, and the change was reported back as if a
     // researcher had made it.
     const onChange = vi.fn();
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const field = (readOnly: boolean) => (
       <RichTextEditorField
         id="bio"
@@ -516,7 +517,7 @@ describe('a single-line RichTextEditorField', () => {
   >;
 
   const renderSingleLine = (props?: SingleLineProps) => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
 
     const singleLineField = (overrides?: SingleLineProps) => (
       <RichTextEditorField
@@ -744,7 +745,7 @@ describe('a single-line RichTextEditorField', () => {
     // and rebuilding it from that stale value threw away everything typed
     // since the field was entered — silently, mid-sentence.
     const onChange = vi.fn();
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const field = (singleLine: boolean) => (
       <RichTextEditorField
         id="label"
@@ -776,7 +777,7 @@ describe('a single-line RichTextEditorField', () => {
 
   it('flattens typing the host has not been told about', async () => {
     const onChange = vi.fn();
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const field = (singleLine: boolean) => (
       <RichTextEditorField
         id="label"
@@ -926,7 +927,7 @@ describe('a multi-line RichTextEditorField', () => {
   });
 
   it('starts a second paragraph when Enter is pressed', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     render(
       <RichTextEditorField
         id="bio"

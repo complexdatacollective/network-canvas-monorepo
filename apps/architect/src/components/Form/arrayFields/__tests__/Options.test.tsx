@@ -13,6 +13,7 @@ import { createAppIntl } from '@codaco/app-i18n/messages';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+import { withSafeTypingIntoRichText } from '@codaco/fresco-ui/testing/withSafeTypingIntoRichText';
 
 import ArchitectArrayField from '../../ArchitectArrayField';
 import type { OptionValue } from '../Option';
@@ -322,7 +323,7 @@ describe('an option label', () => {
   });
 
   it('leaves punctuation the researcher typed as punctuation', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     setup();
 
     const box = await openRow(1);
@@ -338,7 +339,7 @@ describe('an option label', () => {
   });
 
   it('carries a markdown pair, and a hyphen, through an edit unchanged', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     setup([
       { label: PAIRED_SOURCE, value: 'starred' },
       { label: 'Distant', value: 'distant' },
@@ -363,7 +364,7 @@ describe('an option label', () => {
   });
 
   it('stores a label in canonical form however it was typed', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     setup();
 
     const box = await openRow(1);
@@ -404,7 +405,7 @@ describe('an option label', () => {
    * the half no other test here reaches.
    */
   it('says under the label box that it is empty, and that it repeats another', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     setup();
 
     const empty = await openRow(1);
@@ -426,7 +427,7 @@ describe('an option label', () => {
   });
 
   it('refuses to submit two labels a participant could not tell apart', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const { onSubmit } = setup();
 
     const box = await openRow(2);

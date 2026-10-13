@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import Form from '@codaco/fresco-ui/form/Form';
+import { withSafeTypingIntoRichText } from '@codaco/fresco-ui/testing/withSafeTypingIntoRichText';
 
 import RichTextField from '../RichTextField.tsx';
 
@@ -38,7 +39,7 @@ describe('RichTextField', () => {
    * broken rather than as a missing shim. `src/__tests__/setup.ts` answers it.
    */
   it('writes what the researcher types back out as markdown', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     let submitted: unknown;
     render(
       <Form
@@ -88,7 +89,7 @@ const TWO_PARAGRAPHS = {
  * rather than reading the editor's document back.
  */
 function renderField(props: { singleLine?: boolean; initialValue?: string }) {
-  const user = userEvent.setup();
+  const user = withSafeTypingIntoRichText(userEvent.setup());
   const saved: { current: Saved | undefined } = { current: undefined };
   const name = props.singleLine === true ? 'negativeLabel' : 'prompt';
 
