@@ -35,6 +35,15 @@ type NodeDrawerProps = {
     announcedName: string;
     onDrop: DropCallback;
   };
+  /**
+   * False makes the drawer a queue the participant reads but does not drag
+   * from, as a bin stage in select mode is (#1652).
+   */
+  draggable?: boolean;
+  /** The person shown as the one being placed. */
+  selectedNodeId?: string;
+  /** Called when a person who cannot be dragged is tapped. */
+  onNodeClick?: (node: NcNode) => void;
 };
 
 const MotionChevron = motion.create(ChevronDown);
@@ -50,6 +59,9 @@ export default function NodeDrawer({
   onExpandedChange,
   floating = false,
   dropTarget,
+  draggable = true,
+  selectedNodeId,
+  onNodeClick,
 }: NodeDrawerProps) {
   const intl = useAppIntl();
   // The count is shown among the protocol's text, so in its digits.
@@ -233,6 +245,12 @@ export default function NodeDrawer({
                     node={node}
                     itemType={itemType}
                     onLayoutAnimationComplete={handleLayoutAnimationComplete}
+                    draggable={draggable}
+                    onClick={onNodeClick}
+                    selected={
+                      selectedNodeId !== undefined &&
+                      node[entityPrimaryKeyProperty] === selectedNodeId
+                    }
                   />
                 ))}
               </AnimatePresence>

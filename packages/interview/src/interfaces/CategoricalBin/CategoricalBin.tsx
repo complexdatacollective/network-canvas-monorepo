@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useStore } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -19,6 +19,7 @@ import {
 
 import { codebookTypeIndex } from '../../analytics/codebookTypeIndex';
 import { useTrack } from '../../analytics/useTrack';
+import BinSelectFocus from '../../components/BinSelectFocus';
 import NodeDrawer from '../../components/NodeDrawer';
 import PassphraseEntry from '../../components/PassphraseEntry';
 import Prompts from '../../components/Prompts';
@@ -30,6 +31,7 @@ import {
   writeFailureMessage,
   writeSubmissionResult,
 } from '../../forms/writeSubmissionResult';
+import { useBinSelection } from '../../hooks/useBinSelection';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
@@ -40,15 +42,21 @@ import {
 } from '../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import {
+  getNetworkNodesForType,
   getNodeColorSelector,
   getNodeTypeDefinition,
   resolveNodeShape,
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
 import { updateNode } from '../../store/modules/session';
-import { useAppDispatch } from '../../store/store';
+import { type RootState, useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
+import {
+  decryptInScope,
+  getDecryptionScope,
+  readEncryptedAttribute,
+} from '../Anonymisation/decryptionScope';
 import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import CategoricalBinItem from './components/CategoricalBinItem';
@@ -99,6 +107,8 @@ type OtherResponseProps = Pick<
   variable: string;
   label: string;
   validationProps: ReturnType<typeof validationPropsFor>;
+  /** The person's current answer, when it can be shown. */
+  initialValue?: string;
 };
 
 /**
@@ -116,6 +126,7 @@ function OtherResponse({
   variable,
   label,
   validationProps,
+  initialValue,
 }: OtherResponseProps) {
   const nodeId = node[entityPrimaryKeyProperty];
   // Base pieces of the validation context useProtocolForm builds for every
@@ -176,6 +187,9 @@ function OtherResponse({
           nameMode="opaque"
           {...validationProps}
           validationContext={validationContext}
+          // A person already in "other" edits their answer rather than
+          // starting again, so saving unchanged keeps it.
+          initialValue={initialValue}
           autoFocus
         />
       </div>
@@ -192,7 +206,8 @@ function OtherResponseNode({
   return <UINode {...props} label={useNodeLabel(node)} />;
 }
 
-const CategoricalBin = (_props: CategoricalBinStageProps) => {
+const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
+  const selectMode = stage.behaviours?.interactionMode === 'select';
   const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
   const track = useTrack();
   const codebook = useSelector(getCodebook);
@@ -215,8 +230,6 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     previousExpandedRef.current = expandedBinIndex;
   }, [expandedBinIndex, track]);
 
-  const lastBinIndexRef = useRef<Map<string, number>>(new Map());
-
   // Collapse expanded bin on document-level click or Escape press, so the wrapping
   // container doesn't need an interactive role.
   useEffect(() => {
@@ -237,6 +250,14 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const { id, variable } = prompt;
 
   const { bins, uncategorisedNodes } = useCategoricalBins();
+  const stageNodes = useStageSelector(getNetworkNodesForType);
+  const { focalNode, settling, choose, advanceFrom } = useBinSelection({
+    enabled: selectMode,
+    nodes: stageNodes,
+    unplacedNodes: uncategorisedNodes,
+    sortRules: prompt.bucketSortOrder,
+  });
+  const focalName = useNodeLabel(focalNode);
 
   const { updateReady } = useReadyForNextStage();
 
@@ -265,6 +286,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     expandedBinIndex !== null ? bins[expandedBinIndex] : undefined;
 
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const { currentStep } = useCurrentStep();
   const { openDialog } = useDialog();
   const nodeColor = useStageSelector(getNodeColorSelector);
@@ -289,16 +311,40 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   };
   const resolve = useResolveLocalizedString();
 
+  const readOtherAnswer = async (node: NcNode, otherVariable: string) => {
+    const stored = node[entityAttributesProperty][otherVariable];
+    // A string is a plaintext answer even under an encrypted variable, such
+    // as one written by external data.
+    if (typeof stored === 'string') return stored;
+    if (!stageVariables[otherVariable]?.encrypted) return undefined;
+    const encrypted = readEncryptedAttribute(
+      node,
+      otherVariable,
+      stageVariables,
+    );
+    const scope = getDecryptionScope(store.getState);
+    if (encrypted?.status !== 'encrypted' || !scope) return undefined;
+    const outcome = await decryptInScope(scope, encrypted.value);
+    return outcome.readable ? outcome.plaintext : undefined;
+  };
+
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
     const bin = bins[binIndex]!;
+    // The bin they are in now, read from their stored answer so that a move
+    // made after coming back to the stage still counts as a move.
+    const previousIndex = bins.findIndex((candidate) =>
+      candidate.nodes.some(
+        (binNode) => binNode[entityPrimaryKeyProperty] === nodeId,
+      ),
+    );
     const recordCommittedDrop = () => {
-      const previousIndex = lastBinIndexRef.current.get(nodeId);
-      if (previousIndex === undefined) {
+      if (previousIndex === -1) {
         track('node_binned', {
           node_id: nodeId,
           node_type_index: codebookTypeIndex(codebook, 'node', node.type),
           bin_index: binIndex,
+          interaction_mode: selectMode ? 'select' : 'drag',
         });
       } else if (previousIndex !== binIndex) {
         track('node_rebinned', {
@@ -306,9 +352,9 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
           node_type_index: codebookTypeIndex(codebook, 'node', node.type),
           from_bin_index: previousIndex,
           to_bin_index: binIndex,
+          interaction_mode: selectMode ? 'select' : 'drag',
         });
       }
-      lastBinIndexRef.current.set(nodeId, binIndex);
     };
 
     // If the node is being dropped into the 'other' bin, show a dialog to
@@ -343,6 +389,18 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         ? validationPropsFor(otherValidationMetadata)
         : {};
 
+      // The current answer is shown for editing, so confirming the dialog
+      // never blanks it. An encrypted one is decrypted with the key in force;
+      // one that can't be read is left out.
+      const currentOtherAnswer = await readOtherAnswer(node, otherVariable);
+      // A stored answer that can't be read (such as legacy ciphertext) is
+      // kept unless a new one is typed, since it can never be written back.
+      const storedOtherAnswer = node[entityAttributesProperty][otherVariable];
+      const keepsUnreadableAnswer =
+        currentOtherAnswer === undefined &&
+        storedOtherAnswer !== undefined &&
+        storedOtherAnswer !== null;
+
       const result = await openDialog({
         type: 'form',
         title: resolve(otherOptionLabel).text,
@@ -361,6 +419,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
             variable={otherVariable}
             label={otherPromptLabel}
             validationProps={otherValidationProps}
+            initialValue={currentOtherAnswer}
           />
         ),
         intent: 'default',
@@ -368,15 +427,16 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
         // the answer as typed and the reason shown, ready to retry.
         onSubmit: async (values) => {
           const otherValue = values[otherVariable];
+          const typed = typeof otherValue === 'string' ? otherValue : '';
           return writeSubmissionResult(
             await dispatch(
               updateNode({
                 nodeId,
                 attributePatch: {
-                  set: {
-                    [otherVariable]:
-                      typeof otherValue === 'string' ? otherValue : '',
-                  },
+                  set:
+                    keepsUnreadableAnswer && typed === ''
+                      ? {}
+                      : { [otherVariable]: typed },
                   unset: [variable],
                 },
                 currentStep,
@@ -414,6 +474,42 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     return true;
   };
 
+  /**
+   * Places the focal person in a bin when the participant taps it in select
+   * mode, then moves on. Tapping the bin they are already in lets go of them;
+   * cancelling the "other" question leaves them focal and unplaced.
+   */
+  const handleSelectBin = async (binIndex: number) => {
+    const node = focalNode;
+    if (!node) return false;
+    const nodeId = node[entityPrimaryKeyProperty];
+    const holdsNode = (bin: (typeof bins)[number]) =>
+      bin.nodes.some((binNode) => binNode[entityPrimaryKeyProperty] === nodeId);
+    // Only a person in this bin alone has nothing to change: one with several
+    // answers still has them narrowed to this bin, as a drop does. The "other"
+    // bin asks again, so its answer can be edited, as a drop there does.
+    const onlyHere =
+      holdsNode(bins[binIndex]!) &&
+      bins.every((bin, index) => index === binIndex || !holdsNode(bin));
+    if (onlyHere && !bins[binIndex]!.isOther) {
+      advanceFrom(node);
+      return false;
+    }
+    const placed = await handleDropNode(node, binIndex);
+    if (placed) advanceFrom(node);
+    return placed;
+  };
+
+  const selectFor = (binIndex: number) =>
+    selectMode
+      ? {
+          focalName: focalNode ? focalName : undefined,
+          focalNodeId: focalNode?.[entityPrimaryKeyProperty],
+          onSelect: () => handleSelectBin(binIndex),
+          onChoose: choose,
+        }
+      : undefined;
+
   return (
     <div
       data-testid="categorical-bin-interface"
@@ -447,6 +543,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
                   onToggleExpand={() => setExpandedBinIndex(null)}
                   catColor={getCatColor(expandedBinIndex)}
                   onDropNode={(node) => handleDropNode(node, expandedBinIndex)}
+                  select={selectFor(expandedBinIndex)}
                   nodes={expandedBin.nodes}
                   flowOrdinal={undefined}
                 />
@@ -473,6 +570,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
                         onToggleExpand={() => setExpandedBinIndex(index)}
                         catColor={getCatColor(index)}
                         onDropNode={(node) => handleDropNode(node, index)}
+                        select={selectFor(index)}
                         nodes={bin.nodes}
                         flowOrdinal={flowOrdinal}
                       />
@@ -483,7 +581,20 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
             </motion.div>
           </AnimatePresence>
         </div>
-        <NodeDrawer nodes={uncategorisedNodes} itemType="NODE" />
+        {selectMode && (
+          <BinSelectFocus
+            node={focalNode}
+            settling={settling}
+            promptId={prompt.id}
+          />
+        )}
+        <NodeDrawer
+          nodes={uncategorisedNodes}
+          itemType="NODE"
+          draggable={!selectMode}
+          selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
+          onNodeClick={selectMode ? choose : undefined}
+        />
       </div>
     </div>
   );

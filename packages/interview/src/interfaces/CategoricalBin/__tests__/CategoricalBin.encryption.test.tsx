@@ -261,6 +261,80 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     await expect(decryptValue(key, stored, stored)).resolves.toBe('Cousin');
   });
 
+  it('shows the decrypted answer when it is asked again', async () => {
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { otherReason: 'Cousin' },
+        variables,
+        (await encryptionFor('pw')).key,
+        person[entityPrimaryKeyProperty],
+      );
+    const { dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
+      subject: {
+        ...person,
+        [entityAttributesProperty]: {
+          ...person[entityAttributesProperty],
+          ...encryptedAttributes,
+        },
+        [entitySecureAttributesMeta]: secureAttributes,
+      },
+    });
+
+    await dropIntoOther();
+
+    expect(await screen.findByRole('textbox')).toHaveValue('Cousin');
+  });
+
+  it('shows a plaintext answer stored under the encrypted variable', async () => {
+    // External data can hold the answer in the clear.
+    const { dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
+      subject: {
+        ...person,
+        [entityAttributesProperty]: {
+          ...person[entityAttributesProperty],
+          otherReason: 'Cousin',
+        },
+      },
+    });
+
+    await dropIntoOther();
+
+    expect(await screen.findByRole('textbox')).toHaveValue('Cousin');
+  });
+
+  it('keeps an answer it cannot read when nothing new is typed', async () => {
+    // Ciphertext that lost its record can never be decrypted.
+    const unreadable = [1, 2, 3];
+    const { store, dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
+      subject: {
+        ...person,
+        [entityAttributesProperty]: {
+          ...person[entityAttributesProperty],
+          category: [1],
+          otherReason: unreadable,
+        },
+      },
+    });
+
+    await dropIntoOther();
+    expect(await screen.findByRole('textbox')).toHaveValue('');
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+
+    await waitFor(() =>
+      expect(
+        store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+          .category,
+      ).toBeUndefined(),
+    );
+    expect(
+      store.getState().session.network.nodes[0]?.[entityAttributesProperty]
+        .otherReason,
+    ).toEqual(unreadable);
+  });
+
   it('shows the person by their decrypted name while asking', async () => {
     const namedVariables: Record<string, Variable> = {
       ...variables,

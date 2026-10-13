@@ -435,6 +435,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('ordinal-bin-1', {
       ...EVERY_STAGE,
       filter: nodeFilter,
+      behaviours: { interactionMode: 'select' },
     }),
   },
   {
@@ -443,6 +444,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('categorical-bin-1', {
       ...EVERY_STAGE,
       filter: nodeFilter,
+      behaviours: { interactionMode: 'select' },
     }),
   },
   {
