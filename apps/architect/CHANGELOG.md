@@ -1,5 +1,44 @@
 # @codaco/architect
 
+## 8.4.0
+
+### New features
+
+- **Seven new languages.** Architect is now available in Brazilian Portuguese, Dutch, French, German, Italian, Simplified Chinese and Traditional Chinese, as well as English and Spanish. Pick one from the language setting, which now has a search box, or let Architect follow your browser's language. The interview controls participants see in Preview are translated too; your protocol's own text stays in the language you wrote it in.
+- **Faster start in any language.** Architect now downloads only the language you use rather than every translation. If a language can't be downloaded, Architect keeps working and offers to reload. The installed offline app still includes every language.
+- **Browse a protocol that's open in another tab.** When a protocol is already being edited in one tab, a second tab can now open every page of it in read-only mode, with a banner explaining why. You can still search, preview, print and download it, and the tab becomes editable as soon as the other one closes the protocol.
+- **New template: Help-Seeking After Intimate Partner Violence.** This built-in template shows encrypted attributes in use: the names and private notes a participant records about people are encrypted with their own passphrase, while relationship types, disclosure, reactions and the services they use stay readable for analysis.
+- **Templates first for new users.** The home screen opens on the Templates tab when you have no recent protocols.
+- **Paste to upload.** You can paste a file onto a selected file drop area.
+
+### Interview changes (seen in Preview)
+
+These improvements to the interview are shared with Interviewer and Fresco.
+
+- **Passphrase-protected answers.** For studies that protect answers with a passphrase, protected answers are no longer lost or saved in a way that can't be read back, and participants are told when an answer wasn't saved so they can try again. Once some answers are protected, a passphrase that can't read them is turned away with a message, so a typo can't start protecting new answers with a different passphrase. The passphrase button is now available on phones and portrait screens.
+- **Family pedigree.** Complex families now draw correctly, including half-siblings, step-parents, chains of partnerships and children whose parents aren't a couple. A participant's chosen terms are kept when the pedigree is reopened, and the "finalized" notice no longer hides the bottom of a tall pedigree.
+- **Network Composer.** Changes in the side panel are saved when the panel closes instead of being lost, and undo and redo now update the panel.
+- **Accessibility.** Screen readers name each person by the label on their node, and audio or video without a description is announced by its name rather than its filename.
+- **Privacy.** Analytics no longer include protocol details such as codebook type names or validation messages, and analytics and error reporting run only from code shipped with the app.
+
+### Bug fixes
+
+- Text in angle brackets in introductions, prompts and labels now appears in the interview. Fields saved by an earlier version need to be edited once.
+- Changing language with a stage editor open no longer loses files imported in it.
+- Sociogram, Narrative and Network Composer stages with an image background can be saved after changing the node type.
+- Cancelling an unchanged Sociogram prompt no longer asks to discard changes.
+- Turning on roster search in a Name Generator for Roster Data stage now starts at High accuracy, so Finished Editing no longer refuses the stage until the slider is moved.
+- The Skew circle sizes switch now shows on for backgrounds that don't set it, such as the sample protocol's Narrative stage, matching what interviews draw.
+- The example names under a type's name field are now valid in every language.
+- Deleting a codebook entity or variable waits until it's done and shows an error if it fails.
+- The "Return to Start Screen" button is no longer cut off.
+- Long ordinal bin labels are no longer cut off.
+- Names that couldn't be added on a name generator are no longer cleared.
+- Navigation buttons stay on screen on small phones and at larger text sizes.
+- Dropping a file onto a busy or disabled drop area no longer opens it in a new tab.
+- The hourly update check no longer reports false errors when offline or in Firefox.
+- Updated third-party libraries.
+
 ## 8.3.0
 
 ### Minor Changes

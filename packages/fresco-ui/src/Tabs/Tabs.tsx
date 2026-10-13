@@ -185,7 +185,7 @@ function Tab({
         layout === 'side' && 'w-full text-start',
         layout === 'top' && 'shrink-0 justify-center text-center',
         TAB_RADIUS,
-        'text-text/80 data-[selected]:text-text',
+        'text-text/80 data-selected:text-text',
         'disabled:cursor-not-allowed disabled:opacity-40',
       )}
     >
