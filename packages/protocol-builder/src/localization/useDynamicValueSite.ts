@@ -15,7 +15,7 @@ import { useProtocolContext } from '../state/protocolContext.ts';
 import { dynamicValueNamesUsedIn } from './dynamicValueCatalog.ts';
 
 /** Where a stage's bindings live in the stage document. */
-export const DYNAMIC_VALUES_PATH = 'dynamicValues';
+const DYNAMIC_VALUES_PATH = 'dynamicValues';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
