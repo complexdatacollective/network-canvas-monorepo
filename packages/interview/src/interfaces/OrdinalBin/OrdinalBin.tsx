@@ -111,7 +111,7 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
           )}
         </AnimatePresence>
       </div>
-      {selectMode && <BinSelectFocus node={focalNode} />}
+      {selectMode && <BinSelectFocus node={focalNode} promptId={prompt.id} />}
       <NodeDrawer
         nodes={unplacedNodes}
         itemType="NODE"

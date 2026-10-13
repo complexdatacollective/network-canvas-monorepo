@@ -19,8 +19,16 @@ const appear = {
 /**
  * The person a bin stage in select mode is placing (#1652), shown above the
  * drawer that queues the rest, or the completed state once nobody is left.
+ * The announcement is keyed by prompt, so the same person shown first on the
+ * next prompt is announced again.
  */
-export default function BinSelectFocus({ node }: { node: NcNode | undefined }) {
+export default function BinSelectFocus({
+  node,
+  promptId,
+}: {
+  node: NcNode | undefined;
+  promptId: string;
+}) {
   const intl = useAppIntl();
   const name = useNodeLabel(node);
   const nodeId = node?.[entityPrimaryKeyProperty];
@@ -31,9 +39,11 @@ export default function BinSelectFocus({ node }: { node: NcNode | undefined }) {
       data-testid="bin-select-focus"
     >
       <div role="status" aria-live="polite" aria-atomic className="sr-only">
-        {node
-          ? intl.formatMessage(interfaceMessages.binSelectFocal, { name })
-          : intl.formatMessage(interfaceMessages.binSelectComplete)}
+        <span key={`${promptId}:${nodeId ?? 'complete'}`}>
+          {node
+            ? intl.formatMessage(interfaceMessages.binSelectFocal, { name })
+            : intl.formatMessage(interfaceMessages.binSelectComplete)}
+        </span>
       </div>
       <AnimatePresence mode="popLayout" initial={false}>
         {node && nodeId ? (

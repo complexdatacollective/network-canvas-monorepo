@@ -570,7 +570,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
             </motion.div>
           </AnimatePresence>
         </div>
-        {selectMode && <BinSelectFocus node={focalNode} />}
+        {selectMode && <BinSelectFocus node={focalNode} promptId={prompt.id} />}
         <NodeDrawer
           nodes={uncategorisedNodes}
           itemType="NODE"
