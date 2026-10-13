@@ -65,6 +65,13 @@ const consentFlows = [
     consentVariableId: 'participant_consent',
     postConsentStageId: 'ego-form-background',
   },
+  {
+    name: 'Help-Seeking After Intimate Partner Violence',
+    protocol: getBundledTemplateProtocol('ipv-help-seeking-networks'),
+    consentStageId: 'information-intro',
+    consentVariableId: 'participant_consent',
+    postConsentStageId: 'anonymisation',
+  },
 ] satisfies {
   name: string;
   protocol: CurrentProtocol;

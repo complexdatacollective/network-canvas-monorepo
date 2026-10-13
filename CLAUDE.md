@@ -161,7 +161,10 @@ edge.
   longer main's tip (`.github/scripts/superseded-push-guard.sh`) rather than
   regenerating a release PR that has already merged, release jobs run one at
   a time, and a tip run with nothing left to version closes any release PR a
-  superseded run opened.
+  superseded run opened. Before merging it, rewrite the generated Architect,
+  Interviewer and Fresco release notes for users with the
+  `simplifying-release-notes` skill; the same job refuses a head whose
+  bumped apps still carry generated notes.
 - **Separately gated products** are Documentation, networkcanvas.com, and
   Studio. Documentation and Website keep independent stable-semver release PRs,
   production deploys, and Git tags. The Studio lane covers all four Studio

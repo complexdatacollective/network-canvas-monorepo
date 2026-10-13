@@ -1,0 +1,1117 @@
+{
+  "name": "Help-Seeking After Intimate Partner Violence",
+  "description": "An example template for studying the people and services a survivor of intimate partner violence can turn to for help. The names and private notes the participant records about the people they mention are encrypted with the participant's own passphrase before they are saved, so they cannot be read from the study's data, while relationship types, disclosure, reactions, and the services they use stay readable for analysis.",
+  "schemaVersion": 9,
+  "localization": {
+    "defaultLocale": "en-US",
+    "locales": ["en-US"]
+  },
+  "lastModified": "2026-10-13T00:00:00.000Z",
+  "experiments": {},
+  "codebook": {
+    "node": {
+      "person": {
+        "name": "Person",
+        "label": {
+          "en-US": "Person"
+        },
+        "icon": "add-a-person",
+        "variables": {
+          "person_name": {
+            "name": "person_name",
+            "label": "person_name",
+            "encrypted": true,
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "private_note": {
+            "name": "private_note",
+            "label": "private_note",
+            "encrypted": true,
+            "type": "text",
+            "component": "TextArea",
+            "validation": {
+              "maxLength": 500
+            }
+          },
+          "support_confidant": {
+            "name": "support_confidant",
+            "label": "support_confidant",
+            "type": "boolean"
+          },
+          "support_practical": {
+            "name": "support_practical",
+            "label": "support_practical",
+            "type": "boolean"
+          },
+          "unhelpful": {
+            "name": "unhelpful",
+            "label": "unhelpful",
+            "type": "boolean"
+          },
+          "relationship": {
+            "name": "relationship",
+            "label": "relationship",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Family member"
+                },
+                "value": "family"
+              },
+              {
+                "label": {
+                  "en-US": "Friend"
+                },
+                "value": "friend"
+              },
+              {
+                "label": {
+                  "en-US": "Family or friend of the person who harmed you"
+                },
+                "value": "partner_network"
+              },
+              {
+                "label": {
+                  "en-US": "Neighbour"
+                },
+                "value": "neighbour"
+              },
+              {
+                "label": {
+                  "en-US": "Colleague or classmate"
+                },
+                "value": "colleague"
+              },
+              {
+                "label": {
+                  "en-US": "Member of a faith or community group"
+                },
+                "value": "community"
+              },
+              {
+                "label": {
+                  "en-US": "Someone else"
+                },
+                "value": "other"
+              }
+            ],
+            "validation": {
+              "maxSelected": 1
+            }
+          },
+          "contact_frequency": {
+            "name": "contact_frequency",
+            "label": "contact_frequency",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Less than once a month"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en-US": "About once a month"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en-US": "About once a week"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en-US": "Most days"
+                },
+                "value": 4
+              }
+            ]
+          },
+          "knows_about_abuse": {
+            "name": "knows_about_abuse",
+            "label": "knows_about_abuse",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Yes"
+                },
+                "value": true
+              },
+              {
+                "label": {
+                  "en-US": "No, or I'm not sure"
+                },
+                "value": false
+              }
+            ]
+          },
+          "safe_to_tell": {
+            "name": "safe_to_tell",
+            "label": "safe_to_tell",
+            "type": "ordinal",
+            "component": "RadioGroup",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Not at all safe"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en-US": "Somewhat safe"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en-US": "Completely safe"
+                },
+                "value": 3
+              }
+            ]
+          },
+          "reaction": {
+            "name": "reaction",
+            "label": "reaction",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Believed me and supported my choices"
+                },
+                "value": "supportive"
+              },
+              {
+                "label": {
+                  "en-US": "Gave me practical help"
+                },
+                "value": "practical"
+              },
+              {
+                "label": {
+                  "en-US": "Pressured me to do something I wasn't ready for"
+                },
+                "value": "pressured"
+              },
+              {
+                "label": {
+                  "en-US": "Didn't believe me or blamed me"
+                },
+                "value": "blamed"
+              },
+              {
+                "label": {
+                  "en-US": "Told the person who harmed me"
+                },
+                "value": "told_partner"
+              }
+            ]
+          },
+          "reaction_other": {
+            "name": "reaction_other",
+            "label": "reaction_other",
+            "encrypted": true,
+            "type": "text",
+            "component": "Text"
+          },
+          "close_to_partner": {
+            "name": "close_to_partner",
+            "label": "close_to_partner",
+            "type": "boolean"
+          },
+          "layout": {
+            "name": "layout",
+            "label": "layout",
+            "type": "layout"
+          }
+        },
+        "color": "node-color-seq-1",
+        "shape": {
+          "default": "circle"
+        }
+      },
+      "service": {
+        "name": "Service",
+        "label": {
+          "en-US": "Service"
+        },
+        "icon": "add-a-place",
+        "variables": {
+          "service_name": {
+            "name": "service_name",
+            "label": "service_name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "service_type": {
+            "name": "service_type",
+            "label": "service_type",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Helpline or hotline"
+                },
+                "value": "helpline"
+              },
+              {
+                "label": {
+                  "en-US": "Shelter or refuge"
+                },
+                "value": "shelter"
+              },
+              {
+                "label": {
+                  "en-US": "Police"
+                },
+                "value": "police"
+              },
+              {
+                "label": {
+                  "en-US": "Legal help or advocacy"
+                },
+                "value": "legal_advocacy"
+              },
+              {
+                "label": {
+                  "en-US": "Doctor, nurse, or hospital"
+                },
+                "value": "health"
+              },
+              {
+                "label": {
+                  "en-US": "Counselling or therapy"
+                },
+                "value": "counselling"
+              },
+              {
+                "label": {
+                  "en-US": "Faith or community organisation"
+                },
+                "value": "community"
+              },
+              {
+                "label": {
+                  "en-US": "Something else"
+                },
+                "value": "other"
+              }
+            ],
+            "validation": {
+              "maxSelected": 1
+            }
+          },
+          "service_contacted": {
+            "name": "service_contacted",
+            "label": "service_contacted",
+            "type": "boolean"
+          },
+          "service_helpful": {
+            "name": "service_helpful",
+            "label": "service_helpful",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              {
+                "label": {
+                  "en-US": "Not at all helpful"
+                },
+                "value": 1
+              },
+              {
+                "label": {
+                  "en-US": "A little helpful"
+                },
+                "value": 2
+              },
+              {
+                "label": {
+                  "en-US": "Quite helpful"
+                },
+                "value": 3
+              },
+              {
+                "label": {
+                  "en-US": "Very helpful"
+                },
+                "value": 4
+              }
+            ]
+          }
+        },
+        "color": "node-color-seq-4",
+        "shape": {
+          "default": "square"
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Know each other",
+        "label": {
+          "en-US": "Know each other"
+        },
+        "color": "edge-color-seq-1",
+        "variables": {}
+      }
+    },
+    "ego": {
+      "variables": {
+        "participant_consent": {
+          "name": "participant_consent",
+          "label": "participant_consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "validation": {
+            "required": true
+          },
+          "options": [
+            {
+              "label": {
+                "en-US": "Yes. I agree to take part."
+              },
+              "value": true,
+              "negative": false
+            },
+            {
+              "label": {
+                "en-US": "No. I do not agree to take part."
+              },
+              "value": false,
+              "negative": true
+            }
+          ]
+        },
+        "ego_age": {
+          "name": "ego_age",
+          "label": "ego_age",
+          "type": "number",
+          "component": "Number",
+          "validation": {
+            "minValue": 16,
+            "maxValue": 120
+          }
+        },
+        "relationship_status": {
+          "name": "relationship_status",
+          "label": "relationship_status",
+          "type": "categorical",
+          "component": "ToggleButtonGroup",
+          "options": [
+            {
+              "label": {
+                "en-US": "We are still together and live together"
+              },
+              "value": "together_cohabiting"
+            },
+            {
+              "label": {
+                "en-US": "We are still together but do not live together"
+              },
+              "value": "together_apart"
+            },
+            {
+              "label": {
+                "en-US": "We are on and off"
+              },
+              "value": "on_off"
+            },
+            {
+              "label": {
+                "en-US": "We have separated"
+              },
+              "value": "separated"
+            },
+            {
+              "label": {
+                "en-US": "Prefer not to say"
+              },
+              "value": "declined"
+            }
+          ],
+          "validation": {
+            "maxSelected": 1
+          }
+        },
+        "children_in_home": {
+          "name": "children_in_home",
+          "label": "children_in_home",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            {
+              "label": {
+                "en-US": "Yes"
+              },
+              "value": true
+            },
+            {
+              "label": {
+                "en-US": "No"
+              },
+              "value": false
+            }
+          ]
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "information-researcher-notes",
+      "label": {
+        "en-US": "Template notes (delete before fielding)"
+      },
+      "type": "Information",
+      "title": {
+        "en-US": "Template notes"
+      },
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "content": {
+            "en-US": "## For researchers\n\n_Delete this screen before you field the study._\n\n### How this template uses encrypted attributes\n\nThe **Create your private passphrase** stage asks the participant to choose a passphrase, and every attribute marked as encrypted is encrypted with it before it is saved. To change which attributes are encrypted, open that stage and use its **Encrypted attributes** section. Only text attributes on nodes can be encrypted.\n\n- **Encrypted:** each person's **name** (`person_name`), the participant's **private note** about them (`private_note`), and any reaction they describe in their own words (`reaction_other`). Free text is encrypted because it is where identifying details tend to appear.\n- **Not encrypted:** relationship type, contact frequency, whether the person knows about the abuse, how they reacted, how safe it would feel to tell them, and who knows whom. These are what you analyse, and none of them identifies anyone on its own.\n- **Services are not encrypted.** Agency and helpline names do not identify the participant's private contacts, and you need to read them to map service use. This shows that encryption is set attribute by attribute, not for a whole interview.\n\n### What encryption does and does not protect\n\nEncryption protects **saved and exported data**. CSV and GraphML exports replace every encrypted value with the word `ENCRYPTED` and leave out the encrypted value itself, so these answers cannot be recovered from an export by anyone, including your team. If a participant forgets their passphrase, their encrypted answers cannot be recovered at all.\n\nEncryption does **not** hide anything on screen. While the passphrase is in use, names and notes are shown as the participant types them and on later screens, so anyone who can see the screen, including the interviewer, can read them. The participant-facing text in this template says so; keep it accurate if you edit it.\n\n### Safety and ethics\n\nResearch on intimate partner violence carries real risk to participants. Before fielding, read the WHO recommendations below, plan with your ethics board how you will confirm the participant is somewhere **safe and private**, and agree what the interviewer should do if the person who harmed them appears. Have up-to-date local support services ready, and replace the placeholder on the final screen with them. Encryption protects names in your data; it does not protect a participant who is overheard or whose screen is seen during the interview.\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n### Sources\n\n- [Liang B, Goodman L, Tummala-Narra P, Weintraub S (2005). A theoretical framework for understanding help-seeking processes among survivors of intimate partner violence. *Am J Community Psychol*.](https://doi.org/10.1007/s10464-005-6233-6)\n- [Goodman LA, Smyth KF (2011). A call for a social network-oriented approach to services for survivors of intimate partner violence. *Psychology of Violence*.](https://doi.org/10.1037/a0022977)\n- [Sylaska KM, Edwards KM (2014). Disclosure of intimate partner violence to informal social support network members: a review of the literature. *Trauma, Violence, & Abuse*.](https://doi.org/10.1177/1524838013496335)\n- [World Health Organization (2001). Putting women first: ethical and safety recommendations for research on domestic violence against women.](https://www.who.int/publications/i/item/WHO-FCH-GWH-01.1)\n- [World Health Organization (2016). Ethical and safety recommendations for intervention research on violence against women.](https://www.who.int/publications/i/item/9789241510189)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "information-intro",
+      "interviewScript": "Before starting, confirm that the participant is somewhere safe and private, and agree with them what you will both do if someone comes in — for example, switching to an agreed neutral topic. Do not continue if they cannot talk privately.",
+      "label": {
+        "en-US": "Welcome and consent"
+      },
+      "type": "EgoForm",
+      "form": {
+        "fields": [
+          {
+            "variable": "participant_consent",
+            "prompt": {
+              "en-US": "Do you consent to participate in this study?"
+            }
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": {
+          "en-US": "About this interview"
+        },
+        "text": {
+          "en-US": "## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it before they are saved. In the study's data they cannot be read by anyone, including the researchers, and they cannot be recovered without your passphrase.\n\nThey do appear on screen while you take part, so anyone who can see the screen can read them.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**"
+        }
+      }
+    },
+    {
+      "id": "anonymisation",
+      "interviewScript": "Turn the device towards the participant, or look away, while they type their passphrase. Do not ask what it is or write it down.",
+      "label": {
+        "en-US": "Create your private passphrase"
+      },
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "id": "6b0f3a52-1d64-4c2e-9a39-0d7f5c1e8a41",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
+      },
+      "type": "Anonymisation",
+      "explanationText": {
+        "title": {
+          "en-US": "Keep the people you mention private"
+        },
+        "body": {
+          "en-US": "Choose a passphrase that only you know. The **names** you give and any **private notes** you write will be encrypted with it before they are saved, so that nobody can read them in the study's data — including the researchers.\n\nThey will still appear on screen during this interview, so anyone who can see the screen can read them.\n\nPick something you will remember: you will need the same passphrase if you return to this interview, and it **cannot be recovered** if it is forgotten. Please do not tell it to the interviewer."
+        }
+      },
+      "validation": {
+        "minLength": 8,
+        "maxLength": 64
+      }
+    },
+    {
+      "id": "ego-form-background",
+      "label": {
+        "en-US": "About you"
+      },
+      "type": "EgoForm",
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_age",
+            "prompt": {
+              "en-US": "How old are you, in years?"
+            }
+          },
+          {
+            "variable": "relationship_status",
+            "prompt": {
+              "en-US": "Which of these best describes your relationship with the person who harmed you **now**?"
+            }
+          },
+          {
+            "variable": "children_in_home",
+            "prompt": {
+              "en-US": "Do any children live with you?"
+            }
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": {
+          "en-US": "A few questions about you"
+        },
+        "text": {
+          "en-US": "Before we talk about the people around you, we would like to ask a few questions about **you**. These are not encrypted, so they do not include anyone's name. You may skip any question."
+        }
+      }
+    },
+    {
+      "id": "ng-people",
+      "interviewScript": "Names and notes on this screen are saved encrypted with the participant's passphrase, but they are shown on screen as they are typed. Remind the participant they can use a nickname or initials, and offer to look away while they type. The same person can be added under more than one question by dragging them from the 'Already mentioned' panel.",
+      "label": {
+        "en-US": "People you could turn to"
+      },
+      "type": "NameGenerator",
+      "form": {
+        "title": {
+          "en-US": "Add Person"
+        },
+        "fields": [
+          {
+            "variable": "person_name",
+            "prompt": {
+              "en-US": "What is this person's name, nickname, or initials?"
+            },
+            "hint": {
+              "en-US": "This is saved encrypted with your passphrase. A nickname or initials is fine."
+            }
+          },
+          {
+            "variable": "private_note",
+            "prompt": {
+              "en-US": "Is there anything you want to remember about this person?"
+            },
+            "hint": {
+              "en-US": "Optional. This note is saved encrypted too."
+            }
+          }
+        ]
+      },
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "panels": [
+        {
+          "id": "ng-people-existing",
+          "title": {
+            "en-US": "Already mentioned"
+          },
+          "dataSource": "existing"
+        }
+      ],
+      "prompts": [
+        {
+          "id": "ng-people-confidant",
+          "text": {
+            "en-US": "Who are the people you could **talk to** about what has been happening in your relationship — whether or not you have told them yet?"
+          },
+          "additionalAttributes": [
+            {
+              "variable": "support_confidant",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "ng-people-practical",
+          "text": {
+            "en-US": "Who could help you in **practical ways** if you needed it — for example a place to stay, money, a lift, or looking after children or pets?"
+          },
+          "additionalAttributes": [
+            {
+              "variable": "support_practical",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "ng-people-unhelpful",
+          "text": {
+            "en-US": "Is there anyone who has **reacted badly**, made things harder for you, or who you would **avoid telling**?"
+          },
+          "additionalAttributes": [
+            {
+              "variable": "unhelpful",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "behaviours": {
+        "minNodes": 0
+      }
+    },
+    {
+      "id": "ng-services",
+      "interviewScript": "Service names are not encrypted. If the participant mentions a person who works at a service (for example, a named advocate), record the service here, not the person's name.",
+      "label": {
+        "en-US": "Services"
+      },
+      "type": "NameGenerator",
+      "form": {
+        "title": {
+          "en-US": "Add Service"
+        },
+        "fields": [
+          {
+            "variable": "service_name",
+            "prompt": {
+              "en-US": "What is the name of this service or organisation?"
+            },
+            "hint": {
+              "en-US": "Please give the organisation's name, not the name of anyone who works there."
+            }
+          },
+          {
+            "variable": "service_type",
+            "prompt": {
+              "en-US": "What kind of service is it?"
+            }
+          }
+        ]
+      },
+      "subject": {
+        "entity": "node",
+        "type": "service"
+      },
+      "prompts": [
+        {
+          "id": "ng-services-contacted",
+          "text": {
+            "en-US": "Which **services or organisations** have you contacted for help with what has been happening — for example a helpline, a shelter, the police, a doctor, or a legal advocate?"
+          },
+          "additionalAttributes": [
+            {
+              "variable": "service_contacted",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "ng-services-known",
+          "text": {
+            "en-US": "Are there any other services you **know about** but have **not contacted**?"
+          },
+          "additionalAttributes": [
+            {
+              "variable": "service_contacted",
+              "value": false
+            }
+          ]
+        }
+      ],
+      "behaviours": {
+        "minNodes": 0
+      }
+    },
+    {
+      "id": "alter-form-people",
+      "label": {
+        "en-US": "About each person"
+      },
+      "type": "AlterForm",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "relationship",
+            "prompt": {
+              "en-US": "How do you know this person?"
+            }
+          },
+          {
+            "variable": "contact_frequency",
+            "prompt": {
+              "en-US": "How often are you usually in touch with this person?"
+            }
+          },
+          {
+            "variable": "knows_about_abuse",
+            "prompt": {
+              "en-US": "Does this person **know** about what has been happening in your relationship?"
+            },
+            "hint": {
+              "en-US": "Whether you told them or they found out another way."
+            }
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": {
+          "en-US": "Tell us a little about each person"
+        },
+        "text": {
+          "en-US": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they do not include anyone's name."
+        }
+      }
+    },
+    {
+      "id": "alter-form-services",
+      "label": {
+        "en-US": "Services you contacted"
+      },
+      "type": "AlterForm",
+      "filter": {
+        "join": "AND",
+        "rules": [
+          {
+            "type": "node",
+            "id": "c2e4d6a8-3b5f-4e71-9d0a-8f6b2c4e1a37",
+            "options": {
+              "type": "service",
+              "attribute": "service_contacted",
+              "operator": "EXACTLY",
+              "value": true
+            }
+          }
+        ]
+      },
+      "subject": {
+        "entity": "node",
+        "type": "service"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "service_helpful",
+            "prompt": {
+              "en-US": "Overall, how helpful was this service?"
+            }
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": {
+          "en-US": "Services you contacted"
+        },
+        "text": {
+          "en-US": "For each service you contacted, please tell us how helpful it was."
+        }
+      }
+    },
+    {
+      "id": "ordinal-bin-safe-to-tell",
+      "label": {
+        "en-US": "How safe it would feel to tell each person"
+      },
+      "type": "OrdinalBin",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "bin-safe-to-tell",
+          "text": {
+            "en-US": "Drag each person into the band that best describes **how safe it would feel** to talk to them about what has been happening."
+          },
+          "variable": "safe_to_tell",
+          "color": "ord-color-seq-1"
+        }
+      ]
+    },
+    {
+      "id": "categorical-bin-reaction",
+      "interviewScript": "Only people the participant said know about the abuse appear here. Anything typed into the 'Something else' box is saved encrypted with the participant's passphrase, because a free-text description is where identifying details tend to appear.",
+      "label": {
+        "en-US": "How people reacted"
+      },
+      "type": "CategoricalBin",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "filter": {
+        "join": "AND",
+        "rules": [
+          {
+            "type": "node",
+            "id": "9a7c5e31-2f84-4b6d-a1c0-5e3d7b9f2c68",
+            "options": {
+              "type": "person",
+              "attribute": "knows_about_abuse",
+              "operator": "EXACTLY",
+              "value": true
+            }
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "id": "bin-reaction",
+          "text": {
+            "en-US": "These are the people who know about what has been happening. Drag each person into the box that best describes **how they reacted** when they found out."
+          },
+          "variable": "reaction",
+          "otherVariable": "reaction_other",
+          "otherVariablePrompt": {
+            "en-US": "In your own words, how did this person react? (This is saved encrypted.)"
+          },
+          "otherOptionLabel": {
+            "en-US": "Something else"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sociogram-network",
+      "interviewScript": "The second prompt identifies supporters who are close to the person who harmed the participant. Researchers use this to see whether help might reach that person. Do not ask the participant to name the person who harmed them.",
+      "label": {
+        "en-US": "Who knows whom"
+      },
+      "type": "Sociogram",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": true
+      },
+      "tooltips": {
+        "pauseLayout": {
+          "en-US": "Pause automatic layout"
+        },
+        "resumeLayout": {
+          "en-US": "Resume automatic layout"
+        }
+      },
+      "prompts": [
+        {
+          "id": "sociogram-knows",
+          "text": {
+            "en-US": "The people you mentioned are arranged for you below. Draw a line between any **two people who know each other**."
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "display": ["knows"],
+            "create": "knows"
+          }
+        },
+        {
+          "id": "sociogram-close-to-partner",
+          "text": {
+            "en-US": "Now tap anyone who is **close to, or regularly in touch with, the person who harmed you**."
+          },
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "display": ["knows"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "close_to_partner"
+          }
+        }
+      ]
+    },
+    {
+      "id": "information-support",
+      "label": {
+        "en-US": "Thank you and support services"
+      },
+      "type": "Information",
+      "title": {
+        "en-US": "Thank you — and where to find support"
+      },
+      "items": [
+        {
+          "id": "support-thanks",
+          "type": "text",
+          "content": {
+            "en-US": "## Thank you for sharing\n\nTalking about these experiences takes courage, and we are grateful for your time.\n\nThe names and notes you entered are encrypted with your passphrase. If you return to this interview, you will need the same passphrase to see them.\n\n### If you would like support\n\n- **Talk to the interviewer now** if you would like to take a moment or talk about how you are feeling.\n- **If you are in immediate danger, contact your local emergency services.**\n- _The researcher will insert local and national domestic violence helplines for your study site here._\n\nYou do not have to face this alone."
+          }
+        }
+      ]
+    },
+    {
+      "id": "finish",
+      "label": {
+        "en-US": "Finish Interview"
+      },
+      "type": "FinishSession",
+      "title": {
+        "en-US": "Finish Interview"
+      },
+      "content": {
+        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "finishLabel": {
+        "en-US": "Finish"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishedNotice": {
+        "en-US": "This interview is finished, and its answers can no longer be changed."
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "outcome": "completed"
+    }
+  ],
+  "interfaceText": {
+    "navigation": {
+      "exitInterview": {
+        "en-US": "Exit interview"
+      },
+      "exitInterviewDescription": {
+        "en-US": "Your answers so far will be saved and you can continue later."
+      },
+      "back": {
+        "en-US": "Back"
+      },
+      "continue": {
+        "en-US": "Continue"
+      }
+    },
+    "buttons": {
+      "cancel": {
+        "en-US": "Cancel"
+      },
+      "done": {
+        "en-US": "Done"
+      },
+      "delete": {
+        "en-US": "Delete"
+      },
+      "yes": {
+        "en-US": "Yes"
+      },
+      "no": {
+        "en-US": "No"
+      }
+    },
+    "messages": {
+      "stageError": {
+        "en-US": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button."
+      },
+      "itemUnavailable": {
+        "en-US": "This item could not be displayed."
+      },
+      "error": {
+        "en-US": "An error occurred."
+      }
+    },
+    "passphrase": {
+      "passphrase": {
+        "en-US": "Passphrase"
+      },
+      "choosePassphraseHelp": {
+        "en-US": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten."
+      },
+      "passphraseIncorrect": {
+        "en-US": "This passphrase does not match the one used earlier in this interview. Check it and try again."
+      },
+      "protectedAnswersLocked": {
+        "en-US": "Some answers here are protected by your passphrase. Enter your passphrase to see and change them."
+      },
+      "protectedAnswersNotSaved": {
+        "en-US": "Your answers have not been saved. Enter your passphrase, then try again."
+      },
+      "protectedAnswersUnavailable": {
+        "en-US": "Answers protected by a passphrase cannot be shown or saved in this interview. Please let the person who recruited you to this study know."
+      },
+      "answerUnavailable": {
+        "en-US": "Answer unavailable"
+      },
+      "answerUnavailableKept": {
+        "en-US": "This answer was saved earlier but cannot be shown here. Entering a new answer will replace it, so leave the field empty to keep the earlier answer."
+      },
+      "confirmPassphrase": {
+        "en-US": "Confirm Passphrase"
+      },
+      "passphraseAccepted": {
+        "en-US": "Passphrase accepted! Click \"Next\" to continue."
+      }
+    },
+    "forms": {
+      "discardChangesTitle": {
+        "en-US": "Discard changes?"
+      },
+      "discardChangesDescription": {
+        "en-US": "Do you want to discard your changes?"
+      }
+    },
+    "validation": {
+      "required": {
+        "en-US": "You must answer this question before continuing."
+      },
+      "minLength": {
+        "en-US": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}"
+      },
+      "maxLength": {
+        "en-US": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}"
+      },
+      "minValue": {
+        "en-US": "Enter a value greater than or equal to {min}."
+      },
+      "maxValue": {
+        "en-US": "Enter a value less than or equal to {max}."
+      },
+      "maxSelected": {
+        "en-US": "{count, plural, one {Select a maximum of # value.} other {Select a maximum of # values.}}"
+      },
+      "unique": {
+        "en-US": "Must be unique."
+      },
+      "sameAs": {
+        "en-US": "{hasLabel, select, true {Your answer must be the same as your answer to ''{label}''.} other {Your answer must be the same as your earlier answer.}}"
+      }
+    }
+  }
+}

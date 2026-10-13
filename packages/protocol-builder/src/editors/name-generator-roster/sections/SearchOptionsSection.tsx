@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
@@ -10,6 +10,7 @@ import LikertScaleField from '@codaco/fresco-ui/form/fields/LikertScale';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import Section from '@codaco/fresco-ui/Section';
 
+import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import BuilderSection, {
   type SectionCapability,
@@ -233,6 +234,54 @@ const withSavedTolerance = (
   ].toSorted((one, other) => one.value - other.value);
 };
 
+/**
+ * The tolerance a search starts on when the researcher switches it on.
+ *
+ * The scale has to rest its thumb somewhere before anything is chosen, and it
+ * rests on "High accuracy". Leaving the field empty under it showed a setting
+ * the stage did not hold: the researcher saw a chosen tolerance, and the save
+ * was refused for having none. Starting on the setting the scale shows makes
+ * what is on screen what is saved.
+ */
+const DEFAULT_TOLERANCE = 0.25;
+
+const isEmptyChoice = (value: unknown): boolean =>
+  value === undefined ||
+  value === null ||
+  (Array.isArray(value) && value.length === 0);
+
+/**
+ * Puts the search on `DEFAULT_TOLERANCE` when it is switched on holding nothing.
+ *
+ * Rendered inside the section's panel, so it mounts only once the search is on,
+ * and it acts once, on that mount. Written as a value rather than handed to the
+ * field as its initial one: choosing the data file first resets this section
+ * (`resetOn`), and the reset parks the tolerance as empty, which a field's
+ * initial value does not outrank when it registers.
+ *
+ * A search the stage arrived with is left alone, including one that names
+ * attributes and no tolerance: that stage says so in the section's own words
+ * rather than being given a setting nobody chose.
+ */
+function StartingTolerance() {
+  const { readOnly, storeApi } = useStageEditorForm();
+  const heldTolerance = useStageValue(FUZZINESS);
+  const heldAttributes = useStageValue(MATCH_PROPERTIES);
+  const decided = useRef(false);
+
+  useEffect(() => {
+    if (decided.current) return;
+    decided.current = true;
+    if (readOnly) return;
+    if (!isEmptyChoice(heldTolerance) || !isEmptyChoice(heldAttributes)) {
+      return;
+    }
+    storeApi.getState().setFieldValue(FUZZINESS, DEFAULT_TOLERANCE);
+  }, [heldAttributes, heldTolerance, readOnly, storeApi]);
+
+  return null;
+}
+
 const MATCH_REQUIRED = createMessageError(messages.matchRequired);
 
 const TOLERANCE_REQUIRED = createMessageError(messages.toleranceRequired);
@@ -344,6 +393,7 @@ export default function SearchOptionsSection() {
           options={tolerances}
           required={TOLERANCE_REQUIRED}
         />
+        <StartingTolerance />
       </Section>
     </BuilderSection>
   );
