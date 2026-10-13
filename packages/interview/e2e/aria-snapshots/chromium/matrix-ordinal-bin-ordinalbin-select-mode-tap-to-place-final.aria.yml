@@ -1,0 +1,22 @@
+- main:
+  - status:
+    - heading "Rate closeness" [level=2]
+  - button "Not close" [disabled]:
+    - heading "Not close" [level=4]
+  - listbox "Item list":
+    - option "Bob"
+  - button "Close" [disabled]:
+    - heading "Close" [level=4]
+  - listbox "Item list"
+  - button "Very close" [disabled]:
+    - heading "Very close" [level=4]
+  - listbox "Item list":
+    - option "Alice"
+  - status: Everyone has been placed.
+  - button "0 unplaced Expand drawer" [disabled]
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"
