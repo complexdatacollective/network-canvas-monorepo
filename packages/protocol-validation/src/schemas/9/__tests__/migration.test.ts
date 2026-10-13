@@ -1034,43 +1034,6 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     },
   );
 
-  // Schema 8 showed the panel whenever the stage opened, including when an
-  // interview resumed there, so a session on the stage resumes on the
-  // Information stage the panel became.
-  it.each([
-    ['an Alter Form', alterFormWithPanel({ title: 'Welcome', text: 'Hi.' }), 2],
-    ['an Ego Form with text', egoFormWithPanel({ title: 'A', text: 'Hi.' }), 2],
-    ['an Ego Form with only a title', egoFormWithPanel({ title: 'A' }), 2],
-  ] as const)(
-    'resumes a session on %s at the stage it resumed on in schema 8',
-    (_name, stage, schema8Step) => {
-      const { protocol, migrateSession } = migrateProtocolWithSessions(
-        schema8WithStages(stage),
-      );
-      const resumeAt = (currentStep: number) => {
-        const result = migrateSession({
-          network: {
-            ego: { _uid: 'ego', attributes: {} },
-            nodes: [],
-            edges: [],
-          },
-          stageMetadata: {},
-          currentStep,
-        });
-        if (!result.success) throw result.error;
-        return protocol.stages[result.session.currentStep]?.id;
-      };
-      const hasIntroduction = protocol.stages.some(
-        ({ id }) => id === `${stage.id as string}-introduction`,
-      );
-
-      expect(resumeAt(schema8Step)).toBe(
-        hasIntroduction ? `${stage.id as string}-introduction` : stage.id,
-      );
-      expect(resumeAt(1)).toBe('sociogram1');
-    },
-  );
-
   it('gives a panel with only a title an Information stage with only a title', () => {
     expect(
       migratedStage(

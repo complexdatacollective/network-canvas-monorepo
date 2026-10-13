@@ -999,44 +999,6 @@ const resumeAtAppendedFinishStage = (
 };
 
 /**
- * Schema 8 showed a stage's introduction panel every time the stage opened,
- * including when an interview resumed there. The panel is now the
- * Information stage just before the stage, and the framework keeps a session
- * on the stage it was on, so a session on a stage that had a panel resumes
- * on that Information stage instead, where the participant reads it first
- * as before. A pedigree resumes on its introduction only when the
- * participant had not started it, which its own step decides.
- */
-const resumeAtInsertedIntroduction = (
-  session: { currentStep: number },
-  after: unknown,
-  before: unknown,
-) => {
-  if (!isRecord(after) || !Array.isArray(after.stages)) return;
-  if (!isRecord(before) || !Array.isArray(before.stages)) return;
-  const { currentStep } = session;
-  const stage: unknown = after.stages[currentStep];
-  const introduction: unknown = after.stages[currentStep - 1];
-  if (!isRecord(stage) || !isRecord(introduction)) return;
-  if (introduction.type !== 'Information') return;
-  const schema8Stages: unknown[] = before.stages;
-  const schema8Stage = schema8Stages.find(
-    (candidate) => isRecord(candidate) && candidate.id === stage.id,
-  );
-  if (
-    !isRecord(schema8Stage) ||
-    schema8Stage.type === 'FamilyPedigree' ||
-    !isRecord(schema8Stage.introductionPanel) ||
-    schema8Stages.some(
-      (candidate) => isRecord(candidate) && candidate.id === introduction.id,
-    )
-  ) {
-    return;
-  }
-  session.currentStep = currentStep - 1;
-};
-
-/**
  * A document that already ends at its finish stage keeps it: Fresco's deploy
  * normalization re-runs this migration over rows stored at schema 9, and a
  * second finish stage would make every such row invalid.
@@ -1279,9 +1241,6 @@ const migrationV8toV9 = createMigration({
       localization,
     });
   },
-  // A session on a stage whose introduction panel became an Information
-  // stage resumes on that stage, which schema 8 showed on opening the stage.
-  //
   // A pedigree's introduction screen becomes a stage of its own, which moves
   // the pedigree and every stage after it one place on; the framework moves
   // each session's stage records and resume position with their stages
@@ -1298,7 +1257,6 @@ const migrationV8toV9 = createMigration({
     remapMergedOptionAnswers(session.network, before);
     resumeAtAppendedFinishStage(session, after);
     resumeUnstartedPedigreeAtIntroduction(session, after, before);
-    resumeAtInsertedIntroduction(session, after, before);
     migrateFamilyPedigreeSessionRecords(session, after, before);
     return session;
   },
