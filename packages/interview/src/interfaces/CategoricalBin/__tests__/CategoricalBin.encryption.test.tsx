@@ -261,6 +261,31 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     await expect(decryptValue(key, stored, stored)).resolves.toBe('Cousin');
   });
 
+  it('shows the decrypted answer when it is asked again', async () => {
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { otherReason: 'Cousin' },
+        variables,
+        (await encryptionFor('pw')).key,
+        person[entityPrimaryKeyProperty],
+      );
+    const { dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
+      subject: {
+        ...person,
+        [entityAttributesProperty]: {
+          ...person[entityAttributesProperty],
+          ...encryptedAttributes,
+        },
+        [entitySecureAttributesMeta]: secureAttributes,
+      },
+    });
+
+    await dropIntoOther();
+
+    expect(await screen.findByRole('textbox')).toHaveValue('Cousin');
+  });
+
   it('shows the person by their decrypted name while asking', async () => {
     const namedVariables: Record<string, Variable> = {
       ...variables,
