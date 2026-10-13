@@ -25,7 +25,11 @@ const svgDataUrl = async (
     onFailure(response.status === 404 ? 'not_found' : 'http_error');
     throw new Error(`Could not load ${path}: ${String(response.status)}`);
   }
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(await response.text())}`;
+  const body = await response.text().catch((error: unknown) => {
+    onFailure('transport');
+    throw error;
+  });
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(body)}`;
 };
 
 /**

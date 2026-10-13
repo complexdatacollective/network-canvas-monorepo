@@ -142,4 +142,24 @@ describe('the participant asset resolver', () => {
     expect(resolve.produced(stored)).toBe(false);
     expect(resolve.produced('data:image/svg+xml,<svg/>')).toBe(false);
   });
+
+  it('reports a body that fails while it is being read as a transport failure, once', async () => {
+    const response = new Response(SVG);
+    vi.spyOn(response, 'text').mockRejectedValue(
+      new TypeError('network error'),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response),
+    );
+    const failures: string[] = [];
+    const resolve = createAssetResolver(
+      [asset('diagram', `${HASH}.svg`)],
+      () => (code) => failures.push(code),
+    );
+
+    await expect(resolve('diagram')).rejects.toThrow('network error');
+
+    expect(failures).toEqual(['transport']);
+  });
 });
