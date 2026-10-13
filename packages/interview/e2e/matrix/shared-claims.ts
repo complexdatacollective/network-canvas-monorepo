@@ -14,7 +14,10 @@
  *    the test.
  * 2. RUNTIME behaviour (shared, type-agnostic): the Shell's skip decision
  *    (`getSkipMap` in src/selectors/skip-logic.ts) reads `stage.skipLogic` by
- *    index and never inspects `stage.type`, and stage `filter` is applied by
+ *    index without regard to `stage.type` (the type only decides whether a
+ *    form or census stage with nothing to ask about is passed, which each of
+ *    those suites covers with its own empty-network scenario), and stage
+ *    `filter` is applied by
  *    shared network selectors before any interface renders. The cross-cutting
  *    suite proves that machinery exhaustively — both skip actions (SKIP/SHOW),
  *    every Filter operator, and a stage `filter` scoping the rendered node set

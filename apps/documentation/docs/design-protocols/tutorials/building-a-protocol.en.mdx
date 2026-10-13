@@ -375,11 +375,25 @@ We will collect data about each of these universities using the University node 
 
 The next stage in this sample protocol uses the Ego Form Interface. We create the Ego Form and set a stage name as we have previous interfaces.
 
+<AppOnly app="current">
+
+### Introducing the form
+
+Before the participant reaches the form, it helps to explain which data you are asking for, and why. In Architect, you do this with an [Information](/en/design-protocols/interface-documentation/information) stage placed just before the Ego Form. In our case, add an Information stage before the Ego Form that explains the intended use of the Ego Form Interface.
+
+On the Ego Form itself, give the form a title. The title is shown as a heading above the form's questions — here, we use "Conventional Ego Data Collection Example".
+
+</AppOnly>
+
+<AppOnly app="classic">
+
 ### Introduction Panel
 
 The introduction panel is a feature of the Ego Form Interface that lets you introduce the form to the participant. You might use it to explain which data you are asking for, and why. In our case, we explain the intended use of the Ego Form Interface.
 
 <Screenshot axis="architect" name="ego-form"></Screenshot>
+
+</AppOnly>
 
 Now, let's create a series of fields for our ego form just as we did while configuring the Name Generator using forms. If you don't remember how we did this, please review above.
 
@@ -403,9 +417,21 @@ Click <AppOnly app="current">**Finished Editing**</AppOnly><AppOnly app="classic
 
 ## Creating a Per-Alter Form
 
-Next, repeat that process, but this time create a form that will capture data from alters on the Per-Alter Form interface. Create a new stage using the Per-Alter Form interface and set the stage name. Next, select the node type "University" and scroll down to configure the information panel.
+Next, repeat that process, but this time create a form that will capture data from alters on the Per-Alter Form interface. Create a new stage using the Per-Alter Form interface and set the stage name. Next, select the node type "University".
+
+<AppOnly app="current">
+
+To explain the task to the participant, add an [Information](/en/design-protocols/interface-documentation/information) stage just before the Per-Alter Form — for example, explaining that the next screens show a form for each university they named.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+Then scroll down to configure the information panel.
 
 <Screenshot axis="architect" name="per-alter-form"></Screenshot>
+
+</AppOnly>
 
 Add just two fields to this form. Here are the details you need, following the same process as above:
 
@@ -502,7 +528,19 @@ We define the rule by selecting the alter node type of "Classmate", then selecti
 
 <Screenshot axis="architect" name="dyad-skip"></Screenshot>
 
-As on other name interpreter interfaces, we will also configure the Introduction Panel and define a prompt. For this stage, we enter the prompt, "To the best of your knowledge, do these two people spend time together outside of class?"
+<AppOnly app="current">
+
+As with the Per-Alter Form, you can explain the task with an [Information](/en/design-protocols/interface-documentation/information) stage placed just before the Dyad Census. Give it the same skip logic, so the explanation is skipped whenever the Dyad Census is.
+
+</AppOnly>
+
+<AppOnly app="classic">
+
+As on other name interpreter interfaces, we will also configure the Introduction Panel.
+
+</AppOnly>
+
+Next, we define a prompt. For this stage, we enter the prompt, "To the best of your knowledge, do these two people spend time together outside of class?"
 We previously created two edge types on the sociogram which appear available for our use on this prompt. We will select the "know" edge type since we are asking the participant whether any two classmates know one another.
 
 <Screenshot axis="architect" name="dyad-prompt"></Screenshot>

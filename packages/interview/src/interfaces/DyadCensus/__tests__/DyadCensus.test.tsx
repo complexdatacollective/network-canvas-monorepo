@@ -39,7 +39,6 @@ const twoPromptStage = {
   type: 'DyadCensus',
   label: { en: 'Dyad Census' },
   subject: { entity: 'node', type: NODE_TYPE },
-  introductionPanel: { title: { en: 'Welcome' }, text: { en: 'Intro copy' } },
   prompts: [
     { id: 'p1', text: { en: 'Are they friends (q1)?' }, createEdge: EDGE_TYPE },
     { id: 'p2', text: { en: 'Are they friends (q2)?' }, createEdge: EDGE_TYPE },
@@ -51,7 +50,6 @@ const onePromptStage = {
   type: 'DyadCensus',
   label: { en: 'Dyad Census' },
   subject: { entity: 'node', type: NODE_TYPE },
-  introductionPanel: { title: { en: 'Welcome' }, text: { en: 'Intro copy' } },
   prompts: [
     { id: 'p1', text: { en: 'Are they friends?' }, createEdge: EDGE_TYPE },
   ],
@@ -95,6 +93,7 @@ function renderInterface(
   stage: typeof twoPromptStage | typeof onePromptStage,
   edges: NcEdge[] = [],
   skipAnimations = false,
+  nodes = makeNodes(),
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -103,7 +102,7 @@ function renderInterface(
         id: 's',
         promptIndex: 0,
         network: {
-          nodes: makeNodes(),
+          nodes,
           edges,
           ego: { [entityAttributesProperty]: {} },
         },
@@ -123,7 +122,7 @@ function renderInterface(
   // Capture every registered beforeNext handler by key. The stage registers
   // two: 'stageValidation' (from useStageValidation) and a useId() key (from
   // useBeforeNext for navigation). The test needs the validation handler to
-  // assert readiness, and the navigation handler to advance past the intro.
+  // assert readiness, and the navigation handler to step through pairs.
   const handlers = new Map<string, BeforeNextFunction>();
   const registerBeforeNext: RegisterBeforeNext = (
     keyOrFn: string | BeforeNextFunction | null,
@@ -150,12 +149,14 @@ function renderInterface(
   };
 
   const runNavigation = async (direction: 'forwards' | 'backwards') => {
+    const results: (boolean | 'FORCE')[] = [];
     await act(async () => {
       for (const [key, fn] of handlers) {
         if (key === 'stageValidation') continue;
-        await fn(direction, 'step');
+        results.push(await fn(direction, 'step'));
       }
     });
+    return results;
   };
 
   const moveForward = vi.fn();
@@ -182,8 +183,7 @@ function renderInterface(
 
   render(<DyadCensus {...props} />, { wrapper: Wrapper });
 
-  const advancePastIntro = async () => {
-    await runNavigation('forwards');
+  const waitForFirstPair = async () => {
     await waitFor(() =>
       expect(screen.getAllByRole('radio').length).toBeGreaterThan(0),
     );
@@ -194,8 +194,9 @@ function renderInterface(
 
   return {
     store,
-    advancePastIntro,
+    waitForFirstPair,
     runValidation,
+    runNavigation,
     yesButton,
     noButton,
     moveForward,
@@ -204,17 +205,17 @@ function renderInterface(
 
 describe('DyadCensus interface', () => {
   it('blocks stepping forwards on an unanswered pair but allows a direct jump', async () => {
-    const { advancePastIntro, runValidation } = renderInterface(onePromptStage);
-    await advancePastIntro();
+    const { waitForFirstPair, runValidation } = renderInterface(onePromptStage);
+    await waitForFirstPair();
 
     expect(await runValidation('forwards')).toBe(false);
     expect(await runValidation('forwards', 'jump')).toBe(true);
   });
 
   it('reflects a shared-graph edge on a later prompt but still requires a per-prompt answer', async () => {
-    const { store, advancePastIntro, runValidation, yesButton } =
+    const { store, waitForFirstPair, runValidation, yesButton } =
       renderInterface(twoPromptStage);
-    await advancePastIntro();
+    await waitForFirstPair();
 
     // Answer 'Yes' on prompt 0 for (n1, n2): creates the shared 'friend' edge.
     fireEvent.click(yesButton());
@@ -241,9 +242,9 @@ describe('DyadCensus interface', () => {
   });
 
   it('records a per-prompt negative answer in stage metadata', async () => {
-    const { store, advancePastIntro, noButton } =
+    const { store, waitForFirstPair, noButton } =
       renderInterface(onePromptStage);
-    await advancePastIntro();
+    await waitForFirstPair();
 
     fireEvent.click(noButton());
 
@@ -260,9 +261,9 @@ describe('DyadCensus interface', () => {
   });
 
   it('does not append a duplicate edge when Yes is selected on an existing edge', async () => {
-    const { store, advancePastIntro, yesButton } =
+    const { store, waitForFirstPair, yesButton } =
       renderInterface(onePromptStage);
-    await advancePastIntro();
+    await waitForFirstPair();
 
     fireEvent.click(yesButton());
     await waitFor(() =>
@@ -282,9 +283,9 @@ describe('DyadCensus interface', () => {
 
   it('waits for the selection animation before advancing normally', async () => {
     await withAnimationsEnabled(async () => {
-      const { advancePastIntro, noButton, moveForward } =
+      const { waitForFirstPair, noButton, moveForward } =
         renderInterface(onePromptStage);
-      await advancePastIntro();
+      await waitForFirstPair();
 
       fireEvent.click(noButton());
 
@@ -294,15 +295,36 @@ describe('DyadCensus interface', () => {
   });
 
   it('advances immediately when animations are disabled', async () => {
-    const { advancePastIntro, noButton, moveForward } = renderInterface(
+    const { waitForFirstPair, noButton, moveForward } = renderInterface(
       onePromptStage,
       [],
       true,
     );
-    await advancePastIntro();
+    await waitForFirstPair();
 
     fireEvent.click(noButton());
 
     expect(moveForward).toHaveBeenCalledOnce();
+  });
+
+  it('opens on the first pair and leaves the stage going back from it', async () => {
+    const { waitForFirstPair, runNavigation } = renderInterface(onePromptStage);
+    await waitForFirstPair();
+
+    expect(await runNavigation('backwards')).toEqual([true]);
+  });
+
+  it('shows nothing to answer and lets the participant move on when there are no pairs', async () => {
+    const { runValidation, runNavigation } = renderInterface(
+      twoPromptStage,
+      [],
+      false,
+      [],
+    );
+
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    expect(await runValidation('forwards')).toBe(true);
+    // Skips the remaining prompts as well as this one.
+    expect(await runNavigation('forwards')).toEqual(['FORCE']);
   });
 });

@@ -150,10 +150,6 @@ const renderSlidesForm = () => {
             type: 'AlterForm',
             label: { en: 'Alter form' },
             subject: { entity: 'node', type: 'person' },
-            introductionPanel: {
-              title: { en: 'About this person' },
-              text: { en: '' },
-            },
             form,
           },
         ],
@@ -238,10 +234,6 @@ describe('SlidesForm analytics', () => {
               type: 'AlterForm',
               label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: {
-                title: { en: 'About this person' },
-                text: { en: '' },
-              },
               form,
             },
             {

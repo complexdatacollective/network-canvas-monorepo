@@ -31,7 +31,7 @@ describe('utils/issues', () => {
 
     it('gives sibling messages on one field distinct ids while keeping the field', () => {
       const flattened = issues.flattenIssues({
-        'introductionPanel.title': ['Required', 'Too long'],
+        'explanationText.title': ['Required', 'Too long'],
         'label': ['Required'],
       });
 
@@ -39,15 +39,15 @@ describe('utils/issues', () => {
         flattened.length,
       );
       expect(flattened.map(({ field }) => field)).toEqual([
-        'introductionPanel.title',
-        'introductionPanel.title',
+        'explanationText.title',
+        'explanationText.title',
         'label',
       ]);
       // Ids are field-qualified, so they do not collide across fields when
       // `Object.entries` order changes.
       expect(flattened.map(({ id }) => id)).toEqual([
-        'introductionPanel.title#0',
-        'introductionPanel.title#1',
+        'explanationText.title#0',
+        'explanationText.title#1',
         'label#0',
       ]);
     });
@@ -119,11 +119,11 @@ describe('utils/issues', () => {
     });
 
     it('falls back to the legacy anchor for the forms that still render one', () => {
-      mountAnchor('introductionPanel.title', 'Page heading');
-      const target = issues.resolveIssueTarget('introductionPanel.title');
+      mountAnchor('explanationText.title', 'Page heading');
+      const target = issues.resolveIssueTarget('explanationText.title');
 
       expect(target?.label).toBe('Page heading');
-      expect(target?.anchorId).toBe('field_introductionPanel_title');
+      expect(target?.anchorId).toBe('field_explanationText_title');
     });
 
     it('walks up to an ancestor anchor when the exact field has none', () => {

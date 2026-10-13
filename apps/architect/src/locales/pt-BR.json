@@ -708,7 +708,6 @@
   "architect.protocolSummary.stage.form.form": "Formulário",
   "architect.protocolSummary.stage.form.title": "Título: {value1}",
   "architect.protocolSummary.stage.interviewScript.interviewerScript": "Roteiro para quem entrevista",
-  "architect.protocolSummary.stage.introductionPanel.introductionPanel": "Painel de introdução",
   "architect.protocolSummary.stage.items.items": "Itens",
   "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": "Fonte de dados GeoJSON",
   "architect.protocolSummary.stage.mapOptions.mapboxAPIKey": "Chave de API do Mapbox",

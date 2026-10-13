@@ -11,14 +11,6 @@
     ]
   },
   "id": "id-3",
-  "introductionPanel": {
-    "text": {
-      "en": "Tell us a bit about each person you know."
-    },
-    "title": {
-      "en": "About Each Person"
-    }
-  },
   "label": {
     "en": "About Each Person"
   },

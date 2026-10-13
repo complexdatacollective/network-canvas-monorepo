@@ -408,16 +408,34 @@
       ]
     },
     {
+      "id": "ego-form-demographics-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "About you and your household"
+      },
+      "title": {
+        "en-US": "About you and your household"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "To begin, we would like to ask a few questions about **you** and your current living situation. Your answers help us understand the context of your social connections."
+          }
+        }
+      ]
+    },
+    {
       "id": "ego-form-demographics",
       "type": "EgoForm",
-      "label": { "en-US": "About You" },
-      "introductionPanel": {
-        "title": { "en-US": "About you and your household" },
-        "text": {
-          "en-US": "To begin, we would like to ask a few questions about **you** and your current living situation. Your answers help us understand the context of your social connections."
-        }
+      "label": {
+        "en-US": "About You"
       },
       "form": {
+        "title": {
+          "en-US": "About you and your household"
+        },
         "fields": [
           {
             "variable": "living_situation",
@@ -481,18 +499,31 @@
       ]
     },
     {
+      "id": "alter-form-attributes-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "A little more about each person"
+      },
+      "title": {
+        "en-US": "A little more about each person"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "For each person you named, we would like to ask about your **contact** with them and the kinds of **support** they provide."
+          }
+        }
+      ]
+    },
+    {
       "id": "alter-form-attributes",
       "type": "AlterForm",
       "label": { "en-US": "About Each Person" },
       "subject": {
         "entity": "node",
         "type": "person"
-      },
-      "introductionPanel": {
-        "title": { "en-US": "A little more about each person" },
-        "text": {
-          "en-US": "For each person you named, we would like to ask about your **contact** with them and the kinds of **support** they provide."
-        }
       },
       "form": {
         "fields": [
@@ -563,16 +594,34 @@
       ]
     },
     {
+      "id": "ego-form-scales-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Your feelings about social connection"
+      },
+      "title": {
+        "en-US": "Your feelings about social connection"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "Finally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers."
+          }
+        }
+      ]
+    },
+    {
       "id": "ego-form-scales",
       "type": "EgoForm",
-      "label": { "en-US": "Your Feelings About Connection" },
-      "introductionPanel": {
-        "title": { "en-US": "Your feelings about social connection" },
-        "text": {
-          "en-US": "Finally, we would like to understand how you **feel** about your social connections. There are no right or wrong answers."
-        }
+      "label": {
+        "en-US": "Your Feelings About Connection"
       },
       "form": {
+        "title": {
+          "en-US": "Your feelings about social connection"
+        },
         "fields": [
           {
             "variable": "ucla_1",

@@ -1,13 +1,5 @@
 {
   "id": "id-1",
-  "introductionPanel": {
-    "text": {
-      "en": "We would like to ask you about the people you know."
-    },
-    "title": {
-      "en": "Do They Know Each Other?"
-    }
-  },
   "label": {
     "en": "Do They Know Each Other?"
   },

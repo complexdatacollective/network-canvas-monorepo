@@ -24,9 +24,9 @@ describe('a field seeded from the document the form was handed', () => {
     renderField(
       {
         label: en('Welcome'),
-        introductionPanel: { title: en('Before we start') },
+        explanationText: { title: en('Before we start') },
       },
-      <FieldNamespace prefix="introductionPanel">
+      <FieldNamespace prefix="explanationText">
         <Field
           name="title"
           label="Panel title"

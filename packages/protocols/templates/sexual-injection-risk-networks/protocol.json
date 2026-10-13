@@ -264,16 +264,34 @@
       }
     },
     {
+      "id": "ego-form-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "A few questions about you"
+      },
+      "title": {
+        "en-US": "A few questions about you"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "Before we talk about your partners, we would like to ask a few questions about **you** — including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question."
+          }
+        }
+      ]
+    },
+    {
       "id": "ego-form",
       "type": "EgoForm",
-      "label": { "en-US": "About you" },
-      "introductionPanel": {
-        "title": { "en-US": "A few questions about you" },
-        "text": {
-          "en-US": "Before we talk about your partners, we would like to ask a few questions about **you** — including your HIV status, whether you use prevention or treatment medication, and your testing and injection history. These help us interpret the partnerships you describe. You may skip any question."
-        }
+      "label": {
+        "en-US": "About you"
       },
       "form": {
+        "title": {
+          "en-US": "A few questions about you"
+        },
         "fields": [
           {
             "variable": "ego_hiv_status",
@@ -390,18 +408,31 @@
       }
     },
     {
+      "id": "alter-form-partnership-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Tell us about each partnership"
+      },
+      "title": {
+        "en-US": "Tell us about each partnership"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "For each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time, which is important for understanding how infections spread. Approximate months are fine, and you may skip any question."
+          }
+        }
+      ]
+    },
+    {
       "id": "alter-form-partnership",
       "type": "AlterForm",
       "label": { "en-US": "About each partnership" },
       "subject": {
         "entity": "node",
         "type": "partner"
-      },
-      "introductionPanel": {
-        "title": { "en-US": "Tell us about each partnership" },
-        "text": {
-          "en-US": "For each person you listed, we will ask about the **relationship** and the partner's characteristics, and about **when the partnership started and ended**. The start and end dates let researchers work out which partnerships overlapped in time, which is important for understanding how infections spread. Approximate months are fine, and you may skip any question."
-        }
       },
       "form": {
         "fields": [

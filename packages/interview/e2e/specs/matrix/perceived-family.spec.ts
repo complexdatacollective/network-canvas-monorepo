@@ -32,10 +32,12 @@ matrixTest(
   'family categories overlap and coexist with participants own words',
   async ({ page, protocol, interview, stage }) => {
     await interview.goto(3);
+    // The instructions are an Information stage before the form.
     await expect(
       page.getByRole('heading', { name: 'Your words for family' }),
     ).toBeVisible();
-    await interview.dismissIntro();
+    await interview.next();
+    await interview.waitForForm();
     await stage.form.selectCheckbox('family_categories', 'Chosen family');
     await stage.form.selectCheckbox(
       'family_categories',
@@ -55,11 +57,8 @@ matrixTest(
     });
 
     await page.getByRole('button', { name: 'Previous Step' }).click();
-    await expect(page).toHaveURL(/step=3/);
-    await expect(
-      page.getByRole('heading', { name: 'Your words for family' }),
-    ).toBeVisible();
-    await interview.dismissIntro();
+    await expect(page).toHaveURL(/step=4/);
+    await interview.waitForForm();
     await expect(
       page.getByRole('checkbox', { name: 'Chosen family', exact: true }),
     ).toBeChecked();
@@ -78,7 +77,7 @@ matrixTest(
 matrixTest(
   'all four family and support nominations save participant selections',
   async ({ page, protocol, interview, stage }) => {
-    await interview.goto(5);
+    await interview.goto(6);
     await expect(
       page.getByText(
         'Place people on the map in a way that makes sense to you.',

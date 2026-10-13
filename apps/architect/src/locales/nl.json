@@ -708,7 +708,6 @@
   "architect.protocolSummary.stage.form.form": "Formulier",
   "architect.protocolSummary.stage.form.title": "Titel: {value1}",
   "architect.protocolSummary.stage.interviewScript.interviewerScript": "Interviewerscript",
-  "architect.protocolSummary.stage.introductionPanel.introductionPanel": "Introductiepaneel",
   "architect.protocolSummary.stage.items.items": "Items",
   "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": "GeoJSON-gegevensbron",
   "architect.protocolSummary.stage.mapOptions.mapboxAPIKey": "Mapbox-API-sleutel",

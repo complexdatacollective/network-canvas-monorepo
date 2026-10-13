@@ -118,7 +118,7 @@ describe('getInterfaceTemplate', () => {
  *
  * The answer to "does a template produce a stage that can be saved?", written
  * down for every interface rather than asked about one. It is `subject`,
- * `prompts`, `form`, `introductionPanel` and their kin all the way down: the
+ * `prompts`, `form` and their kin all the way down: the
  * node type a stage works with, the questions it asks, the words a participant
  * reads. None of that is a default a template could hold — one that invented
  * it would be authoring the study — so the sections of the editor are what
@@ -130,12 +130,12 @@ describe('getInterfaceTemplate', () => {
  * does start covering one of these, this list is what says so.
  */
 const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
-  AlterEdgeForm: ['form', 'introductionPanel', 'subject'],
-  AlterForm: ['form', 'introductionPanel', 'subject'],
+  AlterEdgeForm: ['form', 'subject'],
+  AlterForm: ['form', 'subject'],
   Anonymisation: ['explanationText'],
   CategoricalBin: ['prompts', 'subject'],
-  DyadCensus: ['introductionPanel', 'prompts', 'subject'],
-  EgoForm: ['form', 'introductionPanel'],
+  DyadCensus: ['prompts', 'subject'],
+  EgoForm: ['form'],
   FamilyPedigree: [
     'edgeConfiguration',
     'nodeConfiguration',
@@ -158,7 +158,7 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   OneToManyDyadCensus: ['prompts', 'subject'],
   OrdinalBin: ['prompts', 'subject'],
   Sociogram: ['prompts', 'subject'],
-  TieStrengthCensus: ['introductionPanel', 'prompts', 'subject'],
+  TieStrengthCensus: ['prompts', 'subject'],
 };
 
 /** An English protocol, which every supplied wording is written in. */

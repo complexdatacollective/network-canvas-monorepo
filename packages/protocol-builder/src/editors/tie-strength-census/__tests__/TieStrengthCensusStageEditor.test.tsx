@@ -30,8 +30,8 @@ const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
  *
  * The section order, the fixture round trip and the whole-schema round trip
  * are the family's, in `editors/__tests__/censusBinEditors.test.tsx`. What is
- * here is the sequence: what the participant reads, what they are asked, what
- * an answer connects, and the scale that answer is given on — each of which is
+ * here is the sequence: what the participant is asked, what an answer
+ * connects, and the scale that answer is given on — each of which is
  * chosen in a different section, and one of which (the scale) can only be
  * chosen once another one has been.
  */
@@ -52,16 +52,6 @@ describe('creating a tie-strength census stage', () => {
       expect(stageNameInput()).toHaveValue('Tie-Strength Census #2'),
     );
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Title' }),
-      'Pairs',
-    );
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Introduction text' }),
-      'Two at a time, on a scale.',
-    );
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new prompt' }),
@@ -93,10 +83,6 @@ describe('creating a tie-strength census stage', () => {
       type: 'TieStrengthCensus',
       label: { 'en-US': 'Person Tie-Strength Census' },
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: { 'en-US': 'Pairs' },
-        text: { 'en-US': 'Two at a time, on a scale.' },
-      },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
@@ -107,34 +93,5 @@ describe('creating a tie-strength census stage', () => {
         negativeLabel: { 'en-US': 'They have never met' },
       },
     ]);
-  });
-
-  /**
-   * And it refuses one that is otherwise complete, because the template does
-   * not carry the task introduction this interface's schema requires.
-   */
-  it('refuses a new stage that has no task introduction', async () => {
-    const harness = renderStageEditor({
-      create: {
-        type: 'TieStrengthCensus',
-        position: TIE_STRENGTH_INDEX,
-        fields: {
-          label: { 'en-US': 'How close' },
-          subject: { entity: 'node', type: 'person' },
-          prompts: [
-            {
-              id: 'prompt-a',
-              text: { 'en-US': 'How close?' },
-              createEdge: 'knows',
-              edgeVariable: 'closeness',
-              negativeLabel: { 'en-US': 'Not at all' },
-            },
-          ],
-        },
-      },
-      registry: tieStrengthCensusStageEditor,
-    });
-
-    expect(await harness.submit()).toBeNull();
   });
 });

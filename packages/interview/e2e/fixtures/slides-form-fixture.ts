@@ -7,13 +7,12 @@ const HEADER_SELECTOR =
  * Fixture for SlidesForm-based stages (AlterForm, AlterEdgeForm).
  *
  * SlidesForm has no progress-dot or slide-index UI (verified against
- * packages/interview/src/interfaces/SlidesForm/SlidesForm.tsx and
- * IntroPanel.tsx — no such element exists there), so slide position is
- * tracked by the caller via the current item's header label, not a DOM
- * index affordance. Use `interview.dismissIntro()` (already implemented,
- * e2e/fixtures/interview-fixture.ts) to leave the intro panel — it is
- * generic across AlterForm/AlterEdgeForm, so it is not duplicated here.
- * Field interactions inside a slide's form use the shared `FormFixture`
+ * packages/interview/src/interfaces/SlidesForm/SlidesForm.tsx — no such
+ * element exists there), so slide position is tracked by the caller via the
+ * current item's header label, not a DOM index affordance. Use
+ * `interview.waitForForm()` (e2e/fixtures/interview-fixture.ts) to wait for
+ * the first slide — it is generic across AlterForm/AlterEdgeForm, so it is
+ * not duplicated here. Field interactions inside a slide's form use the shared `FormFixture`
  * (`stage.form`).
  *
  * Instantiated directly by scenarios (`new SlidesFormFixture(page)`) rather
@@ -50,16 +49,6 @@ export class SlidesFormFixture {
   }
 
   /**
-   * True while the stage shows the introduction panel
-   * (AlterForm `data-stage-section="intro"`).
-   */
-  async isOnIntro(): Promise<boolean> {
-    return (
-      (await this.page.locator('[data-stage-section="intro"]').count()) > 0
-    );
-  }
-
-  /**
    * Click next-button and wait for either the next slide to mount (header
    * label changes) or the stage to be left (URL step changes, since
    * SlidesForm advancing past the last item calls moveForward() -> the parent
@@ -92,9 +81,8 @@ export class SlidesFormFixture {
 
   /**
    * Click previous-button expecting NO discard dialog — valid path: slide 0
-   * back to intro, or a valid dirty slide that autosaves. Detects the
-   * transition via a URL change, the intro panel reappearing, or the header
-   * label changing (a valid intra-form step back N -> N-1). "previous-button"
+   * back out of the stage, or a valid dirty slide that autosaves. Detects the
+   * transition via a URL change or the header label changing (a valid intra-form step back N -> N-1). "previous-button"
    * is the backward NavigationButton's `data-testid`.
    */
   async previousSlide(): Promise<void> {
@@ -104,9 +92,6 @@ export class SlidesFormFixture {
     await this.page.waitForFunction(
       ({ urlBefore, labelBefore, selector }) => {
         if (window.location.href !== urlBefore) return true;
-        if (document.querySelector('[data-stage-section="intro"]') !== null) {
-          return true;
-        }
         const header = document.querySelector(selector);
         return header?.getAttribute('aria-label') !== labelBefore;
       },

@@ -17,7 +17,7 @@ type FlattenedIssue = {
  * One entry per message in the form store's field errors.
  *
  * The store already keys errors by resolved field name (`prompts`,
- * `introductionPanel.title`) with an array of messages, so this only has to
+ * `explanationText.title`) with an array of messages, so this only has to
  * pair each message with its field and give it a stable identity.
  */
 const flattenIssues = (
