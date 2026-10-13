@@ -251,10 +251,11 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
 
   const { bins, uncategorisedNodes } = useCategoricalBins();
   const stageNodes = useStageSelector(getNetworkNodesForType);
-  const { focalNode, choose, advanceFrom } = useBinSelection({
+  const { focalNode, settling, choose, advanceFrom } = useBinSelection({
     enabled: selectMode,
     nodes: stageNodes,
     unplacedNodes: uncategorisedNodes,
+    sortRules: prompt.bucketSortOrder,
   });
   const focalName = useNodeLabel(focalNode);
 
@@ -571,7 +572,13 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
             </motion.div>
           </AnimatePresence>
         </div>
-        {selectMode && <BinSelectFocus node={focalNode} promptId={prompt.id} />}
+        {selectMode && (
+          <BinSelectFocus
+            node={focalNode}
+            settling={settling}
+            promptId={prompt.id}
+          />
+        )}
         <NodeDrawer
           nodes={uncategorisedNodes}
           itemType="NODE"

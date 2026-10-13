@@ -1,9 +1,9 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
+import InteractionModeField from '../../fields/InteractionModeField.tsx';
 import BuilderSection from '../BuilderSection.tsx';
 import { binBehavioursMessages } from './binBehavioursMessages.ts';
-import InteractionModeField from './InteractionModeField.tsx';
 
 const INTERACTION_MODE_FIELD = 'behaviours.interactionMode';
 

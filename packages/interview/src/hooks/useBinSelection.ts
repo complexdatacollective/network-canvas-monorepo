@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import type { SortRule } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { useTrack } from '../analytics/useTrack';
 import { usePrompts } from '../components/Prompts/usePrompts';
+import { useStepOrder } from './useSortedNodeList';
 
 type Direction = 'forwards' | 'backwards';
 
@@ -29,14 +31,18 @@ export function useBinSelection({
   enabled,
   nodes,
   unplacedNodes,
+  sortRules,
 }: {
   enabled: boolean;
   /** Every person on the stage, placed or not. */
   nodes: NcNode[];
   /** The unplaced people, in the order the drawer shows them. */
   unplacedNodes: NcNode[];
+  /** The rules the drawer is sorted by. */
+  sortRules: SortRule[] | undefined;
 }) {
   const { promptIndex } = usePrompts();
+  const queue = useStepOrder(unplacedNodes, sortRules, promptIndex);
 
   const [selection, setSelection] = useState<Selection>({
     prompt: promptIndex,
@@ -62,11 +68,9 @@ export function useBinSelection({
       : nodes.find(
           (node) => node[entityPrimaryKeyProperty] === selection.nodeId,
         );
+  const settling = enabled && chosen === undefined && queue === undefined;
   const focalNode = enabled
-    ? (chosen ??
-      (selection.entry === 'backwards'
-        ? unplacedNodes.at(-1)
-        : unplacedNodes[0]))
+    ? (chosen ?? (selection.entry === 'backwards' ? queue?.at(-1) : queue?.[0]))
     : undefined;
   const focalNodeId = focalNode?.[entityPrimaryKeyProperty];
 
@@ -94,10 +98,11 @@ export function useBinSelection({
   const advanceFrom = useCallback(
     (node: NcNode) => {
       const nodeId = node[entityPrimaryKeyProperty];
-      const index = unplacedNodes.findIndex(
+      const order = queue ?? [];
+      const index = order.findIndex(
         (candidate) => candidate[entityPrimaryKeyProperty] === nodeId,
       );
-      const rest = unplacedNodes.filter(
+      const rest = order.filter(
         (candidate) => candidate[entityPrimaryKeyProperty] !== nodeId,
       );
       const next = index === -1 ? undefined : (rest[index] ?? rest[0]);
@@ -106,8 +111,8 @@ export function useBinSelection({
         nodeId: next ? next[entityPrimaryKeyProperty] : null,
       }));
     },
-    [unplacedNodes],
+    [queue],
   );
 
-  return { focalNode, choose, advanceFrom };
+  return { focalNode, settling, choose, advanceFrom };
 }

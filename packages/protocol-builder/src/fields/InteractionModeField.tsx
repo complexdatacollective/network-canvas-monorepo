@@ -5,7 +5,7 @@ import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 
-import { binBehavioursMessages } from './binBehavioursMessages.ts';
+import { binBehavioursMessages } from '../sections/bin-behaviours/binBehavioursMessages.ts';
 
 type InteractionMode = 'drag' | 'select';
 

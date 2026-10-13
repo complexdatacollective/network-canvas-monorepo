@@ -52,10 +52,11 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
   const { bins, unplacedNodes } = useOrdinalBins();
   const binValues = useMemo(() => bins.map((bin) => bin.value), [bins]);
   const stageNodes = useStageSelector(getNetworkNodesForType);
-  const { focalNode, choose, advanceFrom } = useBinSelection({
+  const { focalNode, settling, choose, advanceFrom } = useBinSelection({
     enabled: selectMode,
     nodes: stageNodes,
     unplacedNodes,
+    sortRules: prompt.bucketSortOrder,
   });
 
   const { updateReady } = useReadyForNextStage();
@@ -111,7 +112,13 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
           )}
         </AnimatePresence>
       </div>
-      {selectMode && <BinSelectFocus node={focalNode} promptId={prompt.id} />}
+      {selectMode && (
+        <BinSelectFocus
+          node={focalNode}
+          settling={settling}
+          promptId={prompt.id}
+        />
+      )}
       <NodeDrawer
         nodes={unplacedNodes}
         itemType="NODE"
