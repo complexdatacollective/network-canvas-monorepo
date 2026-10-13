@@ -80,6 +80,12 @@ async function interviewToFinish(page: Page, link: string): Promise<void> {
   ).toBeVisible();
   await next(page);
 
+  // The ego form's instructions are an Information stage of their own.
+  await expect(
+    page.getByRole('heading', { name: 'Introduction' }).first(),
+  ).toBeVisible();
+  await next(page);
+
   const egoName = page.locator('[data-field-name="ego_name"] input');
   await egoName.fill('Ada');
   await egoName.blur();
@@ -91,7 +97,7 @@ async function interviewToFinish(page: Page, link: string): Promise<void> {
   await page.reload();
   await waitForStage(page);
   expect(page.url()).toBe(sessionUrl);
-  await expect(stage(page)).toHaveAttribute('data-stage-step', '2');
+  await expect(stage(page)).toHaveAttribute('data-stage-step', '3');
   await expect(page.getByRole('option', { name: 'Grace' })).toBeVisible();
   await next(page);
 
