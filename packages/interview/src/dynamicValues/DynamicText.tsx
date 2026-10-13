@@ -61,11 +61,13 @@ const MARKER = DYNAMIC_VALUE_MARKER;
 const MARKED_VALUE = new RegExp(`${MARKER}(\\d+)${MARKER}`, 'g');
 const ANY_MARKER = new RegExp(MARKER, 'g');
 /**
- * A marked value inside an attribute. Markdown percent-encodes a link
- * destination, so a marker there arrives as its UTF-8 escape.
+ * A marked value inside an attribute, with the empty comments that
+ * `joinMarkdownParts` may set around it. Markdown percent-encodes a link
+ * destination, so a marker or comment there arrives escaped.
  */
+const BOUNDARY_IN_ATTRIBUTE = '(?:<!---->|%3C!----%3E)*';
 const MARKED_IN_ATTRIBUTE = new RegExp(
-  `(?:${MARKER}|%EE%80%80)\\d+(?:${MARKER}|%EE%80%80)|${MARKER}`,
+  `${BOUNDARY_IN_ATTRIBUTE}(?:${MARKER}|%EE%80%80)\\d+(?:${MARKER}|%EE%80%80)${BOUNDARY_IN_ATTRIBUTE}|${MARKER}`,
   'gi',
 );
 /** Set on the element that stands for a value, to its index. */
