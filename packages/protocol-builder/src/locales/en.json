@@ -2616,7 +2616,7 @@
     "description": "Shown under a text field when the text has no translation in the language being edited, nor in a closely related language. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages. language is the language being edited. Both are language names, written in the app’s own language or, in some apps, in their own language."
   },
   "protocolBuilder.localization.showsValuesNotEditable": {
-    "defaultMessage": "This text shows values the interview fills in, which this field cannot edit. It is kept as it is.",
+    "defaultMessage": "This text shows values the interview fills in, so it can’t be edited in this field. It is kept as it is.",
     "description": "Shown in place of a text field when the stored text includes values filled in during the interview, such as the participant’s name, and this field cannot show them. The stored text is shown below it unchanged."
   },
   "protocolBuilder.localizedMessage.caseAboutParticipant": {

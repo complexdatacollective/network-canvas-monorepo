@@ -195,6 +195,8 @@
   "frescoUi.richTextEditor.heading2": "标题 2",
   "frescoUi.richTextEditor.heading3": "标题 3",
   "frescoUi.richTextEditor.heading4": "标题 4",
+  "frescoUi.richTextEditor.insertMenuNoMatches": "没有与搜索匹配的内容。",
+  "frescoUi.richTextEditor.insertMenuSearch": "搜索",
   "frescoUi.richTextEditor.insertRequiredToken": "插入“{token}”（此文本必须包含）",
   "frescoUi.richTextEditor.insertToken": "插入“{token}”",
   "frescoUi.richTextEditor.italic": "斜体",

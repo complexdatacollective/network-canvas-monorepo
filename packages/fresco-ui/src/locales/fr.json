@@ -195,6 +195,8 @@
   "frescoUi.richTextEditor.heading2": "Titre 2",
   "frescoUi.richTextEditor.heading3": "Titre 3",
   "frescoUi.richTextEditor.heading4": "Titre 4",
+  "frescoUi.richTextEditor.insertMenuNoMatches": "Aucun résultat ne correspond à votre recherche.",
+  "frescoUi.richTextEditor.insertMenuSearch": "Rechercher",
   "frescoUi.richTextEditor.insertRequiredToken": "Insérer « {token} » (obligatoire dans ce texte)",
   "frescoUi.richTextEditor.insertToken": "Insérer « {token} »",
   "frescoUi.richTextEditor.italic": "Italique",
