@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Simplifying Release Notes'
+  short_description: 'Rewrite staged app release notes for users'
+  default_prompt: 'Use $simplifying-release-notes to rewrite the Architect, Interviewer and Fresco release notes on the Version Packages PR in user-facing terms.'

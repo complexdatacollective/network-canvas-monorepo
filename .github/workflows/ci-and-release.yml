@@ -1841,6 +1841,19 @@ jobs:
       - name: Refuse a release PR whose publish needs a package npm does not know
         if: steps.head.outputs.release_pr == 'true'
         run: node scripts/release/check-first-publications.mjs
+      # Architect, Interviewer and Fresco publish their CHANGELOG section as
+      # the GitHub release body, so the generated one is rewritten for users
+      # (simplifying-release-notes skill) before the release merges. Each push
+      # to main regenerates the branch and discards that rewrite; this turns the
+      # regenerated head red until it is re-applied. The base is the tree this
+      # one merges into, so only apps whose version changes are checked.
+      - name: Refuse a release PR whose app release notes are still generated
+        if: steps.head.outputs.release_pr == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          node scripts/release/check-app-release-notes.mjs --base "$BASE_SHA"
 
   quality:
     needs:
