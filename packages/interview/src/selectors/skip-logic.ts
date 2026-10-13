@@ -22,7 +22,7 @@ type RoutableStage = {
   skipLogic?: SkipLogic;
   subject?: { entity: string; type?: string };
   filter?: Filter;
-  behaviours?: { freeDraw?: boolean };
+  behaviours?: object;
 };
 
 export type AvailableStage = {
@@ -97,7 +97,14 @@ const hasNothingToAsk = (stage: RoutableStage, network: NcNetwork): boolean => {
   const needed = stage.type ? SUBJECTS_NEEDED[stage.type] : undefined;
   const subject = stage.subject;
   if (needed === undefined || !subject) return false;
-  if (stage.type === 'Narrative' && stage.behaviours?.freeDraw) return false;
+  if (
+    stage.type === 'Narrative' &&
+    stage.behaviours &&
+    'freeDraw' in stage.behaviours &&
+    stage.behaviours.freeDraw === true
+  ) {
+    return false;
+  }
 
   const visible = stage.filter ? networkFilter(stage.filter)(network) : network;
   const entities = subject.entity === 'edge' ? visible.edges : visible.nodes;
