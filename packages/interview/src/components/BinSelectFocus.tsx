@@ -8,7 +8,7 @@ import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { useNodeLabel } from '../interfaces/Anonymisation/useNodeLabel';
 import { interfaceMessages } from '../interfaces/messages';
-import { ConnectedMotionNode } from './ConnectedNode';
+import ConnectedNode from './ConnectedNode';
 
 const appear = {
   initial: { opacity: 0, scale: 0.6 },
@@ -37,15 +37,20 @@ export default function BinSelectFocus({ node }: { node: NcNode | undefined }) {
       </div>
       <AnimatePresence mode="popLayout" initial={false}>
         {node && nodeId ? (
-          <ConnectedMotionNode
+          // Shown, not operated: the bins are the controls.
+          <motion.div
             key={nodeId}
-            nodeId={nodeId}
-            type={node.type}
-            size="md"
-            selected
             data-testid="bin-select-focal-node"
             {...appear}
-          />
+          >
+            <ConnectedNode
+              nodeId={nodeId}
+              type={node.type}
+              size="md"
+              selected
+              presentational
+            />
+          </motion.div>
         ) : (
           <motion.div
             key="complete"

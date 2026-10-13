@@ -106,10 +106,14 @@ const STAGE_ID = 'categorical-bin-stage';
 const PROMPT_ID = 'prompt-1';
 const OTHER_BIN_INDEX = 2;
 
-const person = (id: string, name: string): NcNode => ({
+const person = (
+  id: string,
+  name: string,
+  attributes: Record<string, unknown> = {},
+): NcNode => ({
   [entityPrimaryKeyProperty]: id,
   type: NODE_TYPE,
-  [entityAttributesProperty]: { name },
+  [entityAttributesProperty]: { name, ...attributes },
 });
 
 const codebook: Codebook = {
@@ -164,7 +168,13 @@ const buildStage = (mode: Mode): StageProps<'CategoricalBin'>['stage'] => ({
   ],
 });
 
-const buildSession = (): SessionState => ({
+const defaultNodes = () => [
+  person('a', 'Ann'),
+  person('b', 'Ben'),
+  person('c', 'Cal'),
+];
+
+const buildSession = (nodes: NcNode[]): SessionState => ({
   id: 'session',
   startTime: '2024-01-01T00:00:00.000Z',
   finishTime: null,
@@ -172,7 +182,7 @@ const buildSession = (): SessionState => ({
   lastUpdated: '2024-01-01T00:00:00.000Z',
   network: {
     ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
-    nodes: [person('a', 'Ann'), person('b', 'Ben'), person('c', 'Cal')],
+    nodes,
     edges: [],
   },
 });
@@ -201,10 +211,13 @@ function CaptureDndStore({
   return null;
 }
 
-function renderStage(mode: Mode) {
+function renderStage(mode: Mode, nodes: NcNode[] = defaultNodes()) {
   const store = configureStore({
     reducer: { session, protocol, ui },
-    preloadedState: { session: buildSession(), protocol: buildProtocol(mode) },
+    preloadedState: {
+      session: buildSession(nodes),
+      protocol: buildProtocol(mode),
+    },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
@@ -417,5 +430,38 @@ describe('CategoricalBin in select mode (#1652)', () => {
     expect(
       await screen.findAllByText('Everyone has been placed.'),
     ).not.toHaveLength(0);
+  });
+
+  it('makes a person tapped in the drawer the one being placed', async () => {
+    const { attributesOf } = renderStage('select');
+
+    await announcement('Ann');
+    fireEvent.click(screen.getByRole('button', { name: 'Cal' }));
+    await announcement('Cal');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Place Cal in Family' }),
+    );
+    await waitFor(() => expect(attributesOf('c')?.category).toEqual([1]));
+    await announcement('Ann');
+  });
+
+  it('narrows a person with several answers to the bin tapped', async () => {
+    const { attributesOf } = renderStage('select', [
+      person('a', 'Ann', { category: [1, 2] }),
+      person('b', 'Ben'),
+    ]);
+
+    await announcement('Ben');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show who is in Family, 1 item' }),
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
+    await announcement('Ann');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Place Ann in Friend' }),
+    );
+    await waitFor(() => expect(attributesOf('a')?.category).toEqual([2]));
   });
 });

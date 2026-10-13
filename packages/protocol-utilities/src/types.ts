@@ -541,6 +541,7 @@ export type AddStageInput = {
     removeAfterConsideration?: boolean;
     minNodes?: number;
     maxNodes?: number;
+    interactionMode?: 'drag' | 'select';
   };
   form?: {
     title?: TextInput;

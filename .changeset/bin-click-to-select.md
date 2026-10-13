@@ -1,6 +1,7 @@
 ---
 '@codaco/protocol-validation': minor
 '@codaco/interview': minor
+'@codaco/protocol-utilities': minor
 '@codaco/architect': minor
 '@codaco/interviewer': minor
 'fresco': minor
@@ -20,15 +21,19 @@ dragging hard.
 
 - In `select` mode the stage shows one person at a time above the drawer,
   and the participant taps the bin they go in. The next unplaced person then
-  appears, until everyone has been placed. Tapping a person who is already in
-  a bin makes them the one being placed, so an answer can
-  be changed. Nothing can be dragged in this mode.
+  appears, until everyone has been placed. Tapping a person in the drawer, or
+  one who is already in a bin, makes them the one being placed, so they can
+  go next or have their answer changed. Nothing can be dragged in this mode.
 - Screen readers announce who is being placed, and each bin is a button
   named after the person and the bin.
 - `node_binned` and `node_rebinned` analytics events carry the
   `interaction_mode`, and a `focal_node` event records each person shown.
   An ordinal bin now records `node_rebinned` when a person moves between
   bins.
+
+**Synthetic interviews (`@codaco/protocol-utilities`)**
+
+- `addStage` accepts `behaviours.interactionMode` for bin stages.
 
 **Architect**
 

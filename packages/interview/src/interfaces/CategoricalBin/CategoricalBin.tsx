@@ -435,11 +435,15 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   const handleSelectBin = async (binIndex: number) => {
     const node = focalNode;
     if (!node) return false;
-    const alreadyThere = bins[binIndex]!.nodes.some(
-      (binNode) =>
-        binNode[entityPrimaryKeyProperty] === node[entityPrimaryKeyProperty],
-    );
-    if (alreadyThere) {
+    const nodeId = node[entityPrimaryKeyProperty];
+    const holdsNode = (bin: (typeof bins)[number]) =>
+      bin.nodes.some((binNode) => binNode[entityPrimaryKeyProperty] === nodeId);
+    // Only a person in this bin alone has nothing to change: one with several
+    // answers still has them narrowed to this bin, as a drop does.
+    const onlyHere =
+      holdsNode(bins[binIndex]!) &&
+      bins.every((bin, index) => index === binIndex || !holdsNode(bin));
+    if (onlyHere) {
       advanceFrom(node);
       return false;
     }
@@ -535,6 +539,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           itemType="NODE"
           draggable={!selectMode}
           selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
+          onNodeClick={selectMode ? choose : undefined}
         />
       </div>
     </div>
