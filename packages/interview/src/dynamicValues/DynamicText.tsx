@@ -11,7 +11,7 @@ import {
 import { DYNAMIC_VALUE_MARKER } from '@codaco/protocol-validation';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
-import type { DynamicTextPart } from './resolveDynamicText';
+import { type DynamicTextPart, joinMarkdownParts } from './resolveDynamicText';
 
 /**
  * One value the interview filled into the study's text, marked out with a
@@ -148,13 +148,15 @@ export function DynamicMarkdown({
 }: MarkdownOptions & { parts: readonly DynamicTextPart[] }) {
   const { markdown, values } = useMemo(() => {
     const shown: string[] = [];
-    const text = parts
-      .map((part) => {
-        if (typeof part === 'string') return part.replace(ANY_MARKER, '');
+    const text = joinMarkdownParts(
+      parts.map((part) =>
+        typeof part === 'string' ? part.replace(ANY_MARKER, '') : part,
+      ),
+      (part) => {
         shown.push(part.text);
         return `${MARKER}${shown.length - 1}${MARKER}`;
-      })
-      .join('');
+      },
+    );
     return { markdown: text, values: shown };
   }, [parts]);
 

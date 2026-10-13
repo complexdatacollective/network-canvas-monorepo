@@ -13,6 +13,7 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { contentFormatFor } from '../../localization/contentFormat';
+import { DynamicMarkdown } from '../DynamicText';
 import {
   type DynamicValueFormatters,
   type DynamicValueSources,
@@ -207,6 +208,27 @@ describe('resolveDynamicText', () => {
   });
 });
 
+/** Authored text and a value that, joined, would read as a bare link. */
+const AUTOLINK_SPLITS: readonly (readonly [string, string, string])[] = [
+  ['See https:', '//evil.example', ''],
+  ['See https://', 'evil.example', ''],
+  ['See www.', 'evil.example', ''],
+  ['Write to ada@', 'evil.example', ''],
+  ['See ', 'www', '.evil.example'],
+  ['See ', 'https', '://evil.example'],
+  ['Write to ', 'ada', '@evil.example'],
+  ['See https://a.example/', 'evil', ' now'],
+];
+
+const hrefs = (html: string): string[] =>
+  [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1] ?? '');
+
+/** The links the researcher's words make on their own. */
+const authoredHrefs = (before: string, after: string): string[] =>
+  [before, after].flatMap((text) =>
+    hrefs(renderToStaticMarkup(createElement(RenderMarkdown, null, text))),
+  );
+
 describe('markdownSource', () => {
   const HOSTILE =
     '**bold** [link](https://example.com) <img src=x> www.example.com ada@example.com\n\n# Heading\n    code';
@@ -231,15 +253,21 @@ describe('markdownSource', () => {
   });
 
   it('never puts a value in a link destination', () => {
-    const source = markdownSource({
-      text: '',
-      parts: ['[details](', { name: 'name', text: '//evil.example' }, ')'],
-    });
-    const html = renderToStaticMarkup(
-      createElement(RenderMarkdown, null, source),
-    );
-    expect(html).not.toContain('<a');
-    expect(html).not.toContain('evil');
+    for (const destination of ['', 'https:']) {
+      const source = markdownSource({
+        text: '',
+        parts: [
+          `[details](${destination}`,
+          { name: 'name', text: '//evil.example' },
+          ')',
+        ],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      expect(html).not.toContain('evil');
+      expect(html).not.toMatch(/href="[^"]*(?:evil|%3C)/);
+    }
   });
 
   it('keeps a value in a link’s text, and the researcher’s destination', () => {
@@ -254,7 +282,56 @@ describe('markdownSource', () => {
     expect(html).toContain('>About Ada<');
   });
 
+  it('never lets a value create, complete or change an autolink', () => {
+    for (const [before, value, after] of AUTOLINK_SPLITS) {
+      const source = markdownSource({
+        text: '',
+        parts: [before, { name: 'name', text: value }, after],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      expect(hrefs(html), JSON.stringify([before, value, after])).toEqual(
+        authoredHrefs(before, after),
+      );
+      expect(getMarkdownLabelText(source).replaceAll('\u2060', '')).toBe(
+        `${before}${value}${after}`,
+      );
+    }
+  });
+
+  it('keeps the researcher’s emphasis around a value kept apart from a link', () => {
+    const source = markdownSource({
+      text: '',
+      parts: ['Ask **', { name: 'name', text: 'Ada' }, '**: see a.example'],
+    });
+    const html = renderToStaticMarkup(
+      createElement(RenderMarkdown, null, source),
+    );
+    expect(source).toContain('<!---->');
+    expect(html).toContain('<strong>Ada</strong>');
+  });
+
   it('leaves text without values as it is', () => {
     expect(markdownSource({ text: '**Decline**' })).toBe('**Decline**');
+  });
+});
+
+describe('DynamicMarkdown', () => {
+  it('never lets a value create, complete or change an autolink', () => {
+    for (const [before, value, after] of AUTOLINK_SPLITS) {
+      const html = renderToStaticMarkup(
+        createElement(DynamicMarkdown, {
+          parts: [before, { name: 'name', text: value }, after],
+        }),
+      );
+      const label = JSON.stringify([before, value, after]);
+      expect(hrefs(html), label).toEqual(authoredHrefs(before, after));
+      // The value is shown, and never inside a link.
+      expect(html, label).toContain('data-dynamic-value');
+      expect(html, label).not.toMatch(
+        /<a\b(?:(?!<\/a>)[\s\S])*data-dynamic-value/,
+      );
+    }
   });
 });
