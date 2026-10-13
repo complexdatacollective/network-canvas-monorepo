@@ -1,6 +1,5 @@
 - main:
   - heading "About you" [level=1]
-  - paragraph: One question.
   - text: What is your name?
   - textbox "What is your name?"
   - navigation:

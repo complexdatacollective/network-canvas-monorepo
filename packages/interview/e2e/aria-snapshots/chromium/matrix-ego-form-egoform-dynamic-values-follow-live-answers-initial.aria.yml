@@ -1,6 +1,5 @@
 - main:
   - heading "About you" [level=1]
-  - paragraph: Please answer the questions below.
   - text: What is your name?
   - textbox "What is your name?"
   - text: How old are you?
