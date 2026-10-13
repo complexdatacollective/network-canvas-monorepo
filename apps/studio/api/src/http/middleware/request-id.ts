@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { Context, Effect } from 'effect';
+import { Cause, Context, Effect } from 'effect';
 import {
   HttpEffect,
   HttpRouter,
@@ -25,6 +25,7 @@ export const RequestIdLive = HttpRouter.middleware<{
     Effect.gen(function* () {
       const request = yield* HttpServerRequest.HttpServerRequest;
       const requestId = yield* Effect.sync(() => randomUUID());
+      const team = RequestTeam.make();
       yield* Effect.annotateCurrentSpan('studio.request_id', requestId);
       return yield* HttpEffect.withPreResponseHandler(
         httpEffect.pipe(
@@ -36,8 +37,18 @@ export const RequestIdLive = HttpRouter.middleware<{
               }),
             ),
           ),
+          Effect.catchCause((cause) =>
+            Effect.failCause(
+              Cause.annotate(
+                cause,
+                Context.make(RequestId, requestId).pipe(
+                  Context.add(RequestTeam, team),
+                ),
+              ),
+            ),
+          ),
           Effect.provideService(RequestId, requestId),
-          Effect.provideService(RequestTeam, RequestTeam.make()),
+          Effect.provideService(RequestTeam, team),
         ),
         (_request, response) =>
           Effect.succeed(

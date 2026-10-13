@@ -62,7 +62,22 @@ ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
-RUN pnpm --filter @codaco/studio-web build && pnpm --filter @codaco/studio-api build
+COPY scripts/buildtime/posthog-source-maps-plugin.ts scripts/buildtime/
+# Secrets are not part of BuildKit's cache key, so without this a layer cached
+# by a build without them (or for another project) would be reused by an
+# uploading build, which would then upload nothing. SOURCE_MAPS_TARGET names
+# the upload's destination in plain text and is required exactly when both
+# secrets are present.
+ARG SOURCE_MAPS_TARGET=
+RUN --mount=type=secret,id=posthog_personal_api_key,env=POSTHOG_PERSONAL_API_KEY \
+    --mount=type=secret,id=posthog_project_id,env=POSTHOG_PROJECT_ID \
+    if [ -n "${POSTHOG_PERSONAL_API_KEY:-}" ] && [ -n "${POSTHOG_PROJECT_ID:-}" ]; then \
+      [ -n "$SOURCE_MAPS_TARGET" ] || { echo "SOURCE_MAPS_TARGET must name the PostHog project the source maps are uploaded to" >&2; exit 1; }; \
+    else \
+      [ -z "$SOURCE_MAPS_TARGET" ] || { echo "SOURCE_MAPS_TARGET is set but the two PostHog secrets are not both present" >&2; exit 1; }; \
+    fi && \
+    pnpm --filter @codaco/studio-web build
+RUN pnpm --filter @codaco/studio-api build
 RUN pnpm --filter @codaco/studio-api deploy --prod --legacy /deploy
 
 FROM node:24-slim AS studio-api

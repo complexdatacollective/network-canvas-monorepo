@@ -6,6 +6,7 @@ import { SetupRpcs } from './setup.ts';
 import { StatusRpcs } from './status.ts';
 import { StudiesRpcs } from './studies.ts';
 import { TeamRpcs } from './team.ts';
+import { TelemetryRpcs } from './telemetry.ts';
 
 export class StudioRpcs extends StatusRpcs.merge(
   SetupRpcs,
@@ -15,6 +16,7 @@ export class StudioRpcs extends StatusRpcs.merge(
   ProtocolsRpcs,
   AuditRpcs,
   ParticipantRpcs,
+  TelemetryRpcs,
 ) {}
 
 export const RPC_PATH = '/rpc';

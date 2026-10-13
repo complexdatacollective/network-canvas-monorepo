@@ -11,6 +11,7 @@ import { POSTHOG_API_KEY } from '@codaco/shared-consts';
 
 import { Environment, type StudioEnv } from '../env.ts';
 import { STUDIO_VERSION } from '../version.ts';
+import { ErrorReporter } from './error-reporter.ts';
 import { InstallationIdentity } from './installation-identity.ts';
 import { LoggerLive, LogLevelLive, studioJson } from './logger.ts';
 import { exportedLogger, StudioSerialization } from './telemetry-export.ts';
@@ -25,6 +26,7 @@ export type TracedProgram =
   | 'rotate-secrets';
 
 type TelemetryDestination = {
+  readonly errors: 'posthog' | 'otlp';
   readonly baseUrl: string;
   readonly headers: Readonly<Record<string, string>>;
 };
@@ -35,11 +37,13 @@ const telemetryDestination = (
   if (!env.telemetry) return null;
   if (env.telemetryEndpoint === undefined) {
     return {
+      errors: 'posthog',
       baseUrl: POSTHOG_OTLP_ENDPOINT,
       headers: { Authorization: `Bearer ${POSTHOG_API_KEY}` },
     };
   }
   return {
+    errors: 'otlp',
     baseUrl: env.telemetryEndpoint,
     headers:
       env.telemetryHeaders === undefined
@@ -100,9 +104,13 @@ export const ObservabilityLive = (
   Layer.unwrap(
     Effect.map(Environment, (env) => {
       const destination = telemetryDestination(env);
-      return destination === null
-        ? LoggerLive
-        : exporters(program, destination);
+      if (destination === null) return LoggerLive;
+      return Layer.merge(
+        exporters(program, destination),
+        destination.errors === 'posthog'
+          ? ErrorReporter.layerPostHog(program)
+          : ErrorReporter.layerOtlp(program),
+      );
     }),
   ).pipe(
     Layer.provideMerge(LogLevelLive),

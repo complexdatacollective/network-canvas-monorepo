@@ -181,6 +181,7 @@ describe('the rpc client', () => {
       'runtime/hostClient.ts',
       'runtime/participantRuntime.ts',
       'runtime/runtime.ts',
+      'runtime/telemetry.ts',
       'test/hostHarness.ts',
       'test/participantHarness.ts',
       'test/rpcHarness.ts',
@@ -351,6 +352,9 @@ describe('the participant runtime', () => {
     expect(appFilesWith('PARTICIPANT_SESSION_HEADER')).toEqual([
       'runtime/participantRuntime.ts',
     ]);
-    expect(appFilesWith("'omit'")).toEqual(['runtime/participantRuntime.ts']);
+    expect(appFilesWith("'omit'")).toEqual([
+      'runtime/participantRuntime.ts',
+      'runtime/telemetry.ts',
+    ]);
   });
 });

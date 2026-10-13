@@ -1,10 +1,11 @@
-import { Effect } from 'effect';
+import { Effect, Option } from 'effect';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { StatusRpcs } from '@codaco/studio-contract/rpc/status';
 
 import { readLatestRelease } from '../../db/deployment-state.ts';
 import { getInstanceStatus } from '../../domain.ts';
+import { ErrorReporter } from '../../platform/error-reporter.ts';
 import { isNewer } from '../../update/manifest.ts';
 import { STUDIO_VERSION } from '../../version.ts';
 import type { RpcDeps } from '../deps.ts';
@@ -12,9 +13,16 @@ import type { RpcDeps } from '../deps.ts';
 export const StatusHandlers = (deps: RpcDeps) =>
   StatusRpcs.toLayer({
     'status': () =>
-      Effect.map(deps.readInstallation, (installation) =>
-        getInstanceStatus(deps.capabilities, deps.deployment, installation),
-      ),
+      Effect.gen(function* () {
+        const installation = yield* deps.readInstallation;
+        const reporter = yield* Effect.serviceOption(ErrorReporter);
+        return getInstanceStatus(
+          deps.capabilities,
+          deps.deployment,
+          installation,
+          Option.isSome(reporter),
+        );
+      }),
     // Only the installation's owner is told. There is no owner role: the owner
     // is the one user `installation.owner_user_id` names, so everyone else
     // (and an instance still in first-run setup, which has no owner) gets

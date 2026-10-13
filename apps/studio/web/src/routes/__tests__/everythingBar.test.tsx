@@ -230,6 +230,7 @@ beforeEach(() => {
         },
         deployment: fixtures.deployment,
         setup: { required: false },
+        telemetry: false,
       }),
     'studies.list': () => Effect.succeed([STUDY]),
     'studies.get': () =>

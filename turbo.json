@@ -147,9 +147,10 @@
         "public/**",
         "vite.config.*",
         "tsconfig*.json",
-        "package.json"
+        "package.json",
+        "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts"
       ],
-      "env": ["NODE_ENV"],
+      "env": ["NODE_ENV", "POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID"],
       "outputs": ["dist/**"]
     },
     // The generic `build` inputs do not cover scripts/ or migrations/, and

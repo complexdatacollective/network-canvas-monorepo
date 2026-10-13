@@ -60,6 +60,7 @@ export function getInstanceStatus(
   auth: AuthCapabilities,
   deployment: DeploymentStatus,
   installation: Installation | null,
+  telemetry: boolean,
 ): InstanceStatus {
   return {
     name: installation?.name ?? DEFAULT_INSTANCE_NAME,
@@ -74,5 +75,6 @@ export function getInstanceStatus(
       // offer a form that cannot be completed.
       required: installation !== null && installation.ownerUserId === null,
     },
+    telemetry,
   };
 }

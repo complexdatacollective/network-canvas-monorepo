@@ -1388,6 +1388,7 @@ test('release-sensitive app builds run before merge', () => {
   );
   assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
+  assert.match(supportJob, /pnpm --filter=@codaco\/studio-web build/);
 });
 
 // Every check in quality-support is `continue-on-error`, so the job's own
