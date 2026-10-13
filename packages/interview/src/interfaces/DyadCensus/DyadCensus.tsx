@@ -9,13 +9,17 @@ import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
+import {
+  type DyadCensusMetadataItem,
+  entityAttributesProperty,
+} from '@codaco/shared-consts';
 
 import { useTrack } from '../../analytics/useTrack';
 import Pair from '../../components/Pair';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { DynamicValueEntity } from '../../dynamicValues/DynamicValueScope';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import useStageValidation from '../../hooks/useStageValidation';
@@ -296,67 +300,80 @@ export default function DyadCensus(props: DyadCensusProps) {
   };
 
   return (
-    <div className="interface">
-      <AnimatePresence initial={false} mode="wait">
-        {isIntroduction ? (
-          <IntroPanel
-            title={stage.introductionPanel.title}
-            text={stage.introductionPanel.text}
-            key="intro"
-          />
-        ) : (
-          <motion.div
-            key="content"
-            variants={{
-              initial: { opacity: 0 },
-              animate: { opacity: 1 },
-              exit: { opacity: 0 },
-            }}
-            initial="initial"
-            exit="exit"
-            animate="animate"
-            className="flex w-full flex-1 flex-col items-center"
-          >
-            <motion.div className="flex w-full grow flex-col items-center justify-center">
-              <AnimatePresence mode="wait" custom={isForwards} initial={false}>
-                <Pair
-                  key={`${promptIndex}_${pairIndex}`}
-                  fromNode={fromNode}
-                  toNode={toNode}
-                  edgeColor={edgeColor}
-                  hasEdge={displayedEdge}
-                  animateForwards={isForwards}
-                  labelId={pairLabelId}
-                />
-              </AnimatePresence>
-            </motion.div>
-            <MotionSurface
-              noContainer
-              className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-4"
-              variants={choiceVariants}
+    // The pair on screen is who the prompts can name: the first and second
+    // person, as the pair shows them.
+    <DynamicValueEntity
+      attributes={{
+        dyadSource: fromNode?.[entityAttributesProperty],
+        dyadTarget: toNode?.[entityAttributesProperty],
+      }}
+    >
+      <div className="interface">
+        <AnimatePresence initial={false} mode="wait">
+          {isIntroduction ? (
+            <IntroPanel
+              title={stage.introductionPanel.title}
+              text={stage.introductionPanel.text}
+              key="intro"
+            />
+          ) : (
+            <motion.div
+              key="content"
+              variants={{
+                initial: { opacity: 0 },
+                animate: { opacity: 1 },
+                exit: { opacity: 0 },
+              }}
               initial="initial"
+              exit="exit"
               animate="animate"
+              className="flex w-full flex-1 flex-col items-center"
             >
-              <Prompts id={promptLabelId} />
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`${promptIndex}_${pairIndex}_choice`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
+              <motion.div className="flex w-full grow flex-col items-center justify-center">
+                <AnimatePresence
+                  mode="wait"
+                  custom={isForwards}
+                  initial={false}
                 >
-                  <BooleanField
-                    value={displayedEdge ?? undefined}
-                    onChange={setEdge}
-                    noReset
-                    aria-labelledby={`${pairLabelId} ${promptLabelId}`}
+                  <Pair
+                    key={`${promptIndex}_${pairIndex}`}
+                    fromNode={fromNode}
+                    toNode={toNode}
+                    edgeColor={edgeColor}
+                    hasEdge={displayedEdge}
+                    animateForwards={isForwards}
+                    labelId={pairLabelId}
                   />
-                </motion.div>
-              </AnimatePresence>
-            </MotionSurface>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+                </AnimatePresence>
+              </motion.div>
+              <MotionSurface
+                noContainer
+                className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-4"
+                variants={choiceVariants}
+                initial="initial"
+                animate="animate"
+              >
+                <Prompts id={promptLabelId} />
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`${promptIndex}_${pairIndex}_choice`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <BooleanField
+                      value={displayedEdge ?? undefined}
+                      onChange={setEdge}
+                      noReset
+                      aria-labelledby={`${pairLabelId} ${promptLabelId}`}
+                    />
+                  </motion.div>
+                </AnimatePresence>
+              </MotionSurface>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </DynamicValueEntity>
   );
 }

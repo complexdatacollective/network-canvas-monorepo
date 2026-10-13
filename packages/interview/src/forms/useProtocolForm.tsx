@@ -15,6 +15,8 @@ import type {
   StageSubject,
 } from '@codaco/protocol-validation';
 
+import { useDynamicValueSources } from '../dynamicValues/DynamicValueScope';
+import { FormDynamicValues } from '../dynamicValues/FormDynamicValues';
 import { useStageSelector } from '../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -231,6 +233,12 @@ export default function useProtocolForm({
     );
   }, [fieldsMetadata, namespace]);
 
+  const dynamicValueSources = useDynamicValueSources();
+  const formVariables = useMemo(
+    () => fieldsMetadata.map((field) => field.variable),
+    [fieldsMetadata],
+  );
+
   const renderedFields = fieldsMetadata.map((field, index) => {
     const initialValue =
       initialValues &&
@@ -251,10 +259,34 @@ export default function useProtocolForm({
     );
   });
 
-  const fieldComponents: ReactNode = namespace ? (
-    <FieldNamespace prefix={namespace}>{renderedFields}</FieldNamespace>
+  // The fields' captions can show values of the entity the form describes,
+  // including answers given in its earlier fields (see `FormDynamicValues`).
+  // A stage that binds no values leaves the fields as they are.
+  const showsDynamicValues =
+    dynamicValueSources !== null &&
+    Object.keys(dynamicValueSources.bindings).length > 0;
+  const fieldsWithValues = showsDynamicValues ? (
+    <FormDynamicValues
+      formSubject={
+        subjectToStageSubject(stableSubject) ??
+        stageValidationContext.stageSubject
+      }
+      stageSubject={stageValidationContext.stageSubject}
+      entityId={currentEntityId}
+      initialValues={initialValues}
+      variables={formVariables}
+      coerce={coerceValues}
+    >
+      {renderedFields}
+    </FormDynamicValues>
   ) : (
     renderedFields
+  );
+
+  const fieldComponents: ReactNode = namespace ? (
+    <FieldNamespace prefix={namespace}>{fieldsWithValues}</FieldNamespace>
+  ) : (
+    fieldsWithValues
   );
 
   return {

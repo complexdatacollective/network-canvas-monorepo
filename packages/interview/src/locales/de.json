@@ -126,6 +126,7 @@
   "interview.runtime.deleteBin": "Papierkorb",
   "interview.runtime.drawer": "Ablage",
   "interview.runtime.dropToRemove": "Zum Entfernen hier ablegen",
+  "interview.runtime.dynamicValue": "Dynamischer Wert: {value}",
   "interview.runtime.expandDrawer": "Ablage ausklappen",
   "interview.runtime.filter": "Filtern…",
   "interview.runtime.firstNode": "Erster Eintrag",

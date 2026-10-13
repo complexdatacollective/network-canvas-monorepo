@@ -18,7 +18,14 @@ import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 import { OrderedList, UnorderedList } from './typography/UnorderedList';
 
-const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li', 'a'];
+export const ALLOWED_MARKDOWN_LABEL_TAGS = [
+  'em',
+  'strong',
+  'ul',
+  'ol',
+  'li',
+  'a',
+];
 export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   ...ALLOWED_MARKDOWN_LABEL_TAGS,
   'h1',
@@ -31,10 +38,17 @@ export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   'a',
 ];
 
+/**
+ * The HTML handling every rendering gets unless it passes its own: raw HTML
+ * is parsed, then sanitized. A caller adding a plugin of its own appends it to
+ * these, so it runs on sanitized output.
+ */
+export const DEFAULT_MARKDOWN_REHYPE_PLUGINS = [rehypeRaw, rehypeSanitize];
+
 const defaultMarkdownOptions = {
   allowedElements: ALLOWED_MARKDOWN_LABEL_TAGS,
   remarkPlugins: [remarkGemoji, remarkGfm],
-  rehypePlugins: [rehypeRaw, rehypeSanitize],
+  rehypePlugins: DEFAULT_MARKDOWN_REHYPE_PLUGINS,
   unwrapDisallowed: true,
 } satisfies Options;
 

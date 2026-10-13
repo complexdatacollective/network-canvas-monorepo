@@ -1,0 +1,119 @@
+'use client';
+
+import { type ReactNode, useMemo } from 'react';
+import { useSelector } from 'react-redux';
+
+import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import {
+  useFormHasValue,
+  useFormValue,
+} from '@codaco/fresco-ui/form/hooks/useFormValue';
+import type {
+  DynamicValueRole,
+  StageSubject,
+} from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
+
+import type { RootState } from '../store/store';
+import { DynamicValueEntity } from './DynamicValueScope';
+
+const NO_ATTRIBUTES: Readonly<Record<string, unknown>> = {};
+
+const ROLES: Readonly<Record<StageSubject['entity'], DynamicValueRole>> = {
+  ego: 'ego',
+  node: 'node',
+  edge: 'edge',
+};
+
+/**
+ * Puts the entity a form describes on screen for its fields' text, with the
+ * participant's answers so far over what is stored: a caption can name an
+ * answer given in an earlier field of the same form as soon as it is given.
+ *
+ * Only a form about the stage's own subject does this. Validation lets a
+ * field show a value of the form's entity only then, and a form about
+ * another type (a Network Composer edge type's form) gets nothing.
+ */
+export function FormDynamicValues({
+  formSubject,
+  stageSubject,
+  entityId,
+  initialValues,
+  variables,
+  coerce,
+  children,
+}: {
+  formSubject: StageSubject | null | undefined;
+  /** Absent where the form is not on a stage. */
+  stageSubject: StageSubject | null | undefined;
+  /** The node or edge the form edits, when it edits a stored one. */
+  entityId: string | undefined;
+  initialValues: Readonly<Record<string, FieldValue>> | undefined;
+  /** The variables the form's fields write. */
+  variables: readonly string[];
+  /** Turns raw answers into stored values, as submitting does. */
+  coerce: (values: Record<string, FieldValue>) => Record<string, FieldValue>;
+  children: ReactNode;
+}) {
+  const describesStageSubject =
+    formSubject != null &&
+    stageSubject != null &&
+    formSubject.entity === stageSubject.entity &&
+    (formSubject.entity === 'ego' ||
+      (stageSubject.entity !== 'ego' &&
+        formSubject.type === stageSubject.type));
+
+  const stored = useSelector((state: RootState) => {
+    if (!describesStageSubject || formSubject == null) return NO_ATTRIBUTES;
+    const network = state.session.network;
+    if (formSubject.entity === 'ego') {
+      return network?.ego?.[entityAttributesProperty] ?? NO_ATTRIBUTES;
+    }
+    if (entityId === undefined) return NO_ATTRIBUTES;
+    const entities =
+      formSubject.entity === 'node' ? network?.nodes : network?.edges;
+    return (
+      entities?.find(
+        (entity) => entity[entityPrimaryKeyProperty] === entityId,
+      )?.[entityAttributesProperty] ?? NO_ATTRIBUTES
+    );
+  });
+  const live = useFormValue(variables, 'opaque');
+  const answered = useFormHasValue(variables, 'opaque');
+
+  const attributes = useMemo(() => {
+    if (!describesStageSubject || formSubject == null) return {};
+    const merged: Record<string, unknown> = {
+      ...stored,
+      ...initialValues,
+    };
+    const answers: Record<string, FieldValue> = {};
+    const cleared: string[] = [];
+    for (const variable of variables) {
+      if (!answered[variable]) continue;
+      const answer = live[variable];
+      if (answer === undefined) cleared.push(variable);
+      else answers[variable] = answer;
+    }
+    Object.assign(merged, coerce(answers));
+    // An answer the participant has emptied is missing, not what is stored.
+    for (const variable of cleared) merged[variable] = undefined;
+    return { [ROLES[formSubject.entity]]: merged };
+  }, [
+    describesStageSubject,
+    formSubject,
+    stored,
+    initialValues,
+    variables,
+    live,
+    answered,
+    coerce,
+  ]);
+
+  return (
+    <DynamicValueEntity attributes={attributes}>{children}</DynamicValueEntity>
+  );
+}

@@ -24,7 +24,37 @@
  * navigation scenarios (which would only re-exercise the type-agnostic runtime
  * path once per interface).
  */
+/**
+ * `dynamicValues` is shared the same way for every interface without a
+ * scenario of its own: the Shell gives every stage its values
+ * (`StageDynamicValues` in src/Shell.tsx) and every piece of protocol text
+ * resolves them through the one text resolver, whatever the stage's type. The
+ * EgoForm, Information and DyadCensus suites prove that path end to end (a
+ * form's live answers, a value carried to a later stage and kept literal, a
+ * census pair's own names); the interfaces below reuse it unchanged.
+ */
+const dynamicValuesClaims = [
+  'AlterEdgeForm',
+  'AlterForm',
+  'Anonymisation',
+  'CategoricalBin',
+  'FamilyPedigree',
+  'FinishSession',
+  'Geospatial',
+  'NameGenerator',
+  'NameGeneratorQuickAdd',
+  'NameGeneratorRoster',
+  'Narrative',
+  'NarrativePedigree',
+  'NetworkComposer',
+  'OneToManyDyadCensus',
+  'OrdinalBin',
+  'Sociogram',
+  'TieStrengthCensus',
+].map((iface) => `${iface}:dynamicValues`);
+
 export const sharedSuiteClaims: readonly string[] = [
+  ...dynamicValuesClaims,
   'AlterEdgeForm:skipLogic',
   'AlterEdgeForm:filter',
   'Anonymisation:skipLogic',

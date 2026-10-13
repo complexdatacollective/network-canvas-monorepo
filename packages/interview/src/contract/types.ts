@@ -86,6 +86,13 @@ export type SessionPayload = SessionSnapshot & {
    * on the protocol's last finish stage instead. Absent reads as `null`.
    */
   finishStageId?: string | null;
+  /**
+   * The host's own identifier for this interview's case or participant, where
+   * it has one. A protocol's text can show it (the `interview.caseId` dynamic
+   * value). Like `localeOptions`, it is not session state: it is never
+   * synchronised back to the host.
+   */
+  caseId?: string;
 };
 
 export type InterviewPayload = {

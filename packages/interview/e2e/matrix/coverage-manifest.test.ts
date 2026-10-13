@@ -48,10 +48,7 @@ describe('e2e matrix coverage manifest', () => {
 
   it('every landed interface inventory includes the top-level and prompt-level stage schema keys', () => {
     // Base keys every stage carries; covered globally, not per-interface.
-    // `dynamicValues` is on every stage too, but nothing in the interview reads
-    // it yet: the runtime that shows dynamic values (#1666) adds it to each
-    // interface's inventory with the scenarios that cover it.
-    const BASE_KEYS = new Set(['id', 'type', 'label', 'dynamicValues']);
+    const BASE_KEYS = new Set(['id', 'type', 'label']);
     // Inventory keys are free-form (e.g. 'items[].size'); a schema key counts
     // as inventoried when any inventory key starts with it.
     const inventoryCoversSchemaKey = (

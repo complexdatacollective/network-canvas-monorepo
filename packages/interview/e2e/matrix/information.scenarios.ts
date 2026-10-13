@@ -423,5 +423,79 @@ export const informationScenarios: InterfaceScenarios = {
         expect(network?.nodes).toEqual([]);
       },
     },
+
+    {
+      id: 'dynamic-values-carried-from-earlier-stage',
+      covers: ['dynamicValues'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const nameVar = synth.addEgoVariable({
+          type: 'text',
+          component: 'Text',
+          name: 'name',
+        });
+        synth
+          .addStage('EgoForm', {
+            introductionPanel: { title: 'About you', text: 'One question.' },
+          })
+          .addFormField({
+            variable: nameVar.id,
+            component: 'Text',
+            prompt: 'What is your name?',
+          });
+        const info = synth.addInformationStage({
+          label: 'Welcome',
+          title: {
+            'en-US':
+              '{name, select, missing {Welcome} other {Welcome, {name}}}',
+          },
+          items: [
+            {
+              id: 'item-1',
+              type: 'text',
+              content: {
+                'en-US':
+                  'Thanks for **joining** {study}{name, select, missing {.} other {, {name}.}}',
+              },
+            },
+          ],
+        });
+        info.stageEntry.dynamicValues = {
+          name: { path: `ego.${nameVar.id}` },
+          study: { path: 'protocol.name' },
+        };
+        return synth;
+      },
+      run: async ({ page, interview }) => {
+        // A name that would become markdown, HTML or a link if it were ever
+        // parsed rather than shown as text.
+        const hostile =
+          '**bold** [link](https://example.com) <img src=x onerror=window.__pwned=1>';
+        await page
+          .getByRole('textbox', { name: 'What is your name?' })
+          .fill(hostile);
+        await interview.next();
+        await expect(page).toHaveURL(/step=1/);
+
+        await expect(
+          page.getByRole('heading', {
+            level: 1,
+            name: `Welcome, Dynamic value: ${hostile}`,
+          }),
+        ).toBeVisible();
+        // Only the researcher's own emphasis renders; the value stays text.
+        await expect(page.locator('main strong')).toHaveCount(1);
+        await expect(page.locator('main strong')).toHaveText('joining');
+        await expect(page.locator('main a')).toHaveCount(0);
+        await expect(page.locator('main img')).toHaveCount(0);
+        await expect(
+          page.locator('main [data-dynamic-value]', { hasText: hostile }),
+        ).toHaveCount(2);
+        const pwned = await page.evaluate(
+          () => (window as { __pwned?: number }).__pwned,
+        );
+        expect(pwned).toBeUndefined();
+      },
+    },
   ],
 };

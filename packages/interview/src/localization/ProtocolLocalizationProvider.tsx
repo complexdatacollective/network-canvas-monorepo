@@ -12,6 +12,7 @@ import {
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { ContentLocaleProvider } from '@codaco/fresco-ui/form/ContentLocale';
+import { messages as booleanFieldMessages } from '@codaco/fresco-ui/form/fields/Boolean';
 import {
   type LocaleMetadata,
   type LocaleTag,
@@ -23,7 +24,13 @@ import {
   sortByLanguageName,
 } from '@codaco/protocol-validation';
 
-import { resolveContentLocale } from './contentFormat';
+import { useDynamicValueSources } from '../dynamicValues/DynamicValueScope';
+import {
+  type DynamicTextPart,
+  type DynamicValueFormatters,
+  resolveDynamicText,
+} from '../dynamicValues/resolveDynamicText';
+import { contentFormatFor, resolveContentLocale } from './contentFormat';
 import {
   createLocalizedMessageFormatter,
   type LocalizedMessageFormatter,
@@ -211,15 +218,30 @@ export function useContentLocale(): string {
 }
 
 /**
+ * Protocol-authored text as the interview shows it. Where the text shows
+ * dynamic values, `text` is the natural sentence with each value written in,
+ * and `parts` says where each value sits, for a renderer that marks them out.
+ */
+export type ResolvedProtocolText = ResolvedLocalizedString &
+  Readonly<{ parts?: readonly DynamicTextPart[] }>;
+
+/**
  * Resolves protocol-authored strings for the interview language, falling back
  * to the browser's other languages, then to the protocol's default. `text` is
  * the formatted message, in the locale the text is actually written in.
+ *
+ * Inside a stage, text that shows the stage's dynamic values reads the
+ * version its values choose, with the values written in the interview
+ * language (see `resolveDynamicText`). The result is never stored: it is
+ * resolved afresh against the live interview each time.
  */
 export function useResolveLocalizedString(): (
   value: LocalizedString,
-) => ResolvedLocalizedString {
-  const { localization, resolutionOrder, format } =
+) => ResolvedProtocolText {
+  const { localization, resolutionOrder, format, locale } =
     useProtocolLocalizationState();
+  const sources = useDynamicValueSources();
+  const intl = useAppIntl();
   return useCallback(
     (value: LocalizedString) => {
       const resolved = resolveLocalizedString(
@@ -227,15 +249,41 @@ export function useResolveLocalizedString(): (
         localization,
         resolutionOrder,
       );
+      if (sources !== null) {
+        const formatters: DynamicValueFormatters = {
+          format: contentFormatFor(locale),
+          resolveLabel: (label) => {
+            const option = resolveLocalizedString(
+              label,
+              localization,
+              resolutionOrder,
+            );
+            return format(option.locale, option.text);
+          },
+          booleanWords: {
+            yes: intl.formatMessage(booleanFieldMessages.yes),
+            no: intl.formatMessage(booleanFieldMessages.no),
+          },
+        };
+        const dynamic = resolveDynamicText(
+          resolved.text,
+          resolved.locale,
+          sources,
+          formatters,
+        );
+        if (dynamic !== undefined) {
+          return { ...resolved, text: dynamic.text, parts: dynamic.parts };
+        }
+      }
       return { ...resolved, text: format(resolved.locale, resolved.text) };
     },
-    [localization, resolutionOrder, format],
+    [localization, resolutionOrder, format, locale, sources, intl],
   );
 }
 
 export function useLocalizedString(
   value: LocalizedString,
-): ResolvedLocalizedString {
+): ResolvedProtocolText {
   const resolve = useResolveLocalizedString();
   return useMemo(() => resolve(value), [resolve, value]);
 }

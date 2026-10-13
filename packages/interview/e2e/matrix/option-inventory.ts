@@ -8,6 +8,7 @@
  */
 export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   CategoricalBin: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -39,6 +40,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'category-color-cycling',
   ],
   AlterForm: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -78,6 +80,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'readyStateScrollGating',
   ],
   AlterEdgeForm: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -128,6 +131,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'form title absence (TitlelessFormSchema)',
   ],
   Anonymisation: [
+    'dynamicValues',
     'explanationText.title',
     'explanationText.body',
     'label',
@@ -160,6 +164,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'encryptedVariable.schema8.oldAnswerStaysUnavailable',
   ],
   DyadCensus: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -181,6 +186,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'codebook.node.color-shape',
   ],
   EgoForm: [
+    'dynamicValues',
     'introductionPanel.title',
     'introductionPanel.text',
     'form.fields-ordering-and-prompt',
@@ -229,6 +235,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'skipLogic',
   ],
   OrdinalBin: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -243,6 +250,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'codebook.ordinalOptions',
   ],
   NameGenerator: [
+    'dynamicValues',
     'subject',
     'form',
     'form.title',
@@ -275,6 +283,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'skipLogic',
   ],
   NetworkComposer: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -315,6 +324,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'tooltips.drawConnection',
   ],
   Narrative: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'subject',
@@ -344,6 +354,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'tooltips.resumeLayout',
   ],
   OneToManyDyadCensus: [
+    'dynamicValues',
     'subject.type',
     'behaviours.removeAfterConsideration',
     'prompts (array length > 1)',
@@ -357,6 +368,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'skipLogic',
   ],
   Sociogram: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -380,6 +392,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'tooltips.resumeLayout',
   ],
   TieStrengthCensus: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -401,6 +414,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'stage-completion',
   ],
   NameGeneratorRoster: [
+    'dynamicValues',
     'label',
     'panelTitle',
     'interviewScript',
@@ -436,6 +450,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'exhausted-roster-empty-state',
   ],
   NameGeneratorQuickAdd: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -464,6 +479,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'codebook.variables.quickAdd.validation=required',
   ],
   FamilyPedigree: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -616,6 +632,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'disconnect',
   ],
   FinishSession: [
+    'dynamicValues',
     'stage.type',
     'stage.id',
     'label',
@@ -648,6 +665,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     // stage-config-schema-support.test.ts enforces this.
   ],
   Geospatial: [
+    'dynamicValues',
     'label',
     'interviewScript',
     'skipLogic',
@@ -684,6 +702,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'analytics-events',
   ],
   Information: [
+    'dynamicValues',
     'title',
     'items[].type=text',
     'items[].type=asset(image)',
@@ -702,6 +721,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'skipLogic',
   ],
   NarrativePedigree: [
+    'dynamicValues',
     'type',
     'id',
     'label',

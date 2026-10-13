@@ -24,6 +24,7 @@ type ContractValue = {
   handlers: ContractHandlers;
   flags: Required<InterviewerFlags>;
   finishConfirmationDescription: ReactNode;
+  caseId: string | undefined;
 };
 
 const ContractContext = createContext<ContractValue | null>(null);
@@ -33,6 +34,8 @@ type ContractProviderProps = {
   onRequestAsset: AssetRequestHandler;
   flags?: InterviewerFlags;
   finishConfirmationDescription?: ReactNode;
+  /** The host's case identifier for the interview (`SessionPayload.caseId`). */
+  caseId?: string;
   children: ReactNode;
 };
 
@@ -41,6 +44,7 @@ export function ContractProvider({
   onRequestAsset,
   flags,
   finishConfirmationDescription,
+  caseId,
   children,
 }: ContractProviderProps) {
   // Anchor the latest handler refs so the returned callbacks are stable.
@@ -71,6 +75,7 @@ export function ContractProvider({
         isDevelopment: flags?.isDevelopment ?? false,
       },
       finishConfirmationDescription,
+      caseId,
     }),
     [
       stableOnFinish,
@@ -78,6 +83,7 @@ export function ContractProvider({
       flags?.isE2E,
       flags?.isDevelopment,
       finishConfirmationDescription,
+      caseId,
     ],
   );
 
@@ -108,4 +114,12 @@ export function useContractFlags(): Required<InterviewerFlags> {
 
 export function useFinishConfirmationDescription(): ReactNode {
   return useContract().finishConfirmationDescription;
+}
+
+/**
+ * The host's case identifier for the interview, when it supplied one. Read
+ * where no contract is provided (a component shown on its own), it is absent.
+ */
+export function useHostCaseId(): string | undefined {
+  return useContext(ContractContext)?.caseId;
 }
