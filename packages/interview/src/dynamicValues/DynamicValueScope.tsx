@@ -59,7 +59,7 @@ const subjectVariables = (
 
 /**
  * Supplies a stage's dynamic values to the text inside it: the stage's
- * bindings, what the interview knows about itself, and the participant's
+ * bindings, today's date, and the participant's
  * attributes, read live from the network so a correction made earlier shows
  * at once. Entities the stage's interface is on are added beneath it by
  * `DynamicValueEntity`.
@@ -77,10 +77,6 @@ export function StageDynamicValues({
 }) {
   const [now] = useState(() => new Date());
   const codebook = useSelector(getCodebook);
-  const interviewId = useSelector((state: RootState) => state.session.id);
-  const startedAt = useSelector((state: RootState) => state.session.startTime);
-  const protocolName = useSelector((state: RootState) => state.protocol.name);
-  const protocolHash = useSelector((state: RootState) => state.protocol.hash);
   const egoAttributes = useSelector(
     (state: RootState) =>
       state.session.network?.ego?.[entityAttributesProperty] ?? NO_ATTRIBUTES,
@@ -89,14 +85,7 @@ export function StageDynamicValues({
   const sources = useMemo((): DynamicValueSources | null => {
     if (stage === undefined) return null;
     const variables = subjectVariables(codebook, stage);
-    const intrinsics: Record<IntrinsicDynamicValue, unknown> = {
-      'interview.id': interviewId,
-      'interview.startedAt': startedAt,
-      'protocol.name': protocolName,
-      'protocol.hash': protocolHash,
-      'stage.id': stage.id,
-      'now': now,
-    };
+    const intrinsics: Record<IntrinsicDynamicValue, unknown> = { now };
     return {
       bindings: stage.dynamicValues ?? NO_BINDINGS,
       intrinsics,
@@ -107,16 +96,7 @@ export function StageDynamicValues({
         return variables.node;
       },
     };
-  }, [
-    codebook,
-    stage,
-    interviewId,
-    startedAt,
-    protocolName,
-    protocolHash,
-    egoAttributes,
-    now,
-  ]);
+  }, [codebook, stage, egoAttributes, now]);
 
   return (
     <DynamicValueScopeContext.Provider value={sources}>

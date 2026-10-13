@@ -455,14 +455,13 @@ export const informationScenarios: InterfaceScenarios = {
               type: 'text',
               content: {
                 'en-US':
-                  'Thanks for **joining** {study}{name, select, missing {.} other {, {name}.}}',
+                  'Thanks for **joining**{name, select, missing {.} other {, {name}.}}',
               },
             },
           ],
         });
         info.stageEntry.dynamicValues = {
           name: { path: `ego.${nameVar.id}` },
-          study: { path: 'protocol.name' },
         };
         return synth;
       },

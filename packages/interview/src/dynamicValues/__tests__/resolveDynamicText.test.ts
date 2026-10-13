@@ -54,8 +54,7 @@ const BINDINGS: DynamicValues = {
   languages: { path: 'ego.languages', cases: { french: 'fr' } },
   smokes: { path: 'ego.smokes', cases: { yes: true } },
   partner: { path: 'dyad.target.name' },
-  hash: { path: 'protocol.hash' },
-  protocol: { path: 'protocol.name' },
+  today: { path: 'now' },
 };
 
 const sources = (
@@ -63,14 +62,7 @@ const sources = (
   extra: Partial<DynamicValueSources> = {},
 ): DynamicValueSources => ({
   bindings: BINDINGS,
-  intrinsics: {
-    'interview.id': 'interview-1',
-    'interview.startedAt': '2026-01-02T03:04:05.000Z',
-    'protocol.name': 'Family study',
-    'protocol.hash': undefined,
-    'stage.id': 'stage-1',
-    'now': new Date('2026-10-13T12:00:00Z'),
-  },
+  intrinsics: { now: new Date('2026-10-13T12:00:00Z') },
   attributes: { ego },
   variablesFor: (role) => (role === 'ego' ? VARIABLES : undefined),
   ...extra,
@@ -171,12 +163,8 @@ describe('resolveDynamicText', () => {
     ).toBe('them');
   });
 
-  it('shows what the interview knows about itself', () => {
-    expect(resolve('{protocol}', {})?.text).toBe('Family study');
-    expect(
-      resolve('{hash, select, missing {No hash} other {Hash {hash}}}', {})
-        ?.text,
-    ).toBe('No hash');
+  it("shows today's date", () => {
+    expect(resolve('Since {today}', {})?.text).toBe('Since October 13, 2026');
   });
 
   it('never parses a value as message syntax', () => {
