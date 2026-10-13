@@ -215,16 +215,30 @@ const checkBindings = (
       variable.type === 'boolean'
         ? [true, false]
         : (variable.options ?? []).map((option) => option.value);
-    return Object.entries(cases).flatMap(([key, optionValue]) =>
-      optionValues.includes(optionValue)
-        ? []
-        : [
-            {
-              path: [...base, key],
-              message: `Case "${key}" stands for ${JSON.stringify(optionValue)}, which is not one of the attribute's options.`,
-            },
-          ],
-    );
+    // A select takes the first case its value matches, so a second case for
+    // the same option could never be chosen.
+    const caseFor = new Map<unknown, string>();
+    return Object.entries(cases).flatMap(([key, optionValue]) => {
+      if (!optionValues.includes(optionValue)) {
+        return [
+          {
+            path: [...base, key],
+            message: `Case "${key}" stands for ${JSON.stringify(optionValue)}, which is not one of the attribute's options.`,
+          },
+        ];
+      }
+      const earlier = caseFor.get(optionValue);
+      if (earlier !== undefined) {
+        return [
+          {
+            path: [...base, key],
+            message: `Case "${key}" stands for ${JSON.stringify(optionValue)}, as case "${earlier}" already does, so it would never be chosen. Give each option at most one case.`,
+          },
+        ];
+      }
+      caseFor.set(optionValue, key);
+      return [];
+    });
   });
 };
 
@@ -235,7 +249,8 @@ const checkBindings = (
  *   `findDynamicValueProblem` finds;
  * - each translation that leaves out a value the default-language text shows
  *   in some version;
- * - each binding case that stands for no option of its attribute.
+ * - each binding case that stands for no option of its attribute, or for an
+ *   option an earlier case already stands for.
  *
  * `hits` are the protocol's localized strings (`collectLocalizedStrings`).
  */

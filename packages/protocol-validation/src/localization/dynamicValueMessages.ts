@@ -5,6 +5,7 @@ import {
   TYPE,
 } from '@formatjs/icu-messageformat-parser';
 
+import { isBlankText } from './blankText.ts';
 import type { LocaleTag } from './localeTag.ts';
 import { type MessagePart, pluralCountExamples } from './messageArguments.ts';
 
@@ -66,14 +67,31 @@ const parseMessage = (message: string): MessageFormatElement[] | string => {
   }
 };
 
+/**
+ * Whether some version of `nodes` shows something: visible text, a value or
+ * a count. Each choice can take whichever version shows the most, so this
+ * may count a version that correlated choices on one value never reach; it
+ * errs towards accepting.
+ */
+const showsSomething = (nodes: readonly MessageFormatElement[]): boolean =>
+  nodes.some((node) => {
+    if (node.type === TYPE.literal) return !isBlankText(node.value);
+    if (node.type === TYPE.select || node.type === TYPE.plural) {
+      return Object.values(node.options).some((option) =>
+        showsSomething(option.value),
+      );
+    }
+    return true;
+  });
+
 const MARKER_PROBLEM =
   'Text cannot contain the private-use character U+E000: the interview uses it to place values.';
 
 /**
  * Why `message` cannot be the text of a site that may show dynamic values,
  * judged without knowing which values the stage binds, or undefined when it
- * may be: it parses, holds no number, date or time formatting, and no marker
- * character. Which values it shows, and how, is `findDynamicValueProblem`'s
+ * may be: it parses, holds no number, date or time formatting, no marker
+ * character, and shows something in at least one version. Which values it shows, and how, is `findDynamicValueProblem`'s
  * to judge, against the stage.
  */
 export const findDynamicMessageSyntaxProblem = (
@@ -101,7 +119,20 @@ export const findDynamicMessageSyntaxProblem = (
     }
     return undefined;
   };
-  return visit(elements);
+  const problem = visit(elements);
+  if (problem !== undefined) return problem;
+  // One version may be blank (nothing to add when a value is missing), but
+  // text that shows nothing in every version is blank text written as a
+  // choice. Text without a choice is the field's own blank check's to judge.
+  if (
+    elements.some(
+      (node) => node.type === TYPE.select || node.type === TYPE.plural,
+    ) &&
+    !showsSomething(elements)
+  ) {
+    return 'Text cannot be blank in every version: at least one of its versions must show some text or a value.';
+  }
+  return undefined;
 };
 
 /**
@@ -391,9 +422,10 @@ const describeState = (state: DynamicValueState): string => {
  * or undefined when the translation shows everything its original does: a
  * translation must show the values its original shows. Versions are compared
  * by what the values are, so languages with different plural categories
- * compare count by count. As for declared arguments, a plural category that
- * only one whole number selects in the translation's language may leave its
- * number out (English "one person"). Meant for messages
+ * compare count by count. A plural category that only one number selects in
+ * the translation's language may leave its number out (Arabic `zero`); since
+ * a number answer may be negative, English `one`, which holds 1 and -1, may
+ * not. Meant for messages
  * `findDynamicValueProblem` accepts. `TOO_MANY_DYNAMIC_VERSIONS` when the
  * two texts choose between too many versions to compare: such a translation
  * is not accepted unchecked.
@@ -445,9 +477,16 @@ export const findMissingDynamicPlacement = (
   );
   if (total > MAX_SCENARIOS) return TOO_MANY_DYNAMIC_VERSIONS;
 
+  // A number answer can be negative, and plural rules read a negative count
+  // as its size (English `one` holds -1 as well as 1), so a category holds
+  // one number only when that number's negative is not in it too: in
+  // practice, a category for zero alone.
   const singleNumberCategory = (count: number | undefined): boolean => {
     if (count === undefined || !Number.isInteger(count)) return false;
     const category = pluralCategoryOf(locale, count);
+    if (count !== 0 && pluralCategoryOf(locale, -count) === category) {
+      return false;
+    }
     return (
       [...translationExamples].find(([each]) => each === category)?.[1]
         .length === 1
