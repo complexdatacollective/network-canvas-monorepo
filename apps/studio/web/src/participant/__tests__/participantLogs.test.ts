@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { ParticipantLogEntry } from '@codaco/studio-contract/schema/browser-logs';
 
 import {
-  faultObservingClient,
   type ParticipantStage,
   participantStage,
   watchParticipantConnection,
@@ -76,54 +75,6 @@ describe('the participant connection watcher', () => {
           duration_ms: 4_200,
         },
       },
-    ]);
-  });
-});
-
-describe('the fault-observing interview client', () => {
-  it('logs a stage that failed to render on the stage now shown, from the properties the boundary really sends', () => {
-    const inner = {
-      capture: vi.fn(),
-      captureException: vi.fn(),
-      register: vi.fn(),
-    };
-    const client = faultObservingClient(inner, log, currentStage);
-    step = 2;
-    const boundaryProperties = {
-      feature: 'stage-error-boundary',
-      component_stack: 'at Sociogram',
-      is_offline: false,
-      app: 'studio',
-      distinct_id: 'pseudonym',
-    };
-
-    client.captureException(new Error('crash'), boundaryProperties);
-    client.captureException(new Error('video load failed: 4'), {
-      feature: 'information-media',
-      media_kind: 'video',
-    });
-    client.capture('stage_entered', { stage_index: 1 });
-
-    expect(logged).toEqual([
-      {
-        message: 'Stage failed to render',
-        level: 'Error',
-        attributes: { stage_index: 2, interface_type: 'Sociogram' },
-      },
-    ]);
-    expect(inner.captureException).toHaveBeenCalledTimes(2);
-    expect(inner.capture).toHaveBeenCalledWith('stage_entered', {
-      stage_index: 1,
-    });
-  });
-
-  it('still logs when the study sends no usability events', () => {
-    const client = faultObservingClient(undefined, log, currentStage);
-    client.captureException(new Error('boom'), {
-      feature: 'stage-error-boundary',
-    });
-    expect(logged.map((entry) => entry.message)).toEqual([
-      'Stage failed to render',
     ]);
   });
 });

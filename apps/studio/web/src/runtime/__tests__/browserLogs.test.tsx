@@ -288,7 +288,7 @@ describe('leaving the page', () => {
 describe('participant logs', () => {
   it('sends nothing while the session reports telemetry off', async () => {
     const view = renderHook(() => useParticipantLogs(SESSION, null));
-    view.result.current.log({
+    view.result.current({
       message: 'Participant connection lost',
       level: 'Warn',
       attributes: { stage_index: 1, interface_type: 'Sociogram' },
@@ -300,7 +300,7 @@ describe('participant logs', () => {
 
   it('sends a catalogued record with the session header and no credentials', async () => {
     const view = renderHook(() => useParticipantLogs(SESSION, 'Info'));
-    view.result.current.log({
+    view.result.current({
       message: 'Participant connection restored',
       level: 'Info',
       attributes: {

@@ -1,7 +1,6 @@
 import { Option, Predicate, Schema } from 'effect';
-import { type ComponentProps, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
-import type { Shell } from '@codaco/interview';
 import type {
   FaultCode,
   LogLevelName,
@@ -15,10 +14,6 @@ import {
 } from '../runtime/browserLogs.ts';
 import { participantLogTransport } from '../runtime/participantRuntime.ts';
 import { type PublicStatus, readPublicStatus } from '../runtime/telemetry.ts';
-
-type AnalyticsClient = NonNullable<
-  ComponentProps<typeof Shell>['posthogClient']
->;
 
 export type ParticipantLog = (entry: ParticipantLogEntry) => void;
 
@@ -82,7 +77,7 @@ const useSessionHandle = (sessionToken: string) =>
 export function useParticipantLogs(
   sessionToken: string,
   level: LogLevelName | null,
-): { readonly log: ParticipantLog; readonly enabled: boolean } {
+): ParticipantLog {
   const handle = useSessionHandle(sessionToken);
   useEffect(() => {
     configure(handle, sessionToken, {
@@ -91,10 +86,7 @@ export function useParticipantLogs(
     });
     return handle.close;
   }, [handle, sessionToken, level]);
-  return useMemo(
-    () => ({ log: handle.log, enabled: level !== null }),
-    [handle, level],
-  );
+  return handle.log;
 }
 
 export function useStatusParticipantLogs(
@@ -244,27 +236,10 @@ export function watchParticipantMedia(
   return () => target.removeEventListener('error', onError, true);
 }
 
-export const faultObservingClient = (
-  inner: AnalyticsClient | undefined,
+export const logStageFailedToRender = (
   log: ParticipantLog,
-  currentStage: () => ParticipantStage | undefined,
-): AnalyticsClient => ({
-  capture: (event, properties) => inner?.capture(event, properties),
-  captureException: (error, properties) => {
-    const stage = currentStage();
-    if (
-      stage !== undefined &&
-      Predicate.isObject(properties) &&
-      Predicate.hasProperty(properties, 'feature') &&
-      properties.feature === 'stage-error-boundary'
-    ) {
-      log({
-        message: 'Stage failed to render',
-        level: 'Error',
-        attributes: stage,
-      });
-    }
-    return inner?.captureException(error, properties);
-  },
-  register: (properties) => inner?.register(properties),
-});
+  stage: ParticipantStage | undefined,
+): void => {
+  if (stage === undefined) return;
+  log({ message: 'Stage failed to render', level: 'Error', attributes: stage });
+};

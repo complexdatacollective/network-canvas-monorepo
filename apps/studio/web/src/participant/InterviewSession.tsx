@@ -1,5 +1,12 @@
 import { getRouteApi } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { Shell } from '@codaco/interview';
 import type {
@@ -18,10 +25,12 @@ import {
   type SaveFault,
 } from './interviewHandlers.ts';
 import {
-  faultObservingClient,
   logAnswerSaveFailed,
   logAnswerSaveRetried,
   logAssetFailed,
+  logStageFailedToRender,
+  type ParticipantLog,
+  type ParticipantStage,
   participantStage,
   useParticipantLogs,
   watchParticipantConnection,
@@ -30,6 +39,7 @@ import {
 import ParticipantNotice, {
   type ParticipantNoticeKind,
 } from './ParticipantNotice.tsx';
+import { reportStageCrashesTo } from './stageCrashes.ts';
 
 const route = getRouteApi('/participant/session/$sessionToken');
 
@@ -37,6 +47,21 @@ const ANALYTICS: InterviewAnalyticsMetadata = {
   installationId: 'studio',
   hostApp: 'studio',
 };
+
+function StageCrashReporter({
+  log,
+  currentStage,
+}: {
+  readonly log: ParticipantLog;
+  readonly currentStage: () => ParticipantStage | undefined;
+}): null {
+  useLayoutEffect(
+    () =>
+      reportStageCrashesTo(() => logStageFailedToRender(log, currentStage())),
+    [log, currentStage],
+  );
+  return null;
+}
 
 export default function InterviewSession() {
   const { sessionToken } = route.useParams();
@@ -54,7 +79,7 @@ function InterviewSessionView() {
 
   const { sessionToken } = route.useParams();
   useErrorTelemetry('participant', loaded.analytics);
-  const logs = useParticipantLogs(sessionToken, loaded.logLevel);
+  const log = useParticipantLogs(sessionToken, loaded.logLevel);
   const analyticsClient = useMemo(
     () =>
       loaded.analytics
@@ -70,21 +95,13 @@ function InterviewSessionView() {
     () => participantStage(stageTypes, currentStepRef.current),
     [stageTypes],
   );
-  const interviewClient = useMemo(
-    () =>
-      analyticsClient === undefined && !logs.enabled
-        ? undefined
-        : faultObservingClient(analyticsClient, logs.log, currentStage),
-    [analyticsClient, logs, currentStage],
-  );
-
   useEffect(
-    () => watchParticipantConnection(logs.log, currentStage),
-    [logs, currentStage],
+    () => watchParticipantConnection(log, currentStage),
+    [log, currentStage],
   );
   useEffect(
-    () => watchParticipantMedia(logs.log, currentStage),
-    [logs, currentStage],
+    () => watchParticipantMedia(log, currentStage),
+    [log, currentStage],
   );
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
@@ -101,10 +118,10 @@ function InterviewSessionView() {
           const stage = participantStage(stageTypes, fault.stageIndex);
           if (stage === undefined) return;
           if (fault.kind === 'retried') {
-            logAnswerSaveRetried(logs.log, stage, fault.attempts);
+            logAnswerSaveRetried(log, stage, fault.attempts);
           } else {
             logAnswerSaveFailed(
-              logs.log,
+              log,
               stage,
               faultCodeOf(fault.error),
               fault.attempts,
@@ -112,7 +129,7 @@ function InterviewSessionView() {
           }
         },
       }),
-    [loaded, payload, stageTypes, logs],
+    [loaded, payload, stageTypes, log],
   );
 
   useEffect(() => {
@@ -146,27 +163,30 @@ function InterviewSessionView() {
       createAssetResolver(payload.protocol.assets, () => {
         const stage = currentStage();
         return (code) => {
-          if (stage !== undefined) logAssetFailed(logs.log, stage, code);
+          if (stage !== undefined) logAssetFailed(log, stage, code);
         };
       }),
-    [payload, currentStage],
+    [payload, currentStage, log],
   );
 
   if (notice !== undefined) return <ParticipantNotice kind={notice} />;
 
   return (
-    <Shell
-      requestedLocale={navigator.languages}
-      payload={payload}
-      currentStep={currentStep}
-      onStepChange={onStepChange}
-      onSync={onSync}
-      onFinish={onFinish}
-      onRequestAsset={onRequestAsset}
-      analytics={ANALYTICS}
-      posthogClient={interviewClient}
-      disableAnalytics={interviewClient === undefined}
-      allowUserScaling
-    />
+    <>
+      <StageCrashReporter log={log} currentStage={currentStage} />
+      <Shell
+        requestedLocale={navigator.languages}
+        payload={payload}
+        currentStep={currentStep}
+        onStepChange={onStepChange}
+        onSync={onSync}
+        onFinish={onFinish}
+        onRequestAsset={onRequestAsset}
+        analytics={ANALYTICS}
+        posthogClient={analyticsClient}
+        disableAnalytics={analyticsClient === undefined}
+        allowUserScaling
+      />
+    </>
   );
 }
