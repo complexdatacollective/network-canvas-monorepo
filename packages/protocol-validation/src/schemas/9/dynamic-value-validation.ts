@@ -303,7 +303,8 @@ export const findDynamicValueProblems = (
           ? []
           : [`"${name}" cannot be shown here: ${status.reason}.`];
       });
-      const problem = unusable[0] ?? findDynamicValueProblem(message, values);
+      const problem =
+        unusable[0] ?? findDynamicValueProblem(message, values, locale);
       if (problem === undefined) valid.add(locale);
       else problems.push({ path: [...hit.path, locale], message: problem });
     }

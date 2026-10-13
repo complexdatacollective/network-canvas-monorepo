@@ -180,6 +180,22 @@ describe('dynamic values in stage text', () => {
     ]);
   });
 
+  it('refuses text whose only words are in a plural version its language never chooses', () => {
+    const protocol = editing('information', (stage) => {
+      stage.dynamicValues = { count: { path: 'ego.egoAge' } };
+      stage.title = {
+        en: '{count, select, missing {} other {{count, plural, few {Some} other {}}}}',
+      };
+    });
+    const index = stageIndex(protocol, 'information');
+    expect(issuesOf(protocol)).toEqual([
+      expect.objectContaining({
+        path: `stages.${index}.title.en`,
+        message: expect.stringContaining('blank in every version'),
+      }),
+    ]);
+  });
+
   it('refuses text holding the marker the interview places values with', () => {
     const protocol = editing('information', (stage) => {
       stage.title = { en: 'Hello ' };
