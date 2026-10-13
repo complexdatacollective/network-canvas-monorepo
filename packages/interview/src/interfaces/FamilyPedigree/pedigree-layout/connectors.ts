@@ -1608,8 +1608,19 @@ export function routePedigree(
       // A line of descent that cannot be drawn as one (its owners rows
       // above, or co-parents with someone seated between them) is drawn as
       // its owner's line, to the children's sibling bar when they have one.
-      const drops =
-        descent && !descentParentsOf.has(`${i},${j}`) ? [descent] : [];
+      // One drawn from some of its owners only (co-parents who cannot share
+      // a row, such as a parent and their adult child) leaves each of the
+      // others a line of their own, like any other owner's, so every tie is
+      // drawn (constraint 1).
+      const carried = descentParentsOf.get(`${i},${j}`);
+      const drops = descent && !carried ? [descent] : [];
+      const uncarried = descent?.parents.filter(
+        (parent) => carried && !carried.has(parent),
+      );
+      const others: LineOwner[] =
+        descent && uncarried && uncarried.length > 0
+          ? [...lines, { parents: uncarried, kind: descent.kind }]
+          : lines;
       for (const owner of drops) {
         if (!owner.parents.every((parent) => nodeLocation.has(parent))) {
           continue;
@@ -1630,7 +1641,7 @@ export function routePedigree(
           });
         }
       }
-      for (const owner of lines) {
+      for (const owner of others) {
         if (!owner.parents.every((parent) => nodeLocation.has(parent))) {
           continue;
         }

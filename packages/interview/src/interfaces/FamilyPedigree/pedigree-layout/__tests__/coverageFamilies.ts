@@ -151,6 +151,19 @@ export const coverageFamilies: Record<
       parent('donor', 'donor', 'liam'),
     ],
   },
+  // A parent and their adult child have a child together: the two cannot
+  // share a row, so the line of descent can come from the lower of them
+  // only, and the other's tie is drawn by a line of their own.
+  'a child of a parent and their adult child': {
+    people: ['grandma', 'grandad', 'son', 'baby'],
+    links: [
+      partners('grandma', 'grandad'),
+      parent('grandma', 'biological', 'son', true),
+      parent('grandad', 'biological', 'son'),
+      parent('grandma', 'biological', 'baby', true),
+      parent('son', 'biological', 'baby'),
+    ],
+  },
   'a donor to two of three half-siblings': {
     people: ['ego', 'hannah', 'paul', 'ruby', 'theo', 'theoDonor'],
     links: [
