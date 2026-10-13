@@ -60,7 +60,7 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   label: { 'en-US': 'Family Pedigree' },
   interviewScript: INTERVIEW_SCRIPT,
   skipLogic: SKIP_LOGIC,
-  dynamicValues: { interviewId: { path: 'interview.id' } },
+  dynamicValues: { today: { path: 'now' } },
   subject: { entity: 'node', type: 'family_member' },
   prompt: { 'en-US': 'Add the members of your family.' },
   nodeConfiguration: {

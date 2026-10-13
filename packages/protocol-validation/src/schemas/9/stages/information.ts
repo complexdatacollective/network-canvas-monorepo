@@ -23,9 +23,8 @@ const assetItemSchema = z.strictObject({
   id: z.string(),
   type: z.literal('asset'),
   content: assetReference(),
-  description: localizedString(nonBlankText(), 'plain', {
-    dynamicValues: 'stageText',
-  }).optional(),
+  // An image's description stands in for the image, so it stays literal.
+  description: localizedString(nonBlankText(), 'plain').optional(),
   size: ItemSizeSchema.optional(),
 });
 

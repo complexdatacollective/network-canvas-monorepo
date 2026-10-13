@@ -78,17 +78,28 @@ describe('dynamic values in stage text', () => {
 
   it('needs no missing version for a value every host guarantees', () => {
     const protocol = editing('information', (stage) => {
-      stage.dynamicValues = {
-        interviewId: { path: 'interview.id' },
-      };
-      stage.title = { en: 'Interview {interviewId}' };
+      stage.dynamicValues = { today: { path: 'now' } };
+      stage.title = { en: 'Since {today}' };
     });
     expect(issuesOf(protocol)).toEqual([]);
-    const optional = editing('information', (stage) => {
-      stage.dynamicValues = { started: { path: 'interview.startedAt' } };
-      stage.title = { en: 'Started {started}' };
+  });
+
+  it.each([
+    'interview.id',
+    'interview.caseId',
+    'interview.startedAt',
+    'protocol.name',
+    'protocol.hash',
+    'stage.id',
+  ])('refuses the interview metadata %s', (path) => {
+    const protocol = editing('information', (stage) => {
+      stage.dynamicValues = { meta: { path } };
     });
-    expect(issuesOf(optional)).toHaveLength(1);
+    expect(issuesOf(protocol)).toEqual([
+      expect.objectContaining({
+        message: 'This does not name a value the interview can show.',
+      }),
+    ]);
   });
 
   it('refuses a name the stage does not bind', () => {
@@ -275,7 +286,7 @@ describe('dynamic values in stage text', () => {
       second: { path: 'dyad.target.nickname' },
       focal: { path: 'one_to_many.focal.nickname' },
       tie: { path: 'edge.note' },
-      started: { path: 'interview.startedAt' },
+      today: { path: 'now' },
     };
 
     const withAllRoles = (id: string) =>
@@ -287,7 +298,7 @@ describe('dynamic values in stage text', () => {
       const protocol = withAllRoles('sociogram');
       expect(
         argumentsAt(protocol, 'sociogram', ['prompts', 0, 'text'], 'prompt'),
-      ).toEqual(['you', 'started']);
+      ).toEqual(['you', 'today']);
     });
 
     it('offers no one person on an interface that shows many', () => {
@@ -300,7 +311,7 @@ describe('dynamic values in stage text', () => {
         const protocol = withAllRoles(id);
         expect(
           argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
-        ).toEqual(['you', 'started']);
+        ).toEqual(['you', 'today']);
       }
     });
 
@@ -309,10 +320,10 @@ describe('dynamic values in stage text', () => {
         const protocol = withAllRoles(id);
         expect(
           argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
-        ).toEqual(['you', 'first', 'second', 'started']);
+        ).toEqual(['you', 'first', 'second', 'today']);
         expect(
           argumentsAt(protocol, id, ['introductionPanel', 'text'], 'stageText'),
-        ).toEqual(['you', 'started']);
+        ).toEqual(['you', 'today']);
       }
     });
 
@@ -320,7 +331,7 @@ describe('dynamic values in stage text', () => {
       const protocol = withAllRoles('oneToMany');
       expect(
         argumentsAt(protocol, 'oneToMany', ['prompts', 0, 'text'], 'prompt'),
-      ).toEqual(['you', 'focal', 'started']);
+      ).toEqual(['you', 'focal', 'today']);
     });
 
     it('offers a form field the values of earlier fields, but not its own or later ones', () => {
@@ -384,7 +395,7 @@ describe('dynamic values in stage text', () => {
           ['form', 'fields', 0, 'prompt'],
           'formField',
         ),
-      ).toEqual(['you', 'started']);
+      ).toEqual(['you', 'today']);
       const before = editing('alterEdgeForm', (stage) => {
         stage.dynamicValues = { tie: { path: 'edge.tieStrength' } };
       });
@@ -405,7 +416,7 @@ describe('dynamic values in stage text', () => {
           ['nodeForm', 'fields', 0, 'label'],
           'formField',
         ),
-      ).toEqual(['you', 'started']);
+      ).toEqual(['you', 'today']);
       expect(
         argumentsAt(
           composer,
@@ -413,7 +424,7 @@ describe('dynamic values in stage text', () => {
           ['edges', 0, 'form', 'fields', 0, 'label'],
           'formField',
         ),
-      ).toEqual(['you', 'started']);
+      ).toEqual(['you', 'today']);
     });
 
     it('reports a value used where it is not available', () => {

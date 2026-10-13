@@ -28,7 +28,6 @@ exports[`dynamic values in stage text > tags exactly the inventoried stage sites
   "FinishSession title stageText",
   "Geospatial prompts.#.text prompt",
   "Information items.#.content stageText",
-  "Information items.#.description stageText",
   "Information title stageText",
   "NameGenerator form.fields.#.prompt formField",
   "NameGenerator form.title stageText",
