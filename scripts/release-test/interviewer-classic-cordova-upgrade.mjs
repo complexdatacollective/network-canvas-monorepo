@@ -466,6 +466,17 @@ async function main(p) {
         );
         const before = summarise(parsePersisted(raw));
         await createInterview(viaDriver, VIA_CASE);
+        // Replacing the app kills it, so wait for the interview to reach
+        // IndexedDB rather than trusting the start screen.
+        await waitFor(
+          viaDriver,
+          `async (expected) => { const { raw } = await ${NEW_STORE}; if (!raw) return false; const sessions = Object.values(JSON.parse(JSON.parse(raw).sessions ?? '{}')); return sessions.some((s) => s.caseId === expected.caseId && expected.names.every((n) => JSON.stringify(s.network?.ego?.attributes ?? {}).includes(n))); }`,
+          {
+            timeout: 30_000,
+            label: 'intermediate interview persisted',
+            arg: VIA_CASE,
+          },
+        );
         return `the intermediate build showed ${before.protocols.length} protocol(s) and ${before.sessions.length} session(s) on first launch`;
       },
       viaDriver,

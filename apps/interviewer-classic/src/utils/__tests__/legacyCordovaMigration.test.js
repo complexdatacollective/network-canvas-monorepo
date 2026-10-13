@@ -61,7 +61,11 @@ const memoryFilesystem = (paths) => {
   return {
     existing,
     stat: vi.fn(async ({ path, directory }) => {
-      if (!existing.has(`${directory}:${path}`)) throw new Error('missing');
+      if (!existing.has(`${directory}:${path}`)) {
+        throw Object.assign(new Error('does not exist'), {
+          code: 'OS-PLUG-FILE-0008',
+        });
+      }
       return {};
     }),
     readdir: vi.fn(async ({ path, directory }) => ({
@@ -316,6 +320,30 @@ describe('migrateLegacyCordovaData', () => {
 
     expect(storage.values.has(MIGRATION_FLAG_KEY)).toBe(false);
     expect(filesystem.rename).not.toHaveBeenCalled();
+  });
+
+  it('leaves the flag unset when the filesystem fails for a reason other than a missing path', async () => {
+    const storage = memoryStorage();
+    filesystem.stat = vi.fn(async () => {
+      throw Object.assign(new Error('bridge unavailable'), {
+        code: 'OS-PLUG-FILE-0013',
+      });
+    });
+
+    await expect(
+      migrateLegacyCordovaData({
+        storage,
+        platform: 'ios',
+        legacyData: {
+          readState: async () => ({ exists: true, value: legacyRaw }),
+        },
+        filesystem,
+        now,
+      }),
+    ).rejects.toThrow('bridge unavailable');
+
+    expect(storage.values.has(MIGRATION_FLAG_KEY)).toBe(false);
+    expect(storage.values.has(PERSIST_KEY)).toBe(false);
   });
 
   it('leaves the flag unset when the native read fails, so the next launch retries', async () => {

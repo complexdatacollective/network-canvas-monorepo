@@ -88,10 +88,18 @@ export const mergePersistedState = (legacyRaw, currentRaw) => {
   });
 };
 
+// @capacitor/filesystem's "does not exist" error on iOS and Android.
+const FILE_NOT_FOUND = 'OS-PLUG-FILE-0008';
+
+// Only a missing path counts as absent: any other failure propagates, so the
+// run stops before recording the flag and the next launch retries it.
 const pathExists = (filesystem, path, directory) =>
   filesystem.stat({ path, directory }).then(
     () => true,
-    () => false,
+    (error) => {
+      if (error?.code === FILE_NOT_FOUND) return false;
+      throw error;
+    },
   );
 
 /**
