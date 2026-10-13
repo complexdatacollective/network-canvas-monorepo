@@ -309,6 +309,7 @@ export type StageEntry = {
     removeAfterConsideration?: boolean;
     minNodes?: number;
     maxNodes?: number;
+    interactionMode?: 'drag' | 'select';
   };
   introductionPanel?: {
     title: TextInput;

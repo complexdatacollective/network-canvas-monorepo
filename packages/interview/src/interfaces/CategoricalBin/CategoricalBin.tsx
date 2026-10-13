@@ -439,11 +439,12 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     const holdsNode = (bin: (typeof bins)[number]) =>
       bin.nodes.some((binNode) => binNode[entityPrimaryKeyProperty] === nodeId);
     // Only a person in this bin alone has nothing to change: one with several
-    // answers still has them narrowed to this bin, as a drop does.
+    // answers still has them narrowed to this bin, as a drop does. The "other"
+    // bin asks again, so its answer can be edited, as a drop there does.
     const onlyHere =
       holdsNode(bins[binIndex]!) &&
       bins.every((bin, index) => index === binIndex || !holdsNode(bin));
-    if (onlyHere) {
+    if (onlyHere && !bins[binIndex]!.isOther) {
       advanceFrom(node);
       return false;
     }

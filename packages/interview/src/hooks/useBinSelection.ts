@@ -71,9 +71,11 @@ export function useBinSelection({
   const focalNodeId = focalNode?.[entityPrimaryKeyProperty];
 
   const track = useTrack();
+  // Keyed by prompt too: the same person shown first on the next prompt is
+  // shown again.
   useEffect(() => {
     if (focalNodeId) track('focal_node', { node_id: focalNodeId });
-  }, [focalNodeId, track]);
+  }, [focalNodeId, promptIndex, track]);
 
   /** Makes a person focal, or lets go of them if they already are. */
   const choose = useCallback((node: NcNode) => {
