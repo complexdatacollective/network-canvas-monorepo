@@ -1,5 +1,6 @@
 import {
   type ComponentType,
+  forwardRef,
   type ReactNode,
   useCallback,
   useMemo,
@@ -13,7 +14,9 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+import ToggleField, {
+  type ToggleFieldProps,
+} from '@codaco/fresco-ui/form/fields/ToggleField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 
@@ -286,9 +289,9 @@ export default function BackgroundSection() {
             required={REQUIRED}
             {...circlesValidation}
           />
-          <Field<typeof ToggleField>
+          <Field<typeof SkewToggleField>
             name={SKEW_FIELD}
-            component={ToggleField}
+            component={SkewToggleField}
             label={intl.formatMessage(messages.backgroundSkewLabel)}
             hint={intl.formatMessage(messages.backgroundSkewHint)}
             inline
@@ -320,6 +323,27 @@ export default function BackgroundSection() {
     </BuilderSection>
   );
 }
+
+/**
+ * The skew switch, showing a background that does not say as skewed.
+ *
+ * The interview draws circles skewed unless the stage says otherwise
+ * (`ConcentricCircles` defaults `skewed` to `true`), so a background without
+ * the key — an imported protocol, the sample protocol, circles chosen after an
+ * image — is a skewed one. The plain toggle reads a missing value as off, which
+ * told the researcher the opposite of what participants see, and a save after
+ * touching anything nearby could then write that opposite into the stage.
+ *
+ * Only the display changes: nothing is written until the researcher flips the
+ * switch, so a stage saved untouched keeps leaving the key out.
+ */
+const SkewToggleField = forwardRef<HTMLButtonElement, ToggleFieldProps>(
+  ({ value, ...props }, ref) => (
+    <ToggleField {...props} ref={ref} value={value ?? true} />
+  ),
+);
+
+SkewToggleField.displayName = 'SkewToggleField';
 
 /**
  * Which background the stage describes, or `null` when it holds neither kind.

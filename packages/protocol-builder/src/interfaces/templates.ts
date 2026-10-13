@@ -27,11 +27,12 @@ import type { StageType } from '@codaco/protocol-validation';
  * an empty object.
  */
 /**
- * A template rather than a schema default, because `ConcentricCircles`
- * defaults `skewed` to `true` while the editor's toggle reads off. The ring
- * count, matching the interview and the schema-8 migration, lives here
- * rather than as a field default so the subject reset does not count it as
- * the researcher's work.
+ * A template rather than a schema default. A new stage starts with its circles
+ * unskewed and says so: `ConcentricCircles` skews a background that does not
+ * say, and the editor's switch shows that case as on (see `BackgroundSection`).
+ * The ring count, matching the interview and the schema-8 migration, lives
+ * here rather than as a field default so the subject reset does not count it
+ * as the researcher's work.
  */
 const DEFAULT_CIRCLES_BACKGROUND = {
   concentricCircles: 4,

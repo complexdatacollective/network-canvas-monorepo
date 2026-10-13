@@ -1,6 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import SubjectSection from '../../subject-picker/SubjectSection.tsx';
 import { background } from '../background.tsx';
@@ -25,6 +26,24 @@ const openImage = () => ({
   assets: canvasImageAssets,
 });
 
+/**
+ * The fixture's circles stage with a background that does not say whether its
+ * circles are skewed, as an imported protocol or the sample protocol's
+ * Narrative stage does.
+ */
+const openCirclesWithoutSkew = () => {
+  const { type, fields } = loadFixtureStage('sociogram-1');
+  return {
+    stage: {
+      id: 'sociogram-1-unsaid-skew',
+      type,
+      fields: { ...fields, background: { concentricCircles: 3 } },
+    },
+    sections: <Background />,
+    assets: canvasImageAssets,
+  };
+};
+
 /** What the stage holds behind its nodes, read as tolerantly as the editor does. */
 const backgroundOf = (
   stage: Record<string, unknown>,
@@ -41,6 +60,41 @@ describe('what the participant sees behind the nodes', () => {
     // belong to sections this mount does not include.
     await harness.roundTrip({
       unowned: ['subject', 'prompts', 'behaviours'],
+    });
+  });
+
+  /**
+   * The interview skews circles unless the stage says otherwise, so a
+   * background without the key is a skewed one. The switch showed it off,
+   * telling the researcher the opposite of what participants see.
+   */
+  it('shows circles the stage does not call unskewed as skewed, and saves them unchanged', async () => {
+    const harness = renderStageEditor(openCirclesWithoutSkew());
+
+    expect(
+      await screen.findByRole('switch', { name: /Skew circle sizes/ }),
+    ).toBeChecked();
+
+    const saved = await harness.submit();
+    expect(backgroundOf(saved?.stageDocument ?? {})).toEqual({
+      concentricCircles: 3,
+    });
+  });
+
+  it('saves circles switched to unskewed as unskewed', async () => {
+    const harness = renderStageEditor(openCirclesWithoutSkew());
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: /Skew circle sizes/ }),
+    );
+    expect(
+      screen.getByRole('switch', { name: /Skew circle sizes/ }),
+    ).not.toBeChecked();
+
+    const saved = await harness.submit();
+    expect(backgroundOf(saved?.stageDocument ?? {})).toEqual({
+      concentricCircles: 3,
+      skewedTowardCenter: false,
     });
   });
 
