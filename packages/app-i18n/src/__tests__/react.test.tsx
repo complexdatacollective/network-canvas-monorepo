@@ -653,8 +653,10 @@ describe('useLocaleCatalog', () => {
 
   describe('when a locale is restored after mounting', () => {
     // React hides a suspended tree with an inline style rather than removing it.
-    const shown = (text: string) =>
-      screen.queryByText(text)?.style.display !== 'none';
+    const shown = (text: string) => {
+      const element = screen.queryByText(text);
+      return element !== null && element.style.display !== 'none';
+    };
 
     it('suspends until the restored locale has loaded instead of keeping the current one', async () => {
       const fr = pending(french);
