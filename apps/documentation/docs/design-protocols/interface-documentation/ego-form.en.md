@@ -11,11 +11,11 @@ navOrder: 16
 
 </InterfaceSummary>
 
-The Ego Form is an interface that collects data on your participant (ego). When using the Ego Form, participants complete a [form](../key-concepts/forms) about themselves that consists of one or more fields. This Interface also contains an embedded introductory panel where the purpose of the form can be described to a participant.
+The Ego Form is an interface that collects data on your participant (ego). When using the Ego Form, participants complete a [form](../key-concepts/forms) about themselves that consists of one or more fields. The form's title is shown as a heading above its questions. To describe the purpose of the form to a participant, place an [Information](../interface-documentation/information) stage before the Ego Form.
 
 ## Configuring Ego Form
 
-The configurable [form](../key-concepts/forms) determines which variables will be assigned to the ego section of the network.
+The configurable [form](../key-concepts/forms) determines which variables will be assigned to the ego section of the network. Give the form a title, which participants see as a heading above the questions.
 
 ![](/assets/img/interface-documentation/ego-form/architect-ego-form.png)
 

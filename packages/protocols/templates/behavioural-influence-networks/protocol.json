@@ -266,16 +266,34 @@
       ]
     },
     {
+      "id": "ego-behaviours-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "About you"
+      },
+      "title": {
+        "en-US": "About you"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "First, a few questions about **your own** everyday behaviours. There are no right or wrong answers. Your responses give us a reference point for understanding the people you will tell us about later."
+          }
+        }
+      ]
+    },
+    {
       "id": "ego-behaviours",
       "type": "EgoForm",
-      "label": { "en-US": "Your own behaviours" },
-      "introductionPanel": {
-        "title": { "en-US": "About you" },
-        "text": {
-          "en-US": "First, a few questions about **your own** everyday behaviours. There are no right or wrong answers. Your responses give us a reference point for understanding the people you will tell us about later."
-        }
+      "label": {
+        "en-US": "Your own behaviours"
       },
       "form": {
+        "title": {
+          "en-US": "About you"
+        },
         "fields": [
           {
             "variable": "activity_minutes_week",
@@ -368,18 +386,31 @@
       ]
     },
     {
+      "id": "alter-behaviours-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "About each person"
+      },
+      "title": {
+        "en-US": "About each person"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "Now we will ask about **each person's own** behaviours, as far as you know them. If you are unsure, give your best impression or choose \"Don't know\"."
+          }
+        }
+      ]
+    },
+    {
       "id": "alter-behaviours",
       "type": "AlterForm",
       "label": { "en-US": "Their behaviours" },
       "subject": {
         "entity": "node",
         "type": "person"
-      },
-      "introductionPanel": {
-        "title": { "en-US": "About each person" },
-        "text": {
-          "en-US": "Now we will ask about **each person's own** behaviours, as far as you know them. If you are unsure, give your best impression or choose \"Don't know\"."
-        }
       },
       "form": {
         "fields": [

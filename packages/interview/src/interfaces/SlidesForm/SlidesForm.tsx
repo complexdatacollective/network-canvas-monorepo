@@ -81,7 +81,6 @@ type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
     id: string,
     attributePatch: AttributePatch,
   ) => Promise<FormSubmissionResult>;
-  onNavigateBack?: () => void;
   moveForward: () => void | Promise<void>;
   renderHeader: (item: T) => ReactNode;
 };
@@ -386,7 +385,6 @@ export default function SlidesForm({
   items = [],
   subject,
   updateItem,
-  onNavigateBack,
   moveForward,
   renderHeader,
   form,
@@ -487,11 +485,8 @@ export default function SlidesForm({
         }
       }
 
+      // Back from the first slide leaves the stage.
       if (activeIndex === 0) {
-        if (onNavigateBack) {
-          onNavigateBack();
-          return false;
-        }
         return true;
       }
 

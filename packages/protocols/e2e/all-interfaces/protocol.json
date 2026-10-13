@@ -390,6 +390,9 @@
         "en-US": "Ego Form"
       },
       "form": {
+        "title": {
+          "en-US": "Introduction"
+        },
         "fields": [
           {
             "variable": "ego_name",
@@ -398,14 +401,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction"
-        },
-        "text": {
-          "en-US": "There are a few questions about you before we begin."
-        }
       }
     },
     {
@@ -627,14 +622,6 @@
         "entity": "node",
         "type": "person"
       },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction to the Dyad Census"
-        },
-        "text": {
-          "en-US": "This section will go through all possible node pairs and ask you how they are connected."
-        }
-      },
       "prompts": [
         {
           "id": "dyad-census-prompt-1",
@@ -677,14 +664,6 @@
       "subject": {
         "entity": "node",
         "type": "person"
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction to the Tie-Strength Census"
-        },
-        "text": {
-          "en-US": "This interface both creates an edge and assigns an ordinal value to it."
-        }
       },
       "prompts": [
         {
@@ -766,14 +745,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction to the alter form"
-        },
-        "text": {
-          "en-US": "A few more questions about each person."
-        }
       }
     },
     {
@@ -795,14 +766,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction to the alter edge form"
-        },
-        "text": {
-          "en-US": "A few questions about each relationship."
-        }
       }
     },
     {

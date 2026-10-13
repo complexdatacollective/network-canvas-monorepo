@@ -1,6 +1,11 @@
 - main:
-  - heading "About Each Person" [level=1]
-  - paragraph: Please continue.
+  - button "Person"
+  - text: Full name Required
+  - textbox "Full name"
+  - text: Nickname What friends call them
+  - list:
+    - listitem: Enter at least 5 characters.
+  - textbox "Nickname"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

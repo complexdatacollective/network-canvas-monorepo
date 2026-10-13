@@ -275,7 +275,7 @@ const startDragOf = (getDndStore: () => StoreApi<DndStore>, node: NcNode) =>
   });
 
 const announcement = (name: string) =>
-  screen.findByText(`${name}: choose where this item belongs.`);
+  screen.findAllByText(`Choose where ${name} belongs.`);
 
 describe('CategoricalBin in select mode (#1652)', () => {
   it('places the focal person in the tapped bin and moves on to the next', async () => {
@@ -342,18 +342,19 @@ describe('CategoricalBin in select mode (#1652)', () => {
       expect(document.querySelector('[aria-grabbed]') !== null).toBe(present);
 
       startDragOf(getDndStore, person('a', 'Ann'));
-      const canDrop = [0, 1, OTHER_BIN_INDEX].map(
-        (index) =>
-          getDndStore()
-            .getState()
-            .getDropTargetState(
-              getCatBinDropTargetId(STAGE_ID, PROMPT_ID, index),
-            )?.canDrop ?? false,
-      );
+      const canDrop = () =>
+        [0, 1, OTHER_BIN_INDEX].map(
+          (index) =>
+            getDndStore()
+              .getState()
+              .getDropTargetState(
+                getCatBinDropTargetId(STAGE_ID, PROMPT_ID, index),
+              )?.canDrop ?? false,
+        );
       if (present) {
-        await waitFor(() => expect(canDrop).toContain(true));
+        await waitFor(() => expect(canDrop()).toContain(true));
       } else {
-        expect(canDrop).toEqual([false, false, false]);
+        expect(canDrop()).toEqual([false, false, false]);
       }
     },
   );
@@ -428,7 +429,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
     }
 
     expect(
-      await screen.findAllByText('Every item has been placed.'),
+      await screen.findAllByText('Nothing left to place.'),
     ).not.toHaveLength(0);
   });
 

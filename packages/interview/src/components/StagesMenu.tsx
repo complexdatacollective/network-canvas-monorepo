@@ -356,11 +356,11 @@ export default function StagesMenu({
     );
 
     const availabilityStatus =
-      item.availability.kind === 'local-skip'
-        ? intl.formatMessage(messages.hiddenByAnswers)
+      item.availability.kind === 'available'
+        ? null
         : item.availability.kind === 'bypassed'
           ? intl.formatMessage(messages.outsideCurrentPath)
-          : null;
+          : intl.formatMessage(messages.hiddenByAnswers);
     const AvailabilityIcon =
       item.availability.kind === 'bypassed' ? RouteOff : EyeOff;
 

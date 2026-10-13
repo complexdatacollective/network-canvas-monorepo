@@ -305,9 +305,9 @@ const Navigation = ({
         description: (
           <AppMessage
             message={
-              availability.kind === 'local-skip'
-                ? messages.hiddenScreen
-                : messages.outsidePath
+              availability.kind === 'bypassed'
+                ? messages.outsidePath
+                : messages.hiddenScreen
             }
           />
         ),

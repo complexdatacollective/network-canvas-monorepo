@@ -159,8 +159,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(1, 'items', 0, 'content'), 'markdown'),
   site(stage(1, 'items', 1, 'description'), 'plain'),
 
-  site(stage(2, 'introductionPanel', 'title'), 'plain'),
-  site(stage(2, 'introductionPanel', 'text'), 'markdown'),
+  site(stage(2, 'form', 'title'), 'plain'),
   site(stage(2, 'form', 'fields', 0, 'prompt'), 'markdown'),
   site(stage(2, 'form', 'fields', 0, 'hint'), 'markdown'),
 
@@ -207,20 +206,12 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(7, 'tooltips', 'drawConnection'), 'plain'),
   site(stage(7, 'groupsHeading'), 'plain'),
 
-  site(stage(8, 'introductionPanel', 'title'), 'plain'),
-  site(stage(8, 'introductionPanel', 'text'), 'markdown'),
   site(stage(8, 'form', 'fields', 0, 'prompt'), 'markdown'),
 
-  site(stage(9, 'introductionPanel', 'title'), 'plain'),
-  site(stage(9, 'introductionPanel', 'text'), 'markdown'),
   site(stage(9, 'form', 'fields', 0, 'prompt'), 'markdown'),
 
-  site(stage(10, 'introductionPanel', 'title'), 'plain'),
-  site(stage(10, 'introductionPanel', 'text'), 'markdown'),
   site(stage(10, 'prompts', 0, 'text'), 'markdown'),
 
-  site(stage(11, 'introductionPanel', 'title'), 'plain'),
-  site(stage(11, 'introductionPanel', 'text'), 'markdown'),
   site(stage(11, 'prompts', 0, 'text'), 'markdown'),
   site(stage(11, 'prompts', 0, 'negativeLabel'), 'markdown'),
 

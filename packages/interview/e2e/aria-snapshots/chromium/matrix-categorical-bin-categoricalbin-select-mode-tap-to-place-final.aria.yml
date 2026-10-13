@@ -9,7 +9,7 @@
   - button "Show what is in Work, 1 item"
   - heading "Work" [level=4]
   - paragraph: Bob
-  - status: Every item has been placed.
+  - status: Nothing left to place.
   - button "0 unplaced Expand drawer" [disabled]
   - navigation:
     - button "Settings"

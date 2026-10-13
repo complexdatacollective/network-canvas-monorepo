@@ -237,10 +237,10 @@ describe('the fields a form collects', () => {
         exact: false,
       }),
     ).toBeInTheDocument();
-    // The stage's name, the type it collects about, and the screen shown
-    // before it belong to sections this mount does not include.
+    // The stage's name and the type it collects about belong to sections
+    // this mount does not include.
     await harness.roundTrip({
-      unowned: ['subject', 'introductionPanel'],
+      unowned: ['subject'],
     });
   });
 
@@ -470,10 +470,10 @@ describe('the fields a form collects', () => {
     ).toBeInTheDocument();
   });
 
-  it("collects the participant's own attributes on an ego form, with no title to author", async () => {
+  it("collects the participant's own attributes on an ego form, under the form's title", async () => {
     const harness = renderStageEditor({
       stageId: 'ego-form-1',
-      sections: <FormFieldsSection subject="ego" />,
+      sections: <FormFieldsSection subject="ego" hasTitle />,
     });
 
     const dialog = await openField(harness, 'Edit field');
@@ -485,12 +485,12 @@ describe('the fields a form collects', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    expect(
-      screen.queryByRole('textbox', { name: 'Form title' }),
-    ).not.toBeInTheDocument();
-    // An ego form has no subject to own; its name and its introduction screen
-    // belong to sections this mount does not include.
-    await harness.roundTrip({ unowned: ['introductionPanel'] });
+    expect(screen.getByRole('textbox', { name: 'Form title' })).toHaveValue(
+      'Introduction',
+    );
+    // An ego form has no subject to own, and its name belongs to a section
+    // this mount does not include.
+    await harness.roundTrip();
   });
 
   it('offers to invent the first attribute the participant has', async () => {
@@ -538,10 +538,10 @@ describe('the fields a form collects', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    // The stage's name, the relationship it collects about, and the screen
-    // shown before it belong to sections this mount does not include.
+    // The stage's name and the relationship it collects about belong to
+    // sections this mount does not include.
     await harness.roundTrip({
-      unowned: ['subject', 'introductionPanel'],
+      unowned: ['subject'],
     });
   });
 

@@ -575,10 +575,32 @@
       ]
     },
     {
+      "id": "400b9810-9dc2-11eb-8192-d9f6b822b280-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Sample Consent Form"
+      },
+      "title": {
+        "en-US": "Sample Consent Form"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "**STUDY TITLE:** A Sample Network Canvas Study\n\n**RESEARCHER DETAILS:** Joshua Melville, Northwestern University\n\n**PURPOSE OF STUDY:** Demonstration\n\nBy answering **yes** below, you confirm the following:\n\n\n1. I have read the information sheet, have asked questions and received satisfactory answers\n1. I understand that this project has been reviewed by, and received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;\n1. I understand that my participation is voluntary and that I am free to withdraw myself or my data at any time, without giving any reason, and without any adverse consequences\n1. I understand who will have access to personal data provided\n1. I understand how personal data will be stored and what will happen to the data at the end of the project\n1. I understand that the research will be written up and published in the public domain.\n1. I understand how to raise concerns or make a complaint\n\n"
+          }
+        }
+      ]
+    },
+    {
       "id": "400b9810-9dc2-11eb-8192-d9f6b822b280",
       "label": { "en-US": "Consent Form" },
       "type": "EgoForm",
       "form": {
+        "title": {
+          "en-US": "Sample Consent Form"
+        },
         "fields": [
           {
             "variable": "09306238-68e4-498c-8c12-923eb2eec760",
@@ -587,11 +609,43 @@
             }
           }
         ]
+      }
+    },
+    {
+      "id": "e922f680-32ee-11eb-8503-3b4fa95b8bc6-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Conventional Ego Data Collection Example"
       },
-      "introductionPanel": {
-        "title": { "en-US": "Sample Consent Form" },
-        "text": {
-          "en-US": "**STUDY TITLE:** A Sample Network Canvas Study\n\n**RESEARCHER DETAILS:** Joshua Melville, Northwestern University\n\n**PURPOSE OF STUDY:** Demonstration\n\nBy answering **yes** below, you confirm the following:\n\n\n1. I have read the information sheet, have asked questions and received satisfactory answers\n1. I understand that this project has been reviewed by, and received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;\n1. I understand that my participation is voluntary and that I am free to withdraw myself or my data at any time, without giving any reason, and without any adverse consequences\n1. I understand who will have access to personal data provided\n1. I understand how personal data will be stored and what will happen to the data at the end of the project\n1. I understand that the research will be written up and published in the public domain.\n1. I understand how to raise concerns or make a complaint\n\n"
+      "title": {
+        "en-US": "Conventional Ego Data Collection Example"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "This screen shows an example of a more conventional participant-level data collection form. Note the collection of many different types of data, and the use of touch optimized input controls alongside more familiar text entry.\n\nInterviewer is not intended to replace dedicated participant-level survey tools. However, it can be used to collect basic ego data, and is especially useful if you need to collect information that can link your participant to survey data collected through a different platform.\n"
+          }
+        }
+      ],
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "type": "ego",
+              "id": "08639361-afc8-482b-845e-52c14abb37e9",
+              "options": {
+                "attribute": "09306238-68e4-498c-8c12-923eb2eec760",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
         }
       }
     },
@@ -619,6 +673,9 @@
         }
       },
       "form": {
+        "title": {
+          "en-US": "Conventional Ego Data Collection Example"
+        },
         "fields": [
           {
             "variable": "4ab18994-a252-47cb-ba19-20b6ffc0e927",
@@ -669,12 +726,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": { "en-US": "Conventional Ego Data Collection Example" },
-        "text": {
-          "en-US": "This screen shows an example of a more conventional participant-level data collection form. Note the collection of many different types of data, and the use of touch optimized input controls alongside more familiar text entry.\n\nInterviewer is not intended to replace dedicated participant-level survey tools. However, it can be used to collect basic ego data, and is especially useful if you need to collect information that can link your participant to survey data collected through a different platform.\n"
-        }
       }
     },
     {
@@ -951,6 +1002,25 @@
       ]
     },
     {
+      "id": "3ca90480-32f8-11eb-8503-3b4fa95b8bc6-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "University Per-alter Form"
+      },
+      "title": {
+        "en-US": "University Per-alter Form"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "Name interpreter interfaces can also be used to capture data about the network members named. On the next screens, we will first demonstrate how data might be captured utilizing a **Per Alter Form**, which shows a form for each alter - in this case, University - that the participant named."
+          }
+        }
+      ]
+    },
+    {
       "id": "3ca90480-32f8-11eb-8503-3b4fa95b8bc6",
       "label": { "en-US": "University Per Alter Form" },
       "type": "AlterForm",
@@ -973,12 +1043,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": { "en-US": "University Per-alter Form" },
-        "text": {
-          "en-US": "Name interpreter interfaces can also be used to capture data about the network members named. On the next screens, we will first demonstrate how data might be captured utilizing a **Per Alter Form**, which shows a form for each alter - in this case, University - that the participant named."
-        }
       }
     },
     {
@@ -1124,6 +1188,40 @@
       ]
     },
     {
+      "id": "b267f9e0-32ff-11eb-8982-61526ca14943-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Dyad Census"
+      },
+      "title": {
+        "en-US": "Dyad Census"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "Edges can also be made between alters using something called the **Dyad Census Interface**. \n\nWhile before we showed how ties can be captured by placing and drawing edges between nodes on the *Sociogram* itself, some researchers might want each potential edge between alters to be systematically queried.  \n\nIn the next screens, if you selected two or more classmate alters on the prior *Small Roster Name Generator*, then you will be systematically presented every possible pair of alters. By answering 'Yes' to if these two individuals spend time together outside of class, an edge between both alters will then be created."
+          }
+        }
+      ],
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "type": "node",
+              "id": "f3de3b38-5317-46e3-ac4b-928fb84a86cc",
+              "options": {
+                "type": "83c596f7-2244-425c-b2ed-4186dbf4c815",
+                "operator": "NOT_EXISTS"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "b267f9e0-32ff-11eb-8982-61526ca14943",
       "label": { "en-US": "Classmates Dyad Census" },
       "skipLogic": {
@@ -1154,13 +1252,7 @@
           },
           "createEdge": "a489e869-2555-4896-a760-2d38046b54f9"
         }
-      ],
-      "introductionPanel": {
-        "title": { "en-US": "Dyad Census" },
-        "text": {
-          "en-US": "Edges can also be made between alters using something called the **Dyad Census Interface**. \n\nWhile before we showed how ties can be captured by placing and drawing edges between nodes on the *Sociogram* itself, some researchers might want each potential edge between alters to be systematically queried.  \n\nIn the next screens, if you selected two or more classmate alters on the prior *Small Roster Name Generator*, then you will be systematically presented every possible pair of alters. By answering 'Yes' to if these two individuals spend time together outside of class, an edge between both alters will then be created."
-        }
-      }
+      ]
     },
     {
       "id": "5d1c3b80-3300-11eb-8982-61526ca14943",

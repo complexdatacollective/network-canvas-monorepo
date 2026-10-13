@@ -197,18 +197,31 @@
       ]
     },
     {
+      "id": "family-meanings-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Your words for family"
+      },
+      "title": {
+        "en-US": "Your words for family"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "Which descriptions fit each person? A person can fit more than one, and you can use your own words. You can also leave these questions blank."
+          }
+        }
+      ]
+    },
+    {
       "id": "family-meanings",
       "label": { "en-US": "Your words for family" },
       "type": "AlterForm",
       "subject": {
         "entity": "node",
         "type": "person"
-      },
-      "introductionPanel": {
-        "title": { "en-US": "Your words for family" },
-        "text": {
-          "en-US": "Which descriptions fit each person? A person can fit more than one, and you can use your own words. You can also leave these questions blank."
-        }
       },
       "form": {
         "fields": [

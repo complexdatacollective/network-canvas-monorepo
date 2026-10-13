@@ -924,7 +924,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
           await expect(focal).toHaveCount(0);
           await expect(
             page.getByTestId('bin-select-focus').getByRole('status'),
-          ).toHaveText('Every item has been placed.');
+          ).toHaveText('Nothing left to place.');
 
           const network = await protocol.getNetworkState(interview.interviewId);
           const valueOf = (uid: string) =>

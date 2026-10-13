@@ -42,8 +42,10 @@ const egoForm = {
   id: 'stage-ef',
   type: 'EgoForm',
   label: 'About you',
-  form: { fields: [{ variable: 'name', prompt: 'Your name' }] },
-  introductionPanel: { title: 'About you', text: 'Tell us about yourself.' },
+  form: {
+    title: 'About you',
+    fields: [{ variable: 'name', prompt: 'Your name' }],
+  },
 } as unknown as Stage;
 
 function codebookWith(variables: Record<string, unknown>): StructuralCodebook {
@@ -2310,7 +2312,6 @@ describe('a value one prompt fixes that the draw cannot complete', () => {
           negativeLabel: 'Not close',
         },
       ],
-      introductionPanel: { title: 'Tie strength', text: 'How close?' },
     } as unknown as Stage;
 
     const codebook = {

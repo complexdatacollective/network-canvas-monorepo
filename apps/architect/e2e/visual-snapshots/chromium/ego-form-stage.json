@@ -8,17 +8,12 @@
         },
         "variable": "id-2"
       }
-    ]
-  },
-  "id": "id-3",
-  "introductionPanel": {
-    "text": {
-      "en": "Thanks for taking part in this study."
-    },
+    ],
     "title": {
       "en": "About You"
     }
   },
+  "id": "id-3",
   "label": {
     "en": "About You"
   },

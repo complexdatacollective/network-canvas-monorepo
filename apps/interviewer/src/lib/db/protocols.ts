@@ -3,10 +3,12 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { db } from './db';
 import { supersededHashesOf } from './migrateStoredProtocols';
 import {
+  assertPlaintextStillAllowed,
   decryptAsset,
   decryptProtocol,
   encryptAsset,
   encryptProtocol,
+  preparingPlaintext,
 } from './recordCrypto';
 import type { ProtocolWithCounts, StoredAsset, StoredProtocol } from './types';
 
@@ -93,12 +95,14 @@ export async function saveProtocol(
 
   // Encrypt BEFORE opening the transaction (transaction-liveness rule): the
   // crypto.subtle awaits would let Dexie auto-commit an open tx mid-await.
+  const plaintext = preparingPlaintext();
   const protocolRow = await encryptProtocol(stored);
   const assetRows = await Promise.all(
     assetRecords.map((record) => encryptAsset(record)),
   );
 
-  await db.transaction('rw', db.protocols, db.assets, async () => {
+  await db.transaction('rw', db.protocols, db.assets, db.settings, async () => {
+    await assertPlaintextStillAllowed(plaintext);
     await db.protocols.put(protocolRow);
     await db.assets.where('protocolHash').equals(hash).delete();
     if (assetRows.length > 0) {

@@ -612,13 +612,11 @@ describe('nameLocalizedText', () => {
     ]);
   });
 
-  it('names an introduction title', () => {
-    expect(name([...stageAt('EgoForm'), 'introductionPanel', 'title'])).toEqual(
-      [
-        { key: '["introductionPanel"]', label: 'Task introduction' },
-        { key: '["introductionPanel","title"]', label: 'Title' },
-      ],
-    );
+  it('names an ego form title', () => {
+    expect(name([...stageAt('EgoForm'), 'form', 'title'])).toEqual([
+      { key: '["form"]', label: 'Form configuration' },
+      { key: '["form","title"]', label: 'Form title' },
+    ]);
   });
 
   it('names a form field question by the attribute it records', () => {

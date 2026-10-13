@@ -50,10 +50,6 @@ function buildInterview(args: StoryArgs) {
     label: 'Alter Form',
     initialNodes: { count: args.initialNodeCount },
     subject: { entity: 'node', type: nodeType.id },
-    introductionPanel: {
-      title: 'About Each Person',
-      text: 'Please provide details about each person.',
-    },
   });
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
@@ -160,10 +156,6 @@ function buildValidatedInterview() {
     label: 'Alter Form (Validated)',
     initialNodes: { count: 2 },
     subject: { entity: 'node', type: nodeType.id },
-    introductionPanel: {
-      title: 'About Each Person',
-      text: 'These fields have validation rules. Try advancing without filling them in to see errors.',
-    },
   });
 
   stage.addFormField({
@@ -227,12 +219,6 @@ export const WithValidation: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // Leave the introduction for the first person's questions.
-    await userEvent.click(
-      await canvas.findByTestId('next-button', {}, { timeout: 10_000 }),
-    );
-
-    // The introduction's exit animation runs before the questions appear.
     const notes = await canvas.findByRole(
       'textbox',
       { name: /Notes \(required/ },
@@ -251,7 +237,6 @@ export const WithValidation: Story = {
     await expect(
       await canvas.findByRole('textbox', { name: /Notes \(required/ }),
     ).toHaveValue('ab');
-    await expect(canvas.queryByText('About Each Person')).toBeNull();
   },
 };
 
@@ -280,10 +265,6 @@ function buildProtectedInterview({ withBob = false } = {}) {
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form (Protected)',
     subject: { entity: 'node', type: person.id },
-    introductionPanel: {
-      title: 'About Each Person',
-      text: 'Please provide details about each person.',
-    },
   });
   stage.addFormField({
     variable: nickname.id,
@@ -326,13 +307,13 @@ const renderProtectedInterview = () => (
 
 const openLockedSlide = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
-  await userEvent.click(
-    await canvas.findByTestId('next-button', {}, { timeout: 10_000 }),
-  );
-
   await expect(
+    // The notice also describes the form from a hidden element, which is
+    // not the text a participant reads.
     await canvas.findByText(
       /Some answers here are protected by your passphrase/,
+      { ignore: 'script, style, [hidden]' },
+      { timeout: 10_000 },
     ),
   ).toBeInTheDocument();
   await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument();
@@ -451,13 +432,15 @@ function buildComparedWithProtectedInterview() {
     validation: { differentFrom: name.id },
   });
 
+  // A stage before the form gives Back somewhere to go.
+  interview.addInformationStage({
+    title: 'Welcome',
+    text: 'Before the main stage.',
+  });
+
   const stage = interview.addStage('AlterForm', {
     label: 'Alter Form (Compared with protected)',
     subject: { entity: 'node', type: person.id },
-    introductionPanel: {
-      title: 'About Each Person',
-      text: 'Please provide details about each person.',
-    },
   });
   stage.addFormField({
     variable: nickname.id,
@@ -481,7 +464,7 @@ export const DiscardingAnswerComparedWithProtected: Story = {
     <EncryptedStoryInterviewShell
       build={buildComparedWithProtectedInterview}
       passphrase={PASSPHRASE}
-      currentStep={0}
+      currentStep={1}
     />
   ),
   parameters: {
@@ -493,12 +476,11 @@ export const DiscardingAnswerComparedWithProtected: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByTestId('next-button', {}, { timeout: 10_000 }),
+    const nickname = await canvas.findByRole(
+      'textbox',
+      { name: /What nickname do you use for this person/ },
+      { timeout: 10_000 },
     );
-    const nickname = await canvas.findByRole('textbox', {
-      name: /What nickname do you use for this person/,
-    });
     await userEvent.type(nickname, 'Al');
     await userEvent.click(canvas.getByTestId('previous-button'));
 
@@ -519,6 +501,5 @@ export const DiscardingAnswerComparedWithProtected: Story = {
         name: /What nickname do you use for this person/,
       }),
     ).toHaveValue('Al');
-    await expect(canvas.queryByText('About Each Person')).toBeNull();
   },
 };

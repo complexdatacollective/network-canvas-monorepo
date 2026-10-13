@@ -3,6 +3,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import FinishStageTextAlert from './FinishStageTextAlert';
+import LanguageChooserAlert from './Localization/LanguageChooserAlert';
 import LocalizationAlert from './Localization/LocalizationAlert';
 import ProtocolInfoCard from './ProtocolInfoCard';
 import { routeFocusTargetProps } from './RouteFocus';
@@ -35,6 +36,7 @@ const Protocol = () => {
       <TestingMapboxTokenAlert />
       <VariableRoleConflictsAlert />
       <LocalizationAlert />
+      <LanguageChooserAlert />
       <ProtocolInfoCard />
       <Timeline />
     </div>

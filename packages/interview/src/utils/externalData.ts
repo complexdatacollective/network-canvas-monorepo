@@ -10,8 +10,9 @@ import {
   type EntityAttributesProperty,
   entityAttributesProperty,
   type NcNode,
-  normalizeCodebookName,
 } from '@codaco/shared-consts';
+
+import { asOptionName } from './optionName';
 
 /**
  * Attribute and variable keys here are researcher-chosen text, so they are read
@@ -177,18 +178,6 @@ const getUniqueAttributeKeys = (
 type AttributeValue = NcNode[EntityAttributesProperty][string];
 
 /**
- * Option text as schema 9 names an option value: control characters become
- * spaces, then the text is trimmed and put in canonical form. The schema 9
- * migration renames option values this way, but leaves roster files as they
- * were, so a roster still spelling `"Yes "` finds the option now named
- * `"Yes"`.
- */
-const asOptionName = (text: string) =>
-  normalizeCodebookName(
-    text.toWellFormed().replace(/[\p{Cc}\uFFFE\uFFFF]/gu, ' '),
-  );
-
-/**
  * The codebook's own option value for option text found in a roster: a
  * `<variable>_<option>` column header, or a value in a categorical or ordinal
  * cell. A header only has the option as text, so reading it back through
@@ -226,6 +215,23 @@ const resolveCategoricalOption = (
     variable.options.find((option) => String(option.value) === name)?.value ??
     optionText
   );
+};
+
+/**
+ * A roster answer with each option it names read as the codebook's own
+ * (`resolveCategoricalOption`). A list naming two options the migration
+ * merged names the merged option once.
+ */
+const resolveOptionAnswer = (
+  variable: ReturnType<typeof getCodebookVariable>,
+  value: unknown,
+): AttributeValue => {
+  if (!Array.isArray(value)) {
+    return resolveCategoricalOption(variable, value) as AttributeValue;
+  }
+  return [
+    ...new Set(value.map((item) => resolveCategoricalOption(variable, item))),
+  ] as AttributeValue;
 };
 
 const getNodeListUsingTypes = (
@@ -287,18 +293,12 @@ const getNodeListUsingTypes = (
             } catch {
               value = attributeValue;
             }
-            const variable = getCodebookVariable(
-              codebookDefinition,
-              attributeKey,
-            );
-            const resolve = (item: unknown) =>
-              resolveCategoricalOption(variable, item);
-
             return {
               ...consolidatedAttributes,
-              [attributeKey]: (Array.isArray(value)
-                ? value.map(resolve)
-                : resolve(value)) as AttributeValue,
+              [attributeKey]: resolveOptionAnswer(
+                getCodebookVariable(codebookDefinition, attributeKey),
+                value,
+              ),
             };
           }
           // Handle column names with _x and _y suffixes, indicating this is a file we created
@@ -332,12 +332,12 @@ const getNodeListUsingTypes = (
                 attributeKey.substring(attributeKey.indexOf('_') + 1),
               );
               const previous = getOwn(consolidatedAttributes, uuid);
+              const chosen: unknown[] = Array.isArray(previous) ? previous : [];
               return {
                 ...consolidatedAttributes,
-                [uuid]: [
-                  ...(Array.isArray(previous) ? previous : []),
-                  option,
-                ] as AttributeValue,
+                [uuid]: (chosen.includes(option)
+                  ? chosen
+                  : [...chosen, option]) as AttributeValue,
               };
             }
             return consolidatedAttributes;
@@ -421,14 +421,12 @@ const withOptionValuesResolved = (
   return nodeList.map((node) => {
     const attributes = Object.fromEntries(
       Object.entries(node[entityAttributesProperty]).map(([key, value]) => {
-        const variable = getCodebookVariable(codebookDefinition, key);
-        const resolve = (item: unknown) =>
-          resolveCategoricalOption(variable, item);
         return [
           key,
-          (Array.isArray(value)
-            ? value.map(resolve)
-            : resolve(value)) as AttributeValue,
+          resolveOptionAnswer(
+            getCodebookVariable(codebookDefinition, key),
+            value,
+          ),
         ];
       }),
     );

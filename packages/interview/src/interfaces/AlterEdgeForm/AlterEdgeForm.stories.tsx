@@ -60,10 +60,6 @@ function buildInterview(args: StoryArgs) {
   const stage = si.addStage('AlterEdgeForm', {
     label: 'Alter Edge Form',
     subject: { entity: 'edge', type: et.id },
-    introductionPanel: {
-      title: 'Relationship Details',
-      text: 'Please answer the following questions about each relationship in your network.',
-    },
   });
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
@@ -177,10 +173,6 @@ function buildValidatedInterview() {
   const stage = si.addStage('AlterEdgeForm', {
     label: 'Alter Edge Form (Validated)',
     subject: { entity: 'edge', type: et.id },
-    introductionPanel: {
-      title: 'Relationship Details',
-      text: 'These fields have validation rules. Try advancing without filling them in to see errors.',
-    },
   });
 
   stage.addFormField({

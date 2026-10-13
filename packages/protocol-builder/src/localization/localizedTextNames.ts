@@ -27,7 +27,6 @@ import { binBehavioursMessages } from '../sections/bin-behaviours/binBehavioursM
 import { contentBlockMessages } from '../sections/content-blocks/ContentBlockEditor.tsx';
 import { composerFormFieldMessages } from '../sections/form-fields/composerFormFieldMessages.ts';
 import { formFieldsMessages } from '../sections/form-fields/FormFieldsSection.tsx';
-import { introductionMessages } from '../sections/introduction/IntroductionSection.tsx';
 import { nameGeneratorPromptMessages } from '../sections/name-generator-prompts/NameGeneratorPromptsSection.tsx';
 import { nameGeneratorWordingMessages } from '../sections/name-generator-wording/nameGeneratorWording.tsx';
 import { pageContentMessages } from '../sections/page-content/PageContentSection.tsx';
@@ -252,18 +251,6 @@ const promptText = (textLabel: MessageDescriptor): Rule =>
 
 const NAME_GENERATOR_PROMPT = promptText(nameGeneratorPromptMessages.textLabel);
 const CENSUS_PROMPT = promptText(censusMessages.promptTextLabel);
-
-const INTRODUCTION: Step = [1, words(introductionMessages.title)];
-const INTRODUCTION_RULES: readonly Rule[] = [
-  rule('introductionPanel.title', INTRODUCTION, [
-    2,
-    words(introductionMessages.headingLabel),
-  ]),
-  rule('introductionPanel.text', INTRODUCTION, [
-    2,
-    words(introductionMessages.textLabel),
-  ]),
-];
 
 const FORM: Step = [1, words(formFieldsMessages.title)];
 
@@ -628,8 +615,8 @@ const UNPLACED_NODES_NOTICE = settingRule(
 );
 
 const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
-  AlterEdgeForm: [...INTRODUCTION_RULES, ...formFieldRules(stageSubject)],
-  AlterForm: [...INTRODUCTION_RULES, ...formFieldRules(stageSubject)],
+  AlterEdgeForm: formFieldRules(stageSubject),
+  AlterForm: formFieldRules(stageSubject),
   Anonymisation: [
     rule(
       'explanationText.title',
@@ -654,8 +641,11 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       words(categoricalBinPromptMessages.otherPromptLabel),
     ]),
   ],
-  DyadCensus: [...INTRODUCTION_RULES, CENSUS_PROMPT],
-  EgoForm: [...INTRODUCTION_RULES, ...formFieldRules(egoSubject)],
+  DyadCensus: [CENSUS_PROMPT],
+  EgoForm: [
+    rule('form.title', FORM, [2, words(formFieldsMessages.formTitleLabel)]),
+    ...formFieldRules(egoSubject),
+  ],
   FamilyPedigree: [
     rule(
       'prompt',
@@ -1325,7 +1315,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ...SOCIOGRAM_WORDING,
   ],
   TieStrengthCensus: [
-    ...INTRODUCTION_RULES,
     CENSUS_PROMPT,
     rule('prompts.#.negativeLabel', PROMPTS, PROMPT, [
       3,

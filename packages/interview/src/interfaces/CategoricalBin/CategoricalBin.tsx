@@ -313,9 +313,10 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
 
   const readOtherAnswer = async (node: NcNode, otherVariable: string) => {
     const stored = node[entityAttributesProperty][otherVariable];
-    if (!stageVariables[otherVariable]?.encrypted) {
-      return typeof stored === 'string' ? stored : undefined;
-    }
+    // A string is a plaintext answer even under an encrypted variable, such
+    // as one written by external data.
+    if (typeof stored === 'string') return stored;
+    if (!stageVariables[otherVariable]?.encrypted) return undefined;
     const encrypted = readEncryptedAttribute(
       node,
       otherVariable,
@@ -392,6 +393,13 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
       // never blanks it. An encrypted one is decrypted with the key in force;
       // one that can't be read is left out.
       const currentOtherAnswer = await readOtherAnswer(node, otherVariable);
+      // A stored answer that can't be read (such as legacy ciphertext) is
+      // kept unless a new one is typed, since it can never be written back.
+      const storedOtherAnswer = node[entityAttributesProperty][otherVariable];
+      const keepsUnreadableAnswer =
+        currentOtherAnswer === undefined &&
+        storedOtherAnswer !== undefined &&
+        storedOtherAnswer !== null;
 
       const result = await openDialog({
         type: 'form',
@@ -419,15 +427,16 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
         // the answer as typed and the reason shown, ready to retry.
         onSubmit: async (values) => {
           const otherValue = values[otherVariable];
+          const typed = typeof otherValue === 'string' ? otherValue : '';
           return writeSubmissionResult(
             await dispatch(
               updateNode({
                 nodeId,
                 attributePatch: {
-                  set: {
-                    [otherVariable]:
-                      typeof otherValue === 'string' ? otherValue : '',
-                  },
+                  set:
+                    keepsUnreadableAnswer && typed === ''
+                      ? {}
+                      : { [otherVariable]: typed },
                   unset: [variable],
                 },
                 currentStep,

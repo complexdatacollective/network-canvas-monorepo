@@ -26,6 +26,7 @@ import type { OptionValue } from '../form/arrayFields/Option.tsx';
 import Options, { optionsValidationFor } from '../form/arrayFields/Options.tsx';
 import RevealWhenChosen from '../form/RevealWhenChosen.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import {
   variablesForSubject,
   type CodebookSubject,
@@ -234,9 +235,10 @@ export default function AttributeValueFields({
           siblings: held.filter(({ id }) => id !== variableId),
         };
   }, [invented, inventedName, picked, subject, variableId, variables]);
+  const localization = useProtocolLocalization();
   const optionsRules = useMemo(
-    () => optionsValidationFor(exportColumns),
-    [exportColumns],
+    () => optionsValidationFor(exportColumns, localization),
+    [exportColumns, localization],
   );
 
   const locked = useMemo(

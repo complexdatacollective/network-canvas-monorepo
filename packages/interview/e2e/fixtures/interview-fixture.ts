@@ -223,13 +223,11 @@ export class InterviewFixture {
   }
 
   /**
-   * Click next to dismiss an intro panel and wait for the form section to
-   * finish entering. Use on stages whose first interaction is a form field
-   * immediately after dismissing the intro (AlterForm, AlterEdgeForm) — the
-   * intro→form swap is animated and Playwright otherwise races the input mount.
+   * Wait for a SlidesForm stage's (AlterForm, AlterEdgeForm) form section to
+   * finish entering. Use before the first interaction with a form field —
+   * the section fades in, and Playwright otherwise races the input mount.
    */
-  async dismissIntro(): Promise<void> {
-    await this.nextButton.click();
+  async waitForForm(): Promise<void> {
     await this.page
       .locator('[data-stage-section="form"][data-stage-ready="true"]')
       .waitFor({ state: 'visible', timeout: 5_000 });

@@ -64,16 +64,6 @@
     "es": "Determina si se muestra esta etapa y dónde continúa la entrevista cuando se omite.",
     "from": "74a07e626 architect.sections.skipLogic.determineWhetherThisStageIsShown"
   },
-  "protocolBuilder.introduction.description": {
-    "en": "Introduce the task before participants complete its forms.",
-    "es": "Presenta la tarea antes de que los participantes completen sus formularios.",
-    "from": "74a07e626 architect.sections.introductionPanel.introduceTheTaskBeforeParticipantsComplete"
-  },
-  "protocolBuilder.introduction.headingLabel": {
-    "en": "Title",
-    "es": "Título",
-    "from": "74a07e626 architect.sections.introductionPanel.title"
-  },
   "protocolBuilder.pageContent.pageDescription": {
     "en": "Set the page heading and build the sequence of text and media blocks participants will see.",
     "es": "Define el encabezado de la página y construye la secuencia de bloques de texto y medios que verán los participantes.",

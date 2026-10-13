@@ -218,6 +218,12 @@ type VariableEditInput = Readonly<{
   subject: CodebookSubject;
   authoritativeDocument: SectionDoc;
   variableId: string;
+  /**
+   * The protocol's languages, so option labels are compared as the interview
+   * shows them, falling back where one is untranslated. Without them, labels
+   * are compared only where both are written.
+   */
+  localization?: ProtocolLocalization;
 }>;
 
 export type CreateVariableEditInput = VariableEditInput &
@@ -419,7 +425,10 @@ export const withSeededVariableLabel = <
   return name === '' ? draft : { ...draft, label: name };
 };
 
-const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
+const validateVariableDraft = (
+  draft: CodebookVariableDraft,
+  localization?: ProtocolLocalization,
+): Variable => {
   const normalized = withNormalizedVariableNames(cloneDocument(draft));
   const tooFew = tooFewOptionsIssue(normalized);
   if (tooFew !== null) throw researcherIssue(tooFew);
@@ -433,7 +442,7 @@ const validateVariableDraft = (draft: CodebookVariableDraft): Variable => {
   if (!result.success) {
     throw invalidDraft('the variable draft is invalid', result.error.issues);
   }
-  const duplicateLabel = duplicateOptionLabelIssue(result.data);
+  const duplicateLabel = duplicateOptionLabelIssue(result.data, localization);
   if (duplicateLabel !== null) throw researcherIssue(duplicateLabel);
   return result.data;
 };
@@ -515,6 +524,7 @@ const duplicateOptionValueIssue = (
 
 const duplicateOptionLabelIssue = (
   variable: Variable,
+  localization: ProtocolLocalization | undefined,
 ): CodebookDraftIssue | null => {
   if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
     return null;
@@ -527,7 +537,7 @@ const duplicateOptionLabelIssue = (
   // language, which is what makes the refusal here the one the row already
   // showed rather than a second surprise. Asked here as well as there because
   // a caller writing straight to the codebook never met the cell.
-  if (hasDuplicateLocalizedOptionLabels(variable.options)) {
+  if (hasDuplicateLocalizedOptionLabels(variable.options, localization)) {
     return Object.freeze({
       path: Object.freeze(['options']),
       message: createMessageError(messages.optionsDuplicateLabel),
@@ -774,7 +784,10 @@ export function documentWithCreatedVariable(
   if (Object.hasOwn(variables, input.variableId)) {
     throw new DuplicateVariableIdError(input.variableId);
   }
-  const variable = validateVariableDraft(withSeededVariableLabel(input.draft));
+  const variable = validateVariableDraft(
+    withSeededVariableLabel(input.draft),
+    input.localization,
+  );
   assertVariableNameAvailable(variables, variable);
   assertNoExportColumnConflict(input.subject, variables, variable);
   defineOwn(variables, input.variableId, cloneValue(variable));
@@ -832,6 +845,7 @@ export function documentWithRebasedVariable(
           submitted,
           input.ownedProperties,
         ),
+    input.localization,
   );
   assertVariableNameAvailable(variables, variable, input.variableId);
   assertNoExportColumnConflict(
@@ -892,7 +906,7 @@ export function documentWithUpdatedVariable(
   for (const [key, value] of Object.entries(input.draft)) {
     defineOwn(nextVariable, key, cloneValue(value));
   }
-  const variable = validateVariableDraft(nextVariable);
+  const variable = validateVariableDraft(nextVariable, input.localization);
   assertVariableNameAvailable(variables, variable, input.variableId);
   assertNoExportColumnConflict(
     input.subject,

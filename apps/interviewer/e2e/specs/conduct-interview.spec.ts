@@ -197,7 +197,14 @@ test.describe('conducting an interview', () => {
       await capture('interview-stage-info');
       await interviewNav.next();
 
-      // Stage 1: EgoForm.
+      // Stage 1: Information — the ego form's instructions.
+      await expect(page.getByText('Tell us about')).toBeVisible();
+      await interviewNav.next();
+
+      // Stage 2: EgoForm, headed by its form title.
+      await expect(
+        page.getByRole('heading', { name: 'Introduction', level: 1 }),
+      ).toBeVisible();
       await interviewNav.fillEgoName('Ada');
       // EgoForm exposes no data-stage-ready; readiness is signalled only by the
       // next-button gaining the bg-success pulse once the form becomes valid.
@@ -207,13 +214,13 @@ test.describe('conducting an interview', () => {
       await capture('interview-stage-ego');
       await interviewNav.next();
 
-      // Stage 2: NameGeneratorQuickAdd — add two alters.
+      // Stage 3: NameGeneratorQuickAdd — add two alters.
       await interviewNav.quickAddNode('Grace');
       await interviewNav.quickAddNode('Katherine');
       await capture('interview-stage-namegen');
       await interviewNav.next();
 
-      // Stage 3: Sociogram — placement/edges are exercised in the dedicated
+      // Stage 4: Sociogram — placement/edges are exercised in the dedicated
       // sociogram test below; here we simply advance to Finish. Nodes may
       // remain unplaced in the drawer — the stage has no minNodes-placed
       // behaviour.
@@ -339,6 +346,7 @@ test.describe('conducting an interview', () => {
     const sessionId = /\/interview\/([^/?#]+)/.exec(page.url())?.[1] ?? '';
     expect(sessionId).not.toBe('');
 
+    await interviewNav.next(); // Information -> its instructions
     await interviewNav.next(); // Information -> EgoForm
     await interviewNav.fillEgoName('Ada');
     await expect(page.getByTestId('next-button')).toHaveClass(/bg-success/);
@@ -378,6 +386,7 @@ test.describe('conducting an interview', () => {
   }) => {
     await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
     await interviewNav.startNewSession('P03');
+    await interviewNav.next(); // Information -> its instructions
     await interviewNav.next(); // Information -> EgoForm
 
     await interviewNav.fillEgoName('Rosalind');

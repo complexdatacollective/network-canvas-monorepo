@@ -1,9 +1,10 @@
 - main:
-  - heading "About Each Person" [level=1]
-  - paragraph: Please continue.
+  - button "Person"
+  - status: "Information: Some answers here are protected by your passphrase. Enter your passphrase to see and change them."
   - navigation:
     - button "Settings"
     - button "Previous Step"
+    - button "Passphrase": 🔑
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

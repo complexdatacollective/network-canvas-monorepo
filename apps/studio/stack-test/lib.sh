@@ -24,7 +24,7 @@ PROJECT="studio-ci"
 # `reference` first: it is the stack a self-hoster runs, and each of the others
 # is that stack with one element replaced — or, for `two-api`, with a second
 # replica of the API added.
-VARIANTS=(reference external-postgres external-bucket external-bucket-azure external-redis own-proxy two-api)
+VARIANTS=(reference external-postgres external-bucket external-bucket-azure external-redis own-proxy two-api telemetry-off telemetry-on)
 
 # The stack's own network. Also TRUSTED_PROXIES, so it must name the network
 # the ingress is on and nothing else. .243 rather than .240 (`.env.example`),
@@ -36,6 +36,9 @@ STACK_SUBNET="172.31.243.0/24"
 # bridge.
 EXTERNAL_NETWORK="studio-ci-external"
 EXTERNAL_SUBNET="172.31.244.0/24"
+
+EGRESS_SINK_ADDRESS="172.31.243.53"
+EGRESS_SMTP_HOST="smtp.egress-sink.test"
 
 HOSTNAME_="localhost"
 API_IMAGE="${API_IMAGE:-studio-api:ci}"
@@ -108,27 +111,46 @@ write_two_api_override() {
   done
 }
 
+egress_variant() {
+  case "$VARIANT" in
+    telemetry-off | telemetry-on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # One Compose project: the project name, the files and the environment file,
 # fixed here so no caller can name some of them and not the others.
 #
-# `docker-compose.local.yml` is applied to every variant and is not optional:
+# `docker-compose.local.yml` is applied to every variant but the egress ones and
+# is not optional for the rest:
 # it is what points Traefik at a certificate authority that does not answer, so
 # the stack serves its own self-signed certificate rather than asking Let's
 # Encrypt for `localhost`. Restating its Traefik command list here would be a
 # second copy of the production flag list to keep in step.
 compose() {
-  local overrides=(-f "$(variant_file "$VARIANT")")
+  local files=(-f "$STUDIO_DIR/docker-compose.yml")
+  if egress_variant; then
+    files+=(-f "$(variant_file "$VARIANT")" -f "$STACK_TEST_DIR/egress.yml")
+  else
+    files+=(-f "$STUDIO_DIR/docker-compose.local.yml" -f "$(variant_file "$VARIANT")")
+  fi
   if [ "$VARIANT" = "two-api" ]; then
     write_two_api_override
-    overrides+=(-f "$TWO_API_OVERRIDE")
+    files+=(-f "$TWO_API_OVERRIDE")
   fi
   docker compose \
     -p "$PROJECT" \
     --env-file "$ENV_FILE" \
-    -f "$STUDIO_DIR/docker-compose.yml" \
-    -f "$STUDIO_DIR/docker-compose.local.yml" \
-    "${overrides[@]}" \
+    "${files[@]}" \
     "$@"
+}
+
+ingress_curl() {
+  if egress_variant; then
+    compose exec -T egress-client curl --connect-to "$HOSTNAME_:443:traefik:443" "$@"
+  else
+    curl "$@"
+  fi
 }
 
 # The Compose services that serve the API behind the ingress: `api`, and for

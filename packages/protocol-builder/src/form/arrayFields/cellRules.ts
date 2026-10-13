@@ -11,12 +11,11 @@ import {
 } from '@codaco/shared-consts';
 
 import { exportColumnRefusals } from '../../fields/variableNameRules.ts';
-import {
-  asLocalizedString,
-  translationText,
-} from '../../localization/localizedText.ts';
+import { type ProtocolLocalization } from '../../localization/localizedText.ts';
 import {
   isOptionLabelEmpty,
+  optionLabelComparisonLocales,
+  optionLabelTextIn,
   optionsWithLabelText,
 } from './optionCompleteness.ts';
 
@@ -211,24 +210,31 @@ const duplicateLabelMessage = defineMessage({
  * are typing.
  *
  * A label is compared one language at a time, against the others' labels in
- * that language: two options collide where both have a translation that reads
- * the same, and a missing translation never collides.
+ * that language. Given the protocol's languages, each label is read as the
+ * interview shows it there, falling back where it has no translation; without
+ * them, two options collide only where both have a translation that reads the
+ * same.
  */
 export const optionLabelIssues = (
   value: unknown,
   rows: readonly unknown[],
+  localization?: ProtocolLocalization,
 ): string[] =>
   cellIssues(
     isOptionLabelEmpty(value)
       ? createMessageError(rowRequiredMessage)
       : undefined,
-    Object.keys(asLocalizedString(value) ?? {}).some((locale) =>
-      isDuplicatedInColumn(
-        optionsWithLabelText(rows, locale),
-        'label',
-        translationText(value, locale),
-      ),
-    )
+    !isOptionLabelEmpty(value) &&
+      optionLabelComparisonLocales(
+        localization === undefined ? [{ label: value }] : rows,
+        localization,
+      ).some((locale) =>
+        isDuplicatedInColumn(
+          optionsWithLabelText(rows, locale, localization),
+          'label',
+          optionLabelTextIn(value, locale, localization),
+        ),
+      )
       ? createMessageError(duplicateLabelMessage)
       : undefined,
   );

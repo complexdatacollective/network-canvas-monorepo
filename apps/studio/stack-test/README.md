@@ -7,6 +7,10 @@ CI runs exactly these scripts, as the `studio-stack` job in
 `.github/workflows/ci-and-release.yml`; nothing about a CI run differs from a
 run on your machine except which images are in the daemon's cache.
 
+Two more variants prove what leaves the machine, with telemetry off and with
+it on. `egress.sh` runs them in place of `assert.sh`, and CI runs them as the
+`studio-egress` job; see [What leaves the machine](#what-leaves-the-machine).
+
 ```bash
 apps/studio/stack-test/build.sh                          # both images, once
 apps/studio/stack-test/up.sh     --variant reference
@@ -36,6 +40,8 @@ by hand needs neither.
 | `external-redis`        | the `valkey` service                | a second Valkey on that network, named by `REDIS_URL`                 |
 | `own-proxy`             | the `traefik` service and its ports | nginx carrying the configuration block from `docs/self-host/swap.md`  |
 | `two-api`               | nothing: a second `api` is added    | `api-b` and a server list naming both, from `docs/self-host/run.md`   |
+| `telemetry-off`         | every route off the machine         | a sink, with `STUDIO_TELEMETRY=false`                                 |
+| `telemetry-on`          | every route off the machine         | a sink, with `STUDIO_TELEMETRY=true` and no OpenTelemetry endpoint    |
 
 ## What the scripts do
 
@@ -50,6 +56,9 @@ one value gives the two images separate cache scopes.
 with every variable `.env.example` names, starts the stack, runs
 `docker compose run --rm migrate`, captures the first-run setup token it prints
 to `.work/setup-token`, and waits for `/readyz` through the variant's ingress.
+It sets `STUDIO_TELEMETRY=false` for every variant except `telemetry-on`, so a
+run sends nothing to Codaco's PostHog project; the default, telemetry on, is
+the `telemetry-on` variant's to exercise, against a sink.
 
 **`assert.sh --variant <name>`** makes the same assertions for every variant,
 deliberately: a swapped element has to meet the contract the element it
@@ -208,11 +217,69 @@ servers until its next health check and a single good answer proves nothing.
 The one team it needs is inserted as a row, because no HTTP route creates a
 team.
 
+## What leaves the machine
+
+```bash
+apps/studio/stack-test/build.sh
+apps/studio/stack-test/up.sh     --variant telemetry-off
+apps/studio/stack-test/egress.sh --variant telemetry-off
+apps/studio/stack-test/down.sh   --variant telemetry-off
+```
+
+and the same with `telemetry-on`. This is #1897's proof that a running stack
+contacts nothing outside
+[`docs/self-host/outbound-hosts.txt`](../docs/self-host/outbound-hosts.txt).
+
+**Nothing can leave except through the sink.** Both variants run the
+production `docker-compose.yml` with `egress.yml` over it, and without
+`docker-compose.local.yml`, so Traefik asks Let's Encrypt for its certificate
+exactly as a deployment does. `egress.yml` makes the stack's only network
+internal and publishes no port, so no container has a route off the machine;
+requests reach Traefik from `egress-client`, a curl container on that same
+network, through `ingress_curl` in `lib.sh`. Every service is given the sink as
+its DNS server. Docker still answers the stack's own service names itself and
+forwards every other name to the sink, which records it and answers with its
+own address. So a lookup of any host outside the stack reaches the sink and is
+recorded, and a connection to an address, with no lookup first, has no route
+at all. The sink runs on the `studio-api` image, so it needs no image of its
+own.
+
+**The sink stands in for every host Studio contacts.** It records each DNS
+question, the server name in each TLS ClientHello on 443, the `Host` of each
+HTTP request on 80, and each message delivered over SMTP on 25. It never
+completes a TLS handshake, so nothing Studio sends over HTTPS is read, and the
+real hosts are never contacted. `SMTP_URL` names `smtp.egress-sink.test`, which
+the sink answers like any other name.
+
+**What `egress.sh` does.** After checking that every container is attached
+only to internal networks and that every service resolves through the sink, it completes first-run setup,
+signs the owner in with a password, invites a member, creates a protocol,
+takes a section's lock and saves an edit. Then it waits for the invitation
+email to reach the sink and the `invitation-delivery` job to complete, and
+makes the daily update check due now so the worker runs it and contacts
+`releases.networkcanvas.com`. With telemetry on, it waits until a TLS
+connection names `us.i.posthog.com`. It then watches until 60 seconds have
+passed since sign-in, several times the longest OpenTelemetry export interval
+Studio uses (Effect's defaults: one second for logs, five for traces, ten for
+metrics). Last, a lookup made from the API container has to reach the
+sink, so a sink that died part way through cannot pass for one that saw
+nothing.
+
+**What it asserts.** Every host looked up or named in a connection is in
+`outbound-hosts.txt` or is the SMTP host. With telemetry off, no telemetry or
+analytics host was contacted. With telemetry on, `us.i.posthog.com` was, and
+it is the only telemetry or analytics host that was. The update-check host,
+the ACME host and the SMTP host must all have been contacted in both variants,
+so neither variant can pass by recording nothing. The capture is kept as
+`.work/<variant>-egress.jsonl`.
+
 ## Adding a variant
 
 Add a `variants/<name>.yml` override, add the name to `VARIANTS` in `lib.sh`,
 and add the four script invocations to the `studio-stack` job. The last part is
 not optional and not left to memory:
-`scripts/ci/ci-workflow.test.mjs` reads this directory and fails if the job
-does not name every variant, so a variant that exists but is not run in CI is a
-red test rather than silent coverage that was never there.
+`scripts/ci/ci-workflow.test.mjs` reads this directory and fails if no job
+runs a variant, so a variant that exists but is not run in CI is a red test
+rather than silent coverage that was never there. The egress variants are the
+exception to the job: they are the `studio-egress` job's matrix, and
+`egress_variant` in `lib.sh` names them.

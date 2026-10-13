@@ -110,12 +110,12 @@ function buildLegacySeed(): {
         lastUpdatedAt: '2026-01-05T11:00:00.000Z',
         finishedAt: '2026-01-05T11:00:00.000Z',
         exportedAt: null,
-        currentStep: 3,
+        currentStep: 4,
         progress: 100,
         network: legacyNetwork(),
       },
       // Deliberately has no `progress` field — a row written before the field
-      // existed — and rests on the quick-add stage (index 2) so resuming it
+      // existed — and rests on the quick-add stage (index 3) so resuming it
       // must rehydrate the legacy network.
       {
         id: 'legacy-session-in-progress',
@@ -126,7 +126,7 @@ function buildLegacySeed(): {
         lastUpdatedAt: '2026-01-07T10:30:00.000Z',
         finishedAt: null,
         exportedAt: null,
-        currentStep: 2,
+        currentStep: 3,
         network: legacyNetwork(),
       },
     ],
@@ -411,7 +411,7 @@ test.describe('booting over a legacy (Dexie v1) database', () => {
         id: 'legacy-session-complete',
         protocolHash: liveHash,
         caseId: 'legacy-case-complete',
-        currentStep: 3,
+        currentStep: 4,
         finishedAt: '2026-01-05T11:00:00.000Z',
         nodeNames: ['Legacy Alice', 'Legacy Bob'],
         edgeCount: 1,
@@ -420,7 +420,7 @@ test.describe('booting over a legacy (Dexie v1) database', () => {
         id: 'legacy-session-in-progress',
         protocolHash: liveHash,
         caseId: 'legacy-case-in-progress',
-        currentStep: 2,
+        currentStep: 3,
         finishedAt: null,
         nodeNames: ['Legacy Alice', 'Legacy Bob'],
         edgeCount: 1,

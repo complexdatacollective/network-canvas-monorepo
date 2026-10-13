@@ -1,6 +1,169 @@
 - main:
-  - heading "About Each Person" [level=1]
-  - paragraph: Please continue.
+  - button "Person"
+  - text: Text
+  - textbox "Text"
+  - text: Bio
+  - textbox "Bio"
+  - text: Age
+  - button "Decrease value"
+  - spinbutton "Age"
+  - button "Increase value"
+  - text: Confirmed
+  - radiogroup "Confirmed":
+    - radio "Yes"
+    - radio "No" [checked]
+  - text: Consent
+  - switch "Consent"
+  - text: Closeness
+  - radiogroup "Closeness":
+    - radio "Not close"
+    - text: Not close
+    - radio "Close"
+    - text: ""
+    - radio "Very close"
+    - text: Very close
+  - text: Frequency
+  - group "Frequency":
+    - slider "Frequency": "1"
+  - text: Rarely Sometimes Often Interests
+  - group "Interests":
+    - checkbox "Reading"
+    - text: Reading
+    - checkbox "Sport"
+    - text: Sport
+  - text: Traits
+  - group "Traits":
+    - checkbox "Kind"
+    - checkbox "Funny"
+  - text: Closeness scale
+  - group "Closeness scale":
+    - slider "Closeness scale": "0.5"
+  - text: Not at all Extremely Met on Year Month
+  - combobox "Met on Year":
+    - option "Year" [selected]
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+  - combobox "Met on Month" [disabled]:
+    - option "Month" [selected]
+    - option "January"
+    - option "February"
+    - option "March"
+    - option "April"
+    - option "May"
+    - option "June"
+    - option "July"
+    - option "August"
+    - option "September"
+    - option "October"
+    - option "November"
+    - option "December"
+  - text: Last contact
+  - textbox "Last contact"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

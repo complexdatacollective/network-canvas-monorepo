@@ -1252,11 +1252,9 @@ class NodePanelFixture {
  * Placeholder fixture for DyadCensus stages.
  *
  * DyadCensus iterates through all node pairs with a binary Yes/No choice
- * to create edges. Has an introduction panel and auto-advances (350ms)
- * after each selection.
+ * to create edges. Auto-advances (350ms) after each selection.
  *
  * TODO: Implement interaction methods:
- * - dismissIntro() — click next to dismiss intro panel
  * - selectYes() / selectNo() — click boolean option
  * - getPairLabels() — get the two node labels currently displayed
  * - waitForAutoAdvance() — wait for 350ms auto-advance
@@ -1274,10 +1272,9 @@ class DyadCensusFixture {
  *
  * Similar to DyadCensus but with multiple ordinal options instead of
  * binary Yes/No. Creates/updates edges with an ordinal attribute value.
- * Has introduction panel and auto-advances (350ms).
+ * Auto-advances (350ms).
  *
  * TODO: Implement interaction methods:
- * - dismissIntro() — click next to dismiss intro panel
  * - selectOption(label) — click an ordinal option button
  * - selectNegative() — click the negative/no option
  * - getPairLabels() — get the two node labels currently displayed
@@ -1376,15 +1373,13 @@ class AnonymisationFixture {
 /**
  * Placeholder fixture for SlidesForm stages (AlterForm, AlterEdgeForm).
  *
- * Manages introduction panel and slide-per-item navigation for form stages
- * that iterate over nodes (AlterForm) or edges (AlterEdgeForm).
- * Field interactions are handled by FormFixture.
+ * Manages slide-per-item navigation for form stages that iterate over nodes
+ * (AlterForm) or edges (AlterEdgeForm). Field interactions are handled by
+ * FormFixture.
  *
  * TODO: Implement interaction methods:
- * - dismissIntro() — advance past the introduction panel
  * - getCurrentItemLabel() — get the label of the current node/edge
  * - getSlideIndex() — get current slide position
- * - isOnIntro() — check if intro panel is displayed
  */
 class SlidesFormFixture {
   readonly page: Page;

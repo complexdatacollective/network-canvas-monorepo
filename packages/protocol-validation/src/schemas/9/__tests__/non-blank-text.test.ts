@@ -6,7 +6,6 @@ import {
   NodeDefinitionSchema,
 } from '../codebook/definitions.ts';
 import { FormFieldSchema, FormSchema } from '../common/forms.ts';
-import { IntroductionPanelSchema } from '../common/introductionPanel.ts';
 import { panelSchema } from '../common/panels.ts';
 import { promptSchema } from '../common/prompts.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
@@ -183,19 +182,6 @@ const REQUIRED_TEXT_SITES: readonly {
     path: ['title'],
   },
   {
-    name: 'an introduction panel title',
-    schema: IntroductionPanelSchema,
-    valid: (title) => ({ title, text: localized('Tell us about them') }),
-    path: ['title'],
-  },
-  // Optional, but a body that is given must say something.
-  {
-    name: 'an introduction panel body',
-    schema: IntroductionPanelSchema,
-    valid: (text) => ({ title: localized('About them'), text }),
-    path: ['text'],
-  },
-  {
     name: 'an anonymisation explanation title',
     schema: anonymisationStage,
     valid: (title) => ({
@@ -274,7 +260,7 @@ const REQUIRED_TEXT_SITES: readonly {
     path: ['diseases', 0, 'label'],
   },
   {
-    name: 'a Name Generator form title',
+    name: 'a Name Generator or Ego Form form title',
     schema: FormSchema,
     valid: (title) => ({
       title,
@@ -457,20 +443,6 @@ describe.each(REQUIRED_TEXT_SITES)('$name', ({ schema, valid, path }) => {
       });
     },
   );
-});
-
-describe('an introduction panel', () => {
-  it('needs no body text, so a panel can show only its title', () => {
-    expect(
-      issuesOf(IntroductionPanelSchema, { title: localized('About them') }),
-    ).toEqual([]);
-  });
-
-  it('still needs a title', () => {
-    expect(
-      issuesOf(IntroductionPanelSchema, { text: localized('Some text') }),
-    ).not.toEqual([]);
-  });
 });
 
 // The variable schema is a union of every variable type, so a refusal is
