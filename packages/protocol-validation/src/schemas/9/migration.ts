@@ -451,7 +451,8 @@ const remapMergedOptionAnswers = (
           );
     for (const candidate of entities) {
       const { attributes } = candidate;
-      if (!isRecord(attributes) || !(attribute in attributes)) continue;
+      if (!isRecord(attributes) || !Object.hasOwn(attributes, attribute))
+        continue;
       // An encrypted answer holds ciphertext, not option values: rewriting
       // it would corrupt the protected answer, so it is left as stored.
       const secure: unknown = candidate[entitySecureAttributesMeta];
