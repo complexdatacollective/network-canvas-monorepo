@@ -96,7 +96,7 @@ EXTERNAL_AZURITE_ACCOUNT="stacktest$(hex 4)"
 EXTERNAL_AZURITE_KEY="$(openssl rand -base64 32)"
 SMTP_URL=""
 EMAIL_FROM=""
-STUDIO_TELEMETRY=""
+STUDIO_TELEMETRY="false"
 
 case "$VARIANT" in
   external-postgres)

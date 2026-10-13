@@ -56,6 +56,9 @@ one value gives the two images separate cache scopes.
 with every variable `.env.example` names, starts the stack, runs
 `docker compose run --rm migrate`, captures the first-run setup token it prints
 to `.work/setup-token`, and waits for `/readyz` through the variant's ingress.
+It sets `STUDIO_TELEMETRY=false` for every variant except `telemetry-on`, so a
+run sends nothing to Codaco's PostHog project; the default, telemetry on, is
+the `telemetry-on` variant's to exercise, against a sink.
 
 **`assert.sh --variant <name>`** makes the same assertions for every variant,
 deliberately: a swapped element has to meet the contract the element it

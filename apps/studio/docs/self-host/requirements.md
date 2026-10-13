@@ -76,12 +76,16 @@ anything else an instance appears to contact is worth investigating.
 
 <!-- outbound-hosts start -->
 
-| Host                           | Why                                                                                                                                                                     | When                                     |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `ghcr.io`                      | Container images. Public packages, so no registry credentials are needed                                                                                                | `docker compose pull`, and a first start |
-| `acme-v02.api.letsencrypt.org` | TLS certificates over ACME HTTP-01                                                                                                                                      | First start, and on renewal              |
-| `releases.networkcanvas.com`   | The version manifest the update check reads, to tell owners a new version exists                                                                                        | Once a day, from the worker              |
-| `us.i.posthog.com`             | Analytics, and the logs, traces, metrics and error reports both processes send to Codaco's PostHog project unless `OTEL_EXPORTER_OTLP_ENDPOINT` names another collector | Only while `STUDIO_TELEMETRY` is on      |
+| Host                                   | Why                                                                                                                                                                     | When                                     |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `ghcr.io`                              | Studio's two container images. Public packages, so no registry credentials are needed                                                                                   | `docker compose pull`, and a first start |
+| `pkg-containers.githubusercontent.com` | The layers of Studio's images, which `ghcr.io` redirects to                                                                                                             | `docker compose pull`, and a first start |
+| `registry-1.docker.io`                 | Docker Hub, for the Traefik, Postgres, Valkey and Garage images. Public images, so no registry credentials are needed                                                   | `docker compose pull`, and a first start |
+| `auth.docker.io`                       | The anonymous pull token Docker Hub requires before it serves an image                                                                                                  | `docker compose pull`, and a first start |
+| `production.cloudfront.docker.com`     | The layers of the Docker Hub images, which `registry-1.docker.io` redirects to                                                                                          | `docker compose pull`, and a first start |
+| `acme-v02.api.letsencrypt.org`         | TLS certificates over ACME HTTP-01                                                                                                                                      | First start, and on renewal              |
+| `releases.networkcanvas.com`           | The version manifest the update check reads, to tell owners a new version exists                                                                                        | Once a day, from the worker              |
+| `us.i.posthog.com`                     | Analytics, and the logs, traces, metrics and error reports both processes send to Codaco's PostHog project unless `OTEL_EXPORTER_OTLP_ENDPOINT` names another collector | Only while `STUDIO_TELEMETRY` is on      |
 
 <!-- outbound-hosts end -->
 
