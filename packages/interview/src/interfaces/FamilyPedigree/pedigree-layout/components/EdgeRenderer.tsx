@@ -13,6 +13,7 @@ import type {
   PedigreeConnectors,
   Point,
 } from '../types';
+import { inOrder } from '../utils';
 
 export const DASHED_PATTERN = '8 8';
 
@@ -1000,11 +1001,12 @@ function descentStrokes(pieces: Shaded[]): DescentStroke[] {
     }
   }
 
-  const away = edges
-    .map(({ a, b, lit }) =>
+  const away = inOrder(
+    edges.map(({ a, b, lit }) =>
       reached[a]! <= reached[b]! ? { a, b, lit } : { a: b, b: a, lit },
-    )
-    .toSorted((p, q) => reached[p.a]! - reached[q.a]!);
+    ),
+    (p, q) => reached[p.a]! - reached[q.a]!,
+  );
   const strokes: (DescentStroke & { last: number })[] = [];
   const continued = new Set<number>();
   for (const { a, b, lit } of away) {

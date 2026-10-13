@@ -11,7 +11,12 @@ import type {
   PedigreeLayout,
   PedigreeEdgeType,
 } from './types';
-import { areConsanguineous, layerConstraints, relativeRaisers } from './utils';
+import {
+  areConsanguineous,
+  inOrder,
+  layerConstraints,
+  relativeRaisers,
+} from './utils';
 
 type PartnerGroup = {
   members: number[];
@@ -459,7 +464,8 @@ function seatAroundAnchor(
     rel(y).sharedChildren - rel(x).sharedChildren ||
     rel(y).childrenInCommon - rel(x).childrenInCommon ||
     Number(rel(y).isActive) - Number(rel(x).isActive) ||
-    recency(y) - recency(x);
+    recency(y) - recency(x) ||
+    x - y;
 
   const [first, ...rest] = partners.toSorted(byPriority);
   if (first === undefined) return [anchor];
@@ -472,7 +478,8 @@ function seatAroundAnchor(
       rel(y).childrenInCommon - rel(x).childrenInCommon ||
       Number(rel(y).isActive !== rel(first).isActive) -
         Number(rel(x).isActive !== rel(first).isActive) ||
-      recency(y) - recency(x),
+      recency(y) - recency(x) ||
+      x - y,
   )[0];
   if (second === undefined)
     return orientPartners([anchor, first], partnerships);
@@ -693,7 +700,8 @@ function sibshipOrders(
   }
   // The groups kept as runs: each inside another or apart from it.
   const kept: Set<number>[] = [];
-  for (const group of [...byChildren.values()].toSorted(
+  for (const group of inOrder(
+    byChildren.values(),
     (a, b) => b.length - a.length || a[0]! - b[0]!,
   )) {
     if (group.length < 2 || group.length === units.length) continue;
@@ -766,7 +774,7 @@ function sibshipOrders(
       loose.set(key, [...(loose.get(key) ?? []), k]);
     }
     items.push(...loose.values());
-    const sorted = items.toSorted((a, b) => a[0]! - b[0]!);
+    const sorted = inOrder(items, (a, b) => a[0]! - b[0]!);
     // Each item's own orders, taken once and at most as many as are used.
     const alternatives = new Map<number[], number[][]>();
     const alternativesOf = (item: number[]) => {
@@ -1248,195 +1256,238 @@ function lessCost(x: readonly number[], y: readonly number[]): boolean {
   return false;
 }
 
-function seatingCost(
-  layerOrdering: number[][],
+/** What one pair of rows costs a seating (see `seatingCost`): its counts
+ * of hard constraints broken, crossings and people passed, and each line's
+ * length in the order the lines are read. */
+type RowPairCost = { counts: [number, number, number]; spans: number[] };
+
+/** What the seating search has already weighed, per graph: each pair of
+ * rows, and each row's turns from its recorded order. A move reseats one
+ * row or a few, so most of a seating's cost is read from here. */
+const weighedRows = new WeakMap<
+  PedigreeGraph,
+  { pairs: Map<string, RowPairCost>; turns: Map<string, number> }
+>();
+
+function weighedRowsOf(graph: PedigreeGraph) {
+  let weighed = weighedRows.get(graph);
+  if (!weighed) {
+    weighed = { pairs: new Map(), turns: new Map() };
+    weighedRows.set(graph, weighed);
+  }
+  return weighed;
+}
+
+function rowPairCost(
+  upper: number[],
+  lower: number[],
   graph: PedigreeGraph,
-): SeatingCost {
-  const pos = positionMap(layerOrdering);
-  const layerOf = new Map<number, number>();
-  layerOrdering.forEach((row, k) => {
-    for (const node of row) layerOf.set(node, k);
-  });
-  const cost: SeatingCost = [0, 0, 0, 0, 0];
-
-  for (let k = 0; k + 1 < layerOrdering.length; k++) {
-    const upper = layerOrdering[k]!;
-    const onUpper = (node: number) => layerOf.get(node) === k;
-    const onLower = (node: number) => layerOf.get(node) === k + 1;
-    type Edge = { from: number; to: number; drop: boolean; owner: string };
-    const edges: Edge[] = [];
-    const bars: [number, number][] = [];
-    const descentPoint = new Map<FamilyUnit, number>();
-    for (const unit of graph.familyUnits) {
-      const owners = unit.parentGroup.members.filter(onUpper);
-      const children = unit.children.filter(onLower).map((c) => pos.get(c)!);
-      if (owners.length === 0 || children.length === 0) continue;
-      const d =
-        owners.reduce((sum, owner) => sum + pos.get(owner)!, 0) / owners.length;
-      descentPoint.set(unit, d);
-      const middle = children.reduce((sum, c) => sum + c, 0) / children.length;
-      edges.push({ from: d, to: middle, drop: true, owner: `${d}` });
-      if (children.length > 1) {
-        bars.push([Math.min(...children), Math.max(...children)]);
-      }
+): RowPairCost {
+  const pos = positionMap([upper, lower]);
+  const onRow = new Map<number, number>();
+  for (const node of upper) onRow.set(node, 0);
+  for (const node of lower) onRow.set(node, 1);
+  const cost: [number, number, number] = [0, 0, 0];
+  const spans: number[] = [];
+  const onUpper = (node: number) => onRow.get(node) === 0;
+  const onLower = (node: number) => onRow.get(node) === 1;
+  type Edge = { from: number; to: number; drop: boolean; owner: string };
+  const edges: Edge[] = [];
+  const bars: [number, number][] = [];
+  const descentPoint = new Map<FamilyUnit, number>();
+  for (const unit of graph.familyUnits) {
+    const owners = unit.parentGroup.members.filter(onUpper);
+    const children = unit.children.filter(onLower).map((c) => pos.get(c)!);
+    if (owners.length === 0 || children.length === 0) continue;
+    const d =
+      owners.reduce((sum, owner) => sum + pos.get(owner)!, 0) / owners.length;
+    descentPoint.set(unit, d);
+    const middle = children.reduce((sum, c) => sum + c, 0) / children.length;
+    edges.push({ from: d, to: middle, drop: true, owner: `${d}` });
+    if (children.length > 1) {
+      bars.push([Math.min(...children), Math.max(...children)]);
     }
+  }
 
-    // The lines from owners on the upper row to children on the lower.
-    type Line = {
-      parents: number[];
-      kind: PedigreeEdgeType;
-      joins: boolean;
-      unit?: FamilyUnit;
-      children: number[];
-    };
-    const lines = new Map<string, Line>();
-    for (const child of layerOrdering[k + 1]!) {
-      const unit = graph.familyOf.get(child);
-      const drawn = unit !== undefined && descentPoint.has(unit);
-      const descent = graph.owners[child]?.descent;
-      for (const owner of graph.owners[child]?.lines ?? []) {
-        if (!owner.parents.every(onUpper)) continue;
-        const joins =
-          drawn && isBirthTie(owner.kind) && isBirthTie(descent!.kind);
-        const key = `${ownerKey(owner)}:${owner.kind}:${joins}`;
-        const line = lines.get(key) ?? {
-          parents: owner.parents,
-          kind: owner.kind,
-          joins,
-          ...(drawn ? { unit } : {}),
-          children: [],
-        };
-        line.children.push(child);
-        lines.set(key, line);
-      }
+  // The lines from owners on the upper row to children on the lower.
+  type Line = {
+    parents: number[];
+    kind: PedigreeEdgeType;
+    joins: boolean;
+    unit?: FamilyUnit;
+    children: number[];
+  };
+  const lines = new Map<string, Line>();
+  for (const child of lower) {
+    const unit = graph.familyOf.get(child);
+    const drawn = unit !== undefined && descentPoint.has(unit);
+    const descent = graph.owners[child]?.descent;
+    for (const owner of graph.owners[child]?.lines ?? []) {
+      if (!owner.parents.every(onUpper)) continue;
+      const joins =
+        drawn && isBirthTie(owner.kind) && isBirthTie(descent!.kind);
+      const key = `${ownerKey(owner)}:${owner.kind}:${joins}`;
+      const line = lines.get(key) ?? {
+        parents: owner.parents,
+        kind: owner.kind,
+        joins,
+        ...(drawn ? { unit } : {}),
+        children: [],
+      };
+      line.children.push(child);
+      lines.set(key, line);
     }
-    for (const [key, line] of lines) {
-      const o =
-        line.parents.reduce((sum, parent) => sum + pos.get(parent)!, 0) /
-        line.parents.length;
-      const d = line.unit ? descentPoint.get(line.unit) : undefined;
-      const at = line.children
+  }
+  for (const [key, line] of lines) {
+    const o =
+      line.parents.reduce((sum, parent) => sum + pos.get(parent)!, 0) /
+      line.parents.length;
+    const d = line.unit ? descentPoint.get(line.unit) : undefined;
+    const at = line.children.map((c) => pos.get(c)!).toSorted((a, b) => a - b);
+    if (line.joins && line.unit && d !== undefined) {
+      const siblings = line.unit.children
+        .filter(onLower)
         .map((c) => pos.get(c)!)
         .toSorted((a, b) => a - b);
-      if (line.joins && line.unit && d !== undefined) {
-        const siblings = line.unit.children
-          .filter(onLower)
-          .map((c) => pos.get(c)!)
-          .toSorted((a, b) => a - b);
-        if (at.length === siblings.length && siblings.length > 1) {
+      if (at.length === siblings.length && siblings.length > 1) {
+        edges.push({
+          from: o,
+          to: o < d ? siblings[0]! : siblings.at(-1)!,
+          drop: false,
+          owner: key,
+        });
+      } else {
+        // One line to each run of the children side by side.
+        let run: number[] = [];
+        const close = () => {
+          if (run.length === 0) return;
           edges.push({
             from: o,
-            to: o < d ? siblings[0]! : siblings.at(-1)!,
+            to: run.reduce((sum, c) => sum + c, 0) / run.length,
             drop: false,
             owner: key,
           });
-        } else {
-          // One line to each run of the children side by side.
-          let run: number[] = [];
-          const close = () => {
-            if (run.length === 0) return;
-            edges.push({
-              from: o,
-              to: run.reduce((sum, c) => sum + c, 0) / run.length,
-              drop: false,
-              owner: key,
-            });
-            run = [];
-          };
-          for (const c of siblings) {
-            if (at.includes(c)) run.push(c);
-            else close();
-          }
-          close();
+          run = [];
+        };
+        for (const c of siblings) {
+          if (at.includes(c)) run.push(c);
+          else close();
         }
-      } else {
-        for (const c of at) {
-          edges.push({ from: o, to: c, drop: false, owner: key });
-          cost[1] += bars.filter(
-            ([a, b]) => c > a + 1e-9 && c < b - 1e-9,
-          ).length;
-        }
+        close();
       }
-      if (d !== undefined) {
-        const [lo, hi] = [Math.min(o, d), Math.max(o, d)];
-        cost[2] += upper.filter(
-          (node) =>
-            !line.parents.includes(node) &&
-            pos.get(node)! > lo + 1e-9 &&
-            pos.get(node)! < hi - 1e-9,
-        ).length;
-        cost[3] += hi - lo;
+    } else {
+      for (const c of at) {
+        edges.push({ from: o, to: c, drop: false, owner: key });
+        cost[1] += bars.filter(([a, b]) => c > a + 1e-9 && c < b - 1e-9).length;
       }
     }
-
-    for (let i = 0; i < edges.length; i++) {
-      for (let j = i + 1; j < edges.length; j++) {
-        const [a, b] = [edges[i]!, edges[j]!];
-        if (a.owner === b.owner) continue;
-        if ((a.from - b.from) * (a.to - b.to) < -1e-9) {
-          if (a.drop && b.drop) cost[0]++;
-          else cost[1]++;
-        }
-      }
+    if (d !== undefined) {
+      const [lo, hi] = [Math.min(o, d), Math.max(o, d)];
+      cost[2] += upper.filter(
+        (node) =>
+          !line.parents.includes(node) &&
+          pos.get(node)! > lo + 1e-9 &&
+          pos.get(node)! < hi - 1e-9,
+      ).length;
+      spans.push(hi - lo);
     }
+  }
 
-    // Each helper beside the owners of their child's line of descent, or
-    // beside another helper of the same family (Josh, 12 Oct 2026): between
-    // them sit only parents of the family's children, and their partners.
-    for (const child of layerOrdering[k + 1]!) {
-      const unit = graph.familyOf.get(child);
-      if (!unit || !descentPoint.has(unit)) continue;
-      const owners = unit.parentGroup.members.filter(onUpper);
-      const parentsOfChild = new Set(
-        unit.children.flatMap((sibling) =>
-          graph.parents[sibling]!.map((p) => p.parentIndex),
-        ),
-      );
-      for (const partner of upper) {
-        if (!parentsOfChild.has(partner)) continue;
-        for (const other of graph.partnerGroups) {
-          if (other.members.includes(partner)) {
-            for (const m of other.members) parentsOfChild.add(m);
-          }
-        }
-      }
-      for (const p of graph.parents[child]!) {
-        if (
-          !onUpper(p.parentIndex) ||
-          !isHelperOf(graph, p.parentIndex, child)
-        ) {
-          continue;
-        }
-        const at = pos.get(p.parentIndex)!;
-        const nearest = owners
-          .map((owner) => pos.get(owner)!)
-          .toSorted((a, b) => Math.abs(a - at) - Math.abs(b - at))[0]!;
-        const between = upper.filter(
-          (node) =>
-            pos.get(node)! > Math.min(at, nearest) &&
-            pos.get(node)! < Math.max(at, nearest),
-        );
-        if (between.some((node) => !parentsOfChild.has(node))) cost[0]++;
+  for (let i = 0; i < edges.length; i++) {
+    for (let j = i + 1; j < edges.length; j++) {
+      const [a, b] = [edges[i]!, edges[j]!];
+      if (a.owner === b.owner) continue;
+      if ((a.from - b.from) * (a.to - b.to) < -1e-9) {
+        if (a.drop && b.drop) cost[0]++;
+        else cost[1]++;
       }
     }
   }
 
-  // How far each block is turned from its recorded order.
-  layerOrdering.forEach((row) => {
-    const at = new Map(row.map((node, i) => [node, i]));
-    for (const block of buildConstraintBlocks(row, graph, false, true)) {
-      const seated = block.nodes.toSorted((a, b) => at.get(a)! - at.get(b)!);
-      for (let i = 0; i < seated.length; i++) {
-        for (let j = i + 1; j < seated.length; j++) {
-          if (
-            block.nodes.indexOf(seated[i]!) > block.nodes.indexOf(seated[j]!)
-          ) {
-            cost[4]++;
-          }
+  // Each helper beside the owners of their child's line of descent, or
+  // beside another helper of the same family (Josh, 12 Oct 2026): between
+  // them sit only parents of the family's children, and their partners.
+  for (const child of lower) {
+    const unit = graph.familyOf.get(child);
+    if (!unit || !descentPoint.has(unit)) continue;
+    const owners = unit.parentGroup.members.filter(onUpper);
+    const parentsOfChild = new Set(
+      unit.children.flatMap((sibling) =>
+        graph.parents[sibling]!.map((p) => p.parentIndex),
+      ),
+    );
+    for (const partner of upper) {
+      if (!parentsOfChild.has(partner)) continue;
+      for (const other of graph.partnerGroups) {
+        if (other.members.includes(partner)) {
+          for (const m of other.members) parentsOfChild.add(m);
         }
       }
     }
-  });
+    for (const p of graph.parents[child]!) {
+      if (!onUpper(p.parentIndex) || !isHelperOf(graph, p.parentIndex, child)) {
+        continue;
+      }
+      const at = pos.get(p.parentIndex)!;
+      const nearest = inOrder(
+        owners.map((owner) => pos.get(owner)!),
+        (a, b) => Math.abs(a - at) - Math.abs(b - at),
+      )[0]!;
+      const between = upper.filter(
+        (node) =>
+          pos.get(node)! > Math.min(at, nearest) &&
+          pos.get(node)! < Math.max(at, nearest),
+      );
+      if (between.some((node) => !parentsOfChild.has(node))) cost[0]++;
+    }
+  }
+  return { counts: cost, spans };
+}
+
+function seatingCost(
+  layerOrdering: number[][],
+  graph: PedigreeGraph,
+): SeatingCost {
+  const weighed = weighedRowsOf(graph);
+  const cost: SeatingCost = [0, 0, 0, 0, 0];
+
+  for (let k = 0; k + 1 < layerOrdering.length; k++) {
+    const [upper, lower] = [layerOrdering[k]!, layerOrdering[k + 1]!];
+    const key = `${upper.join(',')}|${lower.join(',')}`;
+    let pair = weighed.pairs.get(key);
+    if (!pair) {
+      pair = rowPairCost(upper, lower, graph);
+      weighed.pairs.set(key, pair);
+    }
+    cost[0] += pair.counts[0];
+    cost[1] += pair.counts[1];
+    cost[2] += pair.counts[2];
+    for (const span of pair.spans) cost[3] += span;
+  }
+
+  // How far each block is turned from its recorded order.
+  for (const row of layerOrdering) {
+    const key = row.join(',');
+    let turns = weighed.turns.get(key);
+    if (turns === undefined) {
+      turns = 0;
+      const at = new Map(row.map((node, i) => [node, i]));
+      for (const block of buildConstraintBlocks(row, graph, false, true)) {
+        const seated = block.nodes.toSorted((a, b) => at.get(a)! - at.get(b)!);
+        for (let i = 0; i < seated.length; i++) {
+          for (let j = i + 1; j < seated.length; j++) {
+            if (
+              block.nodes.indexOf(seated[i]!) > block.nodes.indexOf(seated[j]!)
+            ) {
+              turns++;
+            }
+          }
+        }
+      }
+      weighed.turns.set(key, turns);
+    }
+    cost[4] += turns;
+  }
   return cost;
 }
 
@@ -1504,8 +1555,10 @@ function barycentricSweep(
         }
       }
 
-      blocks.sort((a, b) => a.barycenter - b.barycenter);
-      result[k] = blocks.flatMap((b) => b.nodes);
+      result[k] = inOrder(
+        blocks,
+        (a, b) => a.barycenter - b.barycenter,
+      ).flatMap((b) => b.nodes);
     }
   } else {
     for (let k = result.length - 2; k >= 0; k--) {
@@ -1542,8 +1595,10 @@ function barycentricSweep(
         }
       }
 
-      blocks.sort((a, b) => a.barycenter - b.barycenter);
-      result[k] = blocks.flatMap((b) => b.nodes);
+      result[k] = inOrder(
+        blocks,
+        (a, b) => a.barycenter - b.barycenter,
+      ).flatMap((b) => b.nodes);
     }
   }
 
@@ -2134,11 +2189,10 @@ function encodePedigreeLayout(
     }
 
     // Sort centering groups left-to-right by leftmost parent col
-    centeringGroups.sort(
+    for (const cg of inOrder(
+      centeringGroups,
       (a, b) => Math.min(...a.parentCols) - Math.min(...b.parentCols),
-    );
-
-    for (const cg of centeringGroups) {
+    )) {
       const childrenBelow = cg.children.filter((c) => {
         const loc = nodeLocation.get(c);
         return loc?.layer === childLayer;

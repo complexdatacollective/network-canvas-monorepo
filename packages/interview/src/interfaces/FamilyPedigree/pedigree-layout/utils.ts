@@ -290,3 +290,19 @@ export function relativeRaisers(
     ]);
   });
 }
+
+/**
+ * `items` in the order `compare` puts them in, as a total order: items it
+ * ranks alike keep the order they were given in (the order they were
+ * recorded in, wherever that is the order given), so the result never
+ * depends on how a sort meets them.
+ */
+export function inOrder<T>(
+  items: Iterable<T>,
+  compare: (a: T, b: T) => number,
+): T[] {
+  return [...items]
+    .map((item, at) => ({ item, at }))
+    .sort((a, b) => compare(a.item, b.item) || a.at - b.at)
+    .map(({ item }) => item);
+}

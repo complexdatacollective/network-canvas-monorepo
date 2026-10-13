@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ParentConnection } from '../types';
 import {
   ancestor,
+  inOrder,
   areConsanguineous,
   chaseup,
   createMatrix,
@@ -187,4 +188,33 @@ describe('areConsanguineous', () => {
       expect(areConsanguineous(3, 4, cousins('biological', kind))).toBe(false);
     },
   );
+});
+
+describe('inOrder', () => {
+  it('keeps items ranked alike in the order they were given', () => {
+    const items = [
+      { id: 'a', at: 2 },
+      { id: 'b', at: 1 },
+      { id: 'c', at: 2 },
+      { id: 'd', at: 1 },
+    ];
+    const byAt = (p: { at: number }, q: { at: number }) => p.at - q.at;
+    expect(inOrder(items, byAt).map(({ id }) => id)).toEqual([
+      'b',
+      'd',
+      'a',
+      'c',
+    ]);
+    expect(inOrder(items.toReversed(), byAt).map(({ id }) => id)).toEqual([
+      'd',
+      'b',
+      'c',
+      'a',
+    ]);
+  });
+
+  it('keeps the given order where a comparison cannot rank two items', () => {
+    const items = [Infinity, 1, Infinity, 0];
+    expect(inOrder(items, (p, q) => p - q)).toEqual([0, 1, Infinity, Infinity]);
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { alignPedigree } from '../alignPedigree';
+import { alignPedigree, compareDrawn } from '../alignPedigree';
 import { computeConnectors } from '../connectors';
 import { toPedigreeInput } from '../pedigreeAdapter';
 import { buildPedigreeGraph, countCrossings } from '../sugiyamaLayout';
@@ -3093,5 +3093,33 @@ describe('seating puts people beside those their lines join', () => {
     before.forEach((offset, k) => {
       if (Math.abs(offset) === 1) expect(after[k]).toBe(offset);
     });
+  });
+});
+
+describe('the seating drawn best is chosen by a total order', () => {
+  // Seatings whose drawings cost the same, met in either order: the one the
+  // search found first is chosen, however a sort meets them.
+  const seatings = [
+    { key: [0, 1102.02, 1, 3.5, 0], rank: 2 },
+    { key: [0, 1102.02, 1, 3.5, 0], rank: 0 },
+    { key: [0, 1102.03, 1, 3.5, 0], rank: 3 },
+    { key: [0, 1102.02, 1, 3.5, 0], rank: 1 },
+  ];
+
+  it('chooses the same seating whichever order the seatings are met in', () => {
+    const forward = seatings.toSorted(compareDrawn);
+    const reversed = seatings.toReversed().toSorted(compareDrawn);
+    expect(forward.map(({ rank }) => rank)).toEqual([0, 1, 2, 3]);
+    expect(reversed.map(({ rank }) => rank)).toEqual([0, 1, 2, 3]);
+  });
+
+  it('orders any two seatings the same way, whichever is weighed first', () => {
+    for (const a of seatings) {
+      for (const b of seatings) {
+        expect(
+          Math.sign(compareDrawn(a, b)) + Math.sign(compareDrawn(b, a)),
+        ).toBe(0);
+      }
+    }
   });
 });

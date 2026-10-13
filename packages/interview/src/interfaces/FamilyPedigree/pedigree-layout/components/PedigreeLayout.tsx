@@ -10,6 +10,7 @@ import {
 } from '../layoutDimensions';
 import { drawPedigree } from '../pedigreeAdapter';
 import type { PedigreeLink, PedigreeSymbolShape } from '../types';
+import { inOrder } from '../utils';
 import { PedigreeEdgeSvg } from './EdgeRenderer';
 
 type PedigreeLayoutProps = {
@@ -131,10 +132,11 @@ export default function PedigreeLayout({
   // Nodes are emitted generation by generation, left to right, so the
   // document order — and therefore keyboard and screen-reader order — follows
   // the order the family tree is read in.
-  const readingOrder = [...nodeIds].sort((a, b) => {
+  // Anyone not yet placed comes last, in the order given.
+  const readingOrder = inOrder(nodeIds, (a, b) => {
     const posA = positions.get(a);
     const posB = positions.get(b);
-    if (!posA || !posB) return 0;
+    if (!posA || !posB) return Number(!posA) - Number(!posB);
     return posA.y - posB.y || posA.x - posB.x;
   });
 

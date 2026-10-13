@@ -507,7 +507,8 @@ function drawPedigreeAfresh({
         search,
         work,
       );
-      routed.set(candidate, connectors);
+      // An abandoned drawing is not kept (see `RoutingWork`).
+      if (cost < Number.POSITIVE_INFINITY) routed.set(candidate, connectors);
       return cost;
     },
   });

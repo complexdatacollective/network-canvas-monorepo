@@ -15,14 +15,27 @@ const SEATINGS_DRAWN = 10;
 const SEATINGS_SEARCHED = 2;
 
 /**
- * How much the search of every drawing's lines may do in all, once the
- * first seating's lines are routed (see `RoutingWork`): a few hundred
- * milliseconds, whatever the size of the family. No family drawn in the
- * tests is drawn differently for it but a stress test of eleven parents;
- * a larger family stops searching here, and is drawn from the best of what
- * was found.
+ * How much every drawing's lines may do in all (see `RoutingWork`): about
+ * thirty milliseconds on a laptop, whatever the size of the family, so a
+ * family the interview can hold is laid out well inside a frame budget.
+ * The first seating's lines are always routed once in full; any other
+ * drawing whose first routing would pass what is left is abandoned, and
+ * every search for better courses stops once the work is spent. Most
+ * families finish well inside it; a larger one is drawn from the best of
+ * what was found.
  */
-const LINE_SEARCH_WORK = 2_000_000;
+const LINE_SEARCH_WORK = 300_000;
+
+/**
+ * How much the quick search of any one seating may do past its first
+ * routing: the quick search only sorts the seatings for the thorough one,
+ * so a seating that is hard to draw does not spend what the others need.
+ */
+const QUICK_SEARCH_WORK = 30_000;
+
+/** The share of the work the quick searches may do in all: the rest is
+ * kept for the thorough searches, which decide. */
+const QUICK_SHARE = 0.7;
 
 type Search = 'quick' | 'thorough';
 
@@ -33,14 +46,17 @@ type Search = 'quick' | 'thorough';
  * 2026): of the cheapest seatings the search finds, the one whose drawing
  * costs least, compared after the seating's own hard constraints (lines of
  * descent that would cross, helpers away from the owners), and before its
- * passing, length and recorded order. Every seating is drawn with a quick
- * search of its lines, and the two drawn best again with a thorough one,
- * which decides. Without `drawingCost`, the seating the search settles on.
+ * passing, length and recorded order. Every seating is screened with a
+ * quick search of its lines (each line offered fewer courses: see
+ * `RoutingScene`), and the few screened best are drawn again with a
+ * thorough search (`SEATINGS_SEARCHED`), which decides. Without
+ * `drawingCost`, the seating the search settles on.
  *
- * Every search here is bounded before it starts: at most `SEATINGS_DRAWN`
- * seatings, and every line search shares one budget of work
- * (`LINE_SEARCH_WORK`). The first seating is always drawn in full; nothing
- * past it is drawn once the work is spent.
+ * Every search here is bounded before it starts, by counted work, never by
+ * the clock, so a family is drawn the same way however fast the machine:
+ * at most `SEATINGS_DRAWN` seatings, and every line search shares one
+ * budget of work (`LINE_SEARCH_WORK`), of which the quick searches take at
+ * most a share (`QUICK_SHARE`, and `QUICK_SEARCH_WORK` each).
  */
 export function alignPedigree(
   ped: PedigreeInput,
@@ -61,32 +77,64 @@ export function alignPedigree(
   const candidates = sugiyamaLayouts(ped, SEATINGS_DRAWN);
   const work: RoutingWork = { spent: 0, limit: LINE_SEARCH_WORK };
   const workLeft = () => work.spent < work.limit;
-  type Drawn = { layout: PedigreeLayout; key: number[] };
-  const keyOf = (
+  type Drawn = {
+    layout: PedigreeLayout;
+    key: number[];
+    /** Where the seating stands in the order it was found in: equal keys
+     * keep it. */
+    rank: number;
+  };
+  const drawnOf = (
     layout: PedigreeLayout,
     [hard, , passing, length, order]: number[],
     search: Search,
-  ) => [hard!, drawingCost(layout, search, work), passing!, length!, order!];
-  const cheaper = (a: Drawn, b: Drawn) => (lessCost(a.key, b.key) ? -1 : 1);
+    rank: number,
+  ): Drawn => {
+    const left = work.limit - work.spent;
+    const own: RoutingWork = {
+      spent: 0,
+      limit: search === 'quick' ? Math.min(QUICK_SEARCH_WORK, left) : left,
+      // Every drawing but the first is abandoned if its first routing alone
+      // would pass the work left.
+      ...(work.spent > 0 ? { abandonPast: left } : {}),
+    };
+    const lines = drawingCost(layout, search, own);
+    work.spent += own.spent;
+    return { layout, key: [hard!, lines, passing!, length!, order!], rank };
+  };
+  // An abandoned drawing (see `RoutingWork`) is left out.
+  const keep = (into: Drawn[], entry: Drawn) => {
+    if (entry.key[1]! < Number.POSITIVE_INFINITY) into.push(entry);
+  };
+  // A seating that breaks more of its own hard constraints than the
+  // cheapest is never drawn better than it: hard constraints are compared
+  // first.
+  const fewestBroken = Math.min(...candidates.map(({ cost }) => cost[0]!));
   const drawn: Drawn[] = [];
-  for (const { layout, cost } of candidates) {
-    if (drawn.length > 0 && !workLeft()) break;
-    drawn.push({ layout, key: keyOf(layout, cost, 'quick') });
+  for (const [rank, { layout, cost }] of candidates.entries()) {
+    if (cost[0]! > fewestBroken) continue;
+    if (drawn.length > 0 && work.spent >= QUICK_SHARE * work.limit) break;
+    keep(drawn, drawnOf(layout, cost, 'quick', rank));
     // The cheapest seating by the estimate, drawn with every line straight
     // and clear, is not bettered by another.
     const [hard, lines] = drawn[0]!.key;
-    if (drawn.length === 1 && hard === 0 && straightAndClear(lines!)) {
+    if (
+      rank === 0 &&
+      drawn.length === 1 &&
+      hard === 0 &&
+      straightAndClear(lines!)
+    ) {
       return layout;
     }
   }
   // The seatings drawn best by the quick search, drawn again thoroughly,
   // while there is work left.
   const searchedOf = (quick: Drawn[]) => {
-    const ranked = quick.toSorted(cheaper).slice(0, SEATINGS_SEARCHED);
+    const ranked = quick.toSorted(compareDrawn).slice(0, SEATINGS_SEARCHED);
     const searched: Drawn[] = [];
-    for (const { layout, key } of ranked) {
+    for (const { layout, key, rank } of ranked) {
       if (!workLeft()) break;
-      searched.push({ layout, key: keyOf(layout, key, 'thorough') });
+      keep(searched, drawnOf(layout, key, 'thorough', rank));
     }
     return searched.length > 0 ? searched : ranked.slice(0, 1);
   };
@@ -95,22 +143,41 @@ export function alignPedigree(
   // row sits across from the others is searched as well: the seating is
   // the same, and each row is shifted by up to a seat either way, for the
   // two seatings drawn best.
-  const [best] = searched.toSorted(cheaper);
+  const [best] = searched.toSorted(compareDrawn);
   const [seatsBreak, linesCost] = best!.key;
   if (seatsBreak === 0 && breaksAHardConstraint(linesCost!)) {
     const shifted: Drawn[] = [];
+    let shifts = 0;
     shifting: for (const { layout, key } of searched) {
       for (const by of ROW_SHIFTS) {
         for (let layer = 0; layer < layout.pos.length; layer++) {
           if (!workLeft()) break shifting;
           const moved = shiftRow(layout, layer, by);
-          shifted.push({ layout: moved, key: keyOf(moved, key, 'quick') });
+          keep(
+            shifted,
+            drawnOf(moved, key, 'quick', candidates.length + shifts++),
+          );
         }
       }
     }
     if (shifted.length > 0) searched.push(...searchedOf(shifted));
   }
-  return searched.toSorted(cheaper)[0]!.layout;
+  return searched.toSorted(compareDrawn)[0]!.layout;
+}
+
+/**
+ * Seatings in the order they are drawn best: by their cost, compared step
+ * by step (see `lessCost`), and, where two cost the same, in the order the
+ * search found them. A total order, so the seating chosen does not depend
+ * on how a sort meets its candidates.
+ */
+export function compareDrawn(
+  a: { key: readonly number[]; rank: number },
+  b: { key: readonly number[]; rank: number },
+): number {
+  if (lessCost(a.key, b.key)) return -1;
+  if (lessCost(b.key, a.key)) return 1;
+  return a.rank - b.rank;
 }
 
 /** How far a row may be shifted across from the others, in seats, the

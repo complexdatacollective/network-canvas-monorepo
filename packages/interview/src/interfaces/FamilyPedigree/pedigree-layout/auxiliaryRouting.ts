@@ -1,4 +1,5 @@
 import type { LineSegment, PedigreeSymbolShape, Point } from './types';
+import { inOrder } from './utils';
 
 /**
  * Routing for the lines that join a parent to a child outside the child's
@@ -65,15 +66,31 @@ export type DrawnLine = {
 };
 
 /**
- * How much searching a drawing's lines may do, and how much it has done:
- * each course weighed counts as much as there is in the scene to weigh it
- * against (its symbols and lines), so the count follows the time taken
- * whatever the size of the family. Every search of courses past a line's
- * first routing stops once `spent` reaches `limit`, so how long the lines
- * take to draw is bounded before the search starts, however large the
- * family.
+ * How much searching a drawing's lines may do, and how much it has done, in
+ * steps of about a tenth of a microsecond (see `WORK`): each course offered,
+ * each course weighed, and each piece of a course and each line near it
+ * weighed counts what it takes, so the count follows the time taken
+ * whatever the family. Every search of courses past a line's first routing
+ * stops once `spent` reaches `limit`, so how long the lines take to draw is
+ * bounded before the search starts, however large the family.
  */
-export type RoutingWork = { spent: number; limit: number };
+export type RoutingWork = {
+  spent: number;
+  limit: number;
+  /** Past this much work, a drawing whose lines are still being routed
+   * for the first time is abandoned, costing without bound: so no drawing
+   * but the first can take more than the work there is. */
+  abandonPast?: number;
+};
+
+/** What each step of a search counts towards its work (see `RoutingWork`),
+ * measured: a course offered (simplified and bounded below), a course
+ * weighed, a piece of a course weighed among the lines near it, and what
+ * one line near a piece adds to it. */
+const WORK = { offer: 2, course: 4, piece: 15, linePart: 11 };
+const spend = (scene: RoutingScene, steps: number) => {
+  if (scene.work) scene.work.spent += steps;
+};
 
 export type RoutingScene = {
   boxWidth: number;
@@ -94,7 +111,17 @@ export type RoutingScene = {
   halfStroke?: number;
   /** The work the search of the lines may do (see `RoutingWork`). */
   work?: RoutingWork;
+  /** Whether the drawing only screens a seating for a closer search (see
+   * `alignPedigree`): each line is offered fewer courses, leaving its
+   * owner from the middle only, past a symbol in the way only level, and
+   * down the nearest few ways (`SCREENING_WAYS_DOWN`). */
+  screening?: boolean;
 };
+
+/** How many ways down past the rows between are offered to a line that
+ * only screens its seating (see `RoutingScene`), and to any other. */
+const SCREENING_WAYS_DOWN = 4;
+const WAYS_DOWN = 12;
 
 export type RouteEnd =
   | {
@@ -129,6 +156,12 @@ export const JUNCTION_CLEARANCE = 0.2;
 export const LINE_CLEARANCE = 0.25;
 
 const ON = 0.004; // about a pixel
+
+/** Whether a step of `dx` across and `dy` down is shorter than `ON`: never
+ * when either is as long (a step is at least as long as either part). */
+function shorterThanOn(dx: number, dy: number): boolean {
+  return Math.abs(dx) < ON && Math.abs(dy) < ON && Math.hypot(dx, dy) < ON;
+}
 // The brackets as PersonNode draws them, a sixth of the symbol's width
 // across from a twenty-fourth outside its edge, reaching a twelfth of its
 // height above and below it, with the stroke's half width around them.
@@ -187,7 +220,7 @@ const gapMiddles = (stops: number[]) => {
     const width = sorted[k + 1]! - sorted[k]!;
     if (width > 4 * ON) gaps.push({ at: sorted[k]! + width / 2, width });
   }
-  return gaps.toSorted((a, b) => b.width - a.width).map((gap) => gap.at);
+  return inOrder(gaps, (a, b) => b.width - a.width).map((gap) => gap.at);
 };
 
 /** A square's rounded corners, as a fraction of its width, unless the
@@ -357,32 +390,52 @@ export function barPoints(
     if (Math.abs(middle - nearest) > ON) xs.push(middle);
   }
   if (xs.length === 0) xs.push(gapMiddles(stops)[0] ?? (from + to) / 2);
-  return xs
-    .toSorted((a, b) => Math.abs(a - towardX) - Math.abs(b - towardX))
-    .map((x) => ({ x, y: bar.y1 }));
+  return inOrder(
+    xs,
+    (a, b) => Math.abs(a - towardX) - Math.abs(b - towardX),
+  ).map((x) => ({ x, y: bar.y1 }));
 }
 
-const pieces = (points: Point[]): LineSegment[] =>
-  points.slice(1).flatMap((point, k) => {
-    const from = points[k]!;
-    if (Math.hypot(point.x - from.x, point.y - from.y) < ON) return [];
-    return [{ type: 'line', x1: from.x, y1: from.y, x2: point.x, y2: point.y }];
-  });
+const pieces = (points: Point[]): LineSegment[] => {
+  const segments: LineSegment[] = [];
+  for (let k = 1; k < points.length; k++) {
+    const [from, point] = [points[k - 1]!, points[k]!];
+    if (shorterThanOn(point.x - from.x, point.y - from.y)) continue;
+    segments.push({
+      type: 'line',
+      x1: from.x,
+      y1: from.y,
+      x2: point.x,
+      y2: point.y,
+    });
+  }
+  return segments;
+};
 
 /** The points with repeats and straight-through corners removed. */
 function simplify(points: Point[]): Point[] {
   const kept: Point[] = [];
   for (const point of points) {
     const last = kept[kept.length - 1];
-    if (last && Math.hypot(point.x - last.x, point.y - last.y) < ON) continue;
+    if (last && shorterThanOn(point.x - last.x, point.y - last.y)) continue;
     kept.push(point);
   }
+  if (kept.length < 3) return kept;
+  // From the end back: each corner is weighed against the point before it
+  // and the next one kept after it.
+  const reversed: Point[] = [kept[kept.length - 1]!];
+  let c = reversed[0]!;
   for (let k = kept.length - 2; k > 0; k--) {
-    const [a, b, c] = [kept[k - 1]!, kept[k]!, kept[k + 1]!];
+    const a = kept[k - 1]!;
+    const b = kept[k]!;
     const turn = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
-    if (Math.abs(turn) < 1e-9) kept.splice(k, 1);
+    if (Math.abs(turn) >= 1e-9) {
+      reversed.push(b);
+      c = b;
+    }
   }
-  return kept;
+  reversed.push(kept[0]!);
+  return reversed.reverse();
 }
 
 const segmentLength = (s: LineSegment) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
@@ -440,6 +493,10 @@ function nearestOutside(
   symbol: Symbol,
   boxWidth: number,
   boxHeight: number,
+  /** Once a point of the segment is found to lie less than this outside
+   * the symbol, how near the nearest is no longer matters: what was found
+   * is returned. */
+  enough = Number.NEGATIVE_INFINITY,
 ): number {
   const at = (t: number) =>
     outsideSymbol(
@@ -454,7 +511,10 @@ function nearestOutside(
   const steps = Math.max(1, Math.ceil(length / 0.02));
   if (steps <= 24) {
     let nearest = Number.POSITIVE_INFINITY;
-    for (let k = 0; k <= steps; k++) nearest = Math.min(nearest, at(k / steps));
+    for (let k = 0; k <= steps; k++) {
+      nearest = Math.min(nearest, at(k / steps));
+      if (nearest < enough) return nearest;
+    }
     return nearest;
   }
   // Every symbol is convex, so how far outside it a point lies changes along
@@ -566,6 +626,19 @@ function closeStretches(
   const [sa, sb] = [sym(a), sym(b)];
   const length = segmentLength(sa);
   if (length < 1e-9) return [];
+  // Segments farther apart than the clearance never run close.
+  if (
+    !crossing(sa, sb) &&
+    Math.min(
+      distanceToSegment({ x: sa.x1, y: sa.y1 }, sb),
+      distanceToSegment({ x: sa.x2, y: sa.y2 }, sb),
+      distanceToSegment({ x: sb.x1, y: sb.y1 }, sa),
+      distanceToSegment({ x: sb.x2, y: sb.y2 }, sa),
+    ) >
+      LINE_CLEARANCE + 1e-9
+  ) {
+    return [];
+  }
   // Where along `a` (as fractions of the way) it lies within `c` of `b`:
   // within `c` of its middle, or of either end.
   const within = (c: number): Interval[] => {
@@ -597,7 +670,9 @@ function closeStretches(
     return union(spans);
   };
   // Not where the two touch, nor near the exempt points, nor under a symbol.
-  const left = subtract(within(LINE_CLEARANCE), [
+  const close = within(LINE_CLEARANCE);
+  if (close.length === 0) return [];
+  const left = subtract(close, [
     ...within(ON / Math.min(boxWidth, boxHeight)),
     ...exempt.map((q) =>
       nearPoint(sa, { x: q.x / boxWidth, y: q.y / boxHeight }, HOP_REACH),
@@ -649,10 +724,8 @@ function between(
   if (Math.abs(slope) < 1e-15) {
     return at0 > low && at0 < high ? [0, 1] : [1, 0];
   }
-  const [t1, t2] = [(low - at0) / slope, (high - at0) / slope].toSorted(
-    (p, q) => p - q,
-  );
-  return [Math.max(0, t1!), Math.min(1, t2!)];
+  const [a, b] = [(low - at0) / slope, (high - at0) / slope];
+  return [Math.max(0, Math.min(a, b)), Math.min(1, Math.max(a, b))];
 }
 
 const intersect = ([a1, a2]: Interval, [b1, b2]: Interval): Interval => [
@@ -662,14 +735,29 @@ const intersect = ([a1, a2]: Interval, [b1, b2]: Interval): Interval => [
 
 /** The stretches, empty ones left out, merged and in order. */
 function union(intervals: Interval[]): Interval[] {
-  const sorted = intervals
-    .filter(([from, to]) => to > from)
-    .toSorted((p, q) => p[0] - q[0]);
+  // By where each starts (an insertion sort: there are only ever a few).
+  const sorted: Interval[] = [];
+  for (let k = 0; k < intervals.length; k++) {
+    const interval = intervals[k]!;
+    if (!(interval[1] > interval[0])) continue;
+    let at = sorted.length;
+    sorted.push(interval);
+    while (at > 0 && sorted[at - 1]![0] > interval[0]) {
+      sorted[at] = sorted[at - 1]!;
+      at--;
+    }
+    sorted[at] = interval;
+  }
   const merged: Interval[] = [];
-  for (const [from, to] of sorted) {
-    const last = merged.at(-1);
+  let last: Interval | undefined;
+  for (let k = 0; k < sorted.length; k++) {
+    const from = sorted[k]![0];
+    const to = sorted[k]![1];
     if (last && from <= last[1]) last[1] = Math.max(last[1], to);
-    else merged.push([from, to]);
+    else {
+      last = [from, to];
+      merged.push(last);
+    }
   }
   return merged;
 }
@@ -786,6 +874,171 @@ const childTop = (
 
 type Box = { left: number; right: number; top: number; bottom: number };
 
+/** Each line drawn, numbered by everything a course is weighed against in
+ * it: two lines alike are numbered alike, however often they are drawn
+ * again. The numbers are kept for as long as the symbols the lines are
+ * drawn among (as `pieceMemos` are). */
+const lineNumbering = new WeakMap<
+  Symbol[],
+  { ids: WeakMap<DrawnLine, number>; byDescription: Map<string, number> }
+>();
+const lineIdOf = (scene: RoutingScene, line: DrawnLine): number => {
+  let numbering = lineNumbering.get(scene.symbols);
+  if (!numbering) {
+    numbering = { ids: new WeakMap(), byDescription: new Map() };
+    lineNumbering.set(scene.symbols, numbering);
+  }
+  const { ids, byDescription } = numbering;
+  let id = ids.get(line);
+  if (id === undefined) {
+    const { segment, kind, owner, endsOn, ownerX, people } = line;
+    const { x1, y1, x2, y2 } = segment;
+    const description = JSON.stringify([
+      x1,
+      y1,
+      x2,
+      y2,
+      kind,
+      owner ?? null,
+      endsOn ?? null,
+      ownerX ?? null,
+      people ?? null,
+    ]);
+    id = byDescription.get(description);
+    if (id === undefined) {
+      id = byDescription.size;
+      byDescription.set(description, id);
+    }
+    ids.set(line, id);
+  }
+  return id;
+};
+
+/** Each line in a scene, numbered apart from every other: lines alike are
+ * told apart by the order they are drawn in. */
+function lineNumbersOf(scene: RoutingScene): Map<DrawnLine, string> {
+  const numbers = new Map<DrawnLine, string>();
+  const drawnAlike = new Map<number, number>();
+  for (const line of scene.lines) {
+    const id = lineIdOf(scene, line);
+    const before = drawnAlike.get(id) ?? 0;
+    drawnAlike.set(id, before + 1);
+    numbers.set(line, before === 0 ? `${id}` : `${id}.${before}`);
+  }
+  return numbers;
+}
+
+type PieceCost = {
+  cost: number;
+  /** The lines near the piece it runs close beside (by their numbers in
+   * the scene, see `lineNumbersOf`), and where. */
+  close: { line: string; stretches: Interval[] }[];
+};
+
+/** What the length of a piece, and the symbols and brackets near it, add
+ * to its cost; with the symbols near it. */
+type SymbolPart = { cost: number; symbols: Symbol[]; brackets: number };
+
+/** What one line near a piece adds to its cost, in the order the costs are
+ * added, and where the piece runs close beside it. */
+type LinePart = { adds: number[]; stretches: Interval[] };
+
+type PieceMemo = {
+  amongSymbols: CoordinateMap<SymbolPart>;
+  amongLinesOnly: CoordinateMap<SymbolPart>;
+  /** By piece, and then by the line (see `lineIdOf`). */
+  lineParts: CoordinateMap<Map<number, LinePart>>;
+};
+
+/** What pieces of courses cost, kept for as long as the symbols they were
+ * weighed among are drawn: by everything about the line that a piece's
+ * cost depends on, and then by the piece (and each line near it). */
+const pieceMemos = new WeakMap<Symbol[], Map<string, PieceMemo>>();
+function pieceMemoOf(scene: RoutingScene, line: unknown[]): PieceMemo {
+  let byLine = pieceMemos.get(scene.symbols);
+  if (!byLine) {
+    byLine = new Map();
+    pieceMemos.set(scene.symbols, byLine);
+  }
+  const key = JSON.stringify(line);
+  let memo = byLine.get(key);
+  if (!memo) {
+    memo = {
+      amongSymbols: new CoordinateMap(),
+      amongLinesOnly: new CoordinateMap(),
+      lineParts: new CoordinateMap(),
+    };
+    byLine.set(key, memo);
+  }
+  return memo;
+}
+
+/**
+ * Values kept by a point, or by the two ends of a piece, compared exactly:
+ * by a hash of the coordinates' bits, so finding one costs one lookup
+ * (rather than writing its coordinates out as text).
+ */
+class CoordinateMap<T> {
+  /** By a hash of the coordinates, the values with those coordinates
+   * (rarely more than one hash's worth). */
+  private readonly byHash = new Map<
+    number,
+    { at: [number, number, number, number]; value: T }[]
+  >();
+
+  get(x: number, y: number): T | undefined {
+    return this.getPiece(x, y, x, y);
+  }
+
+  set(x: number, y: number, value: T) {
+    this.setPiece(x, y, x, y, value);
+  }
+
+  getPiece(x1: number, y1: number, x2: number, y2: number): T | undefined {
+    const kept = this.byHash.get(hashOf(x1, y1, x2, y2));
+    if (!kept) return undefined;
+    for (const { at, value } of kept) {
+      if (at[0] === x1 && at[1] === y1 && at[2] === x2 && at[3] === y2) {
+        return value;
+      }
+    }
+    return undefined;
+  }
+
+  setPiece(x1: number, y1: number, x2: number, y2: number, value: T) {
+    const hash = hashOf(x1, y1, x2, y2);
+    const kept = this.byHash.get(hash);
+    const entry = {
+      at: [x1, y1, x2, y2] as [number, number, number, number],
+      value,
+    };
+    if (!kept) {
+      this.byHash.set(hash, [entry]);
+      return;
+    }
+    const same = kept.findIndex(
+      ({ at }) => at[0] === x1 && at[1] === y1 && at[2] === x2 && at[3] === y2,
+    );
+    if (same >= 0) kept[same] = entry;
+    else kept.push(entry);
+  }
+}
+
+const hashed = new Float64Array(4);
+const hashedBits = new Uint32Array(hashed.buffer);
+/** A hash of four coordinates, from their bits (0 and -0 alike). */
+function hashOf(x1: number, y1: number, x2: number, y2: number): number {
+  hashed[0] = x1 + 0;
+  hashed[1] = y1 + 0;
+  hashed[2] = x2 + 0;
+  hashed[3] = y2 + 0;
+  let hash = 0x811c9dc5;
+  for (let k = 0; k < 8; k++) {
+    hash = Math.imul(hash ^ hashedBits[k]!, 16777619);
+  }
+  return hash & 0x3fffffff;
+}
+
 /**
  * What is wrong with a line's courses among the lines already drawn, for
  * one line at a time: the scene does not change while its courses are
@@ -820,8 +1073,7 @@ function courseCoster(
   // Where the line may meet the line of descent it ends on.
   const isEndPoint = (p: Point) =>
     end.kind === 'join' &&
-    end.points.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < ON);
-  const own = scene.lines.filter(isOwn);
+    end.points.some((q) => shorterThanOn(q.x - p.x, q.y - p.y));
   // The pieces of the line of descent the course joins, at its end.
   const joined = others
     .map((line) => line.segment)
@@ -870,7 +1122,6 @@ function courseCoster(
       top: symbol.top - HOP_REACH * boxh,
       bottom: symbol.bottom + HOP_REACH * boxh,
     }));
-  const keyOf = (p: Point) => `${p.x},${p.y}`;
   // Where the course leaves its owner and meets its target.
   const targets: Point[] =
     end.kind === 'join'
@@ -878,26 +1129,34 @@ function courseCoster(
       : [childTop(end, boxh, scene.cornerRadius)];
   const courseEnds: Point[] = [...(start ? [start] : []), ...targets];
   const isTarget = (p: Point) =>
-    targets.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < ON);
+    targets.some((q) => shorterThanOn(q.x - p.x, q.y - p.y));
 
-  const pieceCosts = new Map<string, number>();
-  // Where each piece runs close beside each line near it (see
-  // `closeStretches`), for the course's stretches beside each line.
-  const pieceClose = new Map<
-    string,
-    { line: DrawnLine; stretches: Interval[] }[]
-  >();
-  const pieceKey = (segment: LineSegment) =>
-    `${segment.x1},${segment.y1},${segment.x2},${segment.y2}`;
-  const pieceCost = (segment: LineSegment): number => {
-    const key = pieceKey(segment);
-    const known = pieceCosts.get(key);
-    if (known !== undefined) return known;
-    const close: { line: DrawnLine; stretches: Interval[] }[] = [];
-    pieceClose.set(key, close);
+  // What each piece costs, and where it runs close beside each line near
+  // it (see `closeStretches`), for the course's stretches beside each line.
+  const pieceCosts = new CoordinateMap<PieceCost>();
+  const numberOf = lineNumbersOf(scene);
+  // What a piece costs is what the symbols near it add, and what each line
+  // near it adds, one line at a time: each is weighed once for every
+  // search of the line's courses among the same symbols (see
+  // `pieceMemoOf`), however the other lines change.
+  const memo = pieceMemoOf(scene, [
+    from,
+    end,
+    owner,
+    endContext.people ?? null,
+    start ?? null,
+    others
+      .filter((line) => joined.includes(line.segment))
+      .map((line) => lineIdOf(scene, line)),
+  ]);
+  const symbolParts = linesOnly ? memo.amongLinesOnly : memo.amongSymbols;
+  /** What the piece's length and the symbols and brackets near it add. */
+  const symbolPartOf = (segment: LineSegment): SymbolPart => {
+    const { x1, y1, x2, y2 } = segment;
+    const known = symbolParts.getPiece(x1, y1, x2, y2);
+    if (known) return known;
     const isNear = nearBox(boxOfSegment(segment));
     const symbols = scene.symbols.filter(isNear);
-    const lines = others.filter((line) => isNear(boxOfSegment(line.segment)));
     let cost = linesOnly ? 0 : COST.length * segmentLength(segment);
     const dx = Math.abs(segment.x2 - segment.x1);
     const dy = Math.abs(segment.y2 - segment.y1);
@@ -917,119 +1176,220 @@ function courseCoster(
       const isEnd = symbol.person === from || symbol.person === endPerson;
       if (symbol.person === from && leavingParent) continue;
       if (symbol.person === endPerson && enteringChild) continue;
+      // A piece well clear of the symbol's box (by more than the clearance
+      // and a diamond's tips) is clear of the symbol.
+      const margin = 0.4;
+      if (
+        Math.min(segment.x1, segment.x2) > symbol.right + margin * boxw ||
+        Math.max(segment.x1, segment.x2) < symbol.left - margin * boxw ||
+        Math.min(segment.y1, segment.y2) > symbol.bottom + margin * boxh ||
+        Math.max(segment.y1, segment.y2) < symbol.top - margin * boxh
+      ) {
+        continue;
+      }
       // How near the piece comes to the symbol as it is drawn.
-      const nearest = nearestOutside(segment, symbol, boxw, boxh);
+      const nearest = nearestOutside(segment, symbol, boxw, boxh, -ON / boxw);
       if (nearest < -ON / boxw) {
         cost += COST.symbol;
       } else if (!isEnd && nearest < LINE_CLEARANCE) {
         cost += COST.nearSymbol;
       }
     }
-    for (const line of own) {
-      const at = crossing(segment, line.segment);
-      if (at && !insideAny(symbols, at)) cost += COST.crossOwn;
-      // Lines of one owner leave the owner together and may run on as one
-      // course; once they part they keep clear of each other, like any two
-      // lines.
-      if (!isNear(boxOfSegment(line.segment))) continue;
-      const partings = [
-        { x: line.segment.x1, y: line.segment.y1 },
-        { x: line.segment.x2, y: line.segment.y2 },
-      ]
-        .filter((p) => distanceToSegment(p, segment) < ON)
-        .concat(
-          [
-            { x: segment.x1, y: segment.y1 },
-            { x: segment.x2, y: segment.y2 },
-          ].filter((p) => distanceToSegment(p, line.segment) < ON),
-        );
-      const stretches = closeStretches(
-        segment,
-        line.segment,
-        boxw,
-        boxh,
-        [...ends, ...leaving],
-        [...(at ? [at] : []), ...(start ? [start] : []), ...partings],
-      );
-      if (stretches.length > 0) close.push({ line, stretches });
-    }
+    let brackets = 0;
     for (const bracket of linesOnly ? [] : scene.brackets.filter(isNear)) {
-      if (lengthInside(segment, bracket) > ON) cost += COST.bracket;
+      if (lengthInside(segment, bracket) > ON) brackets++;
     }
+    const part = { cost, symbols, brackets };
+    symbolParts.setPiece(x1, y1, x2, y2, part);
+    return part;
+  };
+  /** What a line near the piece adds to it: the costs it adds, one after
+   * another, and where the piece runs close beside it. */
+  const linePartOf = (
+    segment: LineSegment,
+    { line, id, own }: (typeof sceneLines)[number],
+    symbols: Symbol[],
+    byLine: Map<number, LinePart>,
+  ): LinePart => {
+    const known = byLine.get(id);
+    if (known) return known;
+    spend(scene, WORK.linePart);
+    const part = own
+      ? ownLinePart(segment, line, symbols)
+      : otherLinePart(segment, line, symbols);
+    byLine.set(id, part);
+    return part;
+  };
+  // Another line of the same owner: lines of one owner never cross.
+  const ownLinePart = (
+    segment: LineSegment,
+    line: DrawnLine,
+    symbols: Symbol[],
+  ): LinePart => {
+    const adds: number[] = [];
+    const at = crossing(segment, line.segment);
+    if (at && !insideAny(symbols, at)) adds.push(COST.crossOwn);
+    // Lines of one owner leave the owner together and may run on as one
+    // course; once they part they keep clear of each other, like any two
+    // lines.
+    const partings = [
+      { x: line.segment.x1, y: line.segment.y1 },
+      { x: line.segment.x2, y: line.segment.y2 },
+    ]
+      .filter((p) => distanceToSegment(p, segment) < ON)
+      .concat(
+        [
+          { x: segment.x1, y: segment.y1 },
+          { x: segment.x2, y: segment.y2 },
+        ].filter((p) => distanceToSegment(p, line.segment) < ON),
+      );
+    const stretches = closeStretches(
+      segment,
+      line.segment,
+      boxw,
+      boxh,
+      [...ends, ...leaving],
+      [...(at ? [at] : []), ...(start ? [start] : []), ...partings],
+    );
+    return { adds, stretches };
+  };
+  const otherLinePart = (
+    segment: LineSegment,
+    line: DrawnLine,
+    symbols: Symbol[],
+  ): LinePart => {
+    const adds: number[] = [];
+    let stretches: Interval[] = [];
+    if (sharedRun(segment, line.segment, ends) > ON) adds.push(COST.runAlong);
+    const at = crossing(segment, line.segment);
+    // Lines meeting at one point (on a line of descent, or at the top of
+    // the child they all reach, where they converge) run close only
+    // there; a line keeps clear of every line of descent, the one it
+    // joins included, but near its own ends, where it leaves its owner and
+    // meets its target.
+    const meetsIt =
+      (end.kind === 'child' && line.endsOn === end.person) ||
+      (end.kind === 'join' &&
+        line.kind === 'other' &&
+        end.points.some(
+          (p) =>
+            shorterThanOn(line.segment.x2 - p.x, line.segment.y2 - p.y) ||
+            shorterThanOn(line.segment.x1 - p.x, line.segment.y1 - p.y),
+        ));
+    if (!meetsIt) {
+      stretches = closeStretches(segment, line.segment, boxw, boxh, ends, [
+        ...(at ? [at] : []),
+        ...(line.kind === 'other' ? [] : courseEnds),
+      ]);
+    }
+    if (at && !insideAny(symbols, at)) {
+      adds.push(
+        (endPerson !== undefined && line.endsOn === endPerson) ||
+          sharesOwner(line)
+          ? COST.crossOwn
+          : COST.crossing,
+      );
+    }
+    for (const vertex of [
+      { x: line.segment.x1, y: line.segment.y1 },
+      { x: line.segment.x2, y: line.segment.y2 },
+    ]) {
+      if (
+        insideAny(symbols, vertex) ||
+        isEndPoint(vertex) ||
+        // Lines into one child converge on one point at its top.
+        (end.kind === 'child' && isTarget(vertex))
+      ) {
+        continue;
+      }
+      // A junction's distance from the corners of the line it meets is
+      // measured along that line, and is kept where the junction is
+      // offered (see `barPoints`).
+      if (
+        [
+          { x: segment.x1, y: segment.y1 },
+          { x: segment.x2, y: segment.y2 },
+        ].some(isEndPoint) &&
+        joined.some((piece) => distanceToSegment(vertex, piece) < ON)
+      ) {
+        continue;
+      }
+      const distance = distanceToSegment(vertex, segment);
+      if (distance < ON) adds.push(COST.throughCorner);
+      else if (distance < near) adds.push(COST.nearCorner);
+    }
+    return { adds, stretches };
+  };
+  // The scene's lines, each with its box, its numbers and whether it is
+  // the line's own, for finding the lines near each piece.
+  const sceneLines = scene.lines.map((line) => {
+    const { x1, y1, x2, y2 } = line.segment;
+    return {
+      line,
+      left: Math.min(x1, x2),
+      right: Math.max(x1, x2),
+      top: Math.min(y1, y2),
+      bottom: Math.max(y1, y2),
+      id: lineIdOf(scene, line),
+      number: numberOf.get(line)!,
+      own: isOwn(line),
+    };
+  });
+  const pieceCost = (segment: LineSegment): PieceCost => {
+    const { x1, y1, x2, y2 } = segment;
+    const known = pieceCosts.getPiece(x1, y1, x2, y2);
+    if (known !== undefined) return known;
+    spend(scene, WORK.piece);
+    const close: PieceCost['close'] = [];
+    const { cost: symbolsCost, symbols, brackets } = symbolPartOf(segment);
+    let cost = symbolsCost;
+    let byLine = memo.lineParts.getPiece(x1, y1, x2, y2);
+    if (!byLine) {
+      byLine = new Map();
+      memo.lineParts.setPiece(x1, y1, x2, y2, byLine);
+    }
+    // Only what lies near a piece can add to its cost (see `nearBox`).
+    const [left, right] = [Math.min(x1, x2) - reach, Math.max(x1, x2) + reach];
+    const [top, bottom] = [Math.min(y1, y2) - reach, Math.max(y1, y2) + reach];
+    const nearLines = sceneLines.filter(
+      (box) =>
+        box.right >= left &&
+        box.left <= right &&
+        box.bottom >= top &&
+        box.top <= bottom,
+    );
+    // Each line's costs are added one at a time, in the order the lines are
+    // drawn, as they always were: so a course costs exactly what it did.
+    const add = (nearLine: (typeof sceneLines)[number]) => {
+      const { adds, stretches } = linePartOf(
+        segment,
+        nearLine,
+        symbols,
+        byLine,
+      );
+      for (const each of adds) cost += each;
+      if (stretches.length > 0) {
+        close.push({ line: nearLine.number, stretches });
+      }
+    };
+    // Only a line near the piece can cross it.
+    for (const nearLine of nearLines) if (nearLine.own) add(nearLine);
+    for (let k = 0; k < brackets; k++) cost += COST.bracket;
     // A piece on the course of a line of the same owner is drawn once, with
     // that line: what it meets is counted there.
-    const onOwnCourse = own.some(
-      (line) =>
+    const onOwnCourse = nearLines.some(
+      ({ line, own }) =>
+        own &&
         distanceToSegment({ x: segment.x1, y: segment.y1 }, line.segment) <
           ON &&
         distanceToSegment({ x: segment.x2, y: segment.y2 }, line.segment) < ON,
     );
-    for (const line of onOwnCourse ? [] : lines) {
-      if (sharedRun(segment, line.segment, ends) > ON) cost += COST.runAlong;
-      const at = crossing(segment, line.segment);
-      // Lines meeting at one point (on a line of descent, or at the top of
-      // the child they all reach, where they converge) run close only
-      // there; a line keeps clear of every line of descent, the one it
-      // joins included, but near its own ends, where it leaves its owner and
-      // meets its target.
-      const meetsIt =
-        (end.kind === 'child' && line.endsOn === end.person) ||
-        (end.kind === 'join' &&
-          line.kind === 'other' &&
-          end.points.some(
-            (p) =>
-              Math.hypot(line.segment.x2 - p.x, line.segment.y2 - p.y) < ON ||
-              Math.hypot(line.segment.x1 - p.x, line.segment.y1 - p.y) < ON,
-          ));
-      if (!meetsIt) {
-        const stretches = closeStretches(
-          segment,
-          line.segment,
-          boxw,
-          boxh,
-          ends,
-          [...(at ? [at] : []), ...(line.kind === 'other' ? [] : courseEnds)],
-        );
-        if (stretches.length > 0) close.push({ line, stretches });
-      }
-      if (at && !insideAny(symbols, at)) {
-        cost +=
-          (endPerson !== undefined && line.endsOn === endPerson) ||
-          sharesOwner(line)
-            ? COST.crossOwn
-            : COST.crossing;
-      }
-      for (const vertex of [
-        { x: line.segment.x1, y: line.segment.y1 },
-        { x: line.segment.x2, y: line.segment.y2 },
-      ]) {
-        if (
-          insideAny(symbols, vertex) ||
-          isEndPoint(vertex) ||
-          // Lines into one child converge on one point at its top.
-          (end.kind === 'child' && isTarget(vertex))
-        ) {
-          continue;
-        }
-        // A junction's distance from the corners of the line it meets is
-        // measured along that line, and is kept where the junction is
-        // offered (see `barPoints`).
-        if (
-          [
-            { x: segment.x1, y: segment.y1 },
-            { x: segment.x2, y: segment.y2 },
-          ].some(isEndPoint) &&
-          joined.some((piece) => distanceToSegment(vertex, piece) < ON)
-        ) {
-          continue;
-        }
-        const distance = distanceToSegment(vertex, segment);
-        if (distance < ON) cost += COST.throughCorner;
-        else if (distance < near) cost += COST.nearCorner;
-      }
+    if (!onOwnCourse) {
+      for (const nearLine of nearLines) if (!nearLine.own) add(nearLine);
     }
-    pieceCosts.set(key, cost);
-    return cost;
+    const piece = { cost, close };
+    pieceCosts.setPiece(x1, y1, x2, y2, piece);
+    return piece;
   };
 
   // A corner hidden by a symbol is not seen: the course leaves its parent's
@@ -1040,10 +1400,9 @@ function courseCoster(
       (symbol) => outsideSymbol(corner, symbol, symbol.shape) < -0.02,
     );
   // A corner of this line on another line reads as a junction.
-  const cornerCosts = new Map<string, number>();
-  const cornerCost = (corner: Point): number => {
-    const key = keyOf(corner);
-    const known = cornerCosts.get(key);
+  const cornerCosts = new CoordinateMap<{ cost: number; hidden: boolean }>();
+  const cornerCost = (corner: Point): { cost: number; hidden: boolean } => {
+    const known = cornerCosts.get(corner.x, corner.y);
     if (known !== undefined) return known;
     const isNear = nearBox({
       left: corner.x,
@@ -1052,7 +1411,8 @@ function courseCoster(
       bottom: corner.y,
     });
     let cost = 0;
-    if (!hiddenCorner(corner)) {
+    const hidden = hiddenCorner(corner);
+    if (!hidden) {
       if (!linesOnly) cost += COST.bend;
       for (const line of others) {
         if (!isNear(boxOfSegment(line.segment))) continue;
@@ -1061,8 +1421,9 @@ function courseCoster(
         else if (distance < near) cost += COST.nearCorner;
       }
     }
-    cornerCosts.set(key, cost);
-    return cost;
+    const weighed = { cost, hidden };
+    cornerCosts.set(corner.x, corner.y, weighed);
+    return weighed;
   };
 
   // Where it leaves the parent, clear of where other lines meet that
@@ -1106,12 +1467,11 @@ function courseCoster(
       const length = Math.hypot(ux, uy);
       for (const line of meetingEnd(at)) {
         const { x1, y1, x2, y2 } = line.segment;
-        const far =
-          Math.hypot(x1 - at.x, y1 - at.y) < ON
-            ? { x: x2, y: y2 }
-            : Math.hypot(x2 - at.x, y2 - at.y) < ON
-              ? { x: x1, y: y1 }
-              : undefined;
+        const far = shorterThanOn(x1 - at.x, y1 - at.y)
+          ? { x: x2, y: y2 }
+          : shorterThanOn(x2 - at.x, y2 - at.y)
+            ? { x: x1, y: y1 }
+            : undefined;
         if (!far || length < ON) continue;
         // A piece hidden under a symbol from where it meets (a line's run
         // on to its child's centre) is not seen to be continued.
@@ -1183,33 +1543,63 @@ function courseCoster(
     return cost;
   };
 
-  // What weighing one course costs the search's work: as much as there is
-  // in the scene to weigh it against.
-  const weight = 1 + scene.symbols.length + scene.lines.length;
+  /** What a course costs at least, from its shape alone: its length, how
+   * many of its corners show for certain (any corner clear of every row of
+   * symbols), and bending at all. Never more than what it costs (see
+   * `cost`), and cheap enough to rule out most courses before they are
+   * weighed. */
+  const lowerBound = (points: Point[]): number => {
+    const meetsChild = end.kind === 'child' ? points.findIndex(isTarget) : -1;
+    const last = meetsChild > 0 ? meetsChild : points.length - 1;
+    let bound = 0;
+    let shows = 0;
+    for (let k = 1; k <= last; k++) {
+      const a = points[k - 1]!;
+      const b = points[k]!;
+      const dx = Math.abs(b.x - a.x);
+      const dy = Math.abs(b.y - a.y);
+      const length = Math.hypot(dx, dy);
+      if (length < ON) continue;
+      bound += COST.length * length;
+      if (dx > ON && dy > ON && Math.min(dx, dy) / Math.max(dx, dy) < 0.27) {
+        bound += COST.nearlyUpright;
+      }
+      // A corner in the gap between two rows, clear of every symbol (a
+      // diamond's tip stands a little above and below its box), shows.
+      if (k < last) {
+        const into = b.y - Math.floor(b.y);
+        if (into > boxh * 1.15 && into < 1 - 0.15 * boxh) shows++;
+      }
+    }
+    return bound + shows * COST.bend + (shows > 0 ? COST.bent : 0);
+  };
 
   /** What is wrong with a course, as a cost: 0 is a clean line. Once the
    * cost passes `limit`, it is returned as it stands. */
-  return (points: Point[], limit = Number.POSITIVE_INFINITY): number => {
-    if (scene.work) scene.work.spent += weight;
+  const cost = (points: Point[], limit = Number.POSITIVE_INFINITY): number => {
+    spend(scene, WORK.course);
     // A line into a child is seen as far as the top of their symbol, where
     // the lines into them converge; its run on to their centre is hidden.
     const meetsChild = end.kind === 'child' ? points.findIndex(isTarget) : -1;
     const seen = meetsChild > 0 ? points.slice(0, meetsChild + 1) : points;
     const segments = pieces(seen);
-    let cost = 0;
-    const corners = seen.slice(1, -1);
-    for (const corner of corners) cost += cornerCost(corner);
-    if (!linesOnly && corners.some((corner) => !hiddenCorner(corner))) {
-      cost += COST.bent;
+    let total = 0;
+    let shows = false;
+    for (let k = 1; k < seen.length - 1; k++) {
+      const corner = cornerCost(seen[k]!);
+      total += corner.cost;
+      if (!corner.hidden) shows = true;
     }
+    if (!linesOnly && shows) total += COST.bent;
     // A course runs close beside a line for as long as its pieces do, one
     // after another, round its corners.
-    const beside = new Map<DrawnLine, Interval[]>();
+    const beside = new Map<string, Interval[]>();
     let along = 0;
     for (const segment of segments) {
-      if (cost > limit) return cost;
-      cost += pieceCost(segment);
-      for (const { line, stretches } of pieceClose.get(pieceKey(segment))!) {
+      if (total > limit) return total;
+      const piece = pieceCost(segment);
+      total += piece.cost;
+      for (const { line, stretches } of piece.close) {
         const spans = beside.get(line) ?? [];
         for (const [opens, closes] of stretches) {
           spans.push([along + opens - 1e-9, along + closes + 1e-9]);
@@ -1223,11 +1613,12 @@ function courseCoster(
     }
     for (const spans of beside.values()) {
       if (union(spans).some(([first, last]) => last - first > LINE_CLEARANCE)) {
-        cost += COST.sideBySide;
+        total += COST.sideBySide;
       }
     }
-    return cost + endsCost(points, segments);
+    return total + endsCost(points, segments);
   };
+  return Object.assign(cost, { lowerBound });
 }
 
 /** The angles off upright at which a course may come from a lane into its
@@ -1282,6 +1673,9 @@ type Course = {
  * the same owner a course may fork from. Each bounds the courses weighed
  * for one line, however large the family. */
 const SYMBOLS_PASSED = 6;
+/** How many of a co-parent's own courses, the cheapest alone, are weighed
+ * with the other's line joined to each. */
+const LEAD_COURSES = 400;
 const DOORS = 6;
 const OWN_COURSES = 48;
 
@@ -1462,9 +1856,41 @@ function pairOptions(
   const { mate, ...single } = from;
   if (!mate) return routeOptions(from, end, owner, scene, limit, current);
   const other = mateFrom(from, mate);
-  const scored: (Course & { cost: number })[] = [];
+  // The `limit` cheapest pairs of courses so far, by what they cost
+  // together, and, at equal cost, in the order they were offered: the
+  // current pair first, then each line's courses (the parent's own line
+  // first), cheapest alone first, in the order they were offered.
+  type Pair = Course & { cost: number; offered: number[] };
+  const best: Pair[] = [];
+  const before = (a: number[], b: number[]) => {
+    for (let k = 0; k < a.length; k++) {
+      if (a[k] !== b[k]) return a[k]! < b[k]!;
+    }
+    return false;
+  };
+  const take = (pair: Pair) => {
+    const last = best.length >= limit ? best[limit - 1] : undefined;
+    if (
+      last &&
+      !(
+        pair.cost < last.cost ||
+        (pair.cost === last.cost && before(pair.offered, last.offered))
+      )
+    ) {
+      return;
+    }
+    const at = best.findIndex(
+      (kept) =>
+        kept.cost > pair.cost ||
+        (kept.cost === pair.cost && before(pair.offered, kept.offered)),
+    );
+    best.splice(at < 0 ? best.length : at, 0, pair);
+    best.length = Math.min(best.length, limit);
+  };
+  const bound = () =>
+    best.length >= limit ? best[limit - 1]!.cost : Number.POSITIVE_INFINITY;
   if (current?.matePoints) {
-    scored.push({
+    take({
       ...current,
       cost: courseCost(
         from,
@@ -1474,31 +1900,74 @@ function pairOptions(
         current.points,
         current.matePoints,
       ),
+      offered: [-1],
     });
   }
-  for (const [lead, follow] of [
-    [single, other],
-    [other, single],
-  ] as const) {
-    const joins = (points: Point[]) =>
-      joinedCourse(lead, follow, points, scene.boxHeight) !== undefined;
-    for (const option of routeOptions(lead, end, owner, scene, 400, {
-      accept: joins,
-    })) {
+  for (const [group, [lead, follow]] of (
+    [
+      [single, other],
+      [other, single],
+    ] as const
+  ).entries()) {
+    // One coster for every course of the follower's line, so what each of
+    // their shared pieces costs is weighed once.
+    const followCost = courseCosts(follow, end, owner, scene);
+    const pairOf = (option: Course & { cost: number }, offered: number[]) => {
       const joined = joinedCourse(lead, follow, option.points, scene.boxHeight);
-      if (!joined) continue;
+      if (!joined) return undefined;
       const [points, matePoints] =
         lead === single ? [option.points, joined] : [joined, option.points];
-      scored.push({
+      return {
         points,
         matePoints,
         endX: option.endX,
-        cost: option.cost + courseCost(follow, end, owner, scene, joined),
+        cost: option.cost + followCost(joined),
+        offered,
+      };
+    };
+    const { candidates, costOf } = courseCandidates(lead, end, owner, scene);
+    const offers: Course[] = [];
+    for (const candidate of candidates) {
+      const points = simplify(candidate.points);
+      spend(scene, WORK.offer);
+      if (joinedCourse(lead, follow, points, scene.boxHeight)) {
+        offers.push({ points, endX: candidate.endX });
+      }
+    }
+    if (offers.length > LEAD_COURSES) {
+      // More courses than are weighed: the `LEAD_COURSES` cheapest alone.
+      const options = routeOptions(lead, end, owner, scene, LEAD_COURSES, {
+        accept: (points) =>
+          joinedCourse(lead, follow, points, scene.boxHeight) !== undefined,
       });
+      for (const [k, option] of options.entries()) {
+        const pair = pairOf(option, [group, k]);
+        if (pair) take(pair);
+      }
+      continue;
+    }
+    // Every course is weighed: one dearer alone than the `limit` cheapest
+    // pairs so far is dropped as soon as that is clear (the follower's
+    // course adds nothing less than nothing).
+    const seen = new Set<string>();
+    for (const [k, offer] of offers.entries()) {
+      const limitNow = bound();
+      if (costOf.lowerBound(offer.points) > limitNow + 1e-7) continue;
+      const cost = costOf(offer.points, limitNow);
+      if (cost > limitNow) continue;
+      if (!firstOffer(seen, offer.points)) continue;
+      const pair = pairOf({ ...offer, cost }, [group, cost, k]);
+      if (pair) take(pair);
     }
   }
-  const best = scored.toSorted((a, b) => a.cost - b.cost).slice(0, limit);
-  if (best.length > 0) return best;
+  if (best.length > 0) {
+    return best.map(({ points, matePoints, endX, cost }) => ({
+      points,
+      ...(matePoints ? { matePoints } : {}),
+      endX,
+      cost,
+    }));
+  }
   // No joined course: the two lines each go their own way.
   const [own] = routeOptions(single, end, owner, scene, 1);
   const [theirs] = routeOptions(other, end, owner, scene, 1);
@@ -1543,6 +2012,65 @@ export function routeOptions(
   const accept = current && 'accept' in current ? current.accept : undefined;
   const kept = current && 'points' in current ? current : undefined;
   if (from.mate) return pairOptions(from, end, owner, scene, limit, kept);
+  const { candidates, costOf, fallback } = courseCandidates(
+    from,
+    end,
+    owner,
+    scene,
+  );
+  // The `limit` cheapest courses so far, in order: by cost, and, at equal
+  // cost, in the order they were offered, so the current course (and
+  // earlier candidates) win ties. A course is weighed only while it could
+  // be among them, and dropped as soon as it is clear it cannot be: by what
+  // its shape costs at least, and then as its cost is added up. A course
+  // offered twice is weighed once.
+  const best: (Course & { cost: number })[] = [];
+  const seen = new Set<string>();
+  for (const candidate of kept ? [kept, ...candidates] : candidates) {
+    // The current course is kept as it is, so a caller can tell it was.
+    const points =
+      candidate === kept ? kept.points : simplify(candidate.points);
+    spend(scene, WORK.offer);
+    if (accept && !accept(points)) continue;
+    const bound =
+      best.length >= limit ? best[limit - 1]!.cost : Number.POSITIVE_INFINITY;
+    if (costOf.lowerBound(points) > bound + 1e-7) continue;
+    const cost = costOf(points, bound);
+    if (!(cost < bound)) continue;
+    if (!firstOffer(seen, points)) continue;
+    const at = best.findIndex((other) => other.cost > cost);
+    best.splice(at < 0 ? best.length : at, 0, {
+      points,
+      endX: candidate.endX,
+      cost,
+    });
+    best.length = Math.min(best.length, limit);
+  }
+  return best.length > 0 ? best : [fallback];
+}
+
+/** Whether a course is offered for the first time (by its points, to a
+ * millionth), noting it. */
+function firstOffer(seen: Set<string>, points: Point[]): boolean {
+  const key = points
+    .map((p) => `${p.x.toFixed(6)},${p.y.toFixed(6)}`)
+    .join(' ');
+  if (seen.has(key)) return false;
+  seen.add(key);
+  return true;
+}
+
+/**
+ * The courses a line may take, in the order they are offered, each as it
+ * is generated (see `simplify`), with what weighs them; and the course
+ * drawn if none can be: straight to the first of its targets.
+ */
+function courseCandidates(
+  from: From,
+  end: RouteEnd,
+  owner: string,
+  scene: RoutingScene,
+) {
   const { boxWidth: boxw, boxHeight: boxh } = scene;
   const defaultStart = { x: from.x, y: from.y ?? from.layer + boxh / 2 };
   const targets =
@@ -1616,8 +2144,7 @@ export function routeOptions(
                 { x: x2, y: y2 },
                 { x: x1, y: y1 },
               ];
-        return Math.hypot(top.x - p.x, top.y - p.y) < ON &&
-          bottom.y - top.y > ON
+        return shorterThanOn(top.x - p.x, top.y - p.y) && bottom.y - top.y > ON
           ? [bottom]
           : [];
       });
@@ -1663,14 +2190,13 @@ export function routeOptions(
         },
         segment,
       );
-    return scene.symbols
-      .filter(
-        (symbol) =>
-          symbol.person !== from.person &&
-          !(end.kind === 'child' && symbol.person === end.person) &&
-          distanceOf(symbol) < (radii[0]! + 0.25) * boxw,
-      )
-      .toSorted((p, q) => distanceOf(p) - distanceOf(q))
+    const inTheWay = scene.symbols.filter(
+      (symbol) =>
+        symbol.person !== from.person &&
+        !(end.kind === 'child' && symbol.person === end.person) &&
+        distanceOf(symbol) < (radii[0]! + 0.25) * boxw,
+    );
+    return inOrder(inTheWay, (p, q) => distanceOf(p) - distanceOf(q))
       .slice(0, SYMBOLS_PASSED)
       .flatMap((symbol) => {
         const x = (symbol.left + symbol.right) / 2;
@@ -1699,9 +2225,10 @@ export function routeOptions(
   const stemStarts = stemStartsOf(from, end, boxh);
   const fromStem = stemStarts.length > 0;
   for (const start of fromStem ? stemStarts : [defaultStart]) {
-    const startXs = fromStem
-      ? [start.x]
-      : [start.x, start.x + 0.2 * boxw, start.x - 0.2 * boxw];
+    const startXs =
+      fromStem || scene.screening
+        ? [start.x]
+        : [start.x, start.x + 0.2 * boxw, start.x - 0.2 * boxw];
     const firstLanes = (lanes: number[]) => (fromStem ? [start.y] : lanes);
     // A straight line down to the child may leave the parent at a point on
     // their bottom edge rather than from their centre, out of the way of the
@@ -1777,7 +2304,7 @@ export function routeOptions(
       // or down to a lane, across, and into the target.
       for (const target of targets) {
         for (const by of clearOfSymbols(start, target.meet)) {
-          for (const y of [by.y, ...lanesAboveEnd]) {
+          for (const y of [by.y, ...(scene.screening ? [] : lanesAboveEnd)]) {
             if (y < by.y) continue;
             for (const into of approaches(target, y)) {
               candidates.push({ points: [start, by, ...into], endX: target.x });
@@ -1787,8 +2314,8 @@ export function routeOptions(
       }
       // Across another child's line up, between their sibling bar and their
       // symbol: the one way out from between lines that converge on them.
-      const doors = scene.lines
-        .flatMap((line) => {
+      const doors = inOrder(
+        scene.lines.flatMap((line) => {
           if (line.kind !== 'upline') return [];
           const { x1, y1, x2, y2 } = line.segment;
           const [low, high] =
@@ -1808,15 +2335,13 @@ export function routeOptions(
           const y = (high.y + childLayer) / 2;
           const t = (y - high.y) / (low.y - high.y);
           return [{ x: high.x + t * (low.x - high.x), y }];
-        })
+        }),
         // The doors nearest the target, so a wide row of children offers no
         // more ways through than a narrow one.
-        .toSorted(
-          (p, q) =>
-            Math.min(...targets.map((target) => Math.abs(target.x - p.x))) -
-            Math.min(...targets.map((target) => Math.abs(target.x - q.x))),
-        )
-        .slice(0, DOORS);
+        (p, q) =>
+          Math.min(...targets.map((target) => Math.abs(target.x - p.x))) -
+          Math.min(...targets.map((target) => Math.abs(target.x - q.x))),
+      ).slice(0, DOORS);
       // Where a line of the same owner, leaving from the same point, passes
       // the door's height between the start and the door: a course that
       // runs on that line's course to there parts from it as a fork.
@@ -1904,8 +2429,8 @@ export function routeOptions(
         const clear = boxw * (0.5 + 1.25 * LINE_CLEARANCE);
         // The ways down nearest the parent or the child, to keep the search
         // small in a wide family.
-        const wayDown = [
-          ...new Set([
+        const wayDown = inOrder(
+          new Set([
             from.x,
             ...targets.map((target) => target.x),
             ...onRowsBetween.flatMap((x) => [
@@ -1915,13 +2440,10 @@ export function routeOptions(
               x + clear,
             ]),
           ]),
-        ]
-          .toSorted(
-            (a, b) =>
-              Math.min(Math.abs(a - from.x), Math.abs(a - towardX)) -
-              Math.min(Math.abs(b - from.x), Math.abs(b - towardX)),
-          )
-          .slice(0, 12);
+          (a, b) =>
+            Math.min(Math.abs(a - from.x), Math.abs(a - towardX)) -
+            Math.min(Math.abs(b - from.x), Math.abs(b - towardX)),
+        ).slice(0, scene.screening ? SCREENING_WAYS_DOWN : WAYS_DOWN);
         for (const target of targets) {
           for (const x of startXs) {
             for (const y1 of lanesBelowStart) {
@@ -1949,45 +2471,14 @@ export function routeOptions(
     }
   }
 
-  const scored: (Course & { cost: number })[] = [];
-  const cheapest: number[] = [];
-  const seen = new Set<string>();
-  for (const candidate of kept ? [kept, ...candidates] : candidates) {
-    // The current course is kept as it is, so a caller can tell it was.
-    const points =
-      candidate === kept ? kept.points : simplify(candidate.points);
-    if (accept && !accept(points)) continue;
-    const key = points
-      .map((p) => `${p.x.toFixed(6)},${p.y.toFixed(6)}`)
-      .join(' ');
-    if (seen.has(key)) continue;
-    seen.add(key);
-    // A course already dearer than the `limit` cheapest so far is dropped
-    // as soon as that is clear.
-    const bound =
-      cheapest.length >= limit
-        ? cheapest[limit - 1]!
-        : Number.POSITIVE_INFINITY;
-    const cost = costOf(points, bound);
-    scored.push({ points, endX: candidate.endX, cost });
-    if (cost < bound) {
-      const at = cheapest.findIndex((other) => other > cost);
-      cheapest.splice(at < 0 ? cheapest.length : at, 0, cost);
-      cheapest.length = Math.min(cheapest.length, limit);
-    }
-  }
-  // Stable, so the current course (and earlier candidates) win ties.
-  const best = scored.toSorted((a, b) => a.cost - b.cost).slice(0, limit);
-  if (best.length > 0) return best;
   // Never a lone point, which would draw nothing.
   const [first] = targets;
-  return [
-    {
-      points: [defaultStart, first!.meet, ...first!.tail],
-      endX: first!.x,
-      cost: Number.POSITIVE_INFINITY,
-    },
-  ];
+  const fallback: Course & { cost: number } = {
+    points: [defaultStart, first!.meet, ...first!.tail],
+    endX: first!.x,
+    cost: Number.POSITIVE_INFINITY,
+  };
+  return { candidates, costOf, fallback };
 }
 
 export { pieces as segmentsOf };

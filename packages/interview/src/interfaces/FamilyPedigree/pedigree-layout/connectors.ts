@@ -44,7 +44,7 @@ import type {
   PedigreeEdgeType,
   PedigreeSymbolShape,
 } from './types';
-import { areConsanguineous, recordedKind } from './utils';
+import { areConsanguineous, inOrder, recordedKind } from './utils';
 
 /** The height of the question mark between twins of unknown zygosity, as a
  * fraction of a symbol's height. */
@@ -121,7 +121,7 @@ export function computeConnectors(
 
 /** The indexes of `costs`, the cheapest first. */
 const cheapestFirst = (costs: number[]) =>
-  costs.map((_, k) => k).toSorted((x, y) => costs[x]! - costs[y]!);
+  costs.map((_, k) => k).toSorted((x, y) => costs[x]! - costs[y]! || x - y);
 
 /**
  * The connectors (see `computeConnectors`), and what their routed lines
@@ -329,24 +329,26 @@ export function routePedigree(
     const routedCountByLayer = new Map<number, number>();
     const stemCountBySide = new Map<string, number>();
     // Shorter lines take the lower lanes, so lines nest rather than cross.
-    const routedPairs = [...partnerPairs]
-      .filter((pairKey) => !renderedPartnerPairs.has(pairKey))
-      .map((pairKey) => {
-        const [first, second] = pairKey.split(',').map(Number);
-        const firstLocation =
-          first === undefined ? undefined : nodeLocation.get(first);
-        const secondLocation =
-          second === undefined ? undefined : nodeLocation.get(second);
-        return { pairKey, first, second, firstLocation, secondLocation };
-      })
-      .toSorted((a, b) => {
+    const routedPairs = inOrder(
+      [...partnerPairs]
+        .filter((pairKey) => !renderedPartnerPairs.has(pairKey))
+        .map((pairKey) => {
+          const [first, second] = pairKey.split(',').map(Number);
+          const firstLocation =
+            first === undefined ? undefined : nodeLocation.get(first);
+          const secondLocation =
+            second === undefined ? undefined : nodeLocation.get(second);
+          return { pairKey, first, second, firstLocation, secondLocation };
+        }),
+      (a, b) => {
         const span = (pair: typeof a) =>
           pair.firstLocation && pair.secondLocation
             ? Math.abs(pair.firstLocation.x - pair.secondLocation.x) +
               Math.abs(pair.firstLocation.layer - pair.secondLocation.layer)
             : 0;
         return span(a) - span(b);
-      });
+      },
+    );
 
     for (const {
       pairKey,
@@ -640,7 +642,7 @@ export function routePedigree(
     const queue = candidates.filter(holdsTwins);
     const bySize = (a: Stretch, b: Stretch) =>
       b.ks.length - a.ks.length || a.ks[0]! - b.ks[0]!;
-    queue.sort(bySize);
+    queue.splice(0, queue.length, ...inOrder(queue, bySize));
     while (queue.length > 0) {
       const stretch = queue.shift()!;
       const same = kept.find((run) => run.ks.join() === stretch.ks.join());
@@ -664,7 +666,7 @@ export function routePedigree(
         { ks: inside, helpers: stretch.helpers },
         { ks: outside, helpers: stretch.helpers },
       );
-      queue.sort(bySize);
+      queue.splice(0, queue.length, ...inOrder(queue, bySize));
     }
     const runs: SibshipRunPlan[] = kept.map((run) => ({
       id: `${i},${columns[run.ks[0]!]},${columns[run.ks.at(-1)!]}`,
@@ -675,18 +677,20 @@ export function routePedigree(
       topY: 0,
       bottomY: 0,
     }));
-    const forked = runs
-      .filter((run) => run.ks.length > 1)
-      .toSorted((a, b) => b.ks.length - a.ks.length);
+    const forked = inOrder(
+      runs.filter((run) => run.ks.length > 1),
+      (a, b) => b.ks.length - a.ks.length,
+    );
     const parentOf = new Map<SibshipRunPlan, SibshipRunPlan>();
     for (const run of runs) {
-      const around = forked
-        .filter(
+      const around = inOrder(
+        forked.filter(
           (other) =>
             other.ks.length > run.ks.length &&
             run.ks.every((k) => other.ks.includes(k)),
-        )
-        .toSorted((a, b) => a.ks.length - b.ks.length)[0];
+        ),
+        (a, b) => a.ks.length - b.ks.length,
+      )[0];
       if (around) parentOf.set(run, around);
     }
     const insideOf = (run: SibshipRunPlan) =>
@@ -725,10 +729,12 @@ export function routePedigree(
       let stemX = (from + to) / 2;
       if (avoid !== undefined && Math.abs(stemX - avoid) < clearance) {
         stemX =
-          [avoid - clearance, avoid + clearance]
-            .filter((x) => x >= from - 1e-9 && x <= to + 1e-9)
-            .toSorted((a, b) => Math.abs(a - stemX) - Math.abs(b - stemX))[0] ??
-          stemX;
+          inOrder(
+            [avoid - clearance, avoid + clearance].filter(
+              (x) => x >= from - 1e-9 && x <= to + 1e-9,
+            ),
+            (a, b) => Math.abs(a - stemX) - Math.abs(b - stemX),
+          )[0] ?? stemX;
       }
       run.stemX = stemX;
     }
@@ -784,9 +790,10 @@ export function routePedigree(
           x: uplines[k]!.x2,
           y: uplines[k]!.y2,
         });
-        const chain = runs
-          .filter((run) => run.ks.includes(k))
-          .toSorted((a, b) => b.ks.length - a.ks.length);
+        const chain = inOrder(
+          runs.filter((run) => run.ks.includes(k)),
+          (a, b) => b.ks.length - a.ks.length,
+        );
         if (chain.length > 0) runsOfChild.set(`${i},${j}`, chain);
       });
     };
@@ -838,9 +845,10 @@ export function routePedigree(
     // The point under the target if it is clear; failing that, the middle
     // of a gap between two people; failing that, just clear of someone.
     const nearest = (candidates: number[]) =>
-      candidates
-        .filter(isClear)
-        .toSorted((a, b) => Math.abs(a - target) - Math.abs(b - target))[0];
+      inOrder(
+        candidates.filter(isClear),
+        (a, b) => Math.abs(a - target) - Math.abs(b - target),
+      )[0];
     return (
       nearest([Math.max(from, Math.min(to, target))]) ??
       nearest(row.slice(1).map((px, j) => (row[j]! + px) / 2)) ??
@@ -1497,6 +1505,7 @@ export function routePedigree(
       ? {}
       : { halfStroke: scaling.halfStroke }),
     ...(searchWork ? { work: searchWork } : {}),
+    ...(search === 'quick' ? { screening: true } : {}),
   };
   // Whether the search may weigh more courses. Each line's first routing
   // is always done; every search for a better course past it stops once
@@ -1544,12 +1553,13 @@ export function routePedigree(
     }
     // Each line up comes from its owners, where their line of descent
     // leaves them (the middle of a couple).
-    const top = line.parentLink
-      .flatMap((s) => [
+    const top = inOrder(
+      line.parentLink.flatMap((s) => [
         { x: s.x1, y: s.y1 },
         { x: s.x2, y: s.y2 },
-      ])
-      .toSorted((p, q) => p.y - q.y)[0];
+      ]),
+      (p, q) => p.y - q.y,
+    )[0];
     for (const segment of line.uplines) {
       scene.lines.push({
         segment,
@@ -1819,18 +1829,17 @@ export function routePedigree(
       (sum, col) => sum + layout.pos[conn.childLevel]![col]!,
       0,
     ) / Math.max(1, conn.childColumns.length);
-  const work: Work[] = plans
-    .flatMap((plan): Work[] =>
+  const work: Work[] = inOrder(
+    plans.flatMap((plan): Work[] =>
       plan.joins.length > 0
         ? plan.joins.map((join) => ({ plan, join }))
         : [{ plan }],
-    )
-    .toSorted(
-      (a, b) =>
-        ownerXOf(a.plan.from) - ownerXOf(b.plan.from) ||
-        childrenX(a.plan) - childrenX(b.plan) ||
-        a.plan.from.layer - b.plan.from.layer,
-    );
+    ),
+    (a, b) =>
+      ownerXOf(a.plan.from) - ownerXOf(b.plan.from) ||
+      childrenX(a.plan) - childrenX(b.plan) ||
+      a.plan.from.layer - b.plan.from.layer,
+  );
   const pushLine = (
     plan: (typeof plans)[number],
     points: Point[],
@@ -1936,6 +1945,23 @@ export function routePedigree(
         layout.pos[conn.childLevel]![col]!,
       );
     }
+    // A drawing that may be abandoned is abandoned once its lines' first
+    // routing alone has spent the work (see `RoutingWork`).
+    if (
+      searchWork?.abandonPast !== undefined &&
+      searchWork.spent >= searchWork.abandonPast
+    ) {
+      return {
+        connectors: {
+          groupLines: [],
+          parentChildLines: [],
+          auxiliaryLines: [],
+          twinIndicators: [],
+          duplicateArcs: [],
+        },
+        cost: Number.POSITIVE_INFINITY,
+      };
+    }
   }
 
   type Routed = (typeof routed)[number];
@@ -1945,12 +1971,15 @@ export function routePedigree(
     endX: entry.endX,
     ...(entry.mateLine ? { matePoints: entry.mateLine.points } : {}),
   });
-  const adopt = (entry: Routed, course: Course) => {
+  const adopt = (entry: Routed, course: Course, drawn?: DrawnLine[]) => {
     entry.line.points = course.points;
     if (entry.mateLine && course.matePoints) {
       entry.mateLine.points = course.matePoints;
     }
-    entry.drawn = drawnOf(course.points, entry, entry.mateLine?.points);
+    // A course taken back is drawn with the lines it was drawn with, so
+    // what was weighed against them is known still (see `courseCosts`).
+    entry.drawn =
+      drawn ?? drawnOf(course.points, entry, entry.mateLine?.points);
     if (entry.stems) {
       const at = entry.stems.indexOf(entry.endX);
       if (at >= 0) entry.stems[at] = course.endX;
@@ -1994,9 +2023,9 @@ export function routePedigree(
   const costEveryLine = () => {
     for (const entry of routed) terms.set(entry, termOf(entry));
   };
-  const place = (entry: Routed, course: Course) => {
+  const place = (entry: Routed, course: Course, drawn?: DrawnLine[]) => {
     withoutLines(entry);
-    adopt(entry, course);
+    adopt(entry, course, drawn);
     scene.lines.push(...entry.drawn);
   };
   // Two lines far apart cannot get in each other's way.
@@ -2054,7 +2083,12 @@ export function routePedigree(
           (rankOf.get(entry)! > first &&
             moved.some((other) => mayMeet(entry, other))),
       );
-    const before = new Map(changed.map((entry) => [entry, courseOf(entry)]));
+    const before = new Map(
+      changed.map((entry) => [
+        entry,
+        { course: courseOf(entry), drawn: entry.drawn },
+      ]),
+    );
     const affected = new Set(near(changed));
     for (const [entry, course] of changes) place(entry, course);
     for (const entry of near(changed)) affected.add(entry);
@@ -2067,7 +2101,9 @@ export function routePedigree(
       for (const entry of changed) changedAt.set(entry, tick);
       return true;
     }
-    for (const [entry, course] of before) place(entry, course);
+    for (const [entry, { course, drawn }] of before) {
+      place(entry, course, drawn);
+    }
     return false;
   };
   // Each line routed again among all the others, those after it included,
@@ -2220,7 +2256,7 @@ export function routePedigree(
   const orders = [
     acrossThePage,
     acrossThePage.toReversed(),
-    acrossThePage.toSorted((a, b) => spanOf(b) - spanOf(a)),
+    inOrder(acrossThePage, (a, b) => spanOf(b) - spanOf(a)),
   ];
   let cheapest: { courses: Map<Routed, Course>; total: number } | undefined;
   for (const order of search === 'quick' || routed.length < 2
@@ -2349,20 +2385,21 @@ export function routePedigree(
         .flatMap((other) => segmentsOf(other.points)),
     ];
     const hops = segmentsOf(line.points).flatMap((segment) =>
-      crossed
-        .flatMap((other) => crossing(segment, other) ?? [])
-        .filter((at) => !hiddenBySymbol(at))
-        // Two lines of one course crossed at one point: one hop.
-        .filter(
-          (at, k, all) =>
-            all.findIndex((p) => Math.hypot(p.x - at.x, p.y - at.y) < 1e-6) ===
-            k,
-        )
-        .toSorted(
-          (a, b) =>
-            Math.hypot(a.x - segment.x1, a.y - segment.y1) -
-            Math.hypot(b.x - segment.x1, b.y - segment.y1),
-        ),
+      inOrder(
+        crossed
+          .flatMap((other) => crossing(segment, other) ?? [])
+          .filter((at) => !hiddenBySymbol(at))
+          // Two lines of one course crossed at one point: one hop.
+          .filter(
+            (at, k, all) =>
+              all.findIndex(
+                (p) => Math.hypot(p.x - at.x, p.y - at.y) < 1e-6,
+              ) === k,
+          ),
+        (a, b) =>
+          Math.hypot(a.x - segment.x1, a.y - segment.y1) -
+          Math.hypot(b.x - segment.x1, b.y - segment.y1),
+      ),
     );
     if (hops.length > 0) line.hops = hops;
   });
@@ -2387,7 +2424,11 @@ export function routePedigree(
     }
 
     if (positions.length > 1) {
-      positions.sort((a, b) => a.x - b.x);
+      positions.splice(
+        0,
+        positions.length,
+        ...inOrder(positions, (a, b) => a.x - b.x),
+      );
 
       for (let j = 0; j < positions.length - 1; j++) {
         const p1 = positions[j]!;
@@ -2459,10 +2500,10 @@ function clearOf(
   const isClear = (candidate: number) =>
     blocked.every((b) => Math.abs(b - candidate) >= clearance - 1e-9);
   if (isClear(x)) return x;
-  const candidates = blocked
-    .flatMap((b) => [b - clearance, b + clearance])
-    .filter(isClear)
-    .toSorted((a, b) => Math.abs(a - x) - Math.abs(b - x));
+  const candidates = inOrder(
+    blocked.flatMap((b) => [b - clearance, b + clearance]).filter(isClear),
+    (a, b) => Math.abs(a - x) - Math.abs(b - x),
+  );
   const within = ([from, to]: [number, number]) =>
     candidates.find((c) => c >= from - 1e-9 && c <= to + 1e-9);
   return within(preferred) ?? within(allowed) ?? x;
@@ -2489,9 +2530,10 @@ function firstMeeting(course: Point[], other: Point[]): Point | undefined {
     // course: its far end, and the ends of the other's pieces on it.
     const along = (p: Point) =>
       (p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y);
-    const candidates = [b, ...other.filter((p) => liesOn(p, a, b))]
-      .filter(onOther)
-      .toSorted((p, q) => along(p) - along(q));
+    const candidates = inOrder(
+      [b, ...other.filter((p) => liesOn(p, a, b))].filter(onOther),
+      (p, q) => along(p) - along(q),
+    );
     if (candidates[0]) return candidates[0];
   }
   return undefined;
@@ -2617,7 +2659,7 @@ const dropsOf = (run: DescentRun) => run.coParentXs ?? [run.parentX];
 /** The runs in groups whose level spans overlap or meet, each in order. */
 function overlappingRuns<T extends DescentRun>(runs: T[]): T[][] {
   const span = spanOf;
-  const sorted = runs.toSorted((a, b) => span(a)[0] - span(b)[0]);
+  const sorted = inOrder(runs, (a, b) => span(a)[0] - span(b)[0]);
   const groups: T[][] = [];
   let reach = -Infinity;
   for (const run of sorted) {
