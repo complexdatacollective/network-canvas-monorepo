@@ -1,6 +1,6 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 import { toStudyId } from '../lib/ids.ts';
 import { setResearcherLogTeam } from '../runtime/browserLogs.ts';
@@ -21,7 +21,7 @@ export function useResearcherLogTeam(): void {
       : rpcQuery('studies.get', { studyId: toStudyId(studyId) }),
   );
   const team = screenTeam(teamId, studyId, study.data?.teamId);
-  useEffect(() => {
+  useLayoutEffect(() => {
     setResearcherLogTeam(team);
     return () => setResearcherLogTeam(undefined);
   }, [team]);

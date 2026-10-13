@@ -135,8 +135,28 @@ const TAGGED_FAULTS: Readonly<Record<string, FaultCode>> = {
   LinkUnavailable: 'link_unavailable',
 };
 
+const respondedStatus = (error: unknown): number | undefined => {
+  let candidate = error;
+  for (let step = 0; step < REFUSAL_CHAIN_LIMIT; step += 1) {
+    if (
+      Predicate.hasProperty(candidate, 'response') &&
+      Predicate.hasProperty(candidate.response, 'status') &&
+      Predicate.isNumber(candidate.response.status)
+    ) {
+      return candidate.response.status;
+    }
+    const next = nextLink(candidate);
+    if (next === undefined) return undefined;
+    candidate = next;
+  }
+  return undefined;
+};
+
 export const faultCodeOf = (error: unknown): FaultCode => {
   const refusal = refusalOf(error);
+  if (refusal?.kind === 'transport' && respondedStatus(error) !== undefined) {
+    return 'http_error';
+  }
   if (refusal !== undefined) return REFUSAL_FAULTS[refusal.kind];
   if (Predicate.hasProperty(error, '_tag') && Predicate.isString(error._tag)) {
     return TAGGED_FAULTS[error._tag] ?? 'unknown';

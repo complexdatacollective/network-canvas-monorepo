@@ -78,7 +78,7 @@ const UnixNano = Schema.String.check(
 
 const StageFields = {
   stage_index: StageIndex,
-  interface_type: UsageInterfaceType,
+  interface_type: Schema.optionalKey(UsageInterfaceType),
 };
 
 const entry = <

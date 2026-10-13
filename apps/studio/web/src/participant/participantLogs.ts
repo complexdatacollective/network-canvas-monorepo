@@ -19,7 +19,7 @@ export type ParticipantLog = (entry: ParticipantLogEntry) => void;
 
 export type ParticipantStage = {
   readonly stage_index: number;
-  readonly interface_type: typeof UsageInterfaceType.Type;
+  readonly interface_type?: typeof UsageInterfaceType.Type;
 };
 
 const MAX_STAGE_INDEX = 10_000;
@@ -44,6 +44,7 @@ export const participantStage = (
   ) {
     return undefined;
   }
+  if (index === stageTypes.length) return { stage_index: index };
   return Option.getOrUndefined(
     Option.map(decodeInterfaceType(stageTypes[index]), (interfaceType) => ({
       stage_index: index,

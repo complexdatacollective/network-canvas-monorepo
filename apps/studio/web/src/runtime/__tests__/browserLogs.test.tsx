@@ -285,6 +285,62 @@ describe('leaving the page', () => {
   });
 });
 
+describe('a record logged while the page is leaving', () => {
+  const answerSaveFailed = {
+    message: 'Answer save failed',
+    level: 'Error',
+    attributes: {
+      stage_index: 1,
+      interface_type: 'Sociogram',
+      error_code: 'transport',
+      attempt_count: 1,
+    },
+  } as const;
+
+  it('is sent at once, though it came after the page was hidden', async () => {
+    const page = new EventTarget();
+    const handle = createBrowserLogHandle('participant', page);
+    handle.configure({
+      enabled: true,
+      level: 'Info',
+      credentials: 'omit',
+      headers: () => ({}),
+    });
+    page.dispatchEvent(new Event('pagehide'));
+    handle.log(answerSaveFailed);
+    await waitFor(
+      () =>
+        expect(logCalls(BROWSER_LOG_PATHS.participant).length).toBeGreaterThan(
+          0,
+        ),
+      { timeout: 300 },
+    );
+    handle.close();
+    const [[, init]] = logCalls(BROWSER_LOG_PATHS.participant) as [
+      Parameters<typeof globalThis.fetch>,
+    ];
+    expect(init?.keepalive).toBe(true);
+  });
+
+  it('waits for the interval again once the page is shown', async () => {
+    const page = new EventTarget();
+    const handle = createBrowserLogHandle('participant', page);
+    handle.configure({
+      enabled: true,
+      level: 'Info',
+      credentials: 'omit',
+      headers: () => ({}),
+    });
+    page.dispatchEvent(new Event('pagehide'));
+    page.dispatchEvent(new Event('pageshow'));
+    handle.log(answerSaveFailed);
+    await new Promise((done) => setTimeout(done, 300));
+    expect(logCalls(BROWSER_LOG_PATHS.participant)).toEqual([]);
+    handle.close();
+    await new Promise((done) => setTimeout(done, 100));
+  });
+});
+
 describe('participant logs', () => {
   it('sends nothing while the session reports telemetry off', async () => {
     const view = renderHook(() => useParticipantLogs(SESSION, null));

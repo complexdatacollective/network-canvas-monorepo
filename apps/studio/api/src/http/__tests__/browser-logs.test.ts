@@ -646,6 +646,32 @@ describe.skipIf(!testDb)('participant logs', () => {
     );
 
     withDb.effect(
+      'forwards a record from the finish screen, which has no interface type',
+      () =>
+        Effect.gen(function* () {
+          const { token } = yield* session;
+          const database = yield* Effect.context<Database>();
+          const { statuses, forwarded } = yield* serveAndPost(
+            [
+              participantPost(token, [
+                wireRecord('Answer save failed', 'Error', [
+                  ['stage_index', 3],
+                  ['error_code', 'transport'],
+                  ['attempt_count', 1],
+                ]),
+              ]),
+            ],
+            { auth: SignedOut, database },
+          );
+          expect(statuses).toEqual([204]);
+          expect(
+            forwarded.map((record) => record.attributes.stage_index),
+          ).toEqual([3]);
+          expect(forwarded[0]?.attributes.interface_type).toBeUndefined();
+        }).pipe(Effect.orDie),
+    );
+
+    withDb.effect(
       'refuses the whole batch when one record is not catalogued, carries an extra attribute, or holds free text',
       () =>
         Effect.gen(function* () {

@@ -4,7 +4,7 @@ import type { RpcAdapter } from '@codaco/effect-query/types';
 
 import { reportUnauthorizedResponse } from '../lib/session.ts';
 import { logResearcher } from './browserLogs.ts';
-import { refusalOf } from './errors.ts';
+import { faultCodeOf, refusalOf } from './errors.ts';
 import { runtime, StudioClient, type StudioRpcsType } from './runtime.ts';
 
 /**
@@ -22,7 +22,7 @@ const reportUnauthorizedFailure = (error: unknown): void => {
 
 export const reportRpcFailure = (error: unknown): void => {
   reportUnauthorizedFailure(error);
-  if (refusalOf(error)?.kind === 'transport') {
+  if (faultCodeOf(error) === 'transport') {
     logResearcher({
       message: 'Request to the server failed',
       level: 'Warn',

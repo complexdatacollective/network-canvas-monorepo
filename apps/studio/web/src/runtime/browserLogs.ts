@@ -188,18 +188,49 @@ const makeSink = (
   };
 };
 
+type PageEvents = Pick<Window, 'addEventListener' | 'removeEventListener'>;
+
+type DocumentState = PageEvents & {
+  readonly visibilityState: DocumentVisibilityState;
+};
+
 export const createBrowserLogHandle = <E extends Entry>(
   surface: BrowserLogSurface,
-  page: Pick<Window, 'addEventListener' | 'removeEventListener'> = window,
+  page: PageEvents = window,
+  doc: DocumentState = document,
 ): BrowserLogHandle<E> => {
   let state: HandleState = { kind: 'pending', queue: [] };
-  const flushOnLeave = () => {
+  let leaving = doc.visibilityState === 'hidden';
+  const flush = () => {
     if (state.kind === 'open') state.sink.flush();
+  };
+  const onPageHide = () => {
+    leaving = true;
+    flush();
+  };
+  const onPageShow = () => {
+    leaving = false;
+  };
+  const onVisibilityChange = () => {
+    leaving = doc.visibilityState === 'hidden';
+    if (leaving) flush();
+  };
+  const listen = () => {
+    page.addEventListener('pagehide', onPageHide);
+    page.addEventListener('pageshow', onPageShow);
+    doc.addEventListener('visibilitychange', onVisibilityChange);
+  };
+  const unlisten = () => {
+    page.removeEventListener('pagehide', onPageHide);
+    page.removeEventListener('pageshow', onPageShow);
+    doc.removeEventListener('visibilitychange', onVisibilityChange);
   };
   return {
     log: (entry, context = {}) => {
-      if (state.kind === 'open') state.sink.log(entry, context);
-      else if (
+      if (state.kind === 'open') {
+        state.sink.log(entry, context);
+        if (leaving) state.sink.flush();
+      } else if (
         state.kind === 'pending' &&
         state.queue.length < MAX_PENDING_ENTRIES
       ) {
@@ -215,11 +246,12 @@ export const createBrowserLogHandle = <E extends Entry>(
       }
       const sink = makeSink(surface, config);
       state = { kind: 'open', sink };
-      page.addEventListener('pagehide', flushOnLeave);
+      listen();
       for (const queued of queue) sink.log(queued.entry, queued.context);
+      if (leaving) sink.flush();
     },
     close: () => {
-      page.removeEventListener('pagehide', flushOnLeave);
+      unlisten();
       if (state.kind === 'open') void state.sink.dispose();
       state = { kind: 'closed' };
     },

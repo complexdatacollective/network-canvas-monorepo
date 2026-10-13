@@ -33,7 +33,16 @@ describe('a participant stage', () => {
     });
   });
 
+  it('names the finish screen after the last authored stage by its index alone', () => {
+    expect(participantStage(STAGE_TYPES, STAGE_TYPES.length)).toEqual({
+      stage_index: STAGE_TYPES.length,
+    });
+  });
+
   it('is nothing for an index or a type outside what Studio declares', () => {
+    expect(
+      participantStage(STAGE_TYPES, STAGE_TYPES.length + 1),
+    ).toBeUndefined();
     expect(participantStage(STAGE_TYPES, 7)).toBeUndefined();
     expect(participantStage(STAGE_TYPES, -1)).toBeUndefined();
     expect(participantStage(STAGE_TYPES, '1')).toBeUndefined();
