@@ -190,6 +190,7 @@
     "./storybook-support/colorContrast": "./src/storybook-support/colorContrast.ts",
     "./styles.css": "./src/styles.css",
     "./styles/controlVariants": "./src/styles/controlVariants.ts",
+    "./testing/withSafeTypingIntoRichText": "./src/testing/withSafeTypingIntoRichText.ts",
     "./typography/EnclosingHeadingLevel": "./src/typography/EnclosingHeadingLevel.tsx",
     "./typography/Eyebrow": "./src/typography/Eyebrow.tsx",
     "./typography/Heading": "./src/typography/Heading.tsx",
@@ -897,6 +898,10 @@
       "./styles/controlVariants": {
         "types": "./dist/styles/controlVariants.d.ts",
         "default": "./dist/styles/controlVariants.js"
+      },
+      "./testing/withSafeTypingIntoRichText": {
+        "types": "./dist/testing/withSafeTypingIntoRichText.d.ts",
+        "default": "./dist/testing/withSafeTypingIntoRichText.js"
       },
       "./typography/EnclosingHeadingLevel": {
         "types": "./dist/typography/EnclosingHeadingLevel.d.ts",

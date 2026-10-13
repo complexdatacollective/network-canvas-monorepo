@@ -20,6 +20,7 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { frescoUiCatalogLoaders } from '@codaco/fresco-ui/locales';
+import { withSafeTypingIntoRichText } from '@codaco/fresco-ui/testing/withSafeTypingIntoRichText';
 import type { Codebook, StageType } from '@codaco/protocol-validation';
 import { protocolValidationCatalogLoaders } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -977,113 +978,6 @@ function asAResearcherActs(keyboard: HarnessUser): HarnessUser {
       };
     },
   });
-}
-
-// Read from the attribute rather than from `isContentEditable`, which jsdom
-// leaves undefined.
-const isContentEditable = (element: Element): boolean => {
-  const editable = element.getAttribute('contenteditable');
-  return editable === '' || editable === 'true';
-};
-
-/**
- * Whether a test has already selected something inside `element`.
- *
- * A RANGE, not a caret. Both are measured, and they are not the same case: a
- * click over a range collapses it to the END of the text, which is why a test
- * that selected one has to be typed into without a click of the harness's own;
- * a click anywhere else puts a collapsed caret at the START of the text,
- * whatever was there before. So a range is the only selection a test can
- * express that survives being typed into, and a caret is not a position this
- * harness can honour at all — see `withSafeTypingIntoRichText`.
- *
- * ProseMirror's own select-all puts both ends on the editable element itself
- * rather than in the text, so the ends are tested with `contains`, which
- * counts the element as containing itself.
- */
-const hasSelectedRangeInside = (element: Element): boolean => {
-  const selection = element.ownerDocument.defaultView?.getSelection();
-  if (
-    selection == null ||
-    selection.rangeCount === 0 ||
-    selection.isCollapsed ||
-    selection.anchorNode === null ||
-    selection.focusNode === null
-  ) {
-    return false;
-  }
-  return (
-    element.contains(selection.anchorNode) &&
-    element.contains(selection.focusNode)
-  );
-};
-
-/**
- * A keyboard whose `type` is safe to point at a rich text field.
- *
- * The rule: type into a rich text field from a click of its own, UNLESS the
- * test has already selected something in that field — then type as user-event
- * does, so the selection reaches the keystrokes.
- *
- * Both halves are one defect, which is that ProseMirror only learns of a
- * selection on its next turn of the event loop. Every top-level user-event
- * call is wrapped in `act`, so a call of its own is that turn, and the click
- * `type` makes inside itself is not.
- *
- * Without the separate click, `clear` then `type` on a `singleLine` field
- * saved "ho else?" for "Who else?": one keystroke short, from the top. jsdom
- * lays nothing out, so user-event cannot place a caret from coordinates; it
- * walks the element for text instead, finds none in a field that was just
- * emptied, and settles the caret at the END OF THE ELEMENT — outside the
- * paragraph rather than inside it. ProseMirror puts a stray selection like
- * that back, but `type` never gives it the turn, and the first character is
- * written into the DOM as a bare text node between blocks that a one-paragraph
- * document has nowhere to hold.
- *
- * With the separate click made unconditionally, a test that selects the answer
- * before typing over it appended instead: click, `{Control>}a{/Control}`,
- * `type` saved "OtherElse" for "Else". The extra click collapses the range to
- * the end of the text AND gives ProseMirror the turn in which to believe it,
- * so the keystrokes insert rather than replace. `type`'s own click collapses
- * the DOM selection too, but ProseMirror never sees it before the keystrokes
- * and replaces the selection it still holds — which is what a researcher
- * typing over selected text gets.
- *
- * What the click does NOT do is leave a caret where a test put one. Measured:
- * a click into a field holding text puts a collapsed caret at offset 0 of the
- * first text node — from a caret at 0, at 4, at the end, and from no selection
- * at all — so every `type` into a populated rich text field inserts at the
- * START of the answer. `skipClick` is no way round it either: without a turn of
- * the event loop ProseMirror never learns of the test's selection and puts its
- * own back, so nothing is typed anywhere. A test that wants a position has to
- * select a RANGE, which means in practice selecting the answer and typing it
- * out whole.
- *
- * Only `type` is wrapped, because only `type` clicks. `clear` selects and
- * deletes, and `paste` and `keyboard` write at the selection they are given —
- * and each is a top-level call, so ProseMirror gets its turn between them
- * anyway. Measured: `clear` then `paste`, and a select-all then `paste`, both
- * save the whole text.
- *
- * Nothing about the CONTROL is at fault either way — a researcher cannot put a
- * caret between blocks, and a browser's own click never does — so this is the
- * harness's to get right rather than the editor's.
- */
-function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
-  return {
-    ...keyboard,
-    type: async (element, text, options) => {
-      if (
-        options?.skipClick === true ||
-        !isContentEditable(element) ||
-        hasSelectedRangeInside(element)
-      ) {
-        return keyboard.type(element, text, options);
-      }
-      await keyboard.click(element);
-      return keyboard.type(element, text, { ...options, skipClick: true });
-    },
-  };
 }
 
 /**
