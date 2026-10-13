@@ -1142,5 +1142,65 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         },
       };
     })(),
+    {
+      id: 'require-complete-placement',
+      covers: [
+        'behaviours',
+        'behaviours.requireCompletePlacement',
+        'unplacedNodesNotice',
+      ],
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const personType = synth.addNodeType({ name: 'Person' });
+        const personName = personType.addVariable({
+          name: 'name',
+          type: 'text',
+        });
+        const categoryVar = personType.addVariable({
+          name: 'Category',
+          type: 'categorical',
+          options: [
+            { label: 'Family', value: 1 },
+            { label: 'Work', value: 2 },
+          ],
+        });
+        const stage = synth.addStage('CategoricalBin', {
+          subject: { entity: 'node', type: personType.id },
+          initialNodes: { count: 2 },
+          behaviours: { requireCompletePlacement: true },
+        });
+        stage.addPrompt({ variable: categoryVar.id });
+        synth.setNodeAttribute(0, personName.id, 'Ivy');
+        synth.setNodeAttribute(0, categoryVar.id, []);
+        synth.setNodeAttribute(1, personName.id, 'Jon');
+        synth.setNodeAttribute(1, categoryVar.id, []);
+        // A trailing stage so a successful advance is observable.
+        synth.addInformationStage({
+          label: 'Done',
+          title: 'All done',
+          items: [{ id: 'done-1', type: 'text', content: 'Thanks.' }],
+        });
+        return synth;
+      },
+      run: async ({ page, interview, stage }) => {
+        // Uncategorised nodes: forward navigation is blocked with the notice.
+        await interview.nextButton.click();
+        await expect(page.getByText(/must place every item/i)).toBeVisible();
+        expect(page.url()).toContain('step=0');
+
+        // One node still waiting: still blocked.
+        await stage.categoricalBin.dragNodeToBin('Ivy', 'Family');
+        await interview.nextButton.click();
+        expect(page.url()).toContain('step=0');
+
+        // Every node placed: advancing succeeds.
+        await stage.categoricalBin.dragNodeToBin('Jon', 'Work');
+        await interview.next();
+        await expect(
+          page.getByRole('heading', { name: 'All done' }),
+        ).toBeVisible();
+      },
+    },
   ],
 };

@@ -16,7 +16,7 @@ import { ordinalBinPrompts } from './sections/ordinalBinPrompts.tsx';
 export const ordinalBinStageEditor = defineStageEditor('OrdinalBin', [
   subjectPicker({ entity: 'node', filter: true }),
   ordinalBinPrompts(),
-  binBehaviours(),
+  binBehaviours('OrdinalBin'),
   skipLogic(),
   interviewerGuidance(),
 ]);

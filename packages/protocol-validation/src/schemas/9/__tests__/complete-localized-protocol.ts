@@ -509,6 +509,8 @@ export const completeProtocol = () => ({
       type: 'OrdinalBin',
       label: localized('Ordinal'),
       subject: { entity: 'node', type: 'person' },
+      behaviours: { requireCompletePlacement: true },
+      unplacedNodesNotice: localized('Place everyone to continue'),
       prompts: [
         {
           id: 'p1',

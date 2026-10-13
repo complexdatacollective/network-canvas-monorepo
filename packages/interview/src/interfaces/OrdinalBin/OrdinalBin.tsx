@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 
 import type { Stage } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
@@ -11,7 +11,7 @@ import NodeDrawer from '../../components/NodeDrawer';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useBinSelection } from '../../hooks/useBinSelection';
-import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import useCompletePlacement from '../../hooks/useCompletePlacement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   getCurrentStageId,
@@ -58,11 +58,11 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
     unplacedNodes,
   });
 
-  const { updateReady } = useReadyForNextStage();
-
-  useEffect(() => {
-    updateReady(unplacedNodes.length === 0);
-  }, [unplacedNodes.length, updateReady]);
+  useCompletePlacement({
+    unplacedCount: unplacedNodes.length,
+    required: stage.behaviours?.requireCompletePlacement,
+    notice: stage.unplacedNodesNotice,
+  });
 
   return (
     <div className="interface overflow-hidden pb-0">

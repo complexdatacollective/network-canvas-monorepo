@@ -225,6 +225,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(11, 'prompts', 0, 'negativeLabel'), 'markdown'),
 
   site(stage(12, 'prompts', 0, 'text'), 'markdown'),
+  site(stage(12, 'unplacedNodesNotice'), 'plain'),
 
   site(stage(13, 'prompts', 0, 'text'), 'markdown'),
   site(stage(13, 'prompts', 0, 'otherVariablePrompt'), 'markdown'),
