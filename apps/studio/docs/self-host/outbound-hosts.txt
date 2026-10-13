@@ -12,6 +12,10 @@
 
 # Container images.
 ghcr.io
+pkg-containers.githubusercontent.com
+registry-1.docker.io
+auth.docker.io
+production.cloudfront.docker.com
 
 # TLS certificates, over ACME HTTP-01.
 acme-v02.api.letsencrypt.org

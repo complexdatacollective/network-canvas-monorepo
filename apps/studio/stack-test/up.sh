@@ -94,6 +94,9 @@ AZURE_CLIENT_ID=""
 # 32 random bytes is the shape a real account key has.
 EXTERNAL_AZURITE_ACCOUNT="stacktest$(hex 4)"
 EXTERNAL_AZURITE_KEY="$(openssl rand -base64 32)"
+SMTP_URL=""
+EMAIL_FROM=""
+STUDIO_TELEMETRY="false"
 
 case "$VARIANT" in
   external-postgres)
@@ -134,6 +137,11 @@ case "$VARIANT" in
     # `redis://host:port`, and any Redis 7-compatible server is the contract.
     REDIS_URL="redis://external-valkey:6379"
     ;;
+  telemetry-off | telemetry-on)
+    SMTP_URL="smtp://$EGRESS_SMTP_HOST:25"
+    EMAIL_FROM="studio@stack-test.invalid"
+    STUDIO_TELEMETRY="$([ "$VARIANT" = telemetry-on ] && echo true || echo false)"
+    ;;
 esac
 
 cat > "$ENV_FILE" <<ENV
@@ -171,8 +179,11 @@ AZURE_STORAGE_CONTAINER=$AZURE_STORAGE_CONTAINER
 # slash, a plus and trailing equals signs of its own.
 AZURE_STORAGE_CONNECTION_STRING='$AZURE_STORAGE_CONNECTION_STRING'
 AZURE_CLIENT_ID=$AZURE_CLIENT_ID
-SMTP_URL=
-EMAIL_FROM=
+SMTP_URL=$SMTP_URL
+EMAIL_FROM=$EMAIL_FROM
+STUDIO_TELEMETRY=$STUDIO_TELEMETRY
+EGRESS_SINK_ADDRESS=$EGRESS_SINK_ADDRESS
+EGRESS_WORK_DIR=$WORK_DIR
 # Read only by variants/external-bucket.yml, whose stub is a second Garage
 # with secrets of its own.
 EXTERNAL_GARAGE_RPC_SECRET=$(hex 32)
@@ -322,7 +333,7 @@ fi
 say "waiting for $url/readyz"
 streak=0
 for attempt in $(seq 1 120); do
-  code="$(curl -k -s -o /dev/null -w '%{http_code}' --max-time 5 "$url/readyz" || true)"
+  code="$(ingress_curl -k -s -o /dev/null -w '%{http_code}' --max-time 5 "$url/readyz" || true)"
   if [ "$code" = "200" ]; then
     streak=$((streak + 1))
     if [ "$streak" -ge "$needed" ]; then

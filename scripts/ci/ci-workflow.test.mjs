@@ -2007,6 +2007,17 @@ function stackTestVariants() {
     .sort();
 }
 
+function egressVariants() {
+  const list = job('studio-egress')?.match(
+    /^ {8}variant: \[(?<names>[^\]]*)\]$/m,
+  )?.groups?.names;
+  return (list ?? '')
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .sort();
+}
+
 test('the studio-stack job runs every stack-test script that exists', () => {
   const studioStack = job('studio-stack');
   assert.ok(studioStack, 'studio-stack job exists');
@@ -2028,7 +2039,10 @@ test('the studio-stack job runs every variant through up, assert and down', () =
   const studioStack = job('studio-stack');
   assert.ok(studioStack, 'studio-stack job exists');
 
-  const variants = stackTestVariants();
+  const egress = egressVariants();
+  const variants = stackTestVariants().filter(
+    (variant) => !egress.includes(variant),
+  );
   // The reference stack, every swap docs/self-host/swap.md documents, and the
   // stack with a second API replica (docs/self-host/run.md).
   assert.deepEqual(variants, [
@@ -2061,6 +2075,73 @@ test('the studio-stack job runs every variant through up, assert and down', () =
     (studioStack.match(/if: always\(\)/g) ?? []).length,
     variants.length,
     'each down.sh step is if: always()',
+  );
+});
+
+test('the studio-egress job runs each egress variant through up, egress and down', () => {
+  const egressJob = job('studio-egress');
+  assert.ok(egressJob, 'studio-egress job exists');
+  assert.deepEqual(egressVariants(), ['telemetry-off', 'telemetry-on']);
+
+  const lib = readFileSync(new URL('lib.sh', stackTestDirectory), 'utf8');
+  assert.match(
+    lib,
+    /^egress_variant\(\) \{\n {2}case "\$VARIANT" in\n {4}telemetry-off \| telemetry-on\) return 0 ;;$/m,
+    'lib.sh treats exactly the matrix variants as egress variants',
+  );
+
+  for (const script of ['build.sh', 'up.sh', 'egress.sh', 'down.sh']) {
+    assert.ok(
+      existsSync(new URL(script, stackTestDirectory)),
+      `apps/studio/stack-test/${script} exists on disk`,
+    );
+  }
+  assert.match(egressJob, /apps\/studio\/stack-test\/build\.sh/);
+  for (const script of ['up.sh', 'egress.sh', 'down.sh']) {
+    assert.match(
+      egressJob,
+      new RegExp(
+        escapeRegExp(
+          `apps/studio/stack-test/${script} --variant \${{ matrix.variant }}`,
+        ),
+      ),
+      `the studio-egress job runs ${script} for its variant`,
+    );
+  }
+  assert.match(
+    egressJob,
+    /- name: Tear down\n {8}if: always\(\)\n {8}run: apps\/studio\/stack-test\/down\.sh/,
+    'the teardown runs whatever the egress proof did',
+  );
+  assert.match(egressJob, /fail-fast: false/);
+});
+
+test('studio-egress is selected by the studio flag and required by the quality gate', () => {
+  const egressJob = job('studio-egress');
+  assert.match(
+    egressJob,
+    /needs\.detect\.outputs\.studio == 'true'/,
+    'the job is gated on the studio flag',
+  );
+  for (const excluded of ['merge_group', 'push']) {
+    assert.match(
+      egressJob,
+      new RegExp(`github\\.event_name != '${excluded}'`),
+      `the job never runs on ${excluded}`,
+    );
+  }
+
+  const qualityJob = job('quality');
+  assert.match(qualityJob, /^ {6}- studio-egress$/m, 'quality needs the job');
+  assert.match(
+    qualityJob,
+    /STUDIO_EGRESS_RESULT: \$\{\{ needs\.studio-egress\.result \}\}/,
+    'quality receives the job result',
+  );
+  assert.match(
+    qualityJob,
+    /if \[\[ "\$STUDIO_STACK_REQUIRED" == "true" \]\]; then\n\s+if \[\[ "\$STUDIO_EGRESS_RESULT" != "success" \]\]; then\n\s+echo "::error::quality gate failed/,
+    'quality fails when a required studio-egress did not succeed',
   );
 });
 

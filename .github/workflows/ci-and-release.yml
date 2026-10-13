@@ -1292,6 +1292,68 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  studio-egress:
+    needs: detect
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+      && needs.detect.outputs.studio == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [telemetry-off, telemetry-on]
+    name: studio-egress (${{ matrix.variant }})
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - name: Select a cache-capable builder
+        run: docker buildx create --name studio-stack --driver docker-container --use
+      - name: Expose the Actions cache service to the build
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            for (const name of [
+              'ACTIONS_RUNTIME_TOKEN',
+              'ACTIONS_CACHE_URL',
+              'ACTIONS_RESULTS_URL',
+            ]) {
+              const value = process.env[name];
+              if (value) core.exportVariable(name, value);
+            }
+      - name: Build the stack images
+        env:
+          BUILDX_BUILDER: studio-stack
+          BUILD_CACHE_FROM: type=gha,scope=studio-stack-{target}
+          BUILD_CACHE_TO: type=gha,scope=studio-stack-{target},mode=max,ignore-error=true
+        run: apps/studio/stack-test/build.sh
+
+      - name: What leaves the machine
+        run: |
+          apps/studio/stack-test/up.sh --variant ${{ matrix.variant }}
+          apps/studio/stack-test/egress.sh --variant ${{ matrix.variant }}
+      - name: Tear down
+        if: always()
+        run: apps/studio/stack-test/down.sh --variant ${{ matrix.variant }}
+
+      - name: Keep the failing run's diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: studio-egress-${{ matrix.variant }}-diagnostics
+          include-hidden-files: true
+          path: |
+            apps/studio/stack-test/.work/*-ps.txt
+            apps/studio/stack-test/.work/*-logs.txt
+            apps/studio/stack-test/.work/*-egress.jsonl
+            apps/studio/stack-test/.work/migrate.log
+          if-no-files-found: warn
+          retention-days: 7
+
   # The Studio upgrade lane (#1901): `apps/studio/release-test`, run exactly as
   # a developer runs it (see that directory's README). It deploys the
   # candidate, seeds it, and upgrades it with the self-host guide's own
@@ -1863,6 +1925,7 @@ jobs:
       - test
       - test-studio-server
       - studio-stack
+      - studio-egress
       - studio-upgrade
       - test-storybook
       - detect
@@ -1887,6 +1950,7 @@ jobs:
           DETECT_RESULT: ${{ needs.detect.result }}
           STUDIO_STACK_REQUIRED: ${{ needs.detect.outputs.studio }}
           STUDIO_STACK_RESULT: ${{ needs.studio-stack.result }}
+          STUDIO_EGRESS_RESULT: ${{ needs.studio-egress.result }}
           STUDIO_UPGRADE_REQUIRED: ${{ needs.detect.outputs.studio_upgrade }}
           STUDIO_UPGRADE_RESULT: ${{ needs.studio-upgrade.result }}
           E2E_POLICY_RESULT: ${{ needs.e2e-policy.result }}
@@ -1956,6 +2020,16 @@ jobs:
             echo "studio-stack passed"
           else
             echo "studio-stack is not required for this event (result: $STUDIO_STACK_RESULT)"
+          fi
+
+          if [[ "$STUDIO_STACK_REQUIRED" == "true" ]]; then
+            if [[ "$STUDIO_EGRESS_RESULT" != "success" ]]; then
+              echo "::error::quality gate failed — studio-egress concluded '$STUDIO_EGRESS_RESULT'"
+              exit 1
+            fi
+            echo "studio-egress passed"
+          else
+            echo "studio-egress is not required for this event (result: $STUDIO_EGRESS_RESULT)"
           fi
 
           # The Studio upgrade lane (#1901), keyed on its flag the same way.

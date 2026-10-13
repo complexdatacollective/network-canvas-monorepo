@@ -89,7 +89,55 @@ describe('the self-host guide’s outbound hosts', () => {
     expect(listed).toContain(host);
     expect(documented).toContain(host);
   });
+
+  it('lists every host the daemon contacts to pull the stack’s images', () => {
+    const images = stackImages(
+      read('../../docker-compose.yml'),
+      read('../../.env.example'),
+    );
+    expect(images.length).toBeGreaterThan(0);
+    const unknown = images.filter(
+      (image) => !(registryOf(image) in REGISTRY_HOSTS),
+    );
+    expect(unknown).toEqual([]);
+    const required = [
+      ...new Set(images.flatMap((image) => REGISTRY_HOSTS[registryOf(image)]!)),
+    ];
+    expect(required.filter((host) => !listed.includes(host))).toEqual([]);
+  });
 });
+
+const REGISTRY_HOSTS: Record<string, readonly string[]> = {
+  'ghcr.io': ['ghcr.io', 'pkg-containers.githubusercontent.com'],
+  'docker.io': [
+    'registry-1.docker.io',
+    'auth.docker.io',
+    'production.cloudfront.docker.com',
+  ],
+};
+
+function stackImages(compose: string, envExample: string): string[] {
+  const env = new Map(
+    [...envExample.matchAll(/^([A-Z0-9_]+)=(.*)$/gm)].map(
+      ([, name, value]) => [name!, value!.trim()] as const,
+    ),
+  );
+  return [...compose.matchAll(/^\s+image:\s*(\S+)\s*$/gm)].map(([, raw]) =>
+    raw!
+      .replace(/^['"]|['"]$/g, '')
+      .replace(/\$\{([A-Z0-9_]+)\}/g, (_, name: string) => {
+        const value = env.get(name);
+        if (!value) throw new Error(`.env.example sets no value for ${name}`);
+        return value;
+      }),
+  );
+}
+
+function registryOf(image: string): string {
+  const [first, ...rest] = image.split('/');
+  if (rest.length > 0 && /[.:]|^localhost$/.test(first!)) return first!;
+  return 'docker.io';
+}
 
 // The same guard, for the rate limits: the constants in
 // `src/rate-limit/scopes.ts` are what every deployment enforces, and the table

@@ -74,6 +74,7 @@
         // Studio's upgrade lane (#1901): run with node by the lane's shell
         // scripts (apps/studio/release-test/*.sh), which knip cannot parse.
         "apps/studio/release-test/*.mjs",
+        "apps/studio/stack-test/*.mjs",
         // Recognising scripts/vitest.config.ts turns on knip's vitest plugin
         // for the root workspace, which widens the analysis to .claude/ and
         // .agents/. The files below are invoked by name from skill markdown,
