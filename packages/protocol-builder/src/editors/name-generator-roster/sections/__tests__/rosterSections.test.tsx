@@ -795,6 +795,46 @@ describe('how a participant searches a roster', () => {
     });
   });
 
+  it('starts at the tolerance the scale shows when search is switched off and on again', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.75, matchProperties: ['name'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Roster search' }),
+    );
+    await harness.user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Turn off search',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('slider', { name: /Search accuracy/ }),
+      ).not.toBeInTheDocument(),
+    );
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Roster search' }),
+    );
+    expect(
+      await screen.findByRole('slider', { name: /Search accuracy/ }),
+    ).toHaveAttribute('aria-valuetext', 'High accuracy');
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'age' }),
+    );
+    const request = await harness.submit();
+    expect(request?.stageDocument.searchOptions).toEqual({
+      matchProperties: ['age'],
+      fuzziness: 0.25,
+    });
+  });
+
   it('keeps the tolerance a stage was saved with', async () => {
     const harness = renderStageEditor({
       stage: rosterWith({
