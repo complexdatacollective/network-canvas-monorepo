@@ -692,9 +692,9 @@ describe('how a participant searches a roster', () => {
 
   /**
    * Switching search on and saving straight away is the commonest way to reach
-   * it, and it is exactly the case each half used to excuse the other in: with
-   * both empty, neither rule fired and the save left the section for the
-   * schema to refuse as `searchOptions.matchProperties` against a path.
+   * it. The attributes start empty and say so in the section's own words; the
+   * tolerance starts on the setting the scale shows (see `DEFAULT_TOLERANCE`),
+   * so the only thing left to refuse is the half nobody has chosen.
    */
   it('refuses a search switched on and left empty, in the section’s own words', async () => {
     const harness = renderStageEditor({
@@ -720,8 +720,58 @@ describe('how a participant searches a roster', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Choose how closely a search must match.'),
-    ).toBeInTheDocument();
+      screen.queryByText('Choose how closely a search must match.'),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * The scale rests its thumb on "High accuracy" before anything is chosen.
+   * The field used to stay empty beneath it, so the researcher saw a tolerance
+   * the stage did not hold, and "Finished Editing" refused the stage for having
+   * none until the thumb was moved away and back.
+   */
+  it('starts a search switched on at the tolerance the scale shows, and saves it', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({ dataSource: 'roster_data' }),
+      sections: <SearchOptionsSection />,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Roster search' }),
+    );
+    expect(
+      await screen.findByRole('slider', { name: /Search accuracy/ }),
+    ).toHaveAttribute('aria-valuetext', 'High accuracy');
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'name' }),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.searchOptions).toEqual({
+      matchProperties: ['name'],
+      fuzziness: 0.25,
+    });
+  });
+
+  it('keeps the tolerance a stage was saved with', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.75, matchProperties: ['name'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    expect(
+      await screen.findByRole('slider', { name: /Search accuracy/ }),
+    ).toHaveAttribute('aria-valuetext', 'Low accuracy');
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.searchOptions).toEqual({
+      matchProperties: ['name'],
+      fuzziness: 0.75,
+    });
   });
 
   /**

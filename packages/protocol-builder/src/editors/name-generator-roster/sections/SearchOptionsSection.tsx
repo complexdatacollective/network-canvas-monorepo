@@ -233,6 +233,17 @@ const withSavedTolerance = (
   ].toSorted((one, other) => one.value - other.value);
 };
 
+/**
+ * The tolerance a search starts on when the researcher switches it on.
+ *
+ * The scale has to rest its thumb somewhere before anything is chosen, and it
+ * rests on "High accuracy". Leaving the field empty under it showed a setting
+ * the stage did not hold: the researcher saw a chosen tolerance, and the save
+ * was refused for having none. Starting on the setting the scale shows makes
+ * what is on screen what is saved.
+ */
+const DEFAULT_TOLERANCE = 0.25;
+
 const MATCH_REQUIRED = createMessageError(messages.matchRequired);
 
 const TOLERANCE_REQUIRED = createMessageError(messages.toleranceRequired);
@@ -278,6 +289,17 @@ export default function SearchOptionsSection() {
   // go the moment the researcher moves to a named setting, or the value they
   // just left would stay choosable.
   const heldTolerance = useStageValue(FUZZINESS);
+  // A search being switched on rather than one the stage arrived with: nothing
+  // chosen in either half. A stage that already names attributes but holds no
+  // tolerance is left to say so, rather than being given one nobody chose.
+  // Read only when the field registers, so a later change here moves nothing.
+  const heldAttributes = useStageValue(MATCH_PROPERTIES);
+  const startingTolerance =
+    heldTolerance === undefined &&
+    (heldAttributes === undefined ||
+      (Array.isArray(heldAttributes) && heldAttributes.length === 0))
+      ? DEFAULT_TOLERANCE
+      : undefined;
   const tolerances = useMemo(
     () => withSavedTolerance(toleranceOptions(intl), heldTolerance, intl),
     [heldTolerance, intl],
@@ -342,6 +364,7 @@ export default function SearchOptionsSection() {
           label={intl.formatMessage(messages.toleranceLabel)}
           hint={intl.formatMessage(messages.toleranceHint)}
           options={tolerances}
+          initialValue={startingTolerance}
           required={TOLERANCE_REQUIRED}
         />
       </Section>
