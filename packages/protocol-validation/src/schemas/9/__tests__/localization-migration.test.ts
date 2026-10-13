@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { dynamicValueNamesIn } from '../../../localization/dynamicValueMessages.ts';
 import {
   escapeMessageText,
   messageText,
@@ -258,6 +259,27 @@ describe('v8 to v9 localization migration', () => {
       expect(Object.keys(value)).toEqual(['en']);
       expect(messageText(value.en ?? '')).toBe(expectedText);
     }
+  });
+
+  it("keeps braces and the fork's {{fieldName}} literal where text may now show values", () => {
+    const document = schema8Protocol(
+      (text) => `${text} {{fieldName}} {name} {name, select, other {x}}`,
+    );
+    const migrated = migrateProtocol(document, 9);
+    const sites = collectLocalizedStrings(migrated).filter(
+      ({ dynamicValues }) => dynamicValues !== undefined,
+    );
+    expect(sites.length).toBeGreaterThan(0);
+    for (const { value } of sites) {
+      for (const message of Object.values(value)) {
+        expect(dynamicValueNamesIn(message)).toEqual([]);
+      }
+    }
+    expect(
+      (migrated.stages as Record<string, unknown>[]).some(
+        (stage) => stage.dynamicValues !== undefined,
+      ),
+    ).toBe(false);
   });
 
   describe('codebook labels', () => {

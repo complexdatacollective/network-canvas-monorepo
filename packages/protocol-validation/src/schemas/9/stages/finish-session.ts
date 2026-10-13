@@ -52,8 +52,14 @@ export const finishSessionStage = baseStageSchema.extend({
   // A translation that is there is never blank: the interview would choose
   // it over falling back, and show a participant nothing.
   label: localizedString(nonBlankText(), 'plain', { mayBeEmpty: true }),
-  title: localizedString(nonBlankText(), 'markdown', { mayBeEmpty: true }),
-  content: localizedString(nonBlankText(), 'markdown', { mayBeEmpty: true }),
+  title: localizedString(nonBlankText(), 'markdown', {
+    mayBeEmpty: true,
+    dynamicValues: 'stageText',
+  }),
+  content: localizedString(nonBlankText(), 'markdown', {
+    mayBeEmpty: true,
+    dynamicValues: 'stageText',
+  }),
   // The interview's own words on this screen, which Network Canvas supplies
   // (`stage-wording/finish-session.ts`): the Finish button, the question it
   // asks, the notice once the interview has ended, and what the question says

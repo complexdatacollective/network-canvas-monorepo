@@ -15,8 +15,12 @@ export const FormFieldSchema = z.strictObject({
   // The text captioning the field. Every translation must say something: the
   // interview has no other caption to show, because the codebook variable's
   // own label is plain text that is never translated.
-  prompt: localizedString(nonBlankText(), 'markdown'),
-  hint: localizedString(nonBlankText(), 'markdown').optional(),
+  prompt: localizedString(nonBlankText(), 'markdown', {
+    dynamicValues: 'formField',
+  }),
+  hint: localizedString(nonBlankText(), 'markdown', {
+    dynamicValues: 'formField',
+  }).optional(),
   showValidationHints: z.boolean().optional(),
 });
 
@@ -91,7 +95,9 @@ export const FormFieldArraySchema = z
   .superRefine(uniqueFormFieldVariables);
 
 export const FormSchema = z.strictObject({
-  title: localizedString(nonBlankText(), 'plain'),
+  title: localizedString(nonBlankText(), 'plain', {
+    dynamicValues: 'stageText',
+  }),
   fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),
 });
 

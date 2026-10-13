@@ -89,6 +89,22 @@ export {
   pluralCountExamples,
   requiredArgumentsOf,
 } from './localization/messageArguments.ts';
+// Values from the interview that a stage's text shows (see
+// `schemas/9/dynamic-values.ts`): the one message checker, the versions a
+// message reads for given values, and the placements a translation must keep.
+export {
+  DYNAMIC_VALUE_MARKER,
+  DYNAMIC_VALUE_NAME,
+  type DynamicValueArgument,
+  type DynamicValueArguments,
+  type DynamicValueState,
+  dynamicMessageParts,
+  dynamicValueNamesIn,
+  findDynamicValueProblem,
+  findMissingDynamicPlacement,
+  MISSING_CASE,
+  type MissingDynamicPlacement,
+} from './localization/dynamicValueMessages.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
 export {
   escapeMessageText,
@@ -159,6 +175,32 @@ export {
   type LocalizedString,
   type LocalizedStringFormat,
 } from './schemas/9/localized-string.ts';
+// A stage's dynamic values: the bindings, the path vocabulary, and the one
+// table of what each site can show, which validation and Architect share.
+export {
+  CASED_VARIABLE_TYPES,
+  DYNAMIC_VALUE_ROLE_PREFIXES,
+  DYNAMIC_VALUE_VARIABLE_TYPES,
+  type DynamicValueBinding,
+  type DynamicValueRole,
+  type DynamicValues,
+  type DynamicValueSite,
+  type DynamicValueSiteContext,
+  type DynamicValueStatus,
+  dynamicValueArgumentsAt,
+  dynamicValuePathFor,
+  dynamicValueRolesAt,
+  dynamicValueStatus,
+  INTRINSIC_DYNAMIC_VALUES,
+  type IntrinsicDynamicValue,
+  type ParsedDynamicValuePath,
+  parseDynamicValuePath,
+} from './schemas/9/dynamic-values.ts';
+export {
+  dynamicValueContextFor,
+  type DynamicValueProblem,
+  findDynamicValueProblems,
+} from './schemas/9/dynamic-value-validation.ts';
 // What the Family Pedigree's localized messages may use, for an editor of
 // them.
 export {

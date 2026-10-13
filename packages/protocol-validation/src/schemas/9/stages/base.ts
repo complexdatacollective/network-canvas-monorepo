@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { SkipLogicSchema } from '../common/index.ts';
+import { DynamicValuesSchema } from '../dynamic-values.ts';
 import { localizedString, nonBlankText } from '../localized-string.ts';
 
 /**
@@ -29,4 +30,7 @@ export const baseStageSchema = z.strictObject({
   interviewScript: z.string().optional(),
   label: localizedString(nonBlankText(), 'plain'),
   skipLogic: SkipLogicSchema.optional(),
+  // Values from the interview the stage's text may show, by the argument name
+  // its messages use (see `dynamic-values.ts`).
+  dynamicValues: DynamicValuesSchema.optional(),
 });

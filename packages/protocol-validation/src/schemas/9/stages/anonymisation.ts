@@ -6,8 +6,12 @@ import { baseStageSchema } from './base.ts';
 export const anonymisationStage = baseStageSchema.extend({
   type: z.literal('Anonymisation'),
   explanationText: z.strictObject({
-    title: localizedString(nonBlankText(), 'plain'),
-    body: localizedString(nonBlankText(), 'markdown'),
+    title: localizedString(nonBlankText(), 'plain', {
+      dynamicValues: 'stageText',
+    }),
+    body: localizedString(nonBlankText(), 'markdown', {
+      dynamicValues: 'stageText',
+    }),
   }),
   validation: z
     .strictObject({

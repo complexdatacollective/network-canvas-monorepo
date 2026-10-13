@@ -8,6 +8,10 @@ import { localizedString, nonBlankText } from '../localized-string.ts';
  * every translation of it must say something, as the title's must.
  */
 export const IntroductionPanelSchema = z.strictObject({
-  title: localizedString(nonBlankText(), 'plain'),
-  text: localizedString(nonBlankText(), 'markdown').optional(),
+  title: localizedString(nonBlankText(), 'plain', {
+    dynamicValues: 'stageText',
+  }),
+  text: localizedString(nonBlankText(), 'markdown', {
+    dynamicValues: 'stageText',
+  }).optional(),
 });

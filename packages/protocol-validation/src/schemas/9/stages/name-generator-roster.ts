@@ -96,7 +96,9 @@ export const nameGeneratorRosterStage = baseStageSchema
     dataSource: assetReference(),
     // The heading above the people the participant can add. The roster IS the
     // panel, so it is named for what it heads rather than as the stage's title.
-    panelTitle: localizedString(nonBlankText(), 'plain'),
+    panelTitle: localizedString(nonBlankText(), 'plain', {
+      dynamicValues: 'stageText',
+    }),
     cardOptions: z
       .strictObject({
         additionalProperties: z
