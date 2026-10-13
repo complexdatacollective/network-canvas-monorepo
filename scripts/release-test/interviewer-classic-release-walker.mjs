@@ -39,13 +39,14 @@
 //     [--app-path <App.app|app-debug.apk>] [--device <udid|serial>]  (mobile)
 //     [--phase verify-imports]                          (ios, after manual imports)
 //     [--timeout-ms 900000]
-import { execFile as execFileCb, spawn } from 'node:child_process';
+import { execFile as execFileCb } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify, parseArgs } from 'node:util';
 
 import {
+  attachIosWebKit,
   checkNativeVersions,
   closeElectron,
   mainWindow,
@@ -53,7 +54,6 @@ import {
   findPackagedBinary,
   inspectInterviewerExport,
   launchElectron,
-  PAGE_HELPERS,
   playwrightDriver,
   queueDialog,
   readAppVersion,
@@ -392,131 +392,6 @@ async function androidPlatform() {
   };
 }
 
-// Minimal WebKit inspector client over ios_webkit_debug_proxy. The simulator
-// wraps each page in a Target, so every command goes through
-// Target.sendMessageToTarget; Runtime.evaluate cannot await, so a promise is
-// resolved with Runtime.awaitPromise.
-async function connectWebKit(port, urlPrefix) {
-  const deadline = Date.now() + 30_000;
-  let page;
-  while (!page && Date.now() < deadline) {
-    try {
-      const pages = await (await fetch(`http://localhost:${port}/json`)).json();
-      page = pages.find((p) => p.url?.startsWith(urlPrefix));
-    } catch {
-      // proxy still starting
-    }
-    if (!page) await new Promise((r) => setTimeout(r, 500));
-  }
-  if (!page)
-    throw new SetupError(
-      `no ${urlPrefix} page on the WebKit inspector (port ${port})`,
-    );
-  const ws = new WebSocket(page.webSocketDebuggerUrl);
-  let target;
-  let id = 0;
-  const pending = new Map();
-  const ready = new Promise((resolve) => {
-    ws.addEventListener('message', (event) => {
-      const msg = JSON.parse(event.data);
-      // Embedded frames are announced as targets too (and destroyed when the
-      // stage changes); commands must go to the page.
-      if (
-        msg.method === 'Target.targetCreated' &&
-        msg.params.targetInfo.type === 'page' &&
-        !msg.params.targetInfo.isProvisional
-      ) {
-        target = msg.params.targetInfo.targetId;
-        resolve();
-      }
-      if (msg.method === 'Target.didCommitProvisionalTarget') {
-        target = msg.params.newTargetId;
-      }
-      if (msg.method === 'Target.dispatchMessageFromTarget') {
-        const inner = JSON.parse(msg.params.message);
-        if (inner.id && pending.has(inner.id)) {
-          pending.get(inner.id)(inner);
-          pending.delete(inner.id);
-        }
-      }
-    });
-  });
-  await new Promise((r, j) => {
-    ws.addEventListener('open', r, { once: true });
-    ws.addEventListener('error', j, { once: true });
-  });
-  await Promise.race([
-    ready,
-    new Promise((_, j) =>
-      setTimeout(
-        () => j(new SetupError('WebKit target never announced')),
-        10_000,
-      ),
-    ),
-  ]);
-  // A reply can be lost when the simulator re-announces the page's target
-  // (later commands go to the new one), so every command has a deadline: a
-  // lost reply fails its step instead of hanging the run.
-  const send = (method, params = {}) =>
-    new Promise((resolve, reject) => {
-      id += 1;
-      const messageId = id;
-      const timer = setTimeout(() => {
-        pending.delete(messageId);
-        reject(
-          new Error(`WebKit inspector did not answer ${method} within 20s`),
-        );
-      }, 20_000);
-      pending.set(messageId, (reply) => {
-        clearTimeout(timer);
-        resolve(reply);
-      });
-      ws.send(
-        JSON.stringify({
-          id: 100_000 + id,
-          method: 'Target.sendMessageToTarget',
-          params: {
-            targetId: target,
-            message: JSON.stringify({ id: messageId, method, params }),
-          },
-        }),
-      );
-    });
-  // A function call with data goes through Runtime.callFunctionOn, so the
-  // value arrives as an argument rather than as part of the evaluated code.
-  const callWithArg = async (source, arg) => {
-    const win = await send('Runtime.evaluate', { expression: 'window' });
-    if (win.error) throw new Error(win.error.message);
-    return send('Runtime.callFunctionOn', {
-      objectId: win.result.result.objectId,
-      functionDeclaration: `function (source, value) { ${PAGE_HELPERS}; return Promise.resolve((0, eval)('(' + source + ')')(value)).then((v) => JSON.stringify(v === undefined ? null : v)); }`,
-      arguments: [{ value: source }, { value: arg }],
-      emulateUserGesture: true,
-    });
-  };
-  const evaluate = async (expression, arg) => {
-    const first =
-      arg === undefined
-        ? await send('Runtime.evaluate', {
-            expression: `Promise.resolve((() => { ${PAGE_HELPERS}; return (${expression}); })()).then((v) => JSON.stringify(v === undefined ? null : v))`,
-            emulateUserGesture: true,
-          })
-        : await callWithArg(expression, arg);
-    if (first.error) throw new Error(first.error.message);
-    if (first.result.wasThrown)
-      throw new Error(first.result.result.description);
-    const settled = await send('Runtime.awaitPromise', {
-      promiseObjectId: first.result.result.objectId,
-      returnByValue: true,
-    });
-    if (settled.error) throw new Error(settled.error.message);
-    if (settled.result.wasThrown)
-      throw new Error(settled.result.result.description ?? 'evaluation threw');
-    return JSON.parse(settled.result.result.value);
-  };
-  return { evaluate, close: () => ws.close() };
-}
-
 async function iosPlatform() {
   const simctl = async (...a) =>
     (await execFile('xcrun', ['simctl', ...a], { maxBuffer: 64 * 1024 * 1024 }))
@@ -553,45 +428,16 @@ async function iosPlatform() {
     await simctl('launch', udid, bundleId);
   }
 
-  // Each booted simulator has its own launchd_sim (its command line names the
-  // device directory) holding that simulator's Web Inspector socket; take the
-  // socket of the simulator under test, not the first one on the host.
-  const launchdPid = (
-    await execFile('pgrep', ['-f', `launchd_sim .*/Devices/${udid}/`]).catch(
-      () => ({ stdout: '' }),
-    )
-  ).stdout
-    .trim()
-    .split('\n')[0];
-  const socket = launchdPid
-    ? (
-        await execFile('lsof', ['-a', '-U', '-p', launchdPid]).catch(() => ({
-          stdout: '',
-        }))
-      ).stdout.match(/(\/\S*com\.apple\.webinspectord_sim\.socket)/)?.[1]
-    : undefined;
-  if (!socket)
-    throw new SetupError(
-      `Web Inspector socket for simulator ${udid} not found (is it booted?)`,
-    );
-  const proxy = spawn(
-    'ios_webkit_debug_proxy',
-    ['-s', `unix:${socket}`, '-c', 'null:9221,:9222-9232'],
-    { stdio: 'ignore' },
-  );
-  proxy.on('error', () => {});
-  // Until this platform handle is returned, nothing else can stop the proxy:
-  // a setup failure tears it down here so a rerun finds port 9222 free.
+  // Until this platform handle is returned, nothing else can stop the proxy.
   let webkit;
   let dataContainer;
   try {
-    webkit = await connectWebKit(9222, 'capacitor://');
+    webkit = await attachIosWebKit(udid, 'capacitor://');
     dataContainer = (
       await simctl('get_app_container', udid, bundleId, 'data')
     ).trim();
   } catch (error) {
     webkit?.close();
-    proxy.kill();
     throw error;
   }
   const driver = {
@@ -659,7 +505,6 @@ async function iosPlatform() {
     finalChecks: () => [],
     close: async () => {
       webkit.close();
-      proxy.kill();
     },
   };
 }

@@ -50,6 +50,7 @@
         // skills (the Interviewer walker is covered by the pattern above).
         "scripts/release-test/architect-classic-release-walker.mjs",
         "scripts/release-test/classic-release-build.mjs",
+        "scripts/release-test/interviewer-classic-cordova-upgrade.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
         "scripts/buildtime/posthog-cli-upload-stub.mjs",
         // Agent hooks are invoked by Claude Code (.claude/settings.json),
