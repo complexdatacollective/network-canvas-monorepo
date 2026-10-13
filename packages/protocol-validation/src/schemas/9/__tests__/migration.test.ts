@@ -750,6 +750,96 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     ]);
   });
 
+  it.each([
+    ['spaces around it', ' friend ', 'friend'],
+    ['a tab inside it', 'close\tfriend', 'close friend'],
+    ['a line break inside it', 'close\nfriend', 'close friend'],
+    ['a decomposed spelling', 'cafe\u0301', 'caf\u00e9'],
+    ['a control character', 'fri\u0007end', 'fri end'],
+  ])(
+    'makes a value with %s a valid name, so the protocol still opens',
+    (_description, value, name) => {
+      const migrated = migrateProtocol(
+        asSchema8Protocol(protocolWithCategoryValues([value, 'family'])),
+        9,
+      );
+
+      expect(migrated.codebook.node?.person?.variables?.category).toMatchObject(
+        { options: [{ value: name }, { value: 'family' }] },
+      );
+    },
+  );
+
+  it('names an option whose value is empty after its label, or its position when the label is taken', () => {
+    const protocol = protocolWithCategoryValues(['', 'Option 1', '  ']);
+
+    expect(migratedCategory(protocol)).toMatchObject({
+      options: [
+        { value: 'Option 1 2' },
+        { value: 'Option 1' },
+        { value: 'Option 3' },
+      ],
+    });
+  });
+
+  it('merges a value that, once repaired, repeats an earlier one', () => {
+    expect(
+      migratedCategory(
+        protocolWithCategoryValues(['friend', 'family', 'friend ']),
+      ),
+    ).toMatchObject({ options: [{ value: 'friend' }, { value: 'family' }] });
+  });
+
+  it('rewrites rules and recorded answers that hold a repaired value', () => {
+    const protocol = protocolWithCategoryValues([' friend', 'family']);
+    const rule = (value: unknown) => ({
+      type: 'node' as const,
+      id: 'rule-friend',
+      options: {
+        type: 'person',
+        attribute: 'category',
+        operator: 'INCLUDES',
+        value,
+      },
+    });
+    const [nameGenerator, ...rest] = protocol.stages;
+    const schema8 = asSchema8Protocol({
+      ...protocol,
+      stages: [
+        {
+          ...nameGenerator,
+          skipLogic: { action: 'SKIP', filter: { rules: [rule([' friend'])] } },
+        },
+        ...rest,
+      ],
+    });
+    const { protocol: migrated, migrateSession } =
+      migrateProtocolWithSessions(schema8);
+
+    expect(migrated.stages[0]).toMatchObject({
+      skipLogic: { filter: { rules: [rule(['friend'])] } },
+    });
+    const result = migrateSession({
+      network: {
+        ego: { _uid: 'ego', attributes: {} },
+        nodes: [
+          {
+            _uid: 'a',
+            type: 'person',
+            attributes: { category: [' friend', 'family'] },
+          },
+        ],
+        edges: [],
+      },
+      stageMetadata: {},
+      currentStep: 0,
+    });
+    if (!result.success) throw result.error;
+    expect(result.session.network.nodes[0]?.attributes).toEqual({
+      category: ['friend', 'family'],
+    });
+  });
+
   // The attribute only ever offered one answer, and no repair can invent a
   // second, so validation refuses it as it refuses a single option.
   it('leaves an attribute whose only two options share a value for validation to refuse', () => {

@@ -1,3 +1,8 @@
+import {
+  CodebookNameSchema,
+  normalizeCodebookName,
+} from '@codaco/shared-consts';
+
 import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
@@ -183,6 +188,14 @@ const removeDuplicateOptionValues = (codebook: unknown) => {
       if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
         continue;
       }
+      const rewrites = optionValueRewrites(variable.options);
+      for (const option of variable.options) {
+        if (!isRecord(option)) continue;
+        const { value } = option;
+        if (typeof value !== 'string' && typeof value !== 'number') continue;
+        const rewritten = rewrites.get(value);
+        if (rewritten !== undefined) option.value = rewritten;
+      }
       const seen = new Set<string>();
       const options = variable.options.filter((option: unknown) => {
         const value = isRecord(option) ? option.value : undefined;
@@ -203,32 +216,106 @@ const removeDuplicateOptionValues = (codebook: unknown) => {
 
 type OptionValue = string | number;
 
+// Unicode category Cc, and the two noncharacters XML 1.0 cannot carry: what
+// `CodebookNameSchema` refuses inside a name.
+const UNNAMEABLE_CHARACTERS = /[\p{Cc}\uFFFE\uFFFF]/gu;
+
 /**
- * An attribute whose options `removeDuplicateOptionValues` merges across
- * types, and each value it removes mapped to the value of the option kept:
- * options `1` then `"1"` map `"1"` to `1`. Answers and rules compare option
- * values exactly, so either still holding the removed value would name no
- * option.
+ * A schema 8 option value as a schema 9 name. Schema 8 accepted any text, and
+ * Architect saved values as typed, so a value can carry the spaces around it,
+ * a decomposed spelling, or a pasted tab or line break. Each is repaired the
+ * way Architect now writes a name as it is typed: control characters become
+ * spaces, then the text is made NFC and trimmed. Undefined when nothing is
+ * left to name the option by.
+ */
+const optionValueAsName = (value: string): string | undefined => {
+  const name = normalizeCodebookName(
+    value.toWellFormed().replace(UNNAMEABLE_CHARACTERS, ' '),
+  );
+  return CodebookNameSchema.safeParse(name).success ? name : undefined;
+};
+
+/** A name no other option of the attribute uses, from `base`. */
+const unusedOptionName = (base: string, used: ReadonlySet<string>) => {
+  if (!used.has(optionValueKey(base))) return base;
+  for (let suffix = 2; ; suffix += 1) {
+    const candidate = `${base} ${suffix}`;
+    if (!used.has(optionValueKey(candidate))) return candidate;
+  }
+};
+
+/**
+ * Each schema 8 option value schema 9 replaces, mapped to its replacement:
+ * a value that is not a valid name becomes one (`optionValueAsName`), and a
+ * value that then repeats an earlier option's, compared as schema 9 compares
+ * them (`optionValueKey`), becomes that option's value, so the two merge.
+ * Options `1` then `"1"` map `"1"` to `1`, and `"Yes "` maps to `"Yes"`. A
+ * value with nothing left to name it by takes the option's label, or "Option"
+ * and its position, numbered if another option already uses it.
+ */
+const optionValueRewrites = (
+  options: readonly unknown[],
+): Map<OptionValue, OptionValue> => {
+  const values = options.map((option) =>
+    isRecord(option) ? option.value : undefined,
+  );
+  const named = values.map((value) =>
+    typeof value === 'string' ? optionValueAsName(value) : value,
+  );
+  // Every name an option already has, so a name given to an option that had
+  // none never takes another option's.
+  const used = new Set(
+    named.flatMap((name) =>
+      typeof name === 'string' || typeof name === 'number'
+        ? [optionValueKey(name)]
+        : [],
+    ),
+  );
+  const first = new Map<string, OptionValue>();
+  const rewrites = new Map<OptionValue, OptionValue>();
+  values.forEach((value, index) => {
+    if (typeof value !== 'string' && typeof value !== 'number') return;
+    // A value repeated exactly is one value, already rewritten.
+    if (rewrites.has(value)) return;
+    let name = named[index];
+    if (typeof name !== 'string' && typeof name !== 'number') {
+      const option = options[index];
+      // A schema 8 label is text; a document already in schema 9 form has
+      // its label localized, and its first translation names it.
+      const labelText = isRecord(option)
+        ? typeof option.label === 'string'
+          ? option.label
+          : isRecord(option.label)
+            ? Object.values(option.label).find(
+                (text): text is string => typeof text === 'string',
+              )
+            : undefined
+        : undefined;
+      const label =
+        labelText === undefined ? undefined : optionValueAsName(labelText);
+      name = unusedOptionName(label ?? `Option ${index + 1}`, used);
+      used.add(optionValueKey(name));
+    }
+    const key = optionValueKey(name);
+    const kept = first.get(key) ?? name;
+    if (!first.has(key)) first.set(key, name);
+    if (kept !== value) rewrites.set(value, kept);
+  });
+  return rewrites;
+};
+
+/**
+ * An attribute whose option values `removeDuplicateOptionValues` rewrites,
+ * each mapped to the value it becomes (`optionValueRewrites`): one that was
+ * not a valid name, or that merges into an earlier option across types.
+ * Answers and rules compare option values exactly, so either still holding
+ * the old value would name no option.
  */
 type MergedOptionValues = {
   entity: 'node' | 'edge' | 'ego';
   type: string | undefined;
   attribute: string;
   kept: ReadonlyMap<OptionValue, OptionValue>;
-};
-
-const mergedValuesOf = (options: unknown[]) => {
-  const first = new Map<string, OptionValue>();
-  const kept = new Map<OptionValue, OptionValue>();
-  for (const option of options) {
-    const value = isRecord(option) ? option.value : undefined;
-    if (typeof value !== 'string' && typeof value !== 'number') continue;
-    const key = optionValueKey(value);
-    const firstValue = first.get(key);
-    if (firstValue === undefined) first.set(key, value);
-    else if (firstValue !== value) kept.set(value, firstValue);
-  }
-  return kept;
 };
 
 const mergedOptionValuesOf = (codebook: unknown): MergedOptionValues[] => {
@@ -244,7 +331,7 @@ const mergedOptionValuesOf = (codebook: unknown): MergedOptionValues[] => {
       if (variable.type !== 'categorical' && variable.type !== 'ordinal') {
         continue;
       }
-      const kept = mergedValuesOf(variable.options);
+      const kept = optionValueRewrites(variable.options);
       if (kept.size > 0) merged.push({ entity, type, attribute, kept });
     }
   };
@@ -1015,6 +1102,7 @@ const migrationV8toV9 = createMigration({
 - Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental "Encrypted Attributes" feature, those attributes are no longer marked, so they keep being collected without encryption.
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
 - Each option of an ordinal or categorical attribute must now have a value of its own, because answers are stored by value and two options with the same value cannot be told apart. Where options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. Answers already recorded, and skip logic and filters, keep the value they use. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
+- An option's value is now held to the same rules as other names. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. An empty value is replaced by the option's label or, when there is none, by "Option" followed by the option's position. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.
 - An introduction panel's text is now optional, so a panel can show only its title. Text that contained only spaces is removed, so the panel shows only its title, as before. An introduction panel's title must contain some text, so a title that contained only spaces now uses the stage's name.
 - On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other's text, or "Other" for the label and "Please specify" for the question.
 - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".

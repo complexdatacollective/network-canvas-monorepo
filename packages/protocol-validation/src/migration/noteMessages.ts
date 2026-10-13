@@ -401,6 +401,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: duplicateOptionValues. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. Skip logic decides whether a stage is shown; a filter decides which people a stage lists. "Requiring more selections" refers to the minimum number of options a participant must choose. Keep 1 and "1" exactly as written.',
   },
+  schema9OptionValueNames: {
+    id: 'protocolValidation.migrationNotes.schema9.optionValueNames',
+    defaultMessage:
+      "An option's value is now held to the same rules as other names. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. An empty value is replaced by the option's label or, when there is none, by \"Option\" followed by the option's position. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: optionValueNames. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. "One standard form" means Unicode normalization (the same letter is always stored with the same characters). "As above" refers to the previous bullet, which says options sharing a value are merged into the first. Skip logic decides whether a stage is shown; a filter decides which people a stage lists; node shapes are the shapes nodes are drawn in according to an answer. Keep "Option" in English and in double quotes: it is the literal text written into protocol data.',
+  },
   schema9IntroductionPanelText: {
     id: 'protocolValidation.migrationNotes.schema9.introductionPanelText',
     defaultMessage:
@@ -618,6 +625,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9EncryptedAttributes,
       migrationNoteMessages.schema9ContradictoryPassphraseRules,
       migrationNoteMessages.schema9DuplicateOptionValues,
+      migrationNoteMessages.schema9OptionValueNames,
       migrationNoteMessages.schema9IntroductionPanelText,
       migrationNoteMessages.schema9OtherBinText,
       migrationNoteMessages.schema9TieStrengthDeclineLabel,

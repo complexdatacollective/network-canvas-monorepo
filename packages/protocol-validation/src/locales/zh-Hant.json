@@ -90,6 +90,7 @@
   "protocolValidation.migrationNotes.schema9.familyPedigreeSharedAttributes": "如果家族譜系中有兩個回答使用同一個屬性，該譜系就無法轉換：兩個提名提示、一個提名提示和一個附加人員欄位，或者姓名和另一個回答。現在每個回答都需要自己的屬性。請在建立該協定的 Architect 版本中為每個回答指定各自的屬性，然後再升級。",
   "protocolValidation.migrationNotes.schema9.finishStage": "結束訪談的畫面現在是協定末尾的一個「完成畫面」階段，因此您可以變更其標題和文字，並像協定的其他內容一樣進行翻譯。其初始內容就是訪談一直以來在此處顯示的文字。",
   "protocolValidation.migrationNotes.schema9.introductionPanelText": "介紹面板的文字現在是選填的，因此面板可以只顯示標題。只含空格的文字會被移除，因此面板會像以前一樣只顯示標題。介紹面板的標題必須包含文字，因此只含空格的標題現在會改用階段的名稱。",
+  "protocolValidation.migrationNotes.schema9.optionValueNames": "選項的值現在須遵守與其他名稱相同的規則。值開頭與結尾的空格會被移除，值中的每個 Tab 字元或換行字元都會變成空格，值中的字元會以同一種標準 Unicode 形式儲存。空值會被替換為該選項的標籤；若沒有標籤，則替換為 \"Option\" 後接該選項的位置序號。經上述處理後值相同的選項會依上文所述合併，已記錄的回答、略過邏輯、篩選條件與節點形狀都會更新為新值。",
   "protocolValidation.migrationNotes.schema9.otherBinText": "在「類別分箱」階段中，用於未列出回答的分箱標籤，以及請參與者描述其回答的問題，現在都必須包含文字。若其中任一項只含空格，現在會改用另一項的文字；否則標籤使用「Other」，問題使用「Please specify」。",
   "protocolValidation.migrationNotes.schema9.pedigreeWording": "「家族譜系」階段本身的文字現在屬於該階段，因此您可以變更它，並像協定的其他內容一樣翻譯它：詢問每個人姓名的問題及其提示，以及在家庭必須完整時列出仍缺少內容的清單。它一開始就是訪談一直顯示的文字。",
   "protocolValidation.migrationNotes.schema9.rosterPanelTitle": "「名冊資料名字產生器」階段現在有一個面板標題，顯示在參與者從中選擇人員的清單上方，因此您可以變更它，並像協定的其他內容一樣進行翻譯。其初始內容就是訪談一直以來在此處顯示的標題：「Available to add」。",
