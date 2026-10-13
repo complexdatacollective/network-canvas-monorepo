@@ -51,9 +51,10 @@ test('opens an existing Sociogram without reporting unsaved changes', async ({
     throw new Error('fixture Sociogram does not use concentric circles');
   }
 
-  // Older valid protocols may omit this optional false-valued property. The
-  // Background section draws its switch from an absent value as "off", so
-  // opening such a stage must report nothing to save.
+  // Older valid protocols may omit this optional property. The Background
+  // section shows an absent value as skewed, which is how the interview draws
+  // it, without writing anything, so opening such a stage must report nothing
+  // to save.
   delete sociogram.background.skewedTowardCenter;
 
   await seed(protocol, { assets });
