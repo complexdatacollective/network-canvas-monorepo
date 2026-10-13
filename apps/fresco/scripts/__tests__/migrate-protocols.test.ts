@@ -518,6 +518,32 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       logSpy.mockRestore();
     });
 
+    it('carries over an interview that saved no network, still holding none', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
+      prisma.interview.findMany.mockResolvedValueOnce([
+        { id: 'int-empty', network: null, stageMetadata: null, currentStep: 0 },
+        {
+          id: 'int-empty-later',
+          network: null,
+          stageMetadata: null,
+          currentStep: 2,
+        },
+      ]);
+
+      await runMigration(prisma);
+
+      // The first stays where it was and is not rewritten; the second's
+      // resume position follows its stage, and its network stays null.
+      expect(prisma.interview.update).toHaveBeenCalledTimes(1);
+      expect(prisma.interview.update).toHaveBeenCalledWith({
+        where: { id: 'int-empty-later' },
+        data: { currentStep: 3 },
+      });
+      logSpy.mockRestore();
+    });
+
     it('fails the whole migration when one interview cannot be migrated, naming every failed interview', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const prisma = makeMockPrisma();
@@ -529,7 +555,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
         .mockResolvedValueOnce([
           {
             id: 'int-broken',
-            network: null,
+            network: { nodes: 'not a list' },
             stageMetadata: null,
             currentStep: 0,
           },

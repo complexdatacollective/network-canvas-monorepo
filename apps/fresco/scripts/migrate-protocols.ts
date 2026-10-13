@@ -9,6 +9,10 @@ import {
   validateProtocol,
   withInterfaceText,
 } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 import { Prisma } from '~/lib/db/generated/client';
 
 /**
@@ -223,6 +227,13 @@ export class InterviewMigrationFailedError extends Error {
   }
 }
 
+/** What an interview that stored no network is migrated as. Never written. */
+const EMPTY_NETWORK = {
+  nodes: [],
+  edges: [],
+  ego: { [entityPrimaryKeyProperty]: '', [entityAttributesProperty]: {} },
+};
+
 /** The failure, with the error that caused it when a migration step threw. */
 function describeSessionFailure(error: Error): string {
   const { cause } = error;
@@ -275,8 +286,13 @@ async function migrateInterviewsOf(
     if (batch.length === 0) break;
 
     for (const interview of batch) {
+      // An interview that never saved a network stores it as null. It is
+      // carried over still holding none: its stage records and resume
+      // position are migrated against an empty network, and the network is
+      // never written.
+      const noNetwork = interview.network === null;
       const result = migrateSession({
-        network: interview.network,
+        network: noNetwork ? EMPTY_NETWORK : interview.network,
         stageMetadata: interview.stageMetadata,
         currentStep: interview.currentStep,
       });
@@ -302,7 +318,7 @@ async function migrateInterviewsOf(
       await prisma.interview.update({
         where: { id: interview.id },
         data: {
-          network,
+          ...(noNetwork ? {} : { network }),
           // Absent only when the row stored none and none was added.
           ...(stageMetadata !== undefined ? { stageMetadata } : {}),
           currentStep,
