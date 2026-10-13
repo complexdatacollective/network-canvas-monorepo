@@ -269,6 +269,8 @@ const flatten = (
   stateOf: (name: string) => DynamicValueState,
   plural: string | undefined,
   parts: MessagePart[],
+  /** Collects the values whose plural the version goes through. */
+  plurals: Set<string>,
 ) => {
   for (const element of elements) {
     if (element.type === TYPE.literal) pushText(parts, element.value);
@@ -285,7 +287,7 @@ const flatten = (
           ? element.options[key]
           : undefined) ?? element.options.other;
       if (option !== undefined) {
-        flatten(option.value, locale, stateOf, plural, parts);
+        flatten(option.value, locale, stateOf, plural, parts, plurals);
       }
     } else if (element.type === TYPE.plural) {
       const state = stateOf(element.value);
@@ -297,8 +299,9 @@ const flatten = (
         (Object.hasOwn(element.options, category)
           ? element.options[category]
           : undefined) ?? element.options.other;
+      plurals.add(element.value);
       if (option !== undefined) {
-        flatten(option.value, locale, stateOf, element.value, parts);
+        flatten(option.value, locale, stateOf, element.value, parts, plurals);
       }
     }
   }
@@ -320,7 +323,7 @@ export const dynamicMessageParts = (
   const elements = parseMessage(message);
   if (typeof elements === 'string') return [message];
   const parts: MessagePart[] = [];
-  flatten(elements, locale, stateOf, undefined, parts);
+  flatten(elements, locale, stateOf, undefined, parts, new Set());
   return parts;
 };
 
@@ -337,18 +340,37 @@ export type MissingDynamicPlacement = Readonly<{
  */
 export const TOO_MANY_DYNAMIC_VERSIONS = 'tooManyVersions';
 
-const shownIn = (
+/**
+ * The values the version of `message` for `scenario` shows, and the values
+ * whose plural that version goes through.
+ */
+const versionIn = (
   message: string,
   locale: LocaleTag,
   scenario: ReadonlyMap<string, DynamicValueState>,
-): ReadonlySet<string> =>
-  new Set(
-    dynamicMessageParts(
-      message,
+): Readonly<{ shown: ReadonlySet<string>; plurals: ReadonlySet<string> }> => {
+  const elements = parseMessage(message);
+  const parts: MessagePart[] = [];
+  const plurals = new Set<string>();
+  if (typeof elements !== 'string') {
+    flatten(
+      elements,
       locale,
       (name) => scenario.get(name) ?? { missing: false },
-    ).flatMap((part) => (typeof part === 'string' ? [] : [part.argument])),
-  );
+      undefined,
+      parts,
+      plurals,
+    );
+  }
+  return {
+    shown: new Set(
+      parts.flatMap((part) =>
+        typeof part === 'string' ? [] : [part.argument],
+      ),
+    ),
+    plurals,
+  };
+};
 
 // Beyond this many combinations of states the check gives up rather than
 // stall: no realistic stage text uses enough values to reach it.
@@ -361,22 +383,6 @@ const describeState = (state: DynamicValueState): string => {
   if (state.missing) return MISSING_CASE;
   if (state.count !== undefined) return String(state.count);
   return state.case ?? 'other';
-};
-
-const pluralNamesIn = (message: string): ReadonlySet<string> => {
-  const elements = parseMessage(message);
-  const names = new Set<string>();
-  if (typeof elements === 'string') return names;
-  const visit = (nodes: readonly MessageFormatElement[]) => {
-    for (const node of nodes) {
-      if (node.type === TYPE.plural) names.add(node.value);
-      if (node.type === TYPE.select || node.type === TYPE.plural) {
-        for (const option of Object.values(node.options)) visit(option.value);
-      }
-    }
-  };
-  visit(elements);
-  return names;
 };
 
 /**
@@ -439,7 +445,6 @@ export const findMissingDynamicPlacement = (
   );
   if (total > MAX_SCENARIOS) return TOO_MANY_DYNAMIC_VERSIONS;
 
-  const translationPlurals = pluralNamesIn(translation);
   const singleNumberCategory = (count: number | undefined): boolean => {
     if (count === undefined || !Number.isInteger(count)) return false;
     const category = pluralCategoryOf(locale, count);
@@ -457,16 +462,18 @@ export const findMissingDynamicPlacement = (
       rest = Math.floor(rest / states.length);
       if (state !== undefined) scenario.set(name, state);
     }
-    const required = shownIn(original, originalLocale, scenario);
+    const required = versionIn(original, originalLocale, scenario).shown;
     if (required.size === 0) continue;
-    const shown = shownIn(translation, locale, scenario);
+    // The one-number waiver holds only where this version of the
+    // translation itself goes through that value's plural.
+    const { shown, plurals } = versionIn(translation, locale, scenario);
     for (const name of required) {
       if (shown.has(name)) continue;
       const state = scenario.get(name);
       if (
         state !== undefined &&
         !state.missing &&
-        translationPlurals.has(name) &&
+        plurals.has(name) &&
         singleNumberCategory(state.count)
       ) {
         continue;
