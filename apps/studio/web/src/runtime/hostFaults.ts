@@ -61,13 +61,17 @@ export const makeConnectionMonitor = (
 };
 
 export const observedWebSocketConstructor = (
-  watch: (socket: Socket.WebSocketLike) => void = makeConnectionMonitor(),
+  makeMonitor: () => (socket: Socket.WebSocketLike) => void = () =>
+    makeConnectionMonitor(),
 ): Layer.Layer<Socket.WebSocketConstructor> =>
   Layer.effect(Socket.WebSocketConstructor)(
-    Effect.map(Socket.WebSocketConstructor, (make) => (url, options) => {
-      const socket = make(url, options);
-      watch(socket);
-      return socket;
+    Effect.map(Socket.WebSocketConstructor, (make) => {
+      const watch = makeMonitor();
+      return (url, options) => {
+        const socket = make(url, options);
+        watch(socket);
+        return socket;
+      };
     }),
   ).pipe(Layer.provide(Socket.layerWebSocketConstructorGlobal));
 

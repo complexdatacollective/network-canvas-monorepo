@@ -25,6 +25,7 @@ import {
   participantStage,
   useParticipantLogs,
   watchParticipantConnection,
+  watchParticipantMedia,
 } from './participantLogs.ts';
 import ParticipantNotice, {
   type ParticipantNoticeKind,
@@ -53,7 +54,7 @@ function InterviewSessionView() {
 
   const { sessionToken } = route.useParams();
   useErrorTelemetry('participant', loaded.analytics);
-  const logging = useParticipantLogs(sessionToken, loaded.logLevel);
+  const logs = useParticipantLogs(sessionToken, loaded.logLevel);
   const analyticsClient = useMemo(
     () =>
       loaded.analytics
@@ -71,13 +72,20 @@ function InterviewSessionView() {
   );
   const interviewClient = useMemo(
     () =>
-      analyticsClient === undefined && !logging
+      analyticsClient === undefined && !logs.enabled
         ? undefined
-        : faultObservingClient(analyticsClient, stageTypes),
-    [analyticsClient, logging, stageTypes],
+        : faultObservingClient(analyticsClient, logs.log, currentStage),
+    [analyticsClient, logs, currentStage],
   );
 
-  useEffect(() => watchParticipantConnection(currentStage), [currentStage]);
+  useEffect(
+    () => watchParticipantConnection(logs.log, currentStage),
+    [logs, currentStage],
+  );
+  useEffect(
+    () => watchParticipantMedia(logs.log, currentStage),
+    [logs, currentStage],
+  );
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
     () =>
@@ -90,12 +98,13 @@ function InterviewSessionView() {
         getCurrentStep: () => currentStepRef.current,
         onNotice: setNotice,
         onSaveFault: (fault: SaveFault) => {
-          const stage = currentStage();
+          const stage = participantStage(stageTypes, fault.stageIndex);
           if (stage === undefined) return;
           if (fault.kind === 'retried') {
-            logAnswerSaveRetried(stage, fault.attempts);
+            logAnswerSaveRetried(logs.log, stage, fault.attempts);
           } else {
             logAnswerSaveFailed(
+              logs.log,
               stage,
               faultCodeOf(fault.error),
               fault.attempts,
@@ -103,7 +112,7 @@ function InterviewSessionView() {
           }
         },
       }),
-    [loaded, payload, currentStage],
+    [loaded, payload, stageTypes, logs],
   );
 
   useEffect(() => {
@@ -134,9 +143,11 @@ function InterviewSessionView() {
 
   const onRequestAsset = useMemo<AssetRequestHandler>(
     () =>
-      createAssetResolver(payload.protocol.assets, (code) => {
+      createAssetResolver(payload.protocol.assets, () => {
         const stage = currentStage();
-        if (stage !== undefined) logAssetFailed(stage, code);
+        return (code) => {
+          if (stage !== undefined) logAssetFailed(logs.log, stage, code);
+        };
       }),
     [payload, currentStage],
   );

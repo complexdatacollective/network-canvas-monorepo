@@ -1,20 +1,26 @@
 import { Option, Predicate, Schema } from 'effect';
-import { type ComponentProps, useEffect } from 'react';
+import { type ComponentProps, useEffect, useMemo } from 'react';
 
 import type { Shell } from '@codaco/interview';
 import type {
   FaultCode,
   LogLevelName,
+  ParticipantLogEntry,
 } from '@codaco/studio-contract/schema/browser-logs';
 import { UsageInterfaceType } from '@codaco/studio-sync/jobs';
 
-import { logParticipant, startBrowserLogs } from '../runtime/browserLogs.ts';
+import {
+  type BrowserLogHandle,
+  createBrowserLogHandle,
+} from '../runtime/browserLogs.ts';
 import { participantLogTransport } from '../runtime/participantRuntime.ts';
 import { type PublicStatus, readPublicStatus } from '../runtime/telemetry.ts';
 
 type AnalyticsClient = NonNullable<
   ComponentProps<typeof Shell>['posthogClient']
 >;
+
+export type ParticipantLog = (entry: ParticipantLogEntry) => void;
 
 export type ParticipantStage = {
   readonly stage_index: number;
@@ -26,6 +32,8 @@ const MAX_STAGE_INDEX = 10_000;
 const MAX_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 const MAX_ATTEMPTS = 1000;
+
+const STORAGE_PATH = '/storage/';
 
 const decodeInterfaceType = Schema.decodeUnknownOption(UsageInterfaceType);
 
@@ -54,101 +62,118 @@ type LogSettings = {
   readonly level: LogLevelName;
 };
 
-const startParticipantLogs = (
+const configure = (
+  handle: BrowserLogHandle<ParticipantLogEntry>,
   sessionToken: string,
   settings: LogSettings,
-): (() => void) =>
-  startBrowserLogs('participant', {
+): void =>
+  handle.configure({
     enabled: settings.telemetry,
     level: settings.level,
     ...participantLogTransport(sessionToken),
   });
 
+const useSessionHandle = (sessionToken: string) =>
+  useMemo(
+    () => createBrowserLogHandle<ParticipantLogEntry>('participant'),
+    [sessionToken],
+  );
+
 export function useParticipantLogs(
   sessionToken: string,
   level: LogLevelName | null,
-): boolean {
-  useEffect(
-    () =>
-      startParticipantLogs(sessionToken, {
-        telemetry: level !== null,
-        level: level ?? 'None',
-      }),
-    [sessionToken, level],
+): { readonly log: ParticipantLog; readonly enabled: boolean } {
+  const handle = useSessionHandle(sessionToken);
+  useEffect(() => {
+    configure(handle, sessionToken, {
+      telemetry: level !== null,
+      level: level ?? 'None',
+    });
+    return handle.close;
+  }, [handle, sessionToken, level]);
+  return useMemo(
+    () => ({ log: handle.log, enabled: level !== null }),
+    [handle, level],
   );
-  return level !== null;
 }
 
 export function useStatusParticipantLogs(
   sessionToken: string,
   readStatus: PublicStatus = readPublicStatus,
-): void {
+): ParticipantLog {
+  const handle = useSessionHandle(sessionToken);
   useEffect(() => {
-    let cancelled = false;
-    let stop: (() => void) | undefined;
-    const start = (settings: LogSettings) => {
-      if (!cancelled) stop = startParticipantLogs(sessionToken, settings);
-    };
     readStatus().then(
       (status) =>
-        start({ telemetry: status.telemetry, level: status.logLevel }),
-      () => start({ telemetry: false, level: 'None' }),
+        configure(handle, sessionToken, {
+          telemetry: status.telemetry,
+          level: status.logLevel,
+        }),
+      () =>
+        configure(handle, sessionToken, { telemetry: false, level: 'None' }),
     );
-    return () => {
-      cancelled = true;
-      stop?.();
-    };
-  }, [sessionToken, readStatus]);
+    return handle.close;
+  }, [handle, sessionToken, readStatus]);
+  return handle.log;
 }
 
-export const logSessionLoadFailed = (code: FaultCode): void =>
-  logParticipant({
+export const logSessionLoadFailed = (
+  log: ParticipantLog,
+  code: FaultCode,
+): void =>
+  log({
     message: 'Interview session failed to load',
     level: 'Error',
     attributes: { error_code: code },
   });
 
+const boundedAttempts = (attempts: number): number =>
+  Math.min(Math.max(attempts, 1), MAX_ATTEMPTS);
+
 export const logAnswerSaveFailed = (
+  log: ParticipantLog,
   stage: ParticipantStage,
   code: FaultCode,
   attempts: number,
 ): void =>
-  logParticipant({
+  log({
     message: 'Answer save failed',
     level: 'Error',
     attributes: {
       ...stage,
       error_code: code,
-      attempt_count: Math.min(Math.max(attempts, 1), MAX_ATTEMPTS),
+      attempt_count: boundedAttempts(attempts),
     },
   });
 
 export const logAnswerSaveRetried = (
+  log: ParticipantLog,
   stage: ParticipantStage,
   attempts: number,
 ): void =>
-  logParticipant({
+  log({
     message: 'Answer save succeeded after retrying',
     level: 'Warn',
-    attributes: {
-      ...stage,
-      attempt_count: Math.min(Math.max(attempts, 1), MAX_ATTEMPTS),
-    },
+    attributes: { ...stage, attempt_count: boundedAttempts(attempts) },
   });
 
 export const logAssetFailed = (
+  log: ParticipantLog,
   stage: ParticipantStage,
   code: FaultCode,
 ): void =>
-  logParticipant({
+  log({
     message: 'Asset failed to load',
     level: 'Error',
     attributes: { ...stage, error_code: code },
   });
 
+type EventTargetLike = Pick<Window, 'addEventListener' | 'removeEventListener'>;
+
 export function watchParticipantConnection(
+  log: ParticipantLog,
   currentStage: () => ParticipantStage | undefined,
-  target: Pick<Window, 'addEventListener' | 'removeEventListener'> = window,
+  target: EventTargetLike = window,
   now: () => number = Date.now,
 ): () => void {
   let lostAt: number | undefined;
@@ -157,7 +182,7 @@ export function watchParticipantConnection(
     lostAt = now();
     const stage = currentStage();
     if (stage === undefined) return;
-    logParticipant({
+    log({
       message: 'Participant connection lost',
       level: 'Warn',
       attributes: stage,
@@ -169,7 +194,7 @@ export function watchParticipantConnection(
     lostAt = undefined;
     const stage = currentStage();
     if (stage === undefined) return;
-    logParticipant({
+    log({
       message: 'Participant connection restored',
       level: 'Info',
       attributes: { ...stage, duration_ms: duration },
@@ -183,39 +208,62 @@ export function watchParticipantConnection(
   };
 }
 
-const observeException = (
-  stageTypes: ReadonlyArray<unknown>,
-  properties: unknown,
-): void => {
-  if (!Predicate.isObject(properties)) return;
-  const feature = Predicate.hasProperty(properties, 'feature')
-    ? properties.feature
-    : undefined;
-  const stage = participantStage(
-    stageTypes,
-    Predicate.hasProperty(properties, 'stage_index')
-      ? properties.stage_index
-      : undefined,
-  );
-  if (stage === undefined) return;
-  if (feature === 'stage-error-boundary') {
-    logParticipant({
-      message: 'Stage failed to render',
-      level: 'Error',
-      attributes: stage,
-    });
-  } else if (feature === 'information-media') {
-    logAssetFailed(stage, 'media');
+const storedMediaSource = (target: EventTarget | null): boolean => {
+  if (
+    !(target instanceof HTMLImageElement) &&
+    !(target instanceof HTMLMediaElement) &&
+    !(target instanceof HTMLSourceElement)
+  ) {
+    return false;
   }
+  const source =
+    target instanceof HTMLSourceElement
+      ? target.src
+      : target.currentSrc || target.getAttribute('src') || '';
+  if (source === '' || !URL.canParse(source, window.location.origin)) {
+    return false;
+  }
+  const url = new URL(source, window.location.origin);
+  return (
+    url.origin === window.location.origin &&
+    url.pathname.startsWith(STORAGE_PATH)
+  );
 };
+
+export function watchParticipantMedia(
+  log: ParticipantLog,
+  currentStage: () => ParticipantStage | undefined,
+  target: EventTargetLike = window,
+): () => void {
+  const onError = (event: Event) => {
+    if (!storedMediaSource(event.target)) return;
+    const stage = currentStage();
+    if (stage !== undefined) logAssetFailed(log, stage, 'media');
+  };
+  target.addEventListener('error', onError, true);
+  return () => target.removeEventListener('error', onError, true);
+}
 
 export const faultObservingClient = (
   inner: AnalyticsClient | undefined,
-  stageTypes: ReadonlyArray<unknown>,
+  log: ParticipantLog,
+  currentStage: () => ParticipantStage | undefined,
 ): AnalyticsClient => ({
   capture: (event, properties) => inner?.capture(event, properties),
   captureException: (error, properties) => {
-    observeException(stageTypes, properties);
+    const stage = currentStage();
+    if (
+      stage !== undefined &&
+      Predicate.isObject(properties) &&
+      Predicate.hasProperty(properties, 'feature') &&
+      properties.feature === 'stage-error-boundary'
+    ) {
+      log({
+        message: 'Stage failed to render',
+        level: 'Error',
+        attributes: stage,
+      });
+    }
     return inner?.captureException(error, properties);
   },
   register: (properties) => inner?.register(properties),

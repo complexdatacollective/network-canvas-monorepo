@@ -4,23 +4,26 @@ import type { ParticipantLogEntry } from '@codaco/studio-contract/schema/browser
 
 import {
   faultObservingClient,
+  type ParticipantStage,
   participantStage,
   watchParticipantConnection,
+  watchParticipantMedia,
 } from '../participantLogs.ts';
-
-const logged = vi.hoisted((): ParticipantLogEntry[] => []);
-
-vi.mock('../../runtime/browserLogs.ts', () => ({
-  logParticipant: (entry: ParticipantLogEntry) => {
-    logged.push(entry);
-  },
-  startBrowserLogs: () => () => undefined,
-}));
 
 const STAGE_TYPES = ['Information', 'NameGenerator', 'Sociogram'];
 
+const logged: ParticipantLogEntry[] = [];
+const log = (entry: ParticipantLogEntry) => {
+  logged.push(entry);
+};
+
+let step = 0;
+const currentStage = (): ParticipantStage | undefined =>
+  participantStage(STAGE_TYPES, step);
+
 beforeEach(() => {
   logged.length = 0;
+  step = 0;
 });
 
 describe('a participant stage', () => {
@@ -43,8 +46,10 @@ describe('the participant connection watcher', () => {
   it('logs a lost connection once and how long it took to come back', () => {
     const target = new EventTarget();
     let now = 10_000;
+    step = 1;
     const stop = watchParticipantConnection(
-      () => participantStage(STAGE_TYPES, 1),
+      log,
+      currentStage,
       target,
       () => now,
     );
@@ -76,28 +81,26 @@ describe('the participant connection watcher', () => {
 });
 
 describe('the fault-observing interview client', () => {
-  it('logs a stage that failed to render and media that failed to load, and passes everything on', () => {
+  it('logs a stage that failed to render on the stage now shown, from the properties the boundary really sends', () => {
     const inner = {
       capture: vi.fn(),
       captureException: vi.fn(),
       register: vi.fn(),
     };
-    const client = faultObservingClient(inner, STAGE_TYPES);
-    const crash = new Error('Cannot read properties of undefined');
-
-    client.captureException(crash, {
+    const client = faultObservingClient(inner, log, currentStage);
+    step = 2;
+    const boundaryProperties = {
       feature: 'stage-error-boundary',
-      stage_index: 2,
-      stage_type: 'Sociogram',
       component_stack: 'at Sociogram',
-    });
+      is_offline: false,
+      app: 'studio',
+      distinct_id: 'pseudonym',
+    };
+
+    client.captureException(new Error('crash'), boundaryProperties);
     client.captureException(new Error('video load failed: 4'), {
       feature: 'information-media',
-      stage_index: 0,
-    });
-    client.captureException(new Error('locale'), {
-      feature: 'locale-load',
-      stage_index: 0,
+      media_kind: 'video',
     });
     client.capture('stage_entered', { stage_index: 1 });
 
@@ -107,30 +110,73 @@ describe('the fault-observing interview client', () => {
         level: 'Error',
         attributes: { stage_index: 2, interface_type: 'Sociogram' },
       },
-      {
-        message: 'Asset failed to load',
-        level: 'Error',
-        attributes: {
-          stage_index: 0,
-          interface_type: 'Information',
-          error_code: 'media',
-        },
-      },
     ]);
-    expect(inner.captureException).toHaveBeenCalledTimes(3);
+    expect(inner.captureException).toHaveBeenCalledTimes(2);
     expect(inner.capture).toHaveBeenCalledWith('stage_entered', {
       stage_index: 1,
     });
   });
 
   it('still logs when the study sends no usability events', () => {
-    const client = faultObservingClient(undefined, STAGE_TYPES);
+    const client = faultObservingClient(undefined, log, currentStage);
     client.captureException(new Error('boom'), {
       feature: 'stage-error-boundary',
-      stage_index: 1,
     });
     expect(logged.map((entry) => entry.message)).toEqual([
       'Stage failed to render',
     ]);
+  });
+});
+
+describe('the participant media watcher', () => {
+  const failToLoad = (element: HTMLElement) => {
+    document.body.append(element);
+    element.dispatchEvent(new Event('error'));
+    element.remove();
+  };
+
+  it('logs stored images, audio and video sources that fail to load, on the stage shown', () => {
+    step = 1;
+    const stop = watchParticipantMedia(log, currentStage);
+    const image = document.createElement('img');
+    image.setAttribute('src', '/storage/abc');
+    const audio = document.createElement('audio');
+    audio.setAttribute('src', '/storage/def');
+    const video = document.createElement('video');
+    const source = document.createElement('source');
+    source.setAttribute('src', '/storage/ghi');
+    video.append(source);
+    document.body.append(video);
+
+    failToLoad(image);
+    failToLoad(audio);
+    source.dispatchEvent(new Event('error'));
+    video.remove();
+    stop();
+    failToLoad(image);
+
+    const asset = {
+      message: 'Asset failed to load',
+      level: 'Error',
+      attributes: {
+        stage_index: 1,
+        interface_type: 'NameGenerator',
+        error_code: 'media',
+      },
+    };
+    expect(logged).toEqual([asset, asset, asset]);
+  });
+
+  it('ignores media that is not Studio’s stored asset', () => {
+    const stop = watchParticipantMedia(log, currentStage);
+    const elsewhere = document.createElement('img');
+    elsewhere.setAttribute('src', 'https://tiles.example.org/1.png');
+    const inline = document.createElement('img');
+    inline.setAttribute('src', 'data:image/svg+xml,<svg/>');
+    failToLoad(elsewhere);
+    failToLoad(inline);
+    failToLoad(document.createElement('div'));
+    stop();
+    expect(logged).toEqual([]);
   });
 });

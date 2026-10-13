@@ -25,10 +25,6 @@ type SeverityNumber = NonNullable<LogRecord['severityNumber']>;
 export type ForwardedBrowserLog = {
   readonly entry: BrowserLogEntry;
   readonly timeUnixNano: string;
-};
-
-export type BrowserLogOrigin = {
-  readonly surface: BrowserLogSurface;
   readonly teamId: string | undefined;
 };
 
@@ -50,7 +46,7 @@ const attributeValue = (
 
 const recordOf = (
   log: ForwardedBrowserLog,
-  origin: BrowserLogOrigin,
+  surface: BrowserLogSurface,
   observedTimeUnixNano: string,
 ): LogRecord => ({
   timeUnixNano: log.timeUnixNano,
@@ -63,10 +59,10 @@ const recordOf = (
       key,
       value: attributeValue(value),
     })),
-    { key: 'surface', value: { stringValue: origin.surface } },
-    ...(origin.teamId === undefined
+    { key: 'surface', value: { stringValue: surface } },
+    ...(log.teamId === undefined
       ? []
-      : [{ key: 'team_id', value: { stringValue: origin.teamId } }]),
+      : [{ key: 'team_id', value: { stringValue: log.teamId } }]),
   ],
   droppedAttributesCount: 0,
 });
@@ -76,7 +72,7 @@ export class BrowserLogs extends Context.Service<
   {
     readonly forward: (
       logs: ReadonlyArray<ForwardedBrowserLog>,
-      origin: BrowserLogOrigin,
+      surface: BrowserLogSurface,
     ) => Effect.Effect<void>;
   }
 >()('@studio/platform/BrowserLogs') {
@@ -120,10 +116,10 @@ export class BrowserLogs extends Context.Service<
           ],
         });
         return BrowserLogs.of({
-          forward: (logs, origin) =>
+          forward: (logs, surface) =>
             Effect.map(Clock.currentTimeNanos, (now) => {
               for (const log of logs) {
-                exporter.push(recordOf(log, origin, now.toString()));
+                exporter.push(recordOf(log, surface, now.toString()));
               }
             }),
         });

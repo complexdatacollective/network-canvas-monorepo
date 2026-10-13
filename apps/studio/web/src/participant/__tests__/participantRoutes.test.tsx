@@ -533,6 +533,33 @@ describe('participant logs', () => {
     window.dispatchEvent(new Event('online'));
   });
 
+  it('logs a stored image that fails to load on the stage shown', async () => {
+    installParticipantHarness({
+      'participant.session': () =>
+        Effect.succeed(sessionPayload(0, false, 'Info')),
+    });
+    fetchStub.mockImplementation(acceptLogs);
+
+    renderAt(`/session/${SESSION}`);
+    await screen.findByRole(
+      'heading',
+      { name: 'Welcome to the study' },
+      { timeout: 15_000 },
+    );
+    const image = document.createElement('img');
+    image.setAttribute('src', '/storage/missing-asset');
+    document.body.append(image);
+    image.dispatchEvent(new Event('error'));
+    image.remove();
+
+    await waitFor(() => expect(logPosts().length).toBeGreaterThan(0), {
+      timeout: 3000,
+    });
+    const [[, init]] = logPosts() as [Parameters<typeof globalThis.fetch>];
+    expect(String(init?.body)).toContain('Asset failed to load');
+    expect(String(init?.body)).toContain('"stringValue":"media"');
+  });
+
   it('sends nothing when the session has telemetry off', async () => {
     installParticipantHarness(readsSession());
     fetchStub.mockImplementation(acceptLogs);

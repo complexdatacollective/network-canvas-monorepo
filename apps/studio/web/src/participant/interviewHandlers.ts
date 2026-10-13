@@ -45,8 +45,15 @@ export type SaveFault =
       readonly kind: 'failed';
       readonly error: unknown;
       readonly attempts: number;
+      readonly stageIndex: number;
     }
-  | { readonly kind: 'retried'; readonly attempts: number };
+  | {
+      readonly kind: 'retried';
+      readonly attempts: number;
+      readonly stageIndex: number;
+    };
+
+type SaveProgress = { attempts: number; stageIndex: number };
 
 type ParticipantHandlers = {
   readonly onSync: SyncHandler;
@@ -83,7 +90,6 @@ export function createParticipantHandlers({
   // The stage the newest applied save recorded.
   let savedStep = getCurrentStep();
   let stopped = false;
-  let attempts = 0;
 
   const stop = (kind: ParticipantNoticeKind): void => {
     stopped = true;
@@ -108,15 +114,26 @@ export function createParticipantHandlers({
     };
   };
 
+  type Saved = {
+    readonly stored: bigint;
+    readonly applied: boolean;
+    readonly attempts: number;
+  };
+
   const deliver = async (
     payload: SyncPayload,
-  ): Promise<{ readonly stored: bigint; readonly applied: boolean }> => {
+    progress: SaveProgress,
+  ): Promise<Saved> => {
     for (let attempt = 1; ; attempt += 1) {
-      attempts = attempt;
+      progress.attempts = attempt;
+      progress.stageIndex = payload.stageIndex;
       try {
         const result = await participantCall('participant.sync', payload);
-        if (attempt > 1) onSaveFault?.({ kind: 'retried', attempts: attempt });
-        return { stored: BigInt(result.revision), applied: result.applied };
+        return {
+          stored: BigInt(result.revision),
+          applied: result.applied,
+          attempts: attempt,
+        };
       } catch (error) {
         const delay = retryAfterSeconds(error);
         if (
@@ -133,12 +150,18 @@ export function createParticipantHandlers({
     }
   };
 
-  type Saved = { readonly stored: bigint; readonly applied: boolean };
-
-  const deliverUnloading = async (payload: SyncPayload): Promise<Saved> => {
-    attempts = 1;
+  const deliverUnloading = async (
+    payload: SyncPayload,
+    progress: SaveProgress,
+  ): Promise<Saved> => {
+    progress.attempts = 1;
+    progress.stageIndex = payload.stageIndex;
     const result = await participantUnloadingSync(payload);
-    return { stored: BigInt(result.revision), applied: result.applied };
+    return {
+      stored: BigInt(result.revision),
+      applied: result.applied,
+      attempts: 1,
+    };
   };
 
   // A save the server did not apply found a write at or past its number. That
@@ -150,16 +173,24 @@ export function createParticipantHandlers({
   const send = async (
     snapshot: SessionPayload,
     { unloading }: { readonly unloading: boolean },
+    progress: SaveProgress = { attempts: 0, stageIndex: getCurrentStep() },
   ): Promise<void> => {
     let next = snapshot;
     for (let attempt = 1; attempt <= RESEND_ATTEMPTS; attempt += 1) {
       const payload = payloadFor(next);
-      const { stored, applied } = await (unloading
-        ? deliverUnloading(payload)
-        : deliver(payload));
+      const { stored, applied, attempts } = await (unloading
+        ? deliverUnloading(payload, progress)
+        : deliver(payload, progress));
       if (applied) {
         held = BigInt(payload.revision);
         savedStep = payload.stageIndex;
+        if (attempts > 1) {
+          onSaveFault?.({
+            kind: 'retried',
+            attempts,
+            stageIndex: payload.stageIndex,
+          });
+        }
         return;
       }
       if (stored > issued) issued = stored;
@@ -173,10 +204,11 @@ export function createParticipantHandlers({
   const debouncedSync = createDebouncedSyncHandler(
     async (_id, snapshot, { unloading }) => {
       if (stopped) return;
+      const progress = { attempts: 0, stageIndex: getCurrentStep() };
       try {
-        await send(snapshot, { unloading });
+        await send(snapshot, { unloading }, progress);
       } catch (error) {
-        onSaveFault?.({ kind: 'failed', error, attempts });
+        onSaveFault?.({ kind: 'failed', error, ...progress });
         const kind = noticeOf(error);
         if (kind !== undefined) stop(kind);
         throw error;

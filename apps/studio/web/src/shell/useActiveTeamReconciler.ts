@@ -3,8 +3,8 @@ import { useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { authClient } from '../lib/auth.ts';
-import { setResearcherLogTeam } from '../lib/errorTelemetry.ts';
 import { invalidateMemberships } from '../lib/landing.ts';
+import { setResearcherLogTeam } from '../runtime/browserLogs.ts';
 
 /**
  * The one place in Studio that writes Better Auth's active organization

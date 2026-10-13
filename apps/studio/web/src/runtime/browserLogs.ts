@@ -21,6 +21,7 @@ import {
   BROWSER_LOG_ATTRIBUTE_KEYS,
   BROWSER_LOG_PATHS,
   BROWSER_LOG_SERVICE_NAME,
+  BROWSER_LOG_TEAM_ATTRIBUTE,
   type BrowserLogSurface,
   type LogLevelName,
   MAX_BROWSER_LOG_RECORDS,
@@ -43,14 +44,25 @@ export type BrowserLogConfig = {
   readonly headers: () => Readonly<Record<string, string>>;
 };
 
+type Context = Readonly<Record<string, string>>;
+
 type Sink = {
-  readonly log: (entry: Entry) => void;
+  readonly log: (entry: Entry, context: Context) => void;
   readonly dispose: () => Promise<void>;
 };
 
-type SurfaceState = {
-  readonly pending: Entry[];
-  sink: Sink | 'off' | undefined;
+type Queued = { readonly entry: Entry; readonly context: Context };
+
+type HandleState =
+  | { readonly kind: 'pending'; readonly queue: Queued[] }
+  | { readonly kind: 'open'; readonly sink: Sink }
+  | { readonly kind: 'closed' };
+
+export type BrowserLogHandle<E extends Entry> = {
+  readonly log: (entry: E, context?: Context) => void;
+  readonly configure: (config: BrowserLogConfig) => void;
+  readonly close: () => void;
+  readonly isClosed: () => boolean;
 };
 
 const MAX_PENDING_ENTRIES = 20;
@@ -158,10 +170,10 @@ const makeSink = (
 ): Sink => {
   const runtime = ManagedRuntime.make(sinkLayer(surface, config));
   return {
-    log: (entry) => {
+    log: (entry, context) => {
       runtime.runFork(
         Effect.logWithLevel(entry.level)(entry.message).pipe(
-          Effect.annotateLogs(entry.attributes),
+          Effect.annotateLogs({ ...entry.attributes, ...context }),
         ),
       );
     },
@@ -169,38 +181,60 @@ const makeSink = (
   };
 };
 
-const surfaces: Record<BrowserLogSurface, SurfaceState> = {
-  researcher: { pending: [], sink: undefined },
-  participant: { pending: [], sink: undefined },
+export const createBrowserLogHandle = <E extends Entry>(
+  surface: BrowserLogSurface,
+): BrowserLogHandle<E> => {
+  let state: HandleState = { kind: 'pending', queue: [] };
+  return {
+    log: (entry, context = {}) => {
+      if (state.kind === 'open') state.sink.log(entry, context);
+      else if (
+        state.kind === 'pending' &&
+        state.queue.length < MAX_PENDING_ENTRIES
+      ) {
+        state.queue.push({ entry, context });
+      }
+    },
+    configure: (config) => {
+      if (state.kind !== 'pending') return;
+      const { queue } = state;
+      if (!config.enabled) {
+        state = { kind: 'closed' };
+        return;
+      }
+      const sink = makeSink(surface, config);
+      state = { kind: 'open', sink };
+      for (const queued of queue) sink.log(queued.entry, queued.context);
+    },
+    close: () => {
+      if (state.kind === 'open') void state.sink.dispose();
+      state = { kind: 'closed' };
+    },
+    isClosed: () => state.kind === 'closed',
+  };
 };
 
-const record = (surface: BrowserLogSurface, entry: Entry): void => {
-  const state = surfaces[surface];
-  if (state.sink === 'off') return;
-  if (state.sink === undefined) {
-    if (state.pending.length < MAX_PENDING_ENTRIES) state.pending.push(entry);
-    return;
-  }
-  state.sink.log(entry);
+let researcherTeam: string | undefined;
+
+export const setResearcherLogTeam = (teamId: string | undefined): void => {
+  researcherTeam = teamId;
 };
+
+let researcherLogs = createBrowserLogHandle<ResearcherLogEntry>('researcher');
 
 export const logResearcher = (entry: ResearcherLogEntry): void =>
-  record('researcher', entry);
+  researcherLogs.log(
+    entry,
+    researcherTeam === undefined
+      ? {}
+      : { [BROWSER_LOG_TEAM_ATTRIBUTE]: researcherTeam },
+  );
 
-export const logParticipant = (entry: ParticipantLogEntry): void =>
-  record('participant', entry);
-
-export function startBrowserLogs(
-  surface: BrowserLogSurface,
-  config: BrowserLogConfig,
-): () => void {
-  const state = surfaces[surface];
-  const sink = config.enabled ? makeSink(surface, config) : 'off';
-  state.sink = sink;
-  const pending = state.pending.splice(0);
-  if (sink !== 'off') for (const entry of pending) sink.log(entry);
-  return () => {
-    if (state.sink === sink) state.sink = undefined;
-    if (sink !== 'off') void sink.dispose();
-  };
+export function startResearcherLogs(config: BrowserLogConfig): () => void {
+  if (researcherLogs.isClosed()) {
+    researcherLogs = createBrowserLogHandle<ResearcherLogEntry>('researcher');
+  }
+  const handle = researcherLogs;
+  handle.configure(config);
+  return handle.close;
 }

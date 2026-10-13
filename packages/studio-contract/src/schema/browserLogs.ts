@@ -14,7 +14,7 @@ export type BrowserLogSurface = (typeof BROWSER_LOG_SURFACES)[number];
 
 export const BROWSER_LOG_SERVICE_NAME = 'studio-web';
 
-export const BROWSER_LOG_TEAM_HEADER = 'x-studio-team';
+export const BROWSER_LOG_TEAM_ATTRIBUTE = 'team_id';
 
 export const MAX_BROWSER_LOG_BODY_BYTES = 64 * 1024;
 
@@ -59,7 +59,22 @@ export const BROWSER_LOG_ATTRIBUTE_KEYS = [
   'error_code',
   'attempt_count',
   'duration_ms',
+  BROWSER_LOG_TEAM_ATTRIBUTE,
 ] as const;
+
+const UINT64_MAX = 18446744073709551615n;
+
+const UNSIGNED_DECIMAL = /^\d{1,20}$/;
+
+const UnixNano = Schema.String.check(
+  Schema.isPattern(UNSIGNED_DECIMAL),
+  Schema.makeFilter<string>(
+    (value) =>
+      !UNSIGNED_DECIMAL.test(value) ||
+      BigInt(value) <= UINT64_MAX ||
+      'must be within the unsigned 64-bit range',
+  ),
+);
 
 const StageFields = {
   stage_index: StageIndex,
@@ -180,7 +195,7 @@ const WireValue = Schema.Union([
 ]);
 
 export const BrowserLogWireRecord = Schema.Struct({
-  timeUnixNano: Schema.String.check(Schema.isPattern(/^\d{1,20}$/)),
+  timeUnixNano: UnixNano,
   severityText: LogLevelName,
   body: Schema.Struct({
     stringValue: Schema.String.check(Schema.isMaxLength(200)),

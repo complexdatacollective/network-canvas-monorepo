@@ -38,12 +38,13 @@ const svgDataUrl = async (
  */
 export const createAssetResolver = (
   assets: readonly ResolvedAsset[],
-  onFailure: AssetFailure = () => undefined,
+  failureReporter: () => AssetFailure = () => () => undefined,
 ): ((assetId: string) => Promise<string>) => {
   const resolved = new Map<string, Promise<string>>();
   return (assetId) => {
     const known = resolved.get(assetId);
     if (known !== undefined) return known;
+    const onFailure = failureReporter();
     const source = assets.find(
       (candidate) => candidate.assetId === assetId,
     )?.source;

@@ -10,20 +10,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
 import {
   BROWSER_LOG_PATHS,
-  BROWSER_LOG_TEAM_HEADER,
   BrowserLogsBody,
   browserLogRecords,
   type LogLevelName,
 } from '@codaco/studio-contract/schema/browser-logs';
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
-import {
-  ResearcherErrorTelemetry,
-  setResearcherLogTeam,
-} from '../../lib/errorTelemetry.ts';
+import { ResearcherErrorTelemetry } from '../../lib/errorTelemetry.ts';
 import { useParticipantLogs } from '../../participant/participantLogs.ts';
 import { installRpcHarness } from '../../test/rpcHarness.ts';
-import { logParticipant, logResearcher } from '../browserLogs.ts';
+import {
+  createBrowserLogHandle,
+  logResearcher,
+  setResearcherLogTeam,
+} from '../browserLogs.ts';
 
 const fetchSpy = vi.fn<typeof globalThis.fetch>(async () =>
   Promise.resolve(new Response(null, { status: 204 })),
@@ -122,10 +122,16 @@ describe('researcher logs', () => {
     expect(logCalls(BROWSER_LOG_PATHS.researcher)).toEqual([]);
   });
 
-  it('sends a catalogued record to its own origin, with its team and nothing else', async () => {
-    setResearcherLogTeam('team-on-screen');
+  it('sends catalogued records to its own origin, each with the team on screen when it was logged', async () => {
     const { harness, view } = renderResearcher(true);
     await statusSettled(harness);
+    setResearcherLogTeam('team-on-screen');
+    logResearcher({
+      message: 'Request to the server failed',
+      level: 'Warn',
+      attributes: { error_code: 'transport' },
+    });
+    setResearcherLogTeam('team-moved-to');
     logResearcher({
       message: 'Request to the server failed',
       level: 'Warn',
@@ -143,9 +149,6 @@ describe('researcher logs', () => {
       expect(urlOf(input).origin).toBe(window.location.origin);
       if (urlOf(input).pathname === BROWSER_LOG_PATHS.researcher) {
         expect(init?.credentials).toBe('same-origin');
-        expect(new Headers(init?.headers).get(BROWSER_LOG_TEAM_HEADER)).toBe(
-          'team-on-screen',
-        );
       }
     }
     expect(
@@ -160,9 +163,34 @@ describe('researcher logs', () => {
         body: { stringValue: 'Request to the server failed' },
         attributes: [
           { key: 'error_code', value: { stringValue: 'transport' } },
+          { key: 'team_id', value: { stringValue: 'team-on-screen' } },
+        ],
+      },
+      {
+        severityText: 'Warn',
+        body: { stringValue: 'Request to the server failed' },
+        attributes: [
+          { key: 'error_code', value: { stringValue: 'transport' } },
+          { key: 'team_id', value: { stringValue: 'team-moved-to' } },
         ],
       },
     ]);
+  });
+
+  it('drops what is logged after the researcher app stops, rather than holding it for the next start', async () => {
+    const first = renderResearcher(true);
+    await statusSettled(first.harness);
+    first.view.unmount();
+    logResearcher({
+      message: 'Editing lock lost',
+      level: 'Warn',
+      attributes: {},
+    });
+    const second = renderResearcher(true);
+    await statusSettled(second.harness);
+    await exportWindow();
+    second.view.unmount();
+    expect(logCalls(BROWSER_LOG_PATHS.researcher)).toEqual([]);
   });
 
   it('does not send a record below the configured level', async () => {
@@ -194,10 +222,37 @@ describe('researcher logs', () => {
   });
 });
 
+describe('a log handle', () => {
+  it('holds records only for itself until configured, and drops them once closed', async () => {
+    const earlier = createBrowserLogHandle('participant');
+    const later = createBrowserLogHandle('participant');
+    earlier.log({
+      message: 'Participant connection lost',
+      level: 'Warn',
+      attributes: { stage_index: 0, interface_type: 'Information' },
+    });
+    earlier.close();
+    earlier.log({
+      message: 'Participant connection lost',
+      level: 'Warn',
+      attributes: { stage_index: 0, interface_type: 'Information' },
+    });
+    later.configure({
+      enabled: true,
+      level: 'Info',
+      credentials: 'omit',
+      headers: () => ({}),
+    });
+    await exportWindow();
+    later.close();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
 describe('participant logs', () => {
   it('sends nothing while the session reports telemetry off', async () => {
     const view = renderHook(() => useParticipantLogs(SESSION, null));
-    logParticipant({
+    view.result.current.log({
       message: 'Participant connection lost',
       level: 'Warn',
       attributes: { stage_index: 1, interface_type: 'Sociogram' },
@@ -209,7 +264,7 @@ describe('participant logs', () => {
 
   it('sends a catalogued record with the session header and no credentials', async () => {
     const view = renderHook(() => useParticipantLogs(SESSION, 'Info'));
-    logParticipant({
+    view.result.current.log({
       message: 'Participant connection restored',
       level: 'Info',
       attributes: {

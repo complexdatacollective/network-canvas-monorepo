@@ -73,4 +73,28 @@ describe('the editor connection', () => {
       },
     ]);
   });
+
+  it('starts each editor session with its own connection state', async () => {
+    const host = createInMemoryHost({
+      protocolId: PROTOCOL_ID,
+      sections: { stageOrder: { stages: [] } },
+    });
+    await installSocketHost(ProtocolBuilderGroup.toLayer(host.handle));
+    const earlier = ManagedRuntime.make(HostClient.layer);
+    const first = listSections(earlier);
+    await openNext(0);
+    await first;
+    FakeWebSocket.opened[0]?.drop(1006);
+    await earlier.dispose();
+
+    const later = ManagedRuntime.make(HostClient.layer);
+    onTestFinished(() => later.dispose());
+    const second = listSections(later);
+    await openNext(1);
+    await second;
+
+    expect(logged).toEqual([
+      { message: 'Editor connection lost', level: 'Warn', attributes: {} },
+    ]);
+  });
 });

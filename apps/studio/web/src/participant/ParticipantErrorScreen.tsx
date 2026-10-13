@@ -19,8 +19,8 @@ function SessionLoadFailure({
   readonly sessionToken: string;
   readonly error: unknown;
 }): null {
-  useStatusParticipantLogs(sessionToken);
-  useEffect(() => logSessionLoadFailed(faultCodeOf(error)), [error]);
+  const log = useStatusParticipantLogs(sessionToken);
+  useEffect(() => logSessionLoadFailed(log, faultCodeOf(error)), [log, error]);
   return null;
 }
 

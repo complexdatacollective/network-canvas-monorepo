@@ -4,7 +4,7 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from 'effect/http';
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import {
   BROWSER_LOG_PATHS,
-  BROWSER_LOG_TEAM_HEADER,
+  BROWSER_LOG_TEAM_ATTRIBUTE,
   type BrowserLogEntry,
   type BrowserLogWireRecord,
   BrowserLogsBody,
@@ -21,7 +21,6 @@ import { AuthService } from '../auth/service.ts';
 import { Database } from '../db/client.ts';
 import { Environment } from '../env.ts';
 import {
-  type BrowserLogOrigin,
   BrowserLogs,
   type ForwardedBrowserLog,
 } from '../platform/browser-logs.ts';
@@ -58,8 +57,11 @@ const readRecords = Effect.gen(function* () {
     return yield* Effect.fail(contentTooLarge());
   }
   const bytes = yield* readBodyCapped(MAX_BROWSER_LOG_BODY_BYTES).pipe(
-    Effect.catchTag('BodyTooLarge', () => Effect.fail(contentTooLarge())),
-    Effect.catch(() => Effect.fail(problem(400, 'Unreadable body'))),
+    Effect.mapError((failure) =>
+      failure._tag === 'BodyTooLarge'
+        ? contentTooLarge()
+        : problem(400, 'Unreadable body'),
+    ),
   );
   const body = decodeBody(utf8.decode(bytes));
   if (Option.isNone(body)) {
@@ -74,16 +76,26 @@ const readRecords = Effect.gen(function* () {
 
 type Decode = (candidate: unknown) => Option.Option<BrowserLogEntry>;
 
-const decodedRecord = (
+type Candidate = NonNullable<ReturnType<typeof entryCandidate>>;
+
+const decodedEntry = (
+  candidate: Candidate,
   record: BrowserLogWireRecord,
   decode: Decode,
-): Option.Option<ForwardedBrowserLog> => {
-  const candidate = entryCandidate(record);
-  if (candidate === undefined) return Option.none();
-  return Option.map(decode(candidate), (entry) => ({
+  teamId: string | undefined,
+): Option.Option<ForwardedBrowserLog> =>
+  Option.map(decode(candidate), (entry) => ({
     entry,
     timeUnixNano: record.timeUnixNano,
+    teamId,
   }));
+
+const withoutTeam = (
+  candidate: Candidate,
+): { readonly candidate: Candidate; readonly claimed: unknown } => {
+  const { [BROWSER_LOG_TEAM_ATTRIBUTE]: claimed, ...attributes } =
+    candidate.attributes;
+  return { candidate: { ...candidate, attributes }, claimed };
 };
 
 type Services = {
@@ -105,7 +117,7 @@ const limited = (services: Services, scope: RateLimitScope, subject: string) =>
 const forward = (
   services: Services,
   logs: ReadonlyArray<ForwardedBrowserLog>,
-  origin: BrowserLogOrigin,
+  surface: 'researcher' | 'participant',
 ): Effect.Effect<void> => {
   if (Option.isNone(services.forwarder)) return Effect.void;
   const kept = logs.filter((log) =>
@@ -113,21 +125,22 @@ const forward = (
   );
   return kept.length === 0
     ? Effect.void
-    : services.forwarder.value.forward(kept, origin);
+    : services.forwarder.value.forward(kept, surface);
 };
 
-const verifiedTeam = Effect.fnUntraced(function* (
+const memberTeams = Effect.fnUntraced(function* (
   services: Services,
   userId: string,
+  claimed: ReadonlyArray<unknown>,
 ) {
-  const request = yield* HttpServerRequest.HttpServerRequest;
-  const claimed = Option.flatMap(
-    Option.fromNullishOr(request.headers[BROWSER_LOG_TEAM_HEADER]),
-    decodeTeamId,
-  );
-  if (Option.isNone(claimed)) return undefined;
-  const membership = yield* services.auth.getMembership(userId, claimed.value);
-  return Option.isSome(membership) ? claimed.value : undefined;
+  const teams = new Set<string>();
+  for (const teamId of new Set(
+    claimed.flatMap((value) => Option.toArray(decodeTeamId(value))),
+  )) {
+    const membership = yield* services.auth.getMembership(userId, teamId);
+    if (Option.isSome(membership)) teams.add(teamId);
+  }
+  return teams;
 });
 
 const researcherLogs = (services: Services) =>
@@ -136,13 +149,30 @@ const researcherLogs = (services: Services) =>
     yield* limited(services, 'researcher_log', principal.userId);
     if (Option.isNone(services.forwarder)) return accepted();
     const records = yield* readRecords;
-    const logs = records.flatMap((record) =>
-      Option.toArray(decodedRecord(record, decodeResearcherLogEntry)),
-    );
-    yield* forward(services, logs, {
-      surface: 'researcher',
-      teamId: yield* verifiedTeam(services, principal.userId),
+    const split = records.flatMap((record) => {
+      const candidate = entryCandidate(record);
+      return candidate === undefined
+        ? []
+        : [{ record, ...withoutTeam(candidate) }];
     });
+    const members = yield* memberTeams(
+      services,
+      principal.userId,
+      split.map(({ claimed }) => claimed),
+    );
+    const logs = split.flatMap(({ record, candidate, claimed }) =>
+      Option.toArray(
+        decodedEntry(
+          candidate,
+          record,
+          decodeResearcherLogEntry,
+          typeof claimed === 'string' && members.has(claimed)
+            ? claimed
+            : undefined,
+        ),
+      ),
+    );
+    yield* forward(services, logs, 'researcher');
     return accepted();
   }).pipe(Effect.catch((response) => Effect.succeed(response)));
 
@@ -161,16 +191,22 @@ const participantLogs = (services: Services) =>
     const records = yield* readRecords;
     const logs: ForwardedBrowserLog[] = [];
     for (const record of records) {
-      const decoded = decodedRecord(record, decodeParticipantLogEntry);
+      const candidate = entryCandidate(record);
+      const decoded =
+        candidate === undefined
+          ? Option.none()
+          : decodedEntry(
+              candidate,
+              record,
+              decodeParticipantLogEntry,
+              session.teamId,
+            );
       if (Option.isNone(decoded)) {
         return yield* Effect.fail(problem(400, 'Not a catalogued log record'));
       }
       logs.push(decoded.value);
     }
-    yield* forward(services, logs, {
-      surface: 'participant',
-      teamId: session.teamId,
-    });
+    yield* forward(services, logs, 'participant');
     return accepted();
   }).pipe(Effect.catch((response) => Effect.succeed(response)));
 

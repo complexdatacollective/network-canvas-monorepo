@@ -739,7 +739,7 @@ describe('the participant save faults', () => {
     await saved;
 
     expect(onSaveFault.mock.calls).toEqual([
-      [{ kind: 'retried', attempts: 3 }],
+      [{ kind: 'retried', attempts: 3, stageIndex: 1 }],
     ]);
   });
 
@@ -769,7 +769,62 @@ describe('the participant save faults', () => {
     await refused;
 
     expect(onSaveFault.mock.calls).toEqual([
-      [{ kind: 'failed', error: refusal, attempts: 3 }],
+      [{ kind: 'failed', error: refusal, attempts: 3, stageIndex: 1 }],
     ]);
+  });
+
+  it('reports a failed save on the stage that save recorded, not the stage reached since', async () => {
+    vi.useFakeTimers();
+    const refusal = new RateLimited({ retryAfterSeconds: 1 });
+    installParticipantHarness({
+      'participant.sync': () => Effect.fail(refusal),
+    });
+    let step = 1;
+    const onSaveFault = vi.fn<(fault: SaveFault) => void>();
+    const { onSync } = createParticipantHandlers({
+      holderEpoch: 3,
+      revision: '7',
+      session: session('Initial'),
+      stageIds: ['first', 'second', 'third'],
+      getCurrentStep: () => step,
+      onNotice: vi.fn(),
+      onSaveFault,
+    });
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    const refused = expect(saved).rejects.toBeInstanceOf(RateLimited);
+    await vi.advanceTimersByTimeAsync(0);
+    step = 2;
+    await vi.advanceTimersByTimeAsync(3000);
+    await refused;
+
+    expect(onSaveFault.mock.calls).toEqual([
+      [{ kind: 'failed', error: refusal, attempts: 3, stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports no retry when the retried save was not applied and a fresh save then was', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        calls += 1;
+        if (calls === 1) {
+          return Effect.fail(new RateLimited({ retryAfterSeconds: 1 }));
+        }
+        if (calls === 2) {
+          return Effect.succeed({ revision: '50', applied: false });
+        }
+        return Effect.succeed({ revision: payload.revision, applied: true });
+      },
+    });
+    const { onSync, onSaveFault } = handlersFor();
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    await vi.advanceTimersByTimeAsync(2000);
+    await saved;
+
+    expect(calls).toBe(3);
+    expect(onSaveFault).not.toHaveBeenCalled();
   });
 });

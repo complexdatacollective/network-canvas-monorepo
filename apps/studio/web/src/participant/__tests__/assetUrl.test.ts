@@ -78,7 +78,7 @@ describe('the participant asset resolver', () => {
     const failures: string[] = [];
     const resolve = createAssetResolver(
       [asset('diagram', `${HASH}.svg`), asset('photo', `${HASH}.png`)],
-      (code) => failures.push(code),
+      () => (code) => failures.push(code),
     );
 
     await expect(resolve('missing')).rejects.toThrow('missing');
@@ -94,5 +94,34 @@ describe('the participant asset resolver', () => {
       'http_error',
       'transport',
     ]);
+  });
+
+  it('reports a failure with what was current when the asset was asked for, not when it failed', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolveResponse) => {
+            answer = resolveResponse;
+          }),
+      ),
+    );
+    let stage = 'requesting stage';
+    const failures: string[] = [];
+    const resolve = createAssetResolver(
+      [asset('diagram', `${HASH}.svg`)],
+      () => {
+        const requestedOn = stage;
+        return (code) => failures.push(`${code} on ${requestedOn}`);
+      },
+    );
+
+    const loading = resolve('diagram');
+    stage = 'a later stage';
+    answer(new Response('', { status: 500 }));
+    await expect(loading).rejects.toThrow('500');
+
+    expect(failures).toEqual(['http_error on requesting stage']);
   });
 });

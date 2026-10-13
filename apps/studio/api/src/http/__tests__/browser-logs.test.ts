@@ -19,7 +19,6 @@ import { POSTHOG_API_KEY } from '@codaco/shared-consts';
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
 import {
   BROWSER_LOG_PATHS,
-  BROWSER_LOG_TEAM_HEADER,
   MAX_BROWSER_LOG_BODY_BYTES,
 } from '@codaco/studio-contract/schema/browser-logs';
 
@@ -164,6 +163,17 @@ const wireRecord = (
 const batch = (records: ReadonlyArray<ReturnType<typeof wireRecord>>) =>
   JSON.stringify({ resourceLogs: [{ scopeLogs: [{ logRecords: records }] }] });
 
+const withTeam = (
+  record: ReturnType<typeof wireRecord>,
+  teamId: string,
+): ReturnType<typeof wireRecord> => ({
+  ...record,
+  attributes: [
+    ...record.attributes,
+    { key: 'team_id', value: { stringValue: teamId } },
+  ],
+});
+
 const REQUEST_FAILED = wireRecord('Request to the server failed', 'Warn', [
   ['error_code', 'transport'],
 ]);
@@ -279,14 +289,15 @@ const serveAndPost = (posts: ReadonlyArray<Post>, options: Options = {}) =>
         }
         const answered: number[] = [];
         for (const post of posts) {
+          const headers = {
+            'content-type': 'application/json',
+            'origin': ORIGIN,
+            ...post.headers,
+          };
           const response = yield* Effect.promise(() =>
             fetch(`http://127.0.0.1:${address.port}${post.path}`, {
               method: 'POST',
-              headers: {
-                'content-type': 'application/json',
-                'origin': ORIGIN,
-                ...post.headers,
-              },
+              headers,
               body: post.body,
             }),
           );
@@ -325,11 +336,7 @@ describe.each(DESTINATIONS)(
       () =>
         Effect.gen(function* () {
           const { statuses, forwarded, sent } = yield* serveAndPost(
-            [
-              researcher([REQUEST_FAILED], {
-                [BROWSER_LOG_TEAM_HEADER]: MEMBER_TEAM,
-              }),
-            ],
+            [researcher([withTeam(REQUEST_FAILED, MEMBER_TEAM)])],
             { destination },
           );
           expect(statuses).toEqual([204]);
@@ -362,14 +369,23 @@ describe.each(DESTINATIONS)(
 );
 
 describe('researcher logs', () => {
-  it.live('keeps no team the researcher does not belong to', () =>
-    Effect.gen(function* () {
-      const { forwarded } = yield* serveAndPost([
-        researcher([LOCK_REFUSED], { [BROWSER_LOG_TEAM_HEADER]: OTHER_TEAM }),
-      ]);
-      expect(forwarded).toHaveLength(1);
-      expect(forwarded[0]?.attributes).toEqual({ surface: 'researcher' });
-    }),
+  it.live(
+    'keeps each record’s own team, and no team the researcher does not belong to',
+    () =>
+      Effect.gen(function* () {
+        const { forwarded } = yield* serveAndPost([
+          researcher([
+            withTeam(LOCK_REFUSED, MEMBER_TEAM),
+            withTeam(LOCK_REFUSED, OTHER_TEAM),
+            LOCK_REFUSED,
+          ]),
+        ]);
+        expect(forwarded.map((record) => record.attributes)).toEqual([
+          { surface: 'researcher', team_id: MEMBER_TEAM },
+          { surface: 'researcher' },
+          { surface: 'researcher' },
+        ]);
+      }),
   );
 
   it.live(
@@ -448,19 +464,77 @@ describe('researcher logs', () => {
     }),
   );
 
-  it.live('refuses a body over the bound', () =>
+  it.live('refuses a body over the bound, declared or streamed', () =>
     Effect.gen(function* () {
+      const oversized = batch([REQUEST_FAILED]).padEnd(
+        MAX_BROWSER_LOG_BODY_BYTES + 1,
+        ' ',
+      );
       const { statuses, forwarded } = yield* serveAndPost([
-        {
-          path: BROWSER_LOG_PATHS.researcher,
-          body: batch([REQUEST_FAILED]).padEnd(
-            MAX_BROWSER_LOG_BODY_BYTES + 1,
-            ' ',
-          ),
-        },
+        { path: BROWSER_LOG_PATHS.researcher, body: oversized },
       ]);
       expect(statuses).toEqual([413]);
       expect(forwarded).toEqual([]);
+    }),
+  );
+
+  it('answers a streamed body over the bound, with no declared length, with 413', async () => {
+    const { handler, dispose } = HttpRouter.toWebHandler(
+      BrowserLogRoutes.pipe(
+        Layer.provide(SignedIn),
+        Layer.provide(OpenLimiter),
+        Layer.provide(DatabaseAbsent),
+        Layer.provideMerge(ObservabilityLive('serve')),
+        Layer.provide(
+          Layer.succeed(Environment, {
+            ...env,
+            telemetry: true,
+            telemetryEndpoint: COLLECTOR,
+            telemetryHeaders: undefined,
+          }),
+        ),
+        Layer.provide(HttpServer.layerServices),
+      ),
+      { disableLogger: true },
+    );
+    try {
+      const chunk = new TextEncoder().encode(' '.repeat(4096));
+      let sent = 0;
+      const response = await handler(
+        new Request(new URL(BROWSER_LOG_PATHS.researcher, ORIGIN), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'origin': ORIGIN },
+          duplex: 'half',
+          body: new ReadableStream<Uint8Array>({
+            pull: (controller) => {
+              if (sent > MAX_BROWSER_LOG_BODY_BYTES) {
+                controller.close();
+                return;
+              }
+              sent += chunk.byteLength;
+              controller.enqueue(chunk);
+            },
+          }),
+        }),
+      );
+      expect(response.status).toBe(413);
+    } finally {
+      await dispose();
+    }
+  });
+
+  it.live('refuses a time outside the unsigned 64-bit range', () =>
+    Effect.gen(function* () {
+      const { statuses, forwarded } = yield* serveAndPost([
+        researcher([
+          { ...REQUEST_FAILED, timeUnixNano: '18446744073709551616' },
+        ]),
+        researcher([
+          { ...REQUEST_FAILED, timeUnixNano: '18446744073709551615' },
+        ]),
+      ]);
+      expect(statuses).toEqual([400, 204]);
+      expect(forwarded).toHaveLength(1);
     }),
   );
 });
@@ -554,10 +628,13 @@ describe.skipIf(!testDb)('participant logs', () => {
                   ['interface_type', SECRET],
                 ]),
               ]),
+              participantPost(token, [
+                withTeam(ANSWER_SAVE_FAILED, 'a-team-the-page-claims'),
+              ]),
             ],
             { auth: SignedOut, database },
           );
-          expect(statuses).toEqual([400, 400, 400, 400]);
+          expect(statuses).toEqual([400, 400, 400, 400, 400]);
           expect(forwarded).toEqual([]);
           expect(everything).not.toContain('jane.doe');
         }).pipe(Effect.orDie),
