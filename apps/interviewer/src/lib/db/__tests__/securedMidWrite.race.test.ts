@@ -16,7 +16,11 @@ import type { StoredProtocol, StoredSession } from '../types';
 // re-encryption sweep, run with the new key — and then let the write commit.
 // The rule under test: no row may be stored as plaintext once the device is
 // secured.
-type EncryptFunction = 'encryptAsset' | 'encryptProtocol' | 'encryptSession';
+type EncryptFunction =
+  | 'encryptAsset'
+  | 'encryptProtocol'
+  | 'encryptSession'
+  | 'prepareSessionFinish';
 
 let armed: {
   fn: EncryptFunction;
@@ -47,6 +51,13 @@ vi.mock('../recordCrypto', async (importOriginal) => {
     ) => pauseAfter('encryptProtocol', await actual.encryptProtocol(...args)),
     encryptSession: async (...args: Parameters<typeof actual.encryptSession>) =>
       pauseAfter('encryptSession', await actual.encryptSession(...args)),
+    prepareSessionFinish: async (
+      ...args: Parameters<typeof actual.prepareSessionFinish>
+    ) =>
+      pauseAfter(
+        'prepareSessionFinish',
+        await actual.prepareSessionFinish(...args),
+      ),
   };
 });
 
@@ -57,7 +68,8 @@ const { saveProtocol } = await import('../protocols');
 const { decryptSession, encryptProtocol, encryptSession, DeviceSecuredError } =
   await import('../recordCrypto');
 const { setSessionDek } = await import('../sessionKey');
-const { createSession, updateSession } = await import('../sessions');
+const { createSession, markSessionFinished, updateSession } =
+  await import('../sessions');
 const { clearVault, writeVault } = await import('../../vault/vaultStore');
 
 // The other tab: its own copies of the modules, so its own session write
@@ -373,6 +385,22 @@ describe.each<VaultView>(['stale', 'current'])(
       ).toBe(true);
       expect(await plaintextRows()).toEqual([]);
       expect((await db.sessions.get('s1'))?.caseId).toBe('case-s1');
+    });
+
+    it('markSessionFinished: refuses the plaintext finish and leaves the session unfinished', async () => {
+      await seed('h1', formStudy(), ['s1']);
+
+      const outcome = await secureAfter('prepareSessionFinish', dek, view, () =>
+        markSessionFinished('s1', { stageId: 'info', outcome: 'ineligible' }),
+      );
+
+      expect(outcome.status).toBe('rejected');
+      expect(
+        outcome.status === 'rejected' &&
+          outcome.reason instanceof DeviceSecuredError,
+      ).toBe(true);
+      expect(await plaintextRows()).toEqual([]);
+      expect((await db.sessions.get('s1'))?.finishedAt).toBeNull();
     });
 
     it('createSession: refuses the plaintext write', async () => {

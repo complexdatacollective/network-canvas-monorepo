@@ -522,26 +522,36 @@ export function markSessionFinished(
       const existingRow = await db.sessions.get(id);
       if (!existingRow) return;
       const prepared = await prepareSessionFinish(existingRow, finish);
-      const recorded = await db.transaction('rw', db.sessions, async () => {
-        // Throwing anywhere in here, before the callback resolves, aborts
-        // the transaction and rolls back anything it put; the signal is
-        // checked after each of its waits, as teardown can land in any.
-        signal?.throwIfAborted();
-        const latest = await db.sessions.get(id);
-        signal?.throwIfAborted();
-        // A session deleted in the gap stays deleted.
-        if (!latest) return true;
-        const updated = withSessionFinish(latest, prepared);
-        if (!updated) return false;
-        const now = new Date().toISOString();
-        await db.sessions.put({
-          ...updated,
-          finishedAt: now,
-          lastUpdatedAt: now,
-        });
-        signal?.throwIfAborted();
-        return true;
-      });
+      const recorded = await db.transaction(
+        'rw',
+        db.sessions,
+        db.settings,
+        async () => {
+          // Throwing anywhere in here, before the callback resolves, aborts
+          // the transaction and rolls back anything it put; the signal is
+          // checked after each of its waits, as teardown can land in any.
+          signal?.throwIfAborted();
+          // A plaintext finish is refused once another tab has secured the
+          // device: its re-encryption sweep may already hold this row, and
+          // would write back its unfinished copy over the finish.
+          await assertPlaintextStillAllowed(prepared.kind === 'plaintext');
+          signal?.throwIfAborted();
+          const latest = await db.sessions.get(id);
+          signal?.throwIfAborted();
+          // A session deleted in the gap stays deleted.
+          if (!latest) return true;
+          const updated = withSessionFinish(latest, prepared);
+          if (!updated) return false;
+          const now = new Date().toISOString();
+          await db.sessions.put({
+            ...updated,
+            finishedAt: now,
+            lastUpdatedAt: now,
+          });
+          signal?.throwIfAborted();
+          return true;
+        },
+      );
       if (recorded) return;
     }
     throw new Error(`Could not record the finish of interview ${id}`);
