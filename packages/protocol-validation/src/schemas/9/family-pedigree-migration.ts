@@ -17,6 +17,7 @@ import {
   type InterfaceOwnedOption,
   optionsMatchInterfaceOwnedSet,
 } from './interface-owned-options.ts';
+import { freshStageId } from './stage-ids.ts';
 import { FAMILY_PEDIGREE_BUILD_PROMPT_ID } from './stages/family-pedigree.ts';
 
 type Fields = Record<string, unknown>;
@@ -413,7 +414,7 @@ export const migrateFamilyPedigreeStages = (protocol: Fields) => {
     const introduction = introductionStage(
       stage,
       stage.introScreen,
-      freshId(`${pedigreeId}-introduction`, stageIds),
+      freshStageId(pedigreeId, '-introduction', stageIds),
     );
     if (introduction && typeof introduction.id === 'string') {
       stageIds.add(introduction.id);

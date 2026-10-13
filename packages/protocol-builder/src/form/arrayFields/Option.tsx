@@ -31,7 +31,10 @@ import { toCanonicalText } from '@codaco/shared-consts';
 
 import { LocalizedOptionLabelField } from '../../fields/LocalizedStringField.tsx';
 import { asLocalizedString } from '../../localization/localizedText.ts';
-import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
+import {
+  useLocalizedText,
+  useProtocolLocalization,
+} from '../../localization/ProtocolLocalization.tsx';
 import {
   cellIssues,
   invalidOptionValue,
@@ -213,6 +216,7 @@ export default function Option({
 }: ArrayFieldItemProps<OptionValue>) {
   const intl = useAppIntl();
   const localize = useLocalizedText();
+  const localization = useProtocolLocalization();
   const { arrayName, rows, showArrayError, exportColumns } =
     useOptionsContext();
   const { hasEdited, markEdited } = useEditedCells();
@@ -241,7 +245,7 @@ export default function Option({
   // A cell complains once the researcher has edited it, or once the row has
   // been asked to finish — which is the only way a blank row hears about
   // itself, since nothing in it has been touched.
-  const labelErrors = optionLabelIssues(item.label, rows);
+  const labelErrors = optionLabelIssues(item.label, rows, localization);
   const valueErrors = valueIssues(item.value, rows, exportColumns);
   const showLabelErrors =
     (hasEdited('label') || forceShowErrors) && labelErrors.length > 0;

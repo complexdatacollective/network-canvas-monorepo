@@ -66,9 +66,9 @@ describe('the editor for a form about the participant', () => {
       'Ego Form',
     );
     // A rich-text editor rather than an input: it shows its text.
-    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
-      'Introduction',
-    );
+    expect(
+      screen.getByRole('textbox', { name: 'Form title' }).textContent,
+    ).toBe('Introduction');
     expect(
       await screen.findByText('What is your name?', { exact: false }),
     ).toBeInTheDocument();
@@ -87,7 +87,9 @@ describe('the editor for a form about the participant', () => {
     // name, which is proposed because the stage is being created.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Ego Form/);
-    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe('');
+    expect(
+      screen.getByRole('textbox', { name: 'Form title' }).textContent,
+    ).toBe('');
   });
 
   it('saves a new stage once the researcher has written it', async () => {
@@ -97,13 +99,8 @@ describe('the editor for a form about the participant', () => {
     await writeInto(harness, stageNameInput(), 'About you');
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Title' }),
-      'About you',
-    );
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Introduction text' }),
-      'A few questions about you before we begin.',
+      screen.getByRole('textbox', { name: 'Form title' }),
+      'A few questions about you',
     );
 
     const dialog = await openField(harness, 'Create new form field');
@@ -120,9 +117,8 @@ describe('the editor for a form about the participant', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.label).toEqual({ 'en-US': 'About you' });
-    expect(request?.stageDocument.introductionPanel).toEqual({
-      title: { 'en-US': 'About you' },
-      text: { 'en-US': 'A few questions about you before we begin.' },
+    expect(request?.stageDocument.form).toMatchObject({
+      title: { 'en-US': 'A few questions about you' },
     });
     // The id is the row's own identity, minted on add so a reorder or a
     // removal is committed as the operation it was.
@@ -161,9 +157,11 @@ describe('the editor for a form about the participant', () => {
   it('writes nothing when the researcher discards the edit', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
+    await harness.user.clear(
+      screen.getByRole('textbox', { name: 'Form title' }),
+    );
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Title' }),
+      screen.getByRole('textbox', { name: 'Form title' }),
       'A heading nobody kept',
     );
     expectStageUntouched(harness);
@@ -206,7 +204,7 @@ describe('the editor for a form about the participant', () => {
     // A rich-text editor, which says it is unavailable and takes no typing,
     // rather than carrying an input's `disabled`.
     await waitFor(() => {
-      const title = screen.getByRole('textbox', { name: 'Title' });
+      const title = screen.getByRole('textbox', { name: 'Form title' });
       expect(title).toHaveAttribute('aria-disabled', 'true');
       expect(title).toHaveAttribute('contenteditable', 'false');
     });

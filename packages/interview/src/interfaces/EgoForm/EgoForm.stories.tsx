@@ -30,8 +30,7 @@ const FIELD_PRESETS: { component: ComponentType; prompt: string }[] = [
 
 type StoryArgs = {
   fieldCount: number;
-  introTitle: string;
-  introText: string;
+  formTitle: string;
 };
 
 function buildInterview(args: StoryArgs) {
@@ -44,10 +43,7 @@ function buildInterview(args: StoryArgs) {
 
   const stage = interview.addStage('EgoForm', {
     label: 'About You',
-    introductionPanel: {
-      title: args.introTitle,
-      text: args.introText,
-    },
+    form: { title: args.formTitle, fields: [] },
   });
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
@@ -95,20 +91,14 @@ const meta: Meta<StoryArgs> = {
       control: { type: 'range', min: 1, max: FIELD_PRESETS.length },
       description: 'Number of form fields',
     },
-    introTitle: {
+    formTitle: {
       control: 'text',
-      description: 'Introduction panel title',
-    },
-    introText: {
-      control: 'text',
-      description: 'Introduction panel text (supports markdown)',
+      description: 'Heading shown above the questions',
     },
   },
   args: {
     fieldCount: 4,
-    introTitle: 'About You',
-    introText:
-      'Please answer the following questions about yourself. Your responses will be kept confidential.',
+    formTitle: 'About You',
   },
 };
 
@@ -129,10 +119,7 @@ function buildValidatedInterview() {
 
   const stage = interview.addStage('EgoForm', {
     label: 'About You (Validated)',
-    introductionPanel: {
-      title: 'About You',
-      text: 'These questions have validation rules. Try submitting without completing them, or enter values outside the expected ranges, to see the errors.',
-    },
+    form: { title: 'About You', fields: [] },
   });
 
   stage.addFormField({

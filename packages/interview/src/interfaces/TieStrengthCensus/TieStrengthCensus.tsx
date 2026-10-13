@@ -2,7 +2,7 @@
 
 import { get } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { type ComponentProps, useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage } from '@codaco/app-i18n/react';
@@ -57,7 +57,6 @@ import {
   isDyadCensusMetadata,
   matchEntry,
 } from '../DyadCensus/helpers';
-import IntroPanel from '../SlidesForm/IntroPanel';
 import { getTieStrengthHasEdge } from './helpers';
 
 const fadeVariants = {
@@ -103,8 +102,49 @@ function getDeclineValue(
   return candidate;
 }
 
+/**
+ * The answer cards for the pair on screen. Their labels are resolved here,
+ * beneath the pair's `DynamicValueEntity`, so a decline label naming either
+ * person reads the pair shown rather than nobody.
+ */
+function TieStrengthChoices({
+  options,
+  negativeLabel,
+  declineValue,
+  value,
+  onChange,
+  labelledBy,
+}: {
+  options: VariableOptions;
+  negativeLabel: LocalizedString;
+  declineValue: string;
+  value: string | number | undefined;
+  onChange: ComponentProps<typeof RichSelectGroupField>['onChange'];
+  labelledBy: string;
+}) {
+  const resolve = useResolveLocalizedString();
+  const richSelectOptions: RichSelectOption[] = [
+    ...options.flatMap((option) =>
+      typeof option.value === 'boolean'
+        ? []
+        : [{ value: option.value, label: resolve(option.label).text }],
+    ),
+    { value: declineValue, label: markdownSource(resolve(negativeLabel)) },
+  ];
+  return (
+    <RichSelectGroupField
+      orientation="horizontal"
+      options={richSelectOptions}
+      autoFocus
+      value={value}
+      onChange={onChange}
+      aria-labelledby={labelledBy}
+    />
+  );
+}
+
 export default function TieStrengthCensus(props: TieStrengthCensusProps) {
-  const { stage, getNavigationHelpers } = props;
+  const { getNavigationHelpers } = props;
   const { moveForward } = getNavigationHelpers();
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
@@ -114,7 +154,6 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const pairLabelId = `${baseId}-pair`;
   const promptLabelId = `${baseId}-prompt`;
 
-  const [isIntroduction, setIsIntroduction] = useState(true);
   const [isForwards, setIsForwards] = useState(true);
   const [pairIndex, setPairIndex] = useState(0);
 
@@ -126,7 +165,6 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     edgeVariable?: string;
     negativeLabel: LocalizedString;
   }>();
-  const resolve = useResolveLocalizedString();
 
   const nodes = useStageSelector(getNetworkNodesForType);
   const edges = useStageSelector(getNetworkEdges);
@@ -134,6 +172,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const stageMetadata = useStageSelector(getStageMetadata);
   const codebook = useSelector(getCodebook);
   const pairs = useStageSelector(getNodePairs);
+  const hasPairs = pairs.length > 0;
 
   const edgeVariableOptions = (
     edgeVariable
@@ -147,24 +186,16 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       : []
   ) as VariableOptions;
 
-  const realOptions: RichSelectOption[] = edgeVariableOptions.flatMap(
-    (option) =>
-      typeof option.value === 'boolean'
-        ? []
-        : [{ value: option.value, label: resolve(option.label).text }],
-  );
-
   // Collision-free decline sentinel: must never equal a real option value, so a
   // legitimate option valued e.g. '__none__' is treated as data, not decline.
   const declineValue = getDeclineValue(
     baseId,
-    new Set(realOptions.map((option) => option.value)),
+    new Set(
+      edgeVariableOptions.flatMap((option) =>
+        typeof option.value === 'boolean' ? [] : [option.value],
+      ),
+    ),
   );
-
-  const richSelectOptions: RichSelectOption[] = [
-    ...realOptions,
-    { value: declineValue, label: markdownSource(resolve(negativeLabel)) },
-  ];
 
   const pair =
     pairIndex >= 0 && pairIndex < pairs.length
@@ -174,10 +205,10 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 
   const track = useTrack();
   useEffect(() => {
-    if (pair && !isIntroduction) {
+    if (pair) {
       track('pair_shown', { node_a_id: pair[0], node_b_id: pair[1] });
     }
-  }, [pair, isIntroduction, track]);
+  }, [pair, track]);
 
   // Compute edge state directly from Redux
   const existingEdgeId =
@@ -230,7 +261,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     constraints: [
       {
         direction: 'forwards',
-        isMet: isIntroduction || hasEdge !== null,
+        isMet: !hasPairs || hasEdge !== null,
         kind: 'comparison_response_required',
         toast: {
           description: <AppMessage message={validationMessages.required} />,
@@ -251,12 +282,9 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     if (direction === 'forwards') {
       setIsForwards(true);
 
-      if (isIntroduction) {
-        if (pairs.length === 0) {
-          return 'FORCE';
-        }
-        setIsIntroduction(false);
-        return false;
+      // Nothing to ask about: leave the stage, skipping any further prompts.
+      if (!hasPairs) {
+        return 'FORCE';
       }
 
       const isLastPair = pairIndex === pairs.length - 1;
@@ -272,19 +300,15 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     if (direction === 'backwards') {
       setIsForwards(false);
 
-      if (isIntroduction) {
-        return true;
-      }
-
       if (pairIndex > 0) {
         setPairIndex((i) => i - 1);
         return false;
       }
 
-      // pairIndex === 0
+      // pairIndex === 0: step back to the previous prompt's last pair, or
+      // leave the stage from the first prompt.
       if (promptIndex === 0) {
-        setIsIntroduction(true);
-        return false;
+        return true;
       }
 
       setPairIndex(pairs.length - 1);
@@ -398,85 +422,72 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       }}
     >
       <div className="interface">
-        <AnimatePresence initial={false} mode="wait">
-          {isIntroduction ? (
-            <IntroPanel
-              title={stage.introductionPanel.title}
-              text={stage.introductionPanel.text}
-              key="intro"
-            />
-          ) : (
-            <motion.div
-              key="content"
-              variants={fadeVariants}
-              initial="initial"
-              exit="exit"
-              animate="animate"
-              className="flex w-full flex-1 flex-col items-center"
-            >
-              <motion.div className="flex w-full grow flex-col items-center justify-center">
-                <AnimatePresence
-                  mode="wait"
-                  custom={isForwards}
-                  initial={false}
-                >
-                  <Pair
-                    key={`${promptIndex}_${pairIndex}`}
-                    edgeColor={edgeColor}
-                    hasEdge={hasEdge}
-                    animateForwards={isForwards}
-                    fromNode={fromNode}
-                    toNode={toNode}
-                    labelId={pairLabelId}
-                  />
-                </AnimatePresence>
-              </motion.div>
-              <MotionSurface
-                noContainer
-                className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-4"
-                variants={choiceVariants}
-                initial="initial"
-                animate="animate"
-              >
-                <Prompts id={promptLabelId} />
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={`${promptIndex}_${pairIndex}_choice`}
-                    className="flex items-center justify-center"
-                    variants={optionsVariants}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                  >
-                    <RichSelectGroupField
-                      orientation="horizontal"
-                      options={richSelectOptions}
-                      autoFocus
-                      value={
-                        hasEdge === false
-                          ? declineValue
-                          : hasEdge && edgeVariableValue !== undefined
-                            ? edgeVariableValue
-                            : undefined
-                      }
-                      onChange={(next) => {
-                        if (next === declineValue) {
-                          handleChange(false);
-                        } else if (
-                          typeof next === 'string' ||
-                          typeof next === 'number'
-                        ) {
-                          handleChange(next);
-                        }
-                      }}
-                      aria-labelledby={`${pairLabelId} ${promptLabelId}`}
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              </MotionSurface>
+        {hasPairs && (
+          <motion.div
+            variants={fadeVariants}
+            initial="initial"
+            exit="exit"
+            animate="animate"
+            className="flex w-full flex-1 flex-col items-center"
+          >
+            <motion.div className="flex w-full grow flex-col items-center justify-center">
+              <AnimatePresence mode="wait" custom={isForwards} initial={false}>
+                <Pair
+                  key={`${promptIndex}_${pairIndex}`}
+                  edgeColor={edgeColor}
+                  hasEdge={hasEdge}
+                  animateForwards={isForwards}
+                  fromNode={fromNode}
+                  toNode={toNode}
+                  labelId={pairLabelId}
+                />
+              </AnimatePresence>
             </motion.div>
-          )}
-        </AnimatePresence>
+            <MotionSurface
+              noContainer
+              className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-4"
+              variants={choiceVariants}
+              initial="initial"
+              animate="animate"
+            >
+              <Prompts id={promptLabelId} />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${promptIndex}_${pairIndex}_choice`}
+                  className="flex items-center justify-center"
+                  variants={optionsVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  <TieStrengthChoices
+                    options={edgeVariableOptions}
+                    negativeLabel={negativeLabel}
+                    declineValue={declineValue}
+                    value={
+                      hasEdge === false
+                        ? declineValue
+                        : hasEdge && edgeVariableValue !== undefined
+                          ? edgeVariableValue
+                          : undefined
+                    }
+                    onChange={(next) => {
+                      if (next === declineValue) {
+                        handleChange(false);
+                      } else if (
+                        typeof next === 'string' ||
+                        typeof next === 'number'
+                      ) {
+                        handleChange(next);
+                      }
+                    }}
+                    labelledBy={`${pairLabelId} ${promptLabelId}`}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </MotionSurface>
+          </motion.div>
+        )}
       </div>
     </DynamicValueEntity>
   );

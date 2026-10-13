@@ -60,46 +60,6 @@ const expectStageUntouched = (harness: StageEditorHarness): void => {
 };
 
 describe('the dyad census editor', () => {
-  /**
-   * The refusal has to say which part of the stage is unfinished. An
-   * introduction with no heading reaches the schema as
-   * `stages.N.introductionPanel.title`, which is a path rather than a place on
-   * the page.
-   */
-  it('refuses a stage whose introduction has no heading, and says which section', async () => {
-    const harness = renderStageEditor({
-      stage: {
-        type: 'DyadCensus',
-        fields: {
-          label: { 'en-US': 'Dyad Census' },
-          subject: { entity: 'node', type: 'person' },
-          introductionPanel: { text: { 'en-US': 'Something to read.' } },
-          prompts: [
-            {
-              id: 'prompt-a',
-              text: { 'en-US': 'First question' },
-              createEdge: 'knows',
-            },
-          ],
-        },
-      },
-      registry: dyadCensusStageEditor,
-    });
-
-    expect(await harness.submit()).toBeNull();
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
-    await waitFor(() =>
-      expect(
-        harness
-          .outline()
-          .find((section) => section.title === 'Task introduction')?.state,
-      ).toBe('Has a problem'),
-    );
-  });
-
   it('leaves nothing behind when the editor is closed without saving', async () => {
     const harness = mountFixture();
 
@@ -115,7 +75,7 @@ describe('the dyad census editor', () => {
       registry: dyadCensusStageEditor,
       readOnly: true,
     });
-    await screen.findByRole('textbox', { name: 'Title' });
+    await screen.findByRole('textbox', { name: 'Stage name' });
 
     expect(await harness.submit()).toBeNull();
     expect(
@@ -227,21 +187,11 @@ describe('creating a dyad census stage', () => {
    * does not carry, and the new stage saves. The name is the one the editor
    * PROPOSED, never typed, and it follows the type they pick on the way.
    */
-  it('saves the new stage once its introduction and prompt are written', async () => {
+  it('saves the new stage once its prompt is written', async () => {
     const harness = renderStageEditor(createFixture());
 
     await waitFor(() => expect(stageNameInput()).toHaveValue('Dyad Census #2'));
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Title' }),
-      'Pairs',
-    );
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Introduction text' }),
-      'Two at a time.',
-    );
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
@@ -261,10 +211,6 @@ describe('creating a dyad census stage', () => {
       type: 'DyadCensus',
       label: { 'en-US': 'Person Dyad Census' },
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: { 'en-US': 'Pairs' },
-        text: { 'en-US': 'Two at a time.' },
-      },
     });
     expect(prompts(request?.stageDocument ?? {})).toEqual([
       {
@@ -273,38 +219,5 @@ describe('creating a dyad census stage', () => {
         createEdge: 'knows',
       },
     ]);
-  });
-
-  /**
-   * And it refuses one that is otherwise complete, because the template does
-   * not carry the task introduction this interface's schema requires — so a
-   * researcher who wrote everything else would otherwise be sending a stage a
-   * host rejects. The case above refuses an introduction whose heading was
-   * emptied; this is the introduction that was never there at all.
-   */
-  it('refuses a new stage that has no task introduction', async () => {
-    const harness = renderStageEditor({
-      create: {
-        type: 'DyadCensus',
-        position: DYAD_CENSUS_INDEX,
-        fields: {
-          label: { 'en-US': 'Who knows who' },
-          subject: { entity: 'node', type: 'person' },
-          prompts: [
-            {
-              id: 'prompt-a',
-              text: { 'en-US': 'Do they know?' },
-              createEdge: 'knows',
-            },
-          ],
-        },
-      },
-      registry: dyadCensusStageEditor,
-    });
-
-    expect(
-      getInterfaceTemplate('DyadCensus').introductionPanel,
-    ).toBeUndefined();
-    expect(await harness.submit()).toBeNull();
   });
 });

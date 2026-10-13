@@ -41,14 +41,18 @@ const nodes: NcNode[] = [
   makeNode('dave', { [NAME_VAR]: 'dave', [AGE_VAR]: 20 }),
 ];
 
-function makeWrapper() {
+function makeWrapper(networkNodes: NcNode[] = nodes) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
       session: {
         id: 's',
         promptIndex: 0,
-        network: { nodes, edges: [], ego: { [entityAttributesProperty]: {} } },
+        network: {
+          nodes: networkNodes,
+          edges: [],
+          ego: { [entityAttributesProperty]: {} },
+        },
       } as never,
       protocol: {
         id: 'p',
@@ -144,5 +148,35 @@ describe('useCategoricalBins sort order', () => {
     expect(
       result.current.uncategorisedNodes.map((n) => n[entityPrimaryKeyProperty]),
     ).toEqual(['carol', 'dave']);
+  });
+});
+
+describe('useCategoricalBins placement', () => {
+  /**
+   * A value no bin offers (an option since removed from the codebook) would
+   * otherwise leave the node in no bin and out of the drawer, where the
+   * participant could neither see nor place it, and where a stage requiring
+   * every node to be placed would count it as placed.
+   */
+  it('keeps a node whose value matches no bin in the drawer', () => {
+    const { result } = renderHook(() => useCategoricalBins(), {
+      wrapper: makeWrapper([
+        ...nodes,
+        makeNode('erin', {
+          [CAT_VAR]: ['z'],
+          [NAME_VAR]: 'erin',
+          [AGE_VAR]: 60,
+        }),
+      ]),
+    });
+
+    expect(
+      result.current.uncategorisedNodes.map((n) => n[entityPrimaryKeyProperty]),
+    ).toEqual(['carol', 'dave', 'erin']);
+    expect(
+      result.current.bins.flatMap((bin) =>
+        bin.nodes.map((n) => n[entityPrimaryKeyProperty]),
+      ),
+    ).not.toContain('erin');
   });
 });

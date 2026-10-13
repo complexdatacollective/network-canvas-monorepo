@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import {
   EdgeStageSubjectSchema,
-  IntroductionPanelSchema,
   TitlelessFormSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
@@ -13,5 +12,4 @@ export const alterEdgeFormStage = baseStageSchema.extend({
   subject: EdgeStageSubjectSchema,
   filter: FilterSchema.optional(),
   form: TitlelessFormSchema,
-  introductionPanel: IntroductionPanelSchema,
 });

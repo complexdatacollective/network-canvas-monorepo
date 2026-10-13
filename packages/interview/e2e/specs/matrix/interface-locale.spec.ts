@@ -19,10 +19,7 @@ matrixTest(
     });
     const stage = synth.addStage('EgoForm', {
       label: 'Authored screen label',
-      introductionPanel: {
-        title: authoredTitle,
-        text: 'Contenido original del protocolo.',
-      },
+      form: { title: authoredTitle, fields: [] },
     });
     stage.addFormField({
       variable: field.id,

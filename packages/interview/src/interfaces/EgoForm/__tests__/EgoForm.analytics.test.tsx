@@ -60,8 +60,8 @@ const stage = {
   id: 'ego-form',
   type: 'EgoForm',
   label: { en: 'About you' },
-  introductionPanel: { title: { en: 'About you' }, text: { en: '' } },
   form: {
+    title: { en: 'About you' },
     fields: [
       { variable: 'nickname', prompt: { en: 'Your nickname' } },
       { variable: 'born_on', prompt: { en: 'Your date of birth' } },

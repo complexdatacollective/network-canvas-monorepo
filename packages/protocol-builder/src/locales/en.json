@@ -283,6 +283,50 @@
     "defaultMessage": "{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}",
     "description": "Shown after the researcher changes the kind of answer an attribute they are inventing holds, when rules they had already written for it cannot be kept — either the new kind does not accept them, or they compare this answer with another attribute that is no longer comparable. ruleNames is the list of rule names, already translated."
   },
+  "protocolBuilder.binBehaviours.description": {
+    "defaultMessage": "Choose how the participant puts each node into a bin.",
+    "description": "Description of the section named above."
+  },
+  "protocolBuilder.binBehaviours.dragDescription": {
+    "defaultMessage": "The participant drags each node from the drawer at the bottom of the screen onto the bin it belongs in.",
+    "description": "Says what the participant does in drag-and-drop mode. The drawer is the tray at the foot of the screen that unplaced nodes wait in."
+  },
+  "protocolBuilder.binBehaviours.dragLabel": {
+    "defaultMessage": "Drag and drop",
+    "description": "Name of the choice where the participant drags each node from a tray at the bottom of the screen onto a bin. Offered as one of two cards; the sentence under it is dragDescription."
+  },
+  "protocolBuilder.binBehaviours.interactionModeLabel": {
+    "defaultMessage": "Interaction mode",
+    "description": "Label of the control choosing between dragging nodes into bins and tapping a bin for one node at a time."
+  },
+  "protocolBuilder.binBehaviours.requireCompletePlacementHint": {
+    "defaultMessage": "The participant cannot continue from a prompt until every node is in a bin.",
+    "description": "Guidance under the switch requiring every member of the network to be placed. A prompt is one question on the stage; the rule applies to each question in turn."
+  },
+  "protocolBuilder.binBehaviours.requireCompletePlacementLabel": {
+    "defaultMessage": "Require every node to be placed",
+    "description": "Label of the switch that stops the participant moving on from a bin stage while any member of their network is still waiting to be placed into a bin."
+  },
+  "protocolBuilder.binBehaviours.selectDescription": {
+    "defaultMessage": "The stage shows one node at a time, and the participant taps the bin it belongs in. The next node then appears. Tapping a node already in a bin lets the participant move it.",
+    "description": "Says what the participant does in tap-to-place mode. A stage is one step of an interview."
+  },
+  "protocolBuilder.binBehaviours.selectLabel": {
+    "defaultMessage": "Tap to place",
+    "description": "Name of the choice where the stage shows one node at a time and the participant taps the bin it belongs in. Offered as one of two cards; the sentence under it is selectDescription."
+  },
+  "protocolBuilder.binBehaviours.title": {
+    "defaultMessage": "Placing nodes",
+    "description": "Heading of the section deciding how the participant puts each node into a bin on a sorting stage. A node is one member of the network the participant is building; a bin is one of the groups or points on a scale they sort nodes into. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.binBehaviours.unplacedNoticeHint": {
+    "defaultMessage": "Shown when the participant tries to continue while a node is still waiting to be placed.",
+    "description": "Guidance under the field holding the message shown when the participant tries to continue with members of their network not yet placed into a bin."
+  },
+  "protocolBuilder.binBehaviours.unplacedNoticeLabel": {
+    "defaultMessage": "Nodes not yet placed",
+    "description": "Label of the field holding the message a participant sees when they try to continue while a member of their network is still waiting to be placed into a bin."
+  },
   "protocolBuilder.cardDisplay.addLabel": {
     "defaultMessage": "Add new display property",
     "description": "Button that adds one more attribute to what a roster card shows. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
@@ -1959,6 +2003,10 @@
     "defaultMessage": "Edit form field",
     "description": "Title of the dialog a researcher fills in to change a question a form already asks."
   },
+  "protocolBuilder.formFields.egoFormTitleHint": {
+    "defaultMessage": "Shown as the heading above the questions. Use a short title such as 'About you'.",
+    "description": "Guidance under the title field of an Ego Form, whose questions are about the participant. The quoted phrase is an example a researcher might write, and should be translated as such."
+  },
   "protocolBuilder.formFields.emptyState": {
     "defaultMessage": "No items have been created yet.",
     "description": "Shown in place of the list of form fields while a form asks nothing yet."
@@ -2558,22 +2606,6 @@
   "protocolBuilder.interviewerGuidance.title": {
     "defaultMessage": "Interviewer guidance",
     "description": "Heading of the section holding notes written for the person running the interview. Never shown to a participant."
-  },
-  "protocolBuilder.introduction.description": {
-    "defaultMessage": "Introduce the task before participants complete its forms.",
-    "description": "Description of the task-introduction section."
-  },
-  "protocolBuilder.introduction.headingLabel": {
-    "defaultMessage": "Title",
-    "description": "Label of the field holding the heading at the top of the introduction screen a participant reads."
-  },
-  "protocolBuilder.introduction.textLabel": {
-    "defaultMessage": "Introduction text",
-    "description": "Label of the field holding the prose a participant reads before this step of the interview begins."
-  },
-  "protocolBuilder.introduction.title": {
-    "defaultMessage": "Task introduction",
-    "description": "Heading of the section where a researcher writes what a participant reads before this step of the interview begins."
   },
   "protocolBuilder.languageChooser.languagesDescription": {
     "defaultMessage": "Participants choose from every language this protocol is written in. The languages belong to the whole protocol, so they can't be changed on this stage.",

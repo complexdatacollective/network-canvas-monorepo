@@ -9,6 +9,7 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import { MINIMUM_VARIABLE_OPTIONS } from '@codaco/protocol-validation';
 
 import { minimumOptionsMessage } from '../../codebook/editing.ts';
+import { type ProtocolLocalization } from '../../localization/localizedText.ts';
 import {
   invalidOptionValue,
   isSameOptionValue,
@@ -124,10 +125,11 @@ const uniqueOptionValues = (value: unknown) =>
  * refuses reads the same in both places. Labels are compared one language at
  * a time.
  */
-const uniqueOptionLabels = (value: unknown) =>
-  hasDuplicateLocalizedOptionLabels(value)
-    ? createMessageError(messages.duplicateLabels)
-    : undefined;
+const uniqueOptionLabels =
+  (localization: ProtocolLocalization | undefined) => (value: unknown) =>
+    hasDuplicateLocalizedOptionLabels(value, localization)
+      ? createMessageError(messages.duplicateLabels)
+      : undefined;
 
 /**
  * The array counterpart of the rows' own value check, running the same rule so
@@ -174,13 +176,16 @@ const freeExportColumns = (columns: OptionExportColumns) => (value: unknown) =>
  * problem where the researcher is working, the array is what stops the
  * protocol being saved with it.
  */
-export const optionsValidationFor = (columns?: OptionExportColumns) => ({
+export const optionsValidationFor = (
+  columns?: OptionExportColumns,
+  localization?: ProtocolLocalization,
+) => ({
   required: MINIMUM_OPTIONS_MESSAGE,
   custom: messageRuleValidation([
     minTwoPopulatedOptions,
     completeOptions,
     uniqueOptionValues,
-    uniqueOptionLabels,
+    uniqueOptionLabels(localization),
     allowedOptionValues,
     ...(columns === undefined ? [] : [freeExportColumns(columns)]),
   ]),

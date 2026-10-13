@@ -103,7 +103,7 @@ export const FormSchema = z.strictObject({
 
 export type Form = z.infer<typeof FormSchema>;
 
-// EgoForm/AlterForm/AlterEdgeForm never render form.title, so those stages use
+// AlterForm/AlterEdgeForm never render form.title, so those stages use
 // this title-less variant to keep authored protocols honest.
 export const TitlelessFormSchema = z.strictObject({
   fields: z.array(FormFieldSchema).min(1).superRefine(uniqueFormFieldVariables),

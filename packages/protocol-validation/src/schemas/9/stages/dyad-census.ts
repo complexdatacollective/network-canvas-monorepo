@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import {
   dyadCensusPromptSchema,
-  IntroductionPanelSchema,
   NodeStageSubjectSchema,
 } from '../common/index.ts';
 import { FilterSchema } from '../filters/index.ts';
@@ -27,5 +26,4 @@ export const dyadCensusStage = baseStageSchema.extend({
         });
       }
     }),
-  introductionPanel: IntroductionPanelSchema,
 });

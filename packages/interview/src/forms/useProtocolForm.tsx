@@ -28,6 +28,7 @@ import { getCodebookVariablesForSubjectType } from '../selectors/protocol';
 import { useVariableLabels } from './buildVariableLabels';
 import { coerceFormValues } from './coerceFormValues';
 import { formValuesToAttributePatch } from './formValuesToAttributePatch';
+import type { ProtocolFieldDefinition } from './ProtocolField';
 import ProtocolFormField from './ProtocolFormField';
 import { useValidationNetwork } from './useValidationNetwork';
 
@@ -43,6 +44,77 @@ function subjectToStageSubject(subject?: Subject): StageSubject | null {
   if (subject.entity === 'ego') return { entity: 'ego' };
   if (subject.type === undefined) return null;
   return { entity: subject.entity, type: subject.type };
+}
+
+/**
+ * A form's fields, with the captions the variable-comparison validators name
+ * their target with. Those are resolved here, inside `FormDynamicValues`
+ * where the form has one, so a caption showing an earlier answer reads the
+ * answer as typed and a validation message names the question as it is on
+ * screen.
+ */
+function ProtocolFormFields({
+  fields,
+  unavailableVariables,
+  initialValues,
+  autoFocus,
+  validationContext,
+}: {
+  fields: readonly ProtocolFieldDefinition[];
+  unavailableVariables: readonly string[];
+  initialValues: Record<string, FieldValue> | undefined;
+  autoFocus: boolean;
+  /** Everything but `variableLabels`, which is added here. */
+  validationContext: ValidationContext | null;
+}) {
+  /**
+   * The participant-facing text for each variable this form asks about, for
+   * the variable-comparison validators to name their target with. Shared with
+   * the screens that render a field without going through this hook (a
+   * categorical "other" input, a quick-add popover, the pedigree's side
+   * panel), so one comparison rule reads the same way wherever it is asked —
+   * see `buildVariableLabels` for what may and may not go in it.
+   *
+   * Read off the SAME metadata the fields are rendered from, rather than
+   * recomputed from the authored fields, so a validator can only name a field
+   * by the caption the participant is reading on this screen.
+   * `useVariableLabels` keys on content, so the fresh array mapped here does
+   * not destabilise `validationContext`.
+   */
+  const variableLabels = useVariableLabels(
+    fields.map((field) => ({ variable: field.variable, label: field.label })),
+  );
+  const fieldContext = useMemo(
+    () =>
+      validationContext === null
+        ? undefined
+        : { ...validationContext, variableLabels },
+    [validationContext, variableLabels],
+  );
+
+  return (
+    <>
+      {fields.map((field, index) => {
+        const initialValue =
+          initialValues &&
+          Object.hasOwn(initialValues, field.variable) &&
+          initialValues[field.variable] !== undefined
+            ? initialValues[field.variable]
+            : undefined;
+
+        return (
+          <ProtocolFormField
+            key={index}
+            field={field}
+            unavailable={unavailableVariables.includes(field.variable)}
+            initialValue={initialValue}
+            autoFocus={autoFocus && index === 0}
+            validationContext={fieldContext}
+          />
+        );
+      })}
+    </>
+  );
 }
 
 /**
@@ -119,27 +191,6 @@ export default function useProtocolForm({
     [subjectFieldsMetadata, stageVariables, fields],
   );
 
-  /**
-   * The participant-facing text for each variable this form asks about, for
-   * the variable-comparison validators to name their target with. Shared with
-   * the screens that render a field without going through this hook (a
-   * categorical "other" input, a quick-add popover, the pedigree's side panel),
-   * so one comparison rule reads the same way wherever it is asked — see
-   * `buildVariableLabels` for what may and may not go in it.
-   *
-   * Read off the SAME metadata the fields are rendered from, rather than
-   * recomputed from `fields`, so a validator can only name a field by the
-   * caption the participant is reading on this screen. `useVariableLabels`
-   * keys on content, so the fresh array mapped here does not destabilise
-   * `validationContext`.
-   */
-  const variableLabels = useVariableLabels(
-    fieldsMetadata.map((field) => ({
-      variable: field.variable,
-      label: field.label,
-    })),
-  );
-
   const { context: validationNetwork, passphraseNeeded } = useValidationNetwork(
     stageValidationContext,
     subjectToStageSubject(stableSubject) ?? stageValidationContext.stageSubject,
@@ -162,7 +213,6 @@ export default function useProtocolForm({
       ...baseValidationContext,
       ...validationNetwork,
       stageSubject,
-      variableLabels,
       ...(currentEntityId !== undefined ? { currentEntityId } : {}),
       ...(formValueAliases !== undefined ? { formValueAliases } : {}),
     };
@@ -172,7 +222,6 @@ export default function useProtocolForm({
     formValueAliases,
     stableSubject,
     validationNetwork,
-    variableLabels,
   ]);
 
   // Names of fields whose codebook variable is a number, so the submit
@@ -239,25 +288,15 @@ export default function useProtocolForm({
     [fieldsMetadata],
   );
 
-  const renderedFields = fieldsMetadata.map((field, index) => {
-    const initialValue =
-      initialValues &&
-      Object.hasOwn(initialValues, field.variable) &&
-      initialValues[field.variable] !== undefined
-        ? initialValues[field.variable]
-        : undefined;
-
-    return (
-      <ProtocolFormField
-        key={index}
-        field={field}
-        unavailable={unavailableVariables.includes(field.variable)}
-        initialValue={initialValue}
-        autoFocus={autoFocus && index === 0}
-        validationContext={validationContext ?? undefined}
-      />
-    );
-  });
+  const renderedFields = (
+    <ProtocolFormFields
+      fields={fieldsMetadata}
+      unavailableVariables={unavailableVariables}
+      initialValues={initialValues}
+      autoFocus={autoFocus}
+      validationContext={validationContext}
+    />
+  );
 
   // The fields' captions can show values of the entity the form describes,
   // including answers given in its earlier fields (see `FormDynamicValues`).

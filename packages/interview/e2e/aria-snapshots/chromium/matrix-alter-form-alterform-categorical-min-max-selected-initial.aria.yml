@@ -1,6 +1,15 @@
 - main:
-  - heading "About Each Person" [level=1]
-  - paragraph: Please continue.
+  - button "Person"
+  - text: Interests
+  - group "Interests":
+    - checkbox "Reading"
+    - text: Reading
+    - checkbox "Sport"
+    - text: Sport
+    - checkbox "Music"
+    - text: Music
+    - checkbox "Art"
+    - text: Art
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

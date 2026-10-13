@@ -42,10 +42,6 @@ import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrength
  */
 
 const SUBJECT = { entity: 'node', type: 'person' };
-const INTRODUCTION = {
-  title: { 'en-US': 'Introduction' },
-  text: { 'en-US': 'Some words the participant reads first.' },
-};
 const BUCKET_SORT_ORDER = [{ property: 'name', direction: 'asc' }];
 const BIN_SORT_ORDER = [{ property: '*', direction: 'desc' }];
 
@@ -301,7 +297,6 @@ const CASES: readonly EditorCase[] = [
     sections: [
       'Node setup',
       'Stage filter',
-      'Task introduction',
       'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
@@ -311,17 +306,10 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: [
-      'dynamicValues',
-      'introductionPanel',
-      'label',
-      'prompts',
-      'subject',
-    ],
+    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full dyad census' },
-      introductionPanel: INTRODUCTION,
       prompts: [DYAD_PROMPT],
     },
     prompt: DYAD_PROMPT,
@@ -346,7 +334,6 @@ const CASES: readonly EditorCase[] = [
     sections: [
       'Node setup',
       'Stage filter',
-      'Task introduction',
       'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
@@ -356,17 +343,10 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: [
-      'dynamicValues',
-      'introductionPanel',
-      'label',
-      'prompts',
-      'subject',
-    ],
+    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full tie-strength census' },
-      introductionPanel: INTRODUCTION,
       prompts: [TIE_STRENGTH_PROMPT],
     },
     prompt: TIE_STRENGTH_PROMPT,
@@ -435,6 +415,7 @@ const CASES: readonly EditorCase[] = [
       'Node setup',
       'Stage filter',
       'Prompt collection',
+      'Placing nodes',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -443,10 +424,12 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
+    ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full ordinal bin' },
+      behaviours: { interactionMode: 'select', requireCompletePlacement: true },
+      unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
       prompts: [ORDINAL_BIN_PROMPT],
     },
     prompt: ORDINAL_BIN_PROMPT,
@@ -474,6 +457,7 @@ const CASES: readonly EditorCase[] = [
       'Node setup',
       'Stage filter',
       'Prompt collection',
+      'Placing nodes',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -482,10 +466,12 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
+    ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full categorical bin' },
+      behaviours: { interactionMode: 'select', requireCompletePlacement: true },
+      unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
       prompts: [CATEGORICAL_BIN_PROMPT],
     },
     prompt: CATEGORICAL_BIN_PROMPT,
@@ -829,8 +815,8 @@ describe('a prompt that uses every optional key its interface allows', () => {
  * answered for that the reader is getting in English anyway?
  *
  * Swept as whole EDITORS rather than as their prompt sections, because a census
- * is more than its prompts — it mounts the shared subject, filter,
- * introduction, skip logic and interviewer guidance sections too, and a sweep
+ * is more than its prompts — it mounts the shared subject, filter, skip
+ * logic and interviewer guidance sections too, and a sweep
  * of the prompts alone would miss every sentence those put around them.
  *
  * It shares its reading with `src/__tests__/localeSweep.test.tsx`, which is

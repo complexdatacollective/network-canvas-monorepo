@@ -108,16 +108,6 @@ describe('the editor for a form about each relationship', () => {
 
     await writeInto(harness, stageNameInput(), 'About each relationship');
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Title' }),
-      'About each relationship',
-    );
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Introduction text' }),
-      'A few questions about each relationship.',
-    );
 
     const dialog = await openField(harness, 'Create new form field');
     await collectAttribute(harness, dialog, 'edgeNotes');
@@ -138,10 +128,6 @@ describe('the editor for a form about each relationship', () => {
     expect(request?.stageDocument.subject).toEqual({
       entity: 'edge',
       type: 'knows',
-    });
-    expect(request?.stageDocument.introductionPanel).toEqual({
-      title: { 'en-US': 'About each relationship' },
-      text: { 'en-US': 'A few questions about each relationship.' },
     });
     expect(fieldsOf(request?.stageDocument ?? {})).toEqual([
       {
@@ -180,10 +166,12 @@ describe('the editor for a form about each relationship', () => {
   it('writes nothing when the researcher discards the edit', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
+    await harness.user.clear(
+      screen.getByRole('textbox', { name: 'Stage name' }),
+    );
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Title' }),
-      'A heading nobody kept',
+      screen.getByRole('textbox', { name: 'Stage name' }),
+      'A name nobody kept',
     );
     expectStageUntouched(harness);
 
@@ -228,13 +216,11 @@ describe('the editor for a form about each relationship', () => {
   it('refuses to save a stage somebody else is editing', async () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
-    // A rich-text editor, which says it is unavailable and takes no typing,
-    // rather than carrying an input's `disabled`.
-    await waitFor(() => {
-      const title = screen.getByRole('textbox', { name: 'Title' });
-      expect(title).toHaveAttribute('aria-disabled', 'true');
-      expect(title).toHaveAttribute('contenteditable', 'false');
-    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Stage name' }),
+      ).toBeDisabled(),
+    );
 
     // The shell's refusal is the guarantee, not the chrome above it: a
     // keyboard, a stale render, or another host's own button can all still

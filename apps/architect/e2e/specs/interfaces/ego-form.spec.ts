@@ -22,23 +22,13 @@ test('creates a valid EgoForm stage from scratch', async ({
   await editor.createNew('EgoForm');
   await editor.setStageName('About You');
 
-  // `introductionPanel.title` keeps its path in
-  // `@codaco/protocol-builder`'s `IntroductionSection`, so the
-  // `data-field-name` seam still resolves it. Located that way rather than by
-  // accessible name because the name is the researcher-facing label
-  // ("Title"), which is copy, while the path is the document.
-  await editor
-    .field('introductionPanel.title')
-    .getByRole('textbox')
-    .fill('About You');
-
-  // The rich text control's accessible name is the literal label
-  // `IntroductionSection` passes, "Introduction text" — not the field's path
-  // `introductionPanel.text`.
-  await editor.fillRichText(
-    'Introduction text',
-    'Thanks for taking part in this study.',
-  );
+  // An ego form's form has a title, shown as the heading above its questions:
+  // `egoFormStageEditor` passes `hasTitle`, so the shared form section renders
+  // an ordinary field at `form.title`, which the `data-field-name` seam
+  // reaches directly. Located that way rather than by accessible name because
+  // the name is the researcher-facing label, which is copy, while the path is
+  // the document.
+  await editor.field('form.title').getByRole('textbox').fill('About You');
 
   // An ego form is the one form interface with no subject section: it always
   // collects against the interview's ego, so `egoFormStageEditor` composes
@@ -79,16 +69,9 @@ test('previews a form field, and keeps the trial answer out of the protocol', as
   const editor = new StageEditor(architectPage);
   await editor.createNew('EgoForm');
   await editor.setStageName('About You');
-  // An ego form's introduction is required, so the stage cannot be saved
-  // without it — and saving is how this test reads the protocol back.
-  await editor
-    .field('introductionPanel.title')
-    .getByRole('textbox')
-    .fill('About You');
-  await editor.fillRichText(
-    'Introduction text',
-    'Thanks for taking part in this study.',
-  );
+  // An ego form's title is required, so the stage cannot be saved without it
+  // — and saving is how this test reads the protocol back.
+  await editor.field('form.title').getByRole('textbox').fill('About You');
 
   const dialog = await openFormFieldDialog(
     editor.section('Form configuration'),

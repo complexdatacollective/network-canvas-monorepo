@@ -314,8 +314,8 @@ function renderCategoricalBin(
                     dndStore = s;
                   }}
                 />
-                {/* CategoricalBin never reads its props (destructures `_props`);
-                these satisfy the type without any bearing on behaviour. */}
+                {/* CategoricalBin reads only the stage's behaviours, which
+                this stage leaves out: it is placed by dragging. */}
                 <CategoricalBin
                   stage={buildStage(otherVariable)}
                   getNavigationHelpers={() => ({
@@ -456,6 +456,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
       node_id: 'node-1',
       node_type_index: 0,
       bin_index: OTHER_BIN_INDEX,
+      interaction_mode: 'drag',
     });
   });
 

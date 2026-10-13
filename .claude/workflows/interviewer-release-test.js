@@ -36,7 +36,7 @@
 // an exhaustive behaviour suite; per-feature coverage belongs to the app's
 // unit and Playwright e2e suites. Two journeys run committed walkers:
 // conduct-offline (scripts/release-test/interviewer-release-smoke-walker.mjs — the
-// six-stage release-smoke fixture protocol conducted ENTIRELY OFFLINE;
+// eight-stage release-smoke fixture protocol conducted ENTIRELY OFFLINE;
 // interfaces are imported eagerly into one engine chunk, so broader
 // stage-type coverage adds no deployment risk coverage and belongs to the
 // e2e and Storybook suites) and security-vault
@@ -567,7 +567,7 @@ past false failures came from):
 
 Give that Bash call an explicit timeout of ~6 minutes — the walker enforces
 its own 5-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png).
-It conducts the six-stage Release Smoke fixture protocol
+It conducts the eight-stage Release Smoke fixture protocol
 (packages/protocols/e2e/release-smoke): one online visit installs the
 service worker and imports the protocol, the context then goes OFFLINE
 (with a positive control proving the flip is real), the entire interview is
@@ -585,9 +585,10 @@ check's detail:
    worker asset the precache declares is served offline: steps
    "offline-positive-control", "offline-boot", and
    "deferred-chunks-offline".
-3. All six stages conducted offline: steps "session-started",
-   "stage-information", "stage-egoform", "stage-quickadd",
-   "stage-sociogram", "stage-dyadcensus", "stage-catbin".
+3. All eight stages conducted offline: steps "session-started",
+   "stage-information", "stage-ego-introduction", "stage-egoform",
+   "stage-quickadd", "stage-sociogram", "stage-dyad-introduction",
+   "stage-dyadcensus", "stage-catbin".
 4. Finish flow completes: step "finish".
 5. Completed session on /data at 100% while STILL offline: step
    "persisted-offline".

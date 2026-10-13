@@ -15,6 +15,7 @@ import {
 } from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
 import {
   variableForSubject,
   variablesForSubject,
@@ -604,6 +605,7 @@ export type SetVariableOptions = (
 export function useSetVariableOptions(): SetVariableOptions {
   const write = useCodebookSectionWrite();
   const protocolContext = useProtocolContext();
+  const localization = useProtocolLocalization();
   const stageManagedLock = useStageManagedOptionsLock();
   const intl = useAppIntl();
 
@@ -666,6 +668,7 @@ export function useSetVariableOptions(): SetVariableOptions {
             authoritativeDocument,
             variableId,
             draft: { options },
+            localization,
             // Replaced rather than merged: a value the researcher removed is
             // gone, and a list merged key by key would put it back.
             replaceProperties: ['options'],
@@ -692,7 +695,7 @@ export function useSetVariableOptions(): SetVariableOptions {
         message: refusal ?? rowRefusal(outcome, intl),
       };
     },
-    [intl, protocolContext, stageManagedLock, write],
+    [intl, localization, protocolContext, stageManagedLock, write],
   );
 }
 

@@ -42,6 +42,40 @@ describe('findDynamicMessageSyntaxProblem', () => {
   });
 });
 
+describe('findDynamicMessageSyntaxProblem on blank text', () => {
+  it('refuses text that is blank in every version, but not one blank version', () => {
+    expect(
+      findDynamicMessageSyntaxProblem('{name, select, missing {} other {}}'),
+    ).toContain('blank in every version');
+    // Spaces and zero-width characters show nothing either.
+    expect(
+      findDynamicMessageSyntaxProblem(
+        '{name, select, missing { } other {{kind, select, friend {} other {\u200B}}}}',
+      ),
+    ).toContain('blank in every version');
+    // Text only in versions no value reaches: a missing value never takes
+    // an inner version for when it is present, nor the reverse.
+    expect(
+      findDynamicMessageSyntaxProblem(
+        '{name, select, missing {{name, select, missing {} other {visible}}} other {{name, select, missing {visible} other {}}}}',
+      ),
+    ).toContain('blank in every version');
+    expect(
+      findDynamicMessageSyntaxProblem(
+        '{name, select, missing {} other {{name}}}',
+      ),
+    ).toBeUndefined();
+    expect(
+      findDynamicMessageSyntaxProblem(
+        '{kind, select, friend {Friend} other {{kind, select, friend {} other {}}}}',
+      ),
+    ).toBeUndefined();
+    expect(
+      findDynamicMessageSyntaxProblem('{count, plural, one {} other {#}}'),
+    ).toBeUndefined();
+  });
+});
+
 describe('findDynamicValueProblem', () => {
   const ok = (message: string) =>
     expect(findDynamicValueProblem(message, VALUES)).toBeUndefined();
@@ -67,6 +101,17 @@ describe('findDynamicValueProblem', () => {
     );
   });
 
+  it('keeps an outer guard through an inner select on the same value', () => {
+    ok('{name, select, missing {none} other {{name, select, other {{name}}}}}');
+    ok(
+      '{name, select, missing {none} other {{name, select, missing {{name}} other {{name}}}}}',
+    );
+    refused(
+      '{name, select, missing {none} other {Hi}} {name, select, other {{name}}}',
+      '"name" can be missing',
+    );
+  });
+
   it('treats a case version as one where the value is present', () => {
     ok(
       '{kind, select, friend {Your {kind}} other {{kind, select, missing {Them} other {{kind}}}}}',
@@ -76,6 +121,10 @@ describe('findDynamicValueProblem', () => {
 
   it('allows a version for when the value is missing to be blank', () => {
     ok('Hello{name, select, missing {} other {, {name}}}!');
+  });
+
+  it('refuses text that shows nothing whatever the values are', () => {
+    refused('{name, select, missing {} other {}}', 'blank in every version');
   });
 
   it('chooses by number only for a number, where it has one', () => {
@@ -251,29 +300,59 @@ describe('findMissingDynamicPlacement', () => {
         'cs',
         VALUES,
       ),
-    ).toEqual({ argument: 'count', when: { count: '0.5' } });
+    ).toEqual({ argument: 'count', when: { count: '0.1' } });
   });
 
-  it('waives a one-number version only where the translation reaches that plural', () => {
-    // The original shows the count only for one person. The translation has
-    // a plural for it, but only in its version for a friend.
-    const original =
-      '{kind, select, friend {Hi} other {{count, select, missing {Hi} other {{count, plural, one {# person} other {Hi}}}}}}';
-    const translation =
-      '{kind, select, friend {{count, select, missing {Hi} other {{count, plural, one {one person} other {Hi}}}}} other {Hi}}';
-    expect(
-      findMissingDynamicPlacement(original, 'en', translation, 'en', VALUES),
-    ).toMatchObject({ argument: 'count', when: { count: '1' } });
-    // Where the version does go through the plural, "one person" is fine.
+  it('compares every pair of versions the two languages give one number', () => {
+    // The Arabic shows the count only in `other`; the Bosnian leaves it out
+    // only in `few`. Only some numbers are both (102, 0.02), and the first
+    // few examples of each category miss them all.
     expect(
       findMissingDynamicPlacement(
-        '{count, select, missing {Hi} other {{count, plural, one {# person} other {# people}}}}',
-        'en',
-        '{count, select, missing {Hi} other {{count, plural, one {one person} other {# people}}}}',
-        'en',
+        '{count, select, missing {?} other {{count, plural, zero {none} one {one} two {two} few {few} many {many} other {# items}}}}',
+        'ar',
+        '{count, select, missing {?} other {{count, plural, one {# item} few {some items} other {# items}}}}',
+        'bs',
+        VALUES,
+      ),
+    ).toEqual({ argument: 'count', when: { count: '102' } });
+  });
+
+  it('waives a zero-only version only where the translation reaches that plural', () => {
+    // Arabic `zero` holds only 0. The original shows the count only for
+    // zero; the translation has a plural for it, but only in its version
+    // for a friend.
+    const original =
+      '{kind, select, friend {Hi} other {{count, select, missing {Hi} other {{count, plural, zero {# people} other {Hi}}}}}}';
+    const translation =
+      '{kind, select, friend {{count, select, missing {Hi} other {{count, plural, zero {nobody} other {Hi}}}}} other {Hi}}';
+    expect(
+      findMissingDynamicPlacement(original, 'ar', translation, 'ar', VALUES),
+    ).toMatchObject({ argument: 'count', when: { count: '0' } });
+    // Where the version does go through the plural, "nobody" is fine.
+    expect(
+      findMissingDynamicPlacement(
+        '{count, select, missing {Hi} other {{count, plural, zero {# people} other {# people}}}}',
+        'ar',
+        '{count, select, missing {Hi} other {{count, plural, zero {nobody} other {# people}}}}',
+        'ar',
         VALUES,
       ),
     ).toBeUndefined();
+  });
+
+  it('does not waive a version that also holds a negative number', () => {
+    // A number answer can be negative, and English `one` holds -1 as well
+    // as 1, so "one item" would also be shown for -1.
+    expect(
+      findMissingDynamicPlacement(
+        '{count, select, missing {No items} other {{count, plural, one {# item} other {# items}}}}',
+        'en',
+        '{count, select, missing {No items} other {{count, plural, one {one item} other {# items}}}}',
+        'en',
+        VALUES,
+      ),
+    ).toEqual({ argument: 'count', when: { count: '1' } });
   });
 
   it('refuses to accept what it has too many versions to check', () => {

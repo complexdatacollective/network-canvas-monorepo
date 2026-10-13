@@ -347,16 +347,34 @@
       ]
     },
     {
+      "id": "ego-consent-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "About this interview"
+      },
+      "title": {
+        "en-US": "About this interview"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "This is a **conversation**, not a questionnaire. We would like you to tell us about a time your life changed in an important way, and about the people who were part of that story.\n\nAs you talk, the interviewer will **create a network** of the people you mention on the screen in front of you. You can correct it at any point — if someone is missing, or in the wrong place, just say so.\n\nThe people you name are recorded only by the first name or nickname you choose. The interviewer will tell you before you start whether the session is being recorded, and what happens to that recording.\n\nYou can skip anything, pause, or stop at any time, and you do not have to give a reason. The researcher will answer any questions you have before you choose below."
+          }
+        }
+      ]
+    },
+    {
       "id": "ego-consent",
       "type": "EgoForm",
-      "label": { "en-US": "Welcome and consent" },
-      "introductionPanel": {
-        "title": { "en-US": "About this interview" },
-        "text": {
-          "en-US": "This is a **conversation**, not a questionnaire. We would like you to tell us about a time your life changed in an important way, and about the people who were part of that story.\n\nAs you talk, the interviewer will **create a network** of the people you mention on the screen in front of you. You can correct it at any point — if someone is missing, or in the wrong place, just say so.\n\nThe people you name are recorded only by the first name or nickname you choose. The interviewer will tell you before you start whether the session is being recorded, and what happens to that recording.\n\nYou can skip anything, pause, or stop at any time, and you do not have to give a reason. The researcher will answer any questions you have before you choose below."
-        }
+      "label": {
+        "en-US": "Welcome and consent"
       },
       "form": {
+        "title": {
+          "en-US": "About this interview"
+        },
         "fields": [
           {
             "variable": "participant_consent",
@@ -365,6 +383,44 @@
             }
           }
         ]
+      }
+    },
+    {
+      "id": "ego-transition-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Tell us what happened"
+      },
+      "title": {
+        "en-US": "Tell us what happened"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "Think of a time in the last few years when **your life changed in an important way**. It might be something you chose, or something that happened to you."
+          }
+        }
+      ],
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "6f2b1c48-9d0a-4f77-9a2e-3c51d0b4a7e1",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
       }
     },
     {
@@ -391,13 +447,10 @@
         }
       },
       "interviewScript": "",
-      "introductionPanel": {
-        "title": { "en-US": "Tell us what happened" },
-        "text": {
-          "en-US": "Think of a time in the last few years when **your life changed in an important way**. It might be something you chose, or something that happened to you."
-        }
-      },
       "form": {
+        "title": {
+          "en-US": "Tell us what happened"
+        },
         "fields": [
           {
             "variable": "transition_type",

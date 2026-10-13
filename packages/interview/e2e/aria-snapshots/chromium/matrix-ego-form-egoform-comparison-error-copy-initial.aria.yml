@@ -1,6 +1,5 @@
 - main:
   - heading "About you" [level=1]
-  - paragraph: Please answer the questions below.
   - text: How many years have you lived here?
   - button "Decrease value"
   - spinbutton "How many years have you lived here?"

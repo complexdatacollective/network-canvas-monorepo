@@ -45,7 +45,10 @@ import { LocalizedOptionLabelField } from '../../fields/LocalizedStringField.tsx
 import { optionLabelIssues } from '../../form/arrayFields/cellRules.ts';
 import { useEditedCells } from '../../form/arrayFields/useEditedCells.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
-import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
+import {
+  useLocalizedText,
+  useProtocolLocalization,
+} from '../../localization/ProtocolLocalization.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import {
   variableParametersMessages,
@@ -418,6 +421,7 @@ export default function VariableEditor(props: VariableEditorProps) {
 }
 
 function VariableEditorInstance(props: VariableEditorInstanceProps) {
+  const localization = useProtocolLocalization();
   const {
     subject,
     authoritativeDocument,
@@ -764,6 +768,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               variableId,
               protocolContext: props.protocolContext,
               draft: submittedDraft,
+              localization,
             })
           : documentWithUpdatedVariable({
               subject,
@@ -771,6 +776,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               variableId,
               draft: submittedDraft,
               replaceProperties,
+              localization,
             });
     } catch (error: unknown) {
       // The one refused save the researcher fixes in a FIELD rather than by
@@ -1090,11 +1096,18 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                             }}
                             required
                             readOnly={interactionDisabled}
-                            errors={optionLabelIssues(option.label, options)}
+                            errors={optionLabelIssues(
+                              option.label,
+                              options,
+                              localization,
+                            )}
                             showErrors={
                               hasEdited(labelCell(index)) &&
-                              optionLabelIssues(option.label, options).length >
-                                0
+                              optionLabelIssues(
+                                option.label,
+                                options,
+                                localization,
+                              ).length > 0
                             }
                           />
                           <BesideEachOther beside={rowChoice !== undefined}>

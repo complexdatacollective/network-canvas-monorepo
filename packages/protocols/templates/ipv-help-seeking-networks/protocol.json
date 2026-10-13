@@ -497,6 +497,25 @@
       ]
     },
     {
+      "id": "information-intro-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "About this interview"
+      },
+      "title": {
+        "en-US": "About this interview"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it before they are saved. In the study's data they cannot be read by anyone, including the researchers, and they cannot be recovered without your passphrase.\n\nThey do appear on screen while you take part, so anyone who can see the screen can read them.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**"
+          }
+        }
+      ]
+    },
+    {
       "id": "information-intro",
       "interviewScript": "Before starting, confirm that the participant is somewhere safe and private, and agree with them what you will both do if someone comes in — for example, switching to an agreed neutral topic. Do not continue if they cannot talk privately.",
       "label": {
@@ -504,6 +523,9 @@
       },
       "type": "EgoForm",
       "form": {
+        "title": {
+          "en-US": "About this interview"
+        },
         "fields": [
           {
             "variable": "participant_consent",
@@ -512,14 +534,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "About this interview"
-        },
-        "text": {
-          "en-US": "## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it before they are saved. In the study's data they cannot be read by anyone, including the researchers, and they cannot be recovered without your passphrase.\n\nThey do appear on screen while you take part, so anyone who can see the screen can read them.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**"
-        }
       }
     },
     {
@@ -562,12 +576,34 @@
       }
     },
     {
+      "id": "ego-form-background-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "A few questions about you"
+      },
+      "title": {
+        "en-US": "A few questions about you"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "Before we talk about the people around you, we would like to ask a few questions about **you**. These are not encrypted, so they do not include anyone's name. You may skip any question."
+          }
+        }
+      ]
+    },
+    {
       "id": "ego-form-background",
       "label": {
         "en-US": "About you"
       },
       "type": "EgoForm",
       "form": {
+        "title": {
+          "en-US": "A few questions about you"
+        },
         "fields": [
           {
             "variable": "ego_age",
@@ -588,14 +624,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "A few questions about you"
-        },
-        "text": {
-          "en-US": "Before we talk about the people around you, we would like to ask a few questions about **you**. These are not encrypted, so they do not include anyone's name. You may skip any question."
-        }
       }
     },
     {
@@ -749,6 +777,25 @@
       }
     },
     {
+      "id": "alter-form-people-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Tell us a little about each person"
+      },
+      "title": {
+        "en-US": "Tell us a little about each person"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they do not include anyone's name."
+          }
+        }
+      ]
+    },
+    {
       "id": "alter-form-people",
       "label": {
         "en-US": "About each person"
@@ -782,15 +829,26 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Tell us a little about each person"
-        },
-        "text": {
-          "en-US": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they do not include anyone's name."
-        }
       }
+    },
+    {
+      "id": "alter-form-services-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Services you contacted"
+      },
+      "title": {
+        "en-US": "Services you contacted"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "For each service you contacted, please tell us how helpful it was."
+          }
+        }
+      ]
     },
     {
       "id": "alter-form-services",
@@ -826,14 +884,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Services you contacted"
-        },
-        "text": {
-          "en-US": "For each service you contacted, please tell us how helpful it was."
-        }
       }
     },
     {

@@ -188,6 +188,12 @@ describe('getParentKeyByNameValue', () => {
       expect(getParentKeyByNameValue(named, 'Café_open')).toBe('id-cafe_open');
     });
 
+    it('resolves a column spelling an option as it was before the schema 9 migration renamed it', () => {
+      expect(
+        getParentKeyByNameValue(variables, 'Contacts_kind_close friend '),
+      ).toBe('id-contacts_close friend');
+    });
+
     it('leaves a column whose option is not in the codebook alone', () => {
       expect(getParentKeyByNameValue(variables, 'Contacts_kind_stranger')).toBe(
         'Contacts_kind_stranger',

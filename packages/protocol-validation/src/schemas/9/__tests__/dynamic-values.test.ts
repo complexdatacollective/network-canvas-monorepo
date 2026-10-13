@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
 import { dynamicValueContextFor } from '../dynamic-value-validation.ts';
 import { dynamicValueArgumentsAt } from '../dynamic-values.ts';
+import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
@@ -164,6 +166,20 @@ describe('dynamic values in stage text', () => {
     ]);
   });
 
+  it('refuses text that is blank in every version', () => {
+    const protocol = editing('information', (stage) => {
+      stage.dynamicValues = { you: { path: 'ego.egoName' } };
+      stage.title = { en: '{you, select, missing {} other {}}' };
+    });
+    const index = stageIndex(protocol, 'information');
+    expect(issuesOf(protocol)).toEqual([
+      expect.objectContaining({
+        path: `stages.${index}.title.en`,
+        message: expect.stringContaining('blank in every version'),
+      }),
+    ]);
+  });
+
   it('refuses text holding the marker the interview places values with', () => {
     const protocol = editing('information', (stage) => {
       stage.title = { en: 'Hello ' };
@@ -244,6 +260,25 @@ describe('dynamic values in stage text', () => {
       ]);
     });
 
+    it('refuses a second case for an option another case already stands for', () => {
+      const protocol = editing('alterForm', (stage) => {
+        stage.dynamicValues = {
+          kind: {
+            path: 'node.category',
+            cases: { friend: 'friend', pal: 'friend' },
+          },
+        };
+      });
+      const index = stageIndex(protocol, 'alterForm');
+      expect(issuesOf(protocol)).toEqual([
+        {
+          path: `stages.${index}.dynamicValues.kind.cases.pal`,
+          message:
+            'Case "pal" stands for "friend", as case "friend" already does, so it would never be chosen. Give each option at most one case.',
+        },
+      ]);
+    });
+
     it('refuses cases on a value without options', () => {
       const protocol = editing('alterForm', (stage) => {
         stage.dynamicValues = {
@@ -315,15 +350,12 @@ describe('dynamic values in stage text', () => {
       }
     });
 
-    it('offers the pair to a Dyad Census and Tie Strength Census prompt, but not their introduction', () => {
+    it('offers the pair to a Dyad Census and Tie Strength Census prompt', () => {
       for (const id of ['dyadCensus', 'tieStrength']) {
         const protocol = withAllRoles(id);
         expect(
           argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
         ).toEqual(['you', 'first', 'second', 'today']);
-        expect(
-          argumentsAt(protocol, id, ['introductionPanel', 'text'], 'stageText'),
-        ).toEqual(['you', 'today']);
       }
     });
 
@@ -478,7 +510,7 @@ describe('dynamic values in stage text', () => {
         ...protocol,
         localization: {
           defaultLocale: 'en',
-          locales: ['en', 'de', 'fr', 'ru'],
+          locales: ['en', 'ar', 'de', 'fr', 'ru'],
         },
       };
     };
@@ -509,33 +541,30 @@ describe('dynamic values in stage text', () => {
       ]);
     });
 
-    it('lets a single-number plural category leave its number out, but not a category covering several', () => {
+    it('lets a plural category for zero alone leave its number out, but not a category covering several', () => {
       const english =
         '{count, select, missing {Some years.} other {{count, plural, one {# year.} other {# years.}}}}';
-      const singleOne = issuesOf(
-        twoLanguages({
-          en: english,
-          fr: '{count, select, missing {Des années.} other {{count, plural, one {# an.} other {# ans.}}}}',
+      const translated = (translations: Record<string, string>) =>
+        issuesOf(twoLanguages({ en: english, ...translations })).filter(
+          (issue) => issue.path.includes('title'),
+        );
+      // Russian "one" also covers 21, which the English shows; German "one"
+      // covers -1 as well as 1, and a number answer can be negative.
+      expect(
+        translated({
+          de: english.replace('# year.', 'A year.'),
           ru: '{count, select, missing {Годы.} other {{count, plural, one {Один год.} few {# года.} many {# лет.} other {# года.}}}}',
         }),
-      ).filter((issue) => issue.path.includes('title'));
-      // Russian "one" also covers 21, which the English shows.
-      expect(singleOne).toEqual([
+      ).toEqual([
+        expect.objectContaining({ path: expect.stringMatching(/title\.de$/) }),
         expect.objectContaining({ path: expect.stringMatching(/title\.ru$/) }),
       ]);
-      // German "one" is only 1, so it may say "a year"; French "one" also
-      // covers 0, which the English shows as a number.
-      const wordedOne = (locale: string) =>
-        issuesOf(
-          twoLanguages({
-            en: english,
-            [locale]: english.replace('# year.', 'A year.'),
-          }),
-        ).filter((issue) => issue.path.includes('title'));
-      expect(wordedOne('de')).toEqual([]);
-      expect(wordedOne('fr')).toEqual([
-        expect.objectContaining({ path: expect.stringMatching(/title\.fr$/) }),
-      ]);
+      // Arabic "zero" is only 0, so it may say "no years".
+      expect(
+        translated({
+          ar: '{count, select, missing {Some years.} other {{count, plural, zero {No years.} other {# years.}}}}',
+        }),
+      ).toEqual([]);
     });
   });
 
@@ -568,18 +597,113 @@ describe('dynamic values in stage text', () => {
   });
 
   it('tags exactly the inventoried stage sites, and none outside stages', () => {
-    const sites = collectLocalizedStrings(completeProtocol())
+    // Read from the schema itself, through every optional field and union
+    // variant, so a site the complete protocol happens not to fill (a hint,
+    // a scale's labels) is inventoried too.
+    const sites = schemaDynamicValueSites();
+    expect(sites.every((site) => site.startsWith('stages '))).toBe(true);
+    const inventory = sites.map((site) => site.slice('stages '.length));
+    // What the walk of a document tags is a part of that inventory.
+    const collected = collectLocalizedStrings(completeProtocol())
       .filter((hit) => hit.dynamicValues !== undefined)
       .map((hit) => {
         const [, index, ...rest] = hit.path;
         const stage = (completeProtocol().stages as Stage[])[index as number];
         return `${String(stage?.type)} ${rest.map((step) => (typeof step === 'number' ? '#' : step)).join('.')} ${hit.dynamicValues}`;
       });
-    expect(
-      collectLocalizedStrings(completeProtocol()).every(
-        (hit) => hit.dynamicValues === undefined || hit.path[0] === 'stages',
-      ),
-    ).toBe(true);
-    expect([...new Set(sites)].sort()).toMatchSnapshot();
+    expect(collected.filter((site) => !inventory.includes(site))).toEqual([]);
+    expect(inventory).toMatchSnapshot();
   });
 });
+
+// Wrappers whose inner schema holds the same paths as the wrapper.
+const unwrapSchema = (schema: z.ZodType): z.ZodType => {
+  let current = schema;
+  for (;;) {
+    if (getLocalizedStringDescriptor(current)) return current;
+    let inner: unknown;
+    if (
+      current instanceof z.ZodOptional ||
+      current instanceof z.ZodNullable ||
+      current instanceof z.ZodDefault ||
+      current instanceof z.ZodPrefault ||
+      current instanceof z.ZodNonOptional ||
+      current instanceof z.ZodReadonly ||
+      current instanceof z.ZodCatch
+    ) {
+      inner = current.def.innerType;
+    } else if (current instanceof z.ZodLazy) {
+      inner = current.def.getter();
+    } else if (current instanceof z.ZodPipe) {
+      inner = current.in;
+    }
+    if (!(inner instanceof z.ZodType)) return current;
+    current = inner;
+  }
+};
+
+/**
+ * Every site in the protocol schema that may show dynamic values, as
+ * "<first path step> <stage type> <path within the stage> <site kind>" for
+ * sites under `stages`, with `#` for any array index and `*` for any record
+ * key.
+ */
+const schemaDynamicValueSites = (): string[] => {
+  const found = new Set<string>();
+  const visit = (
+    schema: z.ZodType,
+    path: readonly string[],
+    stageType: string | undefined,
+    ancestors: ReadonlySet<z.ZodType>,
+  ) => {
+    const node = unwrapSchema(schema);
+    if (ancestors.has(node)) return;
+    const descriptor = getLocalizedStringDescriptor(node);
+    if (descriptor !== undefined) {
+      if (descriptor.dynamicValues === undefined) return;
+      const [root, , ...rest] = path;
+      found.add(
+        root === 'stages'
+          ? `stages ${String(stageType)} ${rest.join('.')} ${descriptor.dynamicValues}`
+          : `${path.join('.')} ${descriptor.dynamicValues}`,
+      );
+      return;
+    }
+    const within = new Set(ancestors).add(node);
+    if (node instanceof z.ZodObject) {
+      let ownType = stageType;
+      const type: unknown = node.shape.type;
+      if (
+        path.length === 2 &&
+        path[0] === 'stages' &&
+        type instanceof z.ZodType
+      ) {
+        const literal = unwrapSchema(type);
+        if (literal instanceof z.ZodLiteral) ownType = String(literal.value);
+      }
+      for (const [key, child] of Object.entries(node.shape)) {
+        if (child instanceof z.ZodType) {
+          visit(child, [...path, key], ownType, within);
+        }
+      }
+    } else if (node instanceof z.ZodArray) {
+      const element: unknown = node.element;
+      if (element instanceof z.ZodType) {
+        visit(element, [...path, '#'], stageType, within);
+      }
+    } else if (node instanceof z.ZodRecord) {
+      const valueType: unknown = node.valueType;
+      if (valueType instanceof z.ZodType) {
+        visit(valueType, [...path, '*'], stageType, within);
+      }
+    } else if (node instanceof z.ZodUnion) {
+      for (const option of node.options) {
+        if (option instanceof z.ZodType) {
+          visit(option, path, stageType, within);
+        }
+      }
+    }
+  };
+  visit(ProtocolSchemaV9, [], undefined, new Set());
+  return [...found].sort();
+};

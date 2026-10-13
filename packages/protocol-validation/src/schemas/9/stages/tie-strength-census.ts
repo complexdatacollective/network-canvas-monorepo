@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
 import {
-  IntroductionPanelSchema,
   NodeStageSubjectSchema,
   tieStrengthCensusPromptSchema,
 } from '../common/index.ts';
@@ -27,5 +26,4 @@ export const tieStrengthCensusStage = baseStageSchema.extend({
         });
       }
     }),
-  introductionPanel: IntroductionPanelSchema,
 });

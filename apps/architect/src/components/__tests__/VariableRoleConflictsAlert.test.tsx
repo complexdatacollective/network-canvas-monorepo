@@ -36,7 +36,6 @@ const alterFormStage = {
   type: 'AlterForm',
   label: { en: 'Alter form' },
   subject: { entity: 'node', type: 'person' },
-  introductionPanel: { title: { en: 'T' }, text: { en: 'X' } },
   form: { fields: [{ variable: 'category', prompt: { en: 'Answer' } }] },
 };
 

@@ -157,6 +157,12 @@ describe('resolveDynamicText', () => {
     );
   });
 
+  it('keeps a year before 100 as written', () => {
+    const message = '{born, select, missing {?} other {{born}}}';
+    expect(resolve(message, { born: '0050-03-05' })?.text).toBe('March 5, 50');
+    expect(resolve(message, { born: '0050' })?.text).toBe('50');
+  });
+
   it('reads a role that is not on screen as missing', () => {
     expect(
       resolve('{partner, select, missing {them} other {{partner}}}', {})?.text,
@@ -220,6 +226,30 @@ describe('markdownSource', () => {
     expect(getMarkdownLabelText(source).replaceAll('\u2060', '')).toBe(
       `Decline for ${HOSTILE.replace(/\s+/g, ' ')}.`,
     );
+  });
+
+  it('never puts a value in a link destination', () => {
+    const source = markdownSource({
+      text: '',
+      parts: ['[details](', { name: 'name', text: '//evil.example' }, ')'],
+    });
+    const html = renderToStaticMarkup(
+      createElement(RenderMarkdown, null, source),
+    );
+    expect(html).not.toContain('<a');
+    expect(html).not.toContain('evil');
+  });
+
+  it('keeps a value in a link’s text, and the researcher’s destination', () => {
+    const source = markdownSource({
+      text: '',
+      parts: ['[About ', { name: 'name', text: 'Ada' }, '](https://a.example)'],
+    });
+    const html = renderToStaticMarkup(
+      createElement(RenderMarkdown, null, source),
+    );
+    expect(html).toContain('href="https://a.example"');
+    expect(html).toContain('>About Ada<');
   });
 
   it('leaves text without values as it is', () => {

@@ -114,7 +114,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
   // The subject picker (@codaco/protocol-builder's `subjectPicker({ entity:
   // 'node', filter: true })`): CategoricalBin's editor is
   // `[stageHeading, subjectPicker, categoricalBinPrompts, skipLogic,
-  // interviewerGuidance]` — no introduction section.
+  // interviewerGuidance]`.
   await selectOrCreateNodeType(architectPage, 'person');
 
   // The shared `PromptTextField` the whole census/bin family renders
