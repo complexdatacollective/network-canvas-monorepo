@@ -2573,6 +2573,21 @@ test('detect selects the upgrade lane whenever what the api image is built from 
   );
 }, 120_000);
 
+test('studio-upgrade deployments run with telemetry off', () => {
+  const runScript = readFileSync(
+    new URL('../../apps/studio/release-test/run.sh', import.meta.url),
+    'utf8',
+  );
+  const env = /cat > "\$DEPLOY_DIR\/\.env" <<ENV\n([\s\S]*?)\nENV\n/.exec(
+    runScript,
+  )?.[1];
+  assert.ok(env, 'run.sh writes the deployment .env from one heredoc');
+  assert.deepEqual(
+    env.split('\n').filter((line) => line.startsWith('STUDIO_TELEMETRY=')),
+    ['STUDIO_TELEMETRY=false'],
+  );
+});
+
 test('studio-upgrade runs the lane and is required by the quality gate', () => {
   const upgrade = job('studio-upgrade');
   assert.ok(upgrade, 'studio-upgrade job exists');
