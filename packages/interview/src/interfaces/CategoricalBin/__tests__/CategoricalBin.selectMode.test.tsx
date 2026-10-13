@@ -479,6 +479,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
     await announcement('Ann');
 
     fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Other' }));
-    expect(await screen.findByRole('textbox')).toBeInTheDocument();
+    // Ann's answer is there to edit, so saving it unchanged keeps it.
+    expect(await screen.findByRole('textbox')).toHaveValue('Neighbour');
   });
 });

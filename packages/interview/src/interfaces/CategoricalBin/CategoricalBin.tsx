@@ -102,6 +102,8 @@ type OtherResponseProps = Pick<
   variable: string;
   label: string;
   validationProps: ReturnType<typeof validationPropsFor>;
+  /** The person's current answer, when it can be shown. */
+  initialValue?: string;
 };
 
 /**
@@ -119,6 +121,7 @@ function OtherResponse({
   variable,
   label,
   validationProps,
+  initialValue,
 }: OtherResponseProps) {
   const nodeId = node[entityPrimaryKeyProperty];
   // Base pieces of the validation context useProtocolForm builds for every
@@ -179,6 +182,9 @@ function OtherResponse({
           nameMode="opaque"
           {...validationProps}
           validationContext={validationContext}
+          // A person already in "other" edits their answer rather than
+          // starting again, so saving unchanged keeps it.
+          initialValue={initialValue}
           autoFocus
         />
       </div>
@@ -358,6 +364,15 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
         ? validationPropsFor(otherValidationMetadata)
         : {};
 
+      // An encrypted answer is stored as ciphertext, so only a plain one is
+      // shown for editing.
+      const storedOther = node[entityAttributesProperty][otherVariable];
+      const currentOtherAnswer =
+        !stageVariables[otherVariable]?.encrypted &&
+        typeof storedOther === 'string'
+          ? storedOther
+          : undefined;
+
       const result = await openDialog({
         type: 'form',
         title: resolve(otherOptionLabel).text,
@@ -376,6 +391,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
             variable={otherVariable}
             label={otherPromptLabel}
             validationProps={otherValidationProps}
+            initialValue={currentOtherAnswer}
           />
         ),
         intent: 'default',
