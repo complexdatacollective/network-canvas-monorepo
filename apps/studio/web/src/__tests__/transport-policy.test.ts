@@ -179,6 +179,7 @@ describe('the rpc client', () => {
     ).toEqual([
       'runtime/errors.ts',
       'runtime/hostClient.ts',
+      'runtime/hostFaults.ts',
       'runtime/participantRuntime.ts',
       'runtime/runtime.ts',
       'runtime/telemetry.ts',
@@ -250,6 +251,10 @@ describe('the protocol editor', () => {
       'routes/Editor.tsx',
       'runtime/hostSession.ts',
     ]);
+    expect(staticImporters(ofModule('runtime/hostFaults.ts'))).toEqual([
+      'routes/Editor.tsx',
+      'runtime/hostClient.ts',
+    ]);
   });
 
   it('keeps the protocol builder in the editor’s chunk', () => {
@@ -260,7 +265,11 @@ describe('the protocol editor', () => {
             specifier.startsWith('@codaco/protocol-validation')) &&
           specifier !== '@codaco/protocol-builder/locales',
       ),
-    ).toEqual(['routes/Editor.tsx', 'runtime/hostClient.ts']);
+    ).toEqual([
+      'routes/Editor.tsx',
+      'runtime/hostClient.ts',
+      'runtime/hostFaults.ts',
+    ]);
   });
 });
 

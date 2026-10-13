@@ -1,19 +1,16 @@
-import { Effect, Option, Predicate, Schema } from 'effect';
-import * as RpcClient from 'effect/rpc/RpcClient';
+import { Option, Predicate, Schema } from 'effect';
 import { type ComponentProps, useEffect } from 'react';
 
 import type { Shell } from '@codaco/interview';
-import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
-import { StatusRpcs } from '@codaco/studio-contract/rpc/status';
 import type {
   FaultCode,
   LogLevelName,
 } from '@codaco/studio-contract/schema/browser-logs';
-import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 import { UsageInterfaceType } from '@codaco/studio-sync/jobs';
 
 import { logParticipant, startBrowserLogs } from '../runtime/browserLogs.ts';
-import { CredentiallessProtocol } from '../runtime/telemetry.ts';
+import { participantLogTransport } from '../runtime/participantRuntime.ts';
+import { type PublicStatus, readPublicStatus } from '../runtime/telemetry.ts';
 
 type AnalyticsClient = NonNullable<
   ComponentProps<typeof Shell>['posthogClient']
@@ -64,8 +61,7 @@ const startParticipantLogs = (
   startBrowserLogs('participant', {
     enabled: settings.telemetry,
     level: settings.level,
-    credentials: 'omit',
-    headers: () => ({ [PARTICIPANT_SESSION_HEADER]: sessionToken }),
+    ...participantLogTransport(sessionToken),
   });
 
 export function useParticipantLogs(
@@ -82,19 +78,6 @@ export function useParticipantLogs(
   );
   return level !== null;
 }
-
-export type PublicStatus = () => Promise<
-  Pick<InstanceStatus, 'telemetry' | 'logLevel'>
->;
-
-const readPublicStatus: PublicStatus = () =>
-  Effect.runPromise(
-    Effect.scoped(
-      Effect.flatMap(RpcClient.make(StatusRpcs, { flatten: true }), (client) =>
-        client('status', undefined),
-      ),
-    ).pipe(Effect.provide(CredentiallessProtocol)),
-  );
 
 export function useStatusParticipantLogs(
   sessionToken: string,

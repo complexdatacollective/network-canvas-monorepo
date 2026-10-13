@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { render, waitFor } from '@testing-library/react';
 import { Effect } from 'effect';
-import { RpcClientError } from 'effect/rpc';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ResearcherLogEntry } from '@codaco/studio-contract/schema/browser-logs';
@@ -15,7 +14,7 @@ import {
 import { StudioI18nProvider } from '../../i18n/StudioI18nProvider.tsx';
 import ErrorScreen from '../../routes/ErrorScreen.tsx';
 import UpdateNotice from '../../shell/UpdateNotice.tsx';
-import { installRpcHarness } from '../../test/rpcHarness.ts';
+import { installRpcHarness, transportFailure } from '../../test/rpcHarness.ts';
 import { reportRpcFailure } from '../rpc.ts';
 
 const logged = vi.hoisted((): ResearcherLogEntry[] => []);
@@ -31,14 +30,6 @@ vi.mock('../browserLogs.ts', () => ({
 beforeEach(() => {
   logged.length = 0;
 });
-
-const transportFailure = () =>
-  new RpcClientError.RpcClientError({
-    reason: new RpcClientError.RpcClientDefect({
-      message: 'the connection dropped',
-      cause: new TypeError('Failed to fetch'),
-    }),
-  });
 
 describe('rpc failures', () => {
   it('log a request that never reached the server, and no refusal', () => {
