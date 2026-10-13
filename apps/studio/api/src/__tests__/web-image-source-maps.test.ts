@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -71,6 +72,32 @@ describe('the studio-web image build', () => {
     );
     expect(copied).toBeGreaterThan(-1);
     expect(copied).toBeLessThan(built);
+  });
+
+  it('keys the web build layer on the upload target, which an uploading build must name', () => {
+    const built = dockerfile.findIndex((line) =>
+      line.includes('pnpm --filter @codaco/studio-web build'),
+    );
+    expect(dockerfile[built - 1]).toBe('ARG SOURCE_MAPS_TARGET=');
+
+    const script = dockerfile[built]!.replace(
+      /^RUN (--mount=\S+ )*/,
+      '',
+    ).replace('pnpm --filter @codaco/studio-web build', 'true');
+    const exitCode = (env: Record<string, string>) =>
+      spawnSync('/bin/sh', ['-c', script], { env }).status;
+    const secrets = {
+      POSTHOG_PERSONAL_API_KEY: 'phx_test',
+      POSTHOG_PROJECT_ID: '1',
+    };
+
+    expect(exitCode({ ...secrets, SOURCE_MAPS_TARGET: 'codaco' })).toBe(0);
+    expect(exitCode({ SOURCE_MAPS_TARGET: '' })).toBe(0);
+    expect(exitCode({ ...secrets, SOURCE_MAPS_TARGET: '' })).not.toBe(0);
+    expect(exitCode({ SOURCE_MAPS_TARGET: 'codaco' })).not.toBe(0);
+    expect(
+      exitCode({ POSTHOG_PROJECT_ID: '1', SOURCE_MAPS_TARGET: 'codaco' }),
+    ).not.toBe(0);
   });
 
   it('uploads only when both credentials are set, and deletes the maps it uploaded', () => {

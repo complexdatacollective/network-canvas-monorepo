@@ -23,9 +23,11 @@ name a bundle file, and limits them to 30 a minute per client address
 (`error_report_address`). Nothing is written to cookies or local storage, and
 `posthog-js` is no longer part of the Studio bundle. A `studio-web` image
 built with the BuildKit secrets `posthog_personal_api_key` and
-`posthog_project_id` uploads the source maps of the bundle it ships to PostHog
-and deletes them before the image is assembled; without them nothing is
-uploaded.
+`posthog_project_id`, and the build arg `SOURCE_MAPS_TARGET` naming the
+destination project, uploads the source maps of the bundle it ships to PostHog
+and deletes them before the image is assembled. Without them nothing is
+uploaded. The build fails if the build arg and the secrets are not supplied
+together.
 
 Exported spans and log records no longer carry an error message, even one that
 spans several lines, and span events no longer carry the `effect.cause` text.

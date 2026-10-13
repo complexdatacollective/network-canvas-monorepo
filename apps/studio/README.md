@@ -1057,6 +1057,14 @@ the image is assembled. Without them, as in every self-hosted or local build,
 nothing is uploaded and the image is the same. Secrets are mounted for that one
 build step only and never reach an image layer.
 
+BuildKit leaves secrets out of its cache key, so an uploading build also passes
+the build arg `SOURCE_MAPS_TARGET`, a plain-text name for the PostHog project
+the maps go to (`--build-arg SOURCE_MAPS_TARGET=codaco-studio`). Changing it
+invalidates the web build step. Without it, a layer cached by a build without
+the secrets, or by a build for another project, would be reused and nothing
+would be uploaded. The step fails if the build arg is set without both
+secrets, or if both secrets are present without it.
+
 `studio-api` carries the server bundle. Its entrypoint dispatches on the first
 argument, so one image runs every Studio process and a deployment names a
 command rather than a path into the bundle:
