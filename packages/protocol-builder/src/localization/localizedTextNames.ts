@@ -23,6 +23,7 @@ import { sociogramWordingMessages } from '../editors/sociogram/sections/wording/
 import { tieStrengthPromptMessages } from '../editors/tie-strength-census/sections/TieStrengthCensusPromptsSection.tsx';
 import { geospatialMessages } from '../fields/geospatial/geospatialMessages.ts';
 import { stageNameMessages } from '../naming/stageNameInternals.ts';
+import { binBehavioursMessages } from '../sections/bin-behaviours/binBehavioursMessages.ts';
 import { contentBlockMessages } from '../sections/content-blocks/ContentBlockEditor.tsx';
 import { composerFormFieldMessages } from '../sections/form-fields/composerFormFieldMessages.ts';
 import { formFieldsMessages } from '../sections/form-fields/FormFieldsSection.tsx';
@@ -620,6 +621,12 @@ const NARRATIVE_PEDIGREE_WORDING = [
   ),
 ];
 
+const UNPLACED_NODES_NOTICE = settingRule(
+  'unplacedNodesNotice',
+  binBehavioursMessages.title,
+  binBehavioursMessages.unplacedNoticeLabel,
+);
+
 const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   AlterEdgeForm: [...INTRODUCTION_RULES, ...formFieldRules(stageSubject)],
   AlterForm: [...INTRODUCTION_RULES, ...formFieldRules(stageSubject)],
@@ -637,6 +644,7 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   ],
   CategoricalBin: [
     CENSUS_PROMPT,
+    UNPLACED_NODES_NOTICE,
     rule('prompts.#.otherOptionLabel', PROMPTS, PROMPT, [
       3,
       words(categoricalBinPromptMessages.otherBinLabel),
@@ -1311,7 +1319,7 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ),
   ],
   OneToManyDyadCensus: [CENSUS_PROMPT],
-  OrdinalBin: [CENSUS_PROMPT],
+  OrdinalBin: [CENSUS_PROMPT, UNPLACED_NODES_NOTICE],
   Sociogram: [
     promptText(sociogramPromptMessages.promptTextLabel),
     ...SOCIOGRAM_WORDING,

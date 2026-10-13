@@ -174,6 +174,21 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
         ],
       ] as const,
   ),
+  // The notice a bin stage shows while its completion gate holds the
+  // participant, which applies only with the gate on.
+  ...(['OrdinalBin', 'CategoricalBin'] as const).flatMap(
+    (type) =>
+      [
+        [
+          [...fixtureStage(type), 'behaviours'],
+          { requireCompletePlacement: true },
+        ],
+        [
+          [...fixtureStage(type), 'unplacedNodesNotice'],
+          en('Place every item before you continue.'),
+        ],
+      ] as const,
+  ),
   [[...fixtureStage('Geospatial'), 'mapOptions', 'allowSearch'], true],
   [[...fixtureStage('Geospatial'), 'searchLabel'], en('Search places')],
   [[...fixtureStage('Geospatial'), 'searchNoMatch'], en('No place matches.')],
