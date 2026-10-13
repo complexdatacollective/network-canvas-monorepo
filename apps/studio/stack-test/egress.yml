@@ -1,0 +1,69 @@
+x-egress-dns: &egress-dns
+  dns:
+    - ${EGRESS_SINK_ADDRESS}
+
+x-egress-ready: &egress-ready
+  egress-sink:
+    condition: service_healthy
+
+services:
+  egress-sink:
+    image: ${STUDIO_API_IMAGE}
+    entrypoint: ['node', '/opt/egress-sink.mjs']
+    command: []
+    environment:
+      EGRESS_SINK_ADDRESS: ${EGRESS_SINK_ADDRESS}
+    volumes:
+      - ./stack-test/egress-sink.mjs:/opt/egress-sink.mjs:ro
+    networks:
+      default:
+        ipv4_address: ${EGRESS_SINK_ADDRESS}
+    healthcheck:
+      test: ['CMD', 'test', '-f', '/tmp/egress-sink-listening']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  traefik:
+    <<: *egress-dns
+    networks:
+      - default
+      - edge
+    depends_on: *egress-ready
+
+  web:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  api:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  worker:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  migrate:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  postgres:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  valkey:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  garage:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  mailpit:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+networks:
+  default:
+    internal: true
+  edge: {}

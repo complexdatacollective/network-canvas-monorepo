@@ -24,7 +24,7 @@ PROJECT="studio-ci"
 # `reference` first: it is the stack a self-hoster runs, and each of the others
 # is that stack with one element replaced — or, for `two-api`, with a second
 # replica of the API added.
-VARIANTS=(reference external-postgres external-bucket external-bucket-azure external-redis own-proxy two-api)
+VARIANTS=(reference external-postgres external-bucket external-bucket-azure external-redis own-proxy two-api telemetry-off telemetry-on)
 
 # The stack's own network. Also TRUSTED_PROXIES, so it must name the network
 # the ingress is on and nothing else. .243 rather than .240 (`.env.example`),
@@ -36,6 +36,9 @@ STACK_SUBNET="172.31.243.0/24"
 # bridge.
 EXTERNAL_NETWORK="studio-ci-external"
 EXTERNAL_SUBNET="172.31.244.0/24"
+
+EGRESS_SINK_ADDRESS="172.31.243.53"
+EGRESS_SMTP_HOST="smtp.egress-sink.test"
 
 HOSTNAME_="localhost"
 API_IMAGE="${API_IMAGE:-studio-api:ci}"
@@ -108,6 +111,13 @@ write_two_api_override() {
   done
 }
 
+egress_variant() {
+  case "$VARIANT" in
+    telemetry-off | telemetry-on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # One Compose project: the project name, the files and the environment file,
 # fixed here so no caller can name some of them and not the others.
 #
@@ -121,6 +131,9 @@ compose() {
   if [ "$VARIANT" = "two-api" ]; then
     write_two_api_override
     overrides+=(-f "$TWO_API_OVERRIDE")
+  fi
+  if egress_variant; then
+    overrides+=(-f "$STACK_TEST_DIR/egress.yml")
   fi
   docker compose \
     -p "$PROJECT" \

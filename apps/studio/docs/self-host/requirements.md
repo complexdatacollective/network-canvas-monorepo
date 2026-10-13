@@ -88,7 +88,8 @@ anything else an instance appears to contact is worth investigating.
 The same list is checked in as
 [`outbound-hosts.txt`](./outbound-hosts.txt), one host per line, which
 [#1897](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1897)'s
-CI job uses as its allowlist; a test fails if that file and this table disagree.
+`studio-egress` CI job uses as its allowlist; a test fails if that file and this
+table disagree.
 
 **The other outbound hosts are yours to choose.** They are not on the list
 because there is no fixed value to name:
