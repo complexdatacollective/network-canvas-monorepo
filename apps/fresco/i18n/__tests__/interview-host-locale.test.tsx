@@ -17,6 +17,7 @@ import type { InterviewPayload } from '@codaco/interview';
 import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import InterviewClient from '~/app/(interview)/interview/[interviewId]/InterviewClient';
+import InterviewCompleted from '~/app/(interview)/interview/_components/InterviewCompleted';
 import ParticipantLayout from '~/app/(interview)/layout';
 import { FrescoI18nProvider } from '~/i18n/FrescoI18nProvider';
 import FrescoLocaleSwitcher from '~/i18n/FrescoLocaleSwitcher';
@@ -39,6 +40,9 @@ vi.mock('nuqs', async (importOriginal) => ({
 vi.mock('~/app/(interview)/_components/EndSessionRecording', () => ({
   default: () => null,
 }));
+// The layout's translated metadata reads the request on the server; these
+// tests render the layout component only.
+vi.mock('~/i18n/server', () => ({ getServerIntl: vi.fn() }));
 // This test checks the real Fresco host seam. It does not assert the mocked
 // Shell's runtime behavior: real package negotiation and temporary menu choices
 // require the separate Shell tests and compiled Fresco browser workflow.
@@ -158,8 +162,8 @@ describe('Fresco passes its resolved host request to the interview package', () 
       'es',
     );
     expect(
-      screen.getByRole('button', { name: 'Continue' }).closest('[lang]'),
-    ).toHaveAttribute('lang', 'en');
+      screen.getByRole('button', { name: 'Continuar' }).closest('[lang]'),
+    ).toBe(document.documentElement);
     expect(shell).toHaveBeenLastCalledWith(
       expect.objectContaining({
         requestedLocale: 'es',
@@ -167,10 +171,20 @@ describe('Fresco passes its resolved host request to the interview package', () 
         payload,
       }),
     );
-    // Omitting this callback keeps a participant menu choice out of the
-    // researcher preference persistence path.
-    expect(shell.mock.lastCall?.[0]).not.toHaveProperty('onLocaleChange');
-    expect(shell.mock.lastCall?.[0]).not.toHaveProperty('localePreference');
+    // A participant menu choice is held by the interview page for its
+    // thank-you page and never reaches the researcher preference path.
+    expect(shell.mock.lastCall?.[0]).toHaveProperty('localePreference', null);
+    const onLocaleChange = shell.mock.lastCall?.[0].onLocaleChange as (
+      locale: string | null,
+    ) => void;
+    act(() => onLocaleChange('fr'));
+    expect(shell).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        localePreference: 'fr',
+        requestedLocale: 'es',
+      }),
+    );
+    act(() => onLocaleChange(null));
     expect(updateLocale).not.toHaveBeenCalled();
 
     fireEvent.click(
@@ -234,5 +248,37 @@ describe('Fresco passes its resolved host request to the interview package', () 
     expect(updateLocale).not.toHaveBeenCalled();
     await act(async () => root.unmount());
     container.remove();
+  });
+});
+
+describe('the thank-you page after an interview', () => {
+  it('speaks the language the participant chose inside the interview', async () => {
+    await frescoCatalogSource.load('fr');
+    render(
+      <FrescoI18nProvider initial={spanish} messages={es}>
+        <ParticipantLayout>
+          <InterviewCompleted language="fr" />
+        </ParticipantLayout>
+      </FrescoI18nProvider>,
+    );
+    const heading = await screen.findByRole('heading', {
+      name: /^Merci de votre participation/,
+    });
+    expect(heading.closest('[lang]')).toHaveAttribute('lang', 'fr');
+    expect(document.documentElement).toHaveAttribute('lang', 'es');
+  });
+
+  it('falls back to the host language for a choice Fresco has no catalog for', () => {
+    render(
+      <FrescoI18nProvider initial={spanish} messages={es}>
+        <ParticipantLayout>
+          <InterviewCompleted language="ja" />
+        </ParticipantLayout>
+      </FrescoI18nProvider>,
+    );
+    const heading = screen.getByRole('heading', {
+      name: '¡Gracias por participar!',
+    });
+    expect(heading.closest('[lang]')).toBe(document.documentElement);
   });
 });

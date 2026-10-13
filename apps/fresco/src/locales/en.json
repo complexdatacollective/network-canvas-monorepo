@@ -2279,6 +2279,18 @@
     "defaultMessage": "This interview could not be started",
     "description": "Participant-facing heading shown when an interview link fails to start an interview."
   },
+  "fresco.participantPages.smallScreen.message": {
+    "defaultMessage": "To complete this interview, please use a device with a larger screen, or maximize your browser window.",
+    "description": "Participant-facing paragraph on the overlay that covers an interview when the screen is too small to show it."
+  },
+  "fresco.participantPages.smallScreen.mobileNote": {
+    "defaultMessage": "<strong>Note:</strong> it is not possible to complete this interview using a mobile phone.",
+    "description": "Small print on the overlay that covers an interview when the screen is too small. <strong> marks the word \"Note\" in bold."
+  },
+  "fresco.participantPages.smallScreen.title": {
+    "defaultMessage": "Screen Size Too Small",
+    "description": "Heading of the overlay that covers an interview when the participant’s screen is too small to show it."
+  },
   "fresco.participantPages.unopenableInterview.answersUnreadable": {
     "defaultMessage": "The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.",
     "description": "Participant-facing explanation when the answers stored for an interview cannot be read, so the interview is refused rather than restarted empty."

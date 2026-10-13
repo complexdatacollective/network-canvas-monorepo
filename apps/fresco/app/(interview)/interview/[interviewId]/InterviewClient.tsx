@@ -3,7 +3,14 @@
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import posthog from 'posthog-js';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   Shell,
@@ -14,10 +21,13 @@ import {
   type StepChangeHandler,
 } from '@codaco/interview';
 import type { InterviewCatalog } from '@codaco/interview/catalog';
-import InterviewCompleted from '~/app/(interview)/interview/_components/InterviewCompleted';
+import InterviewCompleted, {
+  completionLocale,
+} from '~/app/(interview)/interview/_components/InterviewCompleted';
 import { env } from '~/env.js';
 import { POSTHOG_APP_NAME, POSTHOG_APP_VERSION } from '~/fresco.config';
 import { useFrescoLocale } from '~/i18n/FrescoI18nProvider';
+import { frescoCatalogSource } from '~/src/locales/catalogs';
 
 import { createInterviewSyncHandler } from './createInterviewSyncHandler';
 
@@ -81,6 +91,25 @@ export default function InterviewClient({
 
   const [finished, setFinished] = useState(false);
 
+  // A language chosen from the interview's own menu lasts for this interview
+  // only: it is held here, never written to a researcher's account, so the
+  // thank-you page can be shown in it.
+  const [participantLanguage, setParticipantLanguage] = useState<string | null>(
+    null,
+  );
+  const participantLanguageRef = useRef(participantLanguage);
+  const onLocaleChange = useCallback(
+    (language: string | null) => {
+      participantLanguageRef.current = language;
+      setParticipantLanguage(language);
+      // Load the thank-you page's language now, so finishing never waits.
+      void frescoCatalogSource
+        .load(completionLocale(language, locale))
+        .catch(() => undefined);
+    },
+    [locale],
+  );
+
   const onFinish = useCallback<FinishHandler>(
     async (id, signal) => {
       const response = await fetch(`/api/interviews/${id}/finish`, {
@@ -95,7 +124,12 @@ export default function InterviewClient({
 
       setFinished(true);
 
-      router.replace('/interview/finished');
+      const language = participantLanguageRef.current;
+      router.replace(
+        language === null
+          ? '/interview/finished'
+          : `/interview/finished?language=${encodeURIComponent(language)}`,
+      );
     },
     [router],
   );
@@ -123,7 +157,11 @@ export default function InterviewClient({
   );
 
   if (finished) {
-    return <InterviewCompleted />;
+    return (
+      <Suspense fallback={null}>
+        <InterviewCompleted language={participantLanguage} />
+      </Suspense>
+    );
   }
 
   return (
@@ -132,6 +170,8 @@ export default function InterviewClient({
       // negotiates its own catalogs; authored protocol copy remains literal.
       // Menu choices are temporary and do not change a researcher account.
       requestedLocale={locale}
+      localePreference={participantLanguage}
+      onLocaleChange={onLocaleChange}
       catalog={catalog}
       payload={payload}
       currentStep={currentStep}
