@@ -1,9 +1,11 @@
 {
   "name": "Help-Seeking After Intimate Partner Violence",
-  "description": "An example template for studying the people and services a survivor of intimate partner violence can turn to for help. It encrypts the names and private notes the participant records about the people they mention, so that only the participant can read who is in their network, while relationship types, disclosure, reactions, and the services they use stay readable for analysis.",
+  "description": "An example template for studying the people and services a survivor of intimate partner violence can turn to for help. The names and private notes the participant records about the people they mention are encrypted with the participant's own passphrase before they are saved, so they cannot be read from the study's data, while relationship types, disclosure, reactions, and the services they use stay readable for analysis.",
   "schemaVersion": 8,
   "lastModified": "2026-10-13T00:00:00.000Z",
-  "experiments": { "encryptedVariables": true },
+  "experiments": {
+    "encryptedVariables": true
+  },
   "codebook": {
     "ego": {
       "variables": {
@@ -71,8 +73,14 @@
           "type": "boolean",
           "component": "Boolean",
           "options": [
-            { "label": "Yes", "value": true },
-            { "label": "No", "value": false }
+            {
+              "label": "Yes",
+              "value": true
+            },
+            {
+              "label": "No",
+              "value": false
+            }
           ]
         }
       }
@@ -82,7 +90,9 @@
         "name": "Person",
         "color": "node-color-seq-1",
         "icon": "add-a-person",
-        "shape": { "default": "circle" },
+        "shape": {
+          "default": "circle"
+        },
         "variables": {
           "person_name": {
             "name": "person_name",
@@ -123,19 +133,34 @@
               "maxSelected": 1
             },
             "options": [
-              { "label": "Family member", "value": "family" },
-              { "label": "Friend", "value": "friend" },
+              {
+                "label": "Family member",
+                "value": "family"
+              },
+              {
+                "label": "Friend",
+                "value": "friend"
+              },
               {
                 "label": "Family or friend of the person who harmed you",
                 "value": "partner_network"
               },
-              { "label": "Neighbour", "value": "neighbour" },
-              { "label": "Colleague or classmate", "value": "colleague" },
+              {
+                "label": "Neighbour",
+                "value": "neighbour"
+              },
+              {
+                "label": "Colleague or classmate",
+                "value": "colleague"
+              },
               {
                 "label": "Member of a faith or community group",
                 "value": "community"
               },
-              { "label": "Someone else", "value": "other" }
+              {
+                "label": "Someone else",
+                "value": "other"
+              }
             ]
           },
           "contact_frequency": {
@@ -143,10 +168,22 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": "Less than once a month", "value": 1 },
-              { "label": "About once a month", "value": 2 },
-              { "label": "About once a week", "value": 3 },
-              { "label": "Most days", "value": 4 }
+              {
+                "label": "Less than once a month",
+                "value": 1
+              },
+              {
+                "label": "About once a month",
+                "value": 2
+              },
+              {
+                "label": "About once a week",
+                "value": 3
+              },
+              {
+                "label": "Most days",
+                "value": 4
+              }
             ]
           },
           "knows_about_abuse": {
@@ -154,8 +191,14 @@
             "type": "boolean",
             "component": "Boolean",
             "options": [
-              { "label": "Yes", "value": true },
-              { "label": "No, or I'm not sure", "value": false }
+              {
+                "label": "Yes",
+                "value": true
+              },
+              {
+                "label": "No, or I'm not sure",
+                "value": false
+              }
             ]
           },
           "safe_to_tell": {
@@ -163,9 +206,18 @@
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
-              { "label": "Not at all safe", "value": 1 },
-              { "label": "Somewhat safe", "value": 2 },
-              { "label": "Completely safe", "value": 3 }
+              {
+                "label": "Not at all safe",
+                "value": 1
+              },
+              {
+                "label": "Somewhat safe",
+                "value": 2
+              },
+              {
+                "label": "Completely safe",
+                "value": 3
+              }
             ]
           },
           "reaction": {
@@ -215,7 +267,9 @@
         "name": "Service",
         "color": "node-color-seq-4",
         "icon": "add-a-place",
-        "shape": { "default": "square" },
+        "shape": {
+          "default": "square"
+        },
         "variables": {
           "service_name": {
             "name": "service_name",
@@ -234,9 +288,18 @@
               "maxSelected": 1
             },
             "options": [
-              { "label": "Helpline or hotline", "value": "helpline" },
-              { "label": "Shelter or refuge", "value": "shelter" },
-              { "label": "Police", "value": "police" },
+              {
+                "label": "Helpline or hotline",
+                "value": "helpline"
+              },
+              {
+                "label": "Shelter or refuge",
+                "value": "shelter"
+              },
+              {
+                "label": "Police",
+                "value": "police"
+              },
               {
                 "label": "Legal help or advocacy",
                 "value": "legal_advocacy"
@@ -245,12 +308,18 @@
                 "label": "Doctor, nurse, or hospital",
                 "value": "health"
               },
-              { "label": "Counselling or therapy", "value": "counselling" },
+              {
+                "label": "Counselling or therapy",
+                "value": "counselling"
+              },
               {
                 "label": "Faith or community organisation",
                 "value": "community"
               },
-              { "label": "Something else", "value": "other" }
+              {
+                "label": "Something else",
+                "value": "other"
+              }
             ]
           },
           "service_contacted": {
@@ -262,10 +331,22 @@
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
-              { "label": "Not at all helpful", "value": 1 },
-              { "label": "A little helpful", "value": 2 },
-              { "label": "Quite helpful", "value": 3 },
-              { "label": "Very helpful", "value": 4 }
+              {
+                "label": "Not at all helpful",
+                "value": 1
+              },
+              {
+                "label": "A little helpful",
+                "value": 2
+              },
+              {
+                "label": "Quite helpful",
+                "value": 3
+              },
+              {
+                "label": "Very helpful",
+                "value": 4
+              }
             ]
           }
         }
@@ -289,7 +370,7 @@
         {
           "id": "researcher-notes",
           "type": "text",
-          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n### How this template uses encrypted attributes\n\nThis protocol turns on the **Encrypted Attributes** experiment (Protocol settings → Experiments). The **Create your private passphrase** stage asks the participant to choose a passphrase, and every attribute marked as encrypted in the codebook is then encrypted with it before it is saved.\n\n- **Encrypted:** each person's **name** (`person_name`), the participant's **private note** about them (`private_note`), and any reaction they describe in their own words (`reaction_other`). Free text is encrypted because it is where identifying details tend to appear.\n- **Not encrypted:** relationship type, contact frequency, whether the person knows about the abuse, how they reacted, how safe it would feel to tell them, and who knows whom. These are what you analyse, and none of them identifies anyone on its own.\n- **Services are not encrypted.** Agency and helpline names do not identify the participant's private contacts, and you need to read them to map service use. This shows that encryption is set attribute by attribute, not for a whole interview.\n\nEncrypted values appear as ciphertext in exported data, and **nobody on the research team can decrypt them**. If a participant forgets their passphrase, their encrypted answers cannot be recovered. Only text attributes on nodes can be encrypted.\n\n### Safety and ethics\n\nResearch on intimate partner violence carries real risk to participants. Before fielding, read the WHO recommendations below, plan with your ethics board how you will confirm the participant is somewhere **safe and private**, and agree what the interviewer should do if the person who harmed them appears. Have up-to-date local support services ready, and replace the placeholder on the final screen with them. Encryption protects names on the device and in your data; it does not protect a participant who is overheard or whose device is checked during the interview.\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n### Sources\n\n- [Liang B, Goodman L, Tummala-Narra P, Weintraub S (2005). A theoretical framework for understanding help-seeking processes among survivors of intimate partner violence. *Am J Community Psychol*.](https://doi.org/10.1007/s10464-005-6233-6)\n- [Goodman LA, Smyth KF (2011). A call for a social network-oriented approach to services for survivors of intimate partner violence. *Psychology of Violence*.](https://doi.org/10.1037/a0022977)\n- [Sylaska KM, Edwards KM (2014). Disclosure of intimate partner violence to informal social support network members: a review of the literature. *Trauma, Violence, & Abuse*.](https://doi.org/10.1177/1524838013496335)\n- [World Health Organization (2001). Putting women first: ethical and safety recommendations for research on domestic violence against women.](https://www.who.int/publications/i/item/WHO-FCH-GWH-01.1)\n- [World Health Organization (2016). Ethical and safety recommendations for intervention research on violence against women.](https://www.who.int/publications/i/item/9789241510189)"
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n### How this template uses encrypted attributes\n\nThis template already has Architect's **Encrypted Attributes** experiment turned on, so its passphrase stage and encrypted attributes work as soon as you open it. The **Create your private passphrase** stage asks the participant to choose a passphrase, and every attribute marked as encrypted is encrypted with it before it is saved. To change which attributes are encrypted, open that stage and use its **Encrypted attributes** section. Only text attributes on nodes can be encrypted.\n\n- **Encrypted:** each person's **name** (`person_name`), the participant's **private note** about them (`private_note`), and any reaction they describe in their own words (`reaction_other`). Free text is encrypted because it is where identifying details tend to appear.\n- **Not encrypted:** relationship type, contact frequency, whether the person knows about the abuse, how they reacted, how safe it would feel to tell them, and who knows whom. These are what you analyse, and none of them identifies anyone on its own.\n- **Services are not encrypted.** Agency and helpline names do not identify the participant's private contacts, and you need to read them to map service use. This shows that encryption is set attribute by attribute, not for a whole interview.\n\n### What encryption does and does not protect\n\nEncryption protects **saved and exported data**. CSV and GraphML exports replace every encrypted value with the word `ENCRYPTED` and leave out the encrypted value itself, so these answers cannot be recovered from an export by anyone, including your team. If a participant forgets their passphrase, their encrypted answers cannot be recovered at all.\n\nEncryption does **not** hide anything on screen. While the passphrase is in use, names and notes are shown as the participant types them and on later screens, so anyone who can see the screen, including the interviewer, can read them. The participant-facing text in this template says so; keep it accurate if you edit it.\n\n### Safety and ethics\n\nResearch on intimate partner violence carries real risk to participants. Before fielding, read the WHO recommendations below, plan with your ethics board how you will confirm the participant is somewhere **safe and private**, and agree what the interviewer should do if the person who harmed them appears. Have up-to-date local support services ready, and replace the placeholder on the final screen with them. Encryption protects names in your data; it does not protect a participant who is overheard or whose screen is seen during the interview.\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n### Sources\n\n- [Liang B, Goodman L, Tummala-Narra P, Weintraub S (2005). A theoretical framework for understanding help-seeking processes among survivors of intimate partner violence. *Am J Community Psychol*.](https://doi.org/10.1007/s10464-005-6233-6)\n- [Goodman LA, Smyth KF (2011). A call for a social network-oriented approach to services for survivors of intimate partner violence. *Psychology of Violence*.](https://doi.org/10.1037/a0022977)\n- [Sylaska KM, Edwards KM (2014). Disclosure of intimate partner violence to informal social support network members: a review of the literature. *Trauma, Violence, & Abuse*.](https://doi.org/10.1177/1524838013496335)\n- [World Health Organization (2001). Putting women first: ethical and safety recommendations for research on domestic violence against women.](https://www.who.int/publications/i/item/WHO-FCH-GWH-01.1)\n- [World Health Organization (2016). Ethical and safety recommendations for intervention research on violence against women.](https://www.who.int/publications/i/item/9789241510189)"
         }
       ]
     },
@@ -300,7 +381,7 @@
       "interviewScript": "Before starting, confirm that the participant is somewhere safe and private, and agree with them what you will both do if someone comes in — for example, switching to an agreed neutral topic. Do not continue if they cannot talk privately.",
       "introductionPanel": {
         "title": "About this interview",
-        "text": "## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it, so that only you can read them. Nobody on the research team can read them, and they cannot be recovered without your passphrase.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**"
+        "text": "## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it before they are saved. In the study's data they cannot be read by anyone, including the researchers, and they cannot be recovered without your passphrase.\n\nThey do appear on screen while you take part, so anyone who can see the screen can read them.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**"
       },
       "form": {
         "fields": [
@@ -337,7 +418,7 @@
       "interviewScript": "Turn the device towards the participant, or look away, while they type their passphrase. Do not ask what it is or write it down.",
       "explanationText": {
         "title": "Keep the people you mention private",
-        "body": "Choose a passphrase that only you know. The **names** you give and any **private notes** you write will be encrypted with it before they are saved, so that nobody else can read them — not the interviewer, and not the researchers.\n\nPick something you will remember: you will need the same passphrase if you return to this interview, and it **cannot be recovered** if it is forgotten. Please do not tell it to the interviewer."
+        "body": "Choose a passphrase that only you know. The **names** you give and any **private notes** you write will be encrypted with it before they are saved, so that nobody can read them in the study's data — including the researchers.\n\nThey will still appear on screen during this interview, so anyone who can see the screen can read them.\n\nPick something you will remember: you will need the same passphrase if you return to this interview, and it **cannot be recovered** if it is forgotten. Please do not tell it to the interviewer."
       },
       "validation": {
         "minLength": 8,
@@ -380,7 +461,7 @@
           "dataSource": "existing"
         }
       ],
-      "interviewScript": "Names and notes on this screen are encrypted with the participant's passphrase. Remind them they can use a nickname or initials if they prefer, and that the notes field is for them alone. The same person can be added under more than one question by dragging them from the 'Already mentioned' panel.",
+      "interviewScript": "Names and notes on this screen are saved encrypted with the participant's passphrase, but they are shown on screen as they are typed. Remind the participant they can use a nickname or initials, and offer to look away while they type. The same person can be added under more than one question by dragging them from the 'Already mentioned' panel.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -391,12 +472,12 @@
           {
             "variable": "person_name",
             "prompt": "What is this person's name, nickname, or initials?",
-            "hint": "This is encrypted with your passphrase. Only you can read it."
+            "hint": "This is saved encrypted with your passphrase. A nickname or initials is fine."
           },
           {
             "variable": "private_note",
             "prompt": "Is there anything you want to remember about this person?",
-            "hint": "Optional. This note is encrypted too, so only you can read it."
+            "hint": "Optional. This note is saved encrypted too."
           }
         ]
       },
@@ -440,13 +521,6 @@
       "id": "ng-services",
       "type": "NameGenerator",
       "label": "Services",
-      "panels": [
-        {
-          "id": "ng-services-existing",
-          "title": "Already mentioned",
-          "dataSource": "existing"
-        }
-      ],
       "interviewScript": "Service names are not encrypted. If the participant mentions a person who works at a service (for example, a named advocate), record the service here, not the person's name.",
       "subject": {
         "entity": "node",
@@ -502,7 +576,7 @@
       },
       "introductionPanel": {
         "title": "Tell us a little about each person",
-        "text": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they are stored without the person's name."
+        "text": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they do not include anyone's name."
       },
       "form": {
         "fields": [
@@ -579,7 +653,7 @@
       "id": "categorical-bin-reaction",
       "type": "CategoricalBin",
       "label": "How people reacted",
-      "interviewScript": "Only people the participant said know about the abuse appear here. Anything typed into the 'Something else' box is encrypted with the participant's passphrase, because a free-text description is where identifying details tend to appear.",
+      "interviewScript": "Only people the participant said know about the abuse appear here. Anything typed into the 'Something else' box is saved encrypted with the participant's passphrase, because a free-text description is where identifying details tend to appear.",
       "subject": {
         "entity": "node",
         "type": "person"
@@ -606,7 +680,7 @@
           "variable": "reaction",
           "otherVariable": "reaction_other",
           "otherOptionLabel": "Something else",
-          "otherVariablePrompt": "In your own words, how did this person react? (This is encrypted, so only you can read it.)"
+          "otherVariablePrompt": "In your own words, how did this person react? (This is saved encrypted.)"
         }
       ]
     },
