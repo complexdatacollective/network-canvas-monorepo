@@ -19,6 +19,7 @@ import {
 
 import { codebookTypeIndex } from '../../analytics/codebookTypeIndex';
 import { useTrack } from '../../analytics/useTrack';
+import BinSelectFocus from '../../components/BinSelectFocus';
 import NodeDrawer from '../../components/NodeDrawer';
 import PassphraseEntry from '../../components/PassphraseEntry';
 import Prompts from '../../components/Prompts';
@@ -30,6 +31,7 @@ import {
   writeFailureMessage,
   writeSubmissionResult,
 } from '../../forms/writeSubmissionResult';
+import { useBinSelection } from '../../hooks/useBinSelection';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
@@ -40,6 +42,7 @@ import {
 } from '../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../selectors/protocol';
 import {
+  getNetworkNodesForType,
   getNodeColorSelector,
   getNodeTypeDefinition,
   resolveNodeShape,
@@ -192,7 +195,8 @@ function OtherResponseNode({
   return <UINode {...props} label={useNodeLabel(node)} />;
 }
 
-const CategoricalBin = (_props: CategoricalBinStageProps) => {
+const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
+  const selectMode = stage.behaviours?.interactionMode === 'select';
   const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
   const track = useTrack();
   const codebook = useSelector(getCodebook);
@@ -237,6 +241,13 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const { id, variable } = prompt;
 
   const { bins, uncategorisedNodes } = useCategoricalBins();
+  const stageNodes = useStageSelector(getNetworkNodesForType);
+  const { focalNode, choose, advanceFrom } = useBinSelection({
+    enabled: selectMode,
+    nodes: stageNodes,
+    unplacedNodes: uncategorisedNodes,
+  });
+  const focalName = useNodeLabel(focalNode);
 
   const { updateReady } = useReadyForNextStage();
 
@@ -299,6 +310,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
           node_id: nodeId,
           node_type_index: codebookTypeIndex(codebook, 'node', node.type),
           bin_index: binIndex,
+          interaction_mode: selectMode ? 'select' : 'drag',
         });
       } else if (previousIndex !== binIndex) {
         track('node_rebinned', {
@@ -306,6 +318,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
           node_type_index: codebookTypeIndex(codebook, 'node', node.type),
           from_bin_index: previousIndex,
           to_bin_index: binIndex,
+          interaction_mode: selectMode ? 'select' : 'drag',
         });
       }
       lastBinIndexRef.current.set(nodeId, binIndex);
@@ -414,6 +427,37 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     return true;
   };
 
+  /**
+   * Places the focal person in a bin when the participant taps it in select
+   * mode, then moves on. Tapping the bin they are already in lets go of them;
+   * cancelling the "other" question leaves them focal and unplaced.
+   */
+  const handleSelectBin = async (binIndex: number) => {
+    const node = focalNode;
+    if (!node) return false;
+    const alreadyThere = bins[binIndex]!.nodes.some(
+      (binNode) =>
+        binNode[entityPrimaryKeyProperty] === node[entityPrimaryKeyProperty],
+    );
+    if (alreadyThere) {
+      advanceFrom(node);
+      return false;
+    }
+    const placed = await handleDropNode(node, binIndex);
+    if (placed) advanceFrom(node);
+    return placed;
+  };
+
+  const selectFor = (binIndex: number) =>
+    selectMode
+      ? {
+          focalName: focalNode ? focalName : undefined,
+          focalNodeId: focalNode?.[entityPrimaryKeyProperty],
+          onSelect: () => handleSelectBin(binIndex),
+          onChoose: choose,
+        }
+      : undefined;
+
   return (
     <div
       data-testid="categorical-bin-interface"
@@ -447,6 +491,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
                   onToggleExpand={() => setExpandedBinIndex(null)}
                   catColor={getCatColor(expandedBinIndex)}
                   onDropNode={(node) => handleDropNode(node, expandedBinIndex)}
+                  select={selectFor(expandedBinIndex)}
                   nodes={expandedBin.nodes}
                   flowOrdinal={undefined}
                 />
@@ -473,6 +518,7 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
                         onToggleExpand={() => setExpandedBinIndex(index)}
                         catColor={getCatColor(index)}
                         onDropNode={(node) => handleDropNode(node, index)}
+                        select={selectFor(index)}
                         nodes={bin.nodes}
                         flowOrdinal={flowOrdinal}
                       />
@@ -483,7 +529,13 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
             </motion.div>
           </AnimatePresence>
         </div>
-        <NodeDrawer nodes={uncategorisedNodes} itemType="NODE" />
+        {selectMode && <BinSelectFocus node={focalNode} />}
+        <NodeDrawer
+          nodes={uncategorisedNodes}
+          itemType="NODE"
+          draggable={!selectMode}
+          selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
+        />
       </div>
     </div>
   );

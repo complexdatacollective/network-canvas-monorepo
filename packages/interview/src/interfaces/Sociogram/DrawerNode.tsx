@@ -10,12 +10,17 @@ type DrawerNodeProps = {
   node: NcNode;
   itemType?: string;
   onLayoutAnimationComplete?: () => void;
+  /** False shows the person without letting them be dragged. */
+  draggable?: boolean;
+  selected?: boolean;
 };
 
 export default function DrawerNode({
   node,
   itemType = 'UNPOSITIONED_NODE',
   onLayoutAnimationComplete,
+  draggable = true,
+  selected,
 }: DrawerNodeProps) {
   const nodeId = node[entityPrimaryKeyProperty];
   // A drag names the person by the label the drawer shows them with.
@@ -25,6 +30,7 @@ export default function DrawerNode({
     type: itemType,
     metadata: { ...node, nodeId, id: nodeId },
     announcedName: label,
+    disabled: !draggable,
   });
 
   return (
@@ -33,8 +39,9 @@ export default function DrawerNode({
       onLayoutAnimationComplete={onLayoutAnimationComplete}
       nodeId={nodeId}
       type={node.type}
-      {...dragProps}
+      {...(draggable ? dragProps : {})}
       size="sm"
+      selected={selected}
     />
   );
 }

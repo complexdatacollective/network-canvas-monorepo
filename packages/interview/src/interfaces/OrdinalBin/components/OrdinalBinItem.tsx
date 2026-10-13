@@ -1,6 +1,6 @@
 'use client';
 import { motion } from 'motion/react';
-import { memo, useMemo, useRef } from 'react';
+import { memo, type RefObject, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -21,6 +21,7 @@ import { getCodebook } from '../../../store/modules/protocol';
 import { updateNode } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
 import { getEntityAttributes } from '../../../utils/networkEntities';
+import { useNodeLabel } from '../../Anonymisation/useNodeLabel';
 import { interfaceMessages } from '../../messages';
 import type { OrdinalBinItem as OrdinalBinItemType } from '../useOrdinalBins';
 
@@ -32,6 +33,17 @@ type OrdinalBinItemProps = {
   promptId: string;
   sortOrder?: SortOrder;
   totalBins: number;
+  /** The bin each person was last placed in, shared by every bin. */
+  lastBinIndexRef: RefObject<Map<string, number>>;
+  /**
+   * Present in select mode (#1652): the bin places the focal person when
+   * tapped, and neither its people nor the bin take part in drag and drop.
+   */
+  select?: {
+    focalNode: NcNode | undefined;
+    onPlaced: (node: NcNode) => void;
+    onChoose: (node: NcNode) => void;
+  };
 };
 
 const itemVariants = {
@@ -83,6 +95,8 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     promptId,
     sortOrder = [],
     totalBins,
+    lastBinIndexRef,
+    select,
   } = props;
 
   const dispatch = useAppDispatch();
@@ -91,8 +105,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const isPortrait = useMediaQuery('(orientation: portrait)');
   const track = useTrack();
   const codebook = useSelector(getCodebook);
-  const lastBinIndexRef = useRef<Map<string, number>>(new Map());
-  const headerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement & HTMLButtonElement>(null);
   // The label's text, not its markdown source: a screen reader should not read
   // the asterisks around an emphasised word.
   const spokenLabel = useMemo(
@@ -107,28 +120,30 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
 
   const promptColorClass = getPromptColorClass(prompt.color);
 
-  const handleDrop = (metadata?: Record<string, unknown>) => {
-    const meta = metadata as NcNode | undefined;
-    if (!meta) return;
+  const focalName = useNodeLabel(select?.focalNode);
 
-    if (getEntityAttributes(meta)[activePromptVariable] === bin.value) {
-      return;
+  /** Gives the person this bin's value. False when they already had it. */
+  const place = (node: NcNode) => {
+    if (getEntityAttributes(node)[activePromptVariable] === bin.value) {
+      return false;
     }
 
-    const nodeId = meta[entityPrimaryKeyProperty];
+    const nodeId = node[entityPrimaryKeyProperty];
     const previousIndex = lastBinIndexRef.current.get(nodeId);
     if (previousIndex === undefined) {
       track('node_binned', {
         node_id: nodeId,
-        node_type_index: codebookTypeIndex(codebook, 'node', meta.type),
+        node_type_index: codebookTypeIndex(codebook, 'node', node.type),
         bin_index: index,
+        interaction_mode: select ? 'select' : 'drag',
       });
     } else if (previousIndex !== index) {
       track('node_rebinned', {
         node_id: nodeId,
-        node_type_index: codebookTypeIndex(codebook, 'node', meta.type),
+        node_type_index: codebookTypeIndex(codebook, 'node', node.type),
         from_bin_index: previousIndex,
         to_bin_index: index,
+        interaction_mode: select ? 'select' : 'drag',
       });
     }
     lastBinIndexRef.current.set(nodeId, index);
@@ -143,6 +158,18 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         currentStep,
       }),
     );
+    return true;
+  };
+
+  const handleDrop = (metadata?: Record<string, unknown>) => {
+    if (metadata) place(metadata as NcNode);
+  };
+
+  const handleSelect = () => {
+    const node = select?.focalNode;
+    if (!node) return;
+    place(node);
+    select.onPlaced(node);
   };
 
   const sortedNodes = useSortedNodeList(bin.nodes, sortOrder);
@@ -153,6 +180,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     'row-span-2 grid min-w-0 grid-rows-subgrid overflow-hidden shadow portrait:col-span-2 portrait:row-span-1 portrait:grid-cols-subgrid portrait:grid-rows-none',
     'bg-[color-mix(in_oklch,var(--surface-1)_var(--blend-percent),var(--background)_calc(100%-var(--blend-percent)))]',
     missingValue && 'bg-surface-1',
+    select?.focalNode && 'cursor-pointer',
     isFirst &&
       'rounded-tl rounded-bl portrait:rounded-tr portrait:rounded-bl-none',
     isLast &&
@@ -186,15 +214,61 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
       data-testid={`ordinal-bin-${index}`}
       className={panelClasses}
       variants={itemVariants}
+      onClick={
+        select
+          ? (event) => {
+              // A tap on a person here chooses them instead.
+              if (
+                (event.target as Element).closest(
+                  '[data-collection-item], button',
+                )
+              ) {
+                return;
+              }
+              handleSelect();
+            }
+          : undefined
+      }
+      data-select-mode={select ? true : undefined}
       style={
         {
           '--blend-percent': `${100 - blendPercent}%`,
         } as React.CSSProperties
       }
     >
-      <div ref={headerRef} className={accentClasses}>
-        <BinLabel label={bin.label} variant="header" containerRef={headerRef} />
-      </div>
+      {select ? (
+        // The keyboard and screen-reader way to place the focal person; the
+        // whole panel answers a tap.
+        <button
+          ref={headerRef}
+          type="button"
+          className={cx(accentClasses, 'focusable cursor-pointer')}
+          onClick={handleSelect}
+          disabled={!select.focalNode}
+          aria-label={
+            select.focalNode
+              ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
+                  name: focalName,
+                  label: spokenLabel,
+                })
+              : spokenLabel
+          }
+        >
+          <BinLabel
+            label={bin.label}
+            variant="header"
+            containerRef={headerRef}
+          />
+        </button>
+      ) : (
+        <div ref={headerRef} className={accentClasses}>
+          <BinLabel
+            label={bin.label}
+            variant="header"
+            containerRef={headerRef}
+          />
+        </div>
+      )}
       <NodeList
         id={listId}
         items={sortedNodes}
@@ -204,8 +278,13 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         announcedName={intl.formatMessage(interfaceMessages.ordinalContainer, {
           label: spokenLabel,
         })}
-        onDrop={handleDrop}
-        accepts={['NODE']}
+        {...(select
+          ? {
+              dragAndDrop: false,
+              onItemClick: select.onChoose,
+              selectedItemId: select.focalNode?.[entityPrimaryKeyProperty],
+            }
+          : { onDrop: handleDrop, accepts: ['NODE'] })}
       />
     </motion.div>
   );

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { findDuplicateId } from '../../../utils/validation-helpers.ts';
+import { binBehavioursSchema } from '../common/behaviours.ts';
 import {
   NodeStageSubjectSchema,
   ordinalBinPromptSchema,
@@ -12,6 +13,7 @@ export const ordinalBinStage = baseStageSchema.extend({
   type: z.literal('OrdinalBin'),
   subject: NodeStageSubjectSchema,
   filter: FilterSchema.optional(),
+  behaviours: binBehavioursSchema,
   prompts: z
     .array(ordinalBinPromptSchema)
     .min(1)

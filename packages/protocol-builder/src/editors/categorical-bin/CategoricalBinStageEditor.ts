@@ -1,3 +1,4 @@
+import { binBehaviours } from '../../sections/bin-behaviours/binBehaviours.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { subjectPicker } from '../../sections/subject-picker/subjectPicker.tsx';
@@ -13,6 +14,7 @@ import { categoricalBinPrompts } from './sections/categoricalBinPrompts.tsx';
 export const categoricalBinStageEditor = defineStageEditor('CategoricalBin', [
   subjectPicker({ entity: 'node', filter: true }),
   categoricalBinPrompts(),
+  binBehaviours(),
   skipLogic(),
   interviewerGuidance(),
 ]);

@@ -1,0 +1,379 @@
+import { configureStore } from '@reduxjs/toolkit';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useEffect } from 'react';
+import { Provider } from 'react-redux';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { StoreApi } from 'zustand';
+
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { type DndStore, DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
+import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
+import {
+  asEntityAttributeReference,
+  type Codebook,
+} from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
+
+import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import type { ProtocolPayload } from '../../../contract/types';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
+import protocol from '../../../store/modules/protocol';
+import session, { type SessionState } from '../../../store/modules/session';
+import ui from '../../../store/modules/ui';
+import type { StageProps } from '../../../types';
+import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import OrdinalBin from '../OrdinalBin';
+
+const { track } = vi.hoisted(() => ({ track: vi.fn() }));
+
+vi.mock('../../../hooks/useCelebrate', () => ({
+  useCelebrate: () => vi.fn(),
+}));
+
+vi.mock('../../../analytics/useTrack', () => ({
+  useTrack: () => track,
+  useCaptureException: () => vi.fn(),
+}));
+
+class StubResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+// jsdom has no IntersectionObserver; drag mode's drop targets need one.
+class ImmediateIntersectionObserver implements IntersectionObserver {
+  readonly root = null;
+  readonly rootMargin = '';
+  readonly scrollMargin = '';
+  readonly thresholds: readonly number[] = [];
+  private callback: IntersectionObserverCallback;
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+  }
+
+  observe(target: Element) {
+    setTimeout(() => {
+      const bounds = target.getBoundingClientRect();
+      this.callback(
+        [
+          {
+            target,
+            isIntersecting: true,
+            intersectionRatio: 1,
+            boundingClientRect: bounds,
+            intersectionRect: bounds,
+            rootBounds: null,
+            time: 0,
+          },
+        ],
+        this,
+      );
+    }, 0);
+  }
+
+  unobserve() {}
+  disconnect() {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+}
+
+beforeAll(() => {
+  vi.stubGlobal('ResizeObserver', StubResizeObserver);
+  vi.stubGlobal('IntersectionObserver', ImmediateIntersectionObserver);
+  // jsdom has no matchMedia; the bins ask whether the screen is portrait.
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }));
+  vi.stubGlobal('scrollTo', vi.fn());
+});
+
+beforeEach(() => {
+  track.mockClear();
+});
+
+const NODE_TYPE = 'person';
+const STAGE_ID = 'ordinal-bin-stage';
+const PROMPT_ID = 'prompt-1';
+
+const person = (id: string, name: string): NcNode => ({
+  [entityPrimaryKeyProperty]: id,
+  type: NODE_TYPE,
+  [entityAttributesProperty]: { name },
+});
+
+const codebook: Codebook = {
+  node: {
+    [NODE_TYPE]: {
+      name: 'Person',
+      label: { en: 'Person' },
+      color: 'node-color-seq-1',
+      shape: { default: 'circle' },
+      variables: {
+        name: { name: 'name', label: 'Name', type: 'text', component: 'Text' },
+        closeness: {
+          name: 'Closeness',
+          label: 'Closeness',
+          type: 'ordinal',
+          component: 'LikertScale',
+          options: [
+            { label: { en: 'Distant' }, value: 1 },
+            { label: { en: 'Close' }, value: 2 },
+          ],
+        },
+      },
+    },
+  },
+  edge: {},
+  ego: { variables: {} },
+};
+
+type Mode = 'drag' | 'select';
+
+const buildStage = (mode: Mode): StageProps<'OrdinalBin'>['stage'] => ({
+  id: STAGE_ID,
+  type: 'OrdinalBin',
+  label: { en: 'Rate people' },
+  subject: { entity: 'node', type: NODE_TYPE },
+  ...(mode === 'select' && { behaviours: { interactionMode: 'select' } }),
+  prompts: [
+    {
+      id: PROMPT_ID,
+      text: { en: 'How close?' },
+      variable: asEntityAttributeReference('closeness'),
+      color: 'ord-color-seq-1',
+    },
+  ],
+});
+
+const buildSession = (): SessionState => ({
+  id: 'session',
+  startTime: '2024-01-01T00:00:00.000Z',
+  finishTime: null,
+  exportTime: null,
+  lastUpdated: '2024-01-01T00:00:00.000Z',
+  network: {
+    ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
+    nodes: [person('a', 'Ann'), person('b', 'Ben'), person('c', 'Cal')],
+    edges: [],
+  },
+});
+
+const buildProtocol = (mode: Mode): ProtocolPayload => ({
+  id: 'protocol',
+  hash: 'hash',
+  importedAt: '2024-01-01T00:00:00.000Z',
+  assets: [],
+  name: 'Test protocol',
+  schemaVersion: 9,
+  localization: { defaultLocale: 'en', locales: ['en'] },
+  codebook,
+  stages: [buildStage(mode)],
+});
+
+function CaptureDndStore({
+  onStore,
+}: {
+  onStore: (store: StoreApi<DndStore>) => void;
+}) {
+  const store = useDndStoreApi();
+  useEffect(() => {
+    onStore(store);
+  }, [store, onStore]);
+  return null;
+}
+
+function renderStage(mode: Mode) {
+  const store = configureStore({
+    reducer: { session, protocol, ui },
+    preloadedState: { session: buildSession(), protocol: buildProtocol(mode) },
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({ serializableCheck: false }),
+  });
+
+  let dndStore: StoreApi<DndStore> | null = null;
+
+  const view = render(
+    <InterviewI18nProvider requestedLocale="en">
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+            <DialogProvider>
+              <DndStoreProvider>
+                <CaptureDndStore
+                  onStore={(s) => {
+                    dndStore = s;
+                  }}
+                />
+                <OrdinalBin
+                  stage={buildStage(mode)}
+                  getNavigationHelpers={() => ({
+                    moveForward: () => {},
+                    moveBackward: () => {},
+                  })}
+                />
+              </DndStoreProvider>
+            </DialogProvider>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>
+    </InterviewI18nProvider>,
+  );
+
+  const attributesOf = (id: string) =>
+    store
+      .getState()
+      .session.network?.nodes.find(
+        (node: NcNode) => node[entityPrimaryKeyProperty] === id,
+      )?.[entityAttributesProperty];
+
+  return { store, view, getDndStore: () => dndStore!, attributesOf };
+}
+
+const startDragOf = (getDndStore: () => StoreApi<DndStore>, node: NcNode) =>
+  act(() => {
+    getDndStore().getState().startDrag(
+      {
+        id: node[entityPrimaryKeyProperty],
+        type: 'NODE',
+        metadata: node,
+        _sourceZone: null,
+      },
+      { x: 0, y: 0, width: 10, height: 10 },
+    );
+  });
+
+const binListZone = (index: number) =>
+  `ORDBIN_NODE_LIST_${STAGE_ID}_${PROMPT_ID}_${index}-container`;
+
+const announcement = (name: string) =>
+  screen.findByText(`${name}: choose where this person belongs.`);
+
+describe('OrdinalBin in select mode (#1652)', () => {
+  it('places the focal person in the tapped bin and moves on to the next', async () => {
+    const { attributesOf } = renderStage('select');
+
+    await announcement('Ann');
+    fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
+
+    await waitFor(() => expect(attributesOf('a')?.closeness).toBe(2));
+    await announcement('Ben');
+    expect(track).toHaveBeenCalledWith('node_binned', {
+      node_id: 'a',
+      node_type_index: 0,
+      bin_index: 1,
+      interaction_mode: 'select',
+    });
+  });
+
+  it('writes what dropping the same person on the same bin writes', async () => {
+    const selected = renderStage('select');
+    await announcement('Ann');
+    fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
+    await waitFor(() => expect(selected.attributesOf('a')?.closeness).toBe(2));
+    const selectedNodes = selected.store.getState().session.network?.nodes;
+    selected.view.unmount();
+
+    const dragged = renderStage('drag');
+    startDragOf(dragged.getDndStore, person('a', 'Ann'));
+    await waitFor(() =>
+      expect(
+        dragged.getDndStore().getState().getDropTargetState(binListZone(1))
+          ?.canDrop,
+      ).toBe(true),
+    );
+    act(() => {
+      dragged.getDndStore().getState().setActiveDropTarget(binListZone(1));
+      dragged.getDndStore().getState().endDrag();
+    });
+    await waitFor(() => expect(dragged.attributesOf('a')?.closeness).toBe(2));
+
+    expect(dragged.store.getState().session.network?.nodes).toEqual(
+      selectedNodes,
+    );
+  });
+
+  it.each([
+    ['drag', true],
+    ['select', false],
+  ] as const)(
+    'in %s mode, drag sources and drop targets exist: %s',
+    async (mode, present) => {
+      const { getDndStore } = renderStage(mode);
+      await screen.findByText('Close');
+
+      expect(document.querySelector('[aria-grabbed]') !== null).toBe(present);
+
+      startDragOf(getDndStore, person('a', 'Ann'));
+      const canDrop = () =>
+        [0, 1].map(
+          (index) =>
+            getDndStore().getState().getDropTargetState(binListZone(index))
+              ?.canDrop ?? false,
+        );
+      if (present) {
+        await waitFor(() => expect(canDrop()).toContain(true));
+      } else {
+        expect(canDrop()).toEqual([false, false]);
+      }
+    },
+  );
+
+  it('lets a placed person be chosen again and moved to another bin', async () => {
+    const { attributesOf } = renderStage('select');
+
+    await announcement('Ann');
+    fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
+    await announcement('Ben');
+
+    fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
+    await announcement('Ann');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Place Ann in Distant' }),
+    );
+    await waitFor(() => expect(attributesOf('a')?.closeness).toBe(1));
+    expect(track).toHaveBeenCalledWith('node_rebinned', {
+      node_id: 'a',
+      node_type_index: 0,
+      from_bin_index: 1,
+      to_bin_index: 0,
+      interaction_mode: 'select',
+    });
+    await announcement('Ben');
+  });
+
+  it('shows that everyone is placed once nobody is left', async () => {
+    renderStage('select');
+
+    for (const name of ['Ann', 'Ben', 'Cal']) {
+      await announcement(name);
+      fireEvent.click(
+        screen.getByRole('button', { name: `Place ${name} in Distant` }),
+      );
+    }
+
+    expect(
+      await screen.findAllByText('Everyone has been placed.'),
+    ).not.toHaveLength(0);
+  });
+});

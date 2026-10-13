@@ -1,16 +1,22 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import type { Stage } from '@codaco/protocol-validation';
+import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
+import BinSelectFocus from '../../components/BinSelectFocus';
 import NodeDrawer from '../../components/NodeDrawer';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
+import { useBinSelection } from '../../hooks/useBinSelection';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { getCurrentStageId } from '../../selectors/session';
+import {
+  getCurrentStageId,
+  getNetworkNodesForType,
+} from '../../selectors/session';
 import type { StageProps } from '../../types';
 import OrdinalBinItem from './components/OrdinalBinItem';
 import { useOrdinalBins } from './useOrdinalBins';
@@ -34,7 +40,9 @@ const binsContainerVariants = {
   exit: { opacity: 0 },
 };
 
-const OrdinalBin = (_props: OrdinalBinStageProps) => {
+const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
+  const selectMode = stage.behaviours?.interactionMode === 'select';
+
   const {
     prompt,
     prompt: { variable: activePromptVariable },
@@ -42,6 +50,13 @@ const OrdinalBin = (_props: OrdinalBinStageProps) => {
 
   const stageId = useStageSelector(getCurrentStageId);
   const { bins, unplacedNodes } = useOrdinalBins();
+  const stageNodes = useStageSelector(getNetworkNodesForType);
+  const lastBinIndexRef = useRef<Map<string, number>>(new Map());
+  const { focalNode, choose, advanceFrom } = useBinSelection({
+    enabled: selectMode,
+    nodes: stageNodes,
+    unplacedNodes,
+  });
 
   const { updateReady } = useReadyForNextStage();
 
@@ -80,13 +95,29 @@ const OrdinalBin = (_props: OrdinalBinStageProps) => {
                   promptId={prompt.id}
                   sortOrder={prompt.binSortOrder}
                   totalBins={bins.length}
+                  lastBinIndexRef={lastBinIndexRef}
+                  select={
+                    selectMode
+                      ? {
+                          focalNode,
+                          onPlaced: advanceFrom,
+                          onChoose: choose,
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-      <NodeDrawer nodes={unplacedNodes} itemType="NODE" />
+      {selectMode && <BinSelectFocus node={focalNode} />}
+      <NodeDrawer
+        nodes={unplacedNodes}
+        itemType="NODE"
+        draggable={!selectMode}
+        selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
+      />
     </div>
   );
 };

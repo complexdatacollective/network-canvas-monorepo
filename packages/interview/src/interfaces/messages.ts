@@ -262,6 +262,43 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of an expanded category container. label is its authored label; count is the number of items currently in it.',
   },
+  binSelectInstruction: {
+    id: 'interview.interfaces.binSelectInstruction',
+    defaultMessage: 'Choose where this person belongs.',
+    description:
+      'Shown under the one person a participant is placing when a sorting screen asks them to tap a group instead of dragging. The groups are researcher-authored and shown on the same screen.',
+  },
+  binSelectFocal: {
+    id: 'interview.interfaces.binSelectFocal',
+    defaultMessage: '{name}: choose where this person belongs.',
+    description:
+      'Screen-reader announcement when a new person becomes the one the participant is placing on a sorting screen that asks them to tap a group instead of dragging. name is the person’s unchanged participant-entered or authored display name.',
+  },
+  binSelectComplete: {
+    id: 'interview.interfaces.binSelectComplete',
+    defaultMessage: 'Everyone has been placed.',
+    description:
+      'Shown, and announced to screen readers, on a sorting screen once every person has been put in a group.',
+  },
+  binSelectPlaceIn: {
+    id: 'interview.interfaces.binSelectPlaceIn',
+    defaultMessage: 'Place {name} in {label}',
+    description:
+      'Accessible name of a group a participant taps to put a person in it. name is the person’s unchanged participant-entered or authored display name; label is the unchanged researcher-authored group label.',
+  },
+  binSelectPlaceHere: {
+    id: 'interview.interfaces.binSelectPlaceHere',
+    defaultMessage: 'Place here',
+    description:
+      'Button inside an opened group on a sorting screen that puts the person the participant is placing into that group.',
+  },
+  binSelectShowContents: {
+    id: 'interview.interfaces.binSelectShowContents',
+    defaultMessage:
+      'Show who is in {label}, {count, plural, one {# item} other {# items}}',
+    description:
+      'Accessible name of the small button on a group that opens it to show who is already in it. label is the unchanged researcher-authored group label; count is the number of items currently in the group.',
+  },
   categoryList: {
     id: 'interview.interfaces.categoryList',
     defaultMessage: '{label} category',
