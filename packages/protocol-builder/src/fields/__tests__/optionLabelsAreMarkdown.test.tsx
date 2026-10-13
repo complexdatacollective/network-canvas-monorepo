@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+import { withSafeTypingIntoRichText } from '@codaco/fresco-ui/testing/withSafeTypingIntoRichText';
 import {
   escapeMessageText,
   type LocalizedString,
@@ -183,7 +184,7 @@ function renderAttributeEditor(
   );
 
   return {
-    user: userEvent.setup(),
+    user: withSafeTypingIntoRichText(userEvent.setup()),
     onSubmitDocument,
     /** The options the save handed to the codebook. */
     async saved(): Promise<readonly Readonly<Record<string, unknown>>[]> {

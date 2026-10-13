@@ -377,9 +377,9 @@ describe('the harness keyboard', () => {
 
   /**
    * And the same is true of a caret a test placed ITSELF, which is worth
-   * pinning because it looks as though it should work: `hasSelectedRangeInside`
-   * lets a selection through, so a test could reasonably expect a caret to be
-   * one. It is not. The harness's own click moves it to the start of the text,
+   * pinning because it looks as though it should work: fresco-ui's
+   * `withSafeTypingIntoRichText` lets a selection through, so a test could
+   * reasonably expect a caret to be one. It is not. The harness's own click moves it to the start of the text,
    * and skipping the click leaves ProseMirror never hearing of it — so a test
    * that needs a position selects a range and types the answer out whole.
    */

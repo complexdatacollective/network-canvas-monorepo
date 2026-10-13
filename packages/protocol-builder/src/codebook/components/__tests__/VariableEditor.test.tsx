@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { withSafeTypingIntoRichText } from '@codaco/fresco-ui/testing/withSafeTypingIntoRichText';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -182,7 +183,7 @@ function createProps(
 
 describe('VariableEditor', () => {
   it('creates a categorical variable and returns its stable record id', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const onComplete = vi.fn();
 
@@ -236,7 +237,7 @@ describe('VariableEditor', () => {
   });
 
   it('preserves host-supplied properties when creating a new variable', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
 
     render(
@@ -267,7 +268,7 @@ describe('VariableEditor', () => {
   });
 
   it('updates an existing variable without losing its options', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const existing = {
       name: 'preference',
       label: 'preference',
@@ -568,7 +569,7 @@ describe('VariableEditor', () => {
   });
 
   it('migrates compatible validation and clears incompatible metadata on a type change', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const existing = {
       name: 'birthday',
       label: 'birthday',
@@ -608,7 +609,7 @@ describe('VariableEditor', () => {
   });
 
   it('clears text-only encryption when changing to a non-text type', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const existing = {
       name: 'secret',
       label: 'secret',
@@ -648,7 +649,7 @@ describe('VariableEditor', () => {
   });
 
   it('applies owned fields onto the latest authoritative variable without clobbering remote properties', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const initialVariable = {
       name: 'comment',
       label: 'comment',
@@ -709,7 +710,7 @@ describe('VariableEditor', () => {
   });
 
   it('shows and persists interface-owned options without editable controls', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const lockedOptions = [
       { label: { en: 'Woman' }, value: 'woman' },
       { label: { en: 'Man' }, value: 'man' },
@@ -786,7 +787,7 @@ describe('VariableEditor', () => {
   });
 
   it('keeps a null options draft open when local validation rejects it', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const onComplete = vi.fn();
 
@@ -834,7 +835,7 @@ describe('VariableEditor', () => {
    * attribute, and would never tell them which name they collided with.
    */
   it('names the attribute a duplicate name collides with, and says so at the field', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
 
     render(
@@ -872,7 +873,7 @@ describe('VariableEditor', () => {
    * was refused.
    */
   it('refuses rather than throwing when the write rejects', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
 
     render(
       <VariableEditor
@@ -905,7 +906,7 @@ describe('VariableEditor', () => {
    * a retry that cannot succeed.
    */
   it('names the validation rule an option removal would break', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const existing = {
       name: 'preference',
       label: 'preference',
@@ -958,7 +959,7 @@ describe('VariableEditor', () => {
    * something.
    */
   it('reports a refusal the write wrote for the researcher', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onComplete = vi.fn();
 
     render(
@@ -991,7 +992,7 @@ describe('VariableEditor', () => {
   });
 
   it('preserves the draft after a refused save', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting({
       status: 'refused',
       message: codebookRefusalMessage({
@@ -1032,7 +1033,7 @@ describe('VariableEditor', () => {
   });
 
   it('starts a fresh draft when a rapid reopen changes openId', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const { rerender } = render(
       <VariableEditor
         {...createProps({
@@ -1113,7 +1114,7 @@ describe('the settings the chosen input control takes', () => {
   };
 
   it('saves the resolution and the bounds a date attribute accepts', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
@@ -1155,7 +1156,7 @@ describe('the settings the chosen input control takes', () => {
    * earliest year of 1900 or a latest of 2030 at all.
    */
   it('takes years a date bound can be authored at, past the window the interview offers by default', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
@@ -1193,7 +1194,7 @@ describe('the settings the chosen input control takes', () => {
    * touching only the name leaves it exactly as it was.
    */
   it('shows a year bound past any list of years, and keeps it through a rename', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
@@ -1227,7 +1228,7 @@ describe('the settings the chosen input control takes', () => {
    * so correcting 4500 is the same gesture as writing it in the first place.
    */
   it('rewrites a year bound past any list of years', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
@@ -1255,7 +1256,7 @@ describe('the settings the chosen input control takes', () => {
    * named rather than numbered — and the year beside it is still written.
    */
   it('writes the year and picks the month of a bound at month resolution', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
@@ -1284,7 +1285,7 @@ describe('the settings the chosen input control takes', () => {
   });
 
   it('saves the window a relative date attribute offers around its anchor', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
@@ -1318,7 +1319,7 @@ describe('the settings the chosen input control takes', () => {
    * researcher was told nothing.
    */
   it('refuses a day count that is not whole rather than clearing the window', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
@@ -1350,7 +1351,7 @@ describe('the settings the chosen input control takes', () => {
   });
 
   it('saves a day count corrected after that refusal', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
@@ -1376,7 +1377,7 @@ describe('the settings the chosen input control takes', () => {
   });
 
   it('saves the labels a scale shows at each end', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'closeness',
@@ -1442,7 +1443,7 @@ describe('the settings the chosen input control takes', () => {
    * empty end, and nothing is read out at it.
    */
   it('refuses a scale whose ends are named with nothing but spaces', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'closeness',
@@ -1478,7 +1479,7 @@ describe('the settings the chosen input control takes', () => {
    * the thing they can act on.
    */
   it('refuses a date range that ends before it starts, against the date that ends it', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
@@ -1523,7 +1524,7 @@ describe('the settings the chosen input control takes', () => {
    * at it, which is what the options fieldset thirty lines above already does.
    */
   it('associates a refusal about the whole settings block with the fieldset', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
 
     render(
@@ -1573,7 +1574,7 @@ describe('the settings the chosen input control takes', () => {
    * to go.
    */
   it('swaps the fields and drops the old settings when the control changes', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
@@ -1607,7 +1608,7 @@ describe('the settings the chosen input control takes', () => {
   });
 
   it('clears the bounds when the resolution they were chosen under changes', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
@@ -1652,7 +1653,7 @@ describe('the settings the chosen input control takes', () => {
    * the field would find the old window still there.
    */
   it('removes the settings block when every setting is cleared', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
@@ -1678,7 +1679,7 @@ describe('the settings the chosen input control takes', () => {
   });
 
   it('creates an attribute together with the settings its control takes', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     render(
       <VariableEditor
@@ -1722,7 +1723,7 @@ describe('the settings the chosen input control takes', () => {
   });
 
   it('leaves an attribute whose control takes no settings alone', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'comment',
@@ -1793,7 +1794,7 @@ describe('the two answers a boolean offers', () => {
   };
 
   it('names the two answers a boolean choice shows, and marks one as negative', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'flagged',
@@ -1833,7 +1834,7 @@ describe('the two answers a boolean offers', () => {
   });
 
   it('keeps the answers of a boolean that holds more than two, through an edit that only renames it', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -1903,7 +1904,7 @@ describe('the two answers a boolean offers', () => {
    * until they name it. An attribute they can no longer rename.
    */
   it('keeps a boolean that offers a single answer, and asks for no second one', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -1945,7 +1946,7 @@ describe('the two answers a boolean offers', () => {
    * what it meant.
    */
   it('keeps both stored booleans of a pair that records one of them twice, through an edit that only renames it', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -2010,7 +2011,7 @@ describe('the two answers a boolean offers', () => {
    * is the fieldset's own, and stays editable answer by answer.
    */
   it('writes an answer edited on a pair that records both booleans', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -2039,7 +2040,7 @@ describe('the two answers a boolean offers', () => {
   });
 
   it('offers no answers to name for a boolean collected with a toggle', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'flagged',
@@ -2076,7 +2077,7 @@ describe('the two answers a boolean offers', () => {
    * not take.
    */
   it('drops the answers and records the control that cannot show them', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -2125,7 +2126,7 @@ describe('the two answers a boolean offers', () => {
    * variable the schema refuses outright, so the two have to land together.
    */
   it('writes the control the answers were authored for, not the one the codebook holds', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -2189,7 +2190,7 @@ describe('the two answers a boolean offers', () => {
   });
 
   it('leaves a pair of answers nobody touched exactly as it was', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -2233,7 +2234,7 @@ describe('the two answers a boolean offers', () => {
    * labelling rather than assuming.
    */
   it('keeps which answer records which value when a protocol stores false first', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -2269,7 +2270,7 @@ describe('the two answers a boolean offers', () => {
    * participant cannot answer.
    */
   it('refuses a pair with only one of its answers named', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const variable = {
       name: 'flagged',
@@ -2304,7 +2305,7 @@ describe('the two answers a boolean offers', () => {
    * a participant cannot tell apart is not an answerable question.
    */
   it('refuses a pair whose two answers say the same thing', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'agrees',
@@ -2340,7 +2341,7 @@ describe('the two answers a boolean offers', () => {
    * value becomes a key, which is why that rule folds case.
    */
   it('takes two answers that differ only in case', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'agrees',
@@ -2373,7 +2374,7 @@ describe('the two answers a boolean offers', () => {
    * being written empty.
    */
   it('takes the answers away again when both are cleared', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -2405,12 +2406,40 @@ describe('the two answers a boolean offers', () => {
   });
 
   /**
-   * A stored pair whose two answers are blank (which schema 9 no longer
-   * accepts) is still edited through those two fields, and naming both of
-   * them writes what was named.
+   * A stored pair whose two answers are blank cannot be saved as it is,
+   * because schema 9 no longer accepts blank answer text: an edit that only
+   * renames the attribute is refused, and nothing is written.
+   */
+  it('refuses to save a stored pair whose two answers are blank, through an edit that only renames it', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    const onSubmitDocument = submitting();
+    const committed = {
+      name: 'flagged',
+      label: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: { en: '' }, value: true },
+        { label: { en: ' ' }, value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    expect(await screen.findByText(/attribute not saved/i)).toBeInTheDocument();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The other side of it: those two blank fields are still the editor for that
+   * pair, and naming both of them writes what was named.
    */
   it('writes the answers a researcher names onto a stored pair that was blank', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
@@ -2442,7 +2471,7 @@ describe('the two answers a boolean offers', () => {
   });
 
   it('creates a boolean together with the answers it offers', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     render(
       <VariableEditor
@@ -2493,7 +2522,7 @@ describe('the two answers a boolean offers', () => {
    * never be created at all.
    */
   it('drops the answers a create draft carried to a toggle', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     render(
       <VariableEditor
@@ -2537,7 +2566,7 @@ describe('the two answers a boolean offers', () => {
    * or not the researcher touches the fields.
    */
   it('creates a boolean with the answers its draft already carried', async () => {
-    const user = userEvent.setup();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
     const onSubmitDocument = submitting();
     render(
       <VariableEditor
