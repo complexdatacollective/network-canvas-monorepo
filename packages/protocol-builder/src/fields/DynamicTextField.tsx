@@ -639,10 +639,13 @@ export function DynamicMessageEditor({
       return undefined;
     }
     const values = dynamicValueArgumentsAt(bindings, context);
-    const own = findDynamicValueProblem(message, values);
+    const own = findDynamicValueProblem(message, values, locale);
     if (own !== undefined) return own;
     if (original === undefined || original.locale === locale) return undefined;
-    if (findDynamicValueProblem(original.message, values) !== undefined) {
+    if (
+      findDynamicValueProblem(original.message, values, original.locale) !==
+      undefined
+    ) {
       return undefined;
     }
     const missing = findMissingDynamicPlacement(
