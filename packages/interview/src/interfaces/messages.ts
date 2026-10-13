@@ -264,40 +264,40 @@ export const interfaceMessages = defineMessages({
   },
   binSelectInstruction: {
     id: 'interview.interfaces.binSelectInstruction',
-    defaultMessage: 'Choose where this person belongs.',
+    defaultMessage: 'Choose where this item belongs.',
     description:
-      'Shown under the one person a participant is placing when a sorting screen asks them to tap a group instead of dragging. The groups are researcher-authored and shown on the same screen.',
+      'Shown under the one item a participant is placing when a sorting screen asks them to tap a group instead of dragging. An item is whatever the researcher has the participant sort: usually a person, but it can be a place, an organisation or anything else. The groups are researcher-authored and shown on the same screen.',
   },
   binSelectFocal: {
     id: 'interview.interfaces.binSelectFocal',
-    defaultMessage: '{name}: choose where this person belongs.',
+    defaultMessage: '{name}: choose where this item belongs.',
     description:
-      'Screen-reader announcement when a new person becomes the one the participant is placing on a sorting screen that asks them to tap a group instead of dragging. name is the person’s unchanged participant-entered or authored display name.',
+      'Screen-reader announcement when a new item becomes the one the participant is placing on a sorting screen that asks them to tap a group instead of dragging. An item is usually a person, but it can be a place, an organisation or anything else. name is the item’s unchanged participant-entered or authored display name.',
   },
   binSelectComplete: {
     id: 'interview.interfaces.binSelectComplete',
-    defaultMessage: 'Everyone has been placed.',
+    defaultMessage: 'Every item has been placed.',
     description:
-      'Shown, and announced to screen readers, on a sorting screen once every person has been put in a group.',
+      'Shown, and announced to screen readers, on a sorting screen once every item (usually a person, but it can be a place, an organisation or anything else) has been put in a group.',
   },
   binSelectPlaceIn: {
     id: 'interview.interfaces.binSelectPlaceIn',
     defaultMessage: 'Place {name} in {label}',
     description:
-      'Accessible name of a group a participant taps to put a person in it. name is the person’s unchanged participant-entered or authored display name; label is the unchanged researcher-authored group label.',
+      'Accessible name of a group a participant taps to put an item (usually a person) in it. name is the item’s unchanged participant-entered or authored display name; label is the unchanged researcher-authored group label.',
   },
   binSelectPlaceHere: {
     id: 'interview.interfaces.binSelectPlaceHere',
     defaultMessage: 'Place here',
     description:
-      'Button inside an opened group on a sorting screen that puts the person the participant is placing into that group.',
+      'Button inside an opened group on a sorting screen that puts the item the participant is placing (usually a person) into that group.',
   },
   binSelectShowContents: {
     id: 'interview.interfaces.binSelectShowContents',
     defaultMessage:
-      'Show who is in {label}, {count, plural, one {# item} other {# items}}',
+      'Show what is in {label}, {count, plural, one {# item} other {# items}}',
     description:
-      'Accessible name of the small button on a group that opens it to show who is already in it. label is the unchanged researcher-authored group label; count is the number of items currently in the group.',
+      'Accessible name of the small button on a group that opens it to show what is already in it. label is the unchanged researcher-authored group label; count is the number of items currently in the group.',
   },
   categoryList: {
     id: 'interview.interfaces.categoryList',

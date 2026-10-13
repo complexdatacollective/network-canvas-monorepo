@@ -275,7 +275,7 @@ const startDragOf = (getDndStore: () => StoreApi<DndStore>, node: NcNode) =>
   });
 
 const announcement = (name: string) =>
-  screen.findByText(`${name}: choose where this person belongs.`);
+  screen.findByText(`${name}: choose where this item belongs.`);
 
 describe('CategoricalBin in select mode (#1652)', () => {
   it('places the focal person in the tapped bin and moves on to the next', async () => {
@@ -368,7 +368,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
     await announcement('Ben');
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Show who is in Family, 1 item' }),
+      screen.getByRole('button', { name: 'Show what is in Family, 1 item' }),
     );
     fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
     await announcement('Ann');
@@ -428,7 +428,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
     }
 
     expect(
-      await screen.findAllByText('Everyone has been placed.'),
+      await screen.findAllByText('Every item has been placed.'),
     ).not.toHaveLength(0);
   });
 
@@ -446,6 +446,36 @@ describe('CategoricalBin in select mode (#1652)', () => {
     await announcement('Ann');
   });
 
+  it('records moving someone placed before the stage was left as a move', async () => {
+    const { attributesOf } = renderStage('select', [
+      person('a', 'Ann', { category: [1] }),
+      person('b', 'Ben'),
+    ]);
+
+    await announcement('Ben');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show what is in Family, 1 item' }),
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
+    await announcement('Ann');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Place Ann in Friend' }),
+    );
+
+    await waitFor(() => expect(attributesOf('a')?.category).toEqual([2]));
+    expect(track).toHaveBeenCalledWith('node_rebinned', {
+      node_id: 'a',
+      node_type_index: 0,
+      from_bin_index: 0,
+      to_bin_index: 1,
+      interaction_mode: 'select',
+    });
+    expect(track).not.toHaveBeenCalledWith(
+      'node_binned',
+      expect.objectContaining({ node_id: 'a' }),
+    );
+  });
+
   it('narrows a person with several answers to the bin tapped', async () => {
     const { attributesOf } = renderStage('select', [
       person('a', 'Ann', { category: [1, 2] }),
@@ -454,7 +484,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
 
     await announcement('Ben');
     fireEvent.click(
-      screen.getByRole('button', { name: 'Show who is in Family, 1 item' }),
+      screen.getByRole('button', { name: 'Show what is in Family, 1 item' }),
     );
     fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
     await announcement('Ann');
@@ -473,7 +503,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
 
     await announcement('Ben');
     fireEvent.click(
-      screen.getByRole('button', { name: 'Show who is in Other, 1 item' }),
+      screen.getByRole('button', { name: 'Show what is in Other, 1 item' }),
     );
     fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
     await announcement('Ann');

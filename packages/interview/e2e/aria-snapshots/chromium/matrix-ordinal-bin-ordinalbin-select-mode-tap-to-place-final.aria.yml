@@ -12,7 +12,7 @@
     - heading "Very close" [level=4]
   - listbox "Item list":
     - option "Alice"
-  - status: Everyone has been placed.
+  - status: Every item has been placed.
   - button "0 unplaced Expand drawer" [disabled]
   - navigation:
     - button "Settings"

@@ -28,8 +28,9 @@ dragging hard.
   named after the person and the bin.
 - `node_binned` and `node_rebinned` analytics events carry the
   `interaction_mode`, and a `focal_node` event records each person shown.
-  An ordinal bin now records `node_rebinned` when a person moves between
-  bins.
+  Both bins now work out whether a person is moving between bins from their
+  stored answer, so a move made after coming back to the stage is recorded as
+  `node_rebinned`, and an ordinal bin records `node_rebinned` at all.
 
 **Synthetic interviews (`@codaco/protocol-utilities`)**
 

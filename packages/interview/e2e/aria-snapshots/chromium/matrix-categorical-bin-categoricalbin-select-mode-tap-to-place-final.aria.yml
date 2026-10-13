@@ -2,14 +2,14 @@
   - status:
     - heading "Which categories does each person belong to?" [level=2]
   - button "Category Family, 1 item" [disabled]
-  - button "Show who is in Family, 1 item"
+  - button "Show what is in Family, 1 item"
   - heading "Family" [level=4]
   - paragraph: Alice
   - button "Category Work, 1 item" [disabled]
-  - button "Show who is in Work, 1 item"
+  - button "Show what is in Work, 1 item"
   - heading "Work" [level=4]
   - paragraph: Bob
-  - status: Everyone has been placed.
+  - status: Every item has been placed.
   - button "0 unplaced Expand drawer" [disabled]
   - navigation:
     - button "Settings"

@@ -5,7 +5,7 @@
   - heading "Family" [level=4]
   - button "Place Alice in Work"
   - heading "Work" [level=4]
-  - status: "Alice: choose where this person belongs."
+  - status: "Alice: choose where this item belongs."
   - text: Alice
   - button "2 unplaced Collapse drawer" [expanded]
   - button "Alice" [pressed]

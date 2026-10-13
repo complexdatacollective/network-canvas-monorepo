@@ -230,8 +230,6 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     previousExpandedRef.current = expandedBinIndex;
   }, [expandedBinIndex, track]);
 
-  const lastBinIndexRef = useRef<Map<string, number>>(new Map());
-
   // Collapse expanded bin on document-level click or Escape press, so the wrapping
   // container doesn't need an interactive role.
   useEffect(() => {
@@ -331,11 +329,15 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
     const bin = bins[binIndex]!;
-    // Each prompt has its own variable, so a bin is only remembered per prompt.
-    const historyKey = `${prompt.id}:${nodeId}`;
+    // The bin they are in now, read from their stored answer so that a move
+    // made after coming back to the stage still counts as a move.
+    const previousIndex = bins.findIndex((candidate) =>
+      candidate.nodes.some(
+        (binNode) => binNode[entityPrimaryKeyProperty] === nodeId,
+      ),
+    );
     const recordCommittedDrop = () => {
-      const previousIndex = lastBinIndexRef.current.get(historyKey);
-      if (previousIndex === undefined) {
+      if (previousIndex === -1) {
         track('node_binned', {
           node_id: nodeId,
           node_type_index: codebookTypeIndex(codebook, 'node', node.type),
@@ -351,7 +353,6 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           interaction_mode: selectMode ? 'select' : 'drag',
         });
       }
-      lastBinIndexRef.current.set(historyKey, binIndex);
     };
 
     // If the node is being dropped into the 'other' bin, show a dialog to
