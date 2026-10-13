@@ -203,10 +203,12 @@ describe('migrationV8toV9 session step', () => {
       }),
     );
 
-    // The pedigree's introduction and the census's own come before it.
+    // The pedigree's introduction and the census's own come before it. The
+    // session resumes on the census's introduction, which schema 8 showed
+    // whenever the census opened.
     expect(protocol.stages[dyadIndex + 1]?.id).toBe('dyad-family-introduction');
     expect(protocol.stages[dyadIndex + 2]?.id).toBe('dyad-family');
-    expect(result.currentStep).toBe(dyadIndex + 2);
+    expect(result.currentStep).toBe(dyadIndex + 1);
     expect(result.stageMetadata).toEqual({
       [PEDIGREE_INDEX + 1]: { framing: 'gendered' },
       [dyadIndex + 2]: pairs,
