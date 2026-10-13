@@ -1791,6 +1791,18 @@
     "defaultMessage": "Search languages",
     "description": "Placeholder of the search box in the list of languages."
   },
+  "architect.localization.languageChooserAlert.description": {
+    "defaultMessage": "This protocol has more than one language but no Language Chooser stage. Each interview opens in the language that best matches the participant’s browser settings. Add a Language Chooser stage if participants should choose the language themselves.",
+    "description": "Note shown while the protocol has more than one language but no Language Chooser stage. \"Language Chooser\" is the name of a stage type in the list of stages a researcher can add, so translate it the same way as that name."
+  },
+  "architect.localization.languageChooserAlert.dismiss": {
+    "defaultMessage": "Dismiss the note that participants can’t choose a language",
+    "description": "Accessible name of the button that hides the note saying participants can’t choose a language. The note stays hidden for this protocol."
+  },
+  "architect.localization.languageChooserAlert.title": {
+    "defaultMessage": "Participants can’t choose a language",
+    "description": "Title of the note on the stage list shown while the protocol has more than one language but no Language Chooser stage."
+  },
   "architect.localization.languageList.addLanguages": {
     "defaultMessage": "Add languages",
     "description": "Button that opens the dialog for adding languages."

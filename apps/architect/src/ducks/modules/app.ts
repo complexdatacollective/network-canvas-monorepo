@@ -225,4 +225,46 @@ export function getDismissedMissingTranslations(
   return getDismissedMissingTranslationsRecord(state)[protocolId] ?? null;
 }
 
+const DISMISSED_LANGUAGE_CHOOSER_NOTES_KEY = 'dismissedLanguageChooserNotes';
+
+const dismissedLanguageChooserNotesSchema = z.array(z.string());
+
+function getDismissedLanguageChooserNotesList(
+  state: Pick<RootState, 'app'>,
+): string[] {
+  const parsed = z.safeParse(
+    dismissedLanguageChooserNotesSchema,
+    get(state, ['app', DISMISSED_LANGUAGE_CHOOSER_NOTES_KEY]),
+  );
+  return parsed.success ? parsed.data : [];
+}
+
+/**
+ * Records that the researcher dismissed the note about a protocol having no
+ * Language Chooser stage. Leaving one out is a valid choice, so the note stays
+ * dismissed for that protocol.
+ */
+export function dismissLanguageChooserNote(protocolId: string) {
+  return (
+    dispatch: (action: ReturnType<typeof setProperty>) => void,
+    getState: () => Pick<RootState, 'app'>,
+  ) => {
+    const dismissed = getDismissedLanguageChooserNotesList(getState());
+    if (dismissed.includes(protocolId)) return;
+    dispatch(
+      setProperty({
+        key: DISMISSED_LANGUAGE_CHOOSER_NOTES_KEY,
+        value: [...dismissed, protocolId],
+      }),
+    );
+  };
+}
+
+export function getLanguageChooserNoteDismissed(
+  state: Pick<RootState, 'app'>,
+  protocolId: string,
+): boolean {
+  return getDismissedLanguageChooserNotesList(state).includes(protocolId);
+}
+
 export default appSlice.reducer;

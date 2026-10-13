@@ -33,6 +33,7 @@ import { getAssetManifest, getCodebook, getProtocol } from './protocol';
  *  - Missing translations (text with no translation in a protocol language)
  *  - A finish stage without its heading or text in the default language,
  *    which unlike the rest stops the protocol being downloaded
+ *  - Several languages but no stage where participants choose one
  */
 
 export type UnusedSummary = {
@@ -160,6 +161,21 @@ export const getFinishStageTextProblem = createSelector(
   [getProtocol],
   (protocol) =>
     (protocol ? findFinishStageTextProblems(protocol) : [])[0] ?? null,
+);
+
+/**
+ * True when the protocol offers more than one language but has no Language
+ * Chooser stage. That is valid: each interview then opens in the protocol
+ * language that best matches the participant's browser. It is worth a note
+ * only because a researcher who added languages may expect participants to
+ * be able to pick one.
+ */
+export const getLacksLanguageChooser = createSelector(
+  [getProtocol],
+  (protocol) =>
+    protocol !== null &&
+    protocol.localization.locales.length > 1 &&
+    !protocol.stages.some((stage) => stage.type === 'LanguageChooser'),
 );
 
 export type LocaleCoverage = {
