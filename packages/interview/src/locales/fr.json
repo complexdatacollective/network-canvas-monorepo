@@ -126,6 +126,7 @@
   "interview.runtime.deleteBin": "Corbeille",
   "interview.runtime.drawer": "Tiroir",
   "interview.runtime.dropToRemove": "Déposer ici pour retirer",
+  "interview.runtime.dynamicValue": "Valeur dynamique : {value}",
   "interview.runtime.expandDrawer": "Déplier le tiroir",
   "interview.runtime.filter": "Filtrer…",
   "interview.runtime.firstNode": "Premier élément",

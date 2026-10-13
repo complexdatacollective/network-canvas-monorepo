@@ -1,8 +1,8 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { render, renderHook, screen } from '@testing-library/react';
-import { isValidElement, type ReactNode } from 'react';
+import { type ComponentProps, createElement, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import {
@@ -21,6 +21,23 @@ import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import { useVariableLabels } from '../buildVariableLabels';
 import useProtocolForm from '../useProtocolForm';
+
+// Each field's props as it rendered, so a test can read what the field was
+// given where it renders.
+const renderedFieldProps = vi.hoisted((): Record<string, unknown>[] => []);
+vi.mock('../ProtocolFormField', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../ProtocolFormField')>();
+  return {
+    default: (props: ComponentProps<typeof actual.default>) => {
+      renderedFieldProps.push(props);
+      return createElement(actual.default, props);
+    },
+  };
+});
+
+afterEach(() => {
+  renderedFieldProps.length = 0;
+});
 
 const NODE_TYPE = 'person';
 const ENGLISH_ONLY: LocalizationDeclaration = {
@@ -111,21 +128,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-/** The variable names the comparison validators receive with the form. */
-function variableLabelsOf(fields: FormField[], wrapper = makeWrapper()) {
-  const { result } = renderHook(
-    () =>
-      useProtocolForm({
-        fields,
-        subject: { entity: 'node', type: NODE_TYPE },
-      }).fieldComponents,
-    { wrapper },
+/**
+ * The variable names the comparison validators receive with the form, as the
+ * last render of its first field was given them. They are resolved where the
+ * fields render (inside the form's live values), so they are read there.
+ */
+function variableLabelsOf(fields: FormField[]) {
+  const props = renderedFieldProps.findLast(
+    (candidate) =>
+      isRecord(candidate.field) &&
+      candidate.field.variable === fields[0]?.variable,
   );
-  const element = Array.isArray(result.current)
-    ? result.current[0]
-    : result.current;
-  if (!isValidElement(element) || !isRecord(element.props)) return undefined;
-  const { validationContext } = element.props;
+  const validationContext = props?.validationContext;
   return isRecord(validationContext)
     ? validationContext.variableLabels
     : undefined;
@@ -175,7 +189,7 @@ describe('the caption and the validator name come from one rule', () => {
     // default language, never with the attribute's untranslated label.
     expect(screen.getByLabelText('How many siblings?')).toBeInTheDocument();
     expect(screen.queryByLabelText('Siblings')).not.toBeInTheDocument();
-    expect(variableLabelsOf(fields, wrapper)).toEqual({
+    expect(variableLabelsOf(fields)).toEqual({
       age: 'Quel âge avez-vous ?',
       siblings: 'How many siblings?',
     });

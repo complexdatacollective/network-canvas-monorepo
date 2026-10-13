@@ -26,6 +26,7 @@ import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animati
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
+import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -117,13 +118,20 @@ const ENGLISH_ONLY: LocalizationDeclaration = {
 type LocaleSetup = {
   localization?: LocalizationDeclaration;
   locale?: LocaleTag | null;
+  stage?: StageProps<'TieStrengthCensus'>['stage'];
+  nodes?: ReturnType<typeof makeNodes>;
 };
 
 function renderInterface(
   edges: NcEdge[] = [],
   codebookOverride: ReturnType<typeof makeCodebook> = codebook,
   skipAnimations = false,
-  { localization = ENGLISH_ONLY, locale = null }: LocaleSetup = {},
+  {
+    localization = ENGLISH_ONLY,
+    locale = null,
+    stage: stageUnderTest = stage,
+    nodes = makeNodes(),
+  }: LocaleSetup = {},
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
@@ -132,7 +140,7 @@ function renderInterface(
         id: 's',
         promptIndex: 0,
         network: {
-          nodes: makeNodes(),
+          nodes,
           edges,
           ego: { [entityAttributesProperty]: {} },
         },
@@ -143,7 +151,7 @@ function renderInterface(
         schemaVersion: 9,
         localization,
         codebook: codebookOverride,
-        stages: [stage],
+        stages: [stageUnderTest],
       } as never,
     },
     middleware: (g) => g({ serializableCheck: false }),
@@ -161,7 +169,7 @@ function renderInterface(
 
   const moveForward = vi.fn();
   const props: StageProps<'TieStrengthCensus'> = {
-    stage,
+    stage: stageUnderTest,
     getNavigationHelpers: () => ({ moveForward, moveBackward: vi.fn() }),
   };
 
@@ -172,7 +180,9 @@ function renderInterface(
           <MotionConfig reducedMotion="never" skipAnimations={skipAnimations}>
             <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
               <StageMetadataContext.Provider value={registerBeforeNext}>
-                {children}
+                <StageDynamicValues stage={stageUnderTest}>
+                  {children}
+                </StageDynamicValues>
               </StageMetadataContext.Provider>
             </CurrentStepProvider>
           </MotionConfig>
@@ -359,5 +369,35 @@ describe('TieStrengthCensus option labels', () => {
 
     expect(marksOwnLanguage('ضعيفة')).toBe(false);
     expect(marksOwnLanguage('Strong')).toBe(false);
+  });
+});
+
+describe('TieStrengthCensus dynamic values', () => {
+  it('names the pair on screen in the decline label', async () => {
+    const [first, second] = makeNodes();
+    const { advancePastIntro } = renderInterface([], codebook, false, {
+      stage: {
+        ...stage,
+        dynamicValues: {
+          first: { path: 'dyad.source.name' },
+          second: { path: 'dyad.target.name' },
+        },
+        prompts: stage.prompts.map((prompt) => ({
+          ...prompt,
+          negativeLabel: {
+            en: '{first, select, missing {Not close} other {{first} and {second} are not close}}',
+          },
+        })),
+      } as StageProps<'TieStrengthCensus'>['stage'],
+      nodes: [
+        { ...first!, [entityAttributesProperty]: { name: 'Ada' } },
+        { ...second!, [entityAttributesProperty]: { name: 'Grace' } },
+      ],
+    });
+    await advancePastIntro();
+
+    expect(
+      screen.getByRole('option', { name: 'Ada and Grace are not close' }),
+    ).toBeInTheDocument();
   });
 });

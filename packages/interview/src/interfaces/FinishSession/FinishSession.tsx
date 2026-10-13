@@ -25,6 +25,10 @@ import {
   useFinishConfirmationDescription,
 } from '../../contract/context';
 import type { CompletedAction } from '../../contract/types';
+import {
+  DynamicMarkdown,
+  DynamicTextParts,
+} from '../../dynamicValues/DynamicText';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getInterviewId } from '../../selectors/session';
@@ -42,7 +46,8 @@ type FinishSessionText = Pick<
 
 /** The screen's own words, which the protocol holds as the stage's settings. */
 function StageText({ value }: { value: LocalizedString }) {
-  return <>{useLocalizedString(value).text}</>;
+  const { text, parts } = useLocalizedString(value);
+  return parts === undefined ? <>{text}</> : <DynamicTextParts parts={parts} />;
 }
 
 function FinishSessionTitle({
@@ -52,21 +57,25 @@ function FinishSessionTitle({
   title: FinishSessionStage['title'];
   headingRef?: Ref<HTMLHeadingElement>;
 }) {
-  const { text } = useLocalizedString(title);
-  return (
-    <RenderMarkdown
-      allowedElements={TITLE_ELEMENTS}
-      render={
-        <Heading
-          ref={headingRef}
-          tabIndex={headingRef ? -1 : undefined}
-          level="h1"
-          className="text-center"
-        />
-      }
-    >
+  const { text, parts } = useLocalizedString(title);
+  const heading = (
+    <Heading
+      ref={headingRef}
+      tabIndex={headingRef ? -1 : undefined}
+      level="h1"
+      className="text-center"
+    />
+  );
+  return parts === undefined ? (
+    <RenderMarkdown allowedElements={TITLE_ELEMENTS} render={heading}>
       {text}
     </RenderMarkdown>
+  ) : (
+    <DynamicMarkdown
+      allowedElements={TITLE_ELEMENTS}
+      render={heading}
+      parts={parts}
+    />
   );
 }
 

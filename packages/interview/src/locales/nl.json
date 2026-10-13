@@ -126,6 +126,7 @@
   "interview.runtime.deleteBin": "Prullenbak",
   "interview.runtime.drawer": "Lade",
   "interview.runtime.dropToRemove": "Hier neerzetten om weg te halen",
+  "interview.runtime.dynamicValue": "Dynamische waarde: {value}",
   "interview.runtime.expandDrawer": "Lade uitklappen",
   "interview.runtime.filter": "Filteren…",
   "interview.runtime.firstNode": "Eerste item",

@@ -26,7 +26,12 @@ import type {
   Variable,
 } from '@codaco/protocol-validation';
 
-import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
+import { DynamicMarkdown } from '../dynamicValues/DynamicText';
+import { markdownSource } from '../dynamicValues/resolveDynamicText';
+import {
+  type ResolvedProtocolText,
+  useResolveLocalizedString,
+} from '../localization/ProtocolLocalizationProvider';
 import { buildDatePickerBoundProps } from './buildDatePickerBoundProps';
 import { buildFieldValidationProps } from './buildFieldValidationProps';
 import { resolveRenderedControl } from './resolveRenderedControl';
@@ -73,6 +78,22 @@ const isLocalizedString = (value: unknown): value is LocalizedString =>
   Object.keys(value).length > 0 &&
   Object.values(value).every((text) => typeof text === 'string');
 
+/**
+ * A caption, with any dynamic values in it marked out. The field's label
+ * renders a string caption as markdown but shows a node as it is, so a
+ * caption with values is rendered as markdown here, with the values kept out
+ * of it.
+ */
+export const shownLabel = ({ text, parts }: ResolvedProtocolText): ReactNode =>
+  parts === undefined ? text : <DynamicMarkdown parts={parts} />;
+
+/**
+ * A hint, which the field renders as markdown, with any dynamic values in it
+ * marked out and kept out of the markdown.
+ */
+const shownHint = ({ text, parts }: ResolvedProtocolText): ReactNode =>
+  parts === undefined ? text : <DynamicMarkdown parts={parts} />;
+
 type ProtocolFieldProps = {
   field: ProtocolFieldDefinition;
   name?: string;
@@ -109,7 +130,7 @@ export default function ProtocolField({
   const props: {
     name: string;
     nameMode: 'opaque';
-    label: string;
+    label: ReactNode;
     hint?: ReactNode | string;
     showValidationHints?: boolean;
     options?: (Omit<ProtocolFieldOption, 'label'> & {
@@ -130,10 +151,10 @@ export default function ProtocolField({
   } & Partial<ValidationPropsCatalogue> = {
     name,
     nameMode: 'opaque',
-    label: resolve(field.label).text,
+    label: shownLabel(resolve(field.label)),
     ...(hint !== undefined
       ? { hint }
-      : field.hint !== undefined && { hint: resolve(field.hint).text }),
+      : field.hint !== undefined && { hint: shownHint(resolve(field.hint)) }),
     ...(field.showValidationHints !== undefined && {
       showValidationHints: field.showValidationHints,
     }),
@@ -175,10 +196,10 @@ export default function ProtocolField({
   if (component === 'VisualAnalogScale' && field.parameters) {
     const { minLabel, maxLabel } = field.parameters;
     if (isLocalizedString(minLabel)) {
-      props.minLabel = resolve(minLabel).text;
+      props.minLabel = markdownSource(resolve(minLabel));
     }
     if (isLocalizedString(maxLabel)) {
-      props.maxLabel = resolve(maxLabel).text;
+      props.maxLabel = markdownSource(resolve(maxLabel));
     }
   }
 
