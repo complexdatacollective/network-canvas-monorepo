@@ -254,6 +254,28 @@ describe('findMissingDynamicPlacement', () => {
     ).toEqual({ argument: 'count', when: { count: '0.5' } });
   });
 
+  it('waives a one-number version only where the translation reaches that plural', () => {
+    // The original shows the count only for one person. The translation has
+    // a plural for it, but only in its version for a friend.
+    const original =
+      '{kind, select, friend {Hi} other {{count, select, missing {Hi} other {{count, plural, one {# person} other {Hi}}}}}}';
+    const translation =
+      '{kind, select, friend {{count, select, missing {Hi} other {{count, plural, one {one person} other {Hi}}}}} other {Hi}}';
+    expect(
+      findMissingDynamicPlacement(original, 'en', translation, 'en', VALUES),
+    ).toMatchObject({ argument: 'count', when: { count: '1' } });
+    // Where the version does go through the plural, "one person" is fine.
+    expect(
+      findMissingDynamicPlacement(
+        '{count, select, missing {Hi} other {{count, plural, one {# person} other {# people}}}}',
+        'en',
+        '{count, select, missing {Hi} other {{count, plural, one {one person} other {# people}}}}',
+        'en',
+        VALUES,
+      ),
+    ).toBeUndefined();
+  });
+
   it('refuses to accept what it has too many versions to check', () => {
     const many: DynamicValueArguments = Object.fromEntries(
       Array.from({ length: 8 }, (_, index) => [
