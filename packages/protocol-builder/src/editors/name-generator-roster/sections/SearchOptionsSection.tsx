@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
@@ -10,6 +10,7 @@ import LikertScaleField from '@codaco/fresco-ui/form/fields/LikertScale';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import Section from '@codaco/fresco-ui/Section';
 
+import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import BuilderSection, {
   type SectionCapability,
@@ -244,6 +245,43 @@ const withSavedTolerance = (
  */
 const DEFAULT_TOLERANCE = 0.25;
 
+const isEmptyChoice = (value: unknown): boolean =>
+  value === undefined ||
+  value === null ||
+  (Array.isArray(value) && value.length === 0);
+
+/**
+ * Puts the search on `DEFAULT_TOLERANCE` when it is switched on holding nothing.
+ *
+ * Rendered inside the section's panel, so it mounts only once the search is on,
+ * and it acts once, on that mount. Written as a value rather than handed to the
+ * field as its initial one: choosing the data file first resets this section
+ * (`resetOn`), and the reset parks the tolerance as empty, which a field's
+ * initial value does not outrank when it registers.
+ *
+ * A search the stage arrived with is left alone, including one that names
+ * attributes and no tolerance: that stage says so in the section's own words
+ * rather than being given a setting nobody chose.
+ */
+function StartingTolerance() {
+  const { readOnly, storeApi } = useStageEditorForm();
+  const heldTolerance = useStageValue(FUZZINESS);
+  const heldAttributes = useStageValue(MATCH_PROPERTIES);
+  const decided = useRef(false);
+
+  useEffect(() => {
+    if (decided.current) return;
+    decided.current = true;
+    if (readOnly) return;
+    if (!isEmptyChoice(heldTolerance) || !isEmptyChoice(heldAttributes)) {
+      return;
+    }
+    storeApi.getState().setFieldValue(FUZZINESS, DEFAULT_TOLERANCE);
+  }, [heldAttributes, heldTolerance, readOnly, storeApi]);
+
+  return null;
+}
+
 const MATCH_REQUIRED = createMessageError(messages.matchRequired);
 
 const TOLERANCE_REQUIRED = createMessageError(messages.toleranceRequired);
@@ -289,17 +327,6 @@ export default function SearchOptionsSection() {
   // go the moment the researcher moves to a named setting, or the value they
   // just left would stay choosable.
   const heldTolerance = useStageValue(FUZZINESS);
-  // A search being switched on rather than one the stage arrived with: nothing
-  // chosen in either half. A stage that already names attributes but holds no
-  // tolerance is left to say so, rather than being given one nobody chose.
-  // Read only when the field registers, so a later change here moves nothing.
-  const heldAttributes = useStageValue(MATCH_PROPERTIES);
-  const startingTolerance =
-    heldTolerance === undefined &&
-    (heldAttributes === undefined ||
-      (Array.isArray(heldAttributes) && heldAttributes.length === 0))
-      ? DEFAULT_TOLERANCE
-      : undefined;
   const tolerances = useMemo(
     () => withSavedTolerance(toleranceOptions(intl), heldTolerance, intl),
     [heldTolerance, intl],
@@ -364,9 +391,9 @@ export default function SearchOptionsSection() {
           label={intl.formatMessage(messages.toleranceLabel)}
           hint={intl.formatMessage(messages.toleranceHint)}
           options={tolerances}
-          initialValue={startingTolerance}
           required={TOLERANCE_REQUIRED}
         />
+        <StartingTolerance />
       </Section>
     </BuilderSection>
   );

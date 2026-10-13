@@ -754,6 +754,47 @@ describe('how a participant searches a roster', () => {
     });
   });
 
+  /**
+   * The way a researcher actually reaches it: choosing the data file first is
+   * a change the search section resets on (`resetOn`), and the reset leaves
+   * the tolerance parked as empty. A seed handed to the field when it
+   * registers lost to that parked value, so the scale still showed High
+   * accuracy over nothing.
+   */
+  it('starts at the tolerance the scale shows after the data file is chosen', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({}),
+      sections: (
+        <>
+          <ExternalDataSourceSection />
+          <SearchOptionsSection />
+        </>
+      ),
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Select a data file' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Roster' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Roster search' }),
+    );
+    expect(
+      await screen.findByRole('slider', { name: /Search accuracy/ }),
+    ).toHaveAttribute('aria-valuetext', 'High accuracy');
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'name' }),
+    );
+    const request = await harness.submit();
+    expect(request?.stageDocument.searchOptions).toEqual({
+      matchProperties: ['name'],
+      fuzziness: 0.25,
+    });
+  });
+
   it('keeps the tolerance a stage was saved with', async () => {
     const harness = renderStageEditor({
       stage: rosterWith({
