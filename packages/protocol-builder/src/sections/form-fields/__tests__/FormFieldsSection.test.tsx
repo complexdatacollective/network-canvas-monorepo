@@ -551,8 +551,9 @@ describe('the fields a form collects', () => {
       sections: <FormFieldsSection subject="node" hasTitle />,
     });
 
+    // A rich-text editor rather than an input: it shows its text.
     const title = await screen.findByRole('textbox', { name: 'Form title' });
-    expect(title).toHaveValue('Add a person');
+    expect(title.textContent).toBe('Add a person');
 
     await harness.user.clear(title);
     expect(await harness.submit()).toBeNull();

@@ -142,7 +142,11 @@ type EditorCase = Readonly<{
    * has three lists chosen out of a data file.
    */
   optionalSections: readonly string[];
-  /** The top-level stage keys those sections have a field for. */
+  /**
+   * The top-level stage keys those sections have a field for, and
+   * `dynamicValues`, which every stage editor registers for the values its
+   * text may show.
+   */
   ownedKeys: readonly string[];
   /** A stage of this type using every key its schema allows. */
   wholeStage: SectionDoc;
@@ -307,7 +311,13 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['dynamicValues', 'introductionPanel', 'label', 'prompts', 'subject'],
+    ownedKeys: [
+      'dynamicValues',
+      'introductionPanel',
+      'label',
+      'prompts',
+      'subject',
+    ],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full dyad census' },
@@ -346,7 +356,13 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['dynamicValues', 'introductionPanel', 'label', 'prompts', 'subject'],
+    ownedKeys: [
+      'dynamicValues',
+      'introductionPanel',
+      'label',
+      'prompts',
+      'subject',
+    ],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full tie-strength census' },
@@ -529,7 +545,14 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['dynamicValues', 'label', 'prompts', 'quickAdd', 'quickAddHint', 'subject'],
+    ownedKeys: [
+      'dynamicValues',
+      'label',
+      'prompts',
+      'quickAdd',
+      'quickAddHint',
+      'subject',
+    ],
     wholeStage: {
       ...WITHOUT_FILTER,
       label: { 'en-US': 'Full quick-add name generator' },
@@ -576,7 +599,24 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['allAddedNotice', 'behaviours', 'cardOptions', 'dataSource', 'dynamicValues', 'externalDataError', 'label', 'maxNodesNotice', 'minNodesNotice', 'panelTitle', 'prompts', 'searchLabel', 'searchNoMatch', 'searchOptions', 'sortOptions', 'subject'],
+    ownedKeys: [
+      'allAddedNotice',
+      'behaviours',
+      'cardOptions',
+      'dataSource',
+      'dynamicValues',
+      'externalDataError',
+      'label',
+      'maxNodesNotice',
+      'minNodesNotice',
+      'panelTitle',
+      'prompts',
+      'searchLabel',
+      'searchNoMatch',
+      'searchOptions',
+      'sortOptions',
+      'subject',
+    ],
     wholeStage: {
       ...WITHOUT_FILTER,
       label: { 'en-US': 'Full roster name generator' },

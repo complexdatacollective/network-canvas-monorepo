@@ -17,7 +17,8 @@ describe('the introduction a participant reads before a task', () => {
       sections: introduction,
     });
 
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+    // A rich-text editor rather than an input: it shows its text.
+    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
       'Introduction to the alter edge form',
     );
     expect(
@@ -146,11 +147,17 @@ describe('the introduction a participant reads before a task', () => {
       name: 'Introduction text',
     });
 
-    const buttons = within(screen.getByRole('toolbar')).getAllByRole('button');
-    expect(buttons.length).toBeGreaterThan(1);
-    for (const button of buttons) {
-      expect(button).toBeDisabled();
-      expect(button).toHaveAttribute('aria-disabled', 'true');
+    // The heading and the text each have a toolbar: the heading's holds its
+    // history and the insert-a-value button.
+    const toolbars = screen.getAllByRole('toolbar');
+    expect(toolbars.length).toBeGreaterThan(1);
+    for (const toolbar of toolbars) {
+      const buttons = within(toolbar).getAllByRole('button');
+      expect(buttons.length).toBeGreaterThan(1);
+      for (const button of buttons) {
+        expect(button).toBeDisabled();
+        expect(button).toHaveAttribute('aria-disabled', 'true');
+      }
     }
 
     // Still readable, and still the researcher's words.

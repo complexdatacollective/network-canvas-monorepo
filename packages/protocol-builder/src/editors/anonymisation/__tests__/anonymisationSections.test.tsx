@@ -528,7 +528,8 @@ describe('the attributes a passphrase protects', () => {
       expect(attributeCheckbox('person', 'name')).toBeChecked(),
     );
 
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+    // A rich-text editor rather than an input: it shows its text.
+    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
       'Rewritten heading',
     );
     const saved = await harness.submit();

@@ -77,7 +77,8 @@ describe('the editor for a form about each person', () => {
       'Alter Form',
     );
     expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+    // A rich-text editor rather than an input: it shows its text.
+    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
       'Introduction to the alter form',
     );
     expect(
@@ -278,9 +279,13 @@ describe('the editor for a form about each person', () => {
   it('refuses to save a stage somebody else is editing', async () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Title' })).toBeDisabled(),
-    );
+    // A rich-text editor, which says it is unavailable and takes no typing,
+    // rather than carrying an input's `disabled`.
+    await waitFor(() => {
+      const title = screen.getByRole('textbox', { name: 'Title' });
+      expect(title).toHaveAttribute('aria-disabled', 'true');
+      expect(title).toHaveAttribute('contenteditable', 'false');
+    });
 
     // The shell's refusal is the guarantee, not the chrome above it: a
     // keyboard, a stale render, or another host's own button can all still

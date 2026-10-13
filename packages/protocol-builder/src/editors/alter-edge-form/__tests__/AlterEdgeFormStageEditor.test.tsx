@@ -228,9 +228,13 @@ describe('the editor for a form about each relationship', () => {
   it('refuses to save a stage somebody else is editing', async () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Title' })).toBeDisabled(),
-    );
+    // A rich-text editor, which says it is unavailable and takes no typing,
+    // rather than carrying an input's `disabled`.
+    await waitFor(() => {
+      const title = screen.getByRole('textbox', { name: 'Title' });
+      expect(title).toHaveAttribute('aria-disabled', 'true');
+      expect(title).toHaveAttribute('contenteditable', 'false');
+    });
 
     // The shell's refusal is the guarantee, not the chrome above it: a
     // keyboard, a stale render, or another host's own button can all still

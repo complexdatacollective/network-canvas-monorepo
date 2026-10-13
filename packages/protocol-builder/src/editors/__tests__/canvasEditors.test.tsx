@@ -22,7 +22,11 @@ type CanvasEditorCase = Readonly<{
   editor: Partial<StageEditorRegistry>;
   /** The outline a researcher reads down the side of the stage, in order. */
   sections: readonly string[];
-  /** The top-level stage keys those sections have a field for. */
+  /**
+   * The top-level stage keys those sections have a field for, and
+   * `dynamicValues`, which every stage editor registers for the values its
+   * text may show.
+   */
   ownedKeys: readonly string[];
 }>;
 
@@ -52,7 +56,15 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['background', 'behaviours', 'dynamicValues', 'label', 'prompts', 'subject', 'tooltips'],
+    ownedKeys: [
+      'background',
+      'behaviours',
+      'dynamicValues',
+      'label',
+      'prompts',
+      'subject',
+      'tooltips',
+    ],
   },
   {
     interfaceName: 'Narrative',
@@ -68,7 +80,18 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['attributesHeading', 'background', 'behaviours', 'dynamicValues', 'groupsHeading', 'label', 'linksHeading', 'presets', 'subject', 'tooltips'],
+    ownedKeys: [
+      'attributesHeading',
+      'background',
+      'behaviours',
+      'dynamicValues',
+      'groupsHeading',
+      'label',
+      'linksHeading',
+      'presets',
+      'subject',
+      'tooltips',
+    ],
   },
   {
     interfaceName: 'NetworkComposer',
@@ -84,7 +107,20 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['addNamePlaceholder', 'background', 'behaviours', 'convexHullVariable', 'dynamicValues', 'edges', 'label', 'layoutVariable', 'overtakenEditNotice', 'quickAdd', 'subject', 'tooltips'],
+    ownedKeys: [
+      'addNamePlaceholder',
+      'background',
+      'behaviours',
+      'convexHullVariable',
+      'dynamicValues',
+      'edges',
+      'label',
+      'layoutVariable',
+      'overtakenEditNotice',
+      'quickAdd',
+      'subject',
+      'tooltips',
+    ],
   },
   {
     interfaceName: 'Geospatial',
@@ -107,7 +143,16 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['dynamicValues', 'label', 'mapOptions', 'mapUnavailable', 'offlineNotice', 'outsideAreasLabel', 'prompts', 'subject'],
+    ownedKeys: [
+      'dynamicValues',
+      'label',
+      'mapOptions',
+      'mapUnavailable',
+      'offlineNotice',
+      'outsideAreasLabel',
+      'prompts',
+      'subject',
+    ],
   },
   {
     interfaceName: 'NarrativePedigree',
@@ -124,7 +169,16 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['conditionText', 'diseases', 'dynamicValues', 'keyHeading', 'label', 'showAtRiskStatuses', 'sourceStageId', 'tooltips'],
+    ownedKeys: [
+      'conditionText',
+      'diseases',
+      'dynamicValues',
+      'keyHeading',
+      'label',
+      'showAtRiskStatuses',
+      'sourceStageId',
+      'tooltips',
+    ],
   },
   {
     interfaceName: 'Anonymisation',

@@ -28,9 +28,10 @@ describe('a page of content rather than a task', () => {
   it('owns the page heading and the blocks under it', async () => {
     const harness = renderStageEditor(openEditor());
 
-    expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-      'Welcome',
-    );
+    // A rich-text editor rather than an input: it shows its text.
+    expect(
+      screen.getByRole('textbox', { name: 'Page heading' }).textContent,
+    ).toBe('Welcome');
     expect(screen.getByText('Welcome to this interview.')).toBeInTheDocument();
     await waitFor(() => expect(harness.outline()).toHaveLength(1));
     expect(harness.outline()[0]).toEqual({
