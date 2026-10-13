@@ -1,5 +1,6 @@
 import {
   CodebookNameSchema,
+  entitySecureAttributesMeta,
   normalizeCodebookName,
 } from '@codaco/shared-consts';
 
@@ -448,10 +449,14 @@ const remapMergedOptionAnswers = (
         : network[entity === 'node' ? 'nodes' : 'edges'].filter(
             (candidate) => candidate.type === type,
           );
-    for (const { attributes } of entities) {
-      if (isRecord(attributes) && attribute in attributes) {
-        attributes[attribute] = withKeptValues(attributes[attribute], kept);
-      }
+    for (const candidate of entities) {
+      const { attributes } = candidate;
+      if (!isRecord(attributes) || !(attribute in attributes)) continue;
+      // An encrypted answer holds ciphertext, not option values: rewriting
+      // it would corrupt the protected answer, so it is left as stored.
+      const secure: unknown = candidate[entitySecureAttributesMeta];
+      if (isRecord(secure) && Object.hasOwn(secure, attribute)) continue;
+      attributes[attribute] = withKeptValues(attributes[attribute], kept);
     }
   }
 };

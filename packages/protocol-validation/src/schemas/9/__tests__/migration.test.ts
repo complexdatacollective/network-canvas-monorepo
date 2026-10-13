@@ -750,6 +750,35 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     ]);
   });
 
+  it('leaves an encrypted answer as stored when its option values merge', () => {
+    const { migrateSession } = migrateProtocolWithSessions(
+      asSchema8Protocol(protocolWithCategoryValues(['1', 'work', 1])),
+    );
+    const ciphertext = [1, 7, 1, 42];
+    const result = migrateSession({
+      network: {
+        ego: { _uid: 'ego', attributes: {} },
+        nodes: [
+          {
+            _uid: 'a',
+            type: 'person',
+            attributes: { category: ciphertext },
+            _secureAttributes: { category: { iv: [1, 2], salt: [3, 4] } },
+          },
+          { _uid: 'b', type: 'person', attributes: { category: [1] } },
+        ],
+        edges: [],
+      },
+      stageMetadata: {},
+      currentStep: 0,
+    });
+    if (!result.success) throw result.error;
+
+    expect(
+      result.session.network.nodes.map(({ attributes }) => attributes),
+    ).toEqual([{ category: ciphertext }, { category: ['1'] }]);
+  });
+
   it.each([
     ['spaces around it', ' friend ', 'friend'],
     ['a tab inside it', 'close\tfriend', 'close friend'],

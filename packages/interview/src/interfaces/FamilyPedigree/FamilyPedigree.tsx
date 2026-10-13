@@ -1317,9 +1317,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       askForPassphrase();
       return false;
     }
-    const record: Record<string, string> = {};
+    // A Map, not an object literal, so that a person whose id is
+    // `__proto__` is recorded like any other.
+    const record = new Map<string, string>();
     for (const [personId, stored] of held) {
-      record[personId] = nameFingerprint(stored);
+      record.set(personId, nameFingerprint(stored));
     }
     let refused: MessageDescriptor | undefined;
     for (const [personId, label] of toWrite) {
@@ -1342,9 +1344,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             config.nameAttribute,
           )
         : undefined;
-      if (written !== undefined) record[personId] = nameFingerprint(written);
+      if (written !== undefined) record.set(personId, nameFingerprint(written));
     }
-    writeSharedRecord({ generatedLabels: record });
+    writeSharedRecord({ generatedLabels: Object.fromEntries(record) });
     if (refused) {
       showToast({
         description: intl.formatMessage(refused),
