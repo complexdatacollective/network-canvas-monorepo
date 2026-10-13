@@ -66,14 +66,14 @@ const information = {
   title: GREETING,
   dynamicValues: {
     name: { path: 'ego.name' },
-    caseId: { path: 'interview.caseId' },
+    nickname: { path: 'ego.nickname' },
   },
   items: [
     {
       id: 'body',
       type: 'text' as const,
       content: {
-        en: 'Thanks for **joining**{name, select, missing {.} other {, {name}.}} [Your case]({caseId, select, missing {https://example.com} other {https://example.com/{caseId}}}): {caseId, select, missing {none} other {{caseId}}}',
+        en: 'Thanks for **joining**{name, select, missing {.} other {, {name}.}} [Your page]({name, select, missing {https://example.com} other {https://example.com/{name}}}): {nickname, select, missing {none} other {{nickname}}}',
       },
     },
   ],
@@ -94,10 +94,10 @@ const finishStage = {
 
 function makePayload({
   name,
-  caseId,
+  nickname,
 }: {
   name?: string;
-  caseId?: string;
+  nickname?: string;
 }): InterviewPayload {
   return {
     session: {
@@ -107,11 +107,13 @@ function makePayload({
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
       localeOptions: [getLocaleMetadata('en')],
-      ...(caseId !== undefined && { caseId }),
       network: {
         ego: {
           [entityPrimaryKeyProperty]: 'ego',
-          [entityAttributesProperty]: name === undefined ? {} : { name },
+          [entityAttributesProperty]: {
+            ...(name !== undefined && { name }),
+            ...(nickname !== undefined && { nickname }),
+          },
         },
         nodes: [],
         edges: [],
@@ -126,7 +128,10 @@ function makePayload({
       localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
         ego: {
-          variables: { name: { name: 'name', label: 'Name', type: 'text' } },
+          variables: {
+            name: { name: 'name', label: 'Name', type: 'text' },
+            nickname: { name: 'nickname', label: 'Nickname', type: 'text' },
+          },
         },
         node: {},
         edge: {},
@@ -185,7 +190,7 @@ function renderShell(
 
 describe('dynamic values in a stage’s text', () => {
   it('shows the participant’s value, marked out and announced as a dynamic value', async () => {
-    renderShell(makePayload({ name: 'Ada', caseId: 'C-17' }));
+    renderShell(makePayload({ name: 'Ada', nickname: 'C-17' }));
 
     const heading = await screen.findByRole('heading', { level: 1 });
     expect(heading).toHaveAccessibleName('Welcome, Dynamic value: Ada');
@@ -208,7 +213,7 @@ describe('dynamic values in a stage’s text', () => {
 
   it('never lets a value become markdown, HTML or a link destination', async () => {
     renderShell(
-      makePayload({ name: HOSTILE_NAME, caseId: 'x)(javascript:alert(1)' }),
+      makePayload({ name: HOSTILE_NAME, nickname: 'x)(javascript:alert(1)' }),
     );
 
     const heading = await screen.findByRole('heading', { level: 1 });
@@ -234,7 +239,7 @@ describe('dynamic values in a stage’s text', () => {
     );
 
     renderShell(
-      makePayload({ name: HOSTILE_NAME, caseId: 'LEAK_SENTINEL_CASE' }),
+      makePayload({ name: HOSTILE_NAME, nickname: 'LEAK_SENTINEL_CASE' }),
       {
         posthogClient: client,
         disableAnalytics: false,

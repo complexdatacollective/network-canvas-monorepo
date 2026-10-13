@@ -89,7 +89,7 @@ export const store = (
           }
         : false,
       preloadedState: {
-        session: omit(sessionPayload, ['localeOptions', 'caseId']),
+        session: omit(sessionPayload, ['localeOptions']),
         protocol: protocolPayload,
       },
     }),

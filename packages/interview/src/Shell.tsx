@@ -956,7 +956,6 @@ const Shell = ({
                   onRequestAsset={onRequestAsset}
                   flags={flags}
                   finishConfirmationDescription={finishConfirmationDescription}
-                  caseId={payload.session.caseId}
                 >
                   <InterviewCompletionProvider
                     // A new payload is a new interview.

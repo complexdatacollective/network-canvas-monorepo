@@ -19,7 +19,6 @@ import type {
 } from '@codaco/protocol-validation';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 
-import { useHostCaseId } from '../contract/context';
 import { getCodebook } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
 import type { DynamicValueSources } from './resolveDynamicText';
@@ -76,7 +75,6 @@ export function StageDynamicValues({
   stage: Stage | undefined;
   children: ReactNode;
 }) {
-  const caseId = useHostCaseId();
   const [now] = useState(() => new Date());
   const codebook = useSelector(getCodebook);
   const interviewId = useSelector((state: RootState) => state.session.id);
@@ -93,7 +91,6 @@ export function StageDynamicValues({
     const variables = subjectVariables(codebook, stage);
     const intrinsics: Record<IntrinsicDynamicValue, unknown> = {
       'interview.id': interviewId,
-      'interview.caseId': caseId,
       'interview.startedAt': startedAt,
       'protocol.name': protocolName,
       'protocol.hash': protocolHash,
@@ -114,7 +111,6 @@ export function StageDynamicValues({
     codebook,
     stage,
     interviewId,
-    caseId,
     startedAt,
     protocolName,
     protocolHash,
