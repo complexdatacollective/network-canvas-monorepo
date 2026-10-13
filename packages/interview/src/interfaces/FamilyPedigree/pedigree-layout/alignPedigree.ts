@@ -15,9 +15,10 @@ const SEATINGS_DRAWN = 10;
 const SEATINGS_SEARCHED = 2;
 
 /**
- * How much every drawing's lines may do in all (see `RoutingWork`): about
- * thirty milliseconds on a laptop, whatever the size of the family, so a
- * family the interview can hold is laid out well inside a frame budget.
+ * How much every drawing's lines may do in all (see `RoutingWork`),
+ * finding a drawing that breaks no hard constraint included: about thirty
+ * milliseconds on a laptop, whatever the size of the family, so a family
+ * the interview can hold is laid out well inside a frame budget.
  * The first seating's lines are always routed once in full; any other
  * drawing whose first routing would pass what is left is abandoned, and
  * every search for better courses stops once the work is spent. Most
@@ -33,19 +34,23 @@ const LINE_SEARCH_WORK = 300_000;
  */
 const QUICK_SEARCH_WORK = 30_000;
 
-/** The share of the work the quick searches may do in all: the rest is
- * kept for the thorough searches, which decide. */
+/** The share of the search's work the quick searches may do in all: the
+ * rest is kept for the thorough searches, which decide. */
 const QUICK_SHARE = 0.7;
 
 /**
- * The work kept for finding a drawing that breaks no hard constraint, when
- * the best found within `LINE_SEARCH_WORK` breaks one. That budget limits
- * how far the cost of drawings that keep every hard constraint is bettered;
- * it is not what returns a drawing that breaks one. This is bounded all the
- * same: some families have no drawing that keeps every hard constraint, and
- * they too are drawn inside the frame budget (`layoutBudget.test.ts`).
+ * The part of `LINE_SEARCH_WORK` held back from the search for the
+ * cheapest drawing, for finding one that breaks no hard constraint when
+ * the best that search finds breaks one: the budget limits how far the
+ * cost of drawings that keep every hard constraint is bettered, and running
+ * out of it is not what returns a drawing that breaks one. Held back
+ * rather than added, so the whole layout stays inside one budget, passed
+ * only by a drawing's first routing, which is always done in full: some
+ * families have no drawing that keeps every hard constraint, and they too
+ * are drawn inside the frame budget (`layoutBudget.test.ts`). Should a
+ * first routing take the search past its share, this much is still kept.
  */
-const CONSTRAINT_WORK = 150_000;
+const CONSTRAINT_WORK = 50_000;
 
 type Search = 'quick' | 'thorough';
 
@@ -65,8 +70,9 @@ type Search = 'quick' | 'thorough';
  * Every search here is bounded before it starts, by counted work, never by
  * the clock, so a family is drawn the same way however fast the machine:
  * at most `SEATINGS_DRAWN` seatings, and every line search shares one
- * budget of work (`LINE_SEARCH_WORK`), of which the quick searches take at
- * most a share (`QUICK_SHARE`, and `QUICK_SEARCH_WORK` each).
+ * budget of work (`LINE_SEARCH_WORK`), of which the search for the
+ * cheapest drawing takes all but `CONSTRAINT_WORK`, and its quick searches
+ * at most a share (`QUICK_SHARE`, and `QUICK_SEARCH_WORK` each).
  */
 export function alignPedigree(
   ped: PedigreeInput,
@@ -80,12 +86,21 @@ export function alignPedigree(
       search: Search,
       work: RoutingWork,
     ) => number;
+    /** Counts every step the layout takes: the seatings' (see
+     * `sugiyamaLayouts`) and every drawing's lines' (see `RoutingWork`). */
+    counted?: { spent: number };
   } = {},
 ): PedigreeLayout {
-  const { drawingCost } = options;
-  if (!drawingCost) return sugiyamaLayouts(ped, 1)[0]!.layout;
-  const candidates = sugiyamaLayouts(ped, SEATINGS_DRAWN);
-  const work: RoutingWork = { spent: 0, limit: LINE_SEARCH_WORK };
+  const { drawingCost, counted = { spent: 0 } } = options;
+  if (!drawingCost) return sugiyamaLayouts(ped, 1, counted)[0]!.layout;
+  const candidates = sugiyamaLayouts(ped, SEATINGS_DRAWN, counted);
+  // The search for the cheapest drawing does all but the work held back
+  // for finding a drawing that breaks no hard constraint (see
+  // `CONSTRAINT_WORK`).
+  const work: RoutingWork = {
+    spent: 0,
+    limit: LINE_SEARCH_WORK - CONSTRAINT_WORK,
+  };
   const workLeft = () => work.spent < work.limit;
   type Drawn = {
     layout: PedigreeLayout;
@@ -121,9 +136,12 @@ export function alignPedigree(
   // first.
   const fewestBroken = Math.min(...candidates.map(({ cost }) => cost[0]!));
   const drawn: Drawn[] = [];
+  // The seatings drawn so far, abandoned or not.
+  const tried = new Set<number>();
   for (const [rank, { layout, cost }] of candidates.entries()) {
     if (cost[0]! > fewestBroken) continue;
     if (drawn.length > 0 && work.spent >= QUICK_SHARE * work.limit) break;
+    tried.add(rank);
     keep(drawn, drawnOf(layout, cost, 'quick', rank));
     // The cheapest seating by the estimate, drawn with every line straight
     // and clear, is not bettered by another.
@@ -134,6 +152,7 @@ export function alignPedigree(
       hard === 0 &&
       straightAndClear(lines!)
     ) {
+      counted.spent += work.spent;
       return layout;
     }
   }
@@ -149,38 +168,48 @@ export function alignPedigree(
     return searched.length > 0 ? searched : ranked.slice(0, 1);
   };
   const searched = searchedOf(drawn);
-  // When the best drawing breaks a hard constraint, the search goes on
-  // with work kept for that alone (`CONSTRAINT_WORK`), not with what is
-  // left of the budget: the seatings drawn best are drawn again with each
-  // row shifted by up to a seat either way, the nearest shifts first, until
-  // one draws without breaking any. That drawing is drawn again thoroughly,
-  // and kept only if it still breaks none. A drawing that breaks a hard
-  // constraint is returned only when no shift within that work draws
-  // without one.
+  // When the best drawing breaks a hard constraint, the work held back for
+  // that alone (`CONSTRAINT_WORK`) is spent finding one that breaks none,
+  // in a fixed order: the seatings the search did not reach, best first,
+  // and then the seatings drawn best with each row shifted by up to a seat
+  // either way, the nearest shifts first. The first that draws without
+  // breaking any is drawn again thoroughly, and kept only if it still
+  // breaks none. A drawing that breaks a hard constraint is returned only
+  // when none within that work draws without one.
   const [best] = searched.toSorted(compareDrawn);
   const [seatsBreak, linesCost] = best!.key;
   if (seatsBreak === 0 && breaksAHardConstraint(linesCost!)) {
-    work.limit = work.spent + CONSTRAINT_WORK;
-    const shifted: Drawn[] = [];
-    let valid: Drawn | undefined;
+    // What the search left of the budget, and never less than the work
+    // held back: a drawing's first routing is done in full, so the search
+    // may have passed its share.
+    work.limit = Math.max(LINE_SEARCH_WORK, work.spent + CONSTRAINT_WORK);
     let shifts = 0;
-    shifting: for (const { layout, key } of searched) {
-      for (const by of ROW_SHIFTS) {
-        for (let layer = 0; layer < layout.pos.length; layer++) {
-          if (!workLeft()) break shifting;
-          const moved = shiftRow(layout, layer, by);
-          const entry = drawnOf(
-            moved,
-            key,
-            'quick',
-            candidates.length + shifts++,
-          );
-          keep(shifted, entry);
-          if (!breaksAHardConstraint(entry.key[1]!)) {
-            valid = entry;
-            break shifting;
+    const others = function* (): Generator<Drawn> {
+      for (const [rank, { layout, cost }] of candidates.entries()) {
+        if (cost[0]! > fewestBroken || tried.has(rank)) continue;
+        yield { layout, key: cost, rank };
+      }
+      for (const { layout, key } of searched) {
+        for (const by of ROW_SHIFTS) {
+          for (let layer = 0; layer < layout.pos.length; layer++) {
+            yield {
+              layout: shiftRow(layout, layer, by),
+              key,
+              rank: candidates.length + shifts++,
+            };
           }
         }
+      }
+    };
+    const recovered: Drawn[] = [];
+    let valid: Drawn | undefined;
+    for (const { layout, key, rank } of others()) {
+      if (!workLeft()) break;
+      const entry = drawnOf(layout, key, 'quick', rank);
+      keep(recovered, entry);
+      if (!breaksAHardConstraint(entry.key[1]!)) {
+        valid = entry;
+        break;
       }
     }
     if (valid) {
@@ -192,10 +221,11 @@ export function alignPedigree(
       searched.push(
         thorough && !breaksAHardConstraint(thorough.key[1]!) ? thorough : valid,
       );
-    } else if (shifted.length > 0) {
-      searched.push(...searchedOf(shifted));
+    } else if (recovered.length > 0) {
+      searched.push(...searchedOf(recovered));
     }
   }
+  counted.spent += work.spent;
   return searched.toSorted(compareDrawn)[0]!.layout;
 }
 

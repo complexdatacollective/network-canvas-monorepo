@@ -60,6 +60,30 @@ type PedigreeGraph = {
   /** The order the seating search has chosen for a sibship, by
    * `sibshipKey`, where it is not the default (see `sibshipOrders`). */
   sibshipChoice: Map<string, number[]>;
+  /** The work the seatings have taken (see `SEATING_STEPS`). */
+  work: { spent: number };
+};
+
+/**
+ * What each step of laying out the seatings counts towards a drawing's
+ * work, in the steps of about a tenth of a microsecond the line search
+ * counts in (see `RoutingWork`), measured: building the graph, for each
+ * person; weighing a seating, for each person seated; weighing a pair of
+ * rows afresh, for each family unit and person on them, and for each pair
+ * of people on them; sweeping the rows, for each person; each person in
+ * each order of a sibship laid out; and placing a seating across the page,
+ * for each person. The seatings are bounded by their own counts and caps
+ * (`SEATING_SEARCH_WORK`, `SIBSHIP_ORDERS`); this counts what they did, so
+ * a drawing's work counts every step it takes.
+ */
+const SEATING_STEPS = {
+  graph: 80,
+  seated: 2,
+  pairPart: 3,
+  pairOfPeople: 0.2,
+  swept: 7,
+  ordered: 18,
+  placed: 15,
 };
 
 function isAuxiliaryEdge(edgeType: PedigreeEdgeType): boolean {
@@ -110,8 +134,12 @@ function placementParents(ped: PedigreeInput): ParentConnection[][] {
   );
 }
 
-function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
+function buildPedigreeGraph(
+  ped: PedigreeInput,
+  work: { spent: number } = { spent: 0 },
+): PedigreeGraph {
   const n = ped.id.length;
+  work.spent += SEATING_STEPS.graph * n;
   const placed = placementParents(ped);
   const owners = lineOwnersOf(ped.parents, ped.partners ?? []);
   const isPlaced = (child: number, parent: number) =>
@@ -306,6 +334,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     twinsOf,
     owners,
     sibshipChoice: new Map(),
+    work,
   };
 }
 
@@ -799,9 +828,11 @@ function sibshipOrders(
       );
     }
   };
-  return take(orders(units.map((_, k) => k)), limit).map((order) =>
+  const taken = take(orders(units.map((_, k) => k)), limit).map((order) =>
     order.flatMap((k) => units[k]!),
   );
+  graph.work.spent += SEATING_STEPS.ordered * taken.length * members.length;
+  return taken;
 }
 
 /** The first `count` values a generator yields, built no further. */
@@ -1283,6 +1314,10 @@ function rowPairCost(
   lower: number[],
   graph: PedigreeGraph,
 ): RowPairCost {
+  const people = upper.length + lower.length;
+  graph.work.spent +=
+    SEATING_STEPS.pairPart * (graph.familyUnits.length + people) +
+    SEATING_STEPS.pairOfPeople * people * people;
   const pos = positionMap([upper, lower]);
   const onRow = new Map<number, number>();
   for (const node of upper) onRow.set(node, 0);
@@ -1448,6 +1483,9 @@ function seatingCost(
   layerOrdering: number[][],
   graph: PedigreeGraph,
 ): SeatingCost {
+  graph.work.spent +=
+    SEATING_STEPS.seated *
+    layerOrdering.reduce((total, row) => total + row.length, 1);
   const weighed = weighedRowsOf(graph);
   const cost: SeatingCost = [0, 0, 0, 0, 0];
 
@@ -1507,6 +1545,9 @@ function barycentricSweep(
   /** The first row a sweep down reseats. */
   from = 1,
 ): number[][] {
+  graph.work.spent +=
+    SEATING_STEPS.swept *
+    layerOrdering.reduce((total, row) => total + row.length, 0);
   const result = layerOrdering.map((layer) => [...layer]);
 
   if (direction === 'down') {
@@ -1914,6 +1955,9 @@ function encodePedigreeLayout(
   ordering: number[][],
   ped: PedigreeInput,
 ): PedigreeLayout {
+  graph.work.spent +=
+    SEATING_STEPS.placed *
+    ordering.reduce((total, row) => total + row.length, 0);
   const maxLayer = ordering.length;
 
   // Step 1: nid and n
@@ -2527,8 +2571,10 @@ function encodePedigreeLayout(
 function sugiyamaLayouts(
   ped: PedigreeInput,
   count: number,
+  /** Counts the work the seatings take (see `SEATING_STEPS`). */
+  work?: { spent: number },
 ): { layout: PedigreeLayout; cost: SeatingCost }[] {
-  const graph = buildPedigreeGraph(ped);
+  const graph = buildPedigreeGraph(ped, work);
   return seatingsOf(graph, count).map((ordering) => ({
     layout: encodePedigreeLayout(graph, ordering, ped),
     cost: seatingCost(ordering, graph),

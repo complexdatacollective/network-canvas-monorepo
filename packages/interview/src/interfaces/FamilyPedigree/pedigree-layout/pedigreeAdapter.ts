@@ -441,7 +441,21 @@ type DrawPedigreeInput = {
 type DrawnPedigree = {
   positions: Map<string, { x: number; y: number }>;
   connectorData: ConnectorRenderData;
+  /** The work laying the family out took, in steps of about a tenth of a
+   * microsecond (see `RoutingWork`): every step of the seatings, of every
+   * drawing's lines, first routings included, and of setting each drawing
+   * up. Bounded before the layout starts, so it is how long a layout takes
+   * on any machine, and the same on every one. */
+  work: number;
 };
+
+/**
+ * What setting up one drawing counts towards the work, for each person,
+ * measured: its lines of descent and the scene its lines are routed in,
+ * and turning the drawing chosen into what is drawn, which the line
+ * search's own steps do not count.
+ */
+const SETUP_STEPS = 50;
 
 /** How many of the families drawn last are kept, to be drawn again at no
  * cost. */
@@ -493,8 +507,11 @@ function drawPedigreeAfresh({
     : undefined;
   // Each seating weighed is drawn, and chosen by what its drawing costs.
   const routed = new Map<PedigreeLayout, PedigreeConnectors>();
+  const counted = { spent: SETUP_STEPS * nodeIds.length };
   const layout = alignPedigree(input, {
+    counted,
     drawingCost: (candidate, search, work) => {
+      counted.spent += SETUP_STEPS * nodeIds.length;
       const { connectors, cost } = routeLayout(
         candidate,
         links,
@@ -513,6 +530,25 @@ function drawPedigreeAfresh({
     },
   });
   const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
+  // The drawing chosen was drawn while it was weighed; were it not, it is
+  // routed once, with no search for better courses, and counted.
+  let connectors = routed.get(layout);
+  if (!connectors) {
+    const once: RoutingWork = { spent: 0, limit: 0 };
+    connectors = routeLayout(
+      layout,
+      links,
+      dimensions,
+      input.parents,
+      idToIndex,
+      names,
+      indexToId,
+      nodeShapes,
+      'thorough',
+      once,
+    ).connectors;
+    counted.spent += SETUP_STEPS * nodeIds.length + once.spent;
+  }
   const connectorData = buildConnectorData(
     layout,
     links,
@@ -522,7 +558,7 @@ function drawPedigreeAfresh({
     names,
     indexToId,
     nodeShapes,
-    routed.get(layout),
+    connectors,
   );
-  return { positions, connectorData };
+  return { positions, connectorData, work: counted.spent };
 }

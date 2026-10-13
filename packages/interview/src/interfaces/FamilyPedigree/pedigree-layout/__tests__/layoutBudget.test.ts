@@ -1,19 +1,17 @@
 /**
- * Laying out a family is interactive work: a cold layout of any family the
+ * Laying out a family is interactive work: a layout of any family the
  * interview can realistically hold finishes well inside a frame budget. The
  * engine bounds every search by counted work, never by the clock (see
- * `alignPedigree`), so a family is drawn the same way on any machine; these
- * tests check that the work allowed is quick enough to draw.
+ * `alignPedigree`), and counts every step a layout takes, so these tests
+ * hold each family's counted work to a limit: the same on every machine,
+ * however busy, and failing whenever a change lets the engine do more.
  *
- * Each family's drawing time is held to a multiple of a calibration timed
- * in the same test: a fixed piece of arithmetic and map lookups, which
- * takes as much longer on a slower or busier machine as the drawing does,
- * and none longer if the engine slows. The multiples were set on a laptop
- * (where the calibration takes about 4ms) at the times the layout must keep
- * to there with the whole test suite running alongside: 250ms for forty
- * people, 60ms for a family the size of an interview's. A layout that takes
- * more work than that fails on any machine; one that keeps to it passes on
- * a machine several times slower.
+ * A step is about a tenth of a microsecond on a laptop (from about 0.05 to
+ * 0.12 across every family the tests draw), so the limits are the times
+ * the layout must keep to there: 250ms for forty people, 60ms for a family
+ * the size of an interview's. A generous ceiling on the time a drawing
+ * actually takes stands guard only against work the count misses
+ * altogether.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -22,37 +20,20 @@ import type { PedigreeLink, PedigreeSymbolShape } from '../types';
 import { coverageFamilies } from './coverageFamilies';
 import { INTERFACE_DIMENSIONS } from './fixtures';
 
-/** The calibration on the laptop the multiples were set on, in ms. */
-const LAPTOP_CALIBRATION_MS = 4;
-/** What forty people may take to draw, and a family the size of an
- * interview's, as multiples of the calibration. */
-const LARGE_FAMILY = 250 / LAPTOP_CALIBRATION_MS;
-const INTERVIEW_FAMILY = 60 / LAPTOP_CALIBRATION_MS;
-
-/**
- * How long this machine takes, now, for a fixed piece of work much like the
- * engine's (arithmetic on coordinates, and keeping values in a map by
- * them), in ms: the least of a few tries, so a moment's interruption does
- * not count.
- */
-function calibration(): number {
-  let least = Number.POSITIVE_INFINITY;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const started = performance.now();
-    const kept = new Map<string, number>();
-    let total = 0;
-    for (let k = 0; k < 60_000; k++) {
-      const x = (k * 7919) % 1009;
-      const y = (k * 104_729) % 997;
-      total += Math.hypot(x - 504, y - 498);
-      const key = `${x % 97},${y % 89}`;
-      kept.set(key, (kept.get(key) ?? 0) + total);
-    }
-    expect(kept.size).toBeGreaterThan(0);
-    least = Math.min(least, performance.now() - started);
-  }
-  return least;
-}
+/** About how long a step of counted work takes on a laptop, in ms. */
+const STEP_MS = 0.0001;
+/** What forty people, and a family the size of an interview's, may take
+ * to draw, in steps. */
+const LARGE_FAMILY = 250 / STEP_MS;
+const INTERVIEW_FAMILY = 60 / STEP_MS;
+/** For a family of seven: the one budget of every drawing's lines
+ * (`LINE_SEARCH_WORK`, 300,000 steps), passed at most by a drawing's first
+ * routing, which is always done in full (under 100,000 steps for seven
+ * people), with the seatings and setting each drawing up. */
+const LINE_WORK_ALL_IN = 400_000;
+/** How long any drawing may take, in ms, on any machine, however busy: far
+ * past the frame budget, so it fails only for work the count misses. */
+const CEILING_MS = 3000;
 
 const parent = (
   source: string,
@@ -72,41 +53,31 @@ const partners = (a: string, b: string, isActive = true): PedigreeLink => ({
   isActive,
 });
 
-/** Each drawing timed is named afresh, so it is laid out afresh rather
- * than taken from the drawings kept (see `drawPedigree`): only whether a
- * person has a name plays any part in their drawing. */
-let drawingsTimed = 0;
+/** Each drawing is named afresh, so it is laid out afresh rather than
+ * taken from the drawings kept (see `drawPedigree`): only whether a person
+ * has a name plays any part in their drawing. */
+let drawingsMade = 0;
 
-/** How long the family takes to lay out and draw, cold, in ms: the lesser
- * of two drawings, so a moment's interruption does not count. */
-function timeToDraw(
+/** The work the family takes to lay out and draw, cold, held to the
+ * ceiling on the time it takes. */
+function workToDraw(
   people: string[],
   links: PedigreeLink[],
   shape: PedigreeSymbolShape = 'circle',
 ): number {
-  let least = Number.POSITIVE_INFINITY;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const name = `drawing ${drawingsTimed++}`;
-    const started = performance.now();
-    const { positions } = drawPedigree({
-      nodeIds: people,
-      links,
-      dimensions: INTERFACE_DIMENSIONS,
-      nodeNames: new Map(people.map((id) => [id, `${id} (${name})`])),
-      nodeShapes: new Map(people.map((id) => [id, shape])),
-    });
-    least = Math.min(least, performance.now() - started);
-    expect(positions.size).toBe(people.length);
-  }
-  return least;
-}
-
-/** The engine's code compiled, as it is once an interview has drawn its
- * first family: a few families drawn untimed. */
-function warmUp() {
-  for (const { people, links } of [twelveSiblings(), siblingPreview()]) {
-    timeToDraw(people, links);
-  }
+  const name = `drawing ${drawingsMade++}`;
+  const started = performance.now();
+  const { positions, work } = drawPedigree({
+    nodeIds: people,
+    links,
+    dimensions: INTERFACE_DIMENSIONS,
+    nodeNames: new Map(people.map((id) => [id, `${id} (${name})`])),
+    nodeShapes: new Map(people.map((id) => [id, shape])),
+  });
+  const took = performance.now() - started;
+  expect(positions.size).toBe(people.length);
+  expect(took, `${took.toFixed(0)}ms`).toBeLessThan(CEILING_MS);
+  return work;
 }
 
 /** Twelve full siblings, the participant among them. */
@@ -251,36 +222,41 @@ function siblingPreview() {
 
 describe('a family is laid out well inside a frame budget, whatever its size', () => {
   it('draws large families within the large-family budget', () => {
-    warmUp();
-    const unit = calibration();
     for (const [name, { people, links }] of Object.entries({
       'twelve full siblings': twelveSiblings(),
       'twelve siblings with three donors': twelveSiblingsThreeDonors(),
       'forty people across four generations': fortyPeople(),
     })) {
-      const took = timeToDraw(people, links);
-      expect(
-        took / unit,
-        `${name}: ${took.toFixed(0)}ms, against ${unit.toFixed(1)}ms`,
-      ).toBeLessThan(LARGE_FAMILY);
+      const work = workToDraw(people, links);
+      expect(work, name).toBeLessThan(LARGE_FAMILY);
     }
   }, 60_000);
 
   it('draws every family the size of an interview within its budget', () => {
-    warmUp();
-    const unit = calibration();
     const families = {
       'a sibling previewed while their parents are asked for': siblingPreview(),
       ...coverageFamilies,
     };
     for (const [name, { people, links }] of Object.entries(families)) {
       for (const shape of ['circle', 'square'] as const) {
-        const took = timeToDraw(people, links, shape);
-        expect(
-          took / unit,
-          `${name} (${shape}s): ${took.toFixed(0)}ms, against ${unit.toFixed(1)}ms`,
-        ).toBeLessThan(INTERVIEW_FAMILY);
+        const work = workToDraw(people, links, shape);
+        expect(work, `${name} (${shape}s)`).toBeLessThan(INTERVIEW_FAMILY);
       }
     }
   }, 120_000);
+
+  // No drawing of the preview keeps every hard constraint (its strict line
+  // checks fail at any budget), so its layout spends the work held back for
+  // finding one: that work is part of the one budget, not added to it.
+  it('spends no more than one budget on a family no drawing of which keeps every hard constraint', () => {
+    const { people, links } = siblingPreview();
+    for (const shape of ['circle', 'square'] as const) {
+      expect(workToDraw(people, links, shape)).toBeLessThan(LINE_WORK_ALL_IN);
+    }
+  });
+
+  it('counts the same work for a family however often, and on whatever machine, it is drawn', () => {
+    const { people, links } = siblingPreview();
+    expect(workToDraw(people, links)).toBe(workToDraw(people, links));
+  });
 });
