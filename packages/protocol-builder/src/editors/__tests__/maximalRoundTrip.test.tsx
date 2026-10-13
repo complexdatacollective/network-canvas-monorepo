@@ -176,11 +176,8 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       label: { 'en-US': 'Ego Form' },
       interviewScript: 'Ask about them.',
       skipLogic,
-      introductionPanel: {
-        title: { 'en-US': 'Introduction' },
-        text: { 'en-US': 'A few questions.' },
-      },
       form: {
+        title: { 'en-US': 'About you' },
         fields: [
           {
             id: 'field-1',
@@ -203,10 +200,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       skipLogic,
       filter: nodeFilter,
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: { 'en-US': 'Introduction' },
-        text: { 'en-US': 'A few questions.' },
-      },
       form: {
         fields: [
           {
@@ -230,10 +223,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       skipLogic,
       filter: edgeFilter,
       subject: { entity: 'edge', type: 'knows' },
-      introductionPanel: {
-        title: { 'en-US': 'Introduction' },
-        text: { 'en-US': 'A few questions.' },
-      },
       form: {
         fields: [
           {

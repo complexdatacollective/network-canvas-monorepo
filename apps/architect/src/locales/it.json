@@ -711,7 +711,6 @@
   "architect.protocolSummary.stage.form.form": "Modulo",
   "architect.protocolSummary.stage.form.title": "Titolo: {value1}",
   "architect.protocolSummary.stage.interviewScript.interviewerScript": "Traccia per l’intervista",
-  "architect.protocolSummary.stage.introductionPanel.introductionPanel": "Pannello introduttivo",
   "architect.protocolSummary.stage.items.items": "Elementi",
   "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": "Origine dei dati GeoJSON",
   "architect.protocolSummary.stage.mapOptions.mapboxAPIKey": "Chiave API di Mapbox",

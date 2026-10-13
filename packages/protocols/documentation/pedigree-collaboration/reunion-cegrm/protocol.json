@@ -566,20 +566,34 @@
       ]
     },
     {
+      "id": "information-intro-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "About this interview"
+      },
+      "title": {
+        "en-US": "About this interview"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "## Your family and the people who support you\n\nThis demonstration maps family relationships, what you know about a family health condition, and the people you turn to for information or support. Use nicknames if you prefer. You can leave questions unanswered, pause, or stop.\n\nFor an actual study, the researcher must first explain the approved consent and privacy procedures. This example consent question is a placeholder."
+          }
+        }
+      ]
+    },
+    {
       "id": "information-intro",
       "type": "EgoForm",
       "label": {
         "en-US": "Welcome and consent"
       },
-      "introductionPanel": {
+      "form": {
         "title": {
           "en-US": "About this interview"
         },
-        "text": {
-          "en-US": "## Your family and the people who support you\n\nThis demonstration maps family relationships, what you know about a family health condition, and the people you turn to for information or support. Use nicknames if you prefer. You can leave questions unanswered, pause, or stop.\n\nFor an actual study, the researcher must first explain the approved consent and privacy procedures. This example consent question is a placeholder."
-        }
-      },
-      "form": {
         "fields": [
           {
             "variable": "participant_consent",
@@ -588,6 +602,44 @@
             }
           }
         ]
+      }
+    },
+    {
+      "id": "ego-form-background-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "A little about you"
+      },
+      "title": {
+        "en-US": "A little about you"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "A few short questions before we start on the map."
+          }
+        }
+      ],
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d40",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
       }
     },
     {
@@ -615,15 +667,10 @@
           "type": "finish"
         }
       },
-      "introductionPanel": {
+      "form": {
         "title": {
           "en-US": "A little about you"
         },
-        "text": {
-          "en-US": "A few short questions before we start on the map."
-        }
-      },
-      "form": {
         "fields": [
           {
             "variable": "ego_age",

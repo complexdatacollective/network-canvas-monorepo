@@ -71,19 +71,10 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   await editor.createNew('TieStrengthCensus');
   await editor.setStageName('How Strong Is This Tie?');
 
-  // Same subject picker + shared `introduction()` section as DyadCensus
-  // (TieStrengthCensusStageEditor.ts composes `[stageHeading, subjectPicker,
-  // introduction, tieStrengthCensusPrompts, skipLogic,
-  // interviewerGuidance]`).
+  // Same subject picker as DyadCensus (TieStrengthCensusStageEditor.ts
+  // composes `[stageHeading, subjectPicker, tieStrengthCensusPrompts,
+  // skipLogic, interviewerGuidance]`).
   await selectOrCreateNodeType(architectPage, 'person');
-  await editor
-    .field('introductionPanel.title')
-    .getByRole('textbox')
-    .fill('How Strong Is This Tie?');
-  await editor.fillRichText(
-    'Introduction text',
-    'We would like to ask you how close you are with the people you know.',
-  );
 
   // TieStrengthCensusPromptsSection.tsx is the heaviest prompt editor in the
   // census family. Its row dialog holds four groups:

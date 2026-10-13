@@ -33,6 +33,28 @@
       }
     },
     {
+      "id": "ego-form-1-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Introduction to the ego form",
+        "es": "Introducción al formulario de ego"
+      },
+      "title": {
+        "en-US": "Introduction to the ego form",
+        "es": "Introducción al formulario de ego"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "There are multiple ways to describe **you**.",
+            "es": "Hay muchas maneras de describirte **a ti**."
+          }
+        }
+      ]
+    },
+    {
       "id": "ego-form-1",
       "interviewScript": "This is a **markdown field** that contains notes for the interviewer that are printed with the codebook, and can be reviewed during the interview.\n\nFor now it will only support rich text, but not images or audio.",
       "type": "EgoForm",
@@ -41,6 +63,10 @@
         "es": "Formulario de ego"
       },
       "form": {
+        "title": {
+          "en-US": "Introduction to the ego form",
+          "es": "Introducción al formulario de ego"
+        },
         "fields": [
           {
             "variable": "3377af3f-3c79-41da-9b0b-6570fb519b93",
@@ -127,16 +153,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction to the ego form",
-          "es": "Introducción al formulario de ego"
-        },
-        "text": {
-          "en-US": "There are multiple ways to describe **you**.",
-          "es": "Hay muchas maneras de describirte **a ti**."
-        }
       }
     },
     {
@@ -499,6 +515,28 @@
       ]
     },
     {
+      "id": "dyadcensus-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Introduction to the Dyad Census",
+        "es": "Introducción al censo de díadas"
+      },
+      "title": {
+        "en-US": "Introduction to the Dyad Census",
+        "es": "Introducción al censo de díadas"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "This section will go through all possible node pairs and ask you how they are connected.",
+            "es": "Esta sección recorrerá todos los pares de nodos posibles y te preguntará cómo están conectados."
+          }
+        }
+      ]
+    },
+    {
       "id": "dyadcensus",
       "type": "DyadCensus",
       "label": {
@@ -508,16 +546,6 @@
       "subject": {
         "entity": "node",
         "type": "person_node_type"
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction to the Dyad Census",
-          "es": "Introducción al censo de díadas"
-        },
-        "text": {
-          "en-US": "This section will go through all possible node pairs and ask you how they are connected.",
-          "es": "Esta sección recorrerá todos los pares de nodos posibles y te preguntará cómo están conectados."
-        }
       },
       "prompts": [
         {
@@ -539,6 +567,28 @@
       ]
     },
     {
+      "id": "tie-strength-census-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Introduction to the Tie-Strength Census",
+        "es": "Introducción al censo de intensidad de vínculos"
+      },
+      "title": {
+        "en-US": "Introduction to the Tie-Strength Census",
+        "es": "Introducción al censo de intensidad de vínculos"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "This interface both creates an edge and assigns an ordinal value to it.",
+            "es": "Esta interfaz crea un vínculo y además le asigna un valor ordinal."
+          }
+        }
+      ]
+    },
+    {
       "id": "tie-strength-census",
       "type": "TieStrengthCensus",
       "label": {
@@ -548,16 +598,6 @@
       "subject": {
         "entity": "node",
         "type": "person_node_type"
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction to the Tie-Strength Census",
-          "es": "Introducción al censo de intensidad de vínculos"
-        },
-        "text": {
-          "en-US": "This interface both creates an edge and assigns an ordinal value to it.",
-          "es": "Esta interfaz crea un vínculo y además le asigna un valor ordinal."
-        }
       },
       "prompts": [
         {
@@ -1283,6 +1323,46 @@
       ]
     },
     {
+      "id": "alter-form-1-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Introduction to the alter form",
+        "es": "Introducción al formulario de alter"
+      },
+      "title": {
+        "en-US": "Introduction to the alter form",
+        "es": "Introducción al formulario de alter"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "This is some **markdown** that \n* explains this interface and \n* is *marked down*. \n\nBelow this might be as much additional text as the researcher desires. The container that this content is in should dynamically expand to accommodate that.",
+            "es": "Esto es un poco de **markdown** que \n* explica esta interfaz y \n* está *en markdown*. \n\nDebajo puede haber tanto texto adicional como quiera el investigador. El contenedor de este contenido debería ampliarse de forma dinámica para acomodarlo."
+          }
+        }
+      ],
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "join": "AND",
+          "rules": [
+            {
+              "type": "node",
+              "options": {
+                "type": "person_node_type",
+                "operator": "INCLUDES",
+                "attribute": "e343a91f-628d-4175-870c-957beffa0153",
+                "value": "two"
+              },
+              "id": "d9f1e1cb-59ee-4ed8-84d1-37a81518db04"
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "alter-form-1",
       "type": "AlterForm",
       "label": {
@@ -1318,16 +1398,6 @@
           }
         ]
       },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction to the alter form",
-          "es": "Introducción al formulario de alter"
-        },
-        "text": {
-          "en-US": "This is some **markdown** that \n* explains this interface and \n* is *marked down*. \n\nBelow this might be as much additional text as the researcher desires. The container that this content is in should dynamically expand to accommodate that.",
-          "es": "Esto es un poco de **markdown** que \n* explica esta interfaz y \n* está *en markdown*. \n\nDebajo puede haber tanto texto adicional como quiera el investigador. El contenedor de este contenido debería ampliarse de forma dinámica para acomodarlo."
-        }
-      },
       "skipLogic": {
         "action": "SKIP",
         "filter": {
@@ -1346,6 +1416,28 @@
           ]
         }
       }
+    },
+    {
+      "id": "alter-edge-form-1-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Introduction to the alter edge form",
+        "es": "Introducción al formulario de vínculos de alter"
+      },
+      "title": {
+        "en-US": "Introduction to the alter edge form",
+        "es": "Introducción al formulario de vínculos de alter"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "This per alter edge form shows friend edges, but filters\n\n\n- Any edges where either node also also has a professional edge\n- Any nodes where contact frequency is over two years ago, or last two years\n\n",
+            "es": "Este formulario de vínculos por alter muestra los vínculos de amistad, pero filtra\n\n\n- Los vínculos en los que cualquiera de los nodos también tiene un vínculo profesional\n- Los nodos cuya frecuencia de contacto es de hace más de dos años, o de los últimos dos años\n\n"
+          }
+        }
+      ]
     },
     {
       "id": "alter-edge-form-1",
@@ -1383,16 +1475,6 @@
           }
         ]
       },
-      "introductionPanel": {
-        "title": {
-          "en-US": "Introduction to the alter edge form",
-          "es": "Introducción al formulario de vínculos de alter"
-        },
-        "text": {
-          "en-US": "This per alter edge form shows friend edges, but filters\n\n\n- Any edges where either node also also has a professional edge\n- Any nodes where contact frequency is over two years ago, or last two years\n\n",
-          "es": "Este formulario de vínculos por alter muestra los vínculos de amistad, pero filtra\n\n\n- Los vínculos en los que cualquiera de los nodos también tiene un vínculo profesional\n- Los nodos cuya frecuencia de contacto es de hace más de dos años, o de los últimos dos años\n\n"
-        }
-      },
       "filter": {
         "join": "AND",
         "rules": [
@@ -1418,6 +1500,28 @@
       }
     },
     {
+      "id": "alter-edge-form-2-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "An alternative alter edge interface",
+        "es": "Una interfaz alternativa de vínculos de alter"
+      },
+      "title": {
+        "en-US": "An alternative alter edge interface",
+        "es": "Una interfaz alternativa de vínculos de alter"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "This interface acts on professional edges.",
+            "es": "Esta interfaz actúa sobre los vínculos profesionales."
+          }
+        }
+      ]
+    },
+    {
       "id": "alter-edge-form-2",
       "type": "AlterEdgeForm",
       "label": {
@@ -1438,16 +1542,6 @@
             }
           }
         ]
-      },
-      "introductionPanel": {
-        "title": {
-          "en-US": "An alternative alter edge interface",
-          "es": "Una interfaz alternativa de vínculos de alter"
-        },
-        "text": {
-          "en-US": "This interface acts on professional edges.",
-          "es": "Esta interfaz actúa sobre los vínculos profesionales."
-        }
       }
     },
     {

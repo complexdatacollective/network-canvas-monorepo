@@ -125,10 +125,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             form: {
               fields: [],
             },
-            introductionPanel: {
-              title: localized('Edge Form Intro'),
-              text: localized('Introduction text for edge form.'),
-            },
           },
         ],
       };
@@ -157,16 +153,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             type: 'EgoForm',
             label: localized('Ego Form'),
             form: {
+              title: localized('Ego Form Intro'),
               fields: [
                 {
                   variable: 'egoName',
                   prompt: localized('Enter your name'),
                 },
               ],
-            },
-            introductionPanel: {
-              title: localized('Ego Form Intro'),
-              text: localized('Introduction text for ego form.'),
             },
           },
         ],
@@ -191,16 +184,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             type: 'EgoForm',
             label: localized('Ego Form'),
             form: {
+              title: localized('Ego Form Intro'),
               fields: [
                 {
                   variable: 'egoName',
                   prompt: localized('Enter your name'),
                 },
               ],
-            },
-            introductionPanel: {
-              title: localized('Ego Form Intro'),
-              text: localized('Introduction text for ego form.'),
             },
           },
         ],
@@ -296,6 +286,7 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             type: 'EgoForm',
             label: localized('Ego Form'),
             form: {
+              title: localized('Ego Form Intro'),
               fields: [
                 {
                   variable: 'egoName',
@@ -306,10 +297,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                   prompt: localized('Enter your age'),
                 },
               ],
-            },
-            introductionPanel: {
-              title: localized('Ego Form Intro'),
-              text: localized('Introduction text for ego form.'),
             },
           },
         ],
@@ -330,16 +317,13 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             type: 'EgoForm',
             label: localized('Ego Form'),
             form: {
+              title: localized('Ego Form Intro'),
               fields: [
                 {
                   variable: 'nonexistentEgoVariable',
                   prompt: localized('Enter something'),
                 },
               ],
-            },
-            introductionPanel: {
-              title: localized('Ego Form Intro'),
-              text: localized('Introduction text for ego form.'),
             },
           },
         ],
@@ -388,10 +372,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                   prompt: localized('How long have you known them?'),
                 },
               ],
-            },
-            introductionPanel: {
-              title: localized('Edge Form Intro'),
-              text: localized('Introduction text for edge form.'),
             },
           },
         ],
@@ -711,12 +691,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 createEdge: 'knows',
               },
             ],
-            introductionPanel: {
-              title: localized('Dyad Census'),
-              text: localized(
-                "In the next screens, you will be shown pairs of alters. By answering 'Yes' to the questions, an edge between both alters will then be created.",
-              ),
-            },
           },
         ],
       };
@@ -746,12 +720,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 createEdge: 'nonexistentEdge',
               },
             ],
-            introductionPanel: {
-              title: localized('Dyad Census'),
-              text: localized(
-                "In the next screens, you will be shown pairs of alters. By answering 'Yes' to the questions, an edge between both alters will then be created.",
-              ),
-            },
           },
         ],
       };
@@ -796,10 +764,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                   negativeLabel: localized('   '),
                 },
               ],
-              introductionPanel: {
-                title: localized('Tie Strength Census'),
-                text: localized('Rate each pair.'),
-              },
             },
           ],
         }),
@@ -837,12 +801,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 negativeLabel: localized('Not connected'),
               },
             ],
-            introductionPanel: {
-              title: localized('Tie Strength Census'),
-              text: localized(
-                'In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.',
-              ),
-            },
           },
         ],
       };
@@ -874,12 +832,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 negativeLabel: localized('Not connected'),
               },
             ],
-            introductionPanel: {
-              title: localized('Tie Strength Census'),
-              text: localized(
-                'In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.',
-              ),
-            },
           },
         ],
       };
@@ -926,12 +878,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 negativeLabel: localized('Not connected'),
               },
             ],
-            introductionPanel: {
-              title: localized('Tie Strength Census'),
-              text: localized(
-                'In the next screens, you will be shown pairs of alters. Please rate the strength of their relationship.',
-              ),
-            },
           },
         ],
       };

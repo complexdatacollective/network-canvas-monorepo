@@ -20,10 +20,6 @@ const build = () => {
     label: 'Dyad Census',
     initialNodes: { count: 4 },
     subject: { entity: 'node', type: nt.id },
-    introductionPanel: {
-      title: 'Network Relationships',
-      text: 'In this section, you will be asked about relationships between people in your network. For each pair of people, please indicate whether they know each other.',
-    },
   });
   stage.addPrompt({
     text: 'Do these two people know each other?',
@@ -37,18 +33,12 @@ const meta: Meta = {
   tags: ['capture'],
   parameters: {
     layout: 'fullscreen',
-    // advance: dismiss the stage's introduction panel so the pair UI is
-    // pictured (showNavigation keeps the Next button available; the runner
-    // removes the navigation before screenshotting).
-    capture: {
-      interface: 'DyadCensus',
-      advance: 1,
-    } satisfies CaptureParameters,
+    capture: { interface: 'DyadCensus' } satisfies CaptureParameters,
   },
 };
 
 export default meta;
 
 export const Capture: StoryObj = {
-  render: () => <CaptureStory build={build} showNavigation />,
+  render: () => <CaptureStory build={build} />,
 };

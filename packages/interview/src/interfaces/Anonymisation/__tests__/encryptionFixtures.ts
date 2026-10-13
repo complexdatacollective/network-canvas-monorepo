@@ -138,10 +138,6 @@ export const alterFormStages: Stages = [
     type: 'AlterForm',
     label: { en: 'Alter form' },
     subject: { entity: 'node', type: NODE_TYPE },
-    introductionPanel: {
-      title: { en: 'About each person' },
-      text: { en: 'Intro' },
-    },
     form: {
       fields: [
         {

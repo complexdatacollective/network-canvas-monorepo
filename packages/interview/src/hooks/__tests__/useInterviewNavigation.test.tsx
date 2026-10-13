@@ -543,7 +543,7 @@ describe('useInterviewNavigation Back at the interview start', () => {
     const { result } = renderStatefulNavigation(makeStages(2), 0);
 
     act(() => {
-      // Consumes the step internally, like a census moving intro -> first pair.
+      // Consumes the step internally, like a census moving to its next pair.
       result.current.registerBeforeNext(() => false);
     });
 

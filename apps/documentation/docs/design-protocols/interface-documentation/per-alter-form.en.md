@@ -11,7 +11,7 @@ navOrder: 14
 
 </InterfaceSummary>
 
-The Per Alter Form is a _name interpreter_ interface that captures attribute data on the alters in a participant's network. When using the Per Alter Form, participants review an introductory panel which describes the tasks on the stage and then complete a [form](../key-concepts/forms) on each node in their network. These forms are customizable and can include one or multiple fields to collect specific attribute data using a variety of [input controls](../key-concepts/input-controls).
+The Per Alter Form is a _name interpreter_ interface that captures attribute data on the alters in a participant's network. When using the Per Alter Form, participants complete a [form](../key-concepts/forms) on each node in their network. These forms are customizable and can include one or multiple fields to collect specific attribute data using a variety of [input controls](../key-concepts/input-controls).
 
 ## Configuring Per Alter Form
 
@@ -20,10 +20,6 @@ The Per Alter Form is a _name interpreter_ interface that captures attribute dat
 A single node type is selectable per screen. This screen supports [filtering](../key-concepts/network-filtering) for nodes that match the specified type.
 
 ![](/assets/img/interface-documentation/per-alter-form/architect-node-type.png)
-
-The introduction screen is shown before any matching alters and can be used to introduce the task.
-
-![](/assets/img/interface-documentation/per-alter-form/architect-intro.png)
 
 Each node will be assigned variables using a configurable [form](../key-concepts/forms).
 
@@ -39,7 +35,7 @@ Use this Interface as a simple way to systematically collect data on alters.
 
 <GoodPractice>
 
-Use the introductory panel to orient participants to the tasks within the form they will complete for each alter.
+Place an [Information](../interface-documentation/information) stage before this Interface to orient participants to the tasks within the form they will complete for each alter.
 
 </GoodPractice>
 

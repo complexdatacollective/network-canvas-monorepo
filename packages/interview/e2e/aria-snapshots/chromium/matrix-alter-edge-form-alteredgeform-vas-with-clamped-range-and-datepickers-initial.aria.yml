@@ -1,6 +1,39 @@
 - main:
-  - heading "Relationship details" [level=1]
-  - paragraph: A few more questions about this relationship.
+  - button "Alex"
+  - button "Sam"
+  - text: How important is this relationship?
+  - group "How important is this relationship?":
+    - slider "How important is this relationship?": "0.5"
+  - text: Not at all Extremely How many times have you spoken?
+  - button "Decrease value"
+  - spinbutton "How many times have you spoken?"
+  - button "Increase value"
+  - text: Roughly when did you first meet? Year Month
+  - combobox "Roughly when did you first meet? Year":
+    - option "Year" [selected]
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+    - option /\d+/
+  - combobox "Roughly when did you first meet? Month" [disabled]:
+    - option "Month" [selected]
+    - option "January"
+    - option "February"
+    - option "March"
+    - option "April"
+    - option "May"
+    - option "June"
+    - option "July"
+    - option "August"
+    - option "September"
+    - option "October"
+    - option "November"
+    - option "December"
+  - text: When did you last speak?
+  - textbox "When did you last speak?"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

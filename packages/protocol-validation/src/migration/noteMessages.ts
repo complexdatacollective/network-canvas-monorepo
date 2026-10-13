@@ -408,12 +408,12 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance, read by a researcher upgrading a protocol: optionValueNames. An ordinal or categorical attribute offers a fixed list of options; each option has a label the participant reads and a value stored as the answer. "One standard form" means Unicode normalization (the same letter is always stored with the same characters). "As above" refers to the previous bullet, which says options sharing a value are merged into the first. Skip logic decides whether a stage is shown; a filter decides which people a stage lists; node shapes are the shapes nodes are drawn in according to an answer. Keep "Option" in English and in double quotes: it is the literal text written into protocol data.',
   },
-  schema9IntroductionPanelText: {
-    id: 'protocolValidation.migrationNotes.schema9.introductionPanelText',
+  schema9IntroductionPanels: {
+    id: 'protocolValidation.migrationNotes.schema9.introductionPanels',
     defaultMessage:
-      "An introduction panel's text is now optional, so a panel can show only its title. Text that contained only spaces is removed, so the panel shows only its title, as before. An introduction panel's title must contain some text, so a title that contained only spaces now uses the stage's name.",
+      "Introduction panels are replaced by Information stages, so instructions to participants are written in one place. The introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage becomes an Information stage just before it, with the panel's title and text. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one. An Ego Form's panel showed as the heading above its questions, so the panel's title becomes the title of the form, still shown above the questions; if the panel had text, the text moves to an Information stage just before the Ego Form. Panel text that contained only spaces is left out, and a panel title that contained only spaces now uses the stage's name.",
     description:
-      'One complete Markdown bullet in schema 9 migration approval guidance: introductionPanelText. An introduction panel is the screen with a title and text that opens a form or census stage before its questions. The stage name is the name shown for the stage in the list of stages.',
+      'One complete Markdown bullet in schema 9 migration approval guidance: introductionPanels. An introduction panel is the screen with a title and text that opened a form or census stage before its questions. An Information stage is a stage type that shows a title and text to the participant. Per Alter Form, Per Alter Edge Form, Dyad Census, Tie-Strength Census, Ego Form and Information are names of stage types; translate them as the rest of the app does. Skip logic decides whether a stage is shown. The stage name is the name shown for the stage in the list of stages.',
   },
   schema9OtherBinText: {
     id: 'protocolValidation.migrationNotes.schema9.otherBinText',
@@ -626,7 +626,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9ContradictoryPassphraseRules,
       migrationNoteMessages.schema9DuplicateOptionValues,
       migrationNoteMessages.schema9OptionValueNames,
-      migrationNoteMessages.schema9IntroductionPanelText,
+      migrationNoteMessages.schema9IntroductionPanels,
       migrationNoteMessages.schema9OtherBinText,
       migrationNoteMessages.schema9TieStrengthDeclineLabel,
       migrationNoteMessages.schema9InformationTitle,

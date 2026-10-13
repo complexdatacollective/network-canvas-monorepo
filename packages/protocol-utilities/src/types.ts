@@ -310,10 +310,6 @@ export type StageEntry = {
     minNodes?: number;
     maxNodes?: number;
   };
-  introductionPanel?: {
-    title: TextInput;
-    text: TextInput;
-  };
   title?: TextInput;
   items?: ItemInput[];
   initialEdges: [number, number][];
@@ -545,10 +541,6 @@ export type AddStageInput = {
   form?: {
     title?: TextInput;
     fields: FormFieldInput[];
-  };
-  introductionPanel?: {
-    title?: TextInput;
-    text?: TextInput;
   };
   // NameGeneratorQuickAdd
   quickAdd?: string;

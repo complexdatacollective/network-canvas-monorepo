@@ -40,9 +40,18 @@ describe('installPreviewProtocol', () => {
           COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
         );
         // A gallery protocol older than schema 9 gains the finish stage the
-        // v8 → v9 migration appends.
+        // v8 → v9 migration appends, and an Information stage before each
+        // stage that had an introduction panel, named after that stage.
         const downloadTypes = download.stages.map(({ type }) => type);
-        expect(install.protocol.stages.map(({ type }) => type)).toEqual(
+        const migrated = install.protocol.stages;
+        const authored = migrated.filter(
+          (stage, index) =>
+            !(
+              stage.type === 'Information' &&
+              stage.id === `${migrated[index + 1]?.id}-introduction`
+            ),
+        );
+        expect(authored.map(({ type }) => type)).toEqual(
           downloadTypes.at(-1) === 'FinishSession'
             ? downloadTypes
             : [...downloadTypes, 'FinishSession'],

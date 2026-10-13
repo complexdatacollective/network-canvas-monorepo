@@ -2510,8 +2510,17 @@ describe('Migration V7 to V8', () => {
       });
       const parsed = V8OutputSchema.parse(migratedRaw);
 
-      const [ego, alter, alterEdge] = parsed.stages;
-      if (ego && 'form' in ego) expect(ego.form).not.toHaveProperty('title');
+      const stage = (id: string) => parsed.stages.find((s) => s.id === id);
+      const [ego, alter, alterEdge] = [
+        stage('egoForm1'),
+        stage('alterForm1'),
+        stage('alterEdgeForm1'),
+      ];
+      // Schema 9 gives an Ego Form's form a title again: its introduction
+      // panel's title, never the title schema 7 left unused.
+      if (ego && 'form' in ego) {
+        expect(ego.form).toHaveProperty('title', { en: 'Intro' });
+      }
       if (alter && 'form' in alter)
         expect(alter.form).not.toHaveProperty('title');
       if (alterEdge && 'form' in alterEdge)
@@ -6459,7 +6468,10 @@ describe('Migration V7 to V8', () => {
         parsed.success,
         JSON.stringify(!parsed.success && parsed.error.issues, null, 2),
       ).toBe(true);
-      const stage = parsed.data?.stages[1];
+      // Found by id: an introduction panel becomes an Information stage
+      // just before its stage, which moves the stage on.
+      const { id } = (protocol as Protocol<7>).stages[1] ?? {};
+      const stage = parsed.data?.stages.find((s) => s.id === id);
       return stage && 'form' in stage ? stage.form?.fields : undefined;
     };
 

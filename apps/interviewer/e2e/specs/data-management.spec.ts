@@ -192,7 +192,7 @@ test.describe('interview data management', () => {
     await expect(page.getByText('Read-only review')).toBeVisible();
     await expect(page.locator('[data-stage-step]')).toHaveAttribute(
       'data-stage-step',
-      '3',
+      '4',
     );
     await expect(
       page.getByRole('heading', { name: 'Finish Interview' }),
@@ -217,7 +217,7 @@ test.describe('interview data management', () => {
     await expect(page).toHaveURL(/\/interview\//);
     await expect(page.locator('[data-stage-step]')).toHaveAttribute(
       'data-stage-step',
-      '3',
+      '4',
     );
     await expect(
       page.getByRole('heading', { name: 'Finish Interview' }),

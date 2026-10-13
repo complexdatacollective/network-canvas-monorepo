@@ -205,6 +205,13 @@ export const formFieldsMessages = defineMessages({
     description:
       'Guidance under the form-title field. The quoted phrase is an example a researcher might write, and should be translated as such.',
   },
+  egoFormTitleHint: {
+    id: 'protocolBuilder.formFields.egoFormTitleHint',
+    defaultMessage:
+      "Shown as the heading above the questions. Use a short title such as 'About you'.",
+    description:
+      'Guidance under the title field of an Ego Form, whose questions are about the participant. The quoted phrase is an example a researcher might write, and should be translated as such.',
+  },
   formTitlePlaceholder: {
     id: 'protocolBuilder.formFields.formTitlePlaceholder',
     defaultMessage: 'Enter a title...',
@@ -606,9 +613,9 @@ export type FormFieldsSectionProps = Readonly<{
   capability?: SectionCapability;
   /**
    * The interface shows a heading above the form, so the researcher authors
-   * one. `false` for the three interfaces whose form IS the whole stage — the
-   * stage's own name already does that job, and the schema refuses a title
-   * there (`TitlelessFormSchema`).
+   * one. `false` for the per-alter and per-relationship forms, whose form IS
+   * the whole stage — the stage's own name already does that job, and the
+   * schema refuses a title there (`TitlelessFormSchema`).
    */
   hasTitle?: boolean;
   /**
@@ -845,7 +852,11 @@ export default function FormFieldsSection({
           name={TITLE}
           component={LocalizedInputField}
           label={intl.formatMessage(formFieldsMessages.formTitleLabel)}
-          hint={intl.formatMessage(formFieldsMessages.formTitleHint)}
+          hint={intl.formatMessage(
+            subject === 'ego'
+              ? formFieldsMessages.egoFormTitleHint
+              : formFieldsMessages.formTitleHint,
+          )}
           placeholder={intl.formatMessage(
             formFieldsMessages.formTitlePlaceholder,
           )}

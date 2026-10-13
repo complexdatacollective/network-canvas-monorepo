@@ -11,7 +11,7 @@ navOrder: 17
 
 </InterfaceSummary>
 
-The Dyad Census is a _name interpreter_ interface that collects edges for existing alters. On the Dyad Census screen participants are asked if an edge exists for each alter pair combination. This Interface also contains an embedded introductory panel where the purpose of the form can be described to a participant.
+The Dyad Census is a _name interpreter_ interface that collects edges for existing alters. On the Dyad Census screen participants are asked if an edge exists for each alter pair combination. To describe the purpose of the task to a participant, place an [Information](../interface-documentation/information) stage before the Dyad Census.
 
 ## Configuring Dyad Census
 

@@ -327,11 +327,8 @@ test('formats printed attribute order and updates linked-list grammar live while
         id: 'sort',
         type: 'EgoForm',
         label: { en: 'Authored_sort' },
-        introductionPanel: {
-          title: { en: 'Authored introduction' },
-          text: { en: 'Authored content' },
-        },
         form: {
+          title: { en: 'Authored title' },
           fields: names.map((_, index) => ({
             variable: `attribute-${index}`,
             prompt: { en: `Authored_prompt_${index}` },
@@ -342,11 +339,8 @@ test('formats printed attribute order and updates linked-list grammar live while
         id: 'conjunction',
         type: 'EgoForm',
         label: { en: 'Authored_conjunction' },
-        introductionPanel: {
-          title: { en: 'Authored introduction' },
-          text: { en: 'Authored content' },
-        },
         form: {
+          title: { en: 'Authored title' },
           fields: [0, 3].map((index) => ({
             variable: `attribute-${index}`,
             prompt: { en: `Authored_prompt_${index}` },

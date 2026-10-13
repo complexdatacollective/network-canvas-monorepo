@@ -68,14 +68,7 @@ async function seedStageWithVariable(
   await editor.createNew('EgoForm');
   await editor.setStageName('About You');
 
-  await editor
-    .field('introductionPanel.title')
-    .getByRole('textbox')
-    .fill('About You');
-  await editor.fillRichText(
-    'Introduction text',
-    'Thanks for taking part in this study.',
-  );
+  await editor.field('form.title').getByRole('textbox').fill('About You');
 
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',

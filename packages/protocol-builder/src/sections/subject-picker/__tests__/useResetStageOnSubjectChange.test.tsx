@@ -173,10 +173,6 @@ const censusWithAFilter = {
   fields: {
     label: en('Dyad Census'),
     subject: { entity: 'node', type: 'person' },
-    introductionPanel: {
-      title: en('Introduction to the Dyad Census'),
-      text: en('This section goes through every pair of people.'),
-    },
     filter: A_PERSON_FILTER,
     prompts: [
       {

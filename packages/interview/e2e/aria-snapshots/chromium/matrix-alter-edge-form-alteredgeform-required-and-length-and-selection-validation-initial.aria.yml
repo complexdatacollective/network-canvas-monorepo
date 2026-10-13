@@ -1,6 +1,27 @@
 - main:
-  - heading "Relationship details" [level=1]
-  - paragraph: Answer the following.
+  - button "Alex"
+  - button "Sam"
+  - text: How close is this relationship? Required
+  - radiogroup "How close is this relationship?":
+    - radio "Very close"
+    - text: Very close
+    - radio "Close"
+    - text: Close
+    - radio "Distant"
+    - text: Distant
+  - text: Describe this relationship. Keep it short.
+  - list:
+    - listitem: Enter at least 5 characters.
+    - listitem: /Enter at most \d+ characters\./
+  - textbox "Describe this relationship."
+  - text: In what contexts do you interact?
+  - group "In what contexts do you interact?":
+    - checkbox "Work"
+    - text: Work
+    - checkbox "Social"
+    - text: Social
+    - checkbox "Family"
+    - text: Family
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

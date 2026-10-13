@@ -711,7 +711,6 @@
   "architect.protocolSummary.stage.form.form": "Form",
   "architect.protocolSummary.stage.form.title": "Title: {value1}",
   "architect.protocolSummary.stage.interviewScript.interviewerScript": "Interviewer Script",
-  "architect.protocolSummary.stage.introductionPanel.introductionPanel": "Introduction Panel",
   "architect.protocolSummary.stage.items.items": "Items",
   "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": "GeoJSON Data Source",
   "architect.protocolSummary.stage.mapOptions.mapboxAPIKey": "Mapbox API Key",

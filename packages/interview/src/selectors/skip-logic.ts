@@ -1,10 +1,12 @@
 import { createSelector } from '@reduxjs/toolkit';
 
 import {
+  filter as networkFilter,
   isStageSkipped,
   resolveSkipLogicDestinationIndex,
 } from '@codaco/network-query';
 import type {
+  Filter,
   SkipLogic,
   SkipLogicDestination,
 } from '@codaco/protocol-validation';
@@ -18,6 +20,8 @@ type RoutableStage = {
   id: string;
   type?: string;
   skipLogic?: SkipLogic;
+  subject?: { entity: string; type?: string };
+  filter?: Filter;
 };
 
 export type AvailableStage = {
@@ -38,12 +42,21 @@ export type BypassedStage = {
   };
 };
 
+/**
+ * A stage that asks about each person, relationship or pair of people, when
+ * the network has none for it to ask about.
+ */
+export type EmptyStage = {
+  kind: 'empty';
+};
+
 export type StageAvailability =
   | AvailableStage
   | LocallySkippedStage
-  | BypassedStage;
+  | BypassedStage
+  | EmptyStage;
 
-export type UnavailableStage = LocallySkippedStage | BypassedStage;
+export type UnavailableStage = LocallySkippedStage | BypassedStage | EmptyStage;
 
 export type NavigableStages = {
   currentAvailability: StageAvailability | undefined;
@@ -53,6 +66,37 @@ export type NavigableStages = {
 };
 
 const AVAILABLE: AvailableStage = { kind: 'available' };
+const EMPTY: EmptyStage = { kind: 'empty' };
+
+// How many of a stage's subject the network must hold for these stages to
+// have anything to ask: a form needs one person or relationship, and a
+// census one pair of people.
+const SUBJECTS_NEEDED: Partial<Record<string, number>> = {
+  AlterForm: 1,
+  AlterEdgeForm: 1,
+  DyadCensus: 2,
+  TieStrengthCensus: 2,
+};
+
+/**
+ * Whether a stage that asks about each of its subjects has none to ask about,
+ * counting the subjects its interface shows: those of the stage's subject
+ * type in the network its filter leaves.
+ */
+const hasNothingToAsk = (stage: RoutableStage, network: NcNetwork): boolean => {
+  const needed = stage.type ? SUBJECTS_NEEDED[stage.type] : undefined;
+  const subject = stage.subject;
+  if (needed === undefined || !subject) return false;
+
+  const visible = stage.filter ? networkFilter(stage.filter)(network) : network;
+  const entities = subject.entity === 'edge' ? visible.edges : visible.nodes;
+  let count = 0;
+  for (const entity of entities) {
+    if (entity.type === subject.type) count += 1;
+    if (count >= needed) return false;
+  }
+  return true;
+};
 
 /**
  * Build the active interview route in protocol order.
@@ -61,6 +105,10 @@ const AVAILABLE: AvailableStage = { kind: 'available' };
  * destination. Rules on those bypassed stages are deliberately not evaluated;
  * the destination itself remains reachable and is evaluated normally, which
  * allows destinations to chain when they are also hidden.
+ *
+ * A reachable stage with nothing to ask about is off the route too, so
+ * navigation passes it in either direction, and a participant who comes back
+ * from the stage after it is not sent forward again.
  */
 export const buildStageAvailabilityMap = (
   stages: readonly RoutableStage[],
@@ -75,7 +123,9 @@ export const buildStageAvailabilityMap = (
     }
 
     const stage = stages[stageIndex];
-    if (!stage?.skipLogic || !isStageSkipped(stage.skipLogic, network)) {
+    if (!stage) continue;
+    if (!stage.skipLogic || !isStageSkipped(stage.skipLogic, network)) {
+      if (hasNothingToAsk(stage, network)) availability[stageIndex] = EMPTY;
       continue;
     }
 
@@ -200,9 +250,11 @@ export const getNavigableStages: (
  *
  * Targeted routes recover forward to their next active stage, which is the
  * configured destination (or the next available stage after a hidden/chained
- * destination). Legacy local skips without a destination retain their existing
- * recovery behavior: prefer the nearest earlier stage, then advance when none
- * exists. The render gate prevents unavailable content from flashing first.
+ * destination). A stage with nothing to ask about recovers forward as well, as
+ * the participant has nothing left to do there. Legacy local skips without a
+ * destination retain their existing recovery behavior: prefer the nearest
+ * earlier stage, then advance when none exists. The render gate prevents
+ * unavailable content from flashing first.
  */
 export const resolveRecoveryStep = ({
   currentStep,
@@ -215,12 +267,13 @@ export const resolveRecoveryStep = ({
   previousValidStageIndex: number;
   nextValidStageIndex: number;
 }): number => {
-  const isTargetedRoute =
+  const recoversForward =
     currentAvailability?.kind === 'bypassed' ||
+    currentAvailability?.kind === 'empty' ||
     (currentAvailability?.kind === 'local-skip' &&
       currentAvailability.destination !== undefined);
 
-  if (isTargetedRoute) {
+  if (recoversForward) {
     return nextValidStageIndex;
   }
 

@@ -28,7 +28,7 @@ export type CaptureParameters = {
   skip?: boolean;
   /**
    * Click the navigation's Next button this many times before capturing —
-   * for interfaces with an internal introduction step (e.g. DyadCensus).
+   * for interfaces that need a step taken before the pictured state.
    * The story must also pass `showNavigation` to CaptureStory; the runner
    * removes the navigation from the DOM before taking the screenshot.
    */

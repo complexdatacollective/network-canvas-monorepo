@@ -711,7 +711,6 @@
   "architect.protocolSummary.stage.form.form": "表單",
   "architect.protocolSummary.stage.form.title": "標題：{value1}",
   "architect.protocolSummary.stage.interviewScript.interviewerScript": "訪員腳本",
-  "architect.protocolSummary.stage.introductionPanel.introductionPanel": "介紹面板",
   "architect.protocolSummary.stage.items.items": "項目",
   "architect.protocolSummary.stage.mapOptions.geoJSONDataSource": "GeoJSON 資料來源",
   "architect.protocolSummary.stage.mapOptions.mapboxAPIKey": "Mapbox API 金鑰",

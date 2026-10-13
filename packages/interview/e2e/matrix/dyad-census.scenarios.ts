@@ -12,27 +12,25 @@ import type { InterfaceScenarios } from './types.js';
  *   synthetic-payload adapter strips `network.nodes`/`edges` unless
  *   `seedNetwork` is set (synthetic-payload.ts:147-149), so `initialNodes`
  *   /`addManualNode` only materialise when the network is seeded. Without it a
- *   DyadCensus has zero pairs and force-skips.
+ *   DyadCensus has zero pairs and navigation passes it.
  * - `getStageMetadata(step)` is read at the DyadCensus's actual step index
  *   (updateStageMetadata keys by the live `currentStep` — DyadCensus.tsx +
  *   session.ts:858-867). That is 0 when the DyadCensus is the only stage and 1
  *   when flanked by an Information stage — not always 1.
- * - Backwards navigation is exercised within a prompt (pair N -> pair N-1) and
- *   pair 0 -> intro, both handled internally by the stage's `useBeforeNext`
- *   (DyadCensus.tsx:164-184); these are deterministic, unlike cross-stage
- *   re-entry which remounts the stage.
+ * - Backwards navigation is exercised within a prompt (pair N -> pair N-1),
+ *   handled internally by the stage's `useBeforeNext`, and from the first
+ *   pair of the first prompt, which leaves the stage for the one before it.
  */
 export const dyadCensusScenarios: InterfaceScenarios = {
   interfaceType: 'DyadCensus',
   scenarios: [
     {
-      id: 'intro-and-yes-creates-edge',
+      id: 'opens-on-first-pair-and-yes-creates-edge',
       covers: [
         'type',
         'id',
         'label',
         'interviewScript',
-        'introductionPanel',
         'prompts[].id',
         'prompts[].text',
         'prompts[].createEdge=yes-path',
@@ -49,10 +47,6 @@ export const dyadCensusScenarios: InterfaceScenarios = {
             interviewScript: 'SCRIPT SENTINEL',
             subject: { entity: 'node', type: nodeType.id },
             initialNodes: { count: 3 },
-            introductionPanel: {
-              title: 'Network Relationships',
-              text: 'Do **these two** know each other?',
-            },
           })
           .addPrompt({ text: 'Do they **know** each other?' });
         return synth;
@@ -60,15 +54,8 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       run: async ({ page, protocol, interview }) => {
         const dc = new DyadCensusFixture(page);
 
-        await expect(
-          page.getByRole('heading', { name: 'Network Relationships' }),
-        ).toBeVisible();
-        await expect(
-          page.locator('strong', { hasText: 'these two' }),
-        ).toBeVisible();
-        await expect(page.getByRole('radio')).toHaveCount(0);
-
-        await dc.dismissIntro();
+        // The stage opens directly on its first pair.
+        await dc.waitForFirstPair();
         await expect(page.locator('strong', { hasText: 'know' })).toBeVisible();
 
         // label/interviewScript are author-facing only: never rendered.
@@ -107,7 +94,6 @@ export const dyadCensusScenarios: InterfaceScenarios = {
           .addStage('DyadCensus', {
             subject: { entity: 'node', type: nodeType.id },
             initialNodes: { count: 2 },
-            introductionPanel: { title: 'Intro', text: 'Intro copy' },
           })
           .addPrompt({
             text: 'Do they know each other?',
@@ -117,7 +103,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page, protocol, interview }) => {
         const dc = new DyadCensusFixture(page);
-        await dc.dismissIntro();
+        await dc.waitForFirstPair();
 
         // Forward with no answer: blocked, toast surfaced, still on the pair.
         await page.getByTestId('next-button').click();
@@ -143,24 +129,22 @@ export const dyadCensusScenarios: InterfaceScenarios = {
     },
 
     {
-      id: 'toggle-delete-idempotence-and-back-to-intro',
+      id: 'toggle-delete-idempotence-and-back-out-of-stage',
       covers: [
         'prompts[].createEdge=toggle-idempotence',
         'backwards-navigation',
       ],
+      currentStep: 1,
       seedNetwork: true,
       build: () => {
         const synth = new SyntheticInterview();
         const nodeType = synth.addNodeType({ name: 'Person' });
         const friend = synth.addEdgeType({ name: 'Friend' });
+        synth.addInformationStage({ title: 'Before the stage' });
         synth
           .addStage('DyadCensus', {
             subject: { entity: 'node', type: nodeType.id },
             initialNodes: { count: 3 },
-            introductionPanel: {
-              title: 'Relationships',
-              text: 'Do they know each other?',
-            },
           })
           .addPrompt({
             text: 'Do they know each other?',
@@ -174,7 +158,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.edges
             .length ?? 0;
 
-        await dc.dismissIntro();
+        await dc.waitForFirstPair();
         const pair0 = await dc.getPairLabels();
 
         // Yes creates exactly one edge, then auto-advances to pair 1.
@@ -190,7 +174,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         // Toggle to No: deletes the edge, records a negative answer.
         await dc.selectNo();
         await expect.poll(edgeCount).toBe(0);
-        const afterNo = await dc.getStageMetadata(0);
+        const afterNo = await dc.getStageMetadata(1);
         expect(afterNo.some(([, , , v]) => !v)).toBe(true);
         await dc.waitForPairChange(pair0);
 
@@ -204,11 +188,14 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         await expect.poll(edgeCount).toBe(1);
         await dc.waitForPairChange(pair0);
 
-        // Backwards all the way to the introductionPanel (re-render).
+        // Backwards from the first pair leaves the stage.
         await page.getByTestId('previous-button').click();
         await dc.waitForPair(pair0);
         await page.getByTestId('previous-button').click();
-        await expect(dc.introHeading).toBeVisible();
+        await expect(page).toHaveURL(/step=0/);
+        await expect(
+          page.getByRole('heading', { name: 'Before the stage' }),
+        ).toBeVisible();
         await expect(page.getByRole('radio')).toHaveCount(0);
       },
     },
@@ -229,7 +216,6 @@ export const dyadCensusScenarios: InterfaceScenarios = {
           .addStage('DyadCensus', {
             subject: { entity: 'node', type: nodeType.id },
             initialNodes: { count: 4 },
-            introductionPanel: { title: 'Intro', text: 'Intro copy' },
           })
           .addPrompt({ text: 'Do they know each other?' });
         synth.addInformationStage({ title: 'After the stage' });
@@ -237,7 +223,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page }) => {
         const dc = new DyadCensusFixture(page);
-        await dc.dismissIntro();
+        await dc.waitForFirstPair();
 
         // 4 subject nodes -> 4*3/2 = 6 unordered pairs.
         for (let i = 0; i < 6; i++) {
@@ -276,7 +262,6 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const placeName = place.addVariable({ type: 'text', name: 'name' });
         const stage = synth.addStage('DyadCensus', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'Intro', text: 'Intro copy' },
         });
         stage.addPrompt({ text: 'Do they know each other?' });
         // Both node types coexist in the shared graph; only Person is the subject.
@@ -299,7 +284,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page }) => {
         const dc = new DyadCensusFixture(page);
-        await dc.dismissIntro();
+        await dc.waitForFirstPair();
 
         const placeLabels = page.getByText(/PlaceOne|PlaceTwo/);
 
@@ -350,7 +335,6 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('DyadCensus', {
           subject: { entity: 'node', type: nodeType.id },
           initialNodes: { count: 3 },
-          introductionPanel: { title: 'Intro', text: 'Intro copy' },
         });
         stage.addPrompt({
           text: 'Do they know each other?',
@@ -364,7 +348,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page, protocol, interview }) => {
         const dc = new DyadCensusFixture(page);
-        await dc.dismissIntro();
+        await dc.waitForFirstPair();
 
         await expect(dc.pips).toHaveCount(2);
         await expect(dc.connector).toHaveClass(
@@ -437,7 +421,6 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const stage = synth.addStage('DyadCensus', {
           subject: { entity: 'node', type: nodeType.id },
           initialNodes: { count: 3 },
-          introductionPanel: { title: 'Intro', text: 'Intro copy' },
         });
         // Both prompts share the same createEdge type.
         stage.addPrompt({
@@ -452,7 +435,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page, protocol, interview }) => {
         const dc = new DyadCensusFixture(page);
-        await dc.dismissIntro();
+        await dc.waitForFirstPair();
 
         // Answer prompt 1: Yes on the first pair (creating the shared edge),
         // No on the rest. Remember the Yes pair.
@@ -491,7 +474,6 @@ export const dyadCensusScenarios: InterfaceScenarios = {
     {
       id: 'zero-pairs-force-skip',
       covers: ['zero-pairs-force-skip'],
-      currentStep: 1,
       seedNetwork: true,
       build: () => {
         const synth = new SyntheticInterview();
@@ -501,22 +483,26 @@ export const dyadCensusScenarios: InterfaceScenarios = {
           .addStage('DyadCensus', {
             subject: { entity: 'node', type: nodeType.id },
             initialNodes: { count: 1 },
-            introductionPanel: { title: 'Intro', text: 'Intro copy' },
           })
           .addPrompt({ text: 'Do they know each other?' });
         synth.addInformationStage({ title: 'After the stage' });
         return synth;
       },
-      // A single subject node yields zero unordered pairs, so the stage's
-      // `beforeNext` returns 'FORCE' on entry (DyadCensus.tsx:147) and the
-      // interview advances past the intro to the following Information stage
-      // without ever rendering a pair or a radio. Do NOT call dismissIntro():
-      // it waits for a radio that never appears on the force-skip path.
-      run: async ({ page }) => {
-        await page.getByTestId('next-button').click();
-
+      // A single subject node yields zero unordered pairs, so navigation
+      // passes the census (step 1) in both directions without ever rendering
+      // a pair or a radio.
+      run: async ({ page, interview }) => {
+        await interview.next();
+        await expect(page).toHaveURL(/step=2/);
         await expect(
           page.getByRole('heading', { name: 'After the stage' }),
+        ).toBeVisible();
+        await expect(page.getByRole('radio')).toHaveCount(0);
+
+        await page.getByTestId('previous-button').click();
+        await expect(page).toHaveURL(/step=0/);
+        await expect(
+          page.getByRole('heading', { name: 'Before the stage' }),
         ).toBeVisible();
         await expect(page.getByRole('radio')).toHaveCount(0);
       },
