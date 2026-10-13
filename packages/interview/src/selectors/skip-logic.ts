@@ -10,7 +10,12 @@ import type {
   SkipLogic,
   SkipLogicDestination,
 } from '@codaco/protocol-validation';
-import type { NcNetwork } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  type NcEdge,
+  type NcNetwork,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { getStages } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
@@ -23,6 +28,7 @@ type RoutableStage = {
   subject?: { entity: string; type?: string };
   filter?: Filter;
   behaviours?: object;
+  presets?: readonly { layoutVariable?: string }[];
 };
 
 export type AvailableStage = {
@@ -88,6 +94,20 @@ const SUBJECTS_NEEDED: Partial<Record<string, number>> = {
 };
 
 /**
+ * Whether a subject appears on the stage's interface. A Narrative draws only
+ * the people placed in the layout of one of its presets; every other stage
+ * shows each subject of its type.
+ */
+const isShown = (stage: RoutableStage, entity: NcNode | NcEdge): boolean => {
+  if (stage.type !== 'Narrative') return true;
+  const attributes = entity[entityAttributesProperty];
+  return (stage.presets ?? []).some(
+    ({ layoutVariable }) =>
+      layoutVariable !== undefined && Boolean(attributes[layoutVariable]),
+  );
+};
+
+/**
  * Whether a stage that works with its subjects has none to work with,
  * counting the subjects its interface shows: those of the stage's subject
  * type in the network its filter leaves. A Narrative that lets the
@@ -110,7 +130,7 @@ const hasNothingToAsk = (stage: RoutableStage, network: NcNetwork): boolean => {
   const entities = subject.entity === 'edge' ? visible.edges : visible.nodes;
   let count = 0;
   for (const entity of entities) {
-    if (entity.type === subject.type) count += 1;
+    if (entity.type === subject.type && isShown(stage, entity)) count += 1;
     if (count >= needed) return false;
   }
   return true;

@@ -277,7 +277,6 @@ describe('buildStageAvailabilityMap', () => {
       ['OrdinalBin', 1],
       ['Geospatial', 1],
       ['Sociogram', 1],
-      ['Narrative', 1],
       ['OneToManyDyadCensus', 2],
     ] as const)(
       'takes a %s off the route until it shows %i people',
@@ -295,6 +294,29 @@ describe('buildStageAvailabilityMap', () => {
         ]);
       },
     );
+
+    it('takes a Narrative off the route until someone is placed in one of its layouts', () => {
+      const stages = [
+        {
+          ...nodeStage('story', 'Narrative'),
+          presets: [{ layoutVariable: 'close' }, { layoutVariable: 'work' }],
+        },
+        finishStage(),
+      ];
+
+      expect(
+        kinds(
+          stages,
+          withEntities([node('a'), node('b', 'person', { close: null })]),
+        ),
+      ).toEqual(['empty', 'available']);
+      expect(
+        kinds(
+          stages,
+          withEntities([node('a', 'person', { work: { x: 0.5, y: 0.5 } })]),
+        ),
+      ).toEqual(['available', 'available']);
+    });
 
     it('keeps a Narrative the participant can draw on when it shows no one', () => {
       expect(
