@@ -3,6 +3,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { suppliedStageSettingApplies } from '@codaco/protocol-validation';
 
+import InteractionModeField from '../../fields/InteractionModeField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { WordingRow, type WordingSetting } from '../../form/WordingRow.tsx';
@@ -13,7 +14,6 @@ import {
 } from '../supplied-wording/suppliedStageWording.ts';
 import type { BinStageType } from './binBehaviours.tsx';
 import { binBehavioursMessages } from './binBehavioursMessages.ts';
-import InteractionModeField from './InteractionModeField.tsx';
 
 const INTERACTION_MODE_FIELD = 'behaviours.interactionMode';
 const REQUIRE_COMPLETE_PLACEMENT_FIELD = 'behaviours.requireCompletePlacement';

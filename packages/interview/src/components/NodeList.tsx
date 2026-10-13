@@ -247,23 +247,32 @@ const NodeList = memo(
     );
 
     const defaultRenderItem = useCallback(
-      (node: NcNode, itemProps: ItemProps) => (
-        <Node
-          {...itemProps}
-          nodeId={node[entityPrimaryKeyProperty]}
-          type={node.type}
-          size={nodeSize}
-          selected={
-            selectedItemId !== undefined &&
-            node[entityPrimaryKeyProperty] === selectedItemId
-          }
-          // Wrapping an absent handler would still hand the node a function,
-          // which it reads as "this can be tapped" and answers with a pointer
-          // cursor and press feedback. A list whose nodes are only draggable
-          // must offer no click at all.
-          onClick={onItemClick ? () => onItemClick(node) : undefined}
-        />
-      ),
+      (node: NcNode, itemProps: ItemProps) => {
+        const selected =
+          selectedItemId !== undefined &&
+          node[entityPrimaryKeyProperty] === selectedItemId;
+        return (
+          <Node
+            {...itemProps}
+            // The list does no selecting of its own, so it says which item the
+            // host has picked out: an option cannot announce `aria-pressed`.
+            aria-selected={
+              selectedItemId === undefined
+                ? itemProps['aria-selected']
+                : selected
+            }
+            nodeId={node[entityPrimaryKeyProperty]}
+            type={node.type}
+            size={nodeSize}
+            selected={selected}
+            // Wrapping an absent handler would still hand the node a function,
+            // which it reads as "this can be tapped" and answers with a pointer
+            // cursor and press feedback. A list whose nodes are only draggable
+            // must offer no click at all.
+            onClick={onItemClick ? () => onItemClick(node) : undefined}
+          />
+        );
+      },
       [nodeSize, onItemClick, selectedItemId],
     );
 

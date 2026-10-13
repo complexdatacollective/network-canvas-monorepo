@@ -20,13 +20,16 @@ const appear = {
  * The person a bin stage in select mode is placing (#1652), shown above the
  * drawer that queues the rest, or the completed state once nobody is left.
  * The announcement is keyed by prompt, so the same person shown first on the
- * next prompt is announced again.
+ * next prompt is announced again. While the drawer's order is `settling`
+ * nobody is shown and nothing is announced, since the stage is not complete.
  */
 export default function BinSelectFocus({
   node,
+  settling = false,
   promptId,
 }: {
   node: NcNode | undefined;
+  settling?: boolean;
   promptId: string;
 }) {
   const intl = useAppIntl();
@@ -39,11 +42,13 @@ export default function BinSelectFocus({
       data-testid="bin-select-focus"
     >
       <div role="status" aria-live="polite" aria-atomic className="sr-only">
-        <span key={`${promptId}:${nodeId ?? 'complete'}`}>
-          {node
-            ? intl.formatMessage(interfaceMessages.binSelectFocal, { name })
-            : intl.formatMessage(interfaceMessages.binSelectComplete)}
-        </span>
+        {!settling && (
+          <span key={`${promptId}:${nodeId ?? 'complete'}`}>
+            {node
+              ? intl.formatMessage(interfaceMessages.binSelectFocal, { name })
+              : intl.formatMessage(interfaceMessages.binSelectComplete)}
+          </span>
+        )}
       </div>
       <AnimatePresence mode="popLayout" initial={false}>
         {node && nodeId ? (
@@ -61,6 +66,8 @@ export default function BinSelectFocus({
               presentational
             />
           </motion.div>
+        ) : settling ? (
+          <div key="settling" className="min-h-24" aria-hidden />
         ) : (
           <motion.div
             key="complete"

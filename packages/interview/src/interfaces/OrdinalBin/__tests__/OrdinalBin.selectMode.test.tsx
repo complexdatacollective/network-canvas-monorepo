@@ -29,7 +29,10 @@ import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
-import session, { type SessionState } from '../../../store/modules/session';
+import session, {
+  type SessionState,
+  updateNode,
+} from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import type { StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
@@ -150,7 +153,10 @@ const codebook: Codebook = {
 
 type Mode = 'drag' | 'select';
 
-const buildStage = (mode: Mode): StageProps<'OrdinalBin'>['stage'] => ({
+const buildStage = (
+  mode: Mode,
+  { sortByName = false }: { sortByName?: boolean } = {},
+): StageProps<'OrdinalBin'>['stage'] => ({
   id: STAGE_ID,
   type: 'OrdinalBin',
   label: { en: 'Rate people' },
@@ -162,6 +168,9 @@ const buildStage = (mode: Mode): StageProps<'OrdinalBin'>['stage'] => ({
       text: { en: 'How close?' },
       variable: asEntityAttributeReference('closeness'),
       color: 'ord-color-seq-1',
+      ...(sortByName && {
+        bucketSortOrder: [{ property: 'name', direction: 'asc' as const }],
+      }),
     },
   ],
 });
@@ -185,7 +194,10 @@ const buildSession = (nodes: NcNode[] = defaultNodes()): SessionState => ({
   },
 });
 
-const buildProtocol = (mode: Mode): ProtocolPayload => ({
+const buildProtocol = (
+  mode: Mode,
+  options?: { sortByName?: boolean },
+): ProtocolPayload => ({
   id: 'protocol',
   hash: 'hash',
   importedAt: '2024-01-01T00:00:00.000Z',
@@ -194,7 +206,7 @@ const buildProtocol = (mode: Mode): ProtocolPayload => ({
   schemaVersion: 9,
   localization: { defaultLocale: 'en', locales: ['en'] },
   codebook,
-  stages: [buildStage(mode)],
+  stages: [buildStage(mode, options)],
 });
 
 function CaptureDndStore({
@@ -209,12 +221,16 @@ function CaptureDndStore({
   return null;
 }
 
-function renderStage(mode: Mode, nodes?: NcNode[]) {
+function renderStage(
+  mode: Mode,
+  nodes?: NcNode[],
+  options?: { sortByName?: boolean },
+) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
       session: buildSession(nodes),
-      protocol: buildProtocol(mode),
+      protocol: buildProtocol(mode, options),
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
@@ -235,7 +251,7 @@ function renderStage(mode: Mode, nodes?: NcNode[]) {
                   }}
                 />
                 <OrdinalBin
-                  stage={buildStage(mode)}
+                  stage={buildStage(mode, options)}
                   getNavigationHelpers={() => ({
                     moveForward: () => {},
                     moveBackward: () => {},
@@ -357,6 +373,11 @@ describe('OrdinalBin in select mode (#1652)', () => {
 
     fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
     await announcement('Ann');
+    // The bin's list has no selection of its own, so it says who is chosen.
+    expect(screen.getByRole('option', { name: 'Ann' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
 
     fireEvent.click(
       screen.getByRole('button', { name: 'Place Ann in Distant' }),
@@ -401,6 +422,29 @@ describe('OrdinalBin in select mode (#1652)', () => {
       'node_binned',
       expect.objectContaining({ node_id: 'a' }),
     );
+  });
+
+  it('keeps the person being placed when the drawer re-sorts', async () => {
+    const { store } = renderStage('select', undefined, { sortByName: true });
+    await announcement('Ann');
+
+    // Renaming Cal sorts him first in the drawer, as an encrypted sort rule
+    // does when the passphrase is entered. Ann is still the one being placed.
+    await act(() =>
+      store.dispatch(
+        updateNode({
+          nodeId: 'c',
+          attributePatch: { set: { name: 'Abe' }, unset: [] },
+          currentStep: 0,
+        }),
+      ),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Place Ann in Close' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
+    await announcement('Ben');
   });
 
   it('shows that everyone is placed once nobody is left', async () => {
