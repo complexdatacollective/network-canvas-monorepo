@@ -57,6 +57,31 @@ describe('roster option values renamed by the schema 9 upgrade', () => {
     expect(typed({ likes: '["Yes ","1"]' })).toEqual({ likes: ['Yes', 1] });
   });
 
+  it('reads a number cell as the text option it merged into', () => {
+    const textFirst = {
+      node: {
+        person: {
+          ...codebook.node!.person!,
+          variables: {
+            likes: {
+              name: 'likes',
+              type: 'categorical',
+              options: [{ label: 'One', value: '1' }],
+            },
+          },
+        },
+      },
+    } as unknown as Codebook;
+    expect(
+      getVariableTypeReplacements(
+        'roster.csv',
+        [row({ likes: '[1]' })],
+        textFirst,
+        subject,
+      )[0]![entityAttributesProperty],
+    ).toEqual({ likes: ['1'] });
+  });
+
   it('reads an ordinal cell spelled as the option was before', () => {
     expect(typed({ rank: ' Low\t' })).toEqual({ rank: 'Low' });
   });

@@ -196,7 +196,8 @@ const asOptionName = (text: string) =>
  * the codebook knows whether the value is a string, number or boolean.
  * Compared in NFC so a header spelled decomposed still finds the option, and
  * then as an option name, so text an option was renamed from still finds it.
- * Text that names no option is kept as it is.
+ * A number is matched as its text when no option has it as a number. Text
+ * that names no option is kept as it is.
  */
 const resolveCategoricalOption = (
   variable: ReturnType<typeof getCodebookVariable>,
@@ -204,18 +205,23 @@ const resolveCategoricalOption = (
 ) => {
   if (
     (variable?.type !== 'categorical' && variable?.type !== 'ordinal') ||
-    typeof optionText !== 'string'
+    (typeof optionText !== 'string' && typeof optionText !== 'number')
   ) {
     return optionText;
   }
+  if (variable.options.some((option) => option.value === optionText)) {
+    return optionText;
+  }
 
-  const target = optionText.normalize('NFC');
+  // A number a cell parsed to is compared as its text: the migration merges
+  // `1` into an earlier `"1"`, which a roster may still write as `[1]`.
+  const target = String(optionText).normalize('NFC');
   const exact = variable.options.find(
     (option) => String(option.value).normalize('NFC') === target,
   );
   if (exact) return exact.value;
 
-  const name = asOptionName(optionText);
+  const name = asOptionName(String(optionText));
   return (
     variable.options.find((option) => String(option.value) === name)?.value ??
     optionText
