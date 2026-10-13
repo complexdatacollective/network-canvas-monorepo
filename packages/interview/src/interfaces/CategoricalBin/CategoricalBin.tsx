@@ -303,8 +303,10 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
     const bin = bins[binIndex]!;
+    // Each prompt has its own variable, so a bin is only remembered per prompt.
+    const historyKey = `${prompt.id}:${nodeId}`;
     const recordCommittedDrop = () => {
-      const previousIndex = lastBinIndexRef.current.get(nodeId);
+      const previousIndex = lastBinIndexRef.current.get(historyKey);
       if (previousIndex === undefined) {
         track('node_binned', {
           node_id: nodeId,
@@ -321,7 +323,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           interaction_mode: selectMode ? 'select' : 'drag',
         });
       }
-      lastBinIndexRef.current.set(nodeId, binIndex);
+      lastBinIndexRef.current.set(historyKey, binIndex);
     };
 
     // If the node is being dropped into the 'other' bin, show a dialog to
