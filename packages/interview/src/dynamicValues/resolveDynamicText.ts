@@ -324,6 +324,48 @@ const literalMarkdown = (value: string): string =>
     .replace(AUTOLINK_TRIGGERS, `$&${WORD_JOINER}`)
     .replace(MARKDOWN_PUNCTUATION, '\\$&');
 
+// GFM also finds a bare link across the edge of a value: `https:` in the
+// researcher's words and `//evil.example` in a participant's answer, or the
+// answer `ada` before `@example.com`. An empty HTML comment, which renders as
+// nothing, ends the run of text such a link is found in. It goes only where
+// the words around a value could make a link, so elsewhere nothing comes
+// between a value and the markdown around it.
+const VALUE_BOUNDARY = '<!---->';
+const LINK_TRIGGER = /www\\?\.|[:@]/i;
+const RUN_BEFORE = /\S*$/;
+const RUN_AFTER = /^\S*/;
+
+/**
+ * Markdown for resolved text: the researcher's words as written, and each
+ * value as `valueMarkdown` writes it, kept apart from the words around it so
+ * that together they can never form a bare link. A value written as nothing
+ * is left out.
+ */
+export const joinMarkdownParts = (
+  parts: readonly DynamicTextPart[],
+  valueMarkdown: (
+    part: Exclude<DynamicTextPart, string>,
+    index: number,
+  ) => string,
+): string => {
+  const plain = parts.map((part) =>
+    typeof part === 'string' ? part : part.text,
+  );
+  return parts
+    .map((part, index) => {
+      if (typeof part === 'string') return part;
+      const markdown = valueMarkdown(part, index);
+      if (markdown === '') return '';
+      const before = RUN_BEFORE.exec(plain.slice(0, index).join(''))?.[0] ?? '';
+      const after = RUN_AFTER.exec(plain.slice(index + 1).join(''))?.[0] ?? '';
+      if (!LINK_TRIGGER.test(`${before}${part.text}${after}`)) return markdown;
+      const open = before !== '' && /^\S/.test(part.text);
+      const close = after !== '' && /\S$/.test(part.text);
+      return `${open ? VALUE_BOUNDARY : ''}${markdown}${close ? VALUE_BOUNDARY : ''}`;
+    })
+    .join('');
+};
+
 const MARKER = DYNAMIC_VALUE_MARKER;
 const ANY_MARKER = new RegExp(MARKER, 'g');
 /**
@@ -346,13 +388,12 @@ const MARKED_IN_ATTRIBUTE = new RegExp(
 const valuesInAttributes = (
   parts: readonly DynamicTextPart[],
 ): ReadonlySet<number> => {
-  const marked = parts
-    .map((part, index) =>
-      typeof part === 'string'
-        ? part.replace(ANY_MARKER, '')
-        : `${MARKER}${index}${MARKER}`,
-    )
-    .join('');
+  const marked = joinMarkdownParts(
+    parts.map((part) =>
+      typeof part === 'string' ? part.replace(ANY_MARKER, '') : part,
+    ),
+    (_, index) => `${MARKER}${index}${MARKER}`,
+  );
   const indexes = new Set<number>();
   for (const attribute of getMarkdownAttributeValues(marked)) {
     for (const match of attribute.matchAll(MARKED_IN_ATTRIBUTE)) {
@@ -376,10 +417,7 @@ export const markdownSource = ({
 }: Readonly<{ text: string; parts?: readonly DynamicTextPart[] }>): string => {
   if (parts === undefined) return text;
   const dropped = valuesInAttributes(parts);
-  return parts
-    .map((part, index) => {
-      if (typeof part === 'string') return part;
-      return dropped.has(index) ? '' : literalMarkdown(part.text);
-    })
-    .join('');
+  return joinMarkdownParts(parts, (part, index) =>
+    dropped.has(index) ? '' : literalMarkdown(part.text),
+  );
 };

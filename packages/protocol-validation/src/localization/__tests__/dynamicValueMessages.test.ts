@@ -74,13 +74,36 @@ describe('findDynamicMessageSyntaxProblem on blank text', () => {
       findDynamicMessageSyntaxProblem('{count, plural, one {} other {#}}'),
     ).toBeUndefined();
   });
+
+  it('judges text with many values without giving up', () => {
+    // Seven values with three cases each make 78,125 combinations of what
+    // they may be, more than could be read one by one.
+    const names = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+    const blank = names
+      .map((name) => `{${name}, select, x {} y {} z {} other {}}`)
+      .join('');
+    expect(findDynamicMessageSyntaxProblem(blank)).toContain(
+      'blank in every version',
+    );
+    expect(
+      findDynamicMessageSyntaxProblem(
+        `${blank}{g, select, z {{a, select, y {visible} other {}}} other {}}`,
+      ),
+    ).toBeUndefined();
+    // Choices on one value still agree with each other.
+    expect(
+      findDynamicMessageSyntaxProblem(
+        `${blank}{g, select, z {{g, select, y {visible} other {}}} other {}}`,
+      ),
+    ).toContain('blank in every version');
+  });
 });
 
 describe('findDynamicValueProblem', () => {
   const ok = (message: string) =>
-    expect(findDynamicValueProblem(message, VALUES)).toBeUndefined();
+    expect(findDynamicValueProblem(message, VALUES, 'en')).toBeUndefined();
   const refused = (message: string, problem: string) =>
-    expect(findDynamicValueProblem(message, VALUES)).toContain(problem);
+    expect(findDynamicValueProblem(message, VALUES, 'en')).toContain(problem);
 
   it('accepts literal text', () => {
     ok("Don't '{'worry'}'");
@@ -127,6 +150,21 @@ describe('findDynamicValueProblem', () => {
     refused('{name, select, missing {} other {}}', 'blank in every version');
   });
 
+  it("reads only the plural versions the text's language can choose", () => {
+    // English never chooses `few`, so this text shows nothing in English.
+    const fewOnly =
+      '{count, select, missing {} other {{count, plural, few {visible} other {}}}}';
+    refused(fewOnly, 'blank in every version');
+    expect(findDynamicValueProblem(fewOnly, VALUES, 'cs')).toBeUndefined();
+    // A value the stage always has is never missing.
+    ok('{id, select, missing {} other {Interview}}');
+    // Cases the binding does not define are never chosen.
+    refused(
+      '{kind, select, missing {} friend {} family {} other {}}',
+      'blank in every version',
+    );
+  });
+
   it('chooses by number only for a number, where it has one', () => {
     ok(
       '{count, select, missing {Some} other {{count, plural, one {# year} other {# years}}}}',
@@ -156,7 +194,7 @@ describe('findDynamicValueProblem', () => {
 
   it('names an unbound value', () => {
     refused('{other}', '"other" is not a value this text can show here');
-    expect(findDynamicValueProblem('{x}', {})).toContain(
+    expect(findDynamicValueProblem('{x}', {}, 'en')).toContain(
       'No values are available here.',
     );
   });
@@ -227,6 +265,36 @@ describe('dynamicMessageParts', () => {
         states({ count: { missing: false, count: 0 } }),
       ),
     ).toEqual([{ argument: 'count' }, ' years']);
+  });
+
+  it('chooses a plural version by the number as it is shown', () => {
+    // 1.0001 is shown with all its digits, so it is not English `one`.
+    const plural = '{count, plural, one {# item} other {# items}}';
+    expect(
+      dynamicMessageParts(
+        plural,
+        'en',
+        states({ count: { missing: false, count: 1.0001 } }),
+      ),
+    ).toEqual([{ argument: 'count' }, ' items']);
+    expect(
+      dynamicMessageParts(
+        plural,
+        'en',
+        states({ count: { missing: false, count: 1 } }),
+      ),
+    ).toEqual([{ argument: 'count' }, ' item']);
+    // Rules that read fraction digits read the ones shown: Bosnian `few`
+    // holds 0.02 but not 0.0201.
+    const bosnian = '{count, plural, one {a} few {b} other {c}}';
+    const versionFor = (count: number) =>
+      dynamicMessageParts(
+        bosnian,
+        'bs',
+        states({ count: { missing: false, count } }),
+      );
+    expect(versionFor(0.02)).toEqual(['b']);
+    expect(versionFor(0.0201)).toEqual(['a']);
   });
 
   it('reads quoted syntax as text', () => {

@@ -32,7 +32,9 @@ const ROLES: Readonly<Record<StageSubject['entity'], DynamicValueRole>> = {
 /**
  * Puts the entity a form describes on screen for its fields' text, with the
  * participant's answers so far over what is stored: a caption can name an
- * answer given in an earlier field of the same form as soon as it is given.
+ * answer given in an earlier field of the same form as soon as it is given,
+ * or in a control the form's interface asks before its fields. A new entity
+ * starts from the attributes it will be created with.
  *
  * Only a form about the stage's own subject does this. Validation lets a
  * field show a value of the form's entity only then, and a form about
@@ -44,6 +46,7 @@ export function FormDynamicValues({
   entityId,
   initialValues,
   variables,
+  newEntityAttributes,
   coerce,
   children,
 }: {
@@ -53,8 +56,16 @@ export function FormDynamicValues({
   /** The node or edge the form edits, when it edits a stored one. */
   entityId: string | undefined;
   initialValues: Readonly<Record<string, FieldValue>> | undefined;
-  /** The variables the form's fields write. */
+  /**
+   * The variables the form writes: its fields', and those of any control
+   * its interface asks before them.
+   */
   variables: readonly string[];
+  /**
+   * What a new entity is created with besides the form's answers (a Name
+   * Generator prompt's additional attributes). Ignored for a stored one.
+   */
+  newEntityAttributes?: Readonly<Record<string, unknown>>;
   /** Turns raw answers into stored values, as submitting does. */
   coerce: (values: Record<string, FieldValue>) => Record<string, FieldValue>;
   children: ReactNode;
@@ -90,6 +101,7 @@ export function FormDynamicValues({
     // Attribute ids come from the protocol and may be `__proto__`, so every
     // key is written as the record's own.
     const merged: Record<string, unknown> = {
+      ...(entityId === undefined ? newEntityAttributes : undefined),
       ...stored,
       ...initialValues,
     };
@@ -113,6 +125,8 @@ export function FormDynamicValues({
     describesStageSubject,
     formSubject,
     stored,
+    entityId,
+    newEntityAttributes,
     initialValues,
     variables,
     live,

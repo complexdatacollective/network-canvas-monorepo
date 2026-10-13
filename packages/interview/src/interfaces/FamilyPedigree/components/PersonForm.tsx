@@ -427,6 +427,22 @@ export default function PersonForm({
     return values;
   }, [person, formFields]);
 
+  // The name, gender identity and sex questions come before the
+  // researcher's fields, whose text can show their answers as given.
+  const builtInVariables = useMemo(
+    () => [
+      ...(asksName ? [config.nameAttribute] : []),
+      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
+      config.sexAssignedAtBirthAttribute,
+    ],
+    [
+      asksName,
+      config.nameAttribute,
+      config.genderIdentity,
+      config.sexAssignedAtBirthAttribute,
+    ],
+  );
+
   const { fieldComponents, toAttributePatch, passphraseNeeded } =
     useProtocolForm({
       fields: formFields,
@@ -434,16 +450,15 @@ export default function PersonForm({
       initialValues: initialResearcherValues,
       currentEntityId: person?.id,
       unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
+      precedingVariables: builtInVariables,
     });
 
   const handleSubmit: FormSubmitHandler = (values) => {
     const set: PersonDetails = readOwnDetails(values, config);
     // A name the form does not ask is left as it is.
-    const unset = [
-      ...(asksName ? [config.nameAttribute] : []),
-      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
-      config.sexAssignedAtBirthAttribute,
-    ].filter((variable) => !Object.hasOwn(set, variable));
+    const unset = builtInVariables.filter(
+      (variable) => !Object.hasOwn(set, variable),
+    );
 
     // "No" and "Don't know" are recorded; "Yes" leaves the question to the
     // siblings or children the participant goes on to add.

@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { useEffect } from 'react';
 import { Provider } from 'react-redux';
@@ -27,6 +28,7 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
+import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { interviewCatalogSource } from '../../../i18n/catalog';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
@@ -279,22 +281,74 @@ function CaptureDndStore({
   return null;
 }
 
+// The participant's own answer, which the "other" question shows.
+const EGO_NAME_VARIABLE = 'egoName';
+
 function renderCategoricalBin(
   otherValidation?: Validation,
   omitOtherComponent = false,
   omitOtherVariable = false,
   otherVariable = OTHER_VARIABLE,
+  /** An "other" question that shows the participant's name, and the name. */
+  dynamic?: { prompt: string; egoName: string },
 ) {
+  const baseProtocol = buildProtocol(
+    otherValidation,
+    omitOtherComponent,
+    omitOtherVariable,
+    otherVariable,
+  );
+  const baseSession = buildSession();
+  const baseStage = buildStage(otherVariable);
+  const stage: CategoricalBinStage =
+    dynamic === undefined
+      ? baseStage
+      : {
+          ...baseStage,
+          dynamicValues: { name: { path: `ego.${EGO_NAME_VARIABLE}` } },
+          prompts: baseStage.prompts.map((each) => ({
+            ...each,
+            otherVariablePrompt: { en: dynamic.prompt },
+          })) as CategoricalBinStage['prompts'],
+        };
+  const preloadedProtocol: ProtocolPayload =
+    dynamic === undefined
+      ? baseProtocol
+      : {
+          ...baseProtocol,
+          codebook: {
+            ...baseProtocol.codebook,
+            ego: {
+              variables: {
+                [EGO_NAME_VARIABLE]: {
+                  name: 'Name',
+                  label: 'Name',
+                  type: 'text',
+                },
+              },
+            },
+          },
+          stages: [stage],
+        };
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
-      session: buildSession(),
-      protocol: buildProtocol(
-        otherValidation,
-        omitOtherComponent,
-        omitOtherVariable,
-        otherVariable,
-      ),
+      session:
+        dynamic === undefined || baseSession.network === undefined
+          ? baseSession
+          : {
+              ...baseSession,
+              network: {
+                ...baseSession.network,
+                ego: {
+                  ...baseSession.network.ego,
+                  [entityAttributesProperty]: {
+                    [EGO_NAME_VARIABLE]: dynamic.egoName,
+                  },
+                },
+              },
+            },
+      protocol: preloadedProtocol,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
@@ -316,13 +370,15 @@ function renderCategoricalBin(
                 />
                 {/* CategoricalBin reads only the stage's behaviours, which
                 this stage leaves out: it is placed by dragging. */}
-                <CategoricalBin
-                  stage={buildStage(otherVariable)}
-                  getNavigationHelpers={() => ({
-                    moveForward: () => {},
-                    moveBackward: () => {},
-                  })}
-                />
+                <StageDynamicValues stage={stage}>
+                  <CategoricalBin
+                    stage={stage}
+                    getNavigationHelpers={() => ({
+                      moveForward: () => {},
+                      moveBackward: () => {},
+                    })}
+                  />
+                </StageDynamicValues>
               </DndStoreProvider>
             </DialogProvider>
           </CurrentStepProvider>
@@ -714,5 +770,28 @@ describe('CategoricalBin queued dialog localization', () => {
       expect(getOtherAttribute(store)).toBe('Respuesta literal á'),
     );
     await waitForDialogToClose();
+  });
+
+  it("shows a participant's value in the question as text, marked out, never as markdown", async () => {
+    const { getDndStore } = renderCategoricalBin(
+      undefined,
+      false,
+      false,
+      OTHER_VARIABLE,
+      {
+        prompt:
+          '{name, select, missing {Why other?} other {Why **other**, {name}?}}',
+        egoName: '[continue](https://example.test)',
+      },
+    );
+    await dropNodeIntoOtherBin(getDndStore);
+    const dialog = await screen.findByRole('dialog');
+    const value = await within(dialog).findByText(
+      '[continue](https://example.test)',
+    );
+    expect(value.closest('[data-dynamic-value]')).not.toBeNull();
+    expect(within(dialog).queryByRole('link')).not.toBeInTheDocument();
+    // The researcher's own markdown still renders.
+    expect(within(dialog).getByText('other').tagName).toBe('STRONG');
   });
 });

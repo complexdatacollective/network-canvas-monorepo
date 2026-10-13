@@ -101,6 +101,7 @@ const EgoFormInner = (props: EgoFormProps) => {
 
   const {
     fieldComponents,
+    withFormValues,
     coerceValues,
     componentByVariable,
     variableByFieldPath,
@@ -278,7 +279,12 @@ const EgoFormInner = (props: EgoFormProps) => {
       >
         <div className="interface mx-auto max-w-[80ch] flex-col">
           <Surface spacing="lg" shadow="lg">
-            <LocalizedText value={form.title} render={<Heading level="h1" />} />
+            {withFormValues(
+              <LocalizedText
+                value={form.title}
+                render={<Heading level="h1" />}
+              />,
+            )}
             <FormWithoutProvider onSubmit={handleSubmitForm}>
               {fieldComponents}
             </FormWithoutProvider>

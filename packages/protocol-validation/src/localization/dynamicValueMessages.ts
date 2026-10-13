@@ -68,12 +68,15 @@ const parseMessage = (message: string): MessageFormatElement[] | string => {
 };
 
 /**
- * What one value is, for choosing a version without knowing the stage:
- * missing, or present with the case and plural category that choose for it.
+ * What one value is, as far as choosing a version goes: missing, or present
+ * with the case and plural category that choose for it.
  */
 type ChoiceState = Readonly<
   { missing: true } | { missing: false; case?: string; category: string }
 >;
+
+/** The states each value may be in, by name. */
+type ChoiceStates = ReadonlyMap<string, readonly ChoiceState[]>;
 
 const optionFor = (
   options: Readonly<Record<string, { value: MessageFormatElement[] }>>,
@@ -83,10 +86,26 @@ const optionFor = (
     ? options[key]
     : undefined) ?? options.other;
 
-/** Whether the version of `nodes` the values in `stateOf` read shows anything. */
-const versionShows = (
+/** The version key a select or plural on a value in `state` reads. */
+const choiceKey = (node: MessageFormatElement, state: ChoiceState) => {
+  if (node.type === TYPE.plural) {
+    return state.missing ? 'other' : state.category;
+  }
+  return state.missing ? MISSING_CASE : state.case;
+};
+
+/**
+ * Whether some version of `nodes` that values in `states` reach shows
+ * anything: visible text, a value or a count. Text shows when any one of its
+ * pieces does, and pieces on different values do not constrain each other,
+ * so each version of a choice is read under only the states that choose it.
+ * Choices on one value therefore agree (text only in a present version
+ * inside a missing one shows nothing), and the check never enumerates
+ * combinations of values.
+ */
+const anyVersionShows = (
   nodes: readonly MessageFormatElement[],
-  stateOf: (name: string) => ChoiceState,
+  states: ChoiceStates,
   plural: string | undefined,
 ): boolean =>
   nodes.some((node) => {
@@ -94,49 +113,64 @@ const versionShows = (
       case TYPE.literal:
         return !isBlankText(node.value);
       case TYPE.argument:
-        return !stateOf(node.value).missing;
+        return (states.get(node.value) ?? []).some((state) => !state.missing);
       case TYPE.pound:
-        return plural === undefined || !stateOf(plural).missing;
-      case TYPE.select: {
-        const state = stateOf(node.value);
-        const option = optionFor(
-          node.options,
-          state.missing ? MISSING_CASE : state.case,
-        );
         return (
-          option !== undefined && versionShows(option.value, stateOf, plural)
+          plural === undefined ||
+          (states.get(plural) ?? []).some((state) => !state.missing)
         );
-      }
+      case TYPE.select:
       case TYPE.plural: {
-        const state = stateOf(node.value);
-        const option = optionFor(
-          node.options,
-          state.missing ? 'other' : state.category,
-        );
-        return (
-          option !== undefined &&
-          versionShows(option.value, stateOf, node.value)
-        );
+        const name = node.value;
+        const possible = states.get(name) ?? [];
+        return Object.values(node.options).some((option) => {
+          const choosing = possible.filter(
+            (state) =>
+              optionFor(node.options, choiceKey(node, state)) === option,
+          );
+          if (choosing.length === 0) return false;
+          const inner = new Map(states);
+          inner.set(name, choosing);
+          return anyVersionShows(
+            option.value,
+            inner,
+            node.type === TYPE.plural ? name : plural,
+          );
+        });
       }
       default:
         return true;
     }
   });
 
-// Beyond this many combinations of states the blank check accepts rather
-// than stall.
-const MAX_BLANK_SCENARIOS = 20_000;
+/** Every state of a value that has `cases` and may be in `categories`. */
+const choiceStates = (
+  cases: Iterable<string>,
+  categories: Iterable<string>,
+  optional: boolean,
+): readonly ChoiceState[] => {
+  const states: ChoiceState[] = optional ? [{ missing: true }] : [];
+  const allCategories = [...new Set(categories)];
+  for (const key of [undefined, ...cases]) {
+    for (const category of allCategories) {
+      states.push(
+        key === undefined
+          ? { missing: false, category }
+          : { missing: false, case: key, category },
+      );
+    }
+  }
+  return states;
+};
 
 /**
- * Whether some version of `elements` shows something: visible text, a value
- * or a count. Versions are read for each combination of what the values may
- * be, so choices on one value agree with each other: text only in a version
- * no state reaches (a present version inside a missing one) shows nothing.
- * Without the stage, every case and plural category the text names counts
- * as reachable, and a value as possibly missing; the check errs towards
- * accepting.
+ * The states each value `elements` uses may be in, judged without the stage:
+ * possibly missing, and present with each case and plural category the text
+ * names. The check errs towards accepting.
  */
-const showsSomething = (elements: readonly MessageFormatElement[]): boolean => {
+const statesNamedIn = (
+  elements: readonly MessageFormatElement[],
+): ChoiceStates => {
   const cases = new Map<string, Set<string>>();
   const categories = new Map<string, Set<string>>();
   const collect = (nodes: readonly MessageFormatElement[]) => {
@@ -162,42 +196,21 @@ const showsSomething = (elements: readonly MessageFormatElement[]): boolean => {
     }
   };
   collect(elements);
-
-  const axes = [...cases].map(([name, keys]) => {
-    const states: ChoiceState[] = [{ missing: true }];
-    for (const key of [undefined, ...keys]) {
-      for (const category of new Set([
-        'other',
-        ...(categories.get(name) ?? []),
-      ])) {
-        states.push(
-          key === undefined
-            ? { missing: false, category }
-            : { missing: false, case: key, category },
-        );
-      }
-    }
-    return [name, states] as const;
-  });
-  const total = axes.reduce(
-    (product, [, states]) => product * states.length,
-    1,
+  return new Map(
+    [...cases].map(([name, keys]) => [
+      name,
+      choiceStates(keys, ['other', ...(categories.get(name) ?? [])], true),
+    ]),
   );
-  if (total > MAX_BLANK_SCENARIOS) return true;
-  for (let index = 0; index < total; index += 1) {
-    const scenario = new Map<string, ChoiceState>();
-    let rest = index;
-    for (const [name, states] of axes) {
-      const state = states[rest % states.length];
-      rest = Math.floor(rest / states.length);
-      if (state !== undefined) scenario.set(name, state);
-    }
-    const stateOf = (name: string): ChoiceState =>
-      scenario.get(name) ?? { missing: false, category: 'other' };
-    if (versionShows(elements, stateOf, undefined)) return true;
-  }
-  return false;
 };
+
+const hasChoice = (elements: readonly MessageFormatElement[]): boolean =>
+  elements.some(
+    (node) => node.type === TYPE.select || node.type === TYPE.plural,
+  );
+
+const BLANK_PROBLEM =
+  'Text cannot be blank in every version: at least one of its versions must show some text or a value.';
 
 const MARKER_PROBLEM =
   'Text cannot contain the private-use character U+E000: the interview uses it to place values.';
@@ -240,12 +253,10 @@ export const findDynamicMessageSyntaxProblem = (
   // text that shows nothing in every version is blank text written as a
   // choice. Text without a choice is the field's own blank check's to judge.
   if (
-    elements.some(
-      (node) => node.type === TYPE.select || node.type === TYPE.plural,
-    ) &&
-    !showsSomething(elements)
+    hasChoice(elements) &&
+    !anyVersionShows(elements, statesNamedIn(elements), undefined)
   ) {
-    return 'Text cannot be blank in every version: at least one of its versions must show some text or a value.';
+    return BLANK_PROBLEM;
   }
   return undefined;
 };
@@ -347,21 +358,42 @@ const findElementsProblem = (
 };
 
 /**
- * Why `message` cannot be the text of a site whose stage binds `values` there,
- * or undefined when it can. One pass checks that it parses, holds no marker,
- * names only those values, chooses versions only by a value's presence
- * (`missing`), its cases or, for a number, its plural category, and shows a
- * value that can be missing only inside a version for when it has one.
+ * Why `message`, written in `locale`, cannot be the text of a site whose
+ * stage binds `values` there, or undefined when it can. One pass checks that
+ * it parses, holds no marker, names only those values, chooses versions only
+ * by a value's presence (`missing`), its cases or, for a number, its plural
+ * category, and shows a value that can be missing only inside a version for
+ * when it has one. Then it checks that some version the values can reach
+ * shows something: only a value that can be missing reads `missing`, only
+ * the binding's cases are chosen, and only the plural categories `locale`
+ * gives some number.
  */
 export const findDynamicValueProblem = (
   message: string,
   values: DynamicValueArguments,
+  locale: LocaleTag,
 ): string | undefined => {
   const syntax = findDynamicMessageSyntaxProblem(message);
   if (syntax !== undefined) return syntax;
   const elements = parseMessage(message);
   if (typeof elements === 'string') return elements;
-  return findElementsProblem(elements, values, new Set());
+  const problem = findElementsProblem(elements, values, new Set());
+  if (problem !== undefined) return problem;
+  if (!hasChoice(elements)) return undefined;
+  const categories = reachableCategories(locale);
+  const states: ChoiceStates = new Map(
+    Object.entries(values).map(([name, value]) => [
+      name,
+      choiceStates(
+        value.cases,
+        value.numeric ? categories : ['other'],
+        value.optional,
+      ),
+    ]),
+  );
+  return anyVersionShows(elements, states, undefined)
+    ? undefined
+    : BLANK_PROBLEM;
 };
 
 /** The value names a message uses anywhere, shown or chosen by. */
@@ -397,16 +429,44 @@ const pushText = (parts: MessagePart[], text: string) => {
   else if (text !== '') parts.push(text);
 };
 
+// The most fraction digits `Intl.PluralRules` accepts.
+const MAX_FRACTION_DIGITS = 100;
+
+/**
+ * How many fraction digits `count` has when written as its shortest decimal
+ * text, which is how the interview shows a number: 1.0001 has four, 1 none.
+ */
+const fractionDigitsOf = (count: number): number => {
+  const [mantissa = '', exponent = '0'] = String(Math.abs(count)).split('e');
+  const fraction = mantissa.split('.')[1] ?? '';
+  return Math.min(
+    MAX_FRACTION_DIGITS,
+    Math.max(0, fraction.length - Number(exponent)),
+  );
+};
+
 const pluralRules = new Map<string, Intl.PluralRules>();
+/**
+ * The plural category `locale` gives `count` as the interview shows it.
+ * `Intl.PluralRules` otherwise rounds to three fraction digits, so 1.0001
+ * would be English `one` while shown as "1.0001"; with exactly the digits
+ * shown, rules that read fraction digits read the ones the participant sees.
+ */
 const pluralCategoryOf = (locale: LocaleTag, count: number): string => {
-  let rules = pluralRules.get(locale);
+  const digits = Number.isFinite(count) ? fractionDigitsOf(count) : 0;
+  const key = `${locale} ${digits}`;
+  let rules = pluralRules.get(key);
   if (rules === undefined) {
+    const options: Intl.PluralRulesOptions = {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    };
     try {
-      rules = new Intl.PluralRules(locale);
+      rules = new Intl.PluralRules(locale, options);
     } catch {
-      rules = new Intl.PluralRules('en');
+      rules = new Intl.PluralRules('en', options);
     }
-    pluralRules.set(locale, rules);
+    pluralRules.set(key, rules);
   }
   return rules.select(count);
 };
@@ -545,6 +605,20 @@ const SAMPLE_COUNTS: readonly number[] = (() => {
     ...positive.filter((count) => count > 0).map((count) => -count),
   ];
 })();
+
+const categoriesByLocale = new Map<string, ReadonlySet<string>>();
+
+/** The plural categories `locale` gives some number. */
+const reachableCategories = (locale: LocaleTag): ReadonlySet<string> => {
+  let categories = categoriesByLocale.get(locale);
+  if (categories === undefined) {
+    categories = new Set(
+      SAMPLE_COUNTS.map((count) => pluralCategoryOf(locale, count)),
+    );
+    categoriesByLocale.set(locale, categories);
+  }
+  return categories;
+};
 
 type CountSample = Readonly<{
   /** One count for each pair of categories the two languages give it. */
