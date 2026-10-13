@@ -112,6 +112,14 @@ export {
   messageText,
 } from './localization/messageSyntax.ts';
 export {
+  type MessageNode,
+  type MessageStructureProblem,
+  type MessageSwitch,
+  type MessageVersion,
+  messageStructure,
+  printMessageStructure,
+} from './localization/messageStructure.ts';
+export {
   type ResolvedLocalizedString,
   resolveLocalizedString,
 } from './localization/resolveLocalizedString.ts';

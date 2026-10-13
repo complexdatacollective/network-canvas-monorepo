@@ -257,12 +257,15 @@ const blockChildrenFromMarkdown = (node: MarkdownNode): RichTextContent[] => {
   return children.length > 0 ? children : [{ type: 'paragraph' }];
 };
 
-const inlineDocumentFromMarkdown = (root: MarkdownNode): RichTextContent => {
+const inlineDocumentFromMarkdown = (
+  root: MarkdownNode,
+  links: boolean,
+): RichTextContent => {
   const inlineContent = (root.children ?? []).flatMap((node, index) => {
     const content =
       node.type === 'paragraph' || node.type === 'heading'
-        ? childrenAsInline(node, { links: false })
-        : inlineFromMarkdown(node, { links: false });
+        ? childrenAsInline(node, { links })
+        : inlineFromMarkdown(node, { links });
 
     if (index === 0 || content.length === 0) {
       return content;
@@ -280,6 +283,8 @@ const inlineDocumentFromMarkdown = (root: MarkdownNode): RichTextContent => {
 export const markdownToRichTextContent = (
   value: string | null | undefined,
   inline = false,
+  /** Whether a line (`inline`) keeps its links. A document always does. */
+  links = false,
 ): RichTextContent => {
   if (!value || !/\S/.test(value)) {
     return cloneEmptyDocument();
@@ -290,7 +295,7 @@ export const markdownToRichTextContent = (
     .parse(escapeAngleBracket(value)) as unknown as MarkdownNode;
 
   if (inline) {
-    return inlineDocumentFromMarkdown(root);
+    return inlineDocumentFromMarkdown(root, links);
   }
 
   const content = (root.children ?? []).flatMap(blockFromMarkdown);
@@ -587,15 +592,15 @@ const containsContent = (node: RichTextContent): boolean => {
 export const richTextContentToMarkdown = (
   content: RichTextContent | null | undefined = EMPTY_DOCUMENT,
   inline = false,
+  /** Whether a line (`inline`) keeps its links. A document always does. */
+  links = false,
 ): string => {
   if (!content || !containsContent(content)) {
     return '';
   }
 
   if (inline) {
-    return serializeInline(flattenInlineContent(content.content), {
-      links: false,
-    });
+    return serializeInline(flattenInlineContent(content.content), { links });
   }
 
   return serializeBlock(content);

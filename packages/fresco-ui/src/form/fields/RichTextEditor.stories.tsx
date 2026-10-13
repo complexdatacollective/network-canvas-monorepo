@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { JSONContent } from '@tiptap/react';
+import { useState } from 'react';
 import { action } from 'storybook/actions';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { z } from 'zod/mini';
@@ -8,7 +9,10 @@ import { TokenizedText } from '../../TokenPill';
 import Field from '../Field/Field';
 import Form from '../Form';
 import SubmitButton from '../SubmitButton';
-import RichTextEditorField from './RichTextEditor';
+import type { RichTextInsertMenu } from './richText/InsertMenu';
+import RichTextEditorField, {
+  type RichTextEditorToken,
+} from './RichTextEditor';
 
 const meta: Meta<typeof RichTextEditorField> = {
   title: 'Systems/Form/Fields/RichTextEditor',
@@ -705,5 +709,186 @@ export const ReadOnlyTokens: Story = {
 
     await expect(text).toHaveTextContent('Add Name’s Number parents');
     await expect(text.querySelectorAll('[data-token]')).toHaveLength(2);
+  },
+};
+
+const offeredTokens: RichTextEditorToken[] = [
+  { id: 'name', label: 'Name', text: '{name}', inToolbar: false },
+  { id: 'age', label: 'Age', text: '{age}', inToolbar: false },
+];
+
+const nameVersions: JSONContent = {
+  type: 'versions',
+  attrs: {
+    label: 'Whether Name is known',
+    versions: [
+      { key: 'missing', label: 'When Name is missing', content: [] },
+      {
+        key: 'other',
+        label: 'When Name is known',
+        content: [{ type: 'token', attrs: { id: 'name' } }],
+      },
+    ],
+  },
+};
+
+const insertMenu: RichTextInsertMenu = {
+  label: 'Insert a value',
+  trigger: '{',
+  items: [
+    {
+      id: 'name',
+      label: 'Name',
+      group: 'About the participant',
+      description: 'Text',
+      content: nameVersions,
+    },
+    {
+      id: 'age',
+      label: 'Age',
+      group: 'About the participant',
+      description: 'Number',
+      content: { type: 'token', attrs: { id: 'age' } },
+    },
+  ],
+};
+
+function EditorWithValue({ initial }: { initial: JSONContent | undefined }) {
+  const [value, setValue] = useState(initial);
+  return (
+    <div className="flex w-[560px] flex-col gap-4">
+      <RichTextEditorField
+        id="versions-editor"
+        name="versions-editor"
+        aria-describedby=""
+        aria-label="Question"
+        singleLine
+        toolbarOptions={{ headings: false, lists: false }}
+        tokens={offeredTokens}
+        versions
+        insertMenu={insertMenu}
+        changeMode="input"
+        value={value}
+        onChange={setValue}
+      />
+      <pre data-testid="value" className="text-xs whitespace-pre-wrap">
+        {JSON.stringify(value)}
+      </pre>
+    </div>
+  );
+}
+
+const valueOf = (canvasElement: HTMLElement): JSONContent =>
+  JSON.parse(
+    within(canvasElement).getByTestId('value').textContent || 'null',
+  ) as JSONContent;
+
+/**
+ * A consumer offers things to insert through a searchable menu, opened from
+ * the toolbar or by typing `{`. An item inserts whatever content the consumer
+ * gives it: here a placeholder, or **versions** of a piece of text, which
+ * read differently in different cases. Each version is written in place in
+ * an editor of its own, and the versions are one element of the line.
+ *
+ * ```tsx
+ * <RichTextEditorField
+ *   tokens={[{ id: 'name', label: 'Name', text: '{name}', inToolbar: false }]}
+ *   versions
+ *   insertMenu={{ label: 'Insert a value', trigger: '{', items }}
+ *   value={value}
+ *   onChange={setValue}
+ * />
+ * ```
+ */
+export const WithVersionsAndInsertMenu: Story = {
+  render: () => (
+    <EditorWithValue
+      initial={{
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Tell us about ' }],
+          },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+    await userEvent.click(editor);
+
+    // Inserted from the toolbar, by searching and choosing.
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Insert a value' }),
+    );
+    const search = await body.findByRole('combobox', { name: 'Search' });
+    await userEvent.type(search, 'nam');
+    await userEvent.keyboard('{Enter}');
+
+    const missing = await canvas.findByRole('textbox', {
+      name: 'When Name is missing',
+    });
+    await expect(
+      canvas.getByRole('group', { name: 'Whether Name is known' }),
+    ).toBeInTheDocument();
+    // A version is written in place.
+    await userEvent.click(missing);
+    await userEvent.keyboard('this person');
+    await waitFor(() =>
+      expect(JSON.stringify(valueOf(canvasElement))).toContain('this person'),
+    );
+
+    // Escape leaves the version with the versions selected; Backspace then
+    // removes them whole, and undo brings them back.
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(editor).toHaveFocus());
+    // Apart from the edits before it, so undo takes back only the removal.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await userEvent.keyboard('{Backspace}');
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole('group', { name: 'Whether Name is known' }),
+      ).toBeNull(),
+    );
+    await userEvent.keyboard('{Control>}z{/Control}');
+    await expect(
+      await canvas.findByRole('group', { name: 'Whether Name is known' }),
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * Typing `{` opens the menu at the caret. Choosing an item replaces the brace;
+ * Escape closes the menu and keeps it as text. Pasting a placeholder written
+ * as text, such as `{age}`, makes the placeholder.
+ */
+export const InsertMenuFromTheKeyboard: Story = {
+  render: () => <EditorWithValue initial={undefined} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+    await userEvent.click(editor);
+
+    await userEvent.keyboard('Aged {{');
+    await body.findByRole('combobox', { name: 'Search' });
+    await userEvent.keyboard('age{Enter}');
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
+    );
+    await expect(editor).toHaveTextContent(/^Aged Age$/);
+
+    await userEvent.keyboard(' {{');
+    await body.findByRole('combobox', { name: 'Search' });
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(editor).toHaveTextContent(/Age \{$/));
+
+    await userEvent.paste(' and {age}');
+    await waitFor(() =>
+      expect(editor.querySelectorAll('[data-token="age"]')).toHaveLength(2),
+    );
   },
 };

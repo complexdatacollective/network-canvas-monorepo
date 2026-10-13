@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -80,6 +81,16 @@ import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
+import {
+  InsertMenuList,
+  type RichTextInsertMenu,
+  type RichTextInsertMenuItem,
+} from './richText/InsertMenu';
+import {
+  NestedEditingContext,
+  VERSIONS_NODE,
+  VersionsNode,
+} from './richText/versionsNode';
 
 const messages = defineMessages({
   bold: {
@@ -270,6 +281,17 @@ export type RichTextEditorToken = Readonly<{
   id: string;
   label: string;
   required?: boolean;
+  /**
+   * How the placeholder is written as text, such as `{name}`. Pasted text
+   * that holds it arrives as the placeholder rather than as those characters.
+   */
+  text?: string;
+  /**
+   * Whether the toolbar offers a button for it. A placeholder offered only
+   * through the insert menu, or only inside a piece of text the field
+   * builds, is held and shown without one. Defaults to true.
+   */
+  inToolbar?: boolean;
 }>;
 
 /** The node type a token is held as: `{ type: 'token', attrs: { id } }`. */
@@ -278,11 +300,29 @@ const TOKEN_NODE = 'token';
 /** The ids of the tokens `doc` holds, one per line, for the toolbar to compare. */
 const placedTokenIds = (doc: ProseMirrorNode): string => {
   const ids = new Set<string>();
+  // A version's text is held in its element's attributes, as JSON.
+  const collect = (content: unknown) => {
+    if (!Array.isArray(content)) return;
+    for (const node of content as JSONContent[]) {
+      if (node.type === TOKEN_NODE && typeof node.attrs?.id === 'string') {
+        ids.add(node.attrs.id);
+      }
+      collect(node.content);
+      collectVersions(node.attrs?.versions);
+    }
+  };
+  const collectVersions = (versions: unknown) => {
+    if (!Array.isArray(versions)) return;
+    for (const version of versions as { content?: unknown }[]) {
+      collect(version.content);
+    }
+  };
   doc.descendants((node) => {
     const tokenId: unknown = node.attrs.id;
     if (node.type.name === TOKEN_NODE && typeof tokenId === 'string') {
       ids.add(tokenId);
     }
+    if (node.type.name === VERSIONS_NODE) collectVersions(node.attrs.versions);
   });
   return [...ids].toSorted().join('\n');
 };
@@ -343,7 +383,72 @@ const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
     renderText({ node }) {
       return labelOf(node.attrs.id);
     },
+
+    addProseMirrorPlugins() {
+      const written = tokens.flatMap(({ id, text }) =>
+        text === undefined || text === '' ? [] : [{ id, text }],
+      );
+      if (written.length === 0) return [];
+      const { schema } = this.editor;
+      return [
+        new Plugin({
+          key: new PluginKey('tokenPaste'),
+          props: {
+            transformPasted: (slice: Slice) =>
+              new Slice(
+                withWrittenTokens(slice.content, written, schema),
+                slice.openStart,
+                slice.openEnd,
+              ),
+          },
+        }),
+      ];
+    },
   });
+};
+
+/**
+ * Pasted text with each placeholder written in it, such as `{name}`, turned
+ * into the placeholder. Text keeps its marks on both sides of one.
+ */
+const withWrittenTokens = (
+  fragment: Fragment,
+  written: readonly Readonly<{ id: string; text: string }>[],
+  schema: Schema,
+): Fragment => {
+  const tokenType = schema.nodes[TOKEN_NODE];
+  if (tokenType === undefined) return fragment;
+  const nodes: ProseMirrorNode[] = [];
+  fragment.forEach((node) => {
+    if (!node.isText) {
+      nodes.push(
+        node.isLeaf
+          ? node
+          : node.copy(withWrittenTokens(node.content, written, schema)),
+      );
+      return;
+    }
+    let rest = node.text ?? '';
+    while (rest !== '') {
+      let first: { at: number; id: string; text: string } | undefined;
+      for (const token of written) {
+        const at = rest.indexOf(token.text);
+        if (at !== -1 && (first === undefined || at < first.at)) {
+          first = { at, ...token };
+        }
+      }
+      if (first === undefined) {
+        nodes.push(schema.text(rest, node.marks));
+        break;
+      }
+      if (first.at > 0) {
+        nodes.push(schema.text(rest.slice(0, first.at), node.marks));
+      }
+      nodes.push(tokenType.create({ id: first.id }, null, node.marks));
+      rest = rest.slice(first.at + first.text.length);
+    }
+  });
+  return Fragment.fromArray(nodes);
 };
 
 /** The line being collected, and whether a break is owed before its next text. */
@@ -559,6 +664,13 @@ const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
     : (parsed.toJSON() as JSONContent);
 };
 
+export type { RichTextInsertMenu, RichTextInsertMenuItem };
+export type {
+  RichTextVersion,
+  RichTextVersionsAttributes,
+} from './richText/versionsNode';
+export { VERSIONS_NODE };
+
 const swallowKeystroke = () => true;
 
 /**
@@ -627,7 +739,42 @@ type ExtensionOptions = {
   singleLine: boolean;
   placeholder?: string;
   tokens: readonly RichTextEditorToken[];
+  versions: boolean;
+  /** Typing this character opens the insert menu. */
+  trigger?: string;
+  /** Told when the trigger is typed, and where it now sits. */
+  onTrigger: (editor: Editor, position: number) => void;
 };
+
+/**
+ * Opens the insert menu when its trigger character is typed. The character
+ * is typed as usual, so dismissing the menu keeps it; choosing an item
+ * replaces it.
+ */
+const createInsertTrigger = (
+  trigger: string,
+  onTrigger: (editor: Editor, position: number) => void,
+) =>
+  Extension.create({
+    name: 'insertMenuTrigger',
+    addProseMirrorPlugins() {
+      const { editor } = this;
+      return [
+        new Plugin({
+          key: new PluginKey('insertMenuTrigger'),
+          props: {
+            handleTextInput: (_view, from, _to, text) => {
+              if (text !== trigger) return false;
+              // After the character is in: the menu replaces it if an item
+              // is chosen.
+              queueMicrotask(() => onTrigger(editor, from));
+              return false;
+            },
+          },
+        }),
+      ];
+    },
+  });
 
 // Factory function to create custom extensions with typography classes
 function createCustomExtensions({
@@ -639,6 +786,9 @@ function createCustomExtensions({
   singleLine,
   placeholder,
   tokens,
+  versions,
+  trigger,
+  onTrigger,
 }: ExtensionOptions): AnyExtension[] {
   const CustomParagraph = Paragraph.extend({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
@@ -721,6 +871,14 @@ function createCustomExtensions({
 
   if (tokens.length > 0) {
     extensions.push(createTokenNode(tokens));
+  }
+
+  if (versions) {
+    extensions.push(VersionsNode);
+  }
+
+  if (trigger !== undefined && trigger !== '') {
+    extensions.push(createInsertTrigger(trigger, onTrigger));
   }
 
   if (headingLevels.length > 0) {
@@ -880,6 +1038,15 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
      * `{ type: 'token', attrs: { id } }` among the paragraph's text.
      */
     'tokens'?: readonly RichTextEditorToken[];
+    /**
+     * Whether the text can hold versions: a piece of text that reads
+     * differently in different cases, each case edited in place (see
+     * `RichTextVersionsAttributes`). The consumer builds them, usually through
+     * the insert menu.
+     */
+    'versions'?: boolean;
+    /** A searchable menu of things to insert at the caret. */
+    'insertMenu'?: RichTextInsertMenu;
     'id': string;
     'name': string;
     'aria-describedby': string;
@@ -935,6 +1102,8 @@ export default function RichTextEditorField({
   singleLine: singleLineProp = false,
   compact = false,
   tokens: tokensProp,
+  versions = false,
+  insertMenu,
   className,
   onFocus,
   onBlur,
@@ -943,6 +1112,34 @@ export default function RichTextEditorField({
   const singleLine = singleLineProp || compact;
   const intl = useAppIntl();
   const onChangeRef = useRef(onChange);
+  // Where the insert menu was opened by typing its trigger: the editor, and
+  // where the character sits. Null while it is closed or opened from the
+  // toolbar.
+  const [triggered, setTriggered] = useState<{
+    editor: Editor;
+    position: number;
+    anchor: { left: number; top: number; height: number };
+  } | null>(null);
+  const [isInsertMenuOpen, setIsInsertMenuOpen] = useState(false);
+  const onTrigger = useCallback(
+    (typedIn: Editor, position: number) => {
+      const coords = typedIn.view.coordsAtPos(position);
+      setTriggered({
+        editor: typedIn,
+        position,
+        anchor: {
+          left: coords.left,
+          top: coords.top,
+          height: coords.bottom - coords.top,
+        },
+      });
+      setIsInsertMenuOpen(true);
+    },
+    [setTriggered, setIsInsertMenuOpen],
+  );
+  // The version being written, when the caret is in one: the toolbar acts on
+  // it rather than on the line around it.
+  const [versionEditor, setVersionEditor] = useState<Editor | null>(null);
   const changeModeRef = useRef(changeMode);
   const linkSelectionRef = useRef<EditorSelectionRange | null>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
@@ -956,9 +1153,10 @@ export default function RichTextEditorField({
   // on every render would otherwise rebuild the editor on every render. The
   // editor holds only what a pill shows; which are required is the toolbar's.
   const tokensKey = JSON.stringify(
-    (tokensProp ?? []).map(({ id: tokenId, label }) => ({
+    (tokensProp ?? []).map(({ id: tokenId, label, text }) => ({
       id: tokenId,
       label,
+      ...(text !== undefined && { text }),
     })),
   );
   const tokens = useMemo(
@@ -1080,6 +1278,9 @@ export default function RichTextEditorField({
         singleLine,
         placeholder,
         tokens,
+        versions,
+        trigger: insertMenu?.trigger,
+        onTrigger,
       }),
     [
       headingLevels,
@@ -1090,7 +1291,39 @@ export default function RichTextEditorField({
       singleLine,
       placeholder,
       tokens,
+      versions,
+      insertMenu?.trigger,
+      onTrigger,
     ],
+  );
+  // What each version of a piece of text is edited with: everything the
+  // field's own line can hold, on one line.
+  const versionExtensions = useMemo(
+    () =>
+      versions
+        ? createCustomExtensions({
+            headingLevels: [],
+            enableBulletList: false,
+            enableOrderedList: false,
+            enableLinks: options.links,
+            enableThematicBreak: false,
+            singleLine: true,
+            tokens,
+            versions,
+            trigger: insertMenu?.trigger,
+            onTrigger,
+          })
+        : [],
+    [options.links, tokens, versions, insertMenu?.trigger, onTrigger],
+  );
+  const caretAnchorRef = useRef<HTMLSpanElement>(null);
+  const nestedEditing = useMemo(
+    () => ({
+      extensions: versionExtensions,
+      editable: !disabled && !readOnly,
+      onFocusEditor: setVersionEditor,
+    }),
+    [versionExtensions, disabled, readOnly, setVersionEditor],
   );
   // The schema these extensions make, worked out before there is an editor to
   // ask. A value has to be flattened against the marks the field will actually
@@ -1161,6 +1394,9 @@ export default function RichTextEditorField({
 
         unemittedDocumentRef.current = updated;
       },
+      onFocus: () => {
+        setVersionEditor(null);
+      },
       onBlur: ({ editor: blurEditor }) => {
         if (changeModeRef.current === 'blur') {
           unemittedDocumentRef.current = null;
@@ -1171,9 +1407,14 @@ export default function RichTextEditorField({
     [autoFocus, editorExtensions],
   );
 
+  const target =
+    versionEditor !== null && !versionEditor.isDestroyed
+      ? versionEditor
+      : editor;
+
   // Track editor state changes to update toolbar button states
   const editorState = useEditorState({
-    editor,
+    editor: target,
     selector: ({ editor: e }) => ({
       isBold: e?.isActive('bold') ?? false,
       isItalic: e?.isActive('italic') ?? false,
@@ -1186,7 +1427,7 @@ export default function RichTextEditorField({
       isOrderedList: e?.isActive('orderedList') ?? false,
       canUndo: e?.can().undo() ?? false,
       canRedo: e?.can().redo() ?? false,
-      placedTokens: e === null ? '' : placedTokenIds(e.state.doc),
+      placedTokens: editor === null ? '' : placedTokenIds(editor.state.doc),
     }),
   });
   const placedTokens = new Set(editorState.placedTokens.split('\n'));
@@ -1291,6 +1532,8 @@ export default function RichTextEditorField({
     return null;
   }
 
+  const actOn = target ?? editor;
+
   const getActiveFormattingValues = () => {
     const values: string[] = [];
     if (editorState.isBold) values.push('bold');
@@ -1313,8 +1556,8 @@ export default function RichTextEditorField({
   };
 
   const prepareLinkPopoverState = () => {
-    const previousHref = editor.getAttributes('link').href;
-    const { from, to } = editor.state.selection;
+    const previousHref = actOn.getAttributes('link').href;
+    const { from, to } = actOn.state.selection;
 
     linkSelectionRef.current = { from, to };
     setLinkHref(typeof previousHref === 'string' ? previousHref : '');
@@ -1338,7 +1581,7 @@ export default function RichTextEditorField({
     extendLinkRange = false,
   }: { extendLinkRange?: boolean } = {}) => {
     const selection = linkSelectionRef.current;
-    const chain = editor.chain().focus();
+    const chain = actOn.chain().focus();
 
     if (selection) {
       chain.setTextSelection(selection);
@@ -1391,7 +1634,37 @@ export default function RichTextEditorField({
   const showHeadings = headingLevels.length > 0;
   const showLists = options.lists.bullet || options.lists.ordered;
   const showThematicBreak = options.thematicBreak;
-  const showTokens = tokens.length > 0;
+  const toolbarTokens = (tokensProp ?? []).filter(
+    ({ inToolbar }) => inToolbar !== false,
+  );
+  const showTokens = toolbarTokens.length > 0 || insertMenu !== undefined;
+
+  const insertItem = (item: RichTextInsertMenuItem) => {
+    const content = Array.isArray(item.content)
+      ? [...(item.content as readonly JSONContent[])]
+      : (item.content as JSONContent);
+    if (triggered !== null && !triggered.editor.isDestroyed) {
+      const { editor: into, position } = triggered;
+      // The trigger the menu was opened by is replaced, if it is still there.
+      const typed =
+        into.state.doc.textBetween(
+          position,
+          Math.min(position + 1, into.state.doc.content.size),
+        ) === insertMenu?.trigger;
+      into
+        .chain()
+        .focus()
+        .insertContentAt(
+          typed ? { from: position, to: position + 1 } : position,
+          content,
+        )
+        .run();
+    } else {
+      actOn.chain().focus().insertContent(content).run();
+    }
+    setTriggered(null);
+    setIsInsertMenuOpen(false);
+  };
   const showHistory = options.history;
 
   // Track which groups are visible for separator logic
@@ -1423,10 +1696,25 @@ export default function RichTextEditorField({
         onBlur?.(event);
       }}
     >
-      <EditorContent
-        editor={editor}
-        className={editorContentVariants({ compact })}
-      />
+      <NestedEditingContext.Provider value={nestedEditing}>
+        <EditorContent
+          editor={editor}
+          className={editorContentVariants({ compact })}
+        />
+      </NestedEditingContext.Provider>
+      {triggered !== null && (
+        // Where the trigger was typed, for the insert menu to open beside.
+        <span
+          ref={caretAnchorRef}
+          aria-hidden
+          className="pointer-events-none fixed w-0"
+          style={{
+            left: triggered.anchor.left,
+            top: triggered.anchor.top,
+            height: triggered.anchor.height,
+          }}
+        />
+      )}
       {hasToolbar && (
         <FieldUnavailableContext.Provider value={isDisabled}>
           <Toolbar.Root className={toolbarStyles}>
@@ -1444,10 +1732,10 @@ export default function RichTextEditorField({
                       const shouldBeItalic = values.includes('italic');
 
                       if (shouldBeBold !== editorState.isBold) {
-                        editor.chain().focus().toggleBold().run();
+                        actOn.chain().focus().toggleBold().run();
                       }
                       if (shouldBeItalic !== editorState.isItalic) {
-                        editor.chain().focus().toggleItalic().run();
+                        actOn.chain().focus().toggleItalic().run();
                       }
                     }}
                     multiple
@@ -1606,50 +1894,34 @@ export default function RichTextEditorField({
                     onValueChange={(values: string[]) => {
                       const newValue = values[0];
                       if (newValue === 'h1') {
-                        editor
-                          .chain()
-                          .focus()
-                          .toggleHeading({ level: 1 })
-                          .run();
+                        actOn.chain().focus().toggleHeading({ level: 1 }).run();
                       } else if (newValue === 'h2') {
-                        editor
-                          .chain()
-                          .focus()
-                          .toggleHeading({ level: 2 })
-                          .run();
+                        actOn.chain().focus().toggleHeading({ level: 2 }).run();
                       } else if (newValue === 'h3') {
-                        editor
-                          .chain()
-                          .focus()
-                          .toggleHeading({ level: 3 })
-                          .run();
+                        actOn.chain().focus().toggleHeading({ level: 3 }).run();
                       } else if (newValue === 'h4') {
-                        editor
-                          .chain()
-                          .focus()
-                          .toggleHeading({ level: 4 })
-                          .run();
+                        actOn.chain().focus().toggleHeading({ level: 4 }).run();
                       } else {
                         if (editorState.isH1) {
-                          editor
+                          actOn
                             .chain()
                             .focus()
                             .toggleHeading({ level: 1 })
                             .run();
                         } else if (editorState.isH2) {
-                          editor
+                          actOn
                             .chain()
                             .focus()
                             .toggleHeading({ level: 2 })
                             .run();
                         } else if (editorState.isH3) {
-                          editor
+                          actOn
                             .chain()
                             .focus()
                             .toggleHeading({ level: 3 })
                             .run();
                         } else if (editorState.isH4) {
-                          editor
+                          actOn
                             .chain()
                             .focus()
                             .toggleHeading({ level: 4 })
@@ -1717,17 +1989,17 @@ export default function RichTextEditorField({
                       const newValue = values[0];
                       if (newValue === 'bullet') {
                         if (!editorState.isBulletList) {
-                          editor.chain().focus().toggleBulletList().run();
+                          actOn.chain().focus().toggleBulletList().run();
                         }
                       } else if (newValue === 'ordered') {
                         if (!editorState.isOrderedList) {
-                          editor.chain().focus().toggleOrderedList().run();
+                          actOn.chain().focus().toggleOrderedList().run();
                         }
                       } else {
                         if (editorState.isBulletList) {
-                          editor.chain().focus().toggleBulletList().run();
+                          actOn.chain().focus().toggleBulletList().run();
                         } else if (editorState.isOrderedList) {
-                          editor.chain().focus().toggleOrderedList().run();
+                          actOn.chain().focus().toggleOrderedList().run();
                         }
                       }
                     }}
@@ -1769,7 +2041,7 @@ export default function RichTextEditorField({
                   disabled={isDisabled}
                   aria-label={intl.formatMessage(messages.thematicBreak)}
                   onClick={() =>
-                    editor.chain().focus().setHorizontalRule().run()
+                    actOn.chain().focus().setHorizontalRule().run()
                   }
                 >
                   <Minus />
@@ -1790,7 +2062,41 @@ export default function RichTextEditorField({
                 className={toolbarGroupStyles}
                 aria-label={intl.formatMessage(messages.tokens)}
               >
-                {tokens.map((token) => {
+                {insertMenu !== undefined && (
+                  <Popover
+                    open={isInsertMenuOpen && !isDisabled}
+                    onOpenChange={(open) => {
+                      setIsInsertMenuOpen(open);
+                      if (!open) setTriggered(null);
+                    }}
+                  >
+                    <PopoverTrigger asChild disabled={isDisabled}>
+                      <ToolbarButton
+                        className={toolbarTokenButtonStyles}
+                        disabled={isDisabled}
+                        onMouseDown={() => setTriggered(null)}
+                      >
+                        <Plus aria-hidden />
+                        {insertMenu.label}
+                      </ToolbarButton>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      side="bottom"
+                      anchor={triggered === null ? undefined : caretAnchorRef}
+                      // Opened by typing, the menu hands the caret back to
+                      // the text it was typed in.
+                      finalFocus={
+                        triggered === null
+                          ? undefined
+                          : { current: triggered.editor.view.dom }
+                      }
+                    >
+                      <InsertMenuList menu={insertMenu} onPick={insertItem} />
+                    </PopoverContent>
+                  </Popover>
+                )}
+                {toolbarTokens.map((token) => {
                   const missing =
                     requiredTokens.has(token.id) && !placedTokens.has(token.id);
                   return (
@@ -1806,7 +2112,7 @@ export default function RichTextEditorField({
                         { token: token.label },
                       )}
                       onClick={() =>
-                        editor
+                        actOn
                           .chain()
                           .focus()
                           .insertContent({
@@ -1845,7 +2151,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled || !editorState.canUndo}
                   aria-label={intl.formatMessage(messages.undo)}
-                  onClick={() => editor.chain().focus().undo().run()}
+                  onClick={() => actOn.chain().focus().undo().run()}
                 >
                   <Undo />
                 </ToolbarButton>
@@ -1853,7 +2159,7 @@ export default function RichTextEditorField({
                   className={toolbarButtonStyles}
                   disabled={isDisabled || !editorState.canRedo}
                   aria-label={intl.formatMessage(messages.redo)}
-                  onClick={() => editor.chain().focus().redo().run()}
+                  onClick={() => actOn.chain().focus().redo().run()}
                 >
                   <Redo />
                 </ToolbarButton>
