@@ -25,17 +25,15 @@ const DYNAMIC_VALUE_PATH = 'dynamicValuePath' as const;
 export type DynamicValueSite = 'stageText' | 'prompt' | 'formField';
 
 /**
- * Values the interview itself knows. `optional` ones are host-supplied and
- * not guaranteed in every host, so text needs a version for when they are
- * missing.
+ * Values the interview itself knows, rather than an attribute of someone in
+ * it. Only today's date, for text that anchors a question in time ("since
+ * {today}"). Identifiers and protocol metadata (the interview's ID or case
+ * ID, its start time, the protocol's name or hash, the stage's ID) are left
+ * out on purpose: a participant has no use for them. `optional` marks a value
+ * a host may not supply, which text then needs a `missing` version for.
  */
 export const INTRINSIC_DYNAMIC_VALUES = {
-  'interview.id': { type: 'text', optional: false },
-  'interview.startedAt': { type: 'datetime', optional: true },
-  'protocol.name': { type: 'text', optional: false },
-  'protocol.hash': { type: 'text', optional: true },
-  'stage.id': { type: 'text', optional: false },
-  'now': { type: 'datetime', optional: false },
+  now: { type: 'datetime', optional: false },
 } as const satisfies Record<string, { type: VariableType; optional: boolean }>;
 
 export type IntrinsicDynamicValue = keyof typeof INTRINSIC_DYNAMIC_VALUES;
