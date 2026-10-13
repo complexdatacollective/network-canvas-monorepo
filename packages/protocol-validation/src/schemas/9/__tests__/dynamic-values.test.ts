@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
 import { dynamicValueContextFor } from '../dynamic-value-validation.ts';
 import { dynamicValueArgumentsAt } from '../dynamic-values.ts';
+import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import ProtocolSchemaV9 from '../schema.ts';
 import { completeProtocol } from './complete-localized-protocol.ts';
 
@@ -598,18 +600,113 @@ describe('dynamic values in stage text', () => {
   });
 
   it('tags exactly the inventoried stage sites, and none outside stages', () => {
-    const sites = collectLocalizedStrings(completeProtocol())
+    // Read from the schema itself, through every optional field and union
+    // variant, so a site the complete protocol happens not to fill (a hint,
+    // a scale's labels) is inventoried too.
+    const sites = schemaDynamicValueSites();
+    expect(sites.every((site) => site.startsWith('stages '))).toBe(true);
+    const inventory = sites.map((site) => site.slice('stages '.length));
+    // What the walk of a document tags is a part of that inventory.
+    const collected = collectLocalizedStrings(completeProtocol())
       .filter((hit) => hit.dynamicValues !== undefined)
       .map((hit) => {
         const [, index, ...rest] = hit.path;
         const stage = (completeProtocol().stages as Stage[])[index as number];
         return `${String(stage?.type)} ${rest.map((step) => (typeof step === 'number' ? '#' : step)).join('.')} ${hit.dynamicValues}`;
       });
-    expect(
-      collectLocalizedStrings(completeProtocol()).every(
-        (hit) => hit.dynamicValues === undefined || hit.path[0] === 'stages',
-      ),
-    ).toBe(true);
-    expect([...new Set(sites)].sort()).toMatchSnapshot();
+    expect(collected.filter((site) => !inventory.includes(site))).toEqual([]);
+    expect(inventory).toMatchSnapshot();
   });
 });
+
+// Wrappers whose inner schema holds the same paths as the wrapper.
+const unwrapSchema = (schema: z.ZodType): z.ZodType => {
+  let current = schema;
+  for (;;) {
+    if (getLocalizedStringDescriptor(current)) return current;
+    let inner: unknown;
+    if (
+      current instanceof z.ZodOptional ||
+      current instanceof z.ZodNullable ||
+      current instanceof z.ZodDefault ||
+      current instanceof z.ZodPrefault ||
+      current instanceof z.ZodNonOptional ||
+      current instanceof z.ZodReadonly ||
+      current instanceof z.ZodCatch
+    ) {
+      inner = current.def.innerType;
+    } else if (current instanceof z.ZodLazy) {
+      inner = current.def.getter();
+    } else if (current instanceof z.ZodPipe) {
+      inner = current.in;
+    }
+    if (!(inner instanceof z.ZodType)) return current;
+    current = inner;
+  }
+};
+
+/**
+ * Every site in the protocol schema that may show dynamic values, as
+ * "<first path step> <stage type> <path within the stage> <site kind>" for
+ * sites under `stages`, with `#` for any array index and `*` for any record
+ * key.
+ */
+const schemaDynamicValueSites = (): string[] => {
+  const found = new Set<string>();
+  const visit = (
+    schema: z.ZodType,
+    path: readonly string[],
+    stageType: string | undefined,
+    ancestors: ReadonlySet<z.ZodType>,
+  ) => {
+    const node = unwrapSchema(schema);
+    if (ancestors.has(node)) return;
+    const descriptor = getLocalizedStringDescriptor(node);
+    if (descriptor !== undefined) {
+      if (descriptor.dynamicValues === undefined) return;
+      const [root, , ...rest] = path;
+      found.add(
+        root === 'stages'
+          ? `stages ${String(stageType)} ${rest.join('.')} ${descriptor.dynamicValues}`
+          : `${path.join('.')} ${descriptor.dynamicValues}`,
+      );
+      return;
+    }
+    const within = new Set(ancestors).add(node);
+    if (node instanceof z.ZodObject) {
+      let ownType = stageType;
+      const type: unknown = node.shape.type;
+      if (
+        path.length === 2 &&
+        path[0] === 'stages' &&
+        type instanceof z.ZodType
+      ) {
+        const literal = unwrapSchema(type);
+        if (literal instanceof z.ZodLiteral) ownType = String(literal.value);
+      }
+      for (const [key, child] of Object.entries(node.shape)) {
+        if (child instanceof z.ZodType) {
+          visit(child, [...path, key], ownType, within);
+        }
+      }
+    } else if (node instanceof z.ZodArray) {
+      const element: unknown = node.element;
+      if (element instanceof z.ZodType) {
+        visit(element, [...path, '#'], stageType, within);
+      }
+    } else if (node instanceof z.ZodRecord) {
+      const valueType: unknown = node.valueType;
+      if (valueType instanceof z.ZodType) {
+        visit(valueType, [...path, '*'], stageType, within);
+      }
+    } else if (node instanceof z.ZodUnion) {
+      for (const option of node.options) {
+        if (option instanceof z.ZodType) {
+          visit(option, path, stageType, within);
+        }
+      }
+    }
+  };
+  visit(ProtocolSchemaV9, [], undefined, new Set());
+  return [...found].sort();
+};

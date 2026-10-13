@@ -5,6 +5,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { isBlankMessage, isBlankText } from '../../localization/blankText.ts';
+import { DYNAMIC_VALUE_MARKER } from '../../localization/dynamicValueMessages.ts';
 import type { LocalizationDeclaration } from '../../localization/localeTag.ts';
 import { escapeMarkdownText } from '../../localization/markdownText.ts';
 import {
@@ -975,6 +976,30 @@ type SiteChange =
   | { kind: 'keep' };
 
 /**
+ * Schema 9 reserves `DYNAMIC_VALUE_MARKER` in text that may show dynamic
+ * values, as the place the interview puts each value. Schema 8 text could
+ * hold it, as a private-use character no font draws, so it is dropped there
+ * rather than leaving the text invalid, or an optional text left out.
+ */
+const holdsMarker = (text: unknown): text is string =>
+  typeof text === 'string' && text.includes(DYNAMIC_VALUE_MARKER);
+
+const withoutMarker = (text: unknown) =>
+  holdsMarker(text) ? text.replaceAll(DYNAMIC_VALUE_MARKER, '') : text;
+
+const withoutReservedMarker = (site: LocalizedStringSite): unknown => {
+  if (site.dynamicValues === undefined) return site.value;
+  if (!isRecord(site.value)) return withoutMarker(site.value);
+  if (!Object.values(site.value).some(holdsMarker)) return site.value;
+  return Object.fromEntries(
+    Object.entries(site.value).map(([locale, text]) => [
+      locale,
+      withoutMarker(text),
+    ]),
+  );
+};
+
+/**
  * A string that shows nothing follows the site's own rule: where the field
  * accepts it, it is kept as data, and where it does not, an optional field is
  * left out. A required field is wrapped regardless, so validation reports what
@@ -988,12 +1013,17 @@ type SiteChange =
  * Text that is already localized is kept, so a document written in schema 9
  * form comes through with its text in the languages it declares, less any
  * translation of an optional text that shows nothing. A string in
- * such a document is recorded in its default language.
+ * such a document is recorded in its default language. Either loses the
+ * reserved marker first (see `withoutReservedMarker`).
  */
 const localizeSite = (
-  site: LocalizedStringSite,
+  original: LocalizedStringSite,
   defaultLocale: string,
 ): SiteChange => {
+  const value = withoutReservedMarker(original);
+  // Stripped text must be written back even where it would otherwise be kept.
+  const changed = value !== original.value;
+  const site = changed ? { ...original, value } : original;
   if (typeof site.value === 'string') {
     const localized = { [defaultLocale]: escapeMessageText(site.value) };
     if (site.schema.safeParse(localized).success || !site.optional) {
@@ -1009,15 +1039,20 @@ const localizeSite = (
     const shown = withoutBlankText(site.value);
     if (shown === undefined) return { kind: 'remove' };
     if (isRecord(shown) && site.schema.safeParse(shown).success) {
-      return Object.keys(shown).length === Object.keys(site.value).length
+      return Object.keys(shown).length === Object.keys(site.value).length &&
+        !changed
         ? { kind: 'keep' }
         : { kind: 'set', value: shown };
     }
   }
-  if (site.schema.safeParse(site.value).success) return { kind: 'keep' };
+  if (site.schema.safeParse(site.value).success) {
+    return changed ? { kind: 'set', value: site.value } : { kind: 'keep' };
+  }
   return site.looseContainer && site.optional
     ? { kind: 'remove' }
-    : { kind: 'keep' };
+    : changed
+      ? { kind: 'set', value: site.value }
+      : { kind: 'keep' };
 };
 
 const containerAt = (

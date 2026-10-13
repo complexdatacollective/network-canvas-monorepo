@@ -282,6 +282,34 @@ describe('v8 to v9 localization migration', () => {
     ).toBe(false);
   });
 
+  it('drops the reserved marker from text that may now show values, and keeps the rest of it', () => {
+    const marked = (text: string) => `${text}\uE000`;
+    const document = schema8Protocol(marked);
+    const plain = migrateProtocol(schema8Protocol(), 9);
+    const migrated = migrateProtocol(document, 9);
+    const sites = collectLocalizedStrings(migrated);
+    const dynamicSites = sites.filter(
+      ({ dynamicValues }) => dynamicValues !== undefined,
+    );
+    expect(dynamicSites.length).toBeGreaterThan(0);
+    // No text is lost, optional text included: every site plain text has
+    // is still there, and text that may show values reads as before.
+    expect(sites.map(({ path: at }) => at.join('.'))).toEqual(
+      collectLocalizedStrings(plain).map(({ path: at }) => at.join('.')),
+    );
+    for (const { path: at, value } of dynamicSites) {
+      expect(value).toEqual(getAt(plain, at));
+    }
+    // Text that cannot show values may keep the character.
+    expect(
+      sites.some(
+        ({ dynamicValues, value }) =>
+          dynamicValues === undefined &&
+          Object.values(value).some((message) => message.includes('\uE000')),
+      ),
+    ).toBe(true);
+  });
+
   describe('codebook labels', () => {
     it('starts each type label as the name participants already saw', () => {
       const document = schema8Protocol();

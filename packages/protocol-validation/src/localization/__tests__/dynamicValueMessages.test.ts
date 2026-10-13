@@ -53,9 +53,21 @@ describe('findDynamicMessageSyntaxProblem on blank text', () => {
         '{name, select, missing { } other {{kind, select, friend {} other {\u200B}}}}',
       ),
     ).toContain('blank in every version');
+    // Text only in versions no value reaches: a missing value never takes
+    // an inner version for when it is present, nor the reverse.
+    expect(
+      findDynamicMessageSyntaxProblem(
+        '{name, select, missing {{name, select, missing {} other {visible}}} other {{name, select, missing {visible} other {}}}}',
+      ),
+    ).toContain('blank in every version');
     expect(
       findDynamicMessageSyntaxProblem(
         '{name, select, missing {} other {{name}}}',
+      ),
+    ).toBeUndefined();
+    expect(
+      findDynamicMessageSyntaxProblem(
+        '{kind, select, friend {Friend} other {{kind, select, friend {} other {}}}}',
       ),
     ).toBeUndefined();
     expect(
@@ -85,6 +97,17 @@ describe('findDynamicValueProblem', () => {
     refused('{name, select, other {Hi {name}}}', '"name" can be missing');
     refused(
       '{name, select, missing {Hi {name}} other {Hi}}',
+      '"name" can be missing',
+    );
+  });
+
+  it('keeps an outer guard through an inner select on the same value', () => {
+    ok('{name, select, missing {none} other {{name, select, other {{name}}}}}');
+    ok(
+      '{name, select, missing {none} other {{name, select, missing {{name}} other {{name}}}}}',
+    );
+    refused(
+      '{name, select, missing {none} other {Hi}} {name, select, other {{name}}}',
       '"name" can be missing',
     );
   });
@@ -277,7 +300,22 @@ describe('findMissingDynamicPlacement', () => {
         'cs',
         VALUES,
       ),
-    ).toEqual({ argument: 'count', when: { count: '0.5' } });
+    ).toEqual({ argument: 'count', when: { count: '0.1' } });
+  });
+
+  it('compares every pair of versions the two languages give one number', () => {
+    // The Arabic shows the count only in `other`; the Bosnian leaves it out
+    // only in `few`. Only some numbers are both (102, 0.02), and the first
+    // few examples of each category miss them all.
+    expect(
+      findMissingDynamicPlacement(
+        '{count, select, missing {?} other {{count, plural, zero {none} one {one} two {two} few {few} many {many} other {# items}}}}',
+        'ar',
+        '{count, select, missing {?} other {{count, plural, one {# item} few {some items} other {# items}}}}',
+        'bs',
+        VALUES,
+      ),
+    ).toEqual({ argument: 'count', when: { count: '102' } });
   });
 
   it('waives a zero-only version only where the translation reaches that plural', () => {
