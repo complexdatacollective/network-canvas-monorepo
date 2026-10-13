@@ -13,8 +13,6 @@ import {
   type BrowserLogSurface,
 } from '@codaco/studio-contract/schema/browser-logs';
 
-import { STUDIO_VERSION } from '../version.ts';
-
 type ResourceLogs = OtlpLogger.LogsData['resourceLogs'][number];
 type LogRecord = NonNullable<
   ResourceLogs['scopeLogs'][number]['logRecords']
@@ -92,7 +90,6 @@ export class BrowserLogs extends Context.Service<
         const serialization = yield* OtlpSerialization.OtlpSerialization;
         const resource = OtlpResource.make({
           serviceName: BROWSER_LOG_SERVICE_NAME,
-          serviceVersion: STUDIO_VERSION,
         });
         const exporter = yield* OtlpExporter.make({
           label: 'StudioWebLogs',

@@ -62,6 +62,7 @@ type HandleState =
 export type BrowserLogHandle<E extends Entry> = {
   readonly log: (entry: E, context?: Context) => void;
   readonly configure: (config: BrowserLogConfig) => void;
+  readonly activate: () => void;
   readonly close: () => void;
   readonly isClosed: () => boolean;
 };
@@ -249,6 +250,9 @@ export const createBrowserLogHandle = <E extends Entry>(
       listen();
       for (const queued of queue) sink.log(queued.entry, queued.context);
       if (leaving) sink.flush();
+    },
+    activate: () => {
+      if (state.kind === 'closed') state = { kind: 'pending', queue: [] };
     },
     close: () => {
       unlisten();

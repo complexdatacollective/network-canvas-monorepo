@@ -85,6 +85,7 @@ export function useParticipantLogs(
 ): ParticipantLog {
   const handle = useSessionHandle(sessionToken);
   useEffect(() => {
+    handle.activate();
     configure(handle, sessionToken, {
       telemetry: level !== null,
       level: level ?? 'None',
@@ -100,16 +101,20 @@ export function useStatusParticipantLogs(
 ): ParticipantLog {
   const handle = useSessionHandle(sessionToken);
   useEffect(() => {
+    let current = true;
+    handle.activate();
+    const settle = (settings: LogSettings) => {
+      if (current) configure(handle, sessionToken, settings);
+    };
     readStatus().then(
       (status) =>
-        configure(handle, sessionToken, {
-          telemetry: status.telemetry,
-          level: status.logLevel,
-        }),
-      () =>
-        configure(handle, sessionToken, { telemetry: false, level: 'None' }),
+        settle({ telemetry: status.telemetry, level: status.logLevel }),
+      () => settle({ telemetry: false, level: 'None' }),
     );
-    return handle.close;
+    return () => {
+      current = false;
+      handle.close();
+    };
   }, [handle, sessionToken, readStatus]);
   return handle.log;
 }

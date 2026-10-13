@@ -827,7 +827,7 @@ describe('the participant save faults', () => {
     ]);
   });
 
-  it('reports no retry when the retried save was not applied and a fresh save then was', async () => {
+  it('reports one retry, counting every request, when a save is rate limited, then not applied, then applied', async () => {
     vi.useFakeTimers();
     let calls = 0;
     installParticipantHarness({
@@ -849,6 +849,50 @@ describe('the participant save faults', () => {
     await saved;
 
     expect(calls).toBe(3);
-    expect(onSaveFault).not.toHaveBeenCalled();
+    expect(onSaveFault.mock.calls).toEqual([
+      [{ kind: 'retried', attempts: 3, stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports a retry when a save the server did not apply is applied on its resend', async () => {
+    let calls = 0;
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        calls += 1;
+        return calls === 1
+          ? Effect.succeed({ revision: '50', applied: false })
+          : Effect.succeed({ revision: payload.revision, applied: true });
+      },
+    });
+    const { onSync, onSaveFault } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+
+    expect(onSaveFault.mock.calls).toEqual([
+      [{ kind: 'retried', attempts: 2, stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports every request a save made when the server declined each resend', async () => {
+    installParticipantHarness({
+      'participant.sync': () =>
+        Effect.succeed({ revision: '99', applied: false }),
+    });
+    const { onSync, onSaveFault } = handlersFor();
+
+    await expect(
+      onSync('session-1', session('Ada'), SYNC),
+    ).rejects.toBeInstanceOf(SaveNotApplied);
+
+    expect(onSaveFault.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          error: expect.any(SaveNotApplied),
+          attempts: 3,
+          stageIndex: 1,
+        },
+      ],
+    ]);
   });
 });

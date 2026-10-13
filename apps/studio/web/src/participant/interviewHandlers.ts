@@ -121,7 +121,6 @@ export function createParticipantHandlers({
   type Saved = {
     readonly stored: bigint;
     readonly applied: boolean;
-    readonly attempts: number;
   };
 
   const deliver = async (
@@ -129,15 +128,11 @@ export function createParticipantHandlers({
     progress: SaveProgress,
   ): Promise<Saved> => {
     for (let attempt = 1; ; attempt += 1) {
-      progress.attempts = attempt;
+      progress.attempts += 1;
       progress.stageIndex = payload.stageIndex;
       try {
         const result = await participantCall('participant.sync', payload);
-        return {
-          stored: BigInt(result.revision),
-          applied: result.applied,
-          attempts: attempt,
-        };
+        return { stored: BigInt(result.revision), applied: result.applied };
       } catch (error) {
         const delay = retryAfterSeconds(error);
         if (
@@ -158,14 +153,10 @@ export function createParticipantHandlers({
     payload: SyncPayload,
     progress: SaveProgress,
   ): Promise<Saved> => {
-    progress.attempts = 1;
+    progress.attempts += 1;
     progress.stageIndex = payload.stageIndex;
     const result = await participantUnloadingSync(payload);
-    return {
-      stored: BigInt(result.revision),
-      applied: result.applied,
-      attempts: 1,
-    };
+    return { stored: BigInt(result.revision), applied: result.applied };
   };
 
   // A save the server did not apply found a write at or past its number. That
@@ -182,16 +173,16 @@ export function createParticipantHandlers({
     let next = snapshot;
     for (let attempt = 1; attempt <= RESEND_ATTEMPTS; attempt += 1) {
       const payload = payloadFor(next);
-      const { stored, applied, attempts } = await (unloading
+      const { stored, applied } = await (unloading
         ? deliverUnloading(payload, progress)
         : deliver(payload, progress));
       if (applied) {
         held = BigInt(payload.revision);
         savedStep = payload.stageIndex;
-        if (attempts > 1) {
+        if (progress.attempts > 1) {
           onSaveFault?.({
             kind: 'retried',
-            attempts,
+            attempts: progress.attempts,
             stageIndex: payload.stageIndex,
           });
         }
@@ -200,7 +191,7 @@ export function createParticipantHandlers({
       if (stored > issued) issued = stored;
       next = offered;
     }
-    throw new SaveNotApplied({ attempts: RESEND_ATTEMPTS });
+    throw new SaveNotApplied({ attempts: progress.attempts });
   };
 
   const reportedSend = async (

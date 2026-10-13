@@ -364,6 +364,7 @@ describe.each(DESTINATIONS)(
               }),
             },
           ]);
+          expect(forwarded[0]?.resource).not.toHaveProperty('service.version');
           const delivery = sent.find(
             (request) => request.url === destination.logsUrl,
           );

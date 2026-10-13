@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, renderHook, waitFor } from '@testing-library/react';
 import { Effect, Schema } from 'effect';
+import { StrictMode, useEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
@@ -17,7 +18,10 @@ import {
 import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 
 import { ResearcherErrorTelemetry } from '../../lib/errorTelemetry.ts';
-import { useParticipantLogs } from '../../participant/participantLogs.ts';
+import {
+  useParticipantLogs,
+  useStatusParticipantLogs,
+} from '../../participant/participantLogs.ts';
 import { installRpcHarness } from '../../test/rpcHarness.ts';
 import {
   createBrowserLogHandle,
@@ -392,6 +396,52 @@ describe('participant logs', () => {
         ],
       }),
     ]);
+  });
+});
+
+describe('participant logs under StrictMode', () => {
+  const connectionLost = {
+    message: 'Participant connection lost',
+    level: 'Warn',
+    attributes: { stage_index: 1, interface_type: 'Sociogram' },
+  } as const;
+
+  it('keeps logging after the effect is set up, cleaned up and set up again', async () => {
+    const view = renderHook(() => useParticipantLogs(SESSION, 'Info'), {
+      wrapper: StrictMode,
+    });
+    view.result.current(connectionLost);
+    await waitFor(
+      () => expect(recordsSent(BROWSER_LOG_PATHS.participant)).toHaveLength(1),
+      { timeout: 3000 },
+    );
+    view.unmount();
+  });
+
+  it('sends a session failure logged from an effect exactly once, once status answers', async () => {
+    const view = renderHook(
+      () => {
+        const log = useStatusParticipantLogs(SESSION, async () => ({
+          telemetry: true,
+          logLevel: 'Info',
+        }));
+        useEffect(() => {
+          log({
+            message: 'Interview session failed to load',
+            level: 'Error',
+            attributes: { error_code: 'session_ended' },
+          });
+        }, [log]);
+      },
+      { wrapper: StrictMode },
+    );
+    await waitFor(
+      () => expect(recordsSent(BROWSER_LOG_PATHS.participant)).toHaveLength(1),
+      { timeout: 3000 },
+    );
+    await exportWindow();
+    view.unmount();
+    expect(recordsSent(BROWSER_LOG_PATHS.participant)).toHaveLength(1);
   });
 });
 
