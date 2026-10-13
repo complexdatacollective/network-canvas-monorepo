@@ -307,6 +307,7 @@ export type StageEntry = {
     freeDraw?: boolean;
     allowRepositioning?: boolean;
     removeAfterConsideration?: boolean;
+    requireCompletePlacement?: boolean;
     minNodes?: number;
     maxNodes?: number;
     interactionMode?: 'drag' | 'select';
@@ -536,6 +537,7 @@ export type AddStageInput = {
     freeDraw?: boolean;
     allowRepositioning?: boolean;
     removeAfterConsideration?: boolean;
+    requireCompletePlacement?: boolean;
     minNodes?: number;
     maxNodes?: number;
     interactionMode?: 'drag' | 'select';

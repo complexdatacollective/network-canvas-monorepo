@@ -1,6 +1,7 @@
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { geospatialWordingMessages } from '@codaco/protocol-builder/editors/geospatial/geospatialWording';
+import { binBehavioursMessages } from '@codaco/protocol-builder/sections/bin-behaviours/binBehavioursMessages';
 import { nameGeneratorWordingMessages } from '@codaco/protocol-builder/sections/name-generator-wording/nameGeneratorWording';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
@@ -30,10 +31,11 @@ const STAGE_WORDING_SETTINGS: readonly WordingSetting[] = [
   [nameGeneratorWordingMessages.searchLabelLabel, 'searchLabel'],
   [nameGeneratorWordingMessages.searchNoMatchLabel, 'searchNoMatch'],
   [geospatialWordingMessages.searchFailedLabel, 'searchFailed'],
+  [binBehavioursMessages.unplacedNoticeLabel, 'unplacedNodesNotice'],
 ];
 
 /**
- * The words a name generator or a map shows a participant, as the stage holds
+ * The words a name generator, a map or a bin stage shows a participant, as the stage holds
  * them. Settings the stage does not hold are left out, so a stage with none
  * prints nothing.
  */

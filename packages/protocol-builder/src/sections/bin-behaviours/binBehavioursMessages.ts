@@ -51,4 +51,30 @@ export const binBehavioursMessages = defineMessages({
     description:
       'Says what the participant does in tap-to-place mode. A stage is one step of an interview.',
   },
+  requireCompletePlacementLabel: {
+    id: 'protocolBuilder.binBehaviours.requireCompletePlacementLabel',
+    defaultMessage: 'Require every node to be placed',
+    description:
+      'Label of the switch that stops the participant moving on from a bin stage while any member of their network is still waiting to be placed into a bin.',
+  },
+  requireCompletePlacementHint: {
+    id: 'protocolBuilder.binBehaviours.requireCompletePlacementHint',
+    defaultMessage:
+      'The participant cannot continue from a prompt until every node is in a bin.',
+    description:
+      'Guidance under the switch requiring every member of the network to be placed. A prompt is one question on the stage; the rule applies to each question in turn.',
+  },
+  unplacedNoticeLabel: {
+    id: 'protocolBuilder.binBehaviours.unplacedNoticeLabel',
+    defaultMessage: 'Nodes not yet placed',
+    description:
+      'Label of the field holding the message a participant sees when they try to continue while a member of their network is still waiting to be placed into a bin.',
+  },
+  unplacedNoticeHint: {
+    id: 'protocolBuilder.binBehaviours.unplacedNoticeHint',
+    defaultMessage:
+      'Shown when the participant tries to continue while a node is still waiting to be placed.',
+    description:
+      'Guidance under the field holding the message shown when the participant tries to continue with members of their network not yet placed into a bin.',
+  },
 });

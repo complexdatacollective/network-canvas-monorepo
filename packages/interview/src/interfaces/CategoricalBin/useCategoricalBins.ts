@@ -4,7 +4,11 @@ import { isNil } from 'es-toolkit';
 import { get } from 'es-toolkit/compat';
 
 import type { Stage } from '@codaco/protocol-validation';
-import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import useSortedNodeList, {
@@ -74,20 +78,6 @@ export function useCategoricalBins() {
       ? variableDefinition.options!
       : [];
 
-  // Calculate uncategorised nodes by filtering stageNodes to those that
-  // don't have a value for either the active prompt variable or the other variable
-  const uncategorisedNodes = stageNodes.filter((node) =>
-    isUncategorised(
-      node[entityAttributesProperty],
-      activePromptVariable,
-      prompt.otherVariable,
-    ),
-  );
-
-  const sortedUncategorisedNodes = useSortedNodeList(
-    uncategorisedNodes,
-    bucketSortOrder,
-  );
   // Within-bin node order is governed by binSortOrder (mirroring OrdinalBin);
   // bucketSortOrder is reserved for the drawer (uncategorised nodes).
   const sortBinNodes = useNodeSorter(stageNodes, binSortOrder);
@@ -128,6 +118,29 @@ export function useCategoricalBins() {
       isOther: true,
     });
   }
+
+  // A node waits in the drawer when it has no value for the prompt's variable
+  // or its other variable, or when its value matches none of the bins (an
+  // option since removed from the codebook, say), so that it can still be
+  // placed rather than being hidden from both.
+  const binnedNodes = new Set(
+    bins.flatMap((bin) =>
+      bin.nodes.map((node) => node[entityPrimaryKeyProperty]),
+    ),
+  );
+  const uncategorisedNodes = stageNodes.filter(
+    (node) =>
+      isUncategorised(
+        node[entityAttributesProperty],
+        activePromptVariable,
+        prompt.otherVariable,
+      ) || !binnedNodes.has(node[entityPrimaryKeyProperty]),
+  );
+
+  const sortedUncategorisedNodes = useSortedNodeList(
+    uncategorisedNodes,
+    bucketSortOrder,
+  );
 
   return {
     bins,

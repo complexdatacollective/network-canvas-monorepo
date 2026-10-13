@@ -62,8 +62,14 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
     prevIsMetRef.current = constraints.map((c) => c.isMet);
   }, [constraints, closeToast]);
 
+  // A stage with nothing to check registers no handler: navigation treats any
+  // registered handler as a reason to keep Next live at a review's end.
+  const hasConstraints = constraints.length > 0;
+
   // Register the keyed beforeNext handler
   useEffect(() => {
+    if (!hasConstraints) return;
+
     const handler = (direction: Direction, intent: NavigationIntent) => {
       if (intent === 'jump') {
         return true;
@@ -113,7 +119,7 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
       }
       activeToasts.clear();
     };
-  }, [registerBeforeNext, showToast, closeToast, track]);
+  }, [hasConstraints, registerBeforeNext, showToast, closeToast, track]);
 
   return { showToast, closeToast };
 }

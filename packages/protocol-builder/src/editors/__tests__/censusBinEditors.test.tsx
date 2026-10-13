@@ -424,7 +424,8 @@ const CASES: readonly EditorCase[] = [
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full ordinal bin' },
-      behaviours: { interactionMode: 'select' },
+      behaviours: { interactionMode: 'select', requireCompletePlacement: true },
+      unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
       prompts: [ORDINAL_BIN_PROMPT],
     },
     prompt: ORDINAL_BIN_PROMPT,
@@ -465,7 +466,8 @@ const CASES: readonly EditorCase[] = [
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full categorical bin' },
-      behaviours: { interactionMode: 'select' },
+      behaviours: { interactionMode: 'select', requireCompletePlacement: true },
+      unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
       prompts: [CATEGORICAL_BIN_PROMPT],
     },
     prompt: CATEGORICAL_BIN_PROMPT,

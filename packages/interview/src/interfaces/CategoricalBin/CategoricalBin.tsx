@@ -32,7 +32,7 @@ import {
   writeSubmissionResult,
 } from '../../forms/writeSubmissionResult';
 import { useBinSelection } from '../../hooks/useBinSelection';
-import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import useCompletePlacement from '../../hooks/useCompletePlacement';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import {
@@ -259,11 +259,11 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   });
   const focalName = useNodeLabel(focalNode);
 
-  const { updateReady } = useReadyForNextStage();
-
-  useEffect(() => {
-    updateReady(uncategorisedNodes.length === 0);
-  }, [uncategorisedNodes.length, updateReady]);
+  useCompletePlacement({
+    unplacedCount: uncategorisedNodes.length,
+    required: stage.behaviours?.requireCompletePlacement,
+    notice: stage.unplacedNodesNotice,
+  });
 
   // Reset expanded bin when prompt changes. Compared during render so the new
   // prompt is never painted with the previous prompt's bin still expanded.
