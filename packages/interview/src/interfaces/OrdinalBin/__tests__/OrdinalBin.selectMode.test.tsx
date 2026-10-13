@@ -169,7 +169,9 @@ const buildStage = (
       variable: asEntityAttributeReference('closeness'),
       color: 'ord-color-seq-1',
       ...(sortByName && {
-        bucketSortOrder: [{ property: 'name', direction: 'asc' as const }],
+        bucketSortOrder: [
+          { property: asEntityAttributeReference('name'), direction: 'asc' },
+        ],
       }),
     },
   ],
