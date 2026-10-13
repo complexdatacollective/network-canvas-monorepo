@@ -24,6 +24,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import BinSelectFocus from '../../../components/BinSelectFocus';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
@@ -375,5 +376,38 @@ describe('OrdinalBin in select mode (#1652)', () => {
     expect(
       await screen.findAllByText('Everyone has been placed.'),
     ).not.toHaveLength(0);
+  });
+
+  it('announces the same person again on the next prompt', async () => {
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: buildSession(),
+        protocol: buildProtocol('select'),
+      },
+      middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({ serializableCheck: false }),
+    });
+    const focal = person('a', 'Ann');
+    const focus = (promptId: string) => (
+      <InterviewI18nProvider requestedLocale="en">
+        <TestProtocolLocalization>
+          <Provider store={store}>
+            <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+              <BinSelectFocus node={focal} promptId={promptId} />
+            </CurrentStepProvider>
+          </Provider>
+        </TestProtocolLocalization>
+      </InterviewI18nProvider>
+    );
+
+    const { rerender } = render(focus('first'));
+    const first = await announcement('Ann');
+    rerender(focus('second'));
+    const second = await announcement('Ann');
+
+    // A new node in the live region is what makes screen readers speak.
+    expect(second).not.toBe(first);
+    expect(first.isConnected).toBe(false);
   });
 });
