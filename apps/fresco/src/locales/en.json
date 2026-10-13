@@ -2239,6 +2239,58 @@
     "defaultMessage": "Welcome to Fresco! This page provides an overview of your recent activity and key metrics.",
     "description": "Researcher-facing page: Welcome to Fresco! This page provides an overview of your recent activity and key metrics."
   },
+  "fresco.participantPages.anonymousRecruitmentDisabled.message": {
+    "defaultMessage": "Anonymous recruitment is disabled for this study. Researchers may optionally enable anonymous recruitment from the dashboard.",
+    "description": "Shown when an anonymous interview link is opened while the deployment does not allow anonymous recruitment. Seen by participants, and by researchers testing their links."
+  },
+  "fresco.participantPages.anonymousRecruitmentDisabled.title": {
+    "defaultMessage": "Anonymous Recruitment Disabled",
+    "description": "Heading shown when an anonymous interview link is opened while the deployment does not allow anonymous recruitment."
+  },
+  "fresco.participantPages.interviewCompleted.message": {
+    "defaultMessage": "Your interview has been successfully completed.",
+    "description": "Participant-facing confirmation shown once an interview has been finished."
+  },
+  "fresco.participantPages.interviewCompleted.title": {
+    "defaultMessage": "Thank you for participating!",
+    "description": "Participant-facing heading shown once an interview has been finished."
+  },
+  "fresco.participantPages.invalidLink.message": {
+    "defaultMessage": "The study this link points to is not available. Please contact the person who recruited you to this study for assistance.",
+    "description": "Participant-facing page shown when an interview link points to a study that no longer exists."
+  },
+  "fresco.participantPages.invalidLink.title": {
+    "defaultMessage": "This interview link is no longer valid",
+    "description": "Participant-facing heading shown when an interview link points to a study that no longer exists."
+  },
+  "fresco.participantPages.metadata.pageDescription": {
+    "defaultMessage": "Interview",
+    "description": "Participant-facing interview pages, page description metadata: Interview"
+  },
+  "fresco.participantPages.metadata.pageTitle": {
+    "defaultMessage": "Network Canvas Fresco - Interview",
+    "description": "Participant-facing interview pages, browser tab title. \"Network Canvas Fresco\" is the product name and is not translated."
+  },
+  "fresco.participantPages.onboardingError.message": {
+    "defaultMessage": "Something went wrong while starting your interview. Please contact the person who recruited you to this study for assistance.",
+    "description": "Participant-facing page shown when an interview link fails to start an interview."
+  },
+  "fresco.participantPages.onboardingError.title": {
+    "defaultMessage": "This interview could not be started",
+    "description": "Participant-facing heading shown when an interview link fails to start an interview."
+  },
+  "fresco.participantPages.unopenableInterview.answersUnreadable": {
+    "defaultMessage": "The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.",
+    "description": "Participant-facing explanation when the answers stored for an interview cannot be read, so the interview is refused rather than restarted empty."
+  },
+  "fresco.participantPages.unopenableInterview.protocolUnreadable": {
+    "defaultMessage": "This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.",
+    "description": "Participant-facing explanation when the study design behind an interview cannot be read, so the interview is refused."
+  },
+  "fresco.participantPages.unopenableInterview.title": {
+    "defaultMessage": "This interview could not be opened",
+    "description": "Participant-facing heading when an interview is refused because its stored data cannot be read."
+  },
   "fresco.participants.AddParticipantButton.addParticipant": {
     "defaultMessage": "Add Participant",
     "description": "Researcher-facing participants / AddParticipantButton: Add Participant"

@@ -4,11 +4,12 @@ import { after, connection } from 'next/server';
 import { Suspense } from 'react';
 import SuperJSON from 'superjson';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
 import type { ActivityLocalization } from '~/i18n/activityDetails';
-import { getFrescoI18nInitialization } from '~/i18n/server';
+import { getFrescoI18nInitialization, getServerIntl } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
@@ -102,14 +103,15 @@ async function InterviewContent({
       await flushPostHog();
     });
 
+    const intl = await getServerIntl();
     return (
       <ErrorMessage
-        title="This interview could not be opened"
-        message={
+        title={intl.formatMessage(messages.unopenableTitle)}
+        message={intl.formatMessage(
           mapped.unreadable === 'protocol'
-            ? 'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
-            : 'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.'
-        }
+            ? messages.protocolUnreadable
+            : messages.answersUnreadable,
+        )}
       />
     );
   }
@@ -187,3 +189,28 @@ async function InterviewContent({
     />
   );
 }
+
+const messages = defineMessages({
+  answersUnreadable: {
+    id: 'fresco.participantPages.unopenableInterview.answersUnreadable',
+    defaultMessage:
+      'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
+    description:
+      'Participant-facing explanation when the answers stored for an interview cannot be read, so the interview is refused rather than restarted empty.',
+  },
+
+  protocolUnreadable: {
+    id: 'fresco.participantPages.unopenableInterview.protocolUnreadable',
+    defaultMessage:
+      'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
+    description:
+      'Participant-facing explanation when the study design behind an interview cannot be read, so the interview is refused.',
+  },
+
+  unopenableTitle: {
+    id: 'fresco.participantPages.unopenableInterview.title',
+    defaultMessage: 'This interview could not be opened',
+    description:
+      'Participant-facing heading when an interview is refused because its stored data cannot be read.',
+  },
+});
