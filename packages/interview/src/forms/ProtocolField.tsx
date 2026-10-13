@@ -26,10 +26,7 @@ import type {
   Variable,
 } from '@codaco/protocol-validation';
 
-import {
-  DynamicMarkdown,
-  DynamicTextParts,
-} from '../dynamicValues/DynamicText';
+import { DynamicMarkdown } from '../dynamicValues/DynamicText';
 import { markdownSource } from '../dynamicValues/resolveDynamicText';
 import {
   type ResolvedProtocolText,
@@ -82,11 +79,13 @@ const isLocalizedString = (value: unknown): value is LocalizedString =>
   Object.values(value).every((text) => typeof text === 'string');
 
 /**
- * A caption, with any dynamic values in it marked out. Captions are shown as
- * written, as they always have been.
+ * A caption, with any dynamic values in it marked out. The field's label
+ * renders a string caption as markdown but shows a node as it is, so a
+ * caption with values is rendered as markdown here, with the values kept out
+ * of it.
  */
 export const shownLabel = ({ text, parts }: ResolvedProtocolText): ReactNode =>
-  parts === undefined ? text : <DynamicTextParts parts={parts} />;
+  parts === undefined ? text : <DynamicMarkdown parts={parts} />;
 
 /**
  * A hint, which the field renders as markdown, with any dynamic values in it

@@ -1,4 +1,6 @@
+import { getMarkdownAttributeValues } from '@codaco/fresco-ui/RenderMarkdown';
 import {
+  DYNAMIC_VALUE_MARKER,
   type DynamicValueBinding,
   type DynamicValueRole,
   type DynamicValues,
@@ -139,8 +141,13 @@ const formatDate = (value: unknown, locale: string): string => {
     const match = DATE_ONLY.exec(value);
     if (match) {
       const [, year, month, day] = match;
-      const date = new Date(
-        Date.UTC(Number(year), Number(month ?? 1) - 1, Number(day ?? 1)),
+      // Date.UTC reads years 0-99 as 1900-1999; setUTCFullYear takes the
+      // year as written.
+      const date = new Date(0);
+      date.setUTCFullYear(
+        Number(year),
+        Number(month ?? 1) - 1,
+        Number(day ?? 1),
       );
       return dateFormat(locale, {
         timeZone: 'UTC',
@@ -317,20 +324,62 @@ const literalMarkdown = (value: string): string =>
     .replace(AUTOLINK_TRIGGERS, `$&${WORD_JOINER}`)
     .replace(MARKDOWN_PUNCTUATION, '\\$&');
 
+const MARKER = DYNAMIC_VALUE_MARKER;
+const ANY_MARKER = new RegExp(MARKER, 'g');
+/**
+ * A marked value's index inside an attribute. Markdown percent-encodes a link
+ * destination, so a marker there arrives as its UTF-8 escape.
+ */
+const MARKED_IN_ATTRIBUTE = new RegExp(
+  `(?:${MARKER}|%EE%80%80)(\\d+)(?:${MARKER}|%EE%80%80)`,
+  'gi',
+);
+
+/**
+ * The parts whose value the researcher's markdown would put in an attribute:
+ * a link's or image's destination or title. Escaping keeps a value from
+ * changing the markdown around it, but a destination unescapes it, so
+ * `[details]({name})` with the answer `//evil.example` would be a working
+ * link. Found by parsing the markdown with a marker in place of each value,
+ * as `DynamicMarkdown` renders it.
+ */
+const valuesInAttributes = (
+  parts: readonly DynamicTextPart[],
+): ReadonlySet<number> => {
+  const marked = parts
+    .map((part, index) =>
+      typeof part === 'string'
+        ? part.replace(ANY_MARKER, '')
+        : `${MARKER}${index}${MARKER}`,
+    )
+    .join('');
+  const indexes = new Set<number>();
+  for (const attribute of getMarkdownAttributeValues(marked)) {
+    for (const match of attribute.matchAll(MARKED_IN_ATTRIBUTE)) {
+      indexes.add(Number(match[1]));
+    }
+  }
+  return indexes;
+};
+
 /**
  * Text that renders as markdown, for a consumer that takes a markdown string
  * rather than the parts: the researcher's markdown as written, and each value
  * written so that markdown, HTML or a link in it is shown as typed. Values
- * are not marked out there. Text without values is returned as it is.
+ * are not marked out there, and, as in `DynamicMarkdown`, a value that would
+ * land in a link's destination or another attribute is left out. Text without
+ * values is returned as it is.
  */
 export const markdownSource = ({
   text,
   parts,
-}: Readonly<{ text: string; parts?: readonly DynamicTextPart[] }>): string =>
-  parts === undefined
-    ? text
-    : parts
-        .map((part) =>
-          typeof part === 'string' ? part : literalMarkdown(part.text),
-        )
-        .join('');
+}: Readonly<{ text: string; parts?: readonly DynamicTextPart[] }>): string => {
+  if (parts === undefined) return text;
+  const dropped = valuesInAttributes(parts);
+  return parts
+    .map((part, index) => {
+      if (typeof part === 'string') return part;
+      return dropped.has(index) ? '' : literalMarkdown(part.text);
+    })
+    .join('');
+};

@@ -4,7 +4,10 @@ import { type ReactNode, useState } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
-import { getLocaleMetadata } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  getLocaleMetadata,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -313,6 +316,111 @@ describe('dynamic values in a stage’s text', () => {
         name: 'How old are you, Dynamic value: Grace?',
       }),
     ).toBeInTheDocument();
+  });
+
+  it('keeps a question’s markdown when it shows a value', async () => {
+    const payload = makePayload({ name: 'Ada' });
+    payload.protocol.stages = [
+      {
+        id: 'about-you',
+        type: 'EgoForm',
+        label: { en: 'About you' },
+        introductionPanel: { title: { en: 'About you' } },
+        dynamicValues: { name: { path: 'ego.name' } },
+        form: {
+          fields: [
+            {
+              variable: 'age',
+              prompt: {
+                en: '**How old are you**{name, select, missing {?} other {, {name}?}}',
+              },
+            },
+          ],
+        },
+      },
+      finishStage,
+    ] as InterviewPayload['protocol']['stages'];
+    payload.protocol.codebook.ego = {
+      variables: {
+        name: { name: 'name', label: 'Name', type: 'text', component: 'Text' },
+        age: { name: 'age', label: 'Age', type: 'number', component: 'Number' },
+      },
+    } as InterviewPayload['protocol']['codebook']['ego'];
+    renderShell(payload);
+
+    const age = await screen.findByRole('spinbutton', {
+      name: 'How old are you, Dynamic value: Ada?',
+    });
+    expect(age).toBeInTheDocument();
+    expect(screen.getByText('How old are you').tagName).toBe('STRONG');
+    expect(document.body).not.toHaveTextContent('**');
+  });
+
+  it('names a question in a validation message as it reads on screen', async () => {
+    const payload = makePayload({ name: 'Ada' });
+    payload.protocol.stages = [
+      {
+        id: 'about-you',
+        type: 'EgoForm',
+        label: { en: 'About you' },
+        introductionPanel: { title: { en: 'About you' } },
+        dynamicValues: { name: { path: 'ego.name' } },
+        form: {
+          fields: [
+            { variable: 'name', prompt: { en: 'What is your name?' } },
+            {
+              variable: 'age',
+              prompt: {
+                en: '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
+              },
+            },
+            { variable: 'guess', prompt: { en: 'Guess an age' } },
+          ],
+        },
+      },
+      finishStage,
+    ] as InterviewPayload['protocol']['stages'];
+    payload.protocol.codebook.ego = {
+      variables: {
+        name: { name: 'name', label: 'Name', type: 'text', component: 'Text' },
+        age: { name: 'age', label: 'Age', type: 'number', component: 'Number' },
+        guess: {
+          name: 'guess',
+          label: 'Guess',
+          type: 'number',
+          component: 'Number',
+          validation: { differentFrom: asEntityAttributeReference('age') },
+        },
+      },
+    } as InterviewPayload['protocol']['codebook']['ego'];
+    renderShell(payload);
+
+    const user = userEvent.setup();
+    const name = await screen.findByRole('textbox', {
+      name: 'What is your name?',
+    });
+    await user.clear(name);
+    await user.type(name, 'Grace');
+    await user.type(
+      await screen.findByRole('spinbutton', {
+        name: 'How old are you, Dynamic value: Grace?',
+      }),
+      '30',
+    );
+    await user.type(
+      screen.getByRole('spinbutton', { name: /Guess an age/ }),
+      '30',
+    );
+    await user.click(screen.getByTestId('next-button'));
+
+    // The stored name is Ada; the question on screen names Grace.
+    expect(
+      (
+        await screen.findAllByText(
+          /Your answer must be different from your answer to 'How old are you, Grace\?'/,
+        )
+      ).length,
+    ).toBeGreaterThan(0);
   });
 
   it('shows an option’s label as the text its markdown reads', async () => {

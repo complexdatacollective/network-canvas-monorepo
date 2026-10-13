@@ -111,6 +111,61 @@ export const oneToManyDyadCensusScenarios: InterfaceScenarios = {
     },
 
     {
+      // The focal person is put on screen by OneToManyDyadCensus's own
+      // DynamicValueEntity, so it is proven here rather than by shared
+      // coverage: the prompt must name whoever is focal at each step.
+      id: 'dynamic-values-name-the-focal-person',
+      covers: ['dynamicValues'],
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const { nt: person, nameVarId } = addPersonType(synth);
+        const friendship = synth.addEdgeType({ name: 'Friendship' });
+        const stage = synth.addStage('OneToManyDyadCensus', {
+          subject: { entity: 'node', type: person.id },
+          behaviours: { removeAfterConsideration: false },
+        });
+        stage.stageEntry.dynamicValues = {
+          focal: { path: `one_to_many.focal.${nameVarId}` },
+        };
+        synth.addManualNode(stage.id, person.id, 'p-carol', {
+          [nameVarId]: 'Carol',
+        });
+        synth.addManualNode(stage.id, person.id, 'p-alice', {
+          [nameVarId]: 'Alice',
+        });
+        synth.addManualNode(stage.id, person.id, 'p-bob', {
+          [nameVarId]: 'Bob',
+        });
+        stage.addPrompt({
+          text: {
+            'en-US':
+              '{focal, select, missing {Who does this person know?} other {Who does {focal} know?}}',
+          },
+          createEdge: friendship.id,
+        });
+        return synth;
+      },
+      run: async ({ page, interview, stage }) => {
+        const census = new OneToManyDyadCensusFixture(page);
+        const prompt = stage.getPrompt();
+        // The visible name, without the screen-reader announcement.
+        const value = prompt.locator('[data-dynamic-value] bdi');
+
+        await expect.poll(() => census.getSourceLabel()).toBe('Carol');
+        await expect(value).toHaveText(['Carol']);
+        await expect(prompt).toContainText('Who does Carol');
+
+        // Within-stage focal advance: the URL step does not change, so the
+        // raw next button is clicked (see remove-after-consideration-true).
+        await interview.nextButton.click();
+        await expect.poll(() => census.getSourceLabel()).toBe('Alice');
+        await expect(value).toHaveText(['Alice']);
+        await expect(prompt).not.toContainText('Carol');
+      },
+    },
+
+    {
       id: 'remove-after-consideration-true',
       covers: ['behaviours.removeAfterConsideration'],
       seedNetwork: true,

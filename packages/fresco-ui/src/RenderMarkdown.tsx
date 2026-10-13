@@ -80,6 +80,30 @@ const getMarkdownLabelText = (markdown: string): string =>
     ReactMarkdown({ ...defaultMarkdownOptions, children: markdown }),
   );
 
+const attributeText = (node: unknown): string[] => {
+  if (Array.isArray(node)) return node.flatMap(attributeText);
+  if (!isValidElement<Record<string, unknown>>(node)) return [];
+  return Object.entries(node.props).flatMap(([key, value]) => {
+    if (key === 'children') return attributeText(value);
+    return typeof value === 'string' ? [value] : [];
+  });
+};
+
+/**
+ * Every attribute value (a link's destination or title, an image's source or
+ * text) that RenderMarkdown's default dialect produces from markdown, with
+ * every element allowed. Lets a caller that splices text into markdown find
+ * where the parser put it without a second parser.
+ */
+const getMarkdownAttributeValues = (markdown: string): string[] =>
+  attributeText(
+    ReactMarkdown({
+      ...defaultMarkdownOptions,
+      allowedElements: undefined,
+      children: markdown,
+    }),
+  );
+
 // Open links in the OS browser, never inside the app. `window.open` is the one
 // call that does the right thing on every target: Electron's
 // setWindowOpenHandler routes it to shell.openExternal, Capacitor sends
@@ -189,4 +213,4 @@ const RenderMarkdown = ({
   return markdownContent;
 };
 
-export { getMarkdownLabelText, RenderMarkdown };
+export { getMarkdownAttributeValues, getMarkdownLabelText, RenderMarkdown };

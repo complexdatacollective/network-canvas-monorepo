@@ -2,7 +2,7 @@
 
 import { get } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { type ComponentProps, useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage } from '@codaco/app-i18n/react';
@@ -103,6 +103,47 @@ function getDeclineValue(
   return candidate;
 }
 
+/**
+ * The answer cards for the pair on screen. Their labels are resolved here,
+ * beneath the pair's `DynamicValueEntity`, so a decline label naming either
+ * person reads the pair shown rather than nobody.
+ */
+function TieStrengthChoices({
+  options,
+  negativeLabel,
+  declineValue,
+  value,
+  onChange,
+  labelledBy,
+}: {
+  options: VariableOptions;
+  negativeLabel: LocalizedString;
+  declineValue: string;
+  value: string | number | undefined;
+  onChange: ComponentProps<typeof RichSelectGroupField>['onChange'];
+  labelledBy: string;
+}) {
+  const resolve = useResolveLocalizedString();
+  const richSelectOptions: RichSelectOption[] = [
+    ...options.flatMap((option) =>
+      typeof option.value === 'boolean'
+        ? []
+        : [{ value: option.value, label: resolve(option.label).text }],
+    ),
+    { value: declineValue, label: markdownSource(resolve(negativeLabel)) },
+  ];
+  return (
+    <RichSelectGroupField
+      orientation="horizontal"
+      options={richSelectOptions}
+      autoFocus
+      value={value}
+      onChange={onChange}
+      aria-labelledby={labelledBy}
+    />
+  );
+}
+
 export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const { stage, getNavigationHelpers } = props;
   const { moveForward } = getNavigationHelpers();
@@ -126,7 +167,6 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     edgeVariable?: string;
     negativeLabel: LocalizedString;
   }>();
-  const resolve = useResolveLocalizedString();
 
   const nodes = useStageSelector(getNetworkNodesForType);
   const edges = useStageSelector(getNetworkEdges);
@@ -147,24 +187,16 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       : []
   ) as VariableOptions;
 
-  const realOptions: RichSelectOption[] = edgeVariableOptions.flatMap(
-    (option) =>
-      typeof option.value === 'boolean'
-        ? []
-        : [{ value: option.value, label: resolve(option.label).text }],
-  );
-
   // Collision-free decline sentinel: must never equal a real option value, so a
   // legitimate option valued e.g. '__none__' is treated as data, not decline.
   const declineValue = getDeclineValue(
     baseId,
-    new Set(realOptions.map((option) => option.value)),
+    new Set(
+      edgeVariableOptions.flatMap((option) =>
+        typeof option.value === 'boolean' ? [] : [option.value],
+      ),
+    ),
   );
-
-  const richSelectOptions: RichSelectOption[] = [
-    ...realOptions,
-    { value: declineValue, label: markdownSource(resolve(negativeLabel)) },
-  ];
 
   const pair =
     pairIndex >= 0 && pairIndex < pairs.length
@@ -448,10 +480,10 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
                     animate="animate"
                     exit="exit"
                   >
-                    <RichSelectGroupField
-                      orientation="horizontal"
-                      options={richSelectOptions}
-                      autoFocus
+                    <TieStrengthChoices
+                      options={edgeVariableOptions}
+                      negativeLabel={negativeLabel}
+                      declineValue={declineValue}
                       value={
                         hasEdge === false
                           ? declineValue
@@ -469,7 +501,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
                           handleChange(next);
                         }
                       }}
-                      aria-labelledby={`${pairLabelId} ${promptLabelId}`}
+                      labelledBy={`${pairLabelId} ${promptLabelId}`}
                     />
                   </motion.div>
                 </AnimatePresence>
