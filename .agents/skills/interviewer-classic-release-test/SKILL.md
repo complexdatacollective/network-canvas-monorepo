@@ -106,13 +106,54 @@ landscape-only).
      reads the installed protocols from the app without reinstalling it.
      Record each manual step's outcome yourself; it is part of the verdict.
 
+## Upgrade from the Cordova builds (iOS and Android)
+
+Researchers' tablets ran the Cordova builds (6.5.x and earlier) for years, and
+those builds kept their data somewhere else: the redux store in a
+cordova-sqlite-storage database, protocol files in `Library/NoCloud` on iOS.
+6.6.2 shipped without reading either, so upgrading showed an empty app; the
+one-time migration in `src/utils/legacyCordovaMigration.js` (native readers
+`LegacyCordovaDataPlugin` in `ios/App/App` and `android/app/src/main/java`)
+brings the data across and records `legacyCordovaMigration` in the new store.
+Run this test for any release that touches storage, persistence, the native
+projects or Capacitor, and at least once per release otherwise.
+
+1. Build the Cordova release once (about 20 minutes; the work directory can be
+   reused across runs): `scripts/release-test/build-cordova-interviewer.sh
+<scratch dir>/cordova all`. It prints the simulator `.app` and the debug
+   APK.
+2. Build the candidate as above (`classic-release-build.mjs`). On Android the
+   Cordova APK and the candidate must be signed by the same debug keystore,
+   which they are when both are built on this machine.
+3. With a simulator booted (or the emulator running), for each platform:
+
+   ```bash
+   node scripts/release-test/interviewer-classic-cordova-upgrade.mjs --platform ios \
+     --legacy-app-path <cordova-ios.app> --app-path <candidate App.app> \
+     --via-app-path <a 6.6.2 App.app, optional> --artifacts <dir>
+   ```
+
+   The script installs the Cordova build fresh, records an interview in it,
+   reads that build's SQLite store from disk as the baseline, installs the
+   candidate over it (data kept) and checks the protocols, interviews,
+   protocol file location, migration flag, a resumed interview, and that a
+   relaunch does not migrate again. `--via-app-path` upgrades through 6.6.2
+   first (the path affected researchers took) and also checks that an
+   interview recorded in 6.6.2 survives the merge. Build 6.6.2 from the commit
+   that set `apps/interviewer-classic/package.json` to it. Against a build
+   without the migration the script fails: that is the reproduction.
+
+Read `result.json` as for the walker; `legacy-store.json` and
+`upgraded-store.json` beside it hold the before and after stores.
+
 ## Report
 
 For each platform, read `<artifacts>/result.json` (`steps`, `failures`,
 `manual`, `notes`) and lead with the overall verdict:
 
 - **Ready** — every platform's build passed, desktop's package verification
-  passed, every walker exited 0, and every manual iOS step succeeded.
+  passed, every walker exited 0, every manual iOS step succeeded, and the
+  Cordova upgrade test (when run) exited 0 on each mobile platform.
 - **Not ready** — any failed check, build or manual step. List each with its
   note and the `fail-*.png` screenshot in the artifacts directory; quote
   "app reported: …" notes, which are the app's own error dialogs.
