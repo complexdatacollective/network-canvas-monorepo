@@ -267,8 +267,8 @@ export function lineEndFaults(drawing: Drawing): string[] {
   // each parent, hidden in theirs or on the partnership line or line of
   // descent they leave.
   for (const line of connectors.parentChildLines) {
-    line.uplines.forEach((upline, k) => {
-      const child = line.uplineChildIds?.[k];
+    line.uplines.forEach((upline) => {
+      const child = upline.childId;
       if (child === undefined) return;
       const lower =
         upline.y1 > upline.y2

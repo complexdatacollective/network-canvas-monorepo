@@ -77,7 +77,7 @@ const isDashed = (edgeType: PedigreeEdgeType) =>
 /** The parent-child connectors whose uplines reach the child. */
 function descentsInto(connectors: PedigreeConnectors, childId: string) {
   return connectors.parentChildLines.filter((line) =>
-    line.uplineChildIds?.includes(childId),
+    line.uplines.some((upline) => upline.childId === childId),
   );
 }
 
@@ -87,10 +87,10 @@ function uplineOf(
   childId: string,
 ): { segment: LineSegment; connector: ParentChildConnector } {
   for (const connector of connectors.parentChildLines) {
-    const index = connector.uplineChildIds?.indexOf(childId) ?? -1;
-    if (index >= 0) {
-      return { segment: connector.uplines[index]!, connector };
-    }
+    const segment = connector.uplines.find(
+      (upline) => upline.childId === childId,
+    );
+    if (segment) return { segment, connector };
   }
   throw new Error(`${childId} has no upline`);
 }
@@ -1144,7 +1144,7 @@ describe('lines of descent', () => {
     );
     const mark = centre('mark');
     const sisters = uplineOf(connectors, 'claire').connector;
-    expect(sisters.uplineChildIds).toContain('julie');
+    expect(sisters.uplines.map((upline) => upline.childId)).toContain('julie');
     const foot = sisters.parentLink[sisters.parentLink.length - 1]!;
     expect(Math.abs(foot.x2 - mark.x)).toBeGreaterThan(
       DIMENSIONS.nodeWidth / 4,
@@ -1241,7 +1241,7 @@ const withDescent = (lines: ParentChildConnector[]) =>
  */
 function sibshipOf(connectors: PedigreeConnectors, childIds: string[]) {
   const lines = connectors.parentChildLines.filter((line) =>
-    childIds.some((id) => line.uplineChildIds?.includes(id)),
+    childIds.some((id) => line.uplines.some((upline) => upline.childId === id)),
   );
   const bars = lines
     .flatMap((line) => (line.siblingBar ? [line.siblingBar] : []))
@@ -1256,7 +1256,9 @@ function sibshipOf(connectors: PedigreeConnectors, childIds: string[]) {
     if (Math.abs(bars[k]!.y - bars[0]!.y) > 1e-6) joined = false;
     if (bars[k]!.from > bars[k - 1]!.to + 1e-6) joined = false;
   }
-  const reached = new Set(lines.flatMap((line) => line.uplineChildIds ?? []));
+  const reached = new Set(
+    lines.flatMap((line) => line.uplines.map((upline) => upline.childId)),
+  );
   const covers = childIds.every((id) => {
     if (!reached.has(id)) return false;
     const { segment } = uplineOf(connectors, id);
@@ -1280,7 +1282,7 @@ function overlappingDescents(connectors: PedigreeConnectors) {
         for (const sb of descents[b]!.parentLink) {
           if (collinearOverlap(sa, sb) > 1) {
             found.push(
-              `${descents[a]!.uplineChildIds?.join('+')} / ${descents[b]!.uplineChildIds?.join('+')}`,
+              `${descents[a]!.uplines.map((upline) => upline.childId).join('+')} / ${descents[b]!.uplines.map((upline) => upline.childId).join('+')}`,
             );
           }
         }
@@ -1311,7 +1313,7 @@ describe('a carrier who carried for two unrelated couples', () => {
     );
     expect(sibshipOf(connectors, ['ego', 'sib']).sharesOneBar).toBe(false);
     for (const line of connectors.parentChildLines) {
-      const reached = line.uplineChildIds ?? [];
+      const reached = line.uplines.map((upline) => upline.childId);
       expect(
         reached.includes('ego') && reached.includes('sib'),
         `one line reaching ${reached.join(', ')}`,
@@ -1379,9 +1381,9 @@ describe('each child hangs from their own family’s single line of descent', ()
           true,
         );
       }
-      expect(start.line.uplineChildIds?.toSorted()).toEqual(
-        childIds.toSorted(),
-      );
+      expect(
+        start.line.uplines.flatMap((upline) => upline.childId ?? []).toSorted(),
+      ).toEqual(childIds.toSorted());
     }
   };
 

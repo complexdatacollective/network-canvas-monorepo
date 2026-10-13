@@ -146,7 +146,7 @@ describe('every recorded tie is drawn as a line', () => {
       // The twins' line of descent comes from the one who carried them
       // (Round 5, ruling 2), and their parents' line joins it.
       const descent = connectors.parentChildLines.find((line) =>
-        line.uplineChildIds?.includes('ego'),
+        line.uplines.some((upline) => upline.childId === 'ego'),
       );
       expect(descent?.parentIds).toEqual(['lena']);
       const parents = connectors.auxiliaryLines.filter((line) =>
@@ -833,14 +833,14 @@ describe('a carrier of some of a sibship', () => {
     );
     // One sibship: one line of descent reaches all three children.
     const sibship = connectors.parentChildLines.filter((line) =>
-      line.uplineChildIds?.some((id) => ['ego', 'leo', 'mia'].includes(id!)),
+      line.uplines.some((upline) =>
+        ['ego', 'leo', 'mia'].includes(upline.childId ?? ''),
+      ),
     );
     expect(sibship).toHaveLength(1);
-    expect(sibship[0]!.uplineChildIds?.toSorted()).toEqual([
-      'ego',
-      'leo',
-      'mia',
-    ]);
+    expect(
+      sibship[0]!.uplines.flatMap((upline) => upline.childId ?? []).toSorted(),
+    ).toEqual(['ego', 'leo', 'mia']);
     // The carrier's one line is straight and ends on the run's stem.
     const lines = connectors.auxiliaryLines.filter(
       (line) => line.endpointIds?.[0] === 'carrier',

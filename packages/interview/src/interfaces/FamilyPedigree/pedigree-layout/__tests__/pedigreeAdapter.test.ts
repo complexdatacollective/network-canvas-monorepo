@@ -822,7 +822,7 @@ describe('buildConnectorData', () => {
       (union!.segment.x1 + union!.segment.x2) / 2,
     );
     expect(descent).toBeDefined();
-    expect(new Set(descent!.uplineChildIds)).toEqual(
+    expect(new Set(descent!.uplines.map((upline) => upline.childId))).toEqual(
       new Set(['ego', 'sibling']),
     );
   });

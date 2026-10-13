@@ -961,7 +961,7 @@ describe('computeConnectors', () => {
       expect(connectors.groupLines[0]!.partnerIds).toBeUndefined();
     });
 
-    it('attaches parentIds and uplineChildIds to parent-child connectors when id is provided', () => {
+    it('attaches parentIds, and each upline’s child, to parent-child connectors when id is provided', () => {
       const connectors = computeConnectors(
         threeGenLayout,
         scaling,
@@ -979,27 +979,34 @@ describe('computeConnectors', () => {
       expect(gpPc.parentIds).toContain('gp-left');
       expect(gpPc.parentIds).toContain('gp-right');
 
-      // uplineChildIds[0] is the child node id for the first upline
-      expect(gpPc.uplineChildIds).toBeDefined();
-      expect(gpPc.uplineChildIds![0]).toBe('parent');
+      // Each upline names its child
+      expect(gpPc.uplines.map((upline) => upline.childId)).toEqual(['parent']);
 
       // Second parentChildLine: parent+partner → children
       const childPc = connectors.parentChildLines[1]!;
       expect(childPc.parentIds).toContain('parent');
       expect(childPc.parentIds).toContain('partner');
-      expect(childPc.uplineChildIds).toHaveLength(2);
-      expect(childPc.uplineChildIds).toContain('child-a');
-      expect(childPc.uplineChildIds).toContain('child-b');
+      expect(childPc.uplines.map((upline) => upline.childId)).toHaveLength(2);
+      expect(childPc.uplines.map((upline) => upline.childId)).toContain(
+        'child-a',
+      );
+      expect(childPc.uplines.map((upline) => upline.childId)).toContain(
+        'child-b',
+      );
     });
 
-    it('omits parentIds and uplineChildIds from parent-child connectors when id is not provided', () => {
+    it('omits parentIds, and each upline’s child, from parent-child connectors when id is not provided', () => {
       const connectors = computeConnectors(
         threeGenLayout,
         scaling,
         threeGenParents,
       );
       expect(connectors.parentChildLines[0]!.parentIds).toBeUndefined();
-      expect(connectors.parentChildLines[0]!.uplineChildIds).toBeUndefined();
+      expect(
+        connectors.parentChildLines[0]!.uplines.every(
+          (upline) => upline.childId === undefined,
+        ),
+      ).toBe(true);
     });
   });
 
@@ -1315,14 +1322,17 @@ describe('co-parents with no recorded partnership', () => {
       expect(pieces(line!.parentLink)).toEqual(fromEach);
       // Each line down, and the level line from it to the line down to
       // the children, carries that parent's tie alone.
-      expect(line!.parentLinkParentIds).toEqual([
+      expect(line!.parentLink.map((piece) => piece.parentIds)).toEqual([
         ['ann'],
         ['bob'],
         ['ann'],
         ['bob'],
         ['ann', 'bob'],
       ]);
-      expect(line!.uplineChildIds).toEqual(['c1', 'c2']);
+      expect(line!.uplines.map((upline) => upline.childId)).toEqual([
+        'c1',
+        'c2',
+      ]);
       expect(line!.parentIds?.toSorted()).toEqual(['ann', 'bob']);
     });
   }

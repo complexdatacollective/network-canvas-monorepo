@@ -29,11 +29,13 @@ import {
 } from './lineOwners';
 import type {
   AuxiliaryConnector,
+  DescentPiece,
   DuplicateArc,
   LineSegment,
   ParentChildConnector,
   ParentConnection,
   ParentGroupConnector,
+  PartnerLead,
   PartnerConnection,
   PedigreeConnectors,
   PedigreeLayout,
@@ -41,6 +43,7 @@ import type {
   ScalingParams,
   SibshipRun,
   TwinIndicator,
+  Upline,
   PedigreeEdgeType,
   PedigreeSymbolShape,
 } from './types';
@@ -410,18 +413,40 @@ export function routePedigree(
         }
       }
       const lowerRouteY = laneX === lowerX ? routeY : routeAbove(lower.layer);
-      const endpointSegments: LineSegment[] = [
-        { type: 'line', x1: upperX, y1: upper.y, x2: upperX, y2: routeY },
+      // Each piece names the partner whose lead it is: the upper partner's
+      // rises straight to the line; the lower partner's may detour round
+      // an occupied lane.
+      const upperId = id?.[upperIndex];
+      const lowerId = id?.[lowerIndex];
+      const upperLead = upperId === undefined ? {} : { partnerId: upperId };
+      const lowerLead = lowerId === undefined ? {} : { partnerId: lowerId };
+      const endpointSegments: PartnerLead[] = [
+        {
+          type: 'line',
+          x1: upperX,
+          y1: upper.y,
+          x2: upperX,
+          y2: routeY,
+          ...upperLead,
+        },
       ];
       if (laneX !== lowerX) {
         endpointSegments.push(
-          { type: 'line', x1: laneX, y1: routeY, x2: laneX, y2: lowerRouteY },
+          {
+            type: 'line',
+            x1: laneX,
+            y1: routeY,
+            x2: laneX,
+            y2: lowerRouteY,
+            ...lowerLead,
+          },
           {
             type: 'line',
             x1: laneX,
             y1: lowerRouteY,
             x2: lowerX,
             y2: lowerRouteY,
+            ...lowerLead,
           },
         );
       }
@@ -431,6 +456,7 @@ export function routePedigree(
         y1: lower.y,
         x2: lowerX,
         y2: lowerRouteY,
+        ...lowerLead,
       });
       const [segmentLeftX, segmentRightX] =
         upper.layer === lower.layer
@@ -526,16 +552,18 @@ export function routePedigree(
       target = groups.map((g) => meanMap.get(g)!);
     }
 
-    // Uplines: from each child to sibling bar
-    const uplines: LineSegment[] = [];
+    // Uplines: from each child to sibling bar, each naming its child
+    const uplines: Upline[] = [];
     for (let k = 0; k < whoIdx.length; k++) {
       const childX = layout.pos[i]![whoIdx[k]!]!;
+      const childId = id?.[layout.nid[i]![whoIdx[k]!]!];
       uplines.push({
         type: 'line',
         x1: childX,
         y1: i + boxh / 2,
         x2: target[k]!,
         y2: i - legh,
+        ...(childId === undefined ? {} : { childId }),
       });
     }
 
@@ -589,7 +617,7 @@ export function routePedigree(
   const forkRuns = (
     i: number,
     columns: number[],
-    uplines: LineSegment[],
+    uplines: Upline[],
     styleOf: (k: number) => string,
     avoidX?: number,
   ) => {
@@ -1037,33 +1065,32 @@ export function routePedigree(
   // Whose tie each piece of a line of descent from co-parents with no
   // partnership line carries: the line down from each, and its level line
   // on to where the other's joins it, carry that parent's alone (see
-  // `ParentChildConnector.parentLinkParentIds`).
+  // `DescentPiece.parentIds`).
   const carriersOf = (
     link: Omit<(typeof descentLinks)[number], 'line' | 'level'>,
     pieces: LineSegment[],
-  ): { parentLinkParentIds?: string[][] } => {
+  ): DescentPiece[] => {
     const { coParentXs: xs, coParentIds: ids, childX } = link;
-    if (!xs || !ids) return {};
+    if (!xs || !ids) return pieces;
     const theirs = (keep: (x: number) => boolean) =>
       ids.filter((_, k) => keep(xs[k]!));
-    return {
-      parentLinkParentIds: pieces.map((piece) => {
-        const [from, to] = [
-          Math.min(piece.x1, piece.x2),
-          Math.max(piece.x1, piece.x2),
-        ];
-        if (Math.abs(piece.y1 - piece.y2) < 1e-9) {
-          // Level: from the parents on its far side from the line down.
-          return to <= childX + 1e-9
-            ? theirs((x) => x <= from + 1e-9)
-            : theirs((x) => x >= to - 1e-9);
-        }
-        const top = Math.min(piece.y1, piece.y2);
-        return Math.abs(top - link.startY) < 1e-9
-          ? theirs((x) => Math.abs(x - piece.x1) < 1e-9)
-          : [...ids];
-      }),
+    const carriers = (piece: LineSegment) => {
+      const [from, to] = [
+        Math.min(piece.x1, piece.x2),
+        Math.max(piece.x1, piece.x2),
+      ];
+      if (Math.abs(piece.y1 - piece.y2) < 1e-9) {
+        // Level: from the parents on its far side from the line down.
+        return to <= childX + 1e-9
+          ? theirs((x) => x <= from + 1e-9)
+          : theirs((x) => x >= to - 1e-9);
+      }
+      const top = Math.min(piece.y1, piece.y2);
+      return Math.abs(top - link.startY) < 1e-9
+        ? theirs((x) => Math.abs(x - piece.x1) < 1e-9)
+        : [...ids];
     };
+    return pieces.map((piece) => ({ ...piece, parentIds: carriers(piece) }));
   };
 
   // Each couple's own line of descent from their partnership line, by pair
@@ -1087,9 +1114,6 @@ export function routePedigree(
           ...new Set(fork.joinOf),
         ]);
         const sibshipOwner = descentOwnerOf(layout.nid[i]![whoIdx[0]!]!)!;
-        const childIds = id
-          ? whoIdx.map((j) => id[layout.nid[i]![j]!])
-          : undefined;
         parentChildLines.push({
           type: 'parent-child',
           edgeType: sibshipOwner.kind,
@@ -1103,7 +1127,6 @@ export function routePedigree(
           ...(id
             ? {
                 parentIds: sibshipOwner.parents.map((index) => id[index] ?? ''),
-                uplineChildIds: childIds,
               }
             : {}),
         });
@@ -1152,10 +1175,6 @@ export function routePedigree(
             ),
           ]
         : undefined;
-      const childIdOf = (j: number) => {
-        const personIndex = layout.nid[i]![j];
-        return id && personIndex !== undefined ? id[personIndex] : undefined;
-      };
 
       // Each child's line of descent comes from the family's parents, its
       // owners, in the style of the tie they hold.
@@ -1254,7 +1273,7 @@ export function routePedigree(
           ...(coParentXs ? { coParentXs } : {}),
           ...(coParentIds ? { coParentIds } : {}),
         };
-        const parentLink = linkOf(descent, i);
+        const parentLink = carriersOf(descent, linkOf(descent, i));
 
         // Each child's own tie sets the style of the line to them. The
         // parent link and the bar between it and the children of the first
@@ -1278,7 +1297,7 @@ export function routePedigree(
           ks: number[],
           barFrom: number,
           barTo: number,
-          link: LineSegment[],
+          link: DescentPiece[],
         ) => {
           const part: ParentChildConnector = {
             type: 'parent-child',
@@ -1299,7 +1318,6 @@ export function routePedigree(
             ...(id
               ? {
                   parentIds: parentIdsForFamily,
-                  uplineChildIds: ks.map((k) => childIdOf(columns[k]!)),
                 }
               : {}),
             ...drawnRuns(fork.runs, ks),
@@ -1314,7 +1332,6 @@ export function routePedigree(
           primaryMax,
           parentLink,
         );
-        Object.assign(primaryPart, carriersOf(descent, parentLink));
         descentLinks.push({ level: i, line: primaryPart, ...descent });
         if (groupLine && coupleLeftId !== coupleRightId) {
           const pairKey = `${Math.min(coupleLeftId, coupleRightId)},${Math.max(coupleLeftId, coupleRightId)}`;
@@ -1367,8 +1384,7 @@ export function routePedigree(
           const runY =
             parentBottomY +
             ((barY - parentBottomY) * (lane + 1)) / (order.length + 1);
-          link.line.parentLink = linkOf(link, i, runY);
-          Object.assign(link.line, carriersOf(link, link.line.parentLink));
+          link.line.parentLink = carriersOf(link, linkOf(link, i, runY));
         });
       }
     }

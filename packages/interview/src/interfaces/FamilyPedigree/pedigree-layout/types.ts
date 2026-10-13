@@ -116,12 +116,19 @@ type ArcPath = {
   dashed: boolean;
 };
 
+/** A piece of the lead joining one partner to a routed partnership line. */
+export type PartnerLead = LineSegment & {
+  /** The partner whose lead it is: whose ties run along it. */
+  partnerId?: string;
+};
+
 export type ParentGroupConnector = {
   type: 'parent-group';
   segment: LineSegment;
   /** Leads joining each partner to a routed partnership line: partners who
-   * are not side by side, or who sit on different rows. */
-  endpointSegments?: LineSegment[];
+   * are not side by side, or who sit on different rows. Each piece names
+   * the partner it joins (a detour round an occupied lane takes several). */
+  endpointSegments?: PartnerLead[];
   double: boolean;
   isActive: boolean;
   doubleSegment?: LineSegment;
@@ -131,26 +138,35 @@ export type ParentGroupConnector = {
   auxiliaryXPositions?: number[];
   nodeHalfWidth?: number;
   slashSide?: 'left' | 'right';
+  /** The partners, the one at the line's left end first. */
   partnerIds?: [string, string];
   /** Whether each end stops at the partner's adoption bracket rather than
    * at their centre. */
   endsAtBracket?: [boolean, boolean];
 };
 
+/** A child's line up to their sibling bar (or sub-bar). */
+export type Upline = LineSegment & {
+  /** The child whose line it is. */
+  childId?: string;
+};
+
+/** A piece of a line of descent from the parents down to the bar. */
+export type DescentPiece = LineSegment & {
+  /** The parents whose ties it carries, where that is not all of them: the
+   * lines down from each of two co-parents with no partnership line carry
+   * that parent's tie only, until they join. */
+  parentIds?: string[];
+};
+
 export type ParentChildConnector = {
   type: 'parent-child';
   edgeType: PedigreeEdgeType;
-  uplines: LineSegment[];
+  uplines: Upline[];
   /** Absent when the line runs to a single child, who has no bar. */
   siblingBar?: LineSegment;
-  parentLink: LineSegment[];
-  /** For each piece of `parentLink`, the parents whose ties it carries,
-   * where that is not all of them: the lines down from each of two
-   * co-parents with no partnership line carry that parent's tie only, until
-   * they join. */
-  parentLinkParentIds?: string[][];
+  parentLink: DescentPiece[];
   parentIds?: string[];
-  uplineChildIds?: (string | undefined)[];
   /** The runs of two or more children who share donors or surrogates the
    * rest of the sibship does not: each hangs from a sub-bar of its own, on a
    * stem down from the sibling bar, and those donors' lines end on the stem.

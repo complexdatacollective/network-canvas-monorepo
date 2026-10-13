@@ -87,8 +87,8 @@ describe('twins', () => {
       [twin('a', 'b', 'identicalTwin')],
     );
     const lines = connectors.parentChildLines.flatMap((line) =>
-      line.uplines.map((upline, k) => ({
-        child: line.uplineChildIds?.[k],
+      line.uplines.map((upline) => ({
+        child: upline.childId,
         upline,
       })),
     );
@@ -169,9 +169,7 @@ describe('twins', () => {
   ): Map<string, LineSegment> =>
     new Map(
       connectors.parentChildLines.flatMap((line) =>
-        line.uplines.map(
-          (upline, k) => [line.uplineChildIds?.[k] ?? '', upline] as const,
-        ),
+        line.uplines.map((upline) => [upline.childId ?? '', upline] as const),
       ),
     );
   /** The x where a line crosses the height y. */

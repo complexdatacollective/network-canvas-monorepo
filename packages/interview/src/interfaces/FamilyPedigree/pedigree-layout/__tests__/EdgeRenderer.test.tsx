@@ -7,15 +7,18 @@ import {
   PedigreeEdgeSvg,
 } from '../components/EdgeRenderer';
 import { dimColor } from '../dimColor';
-import type { ConnectorRenderData } from '../pedigreeAdapter';
+import { type ConnectorRenderData, drawPedigree } from '../pedigreeAdapter';
 import type {
   AuxiliaryConnector,
+  DescentPiece,
   DuplicateArc,
+  LineSegment,
   ParentChildConnector,
   ParentGroupConnector,
   TwinIndicator,
   PedigreeEdgeType,
   PedigreeLink,
+  Upline,
 } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -29,6 +32,16 @@ function seg(
   y2: number,
 ): import('../types').LineSegment {
   return { type: 'line', x1, y1, x2, y2 };
+}
+
+/** A child's line up, naming the child. */
+function ofChild(segment: LineSegment, childId: string): Upline {
+  return { ...segment, childId };
+}
+
+/** A piece of a line of descent carrying only these parents' ties. */
+function carrying(segment: LineSegment, parentIds: string[]): DescentPiece {
+  return { ...segment, parentIds };
 }
 
 function makeConnectorData(
@@ -52,10 +65,9 @@ function makeParentChildConnector(
     type: 'parent-child',
     edgeType: 'biological',
     // A lone child: the line runs straight down to them, with no bar.
-    uplines: [seg(50, 100, 50, 150)],
+    uplines: [ofChild(seg(50, 100, 50, 150), 'child1')],
     parentLink: [seg(50, 80, 50, 100)],
     parentIds: ['parent1', 'parent2'],
-    uplineChildIds: ['child1'],
     ...overrides,
   };
 }
@@ -67,8 +79,8 @@ function makeParentChildConnector(
 describe('PedigreeEdgeSvg — highlightedEdgeKeys undefined', () => {
   test('no data-edge-dimmed when both highlightedNodeIds and highlightedEdgeKeys are undefined', () => {
     const connector = makeParentChildConnector({
+      uplines: [ofChild(seg(50, 100, 50, 150), 'child1')],
       parentIds: ['parent1', 'parent2'],
-      uplineChildIds: ['child1'],
     });
     const { container } = render(
       <PedigreeEdgeSvg
@@ -115,8 +127,8 @@ describe('PedigreeEdgeSvg — descent connector with non-transmitting co-parent 
 
   test('the upline to the contributing child is NOT dimmed', () => {
     const connector = makeParentChildConnector({
+      uplines: [ofChild(seg(50, 100, 50, 150), CHILD)],
       parentIds: [TRANSMITTING, NON_TRANSMITTING],
-      uplineChildIds: [CHILD],
     });
     const { container } = render(
       <PedigreeEdgeSvg
@@ -135,8 +147,8 @@ describe('PedigreeEdgeSvg — descent connector with non-transmitting co-parent 
 
   test('the line down from the parents is NOT dimmed', () => {
     const connector = makeParentChildConnector({
+      uplines: [ofChild(seg(50, 100, 50, 150), CHILD)],
       parentIds: [TRANSMITTING, NON_TRANSMITTING],
-      uplineChildIds: [CHILD],
     });
     const { container } = render(
       <PedigreeEdgeSvg
@@ -180,8 +192,8 @@ describe('PedigreeEdgeSvg — sibling branch off contributing lineage is dimmed'
 
   test('the sibling upline IS dimmed when its edge key is not in highlightedEdgeKeys', () => {
     const siblingConnector = makeParentChildConnector({
+      uplines: [ofChild(seg(50, 100, 50, 150), SIBLING)],
       parentIds: [TRANSMITTING, NON_TRANSMITTING],
-      uplineChildIds: [SIBLING],
     });
     const { container } = render(
       <PedigreeEdgeSvg
@@ -303,8 +315,10 @@ describe('PedigreeEdgeSvg — sibling bar per-segment dimming', () => {
   function makeSplitConnector(): ParentChildConnector {
     return makeParentChildConnector({
       // Two uplines: contributing child at x=20, non-contributing at x=180.
-      uplines: [seg(20, 150, 20, 100), seg(180, 150, 180, 100)],
-      uplineChildIds: [FOCAL_CHILD, SIBLING],
+      uplines: [
+        ofChild(seg(20, 150, 20, 100), FOCAL_CHILD),
+        ofChild(seg(180, 150, 180, 100), SIBLING),
+      ],
       // Sibling bar spans both uplines.
       siblingBar: seg(0, 100, 200, 100),
       // Descent drops onto the bar at x=100.
@@ -463,10 +477,9 @@ function makeCoupleWithChild(
       groupLines: [bar],
       parentChildLines: [
         makeParentChildConnector({
-          uplines: [seg(100, 150, 100, 100)],
+          uplines: [ofChild(seg(100, 150, 100, 100), childId)],
           parentLink: [seg(100, railY, 100, 100)],
           parentIds: bar.partnerIds ? [...bar.partnerIds] : [],
-          uplineChildIds: [childId],
         }),
       ],
       auxiliaryLines: [],
@@ -503,11 +516,10 @@ describe('PedigreeEdgeSvg — a run of the sibship hanging from its own stem', (
   // from a sub-bar at y=130, on a stem down from the sibling bar at x=40.
   const connector = makeParentChildConnector({
     uplines: [
-      seg(20, 150, 20, 130),
-      seg(60, 150, 60, 130),
-      seg(180, 150, 180, 100),
+      ofChild(seg(20, 150, 20, 130), 'child1'),
+      ofChild(seg(60, 150, 60, 130), 'child2'),
+      ofChild(seg(180, 150, 180, 100), 'child3'),
     ],
-    uplineChildIds: ['child1', 'child2', 'child3'],
     siblingBar: seg(40, 100, 180, 100),
     parentLink: [seg(100, 60, 100, 100)],
     parentIds: ['parent1'],
@@ -1231,11 +1243,10 @@ describe('PedigreeEdgeSvg — a donor’s line carries the lineage on down the l
   // Parent 1 transmits to no one.
   const connector = makeParentChildConnector({
     uplines: [
-      seg(20, 150, 20, 130),
-      seg(60, 150, 60, 130),
-      seg(180, 150, 180, 100),
+      ofChild(seg(20, 150, 20, 130), 'child1'),
+      ofChild(seg(60, 150, 60, 130), 'child2'),
+      ofChild(seg(180, 150, 180, 100), 'child3'),
     ],
-    uplineChildIds: ['child1', 'child2', 'child3'],
     siblingBar: seg(40, 100, 180, 100),
     parentLink: [seg(100, 60, 100, 100)],
     parentIds: ['parent1'],
@@ -1298,18 +1309,16 @@ describe('PedigreeEdgeSvg — co-parents with no partnership line', () => {
   // A line down from Ann (x=0) and from Bob (x=100) to y=62, a level line
   // joining them, and one line from x=50 down to their child.
   const connector = makeParentChildConnector({
-    uplines: [seg(50, 150, 50, 100)],
+    uplines: [ofChild(seg(50, 150, 50, 100), 'child1')],
     siblingBar: undefined,
     parentLink: [
-      seg(0, 25, 0, 62),
-      seg(100, 25, 100, 62),
-      seg(0, 62, 50, 62),
-      seg(50, 62, 100, 62),
-      seg(50, 62, 50, 100),
+      carrying(seg(0, 25, 0, 62), ['ann']),
+      carrying(seg(100, 25, 100, 62), ['bob']),
+      carrying(seg(0, 62, 50, 62), ['ann']),
+      carrying(seg(50, 62, 100, 62), ['bob']),
+      carrying(seg(50, 62, 50, 100), ['ann', 'bob']),
     ],
-    parentLinkParentIds: [['ann'], ['bob'], ['ann'], ['bob'], ['ann', 'bob']],
     parentIds: ['ann', 'bob'],
-    uplineChildIds: ['child1'],
   });
 
   test('light the line down from the parent who transmits, and dim the other’s until the two join', () => {
@@ -1328,6 +1337,24 @@ describe('PedigreeEdgeSvg — co-parents with no partnership line', () => {
     expect(isLineDimmed(uprightStrokeAt(container, 50, 80)!)).toBe(false);
     expect(isLineDimmed(uprightStrokeAt(container, 100, 40)!)).toBe(true);
     expect(isLineDimmed(barStrokeAt(container, 75, 62)!)).toBe(true);
+  });
+
+  test('light the other parent’s line down when theirs is the lit tie', () => {
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={makeConnectorData([connector])}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={new Set(['ann', 'bob', 'child1'])}
+        highlightedEdgeKeys={new Set([edgeKey('bob', 'child1')])}
+      />,
+    );
+    expect(isLineDimmed(uprightStrokeAt(container, 100, 40)!)).toBe(false);
+    expect(isLineDimmed(barStrokeAt(container, 75, 62)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 50, 80)!)).toBe(false);
+    expect(isLineDimmed(uprightStrokeAt(container, 0, 40)!)).toBe(true);
+    expect(isLineDimmed(barStrokeAt(container, 25, 62)!)).toBe(true);
   });
 });
 
@@ -1434,12 +1461,11 @@ describe('PedigreeEdgeSvg — a run inside another run', () => {
   // sibling bar.
   const connector = makeParentChildConnector({
     uplines: [
-      seg(20, 160, 20, 140),
-      seg(40, 160, 40, 140),
-      seg(100, 160, 100, 120),
-      seg(180, 160, 180, 100),
+      ofChild(seg(20, 160, 20, 140), 'child1'),
+      ofChild(seg(40, 160, 40, 140), 'child2'),
+      ofChild(seg(100, 160, 100, 120), 'child3'),
+      ofChild(seg(180, 160, 180, 100), 'child4'),
     ],
-    uplineChildIds: ['child1', 'child2', 'child3', 'child4'],
     siblingBar: seg(60, 100, 180, 100),
     parentLink: [seg(120, 60, 120, 100)],
     parentIds: ['parent1'],
@@ -1547,11 +1573,10 @@ describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course pass
   const adoptiveRun = makeParentChildConnector({
     edgeType: 'adoptive',
     uplines: [
-      seg(20, 150, 20, 130),
-      seg(60, 150, 60, 130),
-      seg(180, 150, 180, 100),
+      ofChild(seg(20, 150, 20, 130), 'child1'),
+      ofChild(seg(60, 150, 60, 130), 'child2'),
+      ofChild(seg(180, 150, 180, 100), 'child3'),
     ],
-    uplineChildIds: ['child1', 'child2', 'child3'],
     siblingBar: seg(40, 100, 180, 100),
     parentLink: [seg(100, 60, 100, 100)],
     parentIds: ['gran', 'grandad'],
@@ -1660,18 +1685,16 @@ describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course pass
   test('dashed co-parents’ drops each carry only their own parent’s tie', () => {
     const connector = makeParentChildConnector({
       edgeType: 'social',
-      uplines: [seg(50, 150, 50, 100)],
+      uplines: [ofChild(seg(50, 150, 50, 100), 'child1')],
       siblingBar: undefined,
       parentLink: [
-        seg(0, 25, 0, 62),
-        seg(100, 25, 100, 62),
-        seg(0, 62, 50, 62),
-        seg(50, 62, 100, 62),
-        seg(50, 62, 50, 100),
+        carrying(seg(0, 25, 0, 62), ['ann']),
+        carrying(seg(100, 25, 100, 62), ['bob']),
+        carrying(seg(0, 62, 50, 62), ['ann']),
+        carrying(seg(50, 62, 100, 62), ['bob']),
+        carrying(seg(50, 62, 50, 100), ['ann', 'bob']),
       ],
-      parentLinkParentIds: [['ann'], ['bob'], ['ann'], ['bob'], ['ann', 'bob']],
       parentIds: ['ann', 'bob'],
-      uplineChildIds: ['child1'],
     });
     const container = draw(
       withLines([connector]),
@@ -1760,18 +1783,16 @@ describe('PedigreeEdgeSvg — a piece is lit only by a lit tie whose course pass
     withLines(
       [
         makeParentChildConnector({
-          uplines: [seg(100, 150, 100, 100)],
+          uplines: [ofChild(seg(100, 150, 100, 100), 'childA')],
           siblingBar: undefined,
           parentLink: [seg(100, 50, 100, 100)],
           parentIds: ['ann', 'dad'],
-          uplineChildIds: ['childA'],
         }),
         makeParentChildConnector({
-          uplines: [seg(300, 150, 300, 100)],
+          uplines: [ofChild(seg(300, 150, 300, 100), 'childB')],
           siblingBar: undefined,
           parentLink: [seg(300, 50, 300, 100)],
           parentIds: ['dad', 'bea'],
-          uplineChildIds: ['childB'],
         }),
       ],
       {
@@ -1910,9 +1931,11 @@ describe('PedigreeEdgeSvg — one tracer lights every piece by the ties through 
         parentChildLines: [
           makeParentChildConnector({
             parentLink: [seg(300, 0, 300, 100)],
-            uplines: [seg(300, 100, 250, 150), seg(300, 100, 350, 150)],
+            uplines: [
+              ofChild(seg(300, 100, 250, 150), 'p1'),
+              ofChild(seg(300, 100, 350, 150), 'p2'),
+            ],
             parentIds: ['lena'],
-            uplineChildIds: ['p1', 'p2'],
           }),
         ],
         auxiliaryLines: [
@@ -2061,4 +2084,172 @@ describe('PedigreeEdgeSvg — joints', () => {
       }
     });
   }
+});
+
+describe('The leads of a partnership line routed between rows', () => {
+  // A father partnered with his adult daughter: she sits a row below him,
+  // with her mother and brother on his row, so her lead to their line
+  // detours round the lane above her: up from her, along, and up the clear
+  // lane to the line above his row.
+  const people = ['grandma', 'grandad', 'son', 'daughter', 'baby'];
+  const links: PedigreeLink[] = [
+    { source: 'grandma', target: 'grandad', kind: 'partner', isActive: true },
+    {
+      source: 'grandma',
+      target: 'son',
+      kind: 'biological',
+      isGestationalCarrier: true,
+    },
+    { source: 'grandad', target: 'son', kind: 'biological' },
+    {
+      source: 'grandma',
+      target: 'daughter',
+      kind: 'biological',
+      isGestationalCarrier: true,
+    },
+    { source: 'grandad', target: 'daughter', kind: 'biological' },
+    { source: 'grandad', target: 'daughter', kind: 'partner', isActive: true },
+    { source: 'grandad', target: 'baby', kind: 'biological' },
+    {
+      source: 'daughter',
+      target: 'baby',
+      kind: 'biological',
+      isGestationalCarrier: true,
+    },
+  ];
+  const SYMBOL = 96;
+
+  test('name the partner each piece joins, and each partner’s pieces run unbroken from their symbol to the line', () => {
+    const { connectorData, positions } = drawPedigree({
+      nodeIds: people,
+      links,
+      dimensions: {
+        nodeWidth: SYMBOL,
+        nodeHeight: SYMBOL,
+        rowGapRatio: 1.4,
+        columnGapRatio: 1.4,
+      },
+      nodeNames: new Map(people.map((id) => [id, id])),
+    });
+    const routed = connectorData.connectors.groupLines.find(
+      (line) => line.endpointSegments,
+    )!;
+    expect(routed.endpointSegments).toHaveLength(4);
+    const { segment } = routed;
+    const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+    const onLine = (p: { x: number; y: number }) =>
+      near(p.y, segment.y1) &&
+      p.x > Math.min(segment.x1, segment.x2) - 1e-6 &&
+      p.x < Math.max(segment.x1, segment.x2) + 1e-6;
+    const faults = (routed.partnerIds ?? []).flatMap((partnerId) => {
+      const symbol = positions.get(partnerId)!;
+      const inSymbol = (p: { x: number; y: number }) =>
+        p.x > symbol.x &&
+        p.x < symbol.x + SYMBOL &&
+        p.y > symbol.y - 1e-6 &&
+        p.y < symbol.y + SYMBOL;
+      const pieces = routed.endpointSegments!.filter(
+        (piece) => piece.partnerId === partnerId,
+      );
+      const ends = (piece: LineSegment) => [
+        { x: piece.x1, y: piece.y1 },
+        { x: piece.x2, y: piece.y2 },
+      ];
+      // From the symbol, piece by piece, to the line.
+      let at = pieces.flatMap(ends).find(inSymbol);
+      const left = [...pieces];
+      while (at && left.length > 0) {
+        const here = at;
+        const k = left.findIndex((piece) =>
+          ends(piece).some((p) => near(p.x, here.x) && near(p.y, here.y)),
+        );
+        if (k < 0) break;
+        const [piece] = left.splice(k, 1);
+        at = ends(piece!).find(
+          (p) => !(near(p.x, here.x) && near(p.y, here.y)),
+        );
+      }
+      return pieces.length > 0 && left.length === 0 && at && onLine(at)
+        ? []
+        : [`${partnerId}: ${pieces.length} pieces, ${left.length} not reached`];
+    });
+    expect(faults).toEqual([]);
+    expect(
+      routed.endpointSegments!.filter(
+        (piece) => piece.partnerId === 'daughter',
+      ),
+    ).toHaveLength(3);
+  });
+
+  // A line of descent leaving such a line: Ann's lead drops straight to it;
+  // Bob's, from a row below, comes up a lane, along, and up again.
+  const connectorData: ConnectorRenderData = {
+    connectors: {
+      groupLines: [
+        {
+          type: 'parent-group',
+          segment: seg(0, 0, 100, 0),
+          endpointSegments: [
+            { ...seg(0, 50, 0, 0), partnerId: 'ann' },
+            { ...seg(100, 0, 100, 150), partnerId: 'bob' },
+            { ...seg(100, 150, 160, 150), partnerId: 'bob' },
+            { ...seg(160, 200, 160, 150), partnerId: 'bob' },
+          ],
+          double: false,
+          isActive: true,
+          partnerIds: ['ann', 'bob'],
+          descentXPositions: [50],
+        },
+      ],
+      parentChildLines: [
+        makeParentChildConnector({
+          uplines: [ofChild(seg(50, 130, 50, 100), 'kid')],
+          parentLink: [seg(50, 0, 50, 100)],
+          parentIds: ['ann', 'bob'],
+        }),
+      ],
+      auxiliaryLines: [],
+      twinIndicators: [],
+      duplicateArcs: [],
+    },
+  };
+  const leadsLit = (parentId: string) => {
+    const { container } = render(
+      <PedigreeEdgeSvg
+        connectorData={connectorData}
+        color="black"
+        width={300}
+        height={300}
+        highlightedNodeIds={new Set([parentId, 'kid'])}
+        highlightedEdgeKeys={new Set([edgeKey(parentId, 'kid')])}
+      />,
+    );
+    return connectorData.connectors.groupLines[0]!.endpointSegments!.map(
+      (lead) => {
+        const strokes = Array.from(container.querySelectorAll('line')).filter(
+          (line) =>
+            Number(line.getAttribute('x1')) === lead.x1 &&
+            Number(line.getAttribute('y1')) === lead.y1 &&
+            Number(line.getAttribute('x2')) === lead.x2 &&
+            Number(line.getAttribute('y2')) === lead.y2,
+        );
+        return `${lead.partnerId} ${strokes.length > 0 && strokes.every((line) => !isLineDimmed(line)) ? 'lit' : 'dim'}`;
+      },
+    );
+  };
+
+  test('light every piece of the lead of the partner whose tie is lit, and none of the other’s', () => {
+    expect(leadsLit('bob')).toEqual([
+      'ann dim',
+      'bob lit',
+      'bob lit',
+      'bob lit',
+    ]);
+    expect(leadsLit('ann')).toEqual([
+      'ann lit',
+      'bob dim',
+      'bob dim',
+      'bob dim',
+    ]);
+  });
 });

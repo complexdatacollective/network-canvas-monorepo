@@ -170,7 +170,7 @@ function unaccounted(
       return true;
     }
     const sibship = connectors.parentChildLines.filter((pc) =>
-      pc.uplineChildIds?.includes(c),
+      pc.uplines.some((upline) => upline.childId === c),
     );
     // The line of descent from the parent (for co-parents with no
     // partnership line, a line down from each of them), or from the
@@ -207,9 +207,7 @@ function unaccounted(
     // A line to the child's sibship: onto its bar, or onto the point the
     // twins of a sibship of twins hang from.
     const childTop = sibship
-      .flatMap((pc) =>
-        pc.uplines.filter((_, k) => pc.uplineChildIds?.[k] === c),
-      )
+      .flatMap((pc) => pc.uplines.filter((upline) => upline.childId === c))
       .map((upline) => ({ x: upline.x2, y: upline.y2 }))[0];
     if (!childTop) return false;
     const bars = connectors.parentChildLines.flatMap((pc) => [
@@ -230,7 +228,7 @@ function unaccounted(
     // only to their children: the top of the stem of a run the child is in,
     // or, for an only child, the top of the child, on their own line up.
     const ownUpline = sibship.flatMap((pc) =>
-      pc.uplines.filter((_, k) => pc.uplineChildIds?.[k] === c),
+      pc.uplines.filter((upline) => upline.childId === c),
     )[0]!;
     // The stems of the runs the child is in: the one they hang from, the
     // one that run hangs from in turn (a run inside another), and so on up.
@@ -263,7 +261,8 @@ function unaccounted(
       return (
         (close(end.y, childTop.y) && bars.some((bar) => onSegment(end, bar))) ||
         stems.some((stem) => close(end.x, stem.x1) && close(end.y, stem.y1)) ||
-        (sibship.flatMap((pc) => pc.uplineChildIds ?? []).length === 1 &&
+        (sibship.flatMap((pc) => pc.uplines.map((upline) => upline.childId))
+          .length === 1 &&
           strictlyWithin(end, ownUpline))
       );
     });
@@ -373,7 +372,7 @@ describe('the drawing accounts for every recorded tie', () => {
       ];
       expect(unaccounted(links, without, centre)).toEqual(notDrawn);
       const theo = connectors.parentChildLines.flatMap((pc) =>
-        pc.uplines.filter((_, k) => pc.uplineChildIds?.[k] === 'theo'),
+        pc.uplines.filter((upline) => upline.childId === 'theo'),
       )[0]!;
       const moved = {
         ...connectors,

@@ -160,7 +160,7 @@ describe('the lines into a participant with a donor, a surrogate and a social pa
       const { nodes, edges } = relationshipKindsFamily();
       const { centre, connectors } = drawAsInterface(nodes, edges, size);
       const descent = connectors.parentChildLines.find((line) =>
-        line.uplineChildIds?.includes('ego'),
+        line.uplines.some((upline) => upline.childId === 'ego'),
       );
       expect(descent?.parentIds).toEqual(['carrier']);
       const row = ['mother', 'father', 'donor', 'carrier', 'former'].toSorted(
@@ -617,7 +617,7 @@ describe('a donor’s line meets the line of descent of the children they gave t
         expect(reached('carrier'), order.join()).toEqual([['ego']]);
         expect(
           drawing.connectors.parentChildLines.find((line) =>
-            line.uplineChildIds?.includes('ego'),
+            line.uplines.some((upline) => upline.childId === 'ego'),
           )?.parentIds,
         ).toEqual(['hannah']);
       }
@@ -956,7 +956,7 @@ describe('co-parents with no recorded partnership', () => {
           const [descent] = drawing.connectors.parentChildLines.filter(
             (line) =>
               line.parentLink.length > 0 &&
-              line.uplineChildIds?.includes('ego'),
+              line.uplines.some((upline) => upline.childId === 'ego'),
           );
           // Nothing starts midway between them, where the line of descent
           // dropped from before (round 2).
@@ -1091,7 +1091,9 @@ describe('a participant with birth parents, separated adoptive parents and their
         const { nodes, edges } = sixParents();
         const drawing = drawAsInterface(nodes, edges, size, everyone);
         const adoptive = drawing.connectors.parentChildLines
-          .filter((line) => line.uplineChildIds?.includes('ego'))
+          .filter((line) =>
+            line.uplines.some((upline) => upline.childId === 'ego'),
+          )
           .flatMap((line) => [...line.parentLink, ...line.uplines]);
         for (const id of ['denise', 'lauren']) {
           const lines = linesFrom(drawing, id);
@@ -1145,7 +1147,9 @@ describe('a participant with birth parents, separated adoptive parents and their
         );
         expect(hops.map(({ id }) => id)).toEqual(['lauren']);
         const toJack = drawing.connectors.parentChildLines
-          .filter((line) => line.uplineChildIds?.includes('jack'))
+          .filter((line) =>
+            line.uplines.some((upline) => upline.childId === 'jack'),
+          )
           .flatMap((line) => [...line.parentLink, ...line.uplines]);
         expect(
           toJack.some(

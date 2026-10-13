@@ -1352,7 +1352,7 @@ describe('a person with three partners', () => {
       }
       const descents = conn.parentChildLines.filter(
         (line) =>
-          line.uplineChildIds?.includes(ped.id[child]!) &&
+          line.uplines.some((upline) => upline.childId === ped.id[child]!) &&
           line.parentLink.length > 0,
       );
       expect(descents).toHaveLength(1);
@@ -1408,7 +1408,7 @@ describe('a person with three partners', () => {
       const [top] = line.parentLink;
       return (
         top !== undefined &&
-        line.uplineChildIds?.includes(input.id[child]) &&
+        line.uplines.some((upline) => upline.childId === input.id[child]) &&
         starts.some(
           (start) =>
             Math.abs(top.x1 - start.x) < 1e-9 &&
@@ -1690,10 +1690,10 @@ describe('a person with three partners', () => {
       // The twins hang from one sibling bar, with one line of descent from
       // their parents' routed partnership line.
       const bars = conn.parentChildLines.filter((line) =>
-        line.uplineChildIds?.includes('kidA'),
+        line.uplines.some((upline) => upline.childId === 'kidA'),
       );
       expect(bars).toHaveLength(1);
-      expect(bars[0]!.uplineChildIds).toStrictEqual(
+      expect(bars[0]!.uplines.map((upline) => upline.childId)).toStrictEqual(
         expect.arrayContaining(['kidA', 'kidA2']),
       );
       expect(bars[0]!.parentLink.length).toBeGreaterThan(0);
@@ -1740,7 +1740,7 @@ describe('a person with three partners', () => {
     // Two adopters with no partnership: the child descends from the first
     // recorded, by a dashed line, and the other draws a line of their own.
     const descent = conn.parentChildLines.find((line) =>
-      line.uplineChildIds?.includes('kidC'),
+      line.uplines.some((upline) => upline.childId === 'kidC'),
     );
     expect(descent?.parentIds).toStrictEqual(['parent']);
     expect(descent?.edgeType).toBe('adoptive');
@@ -2651,9 +2651,9 @@ describe('a child adopted by their own sibling', () => {
         .map((line) => line.endpointIds);
       expect(adoptiveLines).toEqual([['sis', 'kid']]);
       const sibship = conn.parentChildLines.find((line) =>
-        line.uplineChildIds?.includes('kid'),
+        line.uplines.some((upline) => upline.childId === 'kid'),
       );
-      expect(sibship?.uplineChildIds).toContain('sis');
+      expect(sibship?.uplines.map((upline) => upline.childId)).toContain('sis');
       expect(sibship?.parentIds).toEqual(['mum', 'dad']);
     },
   );
@@ -2751,7 +2751,7 @@ describe('a child adopted by a relative', () => {
     expect(at('kid').layer).toBe(at('mum').layer + 1);
     expect(at('kid').fam).toBeGreaterThan(0);
     const descent = conn.parentChildLines.find((line) =>
-      line.uplineChildIds?.includes('kid'),
+      line.uplines.some((upline) => upline.childId === 'kid'),
     );
     expect(descent?.parentIds).toEqual(expect.arrayContaining(['dad', 'mum']));
     expect(descent?.parentIds).toHaveLength(2);
@@ -2817,7 +2817,7 @@ describe('a child adopted by a relative', () => {
     expect(edgeTo('kid', 'dad')).toBe('biological');
     expect(at('kid').layer).toBe(at('ann').layer + 1);
     const descent = conn.parentChildLines.find((line) =>
-      line.uplineChildIds?.includes('kid'),
+      line.uplines.some((upline) => upline.childId === 'kid'),
     );
     expect(descent?.parentIds).toEqual(expect.arrayContaining(['ann', 'bob']));
     expect(descent?.parentIds).toHaveLength(2);

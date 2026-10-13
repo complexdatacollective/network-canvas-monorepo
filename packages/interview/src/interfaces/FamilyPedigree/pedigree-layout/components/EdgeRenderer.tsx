@@ -500,8 +500,8 @@ type LitCourses = {
   /** Whether each auxiliary line is lit. */
   auxiliary: boolean[];
   /** For each partnership line: the stretches lit ties run along, and the
-   * partners (0 left, 1 right) whose leads they come down. */
-  partnership: { stretches: [number, number][]; leads: Set<number> }[];
+   * partners whose leads they come down (see `PartnerLead`). */
+  partnership: { stretches: [number, number][]; leads: Set<string> }[];
 };
 
 const EPSILON = 1e-6;
@@ -639,9 +639,7 @@ function traceLitCourses(
   for (const conn of parentChildLines) {
     for (const parentId of conn.parentIds ?? []) {
       const top = conn.parentLink
-        .filter(
-          (_, k) => conn.parentLinkParentIds?.[k]?.includes(parentId) ?? true,
-        )
+        .filter((piece) => piece.parentIds?.includes(parentId) ?? true)
         .flatMap((s) => [startOf(s), endOf(s)])
         .reduce<Point | undefined>(
           (best, p) => (best === undefined || p.y < best.y ? p : best),
@@ -701,7 +699,7 @@ function traceLitCourses(
   const auxiliary = auxiliaryLines.map(() => false);
   const partnership = groupLines.map(() => ({
     stretches: [] as [number, number][],
-    leads: new Set<number>(),
+    leads: new Set<string>(),
   }));
   /** A lit tie of `parentId`'s entering at `entry`: it came down the line
    * of their own that ends there, or along their partnership line from
@@ -719,16 +717,12 @@ function traceLitCourses(
       ];
       if (!rails.some((rail) => fractionAlong(entry, rail) !== undefined))
         return;
-      const [left, right] = [
-        Math.min(gl.segment.x1, gl.segment.x2),
-        Math.max(gl.segment.x1, gl.segment.x2),
-      ];
-      const end = side === 0 ? left : right;
+      const end = partnerEnd(gl, parentId, side);
       partnership[g]!.stretches.push([
         Math.min(end, entry.x),
         Math.max(end, entry.x),
       ]);
-      partnership[g]!.leads.add(side);
+      partnership[g]!.leads.add(parentId);
     });
   };
   const light = (pieces: Piece[]) => {
@@ -737,9 +731,9 @@ function traceLitCourses(
 
   // Each child's lit ties, from the child up their line of descent.
   for (const conn of parentChildLines) {
-    conn.uplines.forEach((upline, i) => {
-      const childId = conn.uplineChildIds?.[i];
-      if (childId === undefined) return;
+    for (const upline of conn.uplines) {
+      const { childId } = upline;
+      if (childId === undefined) continue;
       const child = upline.y1 >= upline.y2 ? startOf(upline) : endOf(upline);
       for (const parentId of entries.keys()) {
         if (!tieLit(parentId, childId)) continue;
@@ -748,7 +742,7 @@ function traceLitCourses(
         light(course.pieces);
         litFrom(parentId, course.entry);
       }
-    });
+    }
   }
   // Each lit tie drawn on a line of its own, and the stretch of a line of
   // descent or partnership line above where that line leaves it: the line
@@ -798,6 +792,33 @@ function traceLitCourses(
 const DIMMED = { 'data-edge-dimmed': 'true' } as const;
 
 /**
+ * Where a partner's ties join their partnership line: where their lead
+ * meets it, for a routed line (see `PartnerLead`); otherwise their end of
+ * it, the left partner's at its left (see `ParentGroupConnector.partnerIds`).
+ */
+function partnerEnd(
+  gl: ParentGroupConnector,
+  partnerId: string,
+  side: number,
+): number {
+  const { segment } = gl;
+  const [left, right] = [
+    Math.min(segment.x1, segment.x2),
+    Math.max(segment.x1, segment.x2),
+  ];
+  const onLine = (p: Point) =>
+    Math.abs(p.y - segment.y1) < EPSILON &&
+    p.x > left - EPSILON &&
+    p.x < right + EPSILON;
+  const meets = (gl.endpointSegments ?? [])
+    .filter((lead) => lead.partnerId === partnerId)
+    .flatMap((lead) => [startOf(lead), endOf(lead)])
+    .find(onLine);
+  if (meets) return meets.x;
+  return side === 0 ? left : right;
+}
+
+/**
  * A partnership line: drawn whole when nothing is highlighted, and
  * otherwise cut at each line of descent leaving it and at each end of a lit
  * stretch, every piece lit or dimmed by the rule above.
@@ -819,19 +840,18 @@ function renderPartnershipLine(
   const splitXs = [...(gl.descentXPositions ?? []), ...lit.stretches.flat()];
   const shade = (isLit: boolean) => (isLit ? color : dimColor(color));
 
-  const leads = gl.endpointSegments?.map((segment, side) => (
-    <g
-      key={`gl-endpoint-${idx}-${side}`}
-      {...(lit.leads.has(side) ? {} : DIMMED)}
-    >
-      {renderLine(
-        segment,
-        shade(lit.leads.has(side)),
-        `gl-endpoint-line-${idx}-${side}`,
-        { strokeLinecap: 'round' },
-      )}
-    </g>
-  ));
+  // A lead is lit when a lit tie of the partner it joins comes down it.
+  const leads = gl.endpointSegments?.map((segment, k) => {
+    const isLit =
+      segment.partnerId !== undefined && lit.leads.has(segment.partnerId);
+    return (
+      <g key={`gl-endpoint-${idx}-${k}`} {...(isLit ? {} : DIMMED)}>
+        {renderLine(segment, shade(isLit), `gl-endpoint-line-${idx}-${k}`, {
+          strokeLinecap: 'round',
+        })}
+      </g>
+    );
+  });
 
   if (!gl.double && !gl.isActive) {
     const { centre } = formerPartnerBreak(gl);

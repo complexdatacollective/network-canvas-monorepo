@@ -226,9 +226,9 @@ function descentsOf(drawing: Drawing): Descent[] {
   const groups = new Map<string, Descent>();
   for (const line of drawing.connectors.parentChildLines) {
     const parents = [...(line.parentIds ?? [])].toSorted();
-    const children = (line.uplineChildIds ?? []).filter(
-      (id): id is string => id !== undefined,
-    );
+    const children = line.uplines
+      .map((upline) => upline.childId)
+      .filter((id): id is string => id !== undefined);
     if (children.length === 0) continue;
     const row = Math.round(drawing.centre(children[0]!).y);
     const key = `${parents.join(',')}|${row}`;
@@ -267,11 +267,11 @@ function piecesOf(connectors: PedigreeConnectors): Piece[] {
       { segment: run.stem, role: 'stem' as const, part },
       ...(run.bar ? [{ segment: run.bar, role: 'subBar' as const, part }] : []),
     ]),
-    ...part.uplines.map((segment, k) => ({
+    ...part.uplines.map((segment) => ({
       segment,
       role: 'upline' as const,
       part,
-      ...(part.uplineChildIds?.[k] ? { child: part.uplineChildIds[k] } : {}),
+      ...(segment.childId ? { child: segment.childId } : {}),
     })),
   ]);
 }
@@ -355,7 +355,7 @@ const descentOfChild = (descents: Descent[], child: string) =>
 /** The connector (part of a line of descent) holding a child's line up. */
 const partOfChild = (connectors: PedigreeConnectors, child: string) =>
   connectors.parentChildLines.find((line) =>
-    line.uplineChildIds?.includes(child),
+    line.uplines.some((upline) => upline.childId === child),
   );
 
 /** A child's siblings, the child among them: the children of their line of
@@ -751,7 +751,7 @@ function faultsOfJoining(drawing: Drawing, family: Family): string[] {
   for (const descent of descents) {
     if (!descent.drawn || descent.parents.length < 2) continue;
     for (const part of descent.parts) {
-      for (const child of part.uplineChildIds ?? []) {
+      for (const child of part.uplines.map((upline) => upline.childId)) {
         if (child === undefined) continue;
         const kinds = descent.parents.map((parent) =>
           styleOf(tiesOf(family, parent, child)),
@@ -843,7 +843,9 @@ function faultsOfTarget(drawing: Drawing, _family: Family): string[] {
           (piece.role === 'bar' ||
             // Twins hang from one point, and have no bar.
             piece.role === 'upline') &&
-          piece.part.uplineChildIds?.some((id) => reached.includes(id ?? '')),
+          piece.part.uplines
+            .map((upline) => upline.childId)
+            .some((id) => reached.includes(id ?? '')),
       );
       if (
         !bars.some((piece) =>
@@ -1322,7 +1324,9 @@ function faultsOfJunctions(drawing: Drawing, _family: Family): string[] {
     ]
       .concat(
         drawing.connectors.parentChildLines.flatMap((part) =>
-          (part.uplineChildIds ?? []).flatMap((id) => id ?? []),
+          part.uplines
+            .map((upline) => upline.childId)
+            .flatMap((id) => id ?? []),
         ),
       )
       .some(
@@ -1495,9 +1499,7 @@ function faultsOfOrder(drawing: Drawing, _family: Family): string[] {
     const descent = descentOfChild(descents, child);
     const upline = drawing.connectors.parentChildLines
       .flatMap((part) =>
-        part.uplines.flatMap((segment, k) =>
-          part.uplineChildIds?.[k] === child ? [segment] : [],
-        ),
+        part.uplines.filter((segment) => segment.childId === child),
       )
       .at(0);
     if (descent?.drawn && upline) {
@@ -2101,7 +2103,7 @@ function faultsOfKinds(drawing: Drawing, family: Family): string[] {
   for (const descent of descents) {
     if (!descent.drawn) continue;
     for (const part of descent.parts) {
-      for (const child of part.uplineChildIds ?? []) {
+      for (const child of part.uplines.map((upline) => upline.childId)) {
         if (child === undefined) continue;
         // Birth ties are drawn solid, raising ties dashed (one dash for
         // both, ruling 14).
