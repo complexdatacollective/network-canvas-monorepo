@@ -45,7 +45,9 @@ export default function BinSelectFocus({
         {!settling && (
           <span key={`${promptId}:${nodeId ?? 'complete'}`}>
             {node
-              ? intl.formatMessage(interfaceMessages.binSelectFocal, { name })
+              ? intl.formatMessage(interfaceMessages.binSelectInstruction, {
+                  name,
+                })
               : intl.formatMessage(interfaceMessages.binSelectComplete)}
           </span>
         )}
@@ -83,7 +85,7 @@ export default function BinSelectFocus({
       </AnimatePresence>
       {node && (
         <Paragraph intent="smallText" margin="none" aria-hidden>
-          {intl.formatMessage(interfaceMessages.binSelectInstruction)}
+          {intl.formatMessage(interfaceMessages.binSelectInstruction, { name })}
         </Paragraph>
       )}
     </div>

@@ -264,21 +264,15 @@ export const interfaceMessages = defineMessages({
   },
   binSelectInstruction: {
     id: 'interview.interfaces.binSelectInstruction',
-    defaultMessage: 'Choose where this item belongs.',
+    defaultMessage: 'Choose where {name} belongs.',
     description:
-      'Shown under the one item a participant is placing when a sorting screen asks them to tap a group instead of dragging. An item is whatever the researcher has the participant sort: usually a person, but it can be a place, an organisation or anything else. The groups are researcher-authored and shown on the same screen.',
-  },
-  binSelectFocal: {
-    id: 'interview.interfaces.binSelectFocal',
-    defaultMessage: '{name}: choose where this item belongs.',
-    description:
-      'Screen-reader announcement when a new item becomes the one the participant is placing on a sorting screen that asks them to tap a group instead of dragging. An item is usually a person, but it can be a place, an organisation or anything else. name is the item’s unchanged participant-entered or authored display name.',
+      'Shown under the one item a participant is placing when a sorting screen asks them to tap a group instead of dragging, and announced to screen readers when that item changes. An item is whatever the researcher has the participant sort: usually a person, but it can be a place, an organisation or anything else. name is the item’s unchanged participant-entered or authored display name. The groups are researcher-authored and shown on the same screen.',
   },
   binSelectComplete: {
     id: 'interview.interfaces.binSelectComplete',
-    defaultMessage: 'Every item has been placed.',
+    defaultMessage: 'Nothing left to place.',
     description:
-      'Shown, and announced to screen readers, on a sorting screen once every item (usually a person, but it can be a place, an organisation or anything else) has been put in a group.',
+      'Shown, and announced to screen readers, on a sorting screen once everything the participant was sorting (usually people, but it can be places, organisations or anything else) has been put in a group.',
   },
   binSelectPlaceIn: {
     id: 'interview.interfaces.binSelectPlaceIn',

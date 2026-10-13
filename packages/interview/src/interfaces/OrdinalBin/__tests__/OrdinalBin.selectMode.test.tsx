@@ -294,7 +294,7 @@ const binListZone = (index: number) =>
   `ORDBIN_NODE_LIST_${STAGE_ID}_${PROMPT_ID}_${index}-container`;
 
 const announcement = (name: string) =>
-  screen.findByText(`${name}: choose where this item belongs.`);
+  screen.findAllByText(`Choose where ${name} belongs.`);
 
 describe('OrdinalBin in select mode (#1652)', () => {
   it('places the focal person in the tapped bin and moves on to the next', async () => {
@@ -460,7 +460,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     }
 
     expect(
-      await screen.findAllByText('Every item has been placed.'),
+      await screen.findAllByText('Nothing left to place.'),
     ).not.toHaveLength(0);
   });
 
@@ -487,13 +487,21 @@ describe('OrdinalBin in select mode (#1652)', () => {
       </InterviewI18nProvider>
     );
 
+    // The hint under the node says the same; the live region's copy is the
+    // one inside the status element.
+    const spoken = async () =>
+      (await announcement('Ann')).find((element) =>
+        element.closest('[role="status"]'),
+      );
+
     const { rerender } = render(focus('first'));
-    const first = await announcement('Ann');
+    const first = await spoken();
     rerender(focus('second'));
-    const second = await announcement('Ann');
+    const second = await spoken();
 
     // A new node in the live region is what makes screen readers speak.
+    expect(second).toBeDefined();
     expect(second).not.toBe(first);
-    expect(first.isConnected).toBe(false);
+    expect(first?.isConnected).toBe(false);
   });
 });

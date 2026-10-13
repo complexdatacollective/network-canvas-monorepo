@@ -1198,7 +1198,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           await expect(focal).toHaveCount(0);
           await expect(
             page.getByTestId('bin-select-focus').getByRole('status'),
-          ).toHaveText('Every item has been placed.');
+          ).toHaveText('Nothing left to place.');
 
           const state = await protocol.getNetworkState(interview.interviewId);
           const answerOf = (name: string) =>

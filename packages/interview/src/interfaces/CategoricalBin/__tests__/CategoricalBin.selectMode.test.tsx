@@ -275,7 +275,7 @@ const startDragOf = (getDndStore: () => StoreApi<DndStore>, node: NcNode) =>
   });
 
 const announcement = (name: string) =>
-  screen.findByText(`${name}: choose where this item belongs.`);
+  screen.findAllByText(`Choose where ${name} belongs.`);
 
 describe('CategoricalBin in select mode (#1652)', () => {
   it('places the focal person in the tapped bin and moves on to the next', async () => {
@@ -428,7 +428,7 @@ describe('CategoricalBin in select mode (#1652)', () => {
     }
 
     expect(
-      await screen.findAllByText('Every item has been placed.'),
+      await screen.findAllByText('Nothing left to place.'),
     ).not.toHaveLength(0);
   });
 
