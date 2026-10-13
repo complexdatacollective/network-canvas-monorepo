@@ -48,6 +48,7 @@ type Context = Readonly<Record<string, string>>;
 
 type Sink = {
   readonly log: (entry: Entry, context: Context) => void;
+  readonly flush: () => void;
   readonly dispose: () => Promise<void>;
 };
 
@@ -66,6 +67,8 @@ export type BrowserLogHandle<E extends Entry> = {
 };
 
 const MAX_PENDING_ENTRIES = 20;
+
+const KEEPALIVE_BATCH_RECORDS = Math.min(50, MAX_BROWSER_LOG_RECORDS);
 
 const KEPT_ATTRIBUTES: ReadonlySet<string> = new Set(
   BROWSER_LOG_ATTRIBUTE_KEYS,
@@ -135,6 +138,7 @@ const transport = (config: BrowserLogConfig) =>
         Layer.provide(
           Layer.succeed(FetchHttpClient.RequestInit)({
             credentials: config.credentials,
+            keepalive: true,
           }),
         ),
       ),
@@ -150,7 +154,7 @@ const sinkLayer = (surface: BrowserLogSurface, config: BrowserLogConfig) =>
           window.location.origin,
         ).toString(),
         resource: { serviceName: BROWSER_LOG_SERVICE_NAME },
-        maxBatchSize: MAX_BROWSER_LOG_RECORDS,
+        maxBatchSize: KEEPALIVE_BATCH_RECORDS,
         exportInterval: Duration.seconds(1),
         shutdownTimeout: Duration.seconds(2),
         excludeLogSpans: true,
@@ -177,14 +181,21 @@ const makeSink = (
         ),
       );
     },
+    flush: () => {
+      runtime.runFork(OtlpExporter.Flusher.use((flusher) => flusher.flush));
+    },
     dispose: () => runtime.dispose(),
   };
 };
 
 export const createBrowserLogHandle = <E extends Entry>(
   surface: BrowserLogSurface,
+  page: Pick<Window, 'addEventListener' | 'removeEventListener'> = window,
 ): BrowserLogHandle<E> => {
   let state: HandleState = { kind: 'pending', queue: [] };
+  const flushOnLeave = () => {
+    if (state.kind === 'open') state.sink.flush();
+  };
   return {
     log: (entry, context = {}) => {
       if (state.kind === 'open') state.sink.log(entry, context);
@@ -204,9 +215,11 @@ export const createBrowserLogHandle = <E extends Entry>(
       }
       const sink = makeSink(surface, config);
       state = { kind: 'open', sink };
+      page.addEventListener('pagehide', flushOnLeave);
       for (const queued of queue) sink.log(queued.entry, queued.context);
     },
     close: () => {
+      page.removeEventListener('pagehide', flushOnLeave);
       if (state.kind === 'open') void state.sink.dispose();
       state = { kind: 'closed' };
     },

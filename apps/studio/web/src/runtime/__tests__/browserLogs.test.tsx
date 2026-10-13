@@ -249,6 +249,42 @@ describe('a log handle', () => {
   });
 });
 
+describe('leaving the page', () => {
+  it('sends what is buffered at once, on a request that may outlive the page', async () => {
+    const page = new EventTarget();
+    const handle = createBrowserLogHandle('participant', page);
+    handle.configure({
+      enabled: true,
+      level: 'Info',
+      credentials: 'omit',
+      headers: () => ({}),
+    });
+    handle.log({
+      message: 'Answer save failed',
+      level: 'Error',
+      attributes: {
+        stage_index: 1,
+        interface_type: 'Sociogram',
+        error_code: 'transport',
+        attempt_count: 1,
+      },
+    });
+    page.dispatchEvent(new Event('pagehide'));
+    await waitFor(
+      () =>
+        expect(logCalls(BROWSER_LOG_PATHS.participant).length).toBeGreaterThan(
+          0,
+        ),
+      { timeout: 300 },
+    );
+    handle.close();
+    const [[, init]] = logCalls(BROWSER_LOG_PATHS.participant) as [
+      Parameters<typeof globalThis.fetch>,
+    ];
+    expect(init?.keepalive).toBe(true);
+  });
+});
+
 describe('participant logs', () => {
   it('sends nothing while the session reports telemetry off', async () => {
     const view = renderHook(() => useParticipantLogs(SESSION, null));

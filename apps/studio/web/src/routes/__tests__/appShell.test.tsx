@@ -62,6 +62,8 @@ const STUDY_2: StudyFixture = {
   draftId: null,
 };
 
+const logTeams = vi.hoisted((): Array<string | undefined> => []);
+
 const fixtures = vi.hoisted(() => ({
   TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
@@ -86,6 +88,13 @@ const fixtures = vi.hoisted(() => ({
   studyListRequests: [] as string[],
   /** Every `studies.get` the shell made, by study id. */
   studyGetRequests: [] as string[],
+}));
+
+vi.mock('../../runtime/browserLogs.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../runtime/browserLogs.ts')>()),
+  setResearcherLogTeam: (teamId: string | undefined) => {
+    logTeams.push(teamId);
+  },
 }));
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -417,6 +426,19 @@ describe('header team switcher', () => {
         { disableSignal: true },
       ),
     );
+  });
+
+  it('attributes researcher logs to the committed team, not the one the setting still holds', async () => {
+    logTeams.length = 0;
+    fixtures.setActive.mockResolvedValue({
+      data: null,
+      error: { message: 'You are not a member of that team.' },
+    });
+    renderAt('/team/team-b');
+    await screen.findByRole('heading', { level: 1, name: 'Studies' });
+
+    await waitFor(() => expect(logTeams.at(-1)).toBe('team-b'));
+    expect(logTeams).not.toContain('team-a');
   });
 
   it('names the committed team, not the one the setting still holds', async () => {

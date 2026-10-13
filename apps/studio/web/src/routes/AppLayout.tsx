@@ -15,6 +15,7 @@ import {
   useActiveTeamReconciler,
   type ActiveTeamFailure,
 } from '../shell/useActiveTeamReconciler.ts';
+import { useResearcherLogTeam } from '../shell/useResearcherLogTeam.ts';
 
 const messages = defineMessages({
   teamSwitchFailure: {
@@ -104,6 +105,7 @@ function TeamSwitchFailure({ failure }: { failure: ActiveTeamFailure }) {
 export default function AppLayout() {
   const intl = useAppIntl();
   const teamSwitchFailure = useActiveTeamReconciler();
+  useResearcherLogTeam();
   useSessionRevalidation();
 
   return (

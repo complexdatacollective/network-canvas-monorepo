@@ -470,17 +470,26 @@ describe('researcher logs', () => {
   );
 
   it.live(
-    'sends nothing while telemetry is off, but still charges the limit',
+    'sends nothing while telemetry is off, but still charges the limit and bounds the body',
     () =>
       Effect.gen(function* () {
         const charged: string[] = [];
         const { statuses, sent } = yield* serveAndPost(
-          [researcher([REQUEST_FAILED])],
+          [
+            researcher([REQUEST_FAILED]),
+            {
+              path: BROWSER_LOG_PATHS.researcher,
+              body: batch([REQUEST_FAILED]).padEnd(
+                MAX_BROWSER_LOG_BODY_BYTES + 1,
+                ' ',
+              ),
+            },
+          ],
           { telemetry: false, limiter: recordingLimiter(charged) },
         );
-        expect(statuses).toEqual([204]);
+        expect(statuses).toEqual([204, 413]);
         expect(sent).toEqual([]);
-        expect(charged).toEqual(['researcher_log']);
+        expect(charged).toEqual(['researcher_log', 'researcher_log']);
       }),
   );
 
@@ -699,17 +708,28 @@ describe.skipIf(!testDb)('participant logs', () => {
       }).pipe(Effect.orDie),
     );
 
-    withDb.effect('sends nothing while telemetry is off', () =>
-      Effect.gen(function* () {
-        const { token } = yield* session;
-        const database = yield* Effect.context<Database>();
-        const { statuses, sent } = yield* serveAndPost(
-          [participantPost(token, [ANSWER_SAVE_FAILED])],
-          { auth: SignedOut, database, telemetry: false },
-        );
-        expect(statuses).toEqual([204]);
-        expect(sent).toEqual([]);
-      }).pipe(Effect.orDie),
+    withDb.effect(
+      'sends nothing while telemetry is off, and still bounds the body',
+      () =>
+        Effect.gen(function* () {
+          const { token } = yield* session;
+          const database = yield* Effect.context<Database>();
+          const { statuses, sent } = yield* serveAndPost(
+            [
+              participantPost(token, [ANSWER_SAVE_FAILED]),
+              {
+                ...participantPost(token, [ANSWER_SAVE_FAILED]),
+                body: batch([ANSWER_SAVE_FAILED]).padEnd(
+                  MAX_BROWSER_LOG_BODY_BYTES + 1,
+                  ' ',
+                ),
+              },
+            ],
+            { auth: SignedOut, database, telemetry: false },
+          );
+          expect(statuses).toEqual([204, 413]);
+          expect(sent).toEqual([]);
+        }).pipe(Effect.orDie),
     );
   });
 });

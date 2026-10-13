@@ -129,8 +129,8 @@ const researcherLogs = (services: Services) =>
   Effect.gen(function* () {
     const principal = yield* Principal;
     yield* limited(services, 'researcher_log', principal.userId);
-    if (Option.isNone(services.forwarder)) return accepted();
     const records = yield* readRecords;
+    if (Option.isNone(services.forwarder)) return accepted();
     const decoded = records.flatMap((record) => {
       const candidate = entryCandidate(record);
       if (candidate === undefined) return [];
@@ -173,8 +173,8 @@ const participantLogs = (services: Services) =>
     }
     const { session } = participant.value;
     yield* limited(services, 'participant_log', session.sessionId);
-    if (Option.isNone(services.forwarder)) return accepted();
     const records = yield* readRecords;
+    if (Option.isNone(services.forwarder)) return accepted();
     const logs: ForwardedBrowserLog[] = [];
     for (const record of records) {
       const candidate = entryCandidate(record);

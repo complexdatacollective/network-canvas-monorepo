@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { authClient } from '../lib/auth.ts';
 import { invalidateMemberships } from '../lib/landing.ts';
-import { setResearcherLogTeam } from '../runtime/browserLogs.ts';
 
 /**
  * The one place in Studio that writes Better Auth's active organization
@@ -121,8 +120,6 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
   const [refreshedTeamId, setRefreshedTeamId] = useState<string | undefined>(
     undefined,
   );
-
-  useEffect(() => setResearcherLogTeam(activeTeamId), [activeTeamId]);
 
   useEffect(() => {
     // The second half of a reconciliation, before anything else: the write
