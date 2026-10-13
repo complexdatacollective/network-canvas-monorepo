@@ -36,20 +36,24 @@ function useCompletePlacement({
     updateReady(allPlaced);
   }, [allPlaced, updateReady]);
 
+  // With the gate off there is nothing to check, so no handler is registered.
   useStageValidation({
-    constraints: [
-      {
-        direction: 'forwards',
-        isMet: required !== true || allPlaced,
-        kind: 'unplaced_nodes',
-        toast: {
-          description: notice ? resolveString(notice).text : undefined,
-          variant: 'destructive',
-          anchor: 'forward',
-          timeout: 4000,
-        },
-      },
-    ],
+    constraints:
+      required !== true
+        ? []
+        : [
+            {
+              direction: 'forwards',
+              isMet: allPlaced,
+              kind: 'unplaced_nodes',
+              toast: {
+                description: notice ? resolveString(notice).text : undefined,
+                variant: 'destructive',
+                anchor: 'forward',
+                timeout: 4000,
+              },
+            },
+          ],
   });
 }
 

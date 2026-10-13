@@ -46,7 +46,9 @@ function renderGate(options: {
   renderHook(() => useCompletePlacement({ ...options, notice: NOTICE }), {
     wrapper,
   });
-  return (direction: 'forwards' | 'backwards') => handler?.(direction, 'step');
+  const next = (direction: 'forwards' | 'backwards') =>
+    handler?.(direction, 'step');
+  return Object.assign(next, { registered: () => handler !== null });
 }
 
 describe('useCompletePlacement', () => {
@@ -86,12 +88,13 @@ describe('useCompletePlacement', () => {
   });
 
   it.each([false, undefined])(
-    'never blocks when the gate is %s',
+    'registers no check when the gate is %s',
     (required) => {
       const next = renderGate({ unplacedCount: 3, required });
 
-      expect(next('forwards')).toBe(true);
-      expect(showToast).not.toHaveBeenCalled();
+      // Navigation reads any registered handler as a reason to keep Next live
+      // at the end of a review, so an inactive gate must not register one.
+      expect(next.registered()).toBe(false);
       expect(updateReady).toHaveBeenLastCalledWith(false);
     },
   );
