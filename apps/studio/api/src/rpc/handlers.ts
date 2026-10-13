@@ -19,6 +19,7 @@ import { SetupHandlers } from './handlers/setup.ts';
 import { StatusHandlers } from './handlers/status.ts';
 import { StudiesHandlers } from './handlers/studies.ts';
 import { TeamHandlers } from './handlers/team.ts';
+import { TelemetryHandlers } from './handlers/telemetry.ts';
 import { RequireSessionLive } from './require-session.ts';
 import { TeamAdministrationLive } from './team-administration.ts';
 
@@ -38,6 +39,7 @@ export const StudioRpcHandlers = (
     ProtocolsHandlers(deps),
     AuditHandlers(deps),
     ParticipantHandlers(deps),
+    TelemetryHandlers,
   );
 
 export const StudioRpcMiddleware = (

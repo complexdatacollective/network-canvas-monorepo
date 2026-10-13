@@ -26,6 +26,7 @@ import {
   fetchSetupRequirement,
   topologyGuard,
 } from './lib/deployment.ts';
+import { ResearcherErrorTelemetry } from './lib/errorTelemetry.ts';
 import { parseStudyParams, parseTeamParams } from './lib/ids.ts';
 import {
   landingRedirect,
@@ -133,6 +134,7 @@ function RootLayout() {
   return (
     <StudioI18nProvider>
       <LocaleSync />
+      <ResearcherErrorTelemetry />
       {content}
     </StudioI18nProvider>
   );

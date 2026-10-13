@@ -57,6 +57,7 @@ const VALID_STATUS = {
   },
   deployment: { mode: 'self-hosted', billing: false },
   setup: { required: false },
+  telemetry: true,
 };
 
 const ENCODED_ME = {
@@ -79,6 +80,7 @@ const ENCODED_STATUS = {
   },
   deployment: { mode: 'self-hosted', billing: false },
   setup: { required: false },
+  telemetry: true,
 };
 
 const VALID_STUDY_SUMMARY = {

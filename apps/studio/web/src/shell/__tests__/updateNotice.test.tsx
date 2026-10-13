@@ -68,6 +68,7 @@ const statusIn = (mode: DeploymentMode): InstanceStatus => ({
   },
   deployment: { mode, billing: false },
   setup: { required: false },
+  telemetry: false,
 });
 
 const NOTES_URL = 'https://releases.networkcanvas.com/studio/1.3.0';

@@ -63,6 +63,11 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
     reason:
       'Usability events are forwarded to product analytics and change nothing in the study; they are not research data and leave no row behind.',
   },
+  'telemetry.report': {
+    kind: 'none',
+    reason:
+      'A browser error report is forwarded to the telemetry destination and changes nothing in any team or study; it leaves no row behind.',
+  },
   'participant.sync': {
     kind: 'none',
     reason:

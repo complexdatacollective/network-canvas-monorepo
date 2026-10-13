@@ -132,6 +132,7 @@ beforeEach(() => {
           socialProviders: [],
         },
         setup: { required: false },
+        telemetry: false,
         deployment: fixtures.deployment,
       }),
     'me': () =>

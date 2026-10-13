@@ -74,6 +74,7 @@ const unimplementedHandlers: StudioHandlers = {
   'team.cancelInvitation': unimplemented('team.cancelInvitation'),
   'team.createInvitation': unimplemented('team.createInvitation'),
   'team.updateMemberRole': unimplemented('team.updateMemberRole'),
+  'telemetry.report': unimplemented('telemetry.report'),
 };
 
 export const HARNESS_PRINCIPAL: Principal['Service'] = Principal.of({
