@@ -10,8 +10,9 @@ import {
   type EntityAttributesProperty,
   entityAttributesProperty,
   type NcNode,
-  normalizeCodebookName,
 } from '@codaco/shared-consts';
+
+import { asOptionName } from './optionName';
 
 /**
  * Attribute and variable keys here are researcher-chosen text, so they are read
@@ -175,18 +176,6 @@ const getUniqueAttributeKeys = (
   }, []);
 
 type AttributeValue = NcNode[EntityAttributesProperty][string];
-
-/**
- * Option text as schema 9 names an option value: control characters become
- * spaces, then the text is trimmed and put in canonical form. The schema 9
- * migration renames option values this way, but leaves roster files as they
- * were, so a roster still spelling `"Yes "` finds the option now named
- * `"Yes"`.
- */
-const asOptionName = (text: string) =>
-  normalizeCodebookName(
-    text.toWellFormed().replace(/[\p{Cc}\uFFFE\uFFFF]/gu, ' '),
-  );
 
 /**
  * The codebook's own option value for option text found in a roster: a

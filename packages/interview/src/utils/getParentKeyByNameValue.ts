@@ -1,5 +1,7 @@
 import type { EntityDefinition } from '@codaco/protocol-validation';
 
+import { asOptionName } from './optionName';
+
 type Variables = NonNullable<EntityDefinition['variables']>;
 
 /**
@@ -18,7 +20,9 @@ const findVariableIdByName = (variables: Variables, name: string) => {
 /**
  * Resolves a `<variable name>_<option value>` column to
  * `<variable id>_<option value>`, where the option value is spelled as the
- * codebook spells it.
+ * codebook spells it. An option is matched in NFC, and then as an option name,
+ * so a column still spelling the text an option was renamed from by the
+ * schema 9 migration (`"Yes "` for `"Yes"`) still finds it.
  *
  * Both the variable name and the option value may contain underscores, so every
  * underscore is tried as the split point.
@@ -46,9 +50,14 @@ const findCategoricalKey = (variables: Variables, toFind: string) => {
         continue;
       }
 
-      const match = variable.options.find(
-        (candidate) => String(candidate.value).normalize('NFC') === option,
-      );
+      const asName = asOptionName(option);
+      const match =
+        variable.options.find(
+          (candidate) => String(candidate.value).normalize('NFC') === option,
+        ) ??
+        variable.options.find(
+          (candidate) => String(candidate.value) === asName,
+        );
 
       if (match) {
         return `${id}_${String(match.value)}`;
