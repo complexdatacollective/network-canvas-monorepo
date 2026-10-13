@@ -609,6 +609,7 @@
     },
     {
       "id": "alter-form-attributes",
+      "dynamicValues": { "name": { "path": "node.alter_name" } },
       "type": "AlterForm",
       "label": { "en-US": "About each person" },
       "subject": {
@@ -619,19 +620,21 @@
         "fields": [
           {
             "variable": "relationship",
-            "prompt": { "en-US": "How is this person related to you?" }
+            "prompt": {
+              "en-US": "{name, select, missing {How is this person related to you?} other {How is {name} related to you?}}"
+            }
           },
           {
             "variable": "knows_about_mh",
             "prompt": {
-              "en-US": "Does this person **know about your mental health**?"
+              "en-US": "{name, select, missing {Does this person **know about your mental health**?} other {Does {name} **know about your mental health**?}}"
             },
             "hint": { "en-US": "That is, have you told them about it?" }
           },
           {
             "variable": "is_clinical",
             "prompt": {
-              "en-US": "Is this person a **formal or clinical source of help**?"
+              "en-US": "{name, select, missing {Is this person a **formal or clinical source of help**?} other {Is {name} a **formal or clinical source of help**?}}"
             },
             "hint": {
               "en-US": "For example, a doctor, therapist, counsellor, or other professional."

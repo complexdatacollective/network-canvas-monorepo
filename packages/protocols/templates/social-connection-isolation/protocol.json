@@ -519,6 +519,7 @@
     },
     {
       "id": "alter-form-attributes",
+      "dynamicValues": { "name": { "path": "node.alter_name" } },
       "type": "AlterForm",
       "label": { "en-US": "About Each Person" },
       "subject": {
@@ -529,33 +530,39 @@
         "fields": [
           {
             "variable": "relationship",
-            "prompt": { "en-US": "What is this person's relationship to you?" }
+            "prompt": {
+              "en-US": "{name, select, missing {What is this person's relationship to you?} other {What is {name}'s relationship to you?}}"
+            }
           },
           {
             "variable": "age_band",
-            "prompt": { "en-US": "Roughly how old is this person?" }
+            "prompt": {
+              "en-US": "{name, select, missing {Roughly how old is this person?} other {Roughly how old is {name}?}}"
+            }
           },
           {
             "variable": "contact_frequency",
             "prompt": {
-              "en-US": "How often are you in contact with this person?"
+              "en-US": "{name, select, missing {How often are you in contact with this person?} other {How often are you in contact with {name}?}}"
             }
           },
           {
             "variable": "contact_mode",
             "prompt": {
-              "en-US": "How do you usually keep in contact with this person?"
+              "en-US": "{name, select, missing {How do you usually keep in contact with this person?} other {How do you usually keep in contact with {name}?}}"
             },
             "hint": { "en-US": "Select all that apply." }
           },
           {
             "variable": "lives_with",
-            "prompt": { "en-US": "Does this person live with you?" }
+            "prompt": {
+              "en-US": "{name, select, missing {Does this person live with you?} other {Does {name} live with you?}}"
+            }
           },
           {
             "variable": "support_emotional",
             "prompt": {
-              "en-US": "Could you turn to this person for **emotional** support?"
+              "en-US": "{name, select, missing {Could you turn to this person for **emotional** support?} other {Could you turn to {name} for **emotional** support?}}"
             },
             "hint": {
               "en-US": "Such as talking things over when you feel down."
@@ -564,7 +571,7 @@
           {
             "variable": "support_practical",
             "prompt": {
-              "en-US": "Could you turn to this person for **practical** support?"
+              "en-US": "{name, select, missing {Could you turn to this person for **practical** support?} other {Could you turn to {name} for **practical** support?}}"
             },
             "hint": { "en-US": "Such as help with tasks, transport, or money." }
           }
@@ -573,6 +580,9 @@
     },
     {
       "id": "dyad-census-knows",
+      "dynamicValues": {
+        "focalName": { "path": "one_to_many.focal.alter_name" }
+      },
       "type": "OneToManyDyadCensus",
       "label": { "en-US": "Who Knows Whom" },
       "interviewScript": "For each person in turn, the respondent taps everyone else that person knows. This systematically elicits the complete set of alter-alter ties — more reliably than a free-draw sociogram, which tends to under-capture them — giving the density and fragmentation measures that isolation analysis depends on. It is also lower-burden than an all-pairs dyad census.",
@@ -587,7 +597,7 @@
         {
           "id": "p-knows",
           "text": {
-            "en-US": "Here is one of the people you named. Tap **everyone else who knows this person**, as far as you are aware."
+            "en-US": "{focalName, select, missing {Here is one of the people you named. Tap **everyone else who knows this person**, as far as you are aware.} other {Here is one of the people you named. Tap **everyone else who knows {focalName}**, as far as you are aware.}}"
           },
           "createEdge": "knows"
         }

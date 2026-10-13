@@ -552,6 +552,7 @@
     },
     {
       "id": "alter-support-detail",
+      "dynamicValues": { "name": { "path": "node.supporter_name" } },
       "type": "AlterForm",
       "label": { "en-US": "About each supporter" },
       "subject": {
@@ -562,24 +563,26 @@
         "fields": [
           {
             "variable": "relationship",
-            "prompt": { "en-US": "What is this person's relationship to you?" }
+            "prompt": {
+              "en-US": "{name, select, missing {What is this person's relationship to you?} other {What is {name}'s relationship to you?}}"
+            }
           },
           {
             "variable": "proximity",
             "prompt": {
-              "en-US": "Where is this person, relative to you, most of the time?"
+              "en-US": "{name, select, missing {Where is this person, relative to you, most of the time?} other {Where is {name}, relative to you, most of the time?}}"
             }
           },
           {
             "variable": "contact_frequency",
             "prompt": {
-              "en-US": "How often are you in contact with this person at the moment?"
+              "en-US": "{name, select, missing {How often are you in contact with this person at the moment?} other {How often are you in contact with {name} at the moment?}}"
             }
           },
           {
             "variable": "support_functions",
             "prompt": {
-              "en-US": "Which kinds of support does this person give you?"
+              "en-US": "{name, select, missing {Which kinds of support does this person give you?} other {Which kinds of support does {name} give you?}}"
             },
             "hint": { "en-US": "Select all that apply." }
           }

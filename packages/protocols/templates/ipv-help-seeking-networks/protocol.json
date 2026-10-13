@@ -852,6 +852,7 @@
     },
     {
       "id": "alter-form-services",
+      "dynamicValues": { "service": { "path": "node.service_name" } },
       "label": {
         "en-US": "Services you contacted"
       },
@@ -880,7 +881,7 @@
           {
             "variable": "service_helpful",
             "prompt": {
-              "en-US": "Overall, how helpful was this service?"
+              "en-US": "{service, select, missing {Overall, how helpful was this service?} other {Overall, how helpful was {service}?}}"
             }
           }
         ]

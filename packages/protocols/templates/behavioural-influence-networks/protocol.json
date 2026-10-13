@@ -406,6 +406,7 @@
     },
     {
       "id": "alter-behaviours",
+      "dynamicValues": { "name": { "path": "node.alter_name" } },
       "type": "AlterForm",
       "label": { "en-US": "Their behaviours" },
       "subject": {
@@ -417,36 +418,38 @@
           {
             "variable": "shared_domains",
             "prompt": {
-              "en-US": "Which of these activities do you ever do **with this person**?"
+              "en-US": "{name, select, missing {Which of these activities do you ever do **with this person**?} other {Which of these activities do you ever do **with {name}**?}}"
             },
             "hint": { "en-US": "Select all that apply." }
           },
           {
             "variable": "relationship",
-            "prompt": { "en-US": "What is your relationship to this person?" }
+            "prompt": {
+              "en-US": "{name, select, missing {What is your relationship to this person?} other {What is your relationship to {name}?}}"
+            }
           },
           {
             "variable": "alter_smokes",
             "prompt": {
-              "en-US": "As far as you know, does this person **smoke**?"
+              "en-US": "{name, select, missing {As far as you know, does this person **smoke**?} other {As far as you know, does {name} **smoke**?}}"
             }
           },
           {
             "variable": "alter_activity",
             "prompt": {
-              "en-US": "How **physically active** would you say this person is?"
+              "en-US": "{name, select, missing {How **physically active** would you say this person is?} other {How **physically active** would you say {name} is?}}"
             }
           },
           {
             "variable": "alter_diet",
             "prompt": {
-              "en-US": "How **healthy** would you say this person's diet is?"
+              "en-US": "{name, select, missing {How **healthy** would you say this person's diet is?} other {How **healthy** would you say {name}'s diet is?}}"
             }
           },
           {
             "variable": "alter_drinks",
             "prompt": {
-              "en-US": "How often does this person **drink alcohol**, as far as you know?"
+              "en-US": "{name, select, missing {How often does this person **drink alcohol**, as far as you know?} other {How often does {name} **drink alcohol**, as far as you know?}}"
             }
           }
         ]

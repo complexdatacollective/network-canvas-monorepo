@@ -472,6 +472,7 @@
     },
     {
       "id": "composer-network",
+      "dynamicValues": { "changeDate": { "path": "ego.transition_when" } },
       "addNamePlaceholder": {
         "en-US": "Type a name, then press Enter"
       },
@@ -514,12 +515,16 @@
           {
             "variable": "knew_before",
             "component": "Toggle",
-            "label": { "en-US": "Knew them before the change" }
+            "label": {
+              "en-US": "{changeDate, select, missing {Knew them before the change} other {Knew them before the change ({changeDate})}}"
+            }
           },
           {
             "variable": "arrived_with_change",
             "component": "Toggle",
-            "label": { "en-US": "New since the change" }
+            "label": {
+              "en-US": "{changeDate, select, missing {New since the change} other {New since the change ({changeDate})}}"
+            }
           },
           {
             "variable": "helped_through",
@@ -534,12 +539,16 @@
           {
             "variable": "lost_touch",
             "component": "Toggle",
-            "label": { "en-US": "Lost touch since" }
+            "label": {
+              "en-US": "{changeDate, select, missing {Lost touch since} other {Lost touch since the change ({changeDate})}}"
+            }
           },
           {
             "variable": "closeness_before",
             "component": "LikertScale",
-            "label": { "en-US": "How close you were before" }
+            "label": {
+              "en-US": "{changeDate, select, missing {How close you were before} other {How close you were before the change ({changeDate})}}"
+            }
           },
           {
             "variable": "closeness_now",
