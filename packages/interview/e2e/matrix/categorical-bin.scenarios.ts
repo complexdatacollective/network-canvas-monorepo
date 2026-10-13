@@ -1149,6 +1149,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
       return {
         id: 'select-mode-tap-to-place',
         covers: ['behaviours', 'behaviours.interactionMode'],
+        visual: true,
         seedNetwork: true,
         build: () => {
           const synth = new SyntheticInterview();
