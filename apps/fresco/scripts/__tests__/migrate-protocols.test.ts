@@ -528,10 +528,8 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       prisma.interview.findMany
         .mockResolvedValueOnce([
           {
-            id: 'int-broken',
-            network: null,
-            stageMetadata: null,
-            currentStep: 0,
+            ...makeV8PedigreeInterview('int-broken', 1),
+            stageMetadata: 'not a record',
           },
           makeV8PedigreeInterview('int-ok', 2),
         ])
@@ -559,7 +557,7 @@ describe('migrateProtocolsToCompatibleVersion', () => {
           interviewId: 'int-broken',
           protocolId: 'cm-p',
           protocolName: 'Pedigree.netcanvas',
-          reason: expect.stringContaining('no network') as unknown,
+          reason: expect.stringContaining('not keyed by stage') as unknown,
         },
         {
           interviewId: 'int-bad-metadata',
@@ -583,6 +581,56 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       );
       errorSpy.mockRestore();
     });
+
+    it.each([
+      ['no network at all', null],
+      ['a network without an ego', { nodes: [], edges: [] }],
+      ['a network stored as text', '{"nodes":[],"edges":[],"ego":{}}'],
+    ])(
+      'leaves an interview with %s as stored and migrates the rest',
+      async (_description, network) => {
+        // No Fresco can open such an interview, before this upgrade or after
+        // it, so it must not stop every other interview from being upgraded.
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const prisma = makeMockPrisma();
+        prisma.protocol.findMany.mockResolvedValue([v8PedigreeRow('cm-p')]);
+        prisma.interview.findMany.mockResolvedValueOnce([
+          {
+            id: 'int-unreadable',
+            network,
+            stageMetadata: null,
+            currentStep: 1,
+          },
+          makeV8PedigreeInterview('int-ok', 2),
+        ]);
+
+        await migrateProtocolsToCompatibleVersion(
+          prisma as unknown as Parameters<
+            typeof migrateProtocolsToCompatibleVersion
+          >[0],
+        );
+
+        expect(prisma.interview.update).toHaveBeenCalledTimes(1);
+        expect(prisma.interview.update).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { id: 'int-ok' } }),
+        );
+        const warned = warnSpy.mock.calls
+          .map((call) => String(call[0]))
+          .join(' ');
+        expect(warned).toMatch(
+          /Leaving interview int-unreadable of protocol "Pedigree\.netcanvas"/,
+        );
+        const logged = logSpy.mock.calls
+          .map((call) => String(call[0]))
+          .join(' ');
+        expect(logged).toMatch(
+          /1 interviews migrated, 1 unreadable interviews left as stored/,
+        );
+        logSpy.mockRestore();
+        warnSpy.mockRestore();
+      },
+    );
 
     it('does not rewrite an interview the migration leaves as it was', async () => {
       const prisma = makeMockPrisma();
