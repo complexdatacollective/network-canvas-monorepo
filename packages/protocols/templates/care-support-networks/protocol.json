@@ -356,17 +356,33 @@
       ]
     },
     {
+      "id": "ego-care-context-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "About you right now"
+      },
+      "title": {
+        "en-US": "About you right now"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "First, a few questions about where you are in your care journey, and how you have been feeling.\n\nThe questions about your mood come from the **Edinburgh Postnatal Depression Scale (EPDS)**. There are no right or wrong answers. Please answer based on how you have felt in the **past 7 days**, not just today."
+          }
+        }
+      ]
+    },
+    {
       "id": "ego-care-context",
       "type": "EgoForm",
       "label": { "en-US": "About you and your care episode" },
       "interviewScript": "Clinical safety: EPDS item 10 screens for thoughts of self-harm. Before fielding this protocol, put a safety protocol in place — interviewer training, an escalation pathway, and local crisis-line / referral details — for any participant who endorses item 10 or otherwise shows distress. The software records responses but does not act on them.",
-      "introductionPanel": {
-        "title": { "en-US": "About you right now" },
-        "text": {
-          "en-US": "First, a few questions about where you are in your care journey, and how you have been feeling.\n\nThe questions about your mood come from the **Edinburgh Postnatal Depression Scale (EPDS)**. There are no right or wrong answers. Please answer based on how you have felt in the **past 7 days**, not just today."
-        }
-      },
       "form": {
+        "title": {
+          "en-US": "About you right now"
+        },
         "fields": [
           {
             "variable": "care_stage",
@@ -516,15 +532,31 @@
       ]
     },
     {
+      "id": "alter-support-detail-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "A little more about each person"
+      },
+      "title": {
+        "en-US": "A little more about each person"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "For each person you named, we'll ask a few short questions about where they are, how often you're in contact, and the kinds of support they give you."
+          }
+        }
+      ]
+    },
+    {
       "id": "alter-support-detail",
       "type": "AlterForm",
       "label": { "en-US": "About each supporter" },
-      "subject": { "entity": "node", "type": "supporter" },
-      "introductionPanel": {
-        "title": { "en-US": "A little more about each person" },
-        "text": {
-          "en-US": "For each person you named, we'll ask a few short questions about where they are, how often you're in contact, and the kinds of support they give you."
-        }
+      "subject": {
+        "entity": "node",
+        "type": "supporter"
       },
       "form": {
         "fields": [

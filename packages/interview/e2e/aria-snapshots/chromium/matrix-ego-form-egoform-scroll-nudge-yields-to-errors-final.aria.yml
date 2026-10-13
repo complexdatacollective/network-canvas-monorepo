@@ -1,6 +1,5 @@
 - main:
   - heading "About You" [level=1]
-  - paragraph: This form has enough fields to overflow the viewport.
   - text: Question 1 Required
   - textbox "Question 1": An answer
   - text: Question 2

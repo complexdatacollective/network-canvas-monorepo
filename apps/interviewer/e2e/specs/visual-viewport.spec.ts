@@ -188,6 +188,7 @@ test('keeps the Name Generator prompt, quick add, and new node inside the iOS vi
   await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
   await interviewNav.waitForStage();
 
+  await interviewNav.next(); // Information -> its instructions
   await interviewNav.next(); // Information -> EgoForm
   await interviewNav.fillEgoName('Ada');
   await interviewNav.next(); // EgoForm -> NameGeneratorQuickAdd

@@ -23,7 +23,7 @@ const STRENGTH_OPTIONS = [
  *   its pairs come entirely from the seeded network; `buildSyntheticPayload`
  *   only installs the builder's nodes/edges when `seedNetwork` is true
  *   (synthetic-payload.ts:147-149), otherwise the interview starts empty and
- *   the stage FORCE-skips (TieStrengthCensus.tsx:234-237).
+ *   the stage has no pairs and navigation passes it.
  * - Edge attributes are keyed by the codebook variable id, and network
  *   entities use the `_uid`/`attributes` shared-consts keys — not literal
  *   `.id`/`.Strength`. Each edge variable is given an explicit kebab-case id so
@@ -40,12 +40,11 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
   interfaceType: 'TieStrengthCensus',
   scenarios: [
     {
-      id: 'intro-panel-and-first-selection',
+      id: 'opens-on-first-pair-and-first-selection',
       covers: [
         'id',
         'label',
         'interviewScript',
-        'introductionPanel',
         'prompts[].createEdge',
         'prompts[].text',
         'codebook.edge.variable.options',
@@ -69,10 +68,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           interviewScript: 'Internal note: use a warm tone.',
           initialNodes: { count: 3 },
           subject: { entity: 'node', type: person.id },
-          introductionPanel: {
-            title: 'Rate Your Relationships',
-            text: 'You will be shown pairs of people from your network. For each pair, indicate the strength of their relationship.',
-          },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -85,10 +80,8 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       run: async ({ page, interview, protocol }) => {
         const tsc = new TieStrengthCensusFixture(page);
 
-        await expect(
-          page.getByRole('heading', { name: 'Rate Your Relationships' }),
-        ).toBeVisible();
-        await expect(page.getByRole('listbox')).toHaveCount(0);
+        // The stage opens directly on its first pair.
+        await tsc.waitForFirstPair();
         // label is menu-only config; interviewScript is authoring-only.
         await expect(page.getByText('Rate Relationships (menu)')).toHaveCount(
           0,
@@ -96,11 +89,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         await expect(
           page.getByText('Internal note: use a warm tone.'),
         ).toHaveCount(0);
-
-        const urlBefore = page.url();
-        await tsc.dismissIntro();
-        // The first Next dismisses the intro without advancing the URL step.
-        expect(page.url()).toBe(urlBefore);
 
         const options = page.getByRole('option');
         await expect(options).toHaveCount(4);
@@ -164,10 +152,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
           subject: { entity: 'node', type: person.id },
-          introductionPanel: {
-            title: 'Rate Your Relationships',
-            text: 'Intro.',
-          },
         });
         censusStage.addPrompt({
           text: 'How close are these two people?',
@@ -196,7 +180,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, protocol }) => {
         const tsc = new TieStrengthCensusFixture(page);
-        await tsc.dismissIntro();
+        await tsc.waitForFirstPair();
 
         const collected: [string, string][] = [];
         for (let i = 0; i < 3; i++) {
@@ -278,10 +262,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
           subject: { entity: 'node', type: person.id },
-          introductionPanel: {
-            title: 'Rate Your Relationships',
-            text: 'Intro.',
-          },
         });
         stage.addPrompt({
           text: 'Prompt A text',
@@ -303,7 +283,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, protocol, stage }) => {
         const tsc = new TieStrengthCensusFixture(page);
-        await tsc.dismissIntro();
+        await tsc.waitForFirstPair();
         // One pip per prompt.
         await expect(page.locator('[data-active]')).toHaveCount(2);
 
@@ -383,10 +363,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
           subject: { entity: 'node', type: person.id },
-          introductionPanel: {
-            title: 'Rate Your Relationships',
-            text: 'Intro.',
-          },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -398,7 +374,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, protocol }) => {
         const tsc = new TieStrengthCensusFixture(page);
-        await tsc.dismissIntro();
+        await tsc.waitForFirstPair();
         const pairLabelsBefore = await tsc.getPairLabels();
 
         await interview.nextButton.click();
@@ -435,10 +411,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
           subject: { entity: 'node', type: person.id },
-          introductionPanel: {
-            title: 'Rate Your Relationships',
-            text: 'Intro.',
-          },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -450,7 +422,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, protocol }) => {
         const tsc = new TieStrengthCensusFixture(page);
-        await tsc.dismissIntro();
+        await tsc.waitForFirstPair();
         const pair1Labels = await tsc.getPairLabels();
 
         await tsc.selectOption(2);
@@ -508,10 +480,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
           subject: { entity: 'node', type: person.id },
-          introductionPanel: {
-            title: 'Rate Your Relationships',
-            text: 'Intro.',
-          },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -526,7 +494,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, protocol }) => {
         const tsc = new TieStrengthCensusFixture(page);
-        await tsc.dismissIntro();
+        await tsc.waitForFirstPair();
         const pair1Labels = await tsc.getPairLabels();
 
         // Pre-selection reflects the seeded edge value and connector state.
@@ -573,9 +541,11 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         'stage-completion',
       ],
       slow: true,
+      currentStep: 1,
       seedNetwork: true,
       build: () => {
         const synth = new SyntheticInterview();
+        synth.addInformationStage({ title: 'Before the stage' });
         const person = synth.addNodeType({ name: 'Person' });
         const friendship = synth.addEdgeType({ name: 'Friendship' });
         friendship.addVariable({
@@ -599,10 +569,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
           subject: { entity: 'node', type: person.id },
-          introductionPanel: {
-            title: 'Rate Your Relationships',
-            text: 'Intro.',
-          },
         });
         stage.addPrompt({
           text: 'Rate friendship strength',
@@ -624,7 +590,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, protocol, stage }) => {
         const tsc = new TieStrengthCensusFixture(page);
-        await tsc.dismissIntro();
+        await tsc.waitForFirstPair();
 
         // Prompt A forward pass.
         const pair1 = await tsc.getPairLabels();
@@ -659,14 +625,16 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
         await expect.poll(() => tsc.getPairLabels()).toEqual(pair1);
         await expect(tsc.getOption(2)).toHaveAttribute('aria-selected', 'true');
 
-        // Back 4 -> intro.
+        // Back 4 -> leaves the stage for the one before it.
         await page.getByTestId('previous-button').click();
+        await expect(page).toHaveURL(/step=0/);
         await expect(
-          page.getByRole('heading', { name: 'Rate Your Relationships' }),
+          page.getByRole('heading', { name: 'Before the stage' }),
         ).toBeVisible();
 
-        // Re-advance forward through prompt A; every pair is already answered.
-        await tsc.dismissIntro();
+        // Re-enter and advance through prompt A; every pair is already answered.
+        await interview.next();
+        await tsc.waitForFirstPair();
         await expect.poll(() => tsc.getPairLabels()).toEqual(pair1);
         await page.getByTestId('next-button').click();
         await tsc.waitForPairChange(pair1);
@@ -761,10 +729,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           label: 'Rate Relationships',
           initialNodes: { count: 3 },
           subject: { entity: 'node', type: person.id },
-          introductionPanel: {
-            title: 'Rate Your Relationships',
-            text: 'Intro.',
-          },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -780,7 +744,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page }) => {
         const tsc = new TieStrengthCensusFixture(page);
-        await tsc.dismissIntro();
+        await tsc.waitForFirstPair();
 
         await expect(tsc.getOption(2)).toHaveAttribute('aria-selected', 'true');
         // edgeColorMap['edge-color-seq-3'] === '[--edge-color:var(--edge-3)]'.
@@ -807,10 +771,6 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
           interviewScript: 'Never rendered in the interview DOM.',
           initialNodes: { count: 3 },
           subject: { entity: 'node', type: person.id },
-          introductionPanel: {
-            title: 'Rate Your Relationships',
-            text: 'Intro.',
-          },
         });
         stage.addPrompt({
           text: 'How close are these two people?',
@@ -822,7 +782,7 @@ export const tieStrengthCensusScenarios: InterfaceScenarios = {
       },
       run: async ({ page }) => {
         const tsc = new TieStrengthCensusFixture(page);
-        await tsc.dismissIntro();
+        await tsc.waitForFirstPair();
         await expect(tsc.listbox).toBeVisible();
 
         // The e2e host mounts Shell without stage navigation, so no stages

@@ -444,8 +444,14 @@ try {
   record('stage-information', true);
   await nextStage();
 
-  // Stage 2 — EgoForm: intro panel and form render on one screen (no
-  // dismissal step). Fill the required ego field; blur is load-bearing:
+  // Stage 2 — Information: the EgoForm's instructions, a stage of their own
+  // since schema 9.
+  await expect(page.getByText('Tell us about')).toBeVisible();
+  record('stage-ego-introduction', true);
+  await nextStage();
+
+  // Stage 3 — EgoForm: the form title is the heading above the questions.
+  // Fill the required ego field; blur is load-bearing:
   // protocol forms validate on blur, and the next-button only becomes ready
   // once validation has run (interview-nav.ts).
   const egoField = page.locator('[data-field-name="ego_name"] input');
@@ -456,7 +462,7 @@ try {
   record('stage-egoform', true, 'ego_name filled');
   await nextStage();
 
-  // Stage 3 — NameGeneratorQuickAdd: create three nodes.
+  // Stage 4 — NameGeneratorQuickAdd: create three nodes.
   for (const name of ['Alex', 'Blair', 'Casey']) {
     const toggle = page.getByTestId('quick-add-toggle');
     if ((await toggle.getAttribute('aria-pressed')) !== 'true')
@@ -470,7 +476,7 @@ try {
   record('stage-quickadd', true, 'added Alex, Blair, Casey');
   await nextStage();
 
-  // Stage 4 — Sociogram: place all three (layout writes), then click two
+  // Stage 5 — Sociogram: place all three (layout writes), then click two
   // nodes in turn to create a "Knows" edge on the same prompt.
   await dragNodeToCanvasPosition('Alex', { x: 0.3, y: 0.35 });
   await dragNodeToCanvasPosition('Blair', { x: 0.65, y: 0.35 });
@@ -482,12 +488,20 @@ try {
   record('stage-sociogram', true, '3 placed, 1 Knows edge');
   await nextStage();
 
-  // Stage 5 — DyadCensus: dismiss intro, answer all three pairs (Yes for the
-  // first, No after). The ~350 ms auto-advance timer races a fixed sleep
-  // under load, so wait for the observable PAIR IDENTITY to change after
-  // each non-final answer (the DyadCensusFixture pattern) — the final answer
-  // advances the stage itself.
-  await page.getByTestId('next-button').click();
+  // Stage 6 — Information: the DyadCensus's instructions, a stage of their
+  // own since schema 9.
+  await expect(
+    page.getByText('You will be asked about each pair of people you named.'),
+  ).toBeVisible();
+  record('stage-dyad-introduction', true);
+  await nextStage();
+
+  // Stage 7 — DyadCensus: answer all three pairs (Yes for the first, No
+  // after); the first pair shows straight away, with no intro to dismiss.
+  // The ~350 ms auto-advance timer races a fixed sleep under load, so wait
+  // for the observable PAIR IDENTITY to change after each non-final answer
+  // (the DyadCensusFixture pattern) — the final answer advances the stage
+  // itself.
   await expect(page.getByRole('radio').first()).toBeVisible();
   const dyadStepBefore = await stageStep().getAttribute('data-stage-step');
   const pairLabels = () =>
@@ -516,7 +530,7 @@ try {
   await shot('stage-dyadcensus');
   record('stage-dyadcensus', true, '3 pairs answered, stage auto-advanced');
 
-  // Stage 6 — CategoricalBin: categorise ALL three nodes (three categorical
+  // Stage 8 — CategoricalBin: categorise ALL three nodes (three categorical
   // writes across distinct bins). The deployed build does not expose bin
   // membership as role=option (verified empirically), so the oracle is the
   // unplaced-drawer count reaching zero.

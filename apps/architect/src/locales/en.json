@@ -2847,10 +2847,6 @@
     "defaultMessage": "Interviewer Script",
     "description": "The title text in lib / ProtocolSummary / components / Stage / InterviewScript."
   },
-  "architect.protocolSummary.stage.introductionPanel.introductionPanel": {
-    "defaultMessage": "Introduction Panel",
-    "description": "The title text in lib / ProtocolSummary / components / Stage / IntroductionPanel."
-  },
   "architect.protocolSummary.stage.items.items": {
     "defaultMessage": "Items",
     "description": "The title text in lib / ProtocolSummary / components / Stage / Items."

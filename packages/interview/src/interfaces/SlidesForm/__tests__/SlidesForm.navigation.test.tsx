@@ -160,10 +160,6 @@ describe('SlidesForm navigation ownership', () => {
               type: 'AlterForm',
               label: { en: 'Hidden form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: {
-                title: { en: 'About this person' },
-                text: { en: '' },
-              },
               form,
               skipLogic: {
                 action: 'SKIP',
@@ -252,10 +248,6 @@ describe('SlidesForm navigation ownership', () => {
               type: 'AlterForm',
               label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: {
-                title: { en: 'About this person' },
-                text: { en: '' },
-              },
               form,
             },
             {
@@ -343,10 +335,6 @@ describe('SlidesForm navigation ownership', () => {
               type: 'AlterForm',
               label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: {
-                title: { en: 'About this person' },
-                text: { en: '' },
-              },
               form,
             },
             {
@@ -436,10 +424,6 @@ describe('SlidesForm navigation ownership', () => {
               type: 'AlterForm',
               label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: {
-                title: { en: 'About this person' },
-                text: { en: '' },
-              },
               form,
             },
             {
@@ -532,10 +516,6 @@ describe('SlidesForm navigation ownership', () => {
               type: 'AlterForm',
               label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: {
-                title: { en: 'About this person' },
-                text: { en: '' },
-              },
               form,
             },
             {
@@ -630,10 +610,6 @@ describe('SlidesForm navigation ownership', () => {
               type: 'AlterForm',
               label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: {
-                title: { en: 'About this person' },
-                text: { en: '' },
-              },
               form,
             },
             {
@@ -726,14 +702,17 @@ describe('SlidesForm going back from the first slide', () => {
           codebook: requiredNameCodebook,
           stages: [
             {
+              id: 'previous-screen',
+              type: 'Information',
+              label: { en: 'Previous screen' },
+              title: { en: 'Previous screen' },
+              items: [],
+            },
+            {
               id: 'alter-form',
               type: 'AlterForm',
               label: { en: 'Alter form' },
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: {
-                title: { en: 'About this person' },
-                text: { en: '' },
-              },
               form,
             },
           ],
@@ -742,12 +721,12 @@ describe('SlidesForm going back from the first slide', () => {
       middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({ serializableCheck: false }),
     });
-    const onNavigateBack = vi.fn();
+    const onStepChange = vi.fn();
     const updateItem = vi.fn().mockResolvedValue({ success: true });
     let moveBackward: (() => Promise<void>) | undefined;
 
     function BackHarness() {
-      const navigation = useInterviewNavigation(0);
+      const navigation = useInterviewNavigation(1);
       moveBackward = navigation.moveBackward;
 
       return (
@@ -757,7 +736,6 @@ describe('SlidesForm going back from the first slide', () => {
             items={[person, secondPerson]}
             subject={{ entity: 'node', type: 'person' }}
             updateItem={updateItem}
-            onNavigateBack={onNavigateBack}
             moveForward={navigation.moveForward}
             renderHeader={() => <span>Person header</span>}
             form_kind="alter"
@@ -769,7 +747,7 @@ describe('SlidesForm going back from the first slide', () => {
     render(
       <TestProtocolLocalization>
         <Provider store={store}>
-          <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+          <CurrentStepProvider currentStep={1} onStepChange={onStepChange}>
             <DialogProvider>
               <BackHarness />
             </DialogProvider>
@@ -778,11 +756,11 @@ describe('SlidesForm going back from the first slide', () => {
       </TestProtocolLocalization>,
     );
 
-    return { onNavigateBack, updateItem, back: () => moveBackward?.() };
+    return { onStepChange, updateItem, back: () => moveBackward?.() };
   }
 
-  it('saves the answers before showing the introduction again', async () => {
-    const { onNavigateBack, updateItem, back } = renderFirstSlide();
+  it('saves the answers before leaving the stage', async () => {
+    const { onStepChange, updateItem, back } = renderFirstSlide();
 
     const field = await screen.findByRole('textbox', { name: 'Person name' });
     fireEvent.change(field, { target: { value: 'Ada Lovelace' } });
@@ -793,11 +771,11 @@ describe('SlidesForm going back from the first slide', () => {
     });
 
     expect(updateItem).toHaveBeenCalledWith('person-1', expect.anything());
-    expect(onNavigateBack).toHaveBeenCalledTimes(1);
+    expect(onStepChange).toHaveBeenCalledWith(0, expect.anything());
   });
 
   it('asks before discarding answers that cannot be saved, and stays when they are kept', async () => {
-    const { onNavigateBack, updateItem, back } = renderFirstSlide();
+    const { onStepChange, updateItem, back } = renderFirstSlide();
 
     const field = await screen.findByRole('textbox', { name: 'Person name' });
     fireEvent.change(field, { target: { value: '' } });
@@ -817,7 +795,7 @@ describe('SlidesForm going back from the first slide', () => {
       await leaving;
     });
 
-    expect(onNavigateBack).not.toHaveBeenCalled();
+    expect(onStepChange).not.toHaveBeenCalled();
     expect(updateItem).not.toHaveBeenCalled();
     expect(screen.getByRole('textbox', { name: 'Person name' })).toHaveValue(
       '',

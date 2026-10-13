@@ -40,7 +40,7 @@ From the extracted JSON, build a **stage map** — for each stage (by index), ex
 - `type` — stage type (e.g., `NameGeneratorQuickAdd`, `EgoForm`, `Sociogram`)
 - `label` — display label
 - `subject` — `{ entity, type }` pointing to codebook entry (null for Information/Anonymisation)
-- `introductionPanel` — title and text (if present)
+- `form.title` — EgoForm only: the heading shown above its questions
 - `form.fields[]` — array of `{ variable }` referencing codebook variables
 - `prompts[]` — array of prompt objects (with `createEdge`, `variable`, `highlight`, etc.)
 - `panels[]` — side panel configuration
@@ -288,7 +288,6 @@ test('Stage N: Stage Label', async ({ page, interview }) => {
   // See DyadCensusFixture JSDoc in stage-fixture.ts for the methods needed.
   //
   // Expected behavior from recording:
-  // - Dismiss intro panel
   // - Select Yes/No for each node pair
   // - Auto-advances after 350ms
 });

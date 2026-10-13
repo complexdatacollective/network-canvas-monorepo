@@ -177,12 +177,6 @@ export type PageContentSectionProps = Readonly<{
 /**
  * A page of content the participant reads, rather than a task they do.
  *
- * Deliberately not the same section as the task introduction, which the two
- * were nearly merged into: an introduction is one heading and one passage of
- * prose held inside `introductionPanel`, while a page is an ordered list of
- * blocks. Merging them would have meant one section owning two different sets
- * of paths and choosing between them from a prop.
- *
  * The stage IS the page: its heading and its blocks are the stage's own
  * `title` and `items`, and there is nothing to switch off.
  */

@@ -10,7 +10,7 @@ import {
 describe('what a subject change invalidates', () => {
   /**
    * Written out rather than derived from the constant. A test that feeds the
-   * list back in cannot see a member leave it — deleting `'introductionPanel'`
+   * list back in cannot see a member leave it — deleting `'panelTitle'`
    * removes it from both sides at once and stays green — and the point of the
    * list is that a protocol edited in Architect and a protocol edited here
    * lose and keep exactly the same things.
@@ -21,7 +21,6 @@ describe('what a subject change invalidates', () => {
       'type',
       'label',
       'interviewScript',
-      'introductionPanel',
       'panelTitle',
       'subject',
       'allAddedNotice',
@@ -56,7 +55,6 @@ describe('what a subject change invalidates', () => {
         'type',
         'label',
         'interviewScript',
-        'introductionPanel',
         'subject',
         'prompts',
         'form',

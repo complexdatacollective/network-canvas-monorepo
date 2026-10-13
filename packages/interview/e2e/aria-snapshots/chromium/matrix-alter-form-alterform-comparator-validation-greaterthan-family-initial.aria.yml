@@ -1,6 +1,29 @@
 - main:
-  - heading "About Each Person" [level=1]
-  - paragraph: Please continue.
+  - button "Person"
+  - text: Start
+  - button "Decrease value"
+  - spinbutton "Start"
+  - button "Increase value"
+  - text: End
+  - button "Decrease value"
+  - spinbutton "End"
+  - button "Increase value"
+  - text: Floor
+  - button "Decrease value"
+  - spinbutton "Floor"
+  - button "Increase value"
+  - text: Ceiling
+  - button "Decrease value"
+  - spinbutton "Ceiling"
+  - button "Increase value"
+  - text: Cap
+  - button "Decrease value"
+  - spinbutton "Cap"
+  - button "Increase value"
+  - text: Cap equal
+  - button "Decrease value"
+  - spinbutton "Cap equal"
+  - button "Increase value"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

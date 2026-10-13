@@ -1,6 +1,5 @@
 import { formFields } from '../../sections/form-fields/formFields.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
-import { introduction } from '../../sections/introduction/introduction.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { defineStageEditor } from '../defineStageEditor.tsx';
 
@@ -12,10 +11,12 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
  * researcher authoring, so there is no type to choose and nothing to filter.
  * That is also why the form fields are told their subject is `ego` rather than
  * reading it from the stage — there is no `subject` in the document to read.
+ *
+ * Unlike the per-alter and per-relationship forms, its form has a title: the
+ * interview shows it as the heading above the participant's questions.
  */
 export const egoFormStageEditor = defineStageEditor('EgoForm', [
-  introduction(),
-  formFields({ subject: 'ego' }),
+  formFields({ subject: 'ego', hasTitle: true }),
   skipLogic(),
   interviewerGuidance(),
 ]);

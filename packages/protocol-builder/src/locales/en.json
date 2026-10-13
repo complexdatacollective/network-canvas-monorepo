@@ -1863,6 +1863,10 @@
     "defaultMessage": "Edit form field",
     "description": "Title of the dialog a researcher fills in to change a question a form already asks."
   },
+  "protocolBuilder.formFields.egoFormTitleHint": {
+    "defaultMessage": "Shown as the heading above the questions. Use a short title such as 'About you'.",
+    "description": "Guidance under the title field of an Ego Form, whose questions are about the participant. The quoted phrase is an example a researcher might write, and should be translated as such."
+  },
   "protocolBuilder.formFields.emptyState": {
     "defaultMessage": "No items have been created yet.",
     "description": "Shown in place of the list of form fields while a form asks nothing yet."
@@ -2462,22 +2466,6 @@
   "protocolBuilder.interviewerGuidance.title": {
     "defaultMessage": "Interviewer guidance",
     "description": "Heading of the section holding notes written for the person running the interview. Never shown to a participant."
-  },
-  "protocolBuilder.introduction.description": {
-    "defaultMessage": "Introduce the task before participants complete its forms.",
-    "description": "Description of the task-introduction section."
-  },
-  "protocolBuilder.introduction.headingLabel": {
-    "defaultMessage": "Title",
-    "description": "Label of the field holding the heading at the top of the introduction screen a participant reads."
-  },
-  "protocolBuilder.introduction.textLabel": {
-    "defaultMessage": "Introduction text",
-    "description": "Label of the field holding the prose a participant reads before this step of the interview begins."
-  },
-  "protocolBuilder.introduction.title": {
-    "defaultMessage": "Task introduction",
-    "description": "Heading of the section where a researcher writes what a participant reads before this step of the interview begins."
   },
   "protocolBuilder.languageChooser.languagesDescription": {
     "defaultMessage": "Participants choose from every language this protocol is written in. The languages belong to the whole protocol, so they can't be changed on this stage.",

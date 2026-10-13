@@ -1075,7 +1075,10 @@ describe('v8 to v9 Family Pedigree migration', () => {
 
       expect(stageIds(migrated)).toEqual([
         'information-researcher-notes',
+        // Each Ego Form's introduction panel text is an Information stage now.
+        'information-intro-introduction',
         'information-intro',
+        'ego-form-background-introduction',
         'ego-form-background',
         'family-pedigree-introduction',
         'family-pedigree',

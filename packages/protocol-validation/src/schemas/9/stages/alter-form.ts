@@ -1,7 +1,6 @@
 import z from 'zod';
 
 import {
-  IntroductionPanelSchema,
   NodeStageSubjectSchema,
   TitlelessFormSchema,
 } from '../common/index.ts';
@@ -13,5 +12,4 @@ export const alterFormStage = baseStageSchema.extend({
   filter: FilterSchema.optional(),
   subject: NodeStageSubjectSchema,
   form: TitlelessFormSchema,
-  introductionPanel: IntroductionPanelSchema,
 });

@@ -161,9 +161,6 @@ async function renderAlterForm({
       await moveForward?.();
     });
 
-  // Leave the introduction for the first person's questions.
-  await next();
-
   const back = () =>
     act(async () => {
       await moveBackward?.();
@@ -314,7 +311,7 @@ describe('AlterForm with an encrypted question', () => {
 });
 
 describe('AlterForm going back from the first person', () => {
-  it('saves the answers entered before showing the introduction again', async () => {
+  it('saves the answers entered before leaving the stage', async () => {
     const { store, back } = await renderAlterForm({ unlocked: true });
     const user = userEvent.setup();
 
@@ -324,7 +321,6 @@ describe('AlterForm going back from the first person', () => {
     await user.type(name, 'Alicia');
     await back();
 
-    expect(await screen.findByText('About each person')).toBeInTheDocument();
     expect(
       screen.queryByRole('dialog', { name: 'Discard changes?' }),
     ).toBeNull();
@@ -349,10 +345,6 @@ describe('AlterForm comparing an answer with a protected one', () => {
       type: 'AlterForm',
       label: { en: 'Alter form' },
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: { en: 'About each person' },
-        text: { en: 'Intro' },
-      },
       form: {
         fields: [
           {

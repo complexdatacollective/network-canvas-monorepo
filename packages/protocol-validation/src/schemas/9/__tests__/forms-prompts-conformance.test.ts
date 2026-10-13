@@ -121,10 +121,6 @@ describe('Forms & prompts schema conformance', () => {
           label: localized('Alter Form'),
           subject: { entity: 'node', type: 'person' },
           form: { fields: [] },
-          introductionPanel: {
-            title: localized('Intro'),
-            text: localized('text'),
-          },
         },
       ]);
 
@@ -141,10 +137,6 @@ describe('Forms & prompts schema conformance', () => {
           label: localized('Alter Edge Form'),
           subject: { entity: 'edge', type: 'knows' },
           form: { fields: [] },
-          introductionPanel: {
-            title: localized('Intro'),
-            text: localized('text'),
-          },
         },
       ]);
 
@@ -159,11 +151,7 @@ describe('Forms & prompts schema conformance', () => {
           id: 'ef1',
           type: 'EgoForm',
           label: localized('Ego Form'),
-          form: { fields: [] },
-          introductionPanel: {
-            title: localized('Intro'),
-            text: localized('text'),
-          },
+          form: { title: localized('Intro'), fields: [] },
         },
       ]);
 
@@ -195,20 +183,16 @@ describe('Forms & prompts schema conformance', () => {
     });
   });
 
-  describe('title-less forms for Ego/Alter/AlterEdge', () => {
-    it('rejects an EgoForm whose form carries a title', () => {
+  describe('form titles: required on Ego, absent on Alter/AlterEdge', () => {
+    // The title is the heading shown above an ego form's questions.
+    it('rejects an EgoForm whose form has no title', () => {
       const protocol = createProtocol([
         {
           id: 'ef1',
           type: 'EgoForm',
           label: localized('Ego Form'),
           form: {
-            title: localized('Tell us about yourself'),
             fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
-          },
-          introductionPanel: {
-            title: localized('Intro'),
-            text: localized('text'),
           },
         },
       ]);
@@ -231,10 +215,6 @@ describe('Forms & prompts schema conformance', () => {
               { variable: 'personName', prompt: localized('Their name?') },
             ],
           },
-          introductionPanel: {
-            title: localized('Intro'),
-            text: localized('text'),
-          },
         },
       ]);
 
@@ -256,10 +236,6 @@ describe('Forms & prompts schema conformance', () => {
               { variable: 'closeness', prompt: localized('How close?') },
             ],
           },
-          introductionPanel: {
-            title: localized('Intro'),
-            text: localized('text'),
-          },
         },
       ]);
 
@@ -268,18 +244,15 @@ describe('Forms & prompts schema conformance', () => {
       ).toBe(false);
     });
 
-    it('accepts a title-less EgoForm', () => {
+    it('accepts an EgoForm whose form has a title', () => {
       const protocol = createProtocol([
         {
           id: 'ef1',
           type: 'EgoForm',
           label: localized('Ego Form'),
           form: {
+            title: localized('Tell us about yourself'),
             fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
-          },
-          introductionPanel: {
-            title: localized('Intro'),
-            text: localized('text'),
           },
         },
       ]);
@@ -318,7 +291,6 @@ describe('Forms & prompts schema conformance', () => {
       type: 'TieStrengthCensus',
       label: localized('Tie Strength'),
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: { title: localized('Intro'), text: localized('text') },
       prompts: [
         {
           id: 'p1',
@@ -704,49 +676,29 @@ describe('Forms & prompts schema conformance', () => {
     });
   });
 
-  describe('introductionPanel title/text non-empty', () => {
-    const alterFormStage = (introductionPanel: {
-      title: Record<string, string>;
-      text: Record<string, string>;
-    }) => ({
-      id: 'af1',
-      type: 'AlterForm',
-      label: localized('Alter Form'),
-      subject: { entity: 'node', type: 'person' },
-      form: {
-        fields: [{ variable: 'personName', prompt: localized('Their name?') }],
-      },
-      introductionPanel,
-    });
-
-    it('rejects an introductionPanel with an empty title', () => {
+  // Instructions to participants live in an Information stage (#1938).
+  describe('introductionPanel', () => {
+    it('is no longer accepted on a stage', () => {
       const protocol = createProtocol([
-        alterFormStage({ title: localized(''), text: localized('Some text') }),
+        {
+          id: 'af1',
+          type: 'AlterForm',
+          label: localized('Alter Form'),
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            fields: [
+              { variable: 'personName', prompt: localized('Their name?') },
+            ],
+          },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('Some text'),
+          },
+        },
       ]);
       expect(
         ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
       ).toBe(false);
-    });
-
-    it('rejects an introductionPanel with an empty text', () => {
-      const protocol = createProtocol([
-        alterFormStage({ title: localized('Intro'), text: localized('') }),
-      ]);
-      expect(
-        ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
-      ).toBe(false);
-    });
-
-    it('accepts an introductionPanel with non-empty title and text', () => {
-      const protocol = createProtocol([
-        alterFormStage({
-          title: localized('Intro'),
-          text: localized('Some text'),
-        }),
-      ]);
-      expect(
-        ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
-      ).toBe(true);
     });
   });
 });

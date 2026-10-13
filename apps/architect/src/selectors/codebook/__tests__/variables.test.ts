@@ -116,7 +116,6 @@ describe('getIsUsed', () => {
               label: 'AlterForm stage',
               type: 'AlterForm',
               subject: { entity: 'node', type: 'person' },
-              introductionPanel: { title: 'Title', text: 'Text' },
               form: {
                 fields: [
                   { variable: variable1, prompt: 'prompt 1' },

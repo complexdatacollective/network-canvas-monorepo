@@ -746,7 +746,7 @@ ${sampleSourceNote}
    its copy under <dir>/upload, and which stages use it.
 5. stages: one entry per stage, in protocol order (index from 1), with its
    label, interface type and a buildPlan: an end-user-level description of
-   everything that stage configures — title, introduction panel, prompts and
+   everything that stage configures — title, prompts and
    their text, subject, variables each prompt reads or writes, forms and their
    fields, panels and data sources, backgrounds, layout, behaviours, sort and
    search options, filter and skip logic, content items with the assets they

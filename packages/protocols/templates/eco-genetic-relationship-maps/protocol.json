@@ -549,20 +549,34 @@
       ]
     },
     {
+      "id": "information-intro-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "About this interview"
+      },
+      "title": {
+        "en-US": "About this interview"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "## Thank you for taking part\n\nIn this interview we will build a map together. First your family and who in it has been affected by this condition, then the friends and other people who matter to you, and then what you share with each of them — information, practical help, feelings, and spiritual connection.\n\n### Some of these questions are personal\n\nWe will ask about illness and about people in your family who have died. We will also ask who finds this subject hard to talk about. You are free to skip any question, to pause, or to stop at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If talking about your family's health brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate support whether or not you choose to take part.**"
+          }
+        }
+      ]
+    },
+    {
       "id": "information-intro",
       "type": "EgoForm",
       "label": {
         "en-US": "Welcome and consent"
       },
-      "introductionPanel": {
+      "form": {
         "title": {
           "en-US": "About this interview"
         },
-        "text": {
-          "en-US": "## Thank you for taking part\n\nIn this interview we will build a map together. First your family and who in it has been affected by this condition, then the friends and other people who matter to you, and then what you share with each of them — information, practical help, feelings, and spiritual connection.\n\n### Some of these questions are personal\n\nWe will ask about illness and about people in your family who have died. We will also ask who finds this subject hard to talk about. You are free to skip any question, to pause, or to stop at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If talking about your family's health brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate support whether or not you choose to take part.**"
-        }
-      },
-      "form": {
         "fields": [
           {
             "variable": "participant_consent",
@@ -571,6 +585,44 @@
             }
           }
         ]
+      }
+    },
+    {
+      "id": "ego-form-background-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "A little about you"
+      },
+      "title": {
+        "en-US": "A little about you"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "A few short questions before we start on the map."
+          }
+        }
+      ],
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "c0a8f2d1-4b6e-4a9c-8f3d-2e7b1a5c9d40",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
       }
     },
     {
@@ -598,15 +650,10 @@
           "type": "finish"
         }
       },
-      "introductionPanel": {
+      "form": {
         "title": {
           "en-US": "A little about you"
         },
-        "text": {
-          "en-US": "A few short questions before we start on the map."
-        }
-      },
-      "form": {
         "fields": [
           {
             "variable": "ego_age",

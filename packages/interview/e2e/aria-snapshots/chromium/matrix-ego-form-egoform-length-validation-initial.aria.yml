@@ -1,6 +1,5 @@
 - main:
   - heading "About you" [level=1]
-  - paragraph: Please answer the questions below.
   - text: Enter a short code
   - textbox "Enter a short code"
   - navigation:

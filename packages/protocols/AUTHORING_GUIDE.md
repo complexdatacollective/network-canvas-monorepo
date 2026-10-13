@@ -99,7 +99,7 @@ Every participant-facing field holds an object keyed by those tags, one entry pe
   `escapeMessageText` from `@codaco/protocol-validation` converts plain text for you.
 
 Localized fields include: stage `label`; prompt `text`; form `title`; form field `prompt` and `hint`;
-`introductionPanel.title` and `.text`; panel `title`; Information `title` and item `content` /
+panel `title`; Information `title` and item `content` /
 `description`; Narrative preset `label` and each `highlight[].label`; variable
 `options[].label` and scalar `minLabel` / `maxLabel`; TieStrengthCensus `negativeLabel`;
 CategoricalBin `otherVariablePrompt` and `otherOptionLabel`; Anonymisation
@@ -201,17 +201,17 @@ key); TieStrength `edgeVariable` (must be an **ordinal edge** variable); sociogr
 Required keys per stage type used by these templates:
 
 - **Information**: `items: [{ "id", "type":"text", "content":"…" }]` (use `text` items; `title?`).
-- **EgoForm**: `introductionPanel:{title,text?}` (REQUIRED; `text` may be left out for a title-only panel) + `form:{title?, fields:[{variable(ego key), prompt}]}`.
+- **EgoForm**: `form:{title, fields:[{variable(ego key), prompt}]}` (`title` REQUIRED; it is the heading shown above the questions). No stage has an `introductionPanel` in schema 9: to explain a stage to the participant, put an **Information** stage just before it (give it the same `skipLogic` so the two are skipped together).
 - **NameGenerator**: `subject`(node) + `form:{fields:[{variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
 - **NameGeneratorQuickAdd**: `subject`(node) + `quickAdd:"<a text node-variable key>"` + `prompts:[{id,text}]` (≥1). (No `form`.)
-- **AlterForm**: `subject`(node) + `introductionPanel` + `form:{fields:[{variable(node key),prompt}]}` + `filter?`.
-- **AlterEdgeForm**: `subject:{entity:"edge",type:"<edge key>"}` + `introductionPanel` + `form:{fields:[{variable(edge key),prompt}]}`.
+- **AlterForm**: `subject`(node) + `form:{fields:[{variable(node key),prompt}]}` + `filter?`.
+- **AlterEdgeForm**: `subject:{entity:"edge",type:"<edge key>"}` + `form:{fields:[{variable(edge key),prompt}]}`.
 - **OrdinalBin**: `subject`(node) + `prompts:[{id,text, variable:"<ordinal node key>", color?, bucketSortOrder?, binSortOrder?}]` (≥1).
 - **CategoricalBin**: `subject`(node) + `prompts:[{id,text, variable:"<categorical node key>", otherVariable?, otherVariablePrompt?, otherOptionLabel?}]` (≥1).
 - **Sociogram**: `subject`(node) + `prompts:[{id,text, layout:{layoutVariable:"<layout node key>"}, edges?:{create?:"<edge key>", display?:["<edge key>"]}, highlight?:{allowHighlighting?:bool, variable?:"<boolean node key>"}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}`.
 - **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:["<edge key>"]}, highlight?:[{variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
-- **DyadCensus**: `subject`(node) + `introductionPanel` + `prompts:[{id,text, createEdge:"<edge key>"}]` (≥1).
-- **TieStrengthCensus**: `subject`(node) + `introductionPanel` + `prompts:[{id,text, createEdge:"<edge key>", edgeVariable:"<ordinal edge key>", negativeLabel:"…"}]` (≥1).
+- **DyadCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>"}]` (≥1).
+- **TieStrengthCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>", edgeVariable:"<ordinal edge key>", negativeLabel:"…"}]` (≥1).
 - **Geospatial**: `subject`(node) + `prompts:[{id,text, variable:"<location node key>"}]` (≥1) + `mapOptions` (all REQUIRED):
   ```jsonc
   "mapOptions": {

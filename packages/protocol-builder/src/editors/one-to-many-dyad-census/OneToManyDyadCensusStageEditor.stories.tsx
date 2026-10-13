@@ -27,7 +27,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The stage a participant is shown one person and the group around them in. It has no introduction screen — the whole network is on screen from the first question — and it does have a decision the two pairwise censuses do not: what becomes of a person once they have been considered, which is asked after the prompts that describe the task.',
+          'The stage a participant is shown one person and the group around them in. It has a decision the two pairwise censuses do not: what becomes of a person once they have been considered, which is asked after the prompts that describe the task.',
       },
     },
   },

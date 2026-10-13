@@ -980,8 +980,8 @@ const codebook: Codebook = {
 };
 
 // Stage literals are deliberately partial: generation reads only the fields
-// below, and spelling out every author-facing field (introduction panels, form
-// titles, prompt colours) would bury what each fixture is actually exercising.
+// below, and spelling out every author-facing field (form titles, prompt
+// colours) would bury what each fixture is actually exercising.
 //
 // Every rule-bearing variable above sits in one of these forms, because a
 // variable no form renders is a variable the interview never validates. The

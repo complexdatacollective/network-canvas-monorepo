@@ -22,7 +22,21 @@ import ecoGeneticTemplate from './fixtures/eco-genetic-relationship-maps.schema-
 
 type Fields = Record<string, unknown>;
 
-const template = () => structuredClone(ecoGeneticTemplate) as Fields;
+// The template's two Ego Forms open on introduction panels with text, which
+// the migration turns into Information stages of their own before them. This
+// file follows the pedigree's introduction, so their text is taken out and an
+// Ego Form keeps its panel's title only as its form's title: the pedigree's
+// introduction is then the only stage the migration inserts before the
+// pedigree.
+const template = (): Fields => {
+  const protocol = structuredClone(ecoGeneticTemplate) as Fields;
+  for (const stage of protocol.stages as Fields[]) {
+    if (stage.type === 'EgoForm') {
+      Reflect.deleteProperty(stage.introductionPanel as Fields, 'text');
+    }
+  }
+  return protocol;
+};
 
 const withStages = (
   protocol: Fields,
@@ -189,11 +203,13 @@ describe('migrationV8toV9 session step', () => {
       }),
     );
 
-    expect(protocol.stages[dyadIndex + 1]?.id).toBe('dyad-family');
-    expect(result.currentStep).toBe(dyadIndex + 1);
+    // The pedigree's introduction and the census's own come before it.
+    expect(protocol.stages[dyadIndex + 1]?.id).toBe('dyad-family-introduction');
+    expect(protocol.stages[dyadIndex + 2]?.id).toBe('dyad-family');
+    expect(result.currentStep).toBe(dyadIndex + 2);
     expect(result.stageMetadata).toEqual({
       [PEDIGREE_INDEX + 1]: { framing: 'gendered' },
-      [dyadIndex + 1]: pairs,
+      [dyadIndex + 2]: pairs,
     });
   });
 

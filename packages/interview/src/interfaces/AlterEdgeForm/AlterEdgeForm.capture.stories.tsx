@@ -35,10 +35,6 @@ const build = () => {
   const stage = si.addStage('AlterEdgeForm', {
     label: 'Relationship Details',
     subject: { entity: 'edge', type: et.id },
-    introductionPanel: {
-      title: 'Relationship Details',
-      text: 'Please answer the following questions about each relationship in your network.',
-    },
   });
   stage.addFormField({
     component: 'RadioGroup',
@@ -57,18 +53,12 @@ const meta: Meta = {
   tags: ['capture'],
   parameters: {
     layout: 'fullscreen',
-    // advance: move past the introduction slide so the per-entity form
-    // is pictured (showNavigation keeps the Next button available; the
-    // runner removes the navigation before screenshotting).
-    capture: {
-      interface: 'AlterEdgeForm',
-      advance: 1,
-    } satisfies CaptureParameters,
+    capture: { interface: 'AlterEdgeForm' } satisfies CaptureParameters,
   },
 };
 
 export default meta;
 
 export const Capture: StoryObj = {
-  render: () => <CaptureStory build={build} currentStep={2} showNavigation />,
+  render: () => <CaptureStory build={build} currentStep={2} />,
 };

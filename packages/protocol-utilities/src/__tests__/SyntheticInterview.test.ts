@@ -849,7 +849,6 @@ describe('SyntheticInterview', () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('AlterForm', {
         initialNodes: { count: 3 },
-        introductionPanel: { title: 'About each person' },
       });
       stage.addFormField({ component: 'Text', prompt: 'Nickname' });
       stage.addFormField({ component: 'Number', prompt: 'Age' });
@@ -857,12 +856,43 @@ describe('SyntheticInterview', () => {
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       expect(stageConfig.type).toBe('AlterForm');
-      expect(stageConfig.introductionPanel).toBeDefined();
+      expect(stageConfig).not.toHaveProperty('introductionPanel');
 
       const form = stageConfig.form as {
         fields: { variable: string; component: string }[];
       };
       expect(form.fields).toHaveLength(2);
+    });
+  });
+
+  describe('EgoForm', () => {
+    it('carries the form title shown above the questions', () => {
+      const si = new SyntheticInterview();
+      const stage = si.addStage('EgoForm', {
+        form: { title: 'Your details', fields: [] },
+      });
+      stage.addFormField({ component: 'Text', prompt: 'Nickname' });
+
+      const stageConfig = si.getProtocol().stages[0] as Record<string, unknown>;
+      expect(stageConfig).not.toHaveProperty('introductionPanel');
+      const form = stageConfig.form as {
+        title: unknown;
+        fields: unknown[];
+      };
+      expect(form.title).toEqual({ 'en-US': 'Your details' });
+      expect(form.fields).toHaveLength(1);
+    });
+
+    it('defaults the form title when none is given', () => {
+      const si = new SyntheticInterview();
+      si.addStage('EgoForm').addFormField({
+        component: 'Text',
+        prompt: 'Nickname',
+      });
+
+      const form = (si.getProtocol().stages[0] as Record<string, unknown>)
+        .form as { title: unknown };
+      expect(form.title).toEqual({ 'en-US': 'About you' });
     });
   });
 
@@ -886,7 +916,6 @@ describe('SyntheticInterview', () => {
 
       const stage = si.addStage('AlterEdgeForm', {
         subject: { entity: 'edge', type: et.id },
-        introductionPanel: { title: 'About each relationship' },
       });
       stage.addFormField({ component: 'RadioGroup', prompt: 'Closeness' });
 
@@ -3183,7 +3212,7 @@ describe('localization', () => {
     const synth = new SyntheticInterview();
     synth.setLocalization({ defaultLocale: 'es', locales: ['en-US', 'es'] });
     const stage = synth.addStage('EgoForm', {
-      introductionPanel: { title: 'Sobre ti', text: 'Cuéntanos de ti.' },
+      form: { title: 'Sobre ti', fields: [] },
     });
     stage.addFormField({
       component: 'Text',

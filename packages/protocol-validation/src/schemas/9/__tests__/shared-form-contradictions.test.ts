@@ -42,11 +42,6 @@ const formFields = [
   { variable: 'boolB', prompt: localized('Second?') },
 ];
 
-const introductionPanel = {
-  title: localized('About this form'),
-  text: localized('Answer the questions.'),
-};
-
 const withEgoPair = () => {
   const base = createBaseProtocol();
   return {
@@ -204,8 +199,7 @@ describe('shared form stage-effective validation contradictions', () => {
             id: 'ego',
             type: 'EgoForm',
             label: localized('Ego'),
-            form: { fields: formFields },
-            introductionPanel,
+            form: { title: localized('About you'), fields: formFields },
           },
         ],
       }),
@@ -222,7 +216,6 @@ describe('shared form stage-effective validation contradictions', () => {
             label: localized('Alter'),
             subject: { entity: 'node', type: 'person' },
             form: { fields: formFields },
-            introductionPanel,
           },
         ],
       }),
@@ -239,7 +232,6 @@ describe('shared form stage-effective validation contradictions', () => {
             label: localized('Edge'),
             subject: { entity: 'edge', type: 'knows' },
             form: { fields: formFields },
-            introductionPanel,
           },
         ],
       }),
@@ -297,7 +289,6 @@ describe('shared form stage-effective validation contradictions', () => {
           form: {
             fields: [{ variable: 'name', prompt: localized('Name?') }],
           },
-          introductionPanel,
         },
       ],
     };
@@ -320,7 +311,6 @@ describe('shared form stage-effective validation contradictions', () => {
           form: {
             fields: [{ variable: 'boolA', prompt: localized('First?') }],
           },
-          introductionPanel,
         },
         {
           id: 'composer',
@@ -360,7 +350,6 @@ describe('shared form stage-effective validation contradictions', () => {
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: { fields: formFields },
-          introductionPanel,
         },
         {
           id: 'composer',
@@ -439,7 +428,6 @@ describe('shared form stage-effective validation contradictions', () => {
           label: localized('Alter'),
           subject: { entity: 'node', type: 'person' },
           form: { fields: formFields },
-          introductionPanel,
         },
       ],
     };
@@ -479,7 +467,6 @@ describe('shared form stage-effective validation contradictions', () => {
           form: {
             fields: [{ variable: 'age', prompt: localized('Age?') }],
           },
-          introductionPanel,
         },
       ],
     };

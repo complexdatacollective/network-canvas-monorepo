@@ -100,10 +100,6 @@ function conflictProtocol(): CurrentProtocol {
             { variable: 'sharedVar', prompt: { en: 'Shared field prompt' } },
           ],
         },
-        introductionPanel: {
-          title: { en: 'Person details' },
-          text: { en: 'A few questions about this person.' },
-        },
       },
       {
         id: 'form-only-form',
@@ -117,10 +113,6 @@ function conflictProtocol(): CurrentProtocol {
               prompt: { en: 'Form only field prompt' },
             },
           ],
-        },
-        introductionPanel: {
-          title: { en: 'Extra form' },
-          text: { en: 'A few more questions about this person.' },
         },
       },
       {

@@ -334,26 +334,6 @@
     "es": "Fuente de la lista",
     "from": "74a07e626 architect.sections.externalDataSource.rosterSource"
   },
-  "protocolBuilder.introduction.description": {
-    "en": "Introduce the task before participants complete its forms.",
-    "es": "Presenta la tarea antes de que los participantes completen sus formularios.",
-    "from": "74a07e626 architect.sections.introductionPanel.introduceTheTaskBeforeParticipantsComplete"
-  },
-  "protocolBuilder.introduction.headingLabel": {
-    "en": "Title",
-    "es": "Título",
-    "from": "74a07e626 architect.sections.introductionPanel.title"
-  },
-  "protocolBuilder.introduction.textLabel": {
-    "en": "Introduction text",
-    "es": "Texto de introducción",
-    "from": "74a07e626 architect.sections.introductionPanel.introductionText"
-  },
-  "protocolBuilder.introduction.title": {
-    "en": "Task introduction",
-    "es": "Introducción a la tarea",
-    "from": "74a07e626 architect.sections.introductionPanel.taskIntroduction"
-  },
   "protocolBuilder.nameGeneratorPrompts.assignmentsHint": {
     "en": "Use assigned values in skip logic or stage filtering rules.",
     "es": "Usa los valores asignados en las reglas de lógica de salto o de filtrado de etapas.",

@@ -77,9 +77,6 @@ describe('the editor for a form about each person', () => {
       'Alter Form',
     );
     expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
-      'Introduction to the alter form',
-    );
     expect(
       await screen.findByText("What is this person's relationship to you?", {
         exact: false,
@@ -148,16 +145,6 @@ describe('the editor for a form about each person', () => {
 
     await writeInto(harness, stageNameInput(), 'About each person');
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Title' }),
-      'About each person',
-    );
-    await writeInto(
-      harness,
-      screen.getByRole('textbox', { name: 'Introduction text' }),
-      'A few more questions about each person.',
-    );
 
     const dialog = await openField(harness, 'Create new form field');
     await collectAttribute(harness, dialog, 'relationship_to_ego');
@@ -178,10 +165,6 @@ describe('the editor for a form about each person', () => {
     expect(request?.stageDocument.subject).toEqual({
       entity: 'node',
       type: 'person',
-    });
-    expect(request?.stageDocument.introductionPanel).toEqual({
-      title: { 'en-US': 'About each person' },
-      text: { 'en-US': 'A few more questions about each person.' },
     });
     expect(fieldsOf(request?.stageDocument ?? {})).toEqual([
       {
@@ -221,10 +204,12 @@ describe('the editor for a form about each person', () => {
   it('writes nothing when the researcher discards the edit', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
+    await harness.user.clear(
+      screen.getByRole('textbox', { name: 'Stage name' }),
+    );
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Title' }),
-      'A heading nobody kept',
+      screen.getByRole('textbox', { name: 'Stage name' }),
+      'A name nobody kept',
     );
     expectStageUntouched(harness);
 
@@ -279,7 +264,9 @@ describe('the editor for a form about each person', () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Title' })).toBeDisabled(),
+      expect(
+        screen.getByRole('textbox', { name: 'Stage name' }),
+      ).toBeDisabled(),
     );
 
     // The shell's refusal is the guarantee, not the chrome above it: a

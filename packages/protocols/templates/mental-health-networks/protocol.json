@@ -321,16 +321,34 @@
       ]
     },
     {
+      "id": "information-intro-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "About this interview"
+      },
+      "title": {
+        "en-US": "About this interview"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience.\n\n### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If reading or talking about these topics brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate local support whether or not you choose to participate.**"
+          }
+        }
+      ]
+    },
+    {
       "id": "information-intro",
       "type": "EgoForm",
-      "label": { "en-US": "Welcome and consent" },
-      "introductionPanel": {
-        "title": { "en-US": "About this interview" },
-        "text": {
-          "en-US": "## Thank you for taking part\n\nIn this interview we will talk about the people in your life and how they relate to your mental health and wellbeing. We will ask you to name people who **support** you, and also people who are sometimes a **source of stress, conflict, or strain**. There are no right or wrong answers — we are simply interested in your own experience.\n\n### Some of these questions are personal\n\nWe will ask about how you have been feeling recently and about who knows about your mental health. You are free to skip any question, to pause, or to stop the interview at any time, and you do not have to give a reason. The people you name are recorded only by the first name or nickname you choose, and your answers are kept confidential and used only for research.\n\n### Your consent\n\nThe researcher should explain the study and give you a chance to ask questions before you choose an option below. If you do not agree to take part, the interview will end. If you would like to stop at any later point, just let the interviewer know.\n\n**If reading or talking about these topics brings up difficult feelings, please tell the interviewer. They can help you pause and find appropriate local support whether or not you choose to participate.**"
-        }
+      "label": {
+        "en-US": "Welcome and consent"
       },
       "form": {
+        "title": {
+          "en-US": "About this interview"
+        },
         "fields": [
           {
             "variable": "participant_consent",
@@ -339,6 +357,44 @@
             }
           }
         ]
+      }
+    },
+    {
+      "id": "ego-form-background-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "A few questions about you"
+      },
+      "title": {
+        "en-US": "A few questions about you"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "Before we talk about the people in your life, we would like to ask how you have been feeling **over the last 30 days**. Please answer as honestly as you can. Remember you can skip any question you would prefer not to answer."
+          }
+        }
+      ],
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "fbbf3e37-d0d9-45c8-9974-5305b452e274",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
       }
     },
     {
@@ -362,13 +418,10 @@
         },
         "destination": { "type": "finish" }
       },
-      "introductionPanel": {
-        "title": { "en-US": "A few questions about you" },
-        "text": {
-          "en-US": "Before we talk about the people in your life, we would like to ask how you have been feeling **over the last 30 days**. Please answer as honestly as you can. Remember you can skip any question you would prefer not to answer."
-        }
-      },
       "form": {
+        "title": {
+          "en-US": "A few questions about you"
+        },
         "fields": [
           {
             "variable": "k6_1",
@@ -536,18 +589,31 @@
       ]
     },
     {
+      "id": "alter-form-attributes-introduction",
+      "type": "Information",
+      "label": {
+        "en-US": "Tell us a little about each person"
+      },
+      "title": {
+        "en-US": "Tell us a little about each person"
+      },
+      "items": [
+        {
+          "id": "introduction-text",
+          "type": "text",
+          "content": {
+            "en-US": "For each person you named, we would like to understand your relationship with them, what kinds of support they provide, whether they know about your mental health, and how often you are in contact. There are no right answers — just describe things as they are for you."
+          }
+        }
+      ]
+    },
+    {
       "id": "alter-form-attributes",
       "type": "AlterForm",
       "label": { "en-US": "About each person" },
       "subject": {
         "entity": "node",
         "type": "person"
-      },
-      "introductionPanel": {
-        "title": { "en-US": "Tell us a little about each person" },
-        "text": {
-          "en-US": "For each person you named, we would like to understand your relationship with them, what kinds of support they provide, whether they know about your mental health, and how often you are in contact. There are no right answers — just describe things as they are for you."
-        }
       },
       "form": {
         "fields": [
