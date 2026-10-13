@@ -331,23 +331,25 @@ seconds, minutes or hours:
 
 <!-- rate-limits start -->
 
-| Scope                        | Limit     | What it protects                                                          |
-| ---------------------------- | --------- | ------------------------------------------------------------------------- |
-| `sign_in_address`            | `10/10m`  | Credential stuffing from one host, without locking out a shared address   |
-| `sign_in_email`              | `5/10m`   | One account, against attempts spread across many addresses                |
-| `invitation_accept`          | `10/10m`  | A team invitation token, against being brute-forced through its link      |
-| `participant_redeem_address` | `20/10m`  | Participation links, loosely: a lab runs several interviews from one host |
-| `participant_redeem_link`    | `5/10m`   | One participant's own link, against repeated redemption                   |
-| `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                      |
-| `participant_session`        | `60/1m`   | Reading an interview, against a script repeating the protocol's assembly  |
-| `participant_analytics`      | `60/1m`   | Interview usability events, against a page flooding the forwarder         |
-| `error_report_address`       | `30/1m`   | Browser error reports, against a page flooding the error reporter         |
-| `rpc_user`                   | `600/1m`  | The instance, against one runaway client                                  |
-| `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                |
-| `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows  |
-| `public_api`                 | `300/1m`  | `/api/v1`, leaving the instance responsive while a script pages results   |
-| `api_docs`                   | `30/1m`   | `/api/v1/docs`, against the reference page becoming a bandwidth amplifier |
-| `ws_upgrade`                 | `30/1m`   | Reconnection, against a flapping client becoming a connection storm       |
+| Scope                        | Limit     | What it protects                                                             |
+| ---------------------------- | --------- | ---------------------------------------------------------------------------- |
+| `sign_in_address`            | `10/10m`  | Credential stuffing from one host, without locking out a shared address      |
+| `sign_in_email`              | `5/10m`   | One account, against attempts spread across many addresses                   |
+| `invitation_accept`          | `10/10m`  | A team invitation token, against being brute-forced through its link         |
+| `participant_redeem_address` | `20/10m`  | Participation links, loosely: a lab runs several interviews from one host    |
+| `participant_redeem_link`    | `5/10m`   | One participant's own link, against repeated redemption                      |
+| `participant_sync`           | `600/1m`  | Interview sync, against a script replaying a session                         |
+| `participant_session`        | `60/1m`   | Reading an interview, against a script repeating the protocol's assembly     |
+| `participant_analytics`      | `60/1m`   | Interview usability events, against a page flooding the forwarder            |
+| `error_report_address`       | `30/1m`   | Browser error reports, against a page flooding the error reporter            |
+| `researcher_log`             | `60/1m`   | Researcher app log batches, against one signed-in tab flooding the forwarder |
+| `participant_log`            | `30/1m`   | Interview page log batches, against one session flooding the forwarder       |
+| `rpc_user`                   | `600/1m`  | The instance, against one runaway client                                     |
+| `rpc_team`                   | `3000/1m` | The instance, against a whole team at once                                   |
+| `storage_read`               | `2000/5m` | Asset delivery, generously: an interview fetches every stimulus it shows     |
+| `public_api`                 | `300/1m`  | `/api/v1`, leaving the instance responsive while a script pages results      |
+| `api_docs`                   | `30/1m`   | `/api/v1/docs`, against the reference page becoming a bandwidth amplifier    |
+| `ws_upgrade`                 | `30/1m`   | Reconnection, against a flapping client becoming a connection storm          |
 
 <!-- rate-limits end -->
 

@@ -13,6 +13,7 @@ import { installParticipantHarness } from '../../test/participantHarness.ts';
 import {
   createParticipantHandlers,
   pageRevisionBase,
+  type SaveFault,
 } from '../interviewHandlers.ts';
 
 const session = (name: string): SessionPayload => ({
@@ -40,6 +41,7 @@ const session = (name: string): SessionPayload => ({
 
 const handlersFor = (step = 1) => {
   const onNotice = vi.fn();
+  const onSaveFault = vi.fn<(fault: SaveFault) => void>();
   const handlers = createParticipantHandlers({
     holderEpoch: 3,
     revision: '7',
@@ -47,8 +49,9 @@ const handlersFor = (step = 1) => {
     stageIds: ['first', 'second'],
     getCurrentStep: () => step,
     onNotice,
+    onSaveFault,
   });
-  return { ...handlers, onNotice };
+  return { ...handlers, onNotice, onSaveFault };
 };
 
 const SYNC = { immediate: true, unloading: false };
@@ -714,5 +717,59 @@ describe('the participant finish handler', () => {
 
     await expect(onFinish('session-1', signal)).rejects.toBeDefined();
     expect(onNotice).not.toHaveBeenCalled();
+  });
+});
+
+describe('the participant save faults', () => {
+  it('reports a save that succeeded only after retrying, with its attempts', async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        attempts += 1;
+        return attempts < 3
+          ? Effect.fail(new RateLimited({ retryAfterSeconds: 1 }))
+          : Effect.succeed({ revision: payload.revision, applied: true });
+      },
+    });
+    const { onSync, onSaveFault } = handlersFor();
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    await vi.advanceTimersByTimeAsync(2000);
+    await saved;
+
+    expect(onSaveFault.mock.calls).toEqual([
+      [{ kind: 'retried', attempts: 3 }],
+    ]);
+  });
+
+  it('reports nothing for a save that went through first time', async () => {
+    installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+    });
+    const { onSync, onSaveFault } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+
+    expect(onSaveFault).not.toHaveBeenCalled();
+  });
+
+  it('reports a save that failed, with its error and attempts', async () => {
+    vi.useFakeTimers();
+    const refusal = new RateLimited({ retryAfterSeconds: 1 });
+    installParticipantHarness({
+      'participant.sync': () => Effect.fail(refusal),
+    });
+    const { onSync, onSaveFault } = handlersFor();
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    const refused = expect(saved).rejects.toBeInstanceOf(RateLimited);
+    await vi.advanceTimersByTimeAsync(3000);
+    await refused;
+
+    expect(onSaveFault.mock.calls).toEqual([
+      [{ kind: 'failed', error: refusal, attempts: 3 }],
+    ]);
   });
 });

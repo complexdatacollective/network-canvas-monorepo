@@ -8,13 +8,24 @@ import type {
   StepChangeHandler,
 } from '@codaco/interview/contract';
 
+import { faultCodeOf } from '../runtime/errors.ts';
 import { useErrorTelemetry } from '../runtime/telemetry.ts';
 import { createParticipantAnalyticsClient } from './analyticsClient.ts';
 import { createAssetResolver } from './assetUrl.ts';
 import {
   createParticipantHandlers,
   pageRevisionBase,
+  type SaveFault,
 } from './interviewHandlers.ts';
+import {
+  faultObservingClient,
+  logAnswerSaveFailed,
+  logAnswerSaveRetried,
+  logAssetFailed,
+  participantStage,
+  useParticipantLogs,
+  watchParticipantConnection,
+} from './participantLogs.ts';
 import ParticipantNotice, {
   type ParticipantNoticeKind,
 } from './ParticipantNotice.tsx';
@@ -42,6 +53,7 @@ function InterviewSessionView() {
 
   const { sessionToken } = route.useParams();
   useErrorTelemetry('participant', loaded.analytics);
+  const logging = useParticipantLogs(sessionToken, loaded.logLevel);
   const analyticsClient = useMemo(
     () =>
       loaded.analytics
@@ -49,6 +61,23 @@ function InterviewSessionView() {
         : undefined,
     [loaded.analytics, sessionToken],
   );
+  const stageTypes = useMemo(
+    () => payload.protocol.stages.map((stage) => stage.type),
+    [payload],
+  );
+  const currentStage = useCallback(
+    () => participantStage(stageTypes, currentStepRef.current),
+    [stageTypes],
+  );
+  const interviewClient = useMemo(
+    () =>
+      analyticsClient === undefined && !logging
+        ? undefined
+        : faultObservingClient(analyticsClient, stageTypes),
+    [analyticsClient, logging, stageTypes],
+  );
+
+  useEffect(() => watchParticipantConnection(currentStage), [currentStage]);
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
     () =>
@@ -60,8 +89,21 @@ function InterviewSessionView() {
         stageIds: payload.protocol.stages.map((stage) => stage.id),
         getCurrentStep: () => currentStepRef.current,
         onNotice: setNotice,
+        onSaveFault: (fault: SaveFault) => {
+          const stage = currentStage();
+          if (stage === undefined) return;
+          if (fault.kind === 'retried') {
+            logAnswerSaveRetried(stage, fault.attempts);
+          } else {
+            logAnswerSaveFailed(
+              stage,
+              faultCodeOf(fault.error),
+              fault.attempts,
+            );
+          }
+        },
       }),
-    [loaded, payload],
+    [loaded, payload, currentStage],
   );
 
   useEffect(() => {
@@ -91,8 +133,12 @@ function InterviewSessionView() {
   );
 
   const onRequestAsset = useMemo<AssetRequestHandler>(
-    () => createAssetResolver(payload.protocol.assets),
-    [payload],
+    () =>
+      createAssetResolver(payload.protocol.assets, (code) => {
+        const stage = currentStage();
+        if (stage !== undefined) logAssetFailed(stage, code);
+      }),
+    [payload, currentStage],
   );
 
   if (notice !== undefined) return <ParticipantNotice kind={notice} />;
@@ -107,8 +153,8 @@ function InterviewSessionView() {
       onFinish={onFinish}
       onRequestAsset={onRequestAsset}
       analytics={ANALYTICS}
-      posthogClient={analyticsClient}
-      disableAnalytics={analyticsClient === undefined}
+      posthogClient={interviewClient}
+      disableAnalytics={interviewClient === undefined}
       allowUserScaling
     />
   );

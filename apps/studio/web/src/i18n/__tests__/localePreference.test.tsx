@@ -79,6 +79,7 @@ const STATUS: InstanceStatus = {
   deployment: { mode: 'managed', billing: false },
   setup: { required: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 
 const MIRROR_KEY = 'studio.locale';

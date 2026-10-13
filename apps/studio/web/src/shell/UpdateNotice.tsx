@@ -1,4 +1,5 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -6,6 +7,8 @@ import { Alert } from '@codaco/fresco-ui/Alert';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { UPGRADE_GUIDE_URL } from '@codaco/studio-contract/surfaces';
 
+import { logResearcher } from '../runtime/browserLogs.ts';
+import { faultCodeOf } from '../runtime/errors.ts';
 import { rpcKey, rpcQuery } from '../runtime/rpc.ts';
 
 const messages = defineMessages({
@@ -63,6 +66,15 @@ export default function UpdateNotice({
 }) {
   const intl = useAppIntl();
   const update = useQuery(rpcQuery('status.updateAvailable', undefined));
+  const failure = update.error;
+  useEffect(() => {
+    if (failure === null) return;
+    logResearcher({
+      message: 'Update check failed',
+      level: 'Warn',
+      attributes: { error_code: faultCodeOf(failure) },
+    });
+  }, [failure]);
   const available = update.data ?? null;
   // The mode is asked only once there is a notice to show, so a shell with no
   // update to announce makes no second request. It is the same immutable

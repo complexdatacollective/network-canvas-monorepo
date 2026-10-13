@@ -127,6 +127,7 @@ const STATUS: InstanceStatus = {
   deployment: { mode: 'managed', billing: false },
   setup: { required: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 
 const MEMBERS = `/team/${TEAM.id}/members`;

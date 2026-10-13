@@ -115,7 +115,9 @@ const errorReport = (
   };
 };
 
-const ReportProtocol = RpcClient.layerProtocolHttp({ url: RPC_PATH }).pipe(
+export const CredentiallessProtocol = RpcClient.layerProtocolHttp({
+  url: RPC_PATH,
+}).pipe(
   Layer.provide(RpcSerialization.layerNdjson),
   Layer.provide(
     FetchHttpClient.layer.pipe(
@@ -133,7 +135,7 @@ const sendReport: SendReport = (report) =>
         RpcClient.make(TelemetryRpcs, { flatten: true }),
         (client) => client('telemetry.report', report),
       ),
-    ).pipe(Effect.provide(ReportProtocol), Effect.ignore),
+    ).pipe(Effect.provide(CredentiallessProtocol), Effect.ignore),
   );
 
 export type TelemetryTarget = Pick<

@@ -66,4 +66,33 @@ describe('the participant asset resolver', () => {
     const resolve = createAssetResolver([]);
     await expect(resolve('missing')).rejects.toThrow('missing');
   });
+
+  it('reports why an asset failed to load, and nothing for one that loaded', async () => {
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('', { status: 404 }))
+      .mockResolvedValueOnce(new Response('', { status: 503 }))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(new Response(SVG));
+    vi.stubGlobal('fetch', fetchSpy);
+    const failures: string[] = [];
+    const resolve = createAssetResolver(
+      [asset('diagram', `${HASH}.svg`), asset('photo', `${HASH}.png`)],
+      (code) => failures.push(code),
+    );
+
+    await expect(resolve('missing')).rejects.toThrow('missing');
+    await expect(resolve('diagram')).rejects.toThrow('404');
+    await expect(resolve('diagram')).rejects.toThrow('503');
+    await expect(resolve('diagram')).rejects.toThrow('Failed to fetch');
+    await expect(resolve('diagram')).resolves.toMatch(/^data:image\/svg\+xml/);
+    await expect(resolve('photo')).resolves.toBe(`/storage/${HASH}`);
+
+    expect(failures).toEqual([
+      'not_found',
+      'not_found',
+      'http_error',
+      'transport',
+    ]);
+  });
 });

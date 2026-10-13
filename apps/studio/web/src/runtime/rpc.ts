@@ -3,6 +3,7 @@ import { isTaggedError } from '@codaco/effect-query/errors';
 import type { RpcAdapter } from '@codaco/effect-query/types';
 
 import { reportUnauthorizedResponse } from '../lib/session.ts';
+import { logResearcher } from './browserLogs.ts';
 import { refusalOf } from './errors.ts';
 import { runtime, StudioClient, type StudioRpcsType } from './runtime.ts';
 
@@ -10,12 +11,23 @@ import { runtime, StudioClient, type StudioRpcsType } from './runtime.ts';
  * Reported from the adapter's funnel: `transformClient` sees every rpc response
  * as a 200, and `RpcMiddleware.layerClient` wraps only the send, so neither sees a refusal.
  */
-export const reportUnauthorizedFailure = (error: unknown): void => {
+const reportUnauthorizedFailure = (error: unknown): void => {
   if (
     refusalOf(error)?.kind === 'unauthorized' ||
     isTaggedError(error, 'HostUnauthorized')
   ) {
     void reportUnauthorizedResponse();
+  }
+};
+
+export const reportRpcFailure = (error: unknown): void => {
+  reportUnauthorizedFailure(error);
+  if (refusalOf(error)?.kind === 'transport') {
+    logResearcher({
+      message: 'Request to the server failed',
+      level: 'Warn',
+      attributes: { error_code: 'transport' },
+    });
   }
 };
 
@@ -26,7 +38,7 @@ export const reportUnauthorizedFailure = (error: unknown): void => {
 const adapter: RpcAdapter<StudioRpcsType> = makeRpcAdapter({
   runtime,
   client: StudioClient,
-  onFailure: reportUnauthorizedFailure,
+  onFailure: reportRpcFailure,
 });
 
 export const {

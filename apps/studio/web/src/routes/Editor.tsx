@@ -57,12 +57,9 @@ import { createUuid } from '../lib/createUuid.ts';
 import { toStudyId } from '../lib/ids.ts';
 import { isForbidden } from '../runtime/errors.ts';
 import { HostClient } from '../runtime/hostClient.ts';
+import { observeLocks } from '../runtime/hostFaults.ts';
 import { hostRuntime } from '../runtime/hostSession.ts';
-import {
-  reportUnauthorizedFailure,
-  rpcCall,
-  rpcQuery,
-} from '../runtime/rpc.ts';
+import { reportRpcFailure, rpcCall, rpcQuery } from '../runtime/rpc.ts';
 
 // The route id carries the area layout it sits under (§5.3), so it moved with
 // the screen onto `/study/$studyId/editor`.
@@ -71,11 +68,13 @@ const route = getRouteApi('/app/study/$studyId/editor/');
 /**
  * Built once: `ProtocolBuilder` memoises its whole context on this identity.
  */
-const hostAdapter: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
-  runtime: hostRuntime,
-  client: HostClient,
-  onFailure: reportUnauthorizedFailure,
-});
+const hostAdapter: RpcAdapter<ProtocolBuilderRpcs> = observeLocks(
+  makeRpcAdapter({
+    runtime: hostRuntime,
+    client: HostClient,
+    onFailure: reportRpcFailure,
+  }),
+);
 
 /** What `protocols.draft` and every editing procedure are addressed by. */
 type DraftAddress = {

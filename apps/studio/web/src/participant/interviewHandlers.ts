@@ -37,7 +37,16 @@ type Args = {
   readonly stageIds: readonly string[];
   readonly getCurrentStep: () => number;
   readonly onNotice: (kind: ParticipantNoticeKind) => void;
+  readonly onSaveFault?: (fault: SaveFault) => void;
 };
+
+export type SaveFault =
+  | {
+      readonly kind: 'failed';
+      readonly error: unknown;
+      readonly attempts: number;
+    }
+  | { readonly kind: 'retried'; readonly attempts: number };
 
 type ParticipantHandlers = {
   readonly onSync: SyncHandler;
@@ -58,6 +67,7 @@ export function createParticipantHandlers({
   stageIds,
   getCurrentStep,
   onNotice,
+  onSaveFault,
 }: Args): ParticipantHandlers {
   // The revision the server holds as far as this page knows: the stored one,
   // then each save it applied. Finishing presents it, since the server
@@ -73,6 +83,7 @@ export function createParticipantHandlers({
   // The stage the newest applied save recorded.
   let savedStep = getCurrentStep();
   let stopped = false;
+  let attempts = 0;
 
   const stop = (kind: ParticipantNoticeKind): void => {
     stopped = true;
@@ -101,8 +112,10 @@ export function createParticipantHandlers({
     payload: SyncPayload,
   ): Promise<{ readonly stored: bigint; readonly applied: boolean }> => {
     for (let attempt = 1; ; attempt += 1) {
+      attempts = attempt;
       try {
         const result = await participantCall('participant.sync', payload);
+        if (attempt > 1) onSaveFault?.({ kind: 'retried', attempts: attempt });
         return { stored: BigInt(result.revision), applied: result.applied };
       } catch (error) {
         const delay = retryAfterSeconds(error);
@@ -123,6 +136,7 @@ export function createParticipantHandlers({
   type Saved = { readonly stored: bigint; readonly applied: boolean };
 
   const deliverUnloading = async (payload: SyncPayload): Promise<Saved> => {
+    attempts = 1;
     const result = await participantUnloadingSync(payload);
     return { stored: BigInt(result.revision), applied: result.applied };
   };
@@ -162,6 +176,7 @@ export function createParticipantHandlers({
       try {
         await send(snapshot, { unloading });
       } catch (error) {
+        onSaveFault?.({ kind: 'failed', error, attempts });
         const kind = noticeOf(error);
         if (kind !== undefined) stop(kind);
         throw error;

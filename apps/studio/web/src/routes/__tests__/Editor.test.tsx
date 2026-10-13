@@ -182,6 +182,7 @@ const STATUS: InstanceStatus = {
   deployment: { mode: 'managed', billing: false },
   setup: { required: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 
 /** The host these tests seed, kept so a second caller can be made from it. */

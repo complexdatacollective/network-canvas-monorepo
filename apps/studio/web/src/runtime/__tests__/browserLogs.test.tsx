@@ -1,0 +1,274 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, renderHook, waitFor } from '@testing-library/react';
+import { Effect, Schema } from 'effect';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
+import {
+  BROWSER_LOG_PATHS,
+  BROWSER_LOG_TEAM_HEADER,
+  BrowserLogsBody,
+  browserLogRecords,
+  type LogLevelName,
+} from '@codaco/studio-contract/schema/browser-logs';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
+
+import {
+  ResearcherErrorTelemetry,
+  setResearcherLogTeam,
+} from '../../lib/errorTelemetry.ts';
+import { useParticipantLogs } from '../../participant/participantLogs.ts';
+import { installRpcHarness } from '../../test/rpcHarness.ts';
+import { logParticipant, logResearcher } from '../browserLogs.ts';
+
+const fetchSpy = vi.fn<typeof globalThis.fetch>(async () =>
+  Promise.resolve(new Response(null, { status: 204 })),
+);
+
+vi.stubGlobal('fetch', fetchSpy);
+
+const statusWith = (
+  telemetry: boolean,
+  logLevel: LogLevelName = 'Info',
+): InstanceStatus => ({
+  name: 'Network Canvas Studio',
+  version: '1.2.3',
+  auth: {
+    enabled: true,
+    magicLink: true,
+    emailAndPassword: true,
+    socialProviders: [],
+  },
+  deployment: { mode: 'self-hosted', billing: false },
+  setup: { required: false },
+  telemetry,
+  logLevel,
+});
+
+const urlOf = (input: Parameters<typeof globalThis.fetch>[0]): URL =>
+  new URL(
+    input instanceof Request ? input.url : String(input),
+    window.location.href,
+  );
+
+const logCalls = (path: string) =>
+  fetchSpy.mock.calls.filter(([input]) => urlOf(input).pathname === path);
+
+const decodeBody = Schema.decodeUnknownSync(
+  Schema.fromJsonString(BrowserLogsBody),
+  { onExcessProperty: 'error' },
+);
+
+const recordsSent = (path: string) =>
+  logCalls(path).flatMap(([, init]) =>
+    browserLogRecords(decodeBody(String(init?.body))),
+  );
+
+const EXPORT_WAIT_MS = 1600;
+
+const exportWindow = () =>
+  new Promise((done) => setTimeout(done, EXPORT_WAIT_MS));
+
+const renderResearcher = (telemetry: boolean, logLevel?: LogLevelName) => {
+  const harness = installRpcHarness({
+    status: () => Effect.succeed(statusWith(telemetry, logLevel)),
+  });
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const view = render(
+    <QueryClientProvider client={queryClient}>
+      <ResearcherErrorTelemetry />
+    </QueryClientProvider>,
+  );
+  return { harness, view };
+};
+
+const statusSettled = async (harness: {
+  readonly calls: ReadonlyArray<{ readonly tag: string }>;
+}) => {
+  await waitFor(() =>
+    expect(harness.calls.map((call) => call.tag)).toContain('status'),
+  );
+  await new Promise((done) => setTimeout(done, 50));
+};
+
+const SESSION = 'participant-session-token';
+
+beforeEach(() => {
+  fetchSpy.mockClear();
+  setResearcherLogTeam(undefined);
+});
+
+afterEach(() => {
+  setResearcherLogTeam(undefined);
+});
+
+describe('researcher logs', () => {
+  it('sends no record while status reports telemetry off', async () => {
+    const { harness, view } = renderResearcher(false);
+    await statusSettled(harness);
+    logResearcher({
+      message: 'Editing lock lost',
+      level: 'Warn',
+      attributes: {},
+    });
+    await exportWindow();
+    view.unmount();
+    expect(logCalls(BROWSER_LOG_PATHS.researcher)).toEqual([]);
+  });
+
+  it('sends a catalogued record to its own origin, with its team and nothing else', async () => {
+    setResearcherLogTeam('team-on-screen');
+    const { harness, view } = renderResearcher(true);
+    await statusSettled(harness);
+    logResearcher({
+      message: 'Request to the server failed',
+      level: 'Warn',
+      attributes: { error_code: 'transport' },
+    });
+    await waitFor(
+      () =>
+        expect(logCalls(BROWSER_LOG_PATHS.researcher).length).toBeGreaterThan(
+          0,
+        ),
+      { timeout: 3000 },
+    );
+    view.unmount();
+    for (const [input, init] of fetchSpy.mock.calls) {
+      expect(urlOf(input).origin).toBe(window.location.origin);
+      if (urlOf(input).pathname === BROWSER_LOG_PATHS.researcher) {
+        expect(init?.credentials).toBe('same-origin');
+        expect(new Headers(init?.headers).get(BROWSER_LOG_TEAM_HEADER)).toBe(
+          'team-on-screen',
+        );
+      }
+    }
+    expect(
+      recordsSent(BROWSER_LOG_PATHS.researcher).map((record) => ({
+        severityText: record.severityText,
+        body: record.body,
+        attributes: record.attributes,
+      })),
+    ).toEqual([
+      {
+        severityText: 'Warn',
+        body: { stringValue: 'Request to the server failed' },
+        attributes: [
+          { key: 'error_code', value: { stringValue: 'transport' } },
+        ],
+      },
+    ]);
+  });
+
+  it('does not send a record below the configured level', async () => {
+    const { harness, view } = renderResearcher(true, 'Error');
+    await statusSettled(harness);
+    logResearcher({
+      message: 'Editing lock refused',
+      level: 'Warn',
+      attributes: {},
+    });
+    logResearcher({
+      message: 'Screen failed to render',
+      level: 'Error',
+      attributes: { error_code: 'unknown' },
+    });
+    await waitFor(
+      () =>
+        expect(logCalls(BROWSER_LOG_PATHS.researcher).length).toBeGreaterThan(
+          0,
+        ),
+      { timeout: 3000 },
+    );
+    view.unmount();
+    expect(
+      recordsSent(BROWSER_LOG_PATHS.researcher).map(
+        (record) => record.body.stringValue,
+      ),
+    ).toEqual(['Screen failed to render']);
+  });
+});
+
+describe('participant logs', () => {
+  it('sends nothing while the session reports telemetry off', async () => {
+    const view = renderHook(() => useParticipantLogs(SESSION, null));
+    logParticipant({
+      message: 'Participant connection lost',
+      level: 'Warn',
+      attributes: { stage_index: 1, interface_type: 'Sociogram' },
+    });
+    await exportWindow();
+    view.unmount();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('sends a catalogued record with the session header and no credentials', async () => {
+    const view = renderHook(() => useParticipantLogs(SESSION, 'Info'));
+    logParticipant({
+      message: 'Participant connection restored',
+      level: 'Info',
+      attributes: {
+        stage_index: 1,
+        interface_type: 'Sociogram',
+        duration_ms: 4200,
+      },
+    });
+    await waitFor(
+      () =>
+        expect(logCalls(BROWSER_LOG_PATHS.participant).length).toBeGreaterThan(
+          0,
+        ),
+      { timeout: 3000 },
+    );
+    view.unmount();
+    const [[input, init]] = logCalls(BROWSER_LOG_PATHS.participant) as [
+      Parameters<typeof globalThis.fetch>,
+    ];
+    expect(urlOf(input).origin).toBe(window.location.origin);
+    expect(init?.credentials).toBe('omit');
+    expect(new Headers(init?.headers).get(PARTICIPANT_SESSION_HEADER)).toBe(
+      SESSION,
+    );
+    expect(recordsSent(BROWSER_LOG_PATHS.participant)).toEqual([
+      expect.objectContaining({
+        severityText: 'Info',
+        body: { stringValue: 'Participant connection restored' },
+        attributes: [
+          { key: 'stage_index', value: { intValue: 1 } },
+          { key: 'interface_type', value: { stringValue: 'Sociogram' } },
+          { key: 'duration_ms', value: { intValue: 4200 } },
+        ],
+      }),
+    ]);
+  });
+});
+
+const PARTICIPANT_SOURCE = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../participant',
+);
+
+const sourceFiles = (directory: string): string[] =>
+  readdirSync(directory).flatMap((name) => {
+    const path = join(directory, name);
+    if (statSync(path).isDirectory()) {
+      return name === '__tests__' ? [] : sourceFiles(path);
+    }
+    return /\.tsx?$/.test(name) ? [path] : [];
+  });
+
+describe('participant pages', () => {
+  it('log only through the catalogue', () => {
+    const files = sourceFiles(PARTICIPANT_SOURCE);
+    expect(files.length).toBeGreaterThan(0);
+    const offending = files.filter((path) =>
+      /\bEffect\.log|\bconsole\.|\bLogger\./.test(readFileSync(path, 'utf8')),
+    );
+    expect(offending).toEqual([]);
+  });
+});

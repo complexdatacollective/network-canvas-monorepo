@@ -471,6 +471,7 @@ beforeEach(() => {
         deployment: fixtures.deployment,
         setup: fixtures.setup,
         telemetry: false,
+        logLevel: 'Info',
       }),
     'me': () =>
       Effect.succeed({

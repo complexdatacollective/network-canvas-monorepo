@@ -3,6 +3,7 @@ import { useParams } from '@tanstack/react-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { authClient } from '../lib/auth.ts';
+import { setResearcherLogTeam } from '../lib/errorTelemetry.ts';
 import { invalidateMemberships } from '../lib/landing.ts';
 
 /**
@@ -120,6 +121,8 @@ export function useActiveTeamReconciler(): ActiveTeamFailure | undefined {
   const [refreshedTeamId, setRefreshedTeamId] = useState<string | undefined>(
     undefined,
   );
+
+  useEffect(() => setResearcherLogTeam(activeTeamId), [activeTeamId]);
 
   useEffect(() => {
     // The second half of a reconciliation, before anything else: the write

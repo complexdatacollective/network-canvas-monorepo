@@ -1,10 +1,12 @@
 import type { ErrorComponentProps } from '@tanstack/react-router';
+import { useEffect } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { ServerUnreachableError } from '../lib/serverUnreachable.ts';
-import { refusalOf } from '../runtime/errors.ts';
+import { logResearcher } from '../runtime/browserLogs.ts';
+import { faultCodeOf, refusalOf } from '../runtime/errors.ts';
 import StatusScreen from '../shell/StatusScreen.tsx';
 
 const messages = defineMessages({
@@ -44,8 +46,24 @@ const messages = defineMessages({
 // The error message itself is deliberately not shown — an unhandled render
 // error's text is for a developer, and this screen is for whoever is holding
 // the tab.
-export default function ErrorScreen({ error }: ErrorComponentProps) {
+export default function ErrorScreen({
+  error,
+  participant = false,
+}: ErrorComponentProps & { readonly participant?: boolean }) {
   const intl = useAppIntl();
+  useEffect(() => {
+    if (participant) return;
+    logResearcher({
+      message: 'Screen failed to render',
+      level: 'Error',
+      attributes: {
+        error_code:
+          error instanceof ServerUnreachableError
+            ? 'transport'
+            : faultCodeOf(error),
+      },
+    });
+  }, [error, participant]);
   const explanation =
     error instanceof ServerUnreachableError
       ? messages.serverUnreachable

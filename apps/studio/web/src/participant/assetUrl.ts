@@ -1,4 +1,5 @@
 import type { ResolvedAsset } from '@codaco/interview/contract';
+import type { FaultCode } from '@codaco/studio-contract/schema/browser-logs';
 
 import { participantRequestInit } from '../runtime/participantRuntime.ts';
 
@@ -8,9 +9,20 @@ const storagePath = (source: string): string =>
 const isSvg = (source: string): boolean =>
   source.toLowerCase().endsWith('.svg');
 
-const svgDataUrl = async (path: string): Promise<string> => {
-  const response = await fetch(path, participantRequestInit);
+type AssetFailure = (code: FaultCode) => void;
+
+const svgDataUrl = async (
+  path: string,
+  onFailure: AssetFailure,
+): Promise<string> => {
+  const response = await fetch(path, participantRequestInit).catch(
+    (error: unknown) => {
+      onFailure('transport');
+      throw error;
+    },
+  );
   if (!response.ok) {
+    onFailure(response.status === 404 ? 'not_found' : 'http_error');
     throw new Error(`Could not load ${path}: ${String(response.status)}`);
   }
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(await response.text())}`;
@@ -26,6 +38,7 @@ const svgDataUrl = async (path: string): Promise<string> => {
  */
 export const createAssetResolver = (
   assets: readonly ResolvedAsset[],
+  onFailure: AssetFailure = () => undefined,
 ): ((assetId: string) => Promise<string>) => {
   const resolved = new Map<string, Promise<string>>();
   return (assetId) => {
@@ -35,10 +48,11 @@ export const createAssetResolver = (
       (candidate) => candidate.assetId === assetId,
     )?.source;
     if (source === undefined) {
+      onFailure('not_found');
       return Promise.reject(new Error(`No stored file for asset ${assetId}`));
     }
     const url = isSvg(source)
-      ? svgDataUrl(storagePath(source))
+      ? svgDataUrl(storagePath(source), onFailure)
       : Promise.resolve(storagePath(source));
     // A failed load is not kept, so the next request tries again.
     url.catch(() => resolved.delete(assetId));

@@ -27,6 +27,7 @@ export const StatusApiHandlers = (deps: StatusApiDeps) =>
           deps.deployment,
           installation,
           false,
+          'None',
         ),
       ).pipe(Effect.flatMap(publicStatus), Effect.orDie),
     ),
