@@ -259,11 +259,21 @@ const LONGEST_RETRY_MS = 30_000;
  * `preloaded` is a catalog delivered some other way — a server passing the
  * request locale's messages down as props — which renders without a load
  * while it matches `locale`.
+ *
+ * `restored` is a locale the host brought back from storage after mounting,
+ * such as a choice kept from before a reload. The host only learns it once
+ * something is on screen, but to the user it is the language the page opens
+ * in, so while `locale` is `restored` a change to it suspends until it has
+ * loaded, as a first load does, instead of keeping the language on screen.
+ * Wording the host shows from elsewhere then changes over in the same render
+ * as the catalog, rather than ahead of it. A restored locale that cannot be
+ * loaded leaves the language on screen and is reported as `failure`.
  */
 export function useLocaleCatalog(
   source: CatalogSource,
   locale: string,
   preloaded?: RenderedCatalog,
+  restored?: string,
 ): RenderedCatalog & Readonly<{ failure?: LocaleLoadFailure }> {
   const peek = () => source.peek(locale);
   const loaded = useSyncExternalStore(source.subscribe, peek, peek);
@@ -326,19 +336,24 @@ export function useLocaleCatalog(
   }, [source, locale, ready, failures]);
 
   if (ready !== undefined) return { locale, messages: ready };
-  if (rendered !== null) {
+  if (
+    rendered !== null &&
+    (restored !== locale || current.failure !== undefined)
+  ) {
     return current.failure === undefined
       ? rendered
       : { ...rendered, failure: current.failure };
   }
   const outcome = use(outcomeOf(source.attempt(locale)));
   if ('messages' in outcome) return { locale, messages: outcome.messages };
-  // From here English is on screen, so a later render must not suspend
-  // again while the retries above are in flight.
+  // From here the fallback is on screen, so a later render must not suspend
+  // again while the retries above are in flight. A first load falls back to
+  // English; a restored locale keeps the language already shown.
   const failure = { locale, error: outcome.error };
-  setRendered(SOURCE_LANGUAGE);
+  const shown = rendered ?? SOURCE_LANGUAGE;
+  setRendered(shown);
   setFailed({ locale, count: 0, failure });
-  return { ...SOURCE_LANGUAGE, failure };
+  return { ...shown, failure };
 }
 
 /**

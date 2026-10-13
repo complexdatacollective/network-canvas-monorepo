@@ -30,9 +30,11 @@ export class InterviewNav {
   }
 
   async waitForStage(): Promise<void> {
-    await expect(this.page.locator('main[data-theme-interview]')).toBeVisible({
-      timeout: 15_000,
-    });
+    // While a language restored after a reload loads, the interview stays
+    // mounted but hidden beside the loading screen, which is also a `main`.
+    await expect(
+      this.page.locator('main[data-theme-interview]:not([aria-busy="true"])'),
+    ).toBeVisible({ timeout: 15_000 });
     await expect(this.stage).toHaveAttribute('data-stage-step', /\d+/);
   }
 
