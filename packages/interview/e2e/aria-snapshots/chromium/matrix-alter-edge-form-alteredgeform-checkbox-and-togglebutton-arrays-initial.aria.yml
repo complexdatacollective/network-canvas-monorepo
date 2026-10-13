@@ -1,6 +1,19 @@
 - main:
-  - heading "Relationship details" [level=1]
-  - paragraph: Answer the following.
+  - button "Alex"
+  - button "Sam"
+  - text: In what contexts do you interact?
+  - group "In what contexts do you interact?":
+    - checkbox "Work"
+    - text: Work
+    - checkbox "Social"
+    - text: Social
+    - checkbox "Family"
+    - text: Family
+  - text: How do you keep in touch?
+  - group "How do you keep in touch?":
+    - checkbox "Call"
+    - checkbox "Text"
+    - checkbox "In person"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

@@ -5,7 +5,7 @@
   - textbox "Describe this relationship."
   - navigation:
     - button "Settings"
-    - button "Previous Step"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

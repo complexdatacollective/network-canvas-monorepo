@@ -1,9 +1,8 @@
 - main:
-  - heading "Relationship details" [level=1]
-  - paragraph:
-    - text: This section asks about
-    - strong: each relationship
-    - text: you noted.
+  - button "Alex"
+  - button "Sam"
+  - text: Describe this relationship.
+  - textbox "Describe this relationship."
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

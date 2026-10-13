@@ -1,8 +1,5 @@
 - main:
   - heading "About You" [level=1]
-  - heading "Section" [level=2]
-  - list:
-    - listitem: item one
   - text: Name? Legal name
   - textbox "Name?"
   - text: Age?

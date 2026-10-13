@@ -1,6 +1,5 @@
 - main:
   - heading "About you" [level=1]
-  - paragraph: Please answer the questions below.
   - text: Where do you know them from?
   - group "Where do you know them from?":
     - checkbox "Family"

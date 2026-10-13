@@ -1,9 +1,7 @@
 - main:
-  - heading "About Each Person" [level=1]
-  - paragraph:
-    - text: Please give
-    - strong: details
-    - text: about each person.
+  - button "Ada"
+  - text: Nickname
+  - textbox "Nickname": Ada
   - navigation:
     - button "Settings"
     - button "Previous Step"

@@ -1,9 +1,5 @@
 - main:
-  - heading "About Each Person" [level=1]
-  - paragraph:
-    - text: Please give
-    - strong: details
-    - text: about each person.
+  - heading "Previous stage" [level=1]
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]
