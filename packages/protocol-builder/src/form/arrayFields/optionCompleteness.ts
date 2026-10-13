@@ -6,6 +6,8 @@ import {
 
 import {
   asLocalizedString,
+  type ProtocolLocalization,
+  resolveTranslation,
   translationText,
 } from '../../localization/localizedText.ts';
 
@@ -62,16 +64,44 @@ const optionLabelLocales = (options: readonly unknown[]): LocaleTag[] => [
 ];
 
 /**
- * `options` with each label replaced by its plain text in `locale`, or `''`
- * where it has no translation there: the shape shared-consts' label rules
- * compare.
+ * The languages labels are compared in: the protocol's own when known, else
+ * every language a label is written in.
+ */
+export const optionLabelComparisonLocales = (
+  options: readonly unknown[],
+  localization: ProtocolLocalization | undefined,
+): readonly LocaleTag[] =>
+  localization === undefined
+    ? optionLabelLocales(options)
+    : localization.locales;
+
+/**
+ * A label's text as a participant reading `locale` sees it. Given the
+ * protocol's languages, that is the translation the interview falls back to
+ * where the label has none in `locale` (`resolveTranslation`), so an option
+ * left untranslated is compared with what it shows rather than with nothing.
+ * Without them, only the label's own translation in `locale`, or `''`.
+ */
+export const optionLabelTextIn = (
+  label: unknown,
+  locale: LocaleTag,
+  localization: ProtocolLocalization | undefined,
+): string =>
+  localization === undefined
+    ? translationText(label, locale)
+    : resolveTranslation(label, localization, locale).text;
+
+/**
+ * `options` with each label replaced by its plain text in `locale`
+ * (`optionLabelTextIn`): the shape shared-consts' label rules compare.
  */
 export const optionsWithLabelText = (
   options: readonly unknown[],
   locale: LocaleTag,
+  localization?: ProtocolLocalization,
 ) =>
   options.map((option) => ({
-    label: translationText(readLabel(option), locale),
+    label: optionLabelTextIn(readLabel(option), locale, localization),
   }));
 
 /**
@@ -79,16 +109,18 @@ export const optionsWithLabelText = (
  *
  * Each language is its own question, asked of shared-consts'
  * `hasDuplicateOptionLabels` so case and Unicode canonical equivalence are
- * settled the way every other label rule settles them. An option with no
- * translation in a language has nothing to collide with there: two options
- * that both fall back to their default-language labels are already compared in
- * that language.
+ * settled the way every other label rule settles them. Given the protocol's
+ * languages, each label is read as the interview shows it there, falling back
+ * where it has no translation, so one option translated to the text another
+ * falls back to is caught. Without them, an option with no translation in a
+ * language has nothing to collide with there.
  */
 export const hasDuplicateLocalizedOptionLabels = (
   options: unknown,
+  localization?: ProtocolLocalization,
 ): boolean => {
   const rows: readonly unknown[] = Array.isArray(options) ? options : [];
-  return optionLabelLocales(rows).some((locale) =>
-    hasDuplicateOptionLabels(optionsWithLabelText(rows, locale)),
+  return optionLabelComparisonLocales(rows, localization).some((locale) =>
+    hasDuplicateOptionLabels(optionsWithLabelText(rows, locale, localization)),
   );
 };
