@@ -25,6 +25,9 @@ mkdir -p "$WORK"
 WORK="$(cd "$WORK" && pwd)"
 SRC="$WORK/interviewer-${TAG#v}"
 
+# fnm finds its Node versions under HOME, which the npm and Cordova steps
+# below override; pin the real location first.
+export FNM_DIR="${FNM_DIR:-$HOME/.local/share/fnm}"
 node24() { fnm exec --using=24 -- "$@"; }
 fnm install 14.21.3 >/dev/null
 fnm install 24 >/dev/null
