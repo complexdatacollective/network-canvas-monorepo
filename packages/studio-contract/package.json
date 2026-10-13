@@ -1,6 +1,6 @@
 {
   "name": "@codaco/studio-contract",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "The Effect contract between the two Studio deployables: branded ids, domain schemas, problem-shaped errors, the RpcGroups served at /rpc, the middleware tags they declare, and the /api/v1 HttpApi definition.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
