@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import type { ComponentProps } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useStore } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -49,9 +49,14 @@ import {
 } from '../../selectors/session';
 import { getCodebook } from '../../store/modules/protocol';
 import { updateNode } from '../../store/modules/session';
-import { useAppDispatch } from '../../store/store';
+import { type RootState, useAppDispatch } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
+import {
+  decryptInScope,
+  getDecryptionScope,
+  readEncryptedAttribute,
+} from '../Anonymisation/decryptionScope';
 import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import CategoricalBinItem from './components/CategoricalBinItem';
@@ -282,6 +287,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     expandedBinIndex !== null ? bins[expandedBinIndex] : undefined;
 
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const { currentStep } = useCurrentStep();
   const { openDialog } = useDialog();
   const nodeColor = useStageSelector(getNodeColorSelector);
@@ -305,6 +311,22 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     return false;
   };
   const resolve = useResolveLocalizedString();
+
+  const readOtherAnswer = async (node: NcNode, otherVariable: string) => {
+    const stored = node[entityAttributesProperty][otherVariable];
+    if (!stageVariables[otherVariable]?.encrypted) {
+      return typeof stored === 'string' ? stored : undefined;
+    }
+    const encrypted = readEncryptedAttribute(
+      node,
+      otherVariable,
+      stageVariables,
+    );
+    const scope = getDecryptionScope(store.getState);
+    if (encrypted?.status !== 'encrypted' || !scope) return undefined;
+    const outcome = await decryptInScope(scope, encrypted.value);
+    return outcome.readable ? outcome.plaintext : undefined;
+  };
 
   const handleDropNode = async (node: NcNode, binIndex: number) => {
     const nodeId = node[entityPrimaryKeyProperty];
@@ -364,14 +386,10 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
         ? validationPropsFor(otherValidationMetadata)
         : {};
 
-      // An encrypted answer is stored as ciphertext, so only a plain one is
-      // shown for editing.
-      const storedOther = node[entityAttributesProperty][otherVariable];
-      const currentOtherAnswer =
-        !stageVariables[otherVariable]?.encrypted &&
-        typeof storedOther === 'string'
-          ? storedOther
-          : undefined;
+      // The current answer is shown for editing, so confirming the dialog
+      // never blanks it. An encrypted one is decrypted with the key in force;
+      // one that can't be read is left out.
+      const currentOtherAnswer = await readOtherAnswer(node, otherVariable);
 
       const result = await openDialog({
         type: 'form',
