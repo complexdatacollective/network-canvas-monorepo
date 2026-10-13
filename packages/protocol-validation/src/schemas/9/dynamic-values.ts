@@ -113,6 +113,11 @@ export const isDynamicValuePathSchema = (schema: z.ZodType): boolean =>
  * `cases` exists only for a categorical, ordinal or boolean value: it maps
  * each select case key the text may name to the stored option value it
  * stands for, because option values need not be names.
+ *
+ * A categorical answer can hold several options at once. A select then takes
+ * the first case, in the order `cases` lists them, whose option the answer
+ * includes, and `other` when it includes none: a researcher who wants one
+ * option to win lists it first.
  */
 export const DynamicValueBindingSchema = z.strictObject({
   path: DynamicValuePathSchema,

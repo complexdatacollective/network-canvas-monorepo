@@ -7,6 +7,7 @@ import {
   findDynamicMessageSyntaxProblem,
   findDynamicValueProblem,
   findMissingDynamicPlacement,
+  TOO_MANY_DYNAMIC_VERSIONS,
 } from '../dynamicValueMessages.ts';
 
 const VALUES: DynamicValueArguments = {
@@ -93,6 +94,14 @@ describe('findDynamicValueProblem', () => {
     refused(
       '{count, select, missing {x} other {{count, selectordinal, one {#st} other {#th}}}}',
       'not a number',
+    );
+  });
+
+  it('does not take a name from Object.prototype for a value', () => {
+    refused('{constructor}', '"constructor" is not a value');
+    refused(
+      '{toString, select, missing {x} other {y}}',
+      '"toString" is not a value',
     );
   });
 
@@ -230,5 +239,45 @@ describe('findMissingDynamicPlacement', () => {
         VALUES,
       ),
     ).toEqual({ argument: 'kind', when: { kind: 'friend' } });
+  });
+
+  it('checks a number’s fraction versions too', () => {
+    // Czech gives fractions a version of their own (`many`).
+    expect(
+      findMissingDynamicPlacement(
+        '{count, select, missing {?} other {{count} years}}',
+        'en',
+        '{count, select, missing {?} other {{count, plural, one {# rok} few {# roky} many {roku} other {# let}}}}',
+        'cs',
+        VALUES,
+      ),
+    ).toEqual({ argument: 'count', when: { count: '0.5' } });
+  });
+
+  it('refuses to accept what it has too many versions to check', () => {
+    const many: DynamicValueArguments = Object.fromEntries(
+      Array.from({ length: 8 }, (_, index) => [
+        `v${index}`,
+        { cases: ['a', 'b'], numeric: false, optional: true },
+      ]),
+    );
+    const message = Object.keys(many)
+      .map((name) => `{${name}, select, missing {-} other {{${name}}}}`)
+      .join(' ');
+    expect(
+      findMissingDynamicPlacement(message, 'en', message, 'fr', many),
+    ).toBe(TOO_MANY_DYNAMIC_VERSIONS);
+  });
+});
+
+describe('dynamicMessageParts with prototype names', () => {
+  it('does not take a version named after Object.prototype', () => {
+    expect(
+      dynamicMessageParts(
+        '{kind, select, constructor {A} other {B}}',
+        'en',
+        () => ({ missing: false, case: 'toString' }),
+      ),
+    ).toEqual(['B']);
   });
 });

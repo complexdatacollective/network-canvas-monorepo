@@ -4,6 +4,7 @@ import {
   findDynamicValueProblem,
   findMissingDynamicPlacement,
   type MissingDynamicPlacement,
+  TOO_MANY_DYNAMIC_VERSIONS,
 } from '../../localization/dynamicValueMessages.ts';
 import type { LocaleTag } from '../../localization/localeTag.ts';
 import type { StageSubject } from './common/subjects.ts';
@@ -278,7 +279,9 @@ export const findDynamicValueProblems = (
       // The field's own check reports what needs no stage.
       if (findDynamicMessageSyntaxProblem(message) !== undefined) continue;
       const unusable = dynamicValueNamesIn(message).flatMap((name) => {
-        const binding = bindings[name];
+        const binding = Object.hasOwn(bindings, name)
+          ? bindings[name]
+          : undefined;
         if (binding === undefined) return [];
         const status = dynamicValueStatus(binding, context);
         return status.status === 'available'
@@ -312,6 +315,13 @@ export const findDynamicValueProblems = (
         values,
       );
       if (missing === undefined) continue;
+      if (missing === TOO_MANY_DYNAMIC_VERSIONS) {
+        problems.push({
+          path: [...hit.path, locale],
+          message: `This text and its translation choose between too many versions to check that the translation shows every value the ${defaultLocale} text does. Choose between fewer values in it.`,
+        });
+        continue;
+      }
       problems.push({
         path: [...hit.path, locale],
         message: `This translation must show "{${missing.argument}}" where the ${defaultLocale} text does, including in its version for when ${describeVersion(missing.when)}.`,

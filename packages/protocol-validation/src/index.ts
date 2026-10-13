@@ -104,6 +104,7 @@ export {
   findMissingDynamicPlacement,
   MISSING_CASE,
   type MissingDynamicPlacement,
+  TOO_MANY_DYNAMIC_VERSIONS,
 } from './localization/dynamicValueMessages.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
 export {

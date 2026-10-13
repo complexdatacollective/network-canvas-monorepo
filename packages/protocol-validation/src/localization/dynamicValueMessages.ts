@@ -104,6 +104,16 @@ export const findDynamicMessageSyntaxProblem = (
   return visit(elements);
 };
 
+/**
+ * The argument `name` stands for, read as an own property: a name such as
+ * `constructor` must not find `Object.prototype`'s.
+ */
+const argumentOf = (
+  values: DynamicValueArguments,
+  name: string,
+): DynamicValueArgument | undefined =>
+  Object.hasOwn(values, name) ? values[name] : undefined;
+
 const describeAllowed = (values: DynamicValueArguments): string => {
   const names = Object.keys(values);
   return names.length === 0
@@ -128,7 +138,7 @@ const findElementsProblem = (
       case TYPE.pound:
         break;
       case TYPE.argument: {
-        const value = values[element.value];
+        const value = argumentOf(values, element.value);
         if (value === undefined) return unknownValue(element.value, values);
         if (value.optional && !guarded.has(element.value)) {
           return unguarded(element.value);
@@ -137,7 +147,7 @@ const findElementsProblem = (
       }
       case TYPE.select: {
         const name = element.value;
-        const value = values[name];
+        const value = argumentOf(values, name);
         if (value === undefined) return unknownValue(name, values);
         const hasMissing = MISSING_CASE in element.options;
         for (const [key, option] of Object.entries(element.options)) {
@@ -163,7 +173,7 @@ const findElementsProblem = (
       }
       case TYPE.plural: {
         const name = element.value;
-        const value = values[name];
+        const value = argumentOf(values, name);
         if (value === undefined) return unknownValue(name, values);
         if (!value.numeric || element.pluralType !== 'cardinal') {
           return `"${name}" is not a number, so it cannot choose a version of the text by number.`;
@@ -271,8 +281,9 @@ const flatten = (
       const state = stateOf(element.value);
       const key = state.missing ? MISSING_CASE : state.case;
       const option =
-        (key === undefined ? undefined : element.options[key]) ??
-        element.options.other;
+        (key !== undefined && Object.hasOwn(element.options, key)
+          ? element.options[key]
+          : undefined) ?? element.options.other;
       if (option !== undefined) {
         flatten(option.value, locale, stateOf, plural, parts);
       }
@@ -282,7 +293,10 @@ const flatten = (
         !state.missing && state.count !== undefined
           ? pluralCategoryOf(locale, state.count)
           : 'other';
-      const option = element.options[category] ?? element.options.other;
+      const option =
+        (Object.hasOwn(element.options, category)
+          ? element.options[category]
+          : undefined) ?? element.options.other;
       if (option !== undefined) {
         flatten(option.value, locale, stateOf, element.value, parts);
       }
@@ -317,6 +331,12 @@ export type MissingDynamicPlacement = Readonly<{
   when: Readonly<Record<string, string>>;
 }>;
 
+/**
+ * The texts choose between more versions than can be compared one by one,
+ * so whether the translation shows every value cannot be known.
+ */
+export const TOO_MANY_DYNAMIC_VERSIONS = 'tooManyVersions';
+
 const shownIn = (
   message: string,
   locale: LocaleTag,
@@ -333,6 +353,9 @@ const shownIn = (
 // Beyond this many combinations of states the check gives up rather than
 // stall: no realistic stage text uses enough values to reach it.
 const MAX_SCENARIOS = 20_000;
+
+/** Fractions every plural rule set reaches its fraction versions with. */
+const FRACTIONAL_COUNTS: readonly number[] = [0.5, 1.5, 2.5];
 
 const describeState = (state: DynamicValueState): string => {
   if (state.missing) return MISSING_CASE;
@@ -365,7 +388,9 @@ const pluralNamesIn = (message: string): ReadonlySet<string> => {
  * compare count by count. As for declared arguments, a plural category that
  * only one whole number selects in the translation's language may leave its
  * number out (English "one person"). Meant for messages
- * `findDynamicValueProblem` accepts.
+ * `findDynamicValueProblem` accepts. `TOO_MANY_DYNAMIC_VERSIONS` when the
+ * two texts choose between too many versions to compare: such a translation
+ * is not accepted unchecked.
  */
 export const findMissingDynamicPlacement = (
   original: string,
@@ -373,17 +398,17 @@ export const findMissingDynamicPlacement = (
   translation: string,
   locale: LocaleTag,
   values: DynamicValueArguments,
-): MissingDynamicPlacement | undefined => {
+): MissingDynamicPlacement | typeof TOO_MANY_DYNAMIC_VERSIONS | undefined => {
   const names = [
     ...new Set([
       ...dynamicValueNamesIn(original),
       ...dynamicValueNamesIn(translation),
     ]),
-  ].filter((name) => values[name] !== undefined);
+  ].filter((name) => argumentOf(values, name) !== undefined);
   if (names.length === 0) return undefined;
 
   const translationExamples = pluralCountExamples(locale);
-  const counts = [
+  const wholeCounts = [
     ...new Set(
       [pluralCountExamples(originalLocale), translationExamples].flatMap(
         (examples) =>
@@ -391,9 +416,12 @@ export const findMissingDynamicPlacement = (
       ),
     ),
   ].sort((a, b) => a - b);
+  // A number need not be whole (a scale's answer, a measurement), and some
+  // languages give fractions a version of their own (Czech `many`).
+  const counts = [...wholeCounts, ...FRACTIONAL_COUNTS];
 
   const statesFor = (name: string): readonly DynamicValueState[] => {
-    const value = values[name];
+    const value = argumentOf(values, name);
     if (value === undefined) return [{ missing: false }];
     const present: DynamicValueState[] = value.numeric
       ? counts.map((count) => ({ missing: false, count }))
@@ -409,11 +437,11 @@ export const findMissingDynamicPlacement = (
     (product, [, states]) => product * states.length,
     1,
   );
-  if (total > MAX_SCENARIOS) return undefined;
+  if (total > MAX_SCENARIOS) return TOO_MANY_DYNAMIC_VERSIONS;
 
   const translationPlurals = pluralNamesIn(translation);
   const singleNumberCategory = (count: number | undefined): boolean => {
-    if (count === undefined) return false;
+    if (count === undefined || !Number.isInteger(count)) return false;
     const category = pluralCategoryOf(locale, count);
     return (
       [...translationExamples].find(([each]) => each === category)?.[1]
