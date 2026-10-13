@@ -509,14 +509,26 @@ function InterviewLocalization({
   // resuming) comes back from the tab's sessionStorage, if the protocol still
   // declares it. Read after mount, so a server render and its hydration
   // agree, but before the browser paints, so the language does not visibly
-  // change once the interview is on screen.
+  // change once the interview is on screen. The interface provider is told
+  // the choice was restored, so when its language still has to load it shows
+  // the loading screen until it has, rather than show the protocol's text in
+  // the restored language beside built-in text in the one it mounted in.
+  const [restoredPreference, setRestoredPreference] = useState<string | null>(
+    null,
+  );
   useLayoutEffect(() => {
     const stored = readStoredLocalePreference(
       interviewId,
       localization.locales,
     );
+    setRestoredPreference(stored);
     if (stored !== null) dispatch(setLocalePreference(stored));
   }, [dispatch, interviewId, localization.locales]);
+  // Once the participant (or the host) moves on, a change back to that
+  // language is a change like any other, made with the interview on screen.
+  if (restoredPreference !== null && localePreference !== restoredPreference) {
+    setRestoredPreference(null);
+  }
 
   const onLocalePreferenceChangeRef = useRef(onLocalePreferenceChange);
   onLocalePreferenceChangeRef.current = onLocalePreferenceChange;
@@ -546,6 +558,7 @@ function InterviewLocalization({
     <InterviewI18nProvider
       requestedLocale={requestedLocales}
       localePreference={localePreference}
+      restoredPreference={restoredPreference}
       catalog={catalog}
     >
       <ProtocolLocalizationProvider

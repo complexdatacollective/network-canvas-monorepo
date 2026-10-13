@@ -58,3 +58,18 @@ describe('Protocol Summary name generator wording', () => {
     );
   });
 });
+
+describe('Protocol Summary bin wording', () => {
+  it.each(['OrdinalBin', 'CategoricalBin'])(
+    'prints a %s unplaced nodes notice',
+    (type) => {
+      renderWording(type, {
+        unplacedNodesNotice: { en: 'Place everyone to continue.' },
+      });
+
+      expect(rowFor('Nodes not yet placed')).toHaveTextContent(
+        'Place everyone to continue.',
+      );
+    },
+  );
+});

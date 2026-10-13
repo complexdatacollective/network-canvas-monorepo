@@ -29,7 +29,6 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
@@ -42,7 +41,6 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { LocalizedText } from '../../localization/LocalizedText';
 import { getEgoAttributes } from '../../selectors/session';
 import { updateEgo } from '../../store/modules/session';
@@ -55,7 +53,7 @@ type EgoFormProps = StageProps<'EgoForm'>;
 const EgoFormInner = (props: EgoFormProps) => {
   const { stage } = props;
 
-  const { form, introductionPanel } = stage;
+  const { form } = stage;
 
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
@@ -280,18 +278,7 @@ const EgoFormInner = (props: EgoFormProps) => {
       >
         <div className="interface mx-auto max-w-[80ch] flex-col">
           <Surface spacing="lg" shadow="lg">
-            <LocalizedText
-              value={introductionPanel.title}
-              render={<Heading level="h1" />}
-            />
-            {introductionPanel.text && (
-              <LocalizedMarkdown
-                value={introductionPanel.text}
-                allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-              />
-            )}
-          </Surface>
-          <Surface spacing="lg" shadow="lg">
+            <LocalizedText value={form.title} render={<Heading level="h1" />} />
             <FormWithoutProvider onSubmit={handleSubmitForm}>
               {fieldComponents}
             </FormWithoutProvider>

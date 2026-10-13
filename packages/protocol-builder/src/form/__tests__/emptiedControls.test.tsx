@@ -64,18 +64,18 @@ describe('a control the researcher emptied', () => {
   it('takes the container it emptied with it', async () => {
     const { probe, draft } = createStageDraftProbe();
     const harness = renderStageEditor({
-      stageId: 'ego-form-1',
+      stageId: 'anonymisation-1',
       sections: (
         <>
-          <BuilderSection title="Introduction panel">
+          <BuilderSection title="Explanation">
             {probe}
             <Field
-              name="introductionPanel.title"
+              name="explanationText.title"
               label="Panel heading"
               component={LocalizedInputField}
             />
             <Field
-              name="introductionPanel.text"
+              name="explanationText.body"
               label="Panel text"
               component={LocalizedInputField}
             />
@@ -91,14 +91,14 @@ describe('a control the researcher emptied', () => {
       await harness.findByRole('textbox', { name: 'Panel text' }),
     );
 
-    // The panel is required, so this save is refused either way. What is under
-    // test is what the draft holds after it: an `introductionPanel` with
+    // The explanation is required, so this save is refused either way. What is
+    // under test is what the draft holds after it: an `explanationText` with
     // neither translation map left in it is a panel the researcher did not
     // write, and the schema reports it as two missing values rather than as
     // the panel simply not being there.
     expect(await harness.submit()).toBeNull();
 
-    expect(Object.hasOwn(draft(), 'introductionPanel')).toBe(false);
+    expect(Object.hasOwn(draft(), 'explanationText')).toBe(false);
   });
 
   it('is refused rather than dropped when the field is required', async () => {

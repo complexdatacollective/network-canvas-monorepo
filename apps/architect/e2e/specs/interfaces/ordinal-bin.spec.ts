@@ -82,8 +82,7 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   // The subject picker (@codaco/protocol-builder's `subjectPicker({ entity:
   // 'node', filter: true })`): OrdinalBin's editor is
   // `[stageHeading, subjectPicker, ordinalBinPrompts, skipLogic,
-  // interviewerGuidance]` — no introduction section, unlike the two pairwise
-  // censuses.
+  // interviewerGuidance]`.
   await selectOrCreateNodeType(architectPage, 'person');
 
   // The shared `PromptTextField` the whole census/bin family renders

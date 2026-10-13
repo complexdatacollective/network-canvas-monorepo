@@ -1,0 +1,71 @@
+x-egress-dns: &egress-dns
+  dns:
+    - ${EGRESS_SINK_ADDRESS}
+
+x-egress-ready: &egress-ready
+  egress-sink:
+    condition: service_healthy
+
+services:
+  egress-sink:
+    image: ${STUDIO_API_IMAGE}
+    entrypoint: ['node', '/opt/egress-sink.mjs']
+    command: []
+    environment:
+      EGRESS_SINK_ADDRESS: ${EGRESS_SINK_ADDRESS}
+    volumes:
+      - ./stack-test/egress-sink.mjs:/opt/egress-sink.mjs:ro
+    networks:
+      default:
+        ipv4_address: ${EGRESS_SINK_ADDRESS}
+    healthcheck:
+      test: ['CMD', 'test', '-f', '/tmp/egress-sink-listening']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  egress-client:
+    image: curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6
+    entrypoint: ['sleep', 'infinity']
+    user: root
+    <<: *egress-dns
+    volumes:
+      - ./stack-test/.work:${EGRESS_WORK_DIR}
+    depends_on: *egress-ready
+
+  traefik:
+    <<: *egress-dns
+    ports: !reset []
+    depends_on: *egress-ready
+
+  web:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  api:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  worker:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  migrate:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  postgres:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  valkey:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+  garage:
+    <<: *egress-dns
+    depends_on: *egress-ready
+
+networks:
+  default:
+    internal: true

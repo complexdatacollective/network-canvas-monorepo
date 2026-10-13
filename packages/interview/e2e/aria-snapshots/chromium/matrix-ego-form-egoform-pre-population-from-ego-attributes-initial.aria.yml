@@ -1,6 +1,5 @@
 - main:
   - heading "About You" [level=1]
-  - paragraph: Please confirm your details.
   - text: What is your name?
   - textbox "What is your name?": Nikita Crist
   - navigation:

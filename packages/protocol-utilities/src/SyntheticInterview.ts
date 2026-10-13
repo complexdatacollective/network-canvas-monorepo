@@ -196,6 +196,8 @@ type StageHandleBase = {
   stageEntry: StageEntry;
 };
 
+const EGO_FORM_DEFAULT_TITLE = 'About you';
+
 type AddFormFieldOpts = {
   component: ComponentType;
   variable?: string;
@@ -665,19 +667,6 @@ export class SyntheticInterview {
           ? (opts?.background ?? { concentricCircles: 4 })
           : opts?.background,
       behaviours,
-      introductionPanel: opts?.introductionPanel
-        ? {
-            title: opts.introductionPanel.title || 'Introduction',
-            text: opts.introductionPanel.text || 'Please continue.',
-          }
-        : type === 'DyadCensus' || type === 'TieStrengthCensus'
-          ? { title: 'Introduction', text: 'Please continue.' }
-          : type === 'AlterForm' || type === 'AlterEdgeForm'
-            ? {
-                title: opts?.introductionPanel?.title || 'Introduction',
-                text: opts?.introductionPanel?.text || 'Please continue.',
-              }
-            : undefined,
       initialEdges: opts?.initialEdges ?? [],
       ...(opts?.wording && { wording: opts.wording }),
     };
@@ -696,6 +685,14 @@ export class SyntheticInterview {
       entry.form = {
         title: opts.form.title ?? 'Add a person',
         fields,
+      };
+    }
+
+    // EgoForm's form title is the heading shown above its questions.
+    if (opts?.form && type === 'EgoForm') {
+      entry.form = {
+        title: opts.form.title ?? EGO_FORM_DEFAULT_TITLE,
+        fields: opts.form.fields.map((f) => this.resolveEgoFormField(f)),
       };
     }
 
@@ -1190,7 +1187,7 @@ export class SyntheticInterview {
           ...base,
           addFormField: (opts: AddFormFieldOpts) => {
             const field = this.resolveEgoFormField(opts);
-            entry.form ??= { title: 'About you', fields: [] };
+            entry.form ??= { title: EGO_FORM_DEFAULT_TITLE, fields: [] };
             entry.form.fields.push(field);
           },
         } as StageHandleMap[T];
@@ -2782,12 +2779,11 @@ export class SyntheticInterview {
           ? { hint: this.localized(field.hint) }
           : {}),
       }));
-      // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm/FamilyPedigree forms must not
-      // carry a title; every other form stage keeps it.
+      // TitlelessFormSchema: AlterForm/AlterEdgeForm/FamilyPedigree forms must
+      // not carry a title; every other form stage (EgoForm included) keeps it.
       config.form =
         stage.type === 'AlterForm' ||
         stage.type === 'AlterEdgeForm' ||
-        stage.type === 'EgoForm' ||
         stage.type === 'FamilyPedigree'
           ? { fields }
           : { title: this.localized(stage.form.title), fields };
@@ -2821,13 +2817,6 @@ export class SyntheticInterview {
 
     if (stage.behaviours) {
       config.behaviours = stage.behaviours;
-    }
-
-    if (stage.introductionPanel) {
-      config.introductionPanel = {
-        title: this.localized(stage.introductionPanel.title),
-        text: this.localized(stage.introductionPanel.text),
-      };
     }
 
     if (stage.content !== undefined) {

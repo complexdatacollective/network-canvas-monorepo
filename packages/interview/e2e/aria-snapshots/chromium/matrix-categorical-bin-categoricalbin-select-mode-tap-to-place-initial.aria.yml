@@ -1,0 +1,18 @@
+- main:
+  - status:
+    - heading "Which categories does each person belong to?" [level=2]
+  - button "Place Alice in Family"
+  - heading "Family" [level=4]
+  - button "Place Alice in Work"
+  - heading "Work" [level=4]
+  - status: Choose where Alice belongs.
+  - text: Alice
+  - button "2 unplaced Collapse drawer" [expanded]
+  - button "Alice" [pressed]
+  - button "Bob"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

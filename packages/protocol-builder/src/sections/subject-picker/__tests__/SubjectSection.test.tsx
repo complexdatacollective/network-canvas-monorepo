@@ -15,7 +15,6 @@ import {
   TestPromptPreview,
 } from '../../__tests__/rowFixtures.tsx';
 import NodeLayoutSection from '../../canvas-behaviours/NodeLayoutSection.tsx';
-import IntroductionSection from '../../introduction/IntroductionSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
@@ -117,19 +116,13 @@ describe('the section that says what a stage is about', () => {
   it('mounts the stage filter beside it, as its own section', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-edge-form-1',
-      sections: (
-        <>
-          <SubjectSection entity="edge" filter />
-          <IntroductionSection />
-        </>
-      ),
+      sections: <SubjectSection entity="edge" filter />,
     });
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Edge setup',
       'Stage filter',
-      'Task introduction',
     ]);
   });
 
@@ -178,12 +171,7 @@ describe('the section that says what a stage is about', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-edge-form-1',
-      sections: (
-        <>
-          <SubjectSection entity="edge" filter />
-          <IntroductionSection />
-        </>
-      ),
+      sections: <SubjectSection entity="edge" filter />,
     });
 
     // The stage's name and its edge form belong to sections this mount does

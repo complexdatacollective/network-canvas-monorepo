@@ -22,7 +22,7 @@ import { withMissingSuppliedStageText } from '../stageDocument.ts';
  * A TEMPLATE IS NOT A HEAD START ON A SAVEABLE STAGE, and no interface's is.
  * Every one of the twenty needs something the schema requires and only a
  * researcher can supply — the node or edge type it works with, its prompts,
- * the fields of its form, the words of its introduction panel — so the
+ * the fields of its form, the title of an ego form — so the
  * sections of the editor are what fill a stage in, not this. The three form
  * interfaces used to be listed here holding `{}`, which read as a template
  * whose contents had gone missing rather than as an interface with no defaults

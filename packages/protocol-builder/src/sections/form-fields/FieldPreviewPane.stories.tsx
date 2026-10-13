@@ -165,6 +165,7 @@ export const SwitchingLanguage: Story = {
       fields: {
         label: { 'en-US': 'Ego Form', 'es': 'Formulario' },
         form: {
+          title: { 'en-US': 'About you' },
           fields: [
             {
               variable: 'ego_name',

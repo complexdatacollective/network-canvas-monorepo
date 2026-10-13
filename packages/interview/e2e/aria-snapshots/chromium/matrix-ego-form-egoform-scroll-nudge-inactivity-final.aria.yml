@@ -1,6 +1,5 @@
 - main:
   - heading "About You" [level=1]
-  - paragraph: This form has enough fields to overflow the viewport.
   - text: What is your name?
   - textbox "What is your name?"
   - text: How old are you?

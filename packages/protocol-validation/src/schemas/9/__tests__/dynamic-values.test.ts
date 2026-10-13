@@ -350,15 +350,12 @@ describe('dynamic values in stage text', () => {
       }
     });
 
-    it('offers the pair to a Dyad Census and Tie Strength Census prompt, but not their introduction', () => {
+    it('offers the pair to a Dyad Census and Tie Strength Census prompt', () => {
       for (const id of ['dyadCensus', 'tieStrength']) {
         const protocol = withAllRoles(id);
         expect(
           argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
         ).toEqual(['you', 'first', 'second', 'today']);
-        expect(
-          argumentsAt(protocol, id, ['introductionPanel', 'text'], 'stageText'),
-        ).toEqual(['you', 'today']);
       }
     });
 

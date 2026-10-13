@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -16,6 +16,7 @@ import {
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  entitySecureAttributesMeta,
   type NcEdge,
   type NcNode,
 } from '@codaco/shared-consts';
@@ -26,6 +27,11 @@ import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
+import {
+  encryptionFor,
+  unlockWith,
+} from '../../Anonymisation/__tests__/encryptionFixtures';
+import { generateSecureAttributes } from '../../Anonymisation/utils';
 import PersonForm, { type PersonFormResult } from '../components/PersonForm';
 import {
   familyWithPlan,
@@ -88,6 +94,8 @@ type Setup = {
   /** The details the panel opened saying are missing (edit only). */
   missing?: MissingDetail[];
   nameValidation?: Record<string, unknown>;
+  /** Overrides the codebook's definition of the nickname variable. */
+  nicknameVariable?: Record<string, unknown>;
   formFields?: FormField[];
   /** Each encrypted name decrypted, by person id. */
   decryptedNames?: ReadonlyMap<string, string>;
@@ -111,6 +119,7 @@ function renderPersonForm(
     adding,
     missing = [],
     nameValidation,
+    nicknameVariable = {},
     formFields = [],
     decryptedNames = new Map(),
     optionLabels = OPTION_LABELS,
@@ -151,6 +160,7 @@ function renderPersonForm(
                   name: NICKNAME,
                   type: 'text',
                   component: 'Text',
+                  ...nicknameVariable,
                 },
                 sex: { name: 'sex', type: 'categorical', options: [] },
                 gender: { name: 'gender', type: 'categorical', options: [] },
@@ -235,7 +245,7 @@ function renderPersonForm(
     </>,
     { wrapper: Wrapper },
   );
-  return { onSubmit, user: userEvent.setup() };
+  return { onSubmit, store, user: userEvent.setup() };
 }
 
 const save = async (user: ReturnType<typeof userEvent.setup>) =>
@@ -362,6 +372,72 @@ describe('the person form', () => {
 
     expect(await screen.findByText('Must be unique.')).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  // #2150: a researcher field is validated by the shared protocol form, which
+  // must compare with the others' stored answers decrypted, not as ciphertext.
+  describe('with a unique researcher answer stored encrypted', () => {
+    const PASSPHRASE = 'pedigree unique passphrase';
+    const encryptedNickname = {
+      encrypted: true,
+      validation: { unique: true },
+    };
+
+    async function mumNicknamed(nickname: string): Promise<NcNode> {
+      const { encryptedAttributes, secureAttributes } =
+        await generateSecureAttributes(
+          { [NICKNAME]: nickname },
+          {
+            [NICKNAME]: {
+              name: NICKNAME,
+              label: NICKNAME,
+              type: 'text',
+              component: 'Text',
+              encrypted: true,
+            },
+          },
+          (await encryptionFor(PASSPHRASE)).key,
+          'mum',
+        );
+      return {
+        ...person('mum', { ...encryptedAttributes, sex: ['female'] }),
+        [entitySecureAttributesMeta]: secureAttributes,
+      };
+    }
+
+    async function renderWithMum(nickname: string) {
+      const rendered = renderPersonForm('sis', {
+        nodes: [
+          await mumNicknamed(nickname),
+          person('sis', { sex: ['female'] }),
+        ],
+        formFields: [nicknameField],
+        nicknameVariable: encryptedNickname,
+      });
+      await act(() => unlockWith(rendered.store, PASSPHRASE));
+      return rendered;
+    }
+
+    it('refuses an answer another person already has', async () => {
+      const { onSubmit, user } = await renderWithMum('Jules');
+      await user.type(
+        screen.getByRole('textbox', { name: /Nickname/ }),
+        'Jules',
+      );
+      await save(user);
+
+      expect(await screen.findByText('Must be unique.')).toBeInTheDocument();
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('accepts an answer nobody else has', async () => {
+      const { onSubmit, user } = await renderWithMum('Jules');
+      await user.type(screen.getByRole('textbox', { name: /Nickname/ }), 'Jo');
+      await save(user);
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(screen.queryByText('Must be unique.')).toBeNull();
+    });
   });
 });
 

@@ -124,10 +124,6 @@ const stageFields: SectionDoc = {
   label: { en: 'Details' },
   subject: { entity: 'node', type: 'person' },
   form: { fields: [{ variable: 'age', prompt: { en: 'How old are they?' } }] },
-  introductionPanel: {
-    title: { en: 'About them' },
-    text: { en: 'A few questions.' },
-  },
 };
 
 const baseSections: Record<string, SectionDoc> = {

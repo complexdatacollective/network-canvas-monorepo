@@ -6,9 +6,13 @@ import {
   isDuplicatedInColumn,
   isSameOptionValue,
   optionExportColumnIssue,
+  optionLabelIssues,
   requiredCell,
 } from '../cellRules.ts';
-import { isOptionLabelEmpty } from '../optionCompleteness.ts';
+import {
+  hasDuplicateLocalizedOptionLabels,
+  isOptionLabelEmpty,
+} from '../optionCompleteness.ts';
 
 /**
  * A rule answers with an encoded descriptor rather than a sentence, because
@@ -191,5 +195,27 @@ describe('optionExportColumnIssue', () => {
         siblings: [{ name: 'foo_1', type: 'text' }],
       }),
     ).toBeDefined();
+  });
+});
+
+describe('option labels read through language fallback', () => {
+  const localization = { defaultLocale: 'en', locales: ['en', 'fr'] };
+  const options = [
+    { value: 'a', label: { en: 'Yes', fr: 'No' } },
+    { value: 'b', label: { en: 'No' } },
+  ];
+
+  it('finds two options a participant reading French would see the same way', () => {
+    expect(hasDuplicateLocalizedOptionLabels(options, localization)).toBe(true);
+    expect(
+      optionLabelIssues(options[1]!.label, options, localization).map((text) =>
+        readMessage(text),
+      ),
+    ).toEqual(['Labels must be unique']);
+  });
+
+  it('compares only written translations when the languages are not known', () => {
+    expect(hasDuplicateLocalizedOptionLabels(options)).toBe(false);
+    expect(optionLabelIssues(options[1]!.label, options)).toEqual([]);
   });
 });

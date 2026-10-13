@@ -8,8 +8,8 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
  * carrying any of it across to a different type leaves the stage referring to
  * variables that type does not have. The list is the one Architect has always
  * used, so a protocol edited in either tool loses and keeps the same things:
- * the stage's identity and name, the notes for the interviewer, and the task
- * introduction and a roster's panel title, which are prose about the task
+ * the stage's identity and name, the notes for the interviewer, and a
+ * roster's panel title, which is prose about the task
  * rather than about the type. The words a stage shows participants
  * (`minNodesNotice`, `searchLabel`, a Family Pedigree's `wording` and the
  * rest) are prose the same way, and Network Canvas seeds them on every new
@@ -21,7 +21,6 @@ export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'type',
   'label',
   'interviewScript',
-  'introductionPanel',
   'panelTitle',
   'subject',
   'allAddedNotice',
@@ -37,7 +36,7 @@ export const SUBJECT_INDEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'outsideAreasLabel',
   // The words a canvas shows its participant: its name box and tooltips, and
   // the headings of its panels. Prose about the canvas, which a subject change
-  // keeps, the same as the task's introduction.
+  // keeps, the same as a roster's panel title.
   'addNamePlaceholder',
   'overtakenEditNotice',
   'groupsHeading',

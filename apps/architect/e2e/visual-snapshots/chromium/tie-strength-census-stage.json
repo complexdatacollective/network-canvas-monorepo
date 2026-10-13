@@ -1,13 +1,5 @@
 {
   "id": "id-1",
-  "introductionPanel": {
-    "text": {
-      "en": "We would like to ask you how close you are with the people you know."
-    },
-    "title": {
-      "en": "How Strong Is This Tie?"
-    }
-  },
   "label": {
     "en": "How Strong Is This Tie?"
   },

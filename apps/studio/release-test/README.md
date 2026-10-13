@@ -70,6 +70,10 @@ applies.
 
 ## Each run
 
+Every run writes `STUDIO_TELEMETRY=false` into the deployment's `.env`, so the
+lane sends nothing to Codaco's PostHog project. The default, telemetry on, is
+exercised by the `studio-egress (telemetry-on)` job against a sink.
+
 1. Start the stack with the "from" images, run `migrate`, seed it, complete
    first-run setup, and export every row.
 2. `upgrade.sh`: put the "to" digests in `.env`, then run each line of the

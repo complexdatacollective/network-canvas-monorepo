@@ -16,18 +16,12 @@ export const alterFormScenarios: InterfaceScenarios = {
   interfaceType: 'AlterForm',
   scenarios: [
     {
-      id: 'intro-panel-and-mode-switch',
-      covers: [
-        'type',
-        'id',
-        'label',
-        'interviewScript',
-        'subject',
-        'introductionPanel',
-      ],
+      id: 'opens-on-first-item-and-back-leaves-stage',
+      covers: ['type', 'id', 'label', 'interviewScript', 'subject'],
       smoke: true,
       visual: true,
       seedNetwork: true,
+      currentStep: 1,
       build: () => {
         const synth = new SyntheticInterview();
         const person = synth.addNodeType({ name: 'Person' });
@@ -37,14 +31,11 @@ export const alterFormScenarios: InterfaceScenarios = {
           type: 'text',
           component: 'Text',
         });
+        synth.addInformationStage({ title: 'Previous stage', items: [] });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
           label: 'Menu-only label',
           interviewScript: 'Ask gently',
-          introductionPanel: {
-            title: 'About Each Person',
-            text: 'Please give **details** about each person.',
-          },
         });
         alterForm.addFormField({
           variable: nickname.id,
@@ -60,29 +51,25 @@ export const alterFormScenarios: InterfaceScenarios = {
         synth.addInformationStage({ title: 'Next stage', items: [] });
         return synth;
       },
-      run: async ({ page, interview }) => {
+      run: async ({ page, interview, stage }) => {
         const slides = new SlidesFormFixture(page);
 
+        // The stage opens directly on the first person's questions.
+        await interview.waitForForm();
+        await expect(slides.getCurrentItemLabel()).resolves.not.toBeNull();
         await expect(
-          page.getByRole('heading', { name: 'About Each Person' }),
-        ).toBeVisible();
-        // Markdown renders as elements, not literal syntax.
-        await expect(
-          page.locator('strong', { hasText: 'details' }),
+          stage.form.field('nickname').locator('input'),
         ).toBeVisible();
         // label is menu-only (no stages menu here); interviewScript never renders.
         await expect(page.getByText('Menu-only label')).toHaveCount(0);
         await expect(page.getByText('Ask gently')).toHaveCount(0);
 
-        await interview.dismissIntro();
-        await expect(
-          page.locator('[data-stage-section="form"][data-stage-ready="true"]'),
-        ).toBeVisible();
-        await expect(slides.getCurrentItemLabel()).resolves.not.toBeNull();
-
-        // Backwards from the first slide returns to the intro panel.
+        // Backwards from the first slide leaves the stage.
         await slides.previousSlide();
-        await expect(slides.isOnIntro()).resolves.toBe(true);
+        await expect(page).toHaveURL(/step=0/);
+        await expect(
+          page.getByRole('heading', { name: 'Previous stage' }),
+        ).toBeVisible();
       },
     },
 
@@ -115,7 +102,6 @@ export const alterFormScenarios: InterfaceScenarios = {
         const placeName = place.addVariable({ name: 'name', type: 'text' });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         alterForm.addFormField({
           variable: nickname.id,
@@ -137,7 +123,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
         const label1 = await slides.getCurrentItemLabel();
         expect(label1).toBe('Ada');
 
@@ -208,7 +194,6 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         alterForm.addFormField({
           variable: fullName.id,
@@ -228,7 +213,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // The plain hint and the validation-summary both render up front.
         await expect(page.getByText('What friends call them')).toBeVisible();
@@ -285,7 +270,6 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         alterForm.addFormField({
           variable: bio.id,
@@ -303,7 +287,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         await stage.form.fillText('bio', 'abc');
         await stage.form.fillNumber('age', '200');
@@ -355,7 +339,6 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         alterForm.addFormField({
           variable: interests.id,
@@ -368,7 +351,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         await stage.form.selectCheckbox('interests', 'Reading');
         await stage.form.selectCheckbox('interests', 'Sport');
@@ -439,7 +422,6 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         alterForm.addFormField({
           variable: codeName.id,
@@ -473,7 +455,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
         const label1 = await slides.getCurrentItemLabel();
 
         // Slide 1: satisfy sameAs/differentFrom, pick a codeName.
@@ -566,7 +548,6 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         for (const [variable, prompt] of [
           [start.id, 'Start'],
@@ -584,7 +565,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // end < start and ceiling < floor are invalid; cap/capEq are valid
         // (both already below end).
@@ -734,7 +715,6 @@ export const alterFormScenarios: InterfaceScenarios = {
 
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         alterForm.addFormField({
           variable: text.id,
@@ -803,7 +783,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
 
         // Scalar values use the protocol's normalized 0-1 range.
         const vasSlider = stage.form.field('vas').getByRole('slider');
@@ -908,7 +888,6 @@ export const alterFormScenarios: InterfaceScenarios = {
         });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         alterForm.addFormField({
           variable: age.id,
@@ -928,7 +907,7 @@ export const alterFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, interview, stage, protocol }) => {
         const slides = new SlidesFormFixture(page);
-        await interview.dismissIntro();
+        await interview.waitForForm();
         const label1 = await slides.getCurrentItemLabel();
         await slides.nextSlide(label1); // slide 1 (Ada, valid) -> slide 2 (Grace)
 
@@ -958,7 +937,6 @@ export const alterFormScenarios: InterfaceScenarios = {
         await slides.nextSlide(label1);
         await stage.form.fillNumber('age', '55');
         await slides.previousSlide();
-        await expect(slides.isOnIntro()).resolves.toBe(false);
         await expect(slides.getCurrentItemLabel()).resolves.toBe(label1);
 
         state = await protocol.getNetworkState(interview.interviewId);
@@ -979,9 +957,9 @@ export const alterFormScenarios: InterfaceScenarios = {
           type: 'text',
           component: 'Text',
         });
+        synth.addInformationStage({ title: 'Previous stage', items: [] });
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         alterForm.addFormField({
           variable: name.id,
@@ -993,16 +971,21 @@ export const alterFormScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, interview }) => {
-        // No subject-type nodes: the stage passes straight through on next.
-        // The form section never paints (AlterForm returns null then
-        // moveForward()s), so dismissIntro()'s wait for it would never
-        // resolve — advance with next() and observe the following stage.
+        // No subject-type nodes: navigation passes the form stage (step 1)
+        // in both directions, so its form section never paints.
+        await interview.next();
+        await expect(page).toHaveURL(/step=2/);
+        await expect(
+          page.getByRole('heading', { name: 'Next stage' }),
+        ).toBeVisible();
         await expect(page.locator('[data-stage-section="form"]')).toHaveCount(
           0,
         );
-        await interview.next();
+
+        await page.getByTestId('previous-button').click();
+        await expect(page).toHaveURL(/step=0/);
         await expect(
-          page.getByRole('heading', { name: 'Next stage' }),
+          page.getByRole('heading', { name: 'Previous stage' }),
         ).toBeVisible();
         await expect(page.locator('[data-stage-section="form"]')).toHaveCount(
           0,
@@ -1033,7 +1016,6 @@ export const alterFormScenarios: InterfaceScenarios = {
         synth.addStage('Anonymisation');
         const alterForm = synth.addStage('AlterForm', {
           subject: { entity: 'node', type: person.id },
-          introductionPanel: { title: 'About Each Person', text: '' },
         });
         alterForm.addFormField({
           variable: secret.id,
@@ -1059,7 +1041,7 @@ export const alterFormScenarios: InterfaceScenarios = {
         await expect(page.getByText('Passphrase accepted!')).toBeVisible();
         await interview.next(); // -> AlterForm (step 1)
 
-        await interview.dismissIntro();
+        await interview.waitForForm();
         await stage.form.fillText('secret', 'Secret');
         await slides.nextSlide(await slides.getCurrentItemLabel());
         await expect(
@@ -1076,10 +1058,7 @@ export const alterFormScenarios: InterfaceScenarios = {
 
         // Returning to the form decrypts the answer back into its field.
         await page.getByTestId('previous-button').click();
-        await expect(
-          page.locator('[data-stage-section="intro"]'),
-        ).toBeVisible();
-        await interview.dismissIntro();
+        await interview.waitForForm();
         await expect(stage.form.field('secret').locator('input')).toHaveValue(
           'Secret',
         );

@@ -290,11 +290,8 @@ export const completeProtocol = () => ({
       id: 'egoForm',
       type: 'EgoForm',
       label: localized('About you'),
-      introductionPanel: {
-        title: localized('About you title'),
-        text: localized('About you text'),
-      },
       form: {
+        title: localized('About you title'),
         fields: [
           {
             variable: 'egoName',
@@ -449,10 +446,6 @@ export const completeProtocol = () => ({
       type: 'AlterForm',
       label: localized('About them'),
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: localized('About them title'),
-        text: localized('About them text'),
-      },
       form: {
         fields: [{ variable: 'nickname', prompt: localized('Nickname') }],
       },
@@ -462,10 +455,6 @@ export const completeProtocol = () => ({
       type: 'AlterEdgeForm',
       label: localized('About ties'),
       subject: { entity: 'edge', type: 'knows' },
-      introductionPanel: {
-        title: localized('About ties title'),
-        text: localized('About ties text'),
-      },
       form: { fields: [{ variable: 'note', prompt: localized('Note') }] },
     },
     {
@@ -473,10 +462,6 @@ export const completeProtocol = () => ({
       type: 'DyadCensus',
       label: localized('Pairs'),
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: localized('Pairs title'),
-        text: localized('Pairs text'),
-      },
       prompts: [
         {
           id: 'p1',
@@ -490,10 +475,6 @@ export const completeProtocol = () => ({
       type: 'TieStrengthCensus',
       label: localized('Tie strength'),
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: localized('Tie strength title'),
-        text: localized('Tie strength text'),
-      },
       prompts: [
         {
           id: 'p1',
@@ -509,6 +490,8 @@ export const completeProtocol = () => ({
       type: 'OrdinalBin',
       label: localized('Ordinal'),
       subject: { entity: 'node', type: 'person' },
+      behaviours: { requireCompletePlacement: true },
+      unplacedNodesNotice: localized('Place everyone to continue'),
       prompts: [
         {
           id: 'p1',

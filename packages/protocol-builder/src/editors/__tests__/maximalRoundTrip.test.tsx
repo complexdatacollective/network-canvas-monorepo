@@ -180,11 +180,8 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Ask about them.',
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
-      introductionPanel: {
-        title: { 'en-US': 'Introduction' },
-        text: { 'en-US': 'A few questions.' },
-      },
       form: {
+        title: { 'en-US': 'About you' },
         fields: [
           {
             id: 'field-1',
@@ -208,10 +205,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       dynamicValues: EVERY_STAGE.dynamicValues,
       filter: nodeFilter,
       subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: { 'en-US': 'Introduction' },
-        text: { 'en-US': 'A few questions.' },
-      },
       form: {
         fields: [
           {
@@ -236,10 +229,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       dynamicValues: EVERY_STAGE.dynamicValues,
       filter: edgeFilter,
       subject: { entity: 'edge', type: 'knows' },
-      introductionPanel: {
-        title: { 'en-US': 'Introduction' },
-        text: { 'en-US': 'A few questions.' },
-      },
       form: {
         fields: [
           {
@@ -454,6 +443,8 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('ordinal-bin-1', {
       ...EVERY_STAGE,
       filter: nodeFilter,
+      behaviours: { interactionMode: 'select', requireCompletePlacement: true },
+      unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
     }),
   },
   {
@@ -462,6 +453,8 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     fields: fixtureMaximal('categorical-bin-1', {
       ...EVERY_STAGE,
       filter: nodeFilter,
+      behaviours: { interactionMode: 'select', requireCompletePlacement: true },
+      unplacedNodesNotice: { 'en-US': 'Place everyone to continue.' },
     }),
   },
   {

@@ -839,6 +839,40 @@ describe('committed schema 8 protocols', () => {
       : [];
   };
 
+  const stageOutlineWithIntroductions = (document: unknown) => {
+    const stages = getAt(document, ['stages']);
+    if (!Array.isArray(stages)) return [];
+    return stages.flatMap((stage) => {
+      if (!isRecord(stage)) return [undefined];
+      const outline = { id: stage.id, type: stage.type };
+      const panel = stage.introductionPanel;
+      if (!isRecord(panel)) return [outline];
+      const hasText =
+        typeof panel.text === 'string' && panel.text.trim() !== '';
+      if (stage.type === 'EgoForm' && !hasText) return [outline];
+      return [
+        { id: `${String(stage.id)}-introduction`, type: 'Information' },
+        outline,
+      ];
+    });
+  };
+
+  // Stages move when an introduction is inserted before them, so a migrated
+  // site is compared with the schema 8 stage of the same id.
+  const schema8PathOf = (
+    migrated: unknown,
+    schema8: unknown,
+    at: readonly (string | number)[],
+  ): (string | number)[] => {
+    if (at[0] !== 'stages' || typeof at[1] !== 'number') return [...at];
+    const id = getAt(migrated, ['stages', at[1], 'id']);
+    const stages = getAt(schema8, ['stages']);
+    const index = Array.isArray(stages)
+      ? stages.findIndex((stage) => isRecord(stage) && stage.id === id)
+      : -1;
+    return index === -1 ? ['missing'] : ['stages', index, ...at.slice(2)];
+  };
+
   it('discovered the committed protocols', () => {
     expect(corpusFiles.length).toBeGreaterThan(0);
   });
@@ -863,9 +897,11 @@ describe('committed schema 8 protocols', () => {
         JSON.stringify(result.error?.issues, null, 2),
       ).toBe(true);
       expect(migrated.localization).toEqual(ENGLISH_ONLY);
-      // Every stage is kept, in order, and the finish stage follows them.
+      // Every stage is kept, in order, each introduction panel becomes the
+      // Information stage just before its stage (an Ego Form's only when the
+      // panel has text), and the finish stage follows them.
       expect(stageOutline(migrated)).toEqual([
-        ...stageOutline(schema8),
+        ...stageOutlineWithIntroductions(schema8),
         { id: 'finish', type: 'FinishSession' },
       ]);
       expect(Object.keys(migrated.codebook.node ?? {})).toEqual(
@@ -874,7 +910,7 @@ describe('committed schema 8 protocols', () => {
 
       for (const { path: at, value } of collectLocalizedStrings(migrated)) {
         expect(Object.keys(value)).toEqual(['en']);
-        const source = getAt(schema8, at);
+        const source = getAt(schema8, schema8PathOf(migrated, schema8, at));
         if (typeof source === 'string') {
           expect(messageText(value.en ?? '')).toBe(source);
         }

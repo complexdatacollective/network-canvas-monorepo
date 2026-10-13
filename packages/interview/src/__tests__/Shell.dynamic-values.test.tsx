@@ -273,9 +273,9 @@ describe('dynamic values in a stage’s text', () => {
         id: 'about-you',
         type: 'EgoForm',
         label: { en: 'About you' },
-        introductionPanel: { title: { en: 'About you' } },
         dynamicValues: { name: { path: 'ego.name' } },
         form: {
+          title: { en: 'About you' },
           fields: [
             { variable: 'name', prompt: { en: 'What is your name?' } },
             {
@@ -325,9 +325,9 @@ describe('dynamic values in a stage’s text', () => {
         id: 'about-you',
         type: 'EgoForm',
         label: { en: 'About you' },
-        introductionPanel: { title: { en: 'About you' } },
         dynamicValues: { name: { path: 'ego.name' } },
         form: {
+          title: { en: 'About you' },
           fields: [
             {
               variable: 'age',
@@ -363,9 +363,9 @@ describe('dynamic values in a stage’s text', () => {
         id: 'about-you',
         type: 'EgoForm',
         label: { en: 'About you' },
-        introductionPanel: { title: { en: 'About you' } },
         dynamicValues: { name: { path: 'ego.name' } },
         form: {
+          title: { en: 'About you' },
           fields: [
             { variable: 'name', prompt: { en: 'What is your name?' } },
             {

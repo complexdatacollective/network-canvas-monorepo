@@ -38,7 +38,6 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
-import IntroPanel from '../SlidesForm/IntroPanel';
 import {
   getNodePair,
   getStageMetadataResponse,
@@ -69,7 +68,6 @@ export default function DyadCensus(props: DyadCensusProps) {
   const pairLabelId = `${baseId}-pair`;
   const promptLabelId = `${baseId}-prompt`;
 
-  const [isIntroduction, setIsIntroduction] = useState(true);
   const [isForwards, setIsForwards] = useState(true);
   const [pairIndex, setPairIndex] = useState(0);
 
@@ -83,6 +81,7 @@ export default function DyadCensus(props: DyadCensusProps) {
   const edgeColor = useSelector(getEdgeColorForType(createEdge));
   const stageMetadata = useStageSelector(getStageMetadata);
   const pairs = useStageSelector(getNodePairs);
+  const hasPairs = pairs.length > 0;
 
   const pair =
     pairIndex >= 0 && pairIndex < pairs.length
@@ -133,17 +132,17 @@ export default function DyadCensus(props: DyadCensusProps) {
 
   const track = useTrack();
   useEffect(() => {
-    if (pair && !isIntroduction) {
+    if (pair) {
       track('pair_shown', { node_a_id: pair[0], node_b_id: pair[1] });
     }
-  }, [pair, isIntroduction, track]);
+  }, [pair, track]);
 
   // Validation
   useStageValidation({
     constraints: [
       {
         direction: 'forwards',
-        isMet: isIntroduction || isAnswered,
+        isMet: !hasPairs || isAnswered,
         kind: 'comparison_response_required',
         toast: {
           description: <AppMessage message={validationMessages.required} />,
@@ -164,12 +163,9 @@ export default function DyadCensus(props: DyadCensusProps) {
     if (direction === 'forwards') {
       setIsForwards(true);
 
-      if (isIntroduction) {
-        if (pairs.length === 0) {
-          return 'FORCE';
-        }
-        setIsIntroduction(false);
-        return false;
+      // Nothing to ask about: leave the stage, skipping any further prompts.
+      if (!hasPairs) {
+        return 'FORCE';
       }
 
       const isLastPair = pairIndex === pairs.length - 1;
@@ -185,19 +181,15 @@ export default function DyadCensus(props: DyadCensusProps) {
     if (direction === 'backwards') {
       setIsForwards(false);
 
-      if (isIntroduction) {
-        return true;
-      }
-
       if (pairIndex > 0) {
         setPairIndex((i) => i - 1);
         return false;
       }
 
-      // pairIndex === 0
+      // pairIndex === 0: step back to the previous prompt's last pair, or
+      // leave the stage from the first prompt.
       if (promptIndex === 0) {
-        setIsIntroduction(true);
-        return false;
+        return true;
       }
 
       setPairIndex(pairs.length - 1);
@@ -309,70 +301,57 @@ export default function DyadCensus(props: DyadCensusProps) {
       }}
     >
       <div className="interface">
-        <AnimatePresence initial={false} mode="wait">
-          {isIntroduction ? (
-            <IntroPanel
-              title={stage.introductionPanel.title}
-              text={stage.introductionPanel.text}
-              key="intro"
-            />
-          ) : (
-            <motion.div
-              key="content"
-              variants={{
-                initial: { opacity: 0 },
-                animate: { opacity: 1 },
-                exit: { opacity: 0 },
-              }}
-              initial="initial"
-              exit="exit"
-              animate="animate"
-              className="flex w-full flex-1 flex-col items-center"
-            >
-              <motion.div className="flex w-full grow flex-col items-center justify-center">
-                <AnimatePresence
-                  mode="wait"
-                  custom={isForwards}
-                  initial={false}
-                >
-                  <Pair
-                    key={`${promptIndex}_${pairIndex}`}
-                    fromNode={fromNode}
-                    toNode={toNode}
-                    edgeColor={edgeColor}
-                    hasEdge={displayedEdge}
-                    animateForwards={isForwards}
-                    labelId={pairLabelId}
-                  />
-                </AnimatePresence>
-              </motion.div>
-              <MotionSurface
-                noContainer
-                className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-4"
-                variants={choiceVariants}
-                initial="initial"
-                animate="animate"
-              >
-                <Prompts id={promptLabelId} />
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={`${promptIndex}_${pairIndex}_choice`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  >
-                    <BooleanField
-                      value={displayedEdge ?? undefined}
-                      onChange={setEdge}
-                      noReset
-                      aria-labelledby={`${pairLabelId} ${promptLabelId}`}
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              </MotionSurface>
+        {hasPairs && (
+          <motion.div
+            variants={{
+              initial: { opacity: 0 },
+              animate: { opacity: 1 },
+              exit: { opacity: 0 },
+            }}
+            initial="initial"
+            exit="exit"
+            animate="animate"
+            className="flex w-full flex-1 flex-col items-center"
+          >
+            <motion.div className="flex w-full grow flex-col items-center justify-center">
+              <AnimatePresence mode="wait" custom={isForwards} initial={false}>
+                <Pair
+                  key={`${promptIndex}_${pairIndex}`}
+                  fromNode={fromNode}
+                  toNode={toNode}
+                  edgeColor={edgeColor}
+                  hasEdge={displayedEdge}
+                  animateForwards={isForwards}
+                  labelId={pairLabelId}
+                />
+              </AnimatePresence>
             </motion.div>
-          )}
-        </AnimatePresence>
+            <MotionSurface
+              noContainer
+              className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-4"
+              variants={choiceVariants}
+              initial="initial"
+              animate="animate"
+            >
+              <Prompts id={promptLabelId} />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${promptIndex}_${pairIndex}_choice`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <BooleanField
+                    value={displayedEdge ?? undefined}
+                    onChange={setEdge}
+                    noReset
+                    aria-labelledby={`${pairLabelId} ${promptLabelId}`}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </MotionSurface>
+          </motion.div>
+        )}
       </div>
     </DynamicValueEntity>
   );

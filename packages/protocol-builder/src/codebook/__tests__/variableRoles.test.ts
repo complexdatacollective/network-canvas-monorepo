@@ -68,10 +68,6 @@ const sections = (): Record<string, SectionDoc> => ({
     type: 'AlterForm',
     label: { en: 'Form' },
     subject: SUBJECT,
-    introductionPanel: {
-      title: { en: 'Introduction' },
-      text: { en: 'Answer a question.' },
-    },
     form: { fields: [{ variable: 'category', prompt: { en: 'Category?' } }] },
   },
   [sectionId({ kind: 'stage', stageId: BIN_STAGE_ID })]: {

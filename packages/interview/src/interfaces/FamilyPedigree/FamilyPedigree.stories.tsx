@@ -3111,11 +3111,9 @@ export const ANameGivenOnALaterStageIsKept: Story = {
     const nameField = () =>
       canvas.findByRole('textbox', { name: NAME_FORM_PROMPT });
 
-    /** From the pedigree, through the form's introduction and the
-     * participant, to the form for their partner. */
+    /** From the pedigree, through the participant, to the form for their
+     * partner. */
     const toPartnersForm = async () => {
-      await next();
-      await canvas.findByText('Please continue.');
       await next();
       await waitFor(async () => expect(await nameField()).toHaveValue('Ari'));
       await next();

@@ -241,10 +241,6 @@ const lists: readonly ListCase[] = [
           label: en('Alter form'),
           subject: { entity: 'node', type: 'person' },
           form: { fields: rows },
-          introductionPanel: {
-            title: en('About each person'),
-            text: en('A few more questions.'),
-          },
         },
       },
       sections: <FormFieldsSection subject="node" />,

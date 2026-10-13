@@ -32,6 +32,7 @@ import { createDefaultFinishSessionStage } from './finish-session-defaults.ts';
 import { withInterfaceText } from './interface-text.ts';
 import { ProtocolLocalizationSchema } from './localized-string.ts';
 import ProtocolSchemaV9 from './schema.ts';
+import { freshStageId } from './stage-ids.ts';
 import { missingSuppliedStageText } from './supplied-stage-text.ts';
 import { findValidationContradictions } from './variables/validation-contradictions.ts';
 import { optionValueKey } from './variables/variable.ts';
@@ -492,33 +493,95 @@ const shownText = (text: unknown) => {
 const fallbackPanelTitle = (label: unknown, defaultLocale: string): unknown =>
   shownText(label) ?? { [defaultLocale]: 'Introduction' };
 
+/** The ids the stages already use, which a stage the migration adds must not. */
+const takenStageIds = (stages: unknown): Set<string> =>
+  new Set(
+    Array.isArray(stages)
+      ? stages.flatMap((stage) =>
+          isRecord(stage) && typeof stage.id === 'string' ? [stage.id] : [],
+        )
+      : [],
+  );
+
 /**
- * Schema 8 accepted an introduction panel whose title or text was only
- * spaces, and published protocols use a body of spaces on purpose to show a
- * panel with only a title. Schema 9 requires both to say something, but its
- * text is optional, so text that shows nothing goes, and the panel shows only
- * its title, as it did. A title that shows nothing takes the stage's label, as
- * the 7 to 8 migration does for a panel with no title.
+ * Schema 9 has one way to give a participant instructions: an Information
+ * stage. The introduction panel that opened an Ego Form, Alter Form, Alter
+ * Edge Form, Dyad Census or Tie-Strength Census becomes an Information stage
+ * just before it, titled and named with the panel's title (the stages menu
+ * shows participants the name) and showing its text. It takes the stage's
+ * own skip logic, so the two still appear or are skipped together. A skip
+ * that jumped to the stage now jumps to its introduction, so the participant
+ * still reads it first.
  *
- * Text a document in schema 9 form already localized loses only the
- * translations that show nothing: those languages fall back to another
- * translation, and the protocol's translation report lists them as missing.
+ * An Ego Form showed its panel as the heading above its questions rather
+ * than as a screen of its own, so the panel's title becomes the form's
+ * title, which schema 9 shows there instead. Its text, if it has any, still
+ * becomes an Information stage before the form.
+ *
+ * Schema 8 accepted a panel whose title or text was only spaces, and
+ * published protocols use a body of spaces on purpose to show a panel with
+ * only a title. Text that shows nothing is left out, and a title that shows
+ * nothing takes the stage's label, as the 7 to 8 migration does for a panel
+ * with no title. Text a document in schema 9 form already localized loses
+ * only the translations that show nothing, which then fall back to another.
  */
-const repairIntroductionPanels = (
+const moveIntroductionPanelsToInformationStages = (
   protocol: unknown,
   { defaultLocale }: LocalizationDeclaration,
 ) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  const taken = takenStageIds(protocol.stages);
+  const retargets = new Map<string, string>();
+  const stages: unknown[] = [];
   for (const stage of protocol.stages) {
-    if (!isRecord(stage) || !isRecord(stage.introductionPanel)) continue;
-    const panel = stage.introductionPanel;
-    panel.title =
+    if (!isRecord(stage) || !isRecord(stage.introductionPanel)) {
+      stages.push(stage);
+      continue;
+    }
+    const { introductionPanel: panel, ...rest } = stage;
+    const title =
       withoutBlankText(panel.title) ??
       fallbackPanelTitle(stage.label, defaultLocale);
     const text = withoutBlankText(panel.text);
-    if (text === undefined) Reflect.deleteProperty(panel, 'text');
-    else panel.text = text;
+    const isEgoForm = stage.type === 'EgoForm';
+    if (isEgoForm && isRecord(rest.form)) {
+      rest.form = { title: structuredClone(title), ...rest.form };
+    }
+    if (!isEgoForm || text !== undefined) {
+      const id = freshStageId(
+        typeof stage.id === 'string' ? stage.id : 'stage',
+        '-introduction',
+        taken,
+      );
+      taken.add(id);
+      if (typeof stage.id === 'string') retargets.set(stage.id, id);
+      stages.push({
+        id,
+        type: 'Information',
+        label: structuredClone(title),
+        title,
+        items:
+          text === undefined
+            ? []
+            : [{ id: 'introduction-text', type: 'text', content: text }],
+        ...(stage.skipLogic !== undefined && {
+          skipLogic: structuredClone(stage.skipLogic),
+        }),
+      });
+    }
+    stages.push(rest);
   }
+
+  for (const stage of stages) {
+    if (!isRecord(stage) || !isRecord(stage.skipLogic)) continue;
+    const { destination } = stage.skipLogic;
+    if (!isRecord(destination) || typeof destination.stageId !== 'string') {
+      continue;
+    }
+    const retarget = retargets.get(destination.stageId);
+    if (retarget !== undefined) destination.stageId = retarget;
+  }
+  protocol.stages = stages;
 };
 
 /**
@@ -910,20 +973,8 @@ const repairInformationTextItems = (protocol: unknown) => {
 // has it. Deterministic, so migrating one document twice gives one result.
 const FINISH_STAGE_ID = 'finish';
 
-const finishStageId = (stages: unknown): string => {
-  const taken = new Set(
-    Array.isArray(stages)
-      ? stages.flatMap((stage) =>
-          isRecord(stage) && typeof stage.id === 'string' ? [stage.id] : [],
-        )
-      : [],
-  );
-  let id = FINISH_STAGE_ID;
-  for (let suffix = 2; taken.has(id); suffix += 1) {
-    id = `${FINISH_STAGE_ID}-${suffix}`;
-  }
-  return id;
-};
+const finishStageId = (stages: unknown): string =>
+  freshStageId(FINISH_STAGE_ID, '', takenStageIds(stages));
 
 /**
  * Schema 8 ended every interview with a built-in screen the runtime added.
@@ -1147,7 +1198,7 @@ const migrationV8toV9 = createMigration({
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
 - Each option of an ordinal or categorical attribute must now have a value of its own, because answers are stored by value and two options with the same value cannot be told apart. Where options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. Answers already recorded, and skip logic and filters, keep the value they use. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
 - An option's value is now held to the same rules as other names. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. An empty value is replaced by the option's label or, when there is none, by "Option" followed by the option's position. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.
-- An introduction panel's text is now optional, so a panel can show only its title. Text that contained only spaces is removed, so the panel shows only its title, as before. An introduction panel's title must contain some text, so a title that contained only spaces now uses the stage's name.
+- Introduction panels are replaced by Information stages, so instructions to participants are written in one place. The introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage becomes an Information stage just before it, with the panel's title and text. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one. An Ego Form's panel showed as the heading above its questions, so the panel's title becomes the title of the form, still shown above the questions; if the panel had text, the text moves to an Information stage just before the Ego Form. Panel text that contained only spaces is left out, and a panel title that contained only spaces now uses the stage's name.
 - On a Categorical Bin stage, the label of the bin for answers not listed and the question that asks participants to describe their answer must now contain some text. Where either contained only spaces, it now uses the other's text, or "Other" for the label and "Please specify" for the question.
 - On a Tie-Strength Census stage, the label of the option for declining to rate a relationship must now contain some text. Where it contained only spaces, it now reads "No relationship".
 - The title of an Information stage must now contain some text. Where it contained only spaces, it now shows the name of the stage.
@@ -1183,7 +1234,7 @@ const migrationV8toV9 = createMigration({
     addComposerCaptions(migrated);
     addFormFieldPrompts(migrated);
     addSuppliedStageText(migrated, localization);
-    repairIntroductionPanels(migrated, localization);
+    moveIntroductionPanelsToInformationStages(migrated, localization);
     repairInformationTitles(migrated);
     repairInformationTextItems(migrated);
     repairNarrativeLabels(migrated);

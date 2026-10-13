@@ -7,7 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import { MotionConfig } from 'motion/react';
-import { act, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -30,11 +30,7 @@ import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import protocol from '../../../store/modules/protocol';
 import session from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
-import type {
-  BeforeNextFunction,
-  RegisterBeforeNext,
-  StageProps,
-} from '../../../types';
+import type { RegisterBeforeNext, StageProps } from '../../../types';
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import TieStrengthCensus from '../TieStrengthCensus';
 
@@ -47,7 +43,6 @@ const stage: StageProps<'TieStrengthCensus'>['stage'] = {
   type: 'TieStrengthCensus',
   label: { en: 'Tie Strength' },
   subject: { entity: 'node', type: NODE_TYPE },
-  introductionPanel: { title: { en: 'Welcome' }, text: { en: 'Intro copy' } },
   prompts: [
     {
       id: 'p1',
@@ -157,15 +152,7 @@ function renderInterface(
     middleware: (g) => g({ serializableCheck: false }),
   });
 
-  // Capture the stage's registered beforeNext handler so the test can advance
-  // past the introduction panel (its visibility is internal stage state).
-  let beforeNext: BeforeNextFunction | null = null;
-  const registerBeforeNext: RegisterBeforeNext = (
-    keyOrFn: string | BeforeNextFunction | null,
-    maybeFn?: BeforeNextFunction | null,
-  ) => {
-    beforeNext = typeof keyOrFn === 'string' ? (maybeFn ?? null) : keyOrFn;
-  };
+  const registerBeforeNext: RegisterBeforeNext = () => undefined;
 
   const moveForward = vi.fn();
   const props: StageProps<'TieStrengthCensus'> = {
@@ -193,27 +180,25 @@ function renderInterface(
 
   render(<TieStrengthCensus {...props} />, { wrapper: Wrapper });
 
-  const advancePastIntro = async () => {
-    await act(async () => {
-      await beforeNext?.('forwards', 'step');
-    });
+  const waitForFirstPair = async () => {
     await waitFor(() =>
       expect(screen.getAllByRole('option').length).toBeGreaterThan(0),
     );
   };
 
-  return { store, advancePastIntro, moveForward };
+  return { store, waitForFirstPair, moveForward };
 }
 
 describe('TieStrengthCensus interface', () => {
-  it('shows the introduction panel before the census begins', () => {
-    renderInterface();
-    expect(screen.getByText('Intro copy')).toBeTruthy();
+  it('opens directly on the first pair', async () => {
+    const { waitForFirstPair } = renderInterface();
+    await waitForFirstPair();
+    expect(screen.getByText('How strong is the tie?')).toBeTruthy();
   });
 
   it('creates an edge with the prompt edgeVariable when an option is chosen', async () => {
-    const { store, advancePastIntro } = renderInterface();
-    await advancePastIntro();
+    const { store, waitForFirstPair } = renderInterface();
+    await waitForFirstPair();
 
     fireEvent.click(screen.getByRole('option', { name: 'Strong' }));
 
@@ -226,8 +211,8 @@ describe('TieStrengthCensus interface', () => {
   });
 
   it('records a negative answer in stage metadata without creating an edge', async () => {
-    const { store, advancePastIntro } = renderInterface();
-    await advancePastIntro();
+    const { store, waitForFirstPair } = renderInterface();
+    await waitForFirstPair();
 
     fireEvent.click(screen.getByRole('option', { name: 'No tie' }));
 
@@ -245,8 +230,8 @@ describe('TieStrengthCensus interface', () => {
 
   it('waits for the selection animation before advancing normally', async () => {
     await withAnimationsEnabled(async () => {
-      const { advancePastIntro, moveForward } = renderInterface();
-      await advancePastIntro();
+      const { waitForFirstPair, moveForward } = renderInterface();
+      await waitForFirstPair();
 
       fireEvent.click(screen.getByRole('option', { name: 'No tie' }));
 
@@ -256,12 +241,12 @@ describe('TieStrengthCensus interface', () => {
   });
 
   it('advances immediately when animations are disabled', async () => {
-    const { advancePastIntro, moveForward } = renderInterface(
+    const { waitForFirstPair, moveForward } = renderInterface(
       [],
       codebook,
       true,
     );
-    await advancePastIntro();
+    await waitForFirstPair();
 
     fireEvent.click(screen.getByRole('option', { name: 'No tie' }));
 
@@ -277,8 +262,8 @@ describe('TieStrengthCensus interface', () => {
       [entityAttributesProperty]: {},
     } as unknown as NcEdge;
 
-    const { advancePastIntro } = renderInterface([siblingEdge]);
-    await advancePastIntro();
+    const { waitForFirstPair } = renderInterface([siblingEdge]);
+    await waitForFirstPair();
 
     // No option should be pre-selected: the edge exists but this prompt's
     // edgeVariable is unset, so the prompt is unanswered.
@@ -294,8 +279,8 @@ describe('TieStrengthCensus interface', () => {
     ]);
 
     it('renders distinct cards for the real option and the decline option', async () => {
-      const { advancePastIntro } = renderInterface([], noneCodebook);
-      await advancePastIntro();
+      const { waitForFirstPair } = renderInterface([], noneCodebook);
+      await waitForFirstPair();
 
       // Both the real '__none__' option and the decline option must render as
       // their own cards. A collision on the React key would drop one of them.
@@ -306,8 +291,8 @@ describe('TieStrengthCensus interface', () => {
     });
 
     it("records the real '__none__' option as the edge value (not decline)", async () => {
-      const { store, advancePastIntro } = renderInterface([], noneCodebook);
-      await advancePastIntro();
+      const { store, waitForFirstPair } = renderInterface([], noneCodebook);
+      await waitForFirstPair();
 
       fireEvent.click(screen.getByRole('option', { name: 'Real none' }));
 
@@ -323,8 +308,8 @@ describe('TieStrengthCensus interface', () => {
     });
 
     it('still declines when the decline card is chosen', async () => {
-      const { store, advancePastIntro } = renderInterface([], noneCodebook);
-      await advancePastIntro();
+      const { store, waitForFirstPair } = renderInterface([], noneCodebook);
+      await waitForFirstPair();
 
       fireEvent.click(screen.getByRole('option', { name: 'No tie' }));
 
@@ -361,11 +346,11 @@ describe('TieStrengthCensus option labels', () => {
       .closest('[lang], [dir]') !== null;
 
   it('renders each option in the interview locale or the default, with no language of its own', async () => {
-    const { advancePastIntro } = renderInterface([], arabicCodebook, false, {
+    const { waitForFirstPair } = renderInterface([], arabicCodebook, false, {
       localization: bilingual,
       locale: 'ar',
     });
-    await advancePastIntro();
+    await waitForFirstPair();
 
     expect(marksOwnLanguage('ضعيفة')).toBe(false);
     expect(marksOwnLanguage('Strong')).toBe(false);
@@ -375,7 +360,7 @@ describe('TieStrengthCensus option labels', () => {
 describe('TieStrengthCensus dynamic values', () => {
   it('names the pair on screen in the decline label', async () => {
     const [first, second] = makeNodes();
-    const { advancePastIntro } = renderInterface([], codebook, false, {
+    renderInterface([], codebook, false, {
       stage: {
         ...stage,
         dynamicValues: {
@@ -394,10 +379,11 @@ describe('TieStrengthCensus dynamic values', () => {
         { ...second!, [entityAttributesProperty]: { name: 'Grace' } },
       ],
     });
-    await advancePastIntro();
 
     expect(
-      screen.getByRole('option', { name: 'Ada and Grace are not close' }),
+      await screen.findByRole('option', {
+        name: 'Ada and Grace are not close',
+      }),
     ).toBeInTheDocument();
   });
 });

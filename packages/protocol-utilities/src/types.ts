@@ -310,12 +310,10 @@ export type StageEntry = {
     freeDraw?: boolean;
     allowRepositioning?: boolean;
     removeAfterConsideration?: boolean;
+    requireCompletePlacement?: boolean;
     minNodes?: number;
     maxNodes?: number;
-  };
-  introductionPanel?: {
-    title: TextInput;
-    text: TextInput;
+    interactionMode?: 'drag' | 'select';
   };
   title?: TextInput;
   items?: ItemInput[];
@@ -542,16 +540,14 @@ export type AddStageInput = {
     freeDraw?: boolean;
     allowRepositioning?: boolean;
     removeAfterConsideration?: boolean;
+    requireCompletePlacement?: boolean;
     minNodes?: number;
     maxNodes?: number;
+    interactionMode?: 'drag' | 'select';
   };
   form?: {
     title?: TextInput;
     fields: FormFieldInput[];
-  };
-  introductionPanel?: {
-    title?: TextInput;
-    text?: TextInput;
   };
   // NameGeneratorQuickAdd
   quickAdd?: string;

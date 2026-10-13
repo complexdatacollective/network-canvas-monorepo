@@ -1,16 +1,22 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect } from 'react';
+import { useMemo } from 'react';
 
 import type { Stage } from '@codaco/protocol-validation';
+import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
+import BinSelectFocus from '../../components/BinSelectFocus';
 import NodeDrawer from '../../components/NodeDrawer';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
-import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import { useBinSelection } from '../../hooks/useBinSelection';
+import useCompletePlacement from '../../hooks/useCompletePlacement';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { getCurrentStageId } from '../../selectors/session';
+import {
+  getCurrentStageId,
+  getNetworkNodesForType,
+} from '../../selectors/session';
 import type { StageProps } from '../../types';
 import OrdinalBinItem from './components/OrdinalBinItem';
 import { useOrdinalBins } from './useOrdinalBins';
@@ -34,7 +40,9 @@ const binsContainerVariants = {
   exit: { opacity: 0 },
 };
 
-const OrdinalBin = (_props: OrdinalBinStageProps) => {
+const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
+  const selectMode = stage.behaviours?.interactionMode === 'select';
+
   const {
     prompt,
     prompt: { variable: activePromptVariable },
@@ -42,12 +50,20 @@ const OrdinalBin = (_props: OrdinalBinStageProps) => {
 
   const stageId = useStageSelector(getCurrentStageId);
   const { bins, unplacedNodes } = useOrdinalBins();
+  const binValues = useMemo(() => bins.map((bin) => bin.value), [bins]);
+  const stageNodes = useStageSelector(getNetworkNodesForType);
+  const { focalNode, settling, choose, advanceFrom } = useBinSelection({
+    enabled: selectMode,
+    nodes: stageNodes,
+    unplacedNodes,
+    sortRules: prompt.bucketSortOrder,
+  });
 
-  const { updateReady } = useReadyForNextStage();
-
-  useEffect(() => {
-    updateReady(unplacedNodes.length === 0);
-  }, [unplacedNodes.length, updateReady]);
+  useCompletePlacement({
+    unplacedCount: unplacedNodes.length,
+    required: stage.behaviours?.requireCompletePlacement,
+    notice: stage.unplacedNodesNotice,
+  });
 
   return (
     <div className="interface overflow-hidden pb-0">
@@ -80,13 +96,36 @@ const OrdinalBin = (_props: OrdinalBinStageProps) => {
                   promptId={prompt.id}
                   sortOrder={prompt.binSortOrder}
                   totalBins={bins.length}
+                  binValues={binValues}
+                  select={
+                    selectMode
+                      ? {
+                          focalNode,
+                          onPlaced: advanceFrom,
+                          onChoose: choose,
+                        }
+                      : undefined
+                  }
                 />
               ))}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-      <NodeDrawer nodes={unplacedNodes} itemType="NODE" />
+      {selectMode && (
+        <BinSelectFocus
+          node={focalNode}
+          settling={settling}
+          promptId={prompt.id}
+        />
+      )}
+      <NodeDrawer
+        nodes={unplacedNodes}
+        itemType="NODE"
+        draggable={!selectMode}
+        selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
+        onNodeClick={selectMode ? choose : undefined}
+      />
     </div>
   );
 };

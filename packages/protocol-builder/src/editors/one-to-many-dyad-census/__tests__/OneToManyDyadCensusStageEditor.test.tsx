@@ -29,8 +29,7 @@ const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
  * The section order, the fixture round trip and the whole-schema round trip
  * are the family's, in `editors/__tests__/censusBinEditors.test.tsx`. What is
  * here is what only this editor can be asked: the default it opens a new stage
- * on, and that a stage with no introduction screen still saves — which is the
- * whole of how this census differs from the two pairwise ones.
+ * on, and that the stage then saves.
  */
 describe('creating a one-to-many dyad census stage', () => {
   it('opens a new stage on the answer its template carries', async () => {
@@ -53,11 +52,6 @@ describe('creating a one-to-many dyad census stage', () => {
     expect(
       screen.getByRole('radio', { name: 'Remove them from the list' }),
     ).toBeChecked();
-    // And no introduction screen: this census shows the whole network from the
-    // first question, so its schema has nowhere to put one.
-    expect(
-      screen.queryByRole('textbox', { name: 'Title' }),
-    ).not.toBeInTheDocument();
   });
 
   it('saves the new stage once it has been given a type and a question', async () => {

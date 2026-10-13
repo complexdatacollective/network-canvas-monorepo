@@ -10,9 +10,11 @@ import type { NcNetwork } from '@codaco/shared-consts';
 
 import { db } from './db';
 import {
+  assertPlaintextStillAllowed,
   decryptSession,
   decryptSessionRecord,
   encryptSession,
+  preparingPlaintext,
   type StoredSessionRow,
   prepareSessionFinish,
   withoutSessionFinish,
@@ -288,8 +290,12 @@ export async function createSession(args: {
     stageMetadata: undefined,
     isSynthetic: args.isSynthetic ?? false,
   };
+  const plaintext = preparingPlaintext();
   const row = await encryptSession(session);
-  await db.sessions.put(row);
+  await db.transaction('rw', db.sessions, db.settings, async () => {
+    await assertPlaintextStillAllowed(plaintext);
+    await db.sessions.put(row);
+  });
   return session;
 }
 
@@ -464,14 +470,17 @@ export function updateSession(
         lastUpdatedAt: new Date().toISOString(),
       };
     }
+    const plaintext = preparingPlaintext();
     const row = await encryptSession(updated);
     // The read above happened before the crypto awaits, and the per-id chain
     // only serialises THIS tab. In the gap, the launch-time protocol
     // migration — possibly in another tab — may have moved this session to
     // another protocol, or the session may have been deleted. Decide against
     // the freshest stored row, and drop the write entirely rather than
-    // resurrect a deleted session.
-    return db.transaction('rw', db.sessions, async () => {
+    // resurrect a deleted session. A plaintext row is refused if the device
+    // was secured meanwhile.
+    return db.transaction('rw', db.sessions, db.settings, async () => {
+      await assertPlaintextStillAllowed(plaintext);
       const latest = await db.sessions.get(id);
       if (!latest) return undefined;
       if (partialBound && latest.protocolHash !== basis.protocolHash) {
@@ -513,26 +522,36 @@ export function markSessionFinished(
       const existingRow = await db.sessions.get(id);
       if (!existingRow) return;
       const prepared = await prepareSessionFinish(existingRow, finish);
-      const recorded = await db.transaction('rw', db.sessions, async () => {
-        // Throwing anywhere in here, before the callback resolves, aborts
-        // the transaction and rolls back anything it put; the signal is
-        // checked after each of its waits, as teardown can land in any.
-        signal?.throwIfAborted();
-        const latest = await db.sessions.get(id);
-        signal?.throwIfAborted();
-        // A session deleted in the gap stays deleted.
-        if (!latest) return true;
-        const updated = withSessionFinish(latest, prepared);
-        if (!updated) return false;
-        const now = new Date().toISOString();
-        await db.sessions.put({
-          ...updated,
-          finishedAt: now,
-          lastUpdatedAt: now,
-        });
-        signal?.throwIfAborted();
-        return true;
-      });
+      const recorded = await db.transaction(
+        'rw',
+        db.sessions,
+        db.settings,
+        async () => {
+          // Throwing anywhere in here, before the callback resolves, aborts
+          // the transaction and rolls back anything it put; the signal is
+          // checked after each of its waits, as teardown can land in any.
+          signal?.throwIfAborted();
+          // A plaintext finish is refused once another tab has secured the
+          // device: its re-encryption sweep may already hold this row, and
+          // would write back its unfinished copy over the finish.
+          await assertPlaintextStillAllowed(prepared.kind === 'plaintext');
+          signal?.throwIfAborted();
+          const latest = await db.sessions.get(id);
+          signal?.throwIfAborted();
+          // A session deleted in the gap stays deleted.
+          if (!latest) return true;
+          const updated = withSessionFinish(latest, prepared);
+          if (!updated) return false;
+          const now = new Date().toISOString();
+          await db.sessions.put({
+            ...updated,
+            finishedAt: now,
+            lastUpdatedAt: now,
+          });
+          signal?.throwIfAborted();
+          return true;
+        },
+      );
       if (recorded) return;
     }
     throw new Error(`Could not record the finish of interview ${id}`);
@@ -593,17 +612,13 @@ export async function markSessionsExported(ids: string[]): Promise<void> {
   await Promise.all(
     ids.map((id) =>
       enqueueSessionMutation(id, async () => {
-        const existing = await db.sessions.get(id);
-        if (!existing) return;
         // Stamp inside the queued mutation, not before: if this is queued behind
         // an in-flight updateSession, a timestamp captured earlier could write an
         // older lastUpdatedAt than the mutation that actually ran first.
+        // `update` reads and writes in one transaction, so it cannot write
+        // back a plaintext copy over a row another tab has just encrypted.
         const now = new Date().toISOString();
-        await db.sessions.put({
-          ...existing,
-          exportedAt: now,
-          lastUpdatedAt: now,
-        });
+        await db.sessions.update(id, { exportedAt: now, lastUpdatedAt: now });
       }),
     ),
   );

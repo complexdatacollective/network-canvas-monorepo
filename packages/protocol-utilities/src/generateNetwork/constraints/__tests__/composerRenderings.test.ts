@@ -148,10 +148,6 @@ function alterFormStage(
     type: 'AlterForm',
     label: { 'en-US': 'Edit person' },
     subject: { entity: 'node', type: 'person' },
-    introductionPanel: {
-      title: { 'en-US': 'Introduction' },
-      text: { 'en-US': 'Continue' },
-    },
     form: {
       fields: [
         {
