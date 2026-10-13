@@ -55,6 +55,15 @@
       "architectTemplate": true
     },
     {
+      "id": "ipv-help-seeking-networks",
+      "kind": "template",
+      "name": "Help-Seeking After Intimate Partner Violence",
+      "description": "The people and services a survivor can turn to, with encrypted names and private notes",
+      "protocolPath": "templates/ipv-help-seeking-networks/protocol.json",
+      "assetDir": "templates/ipv-help-seeking-networks/assets",
+      "architectTemplate": true
+    },
+    {
       "id": "life-transition-networks",
       "kind": "template",
       "name": "Life Transitions & Turning Points",
