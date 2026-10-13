@@ -169,6 +169,7 @@ function NameGeneratorPromptEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name="text"
           component={LocalizedRichTextField}
+          dynamicValues="prompt"
           label={intl.formatMessage(nameGeneratorPromptMessages.textLabel)}
           placeholder={intl.formatMessage(
             nameGeneratorPromptMessages.textPlaceholder,

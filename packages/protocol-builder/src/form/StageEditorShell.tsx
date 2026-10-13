@@ -40,6 +40,7 @@ import {
 import { applyCommands, type Command } from '@codaco/studio-sync/apply';
 
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
+import { useDynamicValuesRegistration } from '../localization/useDynamicValueSite.ts';
 import type {
   StageEditorActions,
   StageSection,
@@ -598,6 +599,7 @@ function StageEditorFormBody({
                   unable to write is a property of the edit, not of any one
                   field, so no section has to remember to pass it down.
                 */}
+                <DynamicValuesRegistration />
                 <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
               </LayoutGroup>
             </form>
@@ -625,6 +627,14 @@ function StageEditorFormBody({
  * plain one the protocol schema wrote about a named thing, which the same
  * route passes through untouched.
  */
+/**
+ * Puts the stage's dynamic value bindings among what a save writes, whichever
+ * sections the stage has: a text field anywhere in it may add one.
+ */
+function DynamicValuesRegistration() {
+  return <div hidden {...useDynamicValuesRegistration()} />;
+}
+
 function sectionProblems(sections: readonly StageSection[]): string[] {
   return sections.flatMap((section) =>
     section.problems.map((problem) =>

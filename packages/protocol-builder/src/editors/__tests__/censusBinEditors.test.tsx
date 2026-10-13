@@ -307,7 +307,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['introductionPanel', 'label', 'prompts', 'subject'],
+    ownedKeys: ['dynamicValues', 'introductionPanel', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full dyad census' },
@@ -346,7 +346,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['introductionPanel', 'label', 'prompts', 'subject'],
+    ownedKeys: ['dynamicValues', 'introductionPanel', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full tie-strength census' },
@@ -383,7 +383,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['behaviours', 'label', 'prompts', 'subject'],
+    ownedKeys: ['behaviours', 'dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full one-to-many dyad census' },
@@ -427,7 +427,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['label', 'prompts', 'subject'],
+    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full ordinal bin' },
@@ -466,7 +466,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['label', 'prompts', 'subject'],
+    ownedKeys: ['dynamicValues', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
       label: { 'en-US': 'Full categorical bin' },
@@ -529,7 +529,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: ['label', 'prompts', 'quickAdd', 'quickAddHint', 'subject'],
+    ownedKeys: ['dynamicValues', 'label', 'prompts', 'quickAdd', 'quickAddHint', 'subject'],
     wholeStage: {
       ...WITHOUT_FILTER,
       label: { 'en-US': 'Full quick-add name generator' },
@@ -576,23 +576,7 @@ const CASES: readonly EditorCase[] = [
       'Lógica de salto',
       'Guía para quien realiza la entrevista',
     ],
-    ownedKeys: [
-      'allAddedNotice',
-      'behaviours',
-      'cardOptions',
-      'dataSource',
-      'externalDataError',
-      'label',
-      'maxNodesNotice',
-      'minNodesNotice',
-      'panelTitle',
-      'prompts',
-      'searchLabel',
-      'searchNoMatch',
-      'searchOptions',
-      'sortOptions',
-      'subject',
-    ],
+    ownedKeys: ['allAddedNotice', 'behaviours', 'cardOptions', 'dataSource', 'dynamicValues', 'externalDataError', 'label', 'maxNodesNotice', 'minNodesNotice', 'panelTitle', 'prompts', 'searchLabel', 'searchNoMatch', 'searchOptions', 'sortOptions', 'subject'],
     wholeStage: {
       ...WITHOUT_FILTER,
       label: { 'en-US': 'Full roster name generator' },

@@ -19,6 +19,7 @@ import {
 } from '@codaco/protocol-builder/localization/localizedText';
 import {
   type CurrentProtocol,
+  findDynamicValueProblems,
   isBlankMessage,
   isBlankText,
   type LocaleTag,
@@ -110,8 +111,12 @@ const findRow = (
   return undefined;
 };
 
+// Text that can show values is kept as written, like a localized message:
+// read as plain or formatted text, its values would be flattened away.
 const kindOf = (row: TranslationRow): TextKind =>
-  row.arguments === undefined ? 'text' : 'message';
+  row.arguments === undefined && row.dynamicValues === undefined
+    ? 'text'
+    : 'message';
 
 /**
  * The cell's translation as its field holds it: the text a researcher reads
@@ -147,6 +152,36 @@ const withCellText = (
         isBlankTranslation(row, text) ? undefined : text,
       )
     : withTranslation(value, locale, isBlankTranslation(row, text) ? '' : text);
+
+/**
+ * Why `text`, as the row's translation in `locale`, cannot show its values:
+ * by the protocol's own check, against the stage's bindings and what the
+ * text's place can show.
+ */
+const dynamicValueProblem = (
+  state: RootState,
+  row: TranslationRow,
+  locale: LocaleTag,
+  text: string,
+): string | undefined => {
+  const protocol = getProtocol(state);
+  if (!protocol || row.dynamicValues === undefined) return undefined;
+  const at = JSON.stringify([...row.path, locale]);
+  return findDynamicValueProblems(
+    {
+      codebook: protocol.codebook,
+      stages: protocol.stages,
+      defaultLocale: protocol.localization.defaultLocale,
+    },
+    [
+      {
+        path: row.path,
+        value: { ...row.value, [locale]: text },
+        dynamicValues: row.dynamicValues,
+      },
+    ],
+  ).find((problem) => JSON.stringify(problem.path) === at)?.message;
+};
 
 type Words = Readonly<{
   intl: IntlShape;
@@ -189,6 +224,13 @@ const cellValidation =
             parsed?.success === false ? parsed.error.issues[0] : undefined;
           if (issue !== undefined) {
             fail(issue.message);
+            return;
+          }
+        }
+        if (row.dynamicValues !== undefined && !isBlankTranslation(row, text)) {
+          const problem = dynamicValueProblem(state, row, locale, text);
+          if (problem !== undefined) {
+            fail(problem);
             return;
           }
         }

@@ -243,6 +243,7 @@ export default function PageContentSection({
       <Field<typeof LocalizedInputField>
         name={TITLE_FIELD}
         component={LocalizedInputField}
+        dynamicValues="stageText"
         label={intl.formatMessage(pageContentMessages.headingLabel)}
         hint={intl.formatMessage(pageContentMessages.headingHint)}
         placeholder={intl.formatMessage(pageContentMessages.headingPlaceholder)}

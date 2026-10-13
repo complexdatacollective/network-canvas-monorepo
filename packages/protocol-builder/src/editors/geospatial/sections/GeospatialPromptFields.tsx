@@ -130,6 +130,7 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
         label={intl.formatMessage(geospatialMessages.promptTextLabel)}
         hint={intl.formatMessage(geospatialMessages.promptTextHint)}
         component={LocalizedRichTextField}
+        dynamicValues="prompt"
         singleLine
         initialValue={asLocalizedString(item[TEXT_FIELD])}
         required={intl.formatMessage(geospatialMessages.promptTextRequired)}

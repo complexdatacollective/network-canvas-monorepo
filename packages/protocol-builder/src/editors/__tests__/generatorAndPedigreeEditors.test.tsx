@@ -51,7 +51,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['form', 'label', 'prompts', 'subject'],
+    ownedKeys: ['dynamicValues', 'form', 'label', 'prompts', 'subject'],
   },
   {
     interfaceName: 'FamilyPedigree',
@@ -73,16 +73,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Interviewer guidance',
     ],
     openGroup: 'Drawing the family',
-    ownedKeys: [
-      'edgeConfiguration',
-      'framing',
-      'label',
-      'nodeConfiguration',
-      'nominationPrompts',
-      'prompt',
-      'subject',
-      'wording',
-    ],
+    ownedKeys: ['dynamicValues', 'edgeConfiguration', 'framing', 'label', 'nodeConfiguration', 'nominationPrompts', 'prompt', 'subject', 'wording'],
   },
 ];
 

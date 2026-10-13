@@ -164,6 +164,10 @@ const SelectControl = NativeSelectField as ComponentType<
   Record<string, unknown>
 >;
 
+// Where a scale's end labels sit in a form field's row.
+const MIN_LABEL_PATH = ['parameters', 'minLabel'];
+const MAX_LABEL_PATH = ['parameters', 'maxLabel'];
+
 export type VariableParameterFieldsProps = Readonly<{
   shape: ParameterShape;
   /** The block as the draft holds it, which may be anything until it saves. */
@@ -172,6 +176,12 @@ export type VariableParameterFieldsProps = Readonly<{
   onChange(key: string, value: unknown): void;
   issues: ParameterIssues;
   readOnly: boolean;
+  /**
+   * Whether the scale's end labels may show values the interview fills in:
+   * true on a stage's form, where they are a form field's captions, and
+   * false in the codebook, whose text is always literal.
+   */
+  labelsShowValues?: boolean;
 }>;
 
 /**
@@ -196,6 +206,7 @@ export default function VariableParameterFields({
   onChange,
   issues,
   readOnly,
+  labelsShowValues = false,
 }: VariableParameterFieldsProps) {
   const intl = useAppIntl();
   const held = readParameters(parameters);
@@ -243,6 +254,10 @@ export default function VariableParameterFields({
           placeholder={intl.formatMessage(
             parameterFieldMessages.minLabelPlaceholder,
           )}
+          {...(labelsShowValues && {
+            dynamicValues: 'formField' as const,
+            fieldPath: MIN_LABEL_PATH,
+          })}
           value={asLocalizedString(held.minLabel)}
           onChange={(label) => onChange('minLabel', label)}
           required
@@ -257,6 +272,10 @@ export default function VariableParameterFields({
           placeholder={intl.formatMessage(
             parameterFieldMessages.maxLabelPlaceholder,
           )}
+          {...(labelsShowValues && {
+            dynamicValues: 'formField' as const,
+            fieldPath: MAX_LABEL_PATH,
+          })}
           value={asLocalizedString(held.maxLabel)}
           onChange={(label) => onChange('maxLabel', label)}
           required

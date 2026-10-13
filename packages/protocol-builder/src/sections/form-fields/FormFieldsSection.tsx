@@ -124,6 +124,10 @@ import {
 /** Where every interface that holds a whole form keeps its fields. */
 const FIELDS_PATH = 'form.fields';
 const TITLE = 'form.title';
+// Where a field's caption and hint sit in its row, for the values they can
+// show (see `useDynamicValueSite`).
+const PROMPT_PATH = ['prompt'];
+const HINT_PATH = ['hint'];
 
 const INPUT_CONTROL = '_component';
 
@@ -844,6 +848,7 @@ export default function FormFieldsSection({
         <Field<typeof LocalizedInputField>
           name={TITLE}
           component={LocalizedInputField}
+          dynamicValues="stageText"
           label={intl.formatMessage(formFieldsMessages.formTitleLabel)}
           hint={intl.formatMessage(formFieldsMessages.formTitleHint)}
           placeholder={intl.formatMessage(
@@ -1517,6 +1522,8 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name="prompt"
           component={LocalizedRichTextField}
+          dynamicValues="formField"
+          fieldPath={PROMPT_PATH}
           label={intl.formatMessage(formFieldsMessages.promptLabel)}
           hint={intl.formatMessage(formFieldsMessages.promptHint)}
           placeholder={intl.formatMessage(formFieldsMessages.promptPlaceholder)}
@@ -1527,6 +1534,8 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name="hint"
           component={LocalizedRichTextField}
+          dynamicValues="formField"
+          fieldPath={HINT_PATH}
           label={intl.formatMessage(formFieldsMessages.hintLabel)}
           hint={intl.formatMessage(formFieldsMessages.hintHint)}
           placeholder={intl.formatMessage(formFieldsMessages.hintPlaceholder)}

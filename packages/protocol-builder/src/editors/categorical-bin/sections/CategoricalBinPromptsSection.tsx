@@ -337,6 +337,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name={OTHER_LABEL_FIELD}
           component={LocalizedRichTextField}
+          dynamicValues="prompt"
           label={intl.formatMessage(categoricalBinPromptMessages.otherBinLabel)}
           hint={intl.formatMessage(categoricalBinPromptMessages.otherBinHint)}
           placeholder={intl.formatMessage(
@@ -352,6 +353,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name={OTHER_PROMPT_FIELD}
           component={LocalizedRichTextField}
+          dynamicValues="prompt"
           label={intl.formatMessage(
             categoricalBinPromptMessages.otherPromptLabel,
           )}

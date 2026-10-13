@@ -67,6 +67,7 @@ export default function IntroductionSection() {
       <Field<typeof LocalizedInputField>
         name={TITLE_FIELD}
         component={LocalizedInputField}
+        dynamicValues="stageText"
         label={intl.formatMessage(introductionMessages.headingLabel)}
         required={REQUIRED}
         custom={localizedMaxLength(TITLE_LIMIT, intl)}
@@ -74,6 +75,7 @@ export default function IntroductionSection() {
       <Field<typeof LocalizedRichTextField>
         name={TEXT_FIELD}
         component={LocalizedRichTextField}
+        dynamicValues="stageText"
         label={intl.formatMessage(introductionMessages.textLabel)}
       />
     </BuilderSection>

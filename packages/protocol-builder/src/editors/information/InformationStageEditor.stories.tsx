@@ -63,3 +63,39 @@ export const Editing: Story = {
 export const Spectating: Story = {
   args: { readOnly: true },
 };
+
+/**
+ * A value the interview fills in, inserted into the heading: typing `{`
+ * offers what the heading can show, and choosing the participant's name
+ * binds it to the stage, inside versions for when it is known and when it is
+ * not.
+ */
+export const ShowingAValue: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await awaitPassiveEffects();
+
+    const heading = await canvas.findByRole('textbox', {
+      name: 'Page heading',
+    });
+    await userEvent.click(heading);
+    await userEvent.keyboard(' {{');
+    await body.findByRole('combobox', { name: 'Search' });
+    await userEvent.keyboard('ego_name{Enter}');
+    // The name can be missing, so it arrives in versions for when it is
+    // known and when it is not.
+    await expect(
+      await canvas.findByRole('group', { name: /ego_name/ }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
+    await waitFor(async () => {
+      await expect(
+        canvas.getByRole('region', {
+          name: 'What the host was asked to commit',
+        }),
+      ).toHaveTextContent('"path": "ego.ego_name"');
+    });
+  },
+};

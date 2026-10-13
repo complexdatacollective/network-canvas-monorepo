@@ -426,6 +426,7 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           name={TEXT_FIELD}
           label={intl.formatMessage(messages.promptTextLabel)}
           component={LocalizedRichTextField}
+          dynamicValues="prompt"
           singleLine
           placeholder={intl.formatMessage(messages.promptTextPlaceholder)}
           initialValue={asLocalizedString(item[TEXT_FIELD])}

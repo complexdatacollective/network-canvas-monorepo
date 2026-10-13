@@ -4,6 +4,7 @@ import {
   type ReactNode,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -12,6 +13,11 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { useFormFieldScope } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  DynamicMessageEditor,
+  type DynamicMessageSite,
+  DynamicMessageSummary,
+} from '@codaco/protocol-builder/fields/DynamicTextField';
 import {
   LocalizedMessageVersions,
   LocalizedMessageVersionsSummary,
@@ -24,13 +30,19 @@ import {
   withMessage,
   withTranslation,
 } from '@codaco/protocol-builder/localization/localizedText';
-import type {
-  LocaleTag,
-  LocalizedString,
-  LocalizedStringFormat,
-  MessageArguments,
+import { ProtocolLocalizationProvider } from '@codaco/protocol-builder/localization/ProtocolLocalization';
+import {
+  type DynamicValues,
+  type DynamicValueSite,
+  dynamicValueContextFor,
+  type LocaleTag,
+  type LocalizedString,
+  type LocalizedStringFormat,
+  type MessageArguments,
 } from '@codaco/protocol-validation';
+import { useAppSelector } from '~/ducks/hooks';
 import type { TranslationRow } from '~/selectors/issues';
+import { getProtocol } from '~/selectors/protocol';
 import { cx } from '~/utils/cva';
 
 import { isBlankTranslation, useTranslationDraft } from './translationDrafts';
@@ -202,6 +214,7 @@ const Fallback = ({
   locale,
   localization,
   messageArguments,
+  dynamicSite,
 }: {
   id: string;
   value: LocalizedString | undefined;
@@ -209,6 +222,8 @@ const Fallback = ({
   locale: LocaleTag;
   localization: ProtocolLocalization;
   messageArguments?: MessageArguments;
+  /** Where text with values sits, for text that shows them. */
+  dynamicSite?: DynamicMessageSite;
 }) => {
   const intl = useAppIntl();
   const languageName = useLanguageName();
@@ -244,7 +259,14 @@ const Fallback = ({
       )}
     >
       <div lang={shown.lang} className="w-full text-current/60">
-        {messageArguments !== undefined ? (
+        {dynamicSite !== undefined ? (
+          <DynamicMessageSummary
+            message={shown.text}
+            markdown={format === 'markdown'}
+            locale={shown.lang}
+            site={dynamicSite}
+          />
+        ) : messageArguments !== undefined ? (
           <LocalizedMessageVersionsSummary
             message={shown.text}
             declaration={messageArguments}
@@ -813,9 +835,185 @@ const MessageCell = ({
   );
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * What text at `path` can show: the roles on screen where it sits and their
+ * attributes, and its stage's bindings. The table never adds a binding; a
+ * translation shows the values the stage already names.
+ */
+const useDynamicSite = (
+  path: TranslationRow['path'],
+  site: DynamicValueSite,
+): DynamicMessageSite => {
+  const protocol = useAppSelector(getProtocol);
+  const [root, stageIndex, ...sitePath] = path;
+  const stage =
+    root === 'stages' && typeof stageIndex === 'number'
+      ? protocol?.stages[stageIndex]
+      : undefined;
+  const codebook = protocol?.codebook;
+  return useMemo(() => {
+    const bindings = (
+      isRecord(stage) && isRecord(stage.dynamicValues)
+        ? stage.dynamicValues
+        : {}
+    ) as DynamicValues;
+    return {
+      context: dynamicValueContextFor({ codebook, stage, sitePath, site }),
+      bindings,
+    };
+    // `sitePath` is a fresh array each render; the row's path decides it.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [codebook, stage, site, JSON.stringify(path)]);
+};
+
+/**
+ * Text that can show values the interview fills in: shown with its values
+ * as pills until the cell has focus, then edited in the cell with the stage
+ * editor's own editor, offering the values the stage already binds.
+ */
+const DynamicCell = ({
+  row,
+  singleLine,
+  locale,
+  localization,
+  labelledBy,
+  rowIndex,
+  colIndex,
+  onMove,
+  dynamicValues,
+}: TranslationCellProps & { dynamicValues: DynamicValueSite }) => {
+  const contentId = useId();
+  const editorId = useId();
+  const noteId = useId();
+  const formScope = useFormFieldScope();
+  const site = useDynamicSite(row.path, dynamicValues);
+  const draft = useTranslationDraft({ row, locale });
+  const { text: message, error } = draft;
+  const markdown = row.format === 'markdown';
+  const { editing, revision, cellProps } = useEditedCell({
+    draft,
+    singleLine: !markdown || singleLine,
+    onMove,
+    isAtEdge: isEditableCaretAt,
+  });
+  const empty = isBlankTranslation(row, message);
+  const fallbackShown = empty && error === undefined;
+  const value = withMessage(row.value, locale, empty ? undefined : message);
+  const originalMessage = row.value[localization.defaultLocale];
+  const original =
+    originalMessage === undefined
+      ? undefined
+      : { locale: localization.defaultLocale, message: originalMessage };
+  const describedBy = [
+    fallbackShown || !editing ? contentId : undefined,
+    error === undefined ? undefined : noteId,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <td
+      {...cellProps}
+      lang={locale}
+      dir={localeDirection(locale)}
+      data-field-path={draft.name}
+      data-field-form={formScope}
+      className={cx(CELL_CLASSES, error !== undefined && INVALID_CELL_CLASSES)}
+    >
+      <ProtocolLocalizationProvider
+        localization={localization}
+        initialLocale={locale}
+      >
+        {editing ? (
+          <>
+            {fallbackShown && (
+              <div className="sr-only">
+                <Fallback
+                  id={contentId}
+                  value={value}
+                  format={row.format}
+                  locale={locale}
+                  localization={localization}
+                  dynamicSite={site}
+                />
+              </div>
+            )}
+            <div className={CELL_EDITOR_CLASSES}>
+              <DynamicMessageEditor
+                key={revision}
+                id={editorId}
+                name={editorId}
+                ariaLabelledBy={labelledBy}
+                ariaDescribedBy={describedBy}
+                ariaInvalid={error !== undefined}
+                autoFocus
+                readOnly={false}
+                markdown={markdown}
+                singleLine={!markdown || singleLine}
+                compact={false}
+                message={message}
+                onMessageChange={(next) => draft.change(next ?? '')}
+                original={original}
+                locale={locale}
+                site={site}
+                showsProblems={false}
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid">
+              {empty ? (
+                <Fallback
+                  id={contentId}
+                  value={value}
+                  format={row.format}
+                  locale={locale}
+                  localization={localization}
+                  dynamicSite={site}
+                />
+              ) : (
+                <div
+                  id={contentId}
+                  className={cx(
+                    markdown ? CELL_TEXT_CLASSES : PLAIN_TEXT_CLASSES,
+                    'col-start-1 row-start-1',
+                  )}
+                >
+                  <DynamicMessageSummary
+                    message={message}
+                    markdown={markdown}
+                    locale={locale}
+                    site={site}
+                  />
+                </div>
+              )}
+            </div>
+            <CellOpener
+              labelledBy={labelledBy}
+              describedBy={describedBy}
+              invalid={error !== undefined}
+              rowIndex={rowIndex}
+              colIndex={colIndex}
+            />
+          </>
+        )}
+      </ProtocolLocalizationProvider>
+      {error !== undefined && <ProblemNote id={noteId}>{error}</ProblemNote>}
+      {draft.changed && <UnsavedMark />}
+    </td>
+  );
+};
+
 /** One translation of one text: a cell of the translation table. */
 const TranslationCell = (props: TranslationCellProps) => {
-  const { arguments: messageArguments, format } = props.row;
+  const { arguments: messageArguments, dynamicValues, format } = props.row;
+  if (dynamicValues !== undefined) {
+    return <DynamicCell {...props} dynamicValues={dynamicValues} />;
+  }
   if (messageArguments !== undefined) {
     return <MessageCell {...props} messageArguments={messageArguments} />;
   }

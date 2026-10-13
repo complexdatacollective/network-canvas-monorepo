@@ -84,6 +84,7 @@ export function PromptTextField({
       <Field<typeof LocalizedRichTextField>
         name="text"
         component={LocalizedRichTextField}
+        dynamicValues="prompt"
         label={intl.formatMessage(censusMessages.promptTextLabel)}
         {...(hint === undefined ? {} : { hint })}
         placeholder={placeholder}

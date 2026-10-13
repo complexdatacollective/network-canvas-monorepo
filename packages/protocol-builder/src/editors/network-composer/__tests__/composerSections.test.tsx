@@ -670,11 +670,13 @@ describe('what a network composer lets the participant build', () => {
     await switchOnNodeForm(harness);
 
     const dialog = await addRow(harness, 'Create new node attribute');
-    const question = dialog.getByRole('textbox', { name: 'Question' });
-    expect(question.textContent).toBe('');
+    // Picking an attribute changes what the caption can show, which rebuilds
+    // its editor: find the box afresh each time.
+    const question = () => dialog.getByRole('textbox', { name: 'Question' });
+    expect(question().textContent).toBe('');
 
     await chooseAttributeById(harness.user, picker('Attribute'), 'age');
-    await waitFor(() => expect(question.textContent).toBe('age'));
+    await waitFor(() => expect(question().textContent).toBe('age'));
 
     await chooseAttributeById(
       harness.user,
@@ -682,7 +684,7 @@ describe('what a network composer lets the participant build', () => {
       'relationship_to_ego',
     );
     await waitFor(() =>
-      expect(question.textContent).toBe('relationship_to_ego'),
+      expect(question().textContent).toBe('relationship_to_ego'),
     );
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
@@ -698,16 +700,16 @@ describe('what a network composer lets the participant build', () => {
     });
 
     const editing = await openRow(harness, 'Edit form field');
-    const caption = editing.getByRole('textbox', { name: 'Question' });
-    await harness.user.clear(caption);
-    await harness.user.type(caption, 'How old are they?');
+    const caption = () => editing.getByRole('textbox', { name: 'Question' });
+    await harness.user.clear(caption());
+    await harness.user.type(caption(), 'How old are they?');
     await chooseAttributeById(harness.user, picker('Attribute'), 'age');
     await waitFor(() =>
       expect(
         editing.getByRole('combobox', { name: 'Input control' }),
       ).toHaveValue('Number'),
     );
-    expect(caption.textContent).toBe('How old are they?');
+    expect(caption().textContent).toBe('How old are they?');
   });
 
   it('refuses a field whose question has been emptied', async () => {

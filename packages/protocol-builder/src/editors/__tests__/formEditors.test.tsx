@@ -58,7 +58,7 @@ const FORM_EDITORS: FormEditorCase[] = [
     stageId: 'information-1',
     editor: informationStageEditor,
     sections: ['Page content', 'Skip logic', 'Interviewer guidance'],
-    ownedKeys: ['items', 'label', 'title'],
+    ownedKeys: ['dynamicValues', 'items', 'label', 'title'],
   },
   {
     interfaceName: 'EgoForm',
@@ -70,7 +70,7 @@ const FORM_EDITORS: FormEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['form', 'introductionPanel', 'label'],
+    ownedKeys: ['dynamicValues', 'form', 'introductionPanel', 'label'],
   },
   {
     interfaceName: 'AlterForm',
@@ -84,7 +84,7 @@ const FORM_EDITORS: FormEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['form', 'introductionPanel', 'label', 'subject'],
+    ownedKeys: ['dynamicValues', 'form', 'introductionPanel', 'label', 'subject'],
   },
   {
     interfaceName: 'AlterEdgeForm',
@@ -98,7 +98,7 @@ const FORM_EDITORS: FormEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['form', 'introductionPanel', 'label', 'subject'],
+    ownedKeys: ['dynamicValues', 'form', 'introductionPanel', 'label', 'subject'],
   },
 ];
 

@@ -94,6 +94,7 @@ import {
   useLocalizedText,
   useProtocolLocalization,
 } from '../../localization/ProtocolLocalization.tsx';
+import { FormOfItsOwnContext } from '../../localization/useDynamicValueSite.ts';
 import {
   type CodebookSubject,
   variablesForSubject,
@@ -127,6 +128,10 @@ const COMPONENT_FIELD = 'component';
 const PARAMETERS_FIELD = 'parameters';
 const LABEL_FIELD = 'label';
 const HINT_FIELD = 'hint';
+// Where a field's label and hint sit in its row, for the values they can
+// show (see `useDynamicValueSite`).
+const LABEL_PATH = [LABEL_FIELD];
+const HINT_PATH = [HINT_FIELD];
 const VALIDATION_HINTS_FIELD = 'showValidationHints';
 
 const isRecord = (value: unknown): value is ComposerParameters =>
@@ -336,25 +341,27 @@ export function ComposerFormFieldsControl({
   const { readOnly } = useStageEditorForm();
 
   return (
-    <ComposerFormRows {...props} name={name} rows={value}>
-      <UnconnectedField<typeof ArrayField<RowValues>>
-        name={name}
-        component={ArrayField}
-        label={props.label}
-        hint={props.hint}
-        value={[...value]}
-        onChange={(next) => onChange(next ?? [])}
-        readOnly={readOnly}
-        getId={rowId}
-        addButtonLabel={props.addButtonLabel}
-        itemLabel={messages.fieldNoun}
-        emptyStateMessage={props.emptyStateMessage}
-        itemComponent={RowListItem}
-        editorComponent={RowDialog}
-        itemTemplate={rowTemplate()}
-        sortable
-      />
-    </ComposerFormRows>
+    <FormOfItsOwnContext value>
+      <ComposerFormRows {...props} name={name} rows={value}>
+        <UnconnectedField<typeof ArrayField<RowValues>>
+          name={name}
+          component={ArrayField}
+          label={props.label}
+          hint={props.hint}
+          value={[...value]}
+          onChange={(next) => onChange(next ?? [])}
+          readOnly={readOnly}
+          getId={rowId}
+          addButtonLabel={props.addButtonLabel}
+          itemLabel={messages.fieldNoun}
+          emptyStateMessage={props.emptyStateMessage}
+          itemComponent={RowListItem}
+          editorComponent={RowDialog}
+          itemTemplate={rowTemplate()}
+          sortable
+        />
+      </ComposerFormRows>
+    </FormOfItsOwnContext>
   );
 }
 
@@ -1275,6 +1282,8 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       <Field<typeof LocalizedRichTextField>
         name={LABEL_FIELD}
         component={LocalizedRichTextField}
+        dynamicValues="formField"
+        fieldPath={LABEL_PATH}
         singleLine
         label={intl.formatMessage(messages.questionLabel)}
         hint={intl.formatMessage(messages.questionHint)}
@@ -1285,6 +1294,8 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       <Field<typeof LocalizedRichTextField>
         name={HINT_FIELD}
         component={LocalizedRichTextField}
+        dynamicValues="formField"
+        fieldPath={HINT_PATH}
         singleLine
         label={intl.formatMessage(messages.helpLabel)}
         hint={intl.formatMessage(messages.helpHint)}

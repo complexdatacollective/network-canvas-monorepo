@@ -1,0 +1,273 @@
+import {
+  CASED_VARIABLE_TYPES,
+  DYNAMIC_VALUE_NAME,
+  type DynamicValueBinding,
+  type DynamicValueRole,
+  type DynamicValues,
+  type DynamicValueSiteContext,
+  dynamicValueNamesIn,
+  dynamicValuePathFor,
+  dynamicValueStatus,
+  INTRINSIC_DYNAMIC_VALUES,
+  type IntrinsicDynamicValue,
+  MISSING_CASE,
+} from '@codaco/protocol-validation';
+
+/**
+ * Something a piece of stage text can show at one place: a value the
+ * interview knows, or an attribute of someone on screen there. What Architect
+ * offers to insert, built from the same availability rules the protocol is
+ * validated against (`dynamicValueStatus`).
+ */
+export type DynamicValueChoice = Readonly<{
+  path: string;
+  /** The role whose attribute it is, or undefined for an interview value. */
+  role: DynamicValueRole | undefined;
+  /** The attribute's name, or the interview value's key. */
+  variableId: string;
+  /** The codebook's name for the attribute; undefined for an interview value. */
+  variableName: string | undefined;
+  variableType: string;
+  /** Whether it can be missing, so text shows it only when it is not. */
+  optional: boolean;
+  /** Whether text can choose a version by its number. */
+  numeric: boolean;
+  /**
+   * The answers text can choose a version by, for a categorical, ordinal or
+   * boolean attribute, each with the case key a new binding would give it.
+   */
+  options: readonly DynamicValueOption[];
+}>;
+
+export type DynamicValueOption = Readonly<{
+  /** The stored option value. */
+  value: string | number | boolean;
+  /** The option's label as the codebook holds it, if it has one. */
+  label: unknown;
+}>;
+
+const INTRINSIC_NAMES: Readonly<Record<IntrinsicDynamicValue, string>> = {
+  now: 'today',
+};
+
+const ROLE_PREFIXES: Readonly<Record<DynamicValueRole, string>> = {
+  ego: '',
+  node: '',
+  edge: '',
+  dyadSource: 'first',
+  dyadTarget: 'second',
+  focal: 'focal',
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isOptionValue = (value: unknown): value is string | number | boolean =>
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean';
+
+const optionsOf = (variable: Record<string, unknown>): DynamicValueOption[] => {
+  if (!CASED_VARIABLE_TYPES.has(variable.type as never)) return [];
+  const options = Array.isArray(variable.options) ? variable.options : [];
+  const listed = options.flatMap((option: unknown) =>
+    isRecord(option) && isOptionValue(option.value)
+      ? [{ value: option.value, label: option.label }]
+      : [],
+  );
+  // A boolean with no labels of its own is answered yes or no.
+  if (listed.length === 0 && variable.type === 'boolean') {
+    return [
+      { value: true, label: undefined },
+      { value: false, label: undefined },
+    ];
+  }
+  return listed;
+};
+
+/**
+ * Everything text at this place can show: the interview's own values, then
+ * each available role's attributes in codebook order.
+ */
+export const dynamicValueChoices = (
+  context: DynamicValueSiteContext,
+): DynamicValueChoice[] => {
+  const intrinsics = (
+    Object.keys(INTRINSIC_DYNAMIC_VALUES) as IntrinsicDynamicValue[]
+  ).map((name): DynamicValueChoice => ({
+    path: name,
+    role: undefined,
+    variableId: name,
+    variableName: undefined,
+    variableType: INTRINSIC_DYNAMIC_VALUES[name].type,
+    optional: INTRINSIC_DYNAMIC_VALUES[name].optional,
+    numeric: false,
+    options: [],
+  }));
+  const attributes = [...context.roles].flatMap((role) =>
+    Object.entries(context.variablesFor(role) ?? {}).flatMap(
+      ([variableId, variable]): DynamicValueChoice[] => {
+        const path = dynamicValuePathFor(role, variableId);
+        if (dynamicValueStatus({ path }, context).status !== 'available') {
+          return [];
+        }
+        const full: Record<string, unknown> = isRecord(variable)
+          ? variable
+          : {};
+        return [
+          {
+            path,
+            role,
+            variableId,
+            variableName:
+              typeof full.name === 'string' && full.name.trim() !== ''
+                ? full.name
+                : undefined,
+            variableType: variable.type,
+            optional: true,
+            numeric: variable.type === 'number' || variable.type === 'scalar',
+            options: optionsOf(full),
+          },
+        ];
+      },
+    ),
+  );
+  return [...intrinsics, ...attributes];
+};
+
+/** Words of `text` as an argument name: ASCII letters and digits, camel-cased. */
+const identifierFrom = (text: string): string => {
+  const words = text
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .split(/[^A-Za-z0-9]+/)
+    .filter((word) => word !== '');
+  const joined = words
+    .map((word, index) =>
+      index === 0
+        ? word.charAt(0).toLowerCase() + word.slice(1)
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join('');
+  return /^[A-Za-z]/.test(joined) ? joined : '';
+};
+
+const unique = (base: string, taken: (name: string) => boolean): string => {
+  if (!taken(base)) return base;
+  for (let suffix = 2; ; suffix += 1) {
+    const candidate = `${base}${suffix}`;
+    if (!taken(candidate)) return candidate;
+  }
+};
+
+/**
+ * The argument name a new binding for `choice` gets: the attribute's name as
+ * an identifier, so a translator reads `{partnerName}`, prefixed for the
+ * second and first person of a pair and the person being asked about, and
+ * numbered when the stage already uses the name.
+ */
+const nameFor = (
+  choice: DynamicValueChoice,
+  taken: (name: string) => boolean,
+): string => {
+  if (choice.role === undefined) {
+    return unique(
+      INTRINSIC_NAMES[choice.variableId as IntrinsicDynamicValue],
+      taken,
+    );
+  }
+  const own =
+    identifierFrom(choice.variableName ?? '') ||
+    identifierFrom(choice.variableId) ||
+    'value';
+  const prefix = ROLE_PREFIXES[choice.role];
+  const base =
+    prefix === '' ? own : prefix + own.charAt(0).toUpperCase() + own.slice(1);
+  return unique(base, taken);
+};
+
+const isCaseKey = (key: string) =>
+  DYNAMIC_VALUE_NAME.test(key) && key !== MISSING_CASE && key !== 'other';
+
+/** The cases a new binding names each of `options` by. */
+const casesFor = (
+  options: readonly DynamicValueOption[],
+  labelText: (label: unknown) => string,
+): Record<string, string | number | boolean> => {
+  const cases: Record<string, string | number | boolean> = {};
+  options.forEach((option, index) => {
+    const fromValue =
+      typeof option.value === 'boolean'
+        ? option.value
+          ? 'yes'
+          : 'no'
+        : identifierFrom(String(option.value));
+    const base = [fromValue, identifierFrom(labelText(option.label))].find(
+      isCaseKey,
+    );
+    const key = unique(
+      base ?? `option${index + 1}`,
+      (candidate) => !isCaseKey(candidate) || Object.hasOwn(cases, candidate),
+    );
+    cases[key] = option.value;
+  });
+  return cases;
+};
+
+/**
+ * The stage's binding for `choice`, reused when one already shows the same
+ * value (and, for a value with answers, names them all), or a new one.
+ */
+export const bindingFor = (
+  choice: DynamicValueChoice,
+  bindings: DynamicValues,
+  pending: DynamicValues,
+  labelText: (label: unknown) => string,
+): Readonly<{ name: string; binding: DynamicValueBinding }> => {
+  const covers = (binding: DynamicValueBinding) => {
+    const values = Object.values(binding.cases ?? {});
+    return choice.options.every((option) => values.includes(option.value));
+  };
+  for (const source of [bindings, pending]) {
+    for (const [name, binding] of Object.entries(source)) {
+      if (binding.path === choice.path && covers(binding)) {
+        return { name, binding };
+      }
+    }
+  }
+  const name = nameFor(
+    choice,
+    (candidate) =>
+      Object.hasOwn(bindings, candidate) || Object.hasOwn(pending, candidate),
+  );
+  return {
+    name,
+    binding:
+      choice.options.length === 0
+        ? { path: choice.path }
+        : { path: choice.path, cases: casesFor(choice.options, labelText) },
+  };
+};
+
+/**
+ * Every value name the text in `value` uses, anywhere in it: what keeps a
+ * binding needed. Over-counting is safe; a binding is only ever dropped when
+ * no text names it.
+ */
+export const dynamicValueNamesUsedIn = (
+  value: unknown,
+  names: Set<string> = new Set(),
+): Set<string> => {
+  if (typeof value === 'string') {
+    if (value.includes('{')) {
+      for (const name of dynamicValueNamesIn(value)) names.add(name);
+    }
+  } else if (Array.isArray(value)) {
+    for (const item of value) dynamicValueNamesUsedIn(item, names);
+  } else if (isRecord(value)) {
+    for (const item of Object.values(value)) {
+      dynamicValueNamesUsedIn(item, names);
+    }
+  }
+  return names;
+};

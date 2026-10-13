@@ -40,6 +40,7 @@ export default function TaskExplanationSection() {
       <Field<typeof LocalizedInputField>
         name={TITLE_FIELD}
         component={LocalizedInputField}
+        dynamicValues="stageText"
         label={intl.formatMessage(
           anonymisationMessages.explanationHeadingLabel,
         )}
@@ -52,6 +53,7 @@ export default function TaskExplanationSection() {
       <Field<typeof LocalizedRichTextField>
         name={BODY_FIELD}
         component={LocalizedRichTextField}
+        dynamicValues="stageText"
         label={intl.formatMessage(anonymisationMessages.explanationBodyLabel)}
         placeholder={intl.formatMessage(
           anonymisationMessages.explanationBodyPlaceholder,

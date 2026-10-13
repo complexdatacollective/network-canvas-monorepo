@@ -631,6 +631,7 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
         <Field<typeof LocalizedInputField>
           name="title"
           component={LocalizedInputField}
+          dynamicValues="stageText"
           label={intl.formatMessage(nodePanelsMessages.panelTitleLabel)}
           hint={intl.formatMessage(nodePanelsMessages.panelTitleHint)}
           initialValue={asLocalizedString(item.title)}

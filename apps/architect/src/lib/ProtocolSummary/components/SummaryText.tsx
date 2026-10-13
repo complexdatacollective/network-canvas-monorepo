@@ -1,8 +1,12 @@
-import { useCallback, useContext } from 'react';
+import { createContext, useCallback, useContext } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
+import {
+  type DynamicMessageSite,
+  DynamicMessageSummary,
+} from '@codaco/protocol-builder/fields/DynamicTextField';
 import { LocalizedMessageVersionsSummary } from '@codaco/protocol-builder/fields/LocalizedMessageField';
 import {
   fallbackDependsOnBrowser,
@@ -13,6 +17,7 @@ import {
   type LocaleTag,
   type LocalizedString,
   type MessageArguments,
+  messageStructure,
   messageText,
   sortByLanguageName,
 } from '@codaco/protocol-validation';
@@ -107,8 +112,25 @@ export const DefaultLanguageBadge = () => {
 };
 
 /**
+ * What the stage being summarized binds, and what its text can show, for
+ * text that shows values the interview fills in. Undefined outside a stage.
+ */
+export const SummaryDynamicValuesContext = createContext<
+  DynamicMessageSite | undefined
+>(undefined);
+
+/** Whether `text` shows a value or chooses between versions by one. */
+const showsValues = (text: string) => {
+  const structure = messageStructure(text);
+  return (
+    'nodes' in structure && structure.nodes.some((node) => node.kind !== 'text')
+  );
+};
+
+/**
  * One translation. A message whose setting declares arguments reads as its
- * versions, one for each case it distinguishes, with its placeholders named.
+ * versions, one for each case it distinguishes, with its placeholders named;
+ * text that shows values reads with each value as a pill.
  */
 const TranslationContent = ({
   text,
@@ -121,6 +143,17 @@ const TranslationContent = ({
   locale: LocaleTag;
   messageArguments: MessageArguments | undefined;
 }) => {
+  const dynamicSite = useContext(SummaryDynamicValuesContext);
+  if (dynamicSite !== undefined && showsValues(text)) {
+    return (
+      <DynamicMessageSummary
+        message={text}
+        markdown={format === 'markdown'}
+        locale={locale}
+        site={dynamicSite}
+      />
+    );
+  }
   if (messageArguments !== undefined) {
     return (
       <LocalizedMessageVersionsSummary
