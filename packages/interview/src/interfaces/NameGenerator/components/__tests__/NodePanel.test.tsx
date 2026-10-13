@@ -1,7 +1,9 @@
+import { configureStore } from '@reduxjs/toolkit';
 import { cleanup, render, screen } from '@testing-library/react';
+import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Panel as PanelType } from '@codaco/protocol-validation';
+import type { Panel as PanelType, Stage } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -88,6 +90,7 @@ vi.mock('../ExternalNodeItem', () => ({
   default: () => <div data-testid="external-node-item" />,
 }));
 
+import { StageDynamicValues } from '../../../../dynamicValues/DynamicValueScope';
 import { TestProtocolLocalization } from '../../../__tests__/TestProtocolLocalization';
 import NodePanel from '../NodePanel';
 
@@ -265,5 +268,70 @@ describe('NodePanel external data with encrypted values', () => {
 
     expect(requirePassphrase).not.toHaveBeenCalled();
     expect(screen.getByTestId('node-list').textContent).toBe('1');
+  });
+});
+
+describe('NodePanel title with a dynamic value', () => {
+  beforeEach(() => {
+    externalDataMock.mockReturnValue({
+      externalData: [],
+      status: { state: 'ready' },
+    });
+    panelNodesSelector.mockReturnValue([]);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('marks the value out, isolates it and announces it', () => {
+    const store = configureStore({
+      reducer: {
+        protocol: () => ({
+          codebook: {
+            ego: { variables: { name: { name: 'name', type: 'text' } } },
+          },
+        }),
+        session: () => ({
+          network: { ego: { [entityAttributesProperty]: { name: 'Ada' } } },
+        }),
+      },
+    });
+    const stage = {
+      id: 'stage',
+      type: 'NameGenerator',
+      dynamicValues: { name: { path: 'ego.name' } },
+    } as unknown as Stage;
+
+    render(
+      <Provider store={store}>
+        <TestProtocolLocalization>
+          <StageDynamicValues stage={stage}>
+            <NodePanel
+              externalDataError={EXTERNAL_DATA_ERROR}
+              panelConfig={{
+                ...externalPanelConfig,
+                title: {
+                  en: '{name, select, missing {People} other {People {name} knows}}',
+                },
+              }}
+              disableDragging={false}
+              accepts={[]}
+              panelNumber={0}
+              minimize={false}
+              onDrop={vi.fn()}
+              onUpdate={vi.fn()}
+              id="panel-1"
+            />
+          </StageDynamicValues>
+        </TestProtocolLocalization>
+      </Provider>,
+    );
+
+    const heading = screen.getByRole('heading', { level: 3 });
+    expect(heading).toHaveAccessibleName('People Dynamic value: Ada knows');
+    const value = heading.querySelector('[data-dynamic-value] bdi');
+    expect(value?.textContent).toBe('Ada');
   });
 });
