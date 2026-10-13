@@ -311,6 +311,25 @@ function renderCategoricalBin(
             otherVariablePrompt: { en: dynamic.prompt },
           })) as CategoricalBinStage['prompts'],
         };
+  const preloadedProtocol: ProtocolPayload =
+    dynamic === undefined
+      ? baseProtocol
+      : {
+          ...baseProtocol,
+          codebook: {
+            ...baseProtocol.codebook,
+            ego: {
+              variables: {
+                [EGO_NAME_VARIABLE]: {
+                  name: 'Name',
+                  label: 'Name',
+                  type: 'text',
+                },
+              },
+            },
+          },
+          stages: [stage],
+        };
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
@@ -329,21 +348,7 @@ function renderCategoricalBin(
                 },
               },
             },
-      protocol:
-        dynamic === undefined
-          ? baseProtocol
-          : {
-              ...baseProtocol,
-              codebook: {
-                ...baseProtocol.codebook,
-                ego: {
-                  variables: {
-                    [EGO_NAME_VARIABLE]: { name: 'Name', type: 'text' },
-                  },
-                },
-              },
-              stages: [stage],
-            },
+      protocol: preloadedProtocol,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
