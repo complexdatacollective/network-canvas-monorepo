@@ -33,16 +33,19 @@ export type PedigreeSymbolShape = 'circle' | 'square' | 'diamond';
 
 export type ParentConnection = {
   parentIndex: number;
-  /** How the link is drawn, which the adapter may change from the kind
-   * recorded (a carrier anchoring a child's line of descent is drawn as a
-   * biological parent; an adopted child's birth parent, as a donor). */
+  /** The kind of tie, as it is drawn (`drawnKind`): as recorded, but for a
+   * parent who raises the child and carried them, whose tie is drawn as the
+   * carrier's. Who the child's line of descent comes from, and which ties
+   * are drawn by lines of their own, is decided from these in one place
+   * (`lineOwnersOf`). */
   edgeType: PedigreeEdgeType;
+  /** The kind of tie as recorded (adoptive, social, …), where carrying
+   * changed the kind it is drawn as; absent when the two are the same.
+   * Whether the child was adopted, and who raises them, are read from this
+   * (`recordedKind`), never from `edgeType`. */
+  recordedKind?: PedigreeEdgeType;
+  /** This parent carried the pregnancy, whatever the kind of their tie. */
   isGestationalCarrier?: boolean;
-  /** Whether the parent gave the child a gamete, as recorded, whatever line
-   * the link is drawn with. Genetic decisions (consanguinity, who counts as
-   * a relative) read this, never the drawn type. The adapter always sets it;
-   * when absent, the drawn type is taken to be the recorded one. */
-  isGenetic?: boolean;
 };
 
 export type PartnerConnection = {
@@ -113,12 +116,19 @@ type ArcPath = {
   dashed: boolean;
 };
 
+/** A piece of the lead joining one partner to a routed partnership line. */
+export type PartnerLead = LineSegment & {
+  /** The partner whose lead it is: whose ties run along it. */
+  partnerId?: string;
+};
+
 export type ParentGroupConnector = {
   type: 'parent-group';
   segment: LineSegment;
   /** Leads joining each partner to a routed partnership line: partners who
-   * are not side by side, or who sit on different rows. */
-  endpointSegments?: LineSegment[];
+   * are not side by side, or who sit on different rows. Each piece names
+   * the partner it joins (a detour round an occupied lane takes several). */
+  endpointSegments?: PartnerLead[];
   double: boolean;
   isActive: boolean;
   doubleSegment?: LineSegment;
@@ -128,34 +138,67 @@ export type ParentGroupConnector = {
   auxiliaryXPositions?: number[];
   nodeHalfWidth?: number;
   slashSide?: 'left' | 'right';
+  /** The partners, the one at the line's left end first. */
   partnerIds?: [string, string];
   /** Whether each end stops at the partner's adoption bracket rather than
    * at their centre. */
   endsAtBracket?: [boolean, boolean];
 };
 
+/** A child's line up to their sibling bar (or sub-bar). */
+export type Upline = LineSegment & {
+  /** The child whose line it is. */
+  childId?: string;
+};
+
+/** A piece of a line of descent from the parents down to the bar. */
+export type DescentPiece = LineSegment & {
+  /** The parents whose ties it carries, where that is not all of them: the
+   * lines down from each of two co-parents with no partnership line carry
+   * that parent's tie only, until they join. */
+  parentIds?: string[];
+};
+
 export type ParentChildConnector = {
   type: 'parent-child';
   edgeType: PedigreeEdgeType;
-  uplines: LineSegment[];
+  uplines: Upline[];
   /** Absent when the line runs to a single child, who has no bar. */
   siblingBar?: LineSegment;
-  parentLink: LineSegment[];
+  parentLink: DescentPiece[];
   parentIds?: string[];
-  uplineChildIds?: (string | undefined)[];
+  /** The runs of two or more children who share donors or surrogates the
+   * rest of the sibship does not: each hangs from a sub-bar of its own, on a
+   * stem down from the sibling bar, and those donors' lines end on the stem.
+   * The children's uplines end on the sub-bar. */
+  runs?: SibshipRun[];
+};
+
+export type SibshipRun = {
+  /** From the sibling bar down to the sub-bar. */
+  stem: LineSegment;
+  /** Absent when the run is a pair of twins, who hang from one point. */
+  bar?: LineSegment;
 };
 
 export type AuxiliaryConnector = {
   type: 'auxiliary';
   edgeType: PedigreeEdgeType;
   /** The line's course, from the parent's centre to its end on the child's
-   * top edge (continuing to their centre, under their symbol) or on the
-   * sibling bar it joins. */
+   * top edge (continuing to their centre, under their symbol), on the
+   * sibling bar it joins, or on the stem of the run of children it joins (a
+   * lone child's line up), which it meets from the side. */
   points: Point[];
   /** Where the line crosses another line, in order along it: it is drawn
    * hopping over the other line there. */
   hops?: Point[];
   endpointIds?: [string | undefined, string | undefined];
+  /** Whose ties the line draws: one person, or a couple whose line it is. */
+  ownerIds?: string[];
+  /** For one of two co-parents' lines that join (see `From.mate`): the
+   * index of the point where the two meet. From there on both lines follow
+   * one course, which is drawn once. */
+  joinsAt?: number;
 };
 
 export type TwinIndicator = {
@@ -189,4 +232,9 @@ export type ScalingParams = {
   legHeight: number;
   hScale: number;
   vScale: number;
+  /** How far a square's corners and a diamond's tips are rounded, as a
+   * fraction of the box's width (see `SYMBOL_CORNER_RADIUS_PX`). */
+  cornerRadius?: number;
+  /** Half the width a line is drawn, as a fraction of the box's width. */
+  halfStroke?: number;
 };

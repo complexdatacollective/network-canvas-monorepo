@@ -1,11 +1,22 @@
 import { kindepth } from './kindepth';
+import {
+  type ChildLines,
+  isBirthTie,
+  lineOwnersOf,
+  ownerKey,
+} from './lineOwners';
 import type {
   ParentConnection,
   PedigreeInput,
   PedigreeLayout,
   PedigreeEdgeType,
 } from './types';
-import { areConsanguineous, layerConstraints, relativeRaisers } from './utils';
+import {
+  areConsanguineous,
+  inOrder,
+  layerConstraints,
+  relativeRaisers,
+} from './utils';
 
 type PartnerGroup = {
   members: number[];
@@ -44,19 +55,55 @@ type PedigreeGraph = {
   parentEdgeTypes: Map<string, PedigreeEdgeType>;
   /** Each person's twins. */
   twinsOf: Map<number, Set<number>>;
+  /** Who each child's lines come from (see `lineOwnersOf`). */
+  owners: ChildLines[];
+  /** The order the seating search has chosen for a sibship, by
+   * `sibshipKey`, where it is not the default (see `sibshipOrders`). */
+  sibshipChoice: Map<string, number[]>;
+  /** The work the seatings have taken (see `SEATING_STEPS`). */
+  work: { spent: number };
 };
 
-function isPrimaryEdge(edgeType: PedigreeEdgeType): boolean {
-  return (
-    edgeType === 'biological' ||
-    edgeType === 'social' ||
-    edgeType === 'adoptive'
-  );
-}
+/**
+ * What each step of laying out the seatings counts towards a drawing's
+ * work, in the steps of about a tenth of a microsecond the line search
+ * counts in (see `RoutingWork`), measured: building the graph, for each
+ * person; weighing a seating, for each person seated; weighing a pair of
+ * rows afresh, for each family unit and person on them, and for each pair
+ * of people on them; sweeping the rows, for each person; each person in
+ * each order of a sibship laid out; and placing a seating across the page,
+ * for each person. The seatings are bounded by their own counts and caps
+ * (`SEATING_SEARCH_WORK`, `SIBSHIP_ORDERS`); this counts what they did, so
+ * a drawing's work counts every step it takes.
+ */
+const SEATING_STEPS = {
+  graph: 80,
+  seated: 2,
+  pairPart: 3,
+  pairOfPeople: 0.2,
+  swept: 7,
+  ordered: 18,
+  placed: 15,
+};
 
 function isAuxiliaryEdge(edgeType: PedigreeEdgeType): boolean {
   return edgeType === 'donor' || edgeType === 'surrogate';
 }
+
+/** Whether a parent's tie to a child is a helper's: a birth tie drawn by a
+ * line of the parent's own, not the line of descent. */
+function isHelperOf(graph: PedigreeGraph, parent: number, child: number) {
+  const tie = graph.parentEdgeTypes.get(`${parent}-${child}`);
+  return (
+    tie !== undefined &&
+    isBirthTie(tie) &&
+    !(graph.owners[child]?.descent?.parents.includes(parent) ?? false)
+  );
+}
+
+/** A sibship's key, whatever order its members are in. */
+const sibshipKey = (members: number[]) =>
+  members.toSorted((a, b) => a - b).join(',');
 
 function partnerGroupKey(members: number[]): string {
   return [...members].toSorted((a, b) => a - b).join(',');
@@ -67,7 +114,9 @@ function partnerGroupKey(members: number[]): string {
  * by a relative (see `relativeRaisers`) stays in their birth family: the
  * relatives who raise them, and anyone raising them alongside, are drawn
  * beside the birth family with a line of their own, as extra parents, rather
- * than as the parents the child descends from. Their links are left out here.
+ * than as the parents the child descends from. Their links are left out here,
+ * read by the kind each is drawn as: a relative who raises the child and
+ * carried them holds a birth tie, and stays one of the parents placed.
  * Everyone else's parents are as given.
  */
 function placementParents(ped: PedigreeInput): ParentConnection[][] {
@@ -85,131 +134,65 @@ function placementParents(ped: PedigreeInput): ParentConnection[][] {
   );
 }
 
-function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
+function buildPedigreeGraph(
+  ped: PedigreeInput,
+  work: { spent: number } = { spent: 0 },
+): PedigreeGraph {
   const n = ped.id.length;
+  work.spent += SEATING_STEPS.graph * n;
   const placed = placementParents(ped);
+  const owners = lineOwnersOf(ped.parents, ped.partners ?? []);
+  const isPlaced = (child: number, parent: number) =>
+    placed[child]!.some((p) => p.parentIndex === parent);
+  const tiesOf = (child: number, parentIndexes: number[]) =>
+    placed[child]!.filter((p) => parentIndexes.includes(p.parentIndex));
+  const descentParentsOf = (child: number) =>
+    owners[child]!.descent?.parents ?? [];
 
-  // 1. Assign layers (1-based). A child's generation comes from its primary
-  // parents, and from all of its parents only when it has none, as in step
-  // 3b: a donor may be a generation younger than the parents who raise the
-  // child, or one of them may be the child's birth parent. Every donor and
-  // surrogate is lined up with the child's primary parents, whether or not
-  // their own parents are shown, so a donor shared by two families brings
-  // both onto the donor's row.
-  const generationParents = placed.map((pConns) => {
-    const primary = pConns.filter((p) => isPrimaryEdge(p.edgeType));
-    return primary.length > 0 ? primary : pConns;
+  // 1. Assign layers (1-based). A child's generation comes from the owners
+  // of their line of descent, and from all of their parents only when they
+  // have none. Everyone else who draws a line to the child is lined up with
+  // the owners of the line of descent, whether or not their own parents are
+  // shown, so a donor shared by two families brings both onto the donor's
+  // row.
+  const generationParents = placed.map((pConns, child) => {
+    const descent = tiesOf(child, descentParentsOf(child));
+    return descent.length > 0 ? descent : pConns;
   });
-  const alignedAuxiliaryParents = placed.map((pConns, i) =>
-    generationParents[i] === pConns
+  const alignedParents = placed.map((pConns, child) =>
+    generationParents[child] === pConns
       ? []
-      : pConns.filter((p) => isAuxiliaryEdge(p.edgeType)),
+      : pConns.filter((p) => !descentParentsOf(child).includes(p.parentIndex)),
   );
-  const depth = kindepth(generationParents, true, alignedAuxiliaryParents);
+  const depth = kindepth(generationParents, true, alignedParents);
   const layers = depth.map((d) => d + 1);
 
-  // 3. Build partner groups from all sources, deduplicating by sorted key
+  // 3. Partner groups: every recorded partnership, and the two birth
+  // parents with no partnership recorded who own a line together, who are
+  // seated side by side as a pair (never drawn as partners: the connectors
+  // draw a partnership line only for a recorded partnership).
   const groupMap = new Map<string, PartnerGroup>();
-
-  // From explicit partners array
-  if (ped.partners) {
-    for (const p of ped.partners) {
-      const members = [p.partnerIndex1, p.partnerIndex2];
-      const key = partnerGroupKey(members);
-      if (!groupMap.has(key)) {
-        groupMap.set(key, {
-          members: [...members].toSorted((a, b) => a - b),
-          isActive: p.isActive,
-        });
-      }
+  for (const p of ped.partners ?? []) {
+    const members = [p.partnerIndex1, p.partnerIndex2];
+    const key = partnerGroupKey(members);
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        members: [...members].toSorted((a, b) => a - b),
+        isActive: p.isActive,
+      });
     }
   }
-
-  // From relation entries with code=4
-  if (ped.relation) {
-    for (const r of ped.relation) {
-      if (r.code !== 4) continue;
-      const members = [r.id1, r.id2];
-      const key = partnerGroupKey(members);
+  for (let child = 0; child < n; child++) {
+    const { descent, lines } = owners[child]!;
+    for (const owner of [...(descent ? [descent] : []), ...lines]) {
+      if (owner.parents.length !== 2) continue;
+      if (!owner.parents.every((parent) => isPlaced(child, parent))) continue;
+      const key = partnerGroupKey(owner.parents);
       if (!groupMap.has(key)) {
         groupMap.set(key, {
-          members: [...members].toSorted((a, b) => a - b),
+          members: [...owner.parents].toSorted((a, b) => a - b),
           isActive: true,
         });
-      }
-    }
-  }
-
-  // Explicit partner edges are authoritative. Implicit co-parent inference is
-  // only a fallback for parents whose partnership was not recorded.
-  const explicitPartnerPairs = new Set(groupMap.keys());
-
-  // From implicit co-parent detection
-  for (let i = 0; i < n; i++) {
-    const pConns = placed[i]!;
-    if (pConns.length === 0) continue;
-    const primaryParents = pConns
-      .filter((p) => isPrimaryEdge(p.edgeType))
-      .map((p) => p.parentIndex);
-    if (primaryParents.length < 2) continue;
-
-    // For multi-parent scenarios, create pairwise groups — but only for
-    // pairs that share the same edge type (both biological or both social).
-    // Mixed pairs (bio + social) are not partnerships. Also skip siblings.
-    for (let a = 0; a < primaryParents.length; a++) {
-      for (let b = a + 1; b < primaryParents.length; b++) {
-        const pa = primaryParents[a]!;
-        const pb = primaryParents[b]!;
-
-        const hasExplicitPartnerAmongOtherParents = (parent: number) =>
-          primaryParents.some(
-            (candidate) =>
-              candidate !== parent &&
-              candidate !== (parent === pa ? pb : pa) &&
-              explicitPartnerPairs.has(partnerGroupKey([parent, candidate])),
-          );
-
-        // A pair inferred here is seated side by side, never drawn as
-        // partners (the connectors draw a partnership line only for a
-        // recorded partnership). When both co-parents have an explicit
-        // partnership to another parent of this child, do not pair them: two
-        // social parents may each be an ex-partner of the same biological
-        // parent, who sits between them. When only one has, the other still
-        // sits beside them — a stand-in beside the mother whose partner also
-        // raises the child — so the child's line of descent can drop from
-        // midway between the two.
-        if (
-          hasExplicitPartnerAmongOtherParents(pa) &&
-          hasExplicitPartnerAmongOtherParents(pb)
-        ) {
-          continue;
-        }
-
-        const edgeA = pConns.find(
-          (p) => p.parentIndex === pa && isPrimaryEdge(p.edgeType),
-        )?.edgeType;
-        const edgeB = pConns.find(
-          (p) => p.parentIndex === pb && isPrimaryEdge(p.edgeType),
-        )?.edgeType;
-        if (edgeA !== edgeB) continue;
-
-        const parentsOfA = new Set(ped.parents[pa]!.map((p) => p.parentIndex));
-        const parentsOfB = new Set(ped.parents[pb]!.map((p) => p.parentIndex));
-        const areSiblings =
-          parentsOfA.size > 0 &&
-          parentsOfB.size > 0 &&
-          [...parentsOfA].some((p) => parentsOfB.has(p));
-
-        if (areSiblings) continue;
-
-        const members = [pa, pb];
-        const key = partnerGroupKey(members);
-        if (!groupMap.has(key)) {
-          groupMap.set(key, {
-            members: [...members].toSorted((c, d) => c - d),
-            isActive: true,
-          });
-        }
       }
     }
   }
@@ -229,9 +212,7 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   const { constrain, settle } = layerConstraints(n);
   for (let i = 0; i < n; i++) {
     for (const p of placed[i]!) {
-      if (isPrimaryEdge(p.edgeType) || isAuxiliaryEdge(p.edgeType)) {
-        constrain([[p.parentIndex, i]], 1);
-      }
+      constrain([[p.parentIndex, i]], 1);
     }
   }
   for (const group of partnerGroups) {
@@ -247,13 +228,12 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     }
   }
   for (let i = 0; i < n; i++) {
-    const pConns = placed[i]!;
-    for (const aux of pConns.filter((p) => isAuxiliaryEdge(p.edgeType))) {
-      for (const p of pConns.filter((q) => isPrimaryEdge(q.edgeType))) {
+    for (const other of alignedParents[i]!) {
+      for (const owner of descentParentsOf(i)) {
         constrain(
           [
-            [p.parentIndex, aux.parentIndex],
-            [aux.parentIndex, p.parentIndex],
+            [owner, other.parentIndex],
+            [other.parentIndex, owner],
           ],
           0,
         );
@@ -262,74 +242,27 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
   }
   settle(layers);
 
-  // 4. Build family units. A child belongs to a partner group when every
-  // member is one of its primary parents. A child with three or more primary
-  // parents can match several groups (its biological parents' couple, and a
-  // parent's partner who is a social parent); it descends from the group most
-  // strongly its parents — a social parent weighs less than a biological or
-  // adoptive one — and from the first such group on a tie.
-  const parentWeight = (edgeType: PedigreeEdgeType) =>
-    edgeType === 'social' ? 1 : 2;
-  const familyGroupOf = new Map<number, PartnerGroup>();
-  for (let i = 0; i < n; i++) {
-    const primaryEdges = placed[i]!.filter((p) => isPrimaryEdge(p.edgeType));
-    let bestWeight = 0;
-    for (const group of partnerGroups) {
-      let weight = 0;
-      for (const member of group.members) {
-        const edge = primaryEdges.find((p) => p.parentIndex === member);
-        if (!edge) {
-          weight = 0;
-          break;
-        }
-        weight += parentWeight(edge.edgeType);
-      }
-      if (weight > bestWeight) {
-        bestWeight = weight;
-        familyGroupOf.set(i, group);
-      }
-    }
-  }
-
+  // 4. Family units: one per sibship (see `lineOwnersOf`), with the group
+  // of the owner of its line of descent (a couple, a pair, or one parent).
+  // Two sibships whose lines of descent come from the same owner are two
+  // units.
   const familyUnits: FamilyUnit[] = [];
-  for (const group of partnerGroups) {
-    const children: number[] = [];
-    for (let i = 0; i < n; i++) {
-      if (familyGroupOf.get(i) === group) children.push(i);
+  const unitBySibship = new Map<string, FamilyUnit>();
+  for (let child = 0; child < n; child++) {
+    const { descent, sibship } = owners[child]!;
+    if (!descent || sibship === undefined) continue;
+    if (!descent.parents.every((parent) => isPlaced(child, parent))) continue;
+    let unit = unitBySibship.get(sibship);
+    if (!unit) {
+      const parentGroup =
+        descent.parents.length === 2
+          ? groupMap.get(partnerGroupKey(descent.parents))!
+          : { members: [...descent.parents], isActive: true };
+      unit = { parentGroup, children: [] };
+      unitBySibship.set(sibship, unit);
+      familyUnits.push(unit);
     }
-
-    if (children.length > 0) {
-      familyUnits.push({ parentGroup: group, children });
-    }
-  }
-
-  // Handle single-parent families: group children who share the same sole
-  // primary parent and aren't already covered by a partner-group family unit.
-  const singleParentChildren = new Map<number, number[]>();
-  for (let i = 0; i < n; i++) {
-    const pConns = placed[i]!;
-    if (pConns.length === 0) continue;
-    const primaryParents = pConns
-      .filter((p) => isPrimaryEdge(p.edgeType))
-      .map((p) => p.parentIndex);
-    if (primaryParents.length !== 1) continue;
-
-    const parentIdx = primaryParents[0]!;
-    const alreadyCovered = familyUnits.some((fu) => fu.children.includes(i));
-    if (alreadyCovered) continue;
-
-    if (!singleParentChildren.has(parentIdx)) {
-      singleParentChildren.set(parentIdx, []);
-    }
-    singleParentChildren.get(parentIdx)!.push(i);
-  }
-
-  for (const [parentIdx, children] of singleParentChildren) {
-    const singleGroup: PartnerGroup = {
-      members: [parentIdx],
-      isActive: true,
-    };
-    familyUnits.push({ parentGroup: singleGroup, children });
+    unit.children.push(child);
   }
 
   // 5. Build sibling groups
@@ -399,6 +332,9 @@ function buildPedigreeGraph(ped: PedigreeInput): PedigreeGraph {
     extraParents,
     parentEdgeTypes,
     twinsOf,
+    owners,
+    sibshipChoice: new Map(),
+    work,
   };
 }
 
@@ -557,7 +493,8 @@ function seatAroundAnchor(
     rel(y).sharedChildren - rel(x).sharedChildren ||
     rel(y).childrenInCommon - rel(x).childrenInCommon ||
     Number(rel(y).isActive) - Number(rel(x).isActive) ||
-    recency(y) - recency(x);
+    recency(y) - recency(x) ||
+    x - y;
 
   const [first, ...rest] = partners.toSorted(byPriority);
   if (first === undefined) return [anchor];
@@ -570,7 +507,8 @@ function seatAroundAnchor(
       rel(y).childrenInCommon - rel(x).childrenInCommon ||
       Number(rel(y).isActive !== rel(first).isActive) -
         Number(rel(x).isActive !== rel(first).isActive) ||
-      recency(y) - recency(x),
+      recency(y) - recency(x) ||
+      x - y,
   )[0];
   if (second === undefined)
     return orientPartners([anchor, first], partnerships);
@@ -738,9 +676,186 @@ function seatPartnershipTangle(
   );
 }
 
+/** How many orders of one sibship the seating search weighs, at most. */
+const SIBSHIP_ORDERS = 120;
+
+/**
+ * The orders a sibship's children may be seated in, the default first: the
+ * children of each donor or surrogate side by side, so that their line
+ * meets the line of descent of that run of children once. Where one donor
+ * gave to some of another's children, the smaller run sits inside the
+ * larger (Josh, 12 Oct 2026: siblings grouped by donor). By default the
+ * groups, and the children outside any group, are in the order their first
+ * children were recorded; children who share all their donors (none, say)
+ * are together. Twins sit together, from where the first of them was
+ * recorded, in the group of that twin.
+ *
+ * Two donors whose children overlap without one run holding the other
+ * cannot both have one run: the larger (or first recorded) keeps its run
+ * (Josh, 12 Oct 2026).
+ */
+function sibshipOrders(
+  members: number[],
+  graph: PedigreeGraph,
+  limit = SIBSHIP_ORDERS,
+): number[][] {
+  const memberSet = new Set(members);
+  const units: number[][] = [];
+  const placed = new Set<number>();
+  for (const sib of members.toSorted((a, b) => a - b)) {
+    if (placed.has(sib)) continue;
+    const set = [sib];
+    for (let k = 0; k < set.length; k++) {
+      for (const twin of graph.twinsOf.get(set[k]!) ?? []) {
+        if (memberSet.has(twin) && !set.includes(twin)) set.push(twin);
+      }
+    }
+    for (const member of set) placed.add(member);
+    units.push(set.toSorted((a, b) => a - b));
+  }
+  const helpersOf = (unit: number[]) =>
+    graph.parents[unit[0]!]!.filter((p) => isAuxiliaryEdge(p.edgeType)).map(
+      (p) => `${p.parentIndex}:${p.edgeType}`,
+    );
+  const keyOf = (unit: number[]) => helpersOf(unit).toSorted().join(',');
+  // Each helper's children, as places among the units; helpers with the
+  // same children are one group.
+  const byChildren = new Map<string, number[]>();
+  for (const helper of new Set(units.flatMap(helpersOf))) {
+    const theirs = units.flatMap((unit, k) =>
+      helpersOf(unit).includes(helper) ? [k] : [],
+    );
+    byChildren.set(theirs.join(','), theirs);
+  }
+  // The groups kept as runs: each inside another or apart from it.
+  const kept: Set<number>[] = [];
+  for (const group of inOrder(
+    byChildren.values(),
+    (a, b) => b.length - a.length || a[0]! - b[0]!,
+  )) {
+    if (group.length < 2 || group.length === units.length) continue;
+    const set = new Set(group);
+    const nests = (other: Set<number>) => {
+      const shared = group.filter((k) => other.has(k)).length;
+      return shared === 0 || shared === set.size || shared === other.size;
+    };
+    if (kept.every(nests)) kept.push(set);
+  }
+  // The places in order: the largest groups among them (each in order, the
+  // groups inside it seated within it), and the rest grouped by their
+  // donors. By default every group and child is seated by their first
+  // place (the order they were recorded); the other orders keep each group
+  // together, its inner groups within it, in any order of the groups and
+  // children at each level.
+  // Every enumeration below is lazy: an order is built only when it is
+  // taken, and no more than `SIBSHIP_ORDERS` are ever taken, so a large
+  // sibship costs no more than a small one.
+  const permutations = function* (item: number[]): Generator<number[]> {
+    if (item.length < 2) {
+      yield item;
+      return;
+    }
+    for (let k = 0; k < item.length; k++) {
+      const rest = [...item.slice(0, k), ...item.slice(k + 1)];
+      for (const tail of permutations(rest)) yield [item[k]!, ...tail];
+    }
+  };
+  // The orders of a list of items, each item in each of its own orders:
+  // the first item's choice varies slowest.
+  const product = function* (
+    items: number[][],
+    alternativesOf: (item: number[]) => number[][],
+  ): Generator<number[]> {
+    const [first, ...rest] = items;
+    if (first === undefined) {
+      yield [];
+      return;
+    }
+    const heads = alternativesOf(first);
+    for (const head of heads) {
+      for (const tail of product(rest, alternativesOf)) {
+        yield [...head, ...tail];
+      }
+    }
+  };
+  const orders = function* (places: number[]): Generator<number[]> {
+    const inner = kept.filter(
+      (group) =>
+        group.size < places.length &&
+        [...group].every((k) => places.includes(k)),
+    );
+    const outermost = inner.filter(
+      (group) =>
+        !inner.some(
+          (other) =>
+            other !== group &&
+            other.size > group.size &&
+            [...group].every((k) => other.has(k)),
+        ),
+    );
+    const items: number[][] = outermost.map((group) =>
+      places.filter((k) => group.has(k)),
+    );
+    const loose = new Map<string, number[]>();
+    for (const k of places) {
+      if (outermost.some((group) => group.has(k))) continue;
+      const key = keyOf(units[k]!);
+      loose.set(key, [...(loose.get(key) ?? []), k]);
+    }
+    items.push(...loose.values());
+    const sorted = inOrder(items, (a, b) => a[0]! - b[0]!);
+    // Each item's own orders, taken once and at most as many as are used.
+    const alternatives = new Map<number[], number[][]>();
+    const alternativesOf = (item: number[]) => {
+      let found = alternatives.get(item);
+      if (!found) {
+        found = take(
+          outermost.some(
+            (group) => group.size === item.length && group.has(item[0]!),
+          )
+            ? orders(item)
+            : permutations(item),
+          SIBSHIP_ORDERS,
+        );
+        alternatives.set(item, found);
+      }
+      return found;
+    };
+    for (const itemOrder of permutations(sorted.map((_, k) => k))) {
+      yield* product(
+        itemOrder.map((k) => sorted[k]!),
+        alternativesOf,
+      );
+    }
+  };
+  const taken = take(orders(units.map((_, k) => k)), limit).map((order) =>
+    order.flatMap((k) => units[k]!),
+  );
+  graph.work.spent += SEATING_STEPS.ordered * taken.length * members.length;
+  return taken;
+}
+
+/** The first `count` values a generator yields, built no further. */
+function take<T>(values: Iterable<T>, count: number): T[] {
+  const taken: T[] = [];
+  if (count <= 0) return taken;
+  for (const value of values) {
+    taken.push(value);
+    if (taken.length >= count) break;
+  }
+  return taken;
+}
+
+/** A sibship's default order (see `sibshipOrders`). */
+function sibshipOrder(members: number[], graph: PedigreeGraph): number[] {
+  return sibshipOrders(members, graph, 1)[0]!;
+}
+
 function buildConstraintBlocks(
   nodesOnLayer: number[],
   graph: PedigreeGraph,
+  attach = true,
+  canonical = false,
 ): ConstraintBlock[] {
   const nodeSet = new Set(nodesOnLayer);
   const assigned = new Set<number>();
@@ -824,19 +939,9 @@ function buildConstraintBlocks(
   //    the rest of it on the outer side).
   for (const members of realSibships) {
     const siblingSet = new Set(members);
-    // Siblings in the order recorded, except that twins sit together, from
-    // where the first of them was recorded.
-    const siblings: number[] = [];
-    for (const sib of members.toSorted((a, b) => a - b)) {
-      if (siblings.includes(sib)) continue;
-      const set = [sib];
-      for (let k = 0; k < set.length; k++) {
-        for (const twin of graph.twinsOf.get(set[k]!) ?? []) {
-          if (siblingSet.has(twin) && !set.includes(twin)) set.push(twin);
-        }
-      }
-      siblings.push(...set.toSorted((a, b) => a - b));
-    }
+    const siblings =
+      (!canonical && graph.sibshipChoice.get(sibshipKey(members))) ||
+      sibshipOrder(members, graph);
     const isTwinPair = (a: number | undefined, b: number | undefined) =>
       a !== undefined &&
       b !== undefined &&
@@ -1071,242 +1176,54 @@ function buildConstraintBlocks(
     blocks.push({ nodes: ordered, barycenter: 0 });
   }
 
-  // 2b. Seat each child's extra parents — donors, surrogates, and social or
-  //     further primary parents outside its family's couple — beside the
-  //     parents they contribute alongside. Such a parent who is not part of
-  //     any partnership or sibship would otherwise fall through to a
-  //     singleton and drift away, drawing a very long line. Attach it to the
-  //     OUTER edge of the block holding the child's family-unit parents so the
-  //     couple stays contiguous and the line stays short. A single parent with
-  //     no block of their own yet starts one here.
-  //
-  //     A donor or surrogate always sits beside the child's parents, even
-  //     when partnered or in a sibship: their block joins the parents' block,
-  //     with the donor on its boundary beside the parents and their partners
-  //     on the inner side. A donor shared by two families joins the first.
-  const blockHolding = (nodes: number[]) => {
-    const set = new Set(nodes);
-    let block = blocks.find((b) => b.nodes.some((node) => set.has(node)));
-    if (!block) {
-      block = { nodes, barycenter: 0 };
-      for (const node of nodes) assigned.add(node);
-      blocks.push(block);
-    }
-    return block;
-  };
-  const partnered = (a: number, b: number) =>
-    (spousesOf.get(a) ?? []).includes(b);
-  /** How much a seat on one side of the child's parents costs the drawing,
-   * in seats: how much longer the lines grow, and a crossing. A line from a
-   * seat beyond the partners on that side passes over them; seated beside
-   * the couple it pushes the child's other extra parents already on that
-   * side, and anyone else of the block there, a seat further out, which
-   * lengthens their lines. From the side away from where the child sits in
-   * their sibship it crosses their siblings' lines up to the family. And
-   * the lines that end on the child from one side of their line of descent
-   * share that side of their edge: more than it holds apart, and one of
-   * them must end on the far side, crossing that line. A line joining the
-   * sibship's bar from beside a partner whose own line drops to one of the
-   * children crosses that line. */
-  const CROSSING_IN_SEATS = 2;
-  /** The lines one side of a child's edge holds a fifth of a symbol apart,
-   * whatever the symbol's shape (a square holds two; a circle and a
-   * diamond, three). */
-  const LINES_A_SIDE_HOLDS = 2;
-  const seatCost = (
-    passed: number,
-    beyond: number,
-    crossings: number,
-    linesOnSide: number,
-  ) =>
-    passed +
-    beyond +
-    (crossings + (linesOnSide > LINES_A_SIDE_HOLDS ? 1 : 0)) *
-      CROSSING_IN_SEATS;
-  const seatedDonors = new Set<number>();
-  for (const [child, extras] of graph.extraParents) {
-    const familyUnit = graph.familyOf.get(child)!;
-    // The side of the sibship the child sits on (siblings are seated in the
-    // order recorded): -1 left, 1 right, 0 the middle (an only child). A
-    // parent of every child in the sibship joins its bar instead, from
-    // either side.
-    const siblings = familyUnit.children
-      .filter((c) => graph.layers[c] === graph.layers[child])
-      .toSorted((a, b) => a - b);
-    const parentOfAll = (aux: number) =>
-      siblings.every((c) => graph.extraParents.get(c)?.includes(aux));
-    const sideOfChild = (aux: number) =>
-      parentOfAll(aux)
-        ? 0
-        : Math.sign(siblings.indexOf(child) - (siblings.length - 1) / 2);
-    const tieOf = (parent: number, to = child) =>
-      graph.parentEdgeTypes.get(`${parent}-${to}`) ?? 'biological';
-    for (const aux of extras) {
-      if (!nodeSet.has(aux)) continue;
-      const coupleOnLayer = familyUnit.parentGroup.members.filter((m) =>
-        nodeSet.has(m),
-      );
-      if (coupleOnLayer.length === 0) continue; // couple not on this layer
-      const coupleSet = new Set(coupleOnLayer);
-      const isDonor = isAuxiliaryEdge(
-        graph.parentEdgeTypes.get(`${aux}-${child}`) ?? 'biological',
-      );
-      const others = new Set(extras.filter((x) => x !== aux));
-      const childSide = sideOfChild(aux);
-      // The lines that would end on the child's edge on one side of their
-      // line of descent, with this one seated there: only for a child sitting
-      // under the middle of the couple, whose sides are the couple's. Those
-      // of the child's other extra parents seated on that side, this one, and
-      // each partner on that side whose tie to the child differs from the
-      // couple's other ties (a social parent beside a birth parent), drawn by
-      // a line of their own.
-      const hasOwnLine = (partner: number, to: number) => {
-        const ties = coupleOnLayer.map((m) => tieOf(m, to));
-        if (new Set(ties).size < 2) return false;
-        const descentTie = ties.includes('biological') ? 'biological' : ties[0];
-        return tieOf(partner, to) !== descentTie;
-      };
-      const joinsBar = siblings.length > 1 && parentOfAll(aux);
-      const linesOnSide = (
-        sideNodes: number[],
-        sidePartners: number[],
-      ): number =>
-        childSide === 0 && !joinsBar
-          ? 1 +
-            sideNodes.filter((node) => others.has(node)).length +
-            sidePartners.filter((m) => hasOwnLine(m, child)).length
-          : 0;
-      const crossesOwnLine = (sidePartners: number[]) =>
-        joinsBar &&
-        sidePartners.some((m) => siblings.some((c) => hasOwnLine(m, c)));
-      const partnersBySide = (blockNodes: number[]) => {
-        const seated = coupleOnLayer.toSorted(
-          (a, b) => blockNodes.indexOf(a) - blockNodes.indexOf(b),
+  // 2b. Each child's extra parents on this row sit beside the owners of the
+  //     child's line of descent (constraint 10). A helper (a parent whose
+  //     birth tie is drawn by a line of their own) brings their block along;
+  //     anyone else with no block of their own is seated there too. They go
+  //     on the right of the owners' chain of partnerships, the helper
+  //     nearest; the seating search (`refineSeating`) then moves each to
+  //     whichever side and place beside the owners costs the drawing least.
+  if (attach) {
+    const partnered = (a: number, b: number) =>
+      (spousesOf.get(a) ?? []).includes(b);
+    for (const [child, extras] of graph.extraParents) {
+      const unit = graph.familyOf.get(child)!;
+      const owners = unit.parentGroup.members.filter((m) => nodeSet.has(m));
+      if (owners.length === 0) continue;
+      for (const extra of extras) {
+        if (!nodeSet.has(extra)) continue;
+        const free =
+          !assigned.has(extra) &&
+          !inRealSibship.has(extra) &&
+          !spousesOf.has(extra);
+        if (!free && !isHelperOf(graph, extra, child)) continue;
+        let target = blocks.find((block) =>
+          block.nodes.some((node) => owners.includes(node)),
         );
-        return {
-          left: seated.slice(0, Math.floor(seated.length / 2)),
-          right: seated.slice(Math.ceil(seated.length / 2)),
-        };
-      };
-      // Whether to seat on the right: the cheaper side, and on a tie the
-      // side the child sits on, or for a child in the middle the side
-      // holding fewer of the child's other extra parents, so two such
-      // lines reach the child from either side rather than converging on
-      // one side of their line of descent.
-      const chooseRight = (
-        left: number,
-        right: number,
-        othersLeft: number,
-        othersRight: number,
-      ) =>
-        left === right
-          ? childSide !== 0
-            ? childSide > 0
-            : othersRight <= othersLeft
-          : right < left;
-
-      if (assigned.has(aux) || inRealSibship.has(aux) || spousesOf.has(aux)) {
-        // Placed already by steps 1–2, or for another child. Only a donor
-        // or surrogate seated by steps 1–2 is moved beside the parents.
-        if (!isDonor || seatedDonors.has(aux)) continue;
-        seatedDonors.add(aux);
-        const donorBlock = blocks.find((b) => b.nodes.includes(aux));
-        const coupleBlock = blockHolding(coupleOnLayer);
-        if (!donorBlock || donorBlock === coupleBlock) continue;
-        // The donor's block joins the parents' block at the end nearer the
-        // couple, so its line passes everyone between that end and them (on
-        // a tie, the side holding fewer of the child's lines, else the
-        // left). The side of the sibship the child sits on is not weighed:
-        // the sibship may yet be drawn the other way round.
-        const couplePositions = coupleBlock.nodes
-          .map((node, i) => (coupleSet.has(node) ? i : -1))
-          .filter((i) => i >= 0);
-        const leftNodes = coupleBlock.nodes.slice(
-          0,
-          Math.min(...couplePositions),
-        );
-        const rightNodes = coupleBlock.nodes.slice(
-          Math.max(...couplePositions) + 1,
-        );
-        const partnersOf = partnersBySide(coupleBlock.nodes);
-        const left = seatCost(
-          leftNodes.length,
-          0,
-          crossesOwnLine(partnersOf.left) ? 1 : 0,
-          linesOnSide(leftNodes, partnersOf.left),
-        );
-        const right = seatCost(
-          rightNodes.length,
-          0,
-          crossesOwnLine(partnersOf.right) ? 1 : 0,
-          linesOnSide(rightNodes, partnersOf.right),
-        );
-        const seatRight =
-          right < left ||
-          (right === left &&
-            rightNodes.filter((node) => others.has(node)).length <
-              leftNodes.filter((node) => others.has(node)).length);
-        coupleBlock.nodes = seatRight
-          ? [
-              ...coupleBlock.nodes,
-              ...movePartnerAnchorToBoundary(donorBlock.nodes, aux, 'left'),
-            ]
-          : [
-              ...movePartnerAnchorToBoundary(donorBlock.nodes, aux, 'right'),
-              ...coupleBlock.nodes,
-            ];
-        blocks.splice(blocks.indexOf(donorBlock), 1);
-        continue;
+        if (!target) {
+          target = { nodes: [...owners], barycenter: 0 };
+          for (const node of owners) assigned.add(node);
+          blocks.push(target);
+        }
+        const own = blocks.find((block) => block.nodes.includes(extra));
+        if (own === target) continue;
+        const nodes = target.nodes;
+        let end = Math.max(...owners.map((owner) => nodes.indexOf(owner)));
+        while (
+          end + 1 < nodes.length &&
+          partnered(nodes[end]!, nodes[end + 1]!)
+        ) {
+          end++;
+        }
+        const moving = !own
+          ? [extra]
+          : own.nodes.indexOf(extra) > (own.nodes.length - 1) / 2
+            ? own.nodes.toReversed()
+            : own.nodes;
+        nodes.splice(end + 1, 0, ...moving);
+        if (own) blocks.splice(blocks.indexOf(own), 1);
+        for (const node of moving) assigned.add(node);
       }
-      if (isDonor) seatedDonors.add(aux);
-
-      const targetBlock = blockHolding(coupleOnLayer);
-
-      // Seat the parent immediately adjacent to the couple, on the side
-      // whose seat costs the drawing least (see `seatCost`). When the couple
-      // is its own block this lands on the block edge; when the couple is
-      // embedded in a sibship block it lands beside the couple rather than
-      // at the far end, so the line stays short either way. Never seat it
-      // between two partners: when the couple sits inside a chain of
-      // partnerships, go out past the end of the chain.
-      const nodes = targetBlock.nodes;
-      const couplePositions = nodes
-        .map((node, i) => (coupleSet.has(node) ? i : -1))
-        .filter((i) => i >= 0);
-      const leftPos = Math.min(...couplePositions);
-      const rightPos = Math.max(...couplePositions);
-      let start = leftPos;
-      while (start > 0 && partnered(nodes[start - 1]!, nodes[start]!)) {
-        start--;
-      }
-      let end = rightPos;
-      while (
-        end + 1 < nodes.length &&
-        partnered(nodes[end]!, nodes[end + 1]!)
-      ) {
-        end++;
-      }
-      const leftBeyond = nodes.slice(0, start);
-      const rightBeyond = nodes.slice(end + 1);
-      const partnersOf = partnersBySide(nodes);
-      const seatRight = chooseRight(
-        seatCost(
-          leftPos - start,
-          leftBeyond.length,
-          (childSide > 0 ? 1 : 0) + (crossesOwnLine(partnersOf.left) ? 1 : 0),
-          linesOnSide(leftBeyond, partnersOf.left),
-        ),
-        seatCost(
-          end - rightPos,
-          rightBeyond.length,
-          (childSide < 0 ? 1 : 0) + (crossesOwnLine(partnersOf.right) ? 1 : 0),
-          linesOnSide(rightBeyond, partnersOf.right),
-        ),
-        leftBeyond.filter((node) => others.has(node)).length,
-        rightBeyond.filter((node) => others.has(node)).length,
-      );
-      nodes.splice(seatRight ? end + 1 : start, 0, aux);
-      assigned.add(aux);
     }
   }
 
@@ -1333,169 +1250,308 @@ function positionMap(layerOrdering: number[][]): Map<number, number> {
 }
 
 /**
- * In pedigree layout, a family unit's children connect to a single descent
- * point at the midpoint of the partner group, not to individual parents.
- * This function collects edges using that model: one edge per
- * (descent-point, child) for family-unit children; for each of their extra
- * parents (donors, surrogates, social or further primary parents), one edge
- * to the near end of the sibship when they parent all of it, or one per child
- * otherwise; and direct edges for children not covered by any family unit.
+ * What a seating costs the drawing, compared step by step: a later step
+ * only breaks ties left by the ones before it (see `lessCost`).
  *
- * Each edge says whether it is a line of descent (a family's, or a primary
- * parent's direct line) or an extra parent's line: two lines of descent that
- * cross also pull a child out from under its parents, so that crossing
- * weighs more.
+ * 0. Hard constraints broken: two lines of descent that cross (no hop can
+ *    draw that), and a helper who does not sit beside the owners of their
+ *    child's line of descent (constraint 10).
+ * 1. Crossings. Every crossing counts the same: a line across a line of
+ *    descent, a sibling bar or another owner's line.
+ * 2. Passing people: the people a line from an owner passes on its way to
+ *    the line of descent of its children.
+ * 3. Length: how far each line's owner sits from that line of descent.
+ * 4. Recorded order: how far each block is turned from the order the
+ *    records seat it in.
  *
- * It also counts the people an extra parent's line runs beneath: everyone on
- * the upper layer between that parent and the nearest of the family's
- * parents. Such a line reads as coming from whoever it passes under.
+ * Each pair of rows is read as the drawing will draw it: each family's line
+ * of descent comes down from its owners to the middle of its children, who
+ * hang from a bar; a line that joins a line of descent ends on its bar
+ * (for all the children) or above the run of children it is drawn for, and
+ * any other line ends on each child, crossing their sibling bar unless the
+ * child is at its end.
  */
-/** An edge between two layers: upper position, lower position, and whether
- * it is a line of descent. */
-type LayerEdge = [upper: number, lower: number, descent: boolean];
+type SeatingCost = [
+  hard: number,
+  crossings: number,
+  passing: number,
+  length: number,
+  order: number,
+];
 
-function collectLayerEdges(
-  upperLayer: number[],
-  lowerLayer: number[],
-  graph: PedigreeGraph,
-  pos: Map<number, number>,
-): { edges: LayerEdge[]; linesUnderPeople: number } {
-  const upperSet = new Set(upperLayer);
-  const lowerSet = new Set(lowerLayer);
-  const edges: LayerEdge[] = [];
-  const coveredChildren = new Set<number>();
-  let linesUnderPeople = 0;
-
-  for (const fu of graph.familyUnits) {
-    const parentsOnUpper = fu.parentGroup.members.filter((m) =>
-      upperSet.has(m),
-    );
-    const childrenOnLower = fu.children.filter((c) => lowerSet.has(c));
-    if (parentsOnUpper.length === 0 || childrenOnLower.length === 0) continue;
-
-    // Descent point is the midpoint of the parent group positions
-    const parentPositions = parentsOnUpper.map((p) => pos.get(p)!);
-    const descentX =
-      parentPositions.reduce((sum, p) => sum + p, 0) / parentPositions.length;
-
-    for (const child of childrenOnLower) {
-      edges.push([descentX, pos.get(child)!, true]);
-      coveredChildren.add(child);
-      // A partner whose tie to the child differs from the couple's other
-      // ties (a social parent beside a birth parent) is joined to the child
-      // by a line of their own, which can cross other lines too.
-      const ties = parentsOnUpper.map(
-        (p) => graph.parentEdgeTypes.get(`${p}-${child}`) ?? 'biological',
-      );
-      if (new Set(ties).size > 1) {
-        const descentTie = ties.includes('biological') ? 'biological' : ties[0];
-        parentsOnUpper.forEach((p, k) => {
-          if (ties[k] !== descentTie) {
-            edges.push([pos.get(p)!, pos.get(child)!, false]);
-          }
-        });
-      }
-    }
-
-    const childPositions = childrenOnLower.map((c) => pos.get(c)!);
-    const extraChildren = new Map<number, number[]>();
-    for (const child of childrenOnLower) {
-      for (const extra of graph.extraParents.get(child) ?? []) {
-        if (!upperSet.has(extra)) continue;
-        extraChildren.set(extra, [...(extraChildren.get(extra) ?? []), child]);
-      }
-    }
-    for (const [extra, children] of extraChildren) {
-      const at = pos.get(extra)!;
-      if (children.length === childrenOnLower.length && children.length > 1) {
-        edges.push([
-          at,
-          at < descentX
-            ? Math.min(...childPositions)
-            : Math.max(...childPositions),
-          false,
-        ]);
-      } else {
-        for (const child of children) edges.push([at, pos.get(child)!, false]);
-      }
-      const nearest = parentPositions.reduce((best, p) =>
-        Math.abs(p - at) < Math.abs(best - at) ? p : best,
-      );
-      linesUnderPeople += Math.max(0, Math.abs(nearest - at) - 1);
-    }
+/** Whether one cost, compared step by step, is less than another. */
+function lessCost(x: readonly number[], y: readonly number[]): boolean {
+  for (let i = 0; i < x.length; i++) {
+    if (Math.abs(x[i]! - y[i]!) > 1e-9) return x[i]! < y[i]!;
   }
-
-  // A child no family unit covers: its donors and surrogates, then each of
-  // its parents, directly.
-  for (const child of lowerLayer) {
-    if (coveredChildren.has(child)) continue;
-    const auxParents = graph.auxiliaryParents.get(child) ?? [];
-    for (const auxParent of auxParents) {
-      if (upperSet.has(auxParent)) {
-        edges.push([pos.get(auxParent)!, pos.get(child)!, false]);
-      }
-    }
-    const parents = getParentsOf(child, graph);
-    for (const parent of parents) {
-      if (upperSet.has(parent)) {
-        edges.push([pos.get(parent)!, pos.get(child)!, true]);
-      }
-    }
-  }
-
-  return { edges, linesUnderPeople };
+  return false;
 }
 
-/**
- * What two crossed lines of descent cost, against 1 for any crossing with an
- * extra parent's line. Crossed lines of descent put each child under the
- * other family's parents, where the drawing reads as the wrong parentage, so
- * any number of extra parents' crossings short of this is preferred.
- */
-const DESCENT_CROSSING_WEIGHT = 4;
+/** What one pair of rows costs a seating (see `seatingCost`): its counts
+ * of hard constraints broken, crossings and people passed, and each line's
+ * length in the order the lines are read. */
+type RowPairCost = { counts: [number, number, number]; spans: number[] };
 
+/** What the seating search has already weighed, per graph: each pair of
+ * rows, and each row's turns from its recorded order. A move reseats one
+ * row or a few, so most of a seating's cost is read from here. */
+const weighedRows = new WeakMap<
+  PedigreeGraph,
+  { pairs: Map<string, RowPairCost>; turns: Map<string, number> }
+>();
+
+function weighedRowsOf(graph: PedigreeGraph) {
+  let weighed = weighedRows.get(graph);
+  if (!weighed) {
+    weighed = { pairs: new Map(), turns: new Map() };
+    weighedRows.set(graph, weighed);
+  }
+  return weighed;
+}
+
+function rowPairCost(
+  upper: number[],
+  lower: number[],
+  graph: PedigreeGraph,
+): RowPairCost {
+  const people = upper.length + lower.length;
+  graph.work.spent +=
+    SEATING_STEPS.pairPart * (graph.familyUnits.length + people) +
+    SEATING_STEPS.pairOfPeople * people * people;
+  const pos = positionMap([upper, lower]);
+  const onRow = new Map<number, number>();
+  for (const node of upper) onRow.set(node, 0);
+  for (const node of lower) onRow.set(node, 1);
+  const cost: [number, number, number] = [0, 0, 0];
+  const spans: number[] = [];
+  const onUpper = (node: number) => onRow.get(node) === 0;
+  const onLower = (node: number) => onRow.get(node) === 1;
+  type Edge = { from: number; to: number; drop: boolean; owner: string };
+  const edges: Edge[] = [];
+  const bars: [number, number][] = [];
+  const descentPoint = new Map<FamilyUnit, number>();
+  for (const unit of graph.familyUnits) {
+    const owners = unit.parentGroup.members.filter(onUpper);
+    const children = unit.children.filter(onLower).map((c) => pos.get(c)!);
+    if (owners.length === 0 || children.length === 0) continue;
+    const d =
+      owners.reduce((sum, owner) => sum + pos.get(owner)!, 0) / owners.length;
+    descentPoint.set(unit, d);
+    const middle = children.reduce((sum, c) => sum + c, 0) / children.length;
+    edges.push({ from: d, to: middle, drop: true, owner: `${d}` });
+    if (children.length > 1) {
+      bars.push([Math.min(...children), Math.max(...children)]);
+    }
+  }
+
+  // The lines from owners on the upper row to children on the lower.
+  type Line = {
+    parents: number[];
+    kind: PedigreeEdgeType;
+    joins: boolean;
+    unit?: FamilyUnit;
+    children: number[];
+  };
+  const lines = new Map<string, Line>();
+  for (const child of lower) {
+    const unit = graph.familyOf.get(child);
+    const drawn = unit !== undefined && descentPoint.has(unit);
+    const descent = graph.owners[child]?.descent;
+    for (const owner of graph.owners[child]?.lines ?? []) {
+      if (!owner.parents.every(onUpper)) continue;
+      const joins =
+        drawn && isBirthTie(owner.kind) && isBirthTie(descent!.kind);
+      const key = `${ownerKey(owner)}:${owner.kind}:${joins}`;
+      const line = lines.get(key) ?? {
+        parents: owner.parents,
+        kind: owner.kind,
+        joins,
+        ...(drawn ? { unit } : {}),
+        children: [],
+      };
+      line.children.push(child);
+      lines.set(key, line);
+    }
+  }
+  for (const [key, line] of lines) {
+    const o =
+      line.parents.reduce((sum, parent) => sum + pos.get(parent)!, 0) /
+      line.parents.length;
+    const d = line.unit ? descentPoint.get(line.unit) : undefined;
+    const at = line.children.map((c) => pos.get(c)!).toSorted((a, b) => a - b);
+    if (line.joins && line.unit && d !== undefined) {
+      const siblings = line.unit.children
+        .filter(onLower)
+        .map((c) => pos.get(c)!)
+        .toSorted((a, b) => a - b);
+      if (at.length === siblings.length && siblings.length > 1) {
+        edges.push({
+          from: o,
+          to: o < d ? siblings[0]! : siblings.at(-1)!,
+          drop: false,
+          owner: key,
+        });
+      } else {
+        // One line to each run of the children side by side.
+        let run: number[] = [];
+        const close = () => {
+          if (run.length === 0) return;
+          edges.push({
+            from: o,
+            to: run.reduce((sum, c) => sum + c, 0) / run.length,
+            drop: false,
+            owner: key,
+          });
+          run = [];
+        };
+        for (const c of siblings) {
+          if (at.includes(c)) run.push(c);
+          else close();
+        }
+        close();
+      }
+    } else {
+      for (const c of at) {
+        edges.push({ from: o, to: c, drop: false, owner: key });
+        cost[1] += bars.filter(([a, b]) => c > a + 1e-9 && c < b - 1e-9).length;
+      }
+    }
+    if (d !== undefined) {
+      const [lo, hi] = [Math.min(o, d), Math.max(o, d)];
+      cost[2] += upper.filter(
+        (node) =>
+          !line.parents.includes(node) &&
+          pos.get(node)! > lo + 1e-9 &&
+          pos.get(node)! < hi - 1e-9,
+      ).length;
+      spans.push(hi - lo);
+    }
+  }
+
+  for (let i = 0; i < edges.length; i++) {
+    for (let j = i + 1; j < edges.length; j++) {
+      const [a, b] = [edges[i]!, edges[j]!];
+      if (a.owner === b.owner) continue;
+      if ((a.from - b.from) * (a.to - b.to) < -1e-9) {
+        if (a.drop && b.drop) cost[0]++;
+        else cost[1]++;
+      }
+    }
+  }
+
+  // Each helper beside the owners of their child's line of descent, or
+  // beside another helper of the same family (Josh, 12 Oct 2026): between
+  // them sit only parents of the family's children, and their partners.
+  for (const child of lower) {
+    const unit = graph.familyOf.get(child);
+    if (!unit || !descentPoint.has(unit)) continue;
+    const owners = unit.parentGroup.members.filter(onUpper);
+    const parentsOfChild = new Set(
+      unit.children.flatMap((sibling) =>
+        graph.parents[sibling]!.map((p) => p.parentIndex),
+      ),
+    );
+    for (const partner of upper) {
+      if (!parentsOfChild.has(partner)) continue;
+      for (const other of graph.partnerGroups) {
+        if (other.members.includes(partner)) {
+          for (const m of other.members) parentsOfChild.add(m);
+        }
+      }
+    }
+    for (const p of graph.parents[child]!) {
+      if (!onUpper(p.parentIndex) || !isHelperOf(graph, p.parentIndex, child)) {
+        continue;
+      }
+      const at = pos.get(p.parentIndex)!;
+      const nearest = inOrder(
+        owners.map((owner) => pos.get(owner)!),
+        (a, b) => Math.abs(a - at) - Math.abs(b - at),
+      )[0]!;
+      const between = upper.filter(
+        (node) =>
+          pos.get(node)! > Math.min(at, nearest) &&
+          pos.get(node)! < Math.max(at, nearest),
+      );
+      if (between.some((node) => !parentsOfChild.has(node))) cost[0]++;
+    }
+  }
+  return { counts: cost, spans };
+}
+
+function seatingCost(
+  layerOrdering: number[][],
+  graph: PedigreeGraph,
+): SeatingCost {
+  graph.work.spent +=
+    SEATING_STEPS.seated *
+    layerOrdering.reduce((total, row) => total + row.length, 1);
+  const weighed = weighedRowsOf(graph);
+  const cost: SeatingCost = [0, 0, 0, 0, 0];
+
+  for (let k = 0; k + 1 < layerOrdering.length; k++) {
+    const [upper, lower] = [layerOrdering[k]!, layerOrdering[k + 1]!];
+    const key = `${upper.join(',')}|${lower.join(',')}`;
+    let pair = weighed.pairs.get(key);
+    if (!pair) {
+      pair = rowPairCost(upper, lower, graph);
+      weighed.pairs.set(key, pair);
+    }
+    cost[0] += pair.counts[0];
+    cost[1] += pair.counts[1];
+    cost[2] += pair.counts[2];
+    for (const span of pair.spans) cost[3] += span;
+  }
+
+  // How far each block is turned from its recorded order.
+  for (const row of layerOrdering) {
+    const key = row.join(',');
+    let turns = weighed.turns.get(key);
+    if (turns === undefined) {
+      turns = 0;
+      const at = new Map(row.map((node, i) => [node, i]));
+      for (const block of buildConstraintBlocks(row, graph, false, true)) {
+        const seated = block.nodes.toSorted((a, b) => at.get(a)! - at.get(b)!);
+        for (let i = 0; i < seated.length; i++) {
+          for (let j = i + 1; j < seated.length; j++) {
+            if (
+              block.nodes.indexOf(seated[i]!) > block.nodes.indexOf(seated[j]!)
+            ) {
+              turns++;
+            }
+          }
+        }
+      }
+      weighed.turns.set(key, turns);
+    }
+    cost[4] += turns;
+  }
+  return cost;
+}
+
+/** How many lines a seating crosses (see `seatingCost`). */
 function countCrossings(
   layerOrdering: number[][],
   graph: PedigreeGraph,
 ): number {
-  const pos = positionMap(layerOrdering);
-  let crossings = 0;
-
-  for (let k = 0; k < layerOrdering.length - 1; k++) {
-    const upperLayer = layerOrdering[k]!;
-    const lowerLayer = layerOrdering[k + 1]!;
-
-    const { edges, linesUnderPeople } = collectLayerEdges(
-      upperLayer,
-      lowerLayer,
-      graph,
-      pos,
-    );
-    crossings += linesUnderPeople;
-
-    for (let i = 0; i < edges.length; i++) {
-      for (let j = i + 1; j < edges.length; j++) {
-        const [u1, v1, descent1] = edges[i]!;
-        const [u2, v2, descent2] = edges[j]!;
-        if ((u1 < u2 && v1 > v2) || (u1 > u2 && v1 < v2)) {
-          crossings += descent1 && descent2 ? DESCENT_CROSSING_WEIGHT : 1;
-        }
-      }
-    }
-  }
-
-  return crossings;
+  const [hard, crossings] = seatingCost(layerOrdering, graph);
+  return hard + crossings;
 }
 
 function barycentricSweep(
   layerOrdering: number[][],
   graph: PedigreeGraph,
   direction: 'down' | 'up',
+  /** The first row a sweep down reseats. */
+  from = 1,
 ): number[][] {
+  graph.work.spent +=
+    SEATING_STEPS.swept *
+    layerOrdering.reduce((total, row) => total + row.length, 0);
   const result = layerOrdering.map((layer) => [...layer]);
 
   if (direction === 'down') {
-    for (let k = 1; k < result.length; k++) {
+    for (let k = from; k < result.length; k++) {
       const fixedLayer = result[k - 1]!;
       const fixedPos = new Map<number, number>();
       for (let i = 0; i < fixedLayer.length; i++) {
@@ -1540,8 +1596,10 @@ function barycentricSweep(
         }
       }
 
-      blocks.sort((a, b) => a.barycenter - b.barycenter);
-      result[k] = blocks.flatMap((b) => b.nodes);
+      result[k] = inOrder(
+        blocks,
+        (a, b) => a.barycenter - b.barycenter,
+      ).flatMap((b) => b.nodes);
     }
   } else {
     for (let k = result.length - 2; k >= 0; k--) {
@@ -1578,8 +1636,10 @@ function barycentricSweep(
         }
       }
 
-      blocks.sort((a, b) => a.barycenter - b.barycenter);
-      result[k] = blocks.flatMap((b) => b.nodes);
+      result[k] = inOrder(
+        blocks,
+        (a, b) => a.barycenter - b.barycenter,
+      ).flatMap((b) => b.nodes);
     }
   }
 
@@ -1624,57 +1684,216 @@ function currentBlockRuns(
 }
 
 /**
- * Block-reversal (reflection) refinement. The barycentric sweeps only reorder
- * whole blocks and re-emit each block's internal node order verbatim, so a
- * block whose internal orientation is wrong (e.g. two intermarrying sibships
- * forced into one order by ascending node index) can never be corrected by the
- * sweeps. This pass tries reversing each contiguous block's node run in place
- * and keeps a reversal only when it STRICTLY reduces crossings. Reversing a
- * whole block preserves couple/sibship contiguity.
+ * How much the seating search may do: seatings weighed, each counted as
+ * many times as there are people to seat (about what weighing it takes).
  */
-function reverseBlocks(
+const SEATING_SEARCH_WORK = 60_000;
+
+/**
+ * The seating search. From the seating the sweeps settle on, it tries every
+ * move that keeps the hard constraints of seating (partners and pairs side
+ * by side, sibships together, blocks whole) and keeps any that costs the
+ * drawing less (see `seatingCost`), until none does or its work is spent
+ * (`SEATING_SEARCH_WORK`):
+ * - turning a block, or a chain of partners within one, round;
+ * - moving a child's extra parent, with their own block, to any other place
+ *   in the row (to either side of the owners of the child's line of
+ *   descent);
+ * - seating a sibship in any other order its donors' runs allow.
+ */
+function refineSeating(
   ordering: number[][],
   graph: PedigreeGraph,
-  startingCrossings: number,
   iterationCap: number,
-): { ordering: number[][]; crossings: number } {
+  /** Every seating the search weighs is offered here, with its cost. */
+  weigh: (seating: number[][], cost: SeatingCost) => void = () => undefined,
+): number[][] {
   let current = ordering.map((layer) => [...layer]);
-  let currentCrossings = startingCrossings;
+  let currentCost = seatingCost(current, graph);
+  weigh(current, currentCost);
+  // The search's work: each seating weighed, and each order of a sibship
+  // laid out, counts as many as there are people to seat. It stops once
+  // `SEATING_SEARCH_WORK` is spent.
+  let spent = 0;
+  const spend = () => {
+    spent += graph.nodeCount;
+  };
+  const workLeft = () => spent < SEATING_SEARCH_WORK;
+  const partnered = (a: number | undefined, b: number | undefined) =>
+    a !== undefined &&
+    b !== undefined &&
+    graph.partnerGroups.some(
+      (group) => group.members.includes(a) && group.members.includes(b),
+    );
+  // A block's runs of partners side by side within it.
+  const chainsWithin = (
+    row: number[],
+    [start, end]: [number, number],
+  ): [number, number][] => {
+    const chains: [number, number][] = [];
+    let from = start;
+    for (let k = start + 1; k <= end; k++) {
+      if (k < end && partnered(row[k - 1], row[k])) continue;
+      if (k - from >= 2 && (from > start || k < end)) chains.push([from, k]);
+      from = k;
+    }
+    return chains;
+  };
+  const withRow = (layer: number, row: number[]) =>
+    current.map((other, k) => (k === layer ? row : [...other]));
 
-  for (let iter = 0; iter < iterationCap; iter++) {
-    let improvedThisPass = false;
-
-    for (let layer = 0; layer < current.length; layer++) {
-      const layerOrdering = current[layer]!;
-      if (layerOrdering.length < 2) continue;
-
-      const runs = currentBlockRuns(layerOrdering, graph);
-      for (const [start, end] of runs) {
-        if (end - start < 2) continue;
-
-        const candidate = current.map((l) => [...l]);
-        const run = candidate[layer]!.slice(start, end).toReversed();
-        for (let i = 0; i < run.length; i++) {
-          candidate[layer]![start + i] = run[i]!;
+  // The moves on one row, as the rows they would make.
+  function* movesOn(
+    layer: number,
+  ): Generator<{ row: number[]; choice?: [string, number[]] }> {
+    const row = current[layer]!;
+    if (row.length < 2) return;
+    // Turning a block, or a chain within one, round.
+    const blockRuns = currentBlockRuns(row, graph);
+    for (const [start, end] of [
+      ...blockRuns,
+      ...blockRuns.flatMap((run) => chainsWithin(row, run)),
+    ]) {
+      if (end - start < 2) continue;
+      yield {
+        row: [
+          ...row.slice(0, start),
+          ...row.slice(start, end).toReversed(),
+          ...row.slice(end),
+        ],
+      };
+    }
+    // Moving an extra parent's block to another place in the row.
+    const base = buildConstraintBlocks(row, graph, false);
+    const blockOf = new Map<number, number[]>();
+    for (const block of base) {
+      for (const node of block.nodes) blockOf.set(node, block.nodes);
+    }
+    const sibships = graph.siblingGroups
+      .map((group) => group.members.filter((m) => row.includes(m)))
+      .filter((members) => members.length > 1);
+    const extras = new Set<number>();
+    for (const [child, parents] of graph.extraParents) {
+      const unit = graph.familyOf.get(child)!;
+      for (const extra of parents) {
+        if (!row.includes(extra)) continue;
+        if (
+          unit.parentGroup.members.some((m) => blockOf.get(extra)!.includes(m))
+        ) {
+          continue;
         }
-
-        const candidateCrossings = countCrossings(candidate, graph);
-        if (candidateCrossings < currentCrossings) {
-          current = candidate;
-          currentCrossings = candidateCrossings;
-          improvedThisPass = true;
+        extras.add(extra);
+      }
+    }
+    for (const extra of extras) {
+      const unitNodes = blockOf.get(extra)!;
+      const at = unitNodes
+        .map((node) => row.indexOf(node))
+        .toSorted((a, b) => a - b);
+      if (at.at(-1)! - at[0]! !== at.length - 1) continue;
+      const moving = row.slice(at[0]!, at.at(-1)! + 1);
+      const rest = row.filter((node) => !unitNodes.includes(node));
+      for (let gap = 0; gap <= rest.length; gap++) {
+        if (gap === at[0]) continue;
+        const [left, right] = [rest[gap - 1], rest[gap]];
+        if (partnered(left, right)) continue;
+        if (
+          left !== undefined &&
+          right !== undefined &&
+          blockOf.get(left) === blockOf.get(right) &&
+          sibships.some(
+            (members) => members.includes(left) && members.includes(right),
+          )
+        ) {
+          continue;
+        }
+        if (
+          sibships.some((members) => {
+            const places = members.map((m) => rest.indexOf(m));
+            return Math.min(...places) < gap && Math.max(...places) >= gap;
+          })
+        ) {
+          continue;
+        }
+        for (const turned of [moving, moving.toReversed()]) {
+          yield {
+            row: [...rest.slice(0, gap), ...turned, ...rest.slice(gap)],
+          };
         }
       }
     }
-
-    if (!improvedThisPass) break;
-    if (currentCrossings === 0) break;
+    // Seating a sibship in another order: its block as the records would
+    // seat it in that order, either way round.
+    for (const members of sibships) {
+      const orders = sibshipOrders(members, graph);
+      if (orders.length < 2) continue;
+      const key = sibshipKey(members);
+      const chosen = graph.sibshipChoice.get(key);
+      for (const order of orders) {
+        if (!workLeft()) return;
+        spend();
+        graph.sibshipChoice.set(key, order);
+        const block = buildConstraintBlocks(row, graph, false).find((b) =>
+          b.nodes.includes(members[0]!),
+        )!.nodes;
+        if (chosen) graph.sibshipChoice.set(key, chosen);
+        else graph.sibshipChoice.delete(key);
+        const places = block.map((node) => row.indexOf(node));
+        const [from, to] = [Math.min(...places), Math.max(...places)];
+        if (to - from !== block.length - 1) continue;
+        for (const turned of [block, block.toReversed()]) {
+          yield {
+            row: [...row.slice(0, from), ...turned, ...row.slice(to + 1)],
+            choice: [key, order],
+          };
+        }
+      }
+    }
   }
 
-  return { ordering: current, crossings: currentCrossings };
+  for (let iter = 0; iter < iterationCap && workLeft(); iter++) {
+    let improved = false;
+    for (let layer = 0; layer < current.length && !improved; layer++) {
+      for (const { row, choice } of movesOn(layer)) {
+        if (!workLeft()) break;
+        const moved = withRow(layer, row);
+        const previous = choice
+          ? graph.sibshipChoice.get(choice[0])
+          : undefined;
+        if (choice) graph.sibshipChoice.set(choice[0], choice[1]);
+        // Each move is weighed as it is, and with the rows below it
+        // reseated under it by a sweep down.
+        const followed = barycentricSweep(moved, graph, 'down', layer + 1);
+        for (const candidate of [moved, followed]) {
+          spend();
+          const cost = seatingCost(candidate, graph);
+          weigh(candidate, cost);
+          if (lessCost(cost, currentCost)) {
+            current = candidate;
+            currentCost = cost;
+            improved = true;
+            break;
+          }
+        }
+        if (improved) break;
+        if (choice) {
+          if (previous) graph.sibshipChoice.set(choice[0], previous);
+          else graph.sibshipChoice.delete(choice[0]);
+        }
+      }
+    }
+    if (!improved) break;
+  }
+  return current;
 }
 
-function minimizeCrossings(graph: PedigreeGraph): number[][] {
+/**
+ * The seatings the search found, cheapest first by `seatingCost`, at most
+ * `count` of them: the one it settled on first, then the cheapest others it
+ * weighed on the way. Which is drawn is decided by what each costs once its
+ * lines are routed (see `alignPedigree`).
+ */
+function seatingsOf(graph: PedigreeGraph, count: number): number[][][] {
   const maxLayer = Math.max(...graph.layers);
 
   // Step 1: Initial ordering
@@ -1686,53 +1905,49 @@ function minimizeCrossings(graph: PedigreeGraph): number[][] {
   }
 
   let bestOrdering = ordering.map((layer) => [...layer]);
-  let bestCrossings = countCrossings(bestOrdering, graph);
-
-  if (bestCrossings === 0) return bestOrdering;
+  let bestCost = seatingCost(bestOrdering, graph);
 
   let noImprovementCount = 0;
-
   for (let iter = 0; iter < 24; iter++) {
-    const afterDown = barycentricSweep(bestOrdering, graph, 'down');
-    const downCrossings = countCrossings(afterDown, graph);
-
-    if (downCrossings < bestCrossings) {
-      bestCrossings = downCrossings;
-      bestOrdering = afterDown;
-      noImprovementCount = 0;
-    } else {
-      noImprovementCount++;
+    let improved = false;
+    for (const direction of ['down', 'up'] as const) {
+      const swept = barycentricSweep(bestOrdering, graph, direction);
+      const cost = seatingCost(swept, graph);
+      if (lessCost(cost, bestCost)) {
+        bestCost = cost;
+        bestOrdering = swept;
+        improved = true;
+      }
     }
-
-    if (bestCrossings === 0) break;
-
-    const afterUp = barycentricSweep(bestOrdering, graph, 'up');
-    const upCrossings = countCrossings(afterUp, graph);
-
-    if (upCrossings < bestCrossings) {
-      bestCrossings = upCrossings;
-      bestOrdering = afterUp;
-      noImprovementCount = 0;
-    } else {
-      noImprovementCount++;
-    }
-
-    if (bestCrossings === 0) break;
+    noImprovementCount = improved ? 0 : noImprovementCount + 2;
     if (noImprovementCount >= 3) break;
   }
 
-  // Block-reversal refinement: run after the sweeps converge. The sweeps can
-  // only permute blocks, never reflect one, so a block frozen in the wrong
-  // internal orientation (two intermarrying sibships) still leaves crossings a
-  // whole-block reversal can remove.
-  if (bestCrossings > 0) {
-    const reflected = reverseBlocks(bestOrdering, graph, bestCrossings, 24);
-    if (reflected.crossings < bestCrossings) {
-      bestOrdering = reflected.ordering;
-    }
-  }
+  // The sweeps only reorder whole blocks; the search then turns blocks
+  // round, moves extra parents and reorders sibships, keeping the cheapest
+  // seatings it weighs.
+  const kept: { seating: number[][]; cost: SeatingCost; key: string }[] = [];
+  const keep = (seating: number[][], cost: SeatingCost) => {
+    if (count < 2) return;
+    const key = seating.map((row) => row.join(',')).join('|');
+    if (kept.some((other) => other.key === key)) return;
+    const at = kept.findIndex((other) => lessCost(cost, other.cost));
+    kept.splice(at < 0 ? kept.length : at, 0, { seating, cost, key });
+    kept.length = Math.min(kept.length, count);
+  };
+  const settled = refineSeating(bestOrdering, graph, 200, keep);
+  const settledKey = settled.map((row) => row.join(',')).join('|');
+  return [
+    settled,
+    ...kept
+      .filter((other) => other.key !== settledKey)
+      .map((other) => other.seating),
+  ].slice(0, count);
+}
 
-  return bestOrdering;
+/** The seating the search settles on (see `seatingsOf`). */
+function minimizeCrossings(graph: PedigreeGraph): number[][] {
+  return seatingsOf(graph, 1)[0]!;
 }
 
 function encodePedigreeLayout(
@@ -1740,6 +1955,9 @@ function encodePedigreeLayout(
   ordering: number[][],
   ped: PedigreeInput,
 ): PedigreeLayout {
+  graph.work.spent +=
+    SEATING_STEPS.placed *
+    ordering.reduce((total, row) => total + row.length, 0);
   const maxLayer = ordering.length;
 
   // Step 1: nid and n
@@ -1827,10 +2045,8 @@ function encodePedigreeLayout(
       );
       if (inFamilyUnit) continue;
 
-      const primaryParents = graph.parents[node]!.filter((p) =>
-        isPrimaryEdge(p.edgeType),
-      ).map((p) => p.parentIndex);
-      const parentsAbove = primaryParents.filter((p) => {
+      const descentParents = graph.owners[node]?.descent?.parents ?? [];
+      const parentsAbove = descentParents.filter((p) => {
         const loc = nodeLocation.get(p);
         return loc?.layer === layer - 1;
       });
@@ -1981,10 +2197,13 @@ function encodePedigreeLayout(
       const allChildren = new Set(fu.children);
       processed.add(fi);
 
-      // Find other family units sharing any parent on this layer
+      // Find other family units of two or more parents sharing any parent
+      // on this layer, whichever was recorded first: a unit of one parent
+      // neither starts a group nor joins one.
       for (let fj = fi + 1; fj < graph.familyUnits.length; fj++) {
         if (processed.has(fj)) continue;
         const otherFu = graph.familyUnits[fj]!;
+        if (otherFu.parentGroup.members.length < 2) continue;
         const sharesParent = otherFu.parentGroup.members.some((m) => {
           const idx = layerNodes.indexOf(m);
           return idx >= 0 && parentNodeSet.has(nid[layer]![idx]!);
@@ -2014,11 +2233,10 @@ function encodePedigreeLayout(
     }
 
     // Sort centering groups left-to-right by leftmost parent col
-    centeringGroups.sort(
+    for (const cg of inOrder(
+      centeringGroups,
       (a, b) => Math.min(...a.parentCols) - Math.min(...b.parentCols),
-    );
-
-    for (const cg of centeringGroups) {
+    )) {
       const childrenBelow = cg.children.filter((c) => {
         const loc = nodeLocation.get(c);
         return loc?.layer === childLayer;
@@ -2175,17 +2393,15 @@ function encodePedigreeLayout(
     const layerFam: number[] = [];
     for (let col = 0; col < n[layer]!; col++) {
       const node = nid[layer]![col]!;
-      const primaryParents = graph.parents[node]!.filter((p) =>
-        isPrimaryEdge(p.edgeType),
-      ).map((p) => p.parentIndex);
+      const descentParents = graph.owners[node]?.descent?.parents ?? [];
 
-      if (primaryParents.length === 0 || layer === 0) {
+      if (descentParents.length === 0 || layer === 0) {
         layerFam.push(0);
         continue;
       }
 
       // Check if parents are on the layer directly above
-      const parentsAbove = primaryParents.filter((p) => {
+      const parentsAbove = descentParents.filter((p) => {
         const loc = nodeLocation.get(p);
         return loc?.layer === layer - 1;
       });
@@ -2237,6 +2453,18 @@ function encodePedigreeLayout(
           layerFam.push(0);
         }
       }
+    }
+    // A family names one sibship: where two sibships would take the same
+    // family (two from one carrier, say), the first seated keeps it, and the
+    // other is left to the connectors, which draw it as a sibship of its own
+    // (see `routePedigree`).
+    const claimedBy = new Map<number, FamilyUnit | undefined>();
+    for (let col = 0; col < layerFam.length; col++) {
+      const value = layerFam[col]!;
+      if (value === 0) continue;
+      const unit = graph.familyOf.get(nid[layer]![col]!);
+      if (!claimedBy.has(value)) claimedBy.set(value, unit);
+      else if (claimedBy.get(value) !== unit) layerFam[col] = 0;
     }
     fam.push(layerFam);
   }
@@ -2336,15 +2564,32 @@ function encodePedigreeLayout(
   return { n, nid, pos, fam, group, twins, groupMember };
 }
 
+/**
+ * A family laid out, at most `count` ways: the seatings the search found,
+ * cheapest first by `seatingCost`, each with that cost.
+ */
+function sugiyamaLayouts(
+  ped: PedigreeInput,
+  count: number,
+  /** Counts the work the seatings take (see `SEATING_STEPS`). */
+  work?: { spent: number },
+): { layout: PedigreeLayout; cost: SeatingCost }[] {
+  const graph = buildPedigreeGraph(ped, work);
+  return seatingsOf(graph, count).map((ordering) => ({
+    layout: encodePedigreeLayout(graph, ordering, ped),
+    cost: seatingCost(ordering, graph),
+  }));
+}
+
 function sugiyamaLayout(ped: PedigreeInput): PedigreeLayout {
-  const graph = buildPedigreeGraph(ped);
-  const ordering = minimizeCrossings(graph);
-  return encodePedigreeLayout(graph, ordering, ped);
+  return sugiyamaLayouts(ped, 1)[0]!.layout;
 }
 
 export {
   buildPedigreeGraph,
   countCrossings,
+  lessCost,
   minimizeCrossings,
   sugiyamaLayout,
+  sugiyamaLayouts,
 };

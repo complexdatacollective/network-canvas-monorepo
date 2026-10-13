@@ -1,18 +1,13 @@
 /**
  * The connectors drawn for whole families, laid out as the interface lays
- * them out: links → toPedigreeInput → alignPedigree → buildConnectorData.
+ * them out (`drawPedigree`): each seating weighed by its routed lines.
  * These tests check what a reader of the drawing sees, so they assert on line
  * styles and geometry rather than on the layout's internal columns.
  */
 import { describe, expect, it } from 'vitest';
 
-import { alignPedigree } from '../alignPedigree';
 import type { LayoutDimensions } from '../layoutDimensions';
-import {
-  buildConnectorData,
-  pedigreeLayoutToPositions,
-  toPedigreeInput,
-} from '../pedigreeAdapter';
+import { drawPedigree } from '../pedigreeAdapter';
 import type {
   LineSegment,
   ParentChildConnector,
@@ -22,7 +17,8 @@ import type {
   PedigreeSymbolShape,
 } from '../types';
 import { INTERFACE_DIMENSIONS } from './fixtures';
-import { type Drawing, faultsOfLinesInto } from './lineFaults';
+import { outsideOutline as outsideSymbol } from './lineEnds';
+import { type Drawing, familyOf, strictLineFaults } from './lineFaults';
 
 const DIMENSIONS: LayoutDimensions = INTERFACE_DIMENSIONS;
 
@@ -56,19 +52,14 @@ function draw(
           ),
         }),
   }));
-  const { input, indexToId, idToIndex } = toPedigreeInput(people, links);
-  const layout = alignPedigree(input);
-  const { connectors } = buildConnectorData(
-    layout,
+  const { positions: topLeft, connectorData } = drawPedigree({
+    nodeIds: people,
     links,
-    DIMENSIONS,
-    input.parents,
-    idToIndex,
-    people,
-    indexToId,
-    new Map(people.map((id) => [id, shape])),
-  );
-  const topLeft = pedigreeLayoutToPositions(layout, indexToId, DIMENSIONS);
+    dimensions: DIMENSIONS,
+    nodeNames: new Map(people.map((id) => [id, id])),
+    nodeShapes: new Map(people.map((id) => [id, shape])),
+  });
+  const { connectors } = connectorData;
   const centre = (personId: string) => {
     const position = topLeft.get(personId);
     if (!position) throw new Error(`${personId} is not drawn`);
@@ -77,7 +68,7 @@ function draw(
       y: position.y + DIMENSIONS.nodeHeight / 2,
     };
   };
-  return { connectors, centre };
+  return { connectors, centre, family: familyOf(people, links) };
 }
 
 const isDashed = (edgeType: PedigreeEdgeType) =>
@@ -86,7 +77,7 @@ const isDashed = (edgeType: PedigreeEdgeType) =>
 /** The parent-child connectors whose uplines reach the child. */
 function descentsInto(connectors: PedigreeConnectors, childId: string) {
   return connectors.parentChildLines.filter((line) =>
-    line.uplineChildIds?.includes(childId),
+    line.uplines.some((upline) => upline.childId === childId),
   );
 }
 
@@ -96,10 +87,10 @@ function uplineOf(
   childId: string,
 ): { segment: LineSegment; connector: ParentChildConnector } {
   for (const connector of connectors.parentChildLines) {
-    const index = connector.uplineChildIds?.indexOf(childId) ?? -1;
-    if (index >= 0) {
-      return { segment: connector.uplines[index]!, connector };
-    }
+    const segment = connector.uplines.find(
+      (upline) => upline.childId === childId,
+    );
+    if (segment) return { segment, connector };
   }
   throw new Error(`${childId} has no upline`);
 }
@@ -313,13 +304,29 @@ function collinearOverlapOutside(
   return seen;
 }
 
-/** Solid segments that lie along a dashed one, hiding it. */
-function solidOverDashed(connectors: PedigreeConnectors) {
+/** Solid segments that lie along a dashed one, hiding it, where neither is
+ * hidden under someone's symbol (lines into a child run on to its centre
+ * there). */
+function solidOverDashed(
+  connectors: PedigreeConnectors,
+  centre: (id: string) => { x: number; y: number },
+  people: string[],
+) {
   const segments = drawnSegments(connectors);
+  const half = DIMENSIONS.nodeWidth / 2;
+  const boxes = people.map((id) => {
+    const c = centre(id);
+    return {
+      left: c.x - half,
+      right: c.x + half,
+      top: c.y - half,
+      bottom: c.y + half,
+    };
+  });
   const found: [LineSegment, LineSegment][] = [];
   for (const dashed of segments.filter((s) => s.dashed)) {
     for (const solid of segments.filter((s) => !s.dashed)) {
-      if (collinearOverlap(dashed.segment, solid.segment) > 1) {
+      if (collinearOverlapOutside(dashed.segment, solid.segment, boxes) > 1) {
         found.push([dashed.segment, solid.segment]);
       }
     }
@@ -355,34 +362,30 @@ describe('a birth parent who raises an adopted child', () => {
   });
 
   it('keeps a step parent’s dashed adoptive line clear of the birth parent’s line once they have a child', () => {
-    const { connectors } = draw(
-      ['ego', 'paul', 'kate', 'nora'],
-      [
-        ['paul', 'biological', 'ego'],
-        ['paul', 'partner', 'kate'],
-        ['kate', 'adoptive', 'ego'],
-        ['kate', 'biological', 'nora', { carrier: true }],
-        ['paul', 'biological', 'nora'],
-      ],
-    );
+    const people = ['ego', 'paul', 'kate', 'nora'];
+    const { connectors, centre } = draw(people, [
+      ['paul', 'biological', 'ego'],
+      ['paul', 'partner', 'kate'],
+      ['kate', 'adoptive', 'ego'],
+      ['kate', 'biological', 'nora', { carrier: true }],
+      ['paul', 'biological', 'nora'],
+    ]);
     expect(auxiliaryLinesFrom(connectors, 'paul')).toEqual([]);
-    expect(solidOverDashed(connectors)).toEqual([]);
+    expect(solidOverDashed(connectors, centre, people)).toEqual([]);
   });
 
   it('keeps the adoptive line to a stepchild visible beside a later half-sibling', () => {
-    const { connectors } = draw(
-      ['ego', 'sara', 'ella', 'jess', 'leo'],
-      [
-        ['ego', 'partner', 'sara', { former: true }],
-        ['ego', 'biological', 'ella'],
-        ['sara', 'biological', 'ella', { carrier: true }],
-        ['ego', 'partner', 'jess'],
-        ['jess', 'adoptive', 'ella'],
-        ['ego', 'biological', 'leo'],
-        ['jess', 'biological', 'leo', { carrier: true }],
-      ],
-    );
-    expect(solidOverDashed(connectors)).toEqual([]);
+    const people = ['ego', 'sara', 'ella', 'jess', 'leo'];
+    const { connectors, centre } = draw(people, [
+      ['ego', 'partner', 'sara', { former: true }],
+      ['ego', 'biological', 'ella'],
+      ['sara', 'biological', 'ella', { carrier: true }],
+      ['ego', 'partner', 'jess'],
+      ['jess', 'adoptive', 'ella'],
+      ['ego', 'biological', 'leo'],
+      ['jess', 'biological', 'leo', { carrier: true }],
+    ]);
+    expect(solidOverDashed(connectors, centre, people)).toEqual([]);
   });
 });
 
@@ -567,6 +570,7 @@ function auxiliaryLineFaults(
   people: string[],
   centre: (id: string) => { x: number; y: number },
   adopted: string[] = [],
+  shape: PedigreeSymbolShape = 'circle',
 ): string[] {
   const W = DIMENSIONS.nodeWidth;
   const H = DIMENSIONS.nodeHeight;
@@ -621,9 +625,15 @@ function auxiliaryLineFaults(
     for (const segment of segments) {
       for (const id of people) {
         if (id === from || id === to) continue;
-        if (crossesRect(segment, boxOf(id))) {
-          faults.push(`${name} passes through ${id}`);
-        }
+        // Through the symbol as it is drawn.
+        const steps = Math.ceil(
+          Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1),
+        );
+        const through = Array.from({ length: steps + 1 }, (_, k) => ({
+          x: segment.x1 + ((segment.x2 - segment.x1) * k) / Math.max(steps, 1),
+          y: segment.y1 + ((segment.y2 - segment.y1) * k) / Math.max(steps, 1),
+        })).some((p) => outsideSymbol(p, centre(id), W, shape) < -0.5);
+        if (through) faults.push(`${name} passes through ${id}`);
       }
       for (const id of adopted) {
         const c = centre(id);
@@ -650,6 +660,17 @@ function auxiliaryLineFaults(
           { x: other.segment.x2, y: other.segment.y2 },
         ]) {
           if (insideAnySymbol(vertex)) continue;
+          // Lines into one child converge on one point at its top.
+          if (
+            to !== undefined &&
+            people.includes(to) &&
+            Math.hypot(
+              vertex.x - centre(to).x,
+              vertex.y - (centre(to).y - H / 2),
+            ) < 1
+          ) {
+            continue;
+          }
           const isMyEnd =
             Math.hypot(vertex.x - segment.x2, vertex.y - segment.y2) < 1 ||
             Math.hypot(vertex.x - segment.x1, vertex.y - segment.y1) < 1;
@@ -666,7 +687,13 @@ function auxiliaryLineFaults(
 describe('auxiliary and direct parent lines', () => {
   const scenarios: Record<
     string,
-    { people: string[]; links: Link[]; adopted?: string[] }
+    {
+      people: string[];
+      links: Link[];
+      adopted?: string[];
+      /** The strict checks' faults no seating can avoid, if any. */
+      unavoidable?: string[];
+    }
   > = {
     'a surrogate grandmother': {
       people: ['ego', 'hannah', 'ben', 'margaret', 'george'],
@@ -744,7 +771,17 @@ describe('auxiliary and direct parent lines', () => {
         ['phil', 'biological', 'ben'],
       ],
     },
+    // Becky carried both, but Ego's biological parent is Marcus and Leo has
+    // none recorded, so they are two sibships (Josh, 12 Oct 2026), each
+    // under Becky with its own line of descent, and every line into each
+    // converges on their top. Marcus's line ends on Ego and Marcus and
+    // Julian's line on Leo, while Julian's own line ends on Ego: whichever
+    // side Leo sits, the couple's line, starting between the two partners,
+    // must cross one partner's line to Ego.
     'an egg donor and a surrogate of twins': {
+      unavoidable: [
+        "marcus and julian's social line crosses marcus's biological line, of its own owner",
+      ],
       people: ['ego', 'leo', 'marcus', 'julian', 'eggdonor', 'becky'],
       links: [
         ['marcus', 'biological', 'ego'],
@@ -774,40 +811,31 @@ describe('auxiliary and direct parent lines', () => {
     },
   };
 
-  for (const [name, { people, links, adopted }] of Object.entries(scenarios)) {
+  for (const [name, { people, links, adopted, unavoidable }] of Object.entries(
+    scenarios,
+  )) {
     for (const shape of ['circle', 'square'] as const) {
       it(`are drawn clear of everyone and every other line: ${name} (${shape}s)`, () => {
         const { connectors, centre } = draw(people, links, shape);
         expect(
-          auxiliaryLineFaults(connectors, people, centre, adopted),
+          auxiliaryLineFaults(connectors, people, centre, adopted, shape),
         ).toEqual([]);
       });
 
-      it(`end on each child in their parents' order, apart and uncrossed: ${name} (${shape}s)`, () => {
-        const { connectors, centre } = draw(people, links, shape);
+      it(`pass the strict line checks: ${name} (${shape}s)`, () => {
+        const { connectors, centre, family } = draw(people, links, shape);
         const drawing: Drawing = {
           size: DIMENSIONS.nodeWidth,
           connectors,
           centre,
           shapeOf: () => shape,
         };
-        const children = new Set(
-          connectors.auxiliaryLines.flatMap((line) =>
-            line.endpointIds?.[1] ? [line.endpointIds[1]] : [],
-          ),
-        );
-        expect(
-          [...children].flatMap((child) =>
-            faultsOfLinesInto(drawing, child).map(
-              (fault) => `${child}: ${fault}`,
-            ),
-          ),
-        ).toEqual([]);
+        expect(strictLineFaults(drawing, family)).toEqual(unavoidable ?? []);
       });
     }
   }
 
-  it('end at a point on the child’s top edge, distinct for each line into them', () => {
+  it('converge with the line of descent on the top of an only child (Bennett 1f)', () => {
     const { connectors, centre } = draw(
       ['ego', 'ann', 'dan', 'sue'],
       [
@@ -817,19 +845,14 @@ describe('auxiliary and direct parent lines', () => {
       ],
     );
     const ego = centre('ego');
-    const ends = connectors.auxiliaryLines.map((line) => {
-      const segments = auxiliarySegments(line);
-      const last = segments[segments.length - 1]!;
-      // The line meets the child's symbol from above, at its top, and runs
-      // on under it, off the child's own line up.
-      expect(last.x1).toBeCloseTo(last.x2, 5);
-      expect(last.y1).toBeLessThanOrEqual(ego.y - DIMENSIONS.nodeHeight / 4);
-      expect(Math.abs(last.x2 - ego.x)).toBeGreaterThan(5);
-      expect(Math.abs(last.x2 - ego.x)).toBeLessThan(DIMENSIONS.nodeWidth / 2);
-      return last.x2;
-    });
-    expect(ends).toHaveLength(2);
-    expect(Math.abs(ends[0]! - ends[1]!)).toBeGreaterThan(5);
+    expect(connectors.auxiliaryLines).toHaveLength(2);
+    for (const line of connectors.auxiliaryLines) {
+      // Straight from the donor or carrier to the top of the child.
+      expect(line.points).toHaveLength(2);
+      const end = line.points.at(-1)!;
+      expect(end.x).toBeCloseTo(ego.x, 5);
+      expect(end.y).toBeCloseTo(ego.y - DIMENSIONS.nodeHeight / 2, 5);
+    }
   });
 
   it('join a sibship’s bar away from every child’s line', () => {
@@ -903,6 +926,44 @@ const lineBetween = (connectors: PedigreeConnectors, a: string, b: string) =>
       line.partnerIds?.includes(a) && line.partnerIds.includes(b) && a !== b,
   );
 
+/** Whether a line of descent comes down from each of two co-parents with no
+ * partnership line, the two drops joined by a level line below their row
+ * (Josh, 12 Oct 2026, replacing the round 2 drop from midway between
+ * them). */
+const comesDownFromEach = (
+  parentLink: LineSegment[],
+  centre: (id: string) => { x: number; y: number },
+  [a, b]: [string, string],
+) => {
+  const drops = [a, b].map((id) =>
+    parentLink.find(
+      (piece) =>
+        Math.abs(piece.x1 - centre(id).x) < 1e-6 &&
+        Math.abs(piece.y1 - centre(id).y) < 1e-6 &&
+        Math.abs(piece.x2 - piece.x1) < 1e-6 &&
+        piece.y2 > centre(id).y + DIMENSIONS.nodeHeight / 2,
+    ),
+  );
+  if (drops.some((drop) => drop === undefined)) return false;
+  const joinY = drops[0]!.y2;
+  if (Math.abs(drops[1]!.y2 - joinY) > 1e-6) return false;
+  // The level pieces at the join reach from one drop to the other.
+  const level = parentLink.filter(
+    (piece) =>
+      Math.abs(piece.y1 - joinY) < 1e-6 && Math.abs(piece.y2 - joinY) < 1e-6,
+  );
+  const [from, to] = [centre(a).x, centre(b).x].toSorted((p, q) => p - q);
+  let reach = from!;
+  for (const piece of level.toSorted(
+    (p, q) => Math.min(p.x1, p.x2) - Math.min(q.x1, q.x2),
+  )) {
+    if (Math.min(piece.x1, piece.x2) <= reach + 1e-6) {
+      reach = Math.max(reach, piece.x1, piece.x2);
+    }
+  }
+  return reach >= to! - 1e-6;
+};
+
 describe('co-parents with no recorded partnership', () => {
   /** The one line of descent into the child, and where it starts. */
   const descentInto = (connectors: PedigreeConnectors, childId: string) => {
@@ -913,16 +974,15 @@ describe('co-parents with no recorded partnership', () => {
     const [top] = lines[0]!.parentLink;
     return { line: lines[0]!, start: { x: top!.x1, y: top!.y1 } };
   };
-  const expectFromMidway = (
+  const expectFromEach = (
     connectors: PedigreeConnectors,
     centre: (id: string) => { x: number; y: number },
     childId: string,
     [a, b]: [string, string],
   ) => {
-    const { start } = descentInto(connectors, childId);
+    const descent = descentInto(connectors, childId).line;
     expect(centre(a).y).toBeCloseTo(centre(b).y, 6);
-    expect(start.x).toBeCloseTo((centre(a).x + centre(b).x) / 2, 6);
-    expect(start.y).toBeCloseTo(centre(a).y, 6);
+    expect(comesDownFromEach(descent.parentLink, centre, [a, b])).toBe(true);
     // Their ties are drawn by that line alone.
     expect(auxiliaryLinesFrom(connectors, a)).toEqual([]);
     expect(auxiliaryLinesFrom(connectors, b)).toEqual([]);
@@ -933,7 +993,7 @@ describe('co-parents with no recorded partnership', () => {
     ).toEqual([]);
   };
 
-  it('are joined by no line when they sit side by side, and their children descend from midway between them', () => {
+  it('are joined by no line when they sit side by side, and their children’s line of descent comes down from each of them', () => {
     const { connectors, centre } = draw(
       ['ego', 'ann', 'bob', 'sib'],
       [
@@ -943,7 +1003,7 @@ describe('co-parents with no recorded partnership', () => {
         ['bob', 'biological', 'sib'],
       ],
     );
-    expectFromMidway(connectors, centre, 'ego', ['ann', 'bob']);
+    expectFromEach(connectors, centre, 'ego', ['ann', 'bob']);
     expect(descentInto(connectors, 'sib').line).toBe(
       descentInto(connectors, 'ego').line,
     );
@@ -961,7 +1021,7 @@ describe('co-parents with no recorded partnership', () => {
         ['mum', 'partner', 'stepdad'],
       ],
     );
-    expectFromMidway(connectors, centre, 'ego', ['mum', 'standIn']);
+    expectFromEach(connectors, centre, 'ego', ['mum', 'standIn']);
     expect(lineBetween(connectors, 'mum', 'stepdad')).toBeDefined();
     const stepdads = auxiliaryLinesFrom(connectors, 'stepdad');
     expect(stepdads).toHaveLength(1);
@@ -979,7 +1039,7 @@ describe('co-parents with no recorded partnership', () => {
         ['standIn', 'biological', 'half'],
       ],
     );
-    expectFromMidway(connectors, centre, 'half', ['mum', 'standIn']);
+    expectFromEach(connectors, centre, 'half', ['mum', 'standIn']);
     expect(lineBetween(connectors, 'mum', 'dad')).toBeDefined();
   });
 });
@@ -1084,7 +1144,7 @@ describe('lines of descent', () => {
     );
     const mark = centre('mark');
     const sisters = uplineOf(connectors, 'claire').connector;
-    expect(sisters.uplineChildIds).toContain('julie');
+    expect(sisters.uplines.map((upline) => upline.childId)).toContain('julie');
     const foot = sisters.parentLink[sisters.parentLink.length - 1]!;
     expect(Math.abs(foot.x2 - mark.x)).toBeGreaterThan(
       DIMENSIONS.nodeWidth / 4,
@@ -1092,8 +1152,8 @@ describe('lines of descent', () => {
   });
 });
 
-// Rule (Codex 4229159689): every recorded parent tie is drawn. The places a
-// line may end on a child are never used up, however many ties they have.
+// Rule (Codex 4229159689): every recorded parent tie is drawn, however many
+// ties a child has.
 describe('a child with many parent ties beside their birth parents', () => {
   const ties = [
     'adopt1',
@@ -1112,7 +1172,7 @@ describe('a child with many parent ties beside their birth parents', () => {
         ? ('social' as const)
         : ('surrogate' as const);
 
-  it('draws a line for every tie, each ending on the child at a place of its own', () => {
+  it('draws a line for every tie, each converging on the top of the child from a direction of its own', () => {
     const { connectors, centre } = draw(
       ['ego', 'mum', 'dad', ...ties],
       [
@@ -1138,20 +1198,33 @@ describe('a child with many parent ties beside their birth parents', () => {
     );
     // More lines end on the child than its usual places for them.
     expect(auxiliary.length).toBeGreaterThan(6);
-    const ends = auxiliary.map((id) => {
-      const lines = auxiliaryLinesFrom(connectors, id);
-      expect(lines, `a line from ${id}`).toHaveLength(1);
-      const segments = auxiliarySegments(lines[0]!);
-      expect(segments.length, `${id}'s line has length`).toBeGreaterThan(0);
-      const last = segments[segments.length - 1]!;
-      // It reaches the child's symbol.
-      expect(Math.abs(last.x2 - ego.x)).toBeLessThan(DIMENSIONS.nodeWidth / 2);
-      expect(Math.abs(last.y2 - ego.y)).toBeLessThan(DIMENSIONS.nodeHeight / 2);
-      return last.x2;
+    // Each tie is drawn by one line: a couple's (the birth parents') by one
+    // line from the two of them.
+    for (const id of auxiliary) {
+      expect(
+        connectors.auxiliaryLines.filter((line) =>
+          (line.ownerIds ?? []).includes(id),
+        ),
+        `a line from ${id}`,
+      ).toHaveLength(1);
+    }
+    // Every line into the child converges on one point at its top (Round 5,
+    // ruling 4), each arriving from a direction of its own.
+    const top = { x: ego.x, y: ego.y - DIMENSIONS.nodeHeight / 2 };
+    const directions = connectors.auxiliaryLines.map((line) => {
+      const at = line.points.findIndex(
+        (p) => Math.hypot(p.x - top.x, p.y - top.y) < 1,
+      );
+      expect(
+        at,
+        `the line reaches the top of the child ${JSON.stringify(line.points)} ${JSON.stringify(top)}`,
+      ).toBeGreaterThan(0);
+      const before = line.points[at - 1]!;
+      return Math.atan2(before.x - top.x, top.y - before.y);
     });
-    const sorted = ends.toSorted((a, b) => a - b);
+    const sorted = directions.toSorted((a, b) => a - b);
     for (let k = 0; k + 1 < sorted.length; k++) {
-      expect(sorted[k + 1]! - sorted[k]!).toBeGreaterThan(0.5);
+      expect(sorted[k + 1]! - sorted[k]!).toBeGreaterThan(0.02);
     }
   });
 });
@@ -1168,7 +1241,7 @@ const withDescent = (lines: ParentChildConnector[]) =>
  */
 function sibshipOf(connectors: PedigreeConnectors, childIds: string[]) {
   const lines = connectors.parentChildLines.filter((line) =>
-    childIds.some((id) => line.uplineChildIds?.includes(id)),
+    childIds.some((id) => line.uplines.some((upline) => upline.childId === id)),
   );
   const bars = lines
     .flatMap((line) => (line.siblingBar ? [line.siblingBar] : []))
@@ -1183,7 +1256,9 @@ function sibshipOf(connectors: PedigreeConnectors, childIds: string[]) {
     if (Math.abs(bars[k]!.y - bars[0]!.y) > 1e-6) joined = false;
     if (bars[k]!.from > bars[k - 1]!.to + 1e-6) joined = false;
   }
-  const reached = new Set(lines.flatMap((line) => line.uplineChildIds ?? []));
+  const reached = new Set(
+    lines.flatMap((line) => line.uplines.map((upline) => upline.childId)),
+  );
   const covers = childIds.every((id) => {
     if (!reached.has(id)) return false;
     const { segment } = uplineOf(connectors, id);
@@ -1207,7 +1282,7 @@ function overlappingDescents(connectors: PedigreeConnectors) {
         for (const sb of descents[b]!.parentLink) {
           if (collinearOverlap(sa, sb) > 1) {
             found.push(
-              `${descents[a]!.uplineChildIds?.join('+')} / ${descents[b]!.uplineChildIds?.join('+')}`,
+              `${descents[a]!.uplines.map((upline) => upline.childId).join('+')} / ${descents[b]!.uplines.map((upline) => upline.childId).join('+')}`,
             );
           }
         }
@@ -1217,10 +1292,63 @@ function overlappingDescents(connectors: PedigreeConnectors) {
   return found;
 }
 
+describe('a carrier who carried for two unrelated couples', () => {
+  // Gail carried Ego for Amy and Rob, and Sib for Sam and Pat. Ego and Sib
+  // share no biological parent, so they are two sibships (Josh, 12 Oct
+  // 2026), each with its own line of descent from Gail, the one person who
+  // carried every child in it.
+  it('draws two sibships, each couple joining only their own child', () => {
+    const { connectors, centre } = draw(
+      ['amy', 'rob', 'gail', 'sam', 'pat', 'ego', 'sib'],
+      [
+        ['amy', 'partner', 'rob'],
+        ['sam', 'partner', 'pat'],
+        ['amy', 'biological', 'ego'],
+        ['rob', 'biological', 'ego'],
+        ['gail', 'surrogate', 'ego', { carrier: true }],
+        ['sam', 'biological', 'sib'],
+        ['pat', 'biological', 'sib'],
+        ['gail', 'surrogate', 'sib', { carrier: true }],
+      ],
+    );
+    expect(sibshipOf(connectors, ['ego', 'sib']).sharesOneBar).toBe(false);
+    for (const line of connectors.parentChildLines) {
+      const reached = line.uplines.map((upline) => upline.childId);
+      expect(
+        reached.includes('ego') && reached.includes('sib'),
+        `one line reaching ${reached.join(', ')}`,
+      ).toBe(false);
+    }
+    // Each couple's one line ends on their own child.
+    const endsOn = (points: { x: number; y: number }[], child: string) => {
+      const end = points.at(-1)!;
+      const at = centre(child);
+      return (
+        Math.abs(end.x - at.x) <= DIMENSIONS.nodeWidth / 2 + 1 &&
+        Math.abs(end.y - at.y) <= DIMENSIONS.nodeHeight / 2 + 1
+      );
+    };
+    for (const [parent, child, other] of [
+      ['amy', 'ego', 'sib'],
+      ['rob', 'ego', 'sib'],
+      ['sam', 'sib', 'ego'],
+      ['pat', 'sib', 'ego'],
+    ] as const) {
+      const theirs = connectors.auxiliaryLines.filter((line) =>
+        (line.ownerIds ?? []).includes(parent),
+      );
+      expect(theirs, `lines from ${parent}`).toHaveLength(1);
+      expect(endsOn(theirs[0]!.points, child), `${parent}'s line`).toBe(true);
+      expect(endsOn(theirs[0]!.points, other), `${parent}'s line`).toBe(false);
+    }
+  });
+});
+
 describe('each child hangs from their own family’s single line of descent', () => {
   // A child's birth parents who were never recorded as partners (here, a
   // birth mother and the unnamed stand-in for the father) are joined by no
-  // line, and the child descends from midway between them, so a half-sibling
+  // line, and the child's line of descent comes down from each of them
+  // (12 Oct 2026; round 2 dropped it from midway between them), so a half-sibling
   // whose parents are the mother and her partner hangs from that couple's
   // own line of descent, not from one shared sibling bar (Josh's round 2
   // ruling; B2 asked for one bar). The partner who also raises the child is
@@ -1244,11 +1372,18 @@ describe('each child hangs from their own family’s single line of descent', ()
   ) => {
     for (const childId of childIds) {
       const start = descentStart(connectors, childId);
-      expect(start.x).toBeCloseTo((centre(a).x + centre(b).x) / 2, 6);
-      expect(start.y).toBeCloseTo(centre(a).y, 6);
-      expect(start.line.uplineChildIds?.toSorted()).toEqual(
-        childIds.toSorted(),
-      );
+      if (lineBetween(connectors, a, b)) {
+        expect(start.x).toBeCloseTo((centre(a).x + centre(b).x) / 2, 6);
+        expect(start.y).toBeCloseTo(centre(a).y, 6);
+      } else {
+        // Co-parents with no partnership line: down from each of them.
+        expect(comesDownFromEach(start.line.parentLink, centre, [a, b])).toBe(
+          true,
+        );
+      }
+      expect(
+        start.line.uplines.flatMap((upline) => upline.childId ?? []).toSorted(),
+      ).toEqual(childIds.toSorted());
     }
   };
 
@@ -1451,5 +1586,25 @@ describe('each child hangs from their own family’s single line of descent', ()
     const lowerRail = couple.doubleSegment!.y1;
     const top = uplineOf(connectors, 'ego').connector.parentLink[0]!;
     expect(Math.min(top.y1, top.y2)).toBeCloseTo(lowerRail, 6);
+  });
+});
+
+describe('a tie’s recorded kind and its drawn style are separate facts', () => {
+  it('keeps an adopted person’s brackets clear of their partnership line when the adoptive mother carried them', () => {
+    // Carrying changes only the style the tie is drawn in (solid); the
+    // adoption stands, so the person is bracketed and their partnership
+    // line stops at the bracket, as PersonNode draws it.
+    const { connectors } = draw(
+      ['ego', 'mum', 'dana'],
+      [
+        ['mum', 'adoptive', 'ego', { carrier: true }],
+        ['ego', 'partner', 'dana'],
+      ],
+    );
+    const line = connectors.groupLines.find((g) =>
+      g.partnerIds?.includes('ego'),
+    )!;
+    const egoEnd = line.partnerIds![0] === 'ego' ? 0 : 1;
+    expect(line.endsAtBracket?.[egoEnd]).toBe(true);
   });
 });

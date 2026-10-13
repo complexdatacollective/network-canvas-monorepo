@@ -60,7 +60,11 @@ export function tableCounts(arr: number[]): Map<number, number> {
   return counts;
 }
 
-import type { ParentConnection, PartnerConnection } from './types';
+import type {
+  ParentConnection,
+  PartnerConnection,
+  PedigreeEdgeType,
+} from './types';
 
 // Chase all ancestors of a person
 export function ancestor(me: number, parents: ParentConnection[][]): number[] {
@@ -95,14 +99,11 @@ export function ancestor(me: number, parents: ParentConnection[][]): number[] {
   return indices;
 }
 
-/** A parent link that passes on genes: a biological parent or a donor, as
- * recorded (`ParentConnection.isGenetic`), whatever line it is drawn with.
- * Social, adoptive and surrogate links do not, even a carrier's drawn as a
- * biological parent's. */
+/** A parent link that passes on genes: a biological parent or a donor.
+ * Social, adoptive and surrogate links do not. */
 function isGeneticConnection(connection: ParentConnection): boolean {
   return (
-    connection.isGenetic ??
-    (connection.edgeType === 'biological' || connection.edgeType === 'donor')
+    connection.edgeType === 'biological' || connection.edgeType === 'donor'
   );
 }
 
@@ -212,6 +213,12 @@ export function layerConstraints(n: number) {
   };
 }
 
+/** The kind of a tie as recorded (adoptive, social, …), which carrying does
+ * not change: whether a child was adopted, and who raises them, are read
+ * from this; whether a line is solid or dashed, from the drawn kind. */
+export const recordedKind = (p: ParentConnection): PedigreeEdgeType =>
+  p.recordedKind ?? p.edgeType;
+
 /**
  * For each child, the relatives who raise them, and those raising them
  * alongside a relative: a child adopted or raised by a relative stays in
@@ -252,7 +259,9 @@ export function relativeRaisers(
       .filter((p) => p.edgeType === 'biological')
       .map((p) => p.parentIndex);
     const raisers = conns
-      .filter((p) => p.edgeType === 'adoptive' || p.edgeType === 'social')
+      .filter(
+        (p) => recordedKind(p) === 'adoptive' || recordedKind(p) === 'social',
+      )
       .map((p) => p.parentIndex);
     if (birthParents.length === 0 || raisers.length === 0) return new Set();
 
@@ -280,4 +289,20 @@ export function relativeRaisers(
       ),
     ]);
   });
+}
+
+/**
+ * `items` in the order `compare` puts them in, as a total order: items it
+ * ranks alike keep the order they were given in (the order they were
+ * recorded in, wherever that is the order given), so the result never
+ * depends on how a sort meets them.
+ */
+export function inOrder<T>(
+  items: Iterable<T>,
+  compare: (a: T, b: T) => number,
+): T[] {
+  return [...items]
+    .map((item, at) => ({ item, at }))
+    .sort((a, b) => compare(a.item, b.item) || a.at - b.at)
+    .map(({ item }) => item);
 }

@@ -437,8 +437,10 @@ describe('computeConnectors', () => {
     expect(connectors.groupLines[0]!.isActive).toBe(true);
   });
 
-  it('descends from genetic contributor when only one parent is biological', () => {
-    // Parent 0 (biological) at pos 0, Parent 1 (social) at pos 2
+  it('descends from the one biological parent, the social partner drawing a line of their own', () => {
+    // Parent 0 (biological) at pos 0, Parent 1 (social) at pos 2: the child
+    // descends from parent 0 alone (the layout names them as a single
+    // parent).
     const socialLayout: PedigreeLayout = {
       n: [2, 1],
       nid: [
@@ -451,7 +453,7 @@ describe('computeConnectors', () => {
       ],
       fam: [
         [0, 0],
-        [1, 0],
+        [-1, 0],
       ],
       group: [
         [1, 0],
@@ -475,6 +477,9 @@ describe('computeConnectors', () => {
     const pc = connectors.parentChildLines[0]!;
     // Descent should be from parent 0's position (x=0), not midpoint (x=1)
     expect(pc.parentLink[0]!.x1).toBeCloseTo(0, 1);
+    expect(connectors.auxiliaryLines.map((line) => line.edgeType)).toEqual([
+      'social',
+    ]);
   });
 
   it('descends from couple midpoint when both parents are biological', () => {
@@ -536,7 +541,7 @@ describe('computeConnectors', () => {
     expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(0.75, 5);
   });
 
-  it('auxiliary connector connects directly to child when donor is parent of only SOME siblings', () => {
+  it('auxiliary connector meets the child’s own line up when donor is parent of only SOME siblings', () => {
     // 2 parents (0,1) + 2 donors (2,3) + 2 children (4,5)
     // Donor2 has donor edge to child4 only, Donor3 has donor edge to child5 only
     const donorSomeLayout: PedigreeLayout = {
@@ -585,9 +590,15 @@ describe('computeConnectors', () => {
       donorSomeParents,
     );
     expect(connectors.auxiliaryLines.length).toBe(2);
-    // Each connects directly to child: y = childLevel(1) + boxh/2(0.25) = 1.25
-    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(1.25, 5);
-    expect(endOf(connectors.auxiliaryLines[1]!).y).toBeCloseTo(1.25, 5);
+    // Each meets the line of descent where it first leads only to the one
+    // child they gave to (the donor line rule, Bennett et al. 2022, 1c):
+    // the top of that child's own line up, on the sibling bar (y =
+    // childLevel(1) - legh(0.25) = 0.75).
+    connectors.auxiliaryLines.forEach((line, k) => {
+      const end = endOf(line);
+      expect(end.x).toBeCloseTo(k, 5);
+      expect(end.y).toBeCloseTo(0.75, 5);
+    });
   });
 
   it('auxiliary connector connects directly to child when single child in family', () => {
@@ -632,22 +643,24 @@ describe('computeConnectors', () => {
       singleChildParents,
     );
     expect(connectors.auxiliaryLines.length).toBe(1);
-    // Single child: connects directly to child node y = 1 + 0.25 = 1.25
-    expect(endOf(connectors.auxiliaryLines[0]!).y).toBeCloseTo(1.25, 5);
+    // An only child: the donor's line and the line of descent converge on
+    // the top of the child (Bennett et al. 2022, 1f), at y = 1.
+    const end = endOf(connectors.auxiliaryLines[0]!);
+    expect(end.x).toBeCloseTo(0.5, 5);
+    expect(end.y).toBeCloseTo(1, 5);
   });
 
-  it('social parent connector connects to sibling bar when social parent of ALL siblings', () => {
-    // mom(0) + stepdad(1) couple, biodad(2) is biological to both children
-    // stepdad(1) is social parent of both children (3,4)
-    // biodad(2) is unpartnered biological parent of both children
-    const socialAllLayout: PedigreeLayout = {
+  // mom(0) and biodad(2), birth parents never recorded as partners, seated
+  // side by side; stepdad(1), mom's partner, raises children 3 and 4.
+  const blended = (stepdadRaises: number[]) => {
+    const blendedLayout: PedigreeLayout = {
       n: [3, 2],
       nid: [
-        [0, 1, 2],
+        [2, 0, 1],
         [3, 4, 0],
       ],
       pos: [
-        [0, 1, 3],
+        [0, 1, 2],
         [0, 1, 0],
       ],
       fam: [
@@ -655,7 +668,7 @@ describe('computeConnectors', () => {
         [1, 1, 0],
       ],
       group: [
-        [1, 0, 0],
+        [1, 1, 0],
         [0, 0, 0],
       ],
       twins: null,
@@ -664,92 +677,56 @@ describe('computeConnectors', () => {
         [false, false, false],
       ],
     };
-    const socialAllParents: ParentConnection[][] = [
-      [],
-      [],
-      [],
-      [
-        { parentIndex: 0, edgeType: 'biological' },
-        { parentIndex: 1, edgeType: 'social' },
-        { parentIndex: 2, edgeType: 'biological' },
-      ],
-      [
-        { parentIndex: 0, edgeType: 'biological' },
-        { parentIndex: 1, edgeType: 'social' },
-        { parentIndex: 2, edgeType: 'biological' },
-      ],
+    const childParents = (child: number): ParentConnection[] => [
+      { parentIndex: 0, edgeType: 'biological' },
+      ...(stepdadRaises.includes(child)
+        ? [{ parentIndex: 1, edgeType: 'social' } as const]
+        : []),
+      { parentIndex: 2, edgeType: 'biological' },
     ];
-    const activePairs = new Set(['0,1']);
-    const connectors = computeConnectors(
-      socialAllLayout,
+    const pairs = new Set(['0,1']);
+    return computeConnectors(
+      blendedLayout,
       scaling,
-      socialAllParents,
-      activePairs,
+      [[], [], [], childParents(3), childParents(4)],
+      pairs,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      pairs,
     );
-    const bioAux = connectors.auxiliaryLines.filter(
-      (l) => l.edgeType === 'biological',
+  };
+
+  it('draws a line from a social parent of every sibling to each child, never joining the line of descent', () => {
+    const connectors = blended([3, 4]);
+    const social = connectors.auxiliaryLines.filter(
+      (l) => l.edgeType === 'social',
     );
-    expect(bioAux.length).toBe(1);
-    // Connects to sibling bar y = 1 - 0.25 = 0.75
-    expect(endOf(bioAux[0]!).y).toBeCloseTo(0.75, 5);
+    expect(social.length).toBe(2);
+    // Each ends at a child, running on under their symbol: below its top
+    // (y = 1) and above its bottom (y = 1.5).
+    for (const line of social) {
+      expect(endOf(line).y).toBeGreaterThan(1);
+      expect(endOf(line).y).toBeLessThan(1.5);
+    }
+    // The birth parents' line of descent comes down from each of them.
+    expect(
+      connectors.auxiliaryLines.filter((l) => l.edgeType === 'biological'),
+    ).toEqual([]);
+    expect(connectors.parentChildLines[0]!.parentLink.length).toBeGreaterThan(
+      2,
+    );
   });
 
-  it('social parent connector connects directly to child when social parent of only SOME siblings', () => {
-    // mom(0) + stepdad(1) couple, biodad1(2) bio to child3 only, biodad2(3) bio to child4 only
-    const socialSomeLayout: PedigreeLayout = {
-      n: [4, 2],
-      nid: [
-        [0, 1, 2, 3],
-        [4, 5, 0, 0],
-      ],
-      pos: [
-        [0, 1, 3, 4],
-        [0, 1, 0, 0],
-      ],
-      fam: [
-        [0, 0, 0, 0],
-        [1, 1, 0, 0],
-      ],
-      group: [
-        [1, 0, 0, 0],
-        [0, 0, 0, 0],
-      ],
-      twins: null,
-      groupMember: [
-        [false, false, false, false],
-        [false, false, false, false],
-      ],
-    };
-    const socialSomeParents: ParentConnection[][] = [
-      [],
-      [],
-      [],
-      [],
-      [
-        { parentIndex: 0, edgeType: 'biological' },
-        { parentIndex: 1, edgeType: 'social' },
-        { parentIndex: 2, edgeType: 'biological' },
-      ],
-      [
-        { parentIndex: 0, edgeType: 'biological' },
-        { parentIndex: 1, edgeType: 'social' },
-        { parentIndex: 3, edgeType: 'biological' },
-      ],
-    ];
-    const activePairs = new Set(['0,1']);
-    const connectors = computeConnectors(
-      socialSomeLayout,
-      scaling,
-      socialSomeParents,
-      activePairs,
+  it('draws a line from a social parent of some siblings to each of those children', () => {
+    const connectors = blended([3]);
+    const social = connectors.auxiliaryLines.filter(
+      (l) => l.edgeType === 'social',
     );
-    const bioAux = connectors.auxiliaryLines.filter(
-      (l) => l.edgeType === 'biological',
-    );
-    expect(bioAux.length).toBe(2);
-    // Each connects directly to child: y = 1 + 0.25 = 1.25
-    expect(endOf(bioAux[0]!).y).toBeCloseTo(1.25, 5);
-    expect(endOf(bioAux[1]!).y).toBeCloseTo(1.25, 5);
+    expect(social.length).toBe(1);
+    expect(endOf(social[0]!).y).toBeGreaterThan(1);
+    expect(endOf(social[0]!).y).toBeLessThan(1.5);
   });
 
   it('slashSide is set correctly for inactive group lines', () => {
@@ -984,7 +961,7 @@ describe('computeConnectors', () => {
       expect(connectors.groupLines[0]!.partnerIds).toBeUndefined();
     });
 
-    it('attaches parentIds and uplineChildIds to parent-child connectors when id is provided', () => {
+    it('attaches parentIds, and each upline’s child, to parent-child connectors when id is provided', () => {
       const connectors = computeConnectors(
         threeGenLayout,
         scaling,
@@ -1002,31 +979,38 @@ describe('computeConnectors', () => {
       expect(gpPc.parentIds).toContain('gp-left');
       expect(gpPc.parentIds).toContain('gp-right');
 
-      // uplineChildIds[0] is the child node id for the first upline
-      expect(gpPc.uplineChildIds).toBeDefined();
-      expect(gpPc.uplineChildIds![0]).toBe('parent');
+      // Each upline names its child
+      expect(gpPc.uplines.map((upline) => upline.childId)).toEqual(['parent']);
 
       // Second parentChildLine: parent+partner → children
       const childPc = connectors.parentChildLines[1]!;
       expect(childPc.parentIds).toContain('parent');
       expect(childPc.parentIds).toContain('partner');
-      expect(childPc.uplineChildIds).toHaveLength(2);
-      expect(childPc.uplineChildIds).toContain('child-a');
-      expect(childPc.uplineChildIds).toContain('child-b');
+      expect(childPc.uplines.map((upline) => upline.childId)).toHaveLength(2);
+      expect(childPc.uplines.map((upline) => upline.childId)).toContain(
+        'child-a',
+      );
+      expect(childPc.uplines.map((upline) => upline.childId)).toContain(
+        'child-b',
+      );
     });
 
-    it('omits parentIds and uplineChildIds from parent-child connectors when id is not provided', () => {
+    it('omits parentIds, and each upline’s child, from parent-child connectors when id is not provided', () => {
       const connectors = computeConnectors(
         threeGenLayout,
         scaling,
         threeGenParents,
       );
       expect(connectors.parentChildLines[0]!.parentIds).toBeUndefined();
-      expect(connectors.parentChildLines[0]!.uplineChildIds).toBeUndefined();
+      expect(
+        connectors.parentChildLines[0]!.uplines.every(
+          (upline) => upline.childId === undefined,
+        ),
+      ).toBe(true);
     });
   });
 
-  it('joins a sibling who adopted the child by a line below the row, into the child from below', () => {
+  it('joins a sibling who adopted the child by a line below the row, into the middle of the child’s bottom', () => {
     // Jade (2) adopted her sibling (3), who stays in their birth sibship, so
     // she sits on the child's row.
     const sameRowLayout: PedigreeLayout = {
@@ -1081,13 +1065,15 @@ describe('computeConnectors', () => {
         expect(points[k]!.y).toBeGreaterThan(rowBottom);
       }
     }
-    // It ends in the child, coming up from below, off their centre.
+    // It ends in the child, coming up from below into the middle of their
+    // bottom, where every line into them from below converges (Round 5,
+    // ruling 4).
     const last = endOf(connectors.auxiliaryLines[0]!);
     const beforeLast = points[points.length - 2]!;
     expect(last.y).toBeCloseTo(1 + scaling.boxHeight / 2, 5);
     expect(beforeLast.x).toBeCloseTo(last.x, 5);
     expect(beforeLast.y).toBeGreaterThan(last.y);
-    expect(Math.abs(last.x - 2)).toBeGreaterThan(0.01);
+    expect(last.x).toBeCloseTo(2, 5);
   });
 });
 
@@ -1309,8 +1295,22 @@ describe('co-parents with no recorded partnership', () => {
       partnerPairs,
     );
 
+  /** A line down from each of them, from the height of their centres to
+   * midway between their row and the bar, a level line there joining them,
+   * and one line down from midway along it to the bar (Josh, 12 Oct 2026,
+   * replacing the round 2 drop from the point midway between them). */
+  const fromEach = [
+    { x1: 0, y1: 0.25, x2: 0, y2: 0.625 },
+    { x1: 1, y1: 0.25, x2: 1, y2: 0.625 },
+    { x1: 0, y1: 0.625, x2: 0.5, y2: 0.625 },
+    { x1: 0.5, y1: 0.625, x2: 1, y2: 0.625 },
+    { x1: 0.5, y1: 0.625, x2: 0.5, y2: 0.75 },
+  ];
+  const pieces = (link: LineSegment[]) =>
+    link.map(({ x1, y1, x2, y2 }) => ({ x1, y1, x2, y2 }));
+
   for (const grouped of [true, false]) {
-    it(`are joined by no line, and their children descend from midway between them (${grouped ? 'paired' : 'not paired'} by the layout)`, () => {
+    it(`are joined by no line, and their children's line of descent comes down from each of them (${grouped ? 'paired' : 'not paired'} by the layout)`, () => {
       const connectors = draw(sideBySide(grouped), new Set());
       expect(connectors.groupLines).toEqual([]);
       expect(connectors.auxiliaryLines).toEqual([]);
@@ -1319,15 +1319,25 @@ describe('co-parents with no recorded partnership', () => {
       );
       expect(descents).toHaveLength(1);
       const [line] = descents;
-      // From the point midway between them, at the height of their
-      // centres, where a partnership line would run.
-      expect(line!.parentLink[0]).toMatchObject({ x1: 0.5, y1: 0.25 });
-      expect(line!.uplineChildIds).toEqual(['c1', 'c2']);
+      expect(pieces(line!.parentLink)).toEqual(fromEach);
+      // Each line down, and the level line from it to the line down to
+      // the children, carries that parent's tie alone.
+      expect(line!.parentLink.map((piece) => piece.parentIds)).toEqual([
+        ['ann'],
+        ['bob'],
+        ['ann'],
+        ['bob'],
+        ['ann', 'bob'],
+      ]);
+      expect(line!.uplines.map((upline) => upline.childId)).toEqual([
+        'c1',
+        'c2',
+      ]);
       expect(line!.parentIds?.toSorted()).toEqual(['ann', 'bob']);
     });
   }
 
-  it('descends from midway between them to an only child', () => {
+  it('comes down from each of them to an only child', () => {
     const layout: PedigreeLayout = {
       n: [2, 1],
       nid: [[0, 1], [2]],
@@ -1341,10 +1351,128 @@ describe('co-parents with no recorded partnership', () => {
     expect(connectors.groupLines).toEqual([]);
     expect(connectors.auxiliaryLines).toEqual([]);
     expect(connectors.parentChildLines).toHaveLength(1);
-    expect(connectors.parentChildLines[0]!.parentLink[0]).toMatchObject({
-      x1: 0.5,
-      y1: 0.25,
-    });
+    expect(pieces(connectors.parentChildLines[0]!.parentLink)).toEqual(
+      fromEach,
+    );
+  });
+
+  it('come down from each of them to a child two rows below, their lines joining before the child', () => {
+    // Xavier sits on the row between Ann and Bob and their child, so no
+    // line of descent comes down to the child: each parent's tie is drawn
+    // by a line of its own, which leaves their own symbol straight down,
+    // and the two run on as one from where they meet (Josh, 12 Oct 2026;
+    // before, one line started midway between them).
+    const layout: PedigreeLayout = {
+      n: [2, 1, 1],
+      nid: [[0, 1], [4], [2]],
+      pos: [[0, 1], [3], [0.5]],
+      fam: [[0, 0], [0], [0]],
+      group: [[0, 0], [0], [0]],
+      twins: null,
+      groupMember: [[false, false], [false], [false]],
+    };
+    const connectors = draw(layout, new Set());
+    expect(connectors.groupLines).toEqual([]);
+    const lines = connectors.auxiliaryLines.filter(
+      (line) => line.endpointIds?.[1] === 'c1',
+    );
+    expect(
+      lines
+        .map((line) => line.endpointIds?.[0] ?? '')
+        .toSorted((p, q) => p.localeCompare(q)),
+    ).toEqual(['ann', 'bob']);
+    for (const line of lines) {
+      const [start, next] = line.points;
+      const x = line.endpointIds?.[0] === 'ann' ? 0 : 1;
+      expect(start).toEqual({ x, y: 0.25 });
+      expect(next!.x).toBe(x);
+      expect(next!.y).toBeGreaterThan(0.5);
+    }
+    expect(lines[0]!.points.slice(-2)).toEqual(lines[1]!.points.slice(-2));
+    // Each records where the two meet, from where they share one course,
+    // drawn once.
+    const shared = lines.map((line) => line.points.slice(line.joinsAt));
+    expect(lines.every((line) => line.joinsAt !== undefined)).toBe(true);
+    expect(shared[0]).toEqual(shared[1]);
+    for (const line of lines) {
+      expect(
+        line.points
+          .slice(0, line.joinsAt)
+          .some((p) => shared[0]!.some((q) => q.x === p.x && q.y === p.y)),
+      ).toBe(false);
+    }
+  });
+
+  it("stacks another family's level line where it crosses the fewest of the lines down from each of them", () => {
+    // Cara's line of descent runs level from her (at 3) to her child (at
+    // -0.5), under both Ann (at 0) and Bob (at 1). With Cara's level line
+    // above theirs, Ann's and Bob's lines down each cross it; with theirs
+    // above, only the one line down to their child does.
+    const layout: PedigreeLayout = {
+      n: [3, 2],
+      nid: [
+        [0, 1, 3],
+        [4, 2],
+      ],
+      pos: [
+        [0, 1, 3],
+        [-0.5, 0.5],
+      ],
+      fam: [
+        [0, 0, 0],
+        [-3, 0],
+      ],
+      group: [
+        [0, 0, 0],
+        [0, 0],
+      ],
+      twins: null,
+      groupMember: [
+        [false, false, false],
+        [false, false],
+      ],
+    };
+    const connectors = computeConnectors(
+      layout,
+      scaling,
+      [
+        [],
+        [],
+        bothBiological,
+        [],
+        [{ parentIndex: 3, edgeType: 'biological' }],
+      ],
+      new Set(),
+      undefined,
+      undefined,
+      undefined,
+      ['ann', 'bob', 'c1', 'cara', 'd1'],
+      new Set(),
+    );
+    const linkOf = (parent: string) =>
+      connectors.parentChildLines.find((line) =>
+        line.parentIds?.includes(parent),
+      )!.parentLink;
+    // Where an upright piece of one line passes through a level piece of
+    // the other, away from both their ends.
+    const crossings = (a: LineSegment[], b: LineSegment[]) =>
+      a.flatMap((s) =>
+        b.filter((t) => {
+          const [up, level] =
+            s.x1 === s.x2 && t.y1 === t.y2
+              ? [s, t]
+              : t.x1 === t.x2 && s.y1 === s.y2
+                ? [t, s]
+                : [];
+          if (!up || !level) return false;
+          const inside = (v: number, p: number, q: number) =>
+            v > Math.min(p, q) + 1e-9 && v < Math.max(p, q) - 1e-9;
+          return (
+            inside(up.x1, level.x1, level.x2) && inside(level.y1, up.y1, up.y2)
+          );
+        }),
+      ).length;
+    expect(crossings(linkOf('ann'), linkOf('cara'))).toBe(1);
   });
 
   it('keeps the partnership line of a recorded partnership', () => {

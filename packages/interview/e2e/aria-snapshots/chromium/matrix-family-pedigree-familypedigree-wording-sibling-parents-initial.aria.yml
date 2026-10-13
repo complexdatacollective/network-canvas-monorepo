@@ -2,9 +2,9 @@
   - status:
     - heading "Add the members of your family." [level=2]
   - region "Your family":
-    - button "Gail"
     - button "Amy"
     - button "Rob"
+    - button "Gail"
     - button "Sam"
     - button "You"
   - toolbar "Family tree tools":

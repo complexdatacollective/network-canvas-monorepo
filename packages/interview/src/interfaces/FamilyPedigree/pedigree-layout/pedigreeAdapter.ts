@@ -1,12 +1,18 @@
 import type { PedigreeTwinKind } from '@codaco/protocol-validation';
 
 import { alignPedigree } from './alignPedigree';
-import { computeConnectors } from './connectors';
+import type { RoutingWork } from './auxiliaryRouting';
+import { routePedigree } from './connectors';
 import {
   computeLayoutMetrics,
+  EDGE_WIDTH,
   type LayoutDimensions,
+  SYMBOL_CORNER_RADIUS_PX,
 } from './layoutDimensions';
+import { drawnKind } from './lineOwners';
 import type {
+  LineSegment,
+  ParentChildConnector,
   ParentConnection,
   PartnerConnection,
   PedigreeConnectors,
@@ -17,7 +23,6 @@ import type {
   Relation,
   ScalingParams,
 } from './types';
-import { relativeRaisers } from './utils';
 
 export type ConnectorRenderData = {
   connectors: PedigreeConnectors;
@@ -93,68 +98,18 @@ export function toPedigreeInput(
       const parentIdx = idToIndex.get(link.source);
       if (childIdx === undefined || parentIdx === undefined) continue;
 
+      // Each tie as it is drawn (carrying the pregnancy is a birth tie), and
+      // as recorded, where the two differ.
+      const edgeType = drawnKind(relationshipType, isGestationalCarrier);
       parents[childIdx]!.push({
         parentIndex: parentIdx,
-        edgeType: relationshipType,
+        edgeType,
+        ...(edgeType === relationshipType
+          ? {}
+          : { recordedKind: relationshipType }),
         isGestationalCarrier,
-        // Kept as recorded: the drawn type may change below.
-        isGenetic:
-          relationshipType === 'biological' || relationshipType === 'donor',
       });
     }
-  }
-
-  // A birth parent of an adopted child who is outside the adoptive family is
-  // drawn as a donor: their edge becomes auxiliary, so the child is placed
-  // under the adoptive parents, as standard pedigree nomenclature has it. A
-  // birth parent who is the partner of one of the child's adoptive parents (a
-  // step-parent adoption) raises the child in that family, so their edge stays
-  // biological and the child descends from them within the couple. A child
-  // adopted by a relative (see `relativeRaisers`) stays in their birth
-  // family, so their birth parents stay parents too; the layout draws the
-  // relatives' adoptive lines beside the birth family.
-  const partnersOf = new Map<number, Set<number>>();
-  for (const { partnerIndex1: a, partnerIndex2: b } of partnerConnections) {
-    partnersOf.set(a, new Set([...(partnersOf.get(a) ?? []), b]));
-    partnersOf.set(b, new Set([...(partnersOf.get(b) ?? []), a]));
-  }
-  const raisedByRelatives = relativeRaisers(parents, partnerConnections);
-  for (let i = 0; i < n; i++) {
-    const adoptiveParents = parents[i]!.filter(
-      (p) => p.edgeType === 'adoptive',
-    ).map((p) => p.parentIndex);
-    if (adoptiveParents.length === 0) continue;
-    if (raisedByRelatives[i]!.size > 0) continue;
-    for (const p of parents[i]!) {
-      if (p.edgeType !== 'biological') continue;
-      const raisesChild = adoptiveParents.some(
-        (adoptive) => partnersOf.get(p.parentIndex)?.has(adoptive) ?? false,
-      );
-      if (!raisesChild) p.edgeType = 'donor';
-    }
-  }
-
-  // A child with no primary (biological/social/adoptive) parent — e.g. a
-  // donor-conceived child carried by a gestational carrier ("single parent, two
-  // donors") — descends from the carrier. Promote the carrier's edge to
-  // 'biological', the primary type for the parent who gave birth, so it
-  // anchors the line of descent and is drawn solid, as the carrier's line of
-  // descent is in standard pedigree nomenclature (never 'social', which is
-  // drawn dashed). The gamete donors remain auxiliary. Without this the child
-  // has only auxiliary parents, forms no family unit, and renders no line of
-  // descent at all. The carrier's link stays non-genetic (`isGenetic`), so
-  // the line drawn never makes the child a blood relative of the carrier's
-  // own children.
-  for (let i = 0; i < n; i++) {
-    const hasPrimaryParent = parents[i]!.some(
-      (p) =>
-        p.edgeType === 'biological' ||
-        p.edgeType === 'social' ||
-        p.edgeType === 'adoptive',
-    );
-    if (hasPrimaryParent) continue;
-    const carrier = parents[i]!.find((p) => p.isGestationalCarrier);
-    if (carrier) carrier.edgeType = 'biological';
   }
 
   return {
@@ -214,17 +169,22 @@ export function pedigreeLayoutToPositions(
   return positions;
 }
 
-export function buildConnectorData(
+/**
+ * A layout's connectors, routed, in layout units (columns and rows), and
+ * what their routed lines cost the drawing (see `routePedigree`).
+ */
+function routeLayout(
   layout: PedigreeLayout,
   links: readonly PedigreeLink[],
   dimensions: LayoutDimensions,
-  parents: ParentConnection[][] = [],
+  parents: ParentConnection[][],
   idToIndex?: Map<string, number>,
   nodeNames?: string[],
   indexToId?: string[],
-  /** Each person's symbol shape, by node id. */
   nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
-): ConnectorRenderData {
+  search: 'quick' | 'thorough' = 'thorough',
+  work?: RoutingWork,
+) {
   const metrics = computeLayoutMetrics(dimensions);
   const boxHeight = dimensions.nodeHeight / metrics.rowHeight;
   const scaling: ScalingParams = {
@@ -233,6 +193,8 @@ export function buildConnectorData(
     legHeight: (1 - boxHeight) / 2,
     hScale: 1,
     vScale: 1,
+    cornerRadius: SYMBOL_CORNER_RADIUS_PX / dimensions.nodeWidth,
+    halfStroke: EDGE_WIDTH / 2 / dimensions.nodeWidth,
   };
 
   // Build sets of all and active partner pairs (numeric index keys). The full
@@ -255,7 +217,7 @@ export function buildConnectorData(
     }
   }
 
-  const connectors = computeConnectors(
+  return routePedigree(
     layout,
     scaling,
     parents,
@@ -268,7 +230,37 @@ export function buildConnectorData(
     nodeShapes && indexToId
       ? indexToId.map((nodeId) => nodeShapes.get(nodeId))
       : undefined,
+    search,
+    work,
   );
+}
+
+export function buildConnectorData(
+  layout: PedigreeLayout,
+  links: readonly PedigreeLink[],
+  dimensions: LayoutDimensions,
+  parents: ParentConnection[][] = [],
+  idToIndex?: Map<string, number>,
+  nodeNames?: string[],
+  indexToId?: string[],
+  /** Each person's symbol shape, by node id. */
+  nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>,
+  /** The layout's connectors, already routed (see `routeLayout`). */
+  routed?: PedigreeConnectors,
+): ConnectorRenderData {
+  const metrics = computeLayoutMetrics(dimensions);
+  const connectors =
+    routed ??
+    routeLayout(
+      layout,
+      links,
+      dimensions,
+      parents,
+      idToIndex,
+      nodeNames,
+      indexToId,
+      nodeShapes,
+    ).connectors;
 
   // Transform all coordinates to pixel space
   const sx = metrics.siblingSpacing;
@@ -298,6 +290,9 @@ export function buildConnectorData(
     if (pc.siblingBar) transformSegment(pc.siblingBar, sx, sy, xOffset);
     for (const pl of pc.parentLink) {
       transformSegment(pl, sx, sy, xOffset);
+    }
+    for (const segment of runSegments(pc)) {
+      transformSegment(segment, sx, sy, xOffset);
     }
   }
 
@@ -355,6 +350,7 @@ export function buildConnectorData(
       for (const ul of pc.uplines) shiftSegment(ul, -rawMinX, 0);
       if (pc.siblingBar) shiftSegment(pc.siblingBar, -rawMinX, 0);
       for (const pl of pc.parentLink) shiftSegment(pl, -rawMinX, 0);
+      for (const segment of runSegments(pc)) shiftSegment(segment, -rawMinX, 0);
     }
     for (const ti of connectors.twinIndicators) {
       if (ti.segment) shiftSegment(ti.segment, -rawMinX, 0);
@@ -390,6 +386,7 @@ export function buildConnectorData(
       for (const ul of pc.uplines) shiftSegment(ul, 0, -rawMinY);
       if (pc.siblingBar) shiftSegment(pc.siblingBar, 0, -rawMinY);
       for (const pl of pc.parentLink) shiftSegment(pl, 0, -rawMinY);
+      for (const segment of runSegments(pc)) shiftSegment(segment, 0, -rawMinY);
     }
     for (const ti of connectors.twinIndicators) {
       if (ti.segment) shiftSegment(ti.segment, 0, -rawMinY);
@@ -405,6 +402,10 @@ export function buildConnectorData(
 
   return { connectors };
 }
+
+/** The stems and sub-bars of a sibship's runs. */
+const runSegments = (pc: ParentChildConnector): LineSegment[] =>
+  (pc.runs ?? []).flatMap((run) => [run.stem, ...(run.bar ? [run.bar] : [])]);
 
 function transformSegment(
   seg: { x1: number; y1: number; x2: number; y2: number },
@@ -429,32 +430,125 @@ function shiftSegment(
   seg.y2 += dy;
 }
 
-/**
- * A family laid out and its connectors routed, exactly as `PedigreeLayout`
- * draws it: each person's top-left corner, by node id, and the connectors.
- */
-export function drawPedigree({
-  nodeIds,
-  links,
-  dimensions,
-  nodeNames,
-  nodeShapes,
-}: {
+type DrawPedigreeInput = {
   nodeIds: readonly string[];
   links: readonly PedigreeLink[];
   dimensions: LayoutDimensions;
   nodeNames?: ReadonlyMap<string, string>;
   nodeShapes?: ReadonlyMap<string, PedigreeSymbolShape>;
-}): {
+};
+
+type DrawnPedigree = {
   positions: Map<string, { x: number; y: number }>;
   connectorData: ConnectorRenderData;
-} {
+  /** The work laying the family out took, in steps of about a tenth of a
+   * microsecond (see `RoutingWork`): every step of the seatings, of every
+   * drawing's lines, first routings included, and of setting each drawing
+   * up. Bounded before the layout starts, so it is how long a layout takes
+   * on any machine, and the same on every one. */
+  work: number;
+};
+
+/**
+ * What setting up one drawing counts towards the work, for each person,
+ * measured: its lines of descent and the scene its lines are routed in,
+ * and turning the drawing chosen into what is drawn, which the line
+ * search's own steps do not count.
+ */
+const SETUP_STEPS = 50;
+
+/** How many of the families drawn last are kept, to be drawn again at no
+ * cost. */
+const DRAWINGS_KEPT = 8;
+const drawingsKept = new Map<string, DrawnPedigree>();
+
+/**
+ * A family laid out and its connectors routed, exactly as `PedigreeLayout`
+ * draws it: each person's top-left corner, by node id, and the connectors.
+ * The same family, drawn again (as it is on every render that rebuilds its
+ * records), is the drawing already made: the layout is a function of what is
+ * drawn alone, and its search is the slowest work the interface does. The
+ * drawing returned is shared, and never changed by those who read it.
+ */
+export function drawPedigree(input: DrawPedigreeInput): DrawnPedigree {
+  const key = JSON.stringify([
+    input.nodeIds,
+    input.links,
+    input.dimensions,
+    input.nodeNames ? [...input.nodeNames] : null,
+    input.nodeShapes ? [...input.nodeShapes] : null,
+  ]);
+  const kept = drawingsKept.get(key);
+  if (kept) {
+    // The latest drawn are kept longest.
+    drawingsKept.delete(key);
+    drawingsKept.set(key, kept);
+    return kept;
+  }
+  const drawn = drawPedigreeAfresh(input);
+  drawingsKept.set(key, drawn);
+  for (const oldest of drawingsKept.keys()) {
+    if (drawingsKept.size <= DRAWINGS_KEPT) break;
+    drawingsKept.delete(oldest);
+  }
+  return drawn;
+}
+
+function drawPedigreeAfresh({
+  nodeIds,
+  links,
+  dimensions,
+  nodeNames,
+  nodeShapes,
+}: DrawPedigreeInput): DrawnPedigree {
   const { input, indexToId, idToIndex } = toPedigreeInput(nodeIds, links);
-  const layout = alignPedigree(input);
-  const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
   const names = nodeNames
     ? indexToId.map((id) => nodeNames.get(id) ?? '')
     : undefined;
+  // Each seating weighed is drawn, and chosen by what its drawing costs.
+  const routed = new Map<PedigreeLayout, PedigreeConnectors>();
+  const counted = { spent: SETUP_STEPS * nodeIds.length };
+  const layout = alignPedigree(input, {
+    counted,
+    drawingCost: (candidate, search, work) => {
+      counted.spent += SETUP_STEPS * nodeIds.length;
+      const { connectors, cost } = routeLayout(
+        candidate,
+        links,
+        dimensions,
+        input.parents,
+        idToIndex,
+        names,
+        indexToId,
+        nodeShapes,
+        search,
+        work,
+      );
+      // An abandoned drawing is not kept (see `RoutingWork`).
+      if (cost < Number.POSITIVE_INFINITY) routed.set(candidate, connectors);
+      return cost;
+    },
+  });
+  const positions = pedigreeLayoutToPositions(layout, indexToId, dimensions);
+  // The drawing chosen was drawn while it was weighed; were it not, it is
+  // routed once, with no search for better courses, and counted.
+  let connectors = routed.get(layout);
+  if (!connectors) {
+    const once: RoutingWork = { spent: 0, limit: 0 };
+    connectors = routeLayout(
+      layout,
+      links,
+      dimensions,
+      input.parents,
+      idToIndex,
+      names,
+      indexToId,
+      nodeShapes,
+      'thorough',
+      once,
+    ).connectors;
+    counted.spent += SETUP_STEPS * nodeIds.length + once.spent;
+  }
   const connectorData = buildConnectorData(
     layout,
     links,
@@ -464,6 +558,7 @@ export function drawPedigree({
     names,
     indexToId,
     nodeShapes,
+    connectors,
   );
-  return { positions, connectorData };
+  return { positions, connectorData, work: counted.spent };
 }

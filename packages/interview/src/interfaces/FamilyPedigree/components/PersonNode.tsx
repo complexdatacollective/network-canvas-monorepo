@@ -20,7 +20,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { withoutSoftHyphens } from '../generatedLabels';
 import { messages } from '../messages';
 import type { Person } from '../model';
-import { EDGE_WIDTH } from '../pedigree-layout/components/EdgeRenderer';
+import { EDGE_WIDTH } from '../pedigree-layout/layoutDimensions';
 import type { ReproductiveRole } from '../reproductiveRoles';
 
 type PersonNodeProps = {

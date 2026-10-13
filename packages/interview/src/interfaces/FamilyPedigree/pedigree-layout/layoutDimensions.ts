@@ -7,6 +7,15 @@ export type LayoutDimensions = {
   columnGapRatio?: number;
 };
 
+/** How wide every connector is drawn, in pixels. */
+export const EDGE_WIDTH = 5;
+
+/** How far a square's corners and a diamond's tips are rounded, in pixels,
+ * whatever the size of the symbol: PersonNode draws fresco-ui's Node at size
+ * `sm`, which rounds them at 24px (a diamond is that square scaled to 0.85
+ * and turned). */
+export const SYMBOL_CORNER_RADIUS_PX = 24;
+
 /** The gaps Family Pedigree leaves between people: room around each person
  * for the add menu that appears beside, above and below them. */
 export const FAMILY_PEDIGREE_GAPS = {
