@@ -164,6 +164,20 @@ describe('dynamic values in stage text', () => {
     ]);
   });
 
+  it('refuses text that is blank in every version', () => {
+    const protocol = editing('information', (stage) => {
+      stage.dynamicValues = { you: { path: 'ego.egoName' } };
+      stage.title = { en: '{you, select, missing {} other {}}' };
+    });
+    const index = stageIndex(protocol, 'information');
+    expect(issuesOf(protocol)).toEqual([
+      expect.objectContaining({
+        path: `stages.${index}.title.en`,
+        message: expect.stringContaining('blank in every version'),
+      }),
+    ]);
+  });
+
   it('refuses text holding the marker the interview places values with', () => {
     const protocol = editing('information', (stage) => {
       stage.title = { en: 'Hello ' };
@@ -241,6 +255,25 @@ describe('dynamic values in stage text', () => {
         expect.objectContaining({
           path: `stages.${index}.dynamicValues.kind.cases.work`,
         }),
+      ]);
+    });
+
+    it('refuses a second case for an option another case already stands for', () => {
+      const protocol = editing('alterForm', (stage) => {
+        stage.dynamicValues = {
+          kind: {
+            path: 'node.category',
+            cases: { friend: 'friend', pal: 'friend' },
+          },
+        };
+      });
+      const index = stageIndex(protocol, 'alterForm');
+      expect(issuesOf(protocol)).toEqual([
+        {
+          path: `stages.${index}.dynamicValues.kind.cases.pal`,
+          message:
+            'Case "pal" stands for "friend", as case "friend" already does, so it would never be chosen. Give each option at most one case.',
+        },
       ]);
     });
 
@@ -478,7 +511,7 @@ describe('dynamic values in stage text', () => {
         ...protocol,
         localization: {
           defaultLocale: 'en',
-          locales: ['en', 'de', 'fr', 'ru'],
+          locales: ['en', 'ar', 'de', 'fr', 'ru'],
         },
       };
     };
@@ -509,33 +542,30 @@ describe('dynamic values in stage text', () => {
       ]);
     });
 
-    it('lets a single-number plural category leave its number out, but not a category covering several', () => {
+    it('lets a plural category for zero alone leave its number out, but not a category covering several', () => {
       const english =
         '{count, select, missing {Some years.} other {{count, plural, one {# year.} other {# years.}}}}';
-      const singleOne = issuesOf(
-        twoLanguages({
-          en: english,
-          fr: '{count, select, missing {Des années.} other {{count, plural, one {# an.} other {# ans.}}}}',
+      const translated = (translations: Record<string, string>) =>
+        issuesOf(twoLanguages({ en: english, ...translations })).filter(
+          (issue) => issue.path.includes('title'),
+        );
+      // Russian "one" also covers 21, which the English shows; German "one"
+      // covers -1 as well as 1, and a number answer can be negative.
+      expect(
+        translated({
+          de: english.replace('# year.', 'A year.'),
           ru: '{count, select, missing {Годы.} other {{count, plural, one {Один год.} few {# года.} many {# лет.} other {# года.}}}}',
         }),
-      ).filter((issue) => issue.path.includes('title'));
-      // Russian "one" also covers 21, which the English shows.
-      expect(singleOne).toEqual([
+      ).toEqual([
+        expect.objectContaining({ path: expect.stringMatching(/title\.de$/) }),
         expect.objectContaining({ path: expect.stringMatching(/title\.ru$/) }),
       ]);
-      // German "one" is only 1, so it may say "a year"; French "one" also
-      // covers 0, which the English shows as a number.
-      const wordedOne = (locale: string) =>
-        issuesOf(
-          twoLanguages({
-            en: english,
-            [locale]: english.replace('# year.', 'A year.'),
-          }),
-        ).filter((issue) => issue.path.includes('title'));
-      expect(wordedOne('de')).toEqual([]);
-      expect(wordedOne('fr')).toEqual([
-        expect.objectContaining({ path: expect.stringMatching(/title\.fr$/) }),
-      ]);
+      // Arabic "zero" is only 0, so it may say "no years".
+      expect(
+        translated({
+          ar: '{count, select, missing {Some years.} other {{count, plural, zero {No years.} other {# years.}}}}',
+        }),
+      ).toEqual([]);
     });
   });
 
