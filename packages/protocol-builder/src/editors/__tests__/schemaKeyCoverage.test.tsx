@@ -60,6 +60,7 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   label: { 'en-US': 'Family Pedigree' },
   interviewScript: INTERVIEW_SCRIPT,
   skipLogic: SKIP_LOGIC,
+  dynamicValues: { caseId: { path: 'interview.caseId' } },
   subject: { entity: 'node', type: 'family_member' },
   prompt: { 'en-US': 'Add the members of your family.' },
   nodeConfiguration: {
@@ -213,7 +214,9 @@ describe.each(MAXIMAL)(
       });
       await openWordingGroup(harness);
 
-      await harness.roundTrip({ unowned: [...unowned] });
+      // A stage's dynamic value bindings get their editor with the dynamic
+      // value palette (#1667); until then they survive a save untouched.
+      await harness.roundTrip({ unowned: [...unowned, 'dynamicValues'] });
     });
   },
 );
