@@ -631,10 +631,7 @@ lib/
   interview (id, protocol, reason). Nothing is left half-migrated, so
   restoring the previous image works. A protocol that cannot be migrated at
   all is different: it is logged and left in place with its interviews, and
-  the interview route refuses it. So is an interview whose stored network
-  does not parse at all: neither this Fresco nor the one before it can open
-  it, so it is logged and
-  left exactly as stored rather than blocking the upgrade.
+  the interview route refuses it.
 - **Auth** is first-party: sessions in `lib/auth/session.ts`, plus WebAuthn
   passkeys and TOTP. There is no third-party auth library.
 - **Tailwind** with `@codaco/tailwind-config`, components from

@@ -9,7 +9,6 @@ import {
   validateProtocol,
   withInterfaceText,
 } from '@codaco/protocol-validation';
-import { NcNetworkSchema } from '@codaco/shared-consts';
 import { Prisma } from '~/lib/db/generated/client';
 
 /**
@@ -187,8 +186,6 @@ export type FailedInterviewMigration = {
 
 export type InterviewMigrationCounts = {
   migrated: number;
-  /** Interviews left as stored because no Fresco can read their network. */
-  unreadable: number;
   failed: FailedInterviewMigration[];
 };
 
@@ -246,11 +243,8 @@ function describeSessionFailure(error: Error): string {
  * `stageMetadata` against the current schema and drop the old shape this
  * exists to translate.
  *
- * An interview whose stored network no Fresco can read is left as stored and
- * counted in `unreadable`: the interview route refuses it before and after the
- * upgrade alike. Any other interview whose session cannot be migrated is
- * reported in `failed`, and every other interview is still tried so the
- * report is complete. Any
+ * An interview whose session cannot be migrated is reported in `failed`, and
+ * every other interview is still tried so the report is complete. Any
  * failure aborts the whole deploy migration (see
  * `InterviewMigrationFailedError`), so what this wrote for the protocol's
  * other interviews is rolled back with everything else: a database is never
@@ -262,11 +256,7 @@ async function migrateInterviewsOf(
   row: Pick<ProtocolRow, 'id' | 'name'>,
   migrateSession: SessionMigrator,
 ): Promise<InterviewMigrationCounts> {
-  const counts: InterviewMigrationCounts = {
-    migrated: 0,
-    unreadable: 0,
-    failed: [],
-  };
+  const counts: InterviewMigrationCounts = { migrated: 0, failed: [] };
   let cursor: string | undefined;
 
   for (;;) {
@@ -291,23 +281,6 @@ async function migrateInterviewsOf(
         currentStep: interview.currentStep,
       });
       if (!result.success) {
-        // A stored network the interview runtime cannot parse is unreadable
-        // before this upgrade as well as after it: the interview route refuses
-        // it either way. Migrating its protocol changes nothing for it, so it
-        // is left exactly as stored, rather than blocking every other
-        // protocol and interview from being upgraded.
-        if (
-          result.error.reason === 'invalid-session' &&
-          !NcNetworkSchema.safeParse(interview.network).success
-        ) {
-          counts.unreadable += 1;
-          console.warn(
-            `Leaving interview ${interview.id} of protocol "${row.name}" ` +
-              `(id=${row.id}) as stored: its network cannot be read, by this ` +
-              `Fresco or the previous one. ${result.error.message}`,
-          );
-          continue;
-        }
         const failure: FailedInterviewMigration = {
           interviewId: interview.id,
           protocolId: row.id,
@@ -439,11 +412,7 @@ async function migrateOneProtocol(
   if (interviews.failed.length === 0) {
     console.log(
       `Migrated "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...; ` +
-        `${interviews.migrated} interviews migrated` +
-        (interviews.unreadable > 0
-          ? `, ${interviews.unreadable} unreadable interviews left as stored`
-          : '') +
-        ')',
+        `${interviews.migrated} interviews migrated)`,
     );
   }
   return { outcome: 'migrated', interviews };
@@ -566,11 +535,7 @@ async function normalizeNonConformantProtocol(
   if (interviews.failed.length === 0) {
     console.log(
       `Normalized non-conformant protocol "${row.name}" (id=${row.id})... ok (new hash: ${newHash.slice(0, 8)}...; ` +
-        `${interviews.migrated} interviews migrated` +
-        (interviews.unreadable > 0
-          ? `, ${interviews.unreadable} unreadable interviews left as stored`
-          : '') +
-        ')',
+        `${interviews.migrated} interviews migrated)`,
     );
   }
   return interviews;
