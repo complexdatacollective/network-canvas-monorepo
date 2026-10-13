@@ -31,7 +31,6 @@ export type DynamicValueSite = 'stageText' | 'prompt' | 'formField';
  */
 export const INTRINSIC_DYNAMIC_VALUES = {
   'interview.id': { type: 'text', optional: false },
-  'interview.caseId': { type: 'text', optional: true },
   'interview.startedAt': { type: 'datetime', optional: true },
   'protocol.name': { type: 'text', optional: false },
   'protocol.hash': { type: 'text', optional: true },

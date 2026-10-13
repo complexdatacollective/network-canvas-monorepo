@@ -80,14 +80,13 @@ describe('dynamic values in stage text', () => {
     const protocol = editing('information', (stage) => {
       stage.dynamicValues = {
         interviewId: { path: 'interview.id' },
-        caseId: { path: 'interview.caseId' },
       };
       stage.title = { en: 'Interview {interviewId}' };
     });
     expect(issuesOf(protocol)).toEqual([]);
     const optional = editing('information', (stage) => {
-      stage.dynamicValues = { caseId: { path: 'interview.caseId' } };
-      stage.title = { en: 'Case {caseId}' };
+      stage.dynamicValues = { started: { path: 'interview.startedAt' } };
+      stage.title = { en: 'Started {started}' };
     });
     expect(issuesOf(optional)).toHaveLength(1);
   });
@@ -276,7 +275,7 @@ describe('dynamic values in stage text', () => {
       second: { path: 'dyad.target.nickname' },
       focal: { path: 'one_to_many.focal.nickname' },
       tie: { path: 'edge.note' },
-      caseId: { path: 'interview.caseId' },
+      started: { path: 'interview.startedAt' },
     };
 
     const withAllRoles = (id: string) =>
@@ -288,7 +287,7 @@ describe('dynamic values in stage text', () => {
       const protocol = withAllRoles('sociogram');
       expect(
         argumentsAt(protocol, 'sociogram', ['prompts', 0, 'text'], 'prompt'),
-      ).toEqual(['you', 'caseId']);
+      ).toEqual(['you', 'started']);
     });
 
     it('offers no one person on an interface that shows many', () => {
@@ -301,7 +300,7 @@ describe('dynamic values in stage text', () => {
         const protocol = withAllRoles(id);
         expect(
           argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
-        ).toEqual(['you', 'caseId']);
+        ).toEqual(['you', 'started']);
       }
     });
 
@@ -310,10 +309,10 @@ describe('dynamic values in stage text', () => {
         const protocol = withAllRoles(id);
         expect(
           argumentsAt(protocol, id, ['prompts', 0, 'text'], 'prompt'),
-        ).toEqual(['you', 'first', 'second', 'caseId']);
+        ).toEqual(['you', 'first', 'second', 'started']);
         expect(
           argumentsAt(protocol, id, ['introductionPanel', 'text'], 'stageText'),
-        ).toEqual(['you', 'caseId']);
+        ).toEqual(['you', 'started']);
       }
     });
 
@@ -321,7 +320,7 @@ describe('dynamic values in stage text', () => {
       const protocol = withAllRoles('oneToMany');
       expect(
         argumentsAt(protocol, 'oneToMany', ['prompts', 0, 'text'], 'prompt'),
-      ).toEqual(['you', 'focal', 'caseId']);
+      ).toEqual(['you', 'focal', 'started']);
     });
 
     it('offers a form field the values of earlier fields, but not its own or later ones', () => {
@@ -385,7 +384,7 @@ describe('dynamic values in stage text', () => {
           ['form', 'fields', 0, 'prompt'],
           'formField',
         ),
-      ).toEqual(['you', 'caseId']);
+      ).toEqual(['you', 'started']);
       const before = editing('alterEdgeForm', (stage) => {
         stage.dynamicValues = { tie: { path: 'edge.tieStrength' } };
       });
@@ -406,7 +405,7 @@ describe('dynamic values in stage text', () => {
           ['nodeForm', 'fields', 0, 'label'],
           'formField',
         ),
-      ).toEqual(['you', 'caseId']);
+      ).toEqual(['you', 'started']);
       expect(
         argumentsAt(
           composer,
@@ -414,7 +413,7 @@ describe('dynamic values in stage text', () => {
           ['edges', 0, 'form', 'fields', 0, 'label'],
           'formField',
         ),
-      ).toEqual(['you', 'caseId']);
+      ).toEqual(['you', 'started']);
     });
 
     it('reports a value used where it is not available', () => {
