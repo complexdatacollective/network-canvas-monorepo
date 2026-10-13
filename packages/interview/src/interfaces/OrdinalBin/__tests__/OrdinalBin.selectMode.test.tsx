@@ -166,7 +166,13 @@ const buildStage = (mode: Mode): StageProps<'OrdinalBin'>['stage'] => ({
   ],
 });
 
-const buildSession = (): SessionState => ({
+const defaultNodes = () => [
+  person('a', 'Ann'),
+  person('b', 'Ben'),
+  person('c', 'Cal'),
+];
+
+const buildSession = (nodes: NcNode[] = defaultNodes()): SessionState => ({
   id: 'session',
   startTime: '2024-01-01T00:00:00.000Z',
   finishTime: null,
@@ -174,7 +180,7 @@ const buildSession = (): SessionState => ({
   lastUpdated: '2024-01-01T00:00:00.000Z',
   network: {
     ego: { [entityPrimaryKeyProperty]: 'ego', [entityAttributesProperty]: {} },
-    nodes: [person('a', 'Ann'), person('b', 'Ben'), person('c', 'Cal')],
+    nodes,
     edges: [],
   },
 });
@@ -203,10 +209,13 @@ function CaptureDndStore({
   return null;
 }
 
-function renderStage(mode: Mode) {
+function renderStage(mode: Mode, nodes?: NcNode[]) {
   const store = configureStore({
     reducer: { session, protocol, ui },
-    preloadedState: { session: buildSession(), protocol: buildProtocol(mode) },
+    preloadedState: {
+      session: buildSession(nodes),
+      protocol: buildProtocol(mode),
+    },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
@@ -267,7 +276,7 @@ const binListZone = (index: number) =>
   `ORDBIN_NODE_LIST_${STAGE_ID}_${PROMPT_ID}_${index}-container`;
 
 const announcement = (name: string) =>
-  screen.findByText(`${name}: choose where this person belongs.`);
+  screen.findByText(`${name}: choose where this item belongs.`);
 
 describe('OrdinalBin in select mode (#1652)', () => {
   it('places the focal person in the tapped bin and moves on to the next', async () => {
@@ -363,6 +372,37 @@ describe('OrdinalBin in select mode (#1652)', () => {
     await announcement('Ben');
   });
 
+  it('records moving someone placed before the stage was left as a move', async () => {
+    const placedBefore: NcNode = {
+      ...person('a', 'Ann'),
+      [entityAttributesProperty]: { name: 'Ann', closeness: 2 },
+    };
+    const { attributesOf } = renderStage('select', [
+      placedBefore,
+      person('b', 'Ben'),
+    ]);
+
+    await announcement('Ben');
+    fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
+    await announcement('Ann');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Place Ann in Distant' }),
+    );
+
+    await waitFor(() => expect(attributesOf('a')?.closeness).toBe(1));
+    expect(track).toHaveBeenCalledWith('node_rebinned', {
+      node_id: 'a',
+      node_type_index: 0,
+      from_bin_index: 1,
+      to_bin_index: 0,
+      interaction_mode: 'select',
+    });
+    expect(track).not.toHaveBeenCalledWith(
+      'node_binned',
+      expect.objectContaining({ node_id: 'a' }),
+    );
+  });
+
   it('shows that everyone is placed once nobody is left', async () => {
     renderStage('select');
 
@@ -374,7 +414,7 @@ describe('OrdinalBin in select mode (#1652)', () => {
     }
 
     expect(
-      await screen.findAllByText('Everyone has been placed.'),
+      await screen.findAllByText('Every item has been placed.'),
     ).not.toHaveLength(0);
   });
 

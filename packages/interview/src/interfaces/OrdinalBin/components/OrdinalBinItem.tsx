@@ -1,6 +1,6 @@
 'use client';
 import { motion } from 'motion/react';
-import { memo, type RefObject, useMemo, useRef } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -35,8 +35,8 @@ type OrdinalBinItemProps = {
   promptId: string;
   sortOrder?: SortOrder;
   totalBins: number;
-  /** The bin each person was last placed in, shared by every bin. */
-  lastBinIndexRef: RefObject<Map<string, number>>;
+  /** Every bin's value in order, to tell which bin a person is moving from. */
+  binValues: readonly OrdinalBinItemType['value'][];
   /**
    * Present in select mode (#1652): the bin places the focal person when
    * tapped, and neither its people nor the bin take part in drag and drop.
@@ -97,7 +97,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     promptId,
     sortOrder = [],
     totalBins,
-    lastBinIndexRef,
+    binValues,
     select,
   } = props;
 
@@ -133,9 +133,13 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   const place = async (
     node: NcNode,
   ): Promise<'placed' | 'unchanged' | 'refused'> => {
-    if (getEntityAttributes(node)[activePromptVariable] === bin.value) {
-      return 'unchanged';
-    }
+    const currentValue = getEntityAttributes(node)[activePromptVariable];
+    if (currentValue === bin.value) return 'unchanged';
+    // The bin they are in now, read from their stored answer so that a move
+    // made after coming back to the stage still counts as a move.
+    const previousIndex = binValues.findIndex(
+      (value) => value === currentValue,
+    );
 
     const nodeId = node[entityPrimaryKeyProperty];
     const updateResult = await dispatch(
@@ -158,10 +162,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
       return 'refused';
     }
 
-    // Each prompt has its own variable, so a bin is only remembered per prompt.
-    const historyKey = `${prompt.id}:${nodeId}`;
-    const previousIndex = lastBinIndexRef.current.get(historyKey);
-    if (previousIndex === undefined) {
+    if (previousIndex === -1) {
       track('node_binned', {
         node_id: nodeId,
         node_type_index: codebookTypeIndex(codebook, 'node', node.type),
@@ -177,7 +178,6 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         interaction_mode: select ? 'select' : 'drag',
       });
     }
-    lastBinIndexRef.current.set(historyKey, index);
     return 'placed';
   };
 

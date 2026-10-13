@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'motion/react';
-import { useRef } from 'react';
+import { useMemo } from 'react';
 
 import type { Stage } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
@@ -50,8 +50,8 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
 
   const stageId = useStageSelector(getCurrentStageId);
   const { bins, unplacedNodes } = useOrdinalBins();
+  const binValues = useMemo(() => bins.map((bin) => bin.value), [bins]);
   const stageNodes = useStageSelector(getNetworkNodesForType);
-  const lastBinIndexRef = useRef<Map<string, number>>(new Map());
   const { focalNode, choose, advanceFrom } = useBinSelection({
     enabled: selectMode,
     nodes: stageNodes,
@@ -95,7 +95,7 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
                   promptId={prompt.id}
                   sortOrder={prompt.binSortOrder}
                   totalBins={bins.length}
-                  lastBinIndexRef={lastBinIndexRef}
+                  binValues={binValues}
                   select={
                     selectMode
                       ? {
