@@ -1,4 +1,4 @@
-import { Redacted } from 'effect';
+import { Data, Redacted } from 'effect';
 
 import {
   createDebouncedSyncHandler,
@@ -14,6 +14,10 @@ import {
   participantUnloadingSync,
 } from '../runtime/participantRpc.ts';
 import { noticeFor, type ParticipantNoticeKind } from './ParticipantNotice.tsx';
+
+export class SaveNotApplied extends Data.TaggedError('SaveNotApplied')<{
+  readonly attempts: number;
+}> {}
 
 const SYNC_WAIT_MS = 3000;
 const RATE_LIMIT_ATTEMPTS = 3;
@@ -196,9 +200,7 @@ export function createParticipantHandlers({
       if (stored > issued) issued = stored;
       next = offered;
     }
-    throw new Error(
-      `the server kept another save at revision ${String(issued)} through ${String(RESEND_ATTEMPTS)} attempts`,
-    );
+    throw new SaveNotApplied({ attempts: RESEND_ATTEMPTS });
   };
 
   const reportedSend = async (

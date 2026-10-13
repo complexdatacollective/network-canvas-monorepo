@@ -9,11 +9,13 @@ import {
   SessionTakenOver,
 } from '@codaco/studio-contract/schema/participant';
 
+import { faultCodeOf } from '../../runtime/errors.ts';
 import { installParticipantHarness } from '../../test/participantHarness.ts';
 import {
   createParticipantHandlers,
   pageRevisionBase,
   type SaveFault,
+  SaveNotApplied,
 } from '../interviewHandlers.ts';
 
 const session = (name: string): SessionPayload => ({
@@ -306,10 +308,14 @@ describe('the participant sync handler’s recovery', () => {
       'participant.sync': () =>
         Effect.succeed({ revision: '99', applied: false }),
     });
-    const { onSync } = handlersFor();
+    const { onSync, onSaveFault } = handlersFor();
 
-    await expect(onSync('session-1', session('Ada'), SYNC)).rejects.toThrow(
-      'kept another save',
+    await expect(
+      onSync('session-1', session('Ada'), SYNC),
+    ).rejects.toBeInstanceOf(SaveNotApplied);
+    const [[fault]] = onSaveFault.mock.calls as [[SaveFault]];
+    expect(fault.kind === 'failed' && faultCodeOf(fault.error)).toBe(
+      'conflict',
     );
   });
 

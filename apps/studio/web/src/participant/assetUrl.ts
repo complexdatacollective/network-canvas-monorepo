@@ -36,12 +36,17 @@ const svgDataUrl = async (
  * bytes, which renders in an <img> and which a browser will not open as a
  * page. Each asset is resolved once.
  */
+export type AssetResolver = ((assetId: string) => Promise<string>) & {
+  readonly produced: (url: string) => boolean;
+};
+
 export const createAssetResolver = (
   assets: readonly ResolvedAsset[],
   failureReporter: () => AssetFailure = () => () => undefined,
-): ((assetId: string) => Promise<string>) => {
+): AssetResolver => {
   const resolved = new Map<string, Promise<string>>();
-  return (assetId) => {
+  const generated = new Set<string>();
+  const resolve = (assetId: string): Promise<string> => {
     const known = resolved.get(assetId);
     if (known !== undefined) return known;
     const onFailure = failureReporter();
@@ -53,11 +58,17 @@ export const createAssetResolver = (
       return Promise.reject(new Error(`No stored file for asset ${assetId}`));
     }
     const url = isSvg(source)
-      ? svgDataUrl(storagePath(source), onFailure)
+      ? svgDataUrl(storagePath(source), onFailure).then((dataUrl) => {
+          generated.add(dataUrl);
+          return dataUrl;
+        })
       : Promise.resolve(storagePath(source));
     // A failed load is not kept, so the next request tries again.
     url.catch(() => resolved.delete(assetId));
     resolved.set(assetId, url);
     return url;
   };
+  return Object.assign(resolve, {
+    produced: (url: string) => generated.has(url),
+  });
 };

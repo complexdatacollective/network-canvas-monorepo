@@ -124,4 +124,22 @@ describe('the participant asset resolver', () => {
 
     expect(failures).toEqual(['http_error on requesting stage']);
   });
+
+  it('knows the data URLs it generated for SVGs, and no others', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(SVG)),
+    );
+    const resolve = createAssetResolver([
+      asset('diagram', `${HASH}.svg`),
+      asset('photo', `${HASH}.png`),
+    ]);
+
+    const generated = await resolve('diagram');
+    const stored = await resolve('photo');
+
+    expect(resolve.produced(generated)).toBe(true);
+    expect(resolve.produced(stored)).toBe(false);
+    expect(resolve.produced('data:image/svg+xml,<svg/>')).toBe(false);
+  });
 });

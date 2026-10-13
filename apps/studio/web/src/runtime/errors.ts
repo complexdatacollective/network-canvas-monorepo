@@ -130,6 +130,7 @@ const REFUSAL_FAULTS: Readonly<
 const TAGGED_FAULTS: Readonly<Record<string, FaultCode>> = {
   Conflict: 'conflict',
   SessionOutOfDate: 'conflict',
+  SaveNotApplied: 'conflict',
   SessionEnded: 'session_ended',
   SessionTakenOver: 'session_taken_over',
   LinkUnavailable: 'link_unavailable',

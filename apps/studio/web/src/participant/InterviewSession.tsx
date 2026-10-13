@@ -10,7 +10,6 @@ import {
 
 import { Shell } from '@codaco/interview';
 import type {
-  AssetRequestHandler,
   InterviewAnalyticsMetadata,
   StepChangeHandler,
 } from '@codaco/interview/contract';
@@ -18,7 +17,7 @@ import type {
 import { faultCodeOf } from '../runtime/errors.ts';
 import { useErrorTelemetry } from '../runtime/telemetry.ts';
 import { createParticipantAnalyticsClient } from './analyticsClient.ts';
-import { createAssetResolver } from './assetUrl.ts';
+import { type AssetResolver, createAssetResolver } from './assetUrl.ts';
 import {
   createParticipantHandlers,
   pageRevisionBase,
@@ -31,7 +30,9 @@ import {
   logStageFailedToRender,
   type ParticipantLog,
   type ParticipantStage,
+  isStorageUrl,
   participantStage,
+  renderedStep,
   useParticipantLogs,
   watchParticipantConnection,
   watchParticipantMedia,
@@ -50,15 +51,15 @@ const ANALYTICS: InterviewAnalyticsMetadata = {
 
 function StageCrashReporter({
   log,
-  currentStage,
+  renderedStage,
 }: {
   readonly log: ParticipantLog;
-  readonly currentStage: () => ParticipantStage | undefined;
+  readonly renderedStage: () => ParticipantStage | undefined;
 }): null {
   useLayoutEffect(
     () =>
-      reportStageCrashesTo(() => logStageFailedToRender(log, currentStage())),
-    [log, currentStage],
+      reportStageCrashesTo(() => logStageFailedToRender(log, renderedStage())),
+    [log, renderedStage],
   );
   return null;
 }
@@ -99,9 +100,13 @@ function InterviewSessionView() {
     () => watchParticipantConnection(log, currentStage),
     [log, currentStage],
   );
-  useEffect(
-    () => watchParticipantMedia(log, currentStage),
-    [log, currentStage],
+  const renderedStage = useCallback(
+    (element?: Element) =>
+      participantStage(
+        stageTypes,
+        renderedStep(element) ?? currentStepRef.current,
+      ),
+    [stageTypes],
   );
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
@@ -158,22 +163,32 @@ function InterviewSessionView() {
     [saveStep],
   );
 
-  const onRequestAsset = useMemo<AssetRequestHandler>(
+  const onRequestAsset = useMemo<AssetResolver>(
     () =>
       createAssetResolver(payload.protocol.assets, () => {
-        const stage = currentStage();
+        const stage = renderedStage();
         return (code) => {
           if (stage !== undefined) logAssetFailed(log, stage, code);
         };
       }),
-    [payload, currentStage, log],
+    [payload, renderedStage, log],
+  );
+
+  useEffect(
+    () =>
+      watchParticipantMedia(
+        log,
+        renderedStage,
+        (source) => isStorageUrl(source) || onRequestAsset.produced(source),
+      ),
+    [log, renderedStage, onRequestAsset],
   );
 
   if (notice !== undefined) return <ParticipantNotice kind={notice} />;
 
   return (
     <>
-      <StageCrashReporter log={log} currentStage={currentStage} />
+      <StageCrashReporter log={log} renderedStage={renderedStage} />
       <Shell
         requestedLocale={navigator.languages}
         payload={payload}

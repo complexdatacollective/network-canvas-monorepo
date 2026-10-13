@@ -30,6 +30,10 @@ const MAX_ATTEMPTS = 1000;
 
 const STORAGE_PATH = '/storage/';
 
+const STAGE_STEP_ATTRIBUTE = 'data-stage-step';
+
+const STEP = /^\d{1,5}$/;
+
 const decodeInterfaceType = Schema.decodeUnknownOption(UsageInterfaceType);
 
 export const participantStage = (
@@ -201,21 +205,22 @@ export function watchParticipantConnection(
   };
 }
 
-const storedMediaSource = (target: EventTarget | null): boolean => {
-  if (
-    !(target instanceof HTMLImageElement) &&
-    !(target instanceof HTMLMediaElement) &&
-    !(target instanceof HTMLSourceElement)
-  ) {
-    return false;
-  }
-  const source =
-    target instanceof HTMLSourceElement
-      ? target.src
-      : target.currentSrc || target.getAttribute('src') || '';
-  if (source === '' || !URL.canParse(source, window.location.origin)) {
-    return false;
-  }
+export const renderedStep = (
+  element?: Element | null,
+  root: Pick<Document, 'querySelector'> = document,
+): number | undefined => {
+  const container =
+    element === undefined || element === null
+      ? root.querySelector(`[${STAGE_STEP_ATTRIBUTE}]`)
+      : element.closest(`[${STAGE_STEP_ATTRIBUTE}]`);
+  const step = container?.getAttribute(STAGE_STEP_ATTRIBUTE);
+  return step !== null && step !== undefined && STEP.test(step)
+    ? Number(step)
+    : undefined;
+};
+
+export const isStorageUrl = (source: string): boolean => {
+  if (!URL.canParse(source, window.location.origin)) return false;
   const url = new URL(source, window.location.origin);
   return (
     url.origin === window.location.origin &&
@@ -223,14 +228,33 @@ const storedMediaSource = (target: EventTarget | null): boolean => {
   );
 };
 
+const mediaSource = (target: EventTarget | null): string | undefined => {
+  if (target instanceof HTMLSourceElement) return target.src;
+  if (
+    target instanceof HTMLImageElement ||
+    target instanceof HTMLMediaElement
+  ) {
+    return target.currentSrc || target.getAttribute('src') || undefined;
+  }
+  return undefined;
+};
+
 export function watchParticipantMedia(
   log: ParticipantLog,
-  currentStage: () => ParticipantStage | undefined,
+  stageOf: (element: Element) => ParticipantStage | undefined,
+  isStoredAsset: (source: string) => boolean,
   target: EventTargetLike = window,
 ): () => void {
   const onError = (event: Event) => {
-    if (!storedMediaSource(event.target)) return;
-    const stage = currentStage();
+    const source = mediaSource(event.target);
+    if (
+      source === undefined ||
+      !(event.target instanceof Element) ||
+      !isStoredAsset(source)
+    ) {
+      return;
+    }
+    const stage = stageOf(event.target);
     if (stage !== undefined) logAssetFailed(log, stage, 'media');
   };
   target.addEventListener('error', onError, true);
