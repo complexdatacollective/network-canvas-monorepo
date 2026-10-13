@@ -228,6 +228,23 @@ const resolveCategoricalOption = (
   );
 };
 
+/**
+ * A roster answer with each option it names read as the codebook's own
+ * (`resolveCategoricalOption`). A list naming two options the migration
+ * merged names the merged option once.
+ */
+const resolveOptionAnswer = (
+  variable: ReturnType<typeof getCodebookVariable>,
+  value: unknown,
+): AttributeValue => {
+  if (!Array.isArray(value)) {
+    return resolveCategoricalOption(variable, value) as AttributeValue;
+  }
+  return [
+    ...new Set(value.map((item) => resolveCategoricalOption(variable, item))),
+  ] as AttributeValue;
+};
+
 const getNodeListUsingTypes = (
   nodeList: NcNode[],
   protocolCodebook: Codebook,
@@ -287,18 +304,12 @@ const getNodeListUsingTypes = (
             } catch {
               value = attributeValue;
             }
-            const variable = getCodebookVariable(
-              codebookDefinition,
-              attributeKey,
-            );
-            const resolve = (item: unknown) =>
-              resolveCategoricalOption(variable, item);
-
             return {
               ...consolidatedAttributes,
-              [attributeKey]: (Array.isArray(value)
-                ? value.map(resolve)
-                : resolve(value)) as AttributeValue,
+              [attributeKey]: resolveOptionAnswer(
+                getCodebookVariable(codebookDefinition, attributeKey),
+                value,
+              ),
             };
           }
           // Handle column names with _x and _y suffixes, indicating this is a file we created
@@ -332,12 +343,12 @@ const getNodeListUsingTypes = (
                 attributeKey.substring(attributeKey.indexOf('_') + 1),
               );
               const previous = getOwn(consolidatedAttributes, uuid);
+              const chosen: unknown[] = Array.isArray(previous) ? previous : [];
               return {
                 ...consolidatedAttributes,
-                [uuid]: [
-                  ...(Array.isArray(previous) ? previous : []),
-                  option,
-                ] as AttributeValue,
+                [uuid]: (chosen.includes(option)
+                  ? chosen
+                  : [...chosen, option]) as AttributeValue,
               };
             }
             return consolidatedAttributes;
@@ -421,14 +432,12 @@ const withOptionValuesResolved = (
   return nodeList.map((node) => {
     const attributes = Object.fromEntries(
       Object.entries(node[entityAttributesProperty]).map(([key, value]) => {
-        const variable = getCodebookVariable(codebookDefinition, key);
-        const resolve = (item: unknown) =>
-          resolveCategoricalOption(variable, item);
         return [
           key,
-          (Array.isArray(value)
-            ? value.map(resolve)
-            : resolve(value)) as AttributeValue,
+          resolveOptionAnswer(
+            getCodebookVariable(codebookDefinition, key),
+            value,
+          ),
         ];
       }),
     );

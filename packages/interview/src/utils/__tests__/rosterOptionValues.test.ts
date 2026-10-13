@@ -103,6 +103,21 @@ describe('roster option values renamed by the schema 9 upgrade', () => {
     ).toEqual({ likes: ['Yes', 1], rank: 'Low', other: ' x ' });
   });
 
+  it('names an option once when a roster chose two options that merged', () => {
+    expect(typed({ likes: '["1",1]' })).toEqual({ likes: [1] });
+    expect(typed({ 'likes_1': 'true', 'likes_ 1': 'true' })).toEqual({
+      likes: [1],
+    });
+    expect(
+      getVariableTypeReplacements(
+        'roster.json',
+        [row({ likes: ['Yes', 'Yes '] })],
+        codebook,
+        subject,
+      )[0]![entityAttributesProperty],
+    ).toEqual({ likes: ['Yes'] });
+  });
+
   it('keeps text that names no option as it is', () => {
     expect(typed({ likes: '["Maybe"]', rank: 'Middle' })).toEqual({
       likes: ['Maybe'],
