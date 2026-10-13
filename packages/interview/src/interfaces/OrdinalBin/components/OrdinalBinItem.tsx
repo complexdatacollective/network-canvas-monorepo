@@ -15,11 +15,13 @@ import BinLabel from '../../../components/BinLabel';
 import NodeList from '../../../components/NodeList';
 import { usePrompts } from '../../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../../contexts/CurrentStepContext';
+import { writeFailureMessage } from '../../../forms/writeSubmissionResult';
 import useMediaQuery from '../../../hooks/useMediaQuery';
 import useSortedNodeList from '../../../hooks/useSortedNodeList';
 import { getCodebook } from '../../../store/modules/protocol';
 import { updateNode } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
+import { useInterviewToast } from '../../../toast/useInterviewToast';
 import { getEntityAttributes } from '../../../utils/networkEntities';
 import { useNodeLabel } from '../../Anonymisation/useNodeLabel';
 import { interfaceMessages } from '../../messages';
@@ -100,6 +102,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
   } = props;
 
   const dispatch = useAppDispatch();
+  const { showToast } = useInterviewToast();
   const { currentStep } = useCurrentStep();
   const { prompt } = usePrompts<OrdinalBinPrompt>();
   const isPortrait = useMediaQuery('(orientation: portrait)');
@@ -122,13 +125,39 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
 
   const focalName = useNodeLabel(select?.focalNode);
 
-  /** Gives the person this bin's value. False when they already had it. */
-  const place = (node: NcNode) => {
+  /**
+   * Gives the person this bin's value. Reports whether they already had it,
+   * or whether the write was refused, in which case the participant is told
+   * why and nothing is recorded.
+   */
+  const place = async (
+    node: NcNode,
+  ): Promise<'placed' | 'unchanged' | 'refused'> => {
     if (getEntityAttributes(node)[activePromptVariable] === bin.value) {
-      return false;
+      return 'unchanged';
     }
 
     const nodeId = node[entityPrimaryKeyProperty];
+    const updateResult = await dispatch(
+      updateNode({
+        nodeId,
+        attributePatch: {
+          set: { [activePromptVariable]: bin.value },
+          unset: [],
+        },
+        currentStep,
+      }),
+    );
+    const failure = writeFailureMessage(updateResult);
+    if (failure) {
+      showToast({
+        description: intl.formatMessage(failure),
+        variant: 'destructive',
+        anchor: 'forward',
+      });
+      return 'refused';
+    }
+
     // Each prompt has its own variable, so a bin is only remembered per prompt.
     const historyKey = `${prompt.id}:${nodeId}`;
     const previousIndex = lastBinIndexRef.current.get(historyKey);
@@ -149,29 +178,18 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
       });
     }
     lastBinIndexRef.current.set(historyKey, index);
-
-    void dispatch(
-      updateNode({
-        nodeId,
-        attributePatch: {
-          set: { [activePromptVariable]: bin.value },
-          unset: [],
-        },
-        currentStep,
-      }),
-    );
-    return true;
+    return 'placed';
   };
 
   const handleDrop = (metadata?: Record<string, unknown>) => {
-    if (metadata) place(metadata as NcNode);
+    if (metadata) void place(metadata as NcNode);
   };
 
-  const handleSelect = () => {
+  const handleSelect = async () => {
     const node = select?.focalNode;
     if (!node) return;
-    place(node);
-    select.onPlaced(node);
+    // A refused write leaves the person in place to try again.
+    if ((await place(node)) !== 'refused') select.onPlaced(node);
   };
 
   const sortedNodes = useSortedNodeList(bin.nodes, sortOrder);
@@ -227,7 +245,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
               ) {
                 return;
               }
-              handleSelect();
+              void handleSelect();
             }
           : undefined
       }
@@ -245,7 +263,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
           ref={headerRef}
           type="button"
           className={cx(accentClasses, 'focusable cursor-pointer')}
-          onClick={handleSelect}
+          onClick={() => void handleSelect()}
           disabled={!select.focalNode}
           aria-label={
             select.focalNode
