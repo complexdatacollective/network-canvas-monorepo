@@ -1116,6 +1116,51 @@ describe('encrypted attributes in the deploy migration', () => {
   });
 
   it.each([
+    ['on', { encryptedVariables: true }],
+    ['on under the alpha’s name for the flag', { encryptNames: true }],
+  ])(
+    'keeps a version 7 row’s attributes encrypted when its stored experiments turned encryption %s',
+    async (_description, experiments) => {
+      // A deployment upgrading straight from schema 7 still holds the
+      // experiments column; dropping it on the way to version 8 would unmark
+      // attributes whose collected values are ciphertext.
+      const row = {
+        ...makeLegacyShapedEncryptedRow(7, experiments),
+        id: 'cm-encrypted-v7',
+        name: 'Encrypted.netcanvas',
+      };
+      const prisma = makeMockPrisma();
+      prisma.protocol.findMany.mockResolvedValue([row]);
+
+      await runMigration(prisma);
+
+      const written = onlyWrite(prisma);
+      expect(written).toHaveProperty(
+        'data.schemaVersion',
+        COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      );
+      expect(written).toHaveProperty(
+        `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+        true,
+      );
+      expect(experimentsWritten(written)).toStrictEqual({});
+    },
+  );
+
+  it('unmarks a version 7 row’s encrypted attributes when its stored experiments left encryption off', async () => {
+    const row = makeLegacyShapedEncryptedRow(7, {});
+    const prisma = makeMockPrisma();
+    prisma.protocol.findMany.mockResolvedValue([row]);
+
+    await runMigration(prisma);
+
+    const written = onlyWrite(prisma);
+    expect(written).not.toHaveProperty(
+      `data.codebook.${NAME_ATTRIBUTE}.encrypted`,
+    );
+  });
+
+  it.each([
     ['absent', null],
     ['empty', {}],
     ['off', { encryptedVariables: false }],

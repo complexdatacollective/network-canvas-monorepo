@@ -345,8 +345,11 @@ async function migrateOneProtocol(
     // Fresco keeps a protocol's `experiments` in their own column. The
     // migration out of version 8 unmarks every encrypted attribute unless
     // they say encryption was on, so omitting them would stop encrypting
-    // attributes whose collected values are already ciphertext.
-    ...(row.schemaVersion === ENCRYPTION_EXPERIMENT_SCHEMA_VERSION
+    // attributes whose collected values are already ciphertext. A version 7
+    // row carries them too: the column predates schema 8, and the migration
+    // into version 8 keeps experiments it is handed.
+    ...(row.schemaVersion >= NORMALIZATION_SOURCE_VERSION &&
+    row.schemaVersion <= ENCRYPTION_EXPERIMENT_SCHEMA_VERSION
       ? { experiments: readStoredExperiments(row.experiments) }
       : {}),
     assetManifest: buildAssetManifest(row.assets),
