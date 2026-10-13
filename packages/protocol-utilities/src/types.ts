@@ -310,6 +310,7 @@ export type StageEntry = {
     requireCompletePlacement?: boolean;
     minNodes?: number;
     maxNodes?: number;
+    interactionMode?: 'drag' | 'select';
   };
   introductionPanel?: {
     title: TextInput;

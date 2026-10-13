@@ -464,4 +464,21 @@ describe('CategoricalBin in select mode (#1652)', () => {
     );
     await waitFor(() => expect(attributesOf('a')?.category).toEqual([2]));
   });
+
+  it('asks about "other" again when an "other" person taps it, so the answer can be edited', async () => {
+    renderStage('select', [
+      person('a', 'Ann', { otherReason: 'Neighbour' }),
+      person('b', 'Ben'),
+    ]);
+
+    await announcement('Ben');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Show who is in Other, 1 item' }),
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Ann' }));
+    await announcement('Ann');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Other' }));
+    expect(await screen.findByRole('textbox')).toBeInTheDocument();
+  });
 });
