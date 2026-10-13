@@ -301,11 +301,11 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
               size="sm"
               className="mx-3 shrink-0"
               onClick={() => void handleSelect()}
-              disabled={!select.focalName}
+              disabled={select.focalNodeId === undefined}
               aria-label={
-                select.focalName
+                select.focalNodeId !== undefined
                   ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
-                      name: select.focalName,
+                      name: select.focalName ?? '',
                       label: spokenLabel,
                     })
                   : undefined
@@ -398,11 +398,11 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
             e.stopPropagation();
             void handleSelect();
           }}
-          disabled={!select.focalName}
+          disabled={select.focalNodeId === undefined}
           aria-label={
-            select.focalName
+            select.focalNodeId !== undefined
               ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
-                  name: select.focalName,
+                  name: select.focalName ?? '',
                   label: spokenLabel,
                 })
               : intl.formatMessage(interfaceMessages.categoryContents, {
