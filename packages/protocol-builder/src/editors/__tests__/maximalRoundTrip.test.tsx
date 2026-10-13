@@ -141,7 +141,7 @@ const EVERY_STAGE = {
   interviewScript: 'Read this to the participant before you begin.',
   skipLogic,
   // No editor manages bindings yet, so they must survive a save untouched.
-  dynamicValues: { caseId: { path: 'interview.caseId' } },
+  dynamicValues: { interviewId: { path: 'interview.id' } },
 };
 
 const MAXIMAL_STAGES: MaximalStage[] = [
