@@ -803,6 +803,24 @@ describe('the participant save faults', () => {
     ]);
   });
 
+  it('reports the save finishing makes when the server is behind, if that save fails', async () => {
+    const refusal = new RateLimited({ retryAfterSeconds: 600 });
+    installParticipantHarness({
+      'participant.sync': () => Effect.fail(refusal),
+      'participant.finish': () =>
+        Effect.fail(new SessionOutOfDate({ revision: '8' })),
+    });
+    const { onFinish, onSaveFault } = handlersFor();
+
+    await expect(
+      onFinish('session-1', new AbortController().signal),
+    ).rejects.toBeInstanceOf(RateLimited);
+
+    expect(onSaveFault.mock.calls).toEqual([
+      [{ kind: 'failed', error: refusal, attempts: 1, stageIndex: 1 }],
+    ]);
+  });
+
   it('reports no retry when the retried save was not applied and a fresh save then was', async () => {
     vi.useFakeTimers();
     let calls = 0;

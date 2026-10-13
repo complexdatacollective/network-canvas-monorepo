@@ -202,15 +202,24 @@ const principal = {
   sessionId: 'auth-session',
 };
 
-const SignedIn = AuthServiceStub({
-  getSession: () => Effect.succeed(Option.some(principal)),
-  getMembership: (userId, teamId) =>
-    Effect.succeed(
-      userId === USER && teamId === MEMBER_TEAM
-        ? Option.some({ role: 'member' })
-        : Option.none(),
-    ),
-});
+const signedIn = (lookups: string[] = []) =>
+  AuthServiceStub({
+    getSession: () => Effect.succeed(Option.some(principal)),
+    getMembership: (userId, teamId) =>
+      Effect.sync(() => {
+        lookups.push(`getMembership:${teamId}`);
+        return userId === USER && teamId === MEMBER_TEAM
+          ? Option.some({ role: 'member' })
+          : Option.none();
+      }),
+    listMemberships: (userId) =>
+      Effect.sync(() => {
+        lookups.push('listMemberships');
+        return userId === USER ? [{ teamId: MEMBER_TEAM, role: 'member' }] : [];
+      }),
+  });
+
+const SignedIn = signedIn();
 
 const SignedOut = AuthServiceStub();
 
@@ -384,6 +393,38 @@ describe('researcher logs', () => {
           { surface: 'researcher', team_id: MEMBER_TEAM },
           { surface: 'researcher' },
           { surface: 'researcher' },
+        ]);
+      }),
+  );
+
+  it.live(
+    'asks for the researcher’s teams once, and not at all for claims on records it discards',
+    () =>
+      Effect.gen(function* () {
+        const lookups: string[] = [];
+        const discarded = Array.from({ length: 50 }, (_, index) =>
+          withTeam(
+            wireRecord('Not a catalogued message', 'Warn', []),
+            `team-${index}`,
+          ),
+        );
+        const { statuses, forwarded } = yield* serveAndPost(
+          [
+            researcher(discarded),
+            researcher([
+              withTeam(LOCK_REFUSED, MEMBER_TEAM),
+              withTeam(LOCK_REFUSED, OTHER_TEAM),
+              withTeam(LOCK_REFUSED, 'team-three'),
+            ]),
+          ],
+          { auth: signedIn(lookups) },
+        );
+        expect(statuses).toEqual([204, 204]);
+        expect(lookups).toEqual(['listMemberships']);
+        expect(forwarded.map((record) => record.attributes.team_id)).toEqual([
+          MEMBER_TEAM,
+          undefined,
+          undefined,
         ]);
       }),
   );

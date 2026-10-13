@@ -15,7 +15,6 @@ import {
   MAX_BROWSER_LOG_BODY_BYTES,
   MAX_BROWSER_LOG_RECORDS,
 } from '@codaco/studio-contract/schema/browser-logs';
-import { TeamId } from '@codaco/studio-contract/schema/ids';
 
 import { AuthService } from '../auth/service.ts';
 import { Database } from '../db/client.ts';
@@ -45,8 +44,6 @@ const decodeBody = Schema.decodeUnknownOption(
   Schema.fromJsonString(BrowserLogsBody),
   { onExcessProperty: 'error' },
 );
-
-const decodeTeamId = Schema.decodeUnknownOption(TeamId);
 
 const utf8 = new TextDecoder();
 
@@ -128,50 +125,39 @@ const forward = (
     : services.forwarder.value.forward(kept, surface);
 };
 
-const memberTeams = Effect.fnUntraced(function* (
-  services: Services,
-  userId: string,
-  claimed: ReadonlyArray<unknown>,
-) {
-  const teams = new Set<string>();
-  for (const teamId of new Set(
-    claimed.flatMap((value) => Option.toArray(decodeTeamId(value))),
-  )) {
-    const membership = yield* services.auth.getMembership(userId, teamId);
-    if (Option.isSome(membership)) teams.add(teamId);
-  }
-  return teams;
-});
-
 const researcherLogs = (services: Services) =>
   Effect.gen(function* () {
     const principal = yield* Principal;
     yield* limited(services, 'researcher_log', principal.userId);
     if (Option.isNone(services.forwarder)) return accepted();
     const records = yield* readRecords;
-    const split = records.flatMap((record) => {
+    const decoded = records.flatMap((record) => {
       const candidate = entryCandidate(record);
-      return candidate === undefined
-        ? []
-        : [{ record, ...withoutTeam(candidate) }];
-    });
-    const members = yield* memberTeams(
-      services,
-      principal.userId,
-      split.map(({ claimed }) => claimed),
-    );
-    const logs = split.flatMap(({ record, candidate, claimed }) =>
-      Option.toArray(
-        decodedEntry(
-          candidate,
+      if (candidate === undefined) return [];
+      const split = withoutTeam(candidate);
+      return Option.toArray(
+        Option.map(decodeResearcherLogEntry(split.candidate), (entry) => ({
+          entry,
           record,
-          decodeResearcherLogEntry,
-          typeof claimed === 'string' && members.has(claimed)
-            ? claimed
-            : undefined,
-        ),
-      ),
-    );
+          claimed: split.claimed,
+        })),
+      );
+    });
+    const members = decoded.some(({ claimed }) => typeof claimed === 'string')
+      ? new Set(
+          (yield* services.auth.listMemberships(principal.userId)).map(
+            (membership) => membership.teamId,
+          ),
+        )
+      : new Set<string>();
+    const logs = decoded.map(({ entry, record, claimed }) => ({
+      entry,
+      timeUnixNano: record.timeUnixNano,
+      teamId:
+        typeof claimed === 'string' && members.has(claimed)
+          ? claimed
+          : undefined,
+    }));
     yield* forward(services, logs, 'researcher');
     return accepted();
   }).pipe(Effect.catch((response) => Effect.succeed(response)));

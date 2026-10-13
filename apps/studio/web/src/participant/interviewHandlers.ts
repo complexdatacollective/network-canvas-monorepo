@@ -173,7 +173,7 @@ export function createParticipantHandlers({
   const send = async (
     snapshot: SessionPayload,
     { unloading }: { readonly unloading: boolean },
-    progress: SaveProgress = { attempts: 0, stageIndex: getCurrentStep() },
+    progress: SaveProgress,
   ): Promise<void> => {
     let next = snapshot;
     for (let attempt = 1; attempt <= RESEND_ATTEMPTS; attempt += 1) {
@@ -201,14 +201,25 @@ export function createParticipantHandlers({
     );
   };
 
+  const reportedSend = async (
+    snapshot: SessionPayload,
+    options: { readonly unloading: boolean },
+  ): Promise<void> => {
+    const progress = { attempts: 0, stageIndex: getCurrentStep() };
+    try {
+      await send(snapshot, options, progress);
+    } catch (error) {
+      onSaveFault?.({ kind: 'failed', error, ...progress });
+      throw error;
+    }
+  };
+
   const debouncedSync = createDebouncedSyncHandler(
     async (_id, snapshot, { unloading }) => {
       if (stopped) return;
-      const progress = { attempts: 0, stageIndex: getCurrentStep() };
       try {
-        await send(snapshot, { unloading }, progress);
+        await reportedSend(snapshot, { unloading });
       } catch (error) {
-        onSaveFault?.({ kind: 'failed', error, ...progress });
         const kind = noticeOf(error);
         if (kind !== undefined) stop(kind);
         throw error;
@@ -246,7 +257,7 @@ export function createParticipantHandlers({
         await finish(signal);
       } catch (error) {
         if (!(error instanceof SessionOutOfDate)) throw error;
-        await send(offered, ORDINARY);
+        await reportedSend(offered, ORDINARY);
         signal.throwIfAborted();
         await finish(signal);
       }
