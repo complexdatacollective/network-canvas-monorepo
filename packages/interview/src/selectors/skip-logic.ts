@@ -22,6 +22,7 @@ type RoutableStage = {
   skipLogic?: SkipLogic;
   subject?: { entity: string; type?: string };
   filter?: Filter;
+  behaviours?: { freeDraw?: boolean };
 };
 
 export type AvailableStage = {
@@ -43,8 +44,8 @@ export type BypassedStage = {
 };
 
 /**
- * A stage that asks about each person, relationship or pair of people, when
- * the network has none for it to ask about.
+ * A stage that works only with the people or relationships it shows, when the
+ * network has none for it to show, so the participant has nothing to do there.
  */
 export type EmptyStage = {
   kind: 'empty';
@@ -69,24 +70,34 @@ const AVAILABLE: AvailableStage = { kind: 'available' };
 const EMPTY: EmptyStage = { kind: 'empty' };
 
 // How many of a stage's subject the network must hold for these stages to
-// have anything to ask: a form needs one person or relationship, and a
-// census one pair of people.
+// give the participant something to do: a form, bin, map or canvas needs one
+// person or relationship, and a census one pair of people. Stages that add
+// people (the name generators and the Network Composer) and stages that show
+// no subject are never empty.
 const SUBJECTS_NEEDED: Partial<Record<string, number>> = {
   AlterForm: 1,
   AlterEdgeForm: 1,
+  CategoricalBin: 1,
+  OrdinalBin: 1,
+  Geospatial: 1,
+  Sociogram: 1,
+  Narrative: 1,
   DyadCensus: 2,
   TieStrengthCensus: 2,
+  OneToManyDyadCensus: 2,
 };
 
 /**
- * Whether a stage that asks about each of its subjects has none to ask about,
+ * Whether a stage that works with its subjects has none to work with,
  * counting the subjects its interface shows: those of the stage's subject
- * type in the network its filter leaves.
+ * type in the network its filter leaves. A Narrative that lets the
+ * participant draw still has something to do on an empty canvas.
  */
 const hasNothingToAsk = (stage: RoutableStage, network: NcNetwork): boolean => {
   const needed = stage.type ? SUBJECTS_NEEDED[stage.type] : undefined;
   const subject = stage.subject;
   if (needed === undefined || !subject) return false;
+  if (stage.type === 'Narrative' && stage.behaviours?.freeDraw) return false;
 
   const visible = stage.filter ? networkFilter(stage.filter)(network) : network;
   const entities = subject.entity === 'edge' ? visible.edges : visible.nodes;
@@ -106,7 +117,7 @@ const hasNothingToAsk = (stage: RoutableStage, network: NcNetwork): boolean => {
  * the destination itself remains reachable and is evaluated normally, which
  * allows destinations to chain when they are also hidden.
  *
- * A reachable stage with nothing to ask about is off the route too, so
+ * A reachable stage that gives the participant nothing to do is off the route too, so
  * navigation passes it in either direction, and a participant who comes back
  * from the stage after it is not sent forward again.
  */
