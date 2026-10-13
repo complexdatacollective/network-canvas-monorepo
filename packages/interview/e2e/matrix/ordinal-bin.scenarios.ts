@@ -849,6 +849,7 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, interview, stage }) => {
+        expect(await interview.nextButtonHasPulse()).toBe(false);
         // Unplaced nodes: forward navigation is blocked with the supplied notice.
         await interview.nextButton.click();
         await expect(page.getByText(/must place every item/i)).toBeVisible();
@@ -862,11 +863,78 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         // Every node placed: advancing succeeds.
         await stage.ordinalBin.dragNodeToBin('Jon', 'Not close');
         expect(await stage.ordinalBin.getUnplacedCount()).toBe(0);
+        // Ready for the next stage once every node is placed.
+        expect(await interview.nextButtonHasPulse()).toBe(true);
         await interview.next();
         await expect(
           page.getByRole('heading', { name: 'All done' }),
         ).toBeVisible();
       },
     },
+    (() => {
+      // Tap to place (#1652): one person at a time, placed by tapping a bin.
+      let closenessVarId = '';
+      return {
+        id: 'select-mode-tap-to-place',
+        covers: ['behaviours', 'behaviours.interactionMode'],
+        seedNetwork: true,
+        build: () => {
+          const synth = new SyntheticInterview();
+          const person = synth.addNodeType({ name: 'Person' });
+          const nameVar = person.addVariable({ name: 'name', type: 'text' });
+          const closeness = person.addVariable({
+            name: 'Closeness',
+            type: 'ordinal',
+            options: [
+              { label: 'Not close', value: 1 },
+              { label: 'Close', value: 2 },
+              { label: 'Very close', value: 3 },
+            ],
+          });
+          closenessVarId = closeness.id;
+          const stage = synth.addStage('OrdinalBin', {
+            subject: { entity: 'node', type: person.id },
+            behaviours: { interactionMode: 'select' },
+          });
+          stage.addPrompt({ text: 'Rate closeness', variable: closeness.id });
+          for (const name of ['Alice', 'Bob']) {
+            synth.addManualNode(stage.id, person.id, `n-${name}`, {
+              [nameVar.id]: name,
+              [closeness.id]: null,
+            });
+          }
+          return synth;
+        },
+        run: async ({ page, interview, protocol }) => {
+          const focal = page.getByTestId('bin-select-focal-node');
+          await expect(focal).toContainText('Alice');
+
+          // Tapping a person in the drawer makes them the one being placed.
+          await page.getByRole('button', { name: 'Bob', exact: true }).click();
+          await expect(focal).toContainText('Bob');
+          await page
+            .getByRole('button', { name: 'Place Bob in Not close' })
+            .click();
+
+          // The next unplaced person follows.
+          await expect(focal).toContainText('Alice');
+          await page
+            .getByRole('button', { name: 'Place Alice in Very close' })
+            .click();
+          await expect(focal).toHaveCount(0);
+          await expect(
+            page.getByTestId('bin-select-focus').getByRole('status'),
+          ).toHaveText('Everyone has been placed.');
+
+          const network = await protocol.getNetworkState(interview.interviewId);
+          const valueOf = (uid: string) =>
+            network?.nodes.find((n) => n[entityPrimaryKeyProperty] === uid)?.[
+              entityAttributesProperty
+            ][closenessVarId];
+          expect(valueOf('n-Alice')).toBe(3);
+          expect(valueOf('n-Bob')).toBe(1);
+        },
+      };
+    })(),
   ],
 };

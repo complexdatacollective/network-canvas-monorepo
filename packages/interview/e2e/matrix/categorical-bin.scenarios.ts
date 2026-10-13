@@ -1184,6 +1184,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page, interview, stage }) => {
+        expect(await interview.nextButtonHasPulse()).toBe(false);
         // Uncategorised nodes: forward navigation is blocked with the notice.
         await interview.nextButton.click();
         await expect(page.getByText(/must place every item/i)).toBeVisible();
@@ -1196,11 +1197,81 @@ export const categoricalBinScenarios: InterfaceScenarios = {
 
         // Every node placed: advancing succeeds.
         await stage.categoricalBin.dragNodeToBin('Jon', 'Work');
+        // Ready for the next stage once every node is placed.
+        expect(await interview.nextButtonHasPulse()).toBe(true);
         await interview.next();
         await expect(
           page.getByRole('heading', { name: 'All done' }),
         ).toBeVisible();
       },
     },
+    (() => {
+      // Tap to place (#1652): one person at a time, placed by tapping a bin.
+      let nameVarId = '';
+      let categoryVarId = '';
+      return {
+        id: 'select-mode-tap-to-place',
+        covers: ['behaviours', 'behaviours.interactionMode'],
+        seedNetwork: true,
+        build: () => {
+          const synth = new SyntheticInterview();
+          const personType = synth.addNodeType({ name: 'Person' });
+          const personName = personType.addVariable({
+            name: 'name',
+            type: 'text',
+          });
+          const categoryVar = personType.addVariable({
+            name: 'Category',
+            type: 'categorical',
+            options: [
+              { label: 'Family', value: 1 },
+              { label: 'Work', value: 2 },
+            ],
+          });
+          nameVarId = personName.id;
+          categoryVarId = categoryVar.id;
+
+          const stage = synth.addStage('CategoricalBin', {
+            subject: { entity: 'node', type: personType.id },
+            initialNodes: { count: 2 },
+            behaviours: { interactionMode: 'select' },
+          });
+          stage.addPrompt({ variable: categoryVar.id });
+
+          synth.setNodeAttribute(0, personName.id, 'Alice');
+          synth.setNodeAttribute(0, categoryVar.id, []);
+          synth.setNodeAttribute(1, personName.id, 'Bob');
+          synth.setNodeAttribute(1, categoryVar.id, []);
+          return synth;
+        },
+        run: async ({ page, interview, protocol }) => {
+          const focal = page.getByTestId('bin-select-focal-node');
+          await expect(focal).toContainText('Alice');
+
+          // Tapping a person in the drawer makes them the one being placed.
+          await page.getByRole('button', { name: 'Bob', exact: true }).click();
+          await expect(focal).toContainText('Bob');
+          await page.getByRole('button', { name: 'Place Bob in Work' }).click();
+
+          // The next unplaced person follows.
+          await expect(focal).toContainText('Alice');
+          await page
+            .getByRole('button', { name: 'Place Alice in Family' })
+            .click();
+          await expect(focal).toHaveCount(0);
+          await expect(
+            page.getByTestId('bin-select-focus').getByRole('status'),
+          ).toHaveText('Everyone has been placed.');
+
+          const state = await protocol.getNetworkState(interview.interviewId);
+          const answerOf = (name: string) =>
+            state!.nodes.find(
+              (n) => n[entityAttributesProperty][nameVarId] === name,
+            )![entityAttributesProperty][categoryVarId];
+          expect(answerOf('Alice')).toEqual([1]);
+          expect(answerOf('Bob')).toEqual([2]);
+        },
+      };
+    })(),
   ],
 };

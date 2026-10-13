@@ -129,7 +129,9 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
     }
 
     const nodeId = node[entityPrimaryKeyProperty];
-    const previousIndex = lastBinIndexRef.current.get(nodeId);
+    // Each prompt has its own variable, so a bin is only remembered per prompt.
+    const historyKey = `${prompt.id}:${nodeId}`;
+    const previousIndex = lastBinIndexRef.current.get(historyKey);
     if (previousIndex === undefined) {
       track('node_binned', {
         node_id: nodeId,
@@ -146,7 +148,7 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         interaction_mode: select ? 'select' : 'drag',
       });
     }
-    lastBinIndexRef.current.set(nodeId, index);
+    lastBinIndexRef.current.set(historyKey, index);
 
     void dispatch(
       updateNode({

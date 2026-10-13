@@ -1,12 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { useTrack } from '../analytics/useTrack';
 import { usePrompts } from '../components/Prompts/usePrompts';
-import useBeforeNext from './useBeforeNext';
 
 type Direction = 'forwards' | 'backwards';
 
@@ -39,26 +38,21 @@ export function useBinSelection({
 }) {
   const { promptIndex } = usePrompts();
 
-  // Records the direction of the navigation that crosses a prompt boundary so
-  // the prompt change can seed the focal person (#668).
-  const crossingDirection = useRef<Direction>('forwards');
-  useBeforeNext((direction) => {
-    crossingDirection.current = direction;
-    return true;
-  });
-
   const [selection, setSelection] = useState<Selection>({
     prompt: promptIndex,
     nodeId: null,
     entry: 'forwards',
   });
   // Seeded in the render that changes the prompt, so that no render shows the
-  // new prompt with the previous prompt's focal person.
+  // new prompt with the previous prompt's focal person. A lower prompt index
+  // means the participant went back. This reads the direction from the
+  // prompts rather than registering a beforeNext handler, whose presence
+  // alone changes when navigation is available.
   if (selection.prompt !== promptIndex) {
     setSelection({
       prompt: promptIndex,
       nodeId: null,
-      entry: crossingDirection.current,
+      entry: promptIndex < selection.prompt ? 'backwards' : 'forwards',
     });
   }
 

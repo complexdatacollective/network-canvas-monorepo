@@ -543,6 +543,7 @@ export type AddStageInput = {
     requireCompletePlacement?: boolean;
     minNodes?: number;
     maxNodes?: number;
+    interactionMode?: 'drag' | 'select';
   };
   form?: {
     title?: TextInput;
