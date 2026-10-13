@@ -1,5 +1,38 @@
 # @codaco/interviewer
 
+## 8.4.0
+
+### New features
+
+- **Seven new languages.** Interviewer is now available in Brazilian Portuguese, Dutch, French, German, Italian, Simplified Chinese and Traditional Chinese, as well as English and Spanish. Pick one from the language setting, which now has a search box, or let Interviewer follow your browser's language. The interview controls participants see are translated too; a protocol's own text stays in the language it was written in.
+- **Faster start.** Interviewer opens with about 4 MB less to load. It downloads only the language you use, and the sample protocol and synthetic data generator load only when you use them. The installed app still works fully offline, with every language included.
+
+### Interview changes
+
+These improvements to the interview are shared with Architect's Preview and Fresco.
+
+- **Passphrase-protected answers.** For studies that protect answers with a passphrase, protected answers are no longer lost or saved in a way that can't be read back, and participants are told when an answer wasn't saved so they can try again. Once some answers are protected, a passphrase that can't read them is turned away with a message, so a typo can't start protecting new answers with a different passphrase. The passphrase button is now available on phones and portrait screens.
+- **Family pedigree.** Complex families now draw correctly, including half-siblings, step-parents, chains of partnerships and children whose parents aren't a couple. A participant's chosen terms are kept when the pedigree is reopened, and the "finalized" notice no longer hides the bottom of a tall pedigree.
+- **Network Composer.** Changes in the side panel are saved when the panel closes instead of being lost, and undo and redo now update the panel.
+- **Accessibility.** Screen readers name each person by the label on their node wherever the interview mentions them.
+
+### Data, security and privacy
+
+- **Exports.** CSV and GraphML exports mark an answer as ENCRYPTED only when it was actually saved encrypted.
+- **Unreadable interviews.** An interview whose saved data can't be read now shows an error instead of loading forever, and is left untouched.
+- **Unlocking.** A value stored in the browser can no longer be used to skip the unlock step when opening an interview.
+- **Analytics.** Analytics no longer include protocol details such as codebook type names or validation messages, wait for the app's own analytics to load before reporting, and run only from code shipped with the app.
+
+### Bug fixes
+
+- Revoking the device lock, resetting the device, deleting synthetic sessions, unlocking with the recovery passphrase and setting up a PIN, passphrase or biometric unlock now wait until they're done and show an error if they fail.
+- Long ordinal bin labels are no longer cut off.
+- Names that couldn't be added on a name generator are no longer cleared.
+- Navigation buttons stay on screen on small phones and at larger text sizes.
+- Dropping a file onto a busy or disabled drop area no longer opens it in a new tab.
+- The hourly update check no longer reports false errors when offline or in Firefox.
+- Updated third-party libraries.
+
 ## 8.3.0
 
 ### Minor Changes
