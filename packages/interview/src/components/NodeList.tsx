@@ -42,6 +42,13 @@ type NodeListProps = Omit<CollectionProps<NcNode>, InternalCollectionProps> & {
   acceptsFilter?: (metadata: DragMetadata | undefined) => boolean;
   onDrop?: DropCallback;
   onItemClick?: (node: NcNode) => void;
+  /**
+   * False turns off drag and drop for the list entirely: its people cannot be
+   * dragged out and nothing can be dropped in.
+   */
+  dragAndDrop?: boolean;
+  /** A person shown as selected, such as the one a bin stage is placing. */
+  selectedItemId?: string;
   nodeSize?: 'xxs' | 'xs' | 'sm' | 'md' | 'lg';
   announcedName: string; // For accessibility announcements related to drag and drop
   testId?: string;
@@ -58,6 +65,8 @@ const NodeList = memo(
     acceptsFilter,
     onDrop,
     onItemClick,
+    dragAndDrop = true,
+    selectedItemId,
     nodeSize = 'md',
     testId,
     // Collection props with NodeList defaults
@@ -238,20 +247,33 @@ const NodeList = memo(
     );
 
     const defaultRenderItem = useCallback(
-      (node: NcNode, itemProps: ItemProps) => (
-        <Node
-          {...itemProps}
-          nodeId={node[entityPrimaryKeyProperty]}
-          type={node.type}
-          size={nodeSize}
-          // Wrapping an absent handler would still hand the node a function,
-          // which it reads as "this can be tapped" and answers with a pointer
-          // cursor and press feedback. A list whose nodes are only draggable
-          // must offer no click at all.
-          onClick={onItemClick ? () => onItemClick(node) : undefined}
-        />
-      ),
-      [nodeSize, onItemClick],
+      (node: NcNode, itemProps: ItemProps) => {
+        const selected =
+          selectedItemId !== undefined &&
+          node[entityPrimaryKeyProperty] === selectedItemId;
+        return (
+          <Node
+            {...itemProps}
+            // The list does no selecting of its own, so it says which item the
+            // host has picked out: an option cannot announce `aria-pressed`.
+            aria-selected={
+              selectedItemId === undefined
+                ? itemProps['aria-selected']
+                : selected
+            }
+            nodeId={node[entityPrimaryKeyProperty]}
+            type={node.type}
+            size={nodeSize}
+            selected={selected}
+            // Wrapping an absent handler would still hand the node a function,
+            // which it reads as "this can be tapped" and answers with a pointer
+            // cursor and press feedback. A list whose nodes are only draggable
+            // must offer no click at all.
+            onClick={onItemClick ? () => onItemClick(node) : undefined}
+          />
+        );
+      },
+      [nodeSize, onItemClick, selectedItemId],
     );
 
     const [animationComplete, setAnimationComplete] = useState(false);
@@ -278,7 +300,7 @@ const NodeList = memo(
             textValueExtractor={typeahead.textOf}
             layout={layout}
             renderItem={renderItemOverride ?? defaultRenderItem}
-            dragAndDropHooks={dragAndDropHooks}
+            dragAndDropHooks={dragAndDrop ? dragAndDropHooks : undefined}
             className={containerClasses}
             animate={animate}
             animationKey={displayAnimationKey}
