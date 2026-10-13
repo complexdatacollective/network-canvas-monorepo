@@ -1961,6 +1961,30 @@ test('the Version Packages merge check refuses a publish npm cannot make', () =>
   );
 });
 
+test('the Version Packages merge check refuses generated app release notes', () => {
+  const freshnessJob = job('version-packages-freshness');
+  assert.ok(freshnessJob, 'version-packages-freshness job exists');
+  const step = parsedWorkflow.jobs['version-packages-freshness'].steps.find(
+    ({ name }) =>
+      name ===
+      'Refuse a release PR whose app release notes are still generated',
+  );
+  assert.ok(step, 'the release-notes step exists');
+  assert.equal(step.if, "steps.head.outputs.release_pr == 'true'");
+  // The base is the tree the release merges into in both modes; a merge-group
+  // entry's first parent can be an earlier entry that already carries the
+  // release, which would hide every version bump from the check.
+  assert.equal(
+    step.env?.BASE_SHA,
+    '${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}',
+  );
+  assert.match(step.run, /git fetch --no-tags --depth=1 origin "\$BASE_SHA"/);
+  assert.match(
+    step.run,
+    /node scripts\/release\/check-app-release-notes\.mjs --base "\$BASE_SHA"/,
+  );
+});
+
 // ── The Studio deployment stack (#1909) ───────────────────────────────────
 //
 // `apps/studio/stack-test` is four bash scripts and a directory of Compose
