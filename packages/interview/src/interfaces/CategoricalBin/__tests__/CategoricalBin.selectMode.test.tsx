@@ -342,18 +342,19 @@ describe('CategoricalBin in select mode (#1652)', () => {
       expect(document.querySelector('[aria-grabbed]') !== null).toBe(present);
 
       startDragOf(getDndStore, person('a', 'Ann'));
-      const canDrop = [0, 1, OTHER_BIN_INDEX].map(
-        (index) =>
-          getDndStore()
-            .getState()
-            .getDropTargetState(
-              getCatBinDropTargetId(STAGE_ID, PROMPT_ID, index),
-            )?.canDrop ?? false,
-      );
+      const canDrop = () =>
+        [0, 1, OTHER_BIN_INDEX].map(
+          (index) =>
+            getDndStore()
+              .getState()
+              .getDropTargetState(
+                getCatBinDropTargetId(STAGE_ID, PROMPT_ID, index),
+              )?.canDrop ?? false,
+        );
       if (present) {
-        await waitFor(() => expect(canDrop).toContain(true));
+        await waitFor(() => expect(canDrop()).toContain(true));
       } else {
-        expect(canDrop).toEqual([false, false, false]);
+        expect(canDrop()).toEqual([false, false, false]);
       }
     },
   );

@@ -313,9 +313,10 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
 
   const readOtherAnswer = async (node: NcNode, otherVariable: string) => {
     const stored = node[entityAttributesProperty][otherVariable];
-    if (!stageVariables[otherVariable]?.encrypted) {
-      return typeof stored === 'string' ? stored : undefined;
-    }
+    // A string is a plaintext answer even under an encrypted variable, such
+    // as one written by external data.
+    if (typeof stored === 'string') return stored;
+    if (!stageVariables[otherVariable]?.encrypted) return undefined;
     const encrypted = readEncryptedAttribute(
       node,
       otherVariable,
