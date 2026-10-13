@@ -135,6 +135,15 @@ function ProtocolFormFields({
  *                    shown (see `useProtectedFormValues`). Each is shown as
  *                    unavailable, and `toAttributePatch` leaves it as stored
  *                    unless the participant enters a new answer.
+ * @param precedingVariables - Variables the interface's own controls ask in
+ *                    the same form before these fields (Family Pedigree's
+ *                    name, gender identity and sex assigned at birth). The
+ *                    fields' text can show their answers as they are given,
+ *                    as validation allows.
+ * @param newEntityAttributes - What a new entity is created with besides the
+ *                    form's answers (a Name Generator prompt's additional
+ *                    attributes), which the fields' text can show while the
+ *                    entity is being created.
  */
 export default function useProtocolForm({
   fields,
@@ -145,6 +154,8 @@ export default function useProtocolForm({
   currentEntityId,
   formValueAliases,
   unavailableVariables = NO_VARIABLES,
+  precedingVariables = NO_VARIABLES,
+  newEntityAttributes,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -154,6 +165,8 @@ export default function useProtocolForm({
   currentEntityId?: string;
   formValueAliases?: Readonly<Record<string, string>>;
   unavailableVariables?: readonly string[];
+  precedingVariables?: readonly string[];
+  newEntityAttributes?: Readonly<Record<string, unknown>>;
 }) {
   const stageValidationContext = useStageSelector(getValidationContext);
   const baseValidationContext =
@@ -284,8 +297,11 @@ export default function useProtocolForm({
 
   const dynamicValueSources = useDynamicValueSources();
   const formVariables = useMemo(
-    () => fieldsMetadata.map((field) => field.variable),
-    [fieldsMetadata],
+    () => [
+      ...precedingVariables,
+      ...fieldsMetadata.map((field) => field.variable),
+    ],
+    [precedingVariables, fieldsMetadata],
   );
 
   const renderedFields = (
@@ -314,6 +330,7 @@ export default function useProtocolForm({
       entityId={currentEntityId}
       initialValues={initialValues}
       variables={formVariables}
+      {...(newEntityAttributes !== undefined && { newEntityAttributes })}
       coerce={coerceValues}
     >
       {renderedFields}

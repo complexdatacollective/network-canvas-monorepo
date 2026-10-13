@@ -143,6 +143,8 @@ describe('resolveDynamicText', () => {
     expect(resolve(message, { age: 1 })?.text).toBe('1 year');
     expect(resolve(message, { age: 1200 })?.text).toBe('1,200 years');
     expect(resolve(message, { age: 1200 }, 'de')?.text).toBe('1.200 years');
+    // The version agrees with the number as it is shown, every digit of it.
+    expect(resolve(message, { age: 1.0001 })?.text).toBe('1.0001 years');
   });
 
   it('writes a stored date in the language, without a time zone shift', () => {
