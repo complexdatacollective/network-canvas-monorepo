@@ -602,6 +602,73 @@ describe("Shell participant's language choice", () => {
     expect(liveStore().getState().ui.localePreference).toBe('es');
   });
 
+  it('opens in a kept choice whose language is still loading only once both its texts can change together', async () => {
+    // French is not loaded yet, and loads only when the test lets it.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { load } = interviewCatalogSource;
+    const gated = (locale: string) =>
+      locale === 'fr' ? gate.then(() => load(locale)) : load(locale);
+    const loadSpy = vi
+      .spyOn(interviewCatalogSource, 'load')
+      .mockImplementation(gated);
+    const attemptSpy = vi
+      .spyOn(interviewCatalogSource, 'attempt')
+      .mockImplementation(gated);
+    try {
+      const french = makePayload('french-session');
+      const withFrench = {
+        ...french,
+        session: {
+          ...french.session,
+          localeOptions: [...localization.locales, 'fr'].map((locale) =>
+            getLocaleMetadata(locale),
+          ),
+        },
+        protocol: {
+          ...french.protocol,
+          localization: {
+            ...localization,
+            locales: [...localization.locales, 'fr'],
+          },
+          stages: [
+            {
+              ...french.protocol.stages[0]!,
+              title: { ...titles, fr: 'Question originale' },
+            },
+          ],
+        },
+      } satisfies InterviewPayload;
+      holdPreference('fr', 'french-session');
+
+      await act(async () => {
+        renderShell(withFrench);
+      });
+      // Neither language's text is on screen while French loads, so the
+      // protocol's French never shows beside English controls.
+      expect(
+        screen.queryByRole('heading', { name: 'Question originale' }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: nextStep.en }),
+      ).not.toBeInTheDocument();
+
+      await act(async () => release());
+      await expectVisibleHeading('Question originale');
+      const region = screen.getByRole('main');
+      expect(region).toHaveAttribute('lang', 'fr');
+      expect(
+        within(region).getByRole('button', { name: 'Étape suivante' }),
+      ).toBeVisible();
+      expect(observed.mounts).toBe(1);
+    } finally {
+      loadSpy.mockRestore();
+      attemptSpy.mockRestore();
+    }
+  });
+
   it('does not carry a choice into another interview', async () => {
     const first = renderShell();
     const user = userEvent.setup();

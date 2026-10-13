@@ -25,15 +25,23 @@ import {
  * a later change keeps the current language on screen until the new one is
  * ready. A language that cannot be loaded leaves English (or, after a change,
  * the current language) on screen and is reported as `useLocaleLoadFailure`.
+ *
+ * The exception is `restoredPreference`, a preference the host read back from
+ * storage after mounting: the interview is opening in it, not changing to
+ * it, so changing to it suspends again until its language has loaded. Text
+ * the interview words from the protocol then changes language in the same
+ * render as the built-in text, never ahead of it.
  */
 export function InterviewI18nProvider({
   requestedLocale,
   localePreference,
+  restoredPreference,
   catalog,
   children,
 }: {
   requestedLocale?: RequestedLocale;
   localePreference?: string | null;
+  restoredPreference?: string | null;
   catalog?: InterviewCatalog;
   children: ReactNode;
 }) {
@@ -41,7 +49,19 @@ export function InterviewI18nProvider({
     () => resolveInterviewLocale(requestedLocale, localePreference),
     [requestedLocale, localePreference],
   );
-  const rendered = useLocaleCatalog(interviewCatalogSource, locale, catalog);
+  const restored = useMemo(
+    () =>
+      restoredPreference == null
+        ? undefined
+        : resolveInterviewLocale(requestedLocale, restoredPreference),
+    [requestedLocale, restoredPreference],
+  );
+  const rendered = useLocaleCatalog(
+    interviewCatalogSource,
+    locale,
+    catalog,
+    restored,
+  );
   const direction = interviewLocales.find(
     (entry) => entry.locale === rendered.locale,
   )!.direction;
