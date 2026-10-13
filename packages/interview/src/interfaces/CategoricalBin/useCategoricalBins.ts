@@ -7,6 +7,7 @@ import type { Stage } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
 import { usePrompts } from '../../components/Prompts/usePrompts';
+import { markdownSource } from '../../dynamicValues/resolveDynamicText';
 import useSortedNodeList, {
   useNodeSorter,
 } from '../../hooks/useSortedNodeList';
@@ -122,7 +123,7 @@ export function useCategoricalBins() {
     );
 
     bins.push({
-      label: resolve(otherOptionLabel).text,
+      label: markdownSource(resolve(otherOptionLabel)),
       nodes: sortBinNodes(otherNodes),
       value: null,
       isOther: true,

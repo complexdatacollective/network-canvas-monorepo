@@ -13,6 +13,7 @@ import {
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { ContentLocaleProvider } from '@codaco/fresco-ui/form/ContentLocale';
 import { messages as booleanFieldMessages } from '@codaco/fresco-ui/form/fields/Boolean';
+import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   type LocaleMetadata,
   type LocaleTag,
@@ -258,7 +259,8 @@ export function useResolveLocalizedString(): (
               localization,
               resolutionOrder,
             );
-            return format(option.locale, option.text);
+            // An option's label is markdown; a value is only ever text.
+            return getMarkdownLabelText(format(option.locale, option.text));
           },
           booleanWords: {
             yes: intl.formatMessage(booleanFieldMessages.yes),

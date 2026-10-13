@@ -29,6 +29,7 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { DynamicValueEntity } from '../../dynamicValues/DynamicValueScope';
+import { markdownSource } from '../../dynamicValues/resolveDynamicText';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import useStageValidation from '../../hooks/useStageValidation';
@@ -162,7 +163,7 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
 
   const richSelectOptions: RichSelectOption[] = [
     ...realOptions,
-    { value: declineValue, label: resolve(negativeLabel).text },
+    { value: declineValue, label: markdownSource(resolve(negativeLabel)) },
   ];
 
   const pair =

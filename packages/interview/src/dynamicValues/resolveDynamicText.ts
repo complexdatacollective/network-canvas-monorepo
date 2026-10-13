@@ -14,6 +14,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import type { ContentFormat } from '../localization/contentFormat';
+import { readOwnProperty } from '../utils/ownProperty';
 
 /**
  * Everything a stage's text can show at one place in the interview: the
@@ -79,9 +80,19 @@ const resolveDynamicValue = (
       ? { missing: true }
       : { missing: false, value, intrinsic: parsed.name };
   }
-  const value = sources.attributes[parsed.role]?.[parsed.variableId];
+  // Attribute ids come from the protocol and may name a member every object
+  // inherits (`constructor`, `__proto__`), so only an own value counts.
+  const attributes = sources.attributes[parsed.role];
+  const value =
+    attributes === undefined
+      ? undefined
+      : readOwnProperty(attributes, parsed.variableId);
   if (isMissing(value)) return { missing: true };
-  const variable = sources.variablesFor(parsed.role)?.[parsed.variableId];
+  const variables = sources.variablesFor(parsed.role);
+  const variable =
+    variables === undefined
+      ? undefined
+      : readOwnProperty(variables, parsed.variableId);
   const matched = caseOf(binding, value);
   return {
     missing: false,
@@ -286,3 +297,40 @@ export const resolveDynamicText = (
       .join(''),
   };
 };
+
+// Every ASCII punctuation character, each of which CommonMark lets a
+// backslash make literal.
+const MARKDOWN_PUNCTUATION = /[!-/:-@[-`{-~]/g;
+
+// GFM turns a bare `www.`, `http://` or email address into a link after
+// parsing, escapes or not. An invisible word joiner after `www`, a colon or
+// an `@` keeps each from matching without changing what is shown.
+const WORD_JOINER = '\u2060';
+const AUTOLINK_TRIGGERS = /www(?=\.)|[:@]/gi;
+
+/** A value as markdown that renders as exactly its text. */
+const literalMarkdown = (value: string): string =>
+  value
+    // A value on a line of its own could start a block (a heading, a list,
+    // indented code), so its whitespace is collapsed.
+    .replace(/\s+/g, ' ')
+    .replace(AUTOLINK_TRIGGERS, `$&${WORD_JOINER}`)
+    .replace(MARKDOWN_PUNCTUATION, '\\$&');
+
+/**
+ * Text that renders as markdown, for a consumer that takes a markdown string
+ * rather than the parts: the researcher's markdown as written, and each value
+ * written so that markdown, HTML or a link in it is shown as typed. Values
+ * are not marked out there. Text without values is returned as it is.
+ */
+export const markdownSource = ({
+  text,
+  parts,
+}: Readonly<{ text: string; parts?: readonly DynamicTextPart[] }>): string =>
+  parts === undefined
+    ? text
+    : parts
+        .map((part) =>
+          typeof part === 'string' ? part : literalMarkdown(part.text),
+        )
+        .join('');

@@ -18,6 +18,7 @@ import {
 } from '@codaco/shared-consts';
 
 import type { RootState } from '../store/store';
+import { readOwnProperty, writeOwnProperty } from '../utils/ownProperty';
 import { DynamicValueEntity } from './DynamicValueScope';
 
 const NO_ATTRIBUTES: Readonly<Record<string, unknown>> = {};
@@ -86,6 +87,8 @@ export function FormDynamicValues({
 
   const attributes = useMemo(() => {
     if (!describesStageSubject || formSubject == null) return {};
+    // Attribute ids come from the protocol and may be `__proto__`, so every
+    // key is written as the record's own.
     const merged: Record<string, unknown> = {
       ...stored,
       ...initialValues,
@@ -93,14 +96,18 @@ export function FormDynamicValues({
     const answers: Record<string, FieldValue> = {};
     const cleared: string[] = [];
     for (const variable of variables) {
-      if (!answered[variable]) continue;
-      const answer = live[variable];
+      if (readOwnProperty(answered, variable) !== true) continue;
+      const answer = readOwnProperty(live, variable);
       if (answer === undefined) cleared.push(variable);
-      else answers[variable] = answer;
+      else writeOwnProperty(answers, variable, answer);
     }
-    Object.assign(merged, coerce(answers));
+    for (const [variable, value] of Object.entries(coerce(answers))) {
+      writeOwnProperty(merged, variable, value);
+    }
     // An answer the participant has emptied is missing, not what is stored.
-    for (const variable of cleared) merged[variable] = undefined;
+    for (const variable of cleared) {
+      writeOwnProperty(merged, variable, undefined);
+    }
     return { [ROLES[formSubject.entity]]: merged };
   }, [
     describesStageSubject,

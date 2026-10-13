@@ -30,6 +30,7 @@ import {
   DynamicMarkdown,
   DynamicTextParts,
 } from '../dynamicValues/DynamicText';
+import { markdownSource } from '../dynamicValues/resolveDynamicText';
 import {
   type ResolvedProtocolText,
   useResolveLocalizedString,
@@ -196,10 +197,10 @@ export default function ProtocolField({
   if (component === 'VisualAnalogScale' && field.parameters) {
     const { minLabel, maxLabel } = field.parameters;
     if (isLocalizedString(minLabel)) {
-      props.minLabel = resolve(minLabel).text;
+      props.minLabel = markdownSource(resolve(minLabel));
     }
     if (isLocalizedString(maxLabel)) {
-      props.maxLabel = resolve(maxLabel).text;
+      props.maxLabel = markdownSource(resolve(maxLabel));
     }
   }
 

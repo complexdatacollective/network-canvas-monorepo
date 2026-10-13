@@ -314,4 +314,39 @@ describe('dynamic values in a stage’s text', () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it('shows an option’s label as the text its markdown reads', async () => {
+    const payload = makePayload({});
+    payload.protocol.stages = [
+      {
+        ...information,
+        dynamicValues: {
+          ...information.dynamicValues,
+          colour: { path: 'ego.colour' },
+        },
+        title: {
+          en: '{colour, select, missing {No colour} other {Favourite: {colour}}}',
+        },
+      },
+      finishStage,
+    ] as InterviewPayload['protocol']['stages'];
+    payload.protocol.codebook.ego = {
+      variables: {
+        ...payload.protocol.codebook.ego?.variables,
+        colour: {
+          name: 'colour',
+          label: 'Colour',
+          type: 'categorical',
+          options: [{ label: { en: '**Deep** _red_' }, value: 'red' }],
+        },
+      },
+    } as InterviewPayload['protocol']['codebook']['ego'];
+    payload.session.network.ego[entityAttributesProperty] = {
+      colour: ['red'],
+    };
+    renderShell(payload);
+
+    const heading = await screen.findByRole('heading', { level: 1 });
+    expect(heading).toHaveTextContent('Favourite: Deep red');
+  });
 });

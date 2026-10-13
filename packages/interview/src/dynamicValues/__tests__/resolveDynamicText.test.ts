@@ -1,5 +1,11 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
+import {
+  getMarkdownLabelText,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import type {
   DynamicValues,
   LocalizedString,
@@ -10,6 +16,7 @@ import { contentFormatFor } from '../../localization/contentFormat';
 import {
   type DynamicValueFormatters,
   type DynamicValueSources,
+  markdownSource,
   resolveDynamicText,
 } from '../resolveDynamicText';
 
@@ -176,5 +183,58 @@ describe('resolveDynamicText', () => {
     expect(resolve(GREETING, { name: "{name} '{x}' #" })?.text).toBe(
       "Hello, {name} '{x}' #!",
     );
+  });
+
+  it('reads only an attribute’s own value, never an inherited member', () => {
+    const bindings: DynamicValues = {
+      ...BINDINGS,
+      inherited: { path: 'ego.constructor' },
+      proto: { path: 'ego.__proto__' },
+    };
+    const message = (name: string) =>
+      `{${name}, select, missing {Missing} other {Got {${name}}}}`;
+    expect(resolve(message('inherited'), {}, 'en', { bindings })?.text).toBe(
+      'Missing',
+    );
+    expect(resolve(message('proto'), {}, 'en', { bindings })?.text).toBe(
+      'Missing',
+    );
+
+    const ego: Record<string, unknown> = {};
+    Object.defineProperty(ego, '__proto__', {
+      enumerable: true,
+      value: 'Ada',
+    });
+    expect(resolve(message('proto'), ego, 'en', { bindings })?.text).toBe(
+      'Got Ada',
+    );
+  });
+});
+
+describe('markdownSource', () => {
+  const HOSTILE =
+    '**bold** [link](https://example.com) <img src=x> www.example.com ada@example.com\n\n# Heading\n    code';
+
+  it('keeps the researcher’s markdown and shows a value as typed', () => {
+    const source = markdownSource({
+      text: '',
+      parts: ['**Decline** for ', { name: 'name', text: HOSTILE }, '.'],
+    });
+    const html = renderToStaticMarkup(
+      createElement(RenderMarkdown, null, source),
+    );
+    expect(html).toContain('<strong>Decline</strong>');
+    expect(html.match(/<strong>/g)).toHaveLength(1);
+    for (const element of ['<a', '<img', '<h1', '<pre', '<code']) {
+      expect(html).not.toContain(element);
+    }
+    // Word joiners keep autolinks from forming; they are not seen.
+    expect(getMarkdownLabelText(source).replaceAll('\u2060', '')).toBe(
+      `Decline for ${HOSTILE.replace(/\s+/g, ' ')}.`,
+    );
+  });
+
+  it('leaves text without values as it is', () => {
+    expect(markdownSource({ text: '**Decline**' })).toBe('**Decline**');
   });
 });
