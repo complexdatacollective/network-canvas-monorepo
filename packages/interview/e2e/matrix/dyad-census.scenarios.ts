@@ -518,7 +518,6 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         const personName = nodeType.addVariable({ name: 'name', type: 'text' });
         const stage = synth.addStage('DyadCensus', {
           subject: { entity: 'node', type: nodeType.id },
-          introductionPanel: { title: 'Intro', text: 'Intro copy' },
         });
         stage.stageEntry.dynamicValues = {
           first: { path: `dyad.source.${personName.id}` },
@@ -539,10 +538,7 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page }) => {
-        const dc = new DyadCensusFixture(page);
-        await dc.dismissIntro();
-
-        // The prompt names the pair on screen, each name marked out.
+        // The stage opens on its first pair. The prompt names the pair on screen, each name marked out.
         const values = page.locator('[data-dynamic-value]');
         await expect(values).toHaveCount(2);
         // The visible names, without the screen-reader announcement.
