@@ -320,33 +320,42 @@ export default function useProtocolForm({
   const showsDynamicValues =
     dynamicValueSources !== null &&
     Object.keys(dynamicValueSources.bindings).length > 0;
-  const fieldsWithValues = showsDynamicValues ? (
-    <FormDynamicValues
-      formSubject={
-        subjectToStageSubject(stableSubject) ??
-        stageValidationContext.stageSubject
-      }
-      stageSubject={stageValidationContext.stageSubject}
-      entityId={currentEntityId}
-      initialValues={initialValues}
-      variables={formVariables}
-      {...(newEntityAttributes !== undefined && { newEntityAttributes })}
-      coerce={coerceValues}
-    >
-      {renderedFields}
-    </FormDynamicValues>
-  ) : (
-    renderedFields
-  );
+  const inFormScope = (children: ReactNode): ReactNode => {
+    const scoped = showsDynamicValues ? (
+      <FormDynamicValues
+        formSubject={
+          subjectToStageSubject(stableSubject) ??
+          stageValidationContext.stageSubject
+        }
+        stageSubject={stageValidationContext.stageSubject}
+        entityId={currentEntityId}
+        initialValues={initialValues}
+        variables={formVariables}
+        {...(newEntityAttributes !== undefined && { newEntityAttributes })}
+        coerce={coerceValues}
+      >
+        {children}
+      </FormDynamicValues>
+    ) : (
+      children
+    );
+    return namespace ? (
+      <FieldNamespace prefix={namespace}>{scoped}</FieldNamespace>
+    ) : (
+      scoped
+    );
+  };
 
-  const fieldComponents: ReactNode = namespace ? (
-    <FieldNamespace prefix={namespace}>{fieldsWithValues}</FieldNamespace>
-  ) : (
-    fieldsWithValues
-  );
+  const fieldComponents: ReactNode = inFormScope(renderedFields);
 
   return {
     fieldComponents,
+    /**
+     * Puts other text about the form (an Ego Form's title) in the same scope
+     * as its fields, so it shows the participant's answers as they are given.
+     * Must be rendered inside the form's store.
+     */
+    withFormValues: inFormScope,
     coerceValues,
     toAttributePatch,
     componentByVariable,
