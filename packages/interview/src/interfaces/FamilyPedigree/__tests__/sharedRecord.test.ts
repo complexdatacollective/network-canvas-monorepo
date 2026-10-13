@@ -125,6 +125,22 @@ describe('readSharedFamilyRecord', () => {
     expect(record.generatedLabels).toEqual({ a: 'f0' });
   });
 
+  test('keeps the label of a person whose id is __proto__ as its own entry', () => {
+    const record = readSharedFamilyRecord(
+      {
+        0: {
+          standIns: ['__proto__'],
+          generatedLabels: Object.fromEntries([['__proto__', 'f0']]),
+        },
+      },
+      both([0]),
+    );
+    expect(Object.hasOwn(record.generatedLabels, '__proto__')).toBe(true);
+    expect(Object.getPrototypeOf(record.generatedLabels)).toBe(
+      Object.prototype,
+    );
+  });
+
   test('ignores records of other kinds', () => {
     expect(
       readSharedFamilyRecord({ 0: [[0, 'a', 'b', true]] }, both([0])),

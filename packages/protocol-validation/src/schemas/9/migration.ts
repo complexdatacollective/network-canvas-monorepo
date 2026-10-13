@@ -278,8 +278,11 @@ const optionValueRewrites = (
     if (typeof value !== 'string' && typeof value !== 'number') return;
     // A value repeated exactly is one value, already rewritten.
     if (rewrites.has(value)) return;
-    let name = named[index];
-    if (typeof name !== 'string' && typeof name !== 'number') {
+    const given = named[index];
+    let name: OptionValue;
+    if (typeof given === 'string' || typeof given === 'number') {
+      name = given;
+    } else {
       const option = options[index];
       // A schema 8 label is text; a document already in schema 9 form has
       // its label localized, and its first translation names it.

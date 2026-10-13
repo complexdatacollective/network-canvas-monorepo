@@ -10,6 +10,7 @@ import {
   type EntityAttributesProperty,
   entityAttributesProperty,
   type NcNode,
+  normalizeCodebookName,
 } from '@codaco/shared-consts';
 
 /**
@@ -173,27 +174,51 @@ const getUniqueAttributeKeys = (
     return [...attributeKeys, ...novelVariables];
   }, []);
 
+type AttributeValue = NcNode[EntityAttributesProperty][string];
+
 /**
- * The codebook's own option value for the text found in a `<variable>_<option>`
- * column header. The header only has the option as text, so reading it back
- * through JSON.parse would turn an option named `null` or `"x"` into something
- * else; the codebook knows whether the value is a string, number or boolean.
- * Compared in NFC so a header spelled decomposed still finds the option.
+ * Option text as schema 9 names an option value: control characters become
+ * spaces, then the text is trimmed and put in canonical form. The schema 9
+ * migration renames option values this way, but leaves roster files as they
+ * were, so a roster still spelling `"Yes "` finds the option now named
+ * `"Yes"`.
+ */
+const asOptionName = (text: string) =>
+  normalizeCodebookName(
+    text.toWellFormed().replace(/[\p{Cc}\uFFFE\uFFFF]/gu, ' '),
+  );
+
+/**
+ * The codebook's own option value for option text found in a roster: a
+ * `<variable>_<option>` column header, or a value in a categorical or ordinal
+ * cell. A header only has the option as text, so reading it back through
+ * JSON.parse would turn an option named `null` or `"x"` into something else;
+ * the codebook knows whether the value is a string, number or boolean.
+ * Compared in NFC so a header spelled decomposed still finds the option, and
+ * then as an option name, so text an option was renamed from still finds it.
+ * Text that names no option is kept as it is.
  */
 const resolveCategoricalOption = (
   variable: ReturnType<typeof getCodebookVariable>,
-  optionText: string,
+  optionText: unknown,
 ) => {
-  if (variable?.type !== 'categorical') {
+  if (
+    (variable?.type !== 'categorical' && variable?.type !== 'ordinal') ||
+    typeof optionText !== 'string'
+  ) {
     return optionText;
   }
 
   const target = optionText.normalize('NFC');
+  const exact = variable.options.find(
+    (option) => String(option.value).normalize('NFC') === target,
+  );
+  if (exact) return exact.value;
 
+  const name = asOptionName(optionText);
   return (
-    variable.options.find(
-      (option) => String(option.value).normalize('NFC') === target,
-    )?.value ?? optionText
+    variable.options.find((option) => String(option.value) === name)?.value ??
+    optionText
   );
 };
 
@@ -250,22 +275,25 @@ const getNodeListUsingTypes = (
           case VariableTypes.categorical:
           case VariableTypes.ordinal:
           case VariableTypes.layout: {
+            let value: unknown;
             try {
-              const value = JSON.parse(attributeValue as string) as {
-                x: number;
-                y: number;
-              };
-
-              return {
-                ...consolidatedAttributes,
-                [attributeKey]: value,
-              };
+              value = JSON.parse(attributeValue as string);
             } catch {
-              return {
-                ...consolidatedAttributes,
-                [attributeKey]: attributeValue,
-              };
+              value = attributeValue;
             }
+            const variable = getCodebookVariable(
+              codebookDefinition,
+              attributeKey,
+            );
+            const resolve = (item: unknown) =>
+              resolveCategoricalOption(variable, item);
+
+            return {
+              ...consolidatedAttributes,
+              [attributeKey]: (Array.isArray(value)
+                ? value.map(resolve)
+                : resolve(value)) as AttributeValue,
+            };
           }
           // Handle column names with _x and _y suffixes, indicating this is a file we created
           case `${VariableTypes.layout}_x`: {
@@ -300,7 +328,10 @@ const getNodeListUsingTypes = (
               const previous = getOwn(consolidatedAttributes, uuid);
               return {
                 ...consolidatedAttributes,
-                [uuid]: [...(Array.isArray(previous) ? previous : []), option],
+                [uuid]: [
+                  ...(Array.isArray(previous) ? previous : []),
+                  option,
+                ] as AttributeValue,
               };
             }
             return consolidatedAttributes;

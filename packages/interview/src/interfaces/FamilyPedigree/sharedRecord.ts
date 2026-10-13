@@ -106,14 +106,21 @@ export function readSharedFamilyRecord(
     const entry = stageMetadata?.[step];
     return isFamilyPedigreeStageMetadata(entry) ? entry : undefined;
   };
-  const generatedLabels: Record<string, string> = {};
+  // Merged through a Map: assigning into a plain object would hand a
+  // person whose id is `__proto__` to the prototype setter.
+  const generatedLabels = new Map<string, string>();
   for (const step of sharing.generatedLabels) {
-    Object.assign(generatedLabels, entryAt(step)?.generatedLabels);
+    for (const entry of Object.entries(entryAt(step)?.generatedLabels ?? {})) {
+      generatedLabels.set(...entry);
+    }
   }
   const standIns = new Set(
     sharing.standIns.flatMap((step) => entryAt(step)?.standIns ?? []),
   );
-  return { generatedLabels, standIns: [...standIns] };
+  return {
+    generatedLabels: Object.fromEntries(generatedLabels),
+    standIns: [...standIns],
+  };
 }
 
 const EMPTY: SharedFamilyRecord = { generatedLabels: {}, standIns: [] };
