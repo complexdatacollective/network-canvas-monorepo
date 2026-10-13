@@ -24,11 +24,18 @@ services:
       timeout: 5s
       retries: 15
 
+  egress-client:
+    image: curlimages/curl:8.16.0@sha256:463eaf6072688fe96ac64fa623fe73e1dbe25d8ad6c34404a669ad3ce1f104b6
+    entrypoint: ['sleep', 'infinity']
+    user: root
+    <<: *egress-dns
+    volumes:
+      - ./stack-test/.work:${EGRESS_WORK_DIR}
+    depends_on: *egress-ready
+
   traefik:
     <<: *egress-dns
-    networks:
-      - default
-      - edge
+    ports: !reset []
     depends_on: *egress-ready
 
   web:
@@ -59,11 +66,6 @@ services:
     <<: *egress-dns
     depends_on: *egress-ready
 
-  mailpit:
-    <<: *egress-dns
-    depends_on: *egress-ready
-
 networks:
   default:
     internal: true
-  edge: {}

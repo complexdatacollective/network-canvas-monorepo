@@ -183,6 +183,7 @@ SMTP_URL=$SMTP_URL
 EMAIL_FROM=$EMAIL_FROM
 STUDIO_TELEMETRY=$STUDIO_TELEMETRY
 EGRESS_SINK_ADDRESS=$EGRESS_SINK_ADDRESS
+EGRESS_WORK_DIR=$WORK_DIR
 # Read only by variants/external-bucket.yml, whose stub is a second Garage
 # with secrets of its own.
 EXTERNAL_GARAGE_RPC_SECRET=$(hex 32)
@@ -332,7 +333,7 @@ fi
 say "waiting for $url/readyz"
 streak=0
 for attempt in $(seq 1 120); do
-  code="$(curl -k -s -o /dev/null -w '%{http_code}' --max-time 5 "$url/readyz" || true)"
+  code="$(ingress_curl -k -s -o /dev/null -w '%{http_code}' --max-time 5 "$url/readyz" || true)"
   if [ "$code" = "200" ]; then
     streak=$((streak + 1))
     if [ "$streak" -ge "$needed" ]; then

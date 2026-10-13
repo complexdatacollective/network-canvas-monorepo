@@ -43,7 +43,7 @@ request() {
   local body_file="$WORK_DIR/.response-body" header_file="$WORK_DIR/.response-headers"
   # `|| true`: a connection that never completes is a `000` this suite reports
   # as the status it saw, not an abort that hides which assertion was running.
-  STATUS="$(curl -k -s -o "$body_file" -D "$header_file" -w '%{http_code}' \
+  STATUS="$(ingress_curl -k -s -o "$body_file" -D "$header_file" -w '%{http_code}' \
     --max-time 30 "$@" || true)"
   BODY="$(cat "$body_file")"
   CONTENT_TYPE="$(tr -d '\r' < "$header_file" \

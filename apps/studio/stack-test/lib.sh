@@ -121,27 +121,36 @@ egress_variant() {
 # One Compose project: the project name, the files and the environment file,
 # fixed here so no caller can name some of them and not the others.
 #
-# `docker-compose.local.yml` is applied to every variant and is not optional:
+# `docker-compose.local.yml` is applied to every variant but the egress ones and
+# is not optional for the rest:
 # it is what points Traefik at a certificate authority that does not answer, so
 # the stack serves its own self-signed certificate rather than asking Let's
 # Encrypt for `localhost`. Restating its Traefik command list here would be a
 # second copy of the production flag list to keep in step.
 compose() {
-  local overrides=(-f "$(variant_file "$VARIANT")")
+  local files=(-f "$STUDIO_DIR/docker-compose.yml")
+  if egress_variant; then
+    files+=(-f "$(variant_file "$VARIANT")" -f "$STACK_TEST_DIR/egress.yml")
+  else
+    files+=(-f "$STUDIO_DIR/docker-compose.local.yml" -f "$(variant_file "$VARIANT")")
+  fi
   if [ "$VARIANT" = "two-api" ]; then
     write_two_api_override
-    overrides+=(-f "$TWO_API_OVERRIDE")
-  fi
-  if egress_variant; then
-    overrides+=(-f "$STACK_TEST_DIR/egress.yml")
+    files+=(-f "$TWO_API_OVERRIDE")
   fi
   docker compose \
     -p "$PROJECT" \
     --env-file "$ENV_FILE" \
-    -f "$STUDIO_DIR/docker-compose.yml" \
-    -f "$STUDIO_DIR/docker-compose.local.yml" \
-    "${overrides[@]}" \
+    "${files[@]}" \
     "$@"
+}
+
+ingress_curl() {
+  if egress_variant; then
+    compose exec -T egress-client curl --connect-to "$HOSTNAME_:443:traefik:443" "$@"
+  else
+    curl "$@"
+  fi
 }
 
 # The Compose services that serve the API behind the ingress: `api`, and for

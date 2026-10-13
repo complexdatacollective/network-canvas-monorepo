@@ -14,6 +14,7 @@ OWNER_PASSWORD="stack-test-not-for-production"
 INVITEE_EMAIL="invitee@stack-test.invalid"
 TELEMETRY_HOST="us.i.posthog.com"
 UPDATE_HOST="releases.networkcanvas.com"
+ACME_HOST="acme-v02.api.letsencrypt.org"
 CANARY_HOST="canary.egress-sink.test"
 OBSERVATION_SECONDS=60
 CAPTURE="$WORK_DIR/$VARIANT-egress.jsonl"
@@ -65,10 +66,14 @@ echo "[stack-test] proving what leaves the machine for variant '$VARIANT' throug
 
 section 'the sink'
 seen_within 'the egress sink is listening' '"kind":"ready"' 30
-egress_network_internal="$(docker network inspect -f '{{.Internal}}' "${PROJECT}_default")"
-equals "the stack's network has no route off the machine" true "$egress_network_internal"
-for container in $(docker ps -q --filter "label=com.docker.compose.project=$PROJECT"); do
+containers="$(docker ps -q --filter "label=com.docker.compose.project=$PROJECT")"
+differs 'the stack is running' '' "$containers"
+for container in $containers; do
   service="$(docker inspect -f '{{index .Config.Labels "com.docker.compose.service"}}' "$container")"
+  for network in $(docker inspect -f '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' "$container"); do
+    internal="$(docker network inspect -f '{{.Internal}}' "$network")"
+    equals "$service is on $network, which has no route off the machine" true "$internal"
+  done
   [ "$service" = egress-sink ] && continue
   resolvers="$(docker inspect -f '{{range .HostConfig.Dns}}{{.}} {{end}}' "$container" | sed 's/ *$//')"
   equals "$service resolves names off the machine through the sink" "$EGRESS_SINK_ADDRESS" "$resolvers"
@@ -155,6 +160,7 @@ contacted="$(printf '%s\n%s\n' "$(dns_names)" "$(named_connections)" | grep -v '
 say "hosts contacted: $(printf '%s' "$contacted" | tr '\n' ' ')"
 contains 'the update-check host was contacted' "$UPDATE_HOST" "$contacted"
 contains 'the SMTP host was contacted' "$EGRESS_SMTP_HOST" "$contacted"
+contains 'the ACME host was contacted' "$ACME_HOST" "$contacted"
 unlisted="$(printf '%s\n' "$contacted" | grep -vxF -f <(printf '%s\n' "$allowed") || true)"
 equals 'every host contacted is in outbound-hosts.txt or is the SMTP host' '' "$unlisted"
 unnamed="$(grep -c '"sni":null' "$CAPTURE" || true)"

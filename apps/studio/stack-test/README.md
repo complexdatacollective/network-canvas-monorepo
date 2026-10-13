@@ -227,16 +227,19 @@ and the same with `telemetry-on`. This is #1897's proof that a running stack
 contacts nothing outside
 [`docs/self-host/outbound-hosts.txt`](../docs/self-host/outbound-hosts.txt).
 
-**Nothing can leave except through the sink.** Both variants apply
-`egress.yml` over the reference stack. It makes the stack's own network
-internal, so no container on it has a route off the machine. Traefik alone
-joins a second, ordinary network, because a published port needs one. Every
-service, Traefik included, is given the sink as its DNS server. Docker still
-answers the stack's own service names itself and forwards every other name to
-the sink, which records it and answers with its own address. So a lookup of
-any host outside the stack reaches the sink and is recorded, and a connection
-to an address, with no lookup first, has no route at all. The sink runs on the
-`studio-api` image, so it needs no image of its own.
+**Nothing can leave except through the sink.** Both variants run the
+production `docker-compose.yml` with `egress.yml` over it, and without
+`docker-compose.local.yml`, so Traefik asks Let's Encrypt for its certificate
+exactly as a deployment does. `egress.yml` makes the stack's only network
+internal and publishes no port, so no container has a route off the machine;
+requests reach Traefik from `egress-client`, a curl container on that same
+network, through `ingress_curl` in `lib.sh`. Every service is given the sink as
+its DNS server. Docker still answers the stack's own service names itself and
+forwards every other name to the sink, which records it and answers with its
+own address. So a lookup of any host outside the stack reaches the sink and is
+recorded, and a connection to an address, with no lookup first, has no route
+at all. The sink runs on the `studio-api` image, so it needs no image of its
+own.
 
 **The sink stands in for every host Studio contacts.** It records each DNS
 question, the server name in each TLS ClientHello on 443, the `Host` of each
@@ -245,8 +248,8 @@ completes a TLS handshake, so nothing Studio sends over HTTPS is read, and the
 real hosts are never contacted. `SMTP_URL` names `smtp.egress-sink.test`, which
 the sink answers like any other name.
 
-**What `egress.sh` does.** After checking that the network is internal and
-that every service resolves through the sink, it completes first-run setup,
+**What `egress.sh` does.** After checking that every container is attached
+only to internal networks and that every service resolves through the sink, it completes first-run setup,
 signs the owner in with a password, invites a member, creates a protocol,
 takes a section's lock and saves an edit. Then it waits for the invitation
 email to reach the sink and the `invitation-delivery` job to complete, and
@@ -262,9 +265,9 @@ nothing.
 **What it asserts.** Every host looked up or named in a connection is in
 `outbound-hosts.txt` or is the SMTP host. With telemetry off, no telemetry or
 analytics host was contacted. With telemetry on, `us.i.posthog.com` was, and
-it is the only telemetry or analytics host that was. The update-check host and
-the SMTP host must both have been contacted in both variants, so neither
-variant can pass by recording nothing. The capture is kept as
+it is the only telemetry or analytics host that was. The update-check host,
+the ACME host and the SMTP host must all have been contacted in both variants,
+so neither variant can pass by recording nothing. The capture is kept as
 `.work/<variant>-egress.jsonl`.
 
 ## Adding a variant
