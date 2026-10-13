@@ -184,8 +184,7 @@ The validator does **not** cross-check asset references, and a malformed `assetM
 
 Setup steps, instrument sources, and caveats belong **in the protocol** so they reach whoever
 opens it in Architect. Put them in a dedicated `Information` stage as the **first** stage of the
-protocol, with a single `type:"text"` item (`"size":"LARGE"`) and a label that flags it for
-removal, e.g.:
+protocol, with a single `type:"text"` item and a label that flags it for removal, e.g.:
 
 ```jsonc
 {
@@ -197,7 +196,6 @@ removal, e.g.:
     {
       "id": "researcher-notes",
       "type": "text",
-      "size": "LARGE",
       "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n…sources, setup, and caveats…",
     },
   ],
@@ -205,8 +203,9 @@ removal, e.g.:
 ```
 
 Participant-facing `Information` screens should also use a **single** `type:"text"` item
-(`"size":"LARGE"`) holding all the screen's content as Markdown, rather than several smaller
-items, so the screen reads as one block.
+holding all the screen's content as Markdown, rather than several smaller
+items, so the screen reads as one block. (`size` applies only to `asset` items; a `text` item
+with `size` fails validation.)
 
 ## 7. Workflow
 

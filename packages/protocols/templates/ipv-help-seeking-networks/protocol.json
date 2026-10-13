@@ -1,0 +1,671 @@
+{
+  "name": "Help-Seeking After Intimate Partner Violence",
+  "description": "An example template for studying the people and services a survivor of intimate partner violence can turn to for help. It encrypts the names and private notes the participant records about the people they mention, so that only the participant can read who is in their network, while relationship types, disclosure, reactions, and the services they use stay readable for analysis.",
+  "schemaVersion": 8,
+  "lastModified": "2026-10-13T00:00:00.000Z",
+  "experiments": { "encryptedVariables": true },
+  "codebook": {
+    "ego": {
+      "variables": {
+        "participant_consent": {
+          "name": "participant_consent",
+          "type": "boolean",
+          "component": "Boolean",
+          "validation": {
+            "required": true
+          },
+          "options": [
+            {
+              "label": "Yes. I agree to take part.",
+              "value": true,
+              "negative": false
+            },
+            {
+              "label": "No. I do not agree to take part.",
+              "value": false,
+              "negative": true
+            }
+          ]
+        },
+        "ego_age": {
+          "name": "ego_age",
+          "type": "number",
+          "component": "Number",
+          "validation": {
+            "minValue": 16,
+            "maxValue": 120
+          }
+        },
+        "relationship_status": {
+          "name": "relationship_status",
+          "type": "categorical",
+          "component": "ToggleButtonGroup",
+          "validation": {
+            "maxSelected": 1
+          },
+          "options": [
+            {
+              "label": "We are still together and live together",
+              "value": "together_cohabiting"
+            },
+            {
+              "label": "We are still together but do not live together",
+              "value": "together_apart"
+            },
+            {
+              "label": "We are on and off",
+              "value": "on_off"
+            },
+            {
+              "label": "We have separated",
+              "value": "separated"
+            },
+            {
+              "label": "Prefer not to say",
+              "value": "declined"
+            }
+          ]
+        },
+        "children_in_home": {
+          "name": "children_in_home",
+          "type": "boolean",
+          "component": "Boolean",
+          "options": [
+            { "label": "Yes", "value": true },
+            { "label": "No", "value": false }
+          ]
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": { "default": "circle" },
+        "variables": {
+          "person_name": {
+            "name": "person_name",
+            "type": "text",
+            "component": "Text",
+            "encrypted": true,
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "private_note": {
+            "name": "private_note",
+            "type": "text",
+            "component": "TextArea",
+            "encrypted": true,
+            "validation": {
+              "maxLength": 500
+            }
+          },
+          "support_confidant": {
+            "name": "support_confidant",
+            "type": "boolean"
+          },
+          "support_practical": {
+            "name": "support_practical",
+            "type": "boolean"
+          },
+          "unhelpful": {
+            "name": "unhelpful",
+            "type": "boolean"
+          },
+          "relationship": {
+            "name": "relationship",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "validation": {
+              "maxSelected": 1
+            },
+            "options": [
+              { "label": "Family member", "value": "family" },
+              { "label": "Friend", "value": "friend" },
+              {
+                "label": "Family or friend of the person who harmed you",
+                "value": "partner_network"
+              },
+              { "label": "Neighbour", "value": "neighbour" },
+              { "label": "Colleague or classmate", "value": "colleague" },
+              {
+                "label": "Member of a faith or community group",
+                "value": "community"
+              },
+              { "label": "Someone else", "value": "other" }
+            ]
+          },
+          "contact_frequency": {
+            "name": "contact_frequency",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Less than once a month", "value": 1 },
+              { "label": "About once a month", "value": 2 },
+              { "label": "About once a week", "value": 3 },
+              { "label": "Most days", "value": 4 }
+            ]
+          },
+          "knows_about_abuse": {
+            "name": "knows_about_abuse",
+            "type": "boolean",
+            "component": "Boolean",
+            "options": [
+              { "label": "Yes", "value": true },
+              { "label": "No, or I'm not sure", "value": false }
+            ]
+          },
+          "safe_to_tell": {
+            "name": "safe_to_tell",
+            "type": "ordinal",
+            "component": "RadioGroup",
+            "options": [
+              { "label": "Not at all safe", "value": 1 },
+              { "label": "Somewhat safe", "value": 2 },
+              { "label": "Completely safe", "value": 3 }
+            ]
+          },
+          "reaction": {
+            "name": "reaction",
+            "type": "categorical",
+            "component": "CheckboxGroup",
+            "options": [
+              {
+                "label": "Believed me and supported my choices",
+                "value": "supportive"
+              },
+              {
+                "label": "Gave me practical help",
+                "value": "practical"
+              },
+              {
+                "label": "Pressured me to do something I wasn't ready for",
+                "value": "pressured"
+              },
+              {
+                "label": "Didn't believe me or blamed me",
+                "value": "blamed"
+              },
+              {
+                "label": "Told the person who harmed me",
+                "value": "told_partner"
+              }
+            ]
+          },
+          "reaction_other": {
+            "name": "reaction_other",
+            "type": "text",
+            "component": "Text",
+            "encrypted": true
+          },
+          "close_to_partner": {
+            "name": "close_to_partner",
+            "type": "boolean"
+          },
+          "layout": {
+            "name": "layout",
+            "type": "layout"
+          }
+        }
+      },
+      "service": {
+        "name": "Service",
+        "color": "node-color-seq-4",
+        "icon": "add-a-place",
+        "shape": { "default": "square" },
+        "variables": {
+          "service_name": {
+            "name": "service_name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true,
+              "unique": true
+            }
+          },
+          "service_type": {
+            "name": "service_type",
+            "type": "categorical",
+            "component": "ToggleButtonGroup",
+            "validation": {
+              "maxSelected": 1
+            },
+            "options": [
+              { "label": "Helpline or hotline", "value": "helpline" },
+              { "label": "Shelter or refuge", "value": "shelter" },
+              { "label": "Police", "value": "police" },
+              {
+                "label": "Legal help or advocacy",
+                "value": "legal_advocacy"
+              },
+              {
+                "label": "Doctor, nurse, or hospital",
+                "value": "health"
+              },
+              { "label": "Counselling or therapy", "value": "counselling" },
+              {
+                "label": "Faith or community organisation",
+                "value": "community"
+              },
+              { "label": "Something else", "value": "other" }
+            ]
+          },
+          "service_contacted": {
+            "name": "service_contacted",
+            "type": "boolean"
+          },
+          "service_helpful": {
+            "name": "service_helpful",
+            "type": "ordinal",
+            "component": "LikertScale",
+            "options": [
+              { "label": "Not at all helpful", "value": 1 },
+              { "label": "A little helpful", "value": 2 },
+              { "label": "Quite helpful", "value": 3 },
+              { "label": "Very helpful", "value": 4 }
+            ]
+          }
+        }
+      }
+    },
+    "edge": {
+      "knows": {
+        "name": "Know each other",
+        "color": "edge-color-seq-1",
+        "variables": {}
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "information-researcher-notes",
+      "type": "Information",
+      "label": "Template notes (delete before fielding)",
+      "title": "Template notes",
+      "items": [
+        {
+          "id": "researcher-notes",
+          "type": "text",
+          "content": "## For researchers\n\n_Delete this screen before you field the study._\n\n### How this template uses encrypted attributes\n\nThis protocol turns on the **Encrypted Attributes** experiment (Protocol settings → Experiments). The **Create your private passphrase** stage asks the participant to choose a passphrase, and every attribute marked as encrypted in the codebook is then encrypted with it before it is saved.\n\n- **Encrypted:** each person's **name** (`person_name`), the participant's **private note** about them (`private_note`), and any reaction they describe in their own words (`reaction_other`). Free text is encrypted because it is where identifying details tend to appear.\n- **Not encrypted:** relationship type, contact frequency, whether the person knows about the abuse, how they reacted, how safe it would feel to tell them, and who knows whom. These are what you analyse, and none of them identifies anyone on its own.\n- **Services are not encrypted.** Agency and helpline names do not identify the participant's private contacts, and you need to read them to map service use. This shows that encryption is set attribute by attribute, not for a whole interview.\n\nEncrypted values appear as ciphertext in exported data, and **nobody on the research team can decrypt them**. If a participant forgets their passphrase, their encrypted answers cannot be recovered. Only text attributes on nodes can be encrypted.\n\n### Safety and ethics\n\nResearch on intimate partner violence carries real risk to participants. Before fielding, read the WHO recommendations below, plan with your ethics board how you will confirm the participant is somewhere **safe and private**, and agree what the interviewer should do if the person who harmed them appears. Have up-to-date local support services ready, and replace the placeholder on the final screen with them. Encryption protects names on the device and in your data; it does not protect a participant who is overheard or whose device is checked during the interview.\n\n_Customize the consent screen for your study and obtain the necessary ethics approval before fielding._\n\n### Sources\n\n- [Liang B, Goodman L, Tummala-Narra P, Weintraub S (2005). A theoretical framework for understanding help-seeking processes among survivors of intimate partner violence. *Am J Community Psychol*.](https://doi.org/10.1007/s10464-005-6233-6)\n- [Goodman LA, Smyth KF (2011). A call for a social network-oriented approach to services for survivors of intimate partner violence. *Psychology of Violence*.](https://doi.org/10.1037/a0022977)\n- [Sylaska KM, Edwards KM (2014). Disclosure of intimate partner violence to informal social support network members: a review of the literature. *Trauma, Violence, & Abuse*.](https://doi.org/10.1177/1524838013496335)\n- [World Health Organization (2001). Putting women first: ethical and safety recommendations for research on domestic violence against women.](https://www.who.int/publications/i/item/WHO-FCH-GWH-01.1)\n- [World Health Organization (2016). Ethical and safety recommendations for intervention research on violence against women.](https://www.who.int/publications/i/item/9789241510189)"
+        }
+      ]
+    },
+    {
+      "id": "information-intro",
+      "type": "EgoForm",
+      "label": "Welcome and consent",
+      "interviewScript": "Before starting, confirm that the participant is somewhere safe and private, and agree with them what you will both do if someone comes in — for example, switching to an agreed neutral topic. Do not continue if they cannot talk privately.",
+      "introductionPanel": {
+        "title": "About this interview",
+        "text": "## Thank you for taking part\n\nIn this interview we will talk about a relationship in which a partner or ex-partner has hurt, threatened, or frightened you, and about the **people and services you could turn to for help**. We are interested in your own experience, and there are no right or wrong answers.\n\n### Your privacy\n\nYou will be asked to list people you know. In the next step you will create a **private passphrase**. The names you enter, and any notes you write about the people you mention, will be **encrypted** with it, so that only you can read them. Nobody on the research team can read them, and they cannot be recovered without your passphrase.\n\n### Your consent\n\nYou can skip any question, take a break, or stop at any time without giving a reason. The researcher should explain the study and answer your questions before you choose an option below. If you do not agree to take part, the interview will end.\n\n**If at any point you do not feel safe, tell the interviewer, or simply stop.**"
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "participant_consent",
+            "prompt": "Do you consent to participate in this study?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "anonymisation",
+      "type": "Anonymisation",
+      "label": "Create your private passphrase",
+      "skipLogic": {
+        "action": "SKIP",
+        "filter": {
+          "rules": [
+            {
+              "id": "6b0f3a52-1d64-4c2e-9a39-0d7f5c1e8a41",
+              "type": "ego",
+              "options": {
+                "attribute": "participant_consent",
+                "operator": "EXACTLY",
+                "value": false
+              }
+            }
+          ]
+        },
+        "destination": {
+          "type": "finish"
+        }
+      },
+      "interviewScript": "Turn the device towards the participant, or look away, while they type their passphrase. Do not ask what it is or write it down.",
+      "explanationText": {
+        "title": "Keep the people you mention private",
+        "body": "Choose a passphrase that only you know. The **names** you give and any **private notes** you write will be encrypted with it before they are saved, so that nobody else can read them — not the interviewer, and not the researchers.\n\nPick something you will remember: you will need the same passphrase if you return to this interview, and it **cannot be recovered** if it is forgotten. Please do not tell it to the interviewer."
+      },
+      "validation": {
+        "minLength": 8,
+        "maxLength": 64
+      }
+    },
+    {
+      "id": "ego-form-background",
+      "type": "EgoForm",
+      "label": "About you",
+      "introductionPanel": {
+        "title": "A few questions about you",
+        "text": "Before we talk about the people around you, we would like to ask a few questions about **you**. These are not encrypted, so they do not include anyone's name. You may skip any question."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_age",
+            "prompt": "How old are you, in years?"
+          },
+          {
+            "variable": "relationship_status",
+            "prompt": "Which of these best describes your relationship with the person who harmed you **now**?"
+          },
+          {
+            "variable": "children_in_home",
+            "prompt": "Do any children live with you?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ng-people",
+      "type": "NameGenerator",
+      "label": "People you could turn to",
+      "panels": [
+        {
+          "id": "ng-people-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
+      "interviewScript": "Names and notes on this screen are encrypted with the participant's passphrase. Remind them they can use a nickname or initials if they prefer, and that the notes field is for them alone. The same person can be added under more than one question by dragging them from the 'Already mentioned' panel.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "form": {
+        "title": "Add Person",
+        "fields": [
+          {
+            "variable": "person_name",
+            "prompt": "What is this person's name, nickname, or initials?",
+            "hint": "This is encrypted with your passphrase. Only you can read it."
+          },
+          {
+            "variable": "private_note",
+            "prompt": "Is there anything you want to remember about this person?",
+            "hint": "Optional. This note is encrypted too, so only you can read it."
+          }
+        ]
+      },
+      "behaviours": {
+        "minNodes": 0
+      },
+      "prompts": [
+        {
+          "id": "ng-people-confidant",
+          "text": "Who are the people you could **talk to** about what has been happening in your relationship — whether or not you have told them yet?",
+          "additionalAttributes": [
+            {
+              "variable": "support_confidant",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "ng-people-practical",
+          "text": "Who could help you in **practical ways** if you needed it — for example a place to stay, money, a lift, or looking after children or pets?",
+          "additionalAttributes": [
+            {
+              "variable": "support_practical",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "ng-people-unhelpful",
+          "text": "Is there anyone who has **reacted badly**, made things harder for you, or who you would **avoid telling**?",
+          "additionalAttributes": [
+            {
+              "variable": "unhelpful",
+              "value": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ng-services",
+      "type": "NameGenerator",
+      "label": "Services",
+      "panels": [
+        {
+          "id": "ng-services-existing",
+          "title": "Already mentioned",
+          "dataSource": "existing"
+        }
+      ],
+      "interviewScript": "Service names are not encrypted. If the participant mentions a person who works at a service (for example, a named advocate), record the service here, not the person's name.",
+      "subject": {
+        "entity": "node",
+        "type": "service"
+      },
+      "form": {
+        "title": "Add Service",
+        "fields": [
+          {
+            "variable": "service_name",
+            "prompt": "What is the name of this service or organisation?",
+            "hint": "Please give the organisation's name, not the name of anyone who works there."
+          },
+          {
+            "variable": "service_type",
+            "prompt": "What kind of service is it?"
+          }
+        ]
+      },
+      "behaviours": {
+        "minNodes": 0
+      },
+      "prompts": [
+        {
+          "id": "ng-services-contacted",
+          "text": "Which **services or organisations** have you contacted for help with what has been happening — for example a helpline, a shelter, the police, a doctor, or a legal advocate?",
+          "additionalAttributes": [
+            {
+              "variable": "service_contacted",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "ng-services-known",
+          "text": "Are there any other services you **know about** but have **not contacted**?",
+          "additionalAttributes": [
+            {
+              "variable": "service_contacted",
+              "value": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alter-form-people",
+      "type": "AlterForm",
+      "label": "About each person",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "introductionPanel": {
+        "title": "Tell us a little about each person",
+        "text": "For each person you mentioned, we would like to know how you know them, how often you are in touch, and whether they know about what has been happening. These answers are not encrypted, but they are stored without the person's name."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "relationship",
+            "prompt": "How do you know this person?"
+          },
+          {
+            "variable": "contact_frequency",
+            "prompt": "How often are you usually in touch with this person?"
+          },
+          {
+            "variable": "knows_about_abuse",
+            "prompt": "Does this person **know** about what has been happening in your relationship?",
+            "hint": "Whether you told them or they found out another way."
+          }
+        ]
+      }
+    },
+    {
+      "id": "alter-form-services",
+      "type": "AlterForm",
+      "label": "Services you contacted",
+      "subject": {
+        "entity": "node",
+        "type": "service"
+      },
+      "filter": {
+        "join": "AND",
+        "rules": [
+          {
+            "id": "c2e4d6a8-3b5f-4e71-9d0a-8f6b2c4e1a37",
+            "type": "node",
+            "options": {
+              "type": "service",
+              "attribute": "service_contacted",
+              "operator": "EXACTLY",
+              "value": true
+            }
+          }
+        ]
+      },
+      "introductionPanel": {
+        "title": "Services you contacted",
+        "text": "For each service you contacted, please tell us how helpful it was."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "service_helpful",
+            "prompt": "Overall, how helpful was this service?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ordinal-bin-safe-to-tell",
+      "type": "OrdinalBin",
+      "label": "How safe it would feel to tell each person",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "prompts": [
+        {
+          "id": "bin-safe-to-tell",
+          "text": "Drag each person into the band that best describes **how safe it would feel** to talk to them about what has been happening.",
+          "variable": "safe_to_tell",
+          "color": "ord-color-seq-1"
+        }
+      ]
+    },
+    {
+      "id": "categorical-bin-reaction",
+      "type": "CategoricalBin",
+      "label": "How people reacted",
+      "interviewScript": "Only people the participant said know about the abuse appear here. Anything typed into the 'Something else' box is encrypted with the participant's passphrase, because a free-text description is where identifying details tend to appear.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "filter": {
+        "join": "AND",
+        "rules": [
+          {
+            "id": "9a7c5e31-2f84-4b6d-a1c0-5e3d7b9f2c68",
+            "type": "node",
+            "options": {
+              "type": "person",
+              "attribute": "knows_about_abuse",
+              "operator": "EXACTLY",
+              "value": true
+            }
+          }
+        ]
+      },
+      "prompts": [
+        {
+          "id": "bin-reaction",
+          "text": "These are the people who know about what has been happening. Drag each person into the box that best describes **how they reacted** when they found out.",
+          "variable": "reaction",
+          "otherVariable": "reaction_other",
+          "otherOptionLabel": "Something else",
+          "otherVariablePrompt": "In your own words, how did this person react? (This is encrypted, so only you can read it.)"
+        }
+      ]
+    },
+    {
+      "id": "sociogram-network",
+      "type": "Sociogram",
+      "label": "Who knows whom",
+      "interviewScript": "The second prompt identifies supporters who are close to the person who harmed the participant. Researchers use this to see whether help might reach that person. Do not ask the participant to name the person who harmed them.",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "background": {
+        "concentricCircles": 3,
+        "skewedTowardCenter": true
+      },
+      "behaviours": {
+        "automaticLayout": true
+      },
+      "prompts": [
+        {
+          "id": "sociogram-knows",
+          "text": "The people you mentioned are arranged for you below. Draw a line between any **two people who know each other**.",
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "create": "knows",
+            "display": ["knows"]
+          }
+        },
+        {
+          "id": "sociogram-close-to-partner",
+          "text": "Now tap anyone who is **close to, or regularly in touch with, the person who harmed you**.",
+          "layout": {
+            "layoutVariable": "layout"
+          },
+          "edges": {
+            "display": ["knows"]
+          },
+          "highlight": {
+            "allowHighlighting": true,
+            "variable": "close_to_partner"
+          }
+        }
+      ]
+    },
+    {
+      "id": "information-support",
+      "type": "Information",
+      "label": "Thank you and support services",
+      "title": "Thank you — and where to find support",
+      "items": [
+        {
+          "id": "support-thanks",
+          "type": "text",
+          "content": "## Thank you for sharing\n\nTalking about these experiences takes courage, and we are grateful for your time.\n\nThe names and notes you entered are encrypted with your passphrase. If you return to this interview, you will need the same passphrase to see them.\n\n### If you would like support\n\n- **Talk to the interviewer now** if you would like to take a moment or talk about how you are feeling.\n- **If you are in immediate danger, contact your local emergency services.**\n- _The researcher will insert local and national domestic violence helplines for your study site here._\n\nYou do not have to face this alone."
+        }
+      ]
+    }
+  ]
+}
