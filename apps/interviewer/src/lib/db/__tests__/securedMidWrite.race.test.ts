@@ -223,8 +223,6 @@ function storedSession(id: string, protocolHash: string): StoredSession {
     exportedAt: null,
     currentStep: 1,
     network,
-    localePreference: null,
-    locale: null,
   };
 }
 
