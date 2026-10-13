@@ -384,25 +384,6 @@
       }
     },
     {
-      "id": "ego-form-1-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Introduction"
-      },
-      "title": {
-        "en-US": "Introduction"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "There are a few questions about you before we begin."
-          }
-        }
-      ]
-    },
-    {
       "id": "ego-form-1",
       "type": "EgoForm",
       "label": {
@@ -632,25 +613,6 @@
       ]
     },
     {
-      "id": "dyad-census-1-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Introduction to the Dyad Census"
-      },
-      "title": {
-        "en-US": "Introduction to the Dyad Census"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "This section will go through all possible node pairs and ask you how they are connected."
-          }
-        }
-      ]
-    },
-    {
       "id": "dyad-census-1",
       "type": "DyadCensus",
       "label": {
@@ -690,25 +652,6 @@
             "en-US": "Tap on all the people who this person knows"
           },
           "createEdge": "knows"
-        }
-      ]
-    },
-    {
-      "id": "tie-strength-census-1-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Introduction to the Tie-Strength Census"
-      },
-      "title": {
-        "en-US": "Introduction to the Tie-Strength Census"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "This interface both creates an edge and assigns an ordinal value to it."
-          }
         }
       ]
     },
@@ -778,25 +721,6 @@
       ]
     },
     {
-      "id": "alter-form-1-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Introduction to the alter form"
-      },
-      "title": {
-        "en-US": "Introduction to the alter form"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "A few more questions about each person."
-          }
-        }
-      ]
-    },
-    {
       "id": "alter-form-1",
       "type": "AlterForm",
       "label": {
@@ -822,25 +746,6 @@
           }
         ]
       }
-    },
-    {
-      "id": "alter-edge-form-1-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Introduction to the alter edge form"
-      },
-      "title": {
-        "en-US": "Introduction to the alter edge form"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "A few questions about each relationship."
-          }
-        }
-      ]
     },
     {
       "id": "alter-edge-form-1",
