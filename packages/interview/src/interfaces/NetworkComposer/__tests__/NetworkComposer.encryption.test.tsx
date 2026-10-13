@@ -771,10 +771,18 @@ describe('NetworkComposer saving edits in the order they were made', () => {
       await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
       earlier.release();
 
+      const storedNotes = () =>
+        readStored(store.getState().session.network.nodes[0], NOTES_VAR);
+      // The later save waits its turn, so it begins only once the earlier one
+      // is stored: wait for its answer rather than for the encryptions begun
+      // so far.
+      await waitFor(async () => expect(await storedNotes()).toBe(latest), {
+        timeout: 2000,
+      });
       await allSaved();
-      expect(
-        await readStored(store.getState().session.network.nodes[0], NOTES_VAR),
-      ).toBe(latest);
+      // Long enough for a save that wrongly came after it to land.
+      await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+      expect(await storedNotes()).toBe(latest);
       expect(screen.getByLabelText(/notes/i)).toHaveValue(latest);
     },
   );
