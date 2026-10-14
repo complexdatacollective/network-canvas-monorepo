@@ -13,6 +13,7 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { contentFormatFor } from '../../localization/contentFormat';
+import { DynamicMarkdown } from '../DynamicText';
 import {
   type DynamicValueFormatters,
   type DynamicValueSources,
@@ -93,7 +94,7 @@ describe('resolveDynamicText', () => {
   });
 
   it('takes the missing version for every kind of missing value', () => {
-    for (const missing of [undefined, null, '', []]) {
+    for (const missing of [undefined, null, '', '   ', []]) {
       expect(resolve(GREETING, { name: missing })).toEqual({
         parts: ['Hello!'],
         text: 'Hello!',
@@ -143,6 +144,8 @@ describe('resolveDynamicText', () => {
     expect(resolve(message, { age: 1 })?.text).toBe('1 year');
     expect(resolve(message, { age: 1200 })?.text).toBe('1,200 years');
     expect(resolve(message, { age: 1200 }, 'de')?.text).toBe('1.200 years');
+    // The version agrees with the number as it is shown, every digit of it.
+    expect(resolve(message, { age: 1.0001 })?.text).toBe('1.0001 years');
   });
 
   it('writes a stored date in the language, without a time zone shift', () => {
@@ -205,6 +208,27 @@ describe('resolveDynamicText', () => {
   });
 });
 
+/** Authored text and a value that, joined, would read as a bare link. */
+const AUTOLINK_SPLITS: readonly (readonly [string, string, string])[] = [
+  ['See https:', '//evil.example', ''],
+  ['See https://', 'evil.example', ''],
+  ['See www.', 'evil.example', ''],
+  ['Write to ada@', 'evil.example', ''],
+  ['See ', 'www', '.evil.example'],
+  ['See ', 'https', '://evil.example'],
+  ['Write to ', 'ada', '@evil.example'],
+  ['See https://a.example/', 'evil', ' now'],
+];
+
+const hrefs = (html: string): string[] =>
+  [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1] ?? '');
+
+/** The links the researcher's words make on their own. */
+const authoredHrefs = (before: string, after: string): string[] =>
+  [before, after].flatMap((text) =>
+    hrefs(renderToStaticMarkup(createElement(RenderMarkdown, null, text))),
+  );
+
 describe('markdownSource', () => {
   const HOSTILE =
     '**bold** [link](https://example.com) <img src=x> www.example.com ada@example.com\n\n# Heading\n    code';
@@ -229,15 +253,21 @@ describe('markdownSource', () => {
   });
 
   it('never puts a value in a link destination', () => {
-    const source = markdownSource({
-      text: '',
-      parts: ['[details](', { name: 'name', text: '//evil.example' }, ')'],
-    });
-    const html = renderToStaticMarkup(
-      createElement(RenderMarkdown, null, source),
-    );
-    expect(html).not.toContain('<a');
-    expect(html).not.toContain('evil');
+    for (const destination of ['', 'https:']) {
+      const source = markdownSource({
+        text: '',
+        parts: [
+          `[details](${destination}`,
+          { name: 'name', text: '//evil.example' },
+          ')',
+        ],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      expect(html).not.toContain('evil');
+      expect(html).not.toMatch(/href="[^"]*(?:evil|%3C)/);
+    }
   });
 
   it('keeps a value in a link’s text, and the researcher’s destination', () => {
@@ -252,7 +282,139 @@ describe('markdownSource', () => {
     expect(html).toContain('>About Ada<');
   });
 
+  it('never lets a value join the words around it into an entity or tag', () => {
+    const splits: readonly (readonly [string, string, string])[] = [
+      ['', 'copy', ';'],
+      ['&', 'copy', ';'],
+      ['&#', '169', ';'],
+      ['<', 'em', '>word</em>'],
+    ];
+    for (const [before, value, after] of splits) {
+      const source = markdownSource({
+        text: '',
+        parts: [before, { name: 'name', text: value }, after],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      const label = JSON.stringify([before, value, after]);
+      expect(html, label).not.toContain('©');
+      expect(html, label).not.toContain('<em>');
+      expect(html, label).toContain(value);
+    }
+  });
+
+  it('never lets a value match a reference link’s label', () => {
+    const definition =
+      '\n\n[friend]: https://friend.example\n[my friend]: https://friend.example';
+    const splits: readonly (readonly [string, string])[] = [
+      ['[details][', ']'],
+      ['[', ']'],
+      ['[', '][]'],
+      ['[details][ ', ' ]'],
+      ['[details][my ', ']'],
+      ['[details][', '\n]'],
+    ];
+    for (const [before, after] of splits) {
+      const value = 'friend';
+      const source = markdownSource({
+        text: '',
+        parts: [before, { name: 'name', text: value }, `${after}${definition}`],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      const label = JSON.stringify([before, after]);
+      expect(html, label).not.toContain('friend.example');
+      expect(html, label).toContain('friend');
+    }
+  });
+
+  it('never lets a value create, complete or change an autolink', () => {
+    for (const [before, value, after] of AUTOLINK_SPLITS) {
+      const source = markdownSource({
+        text: '',
+        parts: [before, { name: 'name', text: value }, after],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      expect(hrefs(html), JSON.stringify([before, value, after])).toEqual(
+        authoredHrefs(before, after),
+      );
+      expect(getMarkdownLabelText(source).replaceAll('\u2060', '')).toBe(
+        `${before}${value}${after}`,
+      );
+    }
+  });
+
+  it('keeps the researcher’s emphasis around a value kept apart from a link', () => {
+    const source = markdownSource({
+      text: '',
+      parts: ['Ask **', { name: 'name', text: 'Ada' }, '**: see a.example'],
+    });
+    const html = renderToStaticMarkup(
+      createElement(RenderMarkdown, null, source),
+    );
+    expect(source).toContain('<!---->');
+    expect(html).toContain('<strong>Ada</strong>');
+  });
+
+  it('never lets a value finish a block marker the researcher wrote', () => {
+    for (const [marker, element] of [
+      ['#', '<h1'],
+      ['1.', '<ol'],
+      ['-', '<ul'],
+    ] as const) {
+      const source = markdownSource({
+        text: '',
+        parts: [marker, { name: 'name', text: ' heading' }],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      expect(html).not.toContain(element);
+      expect(getMarkdownLabelText(source)).toBe(`${marker} heading`);
+    }
+  });
+
   it('leaves text without values as it is', () => {
     expect(markdownSource({ text: '**Decline**' })).toBe('**Decline**');
+  });
+});
+
+describe('DynamicMarkdown', () => {
+  it('never lets the researcher’s words place a value, even written as a character reference', () => {
+    for (const forged of [
+      '&#xE000;0&#xE000;',
+      '&#Xe000;0&#x0E000;',
+      '&#57344;0&#057344;',
+    ]) {
+      const html = renderToStaticMarkup(
+        createElement(DynamicMarkdown, {
+          parts: [`Before ${forged} and `, { name: 'name', text: 'Ada' }],
+        }),
+      );
+      expect(html.match(/data-dynamic-value/g), forged).toHaveLength(1);
+      expect(html.match(/<bdi\b[^>]*>Ada<\/bdi>/g), forged).toHaveLength(1);
+      expect(html, forged).not.toContain('\u{E000}');
+    }
+  });
+
+  it('never lets a value create, complete or change an autolink', () => {
+    for (const [before, value, after] of AUTOLINK_SPLITS) {
+      const html = renderToStaticMarkup(
+        createElement(DynamicMarkdown, {
+          parts: [before, { name: 'name', text: value }, after],
+        }),
+      );
+      const label = JSON.stringify([before, value, after]);
+      expect(hrefs(html), label).toEqual(authoredHrefs(before, after));
+      // The value is shown, and never inside a link.
+      expect(html, label).toContain('data-dynamic-value');
+      expect(html, label).not.toMatch(
+        /<a\b(?:(?!<\/a>)[\s\S])*data-dynamic-value/,
+      );
+    }
   });
 });

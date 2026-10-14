@@ -192,6 +192,7 @@ export {
   dynamicValuePathFor,
   dynamicValueRolesAt,
   dynamicValueStatus,
+  dynamicValueUnshowableReason,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
   type ParsedDynamicValuePath,

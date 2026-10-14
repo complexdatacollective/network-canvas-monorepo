@@ -8,7 +8,7 @@ import type { DynamicTextPart } from './resolveDynamicText';
 
 /**
  * Values the interview fills into a study's own text, such as a name the
- * participant gave earlier. Each value is marked out with a dashed outline
+ * participant gave earlier. Each value is marked out with a primary-colour tint
  * and announced to screen readers as a dynamic value. The parts below are
  * what `resolveDynamicText` returns for a message and its values.
  */

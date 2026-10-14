@@ -11,11 +11,17 @@ import {
 import { DYNAMIC_VALUE_MARKER } from '@codaco/protocol-validation';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
-import type { DynamicTextPart } from './resolveDynamicText';
+import {
+  type DynamicTextPart,
+  joinMarkdownParts,
+  withoutMarkers,
+} from './resolveDynamicText';
 
 /**
- * One value the interview filled into the study's text, marked out with a
- * dashed outline so the participant can tell it was filled in for them.
+ * One value the interview filled into the study's text, tinted with the
+ * primary colour so the participant can tell it was filled in for
+ * them. The tint is mixed into the colour of the surrounding text, so it
+ * stays readable on any background.
  * Screen readers hear "Dynamic value: …" instead of the bare value. The
  * value is isolated for bidirectional text, so a right-to-left name in a
  * left-to-right sentence (or the reverse) cannot reorder the words around it.
@@ -25,7 +31,7 @@ function DynamicValue({ text }: { text: string }) {
   return (
     <span
       data-dynamic-value=""
-      className="rounded-sm border border-dashed border-current box-decoration-clone px-[0.2em]"
+      className="text-[color-mix(in_oklab,currentColor_50%,var(--primary))]"
     >
       <bdi aria-hidden="true">{text}</bdi>
       <span className="sr-only">
@@ -59,13 +65,14 @@ export function DynamicTextParts({
 
 const MARKER = DYNAMIC_VALUE_MARKER;
 const MARKED_VALUE = new RegExp(`${MARKER}(\\d+)${MARKER}`, 'g');
-const ANY_MARKER = new RegExp(MARKER, 'g');
 /**
- * A marked value inside an attribute. Markdown percent-encodes a link
- * destination, so a marker there arrives as its UTF-8 escape.
+ * A marked value inside an attribute, with the empty comments that
+ * `joinMarkdownParts` may set around it. Markdown percent-encodes a link
+ * destination, so a marker or comment there arrives escaped.
  */
+const BOUNDARY_IN_ATTRIBUTE = '(?:<!---->|%3C!----%3E)*';
 const MARKED_IN_ATTRIBUTE = new RegExp(
-  `(?:${MARKER}|%EE%80%80)\\d+(?:${MARKER}|%EE%80%80)|${MARKER}`,
+  `${BOUNDARY_IN_ATTRIBUTE}(?:${MARKER}|%EE%80%80)\\d+(?:${MARKER}|%EE%80%80)${BOUNDARY_IN_ATTRIBUTE}|${MARKER}`,
   'gi',
 );
 /** Set on the element that stands for a value, to its index. */
@@ -148,13 +155,15 @@ export function DynamicMarkdown({
 }: MarkdownOptions & { parts: readonly DynamicTextPart[] }) {
   const { markdown, values } = useMemo(() => {
     const shown: string[] = [];
-    const text = parts
-      .map((part) => {
-        if (typeof part === 'string') return part.replace(ANY_MARKER, '');
+    const text = joinMarkdownParts(
+      parts.map((part) =>
+        typeof part === 'string' ? withoutMarkers(part) : part,
+      ),
+      (part) => {
         shown.push(part.text);
         return `${MARKER}${shown.length - 1}${MARKER}`;
-      })
-      .join('');
+      },
+    );
     return { markdown: text, values: shown };
   }, [parts]);
 

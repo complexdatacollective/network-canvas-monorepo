@@ -74,13 +74,36 @@ describe('findDynamicMessageSyntaxProblem on blank text', () => {
       findDynamicMessageSyntaxProblem('{count, plural, one {} other {#}}'),
     ).toBeUndefined();
   });
+
+  it('judges text with many values without giving up', () => {
+    // Seven values with three cases each make 78,125 combinations of what
+    // they may be, more than could be read one by one.
+    const names = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+    const blank = names
+      .map((name) => `{${name}, select, x {} y {} z {} other {}}`)
+      .join('');
+    expect(findDynamicMessageSyntaxProblem(blank)).toContain(
+      'blank in every version',
+    );
+    expect(
+      findDynamicMessageSyntaxProblem(
+        `${blank}{g, select, z {{a, select, y {visible} other {}}} other {}}`,
+      ),
+    ).toBeUndefined();
+    // Choices on one value still agree with each other.
+    expect(
+      findDynamicMessageSyntaxProblem(
+        `${blank}{g, select, z {{g, select, y {visible} other {}}} other {}}`,
+      ),
+    ).toContain('blank in every version');
+  });
 });
 
 describe('findDynamicValueProblem', () => {
   const ok = (message: string) =>
-    expect(findDynamicValueProblem(message, VALUES)).toBeUndefined();
+    expect(findDynamicValueProblem(message, VALUES, 'en')).toBeUndefined();
   const refused = (message: string, problem: string) =>
-    expect(findDynamicValueProblem(message, VALUES)).toContain(problem);
+    expect(findDynamicValueProblem(message, VALUES, 'en')).toContain(problem);
 
   it('accepts literal text', () => {
     ok("Don't '{'worry'}'");
@@ -127,6 +150,21 @@ describe('findDynamicValueProblem', () => {
     refused('{name, select, missing {} other {}}', 'blank in every version');
   });
 
+  it("reads only the plural versions the text's language can choose", () => {
+    // English never chooses `few`, so this text shows nothing in English.
+    const fewOnly =
+      '{count, select, missing {} other {{count, plural, few {visible} other {}}}}';
+    refused(fewOnly, 'blank in every version');
+    expect(findDynamicValueProblem(fewOnly, VALUES, 'cs')).toBeUndefined();
+    // A value the stage always has is never missing.
+    ok('{id, select, missing {} other {Interview}}');
+    // Cases the binding does not define are never chosen.
+    refused(
+      '{kind, select, missing {} friend {} family {} other {}}',
+      'blank in every version',
+    );
+  });
+
   it('chooses by number only for a number, where it has one', () => {
     ok(
       '{count, select, missing {Some} other {{count, plural, one {# year} other {# years}}}}',
@@ -156,9 +194,34 @@ describe('findDynamicValueProblem', () => {
 
   it('names an unbound value', () => {
     refused('{other}', '"other" is not a value this text can show here');
-    expect(findDynamicValueProblem('{x}', {})).toContain(
+    expect(findDynamicValueProblem('{x}', {}, 'en')).toContain(
       'No values are available here.',
     );
+  });
+
+  it('chooses versions by a value it cannot show as words, but never shows it', () => {
+    const values: DynamicValueArguments = {
+      flag: {
+        cases: ['yes'],
+        numeric: false,
+        optional: true,
+        unshowable: 'it has no labels.',
+      },
+    };
+    expect(
+      findDynamicValueProblem(
+        '{flag, select, missing {Hm.} yes {Good.} other {Hm.}}',
+        values,
+        'en',
+      ),
+    ).toBeUndefined();
+    expect(
+      findDynamicValueProblem(
+        '{flag, select, missing {Hm.} yes {Said {flag}.} other {Hm.}}',
+        values,
+        'en',
+      ),
+    ).toBe('"flag" cannot be shown as words: it has no labels.');
   });
 });
 
@@ -229,6 +292,83 @@ describe('dynamicMessageParts', () => {
     ).toEqual([{ argument: 'count' }, ' years']);
   });
 
+  it('never chooses the zero version for a tiny nonzero number', () => {
+    const plural = '{count, plural, zero {none} other {# items}}';
+    expect(
+      dynamicMessageParts(
+        plural,
+        'ar',
+        states({ count: { missing: false, count: Number.MIN_VALUE } }),
+      ),
+    ).toEqual([{ argument: 'count' }, ' items']);
+    expect(
+      dynamicMessageParts(
+        plural,
+        'ar',
+        states({ count: { missing: false, count: 0 } }),
+      ),
+    ).toEqual(['none']);
+  });
+
+  it('chooses a plural version for an integer too large to be exact by its digits', () => {
+    // French chooses `many` for a whole multiple of a million.
+    const plural = '{count, plural, one {one} many {many} other {other}}';
+    const chosen = (count: number) =>
+      dynamicMessageParts(
+        plural,
+        'fr',
+        states({ count: { missing: false, count } }),
+      );
+    expect(chosen(1e20)).toEqual(['many']);
+    expect(chosen(-1e20)).toEqual(['many']);
+    expect(chosen(1e20 + 2 ** 17)).toEqual(['other']);
+    expect(chosen(1e6)).toEqual(['many']);
+  });
+
+  it('chooses a plural version for a huge integer by the digits it is shown with', () => {
+    // Shown as 100000000000000020000, though its exact value ends in 16384:
+    // Russian chooses `many` for a number ending in 0 and `few` for one
+    // ending in 4.
+    const count = 1e20 + 2 ** 14;
+    expect(
+      dynamicMessageParts(
+        '{count, plural, one {one} few {few} many {many} other {other}}',
+        'ru',
+        states({ count: { missing: false, count } }),
+      ),
+    ).toEqual(['many']);
+  });
+
+  it('chooses a plural version by the number as it is shown', () => {
+    // 1.0001 is shown with all its digits, so it is not English `one`.
+    const plural = '{count, plural, one {# item} other {# items}}';
+    expect(
+      dynamicMessageParts(
+        plural,
+        'en',
+        states({ count: { missing: false, count: 1.0001 } }),
+      ),
+    ).toEqual([{ argument: 'count' }, ' items']);
+    expect(
+      dynamicMessageParts(
+        plural,
+        'en',
+        states({ count: { missing: false, count: 1 } }),
+      ),
+    ).toEqual([{ argument: 'count' }, ' item']);
+    // Rules that read fraction digits read the ones shown: Bosnian `few`
+    // holds 0.02 but not 0.0201.
+    const bosnian = '{count, plural, one {a} few {b} other {c}}';
+    const versionFor = (count: number) =>
+      dynamicMessageParts(
+        bosnian,
+        'bs',
+        states({ count: { missing: false, count } }),
+      );
+    expect(versionFor(0.02)).toEqual(['b']);
+    expect(versionFor(0.0201)).toEqual(['a']);
+  });
+
   it('reads quoted syntax as text', () => {
     expect(
       dynamicMessageParts("'{name}' is literal", 'en', states({})),
@@ -290,6 +430,27 @@ describe('findMissingDynamicPlacement', () => {
     ).toEqual({ argument: 'kind', when: { kind: 'friend' } });
   });
 
+  it('checks the version for any other answer even when every option has its own', () => {
+    // An answer imported from a roster can match none of the options.
+    const values = {
+      kind: {
+        cases: ['friend', 'family'],
+        numeric: false,
+        optional: true,
+        exhaustive: true,
+      },
+    };
+    expect(
+      findMissingDynamicPlacement(
+        '{kind, select, missing {Them} friend {Friend} family {Family} other {{kind}}}',
+        'en',
+        '{kind, select, missing {Eux} friend {Ami} family {Famille} other {Eux}}',
+        'fr',
+        values,
+      ),
+    ).toEqual({ argument: 'kind', when: { kind: 'other' } });
+  });
+
   it('checks a number’s fraction versions too', () => {
     // Czech gives fractions a version of their own (`many`).
     expect(
@@ -336,6 +497,31 @@ describe('findMissingDynamicPlacement', () => {
         'ar',
         '{count, select, missing {Hi} other {{count, plural, zero {nobody} other {# people}}}}',
         'ar',
+        VALUES,
+      ),
+    ).toBeUndefined();
+  });
+
+  it('does not waive a zero-only category the translation falls back to `other` for', () => {
+    // Welsh `zero` holds only 0, but this translation writes no `zero` arm:
+    // at 0 it reads its `other` version, written for many numbers, which
+    // leaves out the count the Arabic shows for zero.
+    expect(
+      findMissingDynamicPlacement(
+        '{count, select, missing {?} other {{count, plural, zero {#} other {none}}}}',
+        'ar',
+        '{count, select, missing {?} other {{count, plural, other {none}}}}',
+        'cy',
+        VALUES,
+      ),
+    ).toEqual({ argument: 'count', when: { count: '0' } });
+    // A `zero` arm of its own may leave the number out.
+    expect(
+      findMissingDynamicPlacement(
+        '{count, select, missing {?} other {{count, plural, zero {#} other {none}}}}',
+        'ar',
+        '{count, select, missing {?} other {{count, plural, zero {dim} other {none}}}}',
+        'cy',
         VALUES,
       ),
     ).toBeUndefined();

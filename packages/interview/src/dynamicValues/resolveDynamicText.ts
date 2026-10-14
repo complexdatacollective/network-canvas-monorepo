@@ -1,3 +1,4 @@
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { getMarkdownAttributeValues } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   DYNAMIC_VALUE_MARKER,
@@ -54,13 +55,11 @@ type ResolvedDynamicValue =
       count?: number;
     }>;
 
-/** Null, undefined, empty text and an empty list are missing; 0 and false are not. */
-const isMissing = (value: unknown): boolean =>
-  value === null ||
-  value === undefined ||
-  value === '' ||
-  (typeof value === 'number' && Number.isNaN(value)) ||
-  (Array.isArray(value) && value.length === 0);
+/**
+ * Missing as the interview's forms judge an answer missing: null, undefined,
+ * text of only spaces, NaN and an empty list. 0 and false are answers.
+ */
+const isMissing = isUnanswered;
 
 const caseOf = (
   binding: DynamicValueBinding,
@@ -188,6 +187,9 @@ const formatOne = (
 ): string => {
   const label = optionLabel(variable, value, formatters);
   if (label !== undefined) return label;
+  // A valid protocol never shows a yes/no attribute without labels as words
+  // (`dynamicValueUnshowableReason`); the interface's Yes and No only keep
+  // text readable if one reaches the interview anyway.
   if (typeof value === 'boolean') {
     return value ? formatters.booleanWords.yes : formatters.booleanWords.no;
   }
@@ -322,10 +324,74 @@ const literalMarkdown = (value: string): string =>
     // indented code), so its whitespace is collapsed.
     .replace(/\s+/g, ' ')
     .replace(AUTOLINK_TRIGGERS, `$&${WORD_JOINER}`)
-    .replace(MARKDOWN_PUNCTUATION, '\\$&');
+    .replace(MARKDOWN_PUNCTUATION, '\\$&')
+    // The space left at its start could still finish a marker the researcher
+    // wrote at the start of a line (`#` or `1.` before the answer ` heading`).
+    // A character reference shows the same space but never forms a block.
+    .replace(/^ /, '&#32;');
+
+// Markdown can also find a token across the edge of a value: a bare link
+// (`https:` in the researcher's words and `//evil.example` in a participant's
+// answer, or the answer `ada` before `@example.com`), an entity (`&`, the
+// answer `copy`, then `;`) or an HTML tag (`<`, the answer `em`, then `>`).
+// A value before a `]` could also be, or end, a link label that matches one of
+// the researcher's reference definitions (`[details][{name}]` and the answer
+// `friend`, with `[friend]: https://…` defined), so one always follows it.
+// An empty HTML comment, which renders as nothing, ends the run of text such a token is found in. It goes only
+// where the words around a value could make one, so elsewhere nothing comes
+// between a value and the markdown around it.
+const VALUE_BOUNDARY = '<!---->';
+const TOKEN_TRIGGER = /www\\?\.|[:@&<]/i;
+const RUN_BEFORE = /\S*$/;
+const RUN_AFTER = /^\S*/;
+// A `]` before the paragraph ends.
+const LABEL_END_AFTER = /^(?:(?!\n[^\S\n]*\n)[\s\S])*\]/;
+
+/**
+ * Markdown for resolved text: the researcher's words as written, and each
+ * value as `valueMarkdown` writes it, kept apart from the words around it so
+ * that together they can never form a bare link, entity, tag or link label. A value written as nothing
+ * is left out.
+ */
+export const joinMarkdownParts = (
+  parts: readonly DynamicTextPart[],
+  valueMarkdown: (
+    part: Exclude<DynamicTextPart, string>,
+    index: number,
+  ) => string,
+): string => {
+  const plain = parts.map((part) =>
+    typeof part === 'string' ? part : part.text,
+  );
+  return parts
+    .map((part, index) => {
+      if (typeof part === 'string') return part;
+      const markdown = valueMarkdown(part, index);
+      if (markdown === '') return '';
+      const following = plain.slice(index + 1).join('');
+      const inLabel = LABEL_END_AFTER.test(following);
+      const before = RUN_BEFORE.exec(plain.slice(0, index).join(''))?.[0] ?? '';
+      const after = RUN_AFTER.exec(following)?.[0] ?? '';
+      const joins = TOKEN_TRIGGER.test(`${before}${part.text}${after}`);
+      if (!joins && !inLabel) return markdown;
+      const open = joins && before !== '' && /^\S/.test(part.text);
+      const close = inLabel || (joins && after !== '' && /\S$/.test(part.text));
+      return `${open ? VALUE_BOUNDARY : ''}${markdown}${close ? VALUE_BOUNDARY : ''}`;
+    })
+    .join('');
+};
 
 const MARKER = DYNAMIC_VALUE_MARKER;
-const ANY_MARKER = new RegExp(MARKER, 'g');
+// The marker as the researcher could write it: the character, or a numeric
+// character reference that markdown decodes into it.
+const ANY_MARKER = new RegExp(`${MARKER}|&#(?:[xX]0*[eE]000|0*57344);`, 'g');
+
+/**
+ * The researcher's words with every marker taken out, so that only the
+ * interview's own markers place values.
+ */
+export const withoutMarkers = (text: string): string =>
+  text.replace(ANY_MARKER, '');
 /**
  * A marked value's index inside an attribute. Markdown percent-encodes a link
  * destination, so a marker there arrives as its UTF-8 escape.
@@ -346,13 +412,12 @@ const MARKED_IN_ATTRIBUTE = new RegExp(
 const valuesInAttributes = (
   parts: readonly DynamicTextPart[],
 ): ReadonlySet<number> => {
-  const marked = parts
-    .map((part, index) =>
-      typeof part === 'string'
-        ? part.replace(ANY_MARKER, '')
-        : `${MARKER}${index}${MARKER}`,
-    )
-    .join('');
+  const marked = joinMarkdownParts(
+    parts.map((part) =>
+      typeof part === 'string' ? withoutMarkers(part) : part,
+    ),
+    (_, index) => `${MARKER}${index}${MARKER}`,
+  );
   const indexes = new Set<number>();
   for (const attribute of getMarkdownAttributeValues(marked)) {
     for (const match of attribute.matchAll(MARKED_IN_ATTRIBUTE)) {
@@ -376,10 +441,7 @@ export const markdownSource = ({
 }: Readonly<{ text: string; parts?: readonly DynamicTextPart[] }>): string => {
   if (parts === undefined) return text;
   const dropped = valuesInAttributes(parts);
-  return parts
-    .map((part, index) => {
-      if (typeof part === 'string') return part;
-      return dropped.has(index) ? '' : literalMarkdown(part.text);
-    })
-    .join('');
+  return joinMarkdownParts(parts, (part, index) =>
+    dropped.has(index) ? '' : literalMarkdown(part.text),
+  );
 };

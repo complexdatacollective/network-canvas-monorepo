@@ -3,7 +3,7 @@
   - paragraph:
     - text: Thanks for
     - strong: joining
-    - text: "Dynamic value: matrix-dynamic-values-carried-from-earlier-stage , Dynamic value: **bold** [link](https://example.com) <img src=x onerror=window.__pwned=1> ."
+    - text: ", Dynamic value: **bold** [link](https://example.com) <img src=x onerror=window.__pwned=1> ."
   - navigation:
     - button "Settings"
     - button "Previous Step"

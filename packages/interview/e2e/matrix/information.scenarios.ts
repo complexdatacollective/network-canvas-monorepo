@@ -436,7 +436,7 @@ export const informationScenarios: InterfaceScenarios = {
         });
         synth
           .addStage('EgoForm', {
-            introductionPanel: { title: 'About you', text: 'One question.' },
+            form: { title: 'About you', fields: [] },
           })
           .addFormField({
             variable: nameVar.id,

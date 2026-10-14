@@ -11,8 +11,7 @@
     - heading "Very close" [level=4]
   - listbox "Item list"
   - status: Choose where Alice belongs.
-  - text: Alice
-  - button "2 unplaced Collapse drawer" [expanded]
+  - text: 2 unplaced
   - button "Alice" [pressed]
   - button "Bob"
   - navigation:

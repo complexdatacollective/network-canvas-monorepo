@@ -19,11 +19,11 @@ dragging hard.
 
 **Interview runtime (`@codaco/interview`)**
 
-- In `select` mode the stage shows one person at a time above the drawer,
-  and the participant taps the bin they go in. The next unplaced person then
-  appears, until everyone has been placed. Tapping a person in the drawer, or
-  one who is already in a bin, makes them the one being placed, so they can
-  go next or have their answer changed. Nothing can be dragged in this mode.
+- In `select` mode one node in the drawer is shown as selected, and the
+  participant taps the bin it goes in. The next unplaced node is then
+  selected, until everyone has been placed. Tapping another node in the
+  drawer, or one that is already in a bin, selects it instead, so it can go
+  next or have its answer changed. Nothing can be dragged in this mode.
 - Screen readers announce who is being placed, and each bin is a button
   named after the person and the bin.
 - `node_binned` and `node_rebinned` analytics events carry the

@@ -1685,7 +1685,7 @@ export const egoFormScenarios: InterfaceScenarios = {
           component: 'Number',
           name: 'age',
         });
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', { form: FORM });
         stage.stageEntry.dynamicValues = {
           name: { path: `ego.${nameVar.id}` },
         };

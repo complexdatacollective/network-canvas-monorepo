@@ -1212,6 +1212,7 @@ export const categoricalBinScenarios: InterfaceScenarios = {
       return {
         id: 'select-mode-tap-to-place',
         covers: ['behaviours', 'behaviours.interactionMode'],
+        visual: true,
         seedNetwork: true,
         build: () => {
           const synth = new SyntheticInterview();
@@ -1245,23 +1246,37 @@ export const categoricalBinScenarios: InterfaceScenarios = {
           return synth;
         },
         run: async ({ page, interview, protocol }) => {
-          const focal = page.getByTestId('bin-select-focal-node');
-          await expect(focal).toContainText('Alice');
+          // The node being placed is the one shown selected in the drawer.
+          const drawerNode = (name: string) =>
+            page.getByRole('button', { name, exact: true });
+          const announcer = page.getByTestId('bin-select-announcer');
+          await expect(drawerNode('Alice')).toHaveAttribute(
+            'aria-pressed',
+            'true',
+          );
+          await expect(announcer).toHaveText('Choose where Alice belongs.');
 
           // Tapping a person in the drawer makes them the one being placed.
-          await page.getByRole('button', { name: 'Bob', exact: true }).click();
-          await expect(focal).toContainText('Bob');
+          await drawerNode('Bob').click();
+          await expect(drawerNode('Bob')).toHaveAttribute(
+            'aria-pressed',
+            'true',
+          );
+          await expect(drawerNode('Alice')).not.toHaveAttribute(
+            'aria-pressed',
+            'true',
+          );
           await page.getByRole('button', { name: 'Place Bob in Work' }).click();
 
           // The next unplaced person follows.
-          await expect(focal).toContainText('Alice');
+          await expect(drawerNode('Alice')).toHaveAttribute(
+            'aria-pressed',
+            'true',
+          );
           await page
             .getByRole('button', { name: 'Place Alice in Family' })
             .click();
-          await expect(focal).toHaveCount(0);
-          await expect(
-            page.getByTestId('bin-select-focus').getByRole('status'),
-          ).toHaveText('Nothing left to place.');
+          await expect(announcer).toHaveText('Nothing left to place.');
 
           const state = await protocol.getNetworkState(interview.interviewId);
           const answerOf = (name: string) =>
