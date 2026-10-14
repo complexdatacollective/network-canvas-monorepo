@@ -468,7 +468,7 @@ describe('dynamic values in stage text', () => {
       ).toEqual(['you', 'focal', 'today']);
     });
 
-    it('offers a form field every value of the person it asks about except its own answer', () => {
+    it('offers a form field every attribute of the node it asks about', () => {
       const protocol = editing('alterForm', (stage) => {
         stage.dynamicValues = {
           nick: { path: 'node.nickname' },
@@ -491,12 +491,12 @@ describe('dynamic values in stage text', () => {
           ['form', 'fields', index, 'prompt'],
           'formField',
         );
-      expect(field(0)).toEqual(['name', 'kind']);
-      expect(field(1)).toEqual(['nick', 'kind']);
-      expect(field(2)).toEqual(['nick', 'name', 'kind']);
+      for (const index of [0, 1, 2]) {
+        expect(field(index)).toEqual(['nick', 'name', 'kind']);
+      }
     });
 
-    it('keeps an ego form field from showing its own answer', () => {
+    it('offers an ego form field every attribute of the participant', () => {
       const protocol = editing('egoForm', (stage) => {
         stage.dynamicValues = {
           you: { path: 'ego.egoName' },
@@ -516,8 +516,8 @@ describe('dynamic values in stage text', () => {
           ['form', 'fields', index, 'prompt'],
           'formField',
         );
-      expect(field(0)).toEqual(['age']);
-      expect(field(1)).toEqual(['you']);
+      expect(field(0)).toEqual(['you', 'age']);
+      expect(field(1)).toEqual(['you', 'age']);
     });
 
     it('offers an edge form the edge, and a Network Composer edge type form only the participant', () => {
@@ -529,7 +529,7 @@ describe('dynamic values in stage text', () => {
           ['form', 'fields', 0, 'prompt'],
           'formField',
         ),
-      ).toEqual(['you', 'today']);
+      ).toEqual(['you', 'tie', 'today']);
       const before = editing('alterEdgeForm', (stage) => {
         stage.dynamicValues = { tie: { path: 'edge.tieStrength' } };
       });
@@ -569,7 +569,7 @@ describe('dynamic values in stage text', () => {
       expect(issuesOf(protocol)).toEqual([
         expect.objectContaining({
           message: expect.stringContaining(
-            '"them" cannot be shown here: values about this person cannot be shown here',
+            '"them" cannot be shown here: values about the node this stage is about cannot be shown here',
           ),
         }),
       ]);

@@ -43,10 +43,9 @@ const isIntrinsic = (path: string): path is IntrinsicDynamicValue =>
 
 /**
  * Whose attribute a value is: the participant (`ego`), the one entity a form
- * or interface is on (`node`, `edge`), the two people a Dyad Census asks
- * about (`dyadSource`, `dyadTarget`, called "first person" and "second
- * person" to researchers and participants), or the focal person of a
- * one-to-many census.
+ * or interface is on (`node`, `edge`), the two nodes a Dyad Census asks
+ * about (`dyadSource`, `dyadTarget`), or the focal node of a one-to-many
+ * census.
  */
 export type DynamicValueRole =
   | 'ego'
@@ -288,24 +287,15 @@ export type DynamicValueSiteContext = Readonly<{
   variablesFor: (
     role: DynamicValueRole,
   ) => Readonly<Record<string, DynamicValueVariable>> | undefined;
-  /**
-   * Variables of the form's subject the site may not show: its own field's,
-   * which the participant is answering as they read it. A later field's
-   * attribute may already hold a value from an earlier stage, and is missing
-   * otherwise, so it is shown with its version for when it is missing.
-   */
-  notYetWritten:
-    | Readonly<{ role: DynamicValueRole; variables: ReadonlySet<string> }>
-    | undefined;
 }>;
 
 const ROLE_NAMES: Readonly<Record<DynamicValueRole, string>> = {
   ego: 'the participant',
-  node: 'this person',
-  edge: 'this relationship',
-  dyadSource: 'the first person',
-  dyadTarget: 'the second person',
-  focal: 'the person being asked about',
+  node: 'the node this stage is about',
+  edge: 'the edge this stage is about',
+  dyadSource: 'the first node of the pair',
+  dyadTarget: 'the second node of the pair',
+  focal: 'the node being asked about',
 };
 
 /** How a binding reads at a site (see `DynamicValueStatus`). */
@@ -350,16 +340,6 @@ export const dynamicValueStatus = (
       reason: variable.encrypted
         ? 'the attribute it shows is encrypted'
         : `a ${variable.type} attribute cannot be shown in text`,
-    };
-  }
-  if (
-    context.notYetWritten?.role === parsed.role &&
-    context.notYetWritten.variables.has(parsed.variableId)
-  ) {
-    return {
-      status: 'unavailable',
-      reason:
-        'this field asks for it, so it has no value yet where this text is shown',
     };
   }
   const unshowable = dynamicValueUnshowableReason(variable);

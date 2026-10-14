@@ -11,7 +11,6 @@ import type { StageSubject } from './common/subjects.ts';
 import {
   CASED_VARIABLE_TYPES,
   dynamicValueArgumentsAt,
-  type DynamicValueRole,
   type DynamicValueSite,
   type DynamicValueSiteContext,
   type DynamicValues,
@@ -78,10 +77,6 @@ const variablesOf = (
   );
 };
 
-const SUBJECT_ROLES: Readonly<
-  Record<StageSubject['entity'], DynamicValueRole>
-> = { ego: 'ego', node: 'node', edge: 'edge' };
-
 /**
  * Everything that decides which values a site on `stage` can show: where it
  * sits (`sitePath`, from the stage's root, and `site`), the stage's type and
@@ -90,8 +85,7 @@ const SUBJECT_ROLES: Readonly<
  *
  * A form field shows the values of its form's subject only when that is the
  * stage's own subject: a Network Composer's edge forms each describe their
- * own edge type, which no stage binding can name unambiguously. Of the form's
- * subject, it cannot show what its own field asks for.
+ * own edge type, which no stage binding can name unambiguously.
  */
 export const dynamicValueContextFor = ({
   codebook,
@@ -109,7 +103,6 @@ export const dynamicValueContextFor = ({
   const stageSubject = stageSubjectOf(stage);
 
   let formSubject: StageSubject | undefined;
-  let notYetWritten: DynamicValueSiteContext['notYetWritten'];
   if (site === 'formField') {
     // An object between the stage and the site that names its own subject
     // (a Network Composer edge type's form).
@@ -120,27 +113,6 @@ export const dynamicValueContextFor = ({
           undefined,
     );
     formSubject = ownSubject ? undefined : stageSubject;
-    const fieldsAt = sitePath.lastIndexOf('fields');
-    const index = sitePath[fieldsAt + 1];
-    const fields = valueAt(stage, sitePath.slice(0, fieldsAt + 1));
-    if (
-      formSubject !== undefined &&
-      typeof index === 'number' &&
-      Array.isArray(fields)
-    ) {
-      notYetWritten = {
-        role: SUBJECT_ROLES[formSubject.entity],
-        variables: new Set(
-          fields
-            .slice(index, index + 1)
-            .flatMap((field: unknown) =>
-              isRecord(field) && typeof field.variable === 'string'
-                ? [field.variable]
-                : [],
-            ),
-        ),
-      };
-    }
   }
 
   return {
@@ -151,7 +123,6 @@ export const dynamicValueContextFor = ({
         : stageSubject?.entity === (role === 'edge' ? 'edge' : 'node')
           ? variablesOf(codebook, stageSubject)
           : undefined,
-    notYetWritten,
   };
 };
 
