@@ -94,7 +94,7 @@ describe('resolveDynamicText', () => {
   });
 
   it('takes the missing version for every kind of missing value', () => {
-    for (const missing of [undefined, null, '', []]) {
+    for (const missing of [undefined, null, '', '   ', []]) {
       expect(resolve(GREETING, { name: missing })).toEqual({
         parts: ['Hello!'],
         text: 'Hello!',
