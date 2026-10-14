@@ -492,7 +492,7 @@
         {
           "id": "closeness-bands",
           "text": {
-            "en-US": "Drag each person into the band that best describes how close you feel to them, from **not close** to **very close**."
+            "en-US": "For each person, tap the band that best describes how close you feel to them, from **not close** to **very close**."
           },
           "variable": "closeness",
           "color": "ord-color-seq-1"

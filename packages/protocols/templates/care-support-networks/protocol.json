@@ -19,7 +19,7 @@
               "value": "postpartum"
             }
           ],
-          "validation": { "required": true }
+          "validation": { "required": true, "maxSelected": 1 }
         },
         "weeks_since_birth": {
           "name": "weeks_since_birth",

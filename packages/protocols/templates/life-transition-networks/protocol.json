@@ -651,7 +651,7 @@
           "highlight": [
             {
               "variable": "helped_through",
-              "label": { "en-US": "Helped them through it" }
+              "label": { "en-US": "Helped you through it" }
             },
             {
               "variable": "made_it_harder",
