@@ -25,6 +25,10 @@ import PassphraseEntry from '../../components/PassphraseEntry';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import {
+  useDynamicValueSources,
+  withDynamicValueEntities,
+} from '../../dynamicValues/DynamicValueScope';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
 import { shownLabel } from '../../forms/ProtocolField';
 import { useValidationNetwork } from '../../forms/useValidationNetwork';
@@ -38,6 +42,7 @@ import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   type ResolvedProtocolText,
   useResolveLocalizedString,
+  useResolveLocalizedStringIn,
 } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
@@ -61,7 +66,9 @@ import {
   getDecryptionScope,
   readEncryptedAttribute,
 } from '../Anonymisation/decryptionScope';
-import { useNodeLabel } from '../Anonymisation/useNodeLabel';
+import { readNodeLabelSource } from '../Anonymisation/nodeLabel';
+import { useCachedOutcomes } from '../Anonymisation/useDecryptionScope';
+import { useNodeLabel, useNodeLabeller } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import CategoricalBinItem from './components/CategoricalBinItem';
 import { useCategoricalBins } from './useCategoricalBins';
@@ -317,6 +324,21 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     return false;
   };
   const resolve = useResolveLocalizedString();
+  const resolveIn = useResolveLocalizedStringIn();
+  const dynamicValueSources = useDynamicValueSources();
+  const labelNode = useNodeLabeller(useCachedOutcomes());
+
+  // The label a node shows, waiting for one that is still decrypting (such as
+  // just after the passphrase is entered), since the dialog's question is
+  // resolved once and would otherwise name the lock for as long as it is open.
+  const readNodeLabel = async (node: NcNode) => {
+    const source = readNodeLabelSource(node, stageVariables);
+    const scope = getDecryptionScope(store.getState);
+    if (source.status === 'encrypted' && scope) {
+      await decryptInScope(scope, source.value);
+    }
+    return labelNode(node, source);
+  };
 
   const readOtherAnswer = async (node: NcNode, otherVariable: string) => {
     const stored = node[entityAttributesProperty][otherVariable];
@@ -369,8 +391,6 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt, otherOptionLabel } = prompt;
-      const otherPromptLabel = resolve(otherVariablePrompt);
-
       // An answer that would be encrypted is not asked for until it could be
       // saved.
       if (stageVariables[otherVariable]?.encrypted && !unlocked) {
@@ -395,6 +415,18 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
       const otherValidationProps = otherValidationMetadata
         ? validationPropsFor(otherValidationMetadata)
         : {};
+
+      // The question is about the node just dropped, so it can name it as
+      // its card does.
+      const nodeLabel = await readNodeLabel(node);
+      const otherPromptLabel = resolveIn(
+        otherVariablePrompt,
+        dynamicValueSources &&
+          withDynamicValueEntities(dynamicValueSources, {
+            attributes: { node: node[entityAttributesProperty] },
+            labels: { node: nodeLabel },
+          }),
+      );
 
       // The current answer is shown for editing, so confirming the dialog
       // never blanks it. An encrypted one is decrypted with the key in force;

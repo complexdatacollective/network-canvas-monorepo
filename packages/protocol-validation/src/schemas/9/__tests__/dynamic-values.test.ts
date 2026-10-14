@@ -561,6 +561,146 @@ describe('dynamic values in stage text', () => {
       ).toEqual(['you', 'today']);
     });
 
+    describe('node labels', () => {
+      const labels = {
+        nodeLabel: { path: 'node.$label' },
+        firstLabel: { path: 'dyad.source.$label' },
+        secondLabel: { path: 'dyad.target.$label' },
+        focalLabel: { path: 'one_to_many.focal.$label' },
+        fromLabel: { path: 'edge.from.$label' },
+        toLabel: { path: 'edge.to.$label' },
+      };
+      const withLabels = (id: string) =>
+        editing(id, (stage) => {
+          stage.dynamicValues = { ...labels, them: { path: 'node.nickname' } };
+        });
+      const promptOf = (id: string) =>
+        argumentsAt(withLabels(id), id, ['prompts', 0, 'text'], 'prompt');
+
+      it('offers the label of each node a prompt is about', () => {
+        expect(promptOf('dyadCensus')).toEqual(['firstLabel', 'secondLabel']);
+        expect(promptOf('tieStrength')).toEqual(['firstLabel', 'secondLabel']);
+        expect(promptOf('oneToMany')).toEqual(['focalLabel']);
+        expect(promptOf('geospatial')).toEqual(['nodeLabel', 'them']);
+        for (const id of ['sociogram', 'ordinalBin', 'categoricalBin']) {
+          expect(promptOf(id)).toEqual([]);
+        }
+      });
+
+      it('offers the node a form is about by its label', () => {
+        expect(
+          argumentsAt(
+            withLabels('alterForm'),
+            'alterForm',
+            ['form', 'fields', 0, 'prompt'],
+            'formField',
+          ),
+        ).toEqual(['nodeLabel', 'them']);
+        expect(
+          argumentsAt(
+            withLabels('composer'),
+            'composer',
+            ['nodeForm', 'fields', 0, 'label'],
+            'formField',
+          ),
+        ).toEqual(['nodeLabel', 'them']);
+      });
+
+      it('offers the question about a node put in the "other" bin that node, but not the bin\'s label', () => {
+        const protocol = withLabels('categoricalBin');
+        expect(
+          argumentsAt(
+            protocol,
+            'categoricalBin',
+            ['prompts', 0, 'otherVariablePrompt'],
+            'formField',
+          ),
+        ).toEqual(['nodeLabel', 'them']);
+        expect(issuesOf(protocol)).toEqual([]);
+        const misplaced = editing('categoricalBin', (stage) => {
+          stage.dynamicValues = labels;
+          (stage.prompts as Stage[])[0]!.otherOptionLabel = {
+            en: 'Not {nodeLabel}',
+          };
+        });
+        expect(issuesOf(misplaced)).toEqual([
+          expect.objectContaining({
+            message: expect.stringContaining(
+              'values about the node this stage is about cannot be shown here',
+            ),
+          }),
+        ]);
+      });
+
+      it('offers an edge form both ends of its edge by label alone', () => {
+        expect(
+          argumentsAt(
+            withLabels('alterEdgeForm'),
+            'alterEdgeForm',
+            ['form', 'fields', 0, 'prompt'],
+            'formField',
+          ),
+        ).toEqual(['fromLabel', 'toLabel']);
+        expect(
+          argumentsAt(
+            withLabels('composer'),
+            'composer',
+            ['edges', 0, 'form', 'fields', 0, 'label'],
+            'formField',
+          ),
+        ).toEqual(['fromLabel', 'toLabel']);
+        // An end's attributes have no codebook type to name them by.
+        expect(
+          issuesOf(
+            editing('alterEdgeForm', (stage) => {
+              stage.dynamicValues = { theirs: { path: 'edge.from.nickname' } };
+            }),
+          ),
+        ).toEqual([
+          expect.objectContaining({
+            message: expect.stringContaining('does not exist'),
+          }),
+        ]);
+      });
+
+      it('needs no missing version for a label, which is never missing', () => {
+        const protocol = editing('dyadCensus', (stage) => {
+          stage.dynamicValues = labels;
+          (stage.prompts as Stage[])[0]!.text = {
+            en: 'Do {firstLabel} and {secondLabel} know each other?',
+          };
+        });
+        expect(issuesOf(protocol)).toEqual([]);
+      });
+
+      it('refuses cases on a label', () => {
+        const protocol = editing('dyadCensus', (stage) => {
+          stage.dynamicValues = {
+            firstLabel: { path: 'dyad.source.$label', cases: { bob: 'Bob' } },
+          };
+        });
+        expect(issuesOf(protocol)).toEqual([
+          expect.objectContaining({
+            message: 'Only an attribute with options can have cases.',
+          }),
+        ]);
+      });
+
+      it('refuses a label for the participant, which has none', () => {
+        const protocol = editing('information', (stage) => {
+          stage.dynamicValues = { me: { path: 'ego.$label' } };
+          stage.title = { en: guarded('me') };
+        });
+        expect(issuesOf(protocol)).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              message: expect.stringContaining('does not exist'),
+            }),
+          ]),
+        );
+      });
+    });
+
     it('reports a value used where it is not available', () => {
       const protocol = editing('sociogram', (stage) => {
         stage.dynamicValues = { them: { path: 'node.nickname' } };
@@ -695,6 +835,17 @@ describe('dynamic values in stage text', () => {
           subject: { entity: 'node', type: 'person' },
         },
       ]);
+    });
+
+    it('counts a label as a use of no attribute', () => {
+      const protocol = editing('alterForm', (stage) => {
+        stage.dynamicValues = { label: { path: 'node.$label' } };
+      });
+      expect(
+        collectEntityAttributeReferences(protocol).filter((hit) =>
+          hit.path.includes('dynamicValues'),
+        ),
+      ).toEqual([]);
     });
   });
 

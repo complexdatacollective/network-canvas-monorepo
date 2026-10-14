@@ -20,6 +20,7 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { ContractProvider } from '../../../contract/context';
+import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { WritesInFlightProvider } from '../../../store/WritesInFlightContext';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
@@ -128,8 +129,16 @@ const person: NcNode = {
   [entityAttributesProperty]: { name: 'Alice' },
 };
 
-async function renderGeospatial({ unlocked = false } = {}) {
-  const store = createEncryptionStore([person], [stage], variables);
+async function renderGeospatial({
+  unlocked = false,
+  stageUnderTest = stage,
+  nodes = [person],
+}: {
+  unlocked?: boolean;
+  stageUnderTest?: StageProps<'Geospatial'>['stage'];
+  nodes?: NcNode[];
+} = {}) {
+  const store = createEncryptionStore(nodes, [stageUnderTest], variables);
   if (unlocked) await unlockWith(store, 'pw');
 
   render(
@@ -148,13 +157,15 @@ async function renderGeospatial({ unlocked = false } = {}) {
           <TestProtocolLocalization>
             <InterviewI18nProvider requestedLocale="en">
               <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-                <GeospatialInterface
-                  stage={stage}
-                  getNavigationHelpers={() => ({
-                    moveForward: vi.fn(),
-                    moveBackward: vi.fn(),
-                  })}
-                />
+                <StageDynamicValues stage={stageUnderTest}>
+                  <GeospatialInterface
+                    stage={stageUnderTest}
+                    getNavigationHelpers={() => ({
+                      moveForward: vi.fn(),
+                      moveBackward: vi.fn(),
+                    })}
+                  />
+                </StageDynamicValues>
               </CurrentStepProvider>
             </InterviewI18nProvider>
           </TestProtocolLocalization>
@@ -191,6 +202,38 @@ async function readStoredLocation(node: NcNode | undefined) {
   const { key } = await encryptionFor('pw');
   return decryptValue(key, attribute.value, attribute.value);
 }
+
+describe('Geospatial prompt', () => {
+  const namingStage: StageProps<'Geospatial'>['stage'] = {
+    ...stage,
+    dynamicValues: { who: { path: 'node.$label' } },
+    prompts: stage.prompts.map((prompt) => ({
+      ...prompt,
+      text: { en: 'Where does {who} live?' },
+    })),
+  };
+
+  it('names the node being placed by its label', async () => {
+    const { waitForMap } = await renderGeospatial({
+      stageUnderTest: namingStage,
+    });
+    await waitForMap();
+    const value = await screen.findByText('Alice', { selector: 'bdi' });
+    expect(value.closest('[data-dynamic-value]')).not.toBeNull();
+  });
+
+  // A stage with nobody to place is skipped, but one reached directly (a
+  // preview of it) still renders: its prompt would name nobody.
+  it('asks nothing when there is nobody to place', async () => {
+    const { waitForMap } = await renderGeospatial({
+      stageUnderTest: namingStage,
+      nodes: [],
+    });
+    await waitForMap();
+    expect(screen.queryByText(/^Where does/)).toBeNull();
+    expect(screen.queryByTestId('outside-selectable-areas-button')).toBeNull();
+  });
+});
 
 describe('Geospatial asking for an encrypted location', () => {
   it('asks for the passphrase instead of taking a location it could not save', async () => {

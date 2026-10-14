@@ -289,8 +289,15 @@ function renderCategoricalBin(
   omitOtherComponent = false,
   omitOtherVariable = false,
   otherVariable = OTHER_VARIABLE,
-  /** An "other" question that shows the participant's name, and the name. */
-  dynamic?: { prompt: string; egoName: string },
+  /**
+   * An "other" question that shows the participant's name, and the name, or
+   * the values `bindings` names.
+   */
+  dynamic?: {
+    prompt: string;
+    egoName: string;
+    bindings?: CategoricalBinStage['dynamicValues'];
+  },
 ) {
   const baseProtocol = buildProtocol(
     otherValidation,
@@ -305,7 +312,9 @@ function renderCategoricalBin(
       ? baseStage
       : {
           ...baseStage,
-          dynamicValues: { name: { path: `ego.${EGO_NAME_VARIABLE}` } },
+          dynamicValues: dynamic.bindings ?? {
+            name: { path: `ego.${EGO_NAME_VARIABLE}` },
+          },
           prompts: baseStage.prompts.map((each) => ({
             ...each,
             otherVariablePrompt: { en: dynamic.prompt },
@@ -793,5 +802,32 @@ describe('CategoricalBin queued dialog localization', () => {
     expect(within(dialog).queryByRole('link')).not.toBeInTheDocument();
     // The researcher's own markdown still renders.
     expect(within(dialog).getByText('other').tagName).toBe('STRONG');
+  });
+
+  it('names the node just dropped by its label and its answers', async () => {
+    const { getDndStore } = renderCategoricalBin(
+      undefined,
+      false,
+      false,
+      OTHER_VARIABLE,
+      {
+        prompt: 'Why is {label} ({note}) other?',
+        egoName: 'Ada',
+        bindings: {
+          label: { path: 'node.$label' },
+          note: { path: `node.${NOTE_VARIABLE}` },
+        },
+      },
+    );
+    await dropNodeIntoOtherBin(getDndStore);
+    const dialog = await screen.findByRole('dialog');
+    // The node has no name, so its label is its first text answer.
+    const values = await within(dialog).findAllByText(RESERVED_NOTE_VALUE, {
+      selector: 'bdi',
+    });
+    expect(values).toHaveLength(2);
+    expect(values[0]!.closest('label')).toHaveTextContent(
+      /^Why is reserved-value/,
+    );
   });
 });

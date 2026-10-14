@@ -11,7 +11,10 @@ import {
   type FormField,
   type Stage,
 } from '@codaco/protocol-validation';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+} from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../contexts/CurrentStepContext';
 import { StageDynamicValues } from '../../dynamicValues/DynamicValueScope';
@@ -31,6 +34,7 @@ const stage = {
   dynamicValues: {
     name: { path: 'node.name' },
     close: { path: 'node.close', cases: { yes: true } },
+    label: { path: 'node.$label' },
   },
   prompts: [{ id: 'prompt', text: { en: 'Who?' } }],
 } as unknown as Stage;
@@ -63,6 +67,7 @@ function renderForm(
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
+              label: { en: 'Person' },
               variables: {
                 name: { name: 'name', type: 'text', component: 'Text' },
                 close: { name: 'close', type: 'boolean' },
@@ -129,11 +134,139 @@ describe('useProtocolForm dynamic values', () => {
     expect(value.closest('[data-dynamic-value]')).not.toBeNull();
   });
 
+  it('names the node being created by its label as it is typed', () => {
+    renderForm({ precedingVariables: ['name'] }, 'How old is {label}?');
+    // With no name yet, the node shows its type's.
+    expect(
+      screen.getByText('Person', { selector: 'bdi' }).closest('label'),
+    ).toHaveTextContent(/^How old is Person/);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
+      target: { value: 'Ada' },
+    });
+    expect(
+      screen.getByText('Ada', { selector: 'bdi' }).closest('label'),
+    ).toHaveTextContent(/^How old is Ada/);
+    expect(screen.queryByText('Person', { selector: 'bdi' })).toBeNull();
+  });
+
   it('shows what a new person will be created with', () => {
     renderForm(
       { newEntityAttributes: { close: true } },
       '{close, select, missing {Anyone} yes {Someone close} other {Someone}}',
     );
     expect(screen.getByText('Someone close')).toBeInTheDocument();
+  });
+});
+
+describe('useProtocolForm dynamic values on an edge form', () => {
+  it('names both nodes the edge joins by their labels', () => {
+    const edgeStage = {
+      id: 'edges',
+      type: 'AlterEdgeForm',
+      label: { en: 'Ties' },
+      subject: { entity: 'edge', type: 'knows' },
+      dynamicValues: {
+        from: { path: 'edge.from.$label' },
+        to: { path: 'edge.to.$label' },
+      },
+      form: { fields: [] },
+    } as unknown as Stage;
+    const store = configureStore({
+      reducer: { session, protocol, ui },
+      preloadedState: {
+        session: {
+          id: 's',
+          promptIndex: 0,
+          network: {
+            nodes: [
+              {
+                [entityPrimaryKeyProperty]: 'n1',
+                type: NODE_TYPE,
+                [entityAttributesProperty]: { name: 'Ada' },
+              },
+              {
+                [entityPrimaryKeyProperty]: 'n2',
+                type: NODE_TYPE,
+                [entityAttributesProperty]: {},
+              },
+            ],
+            edges: [
+              {
+                [entityPrimaryKeyProperty]: 'e1',
+                type: 'knows',
+                from: 'n1',
+                to: 'n2',
+                [entityAttributesProperty]: {},
+              },
+            ],
+            ego: { [entityAttributesProperty]: {} },
+          },
+        } as never,
+        protocol: {
+          id: 'p',
+          hash: 'h',
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
+          codebook: {
+            node: {
+              [NODE_TYPE]: {
+                name: NODE_TYPE,
+                label: { en: 'Person' },
+                variables: {
+                  name: { name: 'name', type: 'text', component: 'Text' },
+                },
+              },
+            },
+            edge: {
+              knows: {
+                name: 'knows',
+                label: { en: 'Knows' },
+                variables: {
+                  note: { name: 'note', type: 'text', component: 'Text' },
+                },
+              },
+            },
+            ego: { variables: {} },
+          },
+          stages: [edgeStage],
+        } as never,
+      },
+      middleware: (getDefault) => getDefault({ serializableCheck: false }),
+    });
+
+    function EdgeFields() {
+      const { fieldComponents } = useProtocolForm({
+        fields: [
+          {
+            variable: asEntityAttributeReference('note'),
+            prompt: { en: 'How did {from} meet {to}?' },
+          },
+        ],
+        subject: { entity: 'edge', type: 'knows' },
+        currentEntityId: 'e1',
+      });
+      return <>{fieldComponents}</>;
+    }
+
+    render(
+      <TestProtocolLocalization>
+        <Provider store={store}>
+          <CurrentStepProvider currentStep={0} onStepChange={() => undefined}>
+            <StageDynamicValues stage={edgeStage}>
+              <Form onSubmit={() => ({ success: true })}>
+                <EdgeFields />
+              </Form>
+            </StageDynamicValues>
+          </CurrentStepProvider>
+        </Provider>
+      </TestProtocolLocalization>,
+    );
+
+    // The second node has no name, so it shows its type's.
+    expect(
+      screen.getByText('Ada', { selector: 'bdi' }).closest('label'),
+    ).toHaveTextContent(/^How did Ada.* meet Person/);
+    expect(screen.getByText('Person', { selector: 'bdi' })).toBeInTheDocument();
   });
 });

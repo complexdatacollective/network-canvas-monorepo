@@ -28,6 +28,8 @@ import Node from '../../components/ConnectedNode';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { useContractFlags } from '../../contract/context';
+import { DynamicValueEntity } from '../../dynamicValues/DynamicValueScope';
+import { useValuesUntilExit } from '../../dynamicValues/useValuesUntilExit';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import { useAssetUrl } from '../../hooks/useAssetUrl';
 import useBeforeNext from '../../hooks/useBeforeNext';
@@ -42,6 +44,7 @@ import { updateNode as updateNodeAction } from '../../store/modules/session';
 import type { RootState } from '../../store/store';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { Direction, NavigationIntent, StageProps } from '../../types';
+import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues';
 import { interfaceMessages } from '../messages';
@@ -461,6 +464,17 @@ export default function GeospatialInterface({
     stageNodes,
   ]);
 
+  // The prompt keeps naming the node that is leaving until it has gone.
+  const placing = stageNodes[navState.activeIndex];
+  const placingLabel = useNodeLabel(placing);
+  const placingOnScreen = useValuesUntilExit(
+    placing?.[entityPrimaryKeyProperty],
+    {
+      attributes: { node: placing?.[entityAttributesProperty] },
+      labels: { node: placingLabel },
+    },
+  );
+
   return (
     <div className="relative flex size-full flex-col" ref={dragSafeRef}>
       <motion.div
@@ -596,38 +610,55 @@ export default function GeospatialInterface({
         </MotionSurface>
 
         {/* The prompt is the participant's core task on this stage, so it is
-            not collapsible. */}
-        <CollapsablePrompts dragConstraints={dragSafeRef} collapsible={false}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={stageNodes[navState.activeIndex]?.[entityPrimaryKeyProperty]}
-              variants={nodeAnimationVariants}
-              custom={navState.direction}
-              initial="initial"
-              animate="animate"
-              exit="exit"
+            not collapsible. It asks about the node being placed, so it can
+            name it, and like a census with no pairs it is not shown when
+            there is nobody to place (a stage reached directly, such as a
+            preview of it). */}
+        {stageNodes.length > 0 && (
+          <DynamicValueEntity {...placingOnScreen.values}>
+            <CollapsablePrompts
+              dragConstraints={dragSafeRef}
+              collapsible={false}
             >
-              {stageNodes[navState.activeIndex] && (
-                <Node
-                  size="sm"
-                  nodeId={
-                    stageNodes[navState.activeIndex]![entityPrimaryKeyProperty]
+              <AnimatePresence
+                mode="wait"
+                onExitComplete={placingOnScreen.onExitComplete}
+              >
+                <motion.div
+                  key={
+                    stageNodes[navState.activeIndex]?.[entityPrimaryKeyProperty]
                   }
-                  type={stageNodes[navState.activeIndex]!.type}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
-          <Button
-            size="sm"
-            color="primary"
-            onClick={handleOutsideSelectableAreas}
-            disabled={initialSelectionValue === 'outside-selectable-areas'}
-            data-testid="outside-selectable-areas-button"
-          >
-            {outsideAreasLabel}
-          </Button>
-        </CollapsablePrompts>
+                  variants={nodeAnimationVariants}
+                  custom={navState.direction}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  {stageNodes[navState.activeIndex] && (
+                    <Node
+                      size="sm"
+                      nodeId={
+                        stageNodes[navState.activeIndex]![
+                          entityPrimaryKeyProperty
+                        ]
+                      }
+                      type={stageNodes[navState.activeIndex]!.type}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+              <Button
+                size="sm"
+                color="primary"
+                onClick={handleOutsideSelectableAreas}
+                disabled={initialSelectionValue === 'outside-selectable-areas'}
+                data-testid="outside-selectable-areas-button"
+              >
+                {outsideAreasLabel}
+              </Button>
+            </CollapsablePrompts>
+          </DynamicValueEntity>
+        )}
       </motion.div>
     </div>
   );

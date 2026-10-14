@@ -26,6 +26,7 @@ import {
 } from '@codaco/shared-consts';
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
+import { StageDynamicValues } from '../../../dynamicValues/DynamicValueScope';
 import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { interviewToastManager } from '../../../toast/interviewToastManager';
 import type { StageProps } from '../../../types';
@@ -35,7 +36,10 @@ import {
   encryptionFor,
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
-import { readEncryptedAttribute } from '../../Anonymisation/decryptionScope';
+import {
+  getDecryptionScope,
+  readEncryptedAttribute,
+} from '../../Anonymisation/decryptionScope';
 import { decryptValue } from '../../Anonymisation/encryptionFormat';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
 import CategoricalBin from '../CategoricalBin';
@@ -147,15 +151,17 @@ async function renderCategoricalBin({
   subject = person,
   others = [],
   stageVariables = variables,
+  binStage = stage,
 }: {
   unlocked?: boolean;
   subject?: NcNode;
   others?: NcNode[];
   stageVariables?: Record<string, Variable>;
+  binStage?: StageProps<'CategoricalBin'>['stage'];
 } = {}) {
   const store = createEncryptionStore(
     [subject, ...others],
-    [stage],
+    [binStage],
     stageVariables,
   );
   if (unlocked) await unlockWith(store, 'pw');
@@ -173,13 +179,15 @@ async function renderCategoricalBin({
                     dndStore = captured;
                   }}
                 />
-                <CategoricalBin
-                  stage={stage}
-                  getNavigationHelpers={() => ({
-                    moveForward: () => {},
-                    moveBackward: () => {},
-                  })}
-                />
+                <StageDynamicValues stage={binStage}>
+                  <CategoricalBin
+                    stage={binStage}
+                    getNavigationHelpers={() => ({
+                      moveForward: () => {},
+                      moveBackward: () => {},
+                    })}
+                  />
+                </StageDynamicValues>
               </DndStoreProvider>
             </DialogProvider>
           </CurrentStepProvider>
@@ -188,7 +196,7 @@ async function renderCategoricalBin({
     </InterviewI18nProvider>,
   );
 
-  const dropIntoOther = async () => {
+  const dropIntoOther = async (beforeDrop?: () => void) => {
     const target = getCatBinDropTargetId(STAGE_ID, PROMPT_ID, OTHER_BIN_INDEX);
     act(() => {
       dndStore?.getState().startDrag(
@@ -207,6 +215,7 @@ async function renderCategoricalBin({
       ),
     );
     act(() => {
+      beforeDrop?.();
       dndStore?.getState().setActiveDropTarget(target);
       dndStore?.getState().endDrag();
     });
@@ -368,6 +377,58 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
     const dialog = await screen.findByRole('dialog');
     expect(await within(dialog).findByText('Alice')).toBeVisible();
     expect(within(dialog).queryByText('Person')).toBeNull();
+  });
+
+  it('names the person in the question once their name has decrypted', async () => {
+    const namedVariables: Record<string, Variable> = {
+      ...variables,
+      name: {
+        name: 'name',
+        label: 'name',
+        type: 'text',
+        component: 'Text',
+        encrypted: true,
+      },
+    };
+    const { encryptedAttributes, secureAttributes } =
+      await generateSecureAttributes(
+        { name: 'Alice' },
+        namedVariables,
+        (await encryptionFor('pw')).key,
+        person[entityPrimaryKeyProperty],
+      );
+    const { store, dropIntoOther } = await renderCategoricalBin({
+      unlocked: true,
+      subject: {
+        ...person,
+        [entityAttributesProperty]: encryptedAttributes,
+        [entitySecureAttributesMeta]: secureAttributes,
+      },
+      stageVariables: namedVariables,
+      binStage: {
+        ...stage,
+        dynamicValues: { who: { path: 'node.$label' } },
+        prompts: [
+          {
+            id: PROMPT_ID,
+            text: { en: 'Which category?' },
+            variable: asEntityAttributeReference('category'),
+            otherVariable: asEntityAttributeReference('otherReason'),
+            otherVariablePrompt: { en: 'Why {who}?' },
+            otherOptionLabel: { en: 'Other' },
+          },
+        ],
+      },
+    });
+    // The name has not decrypted yet when the person is dropped, such as
+    // just after the passphrase is entered.
+    await dropIntoOther(() =>
+      getDecryptionScope(store.getState)?.outcomes.clear(),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    const value = await within(dialog).findByText('Alice', { selector: 'bdi' });
+    expect(value.closest('label')).toHaveTextContent(/^Why Alice/);
   });
 });
 
