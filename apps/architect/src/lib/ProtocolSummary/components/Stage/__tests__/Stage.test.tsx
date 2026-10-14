@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
@@ -107,5 +107,32 @@ describe('Protocol Summary stage', () => {
       screen.getByRole('heading', { name: 'Roster panel' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Your classmates')).toBeInTheDocument();
+  });
+});
+
+describe('Protocol Summary stage wording that the interview fills in', () => {
+  it('prints a notice’s versions by the arguments its setting declares, not as values the stage binds', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <Stage
+          id="generator"
+          label={{ en: 'Friends' }}
+          stageNumber={4}
+          type="NameGenerator"
+          configuration={{
+            minNodesNotice: {
+              en: '{count, plural, one {Add # more person} other {Add # more people}}',
+            },
+          }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    const row = screen.getByRole('row', { name: /Minimum not reached/ });
+    // The declaration names the number; a stage binding would print `count`.
+    expect(within(row).getByText('When “Number” is 1')).toBeInTheDocument();
+    expect(within(row).queryByText('count')).not.toBeInTheDocument();
   });
 });

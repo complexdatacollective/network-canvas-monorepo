@@ -144,6 +144,17 @@ const TranslationContent = ({
   messageArguments: MessageArguments | undefined;
 }) => {
   const dynamicSite = useContext(SummaryDynamicValuesContext);
+  // A setting that declares arguments is given them by the interview, not
+  // by the stage's bindings, so its declaration names what they are.
+  if (messageArguments !== undefined) {
+    return (
+      <LocalizedMessageVersionsSummary
+        message={text}
+        declaration={messageArguments}
+        locale={locale}
+      />
+    );
+  }
   if (dynamicSite !== undefined && showsValues(text)) {
     return (
       <DynamicMessageSummary
@@ -151,15 +162,6 @@ const TranslationContent = ({
         markdown={format === 'markdown'}
         locale={locale}
         site={dynamicSite}
-      />
-    );
-  }
-  if (messageArguments !== undefined) {
-    return (
-      <LocalizedMessageVersionsSummary
-        message={text}
-        declaration={messageArguments}
-        locale={locale}
       />
     );
   }
