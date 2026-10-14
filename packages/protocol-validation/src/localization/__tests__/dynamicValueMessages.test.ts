@@ -430,8 +430,8 @@ describe('findMissingDynamicPlacement', () => {
     ).toEqual({ argument: 'kind', when: { kind: 'friend' } });
   });
 
-  it('asks nothing of a version no answer reaches', () => {
-    // Every answer has a version of its own, so `other` is never shown.
+  it('checks the version for any other answer even when every option has its own', () => {
+    // An answer imported from a roster can match none of the options.
     const values = {
       kind: {
         cases: ['friend', 'family'],
@@ -440,17 +440,14 @@ describe('findMissingDynamicPlacement', () => {
         exhaustive: true,
       },
     };
-    const original =
-      '{kind, select, missing {Them} friend {Friend} family {Family} other {{kind}}}';
-    const translation =
-      '{kind, select, missing {Eux} friend {Ami} family {Famille} other {Eux}}';
     expect(
-      findMissingDynamicPlacement(original, 'en', translation, 'fr', values),
-    ).toBeUndefined();
-    expect(
-      findMissingDynamicPlacement(original, 'en', translation, 'fr', {
-        kind: { ...values.kind, exhaustive: false },
-      }),
+      findMissingDynamicPlacement(
+        '{kind, select, missing {Them} friend {Friend} family {Family} other {{kind}}}',
+        'en',
+        '{kind, select, missing {Eux} friend {Ami} family {Famille} other {Eux}}',
+        'fr',
+        values,
+      ),
     ).toEqual({ argument: 'kind', when: { kind: 'other' } });
   });
 
