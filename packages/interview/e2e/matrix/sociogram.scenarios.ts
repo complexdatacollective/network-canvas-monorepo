@@ -307,10 +307,11 @@ function buildBackgroundConcentricCirclesVariants(): ScenarioDefinition {
         type: 'layout',
         name: 'sociogramLayout',
       });
-      // 3 stages sharing one personType/layoutVar; 0 nodes each — background
-      // rendering doesn't depend on any nodes being present.
+      // 3 stages sharing one personType/layoutVar. Background rendering
+      // doesn't depend on nodes, but a canvas with no one on it is skipped,
+      // so the first stage seeds one person that all three stages show.
       const stage0 = synth.addStage('Sociogram', {
-        initialNodes: { count: 0 },
+        initialNodes: { count: 1 },
         background: { concentricCircles: 4, skewedTowardCenter: true },
       });
       stage0.addPrompt({ layout: { layoutVariable: layoutVar.id } });

@@ -703,6 +703,7 @@ function buildEmptySubjectScenario(): ScenarioDefinition {
         name: 'Location',
       });
 
+      synth.addInformationStage({ title: 'Previous stage', items: [] });
       const geo = synth.addStage('Geospatial', {
         subject: { entity: 'node', type: person.id },
         mapOptions: chicagoMapOptions(),
@@ -717,16 +718,21 @@ function buildEmptySubjectScenario(): ScenarioDefinition {
     assets: [TOKEN_ASSET, CHICAGO_ASSET],
     currentStep: 0,
     seedNetwork: true,
-    run: async ({ page, interview, stage }) => {
-      await stage.geospatial.waitForMapIdle();
-
-      // No node exists, so no node badge renders.
-      await expect(page.getByRole('button', { name: /^Node/ })).toHaveCount(0);
-
-      // beforeNext returns true immediately, so the single Next leaves the
-      // stage directly.
+    run: async ({ page, interview }) => {
+      // No one to place on the map: navigation passes the map stage (step 1)
+      // in both directions, so its prompt never shows.
       await interview.next();
+      await expect(page).toHaveURL(/step=2/);
       await expect(page.getByRole('heading', { name: 'Done' })).toBeVisible();
+      await expect(
+        page.getByText('Where does this person currently live?'),
+      ).toHaveCount(0);
+
+      await page.getByTestId('previous-button').click();
+      await expect(page).toHaveURL(/step=0/);
+      await expect(
+        page.getByRole('heading', { name: 'Previous stage' }),
+      ).toBeVisible();
     },
   };
 }
