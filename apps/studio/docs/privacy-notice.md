@@ -179,7 +179,9 @@ working. It follows the same Level 1 rule.
   the full URL), status code and duration; a statement's
   carries its SQL with every value left as a placeholder.
 - **Metrics.** Gauges for the server's event-loop delay and memory use, and
-  for the number of background jobs in each state on each queue.
+  for the number of background jobs in each state on each queue. Codaco's
+  PostHog project does not currently have PostHog's metrics product, so Codaco
+  does not see these; an operator who sends telemetry to their own store does.
 - **Error reports.** For an unexpected failure on the server or in a browser,
   the error's type and its stack frames, with `error_origin` (`request`, `job`
   or `browser`), `program`, `surface` for a browser, and where they apply

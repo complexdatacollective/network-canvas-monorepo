@@ -1,8 +1,16 @@
-import { Duration, Effect, Layer, Metric, Schedule } from 'effect';
+import { Clock, Duration, Effect, Layer, Metric, Schedule } from 'effect';
 
 import type { JobQueueName } from '@codaco/studio-sync/jobs';
 
 import type { MaintenanceDatabase } from '../db/client.ts';
+import {
+  advanceEpisode,
+  alertAnnotation,
+  type Episode,
+  OPERATOR_ALERTS,
+  quietEpisode,
+  SUSTAINED_ALERT_RULES,
+} from '../platform/operator-alerts.ts';
 import { resolvedQueues } from './queues.ts';
 import { JOB_STATES } from './schema.ts';
 import { JobWorker } from './worker.ts';
@@ -25,12 +33,47 @@ export type JobQueueMetricsConfig = {
 
 export type BacklogWarnings = Set<JobQueueName>;
 
+export type BacklogEpisodes = Map<JobQueueName, Episode>;
+
+export const noteQueueBacklog = Effect.fnUntraced(function* (
+  episodes: BacklogEpisodes,
+  queue: JobQueueName,
+  waiting: number,
+) {
+  const now = yield* Clock.currentTimeMillis;
+  const episode = episodes.get(queue) ?? quietEpisode();
+  episodes.set(queue, episode);
+  const step = advanceEpisode(
+    episode,
+    SUSTAINED_ALERT_RULES.queueBacklog,
+    waiting,
+    now,
+  );
+  if (step === 'opened') {
+    yield* Effect.logError(
+      'jobs waiting to run have stayed above the backlog alert threshold',
+    ).pipe(
+      Effect.annotateLogs({
+        queue,
+        waiting,
+        ...alertAnnotation(OPERATOR_ALERTS.queueBacklog),
+      }),
+    );
+  }
+  if (step === 'closed') {
+    yield* Effect.logInfo(
+      'jobs waiting to run are back under the backlog alert threshold',
+    ).pipe(Effect.annotateLogs({ queue, waiting }));
+  }
+});
+
 const depthKey = (queue: string, state: string): string => `${queue}/${state}`;
 
 /** Every declared (queue, state) pair is written, so a drained queue's gauge does not keep its last value. */
 export const recordQueueDepths = Effect.fn('JobQueueMetrics.record')(
   function* (options: {
     readonly warned: BacklogWarnings;
+    readonly backlog: BacklogEpisodes;
     readonly warningQueueSize: number;
   }) {
     const worker = yield* JobWorker;
@@ -52,6 +95,7 @@ export const recordQueueDepths = Effect.fn('JobQueueMetrics.record')(
       }
 
       const waiting = counts.get(depthKey(declaration.name, 'created')) ?? 0;
+      yield* noteQueueBacklog(options.backlog, declaration.name, waiting);
       const threshold =
         declaration.warningQueueSize ?? options.warningQueueSize;
       if (waiting > threshold) {
@@ -81,6 +125,7 @@ export const JobQueueMetrics = {
       Effect.gen(function* () {
         const options = {
           warned: new Set<JobQueueName>(),
+          backlog: new Map<JobQueueName, Episode>(),
           warningQueueSize:
             config.warningQueueSize ?? DEFAULTS.warningQueueSize,
         };

@@ -5,6 +5,7 @@ import { Duration, Effect, Exit, Layer, Metric, Scope } from 'effect';
 import { TestClock } from 'effect/testing';
 import { vi } from 'vitest';
 
+import { quietEpisode } from '../operator-alerts.ts';
 import {
   eventLoopDelayMean,
   eventLoopDelayP99,
@@ -12,8 +13,10 @@ import {
   memoryHeapTotal,
   memoryHeapUsed,
   memoryRss,
+  noteEventLoopDelay,
   RuntimeMetrics,
 } from '../runtime-metrics.ts';
+import { collectLeveledLogs } from './support/logs.ts';
 
 const monitors = vi.hoisted(
   (): ReturnType<typeof PerfHooks.monitorEventLoopDelay>[] => [],
@@ -124,5 +127,49 @@ describe('the runtime metrics', () => {
         assert.strictEqual(yield* gauge(memoryRss), -1);
       }),
     ),
+  );
+});
+
+describe('the event-loop lag alert', () => {
+  it.effect(
+    'logs once when p99 delay stays above 200 ms for five minutes, and once when it recovers',
+    () => {
+      const logs = collectLeveledLogs();
+      return Effect.gen(function* () {
+        const episode = quietEpisode();
+        const note = (p99: number) => noteEventLoopDelay(episode, p99);
+        const records = () =>
+          logs.records.map(({ level, annotations }) => ({
+            level,
+            alert: annotations.alert,
+            p99_ms: annotations.p99_ms,
+          }));
+
+        yield* note(250);
+        yield* TestClock.adjust(Duration.minutes(3));
+        yield* note(150);
+        yield* TestClock.adjust(Duration.minutes(3));
+        yield* note(250);
+        yield* TestClock.adjust(Duration.minutes(4));
+        yield* note(250);
+        assert.deepStrictEqual(records(), []);
+
+        yield* TestClock.adjust(Duration.minutes(1));
+        yield* note(260);
+        yield* TestClock.adjust(Duration.minutes(5));
+        yield* note(300);
+        assert.deepStrictEqual(records(), [
+          { level: 'Error', alert: 'event_loop_lag', p99_ms: 260 },
+        ]);
+
+        yield* note(120);
+        yield* TestClock.adjust(Duration.minutes(1));
+        yield* note(110);
+        assert.deepStrictEqual(records(), [
+          { level: 'Error', alert: 'event_loop_lag', p99_ms: 260 },
+          { level: 'Info', alert: undefined, p99_ms: 120 },
+        ]);
+      }).pipe(Effect.provide(logs.layer));
+    },
   );
 });

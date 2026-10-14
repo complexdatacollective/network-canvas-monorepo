@@ -24,6 +24,12 @@ relay, and nothing is sent to any other analytics or telemetry host.
 | **Error reports** | An unexpected failure in a request, a job, the researcher web app or a participant page, as its error type and stack frames                                                                                                                                                     | PostHog Error Tracking, at `https://us.i.posthog.com/batch/` |
 | **Analytics**     | One product event each time a tracked action happens (a researcher signs up or in, an invitation is sent or accepted, a role changes, a study or protocol is created, a protocol draft is committed, an interview starts or completes), and participant pages' usability events | `https://us.i.posthog.com/batch/`                            |
 
+Codaco's PostHog project does not currently have PostHog's metrics product, so
+Codaco cannot see or query the metrics Studio sends there. Codaco
+watches queue backlogs and event-loop lag through log records Studio writes
+when either stays over its threshold. If you send telemetry to your own store
+(below), you get the metrics.
+
 The first four are **telemetry**: operational data about the instance. The
 last is **analytics**: how Studio is used. The difference matters below,
 because only telemetry can be sent somewhere else.

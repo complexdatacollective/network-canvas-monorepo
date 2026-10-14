@@ -66,6 +66,15 @@ instead (next question), but product and participant usability events go to
 Codaco while `STUDIO_TELEMETRY` is on, and the only way to stop them is to turn
 it off, which stops telemetry too.
 
+### Does Codaco see our instance's metrics?
+
+Not today. Studio sends its gauges (event-loop delay, memory, job queue
+depths) with the rest of its telemetry, but Codaco's PostHog project does not
+have PostHog's metrics product, so Codaco cannot see or query them. Codaco
+watches a queue backlog or a blocked event loop only through the log records
+Studio writes when either stays over its threshold. If you send telemetry to
+your own store, the metrics arrive there.
+
 ### Can we send logs, traces, metrics and errors to our own store?
 
 Yes. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OpenTelemetry collector that

@@ -11,8 +11,8 @@ sends telemetry to its own store, as the
 covered by these alerts and builds its own from the same records.
 
 Every record names the deployment it came from in `installation_id` (on error
-reports) or the resource attribute `studio.installation_id` (on logs, spans and
-metrics). The managed platform has one installation id of its own; filter on
+reports) or the resource attribute `studio.installation_id` (on logs and
+spans). The managed platform has one installation id of its own; filter on
 it first when an alert fires. The one exception is a process whose database
 has no installation id yet, which in practice means `migrate` has never run
 against it: its records carry none, so a `schema_mismatch` record without an
@@ -21,16 +21,31 @@ tell you which.
 
 ## How the alerts are delivered
 
-- **Every alert is switched off until Studio launches.** Each one exists in
-  the project, fully configured, and is turned on at launch.
-- **They are PostHog insight alerts**, checked every hour, and each fires when
-  its value is above its threshold.
+There are exactly two alerts:
+
+| Alert                             | Insight                                                             | Fires when                                                           |
+| --------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Studio: new error-tracking issues | [8Fiytr6H](https://us.posthog.com/project/249487/insights/8Fiytr6H) | Error Tracking opened at least one new Studio issue in the last hour |
+| Studio: operator alert records    | [hakbUrbN](https://us.posthog.com/project/249487/insights/hakbUrbN) | Any operator alert code has at least one record in the last hour     |
+
+- **Both are switched off until Studio launches.** Each exists in the project,
+  fully configured, and is turned on at launch.
+- **They are PostHog insight alerts**, checked every hour.
 - **They are delivered by email** to the PostHog users subscribed to them. The
   PostHog organisation is on the free plan, where insight alerts are the alert
   type that can send email. Slack and webhook destinations, and Error
   Tracking's own alerts, are on paid plans, which is why the error-tracking
-  alert below is an insight over `$exception` events rather than an Error
-  Tracking alert.
+  alert is an insight over `$exception` events rather than an Error Tracking
+  alert.
+- **The six log codes share one alert** because the free plan allows five
+  alerts in all. The alert's email names the code that fired; the sections
+  below say what each one means and what to do.
+- **Codaco's PostHog project has no metrics.** Studio exports its gauges
+  (queue depth, event-loop delay, memory), but PostHog's metrics product is
+  not enabled for the organisation, so Codaco can neither see nor alert on
+  them. Queue backlog and event-loop lag reach these alerts as log records
+  instead (`queue_backlog` and `event_loop_lag`, below). An operator who sends
+  telemetry to their own OpenTelemetry store does get the metrics.
 
 ## Error tracking
 
@@ -81,32 +96,38 @@ where first_seen > now() - interval 1 hour
 4. Fix it, or resolve the issue in Error Tracking if it is understood and
    expected, so a recurrence opens a new one.
 
-## Log alerts
+## Operator alert records
 
-Each of these matches an error-level log record from `studio-api` (both the
-`serve` and the `worker` processes export under that service name) carrying
-the annotation `alert` with a fixed code. The codes are one constant,
-`OPERATOR_ALERTS` in
+[Alert insight](https://us.posthog.com/project/249487/insights/hakbUrbN)
+
+Each code below is carried by error-level log records from `studio-api` (both
+the `serve` and the `worker` processes export under that service name) in the
+annotation `alert`. The codes are one constant, `OPERATOR_ALERTS` in
 [`api/src/platform/operator-alerts.ts`](../../api/src/platform/operator-alerts.ts),
 and each record's code is asserted by a test.
 
-All four use the same query with a different code:
+**Query** (HogQL):
 
 ```sql
-select count() as records
+select attributes['alert'] as code, count() as records
 from logs
 where service_name = 'studio-api'
   and severity_text = 'error'
-  and attributes['alert'] = '<code>'
+  and attributes['alert'] in (
+    'delivery_uncertain', 'job_dead_lettered', 'readiness_failing',
+    'schema_mismatch', 'queue_backlog', 'event_loop_lag'
+  )
   and timestamp > now() - interval 1 hour
+group by code
+order by records desc
 ```
 
-**Threshold** for each: above 0.
+**Threshold.** At least one record for any code in the last hour. The alert's
+email names the code.
 
 ### Invitation delivery outcome uncertain
 
-[Alert insight](https://us.posthog.com/project/249487/insights/8BY5tqLd) ·
-code `delivery_uncertain`
+Code `delivery_uncertain`.
 
 **What it means.** An invitation email's delivery attempt ended in a way that
 leaves its outcome unknown, and Studio does not retry it, so the invitee never
@@ -137,8 +158,7 @@ gets two copies. Two records carry the code, each with `queue`
 
 ### Job dead-lettered
 
-[Alert insight](https://us.posthog.com/project/249487/insights/SnKFwoMX) ·
-code `job_dead_lettered`
+Code `job_dead_lettered`.
 
 **What it means.** A background job ended for good without succeeding, and
 will not be retried. Three records carry the code, each with `queue` and
@@ -167,8 +187,7 @@ also reported to Error Tracking.
 
 ### Readiness failing
 
-[Alert insight](https://us.posthog.com/project/249487/insights/uX1w1sWp) ·
-code `readiness_failing`
+Code `readiness_failing`.
 
 **What it means.** A process's `/readyz` checks turned failing. Each process
 writes `readiness is failing` once when that happens, naming the failing checks
@@ -195,8 +214,7 @@ platform's load balancer must poll the api.
 
 ### Database schema mismatch
 
-[Alert insight](https://us.posthog.com/project/249487/insights/koixG77X) ·
-code `schema_mismatch`
+Code `schema_mismatch`.
 
 **What it means.** A process started against a database whose schema is not
 the one its build expects: none at all, or tables without a fingerprint, or a
@@ -216,52 +234,51 @@ this alert.
    `migrate` from the image the processes are running. If `migrate` refuses,
    follow the remedy it prints.
 
-## Metric alerts
-
 ### Job queue backlog
 
-Alert insight: link to follow.
+Code `queue_backlog`.
 
 **What it means.** Jobs are being queued faster than the workers claim them:
 more than 100 jobs on one queue have been waiting to run for ten minutes. The
-gauge is sampled once a minute per queue and state, from a count of
-`studio_jobs.jobs`.
-
-**Metric.** `studio_jobs_queue_depth{state="created"}`, per `queue`.
-
-**Threshold.** Above 100 for 10 minutes.
+worker counts each queue's waiting (`created`) jobs once a minute, from
+`studio_jobs.jobs`, and writes
+`jobs waiting to run have stayed above the backlog alert threshold` once, with
+`queue` and `waiting`, when the count has stayed above 100 for ten minutes. It
+writes an info-level
+`jobs waiting to run are back under the backlog alert threshold` when the count
+drops back to 100 or fewer, and a new episode starts the window again. The
+threshold and window are `SUSTAINED_ALERT_RULES.queueBacklog`, beside the codes.
 
 **What to do.**
 
-1. Read which `queue` is backed up.
-2. Check the worker is running and ready (the readiness alert above, and its
+1. Read which `queue` is backed up, and `waiting`.
+2. Check the worker is running and ready (`readiness_failing` above, and its
    `jobs` check).
 3. Check the worker's stdout for jobs retrying: a queue retrying every job
    (`job attempt failed; retrying`) backs up behind its own retries.
-4. A queue whose depth keeps growing while the worker is healthy needs another
-   worker replica.
+4. A queue that keeps growing while the worker is healthy needs another worker
+   replica.
 
 ### Event-loop lag
 
-Alert insight: link to follow.
+Code `event_loop_lag`.
 
 **What it means.** A Studio process's event loop is blocked for long stretches:
 its 99th-percentile event-loop delay has stayed above 200 ms for five minutes.
 This is the leading indicator of editing locks expiring under editors who are
 still working (ADR #1245, risk 5), because lock renewal waits on the same loop.
-The gauge is sampled every ten seconds per process.
-
-**Metric.** `studio_runtime_event_loop_delay_p99_ms`.
-
-**Threshold.** Above 200 ms for 5 minutes.
+Each process samples its delay every ten seconds and writes
+`event-loop delay has stayed above the lag alert threshold` once, with
+`p99_ms`, when it has stayed above 200 ms for five minutes, and an info-level
+`event-loop delay is back under the lag alert threshold` when it drops back.
+The threshold and window are `SUSTAINED_ALERT_RULES.eventLoopLag`.
 
 **What to do.**
 
 1. Read `studio.program` and the installation: one `serve` replica or the
    worker.
-2. Compare `studio_runtime_memory_heap_used_bytes` and
-   `studio_runtime_memory_rss_bytes` over the same window: a heap near its limit
-   spends its time in garbage collection.
+2. Check the process's memory on its host (`docker stats`): a heap near its
+   limit spends its time in garbage collection.
 3. Look at the slowest spans in the same window for a request or job holding
    the loop, such as a large protocol import or export.
 4. If editors are affected, add an api replica while the cause is found.
