@@ -19,7 +19,10 @@ import {
 import { POSTHOG_API_KEY, POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 
 import { STUDIO_VERSION } from '../version.ts';
-import { POSTHOG_INGESTION_HOST } from './analytics.ts';
+import {
+  POSTHOG_INGESTION_HOST,
+  POSTHOG_LOCATION_OVERRIDES,
+} from './analytics.ts';
 import { InstallationIdentity } from './installation-identity.ts';
 import { correlationOf } from './logger.ts';
 import { failureFrames, safeExceptionType } from './telemetry-export.ts';
@@ -207,7 +210,7 @@ export class ErrorReporter extends Context.Service<
                       ...contextProperties(context),
                       distinct_id: installationDistinctId(installationId),
                       $process_person_profile: false,
-                      $geoip_disable: true,
+                      ...POSTHOG_LOCATION_OVERRIDES,
                       $exception_level: 'error',
                       $exception_list: [
                         {

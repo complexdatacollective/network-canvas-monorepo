@@ -34,6 +34,7 @@ import {
 } from '../../../db/tenant.ts';
 import { RequestId } from '../../../http/middleware/request-id.ts';
 import { MailFailed, type MailNotConfigured } from '../../../mail/mailer.ts';
+import { collectLeveledLogs } from '../../../platform/__tests__/support/logs.ts';
 import { Analytics } from '../../../platform/analytics.ts';
 import { principalOf } from '../../../rpc/authenticated.ts';
 import {
@@ -415,8 +416,9 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
               EXECUTE FUNCTION interrupt_invitation_sent_finalization()`),
           );
 
+          const logs = collectLeveledLogs();
           const step = yield* Effect.ensuring(
-            runDelivery(deliveryId, succeeds),
+            runDelivery(deliveryId, succeeds).pipe(Effect.provide(logs.layer)),
             Effect.orDie(
               Effect.andThen(
                 ownerRows(`
@@ -441,6 +443,19 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           assert.strictEqual(row.sent_at, null);
           assert.strictEqual(row.suppressed_at, null);
           assert.instanceOf(row.uncertain_at, Date);
+          assert.deepStrictEqual(
+            logs.records
+              .filter(
+                ({ message }) =>
+                  message ===
+                  'the delivery attempt failed; its outcome is uncertain',
+              )
+              .map(({ level, annotations }) => ({
+                level,
+                alert: annotations.alert,
+              })),
+            [{ level: 'Error', alert: 'delivery_uncertain' }],
+          );
 
           yield* clearQueue();
           const mail = yield* RecordedMail;

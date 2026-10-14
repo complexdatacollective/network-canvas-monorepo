@@ -605,6 +605,31 @@ describe.each(DESTINATIONS)('ErrorReporter ($name)', (destination) => {
 
 const db = await reachableDb();
 
+describe('ErrorReporter (posthog) location', () => {
+  it.live(
+    'overwrites the sending server’s address and turns off location lookup',
+    () =>
+      Effect.gen(function* () {
+        const { sent } = yield* serveAndProbe(
+          { name: 'posthog', endpoint: undefined },
+          get('/defect'),
+        );
+        const exceptions = sent
+          .filter(
+            (request) => request.url === `${POSTHOG_INGESTION_HOST}/batch/`,
+          )
+          .flatMap((request) => list(field(parse(request.body), 'batch')))
+          .filter((event) => field(event, 'event') === '$exception')
+          .map((event) => field(event, 'properties'));
+        expect(exceptions).toHaveLength(1);
+        expect(exceptions[0]).toMatchObject({
+          $ip: '0.0.0.0',
+          $geoip_disable: true,
+        });
+      }),
+  );
+});
+
 describe.skipIf(!db)('ErrorReporter in the job worker', () => {
   layer(layerQueueHarness(db!))('with the queue installed', (queued) => {
     for (const destination of DESTINATIONS) {

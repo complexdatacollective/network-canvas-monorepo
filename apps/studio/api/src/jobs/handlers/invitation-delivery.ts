@@ -8,6 +8,10 @@ import { type MaintenanceDatabase } from '../../db/client.ts';
 import { MaintenanceScope, Transaction } from '../../db/tenant.ts';
 import { Mailer } from '../../mail/mailer.ts';
 import {
+  alertAnnotation,
+  OPERATOR_ALERTS,
+} from '../../platform/operator-alerts.ts';
+import {
   causeError,
   deepestMessage,
   isLockUnavailableCause,
@@ -247,7 +251,13 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
       yield* Effect.logError(
         'the delivery attempt failed; its outcome is uncertain',
         attempt.cause,
-      ).pipe(Effect.annotateLogs({ queue: QUEUE, job_id: job.id }));
+      ).pipe(
+        Effect.annotateLogs({
+          queue: QUEUE,
+          job_id: job.id,
+          ...alertAnnotation(OPERATOR_ALERTS.deliveryUncertain),
+        }),
+      );
       return 'uncertain';
     }
 

@@ -32,6 +32,10 @@ import {
 import { MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
 import { ErrorReporter } from '../platform/error-reporter.ts';
+import {
+  alertAnnotation,
+  OPERATOR_ALERTS,
+} from '../platform/operator-alerts.ts';
 import { JobClock, type JobClockShape } from './clock.ts';
 import {
   causeError,
@@ -610,20 +614,24 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         yield* leaseLost(queue, jobId, claimed.attempts);
         return idle;
       }
-      yield* (
-        step._tag === 'retrying'
-          ? Effect.logWarning('job attempt failed; retrying', exit.cause)
-          : Effect.logError(
-              'job attempt failed and will not be retried',
-              exit.cause,
-            )
-      ).pipe(
-        Effect.annotateLogs({
-          queue,
-          job_id: jobId,
-          attempt: claimed.attempts,
-        }),
-      );
+      const attemptAnnotations = {
+        queue,
+        job_id: jobId,
+        attempt: claimed.attempts,
+      };
+      yield* step._tag === 'retrying'
+        ? Effect.logWarning('job attempt failed; retrying', exit.cause).pipe(
+            Effect.annotateLogs(attemptAnnotations),
+          )
+        : Effect.logError(
+            'job attempt failed and will not be retried',
+            exit.cause,
+          ).pipe(
+            Effect.annotateLogs({
+              ...attemptAnnotations,
+              ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
+            }),
+          );
       if (step._tag !== 'retrying') {
         yield* reportFailure(exit.cause, queue, jobId);
       }

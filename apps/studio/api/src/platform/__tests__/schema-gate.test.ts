@@ -12,7 +12,7 @@ import { ReadinessDatabase } from '../../db/client.ts';
 import { schemaProblemMessage } from '../../db/schema.ts';
 import { type DbEnv, Environment, readEnv } from '../../env.ts';
 import { SchemaStatus, SchemaUnreachable } from '../schema-gate.ts';
-import { collectLogs } from './support/logs.ts';
+import { collectLogs, type LoggedRecord } from './support/logs.ts';
 
 const APPLY_TIMEOUT_MS = 180_000;
 
@@ -53,7 +53,10 @@ describe.skipIf(!db)('SchemaStatus.layer', () => {
   // the remedy does.
   const comesUpWaiting = (
     devDefaults: boolean,
-    warned: (messages: ReadonlyArray<string>) => void,
+    warned: (
+      messages: ReadonlyArray<string>,
+      records: ReadonlyArray<LoggedRecord>,
+    ) => void,
   ) =>
     Effect.gen(function* () {
       if (!db) throw new Error('unreachable: probe guaranteed a database');
@@ -69,7 +72,7 @@ describe.skipIf(!db)('SchemaStatus.layer', () => {
             expect(
               yield* Effect.sync(() => waiting.pollUnsafe()),
             ).toBeUndefined();
-            warned(logs.messages);
+            warned(logs.messages, logs.records);
 
             yield* Effect.promise(() => applySchema(scratch.pool));
 
@@ -93,13 +96,16 @@ describe.skipIf(!db)('SchemaStatus.layer', () => {
   it.live(
     'comes up waiting outside development, naming migrate, and completes once the schema arrives',
     () =>
-      comesUpWaiting(false, (messages) => {
+      comesUpWaiting(false, (messages, records) => {
         const remedy = `${schemaProblemMessage({ kind: 'absent' }, 'deployed')}\n`;
         const warning = messages.find((message) =>
           message.startsWith('The database has no Studio schema.'),
         );
         expect(warning?.slice(0, remedy.length)).toBe(remedy);
         expect(warning).toContain('with no restart needed');
+        const record = records.find(({ message }) => message === warning);
+        expect(record?.level).toBe('Error');
+        expect(record?.annotations.alert).toBe('schema_mismatch');
       }),
     RESET_CASE_TIMEOUT_MS,
   );
@@ -107,8 +113,13 @@ describe.skipIf(!db)('SchemaStatus.layer', () => {
   it.live(
     'comes up waiting in development and completes once the schema arrives',
     () =>
-      comesUpWaiting(true, (messages) => {
+      comesUpWaiting(true, (messages, records) => {
         expect(messages).toContain(ABSENT_WARNING);
+        const record = records.find(
+          ({ message }) => message === ABSENT_WARNING,
+        );
+        expect(record?.level).toBe('Warn');
+        expect(record?.annotations.alert).toBeUndefined();
       }),
     RESET_CASE_TIMEOUT_MS,
   );
@@ -155,6 +166,44 @@ describe.skipIf(!db)('SchemaStatus.layer', () => {
         yield* Effect.promise(empty.dispose);
       }
     }),
+  );
+
+  it.live(
+    'logs a stale schema outside development at error level, for the schema mismatch alert',
+    () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const { rows } = yield* Effect.promise(() =>
+            applied.pool.query<{ fingerprint: string }>(
+              'select "fingerprint" from "schemaFingerprint"',
+            ),
+          );
+          const stamp = rows[0]?.fingerprint ?? '';
+          yield* Effect.acquireRelease(
+            Effect.promise(() =>
+              applied.pool.query(
+                `update "schemaFingerprint" set "fingerprint" = 'another build'`,
+              ),
+            ),
+            () =>
+              Effect.promise(() =>
+                applied.pool.query(
+                  'update "schemaFingerprint" set "fingerprint" = $1',
+                  [stamp],
+                ),
+              ),
+          );
+          const logs = collectLogs();
+          yield* Layer.build(gate(applied.db, false)).pipe(
+            Effect.provide(logs.layer),
+          );
+          const record = logs.records.find(({ message }) =>
+            message.startsWith('The database schema is not this build’s.'),
+          );
+          expect(record?.level).toBe('Error');
+          expect(record?.annotations.alert).toBe('schema_mismatch');
+        }),
+      ),
   );
 
   it.live('reads a fresh verdict on every read of one layer', () =>

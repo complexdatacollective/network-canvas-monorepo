@@ -643,6 +643,7 @@ describe.skipIf(!db)('the native queue', () => {
                 queue: 'invitation-delivery',
                 job_id: lost,
                 attempt: 1,
+                alert: 'job_dead_lettered',
               },
               failure: 'Error: SMTP refused the recipient',
             },
