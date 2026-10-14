@@ -435,6 +435,31 @@ describe('findMissingDynamicPlacement', () => {
     ).toBeUndefined();
   });
 
+  it('does not waive a zero-only category the translation falls back to `other` for', () => {
+    // Welsh `zero` holds only 0, but this translation writes no `zero` arm:
+    // at 0 it reads its `other` version, written for many numbers, which
+    // leaves out the count the Arabic shows for zero.
+    expect(
+      findMissingDynamicPlacement(
+        '{count, select, missing {?} other {{count, plural, zero {#} other {none}}}}',
+        'ar',
+        '{count, select, missing {?} other {{count, plural, other {none}}}}',
+        'cy',
+        VALUES,
+      ),
+    ).toEqual({ argument: 'count', when: { count: '0' } });
+    // A `zero` arm of its own may leave the number out.
+    expect(
+      findMissingDynamicPlacement(
+        '{count, select, missing {?} other {{count, plural, zero {#} other {none}}}}',
+        'ar',
+        '{count, select, missing {?} other {{count, plural, zero {dim} other {none}}}}',
+        'cy',
+        VALUES,
+      ),
+    ).toBeUndefined();
+  });
+
   it('does not waive a version that also holds a negative number', () => {
     // A number answer can be negative, and English `one` holds -1 as well
     // as 1, so "one item" would also be shown for -1.
