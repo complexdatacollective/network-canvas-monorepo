@@ -168,12 +168,16 @@ const dynamicValueProblem = (
 ): string | undefined => {
   const protocol = getProtocol(state);
   if (!protocol || row.dynamicValues === undefined) return undefined;
-  const value = protocol.localization.locales.reduce((held, other) => {
-    const name = translationFieldName(row.path, other);
-    return other === locale || !Object.hasOwn(formValues, name)
-      ? held
-      : withCellText(row, held, other, asText(formValues[name]));
-  }, row.value);
+  // A cell emptied in the table holds no translation in that language.
+  const value = protocol.localization.locales.reduce<LocalizedString>(
+    (held, other) => {
+      const name = translationFieldName(row.path, other);
+      return other === locale || !Object.hasOwn(formValues, name)
+        ? held
+        : (withCellText(row, held, other, asText(formValues[name])) ?? {});
+    },
+    row.value,
+  );
   const at = JSON.stringify([...row.path, locale]);
   return findDynamicValueProblems(
     {
