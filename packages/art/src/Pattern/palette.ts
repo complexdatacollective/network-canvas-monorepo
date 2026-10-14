@@ -6,7 +6,7 @@ import type { Palette, Rng } from './types';
 // hue (top) to a darker version (bottom).
 export const BASE_PALETTE = [
   { name: 'neon-coral', l: 0.5733, c: 0.2584, h: 11.57 },
-  { name: 'mustard', l: 0.81, c: 0.17, h: 86.39 },
+  { name: 'mustard', l: 0.81, c: 0.17, h: 72 },
   { name: 'sea-green', l: 0.7, c: 0.2, h: 171.52 },
   { name: 'slate-blue', l: 0.55, c: 0.198, h: 281 },
   { name: 'cerulean-blue', l: 0.5824, c: 0.229, h: 260.09 },

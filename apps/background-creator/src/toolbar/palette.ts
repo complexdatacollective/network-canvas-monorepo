@@ -28,14 +28,14 @@ export const NEUTRAL_SWATCHES: Swatch[] = [
 // Order mirrors --node-1..8 in default.css. Source colour names are noted so the
 // origin of each hex is traceable back to tooling/tailwind/shared/colors.css.
 export const HUE_SWATCHES: Swatch[] = [
-  { value: '#e8004f', label: 'Coral' }, // --node-1 neon-coral
-  { value: '#13bde0', label: 'Sea blue' }, // --node-2 sea-serpent
+  { value: '#e80054', label: 'Coral' }, // --node-1 neon-coral
+  { value: '#007db2', label: 'Sea blue' }, // --node-2 sea-serpent
   { value: '#ce1bee', label: 'Purple' }, // --node-3 purple-pizazz
-  { value: '#f49324', label: 'Carrot' }, // --node-4 neon-carrot
-  { value: '#78c25b', label: 'Green' }, // --node-5 kiwi
+  { value: '#c65100', label: 'Carrot' }, // --node-4 neon-carrot
+  { value: '#008800', label: 'Green' }, // --node-5 kiwi
   { value: '#0f6fff', label: 'Blue' }, // --node-6 cerulean-blue
-  { value: '#ff238e', label: 'Pink' }, // --node-7 paradise-pink
-  { value: '#f1b700', label: 'Mustard' }, // --node-8 mustard
+  { value: '#e1007c', label: 'Pink' }, // --node-7 paradise-pink
+  { value: '#a96600', label: 'Mustard' }, // --node-8 mustard
 ];
 
 export const SWATCHES: Swatch[] = [...NEUTRAL_SWATCHES, ...HUE_SWATCHES];

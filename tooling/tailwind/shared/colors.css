@@ -22,7 +22,7 @@
   /* Mustard */
   --mustard-lightness: 0.81;
   --mustard-chroma: 0.17;
-  --mustard-hue: 86.39;
+  --mustard-hue: 72;
   --mustard: var(--mustard-lightness) var(--mustard-chroma) var(--mustard-hue);
   --mustard--dark: calc(var(--mustard-lightness) - var(--dark-mod))
     var(--mustard-chroma) var(--mustard-hue);
@@ -48,7 +48,7 @@
   /* Sea Serpent */
   --sea-serpent-lightness: 0.7383;
   --sea-serpent-chroma: 0.13;
-  --sea-serpent-hue: 217.55;
+  --sea-serpent-hue: 230;
   --sea-serpent: var(--sea-serpent-lightness) var(--sea-serpent-chroma)
     var(--sea-serpent-hue);
   --sea-serpent--dark: calc(var(--sea-serpent-lightness) - var(--dark-mod))
@@ -66,7 +66,7 @@
   /* Paradise Pink */
   --paradise-pink-lightness: 0.6586;
   --paradise-pink-chroma: 0.253;
-  --paradise-pink-hue: 359.2;
+  --paradise-pink-hue: 358;
   --paradise-pink: var(--paradise-pink-lightness) var(--paradise-pink-chroma)
     var(--paradise-pink-hue);
   --paradise-pink--dark: calc(var(--paradise-pink-lightness) - var(--dark-mod))
@@ -84,7 +84,7 @@
   /* Kiwi */
   --kiwi-lightness: 0.7436;
   --kiwi-chroma: 0.157;
-  --kiwi-hue: 137.61;
+  --kiwi-hue: 144;
   --kiwi: var(--kiwi-lightness) var(--kiwi-chroma) var(--kiwi-hue);
   --kiwi--dark: calc(var(--kiwi-lightness) - var(--dark-mod)) var(--kiwi-chroma)
     var(--kiwi-hue);
@@ -92,7 +92,7 @@
   /* Neon Carrot */
   --neon-carrot-lightness: 0.7487;
   --neon-carrot-chroma: 0.161;
-  --neon-carrot-hue: 62.61;
+  --neon-carrot-hue: 49;
   --neon-carrot: var(--neon-carrot-lightness) var(--neon-carrot-chroma)
     var(--neon-carrot-hue);
   --neon-carrot--dark: calc(var(--neon-carrot-lightness) - var(--dark-mod))

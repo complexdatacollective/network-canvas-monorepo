@@ -128,7 +128,7 @@ const hueMessages = defineMessages({
  * Every position each colour sequence defines, named after the hue the theme
  * resolves it to.
  *
- * Not invented: `--node-1` is `oklch(var(--neon-coral))` in
+ * Not invented: `--node-1` is derived from `--neon-coral` in
  * `tooling/tailwind/fresco/themes/default.css`, so the first node swatch IS
  * Neon Coral. `ColorPicker.test.tsx` reads that stylesheet and fails if a
  * sequence is reordered underneath these names — a swatch announcing the wrong
