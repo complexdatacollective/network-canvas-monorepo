@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, renderHook, waitFor } from '@testing-library/react';
 import { Effect, Schema } from 'effect';
 import { StrictMode, useEffect } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PARTICIPANT_SESSION_HEADER } from '@codaco/studio-contract/middleware/session';
 import {
@@ -25,8 +25,9 @@ import {
 import { installRpcHarness } from '../../test/rpcHarness.ts';
 import {
   createBrowserLogHandle,
+  NO_TEAM,
   logResearcher,
-  setResearcherLogTeam,
+  teamScope,
 } from '../browserLogs.ts';
 
 const fetchSpy = vi.fn<typeof globalThis.fetch>(async () =>
@@ -105,42 +106,44 @@ const SESSION = 'participant-session-token';
 
 beforeEach(() => {
   fetchSpy.mockClear();
-  setResearcherLogTeam(undefined);
-});
-
-afterEach(() => {
-  setResearcherLogTeam(undefined);
 });
 
 describe('researcher logs', () => {
   it('sends no record while status reports telemetry off', async () => {
     const { harness, view } = renderResearcher(false);
     await statusSettled(harness);
-    logResearcher({
-      message: 'Editing lock lost',
-      level: 'Warn',
-      attributes: {},
-    });
+    logResearcher(
+      {
+        message: 'Editing lock lost',
+        level: 'Warn',
+        attributes: {},
+      },
+      NO_TEAM,
+    );
     await exportWindow();
     view.unmount();
     expect(logCalls(BROWSER_LOG_PATHS.researcher)).toEqual([]);
   });
 
-  it('sends catalogued records to its own origin, each with the team on screen when it was logged', async () => {
+  it('sends catalogued records to its own origin, each with the team its cause carried, or none', async () => {
     const { harness, view } = renderResearcher(true);
     await statusSettled(harness);
-    setResearcherLogTeam('team-on-screen');
-    logResearcher({
-      message: 'Request to the server failed',
-      level: 'Warn',
-      attributes: { error_code: 'transport' },
-    });
-    setResearcherLogTeam('team-moved-to');
-    logResearcher({
-      message: 'Request to the server failed',
-      level: 'Warn',
-      attributes: { error_code: 'transport' },
-    });
+    logResearcher(
+      {
+        message: 'Request to the server failed',
+        level: 'Warn',
+        attributes: { error_code: 'transport' },
+      },
+      teamScope('team-of-the-request'),
+    );
+    logResearcher(
+      {
+        message: 'Request to the server failed',
+        level: 'Warn',
+        attributes: { error_code: 'transport' },
+      },
+      NO_TEAM,
+    );
     await waitFor(
       () =>
         expect(logCalls(BROWSER_LOG_PATHS.researcher).length).toBeGreaterThan(
@@ -167,7 +170,10 @@ describe('researcher logs', () => {
         body: { stringValue: 'Request to the server failed' },
         attributes: [
           { key: 'error_code', value: { stringValue: 'transport' } },
-          { key: 'team_id', value: { stringValue: 'team-on-screen' } },
+          {
+            key: 'team_id',
+            value: { stringValue: 'team-of-the-request' },
+          },
         ],
       },
       {
@@ -175,7 +181,6 @@ describe('researcher logs', () => {
         body: { stringValue: 'Request to the server failed' },
         attributes: [
           { key: 'error_code', value: { stringValue: 'transport' } },
-          { key: 'team_id', value: { stringValue: 'team-moved-to' } },
         ],
       },
     ]);
@@ -185,11 +190,14 @@ describe('researcher logs', () => {
     const first = renderResearcher(true);
     await statusSettled(first.harness);
     first.view.unmount();
-    logResearcher({
-      message: 'Editing lock lost',
-      level: 'Warn',
-      attributes: {},
-    });
+    logResearcher(
+      {
+        message: 'Editing lock lost',
+        level: 'Warn',
+        attributes: {},
+      },
+      NO_TEAM,
+    );
     const second = renderResearcher(true);
     await statusSettled(second.harness);
     await exportWindow();
@@ -200,16 +208,22 @@ describe('researcher logs', () => {
   it('does not send a record below the configured level', async () => {
     const { harness, view } = renderResearcher(true, 'Error');
     await statusSettled(harness);
-    logResearcher({
-      message: 'Editing lock refused',
-      level: 'Warn',
-      attributes: {},
-    });
-    logResearcher({
-      message: 'Screen failed to render',
-      level: 'Error',
-      attributes: { error_code: 'unknown' },
-    });
+    logResearcher(
+      {
+        message: 'Editing lock refused',
+        level: 'Warn',
+        attributes: {},
+      },
+      NO_TEAM,
+    );
+    logResearcher(
+      {
+        message: 'Screen failed to render',
+        level: 'Error',
+        attributes: { error_code: 'unknown' },
+      },
+      NO_TEAM,
+    );
     await waitFor(
       () =>
         expect(logCalls(BROWSER_LOG_PATHS.researcher).length).toBeGreaterThan(

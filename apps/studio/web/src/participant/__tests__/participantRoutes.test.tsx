@@ -546,9 +546,11 @@ describe('participant logs', () => {
       { name: 'Welcome to the study' },
       { timeout: 15_000 },
     );
+    const shown = document.querySelector('[data-stage-step]');
+    if (shown === null) throw new Error('no stage is shown');
     const image = document.createElement('img');
     image.setAttribute('src', '/storage/missing-asset');
-    document.body.append(image);
+    shown.append(image);
     image.dispatchEvent(new Event('error'));
     image.remove();
 

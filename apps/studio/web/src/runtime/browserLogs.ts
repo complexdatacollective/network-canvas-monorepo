@@ -263,20 +263,23 @@ export const createBrowserLogHandle = <E extends Entry>(
   };
 };
 
-let researcherTeam: string | undefined;
+export type ResearcherLogScope = { readonly teamId: string | undefined };
 
-export const setResearcherLogTeam = (teamId: string | undefined): void => {
-  researcherTeam = teamId;
-};
+export const NO_TEAM: ResearcherLogScope = { teamId: undefined };
+
+export const teamScope = (teamId: string): ResearcherLogScope => ({ teamId });
 
 let researcherLogs = createBrowserLogHandle<ResearcherLogEntry>('researcher');
 
-export const logResearcher = (entry: ResearcherLogEntry): void =>
+export const logResearcher = (
+  entry: ResearcherLogEntry,
+  scope: ResearcherLogScope,
+): void =>
   researcherLogs.log(
     entry,
-    researcherTeam === undefined
+    scope.teamId === undefined
       ? {}
-      : { [BROWSER_LOG_TEAM_ATTRIBUTE]: researcherTeam },
+      : { [BROWSER_LOG_TEAM_ATTRIBUTE]: scope.teamId },
   );
 
 export function startResearcherLogs(config: BrowserLogConfig): () => void {

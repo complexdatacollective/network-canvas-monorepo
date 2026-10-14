@@ -159,7 +159,7 @@ export const logAnswerSaveRetried = (
     attributes: { ...stage, attempt_count: boundedAttempts(attempts) },
   });
 
-export const logAssetFailed = (
+const logAssetFailed = (
   log: ParticipantLog,
   stage: ParticipantStage,
   code: FaultCode,
@@ -244,27 +244,45 @@ const mediaSource = (target: EventTarget | null): string | undefined => {
   return undefined;
 };
 
-export function watchParticipantMedia(
+type StageOf = (element?: Element) => ParticipantStage | undefined;
+
+export type AssetObserver = {
+  readonly atRequest: () => (code: FaultCode) => void;
+  readonly watch: (
+    isStoredAsset: (source: string) => boolean,
+    target?: EventTargetLike,
+  ) => () => void;
+};
+
+export const createAssetObserver = (
   log: ParticipantLog,
-  stageOf: (element: Element) => ParticipantStage | undefined,
-  isStoredAsset: (source: string) => boolean,
-  target: EventTargetLike = window,
-): () => void {
-  const onError = (event: Event) => {
-    const source = mediaSource(event.target);
-    if (
-      source === undefined ||
-      !(event.target instanceof Element) ||
-      !isStoredAsset(source)
-    ) {
-      return;
-    }
-    const stage = stageOf(event.target);
-    if (stage !== undefined) logAssetFailed(log, stage, 'media');
+  stageOf: StageOf,
+): AssetObserver => {
+  const report = (stage: ParticipantStage | undefined, code: FaultCode) => {
+    if (stage !== undefined) logAssetFailed(log, stage, code);
   };
-  target.addEventListener('error', onError, true);
-  return () => target.removeEventListener('error', onError, true);
-}
+  return {
+    atRequest: () => {
+      const stage = stageOf();
+      return (code) => report(stage, code);
+    },
+    watch: (isStoredAsset, target = window) => {
+      const onError = (event: Event) => {
+        const source = mediaSource(event.target);
+        if (
+          source === undefined ||
+          !(event.target instanceof Element) ||
+          !isStoredAsset(source)
+        ) {
+          return;
+        }
+        report(stageOf(event.target), 'media');
+      };
+      target.addEventListener('error', onError, true);
+      return () => target.removeEventListener('error', onError, true);
+    },
+  };
+};
 
 export const logStageFailedToRender = (
   log: ParticipantLog,

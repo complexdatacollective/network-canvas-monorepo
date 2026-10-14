@@ -1,6 +1,6 @@
 import { Effect, Layer, Option, Redacted, Schema } from 'effect';
 import type { RpcGroup } from 'effect/rpc';
-import { RpcClientError, RpcTest } from 'effect/rpc';
+import { RpcTest } from 'effect/rpc';
 import { onTestFinished } from 'vitest';
 
 import { AuditActor } from '@codaco/studio-contract/middleware/audit-actor';
@@ -171,11 +171,3 @@ export function installRpcHarness(
 
   return { calls, dispose };
 }
-
-export const transportFailure = (): RpcClientError.RpcClientError =>
-  new RpcClientError.RpcClientError({
-    reason: new RpcClientError.RpcClientDefect({
-      message: 'the connection dropped',
-      cause: new TypeError('Failed to fetch'),
-    }),
-  });

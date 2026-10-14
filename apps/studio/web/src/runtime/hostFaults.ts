@@ -9,9 +9,13 @@ import type {
 } from '@codaco/protocol-builder-core/contract';
 import type { ResearcherLogEntry } from '@codaco/studio-contract/schema/browser-logs';
 
-import { logResearcher } from './browserLogs.ts';
+import {
+  logResearcher,
+  NO_TEAM,
+  type ResearcherLogScope,
+} from './browserLogs.ts';
 
-type Log = (entry: ResearcherLogEntry) => void;
+type Log = (entry: ResearcherLogEntry, scope: ResearcherLogScope) => void;
 
 const NORMAL_CLOSURE = 1000;
 
@@ -36,14 +40,17 @@ export const makeConnectionMonitor = (
     socket.addEventListener('open', () => {
       opened = true;
       if (lostAt === undefined) return;
-      log({
-        message: 'Editor connection restored',
-        level: 'Info',
-        attributes: {
-          duration_ms: Math.min(Math.max(now() - lostAt, 0), MAX_DURATION_MS),
-          attempt_count: Math.min(Math.max(attempts, 1), MAX_ATTEMPTS),
+      log(
+        {
+          message: 'Editor connection restored',
+          level: 'Info',
+          attributes: {
+            duration_ms: Math.min(Math.max(now() - lostAt, 0), MAX_DURATION_MS),
+            attempt_count: Math.min(Math.max(attempts, 1), MAX_ATTEMPTS),
+          },
         },
-      });
+        NO_TEAM,
+      );
       lostAt = undefined;
       attempts = 0;
     });
@@ -51,7 +58,10 @@ export const makeConnectionMonitor = (
       if (!opened || lostAt !== undefined) return;
       lostAt = now();
       attempts = 0;
-      log({ message: 'Editor connection lost', level: 'Warn', attributes: {} });
+      log(
+        { message: 'Editor connection lost', level: 'Warn', attributes: {} },
+        NO_TEAM,
+      );
     };
     socket.addEventListener('error', lose);
     socket.addEventListener('close', (event) => {
@@ -80,6 +90,7 @@ const isReadOnlyLock = (result: unknown): boolean =>
 
 export const observeLocks = (
   adapter: RpcAdapter<ProtocolBuilderRpcs>,
+  scope: ResearcherLogScope,
   log: Log = logResearcher,
 ): RpcAdapter<ProtocolBuilderRpcs> => ({
   ...adapter,
@@ -91,12 +102,18 @@ export const observeLocks = (
     try {
       const result = await adapter.rpcCall(tag, payload, signal);
       if (tag === 'AcquireLock' && isReadOnlyLock(result)) {
-        log({ message: 'Editing lock refused', level: 'Warn', attributes: {} });
+        log(
+          { message: 'Editing lock refused', level: 'Warn', attributes: {} },
+          scope,
+        );
       }
       return result;
     } catch (error) {
       if (isTaggedError(error, 'NotLockHolder')) {
-        log({ message: 'Editing lock lost', level: 'Warn', attributes: {} });
+        log(
+          { message: 'Editing lock lost', level: 'Warn', attributes: {} },
+          scope,
+        );
       }
       throw error;
     }

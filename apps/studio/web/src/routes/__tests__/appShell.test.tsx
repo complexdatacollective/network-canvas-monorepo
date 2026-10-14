@@ -12,7 +12,7 @@ import { Effect, Redacted } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SuccessOf } from '@codaco/effect-query/types';
-import { Forbidden } from '@codaco/studio-contract/schema/errors';
+import { Forbidden, RateLimited } from '@codaco/studio-contract/schema/errors';
 import {
   DraftId,
   ProtocolId,
@@ -64,6 +64,11 @@ const STUDY_2: StudyFixture = {
 
 const logTeams = vi.hoisted((): Array<string | undefined> => []);
 
+const updateCheck = vi.hoisted(() => ({
+  fails: false,
+  answer: Promise.resolve(),
+}));
+
 const fixtures = vi.hoisted(() => ({
   TEAM_A: { id: 'team-a', name: 'Alpha research team', slug: 'alpha' },
   TEAM_B: { id: 'team-b', name: 'Beta research team', slug: 'beta' },
@@ -92,8 +97,8 @@ const fixtures = vi.hoisted(() => ({
 
 vi.mock('../../runtime/browserLogs.ts', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../runtime/browserLogs.ts')>()),
-  setResearcherLogTeam: (teamId: string | undefined) => {
-    logTeams.push(teamId);
+  logResearcher: (_entry: unknown, scope: { teamId: string | undefined }) => {
+    logTeams.push(scope.teamId);
   },
 }));
 
@@ -204,7 +209,18 @@ beforeEach(() => {
   fixtures.studies = [STUDY_1, STUDY_2];
   fixtures.studyListRequests = [];
   fixtures.studyGetRequests = [];
+  logTeams.length = 0;
+  updateCheck.fails = false;
+  updateCheck.answer = Promise.resolve();
   installRpcHarness({
+    'status.updateAvailable': () =>
+      Effect.promise(() => updateCheck.answer).pipe(
+        Effect.andThen(
+          updateCheck.fails
+            ? Effect.fail(new RateLimited({ retryAfterSeconds: 30 }))
+            : Effect.succeed(null),
+        ),
+      ),
     'status': () =>
       Effect.succeed({
         name: 'Network Canvas Studio',
@@ -428,8 +444,8 @@ describe('header team switcher', () => {
     );
   });
 
-  it('attributes researcher logs to the committed team, not the one the setting still holds', async () => {
-    logTeams.length = 0;
+  it('attributes researcher logs to the team on screen, not the one the setting still holds', async () => {
+    updateCheck.fails = true;
     fixtures.setActive.mockResolvedValue({
       data: null,
       error: { message: 'You are not a member of that team.' },
@@ -437,8 +453,18 @@ describe('header team switcher', () => {
     renderAt('/team/team-b');
     await screen.findByRole('heading', { level: 1, name: 'Studies' });
 
-    await waitFor(() => expect(logTeams.at(-1)).toBe('team-b'));
-    expect(logTeams).not.toContain('team-a');
+    await waitFor(() => expect(logTeams).toEqual(['team-b']));
+  });
+
+  it('attributes researcher logs on a study route to the study’s own team', async () => {
+    updateCheck.fails = true;
+    const { promise, resolve } = Promise.withResolvers<void>();
+    updateCheck.answer = promise;
+    renderAt(`/study/${STUDY_1_ID}`);
+    await screen.findByRole('combobox', { name: 'Study Wave one pilot, Live' });
+    resolve();
+
+    await waitFor(() => expect(logTeams).toEqual(['team-a']));
   });
 
   it('names the committed team, not the one the setting still holds', async () => {

@@ -6,7 +6,10 @@ import { fixtureProtocolSections } from '@codaco/protocol-builder/testing/protoc
 import type { ResearcherLogEntry } from '@codaco/studio-contract/schema/browser-logs';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { NO_TEAM, type ResearcherLogScope, teamScope } from '../browserLogs.ts';
 import { makeConnectionMonitor, observeLocks } from '../hostFaults.ts';
+
+type Log = (entry: ResearcherLogEntry, scope: ResearcherLogScope) => void;
 
 class FakeSocket extends EventTarget {
   readonly readyState = 1;
@@ -22,9 +25,13 @@ class FakeSocket extends EventTarget {
 
 const monitored = () => {
   const logged: ResearcherLogEntry[] = [];
+  const scopes: ResearcherLogScope[] = [];
   let now = 1_000;
   const watch = makeConnectionMonitor(
-    (entry) => logged.push(entry),
+    (entry, scope) => {
+      logged.push(entry);
+      scopes.push(scope);
+    },
     () => now,
   );
   const dial = () => {
@@ -34,6 +41,7 @@ const monitored = () => {
   };
   return {
     logged,
+    scopes,
     dial,
     advance: (ms: number) => {
       now += ms;
@@ -43,7 +51,7 @@ const monitored = () => {
 
 describe('the editor connection monitor', () => {
   it('logs a dropped connection once, then how long and how many dials it took to restore', () => {
-    const { logged, dial, advance } = monitored();
+    const { logged, scopes, dial, advance } = monitored();
     const first = dial();
     first.open();
     first.closeWith(1006);
@@ -60,6 +68,7 @@ describe('the editor connection monitor', () => {
         attributes: { duration_ms: 2_500, attempt_count: 2 },
       },
     ]);
+    expect(scopes).toEqual([NO_TEAM, NO_TEAM]);
   });
 
   it('treats an error on an open socket as a lost connection, whatever close follows', () => {
@@ -99,34 +108,39 @@ const lockedHost = () => {
 
 describe('the editing lock observer', () => {
   it('logs a refused lock, and nothing for a granted one', async () => {
-    const log = vi.fn<(entry: ResearcherLogEntry) => void>();
+    const log = vi.fn<Log>();
     const { host, input, collaborator } = lockedHost();
 
-    const granted = await observeLocks(host.adapter, log).rpcCall(
-      'AcquireLock',
-      input,
-    );
+    const granted = await observeLocks(
+      host.adapter,
+      teamScope('team-a'),
+      log,
+    ).rpcCall('AcquireLock', input);
     expect(granted.lock).toBe('held');
     expect(log).not.toHaveBeenCalled();
 
-    const refused = await observeLocks(collaborator, log).rpcCall(
-      'AcquireLock',
-      input,
-    );
+    const refused = await observeLocks(
+      collaborator,
+      teamScope('team-a'),
+      log,
+    ).rpcCall('AcquireLock', input);
     expect(refused.lock).toBe('readOnly');
     expect(log.mock.calls).toEqual([
-      [{ message: 'Editing lock refused', level: 'Warn', attributes: {} }],
+      [
+        { message: 'Editing lock refused', level: 'Warn', attributes: {} },
+        teamScope('team-a'),
+      ],
     ]);
   });
 
   it('logs a lost lock and rethrows the refusal', async () => {
-    const log = vi.fn<(entry: ResearcherLogEntry) => void>();
+    const log = vi.fn<Log>();
     const { host, input, collaborator } = lockedHost();
     await host.adapter.rpcCall('AcquireLock', input);
     const current = await collaborator.rpcCall('GetSection', input);
 
     await expect(
-      observeLocks(collaborator, log).rpcCall('Submit', {
+      observeLocks(collaborator, teamScope('team-a'), log).rpcCall('Submit', {
         ...input,
         requestId: 'write-1',
         document: current.document,
@@ -134,7 +148,10 @@ describe('the editing lock observer', () => {
       }),
     ).rejects.toBeInstanceOf(NotLockHolder);
     expect(log.mock.calls).toEqual([
-      [{ message: 'Editing lock lost', level: 'Warn', attributes: {} }],
+      [
+        { message: 'Editing lock lost', level: 'Warn', attributes: {} },
+        teamScope('team-a'),
+      ],
     ]);
   });
 });

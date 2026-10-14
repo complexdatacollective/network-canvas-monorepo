@@ -6,9 +6,10 @@ import {
   type SessionPayload,
   type SyncHandler,
 } from '@codaco/interview/contract';
+import type { FaultCode } from '@codaco/studio-contract/schema/browser-logs';
 import { SessionOutOfDate } from '@codaco/studio-contract/schema/participant';
 
-import { retryAfterSeconds } from '../runtime/errors.ts';
+import { faultCodeOf, retryAfterSeconds } from '../runtime/errors.ts';
 import {
   participantCall,
   participantUnloadingSync,
@@ -41,18 +42,20 @@ type Args = {
   readonly stageIds: readonly string[];
   readonly getCurrentStep: () => number;
   readonly onNotice: (kind: ParticipantNoticeKind) => void;
-  readonly onSaveFault?: (fault: SaveFault) => void;
+  readonly onSaveOutcome?: (outcome: SaveOutcome) => void;
 };
 
-export type SaveFault =
+export type SaveOutcome =
+  | { readonly kind: 'applied'; readonly stageIndex: number }
   | {
-      readonly kind: 'failed';
-      readonly error: unknown;
+      readonly kind: 'retried';
       readonly attempts: number;
       readonly stageIndex: number;
     }
   | {
-      readonly kind: 'retried';
+      readonly kind: 'failed';
+      readonly code: FaultCode;
+      readonly error: unknown;
       readonly attempts: number;
       readonly stageIndex: number;
     };
@@ -78,7 +81,7 @@ export function createParticipantHandlers({
   stageIds,
   getCurrentStep,
   onNotice,
-  onSaveFault,
+  onSaveOutcome,
 }: Args): ParticipantHandlers {
   // The revision the server holds as far as this page knows: the stored one,
   // then each save it applied. Finishing presents it, since the server
@@ -168,50 +171,52 @@ export function createParticipantHandlers({
   const send = async (
     snapshot: SessionPayload,
     { unloading }: { readonly unloading: boolean },
-    progress: SaveProgress,
-  ): Promise<void> => {
-    let next = snapshot;
-    for (let attempt = 1; attempt <= RESEND_ATTEMPTS; attempt += 1) {
-      const payload = payloadFor(next);
-      const { stored, applied } = await (unloading
-        ? deliverUnloading(payload, progress)
-        : deliver(payload, progress));
-      if (applied) {
-        held = BigInt(payload.revision);
-        savedStep = payload.stageIndex;
-        if (progress.attempts > 1) {
-          onSaveFault?.({
-            kind: 'retried',
-            attempts: progress.attempts,
-            stageIndex: payload.stageIndex,
-          });
+  ): Promise<SaveOutcome> => {
+    const progress: SaveProgress = { attempts: 0, stageIndex: 0 };
+    const failed = (error: unknown): SaveOutcome => ({
+      kind: 'failed',
+      code: faultCodeOf(error),
+      error,
+      ...progress,
+    });
+    try {
+      let next = snapshot;
+      for (let attempt = 1; attempt <= RESEND_ATTEMPTS; attempt += 1) {
+        const payload = payloadFor(next);
+        progress.stageIndex = payload.stageIndex;
+        const { stored, applied } = await (unloading
+          ? deliverUnloading(payload, progress)
+          : deliver(payload, progress));
+        if (applied) {
+          held = BigInt(payload.revision);
+          savedStep = payload.stageIndex;
+          return progress.attempts > 1
+            ? { kind: 'retried', ...progress }
+            : { kind: 'applied', stageIndex: progress.stageIndex };
         }
-        return;
+        if (stored > issued) issued = stored;
+        next = offered;
       }
-      if (stored > issued) issued = stored;
-      next = offered;
+      return failed(new SaveNotApplied({ attempts: progress.attempts }));
+    } catch (error) {
+      return failed(error);
     }
-    throw new SaveNotApplied({ attempts: progress.attempts });
   };
 
-  const reportedSend = async (
+  const save = async (
     snapshot: SessionPayload,
     options: { readonly unloading: boolean },
   ): Promise<void> => {
-    const progress = { attempts: 0, stageIndex: getCurrentStep() };
-    try {
-      await send(snapshot, options, progress);
-    } catch (error) {
-      onSaveFault?.({ kind: 'failed', error, ...progress });
-      throw error;
-    }
+    const outcome = await send(snapshot, options);
+    onSaveOutcome?.(outcome);
+    if (outcome.kind === 'failed') throw outcome.error;
   };
 
   const debouncedSync = createDebouncedSyncHandler(
     async (_id, snapshot, { unloading }) => {
       if (stopped) return;
       try {
-        await reportedSend(snapshot, { unloading });
+        await save(snapshot, { unloading });
       } catch (error) {
         const kind = noticeOf(error);
         if (kind !== undefined) stop(kind);
@@ -250,7 +255,7 @@ export function createParticipantHandlers({
         await finish(signal);
       } catch (error) {
         if (!(error instanceof SessionOutOfDate)) throw error;
-        await reportedSend(offered, ORDINARY);
+        await save(offered, ORDINARY);
         signal.throwIfAborted();
         await finish(signal);
       }

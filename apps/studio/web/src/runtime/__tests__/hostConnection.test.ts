@@ -10,12 +10,11 @@ import { HostClient } from '../hostClient.ts';
 
 const logged = vi.hoisted((): ResearcherLogEntry[] => []);
 
-vi.mock('../browserLogs.ts', () => ({
+vi.mock('../browserLogs.ts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../browserLogs.ts')>()),
   logResearcher: (entry: ResearcherLogEntry) => {
     logged.push(entry);
   },
-  logParticipant: () => undefined,
-  startBrowserLogs: () => () => undefined,
 }));
 
 const PROTOCOL_ID = 'protocol-under-test';

@@ -14,7 +14,7 @@ import { installParticipantHarness } from '../../test/participantHarness.ts';
 import {
   createParticipantHandlers,
   pageRevisionBase,
-  type SaveFault,
+  type SaveOutcome,
   SaveNotApplied,
 } from '../interviewHandlers.ts';
 
@@ -43,7 +43,7 @@ const session = (name: string): SessionPayload => ({
 
 const handlersFor = (step = 1) => {
   const onNotice = vi.fn();
-  const onSaveFault = vi.fn<(fault: SaveFault) => void>();
+  const onSaveOutcome = vi.fn<(fault: SaveOutcome) => void>();
   const handlers = createParticipantHandlers({
     holderEpoch: 3,
     revision: '7',
@@ -51,9 +51,9 @@ const handlersFor = (step = 1) => {
     stageIds: ['first', 'second'],
     getCurrentStep: () => step,
     onNotice,
-    onSaveFault,
+    onSaveOutcome,
   });
-  return { ...handlers, onNotice, onSaveFault };
+  return { ...handlers, onNotice, onSaveOutcome };
 };
 
 const SYNC = { immediate: true, unloading: false };
@@ -308,12 +308,12 @@ describe('the participant sync handler’s recovery', () => {
       'participant.sync': () =>
         Effect.succeed({ revision: '99', applied: false }),
     });
-    const { onSync, onSaveFault } = handlersFor();
+    const { onSync, onSaveOutcome } = handlersFor();
 
     await expect(
       onSync('session-1', session('Ada'), SYNC),
     ).rejects.toBeInstanceOf(SaveNotApplied);
-    const [[fault]] = onSaveFault.mock.calls as [[SaveFault]];
+    const [[fault]] = onSaveOutcome.mock.calls as [[SaveOutcome]];
     expect(fault.kind === 'failed' && faultCodeOf(fault.error)).toBe(
       'conflict',
     );
@@ -738,27 +738,29 @@ describe('the participant save faults', () => {
           : Effect.succeed({ revision: payload.revision, applied: true });
       },
     });
-    const { onSync, onSaveFault } = handlersFor();
+    const { onSync, onSaveOutcome } = handlersFor();
 
     const saved = onSync('session-1', session('Ada'), SYNC);
     await vi.advanceTimersByTimeAsync(2000);
     await saved;
 
-    expect(onSaveFault.mock.calls).toEqual([
+    expect(onSaveOutcome.mock.calls).toEqual([
       [{ kind: 'retried', attempts: 3, stageIndex: 1 }],
     ]);
   });
 
-  it('reports nothing for a save that went through first time', async () => {
+  it('reports a save that went through first time as applied, not retried', async () => {
     installParticipantHarness({
       'participant.sync': (payload) =>
         Effect.succeed({ revision: payload.revision, applied: true }),
     });
-    const { onSync, onSaveFault } = handlersFor();
+    const { onSync, onSaveOutcome } = handlersFor();
 
     await onSync('session-1', session('Ada'), SYNC);
 
-    expect(onSaveFault).not.toHaveBeenCalled();
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'applied', stageIndex: 1 }],
+    ]);
   });
 
   it('reports a save that failed, with its error and attempts', async () => {
@@ -767,15 +769,23 @@ describe('the participant save faults', () => {
     installParticipantHarness({
       'participant.sync': () => Effect.fail(refusal),
     });
-    const { onSync, onSaveFault } = handlersFor();
+    const { onSync, onSaveOutcome } = handlersFor();
 
     const saved = onSync('session-1', session('Ada'), SYNC);
     const refused = expect(saved).rejects.toBeInstanceOf(RateLimited);
     await vi.advanceTimersByTimeAsync(3000);
     await refused;
 
-    expect(onSaveFault.mock.calls).toEqual([
-      [{ kind: 'failed', error: refusal, attempts: 3, stageIndex: 1 }],
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 3,
+          stageIndex: 1,
+        },
+      ],
     ]);
   });
 
@@ -786,7 +796,7 @@ describe('the participant save faults', () => {
       'participant.sync': () => Effect.fail(refusal),
     });
     let step = 1;
-    const onSaveFault = vi.fn<(fault: SaveFault) => void>();
+    const onSaveOutcome = vi.fn<(fault: SaveOutcome) => void>();
     const { onSync } = createParticipantHandlers({
       holderEpoch: 3,
       revision: '7',
@@ -794,7 +804,7 @@ describe('the participant save faults', () => {
       stageIds: ['first', 'second', 'third'],
       getCurrentStep: () => step,
       onNotice: vi.fn(),
-      onSaveFault,
+      onSaveOutcome,
     });
 
     const saved = onSync('session-1', session('Ada'), SYNC);
@@ -804,8 +814,16 @@ describe('the participant save faults', () => {
     await vi.advanceTimersByTimeAsync(3000);
     await refused;
 
-    expect(onSaveFault.mock.calls).toEqual([
-      [{ kind: 'failed', error: refusal, attempts: 3, stageIndex: 1 }],
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 3,
+          stageIndex: 1,
+        },
+      ],
     ]);
   });
 
@@ -816,14 +834,22 @@ describe('the participant save faults', () => {
       'participant.finish': () =>
         Effect.fail(new SessionOutOfDate({ revision: '8' })),
     });
-    const { onFinish, onSaveFault } = handlersFor();
+    const { onFinish, onSaveOutcome } = handlersFor();
 
     await expect(
       onFinish('session-1', new AbortController().signal),
     ).rejects.toBeInstanceOf(RateLimited);
 
-    expect(onSaveFault.mock.calls).toEqual([
-      [{ kind: 'failed', error: refusal, attempts: 1, stageIndex: 1 }],
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 1,
+          stageIndex: 1,
+        },
+      ],
     ]);
   });
 
@@ -842,14 +868,14 @@ describe('the participant save faults', () => {
         return Effect.succeed({ revision: payload.revision, applied: true });
       },
     });
-    const { onSync, onSaveFault } = handlersFor();
+    const { onSync, onSaveOutcome } = handlersFor();
 
     const saved = onSync('session-1', session('Ada'), SYNC);
     await vi.advanceTimersByTimeAsync(2000);
     await saved;
 
     expect(calls).toBe(3);
-    expect(onSaveFault.mock.calls).toEqual([
+    expect(onSaveOutcome.mock.calls).toEqual([
       [{ kind: 'retried', attempts: 3, stageIndex: 1 }],
     ]);
   });
@@ -864,11 +890,11 @@ describe('the participant save faults', () => {
           : Effect.succeed({ revision: payload.revision, applied: true });
       },
     });
-    const { onSync, onSaveFault } = handlersFor();
+    const { onSync, onSaveOutcome } = handlersFor();
 
     await onSync('session-1', session('Ada'), SYNC);
 
-    expect(onSaveFault.mock.calls).toEqual([
+    expect(onSaveOutcome.mock.calls).toEqual([
       [{ kind: 'retried', attempts: 2, stageIndex: 1 }],
     ]);
   });
@@ -878,18 +904,63 @@ describe('the participant save faults', () => {
       'participant.sync': () =>
         Effect.succeed({ revision: '99', applied: false }),
     });
-    const { onSync, onSaveFault } = handlersFor();
+    const { onSync, onSaveOutcome } = handlersFor();
 
     await expect(
       onSync('session-1', session('Ada'), SYNC),
     ).rejects.toBeInstanceOf(SaveNotApplied);
 
-    expect(onSaveFault.mock.calls).toEqual([
+    expect(onSaveOutcome.mock.calls).toEqual([
       [
         {
           kind: 'failed',
+          code: 'conflict',
           error: expect.any(SaveNotApplied),
           attempts: 3,
+          stageIndex: 1,
+        },
+      ],
+    ]);
+  });
+});
+
+describe('the unloading save', () => {
+  it('reports its failure once, from its outcome, on the stage it recorded', async () => {
+    let calls = 0;
+    const refusal = new RateLimited({ retryAfterSeconds: 600 });
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        calls += 1;
+        return calls === 1
+          ? Effect.succeed({ revision: payload.revision, applied: true })
+          : Effect.fail(refusal);
+      },
+    });
+    let step = 0;
+    const onSaveOutcome = vi.fn<(outcome: SaveOutcome) => void>();
+    const { onSync, flushStep } = createParticipantHandlers({
+      holderEpoch: 3,
+      revision: '7',
+      session: session('Initial'),
+      stageIds: ['first', 'second'],
+      getCurrentStep: () => step,
+      onNotice: vi.fn(),
+      onSaveOutcome,
+    });
+
+    await onSync('session-1', session('Ada'), SYNC);
+    step = 1;
+    flushStep();
+    await vi.waitFor(() => expect(onSaveOutcome).toHaveBeenCalledTimes(2));
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'applied', stageIndex: 0 }],
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 1,
           stageIndex: 1,
         },
       ],

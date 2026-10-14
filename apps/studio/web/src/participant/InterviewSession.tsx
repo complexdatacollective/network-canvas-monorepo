@@ -14,19 +14,18 @@ import type {
   StepChangeHandler,
 } from '@codaco/interview/contract';
 
-import { faultCodeOf } from '../runtime/errors.ts';
 import { useErrorTelemetry } from '../runtime/telemetry.ts';
 import { createParticipantAnalyticsClient } from './analyticsClient.ts';
 import { type AssetResolver, createAssetResolver } from './assetUrl.ts';
 import {
   createParticipantHandlers,
   pageRevisionBase,
-  type SaveFault,
+  type SaveOutcome,
 } from './interviewHandlers.ts';
 import {
   logAnswerSaveFailed,
   logAnswerSaveRetried,
-  logAssetFailed,
+  createAssetObserver,
   logStageFailedToRender,
   type ParticipantLog,
   type ParticipantStage,
@@ -35,7 +34,6 @@ import {
   renderedStep,
   useParticipantLogs,
   watchParticipantConnection,
-  watchParticipantMedia,
 } from './participantLogs.ts';
 import ParticipantNotice, {
   type ParticipantNoticeKind,
@@ -92,21 +90,17 @@ function InterviewSessionView() {
     () => payload.protocol.stages.map((stage) => stage.type),
     [payload],
   );
-  const currentStage = useCallback(
-    () => participantStage(stageTypes, currentStepRef.current),
+  const renderedStage = useCallback(
+    (element?: Element) => participantStage(stageTypes, renderedStep(element)),
     [stageTypes],
   );
   useEffect(
-    () => watchParticipantConnection(log, currentStage),
-    [log, currentStage],
+    () => watchParticipantConnection(log, renderedStage),
+    [log, renderedStage],
   );
-  const renderedStage = useCallback(
-    (element?: Element) =>
-      participantStage(
-        stageTypes,
-        renderedStep(element) ?? currentStepRef.current,
-      ),
-    [stageTypes],
+  const assetObserver = useMemo(
+    () => createAssetObserver(log, renderedStage),
+    [log, renderedStage],
   );
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
@@ -119,18 +113,13 @@ function InterviewSessionView() {
         stageIds: payload.protocol.stages.map((stage) => stage.id),
         getCurrentStep: () => currentStepRef.current,
         onNotice: setNotice,
-        onSaveFault: (fault: SaveFault) => {
-          const stage = participantStage(stageTypes, fault.stageIndex);
+        onSaveOutcome: (outcome: SaveOutcome) => {
+          const stage = participantStage(stageTypes, outcome.stageIndex);
           if (stage === undefined) return;
-          if (fault.kind === 'retried') {
-            logAnswerSaveRetried(log, stage, fault.attempts);
-          } else {
-            logAnswerSaveFailed(
-              log,
-              stage,
-              faultCodeOf(fault.error),
-              fault.attempts,
-            );
+          if (outcome.kind === 'retried') {
+            logAnswerSaveRetried(log, stage, outcome.attempts);
+          } else if (outcome.kind === 'failed') {
+            logAnswerSaveFailed(log, stage, outcome.code, outcome.attempts);
           }
         },
       }),
@@ -164,24 +153,16 @@ function InterviewSessionView() {
   );
 
   const onRequestAsset = useMemo<AssetResolver>(
-    () =>
-      createAssetResolver(payload.protocol.assets, () => {
-        const stage = renderedStage();
-        return (code) => {
-          if (stage !== undefined) logAssetFailed(log, stage, code);
-        };
-      }),
-    [payload, renderedStage, log],
+    () => createAssetResolver(payload.protocol.assets, assetObserver.atRequest),
+    [payload, assetObserver],
   );
 
   useEffect(
     () =>
-      watchParticipantMedia(
-        log,
-        renderedStage,
+      assetObserver.watch(
         (source) => isStorageUrl(source) || onRequestAsset.produced(source),
       ),
-    [log, renderedStage, onRequestAsset],
+    [assetObserver, onRequestAsset],
   );
 
   if (notice !== undefined) return <ParticipantNotice kind={notice} />;

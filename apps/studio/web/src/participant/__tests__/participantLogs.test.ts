@@ -3,12 +3,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { ParticipantLogEntry } from '@codaco/studio-contract/schema/browser-logs';
 
 import {
-  type ParticipantStage,
+  createAssetObserver,
   isStorageUrl,
   participantStage,
   renderedStep,
   watchParticipantConnection,
-  watchParticipantMedia,
 } from '../participantLogs.ts';
 
 const STAGE_TYPES = ['Information', 'NameGenerator', 'Sociogram'];
@@ -18,13 +17,19 @@ const log = (entry: ParticipantLogEntry) => {
   logged.push(entry);
 };
 
-let step = 0;
-const currentStage = (): ParticipantStage | undefined =>
-  participantStage(STAGE_TYPES, step);
+const stageOf = (element?: Element) =>
+  participantStage(STAGE_TYPES, renderedStep(element));
+
+const showStage = (step: number): HTMLElement => {
+  const container = document.createElement('div');
+  container.setAttribute('data-stage-step', String(step));
+  document.body.append(container);
+  return container;
+};
 
 beforeEach(() => {
   logged.length = 0;
-  step = 0;
+  document.body.replaceChildren();
 });
 
 describe('a participant stage', () => {
@@ -56,13 +61,8 @@ describe('the participant connection watcher', () => {
   it('logs a lost connection once and how long it took to come back', () => {
     const target = new EventTarget();
     let now = 10_000;
-    step = 1;
-    const stop = watchParticipantConnection(
-      log,
-      currentStage,
-      target,
-      () => now,
-    );
+    showStage(1);
+    const stop = watchParticipantConnection(log, stageOf, target, () => now);
     target.dispatchEvent(new Event('offline'));
     target.dispatchEvent(new Event('offline'));
     now += 4_200;
@@ -95,9 +95,6 @@ const GENERATED_SVG = 'data:image/svg+xml;charset=utf-8,%3Csvg%2F%3E';
 const isStoredAsset = (source: string) =>
   isStorageUrl(source) || source === GENERATED_SVG;
 
-const stageOfElement = (element: Element) =>
-  participantStage(STAGE_TYPES, renderedStep(element) ?? step);
-
 describe('the rendered stage', () => {
   it('is read from the stage container an element sits in, or the one on the page', () => {
     const container = document.createElement('div');
@@ -116,18 +113,15 @@ describe('the rendered stage', () => {
 });
 
 describe('the participant media watcher', () => {
-  const failToLoad = (
-    element: HTMLElement,
-    parent: HTMLElement = document.body,
-  ) => {
+  const failToLoad = (element: HTMLElement, parent: HTMLElement) => {
     parent.append(element);
     element.dispatchEvent(new Event('error'));
     element.remove();
   };
 
   it('logs stored images, audio and video sources that fail to load, on the stage shown', () => {
-    step = 1;
-    const stop = watchParticipantMedia(log, stageOfElement, isStoredAsset);
+    const shown = showStage(1);
+    const stop = createAssetObserver(log, stageOf).watch(isStoredAsset);
     const image = document.createElement('img');
     image.setAttribute('src', '/storage/abc');
     const audio = document.createElement('audio');
@@ -136,17 +130,17 @@ describe('the participant media watcher', () => {
     const source = document.createElement('source');
     source.setAttribute('src', '/storage/ghi');
     video.append(source);
-    document.body.append(video);
+    shown.append(video);
     const svg = document.createElement('img');
     svg.setAttribute('src', GENERATED_SVG);
 
-    failToLoad(image);
-    failToLoad(audio);
+    failToLoad(image, shown);
+    failToLoad(audio, shown);
     source.dispatchEvent(new Event('error'));
     video.remove();
-    failToLoad(svg);
+    failToLoad(svg, shown);
     stop();
-    failToLoad(image);
+    failToLoad(image, shown);
 
     const asset = {
       message: 'Asset failed to load',
@@ -161,11 +155,9 @@ describe('the participant media watcher', () => {
   });
 
   it('names the stage the failing element is rendered in, not the stage the host has moved on to', () => {
-    step = 2;
-    const stop = watchParticipantMedia(log, stageOfElement, isStoredAsset);
-    const exiting = document.createElement('div');
-    exiting.setAttribute('data-stage-step', '1');
-    document.body.append(exiting);
+    const exiting = showStage(1);
+    showStage(2);
+    const stop = createAssetObserver(log, stageOf).watch(isStoredAsset);
     const image = document.createElement('img');
     image.setAttribute('src', '/storage/abc');
 
@@ -179,15 +171,44 @@ describe('the participant media watcher', () => {
   });
 
   it('ignores media that is not Studio’s stored asset', () => {
-    const stop = watchParticipantMedia(log, stageOfElement, isStoredAsset);
+    const shown = showStage(1);
+    const stop = createAssetObserver(log, stageOf).watch(isStoredAsset);
     const elsewhere = document.createElement('img');
     elsewhere.setAttribute('src', 'https://tiles.example.org/1.png');
     const inline = document.createElement('img');
     inline.setAttribute('src', 'data:image/svg+xml,<svg/>');
-    failToLoad(elsewhere);
-    failToLoad(inline);
-    failToLoad(document.createElement('div'));
+    failToLoad(elsewhere, shown);
+    failToLoad(inline, shown);
+    failToLoad(document.createElement('div'), shown);
     stop();
+    expect(logged).toEqual([]);
+  });
+});
+
+describe('an asset request', () => {
+  it('reports its failure once, on the stage shown when it was requested', () => {
+    const requesting = showStage(1);
+    const report = createAssetObserver(log, stageOf).atRequest();
+    requesting.remove();
+    showStage(2);
+
+    report('not_found');
+
+    expect(logged).toEqual([
+      {
+        message: 'Asset failed to load',
+        level: 'Error',
+        attributes: {
+          stage_index: 1,
+          interface_type: 'NameGenerator',
+          error_code: 'not_found',
+        },
+      },
+    ]);
+  });
+
+  it('reports nothing when no stage was shown', () => {
+    createAssetObserver(log, stageOf).atRequest()('transport');
     expect(logged).toEqual([]);
   });
 });

@@ -10,26 +10,10 @@ import {
 } from '@tanstack/react-router';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { useEffect } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import type { ResearcherLogEntry } from '@codaco/studio-contract/schema/browser-logs';
-
-import { logResearcher } from '../../runtime/browserLogs.ts';
-import { screenTeam, useResearcherLogTeam } from '../useResearcherLogTeam.ts';
-
-const recorded = vi.hoisted(() => ({
-  team: undefined as string | undefined,
-  logs: [] as Array<string | undefined>,
-}));
-
-vi.mock('../../runtime/browserLogs.ts', () => ({
-  setResearcherLogTeam: (teamId: string | undefined) => {
-    recorded.team = teamId;
-  },
-  logResearcher: (_entry: ResearcherLogEntry) => {
-    recorded.logs.push(recorded.team);
-  },
-}));
+import { ScreenTeamProvider, screenTeam } from '../screenTeam.tsx';
+import { useScreenTeam } from '../screenTeamContext.ts';
 
 describe('the team a researcher log is attributed to', () => {
   it('is the team route on screen, whatever team was active before', () => {
@@ -47,24 +31,23 @@ describe('the team a researcher log is attributed to', () => {
     expect(screenTeam(undefined, undefined, 'team-of-study')).toBeUndefined();
   });
 
-  it('is set before a screen beneath it logs from its first effect, on arrival and after moving team', async () => {
-    recorded.team = undefined;
-    recorded.logs.length = 0;
+  it('is the route’s team for a screen beneath it from its first effect, on arrival and after moving team', async () => {
+    const seen: Array<string | undefined> = [];
 
     function Shell() {
-      useResearcherLogTeam();
-      return <Outlet />;
+      return (
+        <ScreenTeamProvider>
+          <Outlet />
+        </ScreenTeamProvider>
+      );
     }
 
     function TeamScreen() {
       const { teamId } = useParams({ strict: false });
+      const team = useScreenTeam();
       useEffect(() => {
-        logResearcher({
-          message: 'Screen failed to render',
-          level: 'Error',
-          attributes: { error_code: 'unknown' },
-        });
-      }, [teamId]);
+        seen.push(team.teamId);
+      }, [teamId, team]);
       return <h1>{teamId}</h1>;
     }
 
@@ -90,6 +73,6 @@ describe('the team a researcher log is attributed to', () => {
     );
     await screen.findByRole('heading', { name: 'team-c' });
 
-    await waitFor(() => expect(recorded.logs).toEqual(['team-b', 'team-c']));
+    await waitFor(() => expect(seen).toEqual(['team-b', 'team-c']));
   });
 });

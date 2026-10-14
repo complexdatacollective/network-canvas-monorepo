@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -55,11 +56,16 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { createUuid } from '../lib/createUuid.ts';
 import { toStudyId } from '../lib/ids.ts';
+import { teamScope } from '../runtime/browserLogs.ts';
 import { isForbidden } from '../runtime/errors.ts';
 import { HostClient } from '../runtime/hostClient.ts';
 import { observeLocks } from '../runtime/hostFaults.ts';
 import { hostRuntime } from '../runtime/hostSession.ts';
-import { reportRpcFailure, rpcCall, rpcQuery } from '../runtime/rpc.ts';
+import {
+  reportUnauthorizedFailure,
+  rpcCall,
+  rpcQuery,
+} from '../runtime/rpc.ts';
 
 // The route id carries the area layout it sits under (§5.3), so it moved with
 // the screen onto `/study/$studyId/editor`.
@@ -68,13 +74,11 @@ const route = getRouteApi('/app/study/$studyId/editor/');
 /**
  * Built once: `ProtocolBuilder` memoises its whole context on this identity.
  */
-const hostAdapter: RpcAdapter<ProtocolBuilderRpcs> = observeLocks(
-  makeRpcAdapter({
-    runtime: hostRuntime,
-    client: HostClient,
-    onFailure: reportRpcFailure,
-  }),
-);
+const baseHostAdapter: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
+  runtime: hostRuntime,
+  client: HostClient,
+  onFailure: reportUnauthorizedFailure,
+});
 
 /** What `protocols.draft` and every editing procedure are addressed by. */
 type DraftAddress = {
@@ -536,6 +540,10 @@ export default function Editor() {
 function ProtocolEditor({ address }: { address: DraftAddress }) {
   const intl = useAppIntl();
   const draft = useQuery(rpcQuery('protocols.draft', address));
+  const hostAdapter = useMemo(
+    () => observeLocks(baseHostAdapter, teamScope(address.teamId)),
+    [address.teamId],
+  );
 
   if (draft.isPending) {
     return (
