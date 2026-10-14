@@ -1,4 +1,11 @@
-import { createContext, useCallback, useContext, useMemo } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import {
@@ -9,7 +16,10 @@ import {
 } from '@codaco/protocol-validation';
 
 import { EditedRowContext } from '../form/editedRow.ts';
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import {
+  StageEditorFormContext,
+  useStageEditorForm,
+} from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { dynamicValueNamesUsedIn } from './dynamicValueCatalog.ts';
@@ -162,4 +172,37 @@ export function useDynamicValueSite(
   }, [liveDraft, row]);
 
   return { context, bindings, setBindings, namesInUse };
+}
+
+/**
+ * Called by a row dialog with whether it is open. A value inserted there binds
+ * at once, on the stage behind the dialog, but the row reaches the stage only
+ * if the dialog saves. So when the dialog closes, saved or cancelled, the
+ * stage keeps only the bindings its text uses: those of the stage itself, and
+ * of the row an enclosing dialog has open.
+ */
+export function useReleaseRowBindings(open: boolean) {
+  const stageForm = useContext(StageEditorFormContext);
+  const enclosingRow = useContext(EditedRowContext);
+  const wasOpen = useRef(open);
+
+  useEffect(() => {
+    const closed = wasOpen.current && !open;
+    wasOpen.current = open;
+    if (!closed || stageForm === null || stageForm.readOnly) return;
+    const { [DYNAMIC_VALUES_PATH]: bindings, ...text } = stageForm.liveDraft();
+    if (!isRecord(bindings)) return;
+    const inUse = dynamicValueNamesUsedIn(text);
+    if (enclosingRow !== null) {
+      dynamicValueNamesUsedIn(enclosingRow.read(), inUse);
+    }
+    const kept = Object.entries(bindings).filter(([name]) => inUse.has(name));
+    if (kept.length === Object.keys(bindings).length) return;
+    stageForm.storeApi
+      .getState()
+      .setFieldValue(
+        DYNAMIC_VALUES_PATH,
+        kept.length === 0 ? undefined : Object.fromEntries(kept),
+      );
+  }, [open, stageForm, enclosingRow]);
 }

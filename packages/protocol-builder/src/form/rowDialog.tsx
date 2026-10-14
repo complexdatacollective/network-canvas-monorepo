@@ -25,6 +25,7 @@ import {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
+import { useReleaseRowBindings } from '../localization/useDynamicValueSite.ts';
 import { DEFAULT_ITEM_LABEL } from './arrayFields/arrayMessages.ts';
 import DialogForm, {
   type DialogFormErrors,
@@ -453,6 +454,7 @@ export function RowDialog({
     dialogSize,
   } = useRowListConfig();
   const session = useRowEditorSession(item, index, isNewItem, expand);
+  useReleaseRowBindings(session?.open === true);
 
   // `ArrayField` withdraws its save handler while the list is not accepting
   // changes, and there is no editor to render then: a disabled or read-only
