@@ -668,10 +668,23 @@ describe.skipIf(!db)('the native queue', () => {
           ),
         );
 
+        const logs = collectLeveledLogs();
         const step = yield* drainDelivery(() =>
           Effect.succeed<JobOutcome>('completed'),
-        );
+        ).pipe(Effect.provide(logs.layer));
         assert.strictEqual(step._tag, 'dead');
+        assert.deepStrictEqual(
+          logs.records
+            .filter(
+              ({ message }) =>
+                message === 'job carries a payload this queue does not declare',
+            )
+            .map(({ level, annotations }) => ({
+              level,
+              alert: annotations.alert,
+            })),
+          [{ level: 'Error', alert: 'job_dead_lettered' }],
+        );
         const [row] = yield* readJobs('invitation-delivery');
         assert.strictEqual(row?.state, 'dead');
         assert.strictEqual(row?.attempts, 1);

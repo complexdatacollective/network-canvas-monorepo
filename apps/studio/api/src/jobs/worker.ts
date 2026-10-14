@@ -593,7 +593,13 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         }
         yield* Effect.logError(
           'job carries a payload this queue does not declare',
-        ).pipe(Effect.annotateLogs({ queue, job_id: jobId }));
+        ).pipe(
+          Effect.annotateLogs({
+            queue,
+            job_id: jobId,
+            ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
+          }),
+        );
         yield* reportFailure(exit.cause, queue, jobId);
         const dead: JobStep = { _tag: 'dead', jobId };
         return dead;
@@ -687,6 +693,15 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     for (;;) {
       const { reaped, ended } = yield* MaintenanceScope.open(onePass);
       for (const { queue, jobId } of ended) {
+        yield* Effect.logError(
+          'job lease expired on its last attempt; it will not be retried',
+        ).pipe(
+          Effect.annotateLogs({
+            queue,
+            job_id: jobId,
+            ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
+          }),
+        );
         yield* reportLeaseExpired(queue, jobId);
       }
       settled += reaped;

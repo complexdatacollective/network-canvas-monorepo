@@ -8,9 +8,11 @@ event and error report now sets `$ip` to `0.0.0.0`, which overwrites the
 sending server's address PostHog would otherwise record, alongside
 `$geoip_disable: true`.
 
-Four log records that operators alert on now carry a fixed `alert` annotation,
+The log records operators alert on now carry one of four fixed `alert` codes,
 at error level: `delivery_uncertain` on an invitation delivery whose outcome is
-uncertain, `job_dead_lettered` on a job that failed and will not be retried,
+uncertain, `job_dead_lettered` on a job that ended for good (its last attempt failed,
+its lease expired on its last attempt, which now logs its own record, or its
+payload does not decode for its queue),
 `readiness_failing` on a new record each process writes once when its
 `/readyz` checks turn failing (naming them in `failing_checks`, with an
 info-level `readiness has recovered` when they pass again), and

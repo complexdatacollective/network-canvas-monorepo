@@ -13,7 +13,11 @@ covered by these alerts and builds its own from the same records.
 Every record names the deployment it came from in `installation_id` (on error
 reports) or the resource attribute `studio.installation_id` (on logs, spans and
 metrics). The managed platform has one installation id of its own; filter on
-it first when an alert fires.
+it first when an alert fires. The one exception is a process whose database
+has no installation id yet, which in practice means `migrate` has never run
+against it: its records carry none, so a `schema_mismatch` record without an
+installation id is a new deployment, and its `program` and timing are what
+tell you which.
 
 ## How the alerts are delivered
 
@@ -129,11 +133,21 @@ invitee never gets two copies. The record is
 [Alert insight](https://us.posthog.com/project/249487/insights/SnKFwoMX) ·
 code `job_dead_lettered`
 
-**What it means.** A background job failed on its last allowed attempt and will
-not be retried. Its row is `failed`, and on a queue that declares a dead-letter
-queue a copy is queued there. The record is
-`job attempt failed and will not be retried`, with `queue`, `job_id` and
-`attempt`. The same failure is also reported to Error Tracking.
+**What it means.** A background job ended for good without succeeding, and
+will not be retried. Three records carry the code, each with `queue` and
+`job_id`:
+
+- `job attempt failed and will not be retried` (also `attempt`): its handler
+  failed on its last allowed attempt.
+- `job lease expired on its last attempt; it will not be retried`: the worker
+  running it stopped answering for it, and the lease ran out on its last
+  attempt.
+- `job carries a payload this queue does not declare`: the row's payload does
+  not decode for its queue, so it was killed without running.
+
+The first two leave the row `failed`, and on a queue that declares a
+dead-letter queue a copy is queued there; the third leaves it `dead`. Each is
+also reported to Error Tracking.
 
 **What to do.**
 

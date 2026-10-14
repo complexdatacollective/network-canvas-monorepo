@@ -82,7 +82,8 @@ fetches a version manifest from `releases.networkcanvas.com` and sends nothing
 about your instance. See [the outbound hosts](./requirements.md#outbound-hosts).
 
 A study can also be created with participant analytics off, which stops that
-study's participant usability events while leaving the rest on.
+study's participant usability events and its `interview_started` and
+`interview_completed` product events while leaving the rest on.
 
 ## Sending telemetry to your own store
 

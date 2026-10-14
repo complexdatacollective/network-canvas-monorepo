@@ -53,9 +53,12 @@ they stay on the operator's machine.
 
 ## Product events
 
-The Studio server sends one event each time one of these actions happens. Each
-is queued in the same database transaction as the action, so an action that is
-rolled back sends nothing, and delivered within seconds.
+The Studio server sends one event each time one of these actions happens,
+delivered within seconds. Each is queued in the same database transaction as
+the action, so an action that is rolled back sends nothing. Sign-up and
+sign-in are the exception: they are queued in a transaction of their own just
+after the account is created or the session begins, and if that fails the
+server logs a warning and the event is not sent.
 
 | Event                      | When                                         | Properties                                                                                |
 | -------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -92,7 +95,9 @@ and in PostHog is the same researcher.
 ## Participant usability events
 
 While telemetry is on and the study collects them (a study's creator can turn
-"Collect anonymous usability analytics from participants" off), the interview
+"Collect anonymous usability analytics from participants" off, which also
+stops that study's `interview_started` and `interview_completed` product
+events), the interview
 records how a participant moves through it: which stage they are on and for
 how long, and which controls they use. It never records an answer, a name, a
 node's or edge's attributes, or any free text. The participant's browser sends
@@ -209,8 +214,9 @@ anything a browser offers it. This also stops telemetry sent to an operator's
 own store. The [telemetry page](./self-host/telemetry.md#turning-it-off) has the
 steps.
 
-A study's creator can also turn participant usability events off for that study
-alone.
+A study's creator can also turn participant analytics off for that study alone:
+its participant usability events and its `interview_started` and
+`interview_completed` product events.
 
 Studio's daily update check is separate: it downloads a version list from
 `releases.networkcanvas.com` and sends nothing about the instance.

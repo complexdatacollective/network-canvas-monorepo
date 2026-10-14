@@ -53,7 +53,8 @@ stages use with the protocol's own Mapbox key.
 Set `STUDIO_TELEMETRY=false` in `.env` and recreate the `api` and `worker`
 containers. Studio then builds no exporter, error reporter or analytics client
 at all, so nothing can be sent. It also overrides an OpenTelemetry endpoint you
-have set. A study can separately turn participant usability analytics off.
+have set. A study can separately turn participant analytics off, which stops its
+participant usability events and its interview product events.
 
 ### Can we keep telemetry and still stop analytics?
 
