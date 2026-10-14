@@ -22,13 +22,27 @@ import NodeDrawer from '../NodeDrawer';
 
 // A drawn person reads the session store; what these tests own is the drawer
 // around them.
+const layoutSettled = vi.hoisted(() => ({ current: () => {} }));
 vi.mock('../../interfaces/Sociogram/DrawerNode', () => ({
-  default: ({ node, selected }: { node: NcNode; selected?: boolean }) => (
-    <span
-      data-testid={`drawer-node-${node[entityPrimaryKeyProperty]}`}
-      data-node-selected={selected || undefined}
-    />
-  ),
+  default: ({
+    node,
+    selected,
+    onLayoutAnimationComplete,
+  }: {
+    node: NcNode;
+    selected?: boolean;
+    onLayoutAnimationComplete?: () => void;
+  }) => {
+    if (onLayoutAnimationComplete) {
+      layoutSettled.current = onLayoutAnimationComplete;
+    }
+    return (
+      <span
+        data-testid={`drawer-node-${node[entityPrimaryKeyProperty]}`}
+        data-node-selected={selected || undefined}
+      />
+    );
+  },
 }));
 
 const elementsFromPoint = vi.fn<(x: number, y: number) => Element[]>();
@@ -205,6 +219,37 @@ describe('NodeDrawer', () => {
     );
 
     await waitFor(() => expect(viewport.scrollLeft).toBe(180));
+  });
+
+  it('brings the selected person back into view when the drawer reorders', () => {
+    const nodes = ['a', 'b', 'c'].map((id) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      type: 'person',
+    }));
+    render(
+      <DndStoreProvider>
+        <NodeDrawer nodes={nodes} draggable={false} selectedNodeId="c" />
+      </DndStoreProvider>,
+    );
+    const person = screen.getByTestId('drawer-node-c');
+    const viewport = person.parentElement!;
+    vi.spyOn(viewport, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: 0, y: 0, width: 300, height: 100 }),
+    );
+    // A reorder has moved the selected person past the right edge.
+    vi.spyOn(person, 'getBoundingClientRect').mockImplementation(() =>
+      DOMRect.fromRect({
+        x: 400 - viewport.scrollLeft,
+        y: 0,
+        width: 80,
+        height: 80,
+      }),
+    );
+
+    act(() => layoutSettled.current());
+
+    expect(viewport.scrollLeft).toBe(180);
   });
 
   it('disables the toggle while empty when it is not a drop target', () => {
