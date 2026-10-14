@@ -1,5 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -182,6 +182,41 @@ describe('TranslationTable: text that shows values', () => {
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(getProtocol(store.getState())).toBe(before);
+  });
+
+  it('refuses that edit when Save is pressed while the edited cell still has focus', async () => {
+    const [stage] = protocol.stages;
+    const { store, user } = renderTable({
+      ...protocol,
+      stages: [{ ...stage, title: { en: 'Welcome back', fr: 'Bon retour' } }],
+    } as CurrentProtocol);
+    const before = getProtocol(store.getState());
+
+    await user.click(titleCell('English'));
+    const editor = await screen.findByRole('textbox', {
+      name: cellName('English'),
+    });
+    await waitFor(() => expect(editor).toHaveFocus());
+    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    const [option] = await screen.findAllByRole('option', {
+      name: /first_name/,
+    });
+    if (option === undefined) throw new Error('No value offered');
+    await user.click(option);
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
+    );
+    await waitFor(() => expect(editor).toHaveFocus());
+
+    // Saved before the cell's blur is handled: a click event alone moves no
+    // focus, so the edited cell is never left.
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(editor).toHaveFocus();
+
+    await waitFor(() =>
+      expect(titleCell('French')).toHaveAttribute('aria-invalid', 'true'),
+    );
     expect(getProtocol(store.getState())).toBe(before);
   });
 

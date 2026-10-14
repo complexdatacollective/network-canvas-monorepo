@@ -348,23 +348,36 @@ export const useTranslationDraft = ({
   // An edit to the default-language text can break a translation nobody has
   // touched: one that leaves out a value the text now shows. A cell has a
   // field only once it is edited, and only a field can refuse the save, so
-  // leaving an edited default-language cell gives each other translation of
-  // a text with values a field of its own, left as it was: it is checked
-  // from then on, says in its own cell what it now lacks, and keeps the
-  // table from saving until it is put right.
-  const checkOtherTranslations = () => {
+  // the first edit to a default-language cell gives each other translation of
+  // a text with values a field of its own, left as it was. It is registered
+  // at once rather than when the cell is left: a save pressed while the
+  // edited cell still has focus validates the fields registered when it
+  // starts, before the cell's blur is handled, and a translation registered
+  // only then would escape the check. The save's own validation then says in
+  // that cell what it lacks; leaving the edited cell says so sooner.
+  const otherTranslations = (): LocaleTag[] => {
     const protocol = getProtocol(appStore.getState());
     if (
       row.dynamicValues === undefined ||
       !protocol ||
       locale !== protocol.localization.defaultLocale
     ) {
-      return;
+      return [];
     }
+    return protocol.localization.locales.filter(
+      (other) =>
+        other !== locale &&
+        !isBlankTranslation(row, storedTranslation(row, other)),
+    );
+  };
+
+  const registerOtherTranslations = () => {
+    for (const other of otherTranslations()) registerCell(other);
+  };
+
+  const checkOtherTranslations = () => {
     const state = formStore.getState();
-    for (const other of protocol.localization.locales) {
-      if (other === locale) continue;
-      if (isBlankTranslation(row, storedTranslation(row, other))) continue;
+    for (const other of otherTranslations()) {
       registerCell(other);
       // Validated with every other cell already left, just below.
       state.setFieldBlurred(translationFieldName(row.path, other));
@@ -373,6 +386,7 @@ export const useTranslationDraft = ({
 
   const change = (next: string) => {
     register();
+    registerOtherTranslations();
     const state = formStore.getState();
     state.setFieldValue(name, next);
     if (state.getFieldState(name)?.meta.isBlurred)
