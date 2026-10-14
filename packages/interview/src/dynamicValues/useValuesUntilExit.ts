@@ -24,15 +24,21 @@ const sameEntities = (a: DynamicValueEntities, b: DynamicValueEntities) =>
  * the outgoing content stays on screen until its exit animation finishes, so
  * text naming it (a census prompt naming the pair) keeps the outgoing values
  * until then. Pass `onExitComplete` to the transition's `AnimatePresence`.
+ * An undefined key means nothing is on screen, so the first content to appear
+ * is named at once: no exit precedes it.
  */
 export function useValuesUntilExit<T extends DynamicValueEntities>(
-  key: string,
+  key: string | undefined,
   values: T,
 ): Readonly<{ values: T; onExitComplete: () => void }> {
   const [settled, setSettled] = useState({ key, values });
+  const current = settled.key === key || settled.key === undefined;
   // While the key holds, keep the values it last showed, such as a label that
   // decrypted after it appeared, so outgoing text names what was on screen.
-  if (settled.key === key && !sameEntities(settled.values, values)) {
+  if (
+    current &&
+    (settled.key !== key || !sameEntities(settled.values, values))
+  ) {
     setSettled({ key, values });
   }
   const onExitComplete = useCallback(
@@ -40,7 +46,7 @@ export function useValuesUntilExit<T extends DynamicValueEntities>(
     [key, values],
   );
   return {
-    values: settled.key === key ? values : settled.values,
+    values: current ? values : settled.values,
     onExitComplete,
   };
 }

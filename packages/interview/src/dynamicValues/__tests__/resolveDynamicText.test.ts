@@ -192,6 +192,14 @@ describe('resolveDynamicText', () => {
     });
   });
 
+  it('shows a label of only spaces as the node shows it', () => {
+    expect(
+      resolve('Is {first} here?', {}, 'en', {
+        labels: { dyadSource: '  ' },
+      })?.parts,
+    ).toEqual(['Is ', { name: 'first', text: '  ' }, ' here?']);
+  });
+
   it('reads the label of a node that is not on screen as missing', () => {
     expect(
       resolve('{first, select, missing {Them} other {{first}}}', {}, 'en', {

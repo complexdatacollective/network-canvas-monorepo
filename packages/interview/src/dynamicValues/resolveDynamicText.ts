@@ -84,8 +84,10 @@ const resolveDynamicValue = (
       : { missing: false, value, intrinsic: parsed.name };
   }
   if (parsed.kind === 'label') {
+    // A node on screen always has a label, and its text is shown as the node
+    // shows it, even when that is only spaces.
     const label = sources.labels[parsed.role];
-    return isMissing(label)
+    return label === undefined
       ? { missing: true }
       : { missing: false, value: label };
   }
