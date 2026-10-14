@@ -72,7 +72,8 @@ function ScreenText({
     <div
       ref={textRef}
       tabIndex={textRef ? -1 : undefined}
-      className="focusable"
+      // Room between the text and the buttons that follow it.
+      className="focusable mb-6 last:mb-0"
     >
       <LocalizedMarkdown
         value={value}
