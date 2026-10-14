@@ -91,7 +91,7 @@ const SUBJECT_ROLES: Readonly<
  * A form field shows the values of its form's subject only when that is the
  * stage's own subject: a Network Composer's edge forms each describe their
  * own edge type, which no stage binding can name unambiguously. Of the form's
- * subject, it cannot show what its own field or a later one asks for.
+ * subject, it cannot show what its own field asks for.
  */
 export const dynamicValueContextFor = ({
   codebook,
@@ -132,7 +132,7 @@ export const dynamicValueContextFor = ({
         role: SUBJECT_ROLES[formSubject.entity],
         variables: new Set(
           fields
-            .slice(index)
+            .slice(index, index + 1)
             .flatMap((field: unknown) =>
               isRecord(field) && typeof field.variable === 'string'
                 ? [field.variable]

@@ -289,8 +289,10 @@ export type DynamicValueSiteContext = Readonly<{
     role: DynamicValueRole,
   ) => Readonly<Record<string, DynamicValueVariable>> | undefined;
   /**
-   * Variables of the form's subject the site may not show: its own field's
-   * and every later field's, which the participant has not answered yet.
+   * Variables of the form's subject the site may not show: its own field's,
+   * which the participant is answering as they read it. A later field's
+   * attribute may already hold a value from an earlier stage, and is missing
+   * otherwise, so it is shown with its version for when it is missing.
    */
   notYetWritten:
     | Readonly<{ role: DynamicValueRole; variables: ReadonlySet<string> }>
@@ -357,7 +359,7 @@ export const dynamicValueStatus = (
     return {
       status: 'unavailable',
       reason:
-        'this form asks for it here or later, so it has no value yet where this text is shown',
+        'this field asks for it, so it has no value yet where this text is shown',
     };
   }
   const unshowable = dynamicValueUnshowableReason(variable);
