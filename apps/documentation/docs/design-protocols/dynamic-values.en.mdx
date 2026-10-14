@@ -78,7 +78,7 @@ For example, an Ego Form's title could thank the participant by name:
 
 Here the text "Thanks" comes before the versions and "!" after them, so both cases share them.
 
-Zero and "no" are real answers, not missing ones: a number that is 0, or a yes-or-no answer of no, shows the **If known** version. Empty text, and a categorical answer with no options chosen, count as missing.
+Zero and "no" are real answers, not missing ones: a number that is 0, or a yes-or-no answer of no, shows the **If known** version. Text that is empty or only spaces, and a categorical answer with no options chosen, count as missing.
 
 Today's date and a node's label are never missing, so they go in on their own, without versions.
 
@@ -151,7 +151,7 @@ Today's date can be shown in every text that accepts values. Which attributes a 
 | A Per Alter Edge Form's questions and hints                                                                                                                                                                                                                                                                                   | Yes            | Every attribute of the edge the form asks about, and the labels of the two nodes it joins                                                                               |
 | A Network Composer's fields for edges                                                                                                                                                                                                                                                                                         | Yes            | The labels of the two nodes the edge joins                                                                                                                              |
 
-A form field can show any attribute of the node or edge its form asks about, including attributes collected on earlier stages and the attribute the field itself asks for. When the attribute has no value yet, the field shows the value's **If not known** version. A node's label in a form follows the answers as the participant types them, as the node does.
+Where the table offers a form's attributes, a field can show any attribute of the node or edge the form asks about, including attributes collected on earlier stages and the attribute the field itself asks for. When the attribute has no value yet, the field shows the value's **If not known** version. A node's label in a form follows the answers as the participant types them, as the node does.
 
 On an edge form, the labels of the two nodes the edge joins are offered as **First node: label** and **Second node: label**. Their attributes aren't offered, because the nodes at either end of an edge can be of any type.
 
