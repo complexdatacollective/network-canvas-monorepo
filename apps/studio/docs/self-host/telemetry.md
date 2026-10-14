@@ -54,7 +54,7 @@ content security policy lets browsers connect only to your instance and to
 Every record carries your instance's **installation id**, a random UUID
 `migrate` generates once and stores in the database. It is how Codaco tells
 deployments apart; it is not derived from your hostname or anything else about
-the instance.
+the instance. Until `migrate` has created it, records carry none.
 
 **Logs always go to stdout as well**, one JSON line per record, whatever the
 switch says. `docker compose logs` keeps working with telemetry off.

@@ -189,8 +189,9 @@ working. It follows the same Level 1 rule.
   `$ip: 0.0.0.0` and `$geoip_disable: true`.
 
 Every log record, span and metric names the service that produced it and
-carries the installation id; the server's own also carry Studio's version and
-which process sent them.
+carries the installation id, except those sent before the instance's database
+has one (before `migrate` first runs); the server's own also carry Studio's
+version and which process sent them.
 
 ## What Studio does not do
 
