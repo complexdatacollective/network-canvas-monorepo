@@ -372,8 +372,7 @@ export const joinMarkdownParts = (
       const joins = TOKEN_TRIGGER.test(`${before}${part.text}${after}`);
       if (!joins && !inLabel) return markdown;
       const open = joins && before !== '' && /^\S/.test(part.text);
-      const close =
-        inLabel || (joins && after !== '' && /\S$/.test(part.text));
+      const close = inLabel || (joins && after !== '' && /\S$/.test(part.text));
       return `${open ? VALUE_BOUNDARY : ''}${markdown}${close ? VALUE_BOUNDARY : ''}`;
     })
     .join('');
