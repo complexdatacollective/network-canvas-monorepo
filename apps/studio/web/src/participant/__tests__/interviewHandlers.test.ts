@@ -10,10 +10,13 @@ import {
   SessionTakenOver,
 } from '@codaco/studio-contract/schema/participant';
 
+import { faultCodeOf } from '../../runtime/errors.ts';
 import { installParticipantHarness } from '../../test/participantHarness.ts';
 import {
   createParticipantHandlers,
   pageRevisionBase,
+  type SaveOutcome,
+  SaveNotApplied,
 } from '../interviewHandlers.ts';
 
 /** Where these interviews end: the protocol's finish stage. */
@@ -44,6 +47,7 @@ const session = (name: string): SessionSnapshot => ({
 
 const handlersFor = (step = 1) => {
   const onNotice = vi.fn();
+  const onSaveOutcome = vi.fn<(fault: SaveOutcome) => void>();
   const handlers = createParticipantHandlers({
     holderEpoch: 3,
     revision: '7',
@@ -51,8 +55,9 @@ const handlersFor = (step = 1) => {
     stageIds: ['first', 'second'],
     getCurrentStep: () => step,
     onNotice,
+    onSaveOutcome,
   });
-  return { ...handlers, onNotice };
+  return { ...handlers, onNotice, onSaveOutcome };
 };
 
 const SYNC = { immediate: true, unloading: false };
@@ -307,10 +312,14 @@ describe('the participant sync handler’s recovery', () => {
       'participant.sync': () =>
         Effect.succeed({ revision: '99', applied: false }),
     });
-    const { onSync } = handlersFor();
+    const { onSync, onSaveOutcome } = handlersFor();
 
-    await expect(onSync('session-1', session('Ada'), SYNC)).rejects.toThrow(
-      'kept another save',
+    await expect(
+      onSync('session-1', session('Ada'), SYNC),
+    ).rejects.toBeInstanceOf(SaveNotApplied);
+    const [[fault]] = onSaveOutcome.mock.calls as [[SaveOutcome]];
+    expect(fault.kind === 'failed' && faultCodeOf(fault.error)).toBe(
+      'conflict',
     );
   });
 
@@ -770,5 +779,247 @@ describe('the participant finish handler', () => {
 
     await expect(onFinish('session-1', FINISH, signal)).rejects.toBeDefined();
     expect(onNotice).not.toHaveBeenCalled();
+  });
+});
+
+describe('the participant save faults', () => {
+  it('reports a save that succeeded only after retrying, with its attempts', async () => {
+    vi.useFakeTimers();
+    let attempts = 0;
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        attempts += 1;
+        return attempts < 3
+          ? Effect.fail(new RateLimited({ retryAfterSeconds: 1 }))
+          : Effect.succeed({ revision: payload.revision, applied: true });
+      },
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    await vi.advanceTimersByTimeAsync(2000);
+    await saved;
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'retried', attempts: 3, stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports a save that went through first time as applied, not retried', async () => {
+    installParticipantHarness({
+      'participant.sync': (payload) =>
+        Effect.succeed({ revision: payload.revision, applied: true }),
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'applied', stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports a save that failed, with its error and attempts', async () => {
+    vi.useFakeTimers();
+    const refusal = new RateLimited({ retryAfterSeconds: 1 });
+    installParticipantHarness({
+      'participant.sync': () => Effect.fail(refusal),
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    const refused = expect(saved).rejects.toBeInstanceOf(RateLimited);
+    await vi.advanceTimersByTimeAsync(3000);
+    await refused;
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 3,
+          stageIndex: 1,
+        },
+      ],
+    ]);
+  });
+
+  it('reports a failed save on the stage that save recorded, not the stage reached since', async () => {
+    vi.useFakeTimers();
+    const refusal = new RateLimited({ retryAfterSeconds: 1 });
+    installParticipantHarness({
+      'participant.sync': () => Effect.fail(refusal),
+    });
+    let step = 1;
+    const onSaveOutcome = vi.fn<(fault: SaveOutcome) => void>();
+    const { onSync } = createParticipantHandlers({
+      holderEpoch: 3,
+      revision: '7',
+      session: session('Initial'),
+      stageIds: ['first', 'second', 'third'],
+      getCurrentStep: () => step,
+      onNotice: vi.fn(),
+      onSaveOutcome,
+    });
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    const refused = expect(saved).rejects.toBeInstanceOf(RateLimited);
+    await vi.advanceTimersByTimeAsync(0);
+    step = 2;
+    await vi.advanceTimersByTimeAsync(3000);
+    await refused;
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 3,
+          stageIndex: 1,
+        },
+      ],
+    ]);
+  });
+
+  it('reports the save finishing makes when the server is behind, if that save fails', async () => {
+    const refusal = new RateLimited({ retryAfterSeconds: 600 });
+    installParticipantHarness({
+      'participant.sync': () => Effect.fail(refusal),
+      'participant.finish': () =>
+        Effect.fail(new SessionOutOfDate({ revision: '8' })),
+    });
+    const { onFinish, onSaveOutcome } = handlersFor();
+
+    await expect(
+      onFinish('session-1', FINISH, new AbortController().signal),
+    ).rejects.toBeInstanceOf(RateLimited);
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 1,
+          stageIndex: 1,
+        },
+      ],
+    ]);
+  });
+
+  it('reports one retry, counting every request, when a save is rate limited, then not applied, then applied', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        calls += 1;
+        if (calls === 1) {
+          return Effect.fail(new RateLimited({ retryAfterSeconds: 1 }));
+        }
+        if (calls === 2) {
+          return Effect.succeed({ revision: '50', applied: false });
+        }
+        return Effect.succeed({ revision: payload.revision, applied: true });
+      },
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    const saved = onSync('session-1', session('Ada'), SYNC);
+    await vi.advanceTimersByTimeAsync(2000);
+    await saved;
+
+    expect(calls).toBe(3);
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'retried', attempts: 3, stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports a retry when a save the server did not apply is applied on its resend', async () => {
+    let calls = 0;
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        calls += 1;
+        return calls === 1
+          ? Effect.succeed({ revision: '50', applied: false })
+          : Effect.succeed({ revision: payload.revision, applied: true });
+      },
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    await onSync('session-1', session('Ada'), SYNC);
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'retried', attempts: 2, stageIndex: 1 }],
+    ]);
+  });
+
+  it('reports every request a save made when the server declined each resend', async () => {
+    installParticipantHarness({
+      'participant.sync': () =>
+        Effect.succeed({ revision: '99', applied: false }),
+    });
+    const { onSync, onSaveOutcome } = handlersFor();
+
+    await expect(
+      onSync('session-1', session('Ada'), SYNC),
+    ).rejects.toBeInstanceOf(SaveNotApplied);
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [
+        {
+          kind: 'failed',
+          code: 'conflict',
+          error: expect.any(SaveNotApplied),
+          attempts: 3,
+          stageIndex: 1,
+        },
+      ],
+    ]);
+  });
+});
+
+describe('the unloading save', () => {
+  it('reports its failure once, from its outcome, on the stage it recorded', async () => {
+    let calls = 0;
+    const refusal = new RateLimited({ retryAfterSeconds: 600 });
+    installParticipantHarness({
+      'participant.sync': (payload) => {
+        calls += 1;
+        return calls === 1
+          ? Effect.succeed({ revision: payload.revision, applied: true })
+          : Effect.fail(refusal);
+      },
+    });
+    let step = 0;
+    const onSaveOutcome = vi.fn<(outcome: SaveOutcome) => void>();
+    const { onSync, flushStep } = createParticipantHandlers({
+      holderEpoch: 3,
+      revision: '7',
+      session: session('Initial'),
+      stageIds: ['first', 'second'],
+      getCurrentStep: () => step,
+      onNotice: vi.fn(),
+      onSaveOutcome,
+    });
+
+    await onSync('session-1', session('Ada'), SYNC);
+    step = 1;
+    flushStep();
+    await vi.waitFor(() => expect(onSaveOutcome).toHaveBeenCalledTimes(2));
+
+    expect(onSaveOutcome.mock.calls).toEqual([
+      [{ kind: 'applied', stageIndex: 0 }],
+      [
+        {
+          kind: 'failed',
+          code: 'rate_limited',
+          error: refusal,
+          attempts: 1,
+          stageIndex: 1,
+        },
+      ],
+    ]);
   });
 });

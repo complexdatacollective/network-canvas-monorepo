@@ -4,8 +4,10 @@ import * as RpcClient from 'effect/rpc/RpcClient';
 import * as RpcSerialization from 'effect/rpc/RpcSerialization';
 import { useEffect } from 'react';
 
+import { StatusRpcs } from '@codaco/studio-contract/rpc/status';
 import { RPC_PATH } from '@codaco/studio-contract/rpc/studio';
 import { TelemetryRpcs } from '@codaco/studio-contract/rpc/telemetry';
+import type { InstanceStatus } from '@codaco/studio-contract/schema/status';
 import {
   ANONYMOUS_FUNCTION,
   type ErrorReport,
@@ -115,7 +117,9 @@ const errorReport = (
   };
 };
 
-const ReportProtocol = RpcClient.layerProtocolHttp({ url: RPC_PATH }).pipe(
+const CredentiallessProtocol = RpcClient.layerProtocolHttp({
+  url: RPC_PATH,
+}).pipe(
   Layer.provide(RpcSerialization.layerNdjson),
   Layer.provide(
     FetchHttpClient.layer.pipe(
@@ -126,6 +130,19 @@ const ReportProtocol = RpcClient.layerProtocolHttp({ url: RPC_PATH }).pipe(
   ),
 );
 
+export type PublicStatus = () => Promise<
+  Pick<InstanceStatus, 'telemetry' | 'logLevel'>
+>;
+
+export const readPublicStatus: PublicStatus = () =>
+  Effect.runPromise(
+    Effect.scoped(
+      Effect.flatMap(RpcClient.make(StatusRpcs, { flatten: true }), (client) =>
+        client('status', undefined),
+      ),
+    ).pipe(Effect.provide(CredentiallessProtocol)),
+  );
+
 const sendReport: SendReport = (report) =>
   Effect.runPromise(
     Effect.scoped(
@@ -133,7 +150,7 @@ const sendReport: SendReport = (report) =>
         RpcClient.make(TelemetryRpcs, { flatten: true }),
         (client) => client('telemetry.report', report),
       ),
-    ).pipe(Effect.provide(ReportProtocol), Effect.ignore),
+    ).pipe(Effect.provide(CredentiallessProtocol), Effect.ignore),
   );
 
 export type TelemetryTarget = Pick<

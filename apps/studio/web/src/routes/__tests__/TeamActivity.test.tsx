@@ -112,6 +112,7 @@ const STATUS: InstanceStatus = {
   deployment: { mode: 'managed', billing: false },
   setup: { required: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 
 vi.mock('../../lib/auth.ts', () => ({

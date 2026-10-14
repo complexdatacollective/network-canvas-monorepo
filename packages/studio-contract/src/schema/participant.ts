@@ -2,6 +2,7 @@ import { Schema } from 'effect';
 
 import { FINISH_OUTCOMES } from '@codaco/protocol-validation';
 
+import { LogLevelName } from './browserLogs.ts';
 import { LinkToken, SessionToken, StudyId } from './ids.ts';
 import { DecimalSequence, NonNegativeInt } from './primitives.ts';
 import { problemFields } from './problem.ts';
@@ -101,6 +102,7 @@ export const SessionPayload = Schema.Struct({
   session: InterviewSession,
   protocol: Schema.RedactedFromValue(Schema.Unknown),
   analytics: Schema.Boolean,
+  logLevel: Schema.NullOr(LogLevelName),
 });
 
 export const MAX_ANALYTICS_EVENTS = 100;

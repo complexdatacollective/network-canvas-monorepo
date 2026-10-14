@@ -26,6 +26,44 @@ const decodeSessionToken = Schema.decodeUnknownOption(SessionToken);
 const decodeStudyId = Schema.decodeUnknownSync(StudyId);
 const decodeTeamId = Schema.decodeUnknownSync(TeamId);
 
+export type PresentedParticipant = {
+  readonly session: ParticipantSession['Service'];
+  readonly actor: AuditActor['Service'];
+};
+
+export const presentedParticipant = Effect.fnUntraced(function* (
+  headers: Headers.Headers,
+): Effect.fn.Return<Option.Option<PresentedParticipant>, never, Database> {
+  const sessionToken = Option.flatMap(
+    Headers.get(headers, PARTICIPANT_SESSION_HEADER),
+    decodeSessionToken,
+  );
+  const presented = Option.flatMap(sessionToken, parsePresentedToken);
+  if (Option.isNone(sessionToken) || Option.isNone(presented)) {
+    return Option.none();
+  }
+
+  const access = presentedTokenTeamAccess(presented.value.teamId);
+  const session = yield* TenantScope.open(
+    access,
+    findSessionByTokenHash(presented.value.secretHash),
+  ).pipe(Effect.orDie);
+  if (session === null) return Option.none();
+
+  return Option.some({
+    session: ParticipantSession.of({
+      sessionId: session.sessionId,
+      sessionToken: sessionToken.value,
+      studyId: decodeStudyId(session.studyId),
+      teamId: decodeTeamId(presented.value.teamId),
+      holderEpoch: session.holderEpoch,
+      status: session.status,
+      access,
+    }),
+    actor: participantAuditActor(session.sessionId, session.participantCode),
+  });
+});
+
 export const RequireSessionLive: Layer.Layer<RequireSession, never, Database> =
   Layer.effect(RequireSession)(
     Effect.gen(function* () {
@@ -33,39 +71,18 @@ export const RequireSessionLive: Layer.Layer<RequireSession, never, Database> =
       return (effect, options) =>
         Effect.gen(function* () {
           const transport = yield* transportHeaders(options.headers);
-          const sessionToken = Option.flatMap(
-            Headers.get(transport, PARTICIPANT_SESSION_HEADER),
-            decodeSessionToken,
+          const participant = yield* presentedParticipant(transport).pipe(
+            Effect.provideService(Database, database),
           );
-          const presented = Option.flatMap(sessionToken, parsePresentedToken);
-          if (Option.isNone(sessionToken) || Option.isNone(presented)) {
+          if (Option.isNone(participant)) {
             return yield* new Unauthorized({});
           }
-
-          const access = presentedTokenTeamAccess(presented.value.teamId);
-          const session = yield* TenantScope.open(
-            access,
-            findSessionByTokenHash(presented.value.secretHash),
-          ).pipe(Effect.provideService(Database, database), Effect.orDie);
-          if (session === null) return yield* new Unauthorized({});
-
           return yield* effect.pipe(
             Effect.provideService(
               ParticipantSession,
-              ParticipantSession.of({
-                sessionId: session.sessionId,
-                sessionToken: sessionToken.value,
-                studyId: decodeStudyId(session.studyId),
-                teamId: decodeTeamId(presented.value.teamId),
-                holderEpoch: session.holderEpoch,
-                status: session.status,
-                access,
-              }),
+              participant.value.session,
             ),
-            Effect.provideService(
-              AuditActor,
-              participantAuditActor(session.sessionId, session.participantCode),
-            ),
+            Effect.provideService(AuditActor, participant.value.actor),
           );
         });
     }),

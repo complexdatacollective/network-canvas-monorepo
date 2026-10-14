@@ -37,6 +37,7 @@ import { createStudio } from '../../app.ts';
 import { TenantScope, unsafeMakeTeamAccess } from '../../db/tenant.ts';
 import { readEnv } from '../../env.ts';
 import { Analytics, RecordedAnalytics } from '../../platform/analytics.ts';
+import { BrowserLogs } from '../../platform/browser-logs.ts';
 import { baseProtocol } from '../../protocol/__tests__/helpers.ts';
 import { createProtocol, publishDraft } from '../../protocol/store.ts';
 import type { RateLimiter } from '../../rate-limit/limiter.ts';
@@ -481,7 +482,9 @@ describe.skipIf(!testDb)('the participant procedures', () => {
       );
       const f = await fixture();
       const { sessionToken } = await redeemed(f.linkToken);
-      expect((await opened(sessionToken)).analytics).toBe(false);
+      const session = await opened(sessionToken);
+      expect(session.analytics).toBe(false);
+      expect(session.logLevel).toBeNull();
     });
 
     it('returns the pinned protocol with its API key and the session as stored', async () => {
@@ -975,7 +978,11 @@ describe.skipIf(!testDb)('participant analytics', () => {
     client = await createRpcClient(
       createStudio(readEnv(), {
         auth: authServiceStub(),
-        services: Context.merge(database.services, analytics),
+        services: Context.add(
+          Context.merge(database.services, analytics),
+          BrowserLogs,
+          BrowserLogs.of({ forward: () => Effect.void }),
+        ),
         limiter,
       }),
     );
@@ -1045,6 +1052,7 @@ describe.skipIf(!testDb)('participant analytics', () => {
   it('tells the page to report usability events', async () => {
     const { session } = await begin();
     expect(session.analytics).toBe(true);
+    expect(session.logLevel).toBe('Info');
     expect(
       JSON.stringify(Schema.encodeSync(SessionPayload)(session)),
     ).not.toContain(installationId);
