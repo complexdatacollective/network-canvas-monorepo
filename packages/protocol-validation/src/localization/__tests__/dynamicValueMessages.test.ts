@@ -329,7 +329,7 @@ describe('dynamicMessageParts', () => {
     // Shown as 100000000000000020000, though its exact value ends in 16384:
     // Russian chooses `many` for a number ending in 0 and `few` for one
     // ending in 4.
-    const count = 100000000000000010000;
+    const count = 1e20 + 2 ** 14;
     expect(
       dynamicMessageParts(
         '{count, plural, one {one} few {few} many {many} other {other}}',
