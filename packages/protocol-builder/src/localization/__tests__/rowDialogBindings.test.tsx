@@ -172,6 +172,70 @@ describe('a value with answers inserted in a row dialog', () => {
   });
 });
 
+describe('a value shown by answer in an open dialog', () => {
+  it('relabels its versions when an answer is renamed in the codebook', async () => {
+    const harness = openCensus();
+    await harness.opened();
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    await harness.user.click(
+      dialog.getByRole('button', {
+        name: 'Inject piped text from interview metadata or a network attribute',
+      }),
+    );
+    await harness.user.click(
+      await screen.findByRole('option', {
+        name: /contactFreq \(first node in pair\).*Different wording for each answer/,
+      }),
+    );
+    expect(
+      await dialog.findByRole('textbox', { name: 'Weekly' }),
+    ).toBeInTheDocument();
+
+    const person = harness.hostCodebook().node?.person;
+    if (person === undefined) throw new Error('No person type');
+    const contactFreq = person.variables?.contactFreq;
+    if (contactFreq === undefined) throw new Error('No contactFreq');
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...person,
+          variables: {
+            ...person.variables,
+            contactFreq: {
+              ...contactFreq,
+              options: [
+                { label: { 'en-US': 'Every week' }, value: 3 },
+                { label: { 'en-US': 'Monthly' }, value: 2 },
+                { label: { 'en-US': 'Rarely' }, value: 1 },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    // The editor takes a new document once the researcher has left it, as
+    // they have when they rename the answer in another field.
+    await harness.user.click(dialog.getByRole('heading', { level: 2 }));
+    // The pill is folded again once the document is rebuilt.
+    const pill = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-versions-pill]');
+      if (found === null) throw new Error('No pill');
+      return found;
+    });
+    await harness.user.click(pill);
+    expect(
+      await dialog.findByRole('textbox', { name: 'Every week' }),
+    ).toBeInTheDocument();
+    expect(
+      dialog.queryByRole('textbox', { name: 'Weekly' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('a yes-or-no value without labels for its answers', () => {
   it('is listed but cannot be shown as itself, only by answer', async () => {
     const harness = openCensus();

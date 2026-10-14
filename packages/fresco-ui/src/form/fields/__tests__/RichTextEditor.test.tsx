@@ -884,7 +884,49 @@ describe('versions folded to a pill', () => {
     await waitFor(() => expect(known).toHaveFocus());
     await user.keyboard('{Escape}');
     await waitFor(() => expectFolded(pill()));
-    expect(editor).toHaveFocus();
+    // Tiptap moves focus in the next animation frame.
+    await waitFor(() => expect(editor).toHaveFocus());
+  });
+
+  it('offers headings, lists and rules only for the text around a version', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <RichTextEditorField
+        id="intro"
+        name="intro"
+        aria-label="Introduction"
+        versions
+        toolbarOptions={{ headings: true, lists: true, thematicBreak: true }}
+        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        changeMode="input"
+        value={holdingVersions}
+        onChange={() => undefined}
+      />,
+    );
+    const toolbar = within(screen.getByRole('toolbar'));
+    const blockControls = () => [
+      toolbar.getByRole('button', { name: 'Heading 1' }),
+      toolbar.getByRole('button', { name: 'Bullet list' }),
+      toolbar.getByRole('button', { name: 'Thematic break' }),
+    ];
+    const pill = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-versions-pill]');
+      if (found === null) throw new Error('No pill');
+      return found;
+    });
+    for (const control of blockControls()) {
+      expect(control).not.toHaveAttribute('aria-disabled', 'true');
+    }
+
+    // A version's line holds one line of text: no heading, list or rule
+    // goes in it.
+    await user.click(pill);
+    await user.click(await screen.findByRole('textbox', { name: 'If known' }));
+    await waitFor(() => {
+      for (const control of blockControls()) {
+        expect(control).toHaveAttribute('aria-disabled', 'true');
+      }
+    });
   });
 
   it('keeps the Escape that folds it from a dialog around the text', async () => {

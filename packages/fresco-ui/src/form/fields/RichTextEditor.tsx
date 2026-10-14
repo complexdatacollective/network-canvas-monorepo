@@ -1673,6 +1673,9 @@ export default function RichTextEditorField({
   }
 
   const actOn = target ?? editor;
+  // A version's line is a single line of inline text, so headings, lists and
+  // rules only apply to the text around it.
+  const blocksEditable = actOn === editor;
 
   const getActiveFormattingValues = () => {
     const values: string[] = [];
@@ -2114,7 +2117,7 @@ export default function RichTextEditorField({
                 {options.headings.h1 && (
                   <ToolbarToggleButton
                     className={toolbarButtonStyles}
-                    disabled={isDisabled}
+                    disabled={isDisabled || !blocksEditable}
                     value="h1"
                     aria-label={intl.formatMessage(messages.heading1)}
                   >
@@ -2124,7 +2127,7 @@ export default function RichTextEditorField({
                 {options.headings.h2 && (
                   <ToolbarToggleButton
                     className={toolbarButtonStyles}
-                    disabled={isDisabled}
+                    disabled={isDisabled || !blocksEditable}
                     value="h2"
                     aria-label={intl.formatMessage(messages.heading2)}
                   >
@@ -2134,7 +2137,7 @@ export default function RichTextEditorField({
                 {options.headings.h3 && (
                   <ToolbarToggleButton
                     className={toolbarButtonStyles}
-                    disabled={isDisabled}
+                    disabled={isDisabled || !blocksEditable}
                     value="h3"
                     aria-label={intl.formatMessage(messages.heading3)}
                   >
@@ -2144,7 +2147,7 @@ export default function RichTextEditorField({
                 {options.headings.h4 && (
                   <ToolbarToggleButton
                     className={toolbarButtonStyles}
-                    disabled={isDisabled}
+                    disabled={isDisabled || !blocksEditable}
                     value="h4"
                     aria-label={intl.formatMessage(messages.heading4)}
                   >
@@ -2188,7 +2191,7 @@ export default function RichTextEditorField({
                 {options.lists.ordered && (
                   <ToolbarToggleButton
                     className={toolbarButtonStyles}
-                    disabled={isDisabled}
+                    disabled={isDisabled || !blocksEditable}
                     value="ordered"
                     aria-label={intl.formatMessage(messages.numberedList)}
                   >
@@ -2198,7 +2201,7 @@ export default function RichTextEditorField({
                 {options.lists.bullet && (
                   <ToolbarToggleButton
                     className={toolbarButtonStyles}
-                    disabled={isDisabled}
+                    disabled={isDisabled || !blocksEditable}
                     value="bullet"
                     aria-label={intl.formatMessage(messages.bulletList)}
                   >
@@ -2217,7 +2220,7 @@ export default function RichTextEditorField({
               <Toolbar.Group className={toolbarGroupStyles}>
                 <ToolbarButton
                   className={toolbarButtonStyles}
-                  disabled={isDisabled}
+                  disabled={isDisabled || !blocksEditable}
                   aria-label={intl.formatMessage(messages.thematicBreak)}
                   onClick={() =>
                     actOn.chain().focus().setHorizontalRule().run()

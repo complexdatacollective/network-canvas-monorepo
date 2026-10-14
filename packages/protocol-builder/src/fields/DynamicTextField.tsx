@@ -598,6 +598,16 @@ export function DynamicMessageEditor({
     trigger: '{',
   };
 
+  // What the document's pills and version labels say, so a renamed
+  // attribute or answer relabels a document already open.
+  const labelsKey = JSON.stringify(
+    [...choiceByName].map(([bindingName, choice]) => [
+      bindingName,
+      naming.valueLabel(choice),
+      choice.options.map((option) => labelText(option.label)),
+    ]),
+  );
+
   // The stored message as the editor's document, or why it cannot be one.
   const parsed = useMemo(() => {
     const structure = messageStructure(message);
@@ -608,10 +618,10 @@ export function DynamicMessageEditor({
       if (error instanceof MessageDocumentProblem) return undefined;
       throw error;
     }
-    // The labels follow the bindings and the language; the message decides
-    // the document.
+    // The labels follow the bindings, the language and the codebook's names
+    // (`labelsKey`); the message decides the document.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [message, format, locale, bindings, intl]);
+  }, [message, format, locale, bindings, intl, labelsKey]);
 
   // As `RichTextField` does: the editor gets its own last document back
   // while that document still writes the stored message, so a round trip
@@ -619,9 +629,11 @@ export function DynamicMessageEditor({
   const lastEmitted = useRef<{
     message: string;
     content: RichTextContent;
+    labelsKey: string;
   } | null>(null);
   const content =
-    lastEmitted.current?.message === message
+    lastEmitted.current?.message === message &&
+    lastEmitted.current.labelsKey === labelsKey
       ? lastEmitted.current.content
       : parsed;
 
@@ -637,7 +649,11 @@ export function DynamicMessageEditor({
     const nextMessage = isBlankMessage(nodes)
       ? undefined
       : printMessageStructure(nodes);
-    lastEmitted.current = { message: nextMessage ?? '', content: document };
+    lastEmitted.current = {
+      message: nextMessage ?? '',
+      content: document,
+      labelsKey,
+    };
     if ((nextMessage ?? '') === message) return;
 
     onMessageChange(nextMessage);
