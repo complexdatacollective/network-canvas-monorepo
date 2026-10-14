@@ -1,3 +1,5 @@
+import type { DOMOutputSpec } from '@tiptap/pm/model';
+import { Variable } from 'lucide-react';
 import { type ComponentPropsWithoutRef, Fragment } from 'react';
 
 import { cx } from './utils/cva';
@@ -27,6 +29,36 @@ export const tokenPillClasses = (className?: string) =>
     className,
   );
 
+/** The classes of the icon a pill opens with, before its label. */
+export const tokenPillIconClasses =
+  'me-1 inline-block size-[1em] align-[-0.125em] opacity-70';
+
+const SVG = 'http://www.w3.org/2000/svg';
+
+/**
+ * The icon a pill opens with, lucide's `Variable` (a data value), as DOM
+ * the editor builds itself: lucide's own drawing of it, attribute for
+ * attribute. Hidden from screen readers; the pill's words name it.
+ */
+export const tokenPillIconSpec: DOMOutputSpec = [
+  `${SVG} svg`,
+  {
+    'xmlns': SVG,
+    'viewBox': '0 0 24 24',
+    'fill': 'none',
+    'stroke': 'currentColor',
+    'stroke-width': '2',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+    'aria-hidden': 'true',
+    'class': `lucide lucide-variable ${tokenPillIconClasses}`,
+  },
+  [`${SVG} path`, { d: 'M8 21s-4-3-4-9 4-9 4-9' }],
+  [`${SVG} path`, { d: 'M16 3s4 3 4 9-4 9-4 9' }],
+  [`${SVG} line`, { x1: '15', x2: '9', y1: '9', y2: '15' }],
+  [`${SVG} line`, { x1: '9', x2: '15', y1: '9', y2: '15' }],
+];
+
 /**
  * A placeholder inside text, such as a person's name that is filled in later,
  * drawn as a pill. The rich text editor draws every placeholder it holds with
@@ -47,6 +79,7 @@ export const TokenPill = ({
     data-selected={selected || undefined}
     className={tokenPillClasses(className)}
   >
+    <Variable aria-hidden className={tokenPillIconClasses} />
     {label}
   </span>
 );

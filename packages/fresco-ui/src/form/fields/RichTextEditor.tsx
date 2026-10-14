@@ -50,6 +50,7 @@ import {
   Redo,
   Trash2,
   Undo,
+  Variable,
 } from 'lucide-react';
 import {
   createContext,
@@ -67,6 +68,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import Button, { buttonVariants, iconButtonVariants } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../Tooltip';
 import {
   controlVariants,
   inputControlVariants,
@@ -74,7 +76,7 @@ import {
   multilineContentVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { tokenPillClasses } from '../../TokenPill';
+import { tokenPillClasses, tokenPillIconSpec } from '../../TokenPill';
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
 import { cva, cx } from '../../utils/cva';
@@ -372,9 +374,11 @@ const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
       return [
         'span',
         mergeAttributes(HTMLAttributes, {
-          class: tokenPillClasses(),
+          // A pointer, not the text cursor: the pill is one object.
+          class: tokenPillClasses('cursor-pointer'),
           contenteditable: 'false',
         }),
+        tokenPillIconSpec,
         labelOf(node.attrs.id),
       ];
     },
@@ -2079,16 +2083,23 @@ export default function RichTextEditorField({
                       if (!open) setTriggered(null);
                     }}
                   >
-                    <PopoverTrigger asChild disabled={isDisabled}>
-                      <ToolbarButton
-                        className={toolbarTokenButtonStyles}
-                        disabled={isDisabled}
-                        onMouseDown={() => setTriggered(null)}
-                      >
-                        <Plus aria-hidden />
-                        {insertMenu.label}
-                      </ToolbarButton>
-                    </PopoverTrigger>
+                    <Tooltip>
+                      <PopoverTrigger asChild nativeButton disabled={isDisabled}>
+                        <TooltipTrigger
+                          render={
+                            <ToolbarButton
+                              className={toolbarButtonStyles}
+                              disabled={isDisabled}
+                              aria-label={insertMenu.label}
+                              onMouseDown={() => setTriggered(null)}
+                            >
+                              <Variable aria-hidden />
+                            </ToolbarButton>
+                          }
+                        />
+                      </PopoverTrigger>
+                      <TooltipContent>{insertMenu.label}</TooltipContent>
+                    </Tooltip>
                     <PopoverContent
                       align="start"
                       side="bottom"

@@ -1444,8 +1444,45 @@ describe('a RichTextEditorField with tokens', () => {
     const chip = editor.querySelector('[data-token="name"]');
     expect(chip).toHaveTextContent('Name');
     expect(chip).toHaveAttribute('contenteditable', 'false');
-    // The pill read-only text shows is drawn with the same classes.
-    expect(chip?.className).toBe(tokenPillClasses());
+    // The pill read-only text shows is drawn with the same classes, with a
+    // pointer over it, since the pill is one object.
+    expect(chip?.className).toBe(tokenPillClasses('cursor-pointer'));
+    // It opens with the value icon, hidden from screen readers.
+    const icon = chip?.querySelector('svg.lucide-variable');
+    expect(icon).toHaveAttribute('aria-hidden', 'true');
+    expect(chip?.firstChild).toBe(icon);
+  });
+
+  it('offers its insert menu from an icon button named, and tipped, by the menu', async () => {
+    const field = renderWithTokens({
+      insertMenu: {
+        label: 'Insert a value',
+        items: [
+          {
+            id: 'name',
+            label: 'Name',
+            content: { type: 'token', attrs: { id: 'name' } },
+          },
+        ],
+      },
+    });
+    await field.editor();
+
+    const button = screen.getByRole('button', { name: 'Insert a value' });
+    // Its name is the menu's; what it shows is the value icon alone.
+    expect(button.textContent).toBe('');
+    expect(button.querySelector('svg.lucide-variable')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    await field.user.hover(button);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Insert a value',
+    );
+    await field.user.click(button);
+    expect(
+      await screen.findByRole('option', { name: /Name/ }),
+    ).toBeInTheDocument();
   });
 
   it('says which required tokens the text does not include yet', async () => {

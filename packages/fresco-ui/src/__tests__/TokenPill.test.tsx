@@ -18,6 +18,14 @@ describe('TokenPill', () => {
     expect(screen.getByText('Name').className).toBe(tokenPillClasses());
   });
 
+  it('opens with the value icon, hidden from screen readers', () => {
+    render(<TokenPill token="name" label="Name" />);
+
+    const icon = screen.getByText('Name').firstElementChild;
+    expect(icon).toHaveClass('lucide-variable');
+    expect(icon).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('marks itself as selected', () => {
     render(<TokenPill token="name" label="Name" selected />);
 

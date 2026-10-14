@@ -20,7 +20,10 @@ table and the protocol summary. A translation that leaves out a value is
 flagged with the value's name, and the table will not save it. Text that
 shows values a field cannot edit is shown as it is, with a note saying why.
 
-- `@codaco/fresco-ui`'s rich text editor accepts an insert menu
+- `@codaco/fresco-ui`'s rich text editor opens its insert menu from an icon
+  button (a variable icon, named and tipped by the menu's label), and every
+  placeholder pill, in the editor and in `TokenPill`, opens with the same
+  icon; in the editor a pill shows a pointer. The editor accepts an insert menu
   (`RichTextInsertMenu`, whose items can be `disabled` with a description
   saying why), inline value pills, and a versions block for text
   with one version per case.
