@@ -1,34 +1,72 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import type { DynamicValueEntities } from '../DynamicValueScope';
 import { useValuesUntilExit } from '../useValuesUntilExit';
+
+const named = (label: string | undefined): DynamicValueEntities => ({
+  attributes: { node: { name: label } },
+  labels: { node: label },
+});
 
 describe('useValuesUntilExit', () => {
   it('keeps the outgoing values until the exit completes', () => {
     const { result, rerender } = renderHook(
       ({ key, values }) => useValuesUntilExit(key, values),
-      { initialProps: { key: 'a', values: { name: 'Ada' } } },
+      { initialProps: { key: 'a', values: named('Ada') } },
     );
-    expect(result.current.values).toEqual({ name: 'Ada' });
+    expect(result.current.values.labels).toEqual({ node: 'Ada' });
 
-    rerender({ key: 'b', values: { name: 'Bo' } });
-    expect(result.current.values).toEqual({ name: 'Ada' });
+    rerender({ key: 'b', values: named('Bo') });
+    expect(result.current.values.labels).toEqual({ node: 'Ada' });
 
     act(() => result.current.onExitComplete());
-    expect(result.current.values).toEqual({ name: 'Bo' });
+    expect(result.current.values.labels).toEqual({ node: 'Bo' });
   });
 
   it('follows new values for the same key at once', () => {
     const { result, rerender } = renderHook(
       ({ key, values }) => useValuesUntilExit(key, values),
+      { initialProps: { key: 'a', values: named(undefined) } },
+    );
+    rerender({ key: 'a', values: named('Ada') });
+    expect(result.current.values.labels).toEqual({ node: 'Ada' });
+  });
+
+  it('names the outgoing content as it was last shown', () => {
+    // A label that decrypts after the content appears.
+    const attributes = { node: { name: [1, 2, 3] } };
+    const { result, rerender } = renderHook(
+      ({ key, values }) => useValuesUntilExit(key, values),
       {
         initialProps: {
           key: 'a',
-          values: { name: undefined as string | undefined },
+          values: { attributes, labels: { node: '🔒' } },
         },
       },
     );
-    rerender({ key: 'a', values: { name: 'Ada' } });
-    expect(result.current.values).toEqual({ name: 'Ada' });
+    rerender({ key: 'a', values: { attributes, labels: { node: 'Ada' } } });
+
+    rerender({ key: 'b', values: named('Bo') });
+    expect(result.current.values.labels).toEqual({ node: 'Ada' });
+  });
+
+  it('settles when the values are new objects with the same content', () => {
+    const attributes = { node: { name: 'Ada' } };
+    const { result, rerender } = renderHook(
+      ({ key, values }) => useValuesUntilExit(key, values),
+      {
+        initialProps: {
+          key: 'a',
+          values: { attributes: { ...attributes }, labels: { node: 'Ada' } },
+        },
+      },
+    );
+    // A caller builds its values afresh on every render.
+    rerender({
+      key: 'a',
+      values: { attributes: { ...attributes }, labels: { node: 'Ada' } },
+    });
+    expect(result.current.values.labels).toEqual({ node: 'Ada' });
   });
 });
