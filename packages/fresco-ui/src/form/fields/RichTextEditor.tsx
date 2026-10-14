@@ -1641,6 +1641,7 @@ export default function RichTextEditorField({
   const showTokens = toolbarTokens.length > 0 || insertMenu !== undefined;
 
   const insertItem = (item: RichTextInsertMenuItem) => {
+    if (item.disabled === true) return;
     const content = Array.isArray(item.content)
       ? [...(item.content as readonly JSONContent[])]
       : (item.content as JSONContent);

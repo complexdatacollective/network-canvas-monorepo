@@ -168,6 +168,35 @@ describe('a value with answers inserted in a row dialog', () => {
   });
 });
 
+describe('a yes-or-no value without labels for its answers', () => {
+  it('is listed but cannot be shown as itself, only by answer', async () => {
+    const harness = openCensus();
+    await harness.opened();
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Insert a value' }),
+    );
+
+    const asItself = await screen.findByRole('option', {
+      name: /First person: flagged.*Add labels for its yes and no answers first/,
+    });
+    expect(asItself).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.getByRole('option', {
+        name: /First person: flagged.*Different wording for each answer/,
+      }),
+    ).not.toHaveAttribute('aria-disabled', 'true');
+
+    await harness.user.click(asItself);
+    expect(
+      dialog.getByRole('textbox', { name: /^Prompt text/ }),
+    ).not.toHaveTextContent('flagged');
+  });
+});
+
 describe("a census prompt's preview", () => {
   it('shows the value its text fills in as a pill', async () => {
     const { type, fields } = loadFixtureStage('dyad-census-1');

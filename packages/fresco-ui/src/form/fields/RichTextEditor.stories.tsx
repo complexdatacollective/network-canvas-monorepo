@@ -750,6 +750,14 @@ const insertMenu: RichTextInsertMenu = {
       description: 'Number',
       content: { type: 'token', attrs: { id: 'age' } },
     },
+    {
+      id: 'smokes',
+      label: 'Smokes',
+      group: 'About the participant',
+      description: 'Give its answers labels first',
+      disabled: true,
+      content: { type: 'token', attrs: { id: 'smokes' } },
+    },
   ],
 };
 
@@ -889,6 +897,41 @@ export const InsertMenuFromTheKeyboard: Story = {
     await userEvent.paste(' and {age}');
     await waitFor(() =>
       expect(editor.querySelectorAll('[data-token="age"]')).toHaveLength(2),
+    );
+  },
+};
+
+/**
+ * An item can be listed but not insertable (`disabled`), with its
+ * description saying why. Choosing it inserts nothing.
+ */
+export const InsertMenuWithAnUnavailableItem: Story = {
+  render: () => <EditorWithValue initial={undefined} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    const editor = await canvas.findByRole('textbox', { name: 'Question' });
+    await userEvent.click(editor);
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Insert a value' }),
+    );
+    const unavailable = await body.findByRole('option', { name: /Smokes/ });
+    await expect(unavailable).toHaveAttribute('aria-disabled', 'true');
+    await expect(unavailable).toHaveTextContent(
+      'Give its answers labels first',
+    );
+    await userEvent.click(unavailable);
+    await userEvent.keyboard('{Escape}');
+    await expect(editor.querySelector('[data-token="smokes"]')).toBeNull();
+
+    // An available item still inserts.
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Insert a value' }),
+    );
+    await userEvent.click(await body.findByRole('option', { name: /Age/ }));
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),
     );
   },
 };

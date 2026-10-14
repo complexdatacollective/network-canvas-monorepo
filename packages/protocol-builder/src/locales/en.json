@@ -1535,6 +1535,10 @@
     "defaultMessage": "Interview",
     "description": "Heading in the insert-a-value menu above values that come from the interview itself rather than from a person, such as today’s date."
   },
+  "protocolBuilder.dynamicText.needsAnswerLabels": {
+    "defaultMessage": "Add labels for its yes and no answers first",
+    "description": "Second line of an entry in the insert-a-value menu that cannot be chosen yet. The entry is a yes-or-no attribute without its own words for its two answers, so the text has nothing in the protocol’s languages to show for it. The researcher can add those words where the attribute is set up."
+  },
   "protocolBuilder.dynamicText.no": {
     "defaultMessage": "No",
     "description": "Label of the version of a piece of text shown when a yes-or-no attribute is no."
@@ -1566,6 +1570,10 @@
   "protocolBuilder.dynamicText.roleValue": {
     "defaultMessage": "{role}: {attribute}",
     "description": "Name of an inserted value that belongs to someone other than the participant, as it appears in the text. role is whose value it is, such as “First person”; attribute is the attribute’s name, such as “nickname”."
+  },
+  "protocolBuilder.dynamicText.switchHasNoLabels": {
+    "defaultMessage": "A Toggle has no labels for its answers. Use different wording for each answer instead.",
+    "description": "Second line of an entry in the insert-a-value menu that cannot be chosen. The entry is a yes-or-no attribute answered with a Toggle (Architect’s name for a single on/off switch, kept as the one word “Toggle” as elsewhere in Architect), which has no researcher-written labels for its two answers, so the text cannot show the answer itself. The menu has another entry for the same attribute, “Different wording for each answer”, which the researcher can use instead."
   },
   "protocolBuilder.dynamicText.today": {
     "defaultMessage": "Today’s date",

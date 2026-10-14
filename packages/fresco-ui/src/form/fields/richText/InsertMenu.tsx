@@ -36,6 +36,11 @@ export type RichTextInsertMenuItem = Readonly<{
   group?: string;
   /** A second line under the label, such as what kind of thing it is. */
   description?: string;
+  /**
+   * Listed but not insertable, such as something the text cannot use until
+   * it is set up elsewhere; `description` says why.
+   */
+  disabled?: boolean;
   content: JSONContent | readonly JSONContent[];
 }>;
 
@@ -124,13 +129,19 @@ export function InsertMenuList({
                     key={item.id}
                     value={item}
                     data-insert-item={item.id}
-                    onClick={() => onPick(item)}
+                    disabled={item.disabled}
+                    onClick={() => {
+                      if (item.disabled !== true) onPick(item);
+                    }}
                     className={cx(
                       'flex cursor-default flex-col rounded-sm px-2 py-1.5 text-sm select-none',
-                      'data-highlighted:bg-primary data-highlighted:text-primary-contrast',
+                      'not-data-disabled:data-highlighted:bg-primary not-data-disabled:data-highlighted:text-primary-contrast',
+                      'data-disabled:cursor-not-allowed',
                     )}
                   >
-                    <span className="font-semibold">{item.label}</span>
+                    <span className="font-semibold in-data-disabled:opacity-60">
+                      {item.label}
+                    </span>
                     {item.description !== undefined && (
                       <span className="text-xs opacity-80">
                         {item.description}

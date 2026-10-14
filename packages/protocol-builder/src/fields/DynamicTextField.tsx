@@ -126,6 +126,19 @@ const messages = defineMessages({
     description:
       'Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with one version for each answer to this attribute, so the text can say something different depending on the answer.',
   },
+  needsAnswerLabels: {
+    id: 'protocolBuilder.dynamicText.needsAnswerLabels',
+    defaultMessage: 'Add labels for its yes and no answers first',
+    description:
+      'Second line of an entry in the insert-a-value menu that cannot be chosen yet. The entry is a yes-or-no attribute without its own words for its two answers, so the text has nothing in the protocol’s languages to show for it. The researcher can add those words where the attribute is set up.',
+  },
+  switchHasNoLabels: {
+    id: 'protocolBuilder.dynamicText.switchHasNoLabels',
+    defaultMessage:
+      'A Toggle has no labels for its answers. Use different wording for each answer instead.',
+    description:
+      'Second line of an entry in the insert-a-value menu that cannot be chosen. The entry is a yes-or-no attribute answered with a Toggle (Architect’s name for a single on/off switch, kept as the one word “Toggle” as elsewhere in Architect), which has no researcher-written labels for its two answers, so the text cannot show the answer itself. The menu has another entry for the same attribute, “Different wording for each answer”, which the researcher can use instead.',
+  },
   byNumber: {
     id: 'protocolBuilder.dynamicText.byNumber',
     defaultMessage: 'Wording that fits the number',
@@ -488,11 +501,21 @@ export function DynamicMessageEditor({
     const group = naming.groupLabel(choice);
     const type = variableTypeLabel(choice.variableType);
     const argument: MessageNode = { kind: 'argument', name: bindingName };
+    const unshowable =
+      choice.unshowable === undefined
+        ? undefined
+        : intl.formatMessage(
+            choice.unshowable === 'switch'
+              ? messages.switchHasNoLabels
+              : messages.needsAnswerLabels,
+          );
     items.push({
       id: `value:${choice.path}`,
       label: valueLabel,
       group,
-      ...(type !== undefined && { description: intl.formatMessage(type) }),
+      ...(unshowable !== undefined
+        ? { description: unshowable, disabled: true }
+        : type !== undefined && { description: intl.formatMessage(type) }),
       content: inlineContent(
         choice.optional
           ? [presenceSwitch(bindingName, [argument])]

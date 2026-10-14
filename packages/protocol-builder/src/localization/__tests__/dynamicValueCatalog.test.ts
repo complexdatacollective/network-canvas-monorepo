@@ -19,6 +19,16 @@ const EGO = {
   layout: { name: 'Position', type: 'layout' },
   children: { name: 'Number of children', type: 'number' },
   smokes: { name: 'Smokes', type: 'boolean' },
+  vapes: { name: 'Vapes', type: 'boolean', component: 'Toggle' },
+  drinks: {
+    name: 'Drinks',
+    type: 'boolean',
+    component: 'Boolean',
+    options: [
+      { value: true, label: { en: 'Drinks' } },
+      { value: false, label: { en: 'Does not drink' } },
+    ],
+  },
 } as const;
 
 const NODE = {
@@ -62,7 +72,14 @@ describe('dynamicValueChoices', () => {
     const paths = dynamicValueChoices(
       contextFor('Information', 'stageText'),
     ).map((choice) => choice.path);
-    expect(paths).toEqual(['now', 'ego.name', 'ego.children', 'ego.smokes']);
+    expect(paths).toEqual([
+      'now',
+      'ego.name',
+      'ego.children',
+      'ego.smokes',
+      'ego.vapes',
+      'ego.drinks',
+    ]);
   });
 
   it('adds the pair on a dyad prompt', () => {
@@ -81,6 +98,21 @@ describe('dynamicValueChoices', () => {
       true,
       false,
     ]);
+  });
+  it('offers a yes-or-no attribute as words only once both answers have labels', () => {
+    const unshowable = Object.fromEntries(
+      dynamicValueChoices(contextFor('Information', 'stageText')).map(
+        (choice) => [choice.path, choice.unshowable],
+      ),
+    );
+    expect(unshowable).toEqual({
+      'now': undefined,
+      'ego.name': undefined,
+      'ego.children': undefined,
+      'ego.smokes': 'needsLabels',
+      'ego.vapes': 'switch',
+      'ego.drinks': undefined,
+    });
   });
 });
 

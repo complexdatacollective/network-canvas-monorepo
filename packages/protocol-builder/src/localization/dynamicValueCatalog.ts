@@ -8,6 +8,7 @@ import {
   dynamicValueNamesIn,
   dynamicValuePathFor,
   dynamicValueStatus,
+  dynamicValueUnshowableReason,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
   type MessageNode,
@@ -39,6 +40,13 @@ export type DynamicValueChoice = Readonly<{
    * boolean attribute, each with the case key a new binding would give it.
    */
   options: readonly DynamicValueOption[];
+  /**
+   * Why text cannot show it as words, though it can choose wording by it, or
+   * undefined when it can: a yes/no attribute shows its answers' labels, so
+   * one without labels for both answers needs them first (`needsLabels`),
+   * and an on/off switch, which never has any, cannot be shown (`switch`).
+   */
+  unshowable: 'needsLabels' | 'switch' | undefined;
 }>;
 
 export type DynamicValueOption = Readonly<{
@@ -105,6 +113,7 @@ export const dynamicValueChoices = (
     optional: INTRINSIC_DYNAMIC_VALUES[name].optional,
     numeric: false,
     options: [],
+    unshowable: undefined,
   }));
   const attributes = [...context.roles].flatMap((role) =>
     Object.entries(context.variablesFor(role) ?? {}).flatMap(
@@ -129,6 +138,12 @@ export const dynamicValueChoices = (
             optional: true,
             numeric: variable.type === 'number' || variable.type === 'scalar',
             options: optionsOf(full),
+            unshowable:
+              dynamicValueUnshowableReason(variable) === undefined
+                ? undefined
+                : full.component === 'Toggle'
+                  ? 'switch'
+                  : 'needsLabels',
           },
         ];
       },
