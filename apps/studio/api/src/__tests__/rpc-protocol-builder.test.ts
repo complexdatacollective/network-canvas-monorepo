@@ -52,6 +52,9 @@ import {
 
 const limiterUrl = await reachableRedis(REDIS_DATABASES.protocolBuilder);
 
+// The sample protocol's finish stages, in order.
+const ENDINGS = ['finish', 'finish-declined'];
+
 describe.skipIf(!testDb)('the protocol-builder host surface', () => {
   const suite = setupProtocolBuilderSuite();
   const {
@@ -284,7 +287,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     const orderBefore = Redacted.value(before.document).stages;
     if (!Array.isArray(orderBefore))
       throw new Error('stageOrder is not a list');
-    expect(orderBefore.at(-1)).toBe('finish');
+    // The sample protocol ends with two finish stages: its main ending, and
+    // the one participants who decline consent are sent to.
+    const firstFinish = orderBefore.indexOf('finish');
+    expect(orderBefore.slice(firstFinish)).toEqual(ENDINGS);
 
     const unplaced = await createStage(ADA, 'Created with no position');
     const pastTheEnd = await call(
@@ -308,44 +314,90 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
     expect(Redacted.value(order.document).stages).toEqual([
-      ...orderBefore.slice(0, -1),
+      ...orderBefore.slice(0, firstFinish),
       unplaced.sectionId.slice('stage:'.length),
       pastTheEnd.sectionId.slice('stage:'.length),
-      'finish',
+      ...ENDINGS,
     ]);
   });
 
-  it('refuses to delete the only finish stage, naming its place in the stage order', async () => {
+  it('refuses to delete the last finish stage, naming its place in the stage order', async () => {
+    // A copy of the sample protocol, so its endings can go. Its consent
+    // stages route participants who decline to the second ending; once they
+    // no longer do, that ending can be deleted, but the last one cannot.
+    const target = egolessProtocolId;
+    const consentStages = [
+      'e922f680-32ee-11eb-8503-3b4fa95b8bc6-introduction',
+      'e922f680-32ee-11eb-8503-3b4fa95b8bc6',
+    ];
+    for (const stageId of consentStages) {
+      const sectionId = stageSection(stageId);
+      const held = await call(
+        ADA,
+        host.rpc('AcquireLock', { protocolId: target, sectionId }),
+      );
+      if (held.lock !== 'held')
+        throw new Error('the section was already taken');
+      const { skipLogic: _skipLogic, ...unrouted } = Redacted.value(
+        held.document,
+      );
+      await call(
+        ADA,
+        host.rpc('Submit', {
+          protocolId: target,
+          requestId: randomUUID(),
+          sectionId,
+          document: Redacted.make(unrouted),
+          revision: held.revision,
+        }),
+      );
+      await call(
+        ADA,
+        host.rpc('ReleaseLock', { protocolId: target, sectionId }),
+      );
+    }
+    await call(
+      ADA,
+      host.rpc('Delete', {
+        protocolId: target,
+        sectionId: stageSection('finish-declined'),
+      }),
+    );
     const before = await call(
       ADA,
-      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+      host.rpc('GetSection', { protocolId: target, sectionId: STAGE_ORDER }),
     );
     const orderBefore = Redacted.value(before.document).stages;
     if (!Array.isArray(orderBefore))
       throw new Error('stageOrder is not a list');
+    expect(orderBefore.at(-1)).toBe('finish');
+    expect(orderBefore).not.toContain('finish-declined');
 
     const error = await expectRpcFailure(
       callExit(
         ADA,
-        host.rpc('Delete', { protocolId, sectionId: stageSection('finish') }),
+        host.rpc('Delete', {
+          protocolId: target,
+          sectionId: stageSection('finish'),
+        }),
       ),
       'ReferencesRemain',
     );
     expect(error.remaining).toEqual([
       {
         sectionId: 'stageOrder',
-        path: ['stages', orderBefore.indexOf('finish')],
+        path: ['stages', orderBefore.length - 1],
       },
     ]);
     const after = await call(
       ADA,
-      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+      host.rpc('GetSection', { protocolId: target, sectionId: STAGE_ORDER }),
     );
     expect(Redacted.value(after.document).stages).toEqual(orderBefore);
     expect(after.revision).toEqual(before.revision);
   });
 
-  it('creates further finish stages among the endings, and deletes all but the last', async () => {
+  it('creates further finish stages among the endings, and deletes them again', async () => {
     const finishDocument = (label: string) =>
       Redacted.make({
         type: 'FinishSession',
@@ -367,7 +419,8 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     const orderBefore = Redacted.value(before.document).stages;
     if (!Array.isArray(orderBefore))
       throw new Error('stageOrder is not a list');
-    expect(orderBefore.at(-1)).toBe('finish');
+    const firstFinish = orderBefore.indexOf('finish');
+    expect(orderBefore.slice(firstFinish)).toEqual(ENDINGS);
 
     const appended = await call(
       ADA,
@@ -397,33 +450,19 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
     );
     expect(Redacted.value(order.document).stages).toEqual([
-      ...orderBefore.slice(0, -1),
+      ...orderBefore.slice(0, firstFinish),
       atTheTopId,
-      'finish',
+      ...ENDINGS,
       appendedId,
     ]);
 
-    // Either extra ending goes, leaving the stage order as it was; the last
-    // finish stage then stays.
+    // Either extra ending goes, leaving the stage order as it was.
     for (const created of [atTheTop, appended]) {
       await call(
         ADA,
         host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
       );
     }
-    const error = await expectRpcFailure(
-      callExit(
-        ADA,
-        host.rpc('Delete', { protocolId, sectionId: stageSection('finish') }),
-      ),
-      'ReferencesRemain',
-    );
-    expect(error.remaining).toEqual([
-      {
-        sectionId: 'stageOrder',
-        path: ['stages', orderBefore.length - 1],
-      },
-    ]);
     const after = await call(
       ADA,
       host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
@@ -624,6 +663,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       ),
       'ReferencesRemain',
     );
+    console.log(JSON.stringify(error.remaining));
     expect(error.remaining).toContainEqual({
       sectionId,
       path: ['prompts', 0, 'variable'],
