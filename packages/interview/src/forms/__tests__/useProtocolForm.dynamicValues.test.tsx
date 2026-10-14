@@ -1,9 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import {
@@ -42,7 +43,7 @@ const stage = {
 function renderForm(
   options: Pick<
     Parameters<typeof useProtocolForm>[0],
-    'precedingVariables' | 'newEntityAttributes'
+    'precedingVariables' | 'newEntityAttributes' | 'labelNode'
   >,
   prompt: string,
 ) {
@@ -72,6 +73,15 @@ function renderForm(
                 name: { name: 'name', type: 'text', component: 'Text' },
                 close: { name: 'close', type: 'boolean' },
                 note: { name: 'note', type: 'text', component: 'Text' },
+                kinds: {
+                  name: 'kinds',
+                  type: 'categorical',
+                  component: 'CheckboxGroup',
+                  options: [
+                    { value: 'aunt', label: { en: 'Aunt' } },
+                    { value: 'cousin', label: { en: 'Cousin' } },
+                  ],
+                },
               },
             },
           },
@@ -98,6 +108,17 @@ function renderForm(
           name="name"
           nameMode="opaque"
           label="Their name"
+        />
+        {/* A categorical one, stored as an array of the options chosen. */}
+        <Field
+          component={CheckboxGroupField}
+          name="kinds"
+          nameMode="opaque"
+          label="How they are related"
+          options={[
+            { value: 'aunt', label: 'Aunt' },
+            { value: 'cousin', label: 'Cousin' },
+          ]}
         />
         {fieldComponents}
       </>
@@ -148,6 +169,44 @@ describe('useProtocolForm dynamic values', () => {
       screen.getByText('Ada', { selector: 'bdi' }).closest('label'),
     ).toHaveTextContent(/^How old is Ada/);
     expect(screen.queryByText('Person', { selector: 'bdi' })).toBeNull();
+  });
+
+  it('names the node by the interface’s own label in place of the codebook’s rules, from every answer as it is given', () => {
+    const labelNode = vi.fn((attributes: Readonly<Record<string, unknown>>) => {
+      const { kinds } = attributes;
+      return Array.isArray(kinds) && kinds.length > 0
+        ? `Their ${kinds.join(' and ')}`
+        : 'Their relative';
+    });
+    renderForm(
+      { precedingVariables: ['name', 'kinds'], labelNode },
+      'How old is {label}?',
+    );
+    const shownLabel = () =>
+      screen
+        .getByText(/^How old is/)
+        .closest('label')
+        ?.querySelector('[data-dynamic-value] bdi')?.textContent;
+    // Not the type's label the codebook's rules give a node with no name.
+    expect(shownLabel()).toBe('Their relative');
+    expect(screen.queryByText('Person', { selector: 'bdi' })).toBeNull();
+
+    // Nor its name, which the codebook's rules would show.
+    fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
+      target: { value: 'Ada' },
+    });
+    expect(shownLabel()).toBe('Their relative');
+    expect(labelNode).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: 'Ada' }),
+    );
+
+    // A categorical answer reaches it as it is given, as the array it is
+    // stored as.
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Aunt' }));
+    expect(shownLabel()).toBe('Their aunt');
+    expect(labelNode).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: 'Ada', kinds: ['aunt'] }),
+    );
   });
 
   it('shows what a new person will be created with', () => {

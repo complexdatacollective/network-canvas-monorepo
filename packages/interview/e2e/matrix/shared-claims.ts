@@ -36,14 +36,15 @@
  * form's live answers, a value carried to a later stage and kept literal, a
  * census pair's own names); the interfaces below reuse it unchanged.
  * OneToManyDyadCensus is not among them: its focal person is put on screen
- * by its own wiring, which its suite proves.
+ * by its own wiring, which its suite proves. Nor is FamilyPedigree: its
+ * panel's questions show a relative's node label as the pedigree names
+ * them, which its suite proves.
  */
 const dynamicValuesClaims = [
   'AlterEdgeForm',
   'AlterForm',
   'Anonymisation',
   'CategoricalBin',
-  'FamilyPedigree',
   'FinishSession',
   'Geospatial',
   'NameGenerator',

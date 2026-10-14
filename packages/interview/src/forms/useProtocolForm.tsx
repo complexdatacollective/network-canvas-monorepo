@@ -16,7 +16,10 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { useDynamicValueSources } from '../dynamicValues/DynamicValueScope';
-import { FormDynamicValues } from '../dynamicValues/FormDynamicValues';
+import {
+  FormDynamicValues,
+  type LabelNode,
+} from '../dynamicValues/FormDynamicValues';
 import { useStageSelector } from '../hooks/useStageSelector';
 import {
   getValidationContext,
@@ -144,6 +147,13 @@ function ProtocolFormFields({
  *                    form's answers (a Name Generator prompt's additional
  *                    attributes), which the fields' text can show while the
  *                    entity is being created.
+ * @param labelNode - How the interface names the node the form describes,
+ *                    when it shows its nodes by labels of its own (Family
+ *                    Pedigree's), given the node's attributes as the form's
+ *                    answers leave them. The fields' text, the text
+ *                    `withFormValues` scopes, and validation messages naming
+ *                    a field then show the node's label as the interface
+ *                    shows it, in place of the codebook's label rules.
  */
 export default function useProtocolForm({
   fields,
@@ -156,6 +166,7 @@ export default function useProtocolForm({
   unavailableVariables = NO_VARIABLES,
   precedingVariables = NO_VARIABLES,
   newEntityAttributes,
+  labelNode,
 }: {
   fields: Array<FormField | ComposerFormField>;
   autoFocus?: boolean;
@@ -167,6 +178,7 @@ export default function useProtocolForm({
   unavailableVariables?: readonly string[];
   precedingVariables?: readonly string[];
   newEntityAttributes?: Readonly<Record<string, unknown>>;
+  labelNode?: LabelNode;
 }) {
   const stageValidationContext = useStageSelector(getValidationContext);
   const baseValidationContext =
@@ -332,6 +344,7 @@ export default function useProtocolForm({
         initialValues={initialValues}
         variables={formVariables}
         {...(newEntityAttributes !== undefined && { newEntityAttributes })}
+        {...(labelNode !== undefined && { labelNode })}
         coerce={coerceValues}
       >
         {children}

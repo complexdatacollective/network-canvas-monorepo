@@ -64,6 +64,15 @@ const ROLES: Readonly<Record<StageSubject['entity'], DynamicValueRole>> = {
 };
 
 /**
+ * How an interface that shows its nodes by labels of its own (a Family
+ * Pedigree's) names the node a form describes, given the node's attributes
+ * as the form's answers leave them: every answer, categorical ones included.
+ */
+export type LabelNode = (
+  attributes: Readonly<Record<string, unknown>>,
+) => string;
+
+/**
  * Puts the entity a form describes on screen for its fields' text, with the
  * participant's answers so far over what is stored: a caption can name an
  * answer given in an earlier field of the same form as soon as it is given,
@@ -77,6 +86,10 @@ const ROLES: Readonly<Record<StageSubject['entity'], DynamicValueRole>> = {
  * form about another type (a Network Composer edge type's form) gets only
  * what follows. A form about a stored edge puts the two nodes it joins on
  * screen by their labels.
+ *
+ * An interface that shows the node by a label of its own passes `labelNode`,
+ * so the form names the node as the interface shows it rather than by the
+ * codebook's label rules.
  */
 export function FormDynamicValues({
   formSubject,
@@ -86,6 +99,7 @@ export function FormDynamicValues({
   variables,
   newEntityAttributes,
   coerce,
+  labelNode,
   children,
 }: {
   formSubject: StageSubject | null | undefined;
@@ -106,6 +120,12 @@ export function FormDynamicValues({
   newEntityAttributes?: Readonly<Record<string, unknown>>;
   /** Turns raw answers into stored values, as submitting does. */
   coerce: (values: Record<string, FieldValue>) => Record<string, FieldValue>;
+  /**
+   * The label of the node the form describes, in place of the codebook's
+   * label rules (`useNodeLabel`). Ignored unless the form describes a node
+   * of the stage's own subject.
+   */
+  labelNode?: LabelNode;
   children: ReactNode;
 }) {
   const describesStageSubject =
@@ -183,9 +203,16 @@ export function FormDynamicValues({
     coerce,
   ]);
 
-  // The node as it will be saved, which a new one is not yet.
+  // The node as it will be saved, which a new one is not yet. It is labelled
+  // by the codebook's rules only when the interface has no label of its own
+  // for it: those rules would otherwise ask for the passphrase, or report a
+  // name unreadable, for a label the form never shows.
   const liveNode = useMemo((): NcNode | undefined => {
-    if (liveAttributes === undefined || formSubject?.entity !== 'node') {
+    if (
+      labelNode !== undefined ||
+      liveAttributes === undefined ||
+      formSubject?.entity !== 'node'
+    ) {
       return undefined;
     }
     return {
@@ -194,8 +221,18 @@ export function FormDynamicValues({
       type: formSubject.type,
       [entityAttributesProperty]: labelAttributes(liveAttributes),
     };
-  }, [liveAttributes, formSubject, storedNode, entityId]);
-  const nodeLabel = useNodeLabel(liveNode);
+  }, [labelNode, liveAttributes, formSubject, storedNode, entityId]);
+  const ruleLabel = useNodeLabel(liveNode);
+  const ownLabel = useMemo(
+    () =>
+      labelNode === undefined ||
+      liveAttributes === undefined ||
+      formSubject?.entity !== 'node'
+        ? undefined
+        : labelNode(liveAttributes),
+    [labelNode, liveAttributes, formSubject],
+  );
+  const nodeLabel = labelNode === undefined ? ruleLabel : ownLabel;
   const fromLabel = useNodeLabel(fromNode);
   const toLabel = useNodeLabel(toNode);
 

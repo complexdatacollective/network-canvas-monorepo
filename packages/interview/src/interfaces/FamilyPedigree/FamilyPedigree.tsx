@@ -37,12 +37,15 @@ import {
   isFamilyPedigreeStageMetadata,
   type NcEdge,
   type NcNode,
+  type VariableValue,
+  VariableValueSchema,
 } from '@codaco/shared-consts';
 
 import PassphraseOverlay from '../../components/PassphraseOverlay';
 import Prompts from '../../components/Prompts/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import type { LabelNode } from '../../dynamicValues/FormDynamicValues';
 import {
   writeFailureMessage,
   writeSubmissionResult,
@@ -62,6 +65,7 @@ import {
   getNodeColorSelector,
   getStageMetadata,
 } from '../../selectors/session';
+import { applyEntityAttributePatch } from '../../store/entityAttributePatch';
 import { getCodebook, getStages } from '../../store/modules/protocol';
 import {
   addEdge,
@@ -130,6 +134,7 @@ import {
   labelEveryone,
   labelOfNoKind,
   labelWrites,
+  withoutSoftHyphens,
 } from './generatedLabels';
 import { formatRelativeTerm } from './kinship';
 import { messages } from './messages';
@@ -845,6 +850,92 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       names.get(personId) ?? formatRelativeTerm('other', words),
     [names, words],
   );
+
+  // What the panel's questions call the relative they ask about wherever
+  // they show the node's label: the words the pedigree names them by, as
+  // the panel's answers leave them, without the soft hyphens the canvas
+  // breaks long words at, as the label is saved when the participant leaves.
+  // A relative being added is drawn as the answers stand (`draft`), so they
+  // are called as the canvas names them. One being edited is drawn as saved
+  // until the answers are, so their words are worked out from the family
+  // with the panel's name, gender identity and sex assigned at birth in
+  // place of those stored: clearing their name calls them by how they are
+  // related, and a new sex at birth changes that word as saving it will.
+  const panelLabelMode = panel?.mode;
+  const labelPanelNode = useMemo((): LabelNode | undefined => {
+    if (panelLabelMode === undefined) return undefined;
+    if (panelLabelMode.kind === 'add') {
+      const [addedId] = panelLabelMode.ids;
+      const label = withoutSoftHyphens(
+        addedId === undefined
+          ? formatRelativeTerm('other', words)
+          : displayName(addedId),
+      );
+      return () => label;
+    }
+    // The participant is called as the canvas calls them ("You"), as every
+    // relative is. Returning undefined for them instead would name them by
+    // the codebook's label rules.
+    const editedId = panelLabelMode.person.id;
+    const answered = [
+      config.nameAttribute,
+      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
+      config.sexAssignedAtBirthAttribute,
+    ];
+    return (attributes) => {
+      const set: Record<string, VariableValue> = {};
+      const unset: string[] = [];
+      for (const attribute of answered) {
+        const value = VariableValueSchema.safeParse(
+          readOwnProperty(attributes, attribute),
+        );
+        if (value.success) writeOwnProperty(set, attribute, value.data);
+        else unset.push(attribute);
+      }
+      const edited = participantsFamily(
+        readFamily(
+          nodes.map((node) =>
+            node[entityPrimaryKeyProperty] === editedId
+              ? {
+                  ...node,
+                  [entityAttributesProperty]: applyEntityAttributePatch(
+                    node[entityAttributesProperty],
+                    undefined,
+                    { set, unset },
+                  ).attributes,
+                }
+              : node,
+          ),
+          edges,
+          config,
+          generatedLabels,
+          decryptedNames,
+          standInIds,
+        ),
+      );
+      const editedNames = distinctNames(
+        edited,
+        labelEveryone(edited, framing, contentFormat, words),
+        contentFormat,
+        words,
+      );
+      return withoutSoftHyphens(
+        editedNames.get(editedId) ?? formatRelativeTerm('other', words),
+      );
+    };
+  }, [
+    panelLabelMode,
+    displayName,
+    words,
+    config,
+    nodes,
+    edges,
+    generatedLabels,
+    decryptedNames,
+    standInIds,
+    framing,
+    contentFormat,
+  ]);
 
   // Announce an addition once the new person is in the family, so they can be
   // described by how they are related when they have no name.
@@ -2863,6 +2954,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     }
                   : undefined
               }
+              labelNode={labelPanelNode}
               onDraftChange={handleDraftChange}
               onSubmit={handleSubmit}
             />

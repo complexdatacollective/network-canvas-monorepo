@@ -38,6 +38,7 @@ import {
 } from '@codaco/shared-consts';
 
 import PassphraseEntry from '../../../components/PassphraseEntry';
+import type { LabelNode } from '../../../dynamicValues/FormDynamicValues';
 import useProtocolForm from '../../../forms/useProtocolForm';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
@@ -270,6 +271,11 @@ type PersonFormProps = {
   nameField: NameFieldText;
   /** Edit only: ask whether the person has siblings, and children. */
   askAbout?: AskAbout;
+  /** What the researcher's questions call the relative, or the participant,
+   * where they show the node's label: the words the pedigree names them by,
+   * as the panel's answers leave them. Without it, the codebook's label
+   * rules name them. */
+  labelNode?: LabelNode;
   /** Add only: called with the person being added whenever the answers
    * that decide how they are drawn change. */
   onDraftChange?: (draft: PersonDraft) => void;
@@ -340,6 +346,7 @@ export default function PersonForm({
   displayName,
   nameField,
   askAbout,
+  labelNode,
   onDraftChange,
   onSubmit,
 }: PersonFormProps) {
@@ -455,6 +462,7 @@ export default function PersonForm({
     currentEntityId: person?.id,
     unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
     precedingVariables: builtInVariables,
+    labelNode,
   });
 
   const handleSubmit: FormSubmitHandler = (values) => {

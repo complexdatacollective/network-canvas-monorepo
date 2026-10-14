@@ -1,0 +1,56 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - text: Details saved.
+  - region "Interview notifications"
+  - dialog "Add your sibling":
+    - heading "Add your sibling" [level=2]
+    - button "Close"
+    - text: Name (optional) A first name or nickname is fine. If you don’t know it, leave this blank and they will be shown by how they are related to you.
+    - textbox "Name (optional)": Ann
+    - text: Sex assigned at birth Required
+    - radiogroup "Sex assigned at birth":
+      - radio "Female" [checked]
+      - text: Female
+      - radio "Male"
+      - text: Male
+      - radio "Intersex"
+      - text: Intersex
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Which parents do they share with you? Required
+    - group "Which parents do they share with you?":
+      - checkbox "Mother" [checked]
+      - text: Mother
+      - checkbox "Father" [checked]
+      - text: Father
+    - text: To the parents they share, are they… Required
+    - radiogroup "To the parents they share, are they…":
+      - radio "A biological child" [checked]
+      - text: A biological child
+      - radio "An adopted child"
+      - text: An adopted child
+    - text: Who carried the pregnancy?
+    - radiogroup "Who carried the pregnancy?":
+      - radio "Mother"
+      - text: Mother
+      - radio "Someone else, or I don’t know"
+      - text: Someone else, or I don’t know
+    - text: Are they your twin? Answer yes for triplets and other multiple births too.
+    - radiogroup "Are they your twin?":
+      - radio "No" [checked]
+      - text: "No"
+      - radio "Yes, identical twins"
+      - text: Yes, identical twins
+      - radio "Yes, fraternal (non-identical) twins"
+      - text: Yes, fraternal (non-identical) twins
+      - radio "Yes, but I don’t know if they are identical"
+      - text: Yes, but I don’t know if they are identical
+    - text: "How old is Dynamic value: Ann ?"
+    - button "Decrease value"
+    - 'spinbutton "How old is Dynamic value: Ann ?"'
+    - button "Increase value"
+    - button "Cancel"
+    - button "Save"
