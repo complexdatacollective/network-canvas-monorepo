@@ -25,6 +25,10 @@ headers and user agents; IP addresses; and the free-text message of any error.
 An automated test seeds all of these and fails if any reaches anything Studio
 sends.
 
+Participants' browsers can't widen this. Their usability events are checked on
+your server against a fixed catalogue of event names and properties in
+Studio's source, and a batch containing anything outside it is dropped whole.
+
 ### Does PostHog store our server's IP address, or a location?
 
 No. PostHog records the address of whatever sends it an event unless told

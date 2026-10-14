@@ -53,7 +53,12 @@ PostHog's location lookup.
 
 **Participants' browsers never contact PostHog**, and neither do researchers'.
 The browser sends its usability events, log entries and error reports to your
-instance, which applies the rules above and forwards them. The Studio page's
+instance, which applies the rules above and forwards them. Participant
+usability events and log entries are checked against fixed catalogues in
+Studio's source. A batch of usability events containing any event, property
+or value outside the catalogue is dropped whole, and of the rest only the
+catalogued properties are forwarded, with the server's own ids and times in
+place of the browser's. The Studio page's
 content security policy lets browsers connect only to your instance and to
 `api.mapbox.com` (see [requirements](./requirements.md#outbound-hosts)).
 

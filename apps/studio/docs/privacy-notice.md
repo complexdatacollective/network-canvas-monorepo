@@ -97,70 +97,88 @@ and in PostHog is the same researcher.
 While telemetry is on and the study collects them (a study's creator can turn
 "Collect anonymous usability analytics from participants" off, which also
 stops that study's `interview_started` and `interview_completed` product
-events), the interview
-records how a participant moves through it: which stage they are on and for
-how long, and which controls they use. It never records an answer, a name, a
-node's or edge's attributes, or any free text. The participant's browser sends
-these events to the Studio server, which replaces the browser's identifiers
-with its own pseudonym and forwards them.
+events), the interview records how a participant moves through it: which stage
+they are on and for how long, and which controls they use. It never records an
+answer, a name, a node's or edge's attributes, or any free text.
 
-| Event                                                           | Properties                                                                                                            |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `interview_started`                                             | none beyond the common ones                                                                                           |
-| `interview_finished`                                            | `stage_count`                                                                                                         |
-| `stage_entered`                                                 | `stage_type`, `stage_index`, `direction` (`initial`, `forward`, `back` or `jumped`)                                   |
-| `stage_exited`                                                  | `stage_type`, `stage_index`, `duration_ms`, `exit_direction` (`forward`, `back` or `jumped`)                          |
-| `stage_validation_failed`                                       | `validation_kind`, `direction`                                                                                        |
-| `node_added`                                                    | `node_id`, `node_type_index` (the node type's position in the protocol's codebook, not its name)                      |
-| `node_removed`                                                  | `node_id`                                                                                                             |
-| `edge_created`                                                  | `edge_id`, `edge_type_index`                                                                                          |
-| `edge_removed`                                                  | `edge_id`                                                                                                             |
-| `node_added_to_prompt`, `node_removed_from_prompt`              | `node_id`                                                                                                             |
-| `node_binned`                                                   | `node_id`, `node_type_index`, `bin_index`                                                                             |
-| `node_rebinned`                                                 | `node_id`, `node_type_index`, `from_bin_index`, `to_bin_index`                                                        |
-| `bin_expanded`, `bin_collapsed`                                 | `bin_index`                                                                                                           |
-| `pair_shown`                                                    | `node_a_id`, `node_b_id`                                                                                              |
-| `focal_node`                                                    | `node_id`                                                                                                             |
-| `form_opened`                                                   | `form_kind`, `field_details` (the input control used for each field), and `entity_id` for a form about a node or edge |
-| `form_submitted`                                                | `form_kind`, and `entity_id` for a form about a node or edge                                                          |
-| `form_validation_failed`                                        | `form_kind`, `field_errors` (each failing field's position and input control)                                         |
-| `form_dismissed_without_save`                                   | `form_kind`                                                                                                           |
-| `node_form_opened`, `node_form_dismissed_without_save`          | `node_id` when the form is about an existing node                                                                     |
-| `slides_form_slide_advanced`                                    | `slide_index`, `total_slides`                                                                                         |
-| `simulation_started`                                            | `node_count`, `edge_count`                                                                                            |
-| `simulation_finished`                                           | `duration_ms`, `node_count`, `edge_count`                                                                             |
-| `node_initial_positioned`, `node_repositioned`, `node_unplaced` | `node_id`                                                                                                             |
-| `node_selected`, `node_deselected`                              | `node_id`                                                                                                             |
-| `geospatial_location_selected`                                  | `node_id`, `selection_kind`                                                                                           |
-| `geospatial_search_performed`                                   | `node_id`                                                                                                             |
-| `roster_loaded`                                                 | `entry_count`                                                                                                         |
-| `roster_filter_changed`                                         | `has_filter`                                                                                                          |
-| `narrative_preset_changed`                                      | `preset_index`, `direction`                                                                                           |
-| `narrative_preset_updated`                                      | `preset_index`, `changed` (`highlight`, `group` or `edge_type`)                                                       |
-| `annotation_drawn`, `annotations_reset`                         | none beyond the common ones                                                                                           |
-| `pedigree_wizard_shown`, `pedigree_wizard_abandoned`            | none beyond the common ones                                                                                           |
-| `pedigree_wizard_complete`                                      | `nodes_created`, `edges_created`                                                                                      |
-| `passphrase_set`, `passphrase_validation_failed`                | none beyond the common ones (the passphrase itself is never sent)                                                     |
-| `$exception`                                                    | the error's type only; `feature` and the other context the interview attaches (below)                                 |
+The participant's browser sends these events to the Studio server, which checks
+every one against a fixed catalogue in Studio's source: each event's name, and
+each property's name and kind of value. If any event in a batch is not in the
+catalogue, or carries a property the catalogue does not declare for it, the
+server drops the whole batch and forwards nothing from it. Of what passes, the
+server forwards only the properties below. It replaces the browser's
+identifiers and times with its own, and sets the common properties itself.
 
-`node_id`, `edge_id`, `node_a_id`, `node_b_id` and `entity_id` are not the
-interview's own identifiers: each interview session gives every node and edge a
-fresh random pseudonym, held only in that browser's memory, so events within
-one interview join on the same node while nothing joins across interviews.
+| Event                                                           | Properties forwarded                                                                                                                                             |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interview_started`                                             | none beyond the common ones                                                                                                                                      |
+| `interview_finished`                                            | `stage_count`                                                                                                                                                    |
+| `stage_entered`                                                 | `stage_type` (the interview stage type), `stage_index`, `direction` (`initial`, `forward`, `back` or `jumped`)                                                   |
+| `stage_exited`                                                  | `stage_type`, `stage_index`, `duration_ms`, `exit_direction` (`forward`, `back` or `jumped`)                                                                     |
+| `stage_validation_failed`                                       | `validation_kind`, `direction` (`forwards` or `backwards`)                                                                                                       |
+| `node_added`                                                    | `node_id`, `node_type_index` (the node type's position in the protocol's codebook, not its name)                                                                 |
+| `node_removed`                                                  | `node_id`                                                                                                                                                        |
+| `edge_created`                                                  | `edge_id`, `edge_type_index`                                                                                                                                     |
+| `edge_removed`                                                  | `edge_id`                                                                                                                                                        |
+| `node_added_to_prompt`, `node_removed_from_prompt`              | `node_id`                                                                                                                                                        |
+| `node_form_opened`, `node_form_dismissed_without_save`          | `node_id` when the form is about an existing node                                                                                                                |
+| `node_selected`, `node_deselected`                              | `node_id`                                                                                                                                                        |
+| `node_initial_positioned`, `node_repositioned`, `node_unplaced` | `node_id`                                                                                                                                                        |
+| `node_binned`                                                   | `node_id`, `node_type_index`, `bin_index`                                                                                                                        |
+| `node_rebinned`                                                 | `node_id`, `node_type_index`, `from_bin_index`, `to_bin_index`                                                                                                   |
+| `bin_expanded`, `bin_collapsed`                                 | `bin_index`                                                                                                                                                      |
+| `pair_shown`                                                    | `node_a_id`, `node_b_id`                                                                                                                                         |
+| `focal_node`                                                    | `node_id`                                                                                                                                                        |
+| `form_opened`                                                   | `form_kind` (`alter`, `alter_edge`, `ego` or `slides`), `field_details` (the input control used for each field), and `entity_id` for a form about a node or edge |
+| `form_submitted`                                                | `form_kind`, and `entity_id` for a form about a node or edge                                                                                                     |
+| `form_validation_failed`                                        | `form_kind`, `field_errors` (each failing field's position and input control)                                                                                    |
+| `form_dismissed_without_save`                                   | `form_kind`                                                                                                                                                      |
+| `slides_form_slide_advanced`                                    | `slide_index`, `total_slides`                                                                                                                                    |
+| `simulation_started`                                            | `node_count`, `edge_count`                                                                                                                                       |
+| `simulation_finished`                                           | `duration_ms`, `node_count`, `edge_count`                                                                                                                        |
+| `geospatial_location_selected`                                  | `node_id`, `selection_kind` (`search` or `pin`)                                                                                                                  |
+| `geospatial_search_performed`                                   | `node_id`                                                                                                                                                        |
+| `roster_loaded`                                                 | `entry_count`                                                                                                                                                    |
+| `roster_filter_changed`                                         | `has_filter`                                                                                                                                                     |
+| `narrative_preset_changed`                                      | `preset_index`, `direction` (`forward`, `back` or `jumped`)                                                                                                      |
+| `narrative_preset_updated`                                      | `preset_index`, `changed` (`highlight`, `group` or `edge_type`)                                                                                                  |
+| `annotation_drawn`, `annotations_reset`                         | none beyond the common ones                                                                                                                                      |
+| `pedigree_wizard_shown`, `pedigree_wizard_abandoned`            | none beyond the common ones                                                                                                                                      |
+| `pedigree_wizard_complete`                                      | `nodes_created`, `edges_created`                                                                                                                                 |
+| `passphrase_set`, `passphrase_validation_failed`                | none beyond the common ones (the passphrase itself is never sent)                                                                                                |
+| `$exception`                                                    | the error's type, `feature`, and the context listed below                                                                                                        |
 
-**On every participant usability event:** the server's pseudonym as
-`distinct_id` (the same one its interview events carry),
-`$process_person_profile: false`, the interview package's version
-(`package_version`) and the protocol's content hash (`protocol_hash`), and the
-same `installation_id`, `app`, `$app_name`, `$app_version`, `host_version`,
-`$groups`, `$ip: 0.0.0.0` and `$geoip_disable: true` as the product events,
-which the server sets itself whatever the browser sent.
+**Entity ids.** `node_id`, `edge_id`, `node_a_id`, `node_b_id` and
+`entity_id` are not the interview's own identifiers. The browser sends a random
+pseudonym it gives each node and edge for that interview session, held only in
+its memory, and the server replaces it with an id derived from the
+installation, the interview session and that pseudonym. Events within one
+interview join on the same node; nothing joins across interviews.
 
-An `$exception` from an interview carries only the error's type, never its
-message or stack, plus the context the interview attaches: `feature` (where
-it happened: `locale-load`, `stage-error-boundary`, `information-media`,
-`external-data` or `geospatial-map-init`), and for some of those `locale`,
-`media_kind`, `is_offline` or `component_stack`.
+**Times.** The server stamps each event with the time it received the batch,
+keeping only how far apart the browser says the events in one batch were (at
+most ten minutes), so the participant's own clock is never recorded.
+
+**Exceptions.** An `$exception` from an interview carries only the error's
+type, and only if it is one of the standard JavaScript and browser error names
+(such as `TypeError` or `NetworkError`); any other type is sent as `Error`. It
+never carries the message or the stack. With it come `feature` (where it
+happened: `locale-load`, `information-media`, `stage-error-boundary`,
+`external-data` or `geospatial-map-init`) and, for some of those, `locale` (the
+interview's language), `media_kind` (`video`) or `is_offline`.
+
+**Not forwarded.** The browser also reports the interview package's version,
+the protocol's content hash, its own app, version and installation values, and
+for a stage that fails to render, React's component stack. The server checks
+them and forwards none of them.
+
+**On every participant usability event:** the server's pseudonym for the
+interview session as `distinct_id` (the same one its interview product events
+carry), `$process_person_profile: false`, and, set by the server whatever the
+browser sent, `installation_id`, `app` (`studio`), `$app_name`
+(`Network Canvas Studio`), `$app_version` and `host_version` (Studio's
+version), `$groups` (the installation), `$ip: 0.0.0.0` and
+`$geoip_disable: true`.
 
 ## Telemetry
 
