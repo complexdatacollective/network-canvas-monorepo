@@ -12,7 +12,8 @@ import {
   dynamicValueUnshowableReason,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
-  LABELLED_DYNAMIC_VALUE_ROLES,
+  isAttributeDynamicValueRole,
+  isLabelledDynamicValueRole,
   type MessageNode,
   MISSING_CASE,
   messageStructure,
@@ -127,7 +128,7 @@ export const dynamicValueChoices = (
     unshowable: undefined,
   }));
   const labelOf = (role: DynamicValueRole): DynamicValueChoice[] => {
-    if (!LABELLED_DYNAMIC_VALUE_ROLES.has(role)) return [];
+    if (!isLabelledDynamicValueRole(role)) return [];
     const path = dynamicValueLabelPathFor(role);
     if (dynamicValueStatus({ path }, context).status !== 'available') return [];
     return [
@@ -145,41 +146,46 @@ export const dynamicValueChoices = (
       },
     ];
   };
+  const attributesOf = (role: DynamicValueRole): DynamicValueChoice[] =>
+    isAttributeDynamicValueRole(role)
+      ? Object.entries(context.variablesFor(role) ?? {}).flatMap(
+          ([variableId, variable]): DynamicValueChoice[] => {
+            const path = dynamicValuePathFor(role, variableId);
+            if (dynamicValueStatus({ path }, context).status !== 'available') {
+              return [];
+            }
+            const full: Record<string, unknown> = isRecord(variable)
+              ? variable
+              : {};
+            return [
+              {
+                path,
+                kind: 'attribute',
+                role,
+                variableId,
+                variableName:
+                  typeof full.name === 'string' && full.name.trim() !== ''
+                    ? full.name
+                    : undefined,
+                variableType: variable.type,
+                optional: true,
+                numeric:
+                  variable.type === 'number' || variable.type === 'scalar',
+                options: optionsOf(full),
+                unshowable:
+                  dynamicValueUnshowableReason(variable) === undefined
+                    ? undefined
+                    : full.component === 'Toggle'
+                      ? 'switch'
+                      : 'needsLabels',
+              },
+            ];
+          },
+        )
+      : [];
   const attributes = [...context.roles].flatMap((role) => [
     ...labelOf(role),
-    ...Object.entries(context.variablesFor(role) ?? {}).flatMap(
-      ([variableId, variable]): DynamicValueChoice[] => {
-        const path = dynamicValuePathFor(role, variableId);
-        if (dynamicValueStatus({ path }, context).status !== 'available') {
-          return [];
-        }
-        const full: Record<string, unknown> = isRecord(variable)
-          ? variable
-          : {};
-        return [
-          {
-            path,
-            kind: 'attribute',
-            role,
-            variableId,
-            variableName:
-              typeof full.name === 'string' && full.name.trim() !== ''
-                ? full.name
-                : undefined,
-            variableType: variable.type,
-            optional: true,
-            numeric: variable.type === 'number' || variable.type === 'scalar',
-            options: optionsOf(full),
-            unshowable:
-              dynamicValueUnshowableReason(variable) === undefined
-                ? undefined
-                : full.component === 'Toggle'
-                  ? 'switch'
-                  : 'needsLabels',
-          },
-        ];
-      },
-    ),
+    ...attributesOf(role),
   ]);
   return [...intrinsics, ...attributes];
 };
