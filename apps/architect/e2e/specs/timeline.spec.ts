@@ -512,11 +512,43 @@ test('adds new stages before the stage that ends the interview', async ({
   await architectPage
     .getByRole('button', { name: 'Information', exact: true })
     .click();
+  // The trailing control asks for the end of the timeline; the stage editor
+  // places a stage that is not a finish stage before the first finish stage
+  // (`creationIndex`), so the request itself names the end.
   await architectPage.waitForURL(
     new RegExp(
-      `/protocol/stage/new\\?type=Information&insertAtIndex=${finishIndex}$`,
+      `/protocol/stage/new\\?type=Information&insertAtIndex=${stages.length}$`,
     ),
   );
+
+  await architectPage
+    .getByRole('textbox', { name: 'Stage name' })
+    .fill('Appended Info Stage');
+  await architectPage
+    .getByRole('textbox', { name: 'Page heading' })
+    .fill('Appended stage heading');
+  await architectPage
+    .getByRole('button', { name: 'Create new content item' })
+    .click();
+  await architectPage.getByRole('radio', { name: 'Text' }).click();
+  const contentField = architectPage.getByRole('textbox', {
+    name: 'Content',
+  });
+  await contentField.click();
+  await contentField.pressSequentially('Minimal content.');
+  await architectPage.getByRole('button', { name: 'Add', exact: true }).click();
+  await new Toolbar(architectPage).button('finished-editing').click();
+  await architectPage.waitForURL(/\/protocol$/);
+
+  await expect
+    .poll(async () => stagesOf(await readProtocolJson(architectPage)).length)
+    .toBe(stages.length + 1);
+  const after = stagesOf(await readProtocolJson(architectPage));
+  expect(after[finishIndex]).toMatchObject({
+    type: 'Information',
+    label: 'Appended Info Stage',
+  });
+  expect(after.at(-1)?.id).toBe(finish.id);
 });
 
 test('deletes a leaf stage after confirming the destructive dialog', async ({
