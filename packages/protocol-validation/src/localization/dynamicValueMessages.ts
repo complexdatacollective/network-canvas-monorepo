@@ -487,13 +487,31 @@ const pluralCategoryOf = (locale: LocaleTag, count: number): string => {
     }
     pluralRules.set(key, rules);
   }
-  // A nonzero number too small to keep a digit within that limit would read
-  // as zero (Arabic `zero`); it is chosen as the smallest number that keeps one.
-  const selectable =
-    count !== 0 && Math.abs(count) < 10 ** -MAX_FRACTION_DIGITS
-      ? Math.sign(count) * 10 ** -MAX_FRACTION_DIGITS
-      : count;
-  return rules.select(selectable);
+  return rules.select(selectableCount(count));
+};
+
+// Plural rules read at most an integer's last six digits (`i % 1000000`),
+// so a stand-in that keeps its last seven and is still large chooses alike.
+const LARGE_STAND_IN = 10_000_000;
+
+/**
+ * A number `Intl.PluralRules` chooses the same version for as `count` shown
+ * in full. A nonzero number too small to keep a digit would read as zero
+ * (Arabic `zero`), so it is chosen as the smallest number that keeps one. An
+ * integer too large for a safe integer loses digits there (French chooses
+ * `one` for 10^20, shown as a whole multiple of a million and so `many`), so
+ * it is chosen by its last digits, read exactly.
+ */
+const selectableCount = (count: number): number => {
+  const size = Math.abs(count);
+  if (count !== 0 && size < 10 ** -MAX_FRACTION_DIGITS) {
+    return Math.sign(count) * 10 ** -MAX_FRACTION_DIGITS;
+  }
+  if (Number.isFinite(count) && size > Number.MAX_SAFE_INTEGER) {
+    const lastDigits = Number(BigInt(size) % BigInt(LARGE_STAND_IN));
+    return Math.sign(count) * (LARGE_STAND_IN + lastDigits);
+  }
+  return count;
 };
 
 const flatten = (

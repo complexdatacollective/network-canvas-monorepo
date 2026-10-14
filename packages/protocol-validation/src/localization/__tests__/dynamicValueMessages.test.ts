@@ -310,6 +310,21 @@ describe('dynamicMessageParts', () => {
     ).toEqual(['none']);
   });
 
+  it('chooses a plural version for an integer too large to be exact by its digits', () => {
+    // French chooses `many` for a whole multiple of a million.
+    const plural = '{count, plural, one {one} many {many} other {other}}';
+    const chosen = (count: number) =>
+      dynamicMessageParts(
+        plural,
+        'fr',
+        states({ count: { missing: false, count } }),
+      );
+    expect(chosen(1e20)).toEqual(['many']);
+    expect(chosen(-1e20)).toEqual(['many']);
+    expect(chosen(1e20 + 2 ** 17)).toEqual(['other']);
+    expect(chosen(1e6)).toEqual(['many']);
+  });
+
   it('chooses a plural version by the number as it is shown', () => {
     // 1.0001 is shown with all its digits, so it is not English `one`.
     const plural = '{count, plural, one {# item} other {# items}}';
