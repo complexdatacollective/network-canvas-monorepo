@@ -120,16 +120,21 @@ OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20your-collector-token
   `exception.stacktrace` (the stack frames only, never the error's message),
   and `error_origin`, `program` and, where they apply, `request_id`,
   `team_id`, `job_queue` and `job_id`. PostHog Error Tracking receives nothing.
+  These records pass through the same level filter as every other log, so
+  `STUDIO_LOG_LEVEL` must be `Error` or lower (the default `Info` is) for them
+  to reach your collector: at `Fatal` or `None` they are dropped.
 - The browser's logs and error reports follow the server's. The api forwards
   the researcher web app's and participant pages' log records to your endpoint
   under the service name `studio-web`. A browser's error report becomes one of
   the api's own exception log records above, under `studio-api`, with
   `error_origin` `browser` and `surface` naming the researcher web app or a
   participant page.
-- Every exported record names its source in the resource attributes:
-  `service.name` (`studio-api` for both processes), `service.version`,
-  `studio.program` (`serve`, `worker`, `migrate`, `maintenance` or
-  `rotate-secrets`) and `studio.installation_id`.
+- Every record the server processes export names its source in the resource
+  attributes: `service.name` (`studio-api` for both processes),
+  `service.version`, `studio.program` (`serve`, `worker`, `migrate`,
+  `maintenance` or `rotate-secrets`) and `studio.installation_id`. Forwarded
+  browser log records carry only `service.name` (`studio-web`) and
+  `studio.installation_id`.
 - The same Level 1 rule applies to your store as to Codaco's. Pointing
   telemetry at your own collector does not add names, emails, URLs or
   participant data to it.
