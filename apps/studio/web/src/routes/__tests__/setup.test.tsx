@@ -67,6 +67,7 @@ const STATUS: Omit<InstanceStatus, 'setup'> = {
   },
   deployment: { mode: 'self-hosted', billing: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 
 let setupRequired = true;

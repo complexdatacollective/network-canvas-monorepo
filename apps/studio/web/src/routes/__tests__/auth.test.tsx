@@ -54,6 +54,7 @@ const STATUS: InstanceStatus = {
   // except the screen that is for it.
   setup: { required: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 let currentStatus: InstanceStatus = STATUS;
 
