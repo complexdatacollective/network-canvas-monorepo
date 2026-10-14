@@ -74,7 +74,7 @@
   "protocolBuilder.binBehaviours.dragDescription": "The participant drags each node from the drawer at the bottom of the screen onto the bin it belongs in.",
   "protocolBuilder.binBehaviours.dragLabel": "Drag and drop",
   "protocolBuilder.binBehaviours.interactionModeLabel": "Interaction mode",
-  "protocolBuilder.binBehaviours.selectDescription": "The stage shows one node at a time, and the participant taps the bin it belongs in. The next node then appears. Tapping a node already in a bin lets the participant move it.",
+  "protocolBuilder.binBehaviours.selectDescription": "One node in the drawer is selected, and the participant taps the bin it belongs in. The next node is then selected. Tapping a different node, even one already in a bin, selects it instead.",
   "protocolBuilder.binBehaviours.selectLabel": "Tap to place",
   "protocolBuilder.binBehaviours.title": "Placing nodes",
   "protocolBuilder.cardDisplay.addLabel": "Add new display property",

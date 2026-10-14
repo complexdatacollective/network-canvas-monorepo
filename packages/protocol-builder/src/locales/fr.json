@@ -74,7 +74,7 @@
   "protocolBuilder.binBehaviours.dragDescription": "La personne participante fait glisser chaque nœud depuis la réserve en bas de l’écran jusqu’à la case voulue.",
   "protocolBuilder.binBehaviours.dragLabel": "Glisser-déposer",
   "protocolBuilder.binBehaviours.interactionModeLabel": "Mode d’interaction",
-  "protocolBuilder.binBehaviours.selectDescription": "L’étape affiche un nœud à la fois, et la personne participante touche la case voulue. Le nœud suivant apparaît alors. Un nœud déjà rangé dans une case peut être déplacé en le touchant.",
+  "protocolBuilder.binBehaviours.selectDescription": "Un nœud de la réserve est sélectionné, et la personne participante touche la case voulue. Le nœud suivant est alors sélectionné. Toucher un autre nœud, même s’il est déjà dans une case, le sélectionne à la place.",
   "protocolBuilder.binBehaviours.selectLabel": "Toucher pour placer",
   "protocolBuilder.binBehaviours.title": "Placement des nœuds",
   "protocolBuilder.cardDisplay.addLabel": "Ajouter une propriété d’affichage",

@@ -23,7 +23,7 @@ export const binBehavioursMessages = defineMessages({
     id: 'protocolBuilder.binBehaviours.interactionModeLabel',
     defaultMessage: 'Interaction mode',
     description:
-      'Label of the control choosing between dragging nodes into bins and tapping a bin for one node at a time.',
+      'Label of the control choosing between dragging nodes into bins and tapping a bin to place the selected node.',
   },
   dragLabel: {
     id: 'protocolBuilder.binBehaviours.dragLabel',
@@ -42,13 +42,13 @@ export const binBehavioursMessages = defineMessages({
     id: 'protocolBuilder.binBehaviours.selectLabel',
     defaultMessage: 'Tap to place',
     description:
-      'Name of the choice where the stage shows one node at a time and the participant taps the bin it belongs in. Offered as one of two cards; the sentence under it is selectDescription.',
+      'Name of the choice where one node is selected and the participant taps the bin it belongs in. Offered as one of two cards; the sentence under it is selectDescription.',
   },
   selectDescription: {
     id: 'protocolBuilder.binBehaviours.selectDescription',
     defaultMessage:
-      'The stage shows one node at a time, and the participant taps the bin it belongs in. The next node then appears. Tapping a node already in a bin lets the participant move it.',
+      'One node in the drawer is selected, and the participant taps the bin it belongs in. The next node is then selected. Tapping a different node, even one already in a bin, selects it instead.',
     description:
-      'Says what the participant does in tap-to-place mode. A stage is one step of an interview.',
+      'Says what the participant does in tap-to-place mode. The drawer is the tray at the foot of the screen that unplaced nodes wait in; the selected node is highlighted there. A bin is one of the groups or points on a scale nodes are sorted into.',
   },
 });
