@@ -345,8 +345,95 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
     expect(after.revision).toEqual(before.revision);
   });
 
-  // A protocol always ends at its one finish stage, so a submit never turns a
-  // stage into one or the finish stage into something else.
+  it('creates further finish stages among the endings, and deletes all but the last', async () => {
+    const finishDocument = (label: string) =>
+      Redacted.make({
+        type: 'FinishSession',
+        mode: 'confirmation',
+        label: enUS(label),
+        content: enUS(`# ${label}\n\nThank you.`),
+        finishedContent: enUS(
+          '# Interview Finished\n\nThank you for participating!',
+        ),
+        finishLabel: enUS('Finish'),
+        finishConfirmation: enUS('Finish this interview?'),
+        finishFailed: enUS('The interview could not be finished.'),
+        outcome: 'ineligible',
+      });
+    const before = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    const orderBefore = Redacted.value(before.document).stages;
+    if (!Array.isArray(orderBefore))
+      throw new Error('stageOrder is not a list');
+    expect(orderBefore.at(-1)).toBe('finish');
+
+    const appended = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: finishDocument('Appended ending'),
+      }),
+    );
+    // Asked for the top of the timeline, where it would cut every stage off:
+    // it lands at the first finish stage's place instead.
+    const atTheTop = await call(
+      ADA,
+      host.rpc('Create', {
+        protocolId,
+        requestId: randomUUID(),
+        kind: 'stage',
+        document: finishDocument('Ending asked for at the top'),
+        position: 0,
+      }),
+    );
+    const appendedId = appended.sectionId.slice('stage:'.length);
+    const atTheTopId = atTheTop.sectionId.slice('stage:'.length);
+    const order = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    expect(Redacted.value(order.document).stages).toEqual([
+      ...orderBefore.slice(0, -1),
+      atTheTopId,
+      'finish',
+      appendedId,
+    ]);
+
+    // Either extra ending goes, leaving the stage order as it was; the last
+    // finish stage then stays.
+    for (const created of [atTheTop, appended]) {
+      await call(
+        ADA,
+        host.rpc('Delete', { protocolId, sectionId: created.sectionId }),
+      );
+    }
+    const error = await expectRpcFailure(
+      callExit(
+        ADA,
+        host.rpc('Delete', { protocolId, sectionId: stageSection('finish') }),
+      ),
+      'ReferencesRemain',
+    );
+    expect(error.remaining).toEqual([
+      {
+        sectionId: 'stageOrder',
+        path: ['stages', orderBefore.length - 1],
+      },
+    ]);
+    const after = await call(
+      ADA,
+      host.rpc('GetSection', { protocolId, sectionId: STAGE_ORDER }),
+    );
+    expect(Redacted.value(after.document).stages).toEqual(orderBefore);
+  });
+
+  // A stage keeps the kind it was created as, so a submit never turns a stage
+  // into a finish stage or a finish stage into something else: a further
+  // ending is created as a finish stage instead.
   it.each([
     {
       direction: 'the finish stage into another kind of stage',
@@ -360,7 +447,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       }),
     },
     {
-      direction: 'another stage into a second finish stage',
+      direction: 'another stage into a finish stage',
       stageId: () => reference.stageId,
       rewrite: (document: Readonly<Record<string, unknown>>) => ({
         id: document.id,
@@ -405,7 +492,7 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           {
             path: ['type'],
             message:
-              'A stage cannot be changed into the finish stage, or the finish stage into another kind of stage.',
+              'A stage cannot be changed into a finish stage, or a finish stage into another kind of stage.',
           },
         ]);
         const read = await call(

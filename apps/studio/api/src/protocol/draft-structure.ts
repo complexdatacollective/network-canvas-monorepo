@@ -181,32 +181,32 @@ export const loadStageTypes: (
  * is not itself a finish stage is never put after a finish stage, where no
  * participant could reach it, so a position at or past the first finish stage
  * — or no position at all — puts it just before that stage. A finish stage
- * goes at the end; a draft that already has one gets no second
- * (`addsSecondFinishStage`).
+ * goes at the end when no position is given (`requested` is then the end),
+ * and never before the first finish stage, where it would cut the stages
+ * between the two off: a position above it puts the new one at the first
+ * finish stage's place, ahead of it among the protocol's endings. A draft with
+ * no finish stage yet gets its first at the end.
  */
 export const creationIndex = (
   stages: readonly TimelineStage[],
   stage: TimelineStage,
   requested: number,
 ): number => {
-  if (isFinishSessionStage(stage)) return stages.length;
   const firstFinish = stages.findIndex(isFinishSessionStage);
+  if (isFinishSessionStage(stage)) {
+    return firstFinish === -1
+      ? stages.length
+      : Math.max(requested, firstFinish);
+  }
   return firstFinish === -1 ? requested : Math.min(requested, firstFinish);
 };
 
-/** Whether creating `stage` would give the protocol a second finish stage:
- * a protocol has exactly one. */
-export const addsSecondFinishStage = (
-  stages: readonly TimelineStage[],
-  stage: TimelineStage,
-): boolean => isFinishSessionStage(stage) && stages.some(isFinishSessionStage);
-
 /**
  * Whether rewriting a stage as `after` turns a finish stage into another kind
- * of stage, or another kind into a finish stage. Either breaks the timeline: the
- * first leaves the interview no finish stage to end at, the second gives the
- * protocol a second one, or puts one where stages still follow it. A stage
- * keeps the kind it was created as.
+ * of stage, or another kind into a finish stage. A stage keeps the kind it was
+ * created as: the first can leave the interview no finish stage to end at, and
+ * the second can put one where stages that are not finish stages still follow
+ * it. A protocol's further endings are created as finish stages instead.
  */
 export const changesFinishStage = (
   before: TimelineStage,
@@ -230,8 +230,9 @@ export const isLastFinishStage = (
 };
 
 /**
- * Whether a reorder adds a problem to the timeline's structure: a stage after
- * the finish stage, or the interview ending anywhere else. Only problems it
+ * Whether a reorder adds a problem to the timeline's structure: a stage that
+ * is not a finish stage after a finish stage, or the interview ending anywhere
+ * but a finish stage. Finish stages move freely among themselves. Only problems it
  * ADDS refuse it, so a draft already in such a shape can still be reordered
  * into a better one.
  */
@@ -410,11 +411,6 @@ export const addStage: (
   }
   const types = yield* loadStageTypes(teamId, head, order);
   const created = timelineStageOf(params.stage);
-  if (addsSecondFinishStage(types, created)) {
-    return yield* new DraftStructureError({
-      reason: 'a protocol has exactly one finish stage, and this draft has one',
-    });
-  }
   const index = creationIndex(types, created, requested);
   const newOrder = [...order];
   newOrder.splice(index, 0, stageId);
@@ -549,7 +545,7 @@ export const moveStage: (
     )
   ) {
     return yield* new DraftStructureError({
-      reason: `moving stage ${params.stageId} to index ${params.toIndex} would leave a stage after the finish stage, or the interview ending without one`,
+      reason: `moving stage ${params.stageId} to index ${params.toIndex} would leave a stage after a finish stage, or the interview ending without one`,
     });
   }
   yield* fenceDraftLeases(teamId, params.draftId, [orderId]);
