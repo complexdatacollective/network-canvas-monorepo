@@ -235,7 +235,7 @@ describe("a census prompt's preview", () => {
 });
 
 describe('a form field saved before fields had ids', () => {
-  it('offers only the answers of the fields before it', async () => {
+  it('offers the person’s attributes, except the one it asks for', async () => {
     // The fixture's fields carry no ids, as a protocol saved before
     // Architect gave them one does.
     const harness = renderStageEditor({
@@ -256,7 +256,9 @@ describe('a form field saved before fields had ids', () => {
     const offered = (await screen.findAllByRole('option')).map(
       (option) => option.textContent ?? '',
     );
-    expect(offered.some((label) => label.includes('flagged'))).toBe(false);
+    // The first field asks for relationship_to_ego; flagged is asked after
+    // it, and may already hold a value from an earlier stage.
+    expect(offered.some((label) => label.includes('flagged'))).toBe(true);
     expect(offered.some((label) => label.includes('relationship_to_ego'))).toBe(
       false,
     );
