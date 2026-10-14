@@ -28,36 +28,74 @@ const closeCode = (event: unknown): number | undefined =>
     ? event.code
     : undefined;
 
+export type EditorVisits = {
+  readonly open: () => () => void;
+  readonly current: () => number | undefined;
+};
+
+export const makeEditorVisits = (): EditorVisits => {
+  let opened = 0;
+  let current: number | undefined;
+  return {
+    open: () => {
+      opened += 1;
+      const visit = opened;
+      current = visit;
+      return () => {
+        if (current === visit) current = undefined;
+      };
+    },
+    current: () => current,
+  };
+};
+
+export const editorVisits = makeEditorVisits();
+
+type Outage = {
+  readonly visit: number;
+  readonly lostAt: number;
+  readonly attempts: number;
+};
+
 export const makeConnectionMonitor = (
   log: Log = logResearcher,
   now: () => number = Date.now,
+  visits: EditorVisits = editorVisits,
 ): ((socket: Socket.WebSocketLike) => void) => {
-  let lostAt: number | undefined;
-  let attempts = 0;
+  let outage: Outage | undefined;
   return (socket) => {
-    if (lostAt !== undefined) attempts += 1;
+    if (outage !== undefined) {
+      outage =
+        outage.visit === visits.current()
+          ? { ...outage, attempts: outage.attempts + 1 }
+          : undefined;
+    }
     let opened = false;
     socket.addEventListener('open', () => {
       opened = true;
-      if (lostAt === undefined) return;
+      const ended = outage;
+      outage = undefined;
+      if (ended === undefined || ended.visit !== visits.current()) return;
       log(
         {
           message: 'Editor connection restored',
           level: 'Info',
           attributes: {
-            duration_ms: Math.min(Math.max(now() - lostAt, 0), MAX_DURATION_MS),
-            attempt_count: Math.min(Math.max(attempts, 1), MAX_ATTEMPTS),
+            duration_ms: Math.min(
+              Math.max(now() - ended.lostAt, 0),
+              MAX_DURATION_MS,
+            ),
+            attempt_count: Math.min(Math.max(ended.attempts, 1), MAX_ATTEMPTS),
           },
         },
         NO_TEAM,
       );
-      lostAt = undefined;
-      attempts = 0;
     });
     const lose = () => {
-      if (!opened || lostAt !== undefined) return;
-      lostAt = now();
-      attempts = 0;
+      if (!opened || outage !== undefined) return;
+      const visit = visits.current();
+      if (visit === undefined) return;
+      outage = { visit, lostAt: now(), attempts: 0 };
       log(
         { message: 'Editor connection lost', level: 'Warn', attributes: {} },
         NO_TEAM,

@@ -59,7 +59,7 @@ import { toStudyId } from '../lib/ids.ts';
 import { teamScope } from '../runtime/browserLogs.ts';
 import { isForbidden } from '../runtime/errors.ts';
 import { HostClient } from '../runtime/hostClient.ts';
-import { observeLocks } from '../runtime/hostFaults.ts';
+import { editorVisits, observeLocks } from '../runtime/hostFaults.ts';
 import { hostRuntime } from '../runtime/hostSession.ts';
 import {
   reportUnauthorizedFailure,
@@ -543,6 +543,10 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
   const hostAdapter = useMemo(
     () => observeLocks(baseHostAdapter, teamScope(address.teamId)),
     [address.teamId],
+  );
+  useEffect(
+    () => editorVisits.open(),
+    [address.teamId, address.protocolId, address.draftId],
   );
 
   if (draft.isPending) {

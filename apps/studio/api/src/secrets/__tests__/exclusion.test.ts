@@ -1,8 +1,5 @@
 // The half of the #1897 exclusion rule that is enforced in code today (#1900):
 // an assembled protocol document never leaves the store carrying an API key.
-// #1897 extends this file — when logs, spans, metrics, error reports and
-// analytics gain sinks, each one gets its cases here, against the rule stated
-// at the top of `../exclusion.ts`.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
