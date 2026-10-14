@@ -99,6 +99,31 @@ describe('messageToDocument', () => {
       MessageDocumentProblem,
     );
   });
+
+  it.each([
+    '{kind, select, a {First paragraph\n\nSecond paragraph} other {none}}',
+    '{kind, select, a {Some\n- one\n- two} other {none}}',
+    'Intro\n\n{n, plural, one {## One} other {Many\n\n## Heading}}',
+  ])(
+    'refuses a version of markdown that runs over more than one line: %s',
+    (message) => {
+      const structure = messageStructure(message);
+      if (!('nodes' in structure)) throw new Error('unreadable');
+      expect(() =>
+        messageToDocument(structure.nodes, MARKDOWN, labels),
+      ).toThrow(expect.objectContaining({ kind: 'linesInVersion' }));
+    },
+  );
+
+  it('still reads a markdown document whose versions are one line each', () => {
+    const structure = messageStructure(
+      '# Title\n\n{kind, select, a {**one**} other {two}}\n\n- item',
+    );
+    if (!('nodes' in structure)) throw new Error('unreadable');
+    expect(() =>
+      messageToDocument(structure.nodes, MARKDOWN, labels),
+    ).not.toThrow();
+  });
 });
 
 describe('a message through the editor and back', () => {

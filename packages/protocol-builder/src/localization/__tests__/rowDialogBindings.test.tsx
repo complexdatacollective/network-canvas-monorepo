@@ -166,3 +166,34 @@ describe('a value with answers inserted in a row dialog', () => {
     expect(Object.keys(binding?.cases ?? {}).length).toBeGreaterThan(0);
   });
 });
+
+describe("a census prompt's preview", () => {
+  it('shows the value its text fills in as a pill', async () => {
+    const { type, fields } = loadFixtureStage('dyad-census-1');
+    const harness = renderStageEditor({
+      stage: {
+        type,
+        fields: {
+          ...fields,
+          dynamicValues: { today: { path: 'now' } },
+          prompts: [
+            {
+              id: 'dated',
+              text: { 'en-US': 'Who did you see on {today}?' },
+              createEdge: 'knows',
+            },
+          ],
+        },
+      },
+      registry: dyadCensusStageEditor,
+    });
+    await harness.opened();
+
+    await waitFor(() =>
+      expect(document.querySelector('[data-token="today"]')).toHaveTextContent(
+        'Today’s date',
+      ),
+    );
+    expect(screen.queryByText(/\{today\}/)).not.toBeInTheDocument();
+  });
+});

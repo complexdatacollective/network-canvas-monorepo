@@ -19,6 +19,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 
+import { DynamicTextPreview } from '../../../../fields/DynamicTextPreview.tsx';
 import EntityTypePickerField from '../../../../fields/EntityTypePickerField.tsx';
 import { LocalizedRichTextField } from '../../../../fields/LocalizedStringField.tsx';
 import type { SortableProperty } from '../../../../fields/sortOrderOptions.ts';
@@ -574,9 +575,5 @@ export function SociogramPromptPreview({ item }: RowPreviewProps) {
       </RenderMarkdown>
     );
   }
-  return (
-    <RenderMarkdown render={<div lang={text.lang} dir={text.dir} />}>
-      {text.text}
-    </RenderMarkdown>
-  );
+  return <DynamicTextPreview value={item[TEXT_FIELD]} />;
 }

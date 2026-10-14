@@ -12,6 +12,7 @@ import {
   type IntrinsicDynamicValue,
   type MessageNode,
   MISSING_CASE,
+  messageStructure,
 } from '@codaco/protocol-validation';
 
 /**
@@ -324,4 +325,45 @@ export const dynamicValueNamesUsedIn = (
     }
   }
   return names;
+};
+
+/**
+ * The versions the text in `value` shows for each value it selects on, by
+ * the value's name: what keeps a binding's cases needed. A value named in a
+ * message this cannot read keeps all of its cases (`'all'`): over-counting is
+ * safe, and a case is only ever dropped when no text shows a version for it.
+ */
+export const dynamicValueCasesUsedIn = (
+  value: unknown,
+  cases: Map<string, Set<string> | 'all'> = new Map(),
+): Map<string, Set<string> | 'all'> => {
+  const visit = (nodes: readonly MessageNode[]) => {
+    for (const node of nodes) {
+      if (node.kind !== 'switch') continue;
+      if (node.type === 'select') {
+        const keys = cases.get(node.argument) ?? new Set<string>();
+        if (keys !== 'all') {
+          for (const version of node.versions) keys.add(version.key);
+          cases.set(node.argument, keys);
+        }
+      }
+      for (const version of node.versions) visit(version.nodes);
+    }
+  };
+  if (typeof value === 'string') {
+    if (value.includes('{')) {
+      const structure = messageStructure(value);
+      if ('nodes' in structure) visit(structure.nodes);
+      else {
+        for (const name of dynamicValueNamesIn(value)) cases.set(name, 'all');
+      }
+    }
+  } else if (Array.isArray(value)) {
+    for (const item of value) dynamicValueCasesUsedIn(item, cases);
+  } else if (isRecord(value)) {
+    for (const item of Object.values(value)) {
+      dynamicValueCasesUsedIn(item, cases);
+    }
+  }
+  return cases;
 };

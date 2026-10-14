@@ -82,11 +82,18 @@ const withoutLineLead = (
   return text === '' ? rest : [{ ...first, text }, ...rest];
 };
 
-/** Why a message cannot be shown in the editor as it is. */
-export class MessageDocumentProblem extends Error {
-  readonly kind: 'valueInLinkAddress';
+/**
+ * Why a message cannot be shown in the editor as it is: a value inside a link
+ * address, or a version of markdown text that runs over more than one line
+ * (paragraphs, a list, a heading), which a version's one-line editor would
+ * run together and write back that way.
+ */
+type MessageDocumentProblemKind = 'valueInLinkAddress' | 'linesInVersion';
 
-  constructor(kind: 'valueInLinkAddress') {
+export class MessageDocumentProblem extends Error {
+  readonly kind: MessageDocumentProblemKind;
+
+  constructor(kind: MessageDocumentProblemKind) {
     super(kind);
     this.kind = kind;
   }
@@ -161,6 +168,9 @@ const versionLine = (
       restoreMarkers(PLAIN_LINE(markdown), pieces).content?.[0]?.content ?? []
     );
   }
+  if (markdown.includes('\n')) {
+    throw new MessageDocumentProblem('linesInVersion');
+  }
   const [, before = '', middle = '', after = ''] =
     EDGE_SPACE.exec(markdown) ?? [];
   const parsed = restoreMarkers(
@@ -179,7 +189,8 @@ const versionLine = (
  * element whose versions are lines of their own.
  *
  * Throws `MessageDocumentProblem` for a message the editor cannot hold, such
- * as one with a value inside a link address.
+ * as one with a value inside a link address, or a version of markdown that
+ * runs over more than one line.
  */
 export const messageToDocument = (
   nodes: readonly MessageNode[],

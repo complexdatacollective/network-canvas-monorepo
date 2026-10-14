@@ -24,7 +24,6 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import { escapeMarkdownText, type Stage } from '@codaco/protocol-validation';
 
 import {
@@ -61,6 +60,7 @@ import {
 import ComposerParametersField, {
   type ComposerParameters,
 } from '../../fields/ComposerParametersField.tsx';
+import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
 import { LocalizedRichTextField } from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField, {
   createdUnassigned,
@@ -1378,9 +1378,7 @@ function ComposerFormFieldPreview({ item }: RowPreviewProps) {
             intl.formatMessage(messages.emptyPreview)}
         </span>
       ) : (
-        <RenderMarkdown render={<div lang={label.lang} dir={label.dir} />}>
-          {label.text}
-        </RenderMarkdown>
+        <DynamicTextPreview value={item[LABEL_FIELD]} />
       )}
       {(attribute !== undefined ||
         control !== undefined ||

@@ -3,7 +3,6 @@ import { type ComponentType, useCallback, useMemo } from 'react';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 
 import { useCreateCodebookVariable } from '../../codebook/useCodebookVariableEdits.ts';
@@ -15,6 +14,7 @@ import {
   hasValidatedUse,
 } from '../../codebook/variableRoles.ts';
 import { draftFormFieldVariableIds } from '../../codebook/variableValidation.ts';
+import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
 import { LocalizedRichTextField } from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import AssignAttributes, {
@@ -28,7 +28,6 @@ import type { RowEditorProps, RowPreviewProps } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
-import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import PromptsSection from '../PromptsSection.tsx';
@@ -356,15 +355,11 @@ function AdditionalAttributes({
 /** How one prompt reads in the list when its dialog is closed. */
 function NameGeneratorPromptPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const localize = useLocalizedText();
-  const text = localize(item.text);
   const stamps = asAttributes(item.additionalAttributes).length;
 
   return (
     <div className="flex flex-col gap-2">
-      <RenderMarkdown render={<div lang={text.lang} dir={text.dir} />}>
-        {text.text}
-      </RenderMarkdown>
+      <DynamicTextPreview value={item.text} />
       {stamps > 0 && (
         <p className="text-sm text-current/70">
           {intl.formatMessage(nameGeneratorPromptMessages.stampSummary, {

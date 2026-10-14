@@ -22,7 +22,10 @@ import {
 } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
-import { dynamicValueNamesUsedIn } from './dynamicValueCatalog.ts';
+import {
+  dynamicValueCasesUsedIn,
+  dynamicValueNamesUsedIn,
+} from './dynamicValueCatalog.ts';
 
 /** Where a stage's bindings live in the stage document. */
 const DYNAMIC_VALUES_PATH = 'dynamicValues';
@@ -175,6 +178,36 @@ export function useDynamicValueSite(
 }
 
 /**
+ * What any text on the open stage can show, for a place that shows text
+ * rather than editing it (a row's collapsed preview): the stage's bindings,
+ * and every value its prompts or its form's fields could show, so each
+ * binding reads as the value it stands for.
+ */
+export function useStageDynamicValues(): Pick<
+  DynamicValueSiteState,
+  'context' | 'bindings'
+> {
+  const { identity } = useStageEditorForm();
+  const { codebook } = useProtocolContext();
+  const subject = useStageValue('subject');
+  const rawBindings = useStageValue(DYNAMIC_VALUES_PATH);
+  return useMemo(() => {
+    const stage = { type: identity.type, subject };
+    const contextAt = (site: 'prompt' | 'formField') =>
+      dynamicValueContextFor({ codebook, stage, sitePath: [], site });
+    const prompt = contextAt('prompt');
+    const formField = contextAt('formField');
+    return {
+      context: {
+        ...prompt,
+        roles: new Set([...prompt.roles, ...formField.roles]),
+      },
+      bindings: isRecord(rawBindings) ? (rawBindings as DynamicValues) : {},
+    };
+  }, [identity.type, subject, codebook, rawBindings]);
+}
+
+/**
  * Called by a row dialog with whether it is open. A value inserted there binds
  * at once, on the stage behind the dialog, but the row reaches the stage only
  * if the dialog saves. So when the dialog closes, saved or cancelled, the
@@ -213,6 +246,10 @@ export function useReleaseRowBindings(open: boolean) {
  * removed, a value inserted into text that never reached the stage. Only a
  * binding the stage already held unused when last saved is left alone, as
  * the editor was given it.
+ *
+ * A binding that stays keeps only the cases some text still shows a version
+ * for, so removing the last wording by answer leaves no case behind to go
+ * stale when the attribute's options change.
  */
 export function withoutUnusedBindings<
   T extends Readonly<Record<string, unknown>>,
@@ -222,14 +259,42 @@ export function withoutUnusedBindings<
   const { [DYNAMIC_VALUES_PATH]: savedBindings, ...savedText } = lastSaved;
   const inUse = dynamicValueNamesUsedIn(text);
   const usedWhenSaved = dynamicValueNamesUsedIn(savedText);
+  const casesInUse = dynamicValueCasesUsedIn(text);
   const keptAsGiven = (name: string) =>
     isRecord(savedBindings) &&
     Object.hasOwn(savedBindings, name) &&
     !usedWhenSaved.has(name);
-  const kept = Object.entries(bindings).filter(
-    ([name]) => inUse.has(name) || keptAsGiven(name),
-  );
-  if (kept.length === Object.keys(bindings).length) return stage;
+  let changed = false;
+  const kept: [string, unknown][] = [];
+  for (const [name, binding] of Object.entries(bindings)) {
+    if (keptAsGiven(name)) {
+      kept.push([name, binding]);
+      continue;
+    }
+    if (!inUse.has(name)) {
+      changed = true;
+      continue;
+    }
+    const shown = casesInUse.get(name);
+    if (!isRecord(binding) || !isRecord(binding.cases) || shown === 'all') {
+      kept.push([name, binding]);
+      continue;
+    }
+    const cases = Object.entries(binding.cases).filter(([key]) =>
+      shown?.has(key),
+    );
+    if (cases.length === Object.keys(binding.cases).length) {
+      kept.push([name, binding]);
+      continue;
+    }
+    changed = true;
+    const { cases: _stale, ...rest } = binding;
+    kept.push([
+      name,
+      cases.length === 0 ? rest : { ...rest, cases: Object.fromEntries(cases) },
+    ]);
+  }
+  if (!changed) return stage;
   return (
     kept.length === 0
       ? text
