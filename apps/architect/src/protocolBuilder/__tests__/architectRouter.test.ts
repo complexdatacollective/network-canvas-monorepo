@@ -1454,9 +1454,9 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageIds(store)).toContain('finish');
   });
 
-  // A protocol always ends at its one finish stage, so a submit never turns a
-  // stage into one or the finish stage into something else, and a create
-  // never adds a second one.
+  // A protocol always ends at its finish stages, which sit together at the
+  // end, so a submit never turns a stage into one or a finish stage into
+  // something else. A create may add another finish stage (see below).
   it.each([
     {
       direction: 'the finish stage into another kind of stage',
@@ -1476,11 +1476,13 @@ describe("Architect's in-process protocol-builder host", () => {
         id: document.id,
         type: 'FinishSession',
         label: { [FIXTURE_LANGUAGE]: 'A second end' },
-        title: { [FIXTURE_LANGUAGE]: 'A second end' },
-        content: { [FIXTURE_LANGUAGE]: 'Thank you.' },
+        mode: 'confirmation',
+        content: { [FIXTURE_LANGUAGE]: '# A second end\n\nThank you.' },
+        finishedContent: {
+          [FIXTURE_LANGUAGE]: 'This interview is finished.',
+        },
         finishLabel: { [FIXTURE_LANGUAGE]: 'Finish' },
         finishConfirmation: { [FIXTURE_LANGUAGE]: 'Finish this interview?' },
-        finishedNotice: { [FIXTURE_LANGUAGE]: 'This interview is finished.' },
         finishFailed: {
           [FIXTURE_LANGUAGE]: 'The interview could not be finished.',
         },
@@ -1525,43 +1527,46 @@ describe("Architect's in-process protocol-builder host", () => {
     },
   );
 
-  it('refuses to create a second finish stage', async () => {
+  it('creates a second finish stage at the end', async () => {
     const { store, client } = openProtocol();
-    const before = getProtocol(store.getState())?.stages;
+    const before = stageIds(store);
 
-    const { error, isSuccess } = await safe(
-      client.call('Create', {
-        protocolId: PROTOCOL_ID,
-        requestId: nextRequestId(),
-        kind: 'stage',
-        document: Redacted.make({
-          type: 'FinishSession',
-          label: { [FIXTURE_LANGUAGE]: 'A second end' },
-          title: { [FIXTURE_LANGUAGE]: 'A second end' },
-          content: { [FIXTURE_LANGUAGE]: 'Thank you.' },
-          finishLabel: { [FIXTURE_LANGUAGE]: 'Finish' },
-          finishConfirmation: { [FIXTURE_LANGUAGE]: 'Finish this interview?' },
-          finishedNotice: { [FIXTURE_LANGUAGE]: 'This interview is finished.' },
-          finishFailed: {
-            [FIXTURE_LANGUAGE]: 'The interview could not be finished.',
-          },
-          outcome: 'completed',
-        }),
-      }),
-    );
-
-    expect(isSuccess).toBe(false);
-    expect(error).toBeInstanceOf(InvalidShape);
-    expect(error).toMatchObject({
-      issues: [
-        {
-          path: ['type'],
-          message:
-            'A protocol has exactly one finish stage, and this one already has it.',
+    const created = await client.call('Create', {
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: Redacted.make({
+        type: 'FinishSession',
+        label: { [FIXTURE_LANGUAGE]: 'A second end' },
+        mode: 'automatic',
+        content: {},
+        finishedContent: {
+          [FIXTURE_LANGUAGE]: 'This interview is finished.',
         },
-      ],
+        finishLabel: { [FIXTURE_LANGUAGE]: 'Finish' },
+        finishConfirmation: { [FIXTURE_LANGUAGE]: 'Finish this interview?' },
+        finishFailed: {
+          [FIXTURE_LANGUAGE]: 'The interview could not be finished.',
+        },
+        outcome: 'ineligible',
+      }),
     });
-    expect(getProtocol(store.getState())?.stages).toEqual(before);
+
+    const ref = parseSectionId(created.sectionId);
+    const stageId = ref.kind === 'stage' ? ref.stageId : '';
+    const stages = getProtocol(store.getState())?.stages ?? [];
+
+    // Finish stages sit together at the end: the new one follows every stage
+    // that was there, the existing finish stage included.
+    expect(stageIds(store)).toEqual([...before, stageId]);
+    expect(
+      stages.filter(({ type }) => type === 'FinishSession').map(({ id }) => id),
+    ).toEqual(['finish', stageId]);
+    expect(stages.at(-1)).toMatchObject({
+      type: 'FinishSession',
+      mode: 'automatic',
+      outcome: 'ineligible',
+    });
   });
 
   it('creates the ego codebook a protocol does not have yet', async () => {

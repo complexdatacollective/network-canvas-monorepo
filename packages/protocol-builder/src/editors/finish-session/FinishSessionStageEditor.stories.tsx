@@ -27,7 +27,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The editor for the screen that ends the interview: the heading and text the participant reads before finishing, and the outcome an interview that ends there is recorded with. There is no skip logic, because every route through the interview ends at a finish screen. It is opened here over a real editing session holding the shared all-interfaces protocol, on its finish stage.',
+          'The editor for the screen that ends the interview: whether participants confirm or the interview finishes on arrival, the closing text read before finishing, the finished text read afterwards, and the outcome an interview that ends there is recorded with. There is no skip logic, because every route through the interview ends at a finish screen. It is opened here over a real editing session holding the shared all-interfaces protocol, on its finish stage.',
       },
     },
   },
@@ -58,5 +58,36 @@ export const Editing: Story = {
         }),
       ).toHaveTextContent('"outcome": "terminated"');
     });
+  },
+};
+
+/**
+ * Finishing automatically: the closing screen and the confirmation question
+ * leave the editor, because a participant never sees them.
+ */
+export const FinishingAutomatically: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await canvas.findByRole('heading', { name: 'Closing screen' });
+    await userEvent.click(
+      within(canvas.getByRole('listbox', { name: /Finishing/ })).getByRole(
+        'option',
+        { name: /Finish automatically/ },
+      ),
+    );
+
+    await waitFor(async () => {
+      await expect(
+        canvas.queryByRole('heading', { name: 'Closing screen' }),
+      ).not.toBeInTheDocument();
+    });
+    await expect(
+      canvas.queryByRole('textbox', { name: /Confirmation question/ }),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.getByRole('heading', { name: 'Finished screen' }),
+    ).toBeInTheDocument();
   },
 };

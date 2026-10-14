@@ -6,10 +6,10 @@ import { StageEditor } from '../../pageobjects/stage-editor.js';
 import { Timeline } from '../../pageobjects/timeline.js';
 
 /**
- * The finish stage is never created from the New Stage screen: a protocol is
- * made with one, and keeps it. So this spec edits the one `emptyProtocol()`
- * starts with — the stage Architect's New Protocol writes — rather than
- * creating one from scratch.
+ * Every protocol is made with a finish stage, and keeps at least one. A
+ * further finish stage can be added from the New Stage screen, but this spec
+ * edits the one `emptyProtocol()` starts with — the stage Architect's New
+ * Protocol writes — so it also covers the supplied text that stage carries.
  */
 test('edits the finish stage a new protocol starts with', async ({
   architectPage,
@@ -22,21 +22,24 @@ test('edits the finish stage a new protocol starts with', async ({
   const editor = new StageEditor(architectPage);
   await editor.setStageName('Not eligible');
 
-  // FinishSession's sections are `[stageHeading, closingScreen, outcome,
-  // interviewerGuidance]` (`@codaco/protocol-builder`'s
+  // FinishSession's sections are `[stageHeading, mode, closingScreen,
+  // finishedScreen, finishing, outcome, interviewerGuidance]`
+  // (`@codaco/protocol-builder`'s
   // `editors/finish-session/FinishSessionStageEditor.ts`); no skip logic,
   // because every route through the interview ends at a finish stage.
   await expect(editor.section('Skip Logic')).toHaveCount(0);
 
-  const heading = editor
-    .field('title')
-    .getByRole('textbox', { name: 'Heading', exact: true });
-  await expect(heading).toBeEditable();
-  await heading.fill('Thank you for your interest');
+  // The heading is no longer a field of its own: it is part of the closing
+  // text's markdown. A new protocol's stage asks participants to confirm, so
+  // its closing screen is there to edit.
+  await expect(
+    editor.field('mode').getByRole('option', { name: /^Participants confirm/ }),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(editor.field('title')).toHaveCount(0);
 
   const text = editor
     .field('content')
-    .getByRole('textbox', { name: 'Text', exact: true });
+    .getByRole('textbox', { name: 'Closing text', exact: true });
   await expect(text).toBeEditable();
   await text.fill('This study is not looking for more people like you.');
 
@@ -55,11 +58,15 @@ test('edits the finish stage a new protocol starts with', async ({
   expect(stage).toMatchObject({
     id: 'finish',
     label: { en: 'Not eligible' },
-    title: { en: 'Thank you for your interest' },
+    mode: 'confirmation',
     content: { en: 'This study is not looking for more people like you.' },
     outcome: 'ineligible',
   });
   expect(stage).not.toHaveProperty('skipLogic');
+  expect(stage).not.toHaveProperty('title');
+  expect(stage.finishedContent).toEqual({
+    en: '# Interview Finished\n\nThank you for participating!',
+  });
 
   expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'finish-session-stage.json',

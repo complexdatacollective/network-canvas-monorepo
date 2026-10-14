@@ -46,10 +46,10 @@ describe('Protocol Summary stage', () => {
     expect(passphraseRow()).not.toBeInTheDocument();
   });
 
-  // The heading a participant reads on the finish stage is its `title`, not
-  // its name: the summary prints it as the stage's page heading, with the
-  // text and outcome below it.
-  it('prints a finish stage’s heading, text, finishing words and outcome, apart from its name', () => {
+  // A finish stage's headings are part of its closing and finished text, so
+  // the summary prints both texts, its mode, finishing words and outcome below
+  // the stage's name.
+  it('prints a finish stage’s mode, closing and finished text, finishing words and outcome, apart from its name', () => {
     render(
       <SummaryContext.Provider
         value={{ protocol, protocolName: protocol.name, index: [] }}
@@ -60,11 +60,15 @@ describe('Protocol Summary stage', () => {
           stageNumber={2}
           type="FinishSession"
           configuration={{
-            title: { en: 'Thank you for taking part' },
-            content: { en: 'Your answers have been recorded.' },
+            mode: 'confirmation',
+            content: {
+              en: '# Thank you for taking part\n\nYour answers have been recorded.',
+            },
+            finishedContent: {
+              en: '# All done\n\nYour answers are submitted.',
+            },
             finishLabel: { en: 'Submit' },
             finishConfirmation: { en: 'Submit your answers?' },
-            finishedNotice: { en: 'Your answers are submitted.' },
             finishFailed: { en: 'Your answers could not be submitted.' },
             outcome: 'ineligible',
           }}
@@ -72,20 +76,51 @@ describe('Protocol Summary stage', () => {
       </SummaryContext.Provider>,
     );
 
+    expect(screen.getByText('Participants confirm')).toBeInTheDocument();
     expect(screen.getByText('Thank you for taking part')).toBeInTheDocument();
+    expect(
+      screen.getByText('Your answers have been recorded.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('All done')).toBeInTheDocument();
+    expect(screen.getByText('Your answers are submitted.')).toBeInTheDocument();
     for (const [label, value] of [
       ['Finish button', 'Submit'],
       ['Confirmation question', 'Submit your answers?'],
-      ['Finished notice', 'Your answers are submitted.'],
       ['If finishing fails', 'Your answers could not be submitted.'],
     ] as const) {
       expect(screen.getByText(label)).toBeInTheDocument();
       expect(screen.getByText(value)).toBeInTheDocument();
     }
-    expect(
-      screen.getByText('Your answers have been recorded.'),
-    ).toBeInTheDocument();
     expect(screen.getByText('End of the interview')).toBeInTheDocument();
+  });
+
+  it('leaves out the closing text and question of a finish stage that finishes automatically', () => {
+    render(
+      <SummaryContext.Provider
+        value={{ protocol, protocolName: protocol.name, index: [] }}
+      >
+        <Stage
+          id="finish"
+          label={{ en: 'End of the interview' }}
+          stageNumber={2}
+          type="FinishSession"
+          configuration={{
+            mode: 'automatic',
+            content: { en: 'Never shown.' },
+            finishedContent: { en: 'Your answers are submitted.' },
+            finishLabel: { en: 'Submit' },
+            finishConfirmation: { en: 'Submit your answers?' },
+            finishFailed: { en: 'Your answers could not be submitted.' },
+            outcome: 'completed',
+          }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('Finish automatically')).toBeInTheDocument();
+    expect(screen.getByText('Your answers are submitted.')).toBeInTheDocument();
+    expect(screen.queryByText('Never shown.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Submit your answers?')).not.toBeInTheDocument();
   });
 
   it('prints the heading a roster stage shows over the people it offers', () => {

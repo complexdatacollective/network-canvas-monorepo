@@ -389,9 +389,10 @@ test('refuses to delete the stage that ends the interview', async ({
   expect(after.map(({ id }) => id)).toEqual(before.map(({ id }) => id));
 });
 
-// The finish stage stays where it is: it cannot be moved itself, and no stage
-// can be moved past it.
-test('refuses to move the stage that ends the interview', async ({
+// Stages that end the interview stay together at the end: a finish stage
+// cannot be moved above another kind of stage, and no other stage can be
+// moved below one.
+test('refuses to move the stage that ends the interview above the other stages', async ({
   architectPage,
   seed,
 }) => {
@@ -414,17 +415,71 @@ test('refuses to move the stage that ends the interview', async ({
   await timeline.openControl(finish.label).focus();
   await timeline.openControl(finish.label).press('ArrowUp');
   await expect(guardDialog).toContainText(
-    'The stage that ends the interview has to stay at the end of the protocol.',
+    'Stages that end the interview have to stay together at the end of the protocol. No participant could reach a stage placed after them.',
   );
   await acknowledgeRefusal(guardDialog);
 
   await timeline.openControl(beforeFinish.label).focus();
   await timeline.openControl(beforeFinish.label).press('ArrowDown');
+  await expect(guardDialog).toContainText(
+    'Stages that end the interview have to stay together at the end of the protocol.',
+  );
   await acknowledgeRefusal(guardDialog);
 
   await settleAfterRefusal(architectPage, editDescription(architectPage));
   const after = stagesOf(await readProtocolJson(architectPage));
   expect(after.map(({ id }) => id)).toEqual(before.map(({ id }) => id));
+});
+
+// Finish stages may change places among themselves: a route that ends early
+// (an ineligible participant, say) can end at either of them.
+test('swaps two stages that end the interview from the keyboard', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  const finish = protocol.stages.at(-1);
+  if (finish?.type !== 'FinishSession') {
+    throw new Error('fixture does not end at a FinishSession stage');
+  }
+  const screenedOut = {
+    ...finish,
+    id: 'screened-out',
+    label: { [protocol.localization.defaultLocale]: 'Screened out' },
+    outcome: 'ineligible' as const,
+  };
+  await seed(
+    { ...protocol, stages: [...protocol.stages, screenedOut] },
+    { name: 'Two finish stages', assets },
+  );
+  await gotoProtocol(architectPage);
+
+  const before = stagesOf(await readProtocolJson(architectPage));
+  const [firstFinish, secondFinish] = before.slice(-2);
+  if (
+    firstFinish?.type !== 'FinishSession' ||
+    secondFinish?.type !== 'FinishSession'
+  ) {
+    throw new Error('seed does not end at two FinishSession stages');
+  }
+
+  const timeline = new Timeline(architectPage);
+  await timeline.openControl(secondFinish.label).focus();
+  await timeline.openControl(secondFinish.label).press('ArrowUp');
+  await expect(
+    architectPage.getByRole('dialog', { name: 'Cannot move stage' }),
+  ).toHaveCount(0);
+
+  const expected = [
+    ...before.slice(0, -2).map(({ id }) => id),
+    secondFinish.id,
+    firstFinish.id,
+  ];
+  const after = await readProtocolJson(
+    architectPage,
+    (current) => current.stages.at(-1)?.id === firstFinish.id,
+  );
+  expect(after.stages.map(({ id }) => id)).toEqual(expected);
 });
 
 // No add control places a stage after the finish stage: the last insertion

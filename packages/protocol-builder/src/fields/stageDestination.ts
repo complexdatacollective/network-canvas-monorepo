@@ -320,8 +320,9 @@ const stageOptionLabel = (
  * Where the interview may continue from here.
  *
  * Only later stages are offered: the interview runs forwards, and a skip that
- * pointed backwards would be a loop rather than a route. Finish stages are
- * offered once, as ending the interview.
+ * pointed backwards would be a loop rather than a route. The first finish
+ * stage is offered as ending the interview; any further finish stage is
+ * offered by name.
  *
  * A destination the stage currently holds that is NOT among them is added at
  * the end, disabled. Leaving it out would make the control fall back to its
@@ -341,11 +342,16 @@ export function stageDestinationOptions(
     },
   ];
 
+  const firstFinishIndex = stages.findIndex(
+    (stage) => stage.type === 'FinishSession',
+  );
   stages.forEach((stage, index) => {
     if (!isLaterStage(index, placement)) return;
-    // A finish stage is reached by ending the interview, which is offered
-    // below; offering it as a stage too would name one route twice.
-    if (stage.type === 'FinishSession') return;
+    // The first finish stage is where ending the interview goes, which is
+    // offered below; offering it as a stage too would name one route twice.
+    // Any later finish stage (a separate ending, such as one for ineligible
+    // participants) is reached only by naming it.
+    if (index === firstFinishIndex) return;
     options.push({
       value: `${STAGE_ROUTE_PREFIX}${stage.id}`,
       label: stageOptionLabel(stage, index, placement, intl),

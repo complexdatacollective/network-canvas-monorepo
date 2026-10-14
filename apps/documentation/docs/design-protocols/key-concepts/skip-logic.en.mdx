@@ -83,11 +83,14 @@ The destination belongs to the stage that may be hidden. For example, suppose
 an Ego Form records consent and the rest of the interview should be bypassed
 when consent is not given. Add the consent rule to the first stage after the
 consent form, then choose **End the interview** as that stage's destination.
-This routes to the Finish Screen, where the interview is completed using the
-usual confirmation flow. Every protocol ends with a Finish Screen, and the
-destination goes to the first one after the stage that owns the rule. A Finish
-Screen can't have skip logic itself, because every route through the interview
-ends there.
+This routes to the Finish Screen, where the interview is finished in the way
+that Finish Screen is set up: participants either confirm, or the interview
+finishes automatically. Every protocol ends with a Finish Screen, and the
+destination goes to the first one after the stage that owns the rule. If your
+protocol ends with more than one Finish Screen, such as a separate ending for
+participants who are not eligible, choose a later one by its name to end the
+interview there instead. A Finish Screen can't have skip logic itself, because
+every route through the interview ends at one.
 
 Only forward destinations are available. When a destination is used, every
 stage between the hidden stage and the destination is bypassed. The destination

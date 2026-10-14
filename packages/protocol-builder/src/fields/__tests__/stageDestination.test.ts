@@ -147,6 +147,27 @@ describe('the destinations on offer', () => {
     ]);
   });
 
+  it('offers the first finish stage as ending the interview and any later one by name', () => {
+    const withEndings = [
+      ...stages,
+      { id: 'finish-1', label: 'Thank you', type: 'FinishSession' },
+      { id: 'finish-2', label: 'Not eligible', type: 'FinishSession' },
+    ];
+    expect(
+      labels(
+        stageDestinationOptions(
+          withEndings,
+          stagePlacement(withEndings, 'stage-2'),
+        ),
+      ),
+    ).toEqual([
+      'Next available stage',
+      'Stage 3 — Untitled stage',
+      'Stage 5 — Not eligible',
+      'End the interview',
+    ]);
+  });
+
   it('numbers stages a new one is about to displace by where they will end up', () => {
     // Inserted at index 1, the stage currently second becomes the third.
     expect(

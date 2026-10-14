@@ -343,12 +343,18 @@ const Timeline = () => {
   // Visual-only during the drag: no dispatch, so the timeline isn't fragmented
   // into one undo entry per crossing. A drag that was already under way when
   // another tab took the protocol can still call this until its row stops it.
+  //
+  // An order that would take a finish stage above another kind of stage, or
+  // another kind below one, is never shown: the row stops moving there, so a
+  // finish stage can be dragged among the others but no higher than the
+  // first of them.
   const handleReorder = useCallback(
     (newOrder: typeof stages) => {
       if (readOnly) return;
+      if (getFinishStageReorderWarning(stages, newOrder)) return;
       setOrderedStages(newOrder);
     },
-    [readOnly],
+    [readOnly, stages],
   );
 
   // Returns whether the move was committed. The keyboard path passes that

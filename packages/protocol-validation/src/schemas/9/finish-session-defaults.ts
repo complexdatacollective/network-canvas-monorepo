@@ -35,7 +35,7 @@ export type FinishSessionText = Readonly<{
  * time.
  *
  * Each translation was checked by blind back-translation and adversarial
- * comparison (#2131). A regional variant is served by its language
+ * comparison (#2131; the finished-screen text when it was added). A regional variant is served by its language
  * (`suppliedTextFor`), so British English reads the `en` text.
  */
 export const DEFAULT_FINISH_SESSION_TEXT = {
@@ -61,7 +61,8 @@ export const DEFAULT_FINISH_SESSION_TEXT = {
     label: 'Terminer l’entretien',
     content:
       '# Terminer l’entretien\n\nVous avez atteint la fin de l’entretien. Si les informations que vous avez saisies vous conviennent, vous pouvez maintenant terminer l’entretien.',
-    finishedContent: '# Entretien terminé\n\nMerci de votre participation !',
+    finishedContent:
+      '# Entretien terminé\n\nMerci de votre participation\u00a0!',
   },
   'hu': {
     label: 'Interjú befejezése',

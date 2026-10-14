@@ -20,7 +20,7 @@ const messages = defineMessages({
   missingClosingAndFinishedText: {
     id: 'architect.finishStageText.missingClosingAndFinishedText',
     defaultMessage:
-      'A stage that ends the interview has no text for its closing screen or its finished screen in {language}. The protocol can’t be downloaded until it’s added.',
+      'A stage that ends the interview has no text for its closing screen or its finished screen in {language}. The protocol can’t be downloaded until they’re added.',
     description:
       'Shown while a stage that ends the interview (a Finish Screen stage) has neither the text of its closing screen (where the participant finishes the interview) nor the text of its finished screen (shown once the interview has ended) in the protocol’s default language. language is the name of that language, for example “Japanese”.',
   },

@@ -74,7 +74,7 @@ describe('New Stage screen capability filters', () => {
     }
   });
 
-  it('finds Information, the Language Chooser and Anonymisation under Utilities', () => {
+  it('finds Information, the Language Chooser, Anonymisation and the Finish Screen under Utilities', () => {
     renderScreen();
 
     fireEvent.click(capabilityFilter('Utilities'));
@@ -87,6 +87,7 @@ describe('New Stage screen capability filters', () => {
       'Information',
       'Language Chooser',
       'Anonymisation Interface',
+      'Finish Screen',
     ]);
   });
 
@@ -100,22 +101,19 @@ describe('New Stage screen capability filters', () => {
   });
 });
 
-// A protocol is created with its finish stage and keeps exactly that one, so
-// the researcher is never offered another, under any filter or search.
+// A protocol can end in more than one way, so a further finish stage is
+// offered among the utilities.
 describe('New Stage screen and the finish stage', () => {
-  it('never offers the Finish Screen', () => {
+  it('offers the Finish Screen among the utilities', () => {
     renderScreen();
 
-    expect(
-      screen.queryByRole('button', { name: 'Finish Screen' }),
-    ).not.toBeInTheDocument();
-    expect(getInterfaceTypes().map(({ type }) => type)).not.toContain(
+    expect(getInterfaceTypes().map(({ type }) => type)).toContain(
       'FinishSession',
     );
 
     fireEvent.click(capabilityFilter('Utilities'));
     expect(
-      screen.queryByRole('button', { name: 'Finish Screen' }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('button', { name: 'Finish Screen' }),
+    ).toBeInTheDocument();
   });
 });

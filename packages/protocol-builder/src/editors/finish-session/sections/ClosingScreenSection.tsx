@@ -1,48 +1,42 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
-import { localizedMaxLength } from '../../../fields/localizedMaxLength.ts';
 import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { finishSessionMessages } from './finishSessionMessages.ts';
+import { useFinishMode } from './useFinishMode.ts';
 
-const TITLE_FIELD = 'title';
 const CONTENT_FIELD = 'content';
 
-/** A heading, so it has to read as one rather than as a paragraph. */
-const TITLE_LIMIT = 50;
-
 /**
- * The heading and text of the screen that ends the interview.
+ * The text a participant reads before finishing the interview, heading
+ * included: the text is markdown, and its first line is usually a heading.
  *
- * Not a capability: a protocol whose finish stage has no heading or text in
- * its default language cannot be downloaded. The schema still accepts one
- * while the protocol is being written, because a new protocol in a language
- * Network Canvas supplies no closing text for starts with none. The heading is markdown restricted to one
- * line, because the interview renders its emphasis inside the heading and
- * nothing else.
+ * Only a stage that asks participants to confirm has a closing screen, so the
+ * section is absent in automatic mode. A protocol whose confirming finish
+ * stage has no closing text in its default language cannot be downloaded; the
+ * schema still accepts one while the protocol is being written, because a new
+ * protocol in a language Network Canvas supplies no closing text for starts
+ * with none.
  */
 export default function ClosingScreenSection() {
   const intl = useAppIntl();
+  const finishMode = useFinishMode();
+
+  if (finishMode !== 'confirmation') return null;
 
   return (
     <BuilderSection
       title={intl.formatMessage(finishSessionMessages.closingTitle)}
-      description={intl.formatMessage(finishSessionMessages.closingDescription)}
+      description={intl.formatMessage(
+        finishSessionMessages.closingScreenDescription,
+      )}
     >
-      <Field<typeof LocalizedRichTextField>
-        name={TITLE_FIELD}
-        component={LocalizedRichTextField}
-        label={intl.formatMessage(finishSessionMessages.headingLabel)}
-        singleLine
-        required={REQUIRED}
-        custom={localizedMaxLength(TITLE_LIMIT, intl)}
-      />
       <Field<typeof LocalizedRichTextField>
         name={CONTENT_FIELD}
         component={LocalizedRichTextField}
-        label={intl.formatMessage(finishSessionMessages.textLabel)}
+        label={intl.formatMessage(finishSessionMessages.closingTextLabel)}
         required={REQUIRED}
       />
     </BuilderSection>
