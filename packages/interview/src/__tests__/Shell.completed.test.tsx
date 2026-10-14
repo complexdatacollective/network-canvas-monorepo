@@ -341,6 +341,23 @@ describe('Shell completed state', () => {
       await waitFor(() => expect(finishedText()).toHaveFocus());
     });
 
+    // Fresco with completed interviews not frozen reopens a finished one to
+    // be changed, at the stage it finished on.
+    it('reopens a finished interview to be changed at the stage before, without finishing again', async () => {
+      const onFinish = vi.fn<FinishHandler>(() => Promise.resolve());
+      renderShell({
+        payload: automatic(makePayload({ finishStageId: finishStage.id })),
+        currentStep: 1,
+        openFinishedAsActive: true,
+        onFinish,
+      });
+
+      expect(
+        await screen.findByRole('heading', { name: 'Study overview' }),
+      ).toBeInTheDocument();
+      expect(onFinish).not.toHaveBeenCalled();
+    });
+
     it('allows no navigation either way while it finishes', async () => {
       renderShell({
         payload: automatic(makePayload(null)),

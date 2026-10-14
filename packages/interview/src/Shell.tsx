@@ -903,6 +903,27 @@ const Shell = ({
     );
     const reviewEnd =
       finishIndex === -1 ? payload.protocol.stages.length : finishIndex;
+    // A finished interview reopened to be changed would finish again at once
+    // on an automatic finish stage, which also cannot be left backwards, so it
+    // enters at the last stage before the interview ended instead.
+    const stageAtStep =
+      currentStep === undefined
+        ? undefined
+        : payload.protocol.stages[currentStep];
+    if (
+      openFinishedAsActive &&
+      stageAtStep?.type === 'FinishSession' &&
+      stageAtStep.mode === 'automatic'
+    ) {
+      return {
+        currentStep:
+          getLastAvailableAuthoredStageIndex(
+            payload.protocol.stages,
+            payload.session.network,
+          ) ?? currentStep,
+        initialStageOverrideIndex,
+      };
+    }
     if (
       reviewMode !== true ||
       currentStep === undefined ||
@@ -930,6 +951,7 @@ const Shell = ({
   }, [
     currentStep,
     initialStageOverrideIndex,
+    openFinishedAsActive,
     payload.protocol.stages,
     payload.session.network,
     reviewMode,
