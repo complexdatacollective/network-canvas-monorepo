@@ -4,9 +4,10 @@
 
 The documentation now covers dynamic values: values the interview fills into
 the text participants read, such as the participant's name, an earlier answer,
-the people a census question asks about, or today's date. A new Dynamic Values
-page explains how to insert a value in Architect with the Insert a value
-button or by typing `{`, which values each kind of text can show, why a value
+the labels of the nodes a census question asks about, or today's date. A new
+Dynamic Values page explains how to insert a value in Architect with the
+syringe button or by typing `{`, how a node's label is chosen, which values
+each kind of text can show, why a value
 that can be missing needs a version of the text for when it is missing, how to
 give the text a version for each answer or for each plural form of a number,
 how participants see values, and that every translation must show the values

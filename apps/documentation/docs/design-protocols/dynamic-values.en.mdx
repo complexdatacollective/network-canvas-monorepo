@@ -58,7 +58,7 @@ Architect keeps track of the values each stage's text shows. An attribute that s
 
 ## When a value is missing
 
-Any attribute can be missing when the participant reaches your text. The participant may have skipped the question, [skip logic](/en/design-protocols/key-concepts/skip-logic) may have skipped the stage that asks it, or data imported from a roster may not include it. Going back and changing answers, or deleting someone, can also leave an attribute unset, even when your protocol normally asks for it first.
+Any attribute can be missing when the participant reaches your text. The participant may have skipped the question, [skip logic](/en/design-protocols/key-concepts/skip-logic) may have skipped the stage that asks it, or data imported from a roster may not include it. Going back and changing answers, or deleting a node, can also leave an attribute unset, even when your protocol normally asks for it first.
 
 So that the participant never meets a gap, a value that can be missing goes in with two versions of the text around it:
 
@@ -84,7 +84,7 @@ Today's date and a node's label are never missing, so they go in on their own, w
 
 ## A node's label
 
-A node's label is not one attribute. The interview chooses it for each node from that node's answers: an attribute called "name", then one whose name contains "name", then the first text attribute that has an answer. A node with none of these shows its node type's name. The label value follows the same rules, so it always shows the text on the node, even when two nodes of the same type take their labels from different attributes. When the label comes from an encrypted attribute, the text shows it exactly as the node does.
+A node's label is not one attribute. The interview chooses it for each node from that node's answers: an attribute called "name", then one whose name contains "name", then the first text attribute that has an answer. A node with none of these shows its node type's label. The label value follows the same rules, so it always shows the text on the node, even when two nodes of the same type take their labels from different attributes. When the label comes from an encrypted attribute, the text shows it exactly as the node does.
 
 Use the label to name a node in a question, as in "Are Jim and Alice friends?". Use an attribute when the text needs that particular answer, such as a nickname, even if the label shows something else.
 
@@ -130,8 +130,7 @@ The interview shows each value in the participant's language:
 
 - a date as their language writes dates. A date answer of only a month or a year shows only the month or year.
 - a number as their language writes numbers
-- an answer to a categorical, ordinal or boolean question by the option's label, in their language. An answer with several options is shown as a list, such as "cats, dogs and fish".
-- a yes-or-no answer without labels as "Yes" or "No"
+- an answer to a categorical, ordinal or boolean question by the option's label, in their language. An answer with several options is shown as a list, such as "cats, dogs and fish". A yes-or-no answer can be shown this way only when both of its answers have labels; otherwise, use **Different wording for each answer**.
 - text exactly as it was entered
 
 Each value is tinted with the interview's primary colour, so the participant can tell it was filled in for them. Screen readers announce it as a dynamic value, followed by the value.
@@ -169,7 +168,7 @@ In a protocol upgraded from schema 8, braces that were already in your text stay
 
 When your protocol has more than one language (see [Translating Your Protocol](/en/design-protocols/translating-your-protocol)), each language writes its own versions of the text. A translation must show every value wherever the default language's text shows it, in each version. For example, if the English **If known** version shows the **nickname** pill, the **If known** version of each translation must show it too.
 
-There is one exception. A version for a word form that only one number takes, such as English "1 child", may leave the number out, because the words already say which number it is.
+There is one exception. A version for a word form that only one number takes may leave the number out, because the words already say which number it is. A number answer can be negative, so in practice this is a form for zero alone, which some languages have. English "1 child" doesn't count, because English uses the same form for -1.
 
 In the translation table, a cell shows values, and each set of versions, as pills. When you edit a cell, select a pill to open its versions, as in the stage editor. When you edit a cell, the syringe button offers the values the stage already shows. To show a new value, add it in the stage editor first.
 
@@ -186,6 +185,7 @@ Protocol validation checks every text that shows values. Each of these is an err
 - **A version stands for an answer the attribute doesn't have.** This happens when you remove or change one of an attribute's options after giving text a version for each of its answers. Remove every set of versions for that attribute from the stage's text, then insert them again, so that they match the attribute's options.
 - **A translation must show a value where the default language's text does.** See [Translating text that shows values](#translating-text-that-shows-values).
 - **Too many versions to check a translation.** Use fewer values that change the wording in that text.
+- **A yes-or-no attribute needs labels for both of its answers.** The text shows the answer itself, but the attribute has no labels for yes and no. Add both labels to the attribute, or give the text **Different wording for each answer**.
 - **Text can't be blank in every version.** At least one version must show some text or a value.
 
 ## Related concepts
