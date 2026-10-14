@@ -543,6 +543,64 @@ describe('mapInterviewForViewer', () => {
     },
   );
 
+  it('keeps only the ego values the finish stage it ended on shows in its text', () => {
+    const finishStage = (id: string, bindings: Record<string, string>) => ({
+      id,
+      type: 'FinishSession',
+      label: { en: 'Finish' },
+      title: { en: 'Thank you' },
+      content: { en: 'Done.' },
+      finishLabel: { en: 'Finish' },
+      finishConfirmation: { en: 'Finish this interview?' },
+      finishedNotice: { en: 'This interview is finished.' },
+      finishFailed: { en: 'The interview could not be finished.' },
+      outcome: 'completed',
+      dynamicValues: Object.fromEntries(
+        Object.entries(bindings).map(([name, path]) => [name, { path }]),
+      ),
+    });
+    const finished = makeFinishedSource();
+    const source: Source = {
+      ...finished,
+      protocol: {
+        ...finished.protocol,
+        stages: [
+          finishStage('finish-completed', {
+            age: 'ego.age',
+            town: 'ego.town',
+            node: 'node.name',
+            inherited: 'ego.constructor',
+          }),
+          finishStage('finish-other', { other: 'ego.other' }),
+        ],
+      },
+      network: {
+        ...finished.network,
+        ego: {
+          _uid: 'ego-1',
+          attributes: { age: 'EGO_ANSWER', other: 'OTHER_EGO_ANSWER' },
+        },
+      },
+    };
+
+    const result = viewReady(source, {
+      researcher: false,
+      freezeCompletedInterviews: true,
+    });
+
+    expect(result.view).toBe('completed');
+    expect(result.payload.session.network.ego.attributes).toStrictEqual({
+      age: 'EGO_ANSWER',
+    });
+    const sent = JSON.stringify(SuperJSON.serialize(result));
+    for (const marker of [
+      ...ANSWER_MARKERS.filter((m) => m !== 'EGO_ANSWER'),
+      'OTHER_EGO_ANSWER',
+    ]) {
+      expect(sent).not.toContain(marker);
+    }
+  });
+
   it('sends a researcher the whole finished interview to change while freezing is off', () => {
     const source = makeFinishedSource();
     const result = viewReady(source, {
