@@ -6,6 +6,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
+  countTokenId,
   documentToMessageNodes,
   type MessageDocumentFormat,
   type MessageDocumentLabels,
@@ -133,5 +134,81 @@ describe('a message through the editor and back', () => {
     "{n, plural, one {'#' means # ''} other {'{'#'}'}}",
   ])('keeps the plain message %s', (message) => {
     expect(ast(roundTrip(message, PLAIN))).toEqual(ast(message));
+  });
+});
+
+describe('a count pill outside its plural', () => {
+  // ICU reads `#` as the number only directly inside a plural's version: at
+  // the top level, or inside a select (even one within that plural), it is
+  // literal text. A count pill pasted there keeps its value instead.
+  const countPill = (argument: string) => ({
+    type: 'token',
+    attrs: { id: countTokenId(argument) },
+  });
+  const line = (...content: Record<string, unknown>[]) => ({
+    type: 'doc',
+    content: [{ type: 'paragraph', content }],
+  });
+  const versionsOf = (
+    argument: string,
+    type: 'select' | 'plural',
+    versions: Record<string, readonly Record<string, unknown>[]>,
+  ) => ({
+    type: 'versions',
+    attrs: {
+      label: argument,
+      meta: { argument, type },
+      versions: Object.entries(versions).map(([key, content]) => ({
+        key,
+        label: key,
+        content,
+      })),
+    },
+  });
+
+  it('prints a pill pasted at the top level as the value', () => {
+    const document = line({ type: 'text', text: 'You have ' }, countPill('n'));
+    expect(
+      printMessageStructure(documentToMessageNodes(document, MARKDOWN_LINE)),
+    ).toBe('You have {n}');
+  });
+
+  it('prints a pill in a select within the plural as the value', () => {
+    const document = line(
+      versionsOf('n', 'plural', {
+        other: [
+          versionsOf('kind', 'select', {
+            a: [countPill('n')],
+            other: [{ type: 'text', text: 'none' }],
+          }),
+        ],
+      }),
+    );
+    const printed = printMessageStructure(
+      documentToMessageNodes(document, PLAIN),
+    );
+    expect(ast(printed)).toEqual(
+      ast('{n, plural, other {{kind, select, a {{n}} other {none}}}}'),
+    );
+  });
+
+  it('prints a pill in a different plural as that value', () => {
+    const document = line(
+      versionsOf('m', 'plural', { other: [countPill('n')] }),
+    );
+    expect(
+      ast(printMessageStructure(documentToMessageNodes(document, PLAIN))),
+    ).toEqual(ast('{m, plural, other {{n}}}'));
+  });
+
+  it('prints a pill directly in its own plural as #', () => {
+    const document = line(
+      versionsOf('n', 'plural', {
+        other: [countPill('n'), { type: 'text', text: ' friends' }],
+      }),
+    );
+    expect(printMessageStructure(documentToMessageNodes(document, PLAIN))).toBe(
+      '{n, plural, other {# friends}}',
+    );
   });
 });

@@ -654,6 +654,86 @@ describe('a single-line RichTextEditorField with versions', () => {
   });
 });
 
+describe('a version holding a mark its field does not offer', () => {
+  // A single-line field offers no links, so a version's own editor has no
+  // `link` mark. A version that holds one anyway (loaded from a message, or
+  // pasted from a multi-line field) must still show its words: an editor
+  // that cannot read a mark starts empty, and the next edit saves the blank.
+  const LINKED_VERSIONS = {
+    type: 'versions',
+    attrs: {
+      label: 'Depending on the name',
+      meta: { argument: 'name' },
+      versions: [
+        {
+          key: 'other',
+          label: 'If known',
+          content: [
+            { type: 'text', text: 'Read ' },
+            {
+              type: 'text',
+              marks: [
+                { type: 'bold' },
+                { type: 'link', attrs: { href: 'https://example.com/' } },
+              ],
+              text: 'this site',
+            },
+          ],
+        },
+      ],
+    },
+  };
+
+  const renderVersionsField = (value: JSONContent) =>
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        toolbarOptions={{ bold: true }}
+        changeMode="input"
+        value={value}
+        onChange={() => undefined}
+      />,
+    );
+
+  it('keeps the words of a linked version it is mounted with', async () => {
+    renderVersionsField({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [LINKED_VERSIONS] }],
+    });
+
+    const version = await screen.findByRole('textbox', { name: 'If known' });
+    await waitFor(() => expect(version.textContent).toBe('Read this site'));
+    expect(version.querySelector('a')).toBe(null);
+    expect(version.querySelector('strong')).toHaveTextContent('this site');
+  });
+
+  it('keeps the words of a linked version pasted into it', async () => {
+    renderVersionsField(emptyDocument);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    const attrs = LINKED_VERSIONS.attrs;
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/html': `<p><span data-versions='${JSON.stringify(
+          attrs.versions,
+        )}' data-versions-meta='${JSON.stringify(attrs.meta)}' aria-label="${
+          attrs.label
+        }"></span></p>`,
+      }),
+    });
+
+    const version = await screen.findByRole('textbox', { name: 'If known' });
+    await waitFor(() => expect(version.textContent).toBe('Read this site'));
+    expect(version.querySelector('a')).toBe(null);
+  });
+});
+
 describe('a single-line RichTextEditorField', () => {
   type SingleLineProps = Pick<
     ComponentProps<typeof RichTextEditorField>,

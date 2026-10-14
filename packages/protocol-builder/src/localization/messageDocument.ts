@@ -295,23 +295,37 @@ const lineDocument = (line: readonly RichTextContent[]): RichTextContent => ({
   ],
 });
 
+/**
+ * `pluralArgument` names the plural whose version the piece sits directly
+ * in. ICU reads `#` as that plural's number only there: at the top level, or
+ * inside a select (even one within a plural), `#` is literal text. A count
+ * pill pasted anywhere else keeps its value as an ordinary placeholder.
+ */
 const pieceNode = (
   piece: RichTextContent,
   format: MessageDocumentFormat,
+  pluralArgument: string | undefined,
 ): MessageNode | undefined => {
   const attrs = piece.attrs ?? {};
   if (piece.type === 'token') {
     const id = typeof attrs.id === 'string' ? attrs.id : '';
-    return countArgumentOf(id) === undefined
-      ? { kind: 'argument', name: id }
-      : { kind: 'count' };
+    const countArgument = countArgumentOf(id);
+    if (countArgument === undefined) return { kind: 'argument', name: id };
+    return countArgument === pluralArgument
+      ? { kind: 'count' }
+      : { kind: 'argument', name: countArgument };
   }
   const meta: unknown = attrs.meta;
   if (!isSwitchMeta(meta) || !Array.isArray(attrs.versions)) return undefined;
   const versions = (attrs.versions as RichTextVersion[]).map(
     (version): MessageVersion => ({
       key: version.key,
-      nodes: messageNodesOf(lineDocument(version.content), format, true),
+      nodes: messageNodesOf(
+        lineDocument(version.content),
+        format,
+        true,
+        meta.type === 'plural' ? meta.argument : undefined,
+      ),
     }),
   );
   return {
@@ -327,6 +341,7 @@ const messageNodesOf = (
   document: RichTextContent,
   format: MessageDocumentFormat,
   isVersion: boolean,
+  pluralArgument: string | undefined,
 ): MessageNode[] => {
   const pieces: RichTextContent[] = [];
   const marked = withMarkers(document, pieces);
@@ -351,7 +366,10 @@ const messageNodesOf = (
       nodes.push({ kind: 'text', text: text.slice(at, match.index) });
     }
     const piece = pieces[Number(match[1])];
-    const node = piece === undefined ? undefined : pieceNode(piece, format);
+    const node =
+      piece === undefined
+        ? undefined
+        : pieceNode(piece, format, pluralArgument);
     if (node !== undefined) nodes.push(node);
     at = match.index + match[0].length;
   }
@@ -366,4 +384,4 @@ const messageNodesOf = (
 export const documentToMessageNodes = (
   document: RichTextContent,
   format: MessageDocumentFormat,
-): MessageNode[] => messageNodesOf(document, format, false);
+): MessageNode[] => messageNodesOf(document, format, false, undefined);

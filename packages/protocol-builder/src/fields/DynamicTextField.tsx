@@ -9,7 +9,11 @@ import RichTextEditorField, {
   type RichTextInsertMenu,
   type RichTextInsertMenuItem,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import { getMarkdownLabelText } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  ALLOWED_MARKDOWN_LABEL_TAGS,
+  DEFAULT_MARKDOWN_REHYPE_PLUGINS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import { TokenPill } from '@codaco/fresco-ui/TokenPill';
 import {
   type DynamicValueBinding,
@@ -749,6 +753,58 @@ export function DynamicMessageEditor({
 /** The first of the private-use characters that hold a value's place. */
 const VALUE_MARK = 0xf0000;
 
+/** The property a value's place is recorded under once markdown is read. */
+const VALUE_PROPERTY = 'dataDynamicValue';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/**
+ * Splits the text the markdown was read into at each character holding a
+ * value's place, leaving an empty `span` that records which value it is. Runs
+ * after sanitizing, so what it adds is not stripped, and nothing an author
+ * wrote can claim to be a value.
+ */
+const splitValueMarks = (node: unknown): void => {
+  if (!isRecord(node) || !Array.isArray(node.children)) return;
+  node.children = node.children.flatMap((child: unknown): unknown[] => {
+    if (
+      !isRecord(child) ||
+      child.type !== 'text' ||
+      typeof child.value !== 'string'
+    ) {
+      splitValueMarks(child);
+      return [child];
+    }
+    const parts: unknown[] = [];
+    let text = '';
+    for (const character of child.value) {
+      const index = (character.codePointAt(0) ?? 0) - VALUE_MARK;
+      if (index < 0) {
+        text += character;
+        continue;
+      }
+      if (text !== '') parts.push({ type: 'text', value: text });
+      text = '';
+      parts.push({
+        type: 'element',
+        tagName: 'span',
+        properties: { [VALUE_PROPERTY]: String(index) },
+        children: [],
+      });
+    }
+    if (text !== '') parts.push({ type: 'text', value: text });
+    return parts;
+  });
+};
+
+const valueMarkPlugin = () => splitValueMarks;
+const SUMMARY_REHYPE_PLUGINS = [
+  ...DEFAULT_MARKDOWN_REHYPE_PLUGINS,
+  valueMarkPlugin,
+];
+const SUMMARY_ALLOWED_ELEMENTS = [...ALLOWED_MARKDOWN_LABEL_TAGS, 'span'];
+
 export function DynamicMessageSummary({
   message,
   markdown,
@@ -756,7 +812,7 @@ export function DynamicMessageSummary({
   site,
 }: Readonly<{
   message: string;
-  /** Whether the words are markdown, drawn here as their text. */
+  /** Whether the words are markdown, drawn here with their formatting. */
   markdown: boolean;
   locale: LocaleTag;
   site: Pick<DynamicMessageSite, 'context' | 'bindings'>;
@@ -809,16 +865,36 @@ export function DynamicMessageSummary({
         values.push(node.kind === 'argument' ? node.name : (plural ?? ''));
       } else source += '#';
     }
-    const words = markdown ? getMarkdownLabelText(source) : source;
+    const pill = (value: string, at: number) => (
+      <TokenPill key={at} token={value} label={valueLabel(value)} />
+    );
+    if (markdown) {
+      return (
+        <RenderMarkdown
+          key={key}
+          allowedElements={SUMMARY_ALLOWED_ELEMENTS}
+          rehypePlugins={SUMMARY_REHYPE_PLUGINS}
+          components={{
+            span: ({ node, children }) => {
+              const index = node?.properties?.[VALUE_PROPERTY];
+              if (typeof index !== 'string') return <span>{children}</span>;
+              const value = values[Number(index)];
+              // A character past the values is the author's own, kept as is.
+              return value === undefined
+                ? String.fromCodePoint(VALUE_MARK + Number(index))
+                : pill(value, 0);
+            },
+          }}
+        >
+          {source}
+        </RenderMarkdown>
+      );
+    }
     return (
       <Fragment key={key}>
-        {Array.from(words).map((character, index) => {
+        {Array.from(source).map((character, index) => {
           const value = values[(character.codePointAt(0) ?? 0) - VALUE_MARK];
-          return value === undefined ? (
-            character
-          ) : (
-            <TokenPill key={index} token={value} label={valueLabel(value)} />
-          );
+          return value === undefined ? character : pill(value, index);
         })}
       </Fragment>
     );
