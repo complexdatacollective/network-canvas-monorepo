@@ -123,6 +123,7 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
         nodes={unplacedNodes}
         itemType="NODE"
         draggable={!selectMode}
+        collapsible={!selectMode}
         selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
         onNodeClick={selectMode ? choose : undefined}
         selectionKey={prompt.id}

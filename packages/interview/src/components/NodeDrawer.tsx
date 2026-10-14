@@ -39,6 +39,12 @@ type NodeDrawerProps = {
    * from, as a bin stage in select mode is (#1652).
    */
   draggable?: boolean;
+  /**
+   * False keeps the drawer open whenever it holds people and drops the tab
+   * that collapses it, as a bin stage in select mode needs so the person
+   * being placed stays in view.
+   */
+  collapsible?: boolean;
   /** The person shown as the one being placed. */
   selectedNodeId?: string;
   /** Called when a person who cannot be dragged is tapped. */
@@ -64,6 +70,7 @@ export default function NodeDrawer({
   floating = false,
   dropTarget,
   draggable = true,
+  collapsible = true,
   selectedNodeId,
   onNodeClick,
   selectionKey,
@@ -72,7 +79,9 @@ export default function NodeDrawer({
   const unplacedId = useId();
   const toggleLabelId = useId();
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
-  const isExpanded = expanded ?? internalExpanded;
+  const isExpanded = collapsible
+    ? (expanded ?? internalExpanded)
+    : nodes.length > 0;
   const setIsExpanded = onExpandedChange ?? setInternalExpanded;
 
   const hasNodes = nodes.length > 0;
@@ -192,49 +201,59 @@ export default function NodeDrawer({
           floating && !isExpandedEffective && 'pointer-events-none',
         )}
       >
-        {/* Toggle button */}
-        <motion.div layout="position" className="flex justify-center">
-          <motion.button
-            layout="position"
-            type="button"
-            onClick={() => {
-              if (!isToggleDisabled) setIsExpanded(!isExpanded);
-            }}
-            disabled={isToggleDisabled}
-            className={cx(
-              'bg-surface publish-colors pointer-events-auto flex h-11 w-32 items-center justify-center rounded-t-[1.375rem] transition-colors',
-              willAccept &&
-                (isOver
-                  ? activeDropTargetOverBackground
-                  : activeDropTargetBackground),
-              isToggleDisabled && 'cursor-not-allowed opacity-50',
-            )}
-            data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
-            data-drop-target-valid={willAccept || undefined}
-            data-drop-target-over={isOver || undefined}
-            aria-labelledby={`${unplacedId} ${toggleLabelId}`}
-            aria-expanded={isExpandedEffective}
-          >
-            <MotionChevron
-              className="size-7"
-              aria-hidden
-              animate={{ rotate: isExpandedEffective ? 0 : 180 }}
-            />
-            <span id={unplacedId} className="sr-only">
-              <AppMessage
-                message={messages.unplacedCount}
-                values={{ count: nodes.length }}
-              />
-            </span>
-            <span id={toggleLabelId} className="sr-only">
-              {intl.formatMessage(
-                isExpandedEffective
-                  ? messages.collapseDrawer
-                  : messages.expandDrawer,
+        {/* Toggle button. A drawer that cannot collapse has no tab, but still
+            tells screen readers how many people are left. */}
+        {collapsible ? (
+          <motion.div layout="position" className="flex justify-center">
+            <motion.button
+              layout="position"
+              type="button"
+              onClick={() => {
+                if (!isToggleDisabled) setIsExpanded(!isExpanded);
+              }}
+              disabled={isToggleDisabled}
+              className={cx(
+                'bg-surface publish-colors pointer-events-auto flex h-11 w-32 items-center justify-center rounded-t-[1.375rem] transition-colors',
+                willAccept &&
+                  (isOver
+                    ? activeDropTargetOverBackground
+                    : activeDropTargetBackground),
+                isToggleDisabled && 'cursor-not-allowed opacity-50',
               )}
-            </span>
-          </motion.button>
-        </motion.div>
+              data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
+              data-drop-target-valid={willAccept || undefined}
+              data-drop-target-over={isOver || undefined}
+              aria-labelledby={`${unplacedId} ${toggleLabelId}`}
+              aria-expanded={isExpandedEffective}
+            >
+              <MotionChevron
+                className="size-7"
+                aria-hidden
+                animate={{ rotate: isExpandedEffective ? 0 : 180 }}
+              />
+              <span id={unplacedId} className="sr-only">
+                <AppMessage
+                  message={messages.unplacedCount}
+                  values={{ count: nodes.length }}
+                />
+              </span>
+              <span id={toggleLabelId} className="sr-only">
+                {intl.formatMessage(
+                  isExpandedEffective
+                    ? messages.collapseDrawer
+                    : messages.expandDrawer,
+                )}
+              </span>
+            </motion.button>
+          </motion.div>
+        ) : (
+          <span className="sr-only">
+            <AppMessage
+              message={messages.unplacedCount}
+              values={{ count: nodes.length }}
+            />
+          </span>
+        )}
 
         <motion.div
           layout

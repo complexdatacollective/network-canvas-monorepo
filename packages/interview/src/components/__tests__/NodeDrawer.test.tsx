@@ -122,6 +122,21 @@ describe('NodeDrawer', () => {
     expect(visible.textContent?.trim()).toBe('');
   });
 
+  it('cannot be collapsed when it is not collapsible, and still names how many people are left', () => {
+    renderDrawer({
+      collapsible: false,
+      draggable: false,
+      selectedNodeId: 'a',
+      nodes: ['a', 'b'].map((id) => ({
+        [entityPrimaryKeyProperty]: id,
+        [entityAttributesProperty]: {},
+        type: 'person',
+      })),
+    });
+    expect(screen.queryByRole('button', { name: /drawer/i })).toBeNull();
+    expect(screen.getByText(/2 unplaced/i)).toBeInTheDocument();
+  });
+
   it('reopens when a newly selected person is in it, so the person being placed stays visible', async () => {
     const nodes = ['a', 'b'].map((id) => ({
       [entityPrimaryKeyProperty]: id,
