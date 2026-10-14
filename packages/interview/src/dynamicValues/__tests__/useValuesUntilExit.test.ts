@@ -24,6 +24,24 @@ describe('useValuesUntilExit', () => {
     expect(result.current.values.labels).toEqual({ node: 'Bo' });
   });
 
+  it('names the first content at once when nothing was on screen', () => {
+    // Nothing leaves, so no exit completes.
+    const { result, rerender } = renderHook(
+      ({ key, values }) => useValuesUntilExit(key, values),
+      {
+        initialProps: {
+          key: undefined as string | undefined,
+          values: named(undefined),
+        },
+      },
+    );
+    rerender({ key: 'a', values: named('Ada') });
+    expect(result.current.values.labels).toEqual({ node: 'Ada' });
+
+    rerender({ key: 'b', values: named('Bo') });
+    expect(result.current.values.labels).toEqual({ node: 'Ada' });
+  });
+
   it('follows new values for the same key at once', () => {
     const { result, rerender } = renderHook(
       ({ key, values }) => useValuesUntilExit(key, values),

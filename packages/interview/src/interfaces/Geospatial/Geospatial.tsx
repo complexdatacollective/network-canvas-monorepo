@@ -468,7 +468,7 @@ export default function GeospatialInterface({
   const placing = stageNodes[navState.activeIndex];
   const placingLabel = useNodeLabel(placing);
   const placingOnScreen = useValuesUntilExit(
-    placing?.[entityPrimaryKeyProperty] ?? '',
+    placing?.[entityPrimaryKeyProperty],
     {
       attributes: { node: placing?.[entityAttributesProperty] },
       labels: { node: placingLabel },

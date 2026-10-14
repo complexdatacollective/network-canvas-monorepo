@@ -221,13 +221,10 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
   // The prompt asks about the focal node, so it can name it. It keeps naming
   // the outgoing node until it has left.
   const focalLabel = useNodeLabel(source);
-  const focalOnScreen = useValuesUntilExit(
-    source?.[entityPrimaryKeyProperty] ?? '',
-    {
-      attributes: { focal: source?.[entityAttributesProperty] },
-      labels: { focal: focalLabel },
-    },
-  );
+  const focalOnScreen = useValuesUntilExit(source?.[entityPrimaryKeyProperty], {
+    attributes: { focal: source?.[entityAttributesProperty] },
+    labels: { focal: focalLabel },
+  });
 
   return (
     <div className="interface">
