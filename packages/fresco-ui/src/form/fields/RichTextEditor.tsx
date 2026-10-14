@@ -74,6 +74,7 @@ import {
   stateVariants,
 } from '../../styles/controlVariants';
 import { tokenPillClasses } from '../../TokenPill';
+import { useEnclosingHeadingLevel } from '../../typography/EnclosingHeadingLevel';
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
 import { cva, cx } from '../../utils/cva';
@@ -620,6 +621,15 @@ const SingleLineInput = Extension.create({
 
 type ExtensionOptions = {
   headingLevels: (1 | 2 | 3 | 4)[];
+  /**
+   * The level of the heading the field sits under, or 0 at the top of a page.
+   * The text's own headings are its reader's outline, not the page's: an `h1`
+   * in a field under a section's `h3` is a level-4 heading of the page, and
+   * read as level 1 it would jump the outline back to the top and then skip
+   * two levels at the next section. So each keeps its tag, which is how it
+   * looks, and states its place below the enclosing heading as `aria-level`.
+   */
+  enclosingHeadingDepth: number;
   enableBulletList: boolean;
   enableOrderedList: boolean;
   enableLinks: boolean;
@@ -632,6 +642,7 @@ type ExtensionOptions = {
 // Factory function to create custom extensions with typography classes
 function createCustomExtensions({
   headingLevels,
+  enclosingHeadingDepth,
   enableBulletList,
   enableOrderedList,
   enableLinks,
@@ -657,7 +668,13 @@ function createCustomExtensions({
       };
       return [
         `h${level}`,
-        { ...HTMLAttributes, class: classMap[level] ?? h1Classes },
+        {
+          ...HTMLAttributes,
+          class: classMap[level] ?? h1Classes,
+          ...(enclosingHeadingDepth > 0
+            ? { 'aria-level': String(enclosingHeadingDepth + level) }
+            : {}),
+        },
         0,
       ];
     },
@@ -1069,10 +1086,14 @@ export default function RichTextEditorField({
       options.headings.h4,
     ],
   );
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const enclosingHeadingDepth =
+    enclosingHeadingLevel === null ? 0 : Number(enclosingHeadingLevel.slice(1));
   const editorExtensions = useMemo(
     () =>
       createCustomExtensions({
         headingLevels,
+        enclosingHeadingDepth,
         enableBulletList: options.lists.bullet,
         enableOrderedList: options.lists.ordered,
         enableLinks: options.links,
@@ -1083,6 +1104,7 @@ export default function RichTextEditorField({
       }),
     [
       headingLevels,
+      enclosingHeadingDepth,
       options.lists.bullet,
       options.lists.ordered,
       options.links,

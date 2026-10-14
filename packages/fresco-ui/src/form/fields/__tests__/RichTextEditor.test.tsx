@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { withSafeTypingIntoRichText } from '../../../testing/withSafeTypingIntoRichText';
 import { tokenPillClasses } from '../../../TokenPill';
+import { EnclosingHeadingLevel } from '../../../typography/EnclosingHeadingLevel';
 import Field from '../../Field/Field';
 import Form from '../../Form';
 import SubmitButton from '../../SubmitButton';
@@ -48,7 +49,50 @@ const otherDocument = {
   ],
 };
 
+const documentWithAHeading = {
+  type: 'doc',
+  content: [
+    {
+      type: 'heading',
+      attrs: { level: 1 },
+      content: [{ type: 'text', text: 'Thank you' }],
+    },
+    {
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'Existing content' }],
+    },
+  ],
+};
+
 describe('RichTextEditorField', () => {
+  it('places the text’s headings below the heading the field sits under', async () => {
+    const editorWithAHeading = (
+      <RichTextEditorField
+        id="closing"
+        name="closing"
+        aria-describedby="closing-hint"
+        aria-label="Closing text"
+        value={documentWithAHeading}
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(
+      <EnclosingHeadingLevel level="h3">
+        {editorWithAHeading}
+      </EnclosingHeadingLevel>,
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Thank you', level: 4 }),
+    ).toBeInTheDocument();
+
+    // At the top of a page there is nothing to sit below.
+    rerender(editorWithAHeading);
+    expect(
+      await screen.findByRole('heading', { name: 'Thank you', level: 1 }),
+    ).not.toHaveAttribute('aria-level');
+  });
+
   it('clears editor content when its controlled value becomes undefined', async () => {
     const { rerender } = render(
       <RichTextEditorField
