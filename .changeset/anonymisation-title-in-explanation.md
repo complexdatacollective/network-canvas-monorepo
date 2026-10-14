@@ -1,6 +1,6 @@
 ---
 '@codaco/protocol-validation': minor
-'@codaco/protocol-utilities': minor
+'@codaco/protocol-utilities': major
 '@codaco/interview': minor
 '@codaco/architect': minor
 '@codaco/interviewer': minor
