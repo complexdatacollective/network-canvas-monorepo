@@ -413,8 +413,10 @@ test('adds a language, keeps the default language from being removed, translates
   await expect(
     translationCell(page, 'Closing text', 'French', 2),
   ).toBeFocused();
+  // Text of more than one line, as the closing text is in English, takes a
+  // new line on Enter, so Ctrl+Enter moves on.
   await page.keyboard.type('Merci encore.');
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Control+Enter');
   await expect(
     translationCell(page, 'Finished text', 'French', 2),
   ).toBeFocused();
