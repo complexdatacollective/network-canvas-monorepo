@@ -4,7 +4,7 @@ import type { ComponentType, StageType } from '@codaco/protocol-validation';
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 
 import type { interviewLocales } from '../i18n/locales';
-import { MAX_ELAPSED_MS } from './elapsed';
+import { MAX_ELAPSED_MS } from './elapsed.ts';
 
 export type AnalyticsStageType = StageType | 'FinishSession';
 

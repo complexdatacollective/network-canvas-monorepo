@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { createEntityIdPseudonymiser } from '../entityIds';
 import { createTracker, NULL_TRACKER } from '../tracker';
@@ -197,5 +197,19 @@ describe('NULL_TRACKER', () => {
         feature: 'external-data',
       }),
     ).not.toThrow();
+  });
+});
+
+describe('the tracker signature', () => {
+  it('accepts no properties for an event the catalogue declares none for', () => {
+    expectTypeOf(NULL_TRACKER.track<'interview_started'>)
+      .parameter(1)
+      .toEqualTypeOf<Record<string, never> | undefined>();
+  });
+
+  it('demands the declared properties of an event that has them', () => {
+    expectTypeOf(NULL_TRACKER.track<'interview_finished'>)
+      .parameter(1)
+      .toEqualTypeOf<{ readonly stage_count: number }>();
   });
 });

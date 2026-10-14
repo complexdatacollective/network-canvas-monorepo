@@ -28,8 +28,11 @@ type EventProps = {
   [key: string]: unknown;
 };
 
-type TrackArguments<Name extends InterviewAnalyticsEventName> =
-  Record<string, never> extends InterviewAnalyticsEventProperties<Name>
+type TrackArguments<Name extends InterviewAnalyticsEventName> = [
+  keyof InterviewAnalyticsEventProperties<Name>,
+] extends [never]
+  ? [props?: Record<string, never>]
+  : Record<string, never> extends InterviewAnalyticsEventProperties<Name>
     ? [props?: InterviewAnalyticsEventProperties<Name>]
     : [props: InterviewAnalyticsEventProperties<Name>];
 
