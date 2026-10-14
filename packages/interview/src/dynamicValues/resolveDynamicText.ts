@@ -188,6 +188,9 @@ const formatOne = (
 ): string => {
   const label = optionLabel(variable, value, formatters);
   if (label !== undefined) return label;
+  // A valid protocol never shows a yes/no attribute without labels as words
+  // (`dynamicValueUnshowableReason`); the interface's Yes and No only keep
+  // text readable if one reaches the interview anyway.
   if (typeof value === 'boolean') {
     return value ? formatters.booleanWords.yes : formatters.booleanWords.no;
   }
