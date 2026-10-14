@@ -194,11 +194,29 @@ export const createDefaultFinishSessionStage = ({
   outcome,
 });
 
-/** The text a participant reads: what decides whether a stage is still ours. */
+/**
+ * The text a participant reads: what decides whether a stage is still ours.
+ * An automatic stage never shows its closing screen, so only its finished
+ * screen counts; the closing text it keeps (empty, or left from before the
+ * mode changed) says nothing about whether the researcher has written their
+ * own.
+ */
+const shownTextFields = (
+  mode: FinishMode,
+): readonly FinishSessionTextField[] =>
+  mode === 'automatic'
+    ? ['finishedContent']
+    : (['content', 'finishedContent'] as const);
+
 const PARTICIPANT_TEXT_FIELDS = [
   'content',
   'finishedContent',
 ] as const satisfies readonly FinishSessionTextField[];
+
+type FinishSessionScreens = Pick<
+  FinishSessionStage,
+  FinishSessionTextField | 'mode'
+>;
 
 const holdsSuppliedText = (
   stage: Pick<FinishSessionStage, FinishSessionTextField>,
@@ -213,32 +231,34 @@ const holdsSuppliedText = (
 /**
  * Whether a finish stage's screens in one language are still
  * exactly the supplied text for that language: the researcher has not changed
- * what the participant reads. Architect only fills in a newly added language
- * when this holds for the default language, because supplied text beside a
- * researcher's own wording would say something else. The stage's label is a
- * name, not something the participant reads, so renaming it does not count.
+ * what the participant reads. Only the screens the stage's mode shows count.
+ * Architect only fills in a newly added language when this holds for the
+ * default language, because supplied text beside a researcher's own wording
+ * would say something else. The stage's label is a name, not something the
+ * participant reads, so renaming it does not count.
  */
 export const hasDefaultFinishSessionText = (
-  stage: Pick<FinishSessionStage, FinishSessionTextField>,
+  stage: FinishSessionScreens,
   locale: LocaleTag,
-): boolean => holdsSuppliedText(stage, locale, PARTICIPANT_TEXT_FIELDS);
+): boolean => holdsSuppliedText(stage, locale, shownTextFields(stage.mode));
 
 /**
  * The finish stage's text as Network Canvas writes it after a change to the
- * protocol's languages (see `suppliedTextAfterLanguageChange`): its closing and
- * finished screens when, in the default language before the change, they are still the
- * supplied text, and its label as well while that too is the supplied one.
- * Only those fields are returned; text the researcher has changed is theirs.
+ * protocol's languages (see `suppliedTextAfterLanguageChange`): the screens it
+ * shows when, in the default language before the change, they are still the
+ * supplied text, any screen it hides that is still supplied text as well, and
+ * its label while that too is the supplied one. Only those fields are
+ * returned; text the researcher has changed is theirs.
  */
 export const defaultFinishSessionTextAfterLanguageChange = (
-  stage: Pick<FinishSessionStage, FinishSessionTextField>,
+  stage: FinishSessionScreens,
   change: LanguageChange,
 ): Partial<Record<FinishSessionTextField, LocalizedString>> => {
   const { defaultLocale } = change.before;
   if (!hasDefaultFinishSessionText(stage, defaultLocale)) return {};
-  const fields = holdsSuppliedText(stage, defaultLocale, ['label'])
-    ? FINISH_SESSION_TEXT_FIELDS
-    : PARTICIPANT_TEXT_FIELDS;
+  const fields = [...PARTICIPANT_TEXT_FIELDS, 'label' as const].filter(
+    (field) => holdsSuppliedText(stage, defaultLocale, [field]),
+  );
   return Object.fromEntries(
     fields.map((field) => [
       field,

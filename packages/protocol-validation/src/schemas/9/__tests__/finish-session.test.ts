@@ -467,6 +467,34 @@ describe('supplied finish text', () => {
       });
     });
 
+    it('decides an automatic stage by its finished screen alone', () => {
+      // Its closing screen is never shown, so it may be empty, or text the
+      // researcher wrote before switching the mode.
+      const automatic = {
+        ...stage,
+        mode: 'automatic' as const,
+        content: { en: 'Written before the mode changed.' },
+      };
+      expect(hasDefaultFinishSessionText(automatic, 'en')).toBe(true);
+      expect(afterChange(automatic, addingFrench)).toEqual({
+        ...automatic,
+        label: { ...stage.label, fr: DEFAULT_FINISH_SESSION_TEXT.fr.label },
+        finishedContent: {
+          ...stage.finishedContent,
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
+        },
+      });
+
+      const emptyClosing = { ...automatic, content: {} };
+      expect(hasDefaultFinishSessionText(emptyClosing, 'en')).toBe(true);
+
+      const editedFinished = {
+        ...automatic,
+        finishedContent: { en: 'All done.' },
+      };
+      expect(hasDefaultFinishSessionText(editedFinished, 'en')).toBe(false);
+    });
+
     it('leaves a language with no supplied text untranslated', () => {
       expect(
         afterChange(stage, {
