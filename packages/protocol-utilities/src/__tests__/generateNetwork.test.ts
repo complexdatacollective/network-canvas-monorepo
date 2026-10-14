@@ -1568,6 +1568,21 @@ describe('generateNetwork', () => {
           outcome,
         }) as Stage;
 
+      it('finishes on an automatic ending rather than dropping out there', () => {
+        const stages = [makeFinish('end-completed', 'completed')];
+
+        const { droppedOut, currentStep } = generateNetwork({
+          codebook: makeCodebook(),
+          stages,
+          seed: 42,
+          simulateDropOut: true,
+          config: { dropOutFactor: 100 },
+        });
+
+        expect(droppedOut).toBe(false);
+        expect(currentStep).toBe(0);
+      });
+
       it('stops at the first finish stage it reaches', () => {
         const stages = [
           makeTypedNameGeneratorStage('ng-1', 'node-type-1'),

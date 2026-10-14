@@ -17,7 +17,7 @@ import {
   getCurrentStage,
   getNavigationInfo,
   getPromptCount,
-  getStageCount,
+  getProgressStageCount,
 } from '../selectors/session';
 import {
   getNavigableStages,
@@ -121,7 +121,7 @@ export default function useInterviewNavigation(
   const currentNavigation = useSelector((state: RootState) =>
     getNavigableStages(state, currentStep),
   );
-  const stageCount = useSelector(getStageCount);
+  const stageCount = useSelector(getProgressStageCount);
   const promptCount = useStageSelector(getPromptCount);
   // Passed to getInterviewProgress to compute the participant-facing progress
   // meta handed back to the host via onStepChange.

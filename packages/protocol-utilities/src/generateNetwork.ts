@@ -254,6 +254,15 @@ export function generateNetwork(
       }
     }
 
+    // An automatic finish stage ends the interview on arrival, so nobody can
+    // leave it unfinished; a confirming one can be left without pressing
+    // Finish, like any other stage.
+    if (isFinishSessionStage(stage) && stage.mode === 'automatic') {
+      reachedFinish = true;
+      currentStep = i;
+      break;
+    }
+
     if (simulateDropOut) {
       const dropOutChance = ((i + 1) / totalStages) * ctx.config.dropOutFactor;
       if (valueGen.randomFloat(0, 1) < dropOutChance) {

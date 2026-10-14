@@ -34,6 +34,19 @@ describe('getInterviewProgress', () => {
     expect(getInterviewProgress(stages, 1).progress).toBe(100);
   });
 
+  it('measures progress up to the first ending, not across alternative ones', () => {
+    const stages = [
+      { type: 'Information' },
+      { type: 'Information' },
+      { type: 'FinishSession' },
+      { type: 'FinishSession' },
+    ];
+
+    expect(getInterviewProgress(stages, 0).totalSteps).toBe(3);
+    expect(getInterviewProgress(stages, 1).progress).toBeCloseTo(66.67, 1);
+    expect(getInterviewProgress(stages, 3).progress).toBe(100);
+  });
+
   it('weights a single-prompt stage as a full step on entry', () => {
     const stages = [
       { type: 'Information' },
