@@ -710,6 +710,7 @@
     },
     {
       "id": "ego-form-background",
+      "dynamicValues": { "arrivalYear": { "path": "ego.arrival_year" } },
       "type": "EgoForm",
       "label": {
         "en-US": "Your background and migration history",
@@ -763,6 +764,11 @@
           },
           {
             "variable": "years_since_migration",
+            "hint": {
+              "en-US": "{arrivalYear, select, missing {} other {You said you first came to live here in {arrivalYear}.}}",
+              "es": "{arrivalYear, select, missing {} other {Usted mencionó que vino a vivir a este país por primera vez en {arrivalYear}.}}",
+              "hu": "{arrivalYear, select, missing {} other {Korábbi válasza szerint ekkor költözött először ebbe az országba: {arrivalYear}.}}"
+            },
             "prompt": {
               "en-US": "About how many years have you lived in this country?",
               "es": "¿Cuántos años, aproximadamente, lleva viviendo en este país?",
@@ -959,6 +965,7 @@
     },
     {
       "id": "alter-attributes",
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": {
         "en-US": "About each person",
@@ -974,9 +981,9 @@
           {
             "variable": "relationship",
             "prompt": {
-              "en-US": "What is this person to you?",
-              "es": "¿Qué es esta persona para usted?",
-              "hu": "Ki Önnek ez a személy?"
+              "en-US": "What is {nodeLabel} to you?",
+              "es": "¿Qué es {nodeLabel} para usted?",
+              "hu": "Ki Önnek {nodeLabel}?"
             }
           },
           {
@@ -990,17 +997,17 @@
           {
             "variable": "co_ethnic",
             "prompt": {
-              "en-US": "Would you say this person is from the **same ethnic or cultural background** as you?",
-              "es": "¿Diría que esta persona tiene **el mismo origen étnico o cultural** que usted?",
-              "hu": "Ön szerint ennek a személynek **ugyanaz az etnikai vagy kulturális háttere**, mint Önnek?"
+              "en-US": "Would you say {nodeLabel} is from the **same ethnic or cultural background** as you?",
+              "es": "¿Diría que {nodeLabel} tiene **el mismo origen étnico o cultural** que usted?",
+              "hu": "Ön szerint {nodeLabel} **etnikai vagy kulturális háttere ugyanaz**, mint az Öné?"
             }
           },
           {
             "variable": "support_type",
             "prompt": {
-              "en-US": "What kinds of **support** does this person give you?",
-              "es": "¿Qué tipos de **apoyo** le da esta persona?",
-              "hu": "Milyen fajta **támogatást** ad Önnek ez a személy?"
+              "en-US": "What kinds of **support** does {nodeLabel} give you?",
+              "es": "¿Qué tipos de **apoyo** le da {nodeLabel}?",
+              "hu": "Milyen fajta **támogatást** ad Önnek {nodeLabel}?"
             },
             "hint": {
               "en-US": "Select all that apply.",
@@ -1038,6 +1045,7 @@
     },
     {
       "id": "geospatial-map",
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "offlineNotice": {
         "en-US": "You are offline — the map will not load until you reconnect.",
         "es": "No tienes conexión. El mapa no se cargará hasta que vuelvas a conectarte.",
@@ -1079,9 +1087,9 @@
         {
           "id": "geo-location",
           "text": {
-            "en-US": "For each person, please select the **country where they currently live** on the map. This helps us see how your network of important people is spread across the world.",
-            "es": "Por favor, seleccione en el mapa el **país donde vive actualmente cada persona**. Esto nos ayuda a ver cómo está repartida por el mundo su red de personas importantes.",
-            "hu": "Kérjük, minden személynél jelölje ki a térképen azt az **országot, ahol az illető jelenleg él**. Ez segít abban, hogy lássuk, hogyan oszlik el a világban az Ön számára fontos emberek köre."
+            "en-US": "Please select the **country where {nodeLabel} currently lives** on the map. This helps us see how your network of important people is spread across the world.",
+            "es": "Por favor, seleccione en el mapa el **país donde vive actualmente {nodeLabel}**. Esto nos ayuda a ver cómo se distribuye por el mundo la red de personas importantes para usted.",
+            "hu": "Kérjük, jelölje ki a térképen azt az **országot, ahol {nodeLabel} jelenleg él**. Ez segít abban, hogy lássuk, hogyan oszlik el a világban az Ön számára fontos emberek köre."
           },
           "variable": "alter_location"
         }

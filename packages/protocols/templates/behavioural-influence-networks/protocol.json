@@ -406,6 +406,7 @@
     },
     {
       "id": "alter-behaviours",
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": { "en-US": "Their behaviours" },
       "subject": {
@@ -417,36 +418,36 @@
           {
             "variable": "shared_domains",
             "prompt": {
-              "en-US": "Which of these activities do you ever do **with this person**?"
+              "en-US": "Which of these activities do you ever do **with {nodeLabel}**?"
             },
             "hint": { "en-US": "Select all that apply." }
           },
           {
             "variable": "relationship",
-            "prompt": { "en-US": "What is your relationship to this person?" }
+            "prompt": { "en-US": "What is your relationship to {nodeLabel}?" }
           },
           {
             "variable": "alter_smokes",
             "prompt": {
-              "en-US": "As far as you know, does this person **smoke**?"
+              "en-US": "As far as you know, does {nodeLabel} **smoke**?"
             }
           },
           {
             "variable": "alter_activity",
             "prompt": {
-              "en-US": "How **physically active** would you say this person is?"
+              "en-US": "How **physically active** would you say {nodeLabel} is?"
             }
           },
           {
             "variable": "alter_diet",
             "prompt": {
-              "en-US": "How **healthy** would you say this person's diet is?"
+              "en-US": "How **healthy** would you say {nodeLabel}'s diet is?"
             }
           },
           {
             "variable": "alter_drinks",
             "prompt": {
-              "en-US": "How often does this person **drink alcohol**, as far as you know?"
+              "en-US": "How often does {nodeLabel} **drink alcohol**, as far as you know?"
             }
           }
         ]

@@ -795,6 +795,7 @@
     },
     {
       "id": "alter-form-people",
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "label": {
         "en-US": "About each person"
       },
@@ -808,19 +809,19 @@
           {
             "variable": "relationship",
             "prompt": {
-              "en-US": "How do you know this person?"
+              "en-US": "How do you know {nodeLabel}?"
             }
           },
           {
             "variable": "contact_frequency",
             "prompt": {
-              "en-US": "How often are you usually in touch with this person?"
+              "en-US": "How often are you usually in touch with {nodeLabel}?"
             }
           },
           {
             "variable": "knows_about_abuse",
             "prompt": {
-              "en-US": "Does this person **know** about what has been happening in your relationship?"
+              "en-US": "Does {nodeLabel} **know** about what has been happening in your relationship?"
             },
             "hint": {
               "en-US": "Whether you told them or they found out another way."
@@ -850,6 +851,7 @@
     },
     {
       "id": "alter-form-services",
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "label": {
         "en-US": "Services you contacted"
       },
@@ -878,7 +880,7 @@
           {
             "variable": "service_helpful",
             "prompt": {
-              "en-US": "Overall, how helpful was this service?"
+              "en-US": "Overall, how helpful was {nodeLabel}?"
             }
           }
         ]
@@ -907,6 +909,7 @@
     },
     {
       "id": "categorical-bin-reaction",
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "interviewScript": "Only people the participant said know about the abuse appear here. Anything typed into the 'Something else' box is saved encrypted with the participant's passphrase, because a free-text description is where identifying details tend to appear.",
       "label": {
         "en-US": "How people reacted"
@@ -940,7 +943,7 @@
           "variable": "reaction",
           "otherVariable": "reaction_other",
           "otherVariablePrompt": {
-            "en-US": "In your own words, how did this person react? (This is saved encrypted.)"
+            "en-US": "In your own words, how did {nodeLabel} react? (This is saved encrypted.)"
           },
           "otherOptionLabel": {
             "en-US": "Something else"
