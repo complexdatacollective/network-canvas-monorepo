@@ -52,6 +52,7 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import {
   getNodePair,
   getStageMetadataResponse,
@@ -414,15 +415,20 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   };
 
   // The pair the prompts name stays the outgoing one until it has left.
+  const fromLabel = useNodeLabel(fromNode);
+  const toLabel = useNodeLabel(toNode);
   const pairOnScreen = useValuesUntilExit(`${promptIndex}_${pairIndex}`, {
-    dyadSource: fromNode?.[entityAttributesProperty],
-    dyadTarget: toNode?.[entityAttributesProperty],
+    attributes: {
+      dyadSource: fromNode?.[entityAttributesProperty],
+      dyadTarget: toNode?.[entityAttributesProperty],
+    },
+    labels: { dyadSource: fromLabel, dyadTarget: toLabel },
   });
 
   return (
     // The pair on screen is who the prompts can name: the first and second
     // person, as the pair shows them.
-    <DynamicValueEntity attributes={pairOnScreen.values}>
+    <DynamicValueEntity {...pairOnScreen.values}>
       <div className="interface">
         {hasPairs && (
           <motion.div

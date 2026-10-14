@@ -36,6 +36,7 @@ export const useDynamicValueSources = (): DynamicValueSources | null =>
 
 const NO_BINDINGS: DynamicValues = {};
 const NO_ATTRIBUTES: Readonly<Record<string, unknown>> = {};
+const NO_LABELS: Readonly<Partial<Record<DynamicValueRole, string>>> = {};
 
 type EntityVariables = Readonly<Record<string, Variable>> | undefined;
 
@@ -90,9 +91,12 @@ export function StageDynamicValues({
       bindings: stage.dynamicValues ?? NO_BINDINGS,
       intrinsics,
       attributes: { ego: egoAttributes },
+      labels: NO_LABELS,
       variablesFor: (role) => {
         if (role === 'ego') return codebook?.ego?.variables ?? {};
         if (role === 'edge') return variables.edge;
+        // An edge's ends are nodes of any type, shown only by their labels.
+        if (role === 'edgeFrom' || role === 'edgeTo') return undefined;
         return variables.node;
       },
     };
@@ -105,40 +109,68 @@ export function StageDynamicValues({
   );
 }
 
+type RoleValues<T> = Readonly<Partial<Record<DynamicValueRole, T | undefined>>>;
+
 /**
- * Puts entities on screen for the text inside: the person a form describes,
- * the pair a census asks about, the focal person of a one-to-many census.
+ * The entities on screen for text, as `DynamicValueEntity` puts them there:
+ * each role's attributes, and each node role's label (`useNodeLabel`).
+ */
+export type DynamicValueEntities = Readonly<{
+  attributes?: RoleValues<Readonly<Record<string, unknown>>>;
+  labels?: RoleValues<string>;
+}>;
+
+/** `values` with each role in `given` replaced, and each given undefined removed. */
+const withRoles = <T,>(
+  values: Readonly<Partial<Record<DynamicValueRole, T>>>,
+  given: RoleValues<T> | undefined,
+): Readonly<Partial<Record<DynamicValueRole, T>>> => {
+  if (given === undefined) return values;
+  const merged: Partial<Record<DynamicValueRole, T>> = { ...values };
+  for (const [role, value] of Object.entries(given) as [
+    DynamicValueRole,
+    T | undefined,
+  ][]) {
+    if (value === undefined) delete merged[role];
+    else merged[role] = value;
+  }
+  return merged;
+};
+
+/**
+ * `sources` with `entities` on screen, for text resolved outside the React
+ * tree below a `DynamicValueEntity` (a dialog opened from an event).
+ */
+export const withDynamicValueEntities = (
+  sources: DynamicValueSources,
+  { attributes, labels }: DynamicValueEntities,
+): DynamicValueSources => ({
+  ...sources,
+  attributes: withRoles(sources.attributes, attributes),
+  labels: withRoles(sources.labels, labels),
+});
+
+/**
+ * Puts entities on screen for the text inside: the node a form describes,
+ * the pair a census asks about, the focal node of a one-to-many census.
  * Their attributes are read as given, so a caller passes live values (a
  * form's answers so far over what is stored) where the text should follow
- * them. A role given `undefined` is not on screen, and its values read as
- * missing. Outside a stage it does nothing.
+ * them, and each node's label as it shows it. A role given `undefined` is not
+ * on screen, and its values read as missing. Outside a stage it does nothing.
  */
 export function DynamicValueEntity({
   attributes,
+  labels,
   children,
-}: {
-  attributes: Readonly<
-    Partial<
-      Record<DynamicValueRole, Readonly<Record<string, unknown>> | undefined>
-    >
-  >;
-  children: ReactNode;
-}) {
+}: DynamicValueEntities & { children: ReactNode }) {
   const parent = useContext(DynamicValueScopeContext);
-  const sources = useMemo(() => {
-    if (parent === null) return null;
-    const merged: Partial<
-      Record<DynamicValueRole, Readonly<Record<string, unknown>>>
-    > = { ...parent.attributes };
-    for (const [role, values] of Object.entries(attributes) as [
-      DynamicValueRole,
-      Readonly<Record<string, unknown>> | undefined,
-    ][]) {
-      if (values === undefined) delete merged[role];
-      else merged[role] = values;
-    }
-    return { ...parent, attributes: merged };
-  }, [parent, attributes]);
+  const sources = useMemo(
+    () =>
+      parent === null
+        ? null
+        : withDynamicValueEntities(parent, { attributes, labels }),
+    [parent, attributes, labels],
+  );
 
   return (
     <DynamicValueScopeContext.Provider value={sources}>
