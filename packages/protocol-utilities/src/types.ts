@@ -3,6 +3,7 @@ import type {
   ComponentType,
   EdgeColorReference,
   FilterOperator,
+  FinishMode,
   FinishOutcome,
   Item,
   LocaleTag,
@@ -362,8 +363,10 @@ export type StageEntry = {
   nodeForm?: { fields: NetworkComposerFormFieldEntry[] };
   networkComposerEdges?: NetworkComposerEdgeEntry[];
   convexHullVariable?: string;
-  // FinishSession (its `title` is the shared `title` above)
+  // FinishSession
+  mode?: FinishMode;
   content?: TextInput;
+  finishedContent?: TextInput;
   outcome?: FinishOutcome;
 };
 

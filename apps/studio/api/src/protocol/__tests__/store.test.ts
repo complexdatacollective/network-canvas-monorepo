@@ -403,12 +403,14 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const finish = (id: string) => ({
       id,
       type: 'FinishSession',
+      mode: 'confirmation',
       label: { en: 'Finish' },
-      title: { en: 'Thank you' },
-      content: { en: 'Done.' },
+      content: { en: '# Thank you\n\nDone.' },
+      finishedContent: {
+        en: '# Interview Finished\n\nThank you for participating!',
+      },
       finishLabel: { en: 'Finish' },
       finishConfirmation: { en: 'Finish this interview?' },
-      finishedNotice: { en: 'This interview is finished.' },
       finishFailed: { en: 'The interview could not be finished.' },
       outcome: 'completed',
     });

@@ -1522,12 +1522,14 @@ describe('generateNetwork', () => {
       const finish = {
         id: 'finish',
         type: 'FinishSession' as const,
+        mode: 'confirmation' as const,
         label: en('Finish'),
-        title: en('All done'),
-        content: en('Thank you.'),
+        content: en('# All done\n\nThank you.'),
+        finishedContent: en(
+          '# Interview Finished\n\nThank you for participating!',
+        ),
         finishLabel: en('Finish'),
         finishConfirmation: en('Finish this interview?'),
-        finishedNotice: en('This interview is finished.'),
         finishFailed: en('The interview could not be finished.'),
         outcome: 'completed' as const,
       };

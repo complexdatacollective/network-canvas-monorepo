@@ -365,12 +365,14 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
       rewrite: (document: Readonly<Record<string, unknown>>) => ({
         id: document.id,
         type: 'FinishSession',
+        mode: 'confirmation',
         label: enUS('A second end'),
-        title: enUS('A second end'),
-        content: enUS('Thank you.'),
+        content: enUS('# A second end\n\nThank you.'),
+        finishedContent: enUS(
+          '# Interview Finished\n\nThank you for participating!',
+        ),
         finishLabel: enUS('Finish'),
         finishConfirmation: enUS('Finish this interview?'),
-        finishedNotice: enUS('This interview is finished.'),
         finishFailed: enUS('The interview could not be finished.'),
         outcome: 'completed',
       }),

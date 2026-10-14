@@ -146,7 +146,7 @@ type TextScaleStyle = CSSProperties & { '--interview-text-scale': number };
  * A finished interview shows its completed state; a review of one shows its
  * stages, because reading them is what a review is for. A review of a
  * protocol with no stage before its finish stage has nothing to show, so it
- * shows the finish stage's text, read-only, without the Finish button.
+ * shows the finish stage's closing text, read-only, without the Finish button.
  *
  * The participant's text size is held here, above both, so it carries from
  * the interview into its completed state.
@@ -180,7 +180,7 @@ function Interview(props: InterviewProps) {
         <CompletedShell
           stageId={undefined}
           focusOnMount={false}
-          notice={false}
+          finished={false}
           textScaleStyle={textScaleStyle}
           actions={
             onExit
@@ -202,7 +202,7 @@ function Interview(props: InterviewProps) {
       <CompletedShell
         stageId={completion.stageId}
         focusOnMount={completion.finishedHere}
-        notice
+        finished
         textScaleStyle={textScaleStyle}
       />
     );
@@ -224,13 +224,13 @@ function Interview(props: InterviewProps) {
 function CompletedShell({
   stageId,
   focusOnMount,
-  notice,
+  finished,
   textScaleStyle,
   actions,
 }: {
   stageId: string | null | undefined;
   focusOnMount: boolean;
-  notice: boolean;
+  finished: boolean;
   textScaleStyle: TextScaleStyle;
   actions?: readonly CompletedAction[];
 }) {
@@ -266,7 +266,7 @@ function CompletedShell({
           <CompletedInterview
             stage={stage}
             focusOnMount={focusOnMount}
-            notice={notice}
+            finished={finished}
             actions={actions}
           />
         </div>

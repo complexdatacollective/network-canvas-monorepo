@@ -19,12 +19,12 @@ import FinishSession from '../FinishSession';
 const finishStage = {
   id: 'finish',
   type: 'FinishSession',
+  mode: 'confirmation',
   label: { en: 'Finish' },
-  title: { en: 'All done' },
-  content: { en: 'Thank you for taking part.' },
+  content: { en: '# All done\n\nThank you for taking part.' },
+  finishedContent: { en: '# Finished\n\nThank you.' },
   finishLabel: { en: 'Finish' },
   finishConfirmation: { en: 'Finish this interview?' },
-  finishedNotice: { en: 'This interview is finished.' },
   finishFailed: { en: 'The interview could not be finished.' },
   outcome: 'completed',
 } as const;
@@ -152,9 +152,10 @@ describe('FinishSession analytics', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
-    expect(
-      await within(dialog).findByText(/could not be finished/),
-    ).toBeVisible();
+    // The question closes, back to the closing screen, where a toast says
+    // the interview could not be finished.
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
     expect(finishedCalls(tracker)).toEqual([]);
   });
 });

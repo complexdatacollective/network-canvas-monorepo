@@ -145,12 +145,14 @@ const ENDS_AT_FINISH: Readonly<Record<string, SectionDoc>> = {
   [`stage:${FINISH}`]: {
     id: FINISH,
     type: 'FinishSession',
+    mode: 'confirmation',
     label: enUS('Finish'),
-    title: enUS('Thank you'),
-    content: enUS('The interview is complete.'),
+    content: enUS('# Thank you\n\nThe interview is complete.'),
+    finishedContent: enUS(
+      '# Interview Finished\n\nThank you for participating!',
+    ),
     finishLabel: enUS('Finish'),
     finishConfirmation: enUS('Finish this interview?'),
-    finishedNotice: enUS('This interview is finished.'),
     finishFailed: enUS('The interview could not be finished.'),
     outcome: 'completed',
   },
