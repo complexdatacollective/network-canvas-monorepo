@@ -316,6 +316,7 @@ export {
 // protocol is admissible should call `validateProtocol`.
 export {
   collectLocalizedStrings,
+  collectLocalizedStringsFromSchema,
   type LocalizedStringHit,
 } from './utils/collectLocalizedStrings.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';

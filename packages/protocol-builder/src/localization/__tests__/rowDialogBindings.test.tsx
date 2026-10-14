@@ -287,3 +287,40 @@ describe("a value inserted in a form field's question", () => {
     expect(preview).not.toHaveTextContent('{today}');
   });
 });
+
+describe('a value inserted in default-language text that is translated', () => {
+  it('refuses the stage save until the translation shows it too', async () => {
+    const { type, fields } = loadFixtureStage('dyad-census-1');
+    const harness = renderStageEditor({
+      stage: {
+        type,
+        fields: {
+          ...fields,
+          prompts: [
+            {
+              id: 'dyad-census-prompt-1',
+              text: {
+                'en-US': 'Who do you know?',
+                'fr': 'Qui connaissez-vous ?',
+              },
+              createEdge: 'knows',
+            },
+          ],
+        },
+      },
+      registry: dyadCensusStageEditor,
+      localization: { defaultLocale: 'en-US', locales: ['en-US', 'fr'] },
+    });
+    const dialog = await insertTodayInPrompt(harness);
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await dialogClosed();
+
+    // The French text, untouched, no longer shows every value the English
+    // text does; the protocol would not accept the stage.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      (await screen.findAllByText(/This translation must show "\{today/))
+        .length,
+    ).toBeGreaterThan(0);
+  });
+});
