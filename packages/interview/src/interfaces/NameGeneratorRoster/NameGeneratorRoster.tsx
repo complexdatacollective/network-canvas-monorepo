@@ -40,6 +40,7 @@ import Panel from '../../components/Panel';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { writeFailureMessage } from '../../forms/writeSubmissionResult';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -105,7 +106,15 @@ const keyExtractor = (item: UseItemElement) => item.id;
 const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
   const intl = useAppIntl();
   const { stage } = props;
-  const { text: panelTitle } = useLocalizedString(stage.panelTitle);
+  const { text: panelTitleText, parts: panelTitleParts } = useLocalizedString(
+    stage.panelTitle,
+  );
+  const panelTitle =
+    panelTitleParts === undefined ? (
+      panelTitleText
+    ) : (
+      <DynamicTextParts parts={panelTitleParts} />
+    );
   const { text: externalDataError } = useLocalizedString(
     stage.externalDataError,
   );

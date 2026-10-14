@@ -57,6 +57,7 @@ import type {
   StepChangeHandler,
   SyncHandler,
 } from './contract/types';
+import { StageDynamicValues } from './dynamicValues/DynamicValueScope';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
 import type { InterviewCatalog } from './i18n/catalog';
@@ -263,12 +264,14 @@ function CompletedShell({
           id="stage"
           data-interview-completed=""
         >
-          <CompletedInterview
-            stage={stage}
-            focusOnMount={focusOnMount}
-            notice={notice}
-            actions={actions}
-          />
+          <StageDynamicValues stage={stage}>
+            <CompletedInterview
+              stage={stage}
+              focusOnMount={focusOnMount}
+              notice={notice}
+              actions={actions}
+            />
+          </StageDynamicValues>
         </div>
         <LanguageUnavailableNotice />
       </DirectionProvider>
@@ -420,11 +423,12 @@ function ActiveInterview({
                         )}
                         <StageErrorBoundary>
                           {canRenderStage && CurrentInterface && (
-                            <CurrentInterface
-                              key={stage.id}
-                              stage={stage}
-                              getNavigationHelpers={getNavigationHelpers}
-                            />
+                            <StageDynamicValues key={stage.id} stage={stage}>
+                              <CurrentInterface
+                                stage={stage}
+                                getNavigationHelpers={getNavigationHelpers}
+                              />
+                            </StageDynamicValues>
                           )}
                         </StageErrorBoundary>
                       </div>

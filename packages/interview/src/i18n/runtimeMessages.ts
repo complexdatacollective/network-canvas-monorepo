@@ -185,4 +185,10 @@ export const runtimeMessages = defineMessages({
     defaultMessage: 'Interview notifications',
     description: 'Accessible name of the interview notification region.',
   },
+  dynamicValue: {
+    id: 'interview.runtime.dynamicValue',
+    defaultMessage: 'Dynamic value: {value}',
+    description:
+      "Read by screen readers in place of a value the interview fills into the study's own text, such as a name the participant gave earlier. {value} is that value, exactly as shown.",
+  },
 });

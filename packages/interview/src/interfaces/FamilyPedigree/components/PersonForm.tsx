@@ -427,23 +427,42 @@ export default function PersonForm({
     return values;
   }, [person, formFields]);
 
-  const { fieldComponents, toAttributePatch, passphraseNeeded } =
-    useProtocolForm({
-      fields: formFields,
-      subject: { entity: 'node', type: config.personType },
-      initialValues: initialResearcherValues,
-      currentEntityId: person?.id,
-      unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
-    });
+  // The name, gender identity and sex questions come before the
+  // researcher's fields, whose text can show their answers as given.
+  const builtInVariables = useMemo(
+    () => [
+      ...(asksName ? [config.nameAttribute] : []),
+      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
+      config.sexAssignedAtBirthAttribute,
+    ],
+    [
+      asksName,
+      config.nameAttribute,
+      config.genderIdentity,
+      config.sexAssignedAtBirthAttribute,
+    ],
+  );
+
+  const {
+    fieldComponents,
+    withFormValues,
+    toAttributePatch,
+    passphraseNeeded,
+  } = useProtocolForm({
+    fields: formFields,
+    subject: { entity: 'node', type: config.personType },
+    initialValues: initialResearcherValues,
+    currentEntityId: person?.id,
+    unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
+    precedingVariables: builtInVariables,
+  });
 
   const handleSubmit: FormSubmitHandler = (values) => {
     const set: PersonDetails = readOwnDetails(values, config);
     // A name the form does not ask is left as it is.
-    const unset = [
-      ...(asksName ? [config.nameAttribute] : []),
-      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
-      config.sexAssignedAtBirthAttribute,
-    ].filter((variable) => !Object.hasOwn(set, variable));
+    const unset = builtInVariables.filter(
+      (variable) => !Object.hasOwn(set, variable),
+    );
 
     // "No" and "Don't know" are recorded; "Yes" leaves the question to the
     // siblings or children the participant goes on to add.
@@ -600,17 +619,10 @@ export default function PersonForm({
     description: reasonsFor(reasonContext, sexReasons, value),
   }));
 
-  // A researcher's question, in the interview's language, names the detail
-  // still missing; the attribute's own name stands in without one.
-  const fieldPromptText = (variable: string) => {
-    const prompt = formFields.find(
-      (field) => field.variable === variable,
-    )?.prompt;
-    return prompt === undefined ? variable : resolve(prompt).text;
-  };
-
-  // Each missing detail, by the question that asks it and how it is named.
-  const missingQuestions =
+  // Each missing detail, by the question that asks it and how it is named:
+  // a researcher's question by its prompt, resolved in the form's scope like
+  // the field itself; the attribute's own name stands in without one.
+  const missingQuestions: readonly MissingQuestion[] =
     mode.kind === 'edit'
       ? mode.missing.map((detail) =>
           typeof detail === 'string'
@@ -623,7 +635,7 @@ export default function PersonForm({
               }
             : {
                 name: detail.variable,
-                label: fieldPromptText(detail.variable),
+                ...missingFieldWording(formFields, detail.variable),
               },
         )
       : [];
@@ -632,7 +644,9 @@ export default function PersonForm({
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
       <DerivedAnswersScope>
         <div className="flex flex-col gap-8">
-          <MissingDetailsNotice questions={missingQuestions} />
+          {withFormValues(
+            <MissingDetailsNotice questions={missingQuestions} />,
+          )}
           <section className="flex flex-col">
             {asksName && (
               <Field
@@ -736,20 +750,37 @@ const isUnanswered = (value: FieldValue | undefined) =>
  * form stands: one answered drops out of the notice, and one cleared again
  * comes back.
  */
+type MissingQuestion = Readonly<
+  | { name: string; label: string }
+  | { name: string; prompt: FormField['prompt'] }
+>;
+
+/** How a researcher's field names its detail: its prompt, or its variable. */
+const missingFieldWording = (
+  fields: readonly FormField[],
+  variable: string,
+): { label: string } | { prompt: FormField['prompt'] } => {
+  const prompt = fields.find((field) => field.variable === variable)?.prompt;
+  return prompt === undefined ? { label: variable } : { prompt };
+};
+
 function MissingDetailsNotice({
   questions,
 }: {
-  questions: readonly { name: string; label: string }[];
+  questions: readonly MissingQuestion[];
 }) {
   const { wording, text } = usePedigreeWords();
   const contentFormat = useContentFormat();
+  const resolve = useResolveLocalizedString();
   const values = useFormValue(
     questions.map((question) => question.name),
     'opaque',
   );
   const labels = questions
     .filter((question) => isUnanswered(values[question.name]))
-    .map((question) => question.label);
+    .map((question) =>
+      'label' in question ? question.label : resolve(question.prompt).text,
+    );
   if (labels.length === 0) return null;
   return (
     <Alert variant="warning">

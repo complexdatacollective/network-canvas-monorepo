@@ -176,6 +176,9 @@ const NodeForm = (props: NodeFormProps) => {
       initialValues: edited?.values,
       currentEntityId: selectedNode?.[entityPrimaryKeyProperty],
       unavailableVariables: edited?.unavailable,
+      // A new person is created with the prompt's attributes, which the
+      // form's text can show while they are added.
+      newEntityAttributes: newNodeAttributes,
     });
 
   const handleSubmit: FormSubmitHandler = useCallback(

@@ -25,7 +25,12 @@ import PassphraseEntry from '../../components/PassphraseEntry';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import {
+  useDynamicValueSources,
+  withDynamicValueEntities,
+} from '../../dynamicValues/DynamicValueScope';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
+import { shownLabel } from '../../forms/ProtocolField';
 import { useValidationNetwork } from '../../forms/useValidationNetwork';
 import {
   writeFailureMessage,
@@ -34,7 +39,11 @@ import {
 import { useBinSelection } from '../../hooks/useBinSelection';
 import useCompletePlacement from '../../hooks/useCompletePlacement';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import {
+  type ResolvedProtocolText,
+  useResolveLocalizedString,
+  useResolveLocalizedStringIn,
+} from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -57,7 +66,9 @@ import {
   getDecryptionScope,
   readEncryptedAttribute,
 } from '../Anonymisation/decryptionScope';
-import { useNodeLabel } from '../Anonymisation/useNodeLabel';
+import { readNodeLabelSource } from '../Anonymisation/nodeLabel';
+import { useCachedOutcomes } from '../Anonymisation/useDecryptionScope';
+import { useNodeLabel, useNodeLabeller } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import CategoricalBinItem from './components/CategoricalBinItem';
 import { useCategoricalBins } from './useCategoricalBins';
@@ -105,7 +116,8 @@ type OtherResponseProps = Pick<
 > & {
   node: NcNode;
   variable: string;
-  label: string;
+  /** The question, resolved where the person was dropped. */
+  label: ResolvedProtocolText;
   validationProps: ReturnType<typeof validationPropsFor>;
   /** The person's current answer, when it can be shown. */
   initialValue?: string;
@@ -139,7 +151,7 @@ function OtherResponse({
     [variable],
     nodeId,
   );
-  const labelText = label;
+  const labelText = label.text;
 
   // Context-dependent rules (unique, sameAs, differentFrom,
   // greaterThanVariable, etc.) resolve against the entity being edited and
@@ -181,7 +193,9 @@ function OtherResponse({
           <OtherResponseNode node={node} color={color} shape={shape} />
         </div>
         <Field
-          label={label}
+          // A node, so the label's markdown is rendered with any value in it
+          // kept out of the markdown and marked out, as in a form.
+          label={shownLabel(label)}
           component={InputField}
           name={variable}
           nameMode="opaque"
@@ -310,6 +324,21 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     return false;
   };
   const resolve = useResolveLocalizedString();
+  const resolveIn = useResolveLocalizedStringIn();
+  const dynamicValueSources = useDynamicValueSources();
+  const labelNode = useNodeLabeller(useCachedOutcomes());
+
+  // The label a node shows, waiting for one that is still decrypting (such as
+  // just after the passphrase is entered), since the dialog's question is
+  // resolved once and would otherwise name the lock for as long as it is open.
+  const readNodeLabel = async (node: NcNode) => {
+    const source = readNodeLabelSource(node, stageVariables);
+    const scope = getDecryptionScope(store.getState);
+    if (source.status === 'encrypted' && scope) {
+      await decryptInScope(scope, source.value);
+    }
+    return labelNode(node, source);
+  };
 
   const readOtherAnswer = async (node: NcNode, otherVariable: string) => {
     const stored = node[entityAttributesProperty][otherVariable];
@@ -362,8 +391,6 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt, otherOptionLabel } = prompt;
-      const otherPromptLabel = resolve(otherVariablePrompt).text;
-
       // An answer that would be encrypted is not asked for until it could be
       // saved.
       if (stageVariables[otherVariable]?.encrypted && !unlocked) {
@@ -388,6 +415,18 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
       const otherValidationProps = otherValidationMetadata
         ? validationPropsFor(otherValidationMetadata)
         : {};
+
+      // The question is about the node just dropped, so it can name it as
+      // its card does.
+      const nodeLabel = await readNodeLabel(node);
+      const otherPromptLabel = resolveIn(
+        otherVariablePrompt,
+        dynamicValueSources &&
+          withDynamicValueEntities(dynamicValueSources, {
+            attributes: { node: node[entityAttributesProperty] },
+            labels: { node: nodeLabel },
+          }),
+      );
 
       // The current answer is shown for editing, so confirming the dialog
       // never blanks it. An encrypted one is decrypted with the key in force;

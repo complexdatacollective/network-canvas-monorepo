@@ -11,7 +11,9 @@ export { OrdinalColorSequence as ordinalColorSequence } from '../color-reference
 
 export const promptSchema = z.strictObject({
   id: z.string(),
-  text: localizedString(nonBlankText(), 'markdown'),
+  text: localizedString(nonBlankText(), 'markdown', {
+    dynamicValues: 'prompt',
+  }),
 });
 
 // Re-parses an already-refined value against a narrowing union so the STATIC
@@ -155,7 +157,9 @@ export const tieStrengthCensusPromptSchema = promptSchema.extend({
     requireType: ['ordinal'],
     usage: 'unvalidatedAttribute',
   }),
-  negativeLabel: localizedString(nonBlankText(), 'markdown'),
+  negativeLabel: localizedString(nonBlankText(), 'markdown', {
+    dynamicValues: 'prompt',
+  }),
 });
 
 export const ordinalBinPromptSchema = promptSchema.extend({
@@ -191,8 +195,14 @@ export const categoricalBinPromptSchema = promptSchema
       requireType: ['text'],
       usage: 'validatedAttribute',
     }).optional(),
-    otherVariablePrompt: localizedString(nonBlankText(), 'markdown').optional(),
-    otherOptionLabel: localizedString(nonBlankText(), 'markdown').optional(),
+    // The question the "other" bin asks about the node just put in it, which
+    // is a one-field form about that node.
+    otherVariablePrompt: localizedString(nonBlankText(), 'markdown', {
+      dynamicValues: 'formField',
+    }).optional(),
+    otherOptionLabel: localizedString(nonBlankText(), 'markdown', {
+      dynamicValues: 'prompt',
+    }).optional(),
   })
   .superRefine((prompt, ctx) => {
     if (prompt.otherVariable === '') {
@@ -246,8 +256,12 @@ export const categoricalBinPromptSchema = promptSchema
             requireType: ['text'],
             usage: 'validatedAttribute',
           }),
-          otherVariablePrompt: localizedString(nonBlankText(), 'markdown'),
-          otherOptionLabel: localizedString(nonBlankText(), 'markdown'),
+          otherVariablePrompt: localizedString(nonBlankText(), 'markdown', {
+            dynamicValues: 'formField',
+          }),
+          otherOptionLabel: localizedString(nonBlankText(), 'markdown', {
+            dynamicValues: 'prompt',
+          }),
         }),
         promptSchema.extend({
           ...categoricalBinPromptFields,

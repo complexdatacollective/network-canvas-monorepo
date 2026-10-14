@@ -22,6 +22,7 @@ import {
 import Loading from '../../../components/Loading';
 import NodeList from '../../../components/NodeList';
 import Panel from '../../../components/Panel';
+import { DynamicTextParts } from '../../../dynamicValues/DynamicText';
 import useExternalData from '../../../hooks/useExternalData';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import {
@@ -67,7 +68,9 @@ function NodePanel(props: NodePanelProps) {
   const resolveString = useResolveLocalizedString();
 
   const stageSubject = useStageSelector(getStageSubject);
-  const { text: title } = useLocalizedString(panelConfig.title);
+  const { text: title, parts: titleParts } = useLocalizedString(
+    panelConfig.title,
+  );
 
   const { externalData, status } = useExternalData(
     panelConfig.dataSource,
@@ -151,7 +154,13 @@ function NodePanel(props: NodePanelProps) {
 
   return (
     <Panel
-      title={title}
+      title={
+        titleParts === undefined ? (
+          title
+        ) : (
+          <DynamicTextParts parts={titleParts} />
+        )
+      }
       panelNumber={panelNumber}
       minimize={minimize}
       testId="node-panel"

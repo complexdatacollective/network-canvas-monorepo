@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { dynamicValueNamesIn } from '../../../localization/dynamicValueMessages.ts';
 import {
   escapeMessageText,
   messageText,
@@ -258,6 +259,55 @@ describe('v8 to v9 localization migration', () => {
       expect(Object.keys(value)).toEqual(['en']);
       expect(messageText(value.en ?? '')).toBe(expectedText);
     }
+  });
+
+  it("keeps braces and the fork's {{fieldName}} literal where text may now show values", () => {
+    const document = schema8Protocol(
+      (text) => `${text} {{fieldName}} {name} {name, select, other {x}}`,
+    );
+    const migrated = migrateProtocol(document, 9);
+    const sites = collectLocalizedStrings(migrated).filter(
+      ({ dynamicValues }) => dynamicValues !== undefined,
+    );
+    expect(sites.length).toBeGreaterThan(0);
+    for (const { value } of sites) {
+      for (const message of Object.values(value)) {
+        expect(dynamicValueNamesIn(message)).toEqual([]);
+      }
+    }
+    expect(
+      (migrated.stages as Record<string, unknown>[]).some(
+        (stage) => stage.dynamicValues !== undefined,
+      ),
+    ).toBe(false);
+  });
+
+  it('drops the reserved marker from text that may now show values, and keeps the rest of it', () => {
+    const marked = (text: string) => `${text}\uE000`;
+    const document = schema8Protocol(marked);
+    const plain = migrateProtocol(schema8Protocol(), 9);
+    const migrated = migrateProtocol(document, 9);
+    const sites = collectLocalizedStrings(migrated);
+    const dynamicSites = sites.filter(
+      ({ dynamicValues }) => dynamicValues !== undefined,
+    );
+    expect(dynamicSites.length).toBeGreaterThan(0);
+    // No text is lost, optional text included: every site plain text has
+    // is still there, and text that may show values reads as before.
+    expect(sites.map(({ path: at }) => at.join('.'))).toEqual(
+      collectLocalizedStrings(plain).map(({ path: at }) => at.join('.')),
+    );
+    for (const { path: at, value } of dynamicSites) {
+      expect(value).toEqual(getAt(plain, at));
+    }
+    // Text that cannot show values may keep the character.
+    expect(
+      sites.some(
+        ({ dynamicValues, value }) =>
+          dynamicValues === undefined &&
+          Object.values(value).some((message) => message.includes('\uE000')),
+      ),
+    ).toBe(true);
   });
 
   describe('codebook labels', () => {

@@ -51,8 +51,12 @@ const composerFormFieldShape = {
     subject: 'stageSubject',
     usage: 'validatedAttribute',
   }),
-  label: localizedString(nonBlankText(), 'markdown'),
-  hint: localizedString(nonBlankText(), 'markdown').optional(),
+  label: localizedString(nonBlankText(), 'markdown', {
+    dynamicValues: 'formField',
+  }),
+  hint: localizedString(nonBlankText(), 'markdown', {
+    dynamicValues: 'formField',
+  }).optional(),
   showValidationHints: z.boolean().optional(),
 };
 
@@ -64,8 +68,12 @@ const ComposerScaleFieldSchema = z.strictObject({
   component: z.literal(ComponentTypes.VisualAnalogScale),
   parameters: z
     .looseObject({
-      minLabel: localizedString(nonBlankText(), 'markdown').optional(),
-      maxLabel: localizedString(nonBlankText(), 'markdown').optional(),
+      minLabel: localizedString(nonBlankText(), 'markdown', {
+        dynamicValues: 'formField',
+      }).optional(),
+      maxLabel: localizedString(nonBlankText(), 'markdown', {
+        dynamicValues: 'formField',
+      }).optional(),
     })
     .optional(),
 });

@@ -8,7 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { Effect, Layer, Predicate, Redacted } from 'effect';
+import { Effect, Layer, Predicate, Redacted, Schema } from 'effect';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtocolBuilderGroup } from '@codaco/protocol-builder-core/contract';
@@ -23,6 +23,12 @@ import {
   type InMemoryHandlers,
 } from '@codaco/protocol-builder/testing/host/createInMemoryHost';
 import type { Me } from '@codaco/studio-contract/schema/account';
+import {
+  BROWSER_LOG_PATHS,
+  BROWSER_LOG_TEAM_ATTRIBUTE,
+  BrowserLogsBody,
+  browserLogRecords,
+} from '@codaco/studio-contract/schema/browser-logs';
 import { Forbidden } from '@codaco/studio-contract/schema/errors';
 import {
   DraftId,
@@ -45,6 +51,7 @@ import { reportUnauthorizedResponse } from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
 import { HostClient } from '../../runtime/hostClient.ts';
 import { hostRuntime } from '../../runtime/hostSession.ts';
+import { installFetchStub, requestUrl } from '../../test/fetchStub.ts';
 import {
   FakeWebSocket,
   installInProcessHost,
@@ -73,6 +80,32 @@ const PROTOCOL_UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 /** Text written in the only language the sample protocol declares. */
 const enUS = (text: string) => ({ 'en-US': text });
+
+const fetchStub = installFetchStub();
+
+const decodeLogs = Schema.decodeUnknownSync(
+  Schema.fromJsonString(BrowserLogsBody),
+);
+
+const lockLogsSent = () =>
+  fetchStub.mock.calls
+    .filter(
+      ([input]) =>
+        new URL(requestUrl(input), window.location.href).pathname ===
+        BROWSER_LOG_PATHS.researcher,
+    )
+    .flatMap(([, init]) => browserLogRecords(decodeLogs(String(init?.body))))
+    .filter((record) => record.body.stringValue === 'Editing lock refused')
+    .map((record) =>
+      record.attributes.find(
+        (attribute) => attribute.key === BROWSER_LOG_TEAM_ATTRIBUTE,
+      ),
+    );
+
+const lockAnswer = {
+  requested: 0,
+  gate: Promise.resolve(),
+};
 
 const DRAFT_SECTIONS = {
   settings: {
@@ -200,6 +233,8 @@ const ME: Me = {
   teams: [{ teamId: TeamId.make('team-a'), role: 'owner' }],
 };
 
+const telemetry = { on: false };
+
 const STATUS: InstanceStatus = {
   name: 'Studio',
   version: 'test',
@@ -212,6 +247,7 @@ const STATUS: InstanceStatus = {
   deployment: { mode: 'managed', billing: false },
   setup: { required: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 
 /** The host these tests seed, kept so a second caller can be made from it. */
@@ -283,14 +319,18 @@ function servedBy(handle: InMemoryHandlers): HandlersLayer {
         return yield* handle.GetSection(input);
       }),
     AcquireLock: (input) => {
+      lockAnswer.requested += 1;
       const written = commandWriteFor(input.sectionId);
-      return written === undefined
-        ? handle.AcquireLock(input)
-        : Effect.succeed({
-            lock: 'held' as const,
-            document: Redacted.make(written),
-            revision: COMMAND_REVISION,
-          });
+      return Effect.andThen(
+        Effect.promise(() => lockAnswer.gate),
+        written === undefined
+          ? handle.AcquireLock(input)
+          : Effect.succeed({
+              lock: 'held' as const,
+              document: Redacted.make(written),
+              revision: COMMAND_REVISION,
+            }),
+      );
     },
     ListSections: (input) =>
       Effect.map(handle.ListSections(input), ({ sectionIds }) => ({
@@ -435,6 +475,9 @@ beforeEach(async () => {
   commandWrote.clear();
   unreadableSections.clear();
   withheldReads.length = 0;
+  telemetry.on = false;
+  lockAnswer.requested = 0;
+  lockAnswer.gate = Promise.resolve();
   await seedHost(HOST_SECTIONS);
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
@@ -457,7 +500,7 @@ beforeEach(async () => {
   moveStage.mockReturnValue(Effect.succeed({ sequence: '3', hash: 'r3' }));
   installRpcHarness({
     'me': () => Effect.succeed(ME),
-    'status': () => Effect.succeed(STATUS),
+    'status': () => Effect.succeed({ ...STATUS, telemetry: telemetry.on }),
     'studies.get': () =>
       tenancy.owner === null
         ? Effect.fail(new Forbidden({}))
@@ -1346,6 +1389,38 @@ describe('what a collaborator changes', () => {
       await screen.findByRole('button', { name: 'Protocol valid' }),
     ).toBeInTheDocument();
     expect(screen.getByText('No validation problems.')).toBeInTheDocument();
+  });
+});
+
+describe('an editing lock refused after the researcher has moved on', () => {
+  it('is logged under the team of the editor that asked for it', async () => {
+    telemetry.on = true;
+    fetchStub.mockImplementation(
+      async () => new Response(null, { status: 204 }),
+    );
+    await collaborator().rpcCall('AcquireLock', {
+      protocolId: DRAFT.protocol.id,
+      sectionId: sectionId({ kind: 'stage', stageId: STAGE_A }),
+    });
+    const { promise, resolve } = Promise.withResolvers<void>();
+    lockAnswer.gate = promise;
+    const { router } = renderEditor();
+    await waitFor(() => expect(lockAnswer.requested).toBeGreaterThan(0));
+
+    await act(() =>
+      router.navigate({ to: '/team/$teamId', params: { teamId: TEAM_B.id } }),
+    );
+    resolve();
+
+    await waitFor(() => expect(lockLogsSent()).toHaveLength(1), {
+      timeout: 5000,
+    });
+    expect(lockLogsSent()).toEqual([
+      {
+        key: BROWSER_LOG_TEAM_ATTRIBUTE,
+        value: { stringValue: TEAM_A.id },
+      },
+    ]);
   });
 });
 

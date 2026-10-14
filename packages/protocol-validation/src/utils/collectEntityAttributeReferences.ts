@@ -3,6 +3,11 @@ import { z } from 'zod';
 import { getAssetReferenceDescriptor } from '../schemas/9/asset-reference.ts';
 import type { StageSubject } from '../schemas/9/common/index.ts';
 import {
+  type DynamicValueRole,
+  isDynamicValuePathSchema,
+  parseDynamicValuePath,
+} from '../schemas/9/dynamic-values.ts';
+import {
   getEntityAttributeReferenceDescriptor,
   type AttributeExistence,
   type AttributeWriterUsage,
@@ -127,7 +132,8 @@ const hasReference = (schema: z.ZodType): boolean => {
     getEntityAttributeReferenceDescriptor(node) !== undefined ||
     getEntityTypeReferenceDescriptor(node) !== undefined ||
     getAssetReferenceDescriptor(node) !== undefined ||
-    getStageReferenceSite(node) !== undefined;
+    getStageReferenceSite(node) !== undefined ||
+    isDynamicValuePathSchema(node);
   if (!result) {
     if (node instanceof z.ZodObject) {
       result = Object.values(node.shape).some(
@@ -265,6 +271,22 @@ const resolveSubject = (
     : undefined;
 };
 
+/**
+ * The entity a dynamic value's role reads an attribute of, on a stage whose
+ * subject is `stageSubject`: the participant for `ego`, the stage's edge type
+ * for `edge`, and its node type for every role about a person. A role the
+ * stage's subject cannot supply resolves to nothing; the dynamic value checks
+ * report that at each site that uses it.
+ */
+const dynamicValueSubject = (
+  role: DynamicValueRole,
+  stageSubject: StageSubject | undefined,
+): StageSubject | undefined => {
+  if (role === 'ego') return { entity: 'ego' };
+  const entity = role === 'edge' ? 'edge' : 'node';
+  return stageSubject?.entity === entity ? stageSubject : undefined;
+};
+
 const walk = (
   schema: z.ZodType,
   value: unknown,
@@ -302,6 +324,21 @@ const walk = (
           exclusive: attributeDescriptor.exclusive,
           ownedOptions: attributeDescriptor.ownedOptions,
           stageManagedOptions: attributeDescriptor.stageManagedOptions,
+        },
+      ];
+    }
+    // A stage's dynamic value names an attribute inside its path, so that the
+    // attribute's uses include the text that shows it, and deleting it is
+    // blocked like deleting any other attribute in use.
+    if (isDynamicValuePathSchema(node)) {
+      const parsed = parseDynamicValuePath(value);
+      if (parsed?.kind !== 'attribute') return [];
+      return [
+        {
+          kind: 'attribute',
+          path,
+          variableId: parsed.variableId,
+          subject: dynamicValueSubject(parsed.role, ctx.stageSubject),
         },
       ];
     }

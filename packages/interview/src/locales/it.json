@@ -131,6 +131,7 @@
   "interview.runtime.deleteBin": "Cestino",
   "interview.runtime.drawer": "Cassetto",
   "interview.runtime.dropToRemove": "Rilascia qui per rimuovere",
+  "interview.runtime.dynamicValue": "Valore dinamico: {value}",
   "interview.runtime.expandDrawer": "Espandi il cassetto",
   "interview.runtime.filter": "Filtra…",
   "interview.runtime.firstNode": "Primo elemento",

@@ -131,6 +131,7 @@
   "interview.runtime.deleteBin": "Papelera",
   "interview.runtime.drawer": "Bandeja",
   "interview.runtime.dropToRemove": "Suelta aquí para quitar",
+  "interview.runtime.dynamicValue": "Valor dinámico: {value}",
   "interview.runtime.expandDrawer": "Expandir bandeja",
   "interview.runtime.filter": "Filtrar...",
   "interview.runtime.firstNode": "Primer elemento",

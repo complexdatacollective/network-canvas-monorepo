@@ -2,7 +2,7 @@
 
 import { get } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { type ComponentProps, useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
 import { AppMessage } from '@codaco/app-i18n/react';
@@ -28,6 +28,9 @@ import Pair from '../../components/Pair';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { DynamicValueEntity } from '../../dynamicValues/DynamicValueScope';
+import { markdownSource } from '../../dynamicValues/resolveDynamicText';
+import { useValuesUntilExit } from '../../dynamicValues/useValuesUntilExit';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import useStageValidation from '../../hooks/useStageValidation';
@@ -49,6 +52,7 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import {
   getNodePair,
   getStageMetadataResponse,
@@ -100,6 +104,47 @@ function getDeclineValue(
   return candidate;
 }
 
+/**
+ * The answer cards for the pair on screen. Their labels are resolved here,
+ * beneath the pair's `DynamicValueEntity`, so a decline label naming either
+ * person reads the pair shown rather than nobody.
+ */
+function TieStrengthChoices({
+  options,
+  negativeLabel,
+  declineValue,
+  value,
+  onChange,
+  labelledBy,
+}: {
+  options: VariableOptions;
+  negativeLabel: LocalizedString;
+  declineValue: string;
+  value: string | number | undefined;
+  onChange: ComponentProps<typeof RichSelectGroupField>['onChange'];
+  labelledBy: string;
+}) {
+  const resolve = useResolveLocalizedString();
+  const richSelectOptions: RichSelectOption[] = [
+    ...options.flatMap((option) =>
+      typeof option.value === 'boolean'
+        ? []
+        : [{ value: option.value, label: resolve(option.label).text }],
+    ),
+    { value: declineValue, label: markdownSource(resolve(negativeLabel)) },
+  ];
+  return (
+    <RichSelectGroupField
+      orientation="horizontal"
+      options={richSelectOptions}
+      autoFocus
+      value={value}
+      onChange={onChange}
+      aria-labelledby={labelledBy}
+    />
+  );
+}
+
 export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const { getNavigationHelpers } = props;
   const { moveForward } = getNavigationHelpers();
@@ -122,7 +167,6 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     edgeVariable?: string;
     negativeLabel: LocalizedString;
   }>();
-  const resolve = useResolveLocalizedString();
 
   const nodes = useStageSelector(getNetworkNodesForType);
   const edges = useStageSelector(getNetworkEdges);
@@ -144,24 +188,16 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
       : []
   ) as VariableOptions;
 
-  const realOptions: RichSelectOption[] = edgeVariableOptions.flatMap(
-    (option) =>
-      typeof option.value === 'boolean'
-        ? []
-        : [{ value: option.value, label: resolve(option.label).text }],
-  );
-
   // Collision-free decline sentinel: must never equal a real option value, so a
   // legitimate option valued e.g. '__none__' is treated as data, not decline.
   const declineValue = getDeclineValue(
     baseId,
-    new Set(realOptions.map((option) => option.value)),
+    new Set(
+      edgeVariableOptions.flatMap((option) =>
+        typeof option.value === 'boolean' ? [] : [option.value],
+      ),
+    ),
   );
-
-  const richSelectOptions: RichSelectOption[] = [
-    ...realOptions,
-    { value: declineValue, label: resolve(negativeLabel).text },
-  ];
 
   const pair =
     pairIndex >= 0 && pairIndex < pairs.length
@@ -378,74 +414,94 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     }
   };
 
+  // The pair the prompts name stays the outgoing one until it has left.
+  const fromLabel = useNodeLabel(fromNode);
+  const toLabel = useNodeLabel(toNode);
+  const pairOnScreen = useValuesUntilExit(`${promptIndex}_${pairIndex}`, {
+    attributes: {
+      dyadSource: fromNode?.[entityAttributesProperty],
+      dyadTarget: toNode?.[entityAttributesProperty],
+    },
+    labels: { dyadSource: fromLabel, dyadTarget: toLabel },
+  });
+
   return (
-    <div className="interface">
-      {hasPairs && (
-        <motion.div
-          variants={fadeVariants}
-          initial="initial"
-          exit="exit"
-          animate="animate"
-          className="flex w-full flex-1 flex-col items-center"
-        >
-          <motion.div className="flex w-full grow flex-col items-center justify-center">
-            <AnimatePresence mode="wait" custom={isForwards} initial={false}>
-              <Pair
-                key={`${promptIndex}_${pairIndex}`}
-                edgeColor={edgeColor}
-                hasEdge={hasEdge}
-                animateForwards={isForwards}
-                fromNode={fromNode}
-                toNode={toNode}
-                labelId={pairLabelId}
-              />
-            </AnimatePresence>
-          </motion.div>
-          <MotionSurface
-            noContainer
-            className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-4"
-            variants={choiceVariants}
+    // The pair on screen is who the prompts can name: the first and second
+    // person, as the pair shows them.
+    <DynamicValueEntity {...pairOnScreen.values}>
+      <div className="interface">
+        {hasPairs && (
+          <motion.div
+            variants={fadeVariants}
             initial="initial"
+            exit="exit"
             animate="animate"
+            className="flex w-full flex-1 flex-col items-center"
           >
-            <Prompts id={promptLabelId} />
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`${promptIndex}_${pairIndex}_choice`}
-                className="flex items-center justify-center"
-                variants={optionsVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
+            <motion.div className="flex w-full grow flex-col items-center justify-center">
+              <AnimatePresence
+                mode="wait"
+                custom={isForwards}
+                initial={false}
+                onExitComplete={pairOnScreen.onExitComplete}
               >
-                <RichSelectGroupField
-                  orientation="horizontal"
-                  options={richSelectOptions}
-                  autoFocus
-                  value={
-                    hasEdge === false
-                      ? declineValue
-                      : hasEdge && edgeVariableValue !== undefined
-                        ? edgeVariableValue
-                        : undefined
-                  }
-                  onChange={(next) => {
-                    if (next === declineValue) {
-                      handleChange(false);
-                    } else if (
-                      typeof next === 'string' ||
-                      typeof next === 'number'
-                    ) {
-                      handleChange(next);
-                    }
-                  }}
-                  aria-labelledby={`${pairLabelId} ${promptLabelId}`}
+                <Pair
+                  key={`${promptIndex}_${pairIndex}`}
+                  edgeColor={edgeColor}
+                  hasEdge={hasEdge}
+                  animateForwards={isForwards}
+                  fromNode={fromNode}
+                  toNode={toNode}
+                  labelId={pairLabelId}
                 />
-              </motion.div>
-            </AnimatePresence>
-          </MotionSurface>
-        </motion.div>
-      )}
-    </div>
+              </AnimatePresence>
+            </motion.div>
+            <MotionSurface
+              noContainer
+              className="flex size-fit shrink-0 grow-0 flex-col items-center justify-center gap-4"
+              variants={choiceVariants}
+              initial="initial"
+              animate="animate"
+            >
+              <Prompts id={promptLabelId} />
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${promptIndex}_${pairIndex}_choice`}
+                  className="flex items-center justify-center"
+                  variants={optionsVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  <TieStrengthChoices
+                    options={edgeVariableOptions}
+                    negativeLabel={negativeLabel}
+                    declineValue={declineValue}
+                    value={
+                      hasEdge === false
+                        ? declineValue
+                        : hasEdge && edgeVariableValue !== undefined
+                          ? edgeVariableValue
+                          : undefined
+                    }
+                    onChange={(next) => {
+                      if (next === declineValue) {
+                        handleChange(false);
+                      } else if (
+                        typeof next === 'string' ||
+                        typeof next === 'number'
+                      ) {
+                        handleChange(next);
+                      }
+                    }}
+                    labelledBy={`${pairLabelId} ${promptLabelId}`}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </MotionSurface>
+          </motion.div>
+        )}
+      </div>
+    </DynamicValueEntity>
   );
 }

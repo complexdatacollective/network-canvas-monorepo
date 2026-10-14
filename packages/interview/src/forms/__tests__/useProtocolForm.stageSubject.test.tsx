@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { isValidElement, type ReactNode } from 'react';
+import { type ComponentProps, createElement, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -25,6 +25,19 @@ import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import useProtocolForm from '../useProtocolForm';
+
+// Each field's props as it rendered, so a test can read what the field was
+// given where it renders.
+const renderedFieldProps = vi.hoisted((): Record<string, unknown>[] => []);
+vi.mock('../ProtocolFormField', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../ProtocolFormField')>();
+  return {
+    default: (props: ComponentProps<typeof actual.default>) => {
+      renderedFieldProps.push(props);
+      return createElement(actual.default, props);
+    },
+  };
+});
 
 const NODE_TYPE = 'person';
 const NAME_VAR = 'name';
@@ -134,24 +147,34 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function firstFieldStageSubject(node: ReactNode): unknown {
-  const element = Array.isArray(node) ? node[0] : node;
-  if (!isValidElement(element)) return undefined;
-  if (!isRecord(element.props)) return undefined;
-  const validationContext = element.props.validationContext;
-  if (!isRecord(validationContext)) return undefined;
-  return validationContext.stageSubject;
+/**
+ * The props the form's first field renders with. The fields are rendered,
+ * because the validators' captions are resolved where they render (inside
+ * the form's live values), not by the hook itself.
+ */
+function firstFieldProps(node: ReactNode): Record<string, unknown> {
+  renderedFieldProps.length = 0;
+  render(<Form onSubmit={() => ({ success: true })}>{node}</Form>, {
+    wrapper: makeWrapper(),
+  });
+  const props = renderedFieldProps[0];
+  if (props === undefined) throw new Error('No field was rendered');
+  return props;
 }
 
 function firstFieldProp(node: ReactNode, prop: string): unknown {
-  const element = Array.isArray(node) ? node[0] : node;
-  if (!isValidElement(element)) return undefined;
-  if (!isRecord(element.props)) return undefined;
-  return element.props[prop];
+  return firstFieldProps(node)[prop];
 }
 
 function firstFieldValidationContext(node: ReactNode): unknown {
   return firstFieldProp(node, 'validationContext');
+}
+
+function firstFieldStageSubject(node: ReactNode): unknown {
+  const validationContext = firstFieldValidationContext(node);
+  return isRecord(validationContext)
+    ? validationContext.stageSubject
+    : undefined;
 }
 
 describe('useProtocolForm stageSubject', () => {

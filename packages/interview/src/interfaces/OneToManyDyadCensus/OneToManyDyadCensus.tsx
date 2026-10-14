@@ -6,7 +6,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { SortRule } from '@codaco/protocol-validation';
-import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  type NcNode,
+} from '@codaco/shared-consts';
 
 import { useTrack } from '../../analytics/useTrack';
 import { ConnectedMotionNode } from '../../components/ConnectedNode';
@@ -15,6 +19,8 @@ import Panel from '../../components/Panel';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { DynamicValueEntity } from '../../dynamicValues/DynamicValueScope';
+import { useValuesUntilExit } from '../../dynamicValues/useValuesUntilExit';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useSortedNodeList, { useStepOrder } from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -25,6 +31,7 @@ import {
 import { edgeExists, toggleEdge } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import { interfaceMessages } from '../messages';
 
 type OneToManyDyadCensusProps = StageProps<'OneToManyDyadCensus'>;
@@ -211,10 +218,27 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
     [edges, source, createEdge, handleNodeClick],
   );
 
+  // The prompt asks about the focal node, so it can name it. It keeps naming
+  // the outgoing node until it has left.
+  const focalLabel = useNodeLabel(source);
+  const focalOnScreen = useValuesUntilExit(source?.[entityPrimaryKeyProperty], {
+    attributes: { focal: source?.[entityAttributesProperty] },
+    labels: { focal: focalLabel },
+  });
+
   return (
     <div className="interface">
-      <Prompts />
-      <AnimatePresence mode="popLayout">
+      {/* Like a census with no pairs, the prompt waits for a focal node to
+          ask about, as the node itself does. */}
+      {focalOnScreen.values.labels.focal !== undefined && (
+        <DynamicValueEntity {...focalOnScreen.values}>
+          <Prompts />
+        </DynamicValueEntity>
+      )}
+      <AnimatePresence
+        mode="popLayout"
+        onExitComplete={focalOnScreen.onExitComplete}
+      >
         {source ? (
           <ConnectedMotionNode
             nodeId={source[entityPrimaryKeyProperty]}
