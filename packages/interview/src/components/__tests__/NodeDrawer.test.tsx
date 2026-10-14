@@ -14,6 +14,7 @@ import { useDndStoreApi } from '@codaco/fresco-ui/dnd/DndStoreProvider';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
+  type NcNode,
 } from '@codaco/shared-consts';
 
 import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
@@ -21,8 +22,27 @@ import NodeDrawer from '../NodeDrawer';
 
 // A drawn person reads the session store; what these tests own is the drawer
 // around them.
+const layoutSettled = vi.hoisted(() => ({ current: () => {} }));
 vi.mock('../../interfaces/Sociogram/DrawerNode', () => ({
-  default: () => null,
+  default: ({
+    node,
+    selected,
+    onLayoutAnimationComplete,
+  }: {
+    node: NcNode;
+    selected?: boolean;
+    onLayoutAnimationComplete?: () => void;
+  }) => {
+    if (onLayoutAnimationComplete) {
+      layoutSettled.current = onLayoutAnimationComplete;
+    }
+    return (
+      <span
+        data-testid={`drawer-node-${node[entityPrimaryKeyProperty]}`}
+        data-node-selected={selected || undefined}
+      />
+    );
+  },
 }));
 
 const elementsFromPoint = vi.fn<(x: number, y: number) => Element[]>();
@@ -105,6 +125,131 @@ describe('NodeDrawer', () => {
     );
 
     expect(screen.getByText('٣')).toBeInTheDocument();
+  });
+
+  it('reopens when a newly selected person is in it, so the person being placed stays visible', async () => {
+    const nodes = ['a', 'b'].map((id) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      type: 'person',
+    }));
+    const { rerender } = render(
+      <DndStoreProvider>
+        <NodeDrawer nodes={nodes} draggable={false} selectedNodeId="a" />
+      </DndStoreProvider>,
+    );
+    const tab = screen.getByRole('button', { name: /collapse drawer/i });
+    fireEvent.click(tab);
+    await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'false'));
+
+    rerender(
+      <DndStoreProvider>
+        <NodeDrawer nodes={nodes} draggable={false} selectedNodeId="b" />
+      </DndStoreProvider>,
+    );
+
+    await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'true'));
+  });
+
+  it('reopens on a new prompt even when the same person is still selected', async () => {
+    const nodes = ['a', 'b'].map((id) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      type: 'person',
+    }));
+    const { rerender } = render(
+      <DndStoreProvider>
+        <NodeDrawer
+          nodes={nodes}
+          draggable={false}
+          selectedNodeId="a"
+          selectionKey="prompt-1"
+        />
+      </DndStoreProvider>,
+    );
+    const tab = screen.getByRole('button', { name: /collapse drawer/i });
+    fireEvent.click(tab);
+    await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'false'));
+
+    rerender(
+      <DndStoreProvider>
+        <NodeDrawer
+          nodes={nodes}
+          draggable={false}
+          selectedNodeId="a"
+          selectionKey="prompt-2"
+        />
+      </DndStoreProvider>,
+    );
+
+    await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'true'));
+  });
+
+  it('scrolls a newly selected person into view along the row', async () => {
+    const nodes = ['a', 'b', 'c'].map((id) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      type: 'person',
+    }));
+    const { rerender } = render(
+      <DndStoreProvider>
+        <NodeDrawer nodes={nodes} draggable={false} selectedNodeId="a" />
+      </DndStoreProvider>,
+    );
+    const person = screen.getByTestId('drawer-node-c');
+    // The row the people sit in is the scroll area's viewport.
+    const viewport = person.parentElement!;
+    vi.spyOn(viewport, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: 0, y: 0, width: 300, height: 100 }),
+    );
+    // The person sits past the right edge until the row scrolls.
+    vi.spyOn(person, 'getBoundingClientRect').mockImplementation(() =>
+      DOMRect.fromRect({
+        x: 400 - viewport.scrollLeft,
+        y: 0,
+        width: 80,
+        height: 80,
+      }),
+    );
+
+    rerender(
+      <DndStoreProvider>
+        <NodeDrawer nodes={nodes} draggable={false} selectedNodeId="c" />
+      </DndStoreProvider>,
+    );
+
+    await waitFor(() => expect(viewport.scrollLeft).toBe(180));
+  });
+
+  it('brings the selected person back into view when the drawer reorders', () => {
+    const nodes = ['a', 'b', 'c'].map((id) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      type: 'person',
+    }));
+    render(
+      <DndStoreProvider>
+        <NodeDrawer nodes={nodes} draggable={false} selectedNodeId="c" />
+      </DndStoreProvider>,
+    );
+    const person = screen.getByTestId('drawer-node-c');
+    const viewport = person.parentElement!;
+    vi.spyOn(viewport, 'getBoundingClientRect').mockReturnValue(
+      DOMRect.fromRect({ x: 0, y: 0, width: 300, height: 100 }),
+    );
+    // A reorder has moved the selected person past the right edge.
+    vi.spyOn(person, 'getBoundingClientRect').mockImplementation(() =>
+      DOMRect.fromRect({
+        x: 400 - viewport.scrollLeft,
+        y: 0,
+        width: 80,
+        height: 80,
+      }),
+    );
+
+    act(() => layoutSettled.current());
+
+    expect(viewport.scrollLeft).toBe(180);
   });
 
   it('disables the toggle while empty when it is not a drop target', () => {

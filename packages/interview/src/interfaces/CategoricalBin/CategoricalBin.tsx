@@ -19,7 +19,7 @@ import {
 
 import { codebookTypeIndex } from '../../analytics/codebookTypeIndex';
 import { useTrack } from '../../analytics/useTrack';
-import BinSelectFocus from '../../components/BinSelectFocus';
+import BinSelectAnnouncer from '../../components/BinSelectAnnouncer';
 import NodeDrawer from '../../components/NodeDrawer';
 import PassphraseEntry from '../../components/PassphraseEntry';
 import Prompts from '../../components/Prompts';
@@ -582,7 +582,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           </AnimatePresence>
         </div>
         {selectMode && (
-          <BinSelectFocus
+          <BinSelectAnnouncer
             node={focalNode}
             settling={settling}
             promptId={prompt.id}
@@ -594,6 +594,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           draggable={!selectMode}
           selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
           onNodeClick={selectMode ? choose : undefined}
+          selectionKey={prompt.id}
         />
       </div>
     </div>
