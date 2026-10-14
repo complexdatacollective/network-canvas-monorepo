@@ -8,6 +8,7 @@ import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import {
   type DynamicValues,
   type FamilyPedigreeNominationPrompt,
+  type FinishMode,
   type FinishOutcome,
   type FramingSetting,
   type Item,
@@ -171,13 +172,16 @@ const StageContent = ({
   const interviewScript = configuration.interviewScript as string | undefined;
   // FinishSession
   const content = configuration.content as LocalizedString | undefined;
+  const finishedContent = configuration.finishedContent as
+    | LocalizedString
+    | undefined;
+  const finishMode = configuration.mode as FinishMode | undefined;
   const outcome = configuration.outcome as FinishOutcome | undefined;
   const finishing = {
     finishLabel: configuration.finishLabel as LocalizedString | undefined,
     finishConfirmation: configuration.finishConfirmation as
       | LocalizedString
       | undefined,
-    finishedNotice: configuration.finishedNotice as LocalizedString | undefined,
     finishFailed: configuration.finishFailed as LocalizedString | undefined,
   };
   // Legacy FamilyTreeCensus fields (kept for backward compatibility with old protocols)
@@ -431,7 +435,9 @@ const StageContent = ({
       )}
       {type === 'FinishSession' && (
         <FinishScreen
+          mode={finishMode ?? 'confirmation'}
           content={content ?? null}
+          finishedContent={finishedContent ?? null}
           outcome={outcome ?? null}
           finishing={finishing}
         />

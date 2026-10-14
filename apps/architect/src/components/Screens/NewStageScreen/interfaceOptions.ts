@@ -140,6 +140,13 @@ const descriptionMessages = defineMessages({
     description:
       'Description of the interview interface in the New Stage chooser.',
   },
+  FinishSession: {
+    id: 'architect.interface.description.FinishSession',
+    defaultMessage:
+      'A screen that ends the interview. Add more than one to end it in different ways, such as a separate ending for participants who are not eligible.',
+    description:
+      'Description of the interview interface in the New Stage chooser. Stages that end the interview always sit together at the end of the protocol.',
+  },
   Anonymisation: {
     id: 'architect.interface.description.Anonymisation',
     defaultMessage:
@@ -268,6 +275,7 @@ const INTERFACE_TYPE_NAMES = [
   'Information',
   'LanguageChooser',
   'Anonymisation',
+  'FinishSession',
 ] as const;
 
 // Type helpers
@@ -456,6 +464,14 @@ const INTERFACE_DEFINITIONS: InterfaceDefinition[] = [
       'anonymisation anonymization anonymise anonymize passphrase password encrypt encryption encrypted privacy protect security participant',
     type: 'Anonymisation',
     description: descriptionMessages.Anonymisation,
+  },
+  {
+    category: CATEGORIES.UTILITIES,
+    tags: [TAGS.UTILITIES],
+    keywords:
+      'finish end ending complete completed close closing screen outcome ineligible eligible terminate thank you',
+    type: 'FinishSession',
+    description: descriptionMessages.FinishSession,
   },
 ];
 

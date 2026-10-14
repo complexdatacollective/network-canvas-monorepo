@@ -6,11 +6,9 @@ import { getInterfaceTypes } from '~/components/Screens/NewStageScreen/interface
 
 const stageTypes = Object.keys(INTERFACE_NAMES) as StageType[];
 
-// A protocol is created with its finish stage, and keeps exactly the one it
-// has, so the New Stage screen never offers one.
-const offeredStageTypes = stageTypes.filter(
-  (stageType) => stageType !== 'FinishSession',
-);
+// A protocol may end with several finish stages, so the New Stage screen
+// offers every stage type, the finish stage included.
+const offeredStageTypes = stageTypes;
 
 /**
  * The map itself lives in `@codaco/protocol-builder`, which owns interface

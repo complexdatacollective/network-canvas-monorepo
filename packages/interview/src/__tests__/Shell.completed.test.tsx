@@ -44,8 +44,7 @@ beforeAll(() => {
   globalThis.BASE_UI_ANIMATIONS_DISABLED = true;
 });
 
-const NOTICE =
-  'This interview is finished, and its answers can no longer be changed.';
+const FINISHED_TEXT = 'Thank you for participating!';
 
 const information = {
   id: 'overview',
@@ -58,12 +57,12 @@ const information = {
 const finishStage = {
   id: 'end-ineligible',
   type: 'FinishSession' as const,
+  mode: 'confirmation' as const,
   label: { en: 'Finish' },
-  title: { en: 'All *done*' },
-  content: { en: 'Thank you for **taking part**.' },
+  content: { en: '# All *done*\n\nThank you for **taking part**.' },
+  finishedContent: { en: `# Interview finished\n\n${FINISHED_TEXT}` },
   finishLabel: { en: 'Finish' },
   finishConfirmation: { en: 'Finish this interview?' },
-  finishedNotice: { en: NOTICE },
   finishFailed: { en: 'The interview could not be finished.' },
   outcome: 'ineligible' as const,
 };
@@ -122,6 +121,7 @@ function renderShell({
   initialTextScale,
   onExit,
   openFinishedAsActive,
+  onStepChange = () => undefined,
 }: {
   payload: InterviewPayload;
   currentStep?: number;
@@ -131,12 +131,13 @@ function renderShell({
   initialTextScale?: number;
   onExit?: () => void;
   openFinishedAsActive?: boolean;
+  onStepChange?: (step: number) => void;
 }) {
   return render(
     <Shell
       payload={payload}
       currentStep={currentStep}
-      onStepChange={() => undefined}
+      onStepChange={onStepChange}
       onSync={() => Promise.resolve()}
       requestedLocales={['en']}
       onFinish={onFinish}
@@ -155,14 +156,21 @@ function renderShell({
 
 const expectCompletedState = async () => {
   expect(
-    await screen.findByRole('heading', { name: 'All done' }),
+    await screen.findByRole('heading', { name: 'Interview finished' }),
   ).toBeInTheDocument();
-  expect(screen.getByText(NOTICE)).toBeInTheDocument();
+  expect(screen.getByText(FINISHED_TEXT)).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'All done' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Next Step' })).toBeNull();
   expect(screen.queryByTestId('previous-button')).toBeNull();
   expect(screen.queryByText('Study overview')).toBeNull();
 };
+
+/** The finished screen's text, which takes focus once the interview ends. */
+const finishedText = () =>
+  screen
+    .getByRole('heading', { name: 'Interview finished' })
+    .closest('[tabindex="-1"]');
 
 describe('Shell completed state', () => {
   it('opens a finished interview on the finish stage it ended at, whatever step the host asks for', async () => {
@@ -171,7 +179,7 @@ describe('Shell completed state', () => {
       currentStep: 0,
     });
     await expectCompletedState();
-    expect(screen.getByRole('heading', { name: 'All done' })).not.toHaveFocus();
+    expect(finishedText()).not.toHaveFocus();
   });
 
   it('opens an interview finished without a recorded finish stage on the protocol finish stage', async () => {
@@ -212,7 +220,7 @@ describe('Shell completed state', () => {
     expect(
       await screen.findByRole('heading', { name: 'Study overview' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(NOTICE)).toBeNull();
+    expect(screen.queryByText(FINISHED_TEXT)).toBeNull();
   });
 
   // Fresco with completed interviews not frozen: a researcher can still
@@ -227,7 +235,7 @@ describe('Shell completed state', () => {
     expect(
       await screen.findByRole('heading', { name: 'Study overview' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(NOTICE)).toBeNull();
+    expect(screen.queryByText(FINISHED_TEXT)).toBeNull();
     expect(screen.getByRole('button', { name: 'Next Step' })).toBeEnabled();
   });
 
@@ -240,27 +248,29 @@ describe('Shell completed state', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
-    await waitFor(() => expect(screen.queryByText(NOTICE)).not.toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByText(FINISHED_TEXT)).not.toBeNull(),
+    );
     expect(onFinish).toHaveBeenCalledWith(
       'completed-session',
       { stageId: finishStage.id, outcome: 'ineligible' },
       expect.any(AbortSignal),
     );
     await expectCompletedState();
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'All done' })).toHaveFocus(),
-    );
+    await waitFor(() => expect(finishedText()).toHaveFocus());
   });
 
-  // An Architect preview of a protocol whose finish stage has no heading yet
-  // (a new protocol in a language with no supplied closing text).
-  it('puts focus on the notice when the finish stage has no heading', async () => {
+  // A researcher may leave the heading out of the finished text.
+  it('puts focus on the finished text when it has no heading', async () => {
     const payload = makePayload(null);
     const untitled = {
       ...payload,
       protocol: {
         ...payload.protocol,
-        stages: [information, { ...finishStage, title: {} }],
+        stages: [
+          information,
+          { ...finishStage, finishedContent: { en: FINISHED_TEXT } },
+        ],
       },
     };
     renderShell({ payload: untitled, currentStep: 1 });
@@ -270,14 +280,12 @@ describe('Shell completed state', () => {
     const dialog = await screen.findByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
-    const notice = await screen.findByText(NOTICE);
+    const text = await screen.findByText(FINISHED_TEXT);
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
-    await waitFor(() =>
-      expect(notice.closest('[tabindex="-1"]')).toHaveFocus(),
-    );
+    await waitFor(() => expect(text.closest('[tabindex="-1"]')).toHaveFocus());
   });
 
-  it('stays on the finish stage when the host could not record the finish', async () => {
+  it('returns to the closing screen with a toast when the host could not record the finish', async () => {
     const onFinish = vi.fn<FinishHandler>(() =>
       Promise.reject(new Error('offline')),
     );
@@ -289,9 +297,126 @@ describe('Shell completed state', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Finish' }));
 
     expect(
-      await within(dialog).findByText(/The interview could not be finished/),
+      await screen.findByText(/The interview could not be finished/),
     ).toBeInTheDocument();
-    expect(screen.queryByText(NOTICE)).toBeNull();
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(
+      screen.getByRole('heading', { name: 'All done' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Finish' })).toBeEnabled();
+    expect(screen.queryByText(FINISHED_TEXT)).toBeNull();
+  });
+
+  it('never moves forward from a finish stage, but lets the participant go back in confirmation mode', async () => {
+    renderShell({ payload: makePayload(null), currentStep: 1 });
+    await screen.findByRole('button', { name: 'Finish' });
+    expect(screen.getByRole('button', { name: 'Next Step' })).toBeDisabled();
+    expect(screen.getByTestId('previous-button')).toBeEnabled();
+  });
+
+  describe('automatic mode', () => {
+    const automatic = (payload: InterviewPayload) => {
+      payload.protocol.stages = [
+        information,
+        { ...finishStage, mode: 'automatic' },
+      ];
+      return payload;
+    };
+
+    it('finishes as soon as it is shown, with no closing screen or question', async () => {
+      const onFinish = vi.fn<FinishHandler>(() => Promise.resolve());
+      renderShell({
+        payload: automatic(makePayload(null)),
+        currentStep: 1,
+        onFinish,
+      });
+
+      await expectCompletedState();
+      expect(onFinish).toHaveBeenCalledTimes(1);
+      expect(onFinish).toHaveBeenCalledWith(
+        'completed-session',
+        { stageId: finishStage.id, outcome: 'ineligible' },
+        expect.any(AbortSignal),
+      );
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(screen.queryByText('Thank you for taking part.')).toBeNull();
+      await waitFor(() => expect(finishedText()).toHaveFocus());
+    });
+
+    // Fresco with completed interviews not frozen reopens a finished one to
+    // be changed, at the stage it finished on.
+    it('reopens a finished interview to be changed at the stage before, without finishing again', async () => {
+      const onFinish = vi.fn<FinishHandler>(() => Promise.resolve());
+      const onStepChange = vi.fn<(step: number) => void>();
+      renderShell({
+        payload: automatic(makePayload({ finishStageId: finishStage.id })),
+        currentStep: 1,
+        openFinishedAsActive: true,
+        onFinish,
+        onStepChange,
+      });
+
+      expect(
+        await screen.findByRole('heading', { name: 'Study overview' }),
+      ).toBeInTheDocument();
+      expect(onFinish).not.toHaveBeenCalled();
+      // The host, still holding the finish stage, is told where it re-entered,
+      // so moving on from there is a change it can make.
+      expect(onStepChange).toHaveBeenCalledWith(0, expect.anything());
+    });
+
+    it('keeps a finished interview with nothing before its automatic ending finished when reopened to be changed', async () => {
+      const onFinish = vi.fn<FinishHandler>(() => Promise.resolve());
+      const payload = automatic(makePayload({ finishStageId: finishStage.id }));
+      payload.protocol.stages = payload.protocol.stages.filter(
+        (stage) => stage.type === 'FinishSession',
+      );
+      renderShell({
+        payload,
+        currentStep: 0,
+        openFinishedAsActive: true,
+        onFinish,
+      });
+
+      await expectCompletedState();
+      expect(onFinish).not.toHaveBeenCalled();
+    });
+
+    it('allows no navigation either way while it finishes', async () => {
+      renderShell({
+        payload: automatic(makePayload(null)),
+        currentStep: 1,
+        // Never settles, so the stage stays on screen.
+        onFinish: () => new Promise(() => undefined),
+      });
+
+      const next = await screen.findByRole('button', { name: 'Next Step' });
+      expect(next).toBeDisabled();
+      expect(screen.getByTestId('previous-button')).toBeDisabled();
+      expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull();
+    });
+
+    it('says when it could not finish, and offers to try again', async () => {
+      const onFinish = vi
+        .fn<FinishHandler>()
+        .mockRejectedValueOnce(new Error('offline'))
+        .mockResolvedValueOnce(undefined);
+      renderShell({
+        payload: automatic(makePayload(null)),
+        currentStep: 1,
+        onFinish,
+      });
+
+      expect(
+        await screen.findByText(/The interview could not be finished/),
+      ).toBeInTheDocument();
+      await userEvent
+        .setup()
+        .click(await screen.findByRole('button', { name: 'Finish' }));
+
+      await expectCompletedState();
+      expect(onFinish).toHaveBeenCalledTimes(2);
+    });
   });
 
   // A protocol whose only stage is its finish stage has nothing to review.
@@ -310,11 +435,36 @@ describe('Shell completed state', () => {
     expect(
       await screen.findByRole('heading', { name: 'All done' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(NOTICE)).toBeNull();
+    expect(screen.queryByText(FINISHED_TEXT)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Next Step' })).toBeNull();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Exit' }));
     expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
+  // An automatic finish stage has no closing text, so its finished text is
+  // what such a review shows.
+  it('shows a review with only an automatic finish stage its finished text', async () => {
+    const payload = makePayload(null);
+    payload.protocol.stages = [{ ...finishStage, mode: 'automatic' }];
+    renderShell({ payload, reviewMode: true });
+
+    expect(await screen.findByText(FINISHED_TEXT)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'All done' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull();
+  });
+
+  // Only the first of several endings can be reached with nothing before it.
+  it('shows a review with only finish stages the first one', async () => {
+    const payload = makePayload(null);
+    payload.protocol.stages = [
+      { ...finishStage, id: 'end-first', mode: 'automatic' },
+      { ...finishStage, id: 'end-second' },
+    ];
+    renderShell({ payload, reviewMode: true });
+
+    expect(await screen.findByText(FINISHED_TEXT)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'All done' })).toBeNull();
   });
 
   it('keeps the participant’s text size when an interview is opened finished', async () => {

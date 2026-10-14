@@ -1553,13 +1553,14 @@ describe('languages in the deploy migration', () => {
       ...stages,
       expect.objectContaining({
         type: 'FinishSession',
-        title: {
-          fr: DEFAULT_FINISH_SESSION_TEXT.fr.title,
-          de: DEFAULT_FINISH_SESSION_TEXT.de.title,
-        },
+        mode: 'confirmation',
         content: {
           fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
           de: DEFAULT_FINISH_SESSION_TEXT.de.content,
+        },
+        finishedContent: {
+          fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
+          de: DEFAULT_FINISH_SESSION_TEXT.de.finishedContent,
         },
       }),
     ]);
@@ -1601,7 +1602,7 @@ describe('languages in the deploy migration', () => {
     const warned = warnSpy.mock.calls.map((call) => String(call[0])).join(' ');
     expect(warned).toMatch(/Japanese\.netcanvas/);
     expect(warned).toMatch(
-      /has no heading in the protocol's default language \(ja\)/,
+      /has no closing text in the protocol's default language \(ja\)/,
     );
     warnSpy.mockRestore();
   });

@@ -59,14 +59,13 @@ const finishedNotice = (page: Page) =>
   page.getByRole('heading', { name: "You've finished this interview" });
 
 // The interview's completed state: finishing keeps the interview on screen,
-// showing the protocol's closing text and the interview's finished notice.
+// showing the finish stage's finished screen.
 async function expectCompletedInterview(page: Page): Promise<void> {
   await expect(page.locator('[data-interview-completed]')).toBeVisible();
   await expect(
-    page.getByText(
-      'This interview is finished, and its answers can no longer be changed.',
-    ),
+    page.getByRole('heading', { name: 'Interview Finished' }),
   ).toBeVisible();
+  await expect(page.getByText('Thank you for participating!')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Finish' })).toHaveCount(0);
   await expect(finishedNotice(page)).toHaveCount(0);
 }

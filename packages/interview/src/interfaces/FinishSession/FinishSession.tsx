@@ -1,18 +1,22 @@
 'use client';
 
-import { type ReactNode, type Ref, useEffect, useRef } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useSelector } from 'react-redux';
 
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { default as Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import {
-  ALLOWED_MARKDOWN_SECTION_TAGS,
-  RenderMarkdown,
-} from '@codaco/fresco-ui/RenderMarkdown';
+import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import Spinner from '@codaco/fresco-ui/Spinner';
 import type {
   FinishSessionStage,
   LocalizedString,
@@ -25,23 +29,19 @@ import {
   useFinishConfirmationDescription,
 } from '../../contract/context';
 import type { CompletedAction } from '../../contract/types';
-import {
-  DynamicMarkdown,
-  DynamicTextParts,
-} from '../../dynamicValues/DynamicText';
+import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getInterviewId } from '../../selectors/session';
 import { getStages } from '../../store/modules/protocol';
 import { useSyncFlush } from '../../store/SyncFlushContext';
+import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
-
-// A heading takes emphasis and nothing else: the title's markdown is inline.
-const TITLE_ELEMENTS = ['em', 'strong'];
+import { interfaceMessages } from '../messages';
 
 type FinishSessionText = Pick<
   FinishSessionStage,
-  'title' | 'content' | 'finishedNotice'
+  'mode' | 'content' | 'finishedContent'
 >;
 
 /** The screen's own words, which the protocol holds as the stage's settings. */
@@ -50,64 +50,38 @@ function StageText({ value }: { value: LocalizedString }) {
   return parts === undefined ? <>{text}</> : <DynamicTextParts parts={parts} />;
 }
 
-function FinishSessionTitle({
-  title,
-  headingRef,
-}: {
-  title: FinishSessionStage['title'];
-  headingRef?: Ref<HTMLHeadingElement>;
-}) {
-  const { text, parts } = useLocalizedString(title);
-  const heading = (
-    <Heading
-      ref={headingRef}
-      tabIndex={headingRef ? -1 : undefined}
-      level="h1"
-      className="text-center"
-    />
-  );
-  return parts === undefined ? (
-    <RenderMarkdown allowedElements={TITLE_ELEMENTS} render={heading}>
-      {text}
-    </RenderMarkdown>
-  ) : (
-    <DynamicMarkdown
-      allowedElements={TITLE_ELEMENTS}
-      render={heading}
-      parts={parts}
-    />
-  );
-}
-
 /**
  * Text with no translation at all, which only a protocol still being written
- * can have: Architect previews it before the researcher writes the closing
- * text for a language Network Canvas supplies none for. A protocol cannot be
- * downloaded like that, so no participant meets it.
+ * can have: Architect previews it before the researcher writes the text for a
+ * language Network Canvas supplies none for. A protocol cannot be downloaded
+ * like that, so no participant meets it.
  */
-const isUnwritten = (value: FinishSessionStage['title']) =>
-  Object.keys(value).length === 0;
+const isUnwritten = (value: LocalizedString) => Object.keys(value).length === 0;
 
-/** The researcher's title and content, in the protocol's language. */
-function FinishSessionText({
-  stage,
-  headingRef,
+/**
+ * One of the screen's texts, in the protocol's language. Its heading is part
+ * of the text, written as markdown.
+ */
+function ScreenText({
+  value,
+  textRef,
 }: {
-  stage: FinishSessionText;
-  headingRef?: Ref<HTMLHeadingElement>;
+  value: LocalizedString;
+  textRef?: Ref<HTMLDivElement>;
 }) {
+  if (isUnwritten(value)) return null;
   return (
-    <>
-      {!isUnwritten(stage.title) && (
-        <FinishSessionTitle title={stage.title} headingRef={headingRef} />
-      )}
-      {!isUnwritten(stage.content) && (
-        <LocalizedMarkdown
-          value={stage.content}
-          allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
-        />
-      )}
-    </>
+    <div
+      ref={textRef}
+      tabIndex={textRef ? -1 : undefined}
+      // Room between the text and the buttons that follow it.
+      className="focusable mb-6 last:mb-0"
+    >
+      <LocalizedMarkdown
+        value={value}
+        allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
+      />
+    </div>
   );
 }
 
@@ -123,10 +97,22 @@ function FinishSessionLayout({ children }: { children: ReactNode }) {
   );
 }
 
+type FinishState = 'idle' | 'finishing';
+
 /**
- * The end of the interview. The participant reads the researcher's closing
- * text, and Finish ends the interview once they confirm. When the host has
- * recorded the finish, the interview shows its completed state.
+ * The end of the interview, in one of two modes.
+ *
+ * In confirmation mode the participant reads the closing screen, and its
+ * Finish button ends the interview once they confirm. In automatic mode the
+ * interview ends as soon as the stage is shown, with no closing screen,
+ * button or question. Either way, once the host has recorded the finish the
+ * interview shows its finished screen (`CompletedInterview`, rendered by the
+ * Shell). If the finish fails the participant is told so in a toast, and can
+ * try again: from the closing screen in confirmation mode, or with the Finish
+ * button that then appears in automatic mode.
+ *
+ * The interview never moves forward from a finish stage, and an automatic one
+ * cannot be left backwards either (see `useInterviewNavigation`).
  */
 const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
   const interviewId = useSelector(getInterviewId);
@@ -135,53 +121,149 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
   const flushSync = useSyncFlush();
   const { complete } = useInterviewCompletion();
   const { confirm } = useDialog();
+  const { showToast } = useInterviewToast();
   const track = useTrack();
   const stageCount = useSelector(getStages).length;
+  const [state, setState] = useState<FinishState>('idle');
+  // In automatic mode the Finish button appears only once a finish has failed.
+  const [failed, setFailed] = useState(false);
 
-  const finishInterviewConfirmation = async () => {
-    if (!interviewId) return;
+  // Aborted when the stage is torn down (the Shell unmounting), so an
+  // interview being left is not handed over afterwards.
+  const unmountSignal = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    unmountSignal.current = controller;
+    return () => controller.abort();
+  }, []);
 
+  const finishInterview = useCallback(
+    async (signal: AbortSignal) => {
+      if (!interviewId) throw new Error('There is no interview to finish');
+      // Order matters: autosave is debounced, so the participant's most
+      // recent answers may still be waiting to be written. Hosts can freeze
+      // an interview the moment it is finished and reject anything that
+      // arrives afterwards, so the pending write has to land first, and an
+      // answer that could not be saved keeps the interview from finishing.
+      //
+      // A host's finish is a server request or a storage write that completes
+      // whatever the signal says. The signal still aborts if the stage is torn
+      // down, and then the interview is not handed over.
+      const stored = await flushSync();
+      if (signal.aborted) return false;
+      if (!stored) throw new Error('The answers could not all be saved');
+      await onFinish(
+        interviewId,
+        { stageId: stage.id, outcome: stage.outcome },
+        signal,
+      );
+      track('interview_finished', { stage_count: stageCount });
+      return true;
+    },
+    [
+      flushSync,
+      interviewId,
+      onFinish,
+      stage.id,
+      stage.outcome,
+      stageCount,
+      track,
+    ],
+  );
+
+  const reportFailure = useCallback(() => {
+    setFailed(true);
+    showToast({
+      description: <StageText value={stage.finishFailed} />,
+      variant: 'destructive',
+      anchor: 'forward',
+      timeout: 8000,
+    });
+  }, [showToast, stage.finishFailed]);
+
+  // Finishing without asking: automatic mode, and the retry after it failed.
+  const finishNow = useCallback(async () => {
+    const signal = unmountSignal.current?.signal;
+    if (!signal || signal.aborted) return;
+    setState('finishing');
+    try {
+      if (await finishInterview(signal)) complete(stage.id);
+    } catch {
+      if (!signal.aborted) reportFailure();
+    } finally {
+      if (!signal.aborted) setState('idle');
+    }
+  }, [complete, finishInterview, reportFailure, stage.id]);
+
+  const finishWithConfirmation = async () => {
+    // Written by the confirm handler, which runs before `confirm` resolves.
+    const attempt: { outcome: 'finished' | 'failed' | 'abandoned' } = {
+      outcome: 'abandoned',
+    };
     const finished = await confirm({
       title: <StageText value={stage.finishConfirmation} />,
       description: finishConfirmationDescription,
       confirmLabel: <StageText value={stage.finishLabel} />,
-      describeError: () => <StageText value={stage.finishFailed} />,
       onConfirm: async (signal: AbortSignal) => {
-        // Order matters: autosave is debounced, so the participant's most
-        // recent answers may still be waiting to be written. Hosts can freeze
-        // an interview the moment it is finished and reject anything that
-        // arrives afterwards, so the pending write has to land first, and an
-        // answer that could not be saved keeps the interview from finishing.
-        //
-        // The confirmation cannot be cancelled while this runs: a host's
-        // finish is a server request or a storage write that completes
-        // whatever the signal says. The signal still aborts if the
-        // confirmation is torn down (the Shell unmounting), and then the
-        // interview is not handed over.
-        const stored = await flushSync();
-        if (signal.aborted) return;
-        if (!stored) {
-          throw new Error('The answers could not all be saved');
+        // A failure closes the question and returns to the closing screen,
+        // where the toast says what happened, rather than keeping the
+        // question open over it.
+        try {
+          if (await finishInterview(signal)) attempt.outcome = 'finished';
+        } catch {
+          attempt.outcome = 'failed';
         }
-        await onFinish(
-          interviewId,
-          { stageId: stage.id, outcome: stage.outcome },
-          signal,
-        );
-        track('interview_finished', { stage_count: stageCount });
       },
     });
     // After the dialog has closed rather than inside its confirm handler, so
     // the dialog is not unmounted from under itself.
-    if (finished === true) complete(stage.id);
+    if (finished !== true) return;
+    if (attempt.outcome === 'failed') reportFailure();
+    if (attempt.outcome === 'finished') complete(stage.id);
   };
+
+  // An automatic finish stage ends the interview as soon as it is shown. The
+  // ref holds the signal of the attempt under way, so a re-run of this effect
+  // does not finish twice. Strict Mode's replay in development aborts that
+  // signal, and its attempt then reports nothing, so an aborted attempt is
+  // started again.
+  const automaticAttempt = useRef<AbortSignal | null>(null);
+  useEffect(() => {
+    if (stage.mode !== 'automatic') return;
+    if (automaticAttempt.current && !automaticAttempt.current.aborted) return;
+    automaticAttempt.current = unmountSignal.current?.signal ?? null;
+    void finishNow();
+  }, [finishNow, stage.mode]);
+
+  if (stage.mode === 'automatic') {
+    if (!failed) {
+      return (
+        <div className="flex size-full items-center justify-center">
+          <Spinner />
+          <FinishingAnnouncement />
+        </div>
+      );
+    }
+    return (
+      <FinishSessionLayout>
+        <Button
+          color="primary"
+          disabled={state === 'finishing'}
+          onClick={() => void finishNow()}
+        >
+          <StageText value={stage.finishLabel} />
+        </Button>
+      </FinishSessionLayout>
+    );
+  }
 
   return (
     <FinishSessionLayout>
-      <FinishSessionText stage={stage} />
+      <ScreenText value={stage.content ?? {}} />
       <Button
         color="primary"
-        onClick={() => void finishInterviewConfirmation()}
+        disabled={state === 'finishing'}
+        onClick={() => void finishWithConfirmation()}
       >
         <StageText value={stage.finishLabel} />
       </Button>
@@ -190,60 +272,70 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
 };
 
 /**
- * A finished interview: the closing text of the finish stage it ended at, a
- * notice that nothing can be changed, and the host's own actions if it offers
- * any. There is no way back into the interview from here.
+ * Tells screen reader users that the interview is being finished while an
+ * automatic finish stage shows only a spinner. The live region is in place
+ * before its text, so the text arriving is announced.
+ */
+function FinishingAnnouncement() {
+  const [announced, setAnnounced] = useState(false);
+  useEffect(() => setAnnounced(true), []);
+  return (
+    <div role="status" aria-live="polite" className="sr-only">
+      {announced && (
+        <AppMessage message={interfaceMessages.finishingInterview} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * A finished interview: the finished screen of the finish stage it ended at,
+ * and the host's own actions if it offers any. There is no way back into the
+ * interview from here.
  *
  * `stage` is absent only for a protocol with no finish stage, which a
- * validated protocol cannot be. The notice is the stage's own wording, so
- * there is then none, and only the host's actions are shown.
+ * validated protocol cannot be; then only the host's actions are shown.
  *
- * `notice` is off for a review of an interview with nothing before its finish
- * stage: it shows the finish stage's text read-only, but the interview is not
- * finished, so it does not say it is.
+ * `finished` is off for a review of an interview with nothing before its
+ * finish stage: it shows the text that stage opens with read-only, without
+ * the Finish button, because the interview is not finished. An automatic
+ * finish stage has no closing text, so it shows its finished text.
  */
 export function CompletedInterview({
   stage,
   focusOnMount,
-  notice = true,
+  finished = true,
   actions,
 }: {
   stage: FinishSessionText | undefined;
   focusOnMount: boolean;
-  notice?: boolean;
+  finished?: boolean;
   /** In place of the host's completed-state actions. */
   actions?: readonly CompletedAction[];
 }) {
   const { completedActions: hostActions } = useInterviewCompletion();
   const completedActions = actions ?? hostActions;
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const noticeRef = useRef<HTMLDivElement>(null);
-  // Focus goes to the heading when there is one, and to the notice otherwise:
-  // no finish stage, or one whose heading is not written yet.
-  const hasHeading = stage !== undefined && !isUnwritten(stage.title);
+  const textRef = useRef<HTMLDivElement>(null);
 
   // Finishing unmounts the Finish button and its dialog together, which would
-  // drop focus on the document. The completed state takes it instead, so a
-  // screen reader reads the closing text and the notice that follows it.
+  // drop focus on the document. The finished screen takes it instead, so a
+  // screen reader reads it.
   useEffect(() => {
     if (!focusOnMount) return;
-    (headingRef.current ?? noticeRef.current)?.focus();
+    textRef.current?.focus();
   }, [focusOnMount]);
 
   return (
     <FinishSessionLayout>
-      {stage && <FinishSessionText stage={stage} headingRef={headingRef} />}
-      {notice && stage && (
-        <Alert
-          ref={noticeRef}
-          tabIndex={hasHeading ? undefined : -1}
-          variant="success"
-          density="compact"
-        >
-          <AlertDescription>
-            <StageText value={stage.finishedNotice} />
-          </AlertDescription>
-        </Alert>
+      {stage && (
+        <ScreenText
+          value={
+            finished || stage.mode === 'automatic'
+              ? stage.finishedContent
+              : (stage.content ?? {})
+          }
+          textRef={textRef}
+        />
       )}
       {completedActions.map((action, index) => (
         <Button

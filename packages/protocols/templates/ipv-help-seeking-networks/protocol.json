@@ -557,9 +557,7 @@
             }
           ]
         },
-        "destination": {
-          "type": "finish"
-        }
+        "destination": { "type": "stage", "stageId": "finish-declined" }
       },
       "type": "Anonymisation",
       "explanationText": {
@@ -1029,15 +1027,36 @@
     },
     {
       "id": "finish",
-      "label": {
-        "en-US": "Finish Interview"
-      },
+      "label": { "en-US": "Finish Interview" },
       "type": "FinishSession",
-      "title": {
-        "en-US": "Finish Interview"
+      "mode": "confirmation",
+      "content": {
+        "en-US": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+      },
+      "finishedContent": {
+        "en-US": "# Interview Finished\n\nThank you for participating!"
+      },
+      "finishLabel": { "en-US": "Finish" },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "outcome": "completed"
+    },
+    {
+      "id": "finish-declined",
+      "type": "FinishSession",
+      "mode": "confirmation",
+      "label": {
+        "en-US": "Not Taking Part"
       },
       "content": {
-        "en-US": "You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+        "en-US": "# You Chose Not to Take Part\n\nThank you for your time. Because you chose not to take part in this study, the interview ends here. If you chose this by mistake, go back and change your answer. Otherwise, press Finish."
+      },
+      "finishedContent": {
+        "en-US": "# Interview Finished\n\nThank you for your time."
       },
       "finishLabel": {
         "en-US": "Finish"
@@ -1045,13 +1064,10 @@
       "finishConfirmation": {
         "en-US": "Are you sure you want to finish the interview?"
       },
-      "finishedNotice": {
-        "en-US": "This interview is finished, and its answers can no longer be changed."
-      },
       "finishFailed": {
         "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
       },
-      "outcome": "completed"
+      "outcome": "terminated"
     }
   ],
   "interfaceText": {

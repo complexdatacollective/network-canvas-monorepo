@@ -65,7 +65,6 @@ import {
   lockProtocolDraft,
 } from '../protocol/commands.ts';
 import {
-  addsSecondFinishStage,
   advanceDraftManifest,
   changesFinishStage,
   creationIndex,
@@ -930,9 +929,10 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
           events: [],
         });
       }
-      // A protocol always ends at its one finish stage, so a stage is never
-      // rewritten into one or out of one: the first would leave it two, the
-      // second none. Refused as creating a second one is.
+      // A protocol always ends at a finish stage, so a stage is never
+      // rewritten into one or out of one: the first could cut off the stages
+      // after it, the second leave the interview no ending. A further ending
+      // is created as a finish stage instead.
       if (parseSectionId(sectionId).kind === 'stage') {
         const current = yield* headSection(session, sectionId);
         if (
@@ -952,7 +952,7 @@ export const submit = Effect.fn('protocolBuilder.submit')(function* (
                 {
                   path: ['type'],
                   message:
-                    'A stage cannot be changed into the finish stage, or the finish stage into another kind of stage.',
+                    'A stage cannot be changed into a finish stage, or a finish stage into another kind of stage.',
                 },
               ],
             },
@@ -1144,25 +1144,9 @@ export const create = Effect.fn('protocolBuilder.create')(function* (
         }
         const stages = stageList(Redacted.value(order.document));
         const types = yield* loadStageTypes(teamId, head, stages);
-        // A protocol has exactly one finish stage.
-        if (addsSecondFinishStage(types, timelineStageOf(created))) {
-          return unchanged<Published<CreateOutcome>>({
-            outcome: {
-              status: 'invalidShape',
-              sectionId: target,
-              issues: [
-                {
-                  path: ['type'],
-                  message:
-                    'A protocol has exactly one finish stage, and this one already has it.',
-                },
-              ],
-            },
-            events: [],
-          });
-        }
-        // Never after the finish stage, where no participant could reach it:
-        // a position at or past it, or none, puts the stage just before it.
+        // Never put where no participant could reach it: a stage that is not
+        // a finish stage goes before the first finish stage, and a finish
+        // stage — a further ending — at or after it (`creationIndex`).
         const at = creationIndex(
           types,
           timelineStageOf(created),

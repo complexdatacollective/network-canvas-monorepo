@@ -8,6 +8,7 @@ import type { AppDispatch } from '~/ducks/store';
 import { commitStage } from '../commitStage';
 import reducer, {
   actionCreators,
+  creationIndex,
   getFamilyPedigreeNodeTypeChangeBlock,
   getInvalidSkipDestinationReferences,
   getSkipDestinationDependentStages,
@@ -84,11 +85,11 @@ describe('protocol.stages', () => {
         id: 'finish',
         type: 'FinishSession',
         label: localized('Finish'),
-        title: localized('All done'),
-        content: localized('Thank you.'),
+        mode: 'confirmation',
+        content: localized('# All done\n\nThank you.'),
+        finishedContent: localized('This interview is finished.'),
         finishLabel: localized('Finish'),
         finishConfirmation: localized('Finish this interview?'),
-        finishedNotice: localized('This interview is finished.'),
         finishFailed: localized('The interview could not be finished.'),
         outcome: 'completed',
       } as Stage;
@@ -147,24 +148,63 @@ describe('protocol.stages', () => {
         expect(reducer(withFinish, test.moveStage(0, 3))).toEqual(withFinish);
       });
 
-      it('never moves the finish stage, even towards the end', () => {
-        const outOfPlace = [mockStages[0]!, finish, ...mockStages.slice(1)];
-        expect(reducer(outOfPlace, test.moveStage(1, 3))).toEqual(outOfPlace);
+      describe('with more than one finish stage', () => {
+        const endings = [
+          ...withFinish,
+          { ...finish, id: 'finish-2' },
+          { ...finish, id: 'finish-3' },
+        ];
+
+        it('moves finish stages among themselves', () => {
+          expect(ids(reducer(endings, test.moveStage(5, 3)))).toEqual([
+            '3',
+            '9',
+            '5',
+            'finish-3',
+            'finish',
+            'finish-2',
+          ]);
+          expect(ids(reducer(endings, test.moveStage(3, 5)))).toEqual([
+            '3',
+            '9',
+            '5',
+            'finish-2',
+            'finish-3',
+            'finish',
+          ]);
+        });
+
+        it('moves no finish stage above the first of them', () => {
+          expect(reducer(endings, test.moveStage(5, 2))).toEqual(endings);
+          expect(reducer(endings, test.moveStage(4, 0))).toEqual(endings);
+        });
+
+        it('moves no other stage among them', () => {
+          expect(reducer(endings, test.moveStage(2, 3))).toEqual(endings);
+          expect(reducer(endings, test.moveStage(0, 5))).toEqual(endings);
+        });
       });
 
-      it('never adds a second finish stage', () => {
-        for (const index of [undefined, 0, 3, 4]) {
+      it('adds another finish stage among the finish stages, or at the end', () => {
+        const added = { ...finish, id: 'finish-2' };
+        for (const index of [undefined, 0, 2, 10]) {
           expect(
+            ids(
+              reducer(
+                withFinish,
+                commitStage({ stageId: null, stage: added, index }),
+              ),
+            ),
+          ).toEqual(['3', '9', '5', 'finish', 'finish-2']);
+        }
+        expect(
+          ids(
             reducer(
               withFinish,
-              commitStage({
-                stageId: null,
-                stage: { ...finish, id: 'finish-2' },
-                index,
-              }),
+              commitStage({ stageId: null, stage: added, index: 3 }),
             ),
-          ).toEqual(withFinish);
-        }
+          ),
+        ).toEqual(['3', '9', '5', 'finish-2', 'finish']);
       });
 
       it('moves stages around before the finish stage', () => {
@@ -469,5 +509,31 @@ describe('protocol.stages', () => {
       expect(action.type).toBe('stages/moveStage');
       expect(action.payload).toEqual({ oldIndex: 2, newIndex: 1 });
     });
+  });
+});
+
+describe('creationIndex', () => {
+  const stages = [
+    { type: 'Information' },
+    { type: 'NameGenerator' },
+    { type: 'FinishSession' },
+    { type: 'FinishSession' },
+  ] as const;
+
+  // The timeline's trailing add control asks for the very end.
+  it('adds a finish stage asked for at the end after the existing endings', () => {
+    expect(
+      creationIndex(stages, { type: 'FinishSession' }, stages.length),
+    ).toBe(4);
+  });
+
+  it('adds any other stage asked for at the end before the first ending', () => {
+    expect(creationIndex(stages, { type: 'Information' }, stages.length)).toBe(
+      2,
+    );
+  });
+
+  it('adds a finish stage where it was asked for among the endings', () => {
+    expect(creationIndex(stages, { type: 'FinishSession' }, 3)).toBe(3);
   });
 });

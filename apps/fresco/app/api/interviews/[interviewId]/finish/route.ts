@@ -22,8 +22,8 @@ import { getAppSetting } from '~/queries/appSettings';
  * An upgrade restarts the server but not the browsers already showing an
  * interview: a tab opened before it keeps running the previous bundle, which
  * finishes with a bodyless POST. That request is still accepted, as a finish at
- * the protocol's finish stage — a protocol has exactly one, so it is the stage
- * the previous bundle's participant reached. A body, once sent, must be whole.
+ * the protocol's finish stage when it has exactly one, which was the only kind
+ * the previous bundle ran. A body, once sent, must be whole.
  */
 const FinishRequestSchema = z.object({
   stageId: z.string(),

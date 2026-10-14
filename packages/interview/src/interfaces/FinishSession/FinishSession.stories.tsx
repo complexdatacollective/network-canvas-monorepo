@@ -4,13 +4,14 @@ import { expect, fn, userEvent, within } from 'storybook/test';
 import SuperJSON from 'superjson';
 
 import { SyntheticInterview } from '@codaco/protocol-utilities';
-import type { FinishOutcome } from '@codaco/protocol-validation';
+import type { FinishMode, FinishOutcome } from '@codaco/protocol-validation';
 
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 type StoryArgs = {
-  title: string;
+  mode: FinishMode;
   content: string;
+  finishedContent: string;
   outcome: FinishOutcome;
   onCompletedAction: () => void;
 };
@@ -23,8 +24,9 @@ function buildInterview(args: StoryArgs) {
     text: 'Padding stage before the finish stage.',
   });
   interview.addFinishSessionStage({
-    title: args.title,
+    mode: args.mode,
     content: args.content,
+    finishedContent: args.finishedContent,
     outcome: args.outcome,
   });
 
@@ -65,13 +67,19 @@ const meta: Meta<StoryArgs> = {
     layout: 'fullscreen',
   },
   argTypes: {
-    title: {
-      control: 'text',
-      description: 'Heading; inline markdown (emphasis) only',
+    mode: {
+      control: 'inline-radio',
+      options: ['confirmation', 'automatic'],
+      description:
+        'Confirmation shows the closing screen and asks before finishing; automatic finishes as soon as the stage is shown',
     },
     content: {
       control: 'text',
-      description: 'Markdown shown below the heading',
+      description: 'Closing screen markdown, heading included',
+    },
+    finishedContent: {
+      control: 'text',
+      description: 'Finished screen markdown, heading included',
     },
     outcome: {
       control: 'inline-radio',
@@ -81,9 +89,10 @@ const meta: Meta<StoryArgs> = {
     },
   },
   args: {
-    title: 'Finish Interview',
+    mode: 'confirmation',
     content:
-      'You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+      '# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+    finishedContent: '# Interview Finished\n\nThank you for participating!',
     outcome: 'completed',
     onCompletedAction: fn(),
   },
@@ -98,17 +107,18 @@ export const Default: Story = {
 
 export const AuthoredText: Story = {
   args: {
-    title: 'Thank you for *your time*',
     content:
-      'Based on your answers, this study is not looking for more people like you right now.\n\nFinish the interview to close it. **Your answers will not be used.**',
+      '# Thank you for *your time*\n\nBased on your answers, this study is not looking for more people like you right now.\n\nFinish the interview to close it. **Your answers will not be used.**',
+    finishedContent:
+      '# Interview Finished\n\nThank you for your time. You can close this window.',
     outcome: 'ineligible',
   },
   render: (args) => <FinishSessionStoryWrapper {...args} />,
 };
 
 /**
- * Finishing replaces the interview with its completed state: the closing text,
- * a notice that the answers can no longer be changed, and the host's action.
+ * Finishing replaces the interview with its finished screen and the host's
+ * action.
  */
 export const FinishingShowsCompletedState: Story = {
   render: (args) => <FinishSessionStoryWrapper {...args} />,
@@ -124,9 +134,7 @@ export const FinishingShowsCompletedState: Story = {
     );
 
     await expect(
-      await canvas.findByText(
-        'This interview is finished, and its answers can no longer be changed.',
-      ),
+      await canvas.findByRole('heading', { name: 'Interview Finished' }),
     ).toBeVisible();
     await expect(
       canvas.queryByRole('button', { name: 'Finish' }),
@@ -135,5 +143,25 @@ export const FinishingShowsCompletedState: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Exit' }));
     await expect(args.onCompletedAction).toHaveBeenCalledTimes(1);
+  },
+};
+
+/**
+ * An automatic finish stage ends the interview as soon as it is shown: no
+ * closing screen, Finish button or question, straight to the finished screen.
+ */
+export const AutomaticFinish: Story = {
+  args: { mode: 'automatic' },
+  render: (args) => <FinishSessionStoryWrapper {...args} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      await canvas.findByRole('heading', { name: 'Interview Finished' }),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Finish' }),
+    ).not.toBeInTheDocument();
   },
 };

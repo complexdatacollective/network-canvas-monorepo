@@ -67,13 +67,13 @@ function twoScreenProtocol(): CurrentProtocol {
         id: 'finish',
         type: 'FinishSession',
         label: { en: 'Finish' },
-        title: { en: 'All done' },
-        content: { en: 'Thank you for your time.' },
+        mode: 'confirmation',
+        content: { en: '# All done\n\nThank you for your time.' },
+        finishedContent: {
+          en: '# Interview finished\n\nYour answers can no longer be changed.',
+        },
         finishLabel: { en: 'Finish' },
         finishConfirmation: { en: 'Finish this interview?' },
-        finishedNotice: {
-          en: 'This interview is finished, and its answers can no longer be changed.',
-        },
         finishFailed: { en: 'The interview could not be finished.' },
         outcome: 'completed',
       },
@@ -84,7 +84,6 @@ function twoScreenProtocol(): CurrentProtocol {
 /**
  * Seed the protocol, open its first stage, launch the preview, and walk it to
  * the protocol's finish stage. `exact` on the Finish locator matters: the
- * finish stage's own heading and label are "Finish Interview", and the
  * stage's button and the confirmation's confirm action are both the bare
  * "Finish", so the confirm action is found inside the dialog.
  */
@@ -109,6 +108,10 @@ async function previewToFinishStage(
   await nextStep.click();
   await nextStep.click();
   await expect(finishButton).toBeVisible();
+  // The closing screen, so that its disappearance on finishing means something.
+  await expect(
+    preview.getByRole('heading', { name: 'All done' }),
+  ).toBeVisible();
 
   return { preview, nextStep, finishButton };
 }
@@ -130,22 +133,26 @@ test('finishing a preview reports completion, prevents a repeat, and can be rest
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Finish', exact: true }).click();
 
-  // 1. The completed state replaces the interview: the protocol's own
-  //    closing text, the notice that the answers can no longer change, and
-  //    nothing that would confirm Finish a second time or step back.
-  const completionHeading = preview.getByRole('heading', { name: 'All done' });
+  // 1. The completed state replaces the interview: the finish stage's
+  //    finished text in place of its closing text, and nothing that would
+  //    confirm Finish a second time or step back.
+  const completionHeading = preview.getByRole('heading', {
+    name: 'Interview finished',
+  });
   await expect(completionHeading).toBeVisible();
-  await expect(preview.getByText('Thank you for your time.')).toBeVisible();
   await expect(
-    preview.getByText(
-      'This interview is finished, and its answers can no longer be changed.',
-    ),
+    preview.getByText('Your answers can no longer be changed.'),
   ).toBeVisible();
+  await expect(preview.getByRole('heading', { name: 'All done' })).toHaveCount(
+    0,
+  );
+  await expect(preview.getByText('Thank you for your time.')).toHaveCount(0);
   await expect(finishButton).toHaveCount(0);
   await expect(nextStep).toHaveCount(0);
   await expect(preview.getByTestId('previous-button')).toHaveCount(0);
 
-  // 2. Focus lands on that heading and STAYS there. The re-check is
+  // 2. Focus lands on the finished text — the focusable container wrapping
+  //    its markdown, heading included — and STAYS there. The re-check is
   //    deliberately gated on elapsed wall-clock time, not on a condition:
   //    every "the dialog is gone" oracle is already true once the completed
   //    state renders and would wait for nothing. What could still steal focus
@@ -154,10 +161,13 @@ test('finishing a preview reports completion, prevents a repeat, and can be rest
   //    re-check reads document.activeElement once rather than using
   //    `toBeFocused`, whose retries would forgive focus that left and came
   //    back.
-  await expect(completionHeading).toBeFocused();
+  const finishedText = completionHeading.locator(
+    'xpath=ancestor::*[@tabindex="-1"][1]',
+  );
+  await expect(finishedText).toBeFocused();
   await preview.waitForTimeout(1_000);
   expect(
-    await completionHeading.evaluate((el) => el === document.activeElement),
+    await finishedText.evaluate((el) => el === document.activeElement),
   ).toBe(true);
 
   // 3. The completed state's one action really restarts the preview: a run of the same

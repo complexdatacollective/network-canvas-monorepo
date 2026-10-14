@@ -49,6 +49,7 @@
   "interview.interfaces.emptyValue": "Geen waarde",
   "interview.interfaces.entityName": "Naam van {entityLabel}",
   "interview.interfaces.errorHeading": "Er is iets misgegaan",
+  "interview.interfaces.finishingInterview": "Het interview wordt afgerond…",
   "interview.interfaces.groupMembershipOptions": "Opties voor groepslidmaatschap",
   "interview.interfaces.groupMembershipPeople": "Groepslidmaatschap van de geselecteerde personen",
   "interview.interfaces.hideInstructions": "Instructies verbergen",

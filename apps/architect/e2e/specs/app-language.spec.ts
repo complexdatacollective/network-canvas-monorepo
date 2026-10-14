@@ -198,7 +198,7 @@ test('authors an Information stage in Spanish and changes built-in preview langu
     'en',
   );
 
-  // The finish screen's button and notice are the protocol's own text, in its
+  // The finish screen's button and finished text are the protocol's own text, in its
   // language (English here). The preview's explanation in the confirmation is
   // the preview's built-in text, which follows the browser's languages
   // (`es-MX` here), never Architect's own. Switching Architect to English
@@ -219,12 +219,13 @@ test('authors an Information stage in Spanish and changes built-in preview langu
   await expect(finish).toHaveAttribute('id', dialogId ?? '');
   await expect(finish).toContainText(spanishFinishConfirmation);
   await finish.getByRole('button', { name: 'Finish', exact: true }).click();
-  // The completed state's notice is the finish stage's, in the protocol's
-  // language.
+  // The completed state shows the finish stage's finished text, in the
+  // protocol's language.
   await expect(
-    preview.getByText(
-      'This interview is finished, and its answers can no longer be changed.',
-    ),
+    preview.getByRole('heading', { name: 'Interview Finished' }),
+  ).toBeVisible();
+  await expect(
+    preview.getByText('Thank you for participating!', { exact: true }),
   ).toBeVisible();
   expect(await readProtocolJson(page)).toEqual(beforeSwitch);
   await preview.close();

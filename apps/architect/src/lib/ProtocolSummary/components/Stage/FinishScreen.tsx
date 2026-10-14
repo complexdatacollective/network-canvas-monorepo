@@ -1,10 +1,12 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
+  finishModeWords,
   finishOutcomeWords,
   finishSessionMessages,
 } from '@codaco/protocol-builder/editors/finish-session/finishSessionMessages';
 import type {
+  FinishMode,
   FinishOutcome,
   LocalizedString,
 } from '@codaco/protocol-validation';
@@ -17,24 +19,28 @@ import SectionFrame from './SectionFrame';
 type FinishingText = {
   finishLabel?: LocalizedString;
   finishConfirmation?: LocalizedString;
-  finishedNotice?: LocalizedString;
   finishFailed?: LocalizedString;
 };
 
 type FinishScreenProps = {
+  mode?: FinishMode;
   content?: LocalizedString | null;
+  finishedContent?: LocalizedString | null;
   outcome?: FinishOutcome | null;
   finishing?: FinishingText;
 };
 
 /**
- * A finish stage's text, its finishing words and its outcome. Its heading is
- * the stage's page heading, printed with every other stage's. Each section's
- * content keeps the same space below the section's title band as the tables
- * in other sections.
+ * A finish stage's mode, its closing and finished text, its finishing words
+ * and its outcome. The closing text and the confirmation question are only
+ * printed for a stage that asks participants to confirm, because an automatic
+ * one never shows them. Each section's content keeps the same space below the
+ * section's title band as the tables in other sections.
  */
 const FinishScreen = ({
+  mode = 'confirmation',
   content = null,
+  finishedContent = null,
   outcome = null,
   finishing = {},
 }: FinishScreenProps) => {
@@ -43,23 +49,37 @@ const FinishScreen = ({
     [
       ['finishLabel', finishSessionMessages.finishLabelLabel],
       ['finishConfirmation', finishSessionMessages.finishConfirmationLabel],
-      ['finishedNotice', finishSessionMessages.finishedNoticeLabel],
       ['finishFailed', finishSessionMessages.finishFailedLabel],
     ] as const
   ).flatMap(([key, label]) => {
     const value = finishing[key];
-    return value === undefined
+    return value === undefined ||
+      (key === 'finishConfirmation' && mode !== 'confirmation')
       ? []
       : [[intl.formatMessage(label), <SummaryText key={key} value={value} />]];
   });
   return (
     <>
-      {content && (
+      <SectionFrame title={intl.formatMessage(finishSessionMessages.modeLabel)}>
+        <Paragraph className="my-5">
+          {intl.formatMessage(finishModeWords[mode].label)}
+        </Paragraph>
+      </SectionFrame>
+      {mode === 'confirmation' && content && (
         <SectionFrame
-          title={intl.formatMessage(finishSessionMessages.textLabel)}
+          title={intl.formatMessage(finishSessionMessages.closingTextLabel)}
         >
           <div className="my-5">
             <SummaryMarkdown value={content} />
+          </div>
+        </SectionFrame>
+      )}
+      {finishedContent && (
+        <SectionFrame
+          title={intl.formatMessage(finishSessionMessages.finishedTextLabel)}
+        >
+          <div className="my-5">
+            <SummaryMarkdown value={finishedContent} />
           </div>
         </SectionFrame>
       )}

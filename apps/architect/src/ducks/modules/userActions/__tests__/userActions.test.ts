@@ -181,23 +181,20 @@ describe('userActions', () => {
             fr: DEFAULT_FINISH_SESSION_TEXT.fr.label,
             en: DEFAULT_FINISH_SESSION_TEXT.en.label,
           },
-          title: {
-            fr: DEFAULT_FINISH_SESSION_TEXT.fr.title,
-            en: DEFAULT_FINISH_SESSION_TEXT.en.title,
-          },
+          mode: 'confirmation',
           content: {
             fr: DEFAULT_FINISH_SESSION_TEXT.fr.content,
             en: DEFAULT_FINISH_SESSION_TEXT.en.content,
+          },
+          finishedContent: {
+            fr: DEFAULT_FINISH_SESSION_TEXT.fr.finishedContent,
+            en: DEFAULT_FINISH_SESSION_TEXT.en.finishedContent,
           },
           // The screen's own words, which Network Canvas also supplies.
           finishLabel: { fr: 'Terminer', en: 'Finish' },
           finishConfirmation: {
             fr: 'Voulez-vous vraiment terminer l’entretien ?',
             en: 'Are you sure you want to finish the interview?',
-          },
-          finishedNotice: {
-            fr: 'Cet entretien est terminé et ses réponses ne peuvent plus être modifiées.',
-            en: 'This interview is finished, and its answers can no longer be changed.',
           },
           finishFailed: {
             fr: 'L’entretien n’a pas pu être terminé. Veuillez réessayer. Si le problème persiste, contactez l’équipe responsable de l’étude.',
@@ -231,16 +228,14 @@ describe('userActions', () => {
           id: expect.any(String),
           type: 'FinishSession',
           label: {},
-          title: {},
+          mode: 'confirmation',
           content: {},
+          finishedContent: {},
           // The screen's own words are required, so they are English under
           // Japanese until the researcher translates them.
           finishLabel: { ja: 'Finish' },
           finishConfirmation: {
             ja: 'Are you sure you want to finish the interview?',
-          },
-          finishedNotice: {
-            ja: 'This interview is finished, and its answers can no longer be changed.',
           },
           finishFailed: {
             ja: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
@@ -271,20 +266,46 @@ describe('userActions', () => {
     });
   });
 
-  // A protocol has exactly one finish stage, so one that arrives with a
-  // second is refused rather than opened.
+  // A protocol may end with several finish stages, so one that arrives with
+  // two at its end opens; one with a stage after a finish stage, which no
+  // participant could reach, is refused rather than opened.
   describe('opening a protocol with two finish stages', () => {
-    it('refuses it, naming the rule', async () => {
+    const localization = { defaultLocale: 'en', locales: ['en'] };
+    const finish = (id: string) =>
+      createDefaultFinishSessionStage({ id, localization });
+
+    beforeEach(async () => {
       const actual = await vi.importActual<
         typeof import('@codaco/protocol-validation')
       >('@codaco/protocol-validation');
       validateProtocol.mockImplementation(actual.validateProtocol);
-      const localization = { defaultLocale: 'en', locales: ['en'] };
+    });
+
+    it('opens it when both are at the end', async () => {
+      const protocol: CurrentProtocol = {
+        ...makeProtocol(),
+        stages: [finish('finish'), finish('finish-2')],
+      };
+
+      const result = await runThunk(openBundledTemplate({ protocol }));
+
+      expect(result.payload).toEqual({ status: 'opened' });
+      expect(setActiveProtocol).toHaveBeenCalled();
+    });
+
+    it('refuses one with a stage between them, naming the rule', async () => {
       const protocol: CurrentProtocol = {
         ...makeProtocol(),
         stages: [
-          createDefaultFinishSessionStage({ id: 'finish', localization }),
-          createDefaultFinishSessionStage({ id: 'finish-2', localization }),
+          finish('finish'),
+          {
+            id: 'information',
+            type: 'Information',
+            label: { en: 'After the end' },
+            title: { en: 'After the end' },
+            items: [],
+          },
+          finish('finish-2'),
         ],
       };
 
@@ -293,7 +314,7 @@ describe('userActions', () => {
       expect(result.payload).toEqual({
         status: 'validation-error',
         message: expect.stringContaining(
-          'A protocol has exactly one finish stage',
+          'This stage comes after the finish stage at position 1, so no participant can reach it.',
         ),
       });
       expect(setActiveProtocol).not.toHaveBeenCalled();

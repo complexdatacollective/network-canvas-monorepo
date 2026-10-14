@@ -306,14 +306,13 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     SNAPSHOT_INHERITANCE_ARGUMENTS,
   ),
 
-  // The finish stage's title and content are markdown, so a researcher can
-  // emphasise a word in either.
-  site(stage(FINISH_STAGE_INDEX, 'title'), 'markdown', false, true),
+  // The finish stage's closing and finished text are markdown, so a
+  // researcher can write each screen's heading and emphasise a word.
   site(stage(FINISH_STAGE_INDEX, 'content'), 'markdown', false, true),
+  site(stage(FINISH_STAGE_INDEX, 'finishedContent'), 'markdown', false, true),
   // The interview's own words on that screen, which Network Canvas supplies.
   site(stage(FINISH_STAGE_INDEX, 'finishLabel'), 'plain'),
   site(stage(FINISH_STAGE_INDEX, 'finishConfirmation'), 'plain'),
-  site(stage(FINISH_STAGE_INDEX, 'finishedNotice'), 'plain'),
   site(stage(FINISH_STAGE_INDEX, 'finishFailed'), 'plain'),
 ];
 

@@ -1811,13 +1811,17 @@
     "defaultMessage": "Interactive preview",
     "description": "Accessible name and heading of the half of the form-field dialog that shows the question as the participant will meet it."
   },
-  "protocolBuilder.finishSession.closingDescription": {
-    "defaultMessage": "Write what participants read at the end of the interview. They finish the interview from this screen, and see this text again whenever the finished interview is opened.",
+  "protocolBuilder.finishSession.closingScreenDescription": {
+    "defaultMessage": "Write what participants read before they finish the interview. Start it with a heading.",
     "description": "Description of the closing-screen section."
+  },
+  "protocolBuilder.finishSession.closingTextLabel": {
+    "defaultMessage": "Closing text",
+    "description": "Label of the field holding the text, heading included, a participant reads before finishing the interview."
   },
   "protocolBuilder.finishSession.closingTitle": {
     "defaultMessage": "Closing screen",
-    "description": "Heading of the section where a researcher writes what a participant reads on the screen that ends the interview."
+    "description": "Heading of the section where a researcher writes what a participant reads before finishing the interview."
   },
   "protocolBuilder.finishSession.finishConfirmationLabel": {
     "defaultMessage": "Confirmation question",
@@ -1831,13 +1835,17 @@
     "defaultMessage": "Finish button",
     "description": "Label of the field holding the words on the button that ends the interview."
   },
-  "protocolBuilder.finishSession.finishedNoticeHint": {
-    "defaultMessage": "Shown under the closing text once the interview has finished.",
-    "description": "Guidance under the finished-notice field."
+  "protocolBuilder.finishSession.finishedDescription": {
+    "defaultMessage": "Write what participants read once the interview has finished. They see it again whenever the finished interview is opened.",
+    "description": "Description of the finished-screen section."
   },
-  "protocolBuilder.finishSession.finishedNoticeLabel": {
-    "defaultMessage": "Finished notice",
-    "description": "Label of the field holding the notice shown under the closing text once the interview has ended."
+  "protocolBuilder.finishSession.finishedTextLabel": {
+    "defaultMessage": "Finished text",
+    "description": "Label of the field holding the text, heading included, a participant reads once the interview has finished."
+  },
+  "protocolBuilder.finishSession.finishedTitle": {
+    "defaultMessage": "Finished screen",
+    "description": "Heading of the section where a researcher writes what a participant reads once the interview has finished."
   },
   "protocolBuilder.finishSession.finishingDescription": {
     "defaultMessage": "These start with wording Network Canvas supplies, which you can change.",
@@ -1845,11 +1853,35 @@
   },
   "protocolBuilder.finishSession.finishingTitle": {
     "defaultMessage": "Finishing the interview",
-    "description": "Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, the notice once it has finished, and the message when finishing fails."
+    "description": "Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, and the message when finishing fails."
   },
-  "protocolBuilder.finishSession.headingLabel": {
-    "defaultMessage": "Heading",
-    "description": "Label of the field holding the heading at the top of the screen that ends the interview."
+  "protocolBuilder.finishSession.modeAutomatic": {
+    "defaultMessage": "Finish automatically",
+    "description": "Option: the interview finishes as soon as participants reach this screen, with no closing screen, button or question."
+  },
+  "protocolBuilder.finishSession.modeAutomaticDescription": {
+    "defaultMessage": "The interview finishes as soon as participants reach this screen, and they can’t go back.",
+    "description": "Explanation under the \"Finish automatically\" option."
+  },
+  "protocolBuilder.finishSession.modeConfirmation": {
+    "defaultMessage": "Participants confirm",
+    "description": "Option: participants read a closing screen, press a button to finish the interview and confirm in a dialog."
+  },
+  "protocolBuilder.finishSession.modeConfirmationDescription": {
+    "defaultMessage": "Participants read the closing screen, press a button to finish and confirm when asked. Until then they can go back and change their answers.",
+    "description": "Explanation under the \"Participants confirm\" option."
+  },
+  "protocolBuilder.finishSession.modeDescription": {
+    "defaultMessage": "Choose whether participants confirm that they are finished, or the interview finishes as soon as they reach this screen.",
+    "description": "Description of the section choosing how participants finish."
+  },
+  "protocolBuilder.finishSession.modeLabel": {
+    "defaultMessage": "Finishing",
+    "description": "Label of the choice between confirming the end of the interview and finishing it automatically."
+  },
+  "protocolBuilder.finishSession.modeTitle": {
+    "defaultMessage": "How participants finish",
+    "description": "Heading of the section where a researcher chooses whether participants confirm that they are finished, or the interview finishes as soon as they reach the screen that ends it."
   },
   "protocolBuilder.finishSession.outcomeCompleted": {
     "defaultMessage": "Completed",
@@ -1886,10 +1918,6 @@
   "protocolBuilder.finishSession.outcomeTitle": {
     "defaultMessage": "Outcome",
     "description": "Heading of the section where a researcher chooses how an interview that ends on this screen is recorded as having ended."
-  },
-  "protocolBuilder.finishSession.textLabel": {
-    "defaultMessage": "Text",
-    "description": "Label of the field holding the text a participant reads on the screen that ends the interview."
   },
   "protocolBuilder.formFields.addLabel": {
     "defaultMessage": "Create new form field",

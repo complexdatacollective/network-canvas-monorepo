@@ -49,6 +49,7 @@
   "interview.interfaces.emptyValue": "無值",
   "interview.interfaces.entityName": "{entityLabel} 名稱",
   "interview.interfaces.errorHeading": "發生錯誤",
+  "interview.interfaces.finishingInterview": "正在結束訪談…",
   "interview.interfaces.groupMembershipOptions": "群組歸屬選項",
   "interview.interfaces.groupMembershipPeople": "已選取者的群組歸屬",
   "interview.interfaces.hideInstructions": "隱藏說明",

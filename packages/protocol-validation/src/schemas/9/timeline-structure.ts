@@ -1,17 +1,14 @@
 /**
  * The structural rules a protocol's stage list must keep: every route through
- * the interview ends at a finish stage, every stage is on some route, and a
- * protocol has exactly one finish stage.
+ * the interview ends at a finish stage, and every stage is on some route.
  *
  * The timeline is a straight line until branching lands (#1694), so both rules
  * take their linear form here: the last stage is a finish stage, and nothing
- * follows a finish stage. Branching generalises them to every path through the
- * timeline without a schema change; callers read the problems, not the rule.
- *
- * One finish stage per protocol is a rule of its own for now, rather than
- * something left to follow from the other two: a second finish stage is
- * reported as a second finish stage, not as an unreachable one. Branching may
- * lift it, since different routes can end at different finish stages.
+ * but another finish stage follows a finish stage. A protocol may end with
+ * several finish stages, so different routes can end differently: an earlier
+ * stage's skip destination sends a route past the first of them to another.
+ * Branching generalises the rules to every path through the timeline without
+ * a schema change; callers read the problems, not the rule.
  */
 
 type StageLike = Readonly<{ type: string }>;
@@ -38,13 +35,6 @@ export type TimelineStructureProblem =
       stageIndex: number;
       /** The finish stage every route ends at before this one. */
       finishStageIndex: number;
-    }>
-  | Readonly<{
-      /** A finish stage after the first: a protocol has exactly one. */
-      kind: 'second-finish';
-      stageIndex: number;
-      /** The protocol's first finish stage. */
-      finishStageIndex: number;
     }>;
 
 export const findTimelineStructureProblems = (
@@ -61,10 +51,9 @@ export const findTimelineStructureProblems = (
   }
 
   for (let index = firstFinishIndex + 1; index < stages.length; index += 1) {
+    if (isFinishSessionStage(stages[index])) continue;
     problems.push({
-      kind: isFinishSessionStage(stages[index])
-        ? 'second-finish'
-        : 'unreachable',
+      kind: 'unreachable',
       stageIndex: index,
       finishStageIndex: firstFinishIndex,
     });

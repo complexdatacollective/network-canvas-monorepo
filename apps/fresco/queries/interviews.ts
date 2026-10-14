@@ -6,6 +6,7 @@ import { CodebookSchema } from '@codaco/protocol-validation';
 import {
   buildInterviewOrderBy,
   buildInterviewWhere,
+  PROGRESS_STAGE_COUNT_SQL,
 } from '~/app/dashboard/_components/InterviewsTable/buildInterviewWhere';
 import type { InterviewsSearchParams } from '~/app/dashboard/_components/InterviewsTable/searchParams';
 import { safeCacheTag } from '~/lib/cache';
@@ -121,7 +122,7 @@ export async function getInterviews(searchParams: InterviewsSearchParams) {
       i."currentStep", i."protocolId", i."isSynthetic",
       par."identifier" AS "participantIdentifier",
       p."name" AS "protocolName",
-      COALESCE(jsonb_array_length(p."stages"::jsonb), 0)::int AS "stageCount",
+      ${Prisma.raw(PROGRESS_STAGE_COUNT_SQL)}::int AS "stageCount",
       ${Prisma.raw(NODE_SUMMARY_SQL)} AS "nodeSummary",
       ${Prisma.raw(EDGE_SUMMARY_SQL)} AS "edgeSummary"
     FROM "Interview" i

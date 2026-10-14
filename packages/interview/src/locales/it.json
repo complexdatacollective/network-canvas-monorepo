@@ -49,6 +49,7 @@
   "interview.interfaces.emptyValue": "Nessun valore",
   "interview.interfaces.entityName": "Nome ({entityLabel})",
   "interview.interfaces.errorHeading": "Si è verificato un errore",
+  "interview.interfaces.finishingInterview": "Conclusione dell’intervista in corso…",
   "interview.interfaces.groupMembershipOptions": "Opzioni di appartenenza ai gruppi",
   "interview.interfaces.groupMembershipPeople": "Appartenenza ai gruppi delle persone selezionate",
   "interview.interfaces.hideInstructions": "Nascondi le istruzioni",

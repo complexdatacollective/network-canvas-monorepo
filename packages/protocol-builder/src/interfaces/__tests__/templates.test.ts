@@ -105,8 +105,9 @@ describe('getInterfaceTemplate', () => {
     });
   });
 
-  it('starts a finish screen as completed', () => {
+  it('starts a finish screen as completed, asking participants to confirm', () => {
     expect(getInterfaceTemplate('FinishSession')).toEqual({
+      mode: 'confirmation',
       outcome: 'completed',
     });
   });
@@ -142,9 +143,9 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
     'prompt',
     'subject',
   ],
-  // Its closing text is supplied when Architect adds it to a protocol, in
-  // each of the protocol's languages; the template holds only the outcome.
-  FinishSession: ['content', 'title'],
+  // Its closing and finished text are supplied with a new stage, in each of
+  // the protocol's languages that has them, so a name is all it needs.
+  FinishSession: [],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
   // Its choices are the protocol's own languages, so a name is all it needs.
@@ -236,12 +237,15 @@ describe('a new stage given nothing but a name', () => {
         : {}),
       ...(type === 'FinishSession'
         ? {
+            content: {
+              en: '# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+            },
+            finishedContent: {
+              en: '# Interview Finished\n\nThank you for participating!',
+            },
             finishLabel: { en: 'Finish' },
             finishConfirmation: {
               en: 'Are you sure you want to finish the interview?',
-            },
-            finishedNotice: {
-              en: 'This interview is finished, and its answers can no longer be changed.',
             },
             finishFailed: {
               en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
@@ -340,17 +344,16 @@ describe('a new stage given nothing but a name', () => {
    * Stated once, plainly, because it is what a reader of the list above would
    * otherwise have to work out by scanning it. The day another interface can
    * be saved straight from its template, this fails and someone reads the
-   * list. The language chooser is the exception: it has nothing to configure
-   * beyond its name. (A finish screen is never made from its template:
-   * Architect adds it to a new protocol with the closing text Network Canvas
-   * supplies.)
+   * list. The language chooser and the finish screen are the exceptions: the
+   * first has nothing to configure beyond its name, and the second starts
+   * with the closing and finished text Network Canvas supplies.
    */
-  it('is a saveable stage only for the language chooser', () => {
+  it('is a saveable stage only for the language chooser and the finish screen', () => {
     const saveable = STAGE_TYPES.filter(
       (type) => stageSchema.safeParse(newStage(type)).success,
     );
 
-    expect(saveable).toEqual(['LanguageChooser']);
+    expect(saveable).toEqual(['FinishSession', 'LanguageChooser']);
   });
 
   /**

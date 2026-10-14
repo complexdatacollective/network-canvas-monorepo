@@ -1,7 +1,8 @@
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
-import type {
-  LocalizationDeclaration,
-  StageType,
+import {
+  defaultFinishSessionFields,
+  type LocalizationDeclaration,
+  type StageType,
 } from '@codaco/protocol-validation';
 
 import { withMissingSuppliedStageText } from '../stageDocument.ts';
@@ -68,6 +69,7 @@ const INTERFACE_TEMPLATES: Partial<
     background: DEFAULT_CIRCLES_BACKGROUND,
   },
   FinishSession: {
+    mode: 'confirmation',
     outcome: 'completed',
   },
   NarrativePedigree: {
@@ -93,13 +95,21 @@ export const getInterfaceTemplate = (
  * `missingSuppliedStageText`). Unlike a template value the supplied wording depends
  * on the protocol, and it is prose about the stage rather than about its
  * subject, so a change of subject keeps it.
+ *
+ * A new finish stage also opens with the closing and finished text Network
+ * Canvas supplies, in each of the protocol's languages that has it, so the
+ * researcher edits a working ending rather than writing one from nothing.
  */
 export const newStageFields = (
   interfaceType: StageType,
   localization: LocalizationDeclaration,
-): Record<string, FieldValue> =>
-  withMissingSuppliedStageText(
-    getInterfaceTemplate(interfaceType),
-    interfaceType,
-    localization,
-  );
+): Record<string, FieldValue> => {
+  const template = getInterfaceTemplate(interfaceType);
+  if (interfaceType === 'FinishSession') {
+    const { content, finishedContent } = defaultFinishSessionFields(
+      localization.locales,
+    );
+    Object.assign(template, { content, finishedContent });
+  }
+  return withMissingSuppliedStageText(template, interfaceType, localization);
+};

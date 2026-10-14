@@ -58,22 +58,40 @@ export const notInSet =
 type ProgressStage = { type: string; prompts?: readonly unknown[] };
 
 /**
+ * How many stages progress is measured over: those up to and including the
+ * first finish stage. A protocol's further finish stages are alternative
+ * endings a participant reaches instead of the first, never after it, so they
+ * add nothing to the way through.
+ */
+export function progressStepCount(stages: readonly { type: string }[]) {
+  const firstFinish = stages.findIndex(
+    (stage) => stage.type === 'FinishSession',
+  );
+  return firstFinish === -1 ? stages.length : firstFinish + 1;
+}
+
+/**
  * Participant-facing progress for a freshly entered stage. Pass the protocol's
- * stages (finish stage included) and the host-controlled step; `totalSteps` is
- * the stage count and `progress` matches the interview's own progress bar at
- * the start of `currentStep` (prompt index 0). On the last stage, the finish
- * stage, progress is 100.
+ * stages (finish stages included) and the host-controlled step; `totalSteps`
+ * is the count of stages progress is measured over (`progressStepCount`) and
+ * `progress` matches the interview's own progress bar at
+ * the start of `currentStep` (prompt index 0). On any finish stage progress is
+ * 100: the interview ends there, whichever of several it is.
  */
 export function getInterviewProgress(
   stages: readonly ProgressStage[],
   currentStep: number,
 ): StepChangeMeta {
-  const totalSteps = stages.length;
+  const totalSteps = progressStepCount(stages);
   const stage = stages[currentStep];
   const promptCount = stage?.prompts?.length ?? 1;
 
   return {
-    progress: calculateProgress(currentStep, totalSteps, 0, promptCount),
+    // Every finish stage ends the interview, not only the last one.
+    progress:
+      stage?.type === 'FinishSession'
+        ? 100
+        : calculateProgress(currentStep, totalSteps, 0, promptCount),
     totalSteps,
   };
 }

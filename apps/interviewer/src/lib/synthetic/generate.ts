@@ -43,16 +43,17 @@ export async function generateSyntheticSessions(
 
   const externalData = await loadRosterNodesForStages(protocol);
 
-  // A synthetic session runs straight through, so a completed one ends at the
-  // protocol's last finish stage.
-  const finishStage = protocol.protocol.stages.findLast(
-    (stage) => stage.type === 'FinishSession',
-  );
-  const finished = () => ({
-    finishedAt: new Date().toISOString(),
-    finishStageId: finishStage?.id ?? null,
-    finishOutcome: finishStage?.outcome ?? null,
-  });
+  // A completed synthetic session ends at the finish stage its route reached.
+  const finished = (currentStep: number) => {
+    const finishStage = protocol.protocol.stages[currentStep];
+    const reached =
+      finishStage?.type === 'FinishSession' ? finishStage : undefined;
+    return {
+      finishedAt: new Date().toISOString(),
+      finishStageId: reached?.id ?? null,
+      finishOutcome: reached?.outcome ?? null,
+    };
+  };
 
   const genOptions = {
     codebook: protocol.codebook,
@@ -94,7 +95,7 @@ export async function generateSyntheticSessions(
             stageMetadata === null || stageMetadata === undefined
               ? undefined
               : StageMetadataSchema.parse(stageMetadata),
-          ...(droppedOut ? { finishedAt: null } : finished()),
+          ...(droppedOut ? { finishedAt: null } : finished(currentStep)),
         },
         { protocolHash },
       );
@@ -129,7 +130,7 @@ export async function generateSyntheticSessions(
                 stageMetadata === null || stageMetadata === undefined
                   ? undefined
                   : StageMetadataSchema.parse(stageMetadata),
-              ...finished(),
+              ...finished(currentStep),
             },
             { protocolHash },
           );

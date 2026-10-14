@@ -26,7 +26,7 @@ import {
 
 import { getCodebook, getStages } from '../store/modules/protocol';
 import type { RootState } from '../store/store';
-import { calculateProgress } from './utils';
+import { calculateProgress, progressStepCount } from './utils';
 
 type NavigationInfo = {
   progress: number;
@@ -237,14 +237,14 @@ const getIsLastStage = createSelector(
   (currentStep, stages) => currentStep === stages.length - 1,
 );
 
-export const getStageCount = createSelector(
+export const getProgressStageCount = createSelector(
   getStages,
-  (stages) => stages.length,
+  progressStepCount,
 );
 
 const getSessionProgress = createSelector(
   getStageIndex,
-  getStageCount,
+  getProgressStageCount,
   getPromptIndex,
   getPromptCount,
   calculateProgress,

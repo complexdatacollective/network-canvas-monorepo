@@ -81,12 +81,13 @@ describe('a new protocol', () => {
       expect.objectContaining({
         id: NEW_PROTOCOL_FINISH_STAGE_ID,
         type: 'FinishSession',
+        mode: 'confirmation',
+        finishedContent: {
+          en: '# Interview Finished\n\nThank you for participating!',
+        },
         finishLabel: { en: 'Finish' },
         finishConfirmation: {
           en: 'Are you sure you want to finish the interview?',
-        },
-        finishedNotice: {
-          en: 'This interview is finished, and its answers can no longer be changed.',
         },
         finishFailed: {
           en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
@@ -124,14 +125,14 @@ describe('golden hashes', () => {
         "codebook:edge:knows": "96ba2dfdd02dc597536433e6debfbdaec16f3ffc1738b0377515198ddaa30193",
         "codebook:node:person": "508208bef9a636733579c7062b00429e206a0410d991a505b5da78b4be9c3fd9",
         "settings": "92399b6874ba843f857bdb6b6529531390bea9828151aee29210c970873f3429",
-        "stage:finish": "be81f328aa5affc07aa5d80f80fd090920c21934337aeba90383b1d507acb1be",
+        "stage:finish": "9d53432c1592c77cb24422813ad7716d997cd720d5ef19aaa4a06ed08603ddbc",
         "stage:nameGenerator1": "da989aa0f95cc6223c4ae6e1e8eecd53698a900bae557d0dae58ba43948f9511",
         "stage:sociogram1": "f20a610875c24d940f59bd6d68d52e3b0453fe778d1a4af9a3a09a7926b0e3a9",
         "stageOrder": "db26c1d9b0a06b6f2eaa8ffbc16226398ec945d3ce6168f4ad1d174e0621aa57",
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"d23a88bd5850a18d36924f4bdcc6d5f98848e471c42d4e804b26175ffe4af52e"`,
+      `"da103e6b4b3d214b6079fdddb19fe8331dbd6b31ae7f3a49a3dd2e83a37e93ce"`,
     );
   });
 });

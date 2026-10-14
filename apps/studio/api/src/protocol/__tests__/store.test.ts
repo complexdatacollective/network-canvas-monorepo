@@ -403,12 +403,14 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
     const finish = (id: string) => ({
       id,
       type: 'FinishSession',
+      mode: 'confirmation',
       label: { en: 'Finish' },
-      title: { en: 'Thank you' },
-      content: { en: 'Done.' },
+      content: { en: '# Thank you\n\nDone.' },
+      finishedContent: {
+        en: '# Interview Finished\n\nThank you for participating!',
+      },
       finishLabel: { en: 'Finish' },
       finishConfirmation: { en: 'Finish this interview?' },
-      finishedNotice: { en: 'This interview is finished.' },
       finishFailed: { en: 'The interview could not be finished.' },
       outcome: 'completed',
     });
@@ -437,14 +439,74 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
       });
     });
 
-    it('refuses a second finish stage, and keeps the draft as it was', async () => {
+    it('adds further finish stages among the endings, never above the first', async () => {
       const { draftId } = await create(baseProtocol());
-      const before = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      await run(addStage(TEST_TEAM_ID, { draftId, stage: finish('appended') }));
+      await run(
+        addStage(TEST_TEAM_ID, {
+          draftId,
+          stage: finish('atTheTop'),
+          index: 0,
+        }),
+      );
+      await run(
+        addStage(TEST_TEAM_ID, { draftId, stage: finish('between'), index: 4 }),
+      );
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'atTheTop',
+        'finish',
+        'between',
+        'appended',
+      ]);
+      expect(await run(validateDraft(TEST_TEAM_ID, draftId))).toEqual({
+        valid: true,
+      });
+    });
+
+    it('removes one of two finish stages, but not the last', async () => {
+      const { draftId } = await create(baseProtocol());
+      await run(addStage(TEST_TEAM_ID, { draftId, stage: finish('second') }));
+      await run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'finish' }));
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'second',
+      ]);
       await expect(
-        run(addStage(TEST_TEAM_ID, { draftId, stage: finish('secondFinish') })),
-      ).rejects.toThrow(/exactly one finish stage/);
-      const after = await run(getDraftSections(TEST_TEAM_ID, draftId));
-      expect(after.headManifestHash).toBe(before.headManifestHash);
+        run(removeStage(TEST_TEAM_ID, { draftId, stageId: 'second' })),
+      ).rejects.toThrow(/only finish stage/);
+    });
+
+    it('moves finish stages among themselves, but not above the first', async () => {
+      const { draftId } = await create(baseProtocol());
+      await run(addStage(TEST_TEAM_ID, { draftId, stage: finish('second') }));
+      const head = await run(getDraftSections(TEST_TEAM_ID, draftId));
+      await expect(
+        run(
+          moveStage(TEST_TEAM_ID, {
+            draftId,
+            stageId: 'second',
+            toIndex: 1,
+            expectedRevision: head.headSeq,
+          }),
+        ),
+      ).rejects.toThrow(/after a finish stage/);
+      await run(
+        moveStage(TEST_TEAM_ID, {
+          draftId,
+          stageId: 'second',
+          toIndex: 2,
+          expectedRevision: head.headSeq,
+        }),
+      );
+      expect(await stageIds(draftId)).toEqual([
+        'nameGenerator1',
+        'sociogram1',
+        'second',
+        'finish',
+      ]);
     });
 
     it('refuses to remove the only finish stage, and keeps the draft as it was', async () => {
@@ -473,7 +535,7 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
               expectedRevision: head.headSeq,
             }),
           ),
-        ).rejects.toThrow(/after the finish stage/);
+        ).rejects.toThrow(/after a finish stage/);
       }
       expect(await stageIds(draftId)).toEqual([
         'nameGenerator1',

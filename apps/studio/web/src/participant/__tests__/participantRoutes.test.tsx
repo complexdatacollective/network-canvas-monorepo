@@ -93,14 +93,14 @@ const sessionPayload = (
       {
         id: 'finish',
         type: 'FinishSession',
+        mode: 'confirmation',
         label: { en: 'Finish' },
-        title: { en: 'Thank you' },
-        content: { en: 'The interview is complete.' },
+        content: { en: '# Thank you\n\nThe interview is complete.' },
+        finishedContent: {
+          en: '# Thank you\n\nThis interview is finished, and its answers can no longer be changed.',
+        },
         finishLabel: { en: 'Finish' },
         finishConfirmation: { en: 'Finish this interview?' },
-        finishedNotice: {
-          en: 'This interview is finished, and its answers can no longer be changed.',
-        },
         finishFailed: { en: 'The interview could not be finished.' },
         outcome: 'terminated',
       },
@@ -302,7 +302,7 @@ describe('opening a participant link', () => {
   });
 });
 
-/** The finish stage's notice under a finished interview's closing text. */
+/** The text of the finish stage's finished screen. */
 const FINISHED_NOTICE =
   'This interview is finished, and its answers can no longer be changed.';
 
@@ -328,11 +328,14 @@ describe('the interview session', () => {
     );
 
     // The interview stays mounted and shows its completed state: the finish
-    // stage's own closing text and the interview's finished notice, not
-    // Studio's generic notice in place of the interview.
+    // stage's own finished screen, not Studio's generic notice in place of
+    // the interview.
     await screen.findByText(FINISHED_NOTICE);
+    // Focus moves to the finished screen's text, which opens with its heading.
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Thank you' })).toHaveFocus();
+      expect(
+        screen.getByRole('heading', { name: 'Thank you' }).parentElement,
+      ).toHaveFocus();
     });
     expect(
       screen.queryByRole('button', { name: 'Finish' }),

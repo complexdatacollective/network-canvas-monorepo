@@ -29,8 +29,8 @@ const written = {
   stages: [
     {
       ...newJapaneseProtocol.stages[0],
-      title: { ja: '終わり' },
-      content: { ja: 'ご協力ありがとうございました。' },
+      content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
+      finishedContent: { ja: '# 終了しました' },
     },
   ],
 };
@@ -70,7 +70,7 @@ describe('<FinishStageTextAlert />', () => {
     expect(screen.getByText(TITLE)).toBeInTheDocument();
     expect(
       screen.getByText(
-        'The stage that ends the interview has no heading or text in Japanese. The protocol can’t be downloaded until they’re added.',
+        /^A stage that ends the interview has no text for its closing screen or its finished screen in Japanese\. The protocol can’t be downloaded until/,
       ),
     ).toBeInTheDocument();
   });
@@ -84,7 +84,7 @@ describe('<FinishStageTextAlert />', () => {
     expect(location.history?.at(-1)).toBe('/protocol/stage/end');
   });
 
-  it('renders nothing once the heading and text are written', () => {
+  it('renders nothing once the closing and finished text are written', () => {
     renderAlert(written);
 
     expect(screen.queryByText(TITLE)).not.toBeInTheDocument();
@@ -107,9 +107,37 @@ describe('<FinishStageTextAlert />', () => {
     expect(screen.getByText(TITLE)).toBeInTheDocument();
     expect(
       screen.getByText(
-        'The stage that ends the interview has no text in Japanese. The protocol can’t be downloaded until it’s added.',
+        'A stage that ends the interview has no text for its closing screen in Japanese. The protocol can’t be downloaded until it’s added.',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('asks an automatic finish stage only for its finished text', () => {
+    renderAlert({
+      ...newJapaneseProtocol,
+      stages: [{ ...newJapaneseProtocol.stages[0], mode: 'automatic' }],
+    });
+
+    expect(
+      screen.getByText(
+        'A stage that ends the interview has no text for its finished screen in Japanese. The protocol can’t be downloaded until it’s added.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('renders nothing for an automatic finish stage with its finished text', () => {
+    renderAlert({
+      ...newJapaneseProtocol,
+      stages: [
+        {
+          ...newJapaneseProtocol.stages[0],
+          mode: 'automatic',
+          finishedContent: { ja: '# 終了しました' },
+        },
+      ],
+    });
+
+    expect(screen.queryByText(TITLE)).not.toBeInTheDocument();
   });
 
   it('counts only the default language', () => {
@@ -119,15 +147,18 @@ describe('<FinishStageTextAlert />', () => {
       stages: [
         {
           ...written.stages[0],
-          title: { en: 'All done' },
-          content: { en: 'Thank you.', ja: 'ありがとう。' },
+          content: {
+            en: '# All done\n\nThank you.',
+            ja: '# 終わり\n\nありがとう。',
+          },
+          finishedContent: { en: 'This interview is finished.' },
         },
       ],
     });
 
     expect(
       screen.getByText(
-        'The stage that ends the interview has no heading in Japanese. The protocol can’t be downloaded until it’s added.',
+        'A stage that ends the interview has no text for its finished screen in Japanese. The protocol can’t be downloaded until it’s added.',
       ),
     ).toBeInTheDocument();
   });

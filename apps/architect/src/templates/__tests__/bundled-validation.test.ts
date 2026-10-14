@@ -146,7 +146,7 @@ describe('bundled consent flows', () => {
     consentVariableId,
     postConsentStageId,
   } of consentFlows) {
-    it(`${name} ends the interview when consent is declined`, () => {
+    it(`${name} ends the interview at its own ending when consent is declined`, () => {
       const consentStageIndex = protocol.stages.findIndex(
         (stage) => stage.id === consentStageId,
       );
@@ -186,7 +186,18 @@ describe('bundled consent flows', () => {
             },
           ],
         },
-        destination: { type: 'finish' },
+        destination: { type: 'stage' },
+      });
+      // Declining sends the participant to an ending of its own, so their
+      // interview is recorded as ended early rather than completed.
+      const destination = firstPostConsentStage?.skipLogic?.destination;
+      const ending = protocol.stages.find(
+        (stage) =>
+          destination?.type === 'stage' && stage.id === destination.stageId,
+      );
+      expect(ending).toMatchObject({
+        type: 'FinishSession',
+        outcome: 'terminated',
       });
     });
   }

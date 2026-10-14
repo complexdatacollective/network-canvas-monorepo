@@ -37,12 +37,17 @@ const openStage = (fields: SectionDoc = {}) => ({
   stage: {
     type: 'FinishSession' as const,
     fields: {
+      mode: 'confirmation',
       label: { [FIXTURE_LANGUAGE]: 'Finish' },
-      title: { [FIXTURE_LANGUAGE]: 'All *done*' },
-      content: { [FIXTURE_LANGUAGE]: 'Thank you for taking part.' },
+      content: {
+        [FIXTURE_LANGUAGE]: '# All *done*\n\nThank you for taking part.',
+      },
+      finishedContent: {
+        [FIXTURE_LANGUAGE]:
+          '# Interview Finished\n\nThank you for participating!',
+      },
       finishLabel: { [FIXTURE_LANGUAGE]: 'Finish' },
       finishConfirmation: { [FIXTURE_LANGUAGE]: 'Finish this interview?' },
-      finishedNotice: { [FIXTURE_LANGUAGE]: 'This interview is finished.' },
       finishFailed: {
         [FIXTURE_LANGUAGE]: 'The interview could not be finished.',
       },
@@ -54,20 +59,26 @@ const openStage = (fields: SectionDoc = {}) => ({
 });
 
 describe('the editor for the screen that ends the interview', () => {
-  it('edits the closing text, the outcome and the interviewer guidance, and offers no skip logic', () => {
+  it('edits the closing and finished text, the outcome and the interviewer guidance, and offers no skip logic', () => {
     renderStageEditor(openStage());
 
     expect(
       screen.getByRole('heading', { name: 'Closing screen' }),
     ).toBeInTheDocument();
-    // Both are rich-text editors, which show the markdown's emphasis rather
-    // than its asterisks.
-    const heading = screen.getByRole('textbox', { name: /Heading/ });
-    expect(heading.textContent).toBe('All done');
-    expect(heading.querySelector('em')).toHaveTextContent(/^done$/);
-    expect(screen.getByRole('textbox', { name: /^Text/ }).textContent).toBe(
-      'Thank you for taking part.',
+    // Both are rich-text editors that can show values, which render the
+    // markdown rather than its syntax.
+    const closing = screen.getByRole('textbox', { name: /Closing text/ });
+    expect(closing.querySelector('h1')).toHaveTextContent(/^All done$/);
+    expect(closing.querySelector('em')).toHaveTextContent(/^done$/);
+    expect(closing).toHaveTextContent('Thank you for taking part.');
+    expect(
+      screen.getByRole('heading', { name: 'Finished screen' }),
+    ).toBeInTheDocument();
+    const finished = screen.getByRole('textbox', { name: /Finished text/ });
+    expect(finished.querySelector('h1')).toHaveTextContent(
+      /^Interview Finished$/,
     );
+    expect(finished).toHaveTextContent('Thank you for participating!');
     expect(
       screen.getByRole('heading', { name: 'Interviewer guidance' }),
     ).toBeInTheDocument();
@@ -83,7 +94,6 @@ describe('the editor for the screen that ends the interview', () => {
     for (const [name, value] of [
       [/Finish button/, 'Finish'],
       [/Confirmation question/, 'Finish this interview?'],
-      [/Finished notice/, 'This interview is finished.'],
       [/If finishing fails/, 'The interview could not be finished.'],
     ] as const) {
       expect(screen.getByRole('textbox', { name })).toHaveValue(value);
@@ -109,6 +119,103 @@ describe('the editor for the screen that ends the interview', () => {
       finishLabel: { [FIXTURE_LANGUAGE]: 'Done' },
       finishConfirmation: { [FIXTURE_LANGUAGE]: 'Finish this interview?' },
     });
+  });
+
+  it('asks participants to confirm unless the stage finishes automatically', () => {
+    renderStageEditor(openStage());
+
+    const modes = screen.getByRole('listbox', { name: /Finishing/ });
+    expect(within(modes).getAllByRole('option')).toHaveLength(2);
+    expect(
+      within(modes).getByRole('option', { name: /Participants confirm/ }),
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('drops the closing screen and the confirmation question when finishing automatically', async () => {
+    const harness = renderStageEditor(openStage());
+    const user = userEvent.setup();
+
+    await user.click(
+      within(screen.getByRole('listbox', { name: /Finishing/ })).getByRole(
+        'option',
+        { name: /Finish automatically/ },
+      ),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: 'Closing screen' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole('textbox', { name: /Confirmation question/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('textbox', { name: /Finished text/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('textbox', { name: /Finish button/ }),
+    ).toBeInTheDocument();
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument).toMatchObject({
+      type: 'FinishSession',
+      mode: 'automatic',
+    });
+  });
+
+  it('keeps a blank confirmation question to fill in when finishing automatically', async () => {
+    renderStageEditor(
+      openStage({ finishConfirmation: { [FIXTURE_LANGUAGE]: '' } }),
+    );
+    const user = userEvent.setup();
+
+    await user.click(
+      within(screen.getByRole('listbox', { name: /Finishing/ })).getByRole(
+        'option',
+        { name: /Finish automatically/ },
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: 'Closing screen' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // The stage cannot be saved with it blank, so it stays to be filled in,
+    // and does not vanish while it is being typed.
+    const question = screen.getByRole('textbox', {
+      name: /Confirmation question/,
+    });
+    await user.type(question, 'Finish now?');
+    expect(question).toBeInTheDocument();
+    expect(question).toHaveValue('Finish now?');
+  });
+
+  it('saves a stage whose closing text was cleared before it was set to finish automatically', async () => {
+    const harness = renderStageEditor(openStage());
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('textbox', { name: /Closing text/ }));
+    await user.keyboard('{Control>}a{/Control}{Backspace}');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: /Closing text/ }),
+      ).toHaveTextContent(/^$/),
+    );
+    await user.click(
+      within(screen.getByRole('listbox', { name: /Finishing/ })).getByRole(
+        'option',
+        { name: /Finish automatically/ },
+      ),
+    );
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument).toMatchObject({
+      type: 'FinishSession',
+      mode: 'automatic',
+    });
+    expect(saved?.stageDocument).not.toHaveProperty('content');
   });
 
   it('offers the three outcomes, each explained', () => {
@@ -160,8 +267,8 @@ describe('the editor for the screen that ends the interview', () => {
   });
 
   // Architect and Studio add a protocol's finish stage with the supplied
-  // closing text; the editor's own template holds only the outcome.
-  it('starts a new finish screen ending as completed', async () => {
+  // closing text; the editor's own template holds only the mode and outcome.
+  it('starts a new finish screen asking to confirm and ending as completed', async () => {
     renderStageEditor({
       create: { type: 'FinishSession', position: 0 },
       editor: mountedAs(finishSessionStageEditor.FinishSession),
@@ -174,5 +281,11 @@ describe('the editor for the screen that ends the interview', () => {
         ).getByRole('option', { name: /Completed/ }),
       ).toHaveAttribute('aria-selected', 'true'),
     );
+    expect(
+      within(screen.getByRole('listbox', { name: /Finishing/ })).getByRole(
+        'option',
+        { name: /Participants confirm/ },
+      ),
+    ).toHaveAttribute('aria-selected', 'true');
   });
 });

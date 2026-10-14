@@ -49,6 +49,7 @@
   "interview.interfaces.emptyValue": "Kein Wert",
   "interview.interfaces.entityName": "Name für {entityLabel}",
   "interview.interfaces.errorHeading": "Etwas ist schiefgelaufen",
+  "interview.interfaces.finishingInterview": "Das Interview wird abgeschlossen…",
   "interview.interfaces.groupMembershipOptions": "Optionen zur Gruppenzugehörigkeit",
   "interview.interfaces.groupMembershipPeople": "Gruppenzugehörigkeit der ausgewählten Personen",
   "interview.interfaces.hideInstructions": "Anleitung ausblenden",

@@ -3,10 +3,7 @@ import {
   findTimelineStructureProblems,
   type Stage,
 } from '@codaco/protocol-validation';
-import {
-  isLastFinishStage,
-  movesFinishStage,
-} from '~/ducks/modules/protocol/stages';
+import { isLastFinishStage } from '~/ducks/modules/protocol/stages';
 
 const messages = defineMessages({
   cannotDeleteStage: {
@@ -26,14 +23,14 @@ const messages = defineMessages({
     id: 'architect.timeline.finishStageGuards.cannotMoveStage',
     defaultMessage: 'Cannot move stage',
     description:
-      'Title of the notice shown when a move would put a stage after the stage that ends the interview.',
+      'Title of the notice shown when a move would put a stage after a stage that ends the interview.',
   },
-  finishStageStaysLast: {
-    id: 'architect.timeline.finishStageGuards.finishStageStaysLast',
+  finishStagesStayLast: {
+    id: 'architect.timeline.finishStageGuards.finishStagesStayLast',
     defaultMessage:
-      'The stage that ends the interview has to stay at the end of the protocol. No participant could reach a stage placed after it.',
+      'Stages that end the interview have to stay together at the end of the protocol. No participant could reach a stage placed after them.',
     description:
-      'Explanation shown when a researcher tries to move the stage that ends the interview, or to move another stage after it.',
+      'Explanation shown when a researcher tries to move a stage that ends the interview above another kind of stage, or to move another kind of stage below one. Stages that end the interview can still change places with each other.',
   },
 });
 
@@ -57,20 +54,19 @@ export const getFinishStageDeleteWarning = (
     : null;
 
 /**
- * Why a proposed order is refused, when it would move the stage that ends the
- * interview, leave a stage after it, or have the interview end anywhere else.
- * Apart from moving the finish stage, an order is only refused for problems
- * it adds.
+ * Why a proposed order is refused, when it would leave a stage after the first
+ * stage that ends the interview, or have the interview end anywhere else.
+ * Stages that end the interview may change places among themselves. An order
+ * is only refused for problems it adds.
  */
 export const getFinishStageReorderWarning = (
   committedStages: readonly TimelineStage[],
   proposedStages: readonly TimelineStage[],
 ): TimelineWarning | null =>
-  movesFinishStage(committedStages, proposedStages) ||
   findTimelineStructureProblems(proposedStages).length >
-    findTimelineStructureProblems(committedStages).length
+  findTimelineStructureProblems(committedStages).length
     ? {
         title: createMessageError(messages.cannotMoveStage),
-        description: createMessageError(messages.finishStageStaysLast),
+        description: createMessageError(messages.finishStagesStayLast),
       }
     : null;

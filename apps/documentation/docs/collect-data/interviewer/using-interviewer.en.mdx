@@ -650,7 +650,7 @@ Each interview protocol has a "finish" screen automatically inserted by Intervie
 
 <AppOnly axis="interviewer" app="current">
 
-Every protocol ends with a [Finish Screen](/en/design-protocols/interface-documentation/finish-screen), which shows the closing heading and text written by the protocol's designer, and a **Finish** button. Pressing **Finish** sets, or updates, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration. Interviewer also stores which Finish Screen ended the interview, and the outcome the protocol's designer chose for it, with the session. The outcome is included in the exported data (see [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended)).
+Every protocol ends with a [Finish Screen](/en/design-protocols/interface-documentation/finish-screen). Usually it shows the closing text written by the protocol's designer, and a **Finish** button. The protocol's designer can instead have the interview finish as soon as it reaches the Finish Screen, with no closing text or button. Finishing the interview sets, or updates, the "finished at" property of the interview session. This property is exported along with your interview data, and can be used to calculate interview duration. Interviewer also stores which Finish Screen ended the interview, and the outcome the protocol's designer chose for it, with the session. The outcome is included in the exported data (see [How the interview ended](/en/analyze-data/data-export#how-the-interview-ended)).
 
 </AppOnly>
 
@@ -658,11 +658,11 @@ Every protocol ends with a [Finish Screen](/en/design-protocols/interface-docume
 
 <AppOnly axis="interviewer" app="current">
 
-Interviewer asks you to confirm before finishing, since responses can't be changed once an interview is marked complete.
+When the Finish Screen has a **Finish** button, Interviewer asks you to confirm before finishing, since responses can't be changed once an interview is marked complete. Until then you can go back and change answers.
 
 ![Confirming that you want to finish the interview](/assets/img/interviewer-guide/finish-confirm.png)
 
-After confirming, the interview shows its completed state: the Finish Screen's heading and text, and a notice that the interview is finished and its answers can no longer be changed. There is no navigation and no way back. The only action is **Exit**, which returns you to the dashboard. Opening a finished interview from the dashboard shows the completed state again.
+Once the interview is finished, it shows the Finish Screen's finished text, written by the protocol's designer. There is no navigation and no way back. The only action is **Exit**, which returns you to the dashboard. Opening a finished interview from the dashboard shows the finished text again.
 
 ![The interview-complete screen](/assets/img/interviewer-guide/interview-complete.png)
 

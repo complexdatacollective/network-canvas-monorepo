@@ -194,12 +194,6 @@ const Timeline = () => {
     undefined,
   );
 
-  const firstFinishIndex = stages.findIndex(
-    (stage) => stage.type === 'FinishSession',
-  );
-  const appendIndex =
-    firstFinishIndex === -1 ? stages.length : firstFinishIndex;
-
   // Another tab taking the protocol closes a new-stage screen that was open,
   // rather than leaving it to start a stage this tab can no longer add.
   if (readOnly && showNewStageDialog) setShowNewStageDialog(false);
@@ -343,12 +337,18 @@ const Timeline = () => {
   // Visual-only during the drag: no dispatch, so the timeline isn't fragmented
   // into one undo entry per crossing. A drag that was already under way when
   // another tab took the protocol can still call this until its row stops it.
+  //
+  // An order that would take a finish stage above another kind of stage, or
+  // another kind below one, is never shown: the row stops moving there, so a
+  // finish stage can be dragged among the others but no higher than the
+  // first of them.
   const handleReorder = useCallback(
     (newOrder: typeof stages) => {
       if (readOnly) return;
+      if (getFinishStageReorderWarning(stages, newOrder)) return;
       setOrderedStages(newOrder);
     },
-    [readOnly],
+    [readOnly, stages],
   );
 
   // Returns whether the move was committed. The keyboard path passes that
@@ -551,9 +551,10 @@ const Timeline = () => {
             'focusable relative z-1 mt-3 p-4',
             readOnly ? 'cursor-not-allowed' : 'group cursor-pointer',
           )}
-          // A new stage goes before the stage that ends the interview, which
-          // stays last.
-          onClick={() => handleInsertStage(appendIndex)}
+          // Asked for at the very end: a new finish stage goes there, after the
+          // other endings, and any other stage before the first of them
+          // (`creationIndex`).
+          onClick={() => handleInsertStage(stages.length)}
           initial={animate ? 'hidden' : false}
           animate="visible"
           variants={addStageVariants}

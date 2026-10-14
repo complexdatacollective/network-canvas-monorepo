@@ -37,7 +37,7 @@ describe('Timeline finish stage guards', () => {
     const refusal = {
       title: 'Cannot move stage',
       description:
-        'The stage that ends the interview has to stay at the end of the protocol. No participant could reach a stage placed after it.',
+        'Stages that end the interview have to stay together at the end of the protocol. No participant could reach a stage placed after them.',
     };
     expect(
       messageFields(
@@ -57,15 +57,53 @@ describe('Timeline finish stage guards', () => {
     ).toBeNull();
   });
 
-  // The finish stage cannot be moved at all: not by dragging or arrowing it,
-  // and not by moving another stage past it.
-  it('refuses every order that moves the finish stage', () => {
-    const outOfPlace = [intro, finish, names];
-    expect(
-      getFinishStageReorderWarning(outOfPlace, [intro, names, finish]),
-    ).not.toBeNull();
-    expect(
-      getFinishStageReorderWarning(outOfPlace, [finish, intro, names]),
-    ).not.toBeNull();
+  // Several finish stages can end an interview in different ways. They change
+  // places freely among themselves, but none goes above the first of them.
+  describe('with several finish stages', () => {
+    const ineligible = { id: 'ineligible', type: 'FinishSession' as const };
+    const ended = { id: 'ended', type: 'FinishSession' as const };
+    const endings = [intro, names, finish, ineligible, ended];
+
+    it('accepts any order of the finish stages among themselves', () => {
+      expect(
+        getFinishStageReorderWarning(endings, [
+          intro,
+          names,
+          ended,
+          finish,
+          ineligible,
+        ]),
+      ).toBeNull();
+      expect(
+        getFinishStageReorderWarning(endings, [
+          intro,
+          names,
+          ineligible,
+          ended,
+          finish,
+        ]),
+      ).toBeNull();
+    });
+
+    it('refuses a finish stage above the first of them, or another stage among them', () => {
+      expect(
+        getFinishStageReorderWarning(endings, [
+          intro,
+          ended,
+          names,
+          finish,
+          ineligible,
+        ]),
+      ).not.toBeNull();
+      expect(
+        getFinishStageReorderWarning(endings, [
+          intro,
+          finish,
+          names,
+          ineligible,
+          ended,
+        ]),
+      ).not.toBeNull();
+    });
   });
 });

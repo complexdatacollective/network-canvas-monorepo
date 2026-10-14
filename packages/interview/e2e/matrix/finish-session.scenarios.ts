@@ -15,8 +15,10 @@ import type { InterfaceScenarios, ScenarioContext } from './types.js';
 // fresh.
 let seededNameVarId = '';
 
-const FINISHED_NOTICE =
-  'This interview is finished, and its answers can no longer be changed.';
+// The finished screen's text SyntheticInterview gives every finish stage
+// that does not author its own, with Network Canvas's own text.
+const FINISHED_HEADING = 'Interview Finished';
+const FINISHED_TEXT = 'Thank you for participating!';
 
 // The finish stage every scenario that does not author its own ends at:
 // SyntheticInterview appends it, with Network Canvas's own text, under this id.
@@ -26,8 +28,9 @@ const DEFAULT_FINISH_STAGE_ID = 'finish';
 const AUTHORED = {
   label: 'Menu-only finish label',
   interviewScript: 'INTERVIEWER: thank the participant',
-  title: 'All *done*',
-  content: 'Thank you for **taking part**.\n\nYou may now close this window.',
+  content:
+    '# All *done*\n\nThank you for **taking part**.\n\nYou may now close this window.',
+  finishedContent: '# Thanks *again*\n\nYour answers are saved.',
   outcome: 'ineligible',
 } as const;
 
@@ -41,14 +44,15 @@ const buildAuthoredFinish = () => {
   return synth;
 };
 
-/** The completed state: closing text and notice, and no way back in. */
+/** The completed state: the finished screen, and no way back in. */
 const expectCompletedState = async (
   page: Page,
   interview: ScenarioContext['interview'],
   heading: string,
+  text: string,
 ) => {
   await expect(page.getByRole('heading', { name: heading })).toBeVisible();
-  await expect(page.getByText(FINISHED_NOTICE)).toBeVisible();
+  await expect(page.getByText(text)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Finish' })).toHaveCount(0);
   await expect(interview.nextButton).toHaveCount(0);
   await expect(page.getByTestId('previous-button')).toHaveCount(0);
@@ -66,8 +70,9 @@ export const finishSessionScenarios: InterfaceScenarios = {
         'progress-100',
         'analytics.interview_finished',
         'completed-state.after-finish',
+        'mode',
         'finishLabel',
-        'finishedNotice',
+        'finishedContent',
       ],
       smoke: true,
       visual: true,
@@ -116,23 +121,39 @@ export const finishSessionScenarios: InterfaceScenarios = {
           outcome: 'completed',
         });
 
-        // Finishing leaves the interview in its completed state, with focus
-        // on the closing text rather than dropped on the document.
-        await expectCompletedState(page, interview, 'Finish Interview');
+        // Finishing leaves the interview on its finished screen, with focus
+        // on its text rather than dropped on the document.
+        await expectCompletedState(
+          page,
+          interview,
+          FINISHED_HEADING,
+          FINISHED_TEXT,
+        );
         await expect(
           page.getByRole('heading', { name: 'Finish Interview' }),
+        ).toHaveCount(0);
+        await expect(
+          page
+            .getByRole('heading', { name: FINISHED_HEADING })
+            .locator('xpath=ancestor::*[@tabindex="-1"][1]'),
         ).toBeFocused();
       },
     },
 
     {
       id: 'authored-text-and-outcome',
-      covers: ['label', 'interviewScript', 'title', 'content', 'outcome'],
+      covers: [
+        'label',
+        'interviewScript',
+        'content',
+        'finishedContent',
+        'outcome',
+      ],
       visual: true,
       build: buildAuthoredFinish,
       currentStep: 1,
       run: async ({ page, interview }) => {
-        // The title's markdown is inline: emphasis inside the heading.
+        // The heading is part of the closing text's markdown.
         const heading = page.getByRole('heading', { name: 'All done' });
         await expect(heading).toBeVisible();
         await expect(heading.locator('em')).toHaveText('done');
@@ -161,7 +182,15 @@ export const finishSessionScenarios: InterfaceScenarios = {
           outcome: AUTHORED.outcome,
         });
 
-        await expectCompletedState(page, interview, 'All done');
+        await expectCompletedState(
+          page,
+          interview,
+          'Thanks again',
+          'Your answers are saved.',
+        );
+        await expect(
+          page.getByRole('heading', { name: 'Thanks again' }).locator('em'),
+        ).toHaveText('again');
         await expect(page.getByText(AUTHORED.interviewScript)).toHaveCount(0);
       },
     },
@@ -175,9 +204,16 @@ export const finishSessionScenarios: InterfaceScenarios = {
       run: async ({ page, interview }) => {
         // A finished interview opens on the finish stage it ended at, whatever
         // step the host asks for, and does not move focus on its own.
-        await expectCompletedState(page, interview, 'All done');
+        await expectCompletedState(
+          page,
+          interview,
+          'Thanks again',
+          'Your answers are saved.',
+        );
         await expect(
-          page.getByRole('heading', { name: 'All done' }),
+          page
+            .getByRole('heading', { name: 'Thanks again' })
+            .locator('xpath=ancestor::*[@tabindex="-1"][1]'),
         ).not.toBeFocused();
         await expect(page.getByText('Study overview')).toHaveCount(0);
 
@@ -194,7 +230,12 @@ export const finishSessionScenarios: InterfaceScenarios = {
       run: async ({ page, interview }) => {
         // An interview finished before its host recorded finish stages shows
         // the protocol's finish stage.
-        await expectCompletedState(page, interview, 'All done');
+        await expectCompletedState(
+          page,
+          interview,
+          'Thanks again',
+          'Your answers are saved.',
+        );
       },
     },
 
@@ -319,25 +360,32 @@ export const finishSessionScenarios: InterfaceScenarios = {
         const primary = dialog.getByTestId('dialog-primary');
         await primary.click();
 
-        // Rejection keeps the dialog open with actionable interface-language
-        // guidance, without exposing raw host diagnostics; primary can retry.
-        await expect(dialog).toBeVisible();
+        // A rejection closes the question and returns to the closing screen,
+        // where a toast gives the protocol's guidance without exposing raw
+        // host diagnostics; Finish can be pressed again.
+        await expect(dialog).toBeHidden();
         await expect(
-          dialog.getByText(
+          page.getByText(
             'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
             { exact: true },
           ),
         ).toBeVisible();
         await expect(
-          dialog.getByText('finish failed', { exact: true }),
+          page.getByText('finish failed', { exact: true }),
         ).toHaveCount(0);
-        await expect(primary).toBeEnabled();
+        await expect(
+          page.getByRole('heading', { name: 'Finish Interview' }),
+        ).toBeVisible();
 
         await page.evaluate(() =>
           window.__test.setFinishBehavior({ mode: 'resolve' }),
         );
-        await primary.click();
-        await expect(dialog).toBeHidden();
+        await page.getByRole('button', { name: 'Finish' }).click();
+        await page.getByRole('dialog').getByTestId('dialog-primary').click();
+        await expect(page.getByRole('dialog')).toBeHidden();
+        await expect(
+          page.getByRole('heading', { name: FINISHED_HEADING }),
+        ).toBeVisible();
 
         const calls = await page.evaluate(() => window.__test.getFinishCalls());
         expect(calls).toHaveLength(2);
@@ -384,6 +432,88 @@ export const finishSessionScenarios: InterfaceScenarios = {
         expect(calls).toHaveLength(1);
         expect(calls[0]?.interviewId).toBe(interview.interviewId);
         expect(calls[0]?.aborted).toBe(false);
+      },
+    },
+
+    {
+      id: 'automatic-finish-on-arrival',
+      covers: ['automatic.finish-on-arrival'],
+      visual: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        synth.addInformationStage({ title: 'Study overview' });
+        authoredFinishStageId = synth.addFinishSessionStage({
+          mode: 'automatic',
+          outcome: 'ineligible',
+        }).id;
+        return synth;
+      },
+      currentStep: 1,
+      run: async ({ page, interview }) => {
+        // No closing screen, Finish button or question: the interview ends
+        // as soon as the stage is shown.
+        await expectCompletedState(
+          page,
+          interview,
+          FINISHED_HEADING,
+          FINISHED_TEXT,
+        );
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        await expect(
+          page.getByRole('heading', { name: 'Finish Interview' }),
+        ).toHaveCount(0);
+
+        const calls = await page.evaluate(() => window.__test.getFinishCalls());
+        expect(calls).toHaveLength(1);
+        expect(calls[0]?.finish).toEqual({
+          stageId: authoredFinishStageId,
+          outcome: 'ineligible',
+        });
+      },
+    },
+
+    {
+      id: 'automatic-error-retry',
+      covers: ['automatic.error-retry'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        synth.addInformationStage({ title: 'Study overview' });
+        synth.addFinishSessionStage({ mode: 'automatic' });
+        return synth;
+      },
+      // Arrive from the stage before, once the host is set to refuse.
+      currentStep: 0,
+      run: async ({ page, interview }) => {
+        await page.evaluate(() =>
+          window.__test.setFinishBehavior({
+            mode: 'reject',
+            message: 'finish failed',
+          }),
+        );
+        await interview.nextButton.click();
+
+        await expect(
+          page.getByText(
+            'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
+            { exact: true },
+          ),
+        ).toBeVisible();
+        // Neither way out: the interview has started to end.
+        await expect(interview.nextButton).toBeDisabled();
+        await expect(page.getByTestId('previous-button')).toBeDisabled();
+
+        await page.evaluate(() =>
+          window.__test.setFinishBehavior({ mode: 'resolve' }),
+        );
+        await page.getByRole('button', { name: 'Finish' }).click();
+        await expectCompletedState(
+          page,
+          interview,
+          FINISHED_HEADING,
+          FINISHED_TEXT,
+        );
+        const calls = await page.evaluate(() => window.__test.getFinishCalls());
+        expect(calls).toHaveLength(2);
       },
     },
 

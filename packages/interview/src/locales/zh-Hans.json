@@ -49,6 +49,7 @@
   "interview.interfaces.emptyValue": "无值",
   "interview.interfaces.entityName": "{entityLabel} 名称",
   "interview.interfaces.errorHeading": "出现问题",
+  "interview.interfaces.finishingInterview": "正在结束访谈…",
   "interview.interfaces.groupMembershipOptions": "群组成员选项",
   "interview.interfaces.groupMembershipPeople": "所选人员的群组成员身份",
   "interview.interfaces.hideInstructions": "隐藏说明",

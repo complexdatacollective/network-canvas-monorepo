@@ -27,14 +27,23 @@ function operatorSql(op: NetworkCondition['operator']): Prisma.Sql {
 }
 
 /**
+ * The number of stages progress is measured across: the stages up to and
+ * including the first finish stage, as @codaco/interview counts them. Finish
+ * stages after it are alternative endings reached only by skipping to one, so
+ * they are left out; a protocol without a finish stage counts every stage.
+ * Assumes the alias `p` (Protocol).
+ */
+export const PROGRESS_STAGE_COUNT_SQL =
+  '(COALESCE((SELECT MIN(s.ord) FROM jsonb_array_elements(p."stages"::jsonb) WITH ORDINALITY AS s(stage, ord) WHERE s.stage->>\'type\' = \'FinishSession\'), jsonb_array_length(p."stages"::jsonb), 0))';
+
+/**
  * Progress percentage expression mirroring `computeInterviewProgress`: a
  * finished interview (finishTime set) is 100%, otherwise progress is
- * currentStep / protocol stage count (0 for a protocol with no stages). The
- * protocol's finish stages are among its stages, against which currentStep is
- * indexed. Assumes the aliases `i` (Interview) and `p` (Protocol).
+ * currentStep / progress stage count (0 for a protocol with no stages), with
+ * an interview resting on a later ending held below 100% until it is
+ * finished. Assumes the aliases `i` (Interview) and `p` (Protocol).
  */
-const PROGRESS_SQL =
-  '(CASE WHEN i."finishTime" IS NOT NULL THEN 100 WHEN COALESCE(jsonb_array_length(p."stages"::jsonb),0) = 0 THEN 0 ELSE (i."currentStep"::float / jsonb_array_length(p."stages"::jsonb)) * 100 END)';
+const PROGRESS_SQL = `(CASE WHEN i."finishTime" IS NOT NULL THEN 100 WHEN ${PROGRESS_STAGE_COUNT_SQL} = 0 THEN 0 ELSE (LEAST(i."currentStep", ${PROGRESS_STAGE_COUNT_SQL} - 1)::float / ${PROGRESS_STAGE_COUNT_SQL}) * 100 END)`;
 
 /**
  * Builds the WHERE predicate (without the `WHERE` keyword) for the interview
