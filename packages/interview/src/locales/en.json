@@ -199,6 +199,10 @@
     "defaultMessage": "Something went wrong",
     "description": "Short heading above an external-list loading error. This heading intentionally has no final period."
   },
+  "interview.interfaces.finishingInterview": {
+    "defaultMessage": "Finishing the interview…",
+    "description": "Announced to screen readers, not shown, while an interview that ends without asking the participant is being finished and its answers saved; sighted participants see only a loading animation. It can take a few seconds on a slow connection."
+  },
   "interview.interfaces.groupMembershipOptions": {
     "defaultMessage": "Group membership options",
     "description": "Accessible name of the popover containing group membership choices in the network composer."

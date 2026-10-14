@@ -268,6 +268,12 @@ export const interfaceMessages = defineMessages({
     description:
       'Announced to screen readers when the item a participant is placing changes, on a sorting screen that asks them to tap a group instead of dragging. Sighted participants see that item shown as selected. An item is whatever the researcher has the participant sort: usually a person, but it can be a place, an organisation or anything else. name is the item’s unchanged participant-entered or authored display name. The groups are researcher-authored and shown on the same screen.',
   },
+  finishingInterview: {
+    id: 'interview.interfaces.finishingInterview',
+    defaultMessage: 'Finishing the interview…',
+    description:
+      'Announced to screen readers, not shown, while an interview that ends without asking the participant is being finished and its answers saved; sighted participants see only a loading animation. It can take a few seconds on a slow connection.',
+  },
   binSelectComplete: {
     id: 'interview.interfaces.binSelectComplete',
     defaultMessage: 'Nothing left to place.',

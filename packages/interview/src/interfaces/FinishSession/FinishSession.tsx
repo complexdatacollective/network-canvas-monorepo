@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useSelector } from 'react-redux';
 
+import { AppMessage } from '@codaco/app-i18n/react';
 import { default as Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -36,6 +37,7 @@ import { getStages } from '../../store/modules/protocol';
 import { useSyncFlush } from '../../store/SyncFlushContext';
 import { useInterviewToast } from '../../toast/useInterviewToast';
 import type { StageProps } from '../../types';
+import { interfaceMessages } from '../messages';
 
 type FinishSessionText = Pick<
   FinishSessionStage,
@@ -238,6 +240,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
       return (
         <div className="flex size-full items-center justify-center">
           <Spinner />
+          <FinishingAnnouncement />
         </div>
       );
     }
@@ -267,6 +270,23 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
     </FinishSessionLayout>
   );
 };
+
+/**
+ * Tells screen reader users that the interview is being finished while an
+ * automatic finish stage shows only a spinner. The live region is in place
+ * before its text, so the text arriving is announced.
+ */
+function FinishingAnnouncement() {
+  const [announced, setAnnounced] = useState(false);
+  useEffect(() => setAnnounced(true), []);
+  return (
+    <div role="status" aria-live="polite" className="sr-only">
+      {announced && (
+        <AppMessage message={interfaceMessages.finishingInterview} />
+      )}
+    </div>
+  );
+}
 
 /**
  * A finished interview: the finished screen of the finish stage it ended at,

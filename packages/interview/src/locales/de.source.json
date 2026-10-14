@@ -49,6 +49,7 @@
   "interview.interfaces.emptyValue": "No value",
   "interview.interfaces.entityName": "{entityLabel} name",
   "interview.interfaces.errorHeading": "Something went wrong",
+  "interview.interfaces.finishingInterview": "Finishing the interview…",
   "interview.interfaces.groupMembershipOptions": "Group membership options",
   "interview.interfaces.groupMembershipPeople": "Group membership for selected people",
   "interview.interfaces.hideInstructions": "Hide instructions",
