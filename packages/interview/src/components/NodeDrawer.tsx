@@ -150,7 +150,7 @@ export default function NodeDrawer({
             }}
             disabled={isToggleDisabled}
             className={cx(
-              'bg-surface publish-colors pointer-events-auto flex h-12 min-w-24 items-center justify-center rounded-t-sm px-8 transition-colors',
+              'bg-surface publish-colors pointer-events-auto flex h-11 w-32 items-center justify-center rounded-t-[1.375rem] transition-colors',
               willAccept &&
                 (isOver
                   ? activeDropTargetOverBackground

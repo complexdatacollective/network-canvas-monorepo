@@ -2,15 +2,22 @@ import { render, screen } from '@testing-library/react';
 import { MotionConfig } from 'motion/react';
 import { describe, expect, it } from 'vitest';
 
+import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
+
 import NodeDropAnimation from './NodeDropAnimation';
 
 describe('NodeDropAnimation', () => {
-  it('is hidden from assistive technology', () => {
-    render(<NodeDropAnimation />);
-    expect(screen.getByTestId('node-drop-animation')).toHaveAttribute(
-      'aria-hidden',
-      'true',
-    );
+  it('animates, hidden from assistive technology', async () => {
+    await withAnimationsEnabled(() => {
+      render(
+        <MotionConfig reducedMotion="never">
+          <NodeDropAnimation />
+        </MotionConfig>,
+      );
+      const root = screen.getByTestId('node-drop-animation');
+      expect(root).toHaveAttribute('aria-hidden', 'true');
+      expect(root).not.toHaveAttribute('data-still');
+    });
   });
 
   it('shows a still frame when motion is reduced', () => {
@@ -20,8 +27,7 @@ describe('NodeDropAnimation', () => {
       </MotionConfig>,
     );
     const root = screen.getByTestId('node-drop-animation');
-    const node = root.lastElementChild;
-    expect(node).toHaveClass('-translate-y-3/4');
-    expect(node?.getAttribute('style') ?? '').not.toMatch(/transform|opacity/);
+    expect(root).toHaveAttribute('data-still');
+    expect(root.querySelector('[style*="transform"]')).toBeNull();
   });
 });
