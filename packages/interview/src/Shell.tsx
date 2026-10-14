@@ -75,6 +75,7 @@ import {
 } from './localization/ProtocolLocalizationProvider';
 import { getInterviewId } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
+import { getInterviewProgress } from './selectors/utils';
 import {
   getInterfaceText,
   getProtocolLocalization,
@@ -907,6 +908,22 @@ const Shell = ({
     payload.session.network,
   ]);
   const opensAsActive = openFinishedAsActive && automaticReentryStep !== null;
+
+  // A host that controls the step still holds the automatic finish stage, so
+  // moving on from the stage entered instead would ask it for the step it
+  // already has, and nothing would change. It is told where the interview
+  // re-entered, once.
+  const onStepChangeRef = useRef(onStepChange);
+  onStepChangeRef.current = onStepChange;
+  useEffect(() => {
+    if (automaticReentryStep === undefined || automaticReentryStep === null) {
+      return;
+    }
+    onStepChangeRef.current?.(
+      automaticReentryStep,
+      getInterviewProgress(payload.protocol.stages, automaticReentryStep),
+    );
+  }, [automaticReentryStep, payload.protocol.stages]);
 
   // A finished session opens in its completed state, at the finish stage the
   // host recorded, unless the host opens it as an unfinished one.

@@ -168,6 +168,30 @@ describe('the destinations on offer', () => {
     ]);
   });
 
+  it('keeps offering an ending chosen by name after it is reordered to be the first', () => {
+    // A skip to "Not eligible" was chosen while it was the second ending;
+    // moving it above "Thank you" must not turn that valid route into one the
+    // select shows as unavailable.
+    const reordered = [
+      ...stages,
+      { id: 'finish-2', label: 'Not eligible', type: 'FinishSession' },
+      { id: 'finish-1', label: 'Thank you', type: 'FinishSession' },
+    ];
+    const options = stageDestinationOptions(
+      reordered,
+      stagePlacement(reordered, 'stage-2'),
+      { type: 'stage', stageId: 'finish-2' },
+    );
+
+    expect(
+      options.find((option) => option.value === 'route:stage:finish-2'),
+    ).toEqual({
+      value: 'route:stage:finish-2',
+      label: 'Stage 4 — Not eligible',
+    });
+    expect(options.some((option) => option.disabled)).toBe(false);
+  });
+
   it('numbers stages a new one is about to displace by where they will end up', () => {
     // Inserted at index 1, the stage currently second becomes the third.
     expect(

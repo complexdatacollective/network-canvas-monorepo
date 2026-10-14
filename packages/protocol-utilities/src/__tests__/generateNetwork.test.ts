@@ -1583,6 +1583,37 @@ describe('generateNetwork', () => {
         expect(currentStep).toBe(0);
       });
 
+      it('drops out on the way to an ending regardless of the alternative endings after it', () => {
+        const route = [
+          makeTypedNameGeneratorStage('ng-1', 'node-type-1'),
+          makeTypedNameGeneratorStage('ng-2', 'node-type-1'),
+          makeTypedNameGeneratorStage('ng-3', 'node-type-1'),
+          makeFinish('end-completed', 'completed'),
+        ];
+        const outcomes = (stages: Stage[]) =>
+          Array.from({ length: 30 }, (_, seed) => {
+            const { droppedOut, currentStep } = generateNetwork({
+              codebook: makeCodebook(),
+              stages,
+              seed,
+              simulateDropOut: true,
+              config: { dropOutFactor: 0.6 },
+            });
+            return `${droppedOut}:${currentStep}`;
+          });
+
+        const alone = outcomes(route);
+        expect(alone.some((outcome) => outcome.startsWith('true'))).toBe(true);
+        expect(
+          outcomes([
+            ...route,
+            makeFinish('end-ineligible', 'ineligible'),
+            makeFinish('end-declined', 'ineligible'),
+            makeFinish('end-withdrawn', 'ineligible'),
+          ]),
+        ).toEqual(alone);
+      });
+
       it('stops at the first finish stage it reaches', () => {
         const stages = [
           makeTypedNameGeneratorStage('ng-1', 'node-type-1'),

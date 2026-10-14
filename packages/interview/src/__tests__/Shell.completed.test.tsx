@@ -121,6 +121,7 @@ function renderShell({
   initialTextScale,
   onExit,
   openFinishedAsActive,
+  onStepChange = () => undefined,
 }: {
   payload: InterviewPayload;
   currentStep?: number;
@@ -130,12 +131,13 @@ function renderShell({
   initialTextScale?: number;
   onExit?: () => void;
   openFinishedAsActive?: boolean;
+  onStepChange?: (step: number) => void;
 }) {
   return render(
     <Shell
       payload={payload}
       currentStep={currentStep}
-      onStepChange={() => undefined}
+      onStepChange={onStepChange}
       onSync={() => Promise.resolve()}
       requestedLocales={['en']}
       onFinish={onFinish}
@@ -345,17 +347,22 @@ describe('Shell completed state', () => {
     // be changed, at the stage it finished on.
     it('reopens a finished interview to be changed at the stage before, without finishing again', async () => {
       const onFinish = vi.fn<FinishHandler>(() => Promise.resolve());
+      const onStepChange = vi.fn<(step: number) => void>();
       renderShell({
         payload: automatic(makePayload({ finishStageId: finishStage.id })),
         currentStep: 1,
         openFinishedAsActive: true,
         onFinish,
+        onStepChange,
       });
 
       expect(
         await screen.findByRole('heading', { name: 'Study overview' }),
       ).toBeInTheDocument();
       expect(onFinish).not.toHaveBeenCalled();
+      // The host, still holding the finish stage, is told where it re-entered,
+      // so moving on from there is a change it can make.
+      expect(onStepChange).toHaveBeenCalledWith(0, expect.anything());
     });
 
     it('keeps a finished interview with nothing before its automatic ending finished when reopened to be changed', async () => {

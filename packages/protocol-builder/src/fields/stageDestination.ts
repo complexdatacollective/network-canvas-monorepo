@@ -342,6 +342,7 @@ export function stageDestinationOptions(
     },
   ];
 
+  const route = destinationRoute(value);
   const firstFinishIndex = stages.findIndex(
     (stage) => stage.type === 'FinishSession',
   );
@@ -350,8 +351,15 @@ export function stageDestinationOptions(
     // The first finish stage is where ending the interview goes, which is
     // offered below; offering it as a stage too would name one route twice.
     // Any later finish stage (a separate ending, such as one for ineligible
-    // participants) is reached only by naming it.
-    if (index === firstFinishIndex) return;
+    // participants) is reached only by naming it. One already named stays
+    // offered when the endings are reordered and it becomes the first: the
+    // route is still valid, and choosing again must not lose it.
+    if (
+      index === firstFinishIndex &&
+      route !== `${STAGE_ROUTE_PREFIX}${stage.id}`
+    ) {
+      return;
+    }
     options.push({
       value: `${STAGE_ROUTE_PREFIX}${stage.id}`,
       label: stageOptionLabel(stage, index, placement, intl),
@@ -363,7 +371,6 @@ export function stageDestinationOptions(
     label: intl.formatMessage(messages.finish),
   });
 
-  const route = destinationRoute(value);
   if (!options.some((option) => option.value === route)) {
     options.push({
       value: route,

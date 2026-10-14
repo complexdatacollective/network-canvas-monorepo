@@ -223,6 +223,14 @@ export function generateNetwork(
   };
 
   const totalStages = stages.length;
+  // Dropout is drawn against the length of the main route, which ends at the
+  // first finish stage. Endings after it are alternatives a route reaches only
+  // by skipping to one, so adding or reordering them must not change how
+  // likely a participant is to drop out on the way.
+  const firstFinishIndex = stages.findIndex(isFinishSessionStage);
+  const routeLength =
+    firstFinishIndex === -1 ? totalStages : firstFinishIndex + 1;
+  let stagesVisited = 0;
   let currentStep = 0;
   let droppedOut = false;
   let reachedFinish = false;
@@ -263,8 +271,13 @@ export function generateNetwork(
       break;
     }
 
+    stagesVisited += 1;
+
     if (simulateDropOut) {
-      const dropOutChance = ((i + 1) / totalStages) * ctx.config.dropOutFactor;
+      // Measured by the stages this route has shown rather than by position,
+      // so skipped stages and bypassed endings do not count as progress.
+      const dropOutChance =
+        Math.min(stagesVisited / routeLength, 1) * ctx.config.dropOutFactor;
       if (valueGen.randomFloat(0, 1) < dropOutChance) {
         droppedOut = true;
         currentStep = i;
