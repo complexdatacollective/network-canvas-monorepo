@@ -22,6 +22,7 @@
     "./contract": "./src/contract/index.ts",
     "./protocol-schema-version": "./src/protocolSchemaVersion.ts",
     "./protocol-payload": "./src/contract/protocolPayload.ts",
+    "./analytics-events": "./src/analytics/events.ts",
     "./locales": "./src/locales/catalogs.ts",
     "./catalog": "./src/i18n/catalog.ts",
     "./styles.css": "./src/styles.css"
@@ -43,6 +44,10 @@
       "./protocol-payload": {
         "types": "./dist/protocol-payload.d.ts",
         "default": "./dist/protocol-payload.js"
+      },
+      "./analytics-events": {
+        "types": "./dist/analytics-events.d.ts",
+        "default": "./dist/analytics-events.js"
       },
       "./locales": {
         "types": "./dist/locales/catalogs.d.ts",
@@ -129,6 +134,7 @@
     "@vitest/browser-playwright": "catalog:",
     "chalk": "^6.0.1",
     "chromatic": "catalog:",
+    "effect": "catalog:",
     "jsdom": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
@@ -146,6 +152,7 @@
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
+    "effect": "^4.0.0",
     "motion": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

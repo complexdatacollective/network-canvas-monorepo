@@ -41,6 +41,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import type { FormKind } from '../../analytics/events';
 import { useTrack } from '../../analytics/useTrack';
 import {
   buildProtocolFieldErrors,
@@ -62,10 +63,8 @@ import { useProtectedFormValues } from '../Anonymisation/useProtectedFormValues'
 import discardChangesDialog from '../discardChangesDialog';
 import { interfaceMessages } from '../messages';
 
-type FormKind = 'alter' | 'alter_edge' | 'ego' | 'slides';
-
 type SlidesFormAnalyticsProps = {
-  form_kind?: FormKind;
+  form_kind: FormKind;
 };
 
 type SlidesFormProps<T extends NcNode | NcEdge = NcNode | NcEdge> = {
@@ -116,7 +115,7 @@ type SlideContentProps = {
   submitButton: ReactNode;
   onUpdate: SlidesFormProps['updateItem'];
   onReadyChange: (ready: boolean) => void;
-  form_kind?: FormKind;
+  form_kind: FormKind;
 };
 
 type SlideFormProps = SlideContentProps & {

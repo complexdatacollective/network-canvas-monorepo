@@ -5,11 +5,12 @@ import { useSelector } from 'react-redux';
 
 import type { RootState } from '../store/store';
 import { AnalyticsContext } from './AnalyticsContext';
+import type { AnalyticsStageType } from './events';
 import { SUPER_PROPS } from './PROPERTY_KEYS';
 import { NULL_TRACKER } from './tracker';
 
 type StageDescriptor = {
-  stage_type?: string;
+  stage_type?: AnalyticsStageType;
   stage_index: number;
   enabled?: boolean;
 };
@@ -31,7 +32,7 @@ export function useStageNavigationAnalytics({
   const tracker = useContext(AnalyticsContext);
   const { track } = tracker;
   const stages = useSelector((s: RootState) => s.protocol?.stages) as
-    | Array<{ type?: string }>
+    | Array<{ type?: AnalyticsStageType }>
     | undefined;
 
   const lastIndexRef = useRef<number | null>(null);

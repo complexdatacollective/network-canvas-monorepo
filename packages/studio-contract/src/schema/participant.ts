@@ -127,6 +127,24 @@ export const AnalyticsEvent = Schema.Struct({
   timestamp: Schema.String.check(Schema.isMaxLength(64)),
 });
 
+export const PARTICIPANT_EXCEPTION_EVENT = '$exception';
+
+const ExceptionTypeName = Schema.String.check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(200),
+);
+
+export const ParticipantExceptionList = Schema.Tuple([
+  Schema.Struct({
+    type: ExceptionTypeName,
+    value: ExceptionTypeName,
+    mechanism: Schema.Struct({
+      handled: Schema.Literal(true),
+      synthetic: Schema.Literal(false),
+    }),
+  }),
+]);
+
 export const AnalyticsInput = Schema.Struct({
   events: Schema.Array(AnalyticsEvent).check(
     Schema.isMinLength(1),

@@ -1,10 +1,17 @@
-import { Effect, Predicate } from 'effect';
+import { Effect, Option, Schema } from 'effect';
 
+import {
+  InterviewAnalyticsEnvelope,
+  InterviewAnalyticsEvents,
+  InterviewExceptionProperties,
+} from '@codaco/interview/analytics-events';
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 import { ParticipantSession } from '@codaco/studio-contract/middleware/session';
-import type {
-  AnalyticsEvent,
-  AnalyticsInput,
+import {
+  type AnalyticsEvent,
+  type AnalyticsInput,
+  PARTICIPANT_EXCEPTION_EVENT,
+  ParticipantExceptionList,
 } from '@codaco/studio-contract/schema/participant';
 
 import { TenantScope } from '../db/tenant.ts';
@@ -19,24 +26,13 @@ import { participantAnalyticsEnabled } from '../study/settings.ts';
 import { STUDIO_VERSION } from '../version.ts';
 import { loadSessionContext } from './store.ts';
 
-const EXCEPTION_EVENT = '$exception';
-
 const PARTICIPANT_APP = 'studio';
 const PARTICIPANT_APP_NAME = 'Network Canvas Studio';
 
-const WITHHELD_PROPERTIES = new Set([
-  'distinct_id',
-  'token',
-  'api_key',
-  '$set',
-  '$set_once',
-  '$unset',
-  '$groups',
-  '$ip',
-  '$anon_distinct_id',
-  '$session_id',
-  '$current_url',
-  '$lib',
+const STRICT = { onExcessProperty: 'error' } as const;
+
+const WITHHELD_EVENT_PROPERTIES: ReadonlySet<string> = new Set([
+  'component_stack',
 ]);
 
 type ForwardingConfig = {
@@ -59,63 +55,130 @@ export const participantAnalyticsConfig = Effect.fn(
   } satisfies ForwardingConfig;
 });
 
-const ERROR_TYPE = /^[A-Za-z][\w.]{0,99}$/;
-
-const exceptionType = (properties: Readonly<Record<string, unknown>>) => {
-  const list = properties.$exception_list;
-  const first: unknown = Array.isArray(list) ? list[0] : undefined;
-  const type =
-    Predicate.isObject(first) && Predicate.hasProperty(first, 'type')
-      ? first.type
-      : undefined;
-  return Predicate.isString(type) && ERROR_TYPE.test(type) ? type : 'Error';
+type Catalogued = {
+  readonly decode: (
+    properties: unknown,
+  ) => Option.Option<Readonly<Record<string, unknown>>>;
+  readonly forwarded: ReadonlyArray<string>;
 };
 
-const exceptionProperties = (properties: Readonly<Record<string, unknown>>) => {
-  const type = exceptionType(properties);
+type DecodableFields = {
+  readonly [key: string]: Schema.Codec<unknown, unknown>;
+};
+
+const catalogued = (
+  fields: DecodableFields,
+  envelope: DecodableFields = InterviewAnalyticsEnvelope.fields,
+): Catalogued => {
+  const decode = Schema.decodeUnknownOption(
+    Schema.Struct({ ...envelope, ...fields }),
+    STRICT,
+  );
   return {
-    $exception_list: [
-      {
-        type,
-        value: type,
-        mechanism: { handled: true, synthetic: false },
-      },
-    ],
+    decode: (properties) =>
+      Option.map(
+        decode(properties),
+        (decoded): Readonly<Record<string, unknown>> => decoded,
+      ),
+    forwarded: Object.keys(fields).filter(
+      (key) => !WITHHELD_EVENT_PROPERTIES.has(key),
+    ),
   };
+};
+
+const CATALOGUE = new Map<string, ReadonlyArray<Catalogued>>([
+  ...Object.entries(InterviewAnalyticsEvents).map(
+    ([event, properties]): [string, ReadonlyArray<Catalogued>] => [
+      event,
+      [catalogued(properties.fields)],
+    ],
+  ),
+  [
+    PARTICIPANT_EXCEPTION_EVENT,
+    InterviewExceptionProperties.members.map((member) =>
+      catalogued(member.fields, {
+        ...InterviewAnalyticsEnvelope.fields,
+        $exception_list: ParticipantExceptionList,
+      }),
+    ),
+  ],
+]);
+
+type DecodedEvent = {
+  readonly event: string;
+  readonly timestamp: string;
+  readonly decoded: Readonly<Record<string, unknown>>;
+  readonly forwarded: ReadonlyArray<string>;
+};
+
+const decodeEvent = (
+  captured: typeof AnalyticsEvent.Type,
+): Option.Option<DecodedEvent> => {
+  const candidates = CATALOGUE.get(captured.event) ?? [];
+  for (const candidate of candidates) {
+    const decoded = candidate.decode(captured.properties);
+    if (Option.isSome(decoded)) {
+      return Option.some({
+        event: captured.event,
+        timestamp: captured.timestamp,
+        decoded: decoded.value,
+        forwarded: candidate.forwarded,
+      });
+    }
+  }
+  return Option.none();
+};
+
+const decodeBatch = (
+  input: typeof AnalyticsInput.Type,
+): Option.Option<ReadonlyArray<DecodedEvent>> =>
+  Option.all(input.events.map(decodeEvent));
+
+const ERROR_TYPE = /^[A-Za-z][\w.]{0,99}$/;
+
+const exceptionList = (decoded: Readonly<Record<string, unknown>>) => {
+  const list = Schema.decodeUnknownOption(ParticipantExceptionList)(
+    decoded.$exception_list,
+  );
+  const type = Option.match(list, {
+    onNone: () => 'Error',
+    onSome: ([first]) => (ERROR_TYPE.test(first.type) ? first.type : 'Error'),
+  });
+  return [
+    {
+      type,
+      value: type,
+      mechanism: { handled: true, synthetic: false },
+    },
+  ];
 };
 
 const forwardableEvent = (
-  captured: typeof AnalyticsEvent.Type,
+  { event, timestamp, decoded, forwarded }: DecodedEvent,
   config: ForwardingConfig,
-): AnalyticsCapture | null => {
-  if (captured.event.startsWith('$') && captured.event !== EXCEPTION_EVENT) {
-    return null;
-  }
-  const isException = captured.event === EXCEPTION_EVENT;
-  const properties = Object.fromEntries(
-    Object.entries(captured.properties).filter(
-      ([key]) =>
-        !WITHHELD_PROPERTIES.has(key) &&
-        !(isException && key.startsWith('$exception')),
+): AnalyticsCapture => ({
+  event,
+  distinctId: config.distinctId,
+  timestamp,
+  properties: {
+    package_version: decoded.package_version,
+    ...Object.fromEntries(
+      forwarded.flatMap((key) =>
+        Object.hasOwn(decoded, key) ? [[key, decoded[key]]] : [],
+      ),
     ),
-  );
-  return {
-    event: captured.event,
-    distinctId: config.distinctId,
-    timestamp: captured.timestamp,
-    properties: {
-      ...properties,
-      ...(isException && exceptionProperties(captured.properties)),
-      [POSTHOG_APP_PROPS.APP]: PARTICIPANT_APP,
-      [POSTHOG_APP_PROPS.APP_NAME]: PARTICIPANT_APP_NAME,
-      [POSTHOG_APP_PROPS.APP_VERSION]: STUDIO_VERSION,
-      [POSTHOG_APP_PROPS.HOST_VERSION]: STUDIO_VERSION,
-      [POSTHOG_APP_PROPS.INSTALLATION_ID]: config.installationId,
-      $process_person_profile: false,
-      $geoip_disable: true,
-    },
-  };
-};
+    ...(event === PARTICIPANT_EXCEPTION_EVENT && {
+      $exception_list: exceptionList(decoded),
+    }),
+    [POSTHOG_APP_PROPS.APP]: PARTICIPANT_APP,
+    [POSTHOG_APP_PROPS.APP_NAME]: PARTICIPANT_APP_NAME,
+    [POSTHOG_APP_PROPS.APP_VERSION]: STUDIO_VERSION,
+    [POSTHOG_APP_PROPS.HOST_VERSION]: STUDIO_VERSION,
+    [POSTHOG_APP_PROPS.INSTALLATION_ID]: config.installationId,
+    $process_person_profile: false,
+    $geoip_disable: true,
+  },
+});
 
 export const forwardParticipantEvents = Effect.fn(
   'interview.forwardParticipantEvents',
@@ -124,6 +187,9 @@ export const forwardParticipantEvents = Effect.fn(
   yield* enforceRateLimit('participant_analytics', session.sessionId);
   const analytics = yield* Analytics;
   if (!analytics.enabled) return;
+
+  const batch = decodeBatch(input);
+  if (Option.isNone(batch)) return;
 
   const config = yield* TenantScope.open(
     session.access,
@@ -138,10 +204,7 @@ export const forwardParticipantEvents = Effect.fn(
   );
   if (config === null) return;
 
-  const events = input.events.flatMap((captured) => {
-    const forwardable = forwardableEvent(captured, config);
-    return forwardable === null ? [] : [forwardable];
-  });
-  if (events.length === 0) return;
-  yield* analytics.capture(events);
+  yield* analytics.capture(
+    batch.value.map((decoded) => forwardableEvent(decoded, config)),
+  );
 });

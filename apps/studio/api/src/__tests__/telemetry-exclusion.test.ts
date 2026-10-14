@@ -459,15 +459,71 @@ const scenario = (
       },
       asParticipant,
     );
+    const pageProperties = {
+      app: 'studio',
+      $app_name: 'studio',
+      installation_id: 'studio',
+      package_version: '10.0.0',
+      protocol_hash: SEEDED.protocolName,
+      distinct_id: 'exclusion-page',
+    };
+    const usability = (event: string, properties: Record<string, unknown>) => ({
+      event,
+      properties: { ...pageProperties, ...properties },
+      timestamp: new Date().toISOString(),
+    });
+    const stageEntered = usability('stage_entered', {
+      stage_type: 'NameGenerator',
+      stage_index: 0,
+      direction: 'initial',
+    });
+    yield* rpc(
+      'participant.analytics',
+      { events: [stageEntered] },
+      asParticipant,
+    );
     yield* rpc(
       'participant.analytics',
       {
         events: [
-          {
-            event: 'stage_viewed',
-            properties: { stage_index: 0, interface_type: 'NameGenerator' },
-            timestamp: new Date().toISOString(),
-          },
+          stageEntered,
+          usability('interview_finished', {
+            stage_count: 3,
+            participant_name: SEEDED.participantName,
+          }),
+        ],
+      },
+      asParticipant,
+    );
+    yield* rpc(
+      'participant.analytics',
+      {
+        events: [
+          usability('stage_entered', {
+            stage_type: SEEDED.participantName,
+            stage_index: 0,
+            direction: 'initial',
+          }),
+        ],
+      },
+      asParticipant,
+    );
+    yield* rpc(
+      'participant.analytics',
+      {
+        events: [
+          usability('$exception', {
+            feature: 'stage-error-boundary',
+            component_stack: `\n    at ${SEEDED.participantAnswer}`,
+            is_offline: false,
+            $exception_list: [
+              {
+                type: 'Error',
+                value: SEEDED.participantAnswer,
+                mechanism: { handled: true, synthetic: false },
+              },
+            ],
+          }),
         ],
       },
       asParticipant,
@@ -727,6 +783,19 @@ describe.skipIf(!testDb || !baseEnv.auth || !baseEnv.secrets)(
             .filter((request) => request.body.includes(fixture.teamId))
             .flatMap(channelsOf),
         ).toEqual(expect.arrayContaining(['forwarded browser logs']));
+        const participantEvents = sent
+          .filter((request) => channelsOf(request).includes('analytics events'))
+          .flatMap((request) => {
+            const batch = field(parseJson(request.body), 'batch');
+            return Array.isArray(batch) ? batch : [];
+          })
+          .filter((event) => field(event, 'event') === 'stage_entered');
+        expect(participantEvents).toHaveLength(1);
+        expect(field(participantEvents[0], 'properties')).toMatchObject({
+          stage_type: 'NameGenerator',
+          stage_index: 0,
+          direction: 'initial',
+        });
       },
       120_000,
     );

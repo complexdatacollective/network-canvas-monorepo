@@ -250,6 +250,7 @@ export default defineConfig({
           __dirname,
           'src/contract/protocolPayload.ts',
         ),
+        'analytics-events': resolve(__dirname, 'src/analytics/events.ts'),
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,

@@ -1,8 +1,10 @@
+import { Schema } from 'effect';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   MAX_ANALYTICS_EVENTS,
   MAX_ANALYTICS_PROPERTIES_BYTES,
+  ParticipantExceptionList,
 } from '@codaco/studio-contract/schema/participant';
 
 import { createParticipantAnalyticsClient } from '../analyticsClient.ts';
@@ -102,6 +104,18 @@ describe('the participant analytics client', () => {
       ],
       { unloading: false },
     );
+  });
+
+  it('reports an exception in the shape the api decodes', () => {
+    const { send, client } = setup();
+    client.captureException(new TypeError('x'), { feature: 'external-data' });
+    client.flush();
+    const properties = send.mock.calls[0]?.[0][0]?.properties;
+    expect(
+      Schema.decodeUnknownOption(ParticipantExceptionList, {
+        onExcessProperty: 'error',
+      })(properties?.$exception_list)._tag,
+    ).toBe('Some');
   });
 
   it('drops an event too large for the api to accept, keeping the rest', () => {
