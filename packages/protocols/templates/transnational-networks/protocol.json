@@ -705,9 +705,7 @@
             }
           ]
         },
-        "destination": {
-          "type": "finish"
-        }
+        "destination": { "type": "stage", "stageId": "finish-declined" }
       }
     },
     {
@@ -733,7 +731,7 @@
             }
           ]
         },
-        "destination": { "type": "finish" }
+        "destination": { "type": "stage", "stageId": "finish-declined" }
       },
       "form": {
         "title": {
@@ -1317,6 +1315,42 @@
         "hu": "# Az interjú véget ért\n\nKöszönjük a részvételt!"
       },
       "outcome": "completed"
+    },
+    {
+      "id": "finish-declined",
+      "type": "FinishSession",
+      "mode": "confirmation",
+      "label": {
+        "en-US": "Not Taking Part",
+        "es": "No participa",
+        "hu": "Nem vesz részt"
+      },
+      "content": {
+        "en-US": "# You Chose Not to Take Part\n\nThank you for your time. Because you chose not to take part in this study, the interview ends here. If you chose this by mistake, go back and change your answer. Otherwise, press Finish.",
+        "es": "# Ha decidido no participar\n\nGracias por su tiempo. Como ha decidido no participar en este estudio, la entrevista termina aquí. Si ha elegido esta opción por error, vuelva atrás y cambie su respuesta. De lo contrario, pulse Finalizar.",
+        "hu": "# Úgy döntött, hogy nem vesz részt\n\nKöszönjük, hogy időt szánt ránk. Mivel úgy döntött, hogy nem vesz részt ebben a kutatásban, az interjú itt véget ér. Ha tévedésből választotta ezt a lehetőséget, lépjen vissza, és módosítsa a válaszát. Ellenkező esetben nyomja meg a Befejezés gombot."
+      },
+      "finishedContent": {
+        "en-US": "# Interview Finished\n\nThank you for your time.",
+        "es": "# Entrevista finalizada\n\nGracias por su tiempo.",
+        "hu": "# Az interjú véget ért\n\nKöszönjük, hogy időt szánt ránk."
+      },
+      "finishLabel": {
+        "en-US": "Finish",
+        "es": "Finalizar",
+        "hu": "Befejezés"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?",
+        "es": "¿Seguro que quieres finalizar la entrevista?",
+        "hu": "Biztosan befejezi az interjút?"
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer.",
+        "es": "No se pudo finalizar la entrevista. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.",
+        "hu": "Az interjút nem sikerült befejezni. Kérjük, próbálja újra. Ha a probléma továbbra is fennáll, forduljon a kutatás szervezőjéhez."
+      },
+      "outcome": "terminated"
     }
   ],
   "interfaceText": {
