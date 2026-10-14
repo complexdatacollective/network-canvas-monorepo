@@ -2279,6 +2279,21 @@ export default function RichTextEditorField({
                       // the item went into; opened by typing, back to the
                       // text it was typed in.
                       finalFocus={() => {
+                        // Focus already back in this text stays where it is:
+                        // a click into the line that closed the menu, or into
+                        // a version of the value just inserted, put the caret
+                        // there, and moving it would send what is typed next
+                        // somewhere else.
+                        const root = editor?.isDestroyed ? null : editor;
+                        const active =
+                          root?.view.dom.ownerDocument.activeElement;
+                        if (
+                          root != null &&
+                          active instanceof Node &&
+                          root.view.dom.contains(active)
+                        ) {
+                          return false;
+                        }
                         const picked = pickedIntoRef.current;
                         if (picked !== null && !picked.isDestroyed) {
                           return picked.view.dom;

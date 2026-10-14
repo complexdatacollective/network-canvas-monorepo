@@ -25,7 +25,6 @@ vi.mock('../../localization/useDynamicValueSite.ts', async (importActual) => {
     context: {
       roles: new Set(['ego']),
       variablesFor: () => ({}),
-      notYetWritten: undefined,
     },
     bindings: {},
     setBindings: () => undefined,

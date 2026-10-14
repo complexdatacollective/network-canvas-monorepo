@@ -155,14 +155,14 @@ describe('a value with answers inserted in a row dialog', () => {
   };
 
   it('is bound without cases when only the value itself is shown', async () => {
-    expect(await insertAndSave(/First person: contactFreq.*Ordinal/)).toEqual([
-      { path: 'dyad.source.contactFreq' },
-    ]);
+    expect(
+      await insertAndSave(/contactFreq \(first node in pair\).*Ordinal/),
+    ).toEqual([{ path: 'dyad.source.contactFreq' }]);
   });
 
   it('is bound with its cases when it is shown by answer', async () => {
     const [binding] = await insertAndSave(
-      /First person: contactFreq.*Different wording for each answer/,
+      /contactFreq \(first node in pair\).*Different wording for each answer/,
     );
     expect(binding).toEqual({
       path: 'dyad.source.contactFreq',
@@ -187,12 +187,12 @@ describe('a yes-or-no value without labels for its answers', () => {
     );
 
     const asItself = await screen.findByRole('option', {
-      name: /First person: flagged.*Add labels for its yes and no answers first/,
+      name: /flagged \(first node in pair\).*Add labels for its yes and no answers first/,
     });
     expect(asItself).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('option', {
-        name: /First person: flagged.*Different wording for each answer/,
+        name: /flagged \(first node in pair\).*Different wording for each answer/,
       }),
     ).not.toHaveAttribute('aria-disabled', 'true');
 
@@ -235,7 +235,7 @@ describe("a census prompt's preview", () => {
 });
 
 describe('a form field saved before fields had ids', () => {
-  it('offers the person’s attributes, except the one it asks for', async () => {
+  it('offers every attribute of the node it asks about', async () => {
     // The fixture's fields carry no ids, as a protocol saved before
     // Architect gave them one does.
     const harness = renderStageEditor({
@@ -256,12 +256,11 @@ describe('a form field saved before fields had ids', () => {
     const offered = (await screen.findAllByRole('option')).map(
       (option) => option.textContent ?? '',
     );
-    // The first field asks for relationship_to_ego; flagged is asked after
-    // it, and may already hold a value from an earlier stage.
-    expect(offered.some((label) => label.includes('flagged'))).toBe(true);
-    expect(offered.some((label) => label.includes('relationship_to_ego'))).toBe(
-      false,
-    );
+    // The name comes from an earlier stage; the form asks for the other two,
+    // the first field for relationship_to_ego itself.
+    for (const attribute of ['name', 'relationship_to_ego', 'flagged']) {
+      expect(offered.some((label) => label.startsWith(attribute))).toBe(true);
+    }
   });
 });
 

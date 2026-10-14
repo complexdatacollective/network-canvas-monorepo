@@ -7,7 +7,7 @@ import {
   mergeAttributes,
   Node as TiptapNode,
 } from '@tiptap/core';
-import { NodeSelection } from '@tiptap/pm/state';
+import { NodeSelection, Plugin } from '@tiptap/pm/state';
 import {
   EditorContent,
   type JSONContent,
@@ -234,6 +234,9 @@ function VersionEditor({
         handleKeyDown: (_view, event) => {
           if (event.key !== 'Escape') return false;
           event.preventDefault();
+          // Escape is spent here: a dialog around the text must not also
+          // take it as a request to close.
+          event.stopPropagation();
           onEscapeRef.current();
           return true;
         },
@@ -446,6 +449,21 @@ const isInVersionEditor = (event: Event) =>
   event.target instanceof Element &&
   event.target.closest('[data-version]') !== null;
 
+/** The selected element's view, when the selection is one. */
+const selectedElement = (editor: Editor): HTMLElement | null => {
+  const { selection } = editor.state;
+  if (
+    !(selection instanceof NodeSelection) ||
+    selection.node.type.name !== VERSIONS_NODE
+  ) {
+    return null;
+  }
+  const dom = editor.view.nodeDOM(selection.from);
+  return dom instanceof HTMLElement
+    ? dom.querySelector<HTMLElement>('[data-versions-element]')
+    : null;
+};
+
 /**
  * Versions of a piece of text, held in the line as one element. The caret
  * steps over it in the line around it, and it is selected, moved, copied and
@@ -526,21 +544,6 @@ export const VersionsNode = TiptapNode.create({
   },
 
   addKeyboardShortcuts() {
-    /** The selected element's view, when the selection is one. */
-    const selectedElement = (editor: Editor): HTMLElement | null => {
-      const { selection } = editor.state;
-      if (
-        !(selection instanceof NodeSelection) ||
-        selection.node.type.name !== VERSIONS_NODE
-      ) {
-        return null;
-      }
-      const dom = editor.view.nodeDOM(selection.from);
-      return dom instanceof HTMLElement
-        ? dom.querySelector<HTMLElement>('[data-versions-element]')
-        : null;
-    };
-
     // Enter or Space on a folded element opens it; on an open one, moves
     // into its first version.
     const openOrEnter = ({ editor }: { editor: Editor }) => {
@@ -559,16 +562,31 @@ export const VersionsNode = TiptapNode.create({
     return {
       Enter: openOrEnter,
       Space: openOrEnter,
-      // Folds an open element back to its pill, which stays selected.
-      Escape: ({ editor }) => {
-        const element = selectedElement(editor);
-        if (element === null || !element.hasAttribute('data-expanded')) {
-          return false;
-        }
-        element.dispatchEvent(new Event(COLLAPSE_EVENT));
-        return true;
-      },
     };
+  },
+
+  addProseMirrorPlugins() {
+    const { editor } = this;
+    return [
+      new Plugin({
+        props: {
+          // Folds an open element back to its pill, which stays selected.
+          // Escape is spent on that, so a dialog around the text does not
+          // also take it as a request to close.
+          handleKeyDown: (_view, event) => {
+            if (event.key !== 'Escape') return false;
+            const element = selectedElement(editor);
+            if (element === null || !element.hasAttribute('data-expanded')) {
+              return false;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            element.dispatchEvent(new Event(COLLAPSE_EVENT));
+            return true;
+          },
+        },
+      }),
+    ];
   },
 
   addNodeView() {

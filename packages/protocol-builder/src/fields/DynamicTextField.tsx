@@ -71,9 +71,9 @@ const messages = defineMessages({
   },
   interviewGroup: {
     id: 'protocolBuilder.dynamicText.interviewGroup',
-    defaultMessage: 'Interview',
+    defaultMessage: 'Interview Attributes',
     description:
-      'Heading in the insert-a-value menu above values that come from the interview itself rather than from a person, such as today’s date.',
+      'Heading in the insert-a-value menu above values that come from the interview itself rather than from the network, such as today’s date.',
   },
   today: {
     id: 'protocolBuilder.dynamicText.today',
@@ -83,45 +83,39 @@ const messages = defineMessages({
   },
   roleEgo: {
     id: 'protocolBuilder.dynamicText.roleEgo',
-    defaultMessage: 'Participant',
+    defaultMessage: 'Ego Attributes',
     description:
-      'Heading in the insert-a-value menu above the attributes of the person taking part in the interview.',
+      'Heading in the insert-a-value menu above the attributes of the ego, the participant taking part in the interview. “Ego” is the network-research term Architect uses for the participant.',
   },
-  roleNode: {
-    id: 'protocolBuilder.dynamicText.roleNode',
-    defaultMessage: 'This person',
+  roleContext: {
+    id: 'protocolBuilder.dynamicText.roleContext',
+    defaultMessage: 'Contextual Attributes',
     description:
-      'Heading in the insert-a-value menu above the attributes of the person a form asks about.',
-  },
-  roleEdge: {
-    id: 'protocolBuilder.dynamicText.roleEdge',
-    defaultMessage: 'This relationship',
-    description:
-      'Heading in the insert-a-value menu above the attributes of the relationship a form asks about.',
+      'Heading in the insert-a-value menu above the attributes of whatever the text is shown alongside: the node or edge a form asks about, or the node a question is asking about. It may not be a person, so the heading does not say what it is.',
   },
   roleDyadSource: {
-    id: 'protocolBuilder.dynamicText.roleDyadSource',
-    defaultMessage: 'First person',
+    id: 'protocolBuilder.dynamicText.roleDyadSourceGroup',
+    defaultMessage: 'Contextual Attributes: First Node in Pair',
     description:
-      'Heading in the insert-a-value menu above the attributes of the first of the two people a question asks about together.',
+      'Heading in the insert-a-value menu above the attributes of the first of the two nodes a question asks about together, as a pair. A node is one entity in the network, which may not be a person.',
   },
   roleDyadTarget: {
-    id: 'protocolBuilder.dynamicText.roleDyadTarget',
-    defaultMessage: 'Second person',
+    id: 'protocolBuilder.dynamicText.roleDyadTargetGroup',
+    defaultMessage: 'Contextual Attributes: Second Node in Pair',
     description:
-      'Heading in the insert-a-value menu above the attributes of the second of the two people a question asks about together.',
+      'Heading in the insert-a-value menu above the attributes of the second of the two nodes a question asks about together, as a pair. A node is one entity in the network, which may not be a person.',
   },
-  roleFocal: {
-    id: 'protocolBuilder.dynamicText.roleFocal',
-    defaultMessage: 'Person being asked about',
+  dyadSourceValue: {
+    id: 'protocolBuilder.dynamicText.dyadSourceValue',
+    defaultMessage: '{attribute} (first node in pair)',
     description:
-      'Heading in the insert-a-value menu above the attributes of the one person a question asks the participant about, while the participant picks the people connected to them.',
+      'Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”.',
   },
-  roleValue: {
-    id: 'protocolBuilder.dynamicText.roleValue',
-    defaultMessage: '{role}: {attribute}',
+  dyadTargetValue: {
+    id: 'protocolBuilder.dynamicText.dyadTargetValue',
+    defaultMessage: '{attribute} (second node in pair)',
     description:
-      'Name of an inserted value that belongs to someone other than the participant, as it appears in the text. role is whose value it is, such as “First person”; attribute is the attribute’s name, such as “nickname”.',
+      'Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”.',
   },
   byAnswer: {
     id: 'protocolBuilder.dynamicText.byAnswer',
@@ -226,11 +220,11 @@ const messages = defineMessages({
 
 const ROLE_MESSAGES = {
   ego: messages.roleEgo,
-  node: messages.roleNode,
-  edge: messages.roleEdge,
+  node: messages.roleContext,
+  edge: messages.roleContext,
   dyadSource: messages.roleDyadSource,
   dyadTarget: messages.roleDyadTarget,
-  focal: messages.roleFocal,
+  focal: messages.roleContext,
 } satisfies Record<DynamicValueRole, unknown>;
 
 /** How many examples a plural version's label gives of its numbers. */
@@ -247,12 +241,15 @@ const namingFor = (intl: IntlShape): Naming => ({
   valueLabel: (choice) => {
     if (choice.role === undefined) return intl.formatMessage(messages.today);
     const attribute = choice.variableName ?? choice.variableId;
-    return choice.role === 'ego'
-      ? attribute
-      : intl.formatMessage(messages.roleValue, {
-          role: intl.formatMessage(ROLE_MESSAGES[choice.role]),
-          attribute,
-        });
+    // The two nodes of a pair have the same attributes, so their values say
+    // which node they belong to; any other value is named by its attribute.
+    if (choice.role === 'dyadSource') {
+      return intl.formatMessage(messages.dyadSourceValue, { attribute });
+    }
+    if (choice.role === 'dyadTarget') {
+      return intl.formatMessage(messages.dyadTargetValue, { attribute });
+    }
+    return attribute;
   },
   groupLabel: (choice) =>
     intl.formatMessage(

@@ -1527,13 +1527,21 @@
     "defaultMessage": "Wording that fits the number",
     "description": "Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with a version for each kind of number (such as one or several), so the words agree with the number, as in “1 child” and “3 children”."
   },
+  "protocolBuilder.dynamicText.dyadSourceValue": {
+    "defaultMessage": "{attribute} (first node in pair)",
+    "description": "Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”."
+  },
+  "protocolBuilder.dynamicText.dyadTargetValue": {
+    "defaultMessage": "{attribute} (second node in pair)",
+    "description": "Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”."
+  },
   "protocolBuilder.dynamicText.insertMenu": {
     "defaultMessage": "Inject piped text from interview metadata or a network attribute",
     "description": "Accessible name and tooltip of a toolbar icon button (a syringe), and the name of the searchable menu it opens, in a text field a participant reads. “Piped text” is survey-software vocabulary for text filled in from earlier data: the button injects a value the interview fills in, such as today’s date (interview metadata) or the participant’s name or an answer they gave earlier (a network attribute)."
   },
   "protocolBuilder.dynamicText.interviewGroup": {
-    "defaultMessage": "Interview",
-    "description": "Heading in the insert-a-value menu above values that come from the interview itself rather than from a person, such as today’s date."
+    "defaultMessage": "Interview Attributes",
+    "description": "Heading in the insert-a-value menu above values that come from the interview itself rather than from the network, such as today’s date."
   },
   "protocolBuilder.dynamicText.needsAnswerLabels": {
     "defaultMessage": "Add labels for its yes and no answers first",
@@ -1543,33 +1551,21 @@
     "defaultMessage": "No",
     "description": "Label of the version of a piece of text shown when a yes-or-no attribute is no."
   },
-  "protocolBuilder.dynamicText.roleDyadSource": {
-    "defaultMessage": "First person",
-    "description": "Heading in the insert-a-value menu above the attributes of the first of the two people a question asks about together."
+  "protocolBuilder.dynamicText.roleContext": {
+    "defaultMessage": "Contextual Attributes",
+    "description": "Heading in the insert-a-value menu above the attributes of whatever the text is shown alongside: the node or edge a form asks about, or the node a question is asking about. It may not be a person, so the heading does not say what it is."
   },
-  "protocolBuilder.dynamicText.roleDyadTarget": {
-    "defaultMessage": "Second person",
-    "description": "Heading in the insert-a-value menu above the attributes of the second of the two people a question asks about together."
+  "protocolBuilder.dynamicText.roleDyadSourceGroup": {
+    "defaultMessage": "Contextual Attributes: First Node in Pair",
+    "description": "Heading in the insert-a-value menu above the attributes of the first of the two nodes a question asks about together, as a pair. A node is one entity in the network, which may not be a person."
   },
-  "protocolBuilder.dynamicText.roleEdge": {
-    "defaultMessage": "This relationship",
-    "description": "Heading in the insert-a-value menu above the attributes of the relationship a form asks about."
+  "protocolBuilder.dynamicText.roleDyadTargetGroup": {
+    "defaultMessage": "Contextual Attributes: Second Node in Pair",
+    "description": "Heading in the insert-a-value menu above the attributes of the second of the two nodes a question asks about together, as a pair. A node is one entity in the network, which may not be a person."
   },
   "protocolBuilder.dynamicText.roleEgo": {
-    "defaultMessage": "Participant",
-    "description": "Heading in the insert-a-value menu above the attributes of the person taking part in the interview."
-  },
-  "protocolBuilder.dynamicText.roleFocal": {
-    "defaultMessage": "Person being asked about",
-    "description": "Heading in the insert-a-value menu above the attributes of the one person a question asks the participant about, while the participant picks the people connected to them."
-  },
-  "protocolBuilder.dynamicText.roleNode": {
-    "defaultMessage": "This person",
-    "description": "Heading in the insert-a-value menu above the attributes of the person a form asks about."
-  },
-  "protocolBuilder.dynamicText.roleValue": {
-    "defaultMessage": "{role}: {attribute}",
-    "description": "Name of an inserted value that belongs to someone other than the participant, as it appears in the text. role is whose value it is, such as “First person”; attribute is the attribute’s name, such as “nickname”."
+    "defaultMessage": "Ego Attributes",
+    "description": "Heading in the insert-a-value menu above the attributes of the ego, the participant taking part in the interview. “Ego” is the network-research term Architect uses for the participant."
   },
   "protocolBuilder.dynamicText.switchHasNoLabels": {
     "defaultMessage": "A Toggle has no labels for its answers. Use different wording for each answer instead.",

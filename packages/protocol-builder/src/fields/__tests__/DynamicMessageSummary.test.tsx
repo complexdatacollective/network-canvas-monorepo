@@ -17,7 +17,6 @@ const SITE: Pick<DynamicMessageSite, 'context' | 'bindings'> = {
   context: {
     roles: new Set(),
     variablesFor: () => undefined,
-    notYetWritten: undefined,
   },
   bindings: {},
 };

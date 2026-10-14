@@ -887,16 +887,39 @@ describe('versions folded to a pill', () => {
     expect(editor).toHaveFocus();
   });
 
-  it('opens as soon as it is inserted, for its versions to be written', async () => {
-    const { user, pill } = renderFolding();
-    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+  it('keeps the Escape that folds it from a dialog around the text', async () => {
+    const { user, pill } = renderFolding(holdingVersions);
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+    // A dialog closes on an Escape that reaches the document.
+    const reachedDocument = vi.fn();
+    document.addEventListener('keydown', reachedDocument);
+    try {
+      await user.click(pill());
+      await waitFor(() => expectOpen(pill()));
+      await user.keyboard('{Escape}');
+      await waitFor(() => expectFolded(pill()));
 
-    await user.click(editor);
-    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
-    await user.click(await screen.findByRole('option', { name: /Name/ }));
+      await user.keyboard('{Enter}');
+      await waitFor(() => expectOpen(pill()));
+      await user.keyboard('{Enter}');
+      const known = screen.getByRole('textbox', { name: 'If known' });
+      await waitFor(() => expect(known).toHaveFocus());
+      await user.keyboard('{Escape}');
+      await waitFor(() => expectFolded(pill()));
 
-    await waitFor(() => expectOpen(pill()));
+      const escapes = reachedDocument.mock.calls.filter(
+        ([event]) => (event as KeyboardEvent).key === 'Escape',
+      );
+      expect(escapes).toHaveLength(0);
+    } finally {
+      document.removeEventListener('keydown', reachedDocument);
+    }
   });
+
+  // That a just-inserted element opens is checked in a real browser, by the
+  // WithVersionsAndInsertMenu story: jsdom cannot hold a node selection once
+  // a selectionchange makes ProseMirror read the selection back from the DOM,
+  // so here the element could fold again as soon as it opened.
 
   it('lists its versions one to a row, in the order it is given them', async () => {
     const { user, pill } = renderFolding(holdingVersions);

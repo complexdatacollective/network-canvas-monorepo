@@ -59,7 +59,6 @@ const contextFor = (
       : role === 'node' || role.startsWith('dyad')
         ? NODE
         : undefined,
-  notYetWritten: undefined,
 });
 
 const labelText = (label: unknown) =>

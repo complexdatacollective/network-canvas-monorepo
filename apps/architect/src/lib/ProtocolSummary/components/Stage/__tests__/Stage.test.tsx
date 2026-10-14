@@ -183,7 +183,7 @@ describe('Protocol Summary form text that shows values', () => {
     );
 
     expect(screen.getByText('How old is', { exact: false })).toHaveTextContent(
-      'How old is This person: Preferred name?',
+      'How old is Preferred name?',
     );
   });
 });
