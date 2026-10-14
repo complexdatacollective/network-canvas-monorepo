@@ -501,7 +501,7 @@ describe("a name generator's prompts", () => {
 });
 
 describe("a name generator prompt's preview", () => {
-  it('shows the values its text fills in as pills, and its versions', async () => {
+  it('shows the values its text fills in, and its versions, as pills', async () => {
     const { type, fields } = loadFixtureStage('name-generator-1');
     renderStageEditor({
       stage: {
@@ -527,7 +527,11 @@ describe("a name generator prompt's preview", () => {
         document.querySelector('strong [data-token="today"]'),
       ).toHaveTextContent('Today’s date'),
     );
-    expect(screen.getByText('Everyone')).toBeInTheDocument();
+    // Outside the editor a value's versions fold into its pill.
+    expect(
+      document.querySelectorAll('[data-token="today"]').length,
+    ).toBeGreaterThan(1);
+    expect(screen.queryByText('Everyone')).not.toBeInTheDocument();
     expect(screen.queryByText(/\{today/)).not.toBeInTheDocument();
   });
 });
