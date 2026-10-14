@@ -711,6 +711,93 @@ describe('a version edited in a field that reports on blur', () => {
   });
 });
 
+describe('a single-line field holding marked values and versions', () => {
+  it('keeps the marks it offers on a value, and the words of linked versions', async () => {
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        toolbarOptions={{ bold: true }}
+        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        changeMode="input"
+        value={{
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'Hello ' },
+                {
+                  type: 'token',
+                  attrs: { id: 'name' },
+                  marks: [{ type: 'bold' }],
+                },
+                { type: 'text', text: ' ' },
+                {
+                  type: 'versions',
+                  marks: [
+                    { type: 'link', attrs: { href: 'https://example.com/' } },
+                  ],
+                  attrs: {
+                    label: 'Depending on the name',
+                    meta: { argument: 'name' },
+                    versions: [
+                      {
+                        key: 'other',
+                        label: 'If known',
+                        content: [{ type: 'text', text: 'welcome' }],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        }}
+        onChange={() => undefined}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+    await waitFor(() =>
+      expect(editor.querySelector('strong')).toHaveTextContent('Name'),
+    );
+    expect(
+      within(editor).getByRole('group', { name: 'Depending on the name' }),
+    ).toBeInTheDocument();
+    expect(editor.querySelector('a')).toBe(null);
+  });
+});
+
+describe('a multi-line field holding a mark it does not offer', () => {
+  it('keeps the words of a link it is mounted with, and of one that arrives later', async () => {
+    const field = (value: JSONContent) => (
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Bio"
+        changeMode="input"
+        value={value}
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(field(LINKED_DOCUMENT));
+    const editor = await screen.findByRole('textbox', { name: 'Bio' });
+    await waitFor(() => expect(editor.textContent).toBe('Never met in person'));
+    expect(editor.querySelector('a')).toBe(null);
+
+    rerender(field(documentWithText));
+    await waitFor(() => expect(editor.textContent).toBe('Existing content'));
+    rerender(field(LINKED_DOCUMENT));
+    await waitFor(() => expect(editor.textContent).toBe('Never met in person'));
+  });
+});
+
 describe('a version holding a mark its field does not offer', () => {
   // A single-line field offers no links, so a version's own editor has no
   // `link` mark. A version that holds one anyway (loaded from a message, or

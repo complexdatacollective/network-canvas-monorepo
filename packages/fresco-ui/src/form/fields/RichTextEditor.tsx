@@ -81,6 +81,7 @@ import { cva, cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
 import InputField from './InputField';
+import { documentInSchema, marksInSchema } from './richText/fitToSchema';
 import {
   InsertMenuList,
   type RichTextInsertMenu,
@@ -545,26 +546,6 @@ const addTextLines = (
 };
 
 /**
- * The marks a text node can keep: the ones this schema has a type for.
- *
- * Marks are the half of a document the flattener carries through untouched,
- * and that was only safe while every schema had the same marks. It does not:
- * links are a toolbar option, and a field offering none has no `link` mark to
- * read one back into. `Node.fromJSON` refuses a mark type it does not know
- * exactly as it refuses a node type it does not know, and the reader answers
- * that the same way — with an EMPTY document. So a linked phrase blanked the
- * whole field, and the next edit saved the blank.
- *
- * The words are what a single-line field promised to keep; the link is a
- * decoration the field was never offering to hold.
- */
-const marksInSchema = (
-  marks: JSONContent['marks'],
-  schema: Schema,
-): JSONContent['marks'] =>
-  marks?.filter((mark) => Object.hasOwn(schema.marks, mark.type));
-
-/**
  * Every line of a document, run together as the inline content of one.
  *
  * This works on the JSON rather than on a parsed document, because on the way
@@ -602,7 +583,12 @@ const collectOneLine = (
     }
 
     if (node.type === TOKEN_NODE && Object.hasOwn(schema.nodes, TOKEN_NODE)) {
-      addAtom(run, { type: TOKEN_NODE, attrs: { id: node.attrs?.id } });
+      const marks = marksInSchema(node.marks, schema);
+      addAtom(run, {
+        type: TOKEN_NODE,
+        attrs: { id: node.attrs?.id },
+        ...(marks !== undefined && marks.length > 0 && { marks }),
+      });
       continue;
     }
 
@@ -612,7 +598,7 @@ const collectOneLine = (
       node.type === VERSIONS_NODE &&
       Object.hasOwn(schema.nodes, VERSIONS_NODE)
     ) {
-      addAtom(run, node);
+      addAtom(run, documentInSchema(node, schema));
       continue;
     }
 
@@ -1374,9 +1360,11 @@ export default function RichTextEditorField({
       // over — it fires a tick after the field has painted, and by then the
       // document it would flatten is already empty.
       content:
-        singleLine && seed !== undefined
-          ? oneLineDocumentOf(seed, editorSchema)
-          : seed,
+        seed === undefined
+          ? seed
+          : singleLine
+            ? oneLineDocumentOf(seed, editorSchema)
+            : documentInSchema(seed, editorSchema),
       editable: !disabled && !readOnly,
       autofocus: false,
       onCreate: ({ editor: created }) => {
@@ -1489,7 +1477,9 @@ export default function RichTextEditorField({
     // single-line field flattens what it is given, so a host that keeps
     // sending two paragraphs would otherwise never match and the document
     // would be replaced again on every pass.
-    const incoming = singleLine ? asOneLine(value, editor.schema) : value;
+    const incoming = singleLine
+      ? asOneLine(value, editor.schema)
+      : documentInSchema(value, editor.schema);
     const currentContent = JSON.stringify(editor.getJSON());
     const newContent = JSON.stringify(incoming);
     if (currentContent !== newContent) {

@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { alterFormStageEditor } from '../../editors/alter-form/AlterFormStageEditor.ts';
 import { dyadCensusStageEditor } from '../../editors/dyad-census/DyadCensusStageEditor.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
@@ -195,5 +196,32 @@ describe("a census prompt's preview", () => {
       ),
     );
     expect(screen.queryByText(/\{today\}/)).not.toBeInTheDocument();
+  });
+});
+
+describe('a form field saved before fields had ids', () => {
+  it('offers only the answers of the fields before it', async () => {
+    // The fixture's fields carry no ids, as a protocol saved before
+    // Architect gave them one does.
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      registry: alterFormStageEditor,
+    });
+    await harness.opened();
+    const [first] = screen.getAllByRole('button', { name: 'Edit field' });
+    if (first === undefined) throw new Error('No field to edit');
+    await harness.user.click(first);
+    const dialog = within(await screen.findByRole('dialog'));
+    const [insert] = dialog.getAllByRole('button', { name: 'Insert a value' });
+    if (insert === undefined) throw new Error('No insert button');
+    await harness.user.click(insert);
+
+    const offered = (await screen.findAllByRole('option')).map(
+      (option) => option.textContent ?? '',
+    );
+    expect(offered.some((label) => label.includes('flagged'))).toBe(false);
+    expect(offered.some((label) => label.includes('relationship_to_ego'))).toBe(
+      false,
+    );
   });
 });

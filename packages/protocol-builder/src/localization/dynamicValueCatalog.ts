@@ -191,12 +191,16 @@ const nameFor = (
 const isCaseKey = (key: string) =>
   DYNAMIC_VALUE_NAME.test(key) && key !== MISSING_CASE && key !== 'other';
 
-/** The cases a new binding names each of `options` by. */
+/**
+ * The cases a binding names each of `options` by, added to the cases it
+ * already records (`recorded`), whose names they do not take.
+ */
 const casesFor = (
   options: readonly DynamicValueOption[],
   labelText: (label: unknown) => string,
+  recorded: Readonly<Record<string, string | number | boolean>> = {},
 ): Record<string, string | number | boolean> => {
-  const cases: Record<string, string | number | boolean> = {};
+  const cases: Record<string, string | number | boolean> = { ...recorded };
   options.forEach((option, index) => {
     const fromValue =
       typeof option.value === 'boolean'
@@ -217,11 +221,12 @@ const casesFor = (
 };
 
 /**
- * The stage's binding for `choice`, reused when one already shows the same
- * value (and, for a value with answers, names them all), or a new one. A
- * value with answers that the stage binds without cases (it was only ever
- * shown as itself) keeps its name, offered with the cases a by-answer
- * insertion would add to it.
+ * The stage's binding for `choice`: one that already shows the same value
+ * (preferring one that names all its answers), or a new one. A value with
+ * answers keeps the name the stage binds it under however many of its
+ * answers that binding records cases for (a save keeps only the cases text
+ * uses), offered with a case for each answer it lacks, which a by-answer
+ * insertion adds to it.
  */
 export const bindingFor = (
   choice: DynamicValueChoice,
@@ -240,18 +245,19 @@ export const bindingFor = (
       }
     }
   }
-  if (choice.options.length > 0) {
-    for (const [name, binding] of Object.entries(bindings)) {
-      if (binding.path === choice.path && binding.cases === undefined) {
-        return {
-          name,
-          binding: {
-            path: choice.path,
-            cases: casesFor(choice.options, labelText),
-          },
-        };
-      }
-    }
+  for (const [name, binding] of Object.entries(bindings)) {
+    if (binding.path !== choice.path) continue;
+    const recorded = Object.values(binding.cases ?? {});
+    const lacking = choice.options.filter(
+      (option) => !recorded.includes(option.value),
+    );
+    return {
+      name,
+      binding: {
+        path: choice.path,
+        cases: casesFor(lacking, labelText, binding.cases),
+      },
+    };
   }
   const name = nameFor(
     choice,
@@ -298,10 +304,21 @@ export const bindingRecordedFor = (
   existing: DynamicValueBinding | undefined,
   nodes: readonly MessageNode[],
 ): DynamicValueBinding | undefined => {
-  const cased =
-    offered.cases !== undefined && selectsOnCases(nodes, name, offered.cases);
-  if (existing === undefined) return cased ? offered : { path: offered.path };
-  return existing.cases === undefined && cased ? offered : undefined;
+  if (offered.cases === undefined) {
+    return existing === undefined ? offered : undefined;
+  }
+  if (existing === undefined) {
+    return selectsOnCases(nodes, name, offered.cases)
+      ? offered
+      : { path: offered.path };
+  }
+  // Only a version for a case the stage does not record yet changes it.
+  const added = Object.fromEntries(
+    Object.entries(offered.cases).filter(
+      ([key]) => !Object.hasOwn(existing.cases ?? {}, key),
+    ),
+  );
+  return selectsOnCases(nodes, name, added) ? offered : undefined;
 };
 
 /**

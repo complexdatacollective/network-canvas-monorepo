@@ -149,4 +149,82 @@ describe('TranslationTable: text that shows values', () => {
       expect(title(store)).toEqual({ en: 'Welcome back', fr: 'Bon retour' }),
     );
   });
+
+  it('refuses a default-language edit that leaves an untouched translation without a value it now shows', async () => {
+    const [stage] = protocol.stages;
+    const { store, user } = renderTable({
+      ...protocol,
+      stages: [{ ...stage, title: { en: 'Welcome back', fr: 'Bon retour' } }],
+    } as CurrentProtocol);
+    const before = getProtocol(store.getState());
+
+    await user.click(titleCell('English'));
+    const editor = await screen.findByRole('textbox', {
+      name: cellName('English'),
+    });
+    await waitFor(() => expect(editor).toHaveFocus());
+    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    const [option] = await screen.findAllByRole('option', {
+      name: /first_name/,
+    });
+    if (option === undefined) throw new Error('No value offered');
+    await user.click(option);
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
+    );
+    await leaveCell(user);
+
+    await waitFor(() =>
+      expect(titleCell('French')).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(
+      await screen.findByText(/This translation must show "\{name\}"/),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(getProtocol(store.getState())).toBe(before);
+  });
+
+  it('lets a translation insert a value whose binding records only some of its answers', async () => {
+    const [stage] = protocol.stages;
+    const { user } = renderTable({
+      ...protocol,
+      codebook: {
+        ...protocol.codebook,
+        ego: {
+          variables: {
+            ...protocol.codebook.ego?.variables,
+            mood: {
+              name: 'mood',
+              type: 'categorical',
+              options: [
+                { value: 'happy', label: 'Happy' },
+                { value: 'sad', label: 'Sad' },
+              ],
+            },
+          },
+        },
+      },
+      stages: [
+        {
+          ...stage,
+          title: { en: '{mood, select, happy {Glad} other {Hello}}' },
+          dynamicValues: {
+            mood: { path: 'ego.mood', cases: { happy: 'happy' } },
+          },
+        },
+      ],
+    } as unknown as CurrentProtocol);
+
+    await user.click(titleCell('French'));
+    const editor = await screen.findByRole('textbox', {
+      name: cellName('French'),
+    });
+    await waitFor(() => expect(editor).toHaveFocus());
+    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    const offered = (await screen.findAllByRole('option')).map(
+      (option) => option.textContent ?? '',
+    );
+    expect(offered.some((label) => label.includes('mood'))).toBe(true);
+  });
 });

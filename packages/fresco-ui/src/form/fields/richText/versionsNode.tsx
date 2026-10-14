@@ -7,7 +7,6 @@ import {
   mergeAttributes,
   Node as TiptapNode,
 } from '@tiptap/core';
-import type { Schema } from '@tiptap/pm/model';
 import { NodeSelection } from '@tiptap/pm/state';
 import {
   EditorContent,
@@ -21,6 +20,7 @@ import { isEqual } from 'es-toolkit';
 import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 
 import { cx } from '../../../utils/cva';
+import { contentInSchema } from './fitToSchema';
 
 /**
  * One version of a piece of text: what it reads in one case, such as when a
@@ -85,36 +85,6 @@ const lineOf = (content: readonly JSONContent[]): JSONContent => ({
 const contentOf = (doc: JSONContent): JSONContent[] =>
   doc.content?.[0]?.content ?? [];
 
-/**
- * A version's line with only the marks its own editor has a type for. A
- * version can arrive holding a mark the field does not offer (a link, loaded
- * into a single-line field or pasted from a multi-line one), and an editor
- * reading a mark its schema lacks starts EMPTY, so the next edit would save
- * nothing over the version's words. The words stay; the mark goes.
- */
-const withinSchema = (
-  content: readonly JSONContent[],
-  schema: Schema | undefined,
-): readonly JSONContent[] => {
-  if (schema === undefined) return content;
-  const fit = (node: JSONContent): JSONContent => {
-    const marks = node.marks?.filter((mark) =>
-      Object.hasOwn(schema.marks, mark.type),
-    );
-    const { marks: _marks, content: children, ...rest } = node;
-    return {
-      ...rest,
-      ...(marks !== undefined && marks.length > 0 && { marks }),
-      ...(children !== undefined && { content: children.map(fit) }),
-    };
-  };
-  const hasForeignMark = (node: JSONContent): boolean =>
-    (node.marks ?? []).some(
-      (mark) => !Object.hasOwn(schema.marks, mark.type),
-    ) || (node.content ?? []).some(hasForeignMark);
-  return content.some(hasForeignMark) ? content.map(fit) : content;
-};
-
 const versionClasses = cx(
   'inline-flex max-w-full items-baseline gap-1 rounded-sm',
 );
@@ -157,8 +127,14 @@ function VersionEditor({
         : undefined,
     [extensions],
   );
+  // A version can arrive holding a mark the field does not offer (a link,
+  // loaded into a single-line field or pasted from a multi-line one); its
+  // editor keeps the words without it rather than starting empty.
   const content = useMemo(
-    () => withinSchema(version.content, schema),
+    () =>
+      schema === undefined
+        ? version.content
+        : contentInSchema(version.content, schema),
     [version.content, schema],
   );
 

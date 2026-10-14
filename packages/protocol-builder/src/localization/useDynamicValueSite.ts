@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import {
   createContext,
   useCallback,
@@ -141,9 +142,15 @@ export function useDynamicValueSite(
       }
       const fields = Array.isArray(list) ? [...list] : [];
       const edited = row.read();
-      const at = fields.findIndex(
-        (field) =>
-          isRecord(field) && edited.id !== undefined && field.id === edited.id,
+      // By its id; a row saved before rows had ids, by what it held when
+      // the dialog opened, so the fields before it stay the ones before it.
+      const opened = row.opened;
+      const at = fields.findIndex((field) =>
+        !isRecord(field)
+          ? false
+          : edited.id !== undefined
+            ? field.id === edited.id
+            : opened !== undefined && isEqual(field, opened),
       );
       const index = at === -1 ? fields.length : at;
       fields[index] = edited;

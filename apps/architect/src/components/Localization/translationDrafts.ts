@@ -324,20 +324,51 @@ export const useTranslationDraft = ({
     }
   };
 
-  const register = () => {
+  const registerCell = (cellLocale: LocaleTag) => {
     const state = formStore.getState();
-    if (state.fields.has(name)) return;
+    const cellName = translationFieldName(row.path, cellLocale);
+    if (state.fields.has(cellName)) return false;
     state.registerField({
-      name,
-      initialValue: stored,
+      name: cellName,
+      initialValue: storedTranslation(row, cellLocale),
       validation: cellValidation(
         row.path,
-        locale,
+        cellLocale,
         appStore.getState,
         () => words.current,
       ),
     });
-    recheckLeftCells();
+    return true;
+  };
+
+  const register = () => {
+    if (registerCell(locale)) recheckLeftCells();
+  };
+
+  // An edit to the default-language text can break a translation nobody has
+  // touched: one that leaves out a value the text now shows. A cell has a
+  // field only once it is edited, and only a field can refuse the save, so
+  // leaving an edited default-language cell gives each other translation of
+  // a text with values a field of its own, left as it was: it is checked
+  // from then on, says in its own cell what it now lacks, and keeps the
+  // table from saving until it is put right.
+  const checkOtherTranslations = () => {
+    const protocol = getProtocol(appStore.getState());
+    if (
+      row.dynamicValues === undefined ||
+      !protocol ||
+      locale !== protocol.localization.defaultLocale
+    ) {
+      return;
+    }
+    const state = formStore.getState();
+    for (const other of protocol.localization.locales) {
+      if (other === locale) continue;
+      if (isBlankTranslation(row, storedTranslation(row, other))) continue;
+      registerCell(other);
+      // Validated with every other cell already left, just below.
+      state.setFieldBlurred(translationFieldName(row.path, other));
+    }
   };
 
   const change = (next: string) => {
@@ -355,6 +386,13 @@ export const useTranslationDraft = ({
     if (!state.fields.has(name)) return;
     state.setFieldBlurred(name);
     void state.validateField(name);
+    const left = state.getFieldState(name);
+    if (
+      left !== undefined &&
+      !isEqual(asText(left.value), asText(left.initialValue))
+    ) {
+      checkOtherTranslations();
+    }
     recheckLeftCells();
   };
 

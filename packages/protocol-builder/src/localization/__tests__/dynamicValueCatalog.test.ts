@@ -198,6 +198,59 @@ describe('the cases recorded for a value with answers', () => {
     ).toEqual(closeness);
   });
 
+  it('keeps the name of a binding recording some of the answers, offering the rest', () => {
+    const choice = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).find(
+      (each) => each.path === 'dyad.source.closeness',
+    );
+    if (choice === undefined) throw new Error('no choice');
+    expect(
+      bindingFor(
+        choice,
+        { close: { path: 'dyad.source.closeness', cases: { near: 1 } } },
+        {},
+        labelText,
+      ),
+    ).toEqual({
+      name: 'close',
+      binding: {
+        path: 'dyad.source.closeness',
+        cases: { near: 1, notClose: 'not close' },
+      },
+    });
+  });
+
+  it('changes a binding only for a version by an answer it does not record yet', () => {
+    const partial = { path: 'dyad.source.closeness', cases: { veryClose: 1 } };
+    const onRecorded: MessageNode[] = [
+      {
+        kind: 'switch',
+        argument: 'firstCloseness',
+        type: 'select',
+        versions: [
+          { key: 'veryClose', nodes: [] },
+          { key: 'other', nodes: [] },
+        ],
+      },
+    ];
+    expect(
+      bindingRecordedFor('firstCloseness', closeness, partial, onRecorded),
+    ).toBeUndefined();
+    const onAdded: MessageNode[] = [
+      {
+        kind: 'switch',
+        argument: 'firstCloseness',
+        type: 'select',
+        versions: [
+          { key: 'notClose', nodes: [] },
+          { key: 'other', nodes: [] },
+        ],
+      },
+    ];
+    expect(
+      bindingRecordedFor('firstCloseness', closeness, partial, onAdded),
+    ).toEqual(closeness);
+  });
+
   it('offers cases under the name of a binding recorded without them', () => {
     const choice = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).find(
       (each) => each.path === 'dyad.source.closeness',
