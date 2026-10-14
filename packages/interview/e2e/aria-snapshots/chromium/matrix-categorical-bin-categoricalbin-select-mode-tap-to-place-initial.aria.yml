@@ -6,7 +6,7 @@
   - button "Place Alice in Work"
   - heading "Work" [level=4]
   - status: Choose where Alice belongs.
-  - button "2 unplaced Collapse drawer" [expanded]
+  - text: 2 unplaced
   - button "Alice" [pressed]
   - button "Bob"
   - navigation:

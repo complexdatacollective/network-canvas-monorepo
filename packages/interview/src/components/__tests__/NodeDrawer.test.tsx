@@ -17,7 +17,6 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import NodeDrawer from '../NodeDrawer';
 
 // A drawn person reads the session store; what these tests own is the drawer
@@ -107,24 +106,35 @@ function renderDrawer(props: Partial<React.ComponentProps<typeof NodeDrawer>>) {
 }
 
 describe('NodeDrawer', () => {
-  it('shows the count in the digits of the language the protocol is read in', () => {
-    render(
-      <DndStoreProvider>
-        <TestProtocolLocalization
-          localization={{ defaultLocale: 'ar-EG', locales: ['ar-EG'] }}
-        >
-          <NodeDrawer
-            nodes={['a', 'b', 'c'].map((id) => ({
-              [entityPrimaryKeyProperty]: id,
-              [entityAttributesProperty]: {},
-              type: 'person',
-            }))}
-          />
-        </TestProtocolLocalization>
-      </DndStoreProvider>,
-    );
+  it('names how many people are in the drawer without showing a count', () => {
+    renderDrawer({
+      nodes: ['a', 'b', 'c'].map((id) => ({
+        [entityPrimaryKeyProperty]: id,
+        [entityAttributesProperty]: {},
+        type: 'person',
+      })),
+    });
 
-    expect(screen.getByText('٣')).toBeInTheDocument();
+    const tab = screen.getByRole('button', { name: /3 unplaced/i });
+    // Whatever carries it, no text is visible beside the chevron.
+    const visible = tab.cloneNode(true) as HTMLElement;
+    visible.querySelectorAll('.sr-only').forEach((el) => el.remove());
+    expect(visible.textContent?.trim()).toBe('');
+  });
+
+  it('cannot be collapsed when it is not collapsible, and still names how many people are left', () => {
+    renderDrawer({
+      collapsible: false,
+      draggable: false,
+      selectedNodeId: 'a',
+      nodes: ['a', 'b'].map((id) => ({
+        [entityPrimaryKeyProperty]: id,
+        [entityAttributesProperty]: {},
+        type: 'person',
+      })),
+    });
+    expect(screen.queryByRole('button', { name: /drawer/i })).toBeNull();
+    expect(screen.getByText(/2 unplaced/i)).toBeInTheDocument();
   });
 
   it('reopens when a newly selected person is in it, so the person being placed stays visible', async () => {
@@ -269,12 +279,15 @@ describe('NodeDrawer', () => {
     const tab = screen.getByRole('button', { name: /expand drawer/i });
     expect(tab).toBeEnabled();
     expect(tab.textContent).toContain('0 unplaced');
+    // The drop animation only runs while the drawer is open.
+    expect(screen.queryByTestId('node-drop-animation')).toBeNull();
 
     fireEvent.click(tab);
     await waitFor(() => {
       expect(tab).toHaveAttribute('aria-expanded', 'true');
     });
     expect(screen.getByText('Drop here to remove')).toBeInTheDocument();
+    expect(screen.getByTestId('node-drop-animation')).toBeInTheDocument();
   });
 
   it('illuminates for a compatible drag and expands only while the drag is over it', async () => {

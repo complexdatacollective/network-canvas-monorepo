@@ -262,9 +262,16 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         <button
           ref={headerRef}
           type="button"
-          className={cx(accentClasses, 'focusable cursor-pointer')}
+          className={cx(
+            accentClasses,
+            // Inset, as the panel clips anything outside the header.
+            'focusable focus-visible:-outline-offset-3',
+            select.focalNode && 'cursor-pointer',
+          )}
           onClick={() => void handleSelect()}
-          disabled={!select.focalNode}
+          // Not `disabled`: placing the last person would then drop keyboard
+          // focus to the page.
+          aria-disabled={!select.focalNode || undefined}
           aria-label={
             select.focalNode
               ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
