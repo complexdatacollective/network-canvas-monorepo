@@ -767,7 +767,11 @@ export const findMissingDynamicPlacement = (
     const present: DynamicValueState[] = value.numeric
       ? counts.map((count) => ({ missing: false, count }))
       : [
-          { missing: false },
+          // An answer with no version of its own, unless the versions cover
+          // every answer there is.
+          ...(value.exhaustive === true && value.cases.length > 0
+            ? []
+            : [{ missing: false }]),
           ...value.cases.map((key) => ({ missing: false, case: key })),
         ];
     return value.optional ? [{ missing: true }, ...present] : present;

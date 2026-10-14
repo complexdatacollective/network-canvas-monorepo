@@ -430,6 +430,30 @@ describe('findMissingDynamicPlacement', () => {
     ).toEqual({ argument: 'kind', when: { kind: 'friend' } });
   });
 
+  it('asks nothing of a version no answer reaches', () => {
+    // Every answer has a version of its own, so `other` is never shown.
+    const values = {
+      kind: {
+        cases: ['friend', 'family'],
+        numeric: false,
+        optional: true,
+        exhaustive: true,
+      },
+    };
+    const original =
+      '{kind, select, missing {Them} friend {Friend} family {Family} other {{kind}}}';
+    const translation =
+      '{kind, select, missing {Eux} friend {Ami} family {Famille} other {Eux}}';
+    expect(
+      findMissingDynamicPlacement(original, 'en', translation, 'fr', values),
+    ).toBeUndefined();
+    expect(
+      findMissingDynamicPlacement(original, 'en', translation, 'fr', {
+        kind: { ...values.kind, exhaustive: false },
+      }),
+    ).toEqual({ argument: 'kind', when: { kind: 'other' } });
+  });
+
   it('checks a number’s fraction versions too', () => {
     // Czech gives fractions a version of their own (`many`).
     expect(
