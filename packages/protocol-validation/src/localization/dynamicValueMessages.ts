@@ -484,7 +484,10 @@ const flatten = (
   stateOf: (name: string) => DynamicValueState,
   plural: string | undefined,
   parts: MessagePart[],
-  /** Collects the values whose plural the version goes through. */
+  /**
+   * Collects the values a plural chose a version by through an arm of their
+   * own category, not by falling back to `other`.
+   */
   plurals: Set<string>,
 ) => {
   for (const element of elements) {
@@ -510,11 +513,11 @@ const flatten = (
         !state.missing && state.count !== undefined
           ? pluralCategoryOf(locale, state.count)
           : 'other';
-      const option =
-        (Object.hasOwn(element.options, category)
-          ? element.options[category]
-          : undefined) ?? element.options.other;
-      plurals.add(element.value);
+      const own = Object.hasOwn(element.options, category)
+        ? element.options[category]
+        : undefined;
+      const option = own ?? element.options.other;
+      if (own !== undefined) plurals.add(element.value);
       if (option !== undefined) {
         flatten(option.value, locale, stateOf, element.value, parts, plurals);
       }
@@ -557,7 +560,7 @@ export const TOO_MANY_DYNAMIC_VERSIONS = 'tooManyVersions';
 
 /**
  * The values the version of `message` for `scenario` shows, and the values
- * whose plural that version goes through.
+ * that version chose by a plural arm written for their category.
  */
 const versionIn = (
   message: string,
@@ -750,7 +753,9 @@ export const findMissingDynamicPlacement = (
     const required = versionIn(original, originalLocale, scenario).shown;
     if (required.size === 0) continue;
     // The one-number waiver holds only where this version of the
-    // translation itself goes through that value's plural.
+    // translation itself is the arm its plural writes for that category: a
+    // translation without one falls back to `other`, which is written for
+    // many numbers and so must show the value.
     const { shown, plurals } = versionIn(translation, locale, scenario);
     for (const name of required) {
       if (shown.has(name)) continue;
