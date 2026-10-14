@@ -324,7 +324,11 @@ const literalMarkdown = (value: string): string =>
     // indented code), so its whitespace is collapsed.
     .replace(/\s+/g, ' ')
     .replace(AUTOLINK_TRIGGERS, `$&${WORD_JOINER}`)
-    .replace(MARKDOWN_PUNCTUATION, '\\$&');
+    .replace(MARKDOWN_PUNCTUATION, '\\$&')
+    // The space left at its start could still finish a marker the researcher
+    // wrote at the start of a line (`#` or `1.` before the answer ` heading`).
+    // A character reference shows the same space but never forms a block.
+    .replace(/^ /, '&#32;');
 
 // Markdown can also find a token across the edge of a value: a bare link
 // (`https:` in the researcher's words and `//evil.example` in a participant's

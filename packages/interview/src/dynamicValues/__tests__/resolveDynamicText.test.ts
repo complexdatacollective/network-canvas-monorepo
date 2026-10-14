@@ -360,6 +360,24 @@ describe('markdownSource', () => {
     expect(html).toContain('<strong>Ada</strong>');
   });
 
+  it('never lets a value finish a block marker the researcher wrote', () => {
+    for (const [marker, element] of [
+      ['#', '<h1'],
+      ['1.', '<ol'],
+      ['-', '<ul'],
+    ] as const) {
+      const source = markdownSource({
+        text: '',
+        parts: [marker, { name: 'name', text: ' heading' }],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      expect(html).not.toContain(element);
+      expect(getMarkdownLabelText(source)).toBe(`${marker} heading`);
+    }
+  });
+
   it('leaves text without values as it is', () => {
     expect(markdownSource({ text: '**Decline**' })).toBe('**Decline**');
   });
