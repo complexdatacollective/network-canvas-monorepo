@@ -26,6 +26,7 @@ import ui, {
 } from '../../store/modules/ui';
 import { AnalyticsContext } from '../AnalyticsContext';
 import {
+  ENTITY_ID_PROPERTIES,
   InterviewAnalyticsEnvelope,
   type InterviewAnalyticsEventName,
   InterviewAnalyticsEvents,
@@ -235,6 +236,18 @@ describe('the analytics event catalogue', () => {
       'stage_entered',
     ]);
     expect(captured.filter(({ decoded }) => !decoded)).toEqual([]);
+  });
+
+  it('lists every catalogued identifier property as an entity id', () => {
+    const identifiers = Object.values(InterviewAnalyticsEvents).flatMap(
+      (event) => Object.keys(event.fields).filter((key) => key.endsWith('_id')),
+    );
+    expect(identifiers.length).toBeGreaterThan(0);
+    expect(
+      identifiers.filter(
+        (key) => !(ENTITY_ID_PROPERTIES as readonly string[]).includes(key),
+      ),
+    ).toEqual([]);
   });
 
   it('refuses an event property the catalogue does not declare', () => {

@@ -6,6 +6,8 @@ import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 import type { interviewLocales } from '../i18n/locales';
 import { MAX_ELAPSED_MS } from './elapsed.ts';
 
+export { ENTITY_ID_PROPERTIES } from './entityIdProperties.ts';
+
 export type AnalyticsStageType = StageType | 'FinishSession';
 
 const DECLARED_STAGE_TYPES = [

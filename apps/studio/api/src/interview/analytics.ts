@@ -1,6 +1,7 @@
 import { Effect, Option, Schema } from 'effect';
 
 import {
+  ENTITY_ID_PROPERTIES,
   InterviewAnalyticsEnvelope,
   InterviewAnalyticsEvents,
   InterviewExceptionProperties,
@@ -20,6 +21,7 @@ import {
   Analytics,
   type AnalyticsCapture,
   participantDistinctId,
+  stableEventUuid,
 } from '../platform/analytics.ts';
 import { enforceRateLimit } from '../rate-limit/enforce.ts';
 import { readInstallationId } from '../setup/bootstrap.ts';
@@ -139,7 +141,28 @@ const decodeBatch = (
 ): Option.Option<ReadonlyArray<DecodedEvent>> =>
   Option.all(input.events.map(decodeEvent));
 
-const ERROR_TYPE = /^[A-Za-z][\w.]{0,99}$/;
+const REPORTED_ERROR_TYPES: ReadonlySet<string> = new Set([
+  'Error',
+  'AggregateError',
+  'EvalError',
+  'RangeError',
+  'ReferenceError',
+  'SyntaxError',
+  'TypeError',
+  'URIError',
+  'AbortError',
+  'DataCloneError',
+  'InvalidStateError',
+  'NetworkError',
+  'NotAllowedError',
+  'NotFoundError',
+  'NotSupportedError',
+  'QuotaExceededError',
+  'SecurityError',
+  'TimeoutError',
+]);
+
+const ENTITY_IDS: ReadonlySet<string> = new Set(ENTITY_ID_PROPERTIES);
 
 const exceptionList = (decoded: Readonly<Record<string, unknown>>) => {
   const list = Schema.decodeUnknownOption(ParticipantExceptionList)(
@@ -147,7 +170,8 @@ const exceptionList = (decoded: Readonly<Record<string, unknown>>) => {
   );
   const type = Option.match(list, {
     onNone: () => 'Error',
-    onSome: ([first]) => (ERROR_TYPE.test(first.type) ? first.type : 'Error'),
+    onSome: ([first]) =>
+      REPORTED_ERROR_TYPES.has(first.type) ? first.type : 'Error',
   });
   return [
     {
@@ -161,16 +185,27 @@ const exceptionList = (decoded: Readonly<Record<string, unknown>>) => {
 const forwardableEvent = (
   { event, timestamp, decoded, forwarded }: DecodedEvent,
   config: ForwardingConfig,
+  sessionId: string,
 ): AnalyticsCapture => ({
   event,
   distinctId: config.distinctId,
   timestamp,
   properties: {
-    package_version: decoded.package_version,
     ...Object.fromEntries(
-      forwarded.flatMap((key) =>
-        Object.hasOwn(decoded, key) ? [[key, decoded[key]]] : [],
-      ),
+      forwarded.flatMap((key) => {
+        if (!Object.hasOwn(decoded, key)) return [];
+        const value = decoded[key];
+        return [
+          [
+            key,
+            ENTITY_IDS.has(key)
+              ? stableEventUuid(
+                  `${config.installationId}:${sessionId}:entity:${String(value)}`,
+                )
+              : value,
+          ],
+        ];
+      }),
     ),
     ...(event === PARTICIPANT_EXCEPTION_EVENT && {
       $exception_list: exceptionList(decoded),
@@ -210,6 +245,8 @@ export const forwardParticipantEvents = Effect.fn(
   if (config === null) return;
 
   yield* analytics.capture(
-    batch.value.map((decoded) => forwardableEvent(decoded, config)),
+    batch.value.map((decoded) =>
+      forwardableEvent(decoded, config, session.sessionId),
+    ),
   );
 });

@@ -31,7 +31,11 @@ import {
 import { createStudio } from '../../app.ts';
 import { TenantScope, unsafeMakeTeamAccess } from '../../db/tenant.ts';
 import { readEnv } from '../../env.ts';
-import { Analytics, RecordedAnalytics } from '../../platform/analytics.ts';
+import {
+  Analytics,
+  RecordedAnalytics,
+  stableEventUuid,
+} from '../../platform/analytics.ts';
 import { BrowserLogs } from '../../platform/browser-logs.ts';
 import { baseProtocol } from '../../protocol/__tests__/helpers.ts';
 import { createProtocol, publishDraft } from '../../protocol/store.ts';
@@ -1031,7 +1035,6 @@ describe.skipIf(!testDb)('participant analytics', () => {
         distinctId,
         timestamp: '2026-10-07T09:00:00.000Z',
         properties: {
-          package_version: '10.0.0',
           stage_type: 'NameGenerator',
           stage_index: 1,
           direction: 'forward',
@@ -1043,8 +1046,9 @@ describe.skipIf(!testDb)('participant analytics', () => {
         distinctId,
         timestamp: '2026-10-07T09:00:00.000Z',
         properties: {
-          package_version: '10.0.0',
-          node_id: '0b6f8a52-3c1d-4e2f-9a7b-5c4d3e2f1a0b',
+          node_id: stableEventUuid(
+            `${installationId}:${sessionId}:entity:0b6f8a52-3c1d-4e2f-9a7b-5c4d3e2f1a0b`,
+          ),
           node_type_index: 0,
           ...stamped(),
         },
@@ -1207,7 +1211,6 @@ describe.skipIf(!testDb)('participant analytics', () => {
     expect(JSON.stringify(forwarded)).not.toContain('ROSTER_ROW_SENTINEL');
     expect(forwarded.map((event) => event.properties)).toEqual([
       {
-        package_version: '10.0.0',
         feature: 'stage-error-boundary',
         is_offline: false,
         $exception_list: [
@@ -1220,7 +1223,6 @@ describe.skipIf(!testDb)('participant analytics', () => {
         ...stamped(),
       },
       {
-        package_version: '10.0.0',
         feature: 'external-data',
         $exception_list: [
           {
@@ -1230,6 +1232,47 @@ describe.skipIf(!testDb)('participant analytics', () => {
           },
         ],
         ...stamped(),
+      },
+    ]);
+  });
+
+  it('forwards no value the page chose freely, re-deriving ids and fixing error types', async () => {
+    const { sessionToken } = await begin();
+    const forgedId = '4a616e65-2044-4f65-a000-000000000000';
+    await send(sessionToken, [
+      {
+        event: 'node_removed',
+        properties: {
+          ...page,
+          package_version: '1.0.0-JaneDoe',
+          node_id: forgedId,
+        },
+      },
+      {
+        event: '$exception',
+        properties: {
+          ...page,
+          feature: 'external-data',
+          $exception_list: [
+            {
+              type: 'JaneDoe',
+              value: 'JaneDoe',
+              mechanism: { handled: true, synthetic: false },
+            },
+          ],
+        },
+      },
+    ]);
+    const forwarded = await captured();
+    expect(forwarded).toHaveLength(2);
+    const serialized = JSON.stringify(forwarded);
+    expect(serialized).not.toContain('JaneDoe');
+    expect(serialized).not.toContain(forgedId);
+    expect(forwarded[1]?.properties.$exception_list).toEqual([
+      {
+        type: 'Error',
+        value: 'Error',
+        mechanism: { handled: true, synthetic: false },
       },
     ]);
   });

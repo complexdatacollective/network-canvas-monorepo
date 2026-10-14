@@ -71,6 +71,7 @@ const SEEDED = {
   participantCode: `ExcludedCode${tag}`,
   participantEmail: `excluded-participant-${tag}@example.net`,
   participantName: `ExcludedParticipantName${tag}`,
+  participantIdentifier: `${tag}-0000-4000-8000-000000000000`,
   participantAnswer: `ExcludedAnswer${tag}`,
   egoAnswer: `ExcludedEgoAnswer${tag}`,
   forgedLogText: `ExcludedForgedLog${tag}`,
@@ -504,6 +505,28 @@ const scenario = (
       'participant.analytics',
       {
         events: [
+          usability('focal_node', {
+            package_version: `1.0.0-${SEEDED.participantName}`,
+            node_id: SEEDED.participantIdentifier,
+          }),
+          usability('$exception', {
+            feature: 'external-data',
+            $exception_list: [
+              {
+                type: SEEDED.participantName,
+                value: SEEDED.participantName,
+                mechanism: { handled: true, synthetic: false },
+              },
+            ],
+          }),
+        ],
+      },
+      asParticipant,
+    );
+    yield* rpc(
+      'participant.analytics',
+      {
+        events: [
           usability('stage_entered', {
             stage_type: SEEDED.participantName,
             stage_index: 0,
@@ -663,6 +686,7 @@ const excludedValues = (
     SEEDED.participantCode,
     SEEDED.participantEmail,
     SEEDED.participantName,
+    SEEDED.participantIdentifier,
   ],
   'participant-responses': [SEEDED.participantAnswer, SEEDED.egoAnswer],
   'asset-keys': [SEEDED.assetKey],
