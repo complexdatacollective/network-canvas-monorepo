@@ -440,6 +440,7 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
           <Field<typeof LocalizedRichTextField>
             name={DECLINE_FIELD}
             component={LocalizedRichTextField}
+            dynamicValues="prompt"
             label={intl.formatMessage(tieStrengthPromptMessages.declineLabel)}
             hint={intl.formatMessage(tieStrengthPromptMessages.declineHint)}
             placeholder={intl.formatMessage(

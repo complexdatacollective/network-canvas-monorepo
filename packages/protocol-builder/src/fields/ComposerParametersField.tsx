@@ -97,6 +97,7 @@ export default function ComposerParametersField({
       <VariableParameterFields
         shape={shape}
         parameters={effective}
+        labelsShowValues
         onChange={(key, next) => {
           const written = parametersForShape(
             shape,

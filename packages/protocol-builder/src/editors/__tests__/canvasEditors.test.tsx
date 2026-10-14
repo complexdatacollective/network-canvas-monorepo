@@ -22,7 +22,11 @@ type CanvasEditorCase = Readonly<{
   editor: Partial<StageEditorRegistry>;
   /** The outline a researcher reads down the side of the stage, in order. */
   sections: readonly string[];
-  /** The top-level stage keys those sections have a field for. */
+  /**
+   * The top-level stage keys those sections have a field for, and
+   * `dynamicValues`, which every stage editor registers for the values its
+   * text may show.
+   */
   ownedKeys: readonly string[];
 }>;
 
@@ -55,6 +59,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     ownedKeys: [
       'background',
       'behaviours',
+      'dynamicValues',
       'label',
       'prompts',
       'subject',
@@ -79,6 +84,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'attributesHeading',
       'background',
       'behaviours',
+      'dynamicValues',
       'groupsHeading',
       'label',
       'linksHeading',
@@ -106,6 +112,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'background',
       'behaviours',
       'convexHullVariable',
+      'dynamicValues',
       'edges',
       'label',
       'layoutVariable',
@@ -137,6 +144,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Interviewer guidance',
     ],
     ownedKeys: [
+      'dynamicValues',
       'label',
       'mapOptions',
       'mapUnavailable',
@@ -164,6 +172,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     ownedKeys: [
       'conditionText',
       'diseases',
+      'dynamicValues',
       'keyHeading',
       'label',
       'showAtRiskStatuses',
@@ -185,7 +194,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['explanationText', 'label', 'validation'],
+    ownedKeys: ['dynamicValues', 'explanationText', 'label', 'validation'],
   },
 ];
 

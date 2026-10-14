@@ -4,6 +4,7 @@ import {
   analyzeProtocolLocalization,
   collectLocalizedStrings,
   type CurrentProtocol,
+  type DynamicValueSite,
   findFinishStageTextProblems,
   findVariableRoleConflicts,
   type LocaleTag,
@@ -307,6 +308,12 @@ export type TranslationRow = {
   value: LocalizedString;
   /** What a localized message may use (see `localizedMessage`), when it is one. */
   arguments?: MessageArguments;
+  /**
+   * Where text that can show values the interview fills in sits, when it can
+   * and its stage binds any: with nothing bound, it is plain or formatted
+   * text like any other.
+   */
+  dynamicValues?: DynamicValueSite;
 };
 
 export type TranslationGroup = {
@@ -321,6 +328,23 @@ const PLACE_ORDER: Record<TranslationPlace['kind'], number> = {
   ego: 2,
   protocol: 3,
   interface: 4,
+};
+
+/** Whether the stage holding the text at `path` binds any value. */
+const stageBindsValues = (
+  protocol: CurrentProtocol,
+  path: readonly (string | number)[],
+) => {
+  const [root, index] = path;
+  if (root !== 'stages' || typeof index !== 'number') return false;
+  const stage: unknown = protocol.stages[index];
+  if (typeof stage !== 'object' || stage === null) return false;
+  const bindings = (stage as { dynamicValues?: unknown }).dynamicValues;
+  return (
+    typeof bindings === 'object' &&
+    bindings !== null &&
+    Object.keys(bindings).length > 0
+  );
 };
 
 /**
@@ -346,6 +370,10 @@ export const getTranslationGroups = createSelector(
         format: hit.format,
         value: hit.value,
         ...(hit.arguments === undefined ? {} : { arguments: hit.arguments }),
+        ...(hit.dynamicValues === undefined ||
+        !stageBindsValues(protocol, hit.path)
+          ? {}
+          : { dynamicValues: hit.dynamicValues }),
       });
     }
     return [...groups]

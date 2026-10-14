@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -65,16 +65,20 @@ describe('the editor for the screen that ends the interview', () => {
     expect(
       screen.getByRole('heading', { name: 'Closing screen' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /Closing text/ })).toHaveValue(
-      // The stand-in is a one-line input, which drops the line breaks.
-      '# All *done*Thank you for taking part.',
-    );
+    // Both are rich-text editors that can show values, which render the
+    // markdown rather than its syntax.
+    const closing = screen.getByRole('textbox', { name: /Closing text/ });
+    expect(closing.querySelector('h1')).toHaveTextContent(/^All done$/);
+    expect(closing.querySelector('em')).toHaveTextContent(/^done$/);
+    expect(closing).toHaveTextContent('Thank you for taking part.');
     expect(
       screen.getByRole('heading', { name: 'Finished screen' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /Finished text/ })).toHaveValue(
-      '# Interview FinishedThank you for participating!',
+    const finished = screen.getByRole('textbox', { name: /Finished text/ });
+    expect(finished.querySelector('h1')).toHaveTextContent(
+      /^Interview Finished$/,
     );
+    expect(finished).toHaveTextContent('Thank you for participating!');
     expect(
       screen.getByRole('heading', { name: 'Interviewer guidance' }),
     ).toBeInTheDocument();
@@ -192,9 +196,13 @@ describe('the editor for the screen that ends the interview', () => {
     const harness = renderStageEditor(openStage());
     const user = userEvent.setup();
 
-    fireEvent.change(screen.getByRole('textbox', { name: /Closing text/ }), {
-      target: { value: '' },
-    });
+    await user.click(screen.getByRole('textbox', { name: /Closing text/ }));
+    await user.keyboard('{Control>}a{/Control}{Backspace}');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: /Closing text/ }),
+      ).toHaveTextContent(/^$/),
+    );
     await user.click(
       within(screen.getByRole('listbox', { name: /Finishing/ })).getByRole(
         'option',

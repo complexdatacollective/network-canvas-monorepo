@@ -63,6 +63,7 @@ import NoTeamSignOut from './shell/NoTeamSignOut.tsx';
 import Placeholder, { type PlaceholderProps } from './shell/Placeholder.tsx';
 import ProtocolOutlineArea from './shell/ProtocolOutlineArea.tsx';
 import ScreenMain from './shell/ScreenMain.tsx';
+import { ScreenTeamProvider } from './shell/screenTeam.tsx';
 import SiteLayout from './shell/SiteLayout.tsx';
 import StudyArea from './shell/StudyArea.tsx';
 import TeamArea from './shell/TeamArea.tsx';
@@ -135,7 +136,7 @@ function RootLayout() {
     <StudioI18nProvider>
       <LocaleSync />
       <ResearcherErrorTelemetry />
-      {content}
+      <ScreenTeamProvider>{content}</ScreenTeamProvider>
     </StudioI18nProvider>
   );
 }

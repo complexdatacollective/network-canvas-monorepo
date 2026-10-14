@@ -25,6 +25,7 @@ import {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
+import { useReleaseRowBindings } from '../localization/useDynamicValueSite.ts';
 import { DEFAULT_ITEM_LABEL } from './arrayFields/arrayMessages.ts';
 import DialogForm, {
   type DialogFormErrors,
@@ -368,6 +369,8 @@ export function RowListItem({
 type RowEditorSession = Readonly<{
   key: number;
   row: RowValues;
+  /** The row as the list held it, before `expand`; absent for a new row. */
+  stored?: RowValues;
   editIndex?: number;
   isNewItem: boolean;
   open: boolean;
@@ -386,11 +389,14 @@ function useRowEditorSession(
   // moves would reopen the dialog on a fresh store over the researcher's draft.
   const expandRef = useRef(expand);
   expandRef.current = expand;
+  const stored = useMemo(
+    () => (item ? stripManagedProperties<RowValues>(item) : undefined),
+    [item],
+  );
   const row = useMemo(() => {
-    if (!item) return undefined;
-    const values = stripManagedProperties<RowValues>(item);
-    return expandRef.current ? expandRef.current(values) : values;
-  }, [item]);
+    if (stored === undefined) return undefined;
+    return expandRef.current ? expandRef.current(stored) : stored;
+  }, [stored]);
   const layoutId =
     typeof item?._internalId === 'string' ? item._internalId : undefined;
 
@@ -403,6 +409,7 @@ function useRowEditorSession(
       return {
         key: (previous?.key ?? 0) + 1,
         row,
+        ...(isNewItem || stored === undefined ? {} : { stored }),
         ...(editIndex === undefined ? {} : { editIndex }),
         isNewItem,
         open: true,
@@ -411,7 +418,7 @@ function useRowEditorSession(
         ...(isNewItem || layoutId === undefined ? {} : { layoutId }),
       };
     });
-  }, [index, isNewItem, layoutId, row]);
+  }, [index, isNewItem, layoutId, row, stored]);
 
   return session;
 }
@@ -453,6 +460,7 @@ export function RowDialog({
     dialogSize,
   } = useRowListConfig();
   const session = useRowEditorSession(item, index, isNewItem, expand);
+  useReleaseRowBindings(session?.open === true);
 
   // `ArrayField` withdraws its save handler while the list is not accepting
   // changes, and there is no editor to render then: a disabled or read-only
@@ -527,6 +535,7 @@ export function RowDialog({
       <RowFields
         name={name}
         row={session.row}
+        {...(session.stored === undefined ? {} : { stored: session.stored })}
         {...(session.editIndex === undefined
           ? {}
           : { editIndex: session.editIndex })}
@@ -547,12 +556,14 @@ export function RowDialog({
 function RowFields({
   name,
   row,
+  stored,
   editIndex,
   formId,
   Editor,
 }: Readonly<{
   name: string;
   row: RowValues;
+  stored?: RowValues;
   editIndex?: number;
   formId: string;
   Editor: RowEditorComponent;
@@ -578,6 +589,7 @@ function RowFields({
     if (listPath === undefined) return null;
     return {
       listPath,
+      ...(stored === undefined ? {} : { opened: stored }),
       read: () =>
         documentFromSubmission({
           currentFields: row,
@@ -587,7 +599,7 @@ function RowFields({
           emptied: 'keep',
         }),
     };
-  }, [name, row, storeApi]);
+  }, [name, row, stored, storeApi]);
 
   return (
     <EditedRowContext value={editedRow}>

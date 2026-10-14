@@ -30,6 +30,7 @@
     "./editors/narrative/narrativeWordingMessages": "./src/editors/narrative/sections/wording/narrativeWordingMessages.ts",
     "./editors/sociogram/sociogramWordingMessages": "./src/editors/sociogram/sections/wording/sociogramWordingMessages.ts",
     "./fields/AssetPickerField": "./src/fields/AssetPickerField.tsx",
+    "./fields/DynamicTextField": "./src/fields/DynamicTextField.tsx",
     "./fields/LocalizedMessageField": "./src/fields/LocalizedMessageField.tsx",
     "./fields/LocalizedStringField": "./src/fields/LocalizedStringField.tsx",
     "./fields/OptionLabelField": "./src/fields/OptionLabelField.tsx",

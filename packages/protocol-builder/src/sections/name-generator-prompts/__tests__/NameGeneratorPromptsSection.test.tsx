@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { attributeField } from '../../../testing/attributePicker.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
 
@@ -496,5 +497,41 @@ describe("a name generator's prompts", () => {
         'Priya Raman is currently editing a section needed for this change.',
       ),
     ).toBeNull();
+  });
+});
+
+describe("a name generator prompt's preview", () => {
+  it('shows the values its text fills in, and its versions, as pills', async () => {
+    const { type, fields } = loadFixtureStage('name-generator-1');
+    renderStageEditor({
+      stage: {
+        type,
+        fields: {
+          ...fields,
+          dynamicValues: { today: { path: 'now' } },
+          prompts: [
+            {
+              id: 'dated',
+              text: en(
+                'Who did you see **{today}**? {today, select, missing {Anyone} other {Everyone}}',
+              ),
+            },
+          ],
+        },
+      },
+      sections: prompts,
+    });
+
+    await waitFor(() =>
+      expect(
+        document.querySelector('strong [data-token="today"]'),
+      ).toHaveTextContent('Today’s date'),
+    );
+    // Outside the editor a value's versions fold into its pill.
+    expect(
+      document.querySelectorAll('[data-token="today"]').length,
+    ).toBeGreaterThan(1);
+    expect(screen.queryByText('Everyone')).not.toBeInTheDocument();
+    expect(screen.queryByText(/\{today/)).not.toBeInTheDocument();
   });
 });

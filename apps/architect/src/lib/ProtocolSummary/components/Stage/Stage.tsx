@@ -1,18 +1,20 @@
 import { isEmpty } from 'es-toolkit/compat';
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
-import type {
-  FamilyPedigreeNominationPrompt,
-  FinishMode,
-  FinishOutcome,
-  FramingSetting,
-  Item,
-  LocalizedString,
-  Panel,
+import {
+  type DynamicValues,
+  type FamilyPedigreeNominationPrompt,
+  type FinishMode,
+  type FinishOutcome,
+  type FramingSetting,
+  type Item,
+  type LocalizedString,
+  type Panel,
+  stageDynamicValueContext,
 } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
@@ -22,6 +24,7 @@ import MiniTable from '../MiniTable';
 import SummaryContext from '../SummaryContext';
 import {
   DefaultLanguageText,
+  SummaryDynamicValuesContext,
   SummaryText,
   useMultilingualSummary,
 } from '../SummaryText';
@@ -89,6 +92,9 @@ const variablesOnStage =
       memo.push([variable.id, variable.name]);
       return memo;
     }, []);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 type StageProps = {
   configuration: Record<string, unknown>;
   id: string;
@@ -96,7 +102,13 @@ type StageProps = {
   stageNumber: number;
   type: string;
 };
-const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
+const StageContent = ({
+  configuration,
+  id,
+  label,
+  stageNumber,
+  type,
+}: StageProps) => {
   const intl = useAppIntl();
   const { index } = useContext(SummaryContext);
   const multilingual = useMultilingualSummary();
@@ -435,4 +447,31 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     </div>
   );
 };
+/**
+ * A stage, and what its text that shows values can show: every value its
+ * prompts or its form's fields could, so each binding reads as the value it
+ * stands for wherever the summary prints it.
+ */
+const Stage = (props: StageProps) => {
+  const { protocol } = useContext(SummaryContext);
+  const { configuration, type } = props;
+  const site = useMemo(
+    () => ({
+      context: stageDynamicValueContext({
+        codebook: protocol.codebook,
+        stage: { ...configuration, type },
+      }),
+      bindings: (isRecord(configuration.dynamicValues)
+        ? configuration.dynamicValues
+        : {}) as DynamicValues,
+    }),
+    [configuration, type, protocol.codebook],
+  );
+  return (
+    <SummaryDynamicValuesContext value={site}>
+      <StageContent {...props} />
+    </SummaryDynamicValuesContext>
+  );
+};
+
 export default Stage;

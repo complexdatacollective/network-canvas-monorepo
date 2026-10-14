@@ -22,6 +22,7 @@ export default function PedigreePromptSection() {
       <Field<typeof LocalizedRichTextField>
         name="prompt"
         component={LocalizedRichTextField}
+        dynamicValues="prompt"
         label={intl.formatMessage(messages.promptLabel)}
         hint={intl.formatMessage(messages.promptHint)}
         placeholder={intl.formatMessage(messages.promptPlaceholder)}

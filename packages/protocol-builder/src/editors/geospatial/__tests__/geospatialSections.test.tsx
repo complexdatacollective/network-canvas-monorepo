@@ -853,8 +853,9 @@ describe('a prompt written in more than one language', () => {
 
     const dialog = await openPrompt(harness, 'Edit prompt');
     await editInSpanish(harness, dialog);
+    // A rich-text editor rather than an input: it shows its text.
     const text = dialog.getByRole('textbox', { name: 'Prompt text' });
-    expect(text).toHaveValue('¿Dónde vives?');
+    expect(text.textContent).toBe('¿Dónde vives?');
     await harness.user.clear(text);
     await harness.user.type(text, '¿Dónde trabajas?');
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));

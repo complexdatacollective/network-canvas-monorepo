@@ -1519,6 +1519,114 @@
     "defaultMessage": "Resize form and preview panes",
     "description": "Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them."
   },
+  "protocolBuilder.dynamicText.byAnswer": {
+    "defaultMessage": "Different wording for each answer",
+    "description": "Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with one version for each answer to this attribute, so the text can say something different depending on the answer."
+  },
+  "protocolBuilder.dynamicText.byNumber": {
+    "defaultMessage": "Wording that fits the number",
+    "description": "Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with a version for each kind of number (such as one or several), so the words agree with the number, as in “1 child” and “3 children”."
+  },
+  "protocolBuilder.dynamicText.dyadSourceValue": {
+    "defaultMessage": "First node: {attribute}",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the first of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."
+  },
+  "protocolBuilder.dynamicText.dyadTargetValue": {
+    "defaultMessage": "Second node: {attribute}",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the second of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."
+  },
+  "protocolBuilder.dynamicText.firstNodeLabel": {
+    "defaultMessage": "First node: label",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the first node’s attributes such as “First node: nickname”: the label the interview shows on the first of two nodes the text is about, either the first node of a pair a question asks about together or the first of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
+  },
+  "protocolBuilder.dynamicText.insertMenu": {
+    "defaultMessage": "Inject piped text from interview metadata or a network attribute",
+    "description": "Accessible name and tooltip of a toolbar icon button (a syringe), and the name of the searchable menu it opens, in a text field a participant reads. “Piped text” is survey-software vocabulary for text filled in from earlier data: the button injects a value the interview fills in, such as today’s date (interview metadata) or the participant’s name or an answer they gave earlier (a network attribute)."
+  },
+  "protocolBuilder.dynamicText.interviewGroup": {
+    "defaultMessage": "Interview Attributes",
+    "description": "Heading in the insert-a-value menu above values that come from the interview itself rather than from the network, such as today’s date."
+  },
+  "protocolBuilder.dynamicText.needsAnswerLabels": {
+    "defaultMessage": "Add labels for its yes and no answers first",
+    "description": "Second line of an entry in the insert-a-value menu that cannot be chosen yet. The entry is a yes-or-no attribute without its own words for its two answers, so the text has nothing in the protocol’s languages to show for it. The researcher can add those words where the attribute is set up."
+  },
+  "protocolBuilder.dynamicText.no": {
+    "defaultMessage": "No",
+    "description": "Label of the version of a piece of text shown when a yes-or-no attribute is no."
+  },
+  "protocolBuilder.dynamicText.nodeLabel": {
+    "defaultMessage": "Node label",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on a node, which it takes from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person."
+  },
+  "protocolBuilder.dynamicText.nodeLabelDescription": {
+    "defaultMessage": "Text shown on the node",
+    "description": "Short note under “Node label” in the insert-a-value menu, saying that the value is the same text the interview shows on the node itself. Other items in the menu show the kind of answer here, such as “Text” or “Number”."
+  },
+  "protocolBuilder.dynamicText.roleContext": {
+    "defaultMessage": "Contextual Attributes",
+    "description": "Heading in the insert-a-value menu above the attributes of whatever the text is shown alongside: the node or edge a form asks about, the node a question is asking about, or both nodes of a pair a question asks about together (each of those values then starts “First node:” or “Second node:”). It may not be a person, so the heading does not say what it is."
+  },
+  "protocolBuilder.dynamicText.roleEgo": {
+    "defaultMessage": "Ego Attributes",
+    "description": "Heading in the insert-a-value menu above the attributes of the ego, the participant taking part in the interview. “Ego” is the network-research term Architect uses for the participant."
+  },
+  "protocolBuilder.dynamicText.secondNodeLabel": {
+    "defaultMessage": "Second node: label",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the second node’s attributes such as “Second node: nickname”: the label the interview shows on the second of two nodes the text is about, either the second node of a pair a question asks about together or the second of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
+  },
+  "protocolBuilder.dynamicText.switchHasNoLabels": {
+    "defaultMessage": "A Toggle has no labels for its answers. Use different wording for each answer instead.",
+    "description": "Second line of an entry in the insert-a-value menu that cannot be chosen. The entry is a yes-or-no attribute answered with a Toggle (Architect’s name for a single on/off switch, kept as the one word “Toggle” as elsewhere in Architect), which has no researcher-written labels for its two answers, so the text cannot show the answer itself. The menu has another entry for the same attribute, “Different wording for each answer”, which the researcher can use instead."
+  },
+  "protocolBuilder.dynamicText.today": {
+    "defaultMessage": "Today’s date",
+    "description": "A value a researcher can insert into text a participant reads: the date on the day the participant reads it."
+  },
+  "protocolBuilder.dynamicText.translationMissesValue": {
+    "defaultMessage": "Include “{value}” wherever the original text shows it.",
+    "description": "Problem shown under a translation that leaves out a value, such as the participant’s name, that the text in the protocol’s main language shows. value is the value’s name."
+  },
+  "protocolBuilder.dynamicText.translationTooComplex": {
+    "defaultMessage": "This text has too many versions to check its translation. Use fewer values that change the wording.",
+    "description": "Problem shown under a translated text whose versions are too many to compare with the original."
+  },
+  "protocolBuilder.dynamicText.unreadable": {
+    "defaultMessage": "This text uses something Architect cannot show here, so it can’t be edited in this field. It is kept as it is.",
+    "description": "Shown in place of a text field a participant reads when its stored text uses something the editor cannot display, such as a format it does not support. The text is not changed."
+  },
+  "protocolBuilder.dynamicText.versionKnown": {
+    "defaultMessage": "If known",
+    "description": "Label of the version of a piece of text shown when the value it depends on has been given."
+  },
+  "protocolBuilder.dynamicText.versionMissing": {
+    "defaultMessage": "If not known",
+    "description": "Label of the version of a piece of text shown when the value it depends on has not been given, such as a name the participant skipped."
+  },
+  "protocolBuilder.dynamicText.versionNumbers": {
+    "defaultMessage": "When it is {numbers}",
+    "description": "Label of the version of a piece of text shown for some numbers. numbers lists examples of those numbers, in the language being edited, such as “1” or “0, 2, 3, …”."
+  },
+  "protocolBuilder.dynamicText.versionOtherAnswer": {
+    "defaultMessage": "Any other answer",
+    "description": "Label of the version of a piece of text shown for an answer that has no version of its own."
+  },
+  "protocolBuilder.dynamicText.versionsByAnswer": {
+    "defaultMessage": "Wording for each answer to {value}",
+    "description": "Accessible name of a piece of text with one version for each answer to an attribute. value is the attribute’s name."
+  },
+  "protocolBuilder.dynamicText.versionsByNumber": {
+    "defaultMessage": "Wording that fits the number {value}",
+    "description": "Accessible name of a piece of text with a version for each kind of number, so the words agree with the number. value is the name of the number."
+  },
+  "protocolBuilder.dynamicText.versionsByPresence": {
+    "defaultMessage": "Wording depending on whether {value} is known",
+    "description": "Accessible name of a piece of text with two versions: one shown when a value is known, one when it is not. value is the value’s name, such as “nickname”."
+  },
+  "protocolBuilder.dynamicText.yes": {
+    "defaultMessage": "Yes",
+    "description": "Label of the version of a piece of text shown when a yes-or-no attribute is yes."
+  },
   "protocolBuilder.entitySelect.edgeChangeBlockedTitle": {
     "defaultMessage": "Cannot change edge type",
     "description": "Title of the message shown when a researcher tries to change the edge type of a stage something else in the protocol depends on, and the change is refused. An edge type is a kind of relationship between two network members, such as a friendship."
@@ -2578,6 +2686,10 @@
   "protocolBuilder.localization.notTranslatedUnlessBrowserLists": {
     "defaultMessage": "Not translated into {language} yet. Participants using {language} will see the {fallback} text, unless their browser also lists a language that has it.",
     "description": "Shown under a text field when the text has no translation in the language being edited, nor in a closely related language. Participants are shown it in another language their web browser lists, when the text has a translation in one, and otherwise in fallback: the protocol’s default language, or failing that another of its languages. language is the language being edited. Both are language names, written in the app’s own language or, in some apps, in their own language."
+  },
+  "protocolBuilder.localization.showsValuesNotEditable": {
+    "defaultMessage": "This text shows values the interview fills in, so it can’t be edited in this field. It is kept as it is.",
+    "description": "Shown in place of a text field when the stored text includes values filled in during the interview, such as the participant’s name, and this field cannot show them. The stored text is shown below it unchanged."
   },
   "protocolBuilder.localizedMessage.caseAboutParticipant": {
     "defaultMessage": "When it is about the participant",

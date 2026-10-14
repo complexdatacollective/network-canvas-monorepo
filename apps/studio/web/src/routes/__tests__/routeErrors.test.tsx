@@ -176,6 +176,7 @@ beforeEach(() => {
         },
         setup: { required: false },
         telemetry: false,
+        logLevel: 'Info',
         deployment: { mode: 'managed', billing: false },
       }),
     'me': () =>

@@ -51,6 +51,7 @@ export default function RosterPanelSection() {
       <Field<typeof LocalizedInputField>
         name={PANEL_TITLE_FIELD}
         component={LocalizedInputField}
+        dynamicValues="stageText"
         label={intl.formatMessage(nodePanelsMessages.panelTitleLabel)}
         hint={intl.formatMessage(rosterPanelMessages.panelTitleHint)}
         required={PANEL_TITLE_REQUIRED}

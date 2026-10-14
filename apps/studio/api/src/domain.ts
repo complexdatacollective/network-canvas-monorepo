@@ -1,4 +1,4 @@
-import type { Effect } from 'effect';
+import type { Effect, LogLevel } from 'effect';
 
 import type { InstanceStatus as ContractInstanceStatus } from '@codaco/studio-contract/schema/status';
 import type { DeploymentMode } from '@codaco/studio-contract/surfaces';
@@ -61,6 +61,7 @@ export function getInstanceStatus(
   deployment: DeploymentStatus,
   installation: Installation | null,
   telemetry: boolean,
+  logLevel: LogLevel.LogLevel,
 ): InstanceStatus {
   return {
     name: installation?.name ?? DEFAULT_INSTANCE_NAME,
@@ -76,5 +77,6 @@ export function getInstanceStatus(
       required: installation !== null && installation.ownerUserId === null,
     },
     telemetry,
+    logLevel,
   };
 }

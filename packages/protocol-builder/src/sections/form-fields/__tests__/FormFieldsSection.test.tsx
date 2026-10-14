@@ -485,9 +485,10 @@ describe('the fields a form collects', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    expect(screen.getByRole('textbox', { name: 'Form title' })).toHaveValue(
-      'Introduction',
-    );
+    // A rich-text editor rather than an input: it shows its text.
+    expect(
+      screen.getByRole('textbox', { name: 'Form title' }).textContent,
+    ).toBe('Introduction');
     // An ego form has no subject to own, and its name belongs to a section
     // this mount does not include.
     await harness.roundTrip();
@@ -551,8 +552,9 @@ describe('the fields a form collects', () => {
       sections: <FormFieldsSection subject="node" hasTitle />,
     });
 
+    // A rich-text editor rather than an input: it shows its text.
     const title = await screen.findByRole('textbox', { name: 'Form title' });
-    expect(title).toHaveValue('Add a person');
+    expect(title.textContent).toBe('Add a person');
 
     await harness.user.clear(title);
     expect(await harness.submit()).toBeNull();

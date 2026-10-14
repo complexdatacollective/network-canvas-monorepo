@@ -660,9 +660,7 @@ describe('a maximal stage of each interface', () => {
       // Nothing is excused unless the case says so: a maximal stage is the one
       // case where every key the interface offers must be on screen, so an
       // empty `unowned` is the whole claim about the outline.
-      // A stage's dynamic value bindings get their editor with the dynamic
-      // value palette (#1667); until then they survive a save untouched.
-      await harness.roundTrip({ unowned: [...unowned, 'dynamicValues'] });
+      await harness.roundTrip({ unowned });
     },
   );
 });

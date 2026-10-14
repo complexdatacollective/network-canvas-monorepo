@@ -214,9 +214,7 @@ describe.each(MAXIMAL)(
       });
       await openWordingGroup(harness);
 
-      // A stage's dynamic value bindings get their editor with the dynamic
-      // value palette (#1667); until then they survive a save untouched.
-      await harness.roundTrip({ unowned: [...unowned, 'dynamicValues'] });
+      await harness.roundTrip({ unowned });
     });
   },
 );

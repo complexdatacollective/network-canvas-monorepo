@@ -23,7 +23,6 @@ import FormErrors from '@codaco/fresco-ui/form/FormErrors';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 import {
   duplicateFormFieldIndices,
@@ -60,6 +59,7 @@ import {
   variableDisplayName,
   variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
+import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
 import {
   LocalizedInputField,
   LocalizedRichTextField,
@@ -90,7 +90,6 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
 import { asLocalizedString } from '../../localization/localizedText.ts';
-import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -124,6 +123,10 @@ import {
 /** Where every interface that holds a whole form keeps its fields. */
 const FIELDS_PATH = 'form.fields';
 const TITLE = 'form.title';
+// Where a field's caption and hint sit in its row, for the values they can
+// show (see `useDynamicValueSite`).
+const PROMPT_PATH = ['prompt'];
+const HINT_PATH = ['hint'];
 
 const INPUT_CONTROL = '_component';
 
@@ -851,6 +854,7 @@ export default function FormFieldsSection({
         <Field<typeof LocalizedInputField>
           name={TITLE}
           component={LocalizedInputField}
+          dynamicValues="stageText"
           label={intl.formatMessage(formFieldsMessages.formTitleLabel)}
           hint={intl.formatMessage(
             subject === 'ego'
@@ -1528,6 +1532,8 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name="prompt"
           component={LocalizedRichTextField}
+          dynamicValues="formField"
+          fieldPath={PROMPT_PATH}
           label={intl.formatMessage(formFieldsMessages.promptLabel)}
           hint={intl.formatMessage(formFieldsMessages.promptHint)}
           placeholder={intl.formatMessage(formFieldsMessages.promptPlaceholder)}
@@ -1538,6 +1544,8 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name="hint"
           component={LocalizedRichTextField}
+          dynamicValues="formField"
+          fieldPath={HINT_PATH}
           label={intl.formatMessage(formFieldsMessages.hintLabel)}
           hint={intl.formatMessage(formFieldsMessages.hintHint)}
           placeholder={intl.formatMessage(formFieldsMessages.hintPlaceholder)}
@@ -2041,20 +2049,16 @@ function AttributePicker({
 /** How one field reads in the list when its dialog is closed. */
 function FormFieldPreview({ item }: RowPreviewProps) {
   const protocolContext = useProtocolContext();
-  const localize = useLocalizedText();
   const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
   const variable =
     subject === undefined
       ? undefined
       : variablesForSubject(protocolContext, subject)[variableId];
-  const prompt = localize(item.prompt);
 
   return (
     <div className="flex flex-col gap-2.5">
-      <RenderMarkdown render={<div lang={prompt.lang} dir={prompt.dir} />}>
-        {prompt.text}
-      </RenderMarkdown>
+      <DynamicTextPreview value={item.prompt} />
       <div>
         <AttributeControlBadge
           attribute={

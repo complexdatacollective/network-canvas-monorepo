@@ -36,6 +36,7 @@ export default function ClosingScreenSection() {
       <Field<typeof LocalizedRichTextField>
         name={CONTENT_FIELD}
         component={LocalizedRichTextField}
+        dynamicValues="stageText"
         label={intl.formatMessage(finishSessionMessages.closingTextLabel)}
         required={REQUIRED}
       />

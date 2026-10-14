@@ -1,5 +1,5 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
-import { type ReactNode, Suspense, useId, useMemo } from 'react';
+import { type ReactNode, Suspense, useContext, useId, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -37,7 +37,16 @@ import {
   completeRuleValues,
   variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
+import {
+  messageWithValueNames,
+  useDynamicValueNames,
+} from '../../fields/DynamicTextField.tsx';
+import {
+  DynamicTextPreview,
+  showsValues,
+} from '../../fields/DynamicTextPreview.tsx';
 import type { RowValues } from '../../form/rowDialog.tsx';
+import { StageEditorFormContext } from '../../form/stageEditorContext.ts';
 import { EditingLanguageSwitcher } from '../../localization/EditingLanguageSwitcher.tsx';
 import {
   asLocalizedString,
@@ -48,6 +57,7 @@ import {
   useEditingLanguage,
   useLocalizedText,
 } from '../../localization/ProtocolLocalization.tsx';
+import { useStageDynamicValues } from '../../localization/useDynamicValueSite.ts';
 import {
   type CodebookSubject,
   variablesForSubject,
@@ -271,6 +281,70 @@ export type FieldPreviewPaneProps = Readonly<{
  * codebook editors beside this pane commit immediately, so an option added or
  * a rule tightened appears here without the dialog being reopened.
  */
+const SCALE_LABELS = ['minLabel', 'maxLabel'] as const;
+
+/**
+ * `field` with a scale's end labels written without the values they show.
+ *
+ * The scale takes its end labels as words, not as something drawn, so they
+ * cannot show a value's pill as the question and hint do; and the preview has
+ * no participant to fill a value in with, so the interview's resolver would
+ * refuse the message outright. Each value is written as its name instead.
+ */
+const withScaleLabelValueNames = (
+  field: ProtocolFieldDefinition,
+  nameOf: (argument: string) => string,
+): ProtocolFieldDefinition => {
+  const { parameters } = field;
+  if (field.component !== 'VisualAnalogScale' || !isRecord(parameters)) {
+    return field;
+  }
+  let changed = false;
+  const named: Record<string, unknown> = { ...parameters };
+  for (const key of SCALE_LABELS) {
+    const label = asLocalizedString(parameters[key]);
+    if (label === undefined) continue;
+    const entries = Object.entries(label).map(([locale, message]) => {
+      if (!showsValues(message)) return [locale, message] as const;
+      changed = true;
+      return [locale, messageWithValueNames(message, nameOf)] as const;
+    });
+    named[key] = Object.fromEntries(entries);
+  }
+  return changed ? { ...field, parameters: named } : field;
+};
+
+/** The field as a stage's editor previews it, its values named by the stage. */
+function StagePreviewField({
+  field,
+  children,
+}: Readonly<{
+  field: ProtocolFieldDefinition;
+  children: (field: ProtocolFieldDefinition) => ReactNode;
+}>) {
+  const nameOf = useDynamicValueNames(useStageDynamicValues());
+  return children(withScaleLabelValueNames(field, nameOf));
+}
+
+/**
+ * Hands `children` the field to preview: inside a stage's editor, with each
+ * value its text shows named as the stage binds it; elsewhere, by the name
+ * it is written with.
+ */
+function PreviewField({
+  field,
+  children,
+}: Readonly<{
+  field: ProtocolFieldDefinition;
+  children: (field: ProtocolFieldDefinition) => ReactNode;
+}>) {
+  const inStage = useContext(StageEditorFormContext) !== null;
+  if (inStage) {
+    return <StagePreviewField field={field}>{children}</StagePreviewField>;
+  }
+  return children(withScaleLabelValueNames(field, (argument) => argument));
+}
+
 export default function FieldPreviewPane({
   subject,
   mode = 'form',
@@ -485,6 +559,17 @@ export default function FieldPreviewPane({
           Reflect.get(field.parameters, 'maxLabel'),
         ]
       : [];
+  // Text that shows dynamic values has nothing to fill them in with here:
+  // there is no participant and no stage, and the interview's resolver
+  // cannot format a value it was not given. Each value is shown as the pill
+  // the editor shows instead.
+  const withValues = (text: LocalizedString | undefined): ReactNode =>
+    text !== undefined && showsValues(localize(text).text) ? (
+      <DynamicTextPreview value={text} render={<span />} />
+    ) : undefined;
+  const labelWithValues = withValues(authoredCopy);
+  const hintWithValues = withValues(hint);
+
   const shownTexts = [
     authoredCopy,
     hint,
@@ -549,13 +634,23 @@ export default function FieldPreviewPane({
                           value bubble, a date picker — into the region that
                           carries the previewed language and direction. */}
                     <PortalContainerProvider>
-                      <ProtocolField
-                        field={field}
-                        name="preview-value"
-                        {...(validationContext === undefined
-                          ? {}
-                          : { validationContext })}
-                      />
+                      <PreviewField field={field}>
+                        {(previewed) => (
+                          <ProtocolField
+                            field={previewed}
+                            name="preview-value"
+                            {...(labelWithValues === undefined
+                              ? {}
+                              : { label: labelWithValues })}
+                            {...(hintWithValues === undefined
+                              ? {}
+                              : { hint: hintWithValues })}
+                            {...(validationContext === undefined
+                              ? {}
+                              : { validationContext })}
+                          />
+                        )}
+                      </PreviewField>
                     </PortalContainerProvider>
                   </PreviewProtocolLanguage>
                 </InterviewI18nProvider>

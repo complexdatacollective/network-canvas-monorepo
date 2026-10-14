@@ -24,7 +24,6 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import { escapeMarkdownText, type Stage } from '@codaco/protocol-validation';
 
 import {
@@ -61,6 +60,7 @@ import {
 import ComposerParametersField, {
   type ComposerParameters,
 } from '../../fields/ComposerParametersField.tsx';
+import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
 import { LocalizedRichTextField } from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField, {
   createdUnassigned,
@@ -94,6 +94,7 @@ import {
   useLocalizedText,
   useProtocolLocalization,
 } from '../../localization/ProtocolLocalization.tsx';
+import { FormOfItsOwnContext } from '../../localization/useDynamicValueSite.ts';
 import {
   type CodebookSubject,
   variablesForSubject,
@@ -127,6 +128,10 @@ const COMPONENT_FIELD = 'component';
 const PARAMETERS_FIELD = 'parameters';
 const LABEL_FIELD = 'label';
 const HINT_FIELD = 'hint';
+// Where a field's label and hint sit in its row, for the values they can
+// show (see `useDynamicValueSite`).
+const LABEL_PATH = [LABEL_FIELD];
+const HINT_PATH = [HINT_FIELD];
 const VALIDATION_HINTS_FIELD = 'showValidationHints';
 
 const isRecord = (value: unknown): value is ComposerParameters =>
@@ -336,25 +341,27 @@ export function ComposerFormFieldsControl({
   const { readOnly } = useStageEditorForm();
 
   return (
-    <ComposerFormRows {...props} name={name} rows={value}>
-      <UnconnectedField<typeof ArrayField<RowValues>>
-        name={name}
-        component={ArrayField}
-        label={props.label}
-        hint={props.hint}
-        value={[...value]}
-        onChange={(next) => onChange(next ?? [])}
-        readOnly={readOnly}
-        getId={rowId}
-        addButtonLabel={props.addButtonLabel}
-        itemLabel={messages.fieldNoun}
-        emptyStateMessage={props.emptyStateMessage}
-        itemComponent={RowListItem}
-        editorComponent={RowDialog}
-        itemTemplate={rowTemplate()}
-        sortable
-      />
-    </ComposerFormRows>
+    <FormOfItsOwnContext value="edge">
+      <ComposerFormRows {...props} name={name} rows={value}>
+        <UnconnectedField<typeof ArrayField<RowValues>>
+          name={name}
+          component={ArrayField}
+          label={props.label}
+          hint={props.hint}
+          value={[...value]}
+          onChange={(next) => onChange(next ?? [])}
+          readOnly={readOnly}
+          getId={rowId}
+          addButtonLabel={props.addButtonLabel}
+          itemLabel={messages.fieldNoun}
+          emptyStateMessage={props.emptyStateMessage}
+          itemComponent={RowListItem}
+          editorComponent={RowDialog}
+          itemTemplate={rowTemplate()}
+          sortable
+        />
+      </ComposerFormRows>
+    </FormOfItsOwnContext>
   );
 }
 
@@ -1275,6 +1282,8 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       <Field<typeof LocalizedRichTextField>
         name={LABEL_FIELD}
         component={LocalizedRichTextField}
+        dynamicValues="formField"
+        fieldPath={LABEL_PATH}
         singleLine
         label={intl.formatMessage(messages.questionLabel)}
         hint={intl.formatMessage(messages.questionHint)}
@@ -1285,6 +1294,8 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
       <Field<typeof LocalizedRichTextField>
         name={HINT_FIELD}
         component={LocalizedRichTextField}
+        dynamicValues="formField"
+        fieldPath={HINT_PATH}
         singleLine
         label={intl.formatMessage(messages.helpLabel)}
         hint={intl.formatMessage(messages.helpHint)}
@@ -1367,9 +1378,7 @@ function ComposerFormFieldPreview({ item }: RowPreviewProps) {
             intl.formatMessage(messages.emptyPreview)}
         </span>
       ) : (
-        <RenderMarkdown render={<div lang={label.lang} dir={label.dir} />}>
-          {label.text}
-        </RenderMarkdown>
+        <DynamicTextPreview value={item[LABEL_FIELD]} />
       )}
       {(attribute !== undefined ||
         control !== undefined ||

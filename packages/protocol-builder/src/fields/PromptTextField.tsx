@@ -3,13 +3,13 @@ import type { ReactNode } from 'react';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 
 import { censusMessages } from '../editors/dyad-census/sections/censusMessages.ts';
 import type { RowPreviewProps } from '../form/rowDialog.tsx';
 import { asLocalizedString } from '../localization/localizedText.ts';
 import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
+import { DynamicTextPreview } from './DynamicTextPreview.tsx';
 import { LocalizedRichTextField } from './LocalizedStringField.tsx';
 
 const WRITE_THE_QUESTION = createMessageError(
@@ -84,6 +84,7 @@ export function PromptTextField({
       <Field<typeof LocalizedRichTextField>
         name="text"
         component={LocalizedRichTextField}
+        dynamicValues="prompt"
         label={intl.formatMessage(censusMessages.promptTextLabel)}
         {...(hint === undefined ? {} : { hint })}
         placeholder={placeholder}
@@ -127,9 +128,5 @@ export function PromptTextPreview({ item }: RowPreviewProps) {
       </span>
     );
   }
-  return (
-    <RenderMarkdown render={<div lang={shown.lang} dir={shown.dir} />}>
-      {shown.text}
-    </RenderMarkdown>
-  );
+  return <DynamicTextPreview value={item.text} />;
 }

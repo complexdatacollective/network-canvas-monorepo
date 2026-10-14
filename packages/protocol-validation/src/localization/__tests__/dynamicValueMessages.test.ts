@@ -7,6 +7,7 @@ import {
   findDynamicMessageSyntaxProblem,
   findDynamicValueProblem,
   findMissingDynamicPlacement,
+  pluralValueExamples,
   TOO_MANY_DYNAMIC_VERSIONS,
 } from '../dynamicValueMessages.ts';
 
@@ -566,5 +567,26 @@ describe('dynamicMessageParts with prototype names', () => {
         () => ({ missing: false, case: 'toString' }),
       ),
     ).toEqual(['B']);
+  });
+});
+
+describe('pluralValueExamples', () => {
+  it('reaches the categories only a fraction selects, since a number answer can hold one', () => {
+    // Czech gives `many` to fractions alone, Russian `other`.
+    expect(pluralValueExamples('cs').get('many')).toEqual([0.1, 0.2, 0.3, 0.4]);
+    expect([...pluralValueExamples('cs').keys()]).toEqual([
+      'one',
+      'few',
+      'many',
+      'other',
+    ]);
+    expect(pluralValueExamples('ru').get('other')?.[0]).toBe(0.1);
+  });
+
+  it('names each category by its plainest numbers first', () => {
+    expect(pluralValueExamples('en').get('one')).toEqual([1]);
+    expect(pluralValueExamples('en').get('other')?.slice(0, 3)).toEqual([
+      0, 2, 3,
+    ]);
   });
 });

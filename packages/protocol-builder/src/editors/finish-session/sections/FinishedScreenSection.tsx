@@ -26,6 +26,7 @@ export default function FinishedScreenSection() {
       <Field<typeof LocalizedRichTextField>
         name={FINISHED_CONTENT_FIELD}
         component={LocalizedRichTextField}
+        dynamicValues="stageText"
         label={intl.formatMessage(finishSessionMessages.finishedTextLabel)}
         required={REQUIRED}
       />

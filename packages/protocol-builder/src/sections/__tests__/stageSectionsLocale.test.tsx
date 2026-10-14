@@ -83,8 +83,8 @@ describe('the shared stage sections, read in Spanish', () => {
     });
 
     expect(
-      screen.getByRole('textbox', { name: 'Encabezado de página' }),
-    ).toHaveValue('Welcome');
+      screen.getByRole('textbox', { name: 'Encabezado de página' }).textContent,
+    ).toBe('Welcome');
     expect(
       screen.getByRole('button', { name: 'Crear nuevo elemento de contenido' }),
     ).toBeInTheDocument();

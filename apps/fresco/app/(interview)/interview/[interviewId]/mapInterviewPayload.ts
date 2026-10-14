@@ -5,7 +5,11 @@ import {
   type ResolvedAsset,
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-import { getLocaleMetadata } from '@codaco/protocol-validation';
+import {
+  getLocaleMetadata,
+  parseDynamicValuePath,
+} from '@codaco/protocol-validation';
+import type { NcNetwork } from '@codaco/shared-consts';
 import { parseStoredInterviewSession } from '~/lib/db/storedInterviewSession';
 import { parseStoredProtocol } from '~/lib/db/storedProtocol';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
@@ -53,7 +57,9 @@ export type InterviewView = 'active' | 'editable-finished' | 'completed';
  *
  * - An unfinished interview opens as it is, to anyone with its link.
  * - A finished interview opens on its completed state, from a payload with
- *   none of the interview's answers: no network and no stage metadata. Nor
+ *   none of the interview's answers but the ego attributes its finish stage's
+ *   text shows (`finishTextEgoAttributes`): no other network and no stage
+ *   metadata. Nor
  *   does it carry the protocol's resources, whose entries can hold API keys
  *   and whose URLs open the files: the completed state shows only the finish
  *   stage's text. Only the protocol's design, where the interview ended, and
@@ -79,15 +85,48 @@ export function mapInterviewForViewer(
     return { ...mapped, view: 'editable-finished' };
   }
   const { stageMetadata: _stageMetadata, ...session } = mapped.payload.session;
+  const network = createInitialNetwork();
+  network.ego.attributes = finishTextEgoAttributes(mapped.payload);
   return {
     ...mapped,
     payload: {
       protocol: { ...mapped.payload.protocol, assets: [] },
-      session: { ...session, network: createInitialNetwork() },
+      session: { ...session, network },
     },
     assetUrls: {},
     view: 'completed',
   };
+}
+
+/**
+ * The ego attributes the finished interview's finish stage shows in its text,
+ * and no others. The completed state shows that text again whenever the
+ * interview is opened, and without them a value the participant read when they
+ * finished would read as missing. These are answers the protocol chose to show
+ * on that screen; every other answer stays on the server. A finish stage
+ * recorded before finish stages were tracked is not known, so every finish
+ * stage's values are kept.
+ */
+function finishTextEgoAttributes(
+  payload: InterviewPayload,
+): NcNetwork['ego']['attributes'] {
+  const { finishStageId, network } = payload.session;
+  const kept: NcNetwork['ego']['attributes'] = {};
+  for (const stage of payload.protocol.stages) {
+    if (stage.type !== 'FinishSession') continue;
+    if (finishStageId !== null && stage.id !== finishStageId) continue;
+    for (const binding of Object.values(stage.dynamicValues ?? {})) {
+      const parsed = parseDynamicValuePath(binding.path);
+      if (parsed?.kind !== 'attribute' || parsed.role !== 'ego') continue;
+      // Attribute ids come from the protocol and may name a member every
+      // object inherits, so only an own value counts.
+      const value = Object.hasOwn(network.ego.attributes, parsed.variableId)
+        ? network.ego.attributes[parsed.variableId]
+        : undefined;
+      if (value !== undefined) kept[parsed.variableId] = value;
+    }
+  }
+  return kept;
 }
 
 export function mapInterviewPayload(
