@@ -66,6 +66,7 @@ import {
   getDecryptionScope,
   readEncryptedAttribute,
 } from '../Anonymisation/decryptionScope';
+import { readNodeLabelSource } from '../Anonymisation/nodeLabel';
 import { useCachedOutcomes } from '../Anonymisation/useDecryptionScope';
 import { useNodeLabel, useNodeLabeller } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
@@ -327,6 +328,18 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
   const dynamicValueSources = useDynamicValueSources();
   const labelNode = useNodeLabeller(useCachedOutcomes());
 
+  // The label a node shows, waiting for one that is still decrypting (such as
+  // just after the passphrase is entered), since the dialog's question is
+  // resolved once and would otherwise name the lock for as long as it is open.
+  const readNodeLabel = async (node: NcNode) => {
+    const source = readNodeLabelSource(node, stageVariables);
+    const scope = getDecryptionScope(store.getState);
+    if (source.status === 'encrypted' && scope) {
+      await decryptInScope(scope, source.value);
+    }
+    return labelNode(node, source);
+  };
+
   const readOtherAnswer = async (node: NcNode, otherVariable: string) => {
     const stored = node[entityAttributesProperty][otherVariable];
     // A string is a plaintext answer even under an encrypted variable, such
@@ -378,16 +391,6 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt, otherOptionLabel } = prompt;
-      // The question is about the node just dropped, so it can name it.
-      const otherPromptLabel = resolveIn(
-        otherVariablePrompt,
-        dynamicValueSources &&
-          withDynamicValueEntities(dynamicValueSources, {
-            attributes: { node: node[entityAttributesProperty] },
-            labels: { node: labelNode(node) },
-          }),
-      );
-
       // An answer that would be encrypted is not asked for until it could be
       // saved.
       if (stageVariables[otherVariable]?.encrypted && !unlocked) {
@@ -412,6 +415,18 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
       const otherValidationProps = otherValidationMetadata
         ? validationPropsFor(otherValidationMetadata)
         : {};
+
+      // The question is about the node just dropped, so it can name it as
+      // its card does.
+      const nodeLabel = await readNodeLabel(node);
+      const otherPromptLabel = resolveIn(
+        otherVariablePrompt,
+        dynamicValueSources &&
+          withDynamicValueEntities(dynamicValueSources, {
+            attributes: { node: node[entityAttributesProperty] },
+            labels: { node: nodeLabel },
+          }),
+      );
 
       // The current answer is shown for editing, so confirming the dialog
       // never blanks it. An encrypted one is decrypted with the key in force;
