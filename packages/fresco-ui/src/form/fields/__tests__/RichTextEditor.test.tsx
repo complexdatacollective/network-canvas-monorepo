@@ -1451,9 +1451,14 @@ describe('a RichTextEditorField with tokens', () => {
     // pointer over it, since the pill is one object.
     expect(chip?.className).toBe(tokenPillClasses('cursor-pointer'));
     // It opens with the value icon, hidden from screen readers.
-    const icon = chip?.querySelector('svg.lucide-variable');
+    const icon = chip?.querySelector('svg.lucide-database');
     expect(icon).toHaveAttribute('aria-hidden', 'true');
-    expect(chip?.firstChild).toBe(icon);
+    // Held on one line with the label's first word, so it never ends a line
+    // the label does not start on.
+    const lead = chip?.firstElementChild;
+    expect(lead).toHaveClass('whitespace-nowrap');
+    expect(lead?.firstChild).toBe(icon);
+    expect(lead).toHaveTextContent(/^Name$/);
   });
 
   it('offers its insert menu from an icon button named, and tipped, by the menu', async () => {
@@ -1474,7 +1479,7 @@ describe('a RichTextEditorField with tokens', () => {
     const button = screen.getByRole('button', { name: 'Insert a value' });
     // Its name is the menu's; what it shows is the value icon alone.
     expect(button.textContent).toBe('');
-    expect(button.querySelector('svg.lucide-variable')).toHaveAttribute(
+    expect(button.querySelector('svg.lucide-database')).toHaveAttribute(
       'aria-hidden',
       'true',
     );

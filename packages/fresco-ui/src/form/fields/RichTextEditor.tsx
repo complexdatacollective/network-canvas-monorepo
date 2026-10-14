@@ -36,6 +36,7 @@ import { StarterKit } from '@tiptap/starter-kit';
 import { isEqual } from 'es-toolkit';
 import {
   Bold,
+  Database,
   Check,
   Heading1,
   Heading2,
@@ -50,7 +51,6 @@ import {
   Redo,
   Trash2,
   Undo,
-  Variable,
 } from 'lucide-react';
 import {
   createContext,
@@ -75,7 +75,7 @@ import {
   multilineContentVariants,
   stateVariants,
 } from '../../styles/controlVariants';
-import { tokenPillClasses, tokenPillIconSpec } from '../../TokenPill';
+import { tokenPillClasses, tokenPillContentSpec } from '../../TokenPill';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../Tooltip';
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
@@ -378,8 +378,7 @@ const createTokenNode = (tokens: readonly RichTextEditorToken[]) => {
           class: tokenPillClasses('cursor-pointer'),
           contenteditable: 'false',
         }),
-        tokenPillIconSpec,
-        labelOf(node.attrs.id),
+        ...tokenPillContentSpec(labelOf(node.attrs.id)),
       ];
     },
 
@@ -2097,7 +2096,7 @@ export default function RichTextEditorField({
                               aria-label={insertMenu.label}
                               onMouseDown={() => setTriggered(null)}
                             >
-                              <Variable aria-hidden />
+                              <Database aria-hidden />
                             </ToolbarButton>
                           }
                         />

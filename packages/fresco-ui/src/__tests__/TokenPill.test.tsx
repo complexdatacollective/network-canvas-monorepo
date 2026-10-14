@@ -3,33 +3,53 @@ import { describe, expect, it } from 'vitest';
 
 import { TokenizedText, TokenPill, tokenPillClasses } from '../TokenPill';
 
+const pillOf = (container: HTMLElement) =>
+  container.querySelector('[data-token]');
+
 describe('TokenPill', () => {
   it('says its label, and records the token it stands for', () => {
-    render(<TokenPill token="name" label="Name" />);
+    const { container } = render(<TokenPill token="name" label="Name" />);
 
-    const pill = screen.getByText('Name');
+    const pill = pillOf(container);
     expect(pill).toHaveAttribute('data-token', 'name');
     expect(pill).not.toHaveAttribute('data-selected');
   });
 
   it('is drawn with the classes the editor draws its pills with', () => {
-    render(<TokenPill token="name" label="Name" />);
+    const { container } = render(<TokenPill token="name" label="Name" />);
 
-    expect(screen.getByText('Name').className).toBe(tokenPillClasses());
+    expect(pillOf(container)?.className).toBe(tokenPillClasses());
   });
 
   it('opens with the value icon, hidden from screen readers', () => {
-    render(<TokenPill token="name" label="Name" />);
+    const { container } = render(<TokenPill token="name" label="Name" />);
 
-    const icon = screen.getByText('Name').firstElementChild;
-    expect(icon).toHaveClass('lucide-variable');
+    const icon = container.querySelector('svg');
+    expect(icon).toHaveClass('lucide-database');
     expect(icon).toHaveAttribute('aria-hidden', 'true');
   });
 
-  it('marks itself as selected', () => {
-    render(<TokenPill token="name" label="Name" selected />);
+  it('keeps its icon on the line its label starts on, and lets the rest of the label wrap', () => {
+    const { container } = render(
+      <TokenPill token="partner" label="partner of (x) Name" />,
+    );
 
-    expect(screen.getByText('Name')).toHaveAttribute('data-selected', 'true');
+    const pill = container.querySelector('[data-token="partner"]');
+    expect(pill).toHaveTextContent('partner of (x) Name');
+    const lead = pill?.firstElementChild;
+    expect(lead).toHaveClass('whitespace-nowrap');
+    expect(lead?.firstElementChild).toBe(pill?.querySelector('svg'));
+    // The icon and the first word only: the label wraps after it.
+    expect(lead?.textContent).toBe('partner');
+    expect(pill?.lastChild?.textContent).toBe(' of (x) Name');
+  });
+
+  it('marks itself as selected', () => {
+    const { container } = render(
+      <TokenPill token="name" label="Name" selected />,
+    );
+
+    expect(pillOf(container)).toHaveAttribute('data-selected', 'true');
   });
 });
 
@@ -63,11 +83,12 @@ describe('TokenizedText', () => {
   });
 
   it('shows a placeholder it has no label for as the name it was recorded under', () => {
-    render(<TokenizedText parts={[{ token: 'relation' }]} tokens={tokens} />);
-
-    expect(screen.getByText('relation')).toHaveAttribute(
-      'data-token',
-      'relation',
+    const { container } = render(
+      <TokenizedText parts={[{ token: 'relation' }]} tokens={tokens} />,
     );
+
+    const pill = pillOf(container);
+    expect(pill).toHaveAttribute('data-token', 'relation');
+    expect(pill).toHaveTextContent('relation');
   });
 });

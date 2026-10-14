@@ -1,5 +1,5 @@
 import type { DOMOutputSpec } from '@tiptap/pm/model';
-import { Variable } from 'lucide-react';
+import { Database } from 'lucide-react';
 import { type ComponentPropsWithoutRef, Fragment } from 'react';
 
 import { cx } from './utils/cva';
@@ -30,17 +30,30 @@ export const tokenPillClasses = (className?: string) =>
   );
 
 /** The classes of the icon a pill opens with, before its label. */
-export const tokenPillIconClasses =
+const tokenPillIconClasses =
   'me-1 inline-block size-[1em] align-[-0.125em] opacity-70';
+
+/**
+ * Holds the icon and the label's first word together, so the icon is never
+ * left at the end of one line while the label starts on the next. The rest of
+ * a long label still wraps as words do.
+ */
+const tokenPillLeadClasses = 'whitespace-nowrap';
+
+/** A label split after its first word: `['partner', ' of (x)']`. */
+const splitFirstWord = (label: string): readonly [string, string] => {
+  const first = /^\s*\S*/.exec(label)?.[0] ?? '';
+  return [first, label.slice(first.length)];
+};
 
 const SVG = 'http://www.w3.org/2000/svg';
 
 /**
- * The icon a pill opens with, lucide's `Variable` (a data value), as DOM
+ * The icon a pill opens with, lucide's `Database` (a recorded value), as DOM
  * the editor builds itself: lucide's own drawing of it, attribute for
  * attribute. Hidden from screen readers; the pill's words name it.
  */
-export const tokenPillIconSpec: DOMOutputSpec = [
+const tokenPillIconSpec: DOMOutputSpec = [
   `${SVG} svg`,
   {
     'xmlns': SVG,
@@ -51,13 +64,43 @@ export const tokenPillIconSpec: DOMOutputSpec = [
     'stroke-linecap': 'round',
     'stroke-linejoin': 'round',
     'aria-hidden': 'true',
-    'class': `lucide lucide-variable ${tokenPillIconClasses}`,
+    'class': `lucide lucide-database ${tokenPillIconClasses}`,
   },
-  [`${SVG} path`, { d: 'M8 21s-4-3-4-9 4-9 4-9' }],
-  [`${SVG} path`, { d: 'M16 3s4 3 4 9-4 9-4 9' }],
-  [`${SVG} line`, { x1: '15', x2: '9', y1: '9', y2: '15' }],
-  [`${SVG} line`, { x1: '9', x2: '15', y1: '9', y2: '15' }],
+  [`${SVG} ellipse`, { cx: '12', cy: '5', rx: '9', ry: '3' }],
+  [`${SVG} path`, { d: 'M3 5V19A9 3 0 0 0 21 19V5' }],
+  [`${SVG} path`, { d: 'M3 12A9 3 0 0 0 21 12' }],
 ];
+
+/**
+ * A pill's contents as DOM the editor builds itself, as `TokenPill` draws
+ * them: the icon and the label's first word held together, then the rest of
+ * the label.
+ */
+export const tokenPillContentSpec = (label: string): DOMOutputSpec[] => {
+  const [first, rest] = splitFirstWord(label);
+  return [
+    ['span', { class: tokenPillLeadClasses }, tokenPillIconSpec, first],
+    ...(rest === '' ? [] : [rest]),
+  ];
+};
+
+/**
+ * A pill's contents: the icon and the label's first word held together, then
+ * the rest of the label. For a pill drawn by an element of its own, such as
+ * one that is also a button.
+ */
+export const TokenPillContent = ({ label }: { label: string }) => {
+  const [first, rest] = splitFirstWord(label);
+  return (
+    <>
+      <span className={tokenPillLeadClasses}>
+        <Database aria-hidden className={tokenPillIconClasses} />
+        {first}
+      </span>
+      {rest}
+    </>
+  );
+};
 
 /**
  * A placeholder inside text, such as a person's name that is filled in later,
@@ -79,8 +122,7 @@ export const TokenPill = ({
     data-selected={selected || undefined}
     className={tokenPillClasses(className)}
   >
-    <Variable aria-hidden className={tokenPillIconClasses} />
-    {label}
+    <TokenPillContent label={label} />
   </span>
 );
 
