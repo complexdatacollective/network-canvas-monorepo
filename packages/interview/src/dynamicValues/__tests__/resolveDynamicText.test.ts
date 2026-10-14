@@ -304,6 +304,32 @@ describe('markdownSource', () => {
     }
   });
 
+  it('never lets a value match a reference link’s label', () => {
+    const definition =
+      '\n\n[friend]: https://friend.example\n[my friend]: https://friend.example';
+    const splits: readonly (readonly [string, string])[] = [
+      ['[details][', ']'],
+      ['[', ']'],
+      ['[', '][]'],
+      ['[details][ ', ' ]'],
+      ['[details][my ', ']'],
+      ['[details][', '\n]'],
+    ];
+    for (const [before, after] of splits) {
+      const value = 'friend';
+      const source = markdownSource({
+        text: '',
+        parts: [before, { name: 'name', text: value }, `${after}${definition}`],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      const label = JSON.stringify([before, after]);
+      expect(html, label).not.toContain('friend.example');
+      expect(html, label).toContain('friend');
+    }
+  });
+
   it('never lets a value create, complete or change an autolink', () => {
     for (const [before, value, after] of AUTOLINK_SPLITS) {
       const source = markdownSource({

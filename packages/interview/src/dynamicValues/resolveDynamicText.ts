@@ -331,6 +331,9 @@ const literalMarkdown = (value: string): string =>
 // (`https:` in the researcher's words and `//evil.example` in a participant's
 // answer, or the answer `ada` before `@example.com`), an entity (`&`, the
 // answer `copy`, then `;`) or an HTML tag (`<`, the answer `em`, then `>`).
+// A value before a `]` could also be, or end, a link label that matches one of
+// the researcher's reference definitions (`[details][{name}]` and the answer
+// `friend`, with `[friend]: https://…` defined), so one always follows it.
 // An empty HTML comment, which renders as nothing, ends the run of text such a token is found in. It goes only
 // where the words around a value could make one, so elsewhere nothing comes
 // between a value and the markdown around it.
@@ -338,11 +341,13 @@ const VALUE_BOUNDARY = '<!---->';
 const TOKEN_TRIGGER = /www\\?\.|[:@&<]/i;
 const RUN_BEFORE = /\S*$/;
 const RUN_AFTER = /^\S*/;
+// A `]` before the paragraph ends.
+const LABEL_END_AFTER = /^(?:(?!\n[^\S\n]*\n)[\s\S])*\]/;
 
 /**
  * Markdown for resolved text: the researcher's words as written, and each
  * value as `valueMarkdown` writes it, kept apart from the words around it so
- * that together they can never form a bare link, entity or tag. A value written as nothing
+ * that together they can never form a bare link, entity, tag or link label. A value written as nothing
  * is left out.
  */
 export const joinMarkdownParts = (
@@ -360,11 +365,15 @@ export const joinMarkdownParts = (
       if (typeof part === 'string') return part;
       const markdown = valueMarkdown(part, index);
       if (markdown === '') return '';
+      const following = plain.slice(index + 1).join('');
+      const inLabel = LABEL_END_AFTER.test(following);
       const before = RUN_BEFORE.exec(plain.slice(0, index).join(''))?.[0] ?? '';
-      const after = RUN_AFTER.exec(plain.slice(index + 1).join(''))?.[0] ?? '';
-      if (!TOKEN_TRIGGER.test(`${before}${part.text}${after}`)) return markdown;
-      const open = before !== '' && /^\S/.test(part.text);
-      const close = after !== '' && /\S$/.test(part.text);
+      const after = RUN_AFTER.exec(following)?.[0] ?? '';
+      const joins = TOKEN_TRIGGER.test(`${before}${part.text}${after}`);
+      if (!joins && !inLabel) return markdown;
+      const open = joins && before !== '' && /^\S/.test(part.text);
+      const close =
+        inLabel || (joins && after !== '' && /\S$/.test(part.text));
       return `${open ? VALUE_BOUNDARY : ''}${markdown}${close ? VALUE_BOUNDARY : ''}`;
     })
     .join('');
