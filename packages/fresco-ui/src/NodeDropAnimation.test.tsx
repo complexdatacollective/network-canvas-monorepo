@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MotionConfig } from 'motion/react';
 import { describe, expect, it } from 'vitest';
 
@@ -8,7 +8,7 @@ import NodeDropAnimation from './NodeDropAnimation';
 
 describe('NodeDropAnimation', () => {
   it('animates, hidden from assistive technology', async () => {
-    await withAnimationsEnabled(() => {
+    await withAnimationsEnabled(async () => {
       render(
         <MotionConfig reducedMotion="never">
           <NodeDropAnimation />
@@ -17,6 +17,16 @@ describe('NodeDropAnimation', () => {
       const root = screen.getByTestId('node-drop-animation');
       expect(root).toHaveAttribute('aria-hidden', 'true');
       expect(root).not.toHaveAttribute('data-still');
+
+      // The pointer heads for the node from the start, so its position
+      // changes within the first moments of the loop.
+      const moving = () =>
+        Array.from(root.querySelectorAll<SVGElement>('[style*="transform"]'))
+          .map((el) => el.style.transform)
+          .join('|');
+      const first = moving();
+      expect(first).not.toBe('');
+      await waitFor(() => expect(moving()).not.toBe(first));
     });
   });
 

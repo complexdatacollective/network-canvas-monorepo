@@ -225,7 +225,8 @@ export default function NodeDrawer({
               // Matches the height of a drawer node so the empty drawer
               // expands to a full row.
               <div className="flex min-h-24 w-full items-center justify-center px-8 text-sm opacity-70">
-                <NodeDropAnimation />
+                {/* Only loop while the drawer is open to be seen. */}
+                {isExpandedEffective && <NodeDropAnimation />}
                 <span className="sr-only">
                   <AppMessage message={messages.dropToRemove} />
                 </span>

@@ -119,12 +119,15 @@ describe('NodeDrawer', () => {
     const tab = screen.getByRole('button', { name: /expand drawer/i });
     expect(tab).toBeEnabled();
     expect(tab.textContent).toContain('0 unplaced');
+    // The drop animation only runs while the drawer is open.
+    expect(screen.queryByTestId('node-drop-animation')).toBeNull();
 
     fireEvent.click(tab);
     await waitFor(() => {
       expect(tab).toHaveAttribute('aria-expanded', 'true');
     });
     expect(screen.getByText('Drop here to remove')).toBeInTheDocument();
+    expect(screen.getByTestId('node-drop-animation')).toBeInTheDocument();
   });
 
   it('illuminates for a compatible drag and expands only while the drag is over it', async () => {
