@@ -12,7 +12,7 @@ import { useStageDynamicValues } from '../localization/useDynamicValueSite.ts';
 import { DynamicMessageSummary } from './DynamicTextField.tsx';
 
 /** Whether `message` shows a value or chooses between versions by one. */
-const showsValues = (message: string): boolean => {
+export const showsValues = (message: string): boolean => {
   if (!message.includes('{')) return false;
   const structure = messageStructure(message);
   return (

@@ -254,3 +254,36 @@ describe('a form field saved before fields had ids', () => {
     );
   });
 });
+
+describe("a value inserted in a form field's question", () => {
+  it('shows in the field preview as a pill rather than crashing it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      registry: alterFormStageEditor,
+    });
+    await harness.opened();
+    const [first] = screen.getAllByRole('button', { name: 'Edit field' });
+    if (first === undefined) throw new Error('No field to edit');
+    await harness.user.click(first);
+    const dialog = within(await screen.findByRole('dialog'));
+    const [insert] = dialog.getAllByRole('button', { name: 'Insert a value' });
+    if (insert === undefined) throw new Error('No insert button');
+    await harness.user.click(insert);
+    await harness.user.click(
+      await screen.findByRole('option', { name: /Today’s date/ }),
+    );
+
+    // The preview is the interview's own field, shown with no participant to
+    // fill the value in from.
+    const preview = await dialog.findByRole('region', {
+      name: 'Interactive preview',
+    });
+    await waitFor(() =>
+      expect(preview.querySelector('[data-token="today"]')).toHaveTextContent(
+        'Today’s date',
+      ),
+    );
+    expect(preview).toHaveTextContent("What is this person's relationship");
+    expect(preview).not.toHaveTextContent('{today}');
+  });
+});

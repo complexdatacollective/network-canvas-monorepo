@@ -97,6 +97,8 @@ const shownHint = ({ text, parts }: ResolvedProtocolText): ReactNode =>
 type ProtocolFieldProps = {
   field: ProtocolFieldDefinition;
   name?: string;
+  /** Shown in place of the field's authored label. */
+  label?: ReactNode;
   /** Shown in place of the field's authored hint. */
   hint?: ReactNode;
   initialValue?: FieldValue;
@@ -115,6 +117,7 @@ type ProtocolFieldProps = {
 export default function ProtocolField({
   field,
   name = field.variable,
+  label,
   hint,
   initialValue,
   autoFocus,
@@ -151,7 +154,7 @@ export default function ProtocolField({
   } & Partial<ValidationPropsCatalogue> = {
     name,
     nameMode: 'opaque',
-    label: shownLabel(resolve(field.label)),
+    label: label ?? shownLabel(resolve(field.label)),
     ...(hint !== undefined
       ? { hint }
       : field.hint !== undefined && { hint: shownHint(resolve(field.hint)) }),

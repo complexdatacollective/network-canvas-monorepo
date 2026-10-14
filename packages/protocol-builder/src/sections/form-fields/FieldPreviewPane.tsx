@@ -37,6 +37,10 @@ import {
   completeRuleValues,
   variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
+import {
+  DynamicTextPreview,
+  showsValues,
+} from '../../fields/DynamicTextPreview.tsx';
 import type { RowValues } from '../../form/rowDialog.tsx';
 import { EditingLanguageSwitcher } from '../../localization/EditingLanguageSwitcher.tsx';
 import {
@@ -485,6 +489,17 @@ export default function FieldPreviewPane({
           Reflect.get(field.parameters, 'maxLabel'),
         ]
       : [];
+  // Text that shows dynamic values has nothing to fill them in with here:
+  // there is no participant and no stage, and the interview's resolver
+  // cannot format a value it was not given. Each value is shown as the pill
+  // the editor shows instead.
+  const withValues = (text: LocalizedString | undefined): ReactNode =>
+    text !== undefined && showsValues(localize(text).text) ? (
+      <DynamicTextPreview value={text} render={<span />} />
+    ) : undefined;
+  const labelWithValues = withValues(authoredCopy);
+  const hintWithValues = withValues(hint);
+
   const shownTexts = [
     authoredCopy,
     hint,
@@ -552,6 +567,12 @@ export default function FieldPreviewPane({
                       <ProtocolField
                         field={field}
                         name="preview-value"
+                        {...(labelWithValues === undefined
+                          ? {}
+                          : { label: labelWithValues })}
+                        {...(hintWithValues === undefined
+                          ? {}
+                          : { hint: hintWithValues })}
                         {...(validationContext === undefined
                           ? {}
                           : { validationContext })}
