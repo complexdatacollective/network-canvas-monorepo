@@ -23,8 +23,9 @@ import { readOwnProperty } from '../utils/ownProperty';
  * Everything a stage's text can show at one place in the interview: the
  * stage's bindings, the values the interview itself knows, and the attributes
  * of each entity on screen there, with the codebook variables that describe
- * them. Built by `DynamicValueScope`; a role with no attributes is not on
- * screen, so a value about it reads as missing.
+ * them, and the label each node on screen shows. Built by
+ * `DynamicValueScope`; a role with no attributes or label is not on screen,
+ * so a value about it reads as missing.
  */
 export type DynamicValueSources = Readonly<{
   bindings: DynamicValues;
@@ -32,6 +33,7 @@ export type DynamicValueSources = Readonly<{
   attributes: Readonly<
     Partial<Record<DynamicValueRole, Readonly<Record<string, unknown>>>>
   >;
+  labels: Readonly<Partial<Record<DynamicValueRole, string>>>;
   variablesFor: (
     role: DynamicValueRole,
   ) => Readonly<Record<string, Variable>> | undefined;
@@ -80,6 +82,12 @@ const resolveDynamicValue = (
     return isMissing(value)
       ? { missing: true }
       : { missing: false, value, intrinsic: parsed.name };
+  }
+  if (parsed.kind === 'label') {
+    const label = sources.labels[parsed.role];
+    return isMissing(label)
+      ? { missing: true }
+      : { missing: false, value: label };
   }
   // Attribute ids come from the protocol and may name a member every object
   // inherits (`constructor`, `__proto__`), so only an own value counts.

@@ -9,7 +9,7 @@ exports[`dynamic values in stage text > tags exactly the inventoried stage sites
   "Anonymisation explanationText.body stageText",
   "Anonymisation explanationText.title stageText",
   "CategoricalBin prompts.#.otherOptionLabel prompt",
-  "CategoricalBin prompts.#.otherVariablePrompt prompt",
+  "CategoricalBin prompts.#.otherVariablePrompt formField",
   "CategoricalBin prompts.#.text prompt",
   "DyadCensus prompts.#.text prompt",
   "EgoForm form.fields.#.hint formField",

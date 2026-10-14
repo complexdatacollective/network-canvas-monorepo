@@ -11,6 +11,7 @@ import type { StageSubject } from './common/subjects.ts';
 import {
   CASED_VARIABLE_TYPES,
   dynamicValueArgumentsAt,
+  type DynamicValueForm,
   type DynamicValueSite,
   type DynamicValueSiteContext,
   type DynamicValues,
@@ -78,14 +79,35 @@ const variablesOf = (
 };
 
 /**
+ * The subject a form field's form describes: the subject of the nearest
+ * object between the stage and the site that names its own (a Network
+ * Composer edge type's form), else the stage's.
+ */
+const formOf = (
+  stage: unknown,
+  sitePath: readonly (string | number)[],
+  stageSubject: StageSubject | undefined,
+): DynamicValueForm | undefined => {
+  for (let length = sitePath.length - 1; length > 0; length -= 1) {
+    const own = asSubject(
+      valueAt(stage, [...sitePath.slice(0, length), 'subject']),
+    );
+    if (own !== undefined) return { entity: own.entity, isStageSubject: false };
+  }
+  return stageSubject === undefined
+    ? undefined
+    : { entity: stageSubject.entity, isStageSubject: true };
+};
+
+/**
  * Everything that decides which values a site on `stage` can show: where it
  * sits (`sitePath`, from the stage's root, and `site`), the stage's type and
  * subject, and the codebook. Validation and Architect's palette both build
  * their answers from this.
  *
- * A form field shows the values of its form's subject only when that is the
- * stage's own subject: a Network Composer's edge forms each describe their
- * own edge type, which no stage binding can name unambiguously.
+ * A form field shows the attributes of its form's subject only when that is
+ * the stage's own subject: a Network Composer's edge forms each describe
+ * their own edge type, which no stage binding can name unambiguously.
  */
 export const dynamicValueContextFor = ({
   codebook,
@@ -101,28 +123,19 @@ export const dynamicValueContextFor = ({
   const stageType =
     isRecord(stage) && typeof stage.type === 'string' ? stage.type : '';
   const stageSubject = stageSubjectOf(stage);
-
-  let formSubject: StageSubject | undefined;
-  if (site === 'formField') {
-    // An object between the stage and the site that names its own subject
-    // (a Network Composer edge type's form).
-    const ownSubject = sitePath.some(
-      (_step, length) =>
-        length > 0 &&
-        asSubject(valueAt(stage, [...sitePath.slice(0, length), 'subject'])) !==
-          undefined,
-    );
-    formSubject = ownSubject ? undefined : stageSubject;
-  }
+  const form =
+    site === 'formField' ? formOf(stage, sitePath, stageSubject) : undefined;
 
   return {
-    roles: dynamicValueRolesAt(stageType, site, formSubject),
-    variablesFor: (role) =>
-      role === 'ego'
-        ? variablesOf(codebook, { entity: 'ego' })
-        : stageSubject?.entity === (role === 'edge' ? 'edge' : 'node')
-          ? variablesOf(codebook, stageSubject)
-          : undefined,
+    roles: dynamicValueRolesAt(stageType, site, form),
+    variablesFor: (role) => {
+      if (role === 'ego') return variablesOf(codebook, { entity: 'ego' });
+      // An edge's ends are nodes of any type.
+      if (role === 'edgeFrom' || role === 'edgeTo') return undefined;
+      return stageSubject?.entity === (role === 'edge' ? 'edge' : 'node')
+        ? variablesOf(codebook, stageSubject)
+        : undefined;
+    },
   };
 };
 
