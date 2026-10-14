@@ -325,6 +325,20 @@ describe('dynamicMessageParts', () => {
     expect(chosen(1e6)).toEqual(['many']);
   });
 
+  it('chooses a plural version for a huge integer by the digits it is shown with', () => {
+    // Shown as 100000000000000020000, though its exact value ends in 16384:
+    // Russian chooses `many` for a number ending in 0 and `few` for one
+    // ending in 4.
+    const count = 100000000000000010000;
+    expect(
+      dynamicMessageParts(
+        '{count, plural, one {one} few {few} many {many} other {other}}',
+        'ru',
+        states({ count: { missing: false, count } }),
+      ),
+    ).toEqual(['many']);
+  });
+
   it('chooses a plural version by the number as it is shown', () => {
     // 1.0001 is shown with all its digits, so it is not English `one`.
     const plural = '{count, plural, one {# item} other {# items}}';
