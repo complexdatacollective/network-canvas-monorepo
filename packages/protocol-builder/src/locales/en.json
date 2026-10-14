@@ -299,6 +299,14 @@
     "defaultMessage": "Interaction mode",
     "description": "Label of the control choosing between dragging nodes into bins and tapping a bin to place the selected node."
   },
+  "protocolBuilder.binBehaviours.requireCompletePlacementHint": {
+    "defaultMessage": "The participant cannot continue from a prompt until every node is in a bin.",
+    "description": "Guidance under the switch requiring every member of the network to be placed. A prompt is one question on the stage; the rule applies to each question in turn."
+  },
+  "protocolBuilder.binBehaviours.requireCompletePlacementLabel": {
+    "defaultMessage": "Require every node to be placed",
+    "description": "Label of the switch that stops the participant moving on from a bin stage while any member of their network is still waiting to be placed into a bin."
+  },
   "protocolBuilder.binBehaviours.selectDescription": {
     "defaultMessage": "One node in the drawer is selected, and the participant taps the bin it belongs in. The next node is then selected. Tapping a different node, even one already in a bin, selects it instead.",
     "description": "Says what the participant does in tap-to-place mode. The drawer is the tray at the foot of the screen that unplaced nodes wait in; the selected node is highlighted there. A bin is one of the groups or points on a scale nodes are sorted into."
@@ -310,6 +318,14 @@
   "protocolBuilder.binBehaviours.title": {
     "defaultMessage": "Placing nodes",
     "description": "Heading of the section deciding how the participant puts each node into a bin on a sorting stage. A node is one member of the network the participant is building; a bin is one of the groups or points on a scale they sort nodes into. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.binBehaviours.unplacedNoticeHint": {
+    "defaultMessage": "Shown when the participant tries to continue while a node is still waiting to be placed.",
+    "description": "Guidance under the field holding the message shown when the participant tries to continue with members of their network not yet placed into a bin."
+  },
+  "protocolBuilder.binBehaviours.unplacedNoticeLabel": {
+    "defaultMessage": "Nodes not yet placed",
+    "description": "Label of the field holding the message a participant sees when they try to continue while a member of their network is still waiting to be placed into a bin."
   },
   "protocolBuilder.cardDisplay.addLabel": {
     "defaultMessage": "Add new display property",

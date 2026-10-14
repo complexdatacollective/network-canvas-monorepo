@@ -11,7 +11,7 @@ import { categoricalBinPrompts } from './sections/categoricalBinPrompts.tsx';
 export const categoricalBinStageEditor = defineStageEditor('CategoricalBin', [
   subjectPicker({ entity: 'node', filter: true }),
   categoricalBinPrompts(),
-  binBehaviours(),
+  binBehaviours('CategoricalBin'),
   skipLogic(),
   interviewerGuidance(),
 ]);

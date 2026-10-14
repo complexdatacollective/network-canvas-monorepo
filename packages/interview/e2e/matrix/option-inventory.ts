@@ -39,6 +39,8 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'bin-expand-collapse',
     'duplicate-option-labels-index-keyed',
     'category-color-cycling',
+    'behaviours.requireCompletePlacement',
+    'unplacedNodesNotice',
   ],
   AlterForm: [
     'label',
@@ -240,6 +242,8 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'codebook.ordinalOptions',
     'behaviours',
     'behaviours.interactionMode',
+    'behaviours.requireCompletePlacement',
+    'unplacedNodesNotice',
   ],
   NameGenerator: [
     'subject',

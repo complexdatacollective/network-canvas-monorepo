@@ -11,6 +11,7 @@ import {
   VALIDATION_INTERFACE_TEXT,
 } from './interface-text-wording.ts';
 import type { LocalizedString } from './localized-string.ts';
+import { BIN_SUPPLIED_TEXT } from './stage-wording/bins.ts';
 import { FAMILY_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/family-pedigree.ts';
 import { FINISH_SESSION_SUPPLIED_TEXT } from './stage-wording/finish-session.ts';
 import { GEOSPATIAL_SUPPLIED_TEXT } from './stage-wording/geospatial.ts';
@@ -38,6 +39,7 @@ import {
 const SUPPLIED_STAGE_TEXT: Readonly<
   Record<string, readonly SuppliedStageSetting[]>
 > = {
+  CategoricalBin: BIN_SUPPLIED_TEXT,
   FamilyPedigree: FAMILY_PEDIGREE_SUPPLIED_TEXT,
   FinishSession: FINISH_SESSION_SUPPLIED_TEXT,
   Geospatial: GEOSPATIAL_SUPPLIED_TEXT,
@@ -47,6 +49,7 @@ const SUPPLIED_STAGE_TEXT: Readonly<
   Narrative: NARRATIVE_SUPPLIED_TEXT,
   NarrativePedigree: NARRATIVE_PEDIGREE_SUPPLIED_TEXT,
   NetworkComposer: NETWORK_COMPOSER_SUPPLIED_TEXT,
+  OrdinalBin: BIN_SUPPLIED_TEXT,
   Sociogram: SOCIOGRAM_SUPPLIED_TEXT,
 };
 

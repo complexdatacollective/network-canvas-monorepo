@@ -809,6 +809,68 @@ export const ordinalBinScenarios: InterfaceScenarios = {
         },
       };
     })(),
+    {
+      id: 'require-complete-placement',
+      covers: [
+        'behaviours',
+        'behaviours.requireCompletePlacement',
+        'unplacedNodesNotice',
+      ],
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const person = synth.addNodeType({ name: 'Person' });
+        const nameVar = person.addVariable({ name: 'name', type: 'text' });
+        const closeness = person.addVariable({
+          name: 'Closeness',
+          type: 'ordinal',
+          options: [
+            { label: 'Not close', value: 1 },
+            { label: 'Close', value: 2 },
+          ],
+        });
+        const stage = synth.addStage('OrdinalBin', {
+          subject: { entity: 'node', type: person.id },
+          behaviours: { requireCompletePlacement: true },
+        });
+        stage.addPrompt({ text: 'Rate closeness', variable: closeness.id });
+        for (const name of ['Ivy', 'Jon']) {
+          synth.addManualNode(stage.id, person.id, `n-${name}`, {
+            [nameVar.id]: name,
+            [closeness.id]: null,
+          });
+        }
+        // A trailing stage so a successful advance is observable.
+        synth.addInformationStage({
+          label: 'Done',
+          title: 'All done',
+          items: [{ id: 'done-1', type: 'text', content: 'Thanks.' }],
+        });
+        return synth;
+      },
+      run: async ({ page, interview, stage }) => {
+        expect(await interview.nextButtonHasPulse()).toBe(false);
+        // Unplaced nodes: forward navigation is blocked with the supplied notice.
+        await interview.nextButton.click();
+        await expect(page.getByText(/must place every item/i)).toBeVisible();
+        expect(page.url()).toContain('step=0');
+
+        // One node still waiting: still blocked.
+        await stage.ordinalBin.dragNodeToBin('Ivy', 'Close');
+        await interview.nextButton.click();
+        expect(page.url()).toContain('step=0');
+
+        // Every node placed: advancing succeeds.
+        await stage.ordinalBin.dragNodeToBin('Jon', 'Not close');
+        expect(await stage.ordinalBin.getUnplacedCount()).toBe(0);
+        // Ready for the next stage once every node is placed.
+        expect(await interview.nextButtonHasPulse()).toBe(true);
+        await interview.next();
+        await expect(
+          page.getByRole('heading', { name: 'All done' }),
+        ).toBeVisible();
+      },
+    },
     (() => {
       // Tap to place (#1652): one person at a time, placed by tapping a bin.
       let closenessVarId = '';
