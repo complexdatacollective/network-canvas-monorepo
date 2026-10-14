@@ -494,12 +494,15 @@ class OrdinalBinFixture {
    * Get the number of unplaced nodes from the drawer toggle.
    */
   async getUnplacedCount(): Promise<number> {
-    // The toggle shows the number beside screen-reader-only words, so reading
-    // its text content would join the two; read the visible number alone.
-    const text = await this.drawerToggle
-      .locator('span[aria-hidden="true"]')
-      .textContent();
-    return Number.parseInt(text ?? '0', 10);
+    // The toggle shows only a chevron; its text is the screen-reader label,
+    // which begins with the count ("3 unplaced", then the expand or collapse
+    // words).
+    const text = await this.drawerToggle.textContent();
+    const count = /^\s*(\d+)/.exec(text ?? '')?.[1];
+    if (count === undefined) {
+      throw new Error(`Drawer toggle has no count: ${text ?? ''}`);
+    }
+    return Number.parseInt(count, 10);
   }
 
   /**
@@ -601,12 +604,15 @@ class CategoricalBinFixture {
    * Get the number of uncategorized nodes from the drawer toggle.
    */
   async getUnplacedCount(): Promise<number> {
-    // The toggle shows the number beside screen-reader-only words, so reading
-    // its text content would join the two; read the visible number alone.
-    const text = await this.drawerToggle
-      .locator('span[aria-hidden="true"]')
-      .textContent();
-    return Number.parseInt(text ?? '0', 10);
+    // The toggle shows only a chevron; its text is the screen-reader label,
+    // which begins with the count ("3 unplaced", then the expand or collapse
+    // words).
+    const text = await this.drawerToggle.textContent();
+    const count = /^\s*(\d+)/.exec(text ?? '')?.[1];
+    if (count === undefined) {
+      throw new Error(`Drawer toggle has no count: ${text ?? ''}`);
+    }
+    return Number.parseInt(count, 10);
   }
 
   /**
