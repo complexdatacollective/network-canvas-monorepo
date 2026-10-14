@@ -109,9 +109,12 @@ OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer%20your-collector-token
   `exception.stacktrace` (the stack frames only, never the error's message),
   and `error_origin`, `program` and, where they apply, `request_id`,
   `team_id`, `job_queue` and `job_id`. PostHog Error Tracking receives nothing.
-- The browser's logs and error reports follow the server's: the api forwards
+- The browser's logs and error reports follow the server's. The api forwards
   the researcher web app's and participant pages' log records to your endpoint
-  under the service name `studio-web`.
+  under the service name `studio-web`. A browser's error report becomes one of
+  the api's own exception log records above, under `studio-api`, with
+  `error_origin` `browser` and `surface` naming the researcher web app or a
+  participant page.
 - Every exported record names its source in the resource attributes:
   `service.name` (`studio-api` for both processes), `service.version`,
   `studio.program` (`serve`, `worker`, `migrate`, `maintenance` or

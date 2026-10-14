@@ -125,10 +125,12 @@ with its own pseudonym and forwards them.
 | `form_submitted`                                                | `form_kind`, and `entity_id` for a form about a node or edge                                                          |
 | `form_validation_failed`                                        | `form_kind`, `field_errors` (each failing field's position and input control)                                         |
 | `form_dismissed_without_save`                                   | `form_kind`                                                                                                           |
+| `node_form_opened`, `node_form_dismissed_without_save`          | `node_id` when the form is about an existing node                                                                     |
 | `slides_form_slide_advanced`                                    | `slide_index`, `total_slides`                                                                                         |
 | `simulation_started`                                            | `node_count`, `edge_count`                                                                                            |
 | `simulation_finished`                                           | `duration_ms`, `node_count`, `edge_count`                                                                             |
 | `node_initial_positioned`, `node_repositioned`, `node_unplaced` | `node_id`                                                                                                             |
+| `node_selected`, `node_deselected`                              | `node_id`                                                                                                             |
 | `geospatial_location_selected`                                  | `node_id`, `selection_kind`                                                                                           |
 | `geospatial_search_performed`                                   | `node_id`                                                                                                             |
 | `roster_loaded`                                                 | `entry_count`                                                                                                         |

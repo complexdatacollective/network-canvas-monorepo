@@ -41,12 +41,15 @@ keeps no profile for it.
 
 ### Do our users' browsers contact PostHog or any other third party?
 
-No. Researchers' and participants' browsers send everything to your Studio
-instance, which applies the rules above and forwards it. No third-party
+Not for telemetry or analytics. Researchers' and participants' browsers send
+all of it to your Studio instance, which applies the rules above and forwards
+it. No third-party
 analytics or telemetry library runs in the browser, and nothing is stored in
 cookies or local storage for it. The page's content security policy lets the
-browser connect only to your instance and to `api.mapbox.com`, which map
-stages use with the protocol's own Mapbox key.
+browser connect only to your instance and to `api.mapbox.com`: a protocol's
+Geospatial stage, and the editor's map preview, load maps and place search
+from Mapbox with the protocol's own Mapbox key, so a browser showing one does
+contact that third party.
 
 ### How do we turn it off?
 
