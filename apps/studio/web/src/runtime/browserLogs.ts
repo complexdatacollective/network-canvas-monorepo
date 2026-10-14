@@ -269,6 +269,17 @@ export const NO_TEAM: ResearcherLogScope = { teamId: undefined };
 
 export const teamScope = (teamId: string): ResearcherLogScope => ({ teamId });
 
+const studyTeams = new Map<string, string>();
+
+export const rememberStudyTeam = (studyId: string, teamId: string): void => {
+  studyTeams.set(studyId, teamId);
+};
+
+export const studyScope = (studyId: string): ResearcherLogScope => {
+  const teamId = studyTeams.get(studyId);
+  return teamId === undefined ? NO_TEAM : teamScope(teamId);
+};
+
 let researcherLogs = createBrowserLogHandle<ResearcherLogEntry>('researcher');
 
 export const logResearcher = (

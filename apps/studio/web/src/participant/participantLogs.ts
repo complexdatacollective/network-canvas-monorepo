@@ -181,9 +181,9 @@ export function watchParticipantConnection(
   let lostAt: number | undefined;
   const onOffline = () => {
     if (lostAt !== undefined) return;
-    lostAt = now();
     const stage = currentStage();
     if (stage === undefined) return;
+    lostAt = now();
     log({
       message: 'Participant connection lost',
       level: 'Warn',

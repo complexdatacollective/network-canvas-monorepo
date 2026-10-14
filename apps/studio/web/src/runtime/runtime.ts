@@ -20,6 +20,7 @@ import {
   logResearcher,
   NO_TEAM,
   type ResearcherLogScope,
+  studyScope,
   teamScope,
 } from './browserLogs.ts';
 import { faultCodeOf } from './errors.ts';
@@ -51,12 +52,23 @@ const HttpProtocol = RpcClient.layerProtocolHttp({
 
 const requestScope = (
   request: RpcMessage.FromClientEncoded,
-): ResearcherLogScope =>
-  request._tag === 'Request' &&
-  Predicate.hasProperty(request.payload, 'teamId') &&
-  Predicate.isString(request.payload.teamId)
-    ? teamScope(request.payload.teamId)
-    : NO_TEAM;
+): ResearcherLogScope => {
+  if (request._tag !== 'Request') return NO_TEAM;
+  const { payload } = request;
+  if (
+    Predicate.hasProperty(payload, 'teamId') &&
+    Predicate.isString(payload.teamId)
+  ) {
+    return teamScope(payload.teamId);
+  }
+  if (
+    Predicate.hasProperty(payload, 'studyId') &&
+    Predicate.isString(payload.studyId)
+  ) {
+    return studyScope(payload.studyId);
+  }
+  return NO_TEAM;
+};
 
 const ObservedProtocol = Layer.effect(RpcClient.Protocol)(
   Effect.map(RpcClient.Protocol, (protocol) =>

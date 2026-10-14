@@ -88,6 +88,30 @@ describe('the participant connection watcher', () => {
       },
     ]);
   });
+
+  it('logs no restoration for a loss it could not log, while no stage was shown', () => {
+    const target = new EventTarget();
+    let now = 10_000;
+    const stop = watchParticipantConnection(log, stageOf, target, () => now);
+    target.dispatchEvent(new Event('offline'));
+    showStage(1);
+    now += 4_200;
+    target.dispatchEvent(new Event('online'));
+    target.dispatchEvent(new Event('offline'));
+    now += 1_000;
+    target.dispatchEvent(new Event('online'));
+    stop();
+
+    expect(logged.map((entry) => entry.message)).toEqual([
+      'Participant connection lost',
+      'Participant connection restored',
+    ]);
+    expect(logged[1]?.attributes).toEqual({
+      stage_index: 1,
+      interface_type: 'NameGenerator',
+      duration_ms: 1_000,
+    });
+  });
 });
 
 const GENERATED_SVG = 'data:image/svg+xml;charset=utf-8,%3Csvg%2F%3E';

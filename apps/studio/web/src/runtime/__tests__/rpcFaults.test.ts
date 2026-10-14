@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ResearcherLogEntry } from '@codaco/studio-contract/schema/browser-logs';
-import { TeamId } from '@codaco/studio-contract/schema/ids';
+import { StudyId, TeamId } from '@codaco/studio-contract/schema/ids';
 
 import { installFetchStub } from '../../test/fetchStub.ts';
+import { rememberStudyTeam } from '../browserLogs.ts';
 import { faultCodeOf } from '../errors.ts';
 import { rpcCall } from '../rpc.ts';
 
@@ -78,6 +79,20 @@ describe('an rpc failure', () => {
     await failureOfStatusCall();
 
     expect(loggedTeams).toEqual(['team-a', undefined]);
+  });
+
+  it('is logged under the team that owns the study a failed request names, once that team is known', async () => {
+    fetchStub.mockImplementation(() =>
+      Promise.reject(new TypeError('Failed to fetch')),
+    );
+    const known = StudyId.make('4d0f5f2e-0000-4000-8000-0000000000a1');
+    const unknown = StudyId.make('4d0f5f2e-0000-4000-8000-0000000000a2');
+    rememberStudyTeam(known, 'team-of-study');
+
+    await failureOf(rpcCall('studies.counts', { studyId: known }));
+    await failureOf(rpcCall('studies.counts', { studyId: unknown }));
+
+    expect(loggedTeams).toEqual(['team-of-study', undefined]);
   });
 
   it('is not logged when the client itself failed rather than the network', async () => {

@@ -21,6 +21,7 @@ import {
 } from '@codaco/studio-contract/schema/ids';
 
 import { createAppRouter } from '../../router.tsx';
+import { studyScope, teamScope } from '../../runtime/browserLogs.ts';
 import type { StudioRpcsType } from '../../runtime/runtime.ts';
 import { installRpcHarness } from '../../test/rpcHarness.ts';
 
@@ -465,6 +466,7 @@ describe('header team switcher', () => {
     resolve();
 
     await waitFor(() => expect(logTeams).toEqual(['team-a']));
+    expect(studyScope(STUDY_1_ID)).toEqual(teamScope('team-a'));
   });
 
   it('names the committed team, not the one the setting still holds', async () => {

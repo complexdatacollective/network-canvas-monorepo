@@ -1,11 +1,15 @@
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
 import { Schema } from 'effect';
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useLayoutEffect, useMemo } from 'react';
 
 import { StudyId, TeamId } from '@codaco/studio-contract/schema/ids';
 
-import { NO_TEAM, teamScope } from '../runtime/browserLogs.ts';
+import {
+  NO_TEAM,
+  rememberStudyTeam,
+  teamScope,
+} from '../runtime/browserLogs.ts';
 import { rpcKey, rpcQuery } from '../runtime/rpc.ts';
 import { ScreenTeamContext } from './screenTeamContext.ts';
 
@@ -33,7 +37,13 @@ export function ScreenTeamProvider({
       ? { queryKey: rpcKey('studies.get'), queryFn: skipToken }
       : rpcQuery('studies.get', { studyId }),
   );
-  const team = screenTeam(teamId, studyId, study.data?.teamId);
+  const studyTeamId = study.data?.teamId;
+  useLayoutEffect(() => {
+    if (studyId !== undefined && studyTeamId !== undefined) {
+      rememberStudyTeam(studyId, studyTeamId);
+    }
+  }, [studyId, studyTeamId]);
+  const team = screenTeam(teamId, studyId, studyTeamId);
   const scope = useMemo(
     () => (team === undefined ? NO_TEAM : teamScope(team)),
     [team],
