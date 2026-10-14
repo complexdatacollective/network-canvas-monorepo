@@ -50,6 +50,18 @@ describe('computeInterviewProgress', () => {
     ).toBeCloseTo((11 / 12) * 100);
   });
 
+  it('holds an unfinished interview resting on a later ending below 100%', () => {
+    // stageCount counts stages up to the first finish stage, so an interview
+    // that skipped to an alternative ending after it sits past the count.
+    expect(
+      computeInterviewProgress({
+        finishTime: null,
+        currentStep: 3,
+        stageCount: 3,
+      }),
+    ).toBeCloseTo((2 / 3) * 100);
+  });
+
   it('returns 0 for a not-started interview', () => {
     expect(
       computeInterviewProgress({
