@@ -205,7 +205,7 @@ export function createParticipantHandlers({
   };
 
   const save = async (
-    snapshot: SessionPayload,
+    snapshot: SessionSnapshot,
     options: { readonly unloading: boolean },
   ): Promise<void> => {
     const outcome = await send(snapshot, options);
