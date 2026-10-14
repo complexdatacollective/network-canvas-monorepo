@@ -28,6 +28,7 @@ import {
   useFinishConfirmationDescription,
 } from '../../contract/context';
 import type { CompletedAction } from '../../contract/types';
+import { DynamicTextParts } from '../../dynamicValues/DynamicText';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { getInterviewId } from '../../selectors/session';
@@ -43,7 +44,8 @@ type FinishSessionText = Pick<
 
 /** The screen's own words, which the protocol holds as the stage's settings. */
 function StageText({ value }: { value: LocalizedString }) {
-  return <>{useLocalizedString(value).text}</>;
+  const { text, parts } = useLocalizedString(value);
+  return parts === undefined ? <>{text}</> : <DynamicTextParts parts={parts} />;
 }
 
 /**

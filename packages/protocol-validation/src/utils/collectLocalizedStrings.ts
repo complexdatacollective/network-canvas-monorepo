@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { MessageArguments } from '../localization/messageArguments.ts';
+import type { DynamicValueSite } from '../schemas/9/dynamic-values.ts';
 import {
   getLocalizedStringDescriptor,
   type LocalizedString,
@@ -17,6 +18,8 @@ export type LocalizedStringHit = Readonly<{
   format: LocalizedStringFormat;
   /** The arguments a localized message may use; absent for literal text. */
   arguments?: MessageArguments;
+  /** Where text that may show dynamic values sits; absent where it may not. */
+  dynamicValues?: DynamicValueSite;
 }>;
 
 export type LocalizedStringSite = Readonly<{
@@ -25,6 +28,8 @@ export type LocalizedStringSite = Readonly<{
   format: LocalizedStringFormat;
   /** The arguments a localized message may use; absent for literal text. */
   arguments?: MessageArguments;
+  /** Where text that may show dynamic values sits; absent where it may not. */
+  dynamicValues?: DynamicValueSite;
   /** The tagged declaration, shared by every site it describes. */
   schema: z.ZodType;
   /** The owning object lets the field be left out. */
@@ -174,6 +179,9 @@ const walk = (
         ...(descriptor.arguments === undefined
           ? {}
           : { arguments: descriptor.arguments }),
+        ...(descriptor.dynamicValues === undefined
+          ? {}
+          : { dynamicValues: descriptor.dynamicValues }),
         schema: node,
         ...context,
       },
@@ -270,6 +278,9 @@ export const collectLocalizedStringsFromSchema = (
             ...(site.arguments === undefined
               ? {}
               : { arguments: site.arguments }),
+            ...(site.dynamicValues === undefined
+              ? {}
+              : { dynamicValues: site.dynamicValues }),
           },
         ]
       : [],

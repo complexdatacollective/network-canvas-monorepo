@@ -5,6 +5,7 @@ import { escapeMarkdownText } from '@codaco/protocol-validation';
 
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
+  getMarkdownAttributeValues,
   getMarkdownLabelText,
   RenderMarkdown,
 } from './RenderMarkdown';
@@ -150,4 +151,18 @@ it('retains section tag and explicit disallowed-unwrapping options', () => {
     </RenderMarkdown>,
   );
   expect(container).toBeEmptyDOMElement();
+});
+
+it('lists the attribute values markdown produces, and not its text', () => {
+  expect(
+    getMarkdownAttributeValues(
+      'See [the *page*](https://a.example "Title") and ![alt text](b.png) here',
+    ),
+  ).toEqual(
+    expect.arrayContaining(['https://a.example', 'Title', 'b.png', 'alt text']),
+  );
+  expect(getMarkdownAttributeValues('See [the *page*](x)')).not.toContain(
+    'the',
+  );
+  expect(getMarkdownAttributeValues('Just **text**')).toEqual([]);
 });

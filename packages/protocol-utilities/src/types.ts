@@ -1,6 +1,7 @@
 import type {
   ColorReference,
   ComponentType,
+  DynamicValues,
   EdgeColorReference,
   FilterOperator,
   FinishMode,
@@ -293,6 +294,8 @@ export type StageEntry = {
   interviewScript?: string;
   skipLogic?: SkipLogicInput;
   filter?: FilterInput;
+  /** Values the stage's text can show; written as given. */
+  dynamicValues?: DynamicValues;
   subject?: { entity: 'node'; type: string } | { entity: 'edge'; type: string };
   form?: FormEntry;
   prompts: PromptEntry[];

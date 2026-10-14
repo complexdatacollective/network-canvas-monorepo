@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 
 import Surface, {
   surfaceSpacingVariants,
@@ -10,8 +10,12 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cva, cx } from '@codaco/fresco-ui/utils/cva';
 
 type PanelProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> & {
-  /** The header text, and the button that collapses the panel. Omit for a panel with no header. */
-  title?: string;
+  /**
+   * The header text, and the button that collapses the panel. A node, so a
+   * protocol title showing dynamic values keeps them marked out. Omit for a
+   * panel with no header.
+   */
+  title?: ReactNode;
   minimize?: boolean;
   panelNumber: number;
   noCollapse?: boolean;

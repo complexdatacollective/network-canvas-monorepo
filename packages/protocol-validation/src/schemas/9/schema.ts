@@ -24,6 +24,7 @@ import {
   getVariablesForSubject,
   variableExists,
 } from '../../utils/validation-helpers.ts';
+import { findDynamicValueProblems } from './dynamic-value-validation.ts';
 import {
   OperatorsByVariableType,
   TypeLevelOperators,
@@ -741,11 +742,13 @@ const ProtocolSchema = z
       ? protocol.localization
       : undefined;
 
+    const localizedStrings = collectLocalizedStringsFromSchema(
+      ProtocolSchema,
+      protocol,
+    );
+
     if (localization) {
-      for (const hit of collectLocalizedStringsFromSchema(
-        ProtocolSchema,
-        protocol,
-      )) {
+      for (const hit of localizedStrings) {
         for (const locale of Object.keys(hit.value)) {
           // A malformed or undetermined tag is already reported by the
           // field's own schema.
@@ -763,6 +766,20 @@ const ProtocolSchema = z
           });
         }
       }
+    }
+
+    // The values each stage's text shows: bound, available where shown,
+    // guarded where they can be missing, and shown by every translation
+    // wherever the default-language text shows them.
+    for (const problem of findDynamicValueProblems(
+      {
+        codebook: protocol.codebook,
+        stages: protocol.stages,
+        defaultLocale: localization?.defaultLocale,
+      },
+      localizedStrings,
+    )) {
+      ctx.addIssue({ code: 'custom' as const, ...problem });
     }
 
     // Interface-owned structural slots: an interface that DERIVES an

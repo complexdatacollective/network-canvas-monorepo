@@ -77,10 +77,14 @@ export const finishSessionStage = baseStageSchema.extend({
   label: localizedString(nonBlankText(), 'plain', { mayBeEmpty: true }),
   // The closing screen, shown in confirmation mode. Its heading is part of
   // the text.
-  content: localizedString(nonBlankText(), 'markdown', { mayBeEmpty: true }),
+  content: localizedString(nonBlankText(), 'markdown', {
+    mayBeEmpty: true,
+    dynamicValues: 'stageText',
+  }),
   // The finished screen, shown once the interview has ended.
   finishedContent: localizedString(nonBlankText(), 'markdown', {
     mayBeEmpty: true,
+    dynamicValues: 'stageText',
   }),
   // The interview's own words on this screen, which Network Canvas supplies
   // (`stage-wording/finish-session.ts`): the Finish button, the question it

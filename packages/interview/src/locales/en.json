@@ -527,6 +527,10 @@
     "defaultMessage": "Drop here to remove",
     "description": "Hint shown on the tray when dropping an item removes its position."
   },
+  "interview.runtime.dynamicValue": {
+    "defaultMessage": "Dynamic value: {value}",
+    "description": "Read by screen readers in place of a value the interview fills into the study's own text, such as a name the participant gave earlier. {value} is that value, exactly as shown."
+  },
   "interview.runtime.expandDrawer": {
     "defaultMessage": "Expand drawer",
     "description": "Accessible action that expands the item tray."

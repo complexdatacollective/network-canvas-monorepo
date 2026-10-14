@@ -8,6 +8,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { LocalizedString } from '@codaco/protocol-validation';
 
+import { DynamicMarkdown } from '../../dynamicValues/DynamicText';
 import { useLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 
 const variants = {
@@ -37,7 +38,9 @@ type PromptProps = {
  */
 const Prompt = ({ id, text, backwards = false, small }: PromptProps) => {
   const promptClasses = cx('font-heading pb-[0.1em] text-center text-2xl');
-  const { text: markdown } = useLocalizedString(text);
+  // `markdown` is the natural sentence, values and all, for the tooltip and
+  // anything that speaks the prompt; `parts` marks the values out on screen.
+  const { text: markdown, parts } = useLocalizedString(text);
 
   return (
     <motion.div
@@ -60,7 +63,11 @@ const Prompt = ({ id, text, backwards = false, small }: PromptProps) => {
         margin="none"
         className="max-w-[65ch] font-normal"
       >
-        <RenderMarkdown render={<Fragment />}>{markdown}</RenderMarkdown>
+        {parts === undefined ? (
+          <RenderMarkdown render={<Fragment />}>{markdown}</RenderMarkdown>
+        ) : (
+          <DynamicMarkdown render={<Fragment />} parts={parts} />
+        )}
       </Heading>
     </motion.div>
   );

@@ -26,6 +26,7 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
+import { shownLabel } from '../../forms/ProtocolField';
 import { useValidationNetwork } from '../../forms/useValidationNetwork';
 import {
   writeFailureMessage,
@@ -34,7 +35,10 @@ import {
 import { useBinSelection } from '../../hooks/useBinSelection';
 import useCompletePlacement from '../../hooks/useCompletePlacement';
 import { useStageSelector } from '../../hooks/useStageSelector';
-import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
+import {
+  type ResolvedProtocolText,
+  useResolveLocalizedString,
+} from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -105,7 +109,8 @@ type OtherResponseProps = Pick<
 > & {
   node: NcNode;
   variable: string;
-  label: string;
+  /** The question, resolved where the person was dropped. */
+  label: ResolvedProtocolText;
   validationProps: ReturnType<typeof validationPropsFor>;
   /** The person's current answer, when it can be shown. */
   initialValue?: string;
@@ -139,7 +144,7 @@ function OtherResponse({
     [variable],
     nodeId,
   );
-  const labelText = label;
+  const labelText = label.text;
 
   // Context-dependent rules (unique, sameAs, differentFrom,
   // greaterThanVariable, etc.) resolve against the entity being edited and
@@ -181,7 +186,9 @@ function OtherResponse({
           <OtherResponseNode node={node} color={color} shape={shape} />
         </div>
         <Field
-          label={label}
+          // A node, so the label's markdown is rendered with any value in it
+          // kept out of the markdown and marked out, as in a form.
+          label={shownLabel(label)}
           component={InputField}
           name={variable}
           nameMode="opaque"
@@ -362,7 +369,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt, otherOptionLabel } = prompt;
-      const otherPromptLabel = resolve(otherVariablePrompt).text;
+      const otherPromptLabel = resolve(otherVariablePrompt);
 
       // An answer that would be encrypted is not asked for until it could be
       // saved.
