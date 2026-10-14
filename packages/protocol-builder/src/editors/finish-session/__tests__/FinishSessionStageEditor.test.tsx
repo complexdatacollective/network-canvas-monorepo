@@ -160,6 +160,34 @@ describe('the editor for the screen that ends the interview', () => {
     });
   });
 
+  it('keeps a blank confirmation question to fill in when finishing automatically', async () => {
+    renderStageEditor(
+      openStage({ finishConfirmation: { [FIXTURE_LANGUAGE]: '' } }),
+    );
+    const user = userEvent.setup();
+
+    await user.click(
+      within(screen.getByRole('listbox', { name: /Finishing/ })).getByRole(
+        'option',
+        { name: /Finish automatically/ },
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: 'Closing screen' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // The stage cannot be saved with it blank, so it stays to be filled in,
+    // and does not vanish while it is being typed.
+    const question = screen.getByRole('textbox', {
+      name: /Confirmation question/,
+    });
+    await user.type(question, 'Finish now?');
+    expect(question).toBeInTheDocument();
+    expect(question).toHaveValue('Finish now?');
+  });
+
   it('offers the three outcomes, each explained', () => {
     renderStageEditor(openStage());
 
