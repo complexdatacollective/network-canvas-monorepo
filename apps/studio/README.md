@@ -1136,6 +1136,16 @@ this deployment has not configured is left out rather than reported failed: it
 refuses by design, and a check for it would make an instance that never wanted
 one permanently unready.
 
+Each process logs the moment its own checks turn failing, once rather than on
+every probe: an error-level `readiness is failing` record naming the failing
+checks in `failing_checks` and carrying the `alert` annotation
+`readiness_failing`, and an info-level `readiness has recovered` when they
+pass again. The record is written when `/readyz` is asked, so it needs
+something polling it; the reference stack's worker healthcheck polls the
+worker's every ten seconds. A drain is not a check and logs nothing. The
+operator alert that reads the record is in
+[the alert runbook](./docs/operations/alerts.md).
+
 The worker's listener binds `127.0.0.1` and nothing else. It is not a service
 anything routes to, and `WORKER_HEALTH_PORT` (default 3001) exists so the
 healthcheck can name a port — not so the listener can be published.

@@ -34,6 +34,7 @@ import {
 } from '../../../db/tenant.ts';
 import { RequestId } from '../../../http/middleware/request-id.ts';
 import { MailFailed, type MailNotConfigured } from '../../../mail/mailer.ts';
+import { collectLeveledLogs } from '../../../platform/__tests__/support/logs.ts';
 import { Analytics } from '../../../platform/analytics.ts';
 import { principalOf } from '../../../rpc/authenticated.ts';
 import {
@@ -415,8 +416,9 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
               EXECUTE FUNCTION interrupt_invitation_sent_finalization()`),
           );
 
+          const logs = collectLeveledLogs();
           const step = yield* Effect.ensuring(
-            runDelivery(deliveryId, succeeds),
+            runDelivery(deliveryId, succeeds).pipe(Effect.provide(logs.layer)),
             Effect.orDie(
               Effect.andThen(
                 ownerRows(`
@@ -441,6 +443,19 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           assert.strictEqual(row.sent_at, null);
           assert.strictEqual(row.suppressed_at, null);
           assert.instanceOf(row.uncertain_at, Date);
+          assert.deepStrictEqual(
+            logs.records
+              .filter(
+                ({ message }) =>
+                  message ===
+                  'the delivery attempt failed; its outcome is uncertain',
+              )
+              .map(({ level, annotations }) => ({
+                level,
+                alert: annotations.alert,
+              })),
+            [{ level: 'Error', alert: 'delivery_uncertain' }],
+          );
 
           yield* clearQueue();
           const mail = yield* RecordedMail;
@@ -451,6 +466,53 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
           const unchanged = yield* deliveryState(deliveryId);
           assert.strictEqual(unchanged.attempt_count, 1);
           assert.instanceOf(unchanged.uncertain_at, Date);
+        }),
+    );
+
+    it.effect(
+      'records an uncertain outcome at error level when the delivery ends during its send',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
+          const database = yield* Effect.context<TestDatabase>();
+          const endsMidSend = () =>
+            Effect.orDie(
+              ownerRows(
+                `UPDATE team_invitation_deliveries
+                    SET failed_at = clock_timestamp()
+                  WHERE id = $1`,
+                [deliveryId],
+              ),
+            ).pipe(Effect.provide(database), Effect.asVoid);
+
+          const logs = collectLeveledLogs();
+          const step = yield* runDelivery(deliveryId, endsMidSend).pipe(
+            Effect.provide(logs.layer),
+          );
+
+          assert.strictEqual(
+            step._tag === 'settled' ? step.outcome : undefined,
+            'uncertain',
+          );
+          const row = yield* deliveryState(deliveryId);
+          assert.strictEqual(row.sent_at, null);
+          assert.instanceOf(row.failed_at, Date);
+          assert.deepStrictEqual(
+            logs.records
+              .filter(
+                ({ annotations }) => annotations.alert === 'delivery_uncertain',
+              )
+              .map(({ level, message }) => ({ level, message })),
+            [
+              {
+                level: 'Error',
+                message:
+                  'the delivery ended while its send was in flight; its outcome is uncertain',
+              },
+            ],
+          );
         }),
     );
 

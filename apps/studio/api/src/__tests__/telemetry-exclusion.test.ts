@@ -824,7 +824,27 @@ describe.skipIf(!testDb || !baseEnv.auth || !baseEnv.secrets)(
           stage_type: 'NameGenerator',
           stage_index: 0,
           direction: 'initial',
+          $ip: '0.0.0.0',
+          $geoip_disable: true,
         });
+        const postHogEvents = sent
+          .filter(
+            (request) => request.url === `${POSTHOG_INGESTION_HOST}/batch/`,
+          )
+          .flatMap((request) => {
+            const batch = field(parseJson(request.body), 'batch');
+            return Array.isArray(batch) ? batch : [];
+          });
+        expect(postHogEvents.length).toBeGreaterThan(1);
+        expect(
+          postHogEvents.filter((event) => {
+            const properties = field(event, 'properties');
+            return (
+              field(properties, '$ip') !== '0.0.0.0' ||
+              field(properties, '$geoip_disable') !== true
+            );
+          }),
+        ).toEqual([]);
       },
       120_000,
     );

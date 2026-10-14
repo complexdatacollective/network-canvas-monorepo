@@ -9,8 +9,11 @@ import {
   type SchemaState,
 } from '../db/schema.ts';
 import { Environment } from '../env.ts';
+import { alertAnnotation, OPERATOR_ALERTS } from './operator-alerts.ts';
 
 const RETRY_INTERVAL = '3 seconds';
+
+const mismatch = alertAnnotation(OPERATOR_ALERTS.schemaMismatch);
 
 /**
  * Both lanes wait for an absent or stale schema rather than refuse it (#1901):
@@ -18,7 +21,7 @@ const RETRY_INTERVAL = '3 seconds';
  * started have to be there, closed, when the schema arrives. Only the words
  * differ by lane, because only the remedies do.
  */
-const warnWaiting = (
+const announceWaiting = (
   state: SchemaProblem,
   devDefaults: boolean,
 ): Effect.Effect<void> => {
@@ -32,19 +35,20 @@ const warnWaiting = (
         );
   }
   if (state.kind === 'absent') {
-    return Effect.logWarning(
+    return Effect.logError(
       'The database has no Studio schema.\nRun migrate from this build’s image to create it:\n  docker compose run --rm migrate    (the reference stack)\n  studio-api migrate                 (a container you run yourself)\nWaiting for it, with no restart needed: the API answers every request with the maintenance page and the worker runs no jobs until the schema is current. Checked every 3 seconds.',
-    );
+    ).pipe(Effect.annotateLogs(mismatch));
   }
   if (state.reason === 'unstamped') {
-    return Effect.logWarning(
+    return Effect.logError(
       'The database schema is not this build’s.\nThe database carries Studio tables but no fingerprint, so the SQL that built it is unknown.\nRun migrate from this build’s image to bring it up to date:\n  docker compose run --rm migrate    (the reference stack)\n  studio-api migrate                 (a container you run yourself)\nIf migrate refuses, follow the remedy it prints.\nWaiting for it, with no restart needed: the API answers every request with the maintenance page and the worker runs no jobs until the schema is current. Checked every 3 seconds.',
-    );
+    ).pipe(Effect.annotateLogs(mismatch));
   }
-  return Effect.logWarning(
+  return Effect.logError(
     'The database schema is not this build’s.\nIts recorded fingerprint differs from this build’s.\nRun migrate from this build’s image to bring it up to date:\n  docker compose run --rm migrate    (the reference stack)\n  studio-api migrate                 (a container you run yourself)\nIf migrate refuses, follow the remedy it prints.\nWaiting for it, with no restart needed: the API answers every request with the maintenance page and the worker runs no jobs until the schema is current. Checked every 3 seconds.',
   ).pipe(
     Effect.annotateLogs({
+      ...mismatch,
       expected_fingerprint: SCHEMA_FINGERPRINT.slice(0, 12),
       found_fingerprint: state.found?.slice(0, 12) ?? null,
       recorded_at: state.appliedAt?.toISOString() ?? null,
@@ -104,7 +108,7 @@ export class SchemaStatus extends Context.Service<
       );
 
       const waitForSchema = Effect.fnUntraced(function* (state: SchemaProblem) {
-        yield* warnWaiting(state, env.devDefaults);
+        yield* announceWaiting(state, env.devDefaults);
         yield* waitUntilCurrent;
       });
 
