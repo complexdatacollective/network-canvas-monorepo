@@ -8,6 +8,7 @@ import protocol from '../../store/modules/protocol';
 import session from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import { AnalyticsContext } from '../AnalyticsContext';
+import type { AnalyticsStageType } from '../events';
 import { NULL_TRACKER, type Tracker } from '../tracker';
 import { useStageNavigationAnalytics } from '../useStageNavigationAnalytics';
 
@@ -68,7 +69,7 @@ describe('useStageNavigationAnalytics', () => {
     const stages = [{ type: 'Information' }, { type: 'NameGenerator' }];
     const wrapper = makeWrapper(tracker, stages);
     const { rerender } = renderHook(
-      (props: { stage_index: number; stage_type?: string }) =>
+      (props: { stage_index: number; stage_type?: AnalyticsStageType }) =>
         useStageNavigationAnalytics(props),
       {
         wrapper,
@@ -159,8 +160,11 @@ describe('useStageNavigationAnalytics', () => {
       { type: 'AlterForm' },
     ]);
     const { rerender } = renderHook(
-      (props: { stage_index: number; stage_type?: string; enabled: boolean }) =>
-        useStageNavigationAnalytics(props),
+      (props: {
+        stage_index: number;
+        stage_type?: AnalyticsStageType;
+        enabled: boolean;
+      }) => useStageNavigationAnalytics(props),
       {
         wrapper,
         initialProps: {

@@ -23,7 +23,7 @@ import ui from '../../modules/ui';
 import { createAnalyticsListenerMiddleware } from '../analyticsListener';
 
 function makeTracker() {
-  const track = vi.fn<Tracker['track']>();
+  const track = vi.fn();
   const captureException = vi.fn<Tracker['captureException']>();
   return { track, captureException } satisfies Tracker;
 }

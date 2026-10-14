@@ -118,8 +118,9 @@ async function renderCensus({
   // Everyone the stage made the focal person, in turn.
   const focal: string[] = [];
   const tracker: Tracker = {
-    track: (event, props) => {
-      const id = props?.node_id;
+    track: (event, ...rest) => {
+      const [props] = rest;
+      const id = props && 'node_id' in props ? props.node_id : undefined;
       if (event === 'focal_node' && typeof id === 'string') focal.push(id);
     },
     captureException: () => undefined,

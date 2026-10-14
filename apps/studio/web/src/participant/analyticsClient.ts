@@ -5,6 +5,8 @@ import {
   analyticsPropertiesBytes,
   MAX_ANALYTICS_EVENTS,
   MAX_ANALYTICS_PROPERTIES_BYTES,
+  PARTICIPANT_EXCEPTION_EVENT,
+  type ParticipantExceptionList,
 } from '@codaco/studio-contract/schema/participant';
 
 import { participantAnalytics } from '../runtime/participantRpc.ts';
@@ -45,7 +47,7 @@ const exceptionProperties = (error: unknown) => {
         mechanism: { handled: true, synthetic: false },
       },
     ],
-  };
+  } satisfies { $exception_list: typeof ParticipantExceptionList.Type };
 };
 
 export function createParticipantAnalyticsClient(
@@ -88,7 +90,7 @@ export function createParticipantAnalyticsClient(
       return undefined;
     },
     captureException: (error, properties) => {
-      enqueue('$exception', {
+      enqueue(PARTICIPANT_EXCEPTION_EVENT, {
         ...properties,
         ...exceptionProperties(error),
       });

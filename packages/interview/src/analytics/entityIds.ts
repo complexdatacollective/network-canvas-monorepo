@@ -1,5 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
+import { ENTITY_ID_PROPERTIES } from './entityIdProperties';
+
 /**
  * Entity identifiers reported to analytics are session-scoped pseudonyms, never
  * the interview's own `_uid`s.
@@ -34,13 +36,7 @@ export type EntityIdPseudonymiser = (id: string) => string;
  * allowlist rather than a `*_id` pattern: `installation_id` and `distinct_id`
  * are deliberately stable identifiers and must pass through untouched.
  */
-const ENTITY_ID_PROPS = [
-  'node_id',
-  'edge_id',
-  'node_a_id',
-  'node_b_id',
-  'entity_id',
-] as const;
+const ENTITY_ID_PROPS = ENTITY_ID_PROPERTIES;
 
 export function createEntityIdPseudonymiser(): EntityIdPseudonymiser {
   const pseudonyms = new Map<string, string>();
