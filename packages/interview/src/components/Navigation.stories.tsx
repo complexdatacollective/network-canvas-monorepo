@@ -41,7 +41,12 @@ function buildRawPayload(stageCount: number): string {
     if (!base) continue;
     const label =
       i < MIDDLE_STAGES.length ? base.label : `${base.label} ${i + 1}`;
-    si.addStage(base.type, { label }).addPrompt({ text: base.prompt });
+    // The first stage starts with people in it, so the stages after it have
+    // someone to show and stay on the route.
+    si.addStage(base.type, {
+      label,
+      ...(i === 0 && { initialNodes: { count: 2 } }),
+    }).addPrompt({ text: base.prompt });
   }
 
   si.addInformationStage({

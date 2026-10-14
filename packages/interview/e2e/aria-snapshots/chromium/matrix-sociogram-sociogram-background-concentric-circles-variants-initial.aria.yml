@@ -1,5 +1,6 @@
 - main:
-  - application "Placement area"
+  - application "Placement area":
+    - button "Nikita Crist"
   - button "0 unplaced Expand drawer"
   - text: Drop here to remove
   - button "Hide instructions" [expanded]

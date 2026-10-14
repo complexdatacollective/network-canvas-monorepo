@@ -76,7 +76,7 @@
   "protocolBuilder.binBehaviours.interactionModeLabel": "Modo de interacción",
   "protocolBuilder.binBehaviours.requireCompletePlacementHint": "En cada pregunta, los participantes no pueden continuar hasta que cada nodo esté colocado en un contenedor.",
   "protocolBuilder.binBehaviours.requireCompletePlacementLabel": "Exigir que se coloquen todos los nodos",
-  "protocolBuilder.binBehaviours.selectDescription": "La etapa muestra un nodo cada vez y el participante toca el contenedor en el que quiere colocarlo. Después aparece el siguiente nodo. Si el participante toca un nodo que ya está en un contenedor, puede moverlo.",
+  "protocolBuilder.binBehaviours.selectDescription": "Hay un nodo seleccionado en la zona de reserva y el participante toca el contenedor en el que quiere colocarlo. Después se selecciona el siguiente nodo. Si el participante toca otro nodo, aunque ya esté en un contenedor, ese nodo pasa a ser el seleccionado.",
   "protocolBuilder.binBehaviours.selectLabel": "Tocar para colocar",
   "protocolBuilder.binBehaviours.title": "Colocación de nodos",
   "protocolBuilder.binBehaviours.unplacedNoticeHint": "Se muestra cuando los participantes intentan continuar mientras aún queda algún nodo por colocar.",

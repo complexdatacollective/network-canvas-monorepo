@@ -301,7 +301,9 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
               size="sm"
               className="mx-3 shrink-0"
               onClick={() => void handleSelect()}
-              disabled={select.focalNodeId === undefined}
+              // Not `disabled`: placing the last person would then drop
+              // keyboard focus to the page.
+              aria-disabled={select.focalNodeId === undefined || undefined}
               aria-label={
                 select.focalNodeId !== undefined
                   ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
@@ -393,12 +395,14 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         // than a child so neither button sits inside the other.
         <button
           type="button"
-          className="focusable absolute inset-0 cursor-pointer rounded-full outline-(--cat-color) disabled:cursor-default"
+          className="focusable absolute inset-0 cursor-pointer rounded-full outline-(--cat-color) focus-visible:-outline-offset-6 aria-disabled:cursor-default"
           onClick={(e) => {
             e.stopPropagation();
             void handleSelect();
           }}
-          disabled={select.focalNodeId === undefined}
+          // Not `disabled`: placing the last person would then drop keyboard
+          // focus to the page.
+          aria-disabled={select.focalNodeId === undefined || undefined}
           aria-label={
             select.focalNodeId !== undefined
               ? intl.formatMessage(interfaceMessages.binSelectPlaceIn, {
