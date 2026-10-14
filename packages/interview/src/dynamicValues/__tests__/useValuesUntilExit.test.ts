@@ -36,16 +36,16 @@ describe('useValuesUntilExit', () => {
   it('names the outgoing content as it was last shown', () => {
     // A label that decrypts after the content appears.
     const attributes = { node: { name: [1, 2, 3] } };
+    const locked: DynamicValueEntities = { attributes, labels: { node: '🔒' } };
+    const decrypted: DynamicValueEntities = {
+      attributes,
+      labels: { node: 'Ada' },
+    };
     const { result, rerender } = renderHook(
       ({ key, values }) => useValuesUntilExit(key, values),
-      {
-        initialProps: {
-          key: 'a',
-          values: { attributes, labels: { node: '🔒' } },
-        },
-      },
+      { initialProps: { key: 'a', values: locked } },
     );
-    rerender({ key: 'a', values: { attributes, labels: { node: 'Ada' } } });
+    rerender({ key: 'a', values: decrypted });
 
     rerender({ key: 'b', values: named('Bo') });
     expect(result.current.values.labels).toEqual({ node: 'Ada' });

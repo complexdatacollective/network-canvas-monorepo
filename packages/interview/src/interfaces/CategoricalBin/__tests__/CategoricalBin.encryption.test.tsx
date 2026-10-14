@@ -397,7 +397,6 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
         (await encryptionFor('pw')).key,
         person[entityPrimaryKeyProperty],
       );
-    const [prompt] = stage.prompts;
     const { store, dropIntoOther } = await renderCategoricalBin({
       unlocked: true,
       subject: {
@@ -409,7 +408,16 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
       binStage: {
         ...stage,
         dynamicValues: { who: { path: 'node.$label' } },
-        prompts: [{ ...prompt!, otherVariablePrompt: { en: 'Why {who}?' } }],
+        prompts: [
+          {
+            id: PROMPT_ID,
+            text: { en: 'Which category?' },
+            variable: asEntityAttributeReference('category'),
+            otherVariable: asEntityAttributeReference('otherReason'),
+            otherVariablePrompt: { en: 'Why {who}?' },
+            otherOptionLabel: { en: 'Other' },
+          },
+        ],
       },
     });
     // The name has not decrypted yet when the person is dropped, such as
