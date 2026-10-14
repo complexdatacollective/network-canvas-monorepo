@@ -44,6 +44,15 @@ describe('interview declaration output', () => {
     expect(result.content).toContain(
       "import('../../../index.js').RootAncestorPayload",
     );
+
+    const explicit = beforeWriteFile(
+      'dist/analytics/events.d.ts',
+      "export { ENTITY_ID_PROPERTIES } from './entityIdProperties.ts';\nimport { MAX_ELAPSED_MS } from './elapsed.ts';",
+    );
+
+    expect(explicit.content).toContain("from './entityIdProperties.js'");
+    expect(explicit.content).toContain("from './elapsed.js'");
+    expect(explicit.content).not.toContain('.ts');
   });
 });
 

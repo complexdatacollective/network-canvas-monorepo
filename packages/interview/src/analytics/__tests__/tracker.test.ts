@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { createEntityIdPseudonymiser } from '../entityIds';
 import { createTracker, NULL_TRACKER } from '../tracker';
@@ -20,12 +20,12 @@ describe('createTracker', () => {
       distinctId: 'session-1',
       ownsInstance: false,
     });
-    tracker.track('node_added', { node_id: 'n1', node_type: 'person' });
+    tracker.track('node_added', { node_id: 'n1', node_type_index: 0 });
     expect(client.capture).toHaveBeenCalledWith(
       'node_added',
       expect.objectContaining({
         node_id: expect.any(String),
-        node_type: 'person',
+        node_type_index: 0,
         app: 'Fresco',
         $app_name: 'Fresco',
         installation_id: 'i1',
@@ -81,7 +81,7 @@ describe('createTracker', () => {
     // The shape `makeVariableUUIDReplacer` mints for an external-data row:
     // recomputable by anyone holding the roster.
     const rosterUid = 'person_pKqRz1sWm3';
-    tracker.track('node_added', { node_id: rosterUid, node_type: 'person' });
+    tracker.track('node_added', { node_id: rosterUid, node_type_index: 0 });
     const props = client.capture.mock.calls[0]?.[1] as Record<string, unknown>;
     expect(props.node_id).toEqual(expect.any(String));
     expect(props.node_id).not.toBe(rosterUid);
@@ -158,8 +158,9 @@ describe('createTracker', () => {
       ownsInstance: false,
     });
     tracker.captureException(new Error('boom'), {
+      feature: 'external-data',
       node_id: 'person_pKqRz1sWm3',
-    });
+    } as never);
     const props = client.captureException.mock.calls[0]?.[1] as Record<
       string,
       unknown
@@ -182,15 +183,33 @@ describe('createTracker', () => {
       distinctId: 'session-1',
       ownsInstance: false,
     });
-    expect(() => tracker.track('x')).not.toThrow();
+    expect(() => tracker.track('interview_started')).not.toThrow();
   });
 });
 
 describe('NULL_TRACKER', () => {
   it('track is a no-op', () => {
-    expect(() => NULL_TRACKER.track('x', {})).not.toThrow();
+    expect(() => NULL_TRACKER.track('interview_started', {})).not.toThrow();
   });
   it('captureException is a no-op', () => {
-    expect(() => NULL_TRACKER.captureException(new Error('x'))).not.toThrow();
+    expect(() =>
+      NULL_TRACKER.captureException(new Error('x'), {
+        feature: 'external-data',
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe('the tracker signature', () => {
+  it('accepts no properties for an event the catalogue declares none for', () => {
+    expectTypeOf(NULL_TRACKER.track<'interview_started'>)
+      .parameter(1)
+      .toEqualTypeOf<Record<string, never> | undefined>();
+  });
+
+  it('demands the declared properties of an event that has them', () => {
+    expectTypeOf(NULL_TRACKER.track<'interview_finished'>)
+      .parameter(1)
+      .toEqualTypeOf<{ readonly stage_count: number }>();
   });
 });
