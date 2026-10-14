@@ -204,10 +204,12 @@ const printNodes = (
           plural && node.offset !== undefined && node.offset !== 0
             ? ` offset:${node.offset}`
             : '';
+        // ICU reads `#` as the number only directly in a plural's versions:
+        // in a select's, even one inside a plural, it is text.
         const arms = node.versions
           .map(
             (version) =>
-              `${version.key} {${printNodes(version.nodes, plural || inPlural, '}')}}`,
+              `${version.key} {${printNodes(version.nodes, plural, '}')}}`,
           )
           .join(' ');
         message += `{${node.argument}, ${node.type},${offset} ${arms}}`;

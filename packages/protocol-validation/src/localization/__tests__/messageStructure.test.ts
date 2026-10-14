@@ -97,4 +97,37 @@ describe('messageStructure', () => {
     const printed = printMessageStructure(nodes);
     expect(messageStructure(printed)).toEqual({ nodes });
   });
+
+  it('leaves # unquoted in a select within a plural, where it is text', () => {
+    // ICU reads `#` as the number only directly in a plural's versions; in a
+    // select inside one it is text, and a quote there would show.
+    const nodes: MessageNode[] = [
+      {
+        kind: 'switch',
+        argument: 'n',
+        type: 'plural',
+        versions: [
+          {
+            key: 'other',
+            nodes: [
+              {
+                kind: 'switch',
+                argument: 'k',
+                type: 'select',
+                versions: [
+                  { key: 'a', nodes: [{ kind: 'text', text: "No. # isn't" }] },
+                  { key: 'other', nodes: [{ kind: 'text', text: 'z' }] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const printed = printMessageStructure(nodes);
+    expect(printed).toBe(
+      "{n, plural, other {{k, select, a {No. # isn't} other {z}}}}",
+    );
+    expect(messageStructure(printed)).toEqual({ nodes });
+  });
 });
