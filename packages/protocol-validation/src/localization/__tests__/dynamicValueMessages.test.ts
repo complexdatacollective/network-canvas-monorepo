@@ -293,6 +293,24 @@ describe('dynamicMessageParts', () => {
     ).toEqual([{ argument: 'count' }, ' years']);
   });
 
+  it('never chooses the zero version for a tiny nonzero number', () => {
+    const plural = '{count, plural, zero {none} other {# items}}';
+    expect(
+      dynamicMessageParts(
+        plural,
+        'ar',
+        states({ count: { missing: false, count: Number.MIN_VALUE } }),
+      ),
+    ).toEqual([{ argument: 'count' }, ' items']);
+    expect(
+      dynamicMessageParts(
+        plural,
+        'ar',
+        states({ count: { missing: false, count: 0 } }),
+      ),
+    ).toEqual(['none']);
+  });
+
   it('chooses a plural version by the number as it is shown', () => {
     // 1.0001 is shown with all its digits, so it is not English `one`.
     const plural = '{count, plural, one {# item} other {# items}}';

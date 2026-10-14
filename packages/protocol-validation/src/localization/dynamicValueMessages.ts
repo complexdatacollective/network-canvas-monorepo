@@ -475,7 +475,13 @@ const pluralCategoryOf = (locale: LocaleTag, count: number): string => {
     }
     pluralRules.set(key, rules);
   }
-  return rules.select(count);
+  // A nonzero number too small to keep a digit within that limit would read
+  // as zero (Arabic `zero`); it is chosen as the smallest number that keeps one.
+  const selectable =
+    count !== 0 && Math.abs(count) < 10 ** -MAX_FRACTION_DIGITS
+      ? Math.sign(count) * 10 ** -MAX_FRACTION_DIGITS
+      : count;
+  return rules.select(selectable);
 };
 
 const flatten = (
