@@ -30,10 +30,10 @@ export const NEUTRAL_SWATCHES: Swatch[] = [
 export const HUE_SWATCHES: Swatch[] = [
   { value: '#e80054', label: 'Coral' }, // --node-1 neon-coral
   { value: '#007db2', label: 'Sea blue' }, // --node-2 sea-serpent
-  { value: '#ce1bee', label: 'Purple' }, // --node-3 purple-pizazz
+  { value: '#c400e4', label: 'Purple' }, // --node-3 purple-pizazz
   { value: '#c65100', label: 'Carrot' }, // --node-4 neon-carrot
   { value: '#008800', label: 'Green' }, // --node-5 kiwi
-  { value: '#0f6fff', label: 'Blue' }, // --node-6 cerulean-blue
+  { value: '#096cfb', label: 'Blue' }, // --node-6 cerulean-blue
   { value: '#e1007c', label: 'Pink' }, // --node-7 paradise-pink
   { value: '#a96600', label: 'Mustard' }, // --node-8 mustard
 ];

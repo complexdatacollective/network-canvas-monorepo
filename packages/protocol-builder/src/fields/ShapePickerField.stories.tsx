@@ -109,6 +109,10 @@ export const ReadOnly: Story = {
     await expect(
       within(group).getByRole('radio', { name: 'Select shape Square' }),
     ).toHaveAttribute('aria-checked', 'true');
+    for (const swatch of within(group).getAllByRole('radio')) {
+      await expect(swatch).toHaveAttribute('aria-disabled', 'true');
+      await expect(swatch).not.toBeDisabled();
+    }
   },
 };
 
