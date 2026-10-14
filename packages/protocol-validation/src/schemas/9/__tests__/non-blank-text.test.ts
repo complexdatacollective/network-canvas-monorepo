@@ -182,26 +182,15 @@ const REQUIRED_TEXT_SITES: readonly {
     path: ['title'],
   },
   {
-    name: 'an anonymisation explanation title',
+    name: 'an anonymisation explanation',
     schema: anonymisationStage,
-    valid: (title) => ({
+    valid: (explanationText) => ({
       id: 'anon',
       type: 'Anonymisation',
       label: localized('Anonymisation'),
-      explanationText: { title, body: localized('Choose a passphrase.') },
+      explanationText,
     }),
-    path: ['explanationText', 'title'],
-  },
-  {
-    name: 'an anonymisation explanation body',
-    schema: anonymisationStage,
-    valid: (body) => ({
-      id: 'anon',
-      type: 'Anonymisation',
-      label: localized('Anonymisation'),
-      explanationText: { title: localized('Privacy'), body },
-    }),
-    path: ['explanationText', 'body'],
+    path: ['explanationText'],
   },
   {
     name: 'a node type label',

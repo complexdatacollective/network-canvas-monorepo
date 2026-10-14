@@ -335,10 +335,7 @@ export type StageEntry = {
     matchProperties: string[];
   };
   // Anonymisation
-  explanationText?: {
-    title: TextInput;
-    body: TextInput;
-  };
+  explanationText?: TextInput;
   validation?: { minLength?: number; maxLength?: number };
   // TieStrengthCensus (edge type reference on stage)
   edgeType?: { entity: 'edge'; type: string };
@@ -566,10 +563,7 @@ export type AddStageInput = {
     matchProperties?: string[];
   };
   // Anonymisation
-  explanationText?: {
-    title?: TextInput;
-    body?: TextInput;
-  };
+  explanationText?: TextInput;
   validation?: { minLength?: number; maxLength?: number };
   // FamilyPedigree. The person node type is the stage `subject`; the family
   // edge type is created when omitted. Every attribute the interface owns is

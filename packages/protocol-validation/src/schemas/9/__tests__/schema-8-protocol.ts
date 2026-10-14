@@ -38,11 +38,24 @@ const highlightIds = (stage: unknown) => {
   }
 };
 
+// A schema 8 Anonymisation stage held its heading as a title of its own,
+// apart from the text below it.
+const explanationTitle = (stage: unknown) => {
+  if (!isRecord(stage) || stage.type !== 'Anonymisation') return;
+  const { explanationText } = stage;
+  if (typeof explanationText !== 'string') return;
+  const match = /^# (.+)\n\n([\s\S]*)$/.exec(explanationText);
+  stage.explanationText = match
+    ? { title: match[1], body: match[2] }
+    : { title: '', body: explanationText };
+};
+
 /**
  * A schema 9 protocol written in English, as schema 8 held it: each localized
  * string is its English text, put through `rewrite` (text with placeholders,
  * which schema 8 never held, stays localized), codebook definitions
- * have no label, Narrative highlights are attribute ids, and the language
+ * have no label, Narrative highlights are attribute ids, an Anonymisation
+ * explanation's heading is a title of its own, and the language
  * chooser and language settings, which schema 8 did not have, are gone.
  */
 export const asSchema8Protocol = (
@@ -86,7 +99,10 @@ export const asSchema8Protocol = (
   ]) {
     delete definition.label;
   }
-  for (const stage of document.stages) highlightIds(stage);
+  for (const stage of document.stages) {
+    highlightIds(stage);
+    explanationTitle(stage);
+  }
   // Schema 8 has neither stage type: the interview chose no language, and
   // added its own finish screen.
   document.stages = document.stages.filter(

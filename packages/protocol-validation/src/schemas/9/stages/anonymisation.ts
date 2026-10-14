@@ -5,13 +5,10 @@ import { baseStageSchema } from './base.ts';
 
 export const anonymisationStage = baseStageSchema.extend({
   type: z.literal('Anonymisation'),
-  explanationText: z.strictObject({
-    title: localizedString(nonBlankText(), 'plain', {
-      dynamicValues: 'stageText',
-    }),
-    body: localizedString(nonBlankText(), 'markdown', {
-      dynamicValues: 'stageText',
-    }),
+  // What the participant reads before choosing a passphrase. A heading is
+  // part of the text, written as one, rather than a field of its own.
+  explanationText: localizedString(nonBlankText(), 'markdown', {
+    dynamicValues: 'stageText',
   }),
   validation: z
     .strictObject({

@@ -291,6 +291,10 @@
     "defaultMessage": "Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.",
     "description": "One complete Markdown bullet in schema 8 migration approval guidance: validationHints. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
   },
+  "protocolValidation.migrationNotes.schema9.anonymisationTitle": {
+    "defaultMessage": "An Anonymisation stage's title is now the first line of its explanation, written as a heading, so the stage has one text to edit and translate. What participants see does not change.",
+    "description": "One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers. Its explanation is the text the participant reads on that screen before choosing the passphrase; its title was a separate field shown as the heading above that text, and is now written inside the text as a heading."
+  },
   "protocolValidation.migrationNotes.schema9.attributeNames": {
     "defaultMessage": "Attribute names can now use letters from any language, as well as spaces and punctuation. Existing attribute names are not changed.",
     "description": "One complete Markdown bullet in schema 9 migration approval guidance: attributeNames. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."

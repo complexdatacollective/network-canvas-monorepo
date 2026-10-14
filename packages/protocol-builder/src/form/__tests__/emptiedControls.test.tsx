@@ -64,19 +64,19 @@ describe('a control the researcher emptied', () => {
   it('takes the container it emptied with it', async () => {
     const { probe, draft } = createStageDraftProbe();
     const harness = renderStageEditor({
-      stageId: 'anonymisation-1',
+      stageId: 'sociogram-1',
       sections: (
         <>
-          <BuilderSection title="Explanation">
+          <BuilderSection title="Tooltips">
             {probe}
             <Field
-              name="explanationText.title"
-              label="Panel heading"
+              name="tooltips.pauseLayout"
+              label="Pause layout tooltip"
               component={LocalizedInputField}
             />
             <Field
-              name="explanationText.body"
-              label="Panel text"
+              name="tooltips.resumeLayout"
+              label="Resume layout tooltip"
               component={LocalizedInputField}
             />
           </BuilderSection>
@@ -84,21 +84,23 @@ describe('a control the researcher emptied', () => {
       ),
     });
 
+    const pause = await harness.findByRole('textbox', {
+      name: 'Pause layout tooltip',
+    });
+    // The fixture's stage holds both, so the object is there to be taken.
+    expect(Object.hasOwn(draft(), 'tooltips')).toBe(true);
+
+    await harness.user.clear(pause);
     await harness.user.clear(
-      await harness.findByRole('textbox', { name: 'Panel heading' }),
-    );
-    await harness.user.clear(
-      await harness.findByRole('textbox', { name: 'Panel text' }),
+      await harness.findByRole('textbox', { name: 'Resume layout tooltip' }),
     );
 
-    // The explanation is required, so this save is refused either way. What is
-    // under test is what the draft holds after it: an `explanationText` with
-    // neither translation map left in it is a panel the researcher did not
-    // write, and the schema reports it as two missing values rather than as
-    // the panel simply not being there.
-    expect(await harness.submit()).toBeNull();
-
-    expect(Object.hasOwn(draft(), 'explanationText')).toBe(false);
+    // Read off the draft rather than out of a save: a save writes Network
+    // Canvas's own wording back into any of these the stage lacks, so what it
+    // stores says nothing about what the form assembled. A `tooltips` with
+    // neither translation map left in it is an object the researcher did not
+    // write, holding nothing.
+    expect(Object.hasOwn(draft(), 'tooltips')).toBe(false);
   });
 
   it('is refused rather than dropped when the field is required', async () => {

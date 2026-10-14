@@ -9,8 +9,8 @@ import EncryptedStoryInterviewShell from '../../storybook-support/EncryptedStory
 import StoryInterviewShell from '../../storybook-support/StoryInterviewShell';
 
 type StoryArgs = {
-  title: string;
-  body: string;
+  /** Markdown the participant reads; its `#` heading is the stage title. */
+  explanationText: string;
   /** The stage's own minimum passphrase length, replacing the default. */
   minLength?: number;
 };
@@ -24,7 +24,7 @@ function buildInterview(args: StoryArgs) {
   });
 
   interview.addStage('Anonymisation', {
-    explanationText: { title: args.title, body: args.body },
+    explanationText: args.explanationText,
     ...(args.minLength !== undefined && {
       validation: { minLength: args.minLength },
     }),
@@ -62,13 +62,10 @@ const meta: Meta<StoryArgs> = {
     layout: 'fullscreen',
   },
   argTypes: {
-    title: {
+    explanationText: {
       control: 'text',
-      description: 'Explanation text title',
-    },
-    body: {
-      control: 'text',
-      description: 'Explanation text body (supports markdown)',
+      description:
+        'Explanation text (markdown). A level-1 heading (`# …`) is shown as the stage title.',
     },
     minLength: {
       control: 'number',
@@ -77,8 +74,8 @@ const meta: Meta<StoryArgs> = {
     },
   },
   args: {
-    title: 'Data Anonymisation',
-    body: 'Your data will be anonymised using a **passphrase** that you create below.\n\nThis passphrase is used to generate a unique encryption key that replaces any identifying information in your responses. Only someone with the same passphrase can link your data back to you.\n\nPlease choose a passphrase that is memorable but not easily guessed.',
+    explanationText:
+      '# Data Anonymisation\n\nYour data will be anonymised using a **passphrase** that you create below.\n\nThis passphrase is used to generate a unique encryption key that replaces any identifying information in your responses. Only someone with the same passphrase can link your data back to you.\n\nPlease choose a passphrase that is memorable but not easily guessed.',
   },
 };
 
@@ -128,16 +125,17 @@ export const Default: Story = {
 export const MinimalExplanation: Story = {
   render: (args) => <AnonymisationStoryWrapper {...args} />,
   args: {
-    title: 'Anonymise Your Data',
-    body: 'Please create a passphrase to protect your identity.',
+    explanationText:
+      '# Anonymise Your Data\n\nPlease create a passphrase to protect your identity.',
   },
 };
 
 export const DetailedInstructions: Story = {
   render: (args) => <AnonymisationStoryWrapper {...args} />,
   args: {
-    title: 'Participant Data Protection',
-    body: [
+    explanationText: [
+      '# Participant Data Protection',
+      '',
       '## Why Anonymisation?',
       '',
       'This study collects information about your social network. To protect',
@@ -279,10 +277,8 @@ function buildResumedInterview() {
     encrypted: true,
   });
   interview.addStage('Anonymisation', {
-    explanationText: {
-      title: 'Protect your answers',
-      body: 'Enter the passphrase you chose earlier in this interview.',
-    },
+    explanationText:
+      '# Protect your answers\n\nEnter the passphrase you chose earlier in this interview.',
   });
   const generator = interview.addStage('NameGeneratorQuickAdd', {
     subject: { entity: 'node', type: person.id },

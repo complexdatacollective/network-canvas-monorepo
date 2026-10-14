@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { withSafeTypingIntoRichText } from '../../../testing/withSafeTypingIntoRichText';
 import { tokenPillClasses } from '../../../TokenPill';
+import { EnclosingHeadingLevel } from '../../../typography/EnclosingHeadingLevel';
 import Field from '../../Field/Field';
 import Form from '../../Form';
 import SubmitButton from '../../SubmitButton';
@@ -1903,6 +1904,55 @@ describe('a multi-line RichTextEditorField', () => {
 
     expect(editor).toHaveAttribute('aria-multiline', 'true');
     expect(editor.querySelectorAll('p')).toHaveLength(2);
+  });
+
+  /**
+   * On the page, a heading in the text sits inside whatever section holds the
+   * field. Announced at its own level 2 under a section's `h3`, it would read
+   * as a heading above that section's, and the page's outline would skip from
+   * it straight back to the next section.
+   */
+  it('announces a heading in its text below the heading it sits under', async () => {
+    render(
+      <EnclosingHeadingLevel level="h3">
+        <RichTextEditorField
+          id="bio"
+          name="bio"
+          aria-describedby="bio-hint"
+          aria-label="Biography"
+          toolbarOptions={{ headings: true }}
+          value={HEADING_DOCUMENT}
+          onChange={() => undefined}
+        />
+      </EnclosingHeadingLevel>,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Biography' });
+    const heading = within(editor).getByRole('heading', { name: 'Never met' });
+
+    // The element stays the text's own, so copying it keeps its level.
+    expect(heading.tagName).toBe('H2');
+    expect(heading).toHaveAttribute('aria-level', '5');
+  });
+
+  it('announces a heading in its text at its own level outside any section', async () => {
+    render(
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Biography"
+        toolbarOptions={{ headings: true }}
+        value={HEADING_DOCUMENT}
+        onChange={() => undefined}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Biography' });
+    const heading = within(editor).getByRole('heading', { name: 'Never met' });
+
+    expect(heading.tagName).toBe('H2');
+    expect(heading).not.toHaveAttribute('aria-level');
   });
 });
 

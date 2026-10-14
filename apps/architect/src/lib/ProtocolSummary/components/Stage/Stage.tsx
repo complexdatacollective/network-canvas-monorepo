@@ -257,10 +257,7 @@ const StageContent = ({
       : null;
   // Anonymisation
   const explanationText = configuration.explanationText as
-    | {
-        title: LocalizedString;
-        body: LocalizedString;
-      }
+    | LocalizedString
     | undefined;
   const validation = configuration.validation as
     | {

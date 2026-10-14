@@ -8,9 +8,9 @@ import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import DynamicTextField from './DynamicTextField.tsx';
 
-/** The heading an anonymisation stage shows before asking for a passphrase. */
-const TITLE_FIELD = 'explanationText.title';
-const TITLE_LABEL = 'Title';
+/** The heading an information page shows above its content. */
+const TITLE_FIELD = 'title';
+const TITLE_LABEL = 'Page heading';
 const INSERT_LABEL =
   'Inject piped text from interview metadata or a network attribute';
 
@@ -38,7 +38,7 @@ const meta = {
     },
   },
   args: {
-    stageId: 'anonymisation-1',
+    stageId: 'information-1',
     sectionTitle: 'What the participant is told',
     children: title,
   },

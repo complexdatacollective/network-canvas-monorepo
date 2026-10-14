@@ -749,12 +749,9 @@ export class SyntheticInterview {
 
     // Anonymisation
     if (type === 'Anonymisation') {
-      entry.explanationText = {
-        title: opts?.explanationText?.title ?? 'Data Anonymisation',
-        body:
-          opts?.explanationText?.body ??
-          'Please enter a passphrase to protect your data.',
-      };
+      entry.explanationText =
+        opts?.explanationText ??
+        '# Data Anonymisation\n\nPlease enter a passphrase to protect your data.';
       if (opts?.validation) {
         entry.validation = opts.validation;
       }
@@ -2875,10 +2872,7 @@ export class SyntheticInterview {
 
     // Anonymisation
     if (stage.explanationText) {
-      config.explanationText = {
-        title: this.localized(stage.explanationText.title),
-        body: this.localized(stage.explanationText.body),
-      };
+      config.explanationText = this.localized(stage.explanationText);
     }
     if (stage.validation) {
       config.validation = stage.validation;

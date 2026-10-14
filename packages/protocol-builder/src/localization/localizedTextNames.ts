@@ -619,14 +619,9 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   AlterForm: formFieldRules(stageSubject),
   Anonymisation: [
     rule(
-      'explanationText.title',
+      'explanationText',
       [1, words(anonymisationMessages.explanationTitle)],
-      [2, words(anonymisationMessages.explanationHeadingLabel)],
-    ),
-    rule(
-      'explanationText.body',
-      [1, words(anonymisationMessages.explanationTitle)],
-      [2, words(anonymisationMessages.explanationBodyLabel)],
+      [2, words(anonymisationMessages.explanationTextLabel)],
     ),
   ],
   CategoricalBin: [

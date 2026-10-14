@@ -371,12 +371,7 @@
         "en-US": "Anonymisation"
       },
       "explanationText": {
-        "title": {
-          "en-US": "This interview uses enhanced privacy protection"
-        },
-        "body": {
-          "en-US": "This interview allows you to encrypt the names of people you mention so they cannot be seen by anyone but you. To use this feature, enter a passphrase below."
-        }
+        "en-US": "# This interview uses enhanced privacy protection\n\nThis interview allows you to encrypt the names of people you mention so they cannot be seen by anyone but you. To use this feature, enter a passphrase below."
       },
       "validation": {
         "minLength": 4,

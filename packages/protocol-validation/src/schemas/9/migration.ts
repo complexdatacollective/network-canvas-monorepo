@@ -118,6 +118,34 @@ const removeContradictoryPassphraseRules = (protocol: unknown) => {
   }
 };
 
+/**
+ * Schema 9 keeps an Anonymisation stage's explanation as one text, where
+ * schema 8 had a title the interview showed as a heading above it. The title
+ * becomes the text's first line, written as a heading and escaped to show as
+ * written. A part that showed nothing is left out; when neither shows
+ * anything, the explanation is left for validation to report.
+ */
+const moveAnonymisationTitlesIntoText = (protocol: unknown) => {
+  if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
+  for (const stage of protocol.stages) {
+    if (!isRecord(stage) || stage.type !== 'Anonymisation') continue;
+    const { explanationText } = stage;
+    if (!isRecord(explanationText)) continue;
+    const { title, body } = explanationText;
+    // A heading is one line, so a line break in the title becomes a space,
+    // and a run of # that ends it would close the heading rather than show.
+    const heading =
+      typeof title === 'string' && !isBlankText(title)
+        ? `# ${escapeMarkdownText(title.trim().replace(/\s+/g, ' ')).replace(/(\s)(#+)$/, '$1\\$2')}`
+        : undefined;
+    const text =
+      typeof body === 'string' && !isBlankText(body) ? body : undefined;
+    const parts = [heading, text].filter((part) => part !== undefined);
+    if (parts.length > 0) stage.explanationText = parts.join('\n\n');
+    else if (typeof body === 'string') stage.explanationText = body;
+  }
+};
+
 /** Every attribute record in a codebook: each node type's, each edge type's and the ego's. */
 const variableRecordsOf = (codebook: unknown): Record<string, unknown>[] => {
   if (!isRecord(codebook)) return [];
@@ -1196,6 +1224,7 @@ const migrationV8toV9 = createMigration({
 - A form field whose question was empty or contained only spaces now uses the name of its attribute as the question, because every question must contain some text.
 - Encrypted attributes are no longer experimental: the Anonymisation interface is always available, and an attribute marked as encrypted is always encrypted. If this protocol marked attributes as encrypted without turning on the experimental "Encrypted Attributes" feature, those attributes are no longer marked, so they keep being collected without encryption.
 - If an Anonymisation stage required a minimum passphrase length longer than its maximum, no participant could choose a passphrase, so both lengths are removed and the default minimum length applies.
+- An Anonymisation stage's title is now the first line of its explanation, written as a heading, so the stage has one text to edit and translate. What participants see does not change.
 - Each option of an ordinal or categorical attribute must now have a value of its own, because answers are stored by value and two options with the same value cannot be told apart. Where options shared a value, the first is kept and the later ones are removed. Values are compared as written, except that a number and text that read the same, such as 1 and "1", count as the same value. Answers already recorded, and skip logic and filters, keep the value they use. If removing options leaves an attribute requiring more selections than it has options, that requirement is removed.
 - An option's value is now held to the same rules as other names. Spaces at either end of a value are removed, each tab or line break inside it becomes a space, and its characters are stored in one standard Unicode form. An empty value is replaced by the option's label or, when there is none, by "Option" followed by the option's position. Options whose values are then identical are merged as above, and answers already recorded, skip logic, filters and node shapes are updated to the new value.
 - Introduction panels are replaced by Information stages, so instructions to participants are written in one place. The introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage becomes an Information stage just before it, with the panel's title and text. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one. An Ego Form's panel showed as the heading above its questions, so the panel's title becomes the title of the form, still shown above the questions; if the panel had text, the text moves to an Information stage just before the Ego Form. Panel text that contained only spaces is left out, and a panel title that contained only spaces now uses the stage's name.
@@ -1221,6 +1250,7 @@ const migrationV8toV9 = createMigration({
     const localization = localizationOf(migrated);
     if (!encryptionWasOn(experiments)) removeEncryptedMarks(migrated.codebook);
     removeContradictoryPassphraseRules(migrated);
+    moveAnonymisationTitlesIntoText(migrated);
     removeEncryptedAttributeComparisons(migrated);
     // Before the pedigree conversion, which reads the options it keeps.
     remapMergedOptionValues(migrated, mergedOptionValuesOf(migrated.codebook));

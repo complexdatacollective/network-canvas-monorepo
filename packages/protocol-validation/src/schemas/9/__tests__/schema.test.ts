@@ -185,10 +185,7 @@ const protocolWithPassphraseRules = (validation: {
         id: 'anonymisation',
         type: 'Anonymisation',
         label: localized('Anonymisation'),
-        explanationText: {
-          title: localized('Privacy'),
-          body: localized('Choose a passphrase.'),
-        },
+        explanationText: localized('# Privacy\n\nChoose a passphrase.'),
         validation,
       },
     ],

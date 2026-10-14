@@ -551,10 +551,7 @@ export const completeProtocol = () => ({
       id: 'anonymisation',
       type: 'Anonymisation',
       label: localized('Privacy'),
-      explanationText: {
-        title: localized('Privacy title'),
-        body: localized('Privacy body'),
-      },
+      explanationText: localized('# Privacy title\n\nPrivacy body'),
     },
     {
       id: 'oneToMany',

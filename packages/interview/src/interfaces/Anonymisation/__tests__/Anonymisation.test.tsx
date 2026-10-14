@@ -111,8 +111,7 @@ function renderStage({
     type: 'Anonymisation',
     label: { en: 'Protect your answers' },
     explanationText: {
-      title: { en: 'Protect your answers' },
-      body: { en: 'Some of your answers are protected by a passphrase.' },
+      en: '# Protect your answers\n\nSome of your answers are protected by a passphrase.',
     },
     validation,
   };

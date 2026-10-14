@@ -70,10 +70,7 @@ const openWithRules = (
       type: 'Anonymisation',
       fields: {
         label: { 'en-US': 'Anonymisation' },
-        explanationText: {
-          title: { 'en-US': 'Privacy' },
-          body: { 'en-US': 'Choose a passphrase.' },
-        },
+        explanationText: { 'en-US': '# Privacy\n\nChoose a passphrase.' },
         validation,
       },
     },
@@ -92,83 +89,59 @@ describe('the sections of an anonymisation stage', () => {
     ]);
   });
 
-  it('saves a rewritten explanation', async () => {
+  /**
+   * The heading is part of the text rather than a field of its own, so it is
+   * written the way any heading in a passage is, and saved as markdown with
+   * the prose under it.
+   */
+  it('saves a rewritten explanation, heading and all', async () => {
     const harness = openEditor();
 
-    const heading = await screen.findByRole('textbox', {
-      name: 'Title',
+    const explanation = await screen.findByRole('textbox', {
+      name: 'Explanation',
     });
-    await harness.user.clear(heading);
-    await harness.user.type(heading, 'Your answers are protected');
+    await harness.user.clear(explanation);
+    await harness.user.click(screen.getByRole('button', { name: 'Heading 1' }));
+    await harness.user.type(explanation, 'Your answers are protected');
+    await harness.user.keyboard('{Enter}');
+    await harness.user.type(
+      explanation,
+      'Choose a passphrase to protect them.',
+    );
 
     const saved = await harness.submit();
     expect(saved?.stageDocument.explanationText).toEqual({
-      title: { 'en-US': 'Your answers are protected' },
-      body: { 'en-US': expect.stringContaining('encrypt the names of people') },
+      'en-US':
+        '# Your answers are protected\n\nChoose a passphrase to protect them.',
     });
   });
 
-  it('tells assistive technology the explanation fields are required', async () => {
+  it('tells assistive technology the explanation is required', async () => {
     openEditor();
 
-    // Both fields can show values the interview fills in, so they are drawn
-    // by the editor for such text rather than the plain one.
-    for (const name of ['Title', 'Body']) {
-      expect(await screen.findByRole('textbox', { name })).toHaveAttribute(
-        'aria-required',
-        'true',
-      );
-    }
+    // It can show values the interview fills in, so it is drawn by the editor
+    // for such text rather than the plain one.
+    expect(
+      await screen.findByRole('textbox', { name: 'Explanation' }),
+    ).toHaveAttribute('aria-required', 'true');
   });
 
   /**
-   * The schema refuses an explanation with no heading, but only once the save
-   * has been attempted and only against a path. The section has to refuse it
+   * The schema refuses a stage with no explanation, but only once the save has
+   * been attempted and only against a path. The section has to refuse it
    * where the researcher is looking.
    */
-  it('refuses to save an explanation with no heading', async () => {
+  it('refuses to save an explanation with nothing written', async () => {
     const harness = openEditor();
 
     await harness.user.clear(
-      await screen.findByRole('textbox', { name: 'Title' }),
+      await screen.findByRole('textbox', { name: 'Explanation' }),
     );
-
-    expect(await harness.submit()).toBeNull();
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
-  });
-
-  it('refuses an explanation heading over 50 characters in any of the protocol languages', async () => {
-    const harness = renderStageEditor({
-      stageId: 'anonymisation-1',
-      registry: anonymisationStageEditor,
-      localization: { defaultLocale: 'en-US', locales: ['en-US', 'es'] },
-    });
-
-    // Every localized field draws the one shared menu, so any of them will do.
-    const [languageMenu] = await screen.findAllByRole('button', {
-      name: /Editing language/,
-    });
-    if (languageMenu === undefined) throw new Error('No language menu');
-    await harness.user.click(languageMenu);
-    await harness.user.click(
-      await screen.findByRole('menuitemradio', { name: /^español/ }),
-    );
-    const heading = screen.getByRole('textbox', { name: 'Title' });
-    await harness.user.type(heading, 'x'.repeat(51));
 
     expect(await harness.submit()).toBeNull();
     expect(
-      await screen.findByText('Enter at most 50 characters.'),
-    ).toBeInTheDocument();
-
-    await harness.user.type(heading, '{Backspace}');
-    const saved = await harness.submit();
-    expect(saved?.stageDocument.explanationText).toMatchObject({
-      title: { es: 'x'.repeat(50) },
-    });
+      screen.getByRole('textbox', { name: 'Explanation' }),
+    ).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('refuses passphrase rules whose shortest allowed length exceeds its longest', async () => {
@@ -427,10 +400,7 @@ describe('how the passphrase rules are put on screen', () => {
         type: 'Anonymisation',
         fields: {
           label: { 'en-US': 'Anonymisation' },
-          explanationText: {
-            title: { 'en-US': 'Privacy' },
-            body: { 'en-US': 'Choose a passphrase.' },
-          },
+          explanationText: { 'en-US': '# Privacy\n\nChoose a passphrase.' },
           validation: { minLength: 40, maxLength: 5 },
         },
       },
@@ -529,11 +499,11 @@ describe('the attributes a passphrase protects', () => {
    */
   it('keeps an unsaved stage edit made before the toggle', async () => {
     const harness = openEditor();
-    const heading = await screen.findByRole('textbox', {
-      name: 'Title',
+    const explanation = await screen.findByRole('textbox', {
+      name: 'Explanation',
     });
-    await harness.user.clear(heading);
-    await harness.user.type(heading, 'Rewritten heading');
+    await harness.user.clear(explanation);
+    await harness.user.type(explanation, 'Rewritten explanation');
     await switchOnType(harness, 'person');
 
     await harness.user.click(attributeCheckbox('person', 'name'));
@@ -542,12 +512,12 @@ describe('the attributes a passphrase protects', () => {
     );
 
     // A rich-text editor rather than an input: it shows its text.
-    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
-      'Rewritten heading',
-    );
+    expect(
+      screen.getByRole('textbox', { name: 'Explanation' }).textContent,
+    ).toBe('Rewritten explanation');
     const saved = await harness.submit();
-    expect(saved?.stageDocument.explanationText).toMatchObject({
-      title: { 'en-US': 'Rewritten heading' },
+    expect(saved?.stageDocument.explanationText).toEqual({
+      'en-US': 'Rewritten explanation',
     });
   });
 

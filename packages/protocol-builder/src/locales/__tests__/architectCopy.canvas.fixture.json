@@ -29,11 +29,6 @@
     "es": "Atributos cifrados",
     "from": "74a07e626 architect.sections.anonymisation.encryptedVariables.encryptedAttributes"
   },
-  "protocolBuilder.anonymisation.explanationBodyLabel": {
-    "en": "Body",
-    "es": "Cuerpo",
-    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.body"
-  },
   "protocolBuilder.anonymisation.explanationBodyPlaceholder": {
     "en": "Enter your passphrase below, and click the 'continue' button.",
     "es": "Introduce tu frase de contraseña abajo y pulsa el botón «Continuar».",
@@ -43,16 +38,6 @@
     "en": "Explain the anonymisation process to participants before they enter their passphrase.",
     "es": "Explica el proceso de anonimización a los participantes antes de que introduzcan su frase de contraseña.",
     "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.explainTheAnonymisationProcessToParticipants"
-  },
-  "protocolBuilder.anonymisation.explanationHeadingLabel": {
-    "en": "Title",
-    "es": "Título",
-    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.title"
-  },
-  "protocolBuilder.anonymisation.explanationHeadingPlaceholder": {
-    "en": "This interview uses enhanced privacy protection",
-    "es": "Esta entrevista utiliza protección adicional de la privacidad",
-    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.thisInterviewUsesEnhancedPrivacyProtection"
   },
   "protocolBuilder.anonymisation.explanationTitle": {
     "en": "Task explanation",

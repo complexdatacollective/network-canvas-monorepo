@@ -16,11 +16,11 @@ import {
   LocalizedRichTextField,
 } from './LocalizedStringField.tsx';
 
-/** The heading and the prose an anonymisation stage shows before asking for a passphrase. */
-const TITLE_FIELD = 'explanationText.title';
-const TITLE_LABEL = 'Title';
-const BODY_FIELD = 'explanationText.body';
-const BODY_LABEL = 'Explanation';
+/** The heading an information page shows, and the text of its first block. */
+const TITLE_FIELD = 'title';
+const TITLE_LABEL = 'Page heading';
+const BODY_FIELD = 'items[0].content';
+const BODY_LABEL = 'Text';
 
 const SETTINGS = sectionId({ kind: 'settings' });
 
@@ -33,7 +33,7 @@ const writtenIn =
     });
   };
 
-const explanation = (
+const page = (
   <>
     <Field<typeof LocalizedInputField>
       name={TITLE_FIELD}
@@ -43,6 +43,7 @@ const explanation = (
     />
     <Field<typeof LocalizedRichTextField>
       name={BODY_FIELD}
+      nameMode="path"
       component={LocalizedRichTextField}
       label={BODY_LABEL}
       required={REQUIRED}
@@ -63,9 +64,9 @@ const meta = {
     },
   },
   args: {
-    stageId: 'anonymisation-1',
+    stageId: 'information-1',
     sectionTitle: 'What the participant is told',
-    children: explanation,
+    children: page,
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof FieldStoryHost>;
@@ -106,14 +107,12 @@ export const SeveralLanguages: Story = {
     await expect(title).toHaveValue('');
     await expect(title.closest('[lang]')).toHaveAttribute('lang', 'fr');
 
-    await userEvent.type(title, 'Votre vie privée est protégée');
+    await userEvent.type(title, 'Bienvenue');
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
     await waitFor(async () => {
       await expect(
         canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent(
-        '"title":{"en-US":"This interview uses enhanced privacy protection","fr":"Votre vie privée est protégée"}',
-      );
+      ).toHaveTextContent('"title":{"en-US":"Welcome","fr":"Bienvenue"}');
     });
   },
 };

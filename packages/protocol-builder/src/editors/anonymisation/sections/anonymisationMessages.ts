@@ -30,23 +30,11 @@ export const anonymisationMessages = defineMessages({
     description:
       'Description under the heading of the passphrase-explanation section, telling the researcher what this explanation has to cover.',
   },
-  explanationHeadingLabel: {
-    id: 'protocolBuilder.anonymisation.explanationHeadingLabel',
-    defaultMessage: 'Title',
+  explanationTextLabel: {
+    id: 'protocolBuilder.anonymisation.explanationTextLabel',
+    defaultMessage: 'Explanation',
     description:
-      'Label of the field holding the heading at the top of the screen where a participant is asked for a passphrase.',
-  },
-  explanationHeadingPlaceholder: {
-    id: 'protocolBuilder.anonymisation.explanationHeadingPlaceholder',
-    defaultMessage: 'This interview uses enhanced privacy protection',
-    description:
-      'Placeholder shown in the empty explanation-heading field. An example of the heading a participant would read, so it is written in the participant’s second person rather than the researcher’s.',
-  },
-  explanationBodyLabel: {
-    id: 'protocolBuilder.anonymisation.explanationBodyLabel',
-    defaultMessage: 'Body',
-    description:
-      'Label of the field holding the prose a participant reads before being asked to choose a passphrase.',
+      'Label of the field holding the text, heading included, that a participant reads before being asked to choose a passphrase.',
   },
   explanationBodyPlaceholder: {
     id: 'protocolBuilder.anonymisation.explanationBodyPlaceholder',

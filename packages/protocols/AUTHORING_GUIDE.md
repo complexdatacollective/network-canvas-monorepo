@@ -103,7 +103,7 @@ panel `title`; Information `title` and item `content` /
 `description`; Narrative preset `label` and each `highlight[].label`; variable
 `options[].label` and scalar `minLabel` / `maxLabel`; TieStrengthCensus `negativeLabel`;
 CategoricalBin `otherVariablePrompt` and `otherOptionLabel`; Anonymisation
-`explanationText.title` and `.body`; FamilyPedigree `censusPrompt`; and the codebook `label` of
+`explanationText`; FamilyPedigree `censusPrompt`; and the codebook `label` of
 every node type and edge type (§3). The validator reports any participant-facing field left as a
 plain string.
 
@@ -224,7 +224,7 @@ Required keys per stage type used by these templates:
     "targetFeatureProperty": "name"          // a property of the GeoJSON features
   }
   ```
-- **Anonymisation**: `explanationText:{title, body}` + `validation?:{minLength?,maxLength?}`.
+- **Anonymisation**: `explanationText` (markdown, usually opening with a `# ` heading as the screen's title) + `validation?:{minLength?,maxLength?}`.
 - **LanguageChooser**: no fields beyond the base stage (no `subject`). Lets the participant pick
   one of the protocol's `locales`, so add it only when there is more than one. Put it before any
   stage the participant should read in their chosen language, normally first:

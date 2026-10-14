@@ -46,10 +46,7 @@ const anonymisationStage = (
   id,
   type: 'Anonymisation',
   label: { en: 'Protect your answers' },
-  explanationText: {
-    title: { en: 'Protect your answers' },
-    body: { en: 'Choose one.' },
-  },
+  explanationText: { en: '# Protect your answers\n\nChoose one.' },
   validation,
 });
 
