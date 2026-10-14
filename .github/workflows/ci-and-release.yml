@@ -125,7 +125,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
       - id: flags
@@ -348,7 +348,7 @@ jobs:
           # history.
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
       - name: Determine which E2E suites this ref requires
@@ -1279,7 +1279,7 @@ jobs:
       # place for either than the machine they were made on.
       - name: Keep the failing run's diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: studio-stack-diagnostics
           include-hidden-files: true
@@ -1342,7 +1342,7 @@ jobs:
 
       - name: Keep the failing run's diagnostics
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: studio-egress-${{ matrix.variant }}-diagnostics
           include-hidden-files: true
@@ -1441,7 +1441,7 @@ jobs:
       # token) also live there.
       - name: Keep the lane's evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: studio-upgrade-evidence
           path: |
@@ -1895,7 +1895,7 @@ jobs:
         with:
           persist-credentials: false
       - if: steps.head.outputs.release_pr == 'true'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
       - name: Refuse a release PR that leaves normal-lane changesets behind
@@ -2160,10 +2160,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -2381,10 +2381,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -2513,7 +2513,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload benchmark telemetry
         if: always() && env.E2E_BENCHMARK == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: interview-e2e-telemetry
           path: ${{ runner.temp }}/interview-e2e-telemetry.tsv
@@ -2562,7 +2562,7 @@ jobs:
         run: node packages/interview/e2e/scripts/flaky-summary.mjs
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: interview-playwright-report
           path: packages/interview/e2e/playwright-report/
@@ -2637,7 +2637,7 @@ jobs:
         run: pnpm --filter @codaco/interview run test:e2e:native
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: interview-playwright-report-native
           path: packages/interview/e2e/playwright-report/
@@ -2676,7 +2676,7 @@ jobs:
         run: sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: interviewer-playwright-report
           path: apps/interviewer/e2e/playwright-report/
@@ -2744,7 +2744,7 @@ jobs:
         run: pnpm --filter @codaco/interviewer run test:e2e:native
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: interviewer-playwright-report-native
           path: apps/interviewer/e2e/playwright-report/
@@ -2784,7 +2784,7 @@ jobs:
         run: sudo chown -R "$(id -u):$(id -g)" . 2>/dev/null || true
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report-architect
           path: apps/architect/e2e/playwright-report/
@@ -2889,7 +2889,7 @@ jobs:
         run: pnpm --filter @codaco/architect run test:e2e:native --shard=${{ matrix.shard }}
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # Unique per shard: `matrix.shard` itself contains a `/` and is not
           # a legal artifact name, and without a per-shard name the two
@@ -3125,7 +3125,7 @@ jobs:
         # step pick by job result. Missing artifacts (a suite that died before
         # reporting) simply do not match the pattern.
         if: contains(env.SUITE_RESULTS, 'failure')
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: '*playwright-report*'
           path: reports
@@ -3597,10 +3597,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -3661,7 +3661,7 @@ jobs:
           fetch-depth: 2
           fetch-tags: true
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
       - id: architect
@@ -3749,11 +3749,11 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -3844,11 +3844,11 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -3927,11 +3927,11 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.background_creator_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -4023,11 +4023,11 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
         run: bash .github/scripts/app-release-guard.sh
       - if: steps.guard.outputs.skip != 'true'
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
       - if: steps.guard.outputs.skip != 'true'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -4256,7 +4256,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           fetch-depth: 2
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
       - name: Detect architect release
@@ -4328,7 +4328,7 @@ jobs:
           else
             node scripts/release/verify-packaged-app.mjs --app apps/interviewer-classic
           fi
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # Distinct prefix so the publish job's glob doesn't also collect the
           # `interviewer-*` artifacts built in the same run.
@@ -4385,7 +4385,7 @@ jobs:
           else
             node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
           fi
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: architect-${{ matrix.platform }}
           path: apps/architect-classic/release-builds/*
@@ -4404,7 +4404,7 @@ jobs:
       mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
       - name: Mirror source to external master
@@ -4444,7 +4444,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: artifacts
           pattern: interviewer-release-*
@@ -4476,10 +4476,10 @@ jobs:
       mirror_sha: ${{ steps.mirror.outputs.mirror_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
-      - uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
         with:
           install: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
@@ -4522,7 +4522,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: artifacts
           pattern: architect-*
