@@ -136,3 +136,54 @@ describe('Protocol Summary stage wording that the interview fills in', () => {
     expect(within(row).queryByText('count')).not.toBeInTheDocument();
   });
 });
+
+describe('Protocol Summary form text that shows values', () => {
+  it('names a value about the form’s subject by its attribute in a field’s prompt', () => {
+    const formProtocol = {
+      ...protocol,
+      codebook: {
+        node: {
+          person: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            variables: {
+              nick: { name: 'Preferred name', type: 'text' },
+              age: { name: 'Age', type: 'number' },
+            },
+          },
+        },
+        edge: {},
+        ego: {},
+      },
+    } as unknown as CurrentProtocol;
+    render(
+      <SummaryContext.Provider
+        value={{
+          protocol: formProtocol,
+          protocolName: formProtocol.name,
+          index: [],
+        }}
+      >
+        <Stage
+          id="alter-form"
+          label={{ en: 'About each person' }}
+          stageNumber={5}
+          type="AlterForm"
+          configuration={{
+            subject: { entity: 'node', type: 'person' },
+            dynamicValues: { nick: { path: 'node.nick' } },
+            form: {
+              fields: [
+                { variable: 'age', prompt: { en: 'How old is {nick}?' } },
+              ],
+            },
+          }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(screen.getByText('How old is', { exact: false })).toHaveTextContent(
+      'How old is This person: Preferred name?',
+    );
+  });
+});

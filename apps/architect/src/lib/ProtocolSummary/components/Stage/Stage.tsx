@@ -443,7 +443,8 @@ const StageContent = ({
 };
 /**
  * A stage, and what its text that shows values can show: every value its
- * prompts could, so each binding reads as the value it stands for.
+ * prompts or its form's fields could, so each binding reads as the value it
+ * stands for wherever the summary prints it.
  */
 const Stage = (props: StageProps) => {
   const { protocol } = useContext(SummaryContext);
@@ -453,13 +454,20 @@ const Stage = (props: StageProps) => {
     const bindings = (
       isRecord(configuration.dynamicValues) ? configuration.dynamicValues : {}
     ) as DynamicValues;
-    return {
-      context: dynamicValueContextFor({
+    const contextAt = (at: 'prompt' | 'formField') =>
+      dynamicValueContextFor({
         codebook: protocol.codebook,
         stage,
         sitePath: [],
-        site: 'prompt',
-      }),
+        site: at,
+      });
+    const prompt = contextAt('prompt');
+    const formField = contextAt('formField');
+    return {
+      context: {
+        ...prompt,
+        roles: new Set([...prompt.roles, ...formField.roles]),
+      },
       bindings,
     };
   }, [configuration, type, protocol.codebook]);
