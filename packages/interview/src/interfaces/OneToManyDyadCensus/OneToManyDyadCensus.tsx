@@ -231,9 +231,13 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
 
   return (
     <div className="interface">
-      <DynamicValueEntity {...focalOnScreen.values}>
-        <Prompts />
-      </DynamicValueEntity>
+      {/* Like a census with no pairs, the prompt waits for a focal node to
+          ask about, as the node itself does. */}
+      {focalOnScreen.values.labels.focal !== undefined && (
+        <DynamicValueEntity {...focalOnScreen.values}>
+          <Prompts />
+        </DynamicValueEntity>
+      )}
       <AnimatePresence
         mode="popLayout"
         onExitComplete={focalOnScreen.onExitComplete}

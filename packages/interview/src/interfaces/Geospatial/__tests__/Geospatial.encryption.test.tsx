@@ -132,11 +132,13 @@ const person: NcNode = {
 async function renderGeospatial({
   unlocked = false,
   stageUnderTest = stage,
+  nodes = [person],
 }: {
   unlocked?: boolean;
   stageUnderTest?: StageProps<'Geospatial'>['stage'];
+  nodes?: NcNode[];
 } = {}) {
-  const store = createEncryptionStore([person], [stageUnderTest], variables);
+  const store = createEncryptionStore(nodes, [stageUnderTest], variables);
   if (unlocked) await unlockWith(store, 'pw');
 
   render(
@@ -202,20 +204,34 @@ async function readStoredLocation(node: NcNode | undefined) {
 }
 
 describe('Geospatial prompt', () => {
+  const namingStage: StageProps<'Geospatial'>['stage'] = {
+    ...stage,
+    dynamicValues: { who: { path: 'node.$label' } },
+    prompts: stage.prompts.map((prompt) => ({
+      ...prompt,
+      text: { en: 'Where does {who} live?' },
+    })),
+  };
+
   it('names the node being placed by its label', async () => {
     const { waitForMap } = await renderGeospatial({
-      stageUnderTest: {
-        ...stage,
-        dynamicValues: { who: { path: 'node.$label' } },
-        prompts: stage.prompts.map((prompt) => ({
-          ...prompt,
-          text: { en: 'Where does {who} live?' },
-        })),
-      },
+      stageUnderTest: namingStage,
     });
     await waitForMap();
     const value = await screen.findByText('Alice', { selector: 'bdi' });
     expect(value.closest('[data-dynamic-value]')).not.toBeNull();
+  });
+
+  // A stage with nobody to place is skipped, but one reached directly (a
+  // preview of it) still renders: its prompt would name nobody.
+  it('asks nothing when there is nobody to place', async () => {
+    const { waitForMap } = await renderGeospatial({
+      stageUnderTest: namingStage,
+      nodes: [],
+    });
+    await waitForMap();
+    expect(screen.queryByText(/^Where does/)).toBeNull();
+    expect(screen.queryByTestId('outside-selectable-areas-button')).toBeNull();
   });
 });
 

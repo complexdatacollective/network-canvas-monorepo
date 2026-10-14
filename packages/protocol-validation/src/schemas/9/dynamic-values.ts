@@ -75,30 +75,41 @@ export const DYNAMIC_VALUE_ROLE_PREFIXES: Readonly<
  * The roles that are a node, and so have the label the interview shows on
  * it (see `dynamicValueLabelPathFor`).
  */
-export const LABELLED_DYNAMIC_VALUE_ROLES: ReadonlySet<DynamicValueRole> =
-  new Set<DynamicValueRole>([
-    'node',
-    'dyadSource',
-    'dyadTarget',
-    'focal',
-    'edgeFrom',
-    'edgeTo',
-  ]);
+export type LabelledDynamicValueRole = Exclude<
+  DynamicValueRole,
+  'ego' | 'edge'
+>;
 
 /**
- * The roles text can name only by their label. An edge's two ends can be
- * nodes of any type, so no codebook says which attributes they have.
+ * The roles whose attributes text can name. An edge's two ends can be nodes
+ * of any type, so no codebook says which attributes they have: text names
+ * them only by their label.
  */
-const LABEL_ONLY_ROLES: ReadonlySet<DynamicValueRole> =
-  new Set<DynamicValueRole>(['edgeFrom', 'edgeTo']);
+export type AttributeDynamicValueRole = Exclude<
+  DynamicValueRole,
+  'edgeFrom' | 'edgeTo'
+>;
+
+export const isLabelledDynamicValueRole = (
+  role: DynamicValueRole,
+): role is LabelledDynamicValueRole => role !== 'ego' && role !== 'edge';
+
+export const isAttributeDynamicValueRole = (
+  role: DynamicValueRole,
+): role is AttributeDynamicValueRole =>
+  role !== 'edgeFrom' && role !== 'edgeTo';
 
 // Codebook ids are letters, digits and `._:-`, so no attribute is named this.
 const LABEL_PATH_SEGMENT = '$label';
 
 export type ParsedDynamicValuePath =
   | Readonly<{ kind: 'intrinsic'; name: IntrinsicDynamicValue }>
-  | Readonly<{ kind: 'label'; role: DynamicValueRole }>
-  | Readonly<{ kind: 'attribute'; role: DynamicValueRole; variableId: string }>;
+  | Readonly<{ kind: 'label'; role: LabelledDynamicValueRole }>
+  | Readonly<{
+      kind: 'attribute';
+      role: AttributeDynamicValueRole;
+      variableId: string;
+    }>;
 
 const ROLE_PREFIX_ENTRIES = Object.entries(DYNAMIC_VALUE_ROLE_PREFIXES) as [
   DynamicValueRole,
@@ -112,14 +123,14 @@ export const parseDynamicValuePath = (
   if (isIntrinsic(path)) return { kind: 'intrinsic', name: path };
   for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
     if (
-      LABELLED_DYNAMIC_VALUE_ROLES.has(role) &&
+      isLabelledDynamicValueRole(role) &&
       path === `${prefix}${LABEL_PATH_SEGMENT}`
     ) {
       return { kind: 'label', role };
     }
   }
   for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
-    if (LABEL_ONLY_ROLES.has(role)) continue;
+    if (!isAttributeDynamicValueRole(role)) continue;
     if (path.startsWith(prefix) && path.length > prefix.length) {
       return { kind: 'attribute', role, variableId: path.slice(prefix.length) };
     }
@@ -129,7 +140,7 @@ export const parseDynamicValuePath = (
 
 /** The `path` naming a role's attribute. */
 export const dynamicValuePathFor = (
-  role: DynamicValueRole,
+  role: AttributeDynamicValueRole,
   variableId: string,
 ): string => `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${variableId}`;
 
@@ -140,8 +151,9 @@ export const dynamicValuePathFor = (
  * and falling back to its type's name. It is never missing, and unlike any
  * one attribute it names the node however its type records names.
  */
-export const dynamicValueLabelPathFor = (role: DynamicValueRole): string =>
-  `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${LABEL_PATH_SEGMENT}`;
+export const dynamicValueLabelPathFor = (
+  role: LabelledDynamicValueRole,
+): string => `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${LABEL_PATH_SEGMENT}`;
 
 const DynamicValuePathSchema = z
   .string()

@@ -611,47 +611,54 @@ export default function GeospatialInterface({
 
         {/* The prompt is the participant's core task on this stage, so it is
             not collapsible. It asks about the node being placed, so it can
-            name it. */}
-        <DynamicValueEntity {...placingOnScreen.values}>
-          <CollapsablePrompts dragConstraints={dragSafeRef} collapsible={false}>
-            <AnimatePresence
-              mode="wait"
-              onExitComplete={placingOnScreen.onExitComplete}
+            name it, and like a census with no pairs it is not shown when
+            there is nobody to place (a stage reached directly, such as a
+            preview of it). */}
+        {stageNodes.length > 0 && (
+          <DynamicValueEntity {...placingOnScreen.values}>
+            <CollapsablePrompts
+              dragConstraints={dragSafeRef}
+              collapsible={false}
             >
-              <motion.div
-                key={
-                  stageNodes[navState.activeIndex]?.[entityPrimaryKeyProperty]
-                }
-                variants={nodeAnimationVariants}
-                custom={navState.direction}
-                initial="initial"
-                animate="animate"
-                exit="exit"
+              <AnimatePresence
+                mode="wait"
+                onExitComplete={placingOnScreen.onExitComplete}
               >
-                {stageNodes[navState.activeIndex] && (
-                  <Node
-                    size="sm"
-                    nodeId={
-                      stageNodes[navState.activeIndex]![
-                        entityPrimaryKeyProperty
-                      ]
-                    }
-                    type={stageNodes[navState.activeIndex]!.type}
-                  />
-                )}
-              </motion.div>
-            </AnimatePresence>
-            <Button
-              size="sm"
-              color="primary"
-              onClick={handleOutsideSelectableAreas}
-              disabled={initialSelectionValue === 'outside-selectable-areas'}
-              data-testid="outside-selectable-areas-button"
-            >
-              {outsideAreasLabel}
-            </Button>
-          </CollapsablePrompts>
-        </DynamicValueEntity>
+                <motion.div
+                  key={
+                    stageNodes[navState.activeIndex]?.[entityPrimaryKeyProperty]
+                  }
+                  variants={nodeAnimationVariants}
+                  custom={navState.direction}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  {stageNodes[navState.activeIndex] && (
+                    <Node
+                      size="sm"
+                      nodeId={
+                        stageNodes[navState.activeIndex]![
+                          entityPrimaryKeyProperty
+                        ]
+                      }
+                      type={stageNodes[navState.activeIndex]!.type}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+              <Button
+                size="sm"
+                color="primary"
+                onClick={handleOutsideSelectableAreas}
+                disabled={initialSelectionValue === 'outside-selectable-areas'}
+                data-testid="outside-selectable-areas-button"
+              >
+                {outsideAreasLabel}
+              </Button>
+            </CollapsablePrompts>
+          </DynamicValueEntity>
+        )}
       </motion.div>
     </div>
   );
