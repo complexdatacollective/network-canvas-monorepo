@@ -76,7 +76,7 @@
   "protocolBuilder.binBehaviours.interactionModeLabel": "Mode d’interaction",
   "protocolBuilder.binBehaviours.requireCompletePlacementHint": "Pour chaque consigne, la personne participante ne peut pas continuer tant qu’il reste un nœud à placer dans une case.",
   "protocolBuilder.binBehaviours.requireCompletePlacementLabel": "Exiger le placement de chaque nœud",
-  "protocolBuilder.binBehaviours.selectDescription": "L’étape affiche un nœud à la fois, et la personne participante touche la case voulue. Le nœud suivant apparaît alors. Un nœud déjà rangé dans une case peut être déplacé en le touchant.",
+  "protocolBuilder.binBehaviours.selectDescription": "Un nœud de la réserve est sélectionné, et la personne participante touche la case voulue. Le nœud suivant est alors sélectionné. Toucher un autre nœud, même s’il est déjà dans une case, le sélectionne à la place.",
   "protocolBuilder.binBehaviours.selectLabel": "Toucher pour placer",
   "protocolBuilder.binBehaviours.title": "Placement des nœuds",
   "protocolBuilder.binBehaviours.unplacedNoticeHint": "Affiché lorsque la personne participante tente de continuer alors qu’un nœud attend encore d’être placé.",

@@ -1,21 +1,20 @@
 'use client';
 
-import { ArrowDownToLine, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
 import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
+import NodeDropAnimation from '@codaco/fresco-ui/NodeDropAnimation';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import DrawerNode from '../interfaces/Sociogram/DrawerNode';
-import { useContentFormat } from '../localization/useContentFormat';
 
 type NodeDrawerProps = {
   nodes: NcNode[];
@@ -40,10 +39,21 @@ type NodeDrawerProps = {
    * from, as a bin stage in select mode is (#1652).
    */
   draggable?: boolean;
+  /**
+   * False keeps the drawer open whenever it holds people and drops the tab
+   * that collapses it, as a bin stage in select mode needs so the person
+   * being placed stays in view.
+   */
+  collapsible?: boolean;
   /** The person shown as the one being placed. */
   selectedNodeId?: string;
   /** Called when a person who cannot be dragged is tapped. */
   onNodeClick?: (node: NcNode) => void;
+  /**
+   * Changes when the selected person should be brought back into view even
+   * if they are still the one selected, as on a new prompt.
+   */
+  selectionKey?: string;
 };
 
 const MotionChevron = motion.create(ChevronDown);
@@ -60,16 +70,18 @@ export default function NodeDrawer({
   floating = false,
   dropTarget,
   draggable = true,
+  collapsible = true,
   selectedNodeId,
   onNodeClick,
+  selectionKey,
 }: NodeDrawerProps) {
   const intl = useAppIntl();
-  // The count is shown among the protocol's text, so in its digits.
-  const contentFormat = useContentFormat();
   const unplacedId = useId();
   const toggleLabelId = useId();
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
-  const isExpanded = expanded ?? internalExpanded;
+  const isExpanded = collapsible
+    ? (expanded ?? internalExpanded)
+    : nodes.length > 0;
   const setIsExpanded = onExpandedChange ?? setInternalExpanded;
 
   const hasNodes = nodes.length > 0;
@@ -102,6 +114,48 @@ export default function NodeDrawer({
     }
   }, [hasNodes, prevHasNodes, setIsExpanded]);
 
+  // A newly selected person is the one being placed, so it must be visible:
+  // reopen the drawer if the participant had collapsed it, and scroll the row
+  // to them if they are out of view. A new prompt counts as a new selection.
+  const viewportRef = useRef<HTMLElement>(null);
+  const revealSelected = useCallback(() => {
+    const viewport = viewportRef.current;
+    const selected = viewport?.querySelector('[data-node-selected]');
+    if (!viewport || !selected) return;
+    // Only the row scrolls: scrollIntoView would also scroll the drawer's
+    // clipped, height-animating container.
+    const row = viewport.getBoundingClientRect();
+    const person = selected.getBoundingClientRect();
+    if (person.left < row.left) {
+      viewport.scrollLeft -= row.left - person.left;
+    } else if (person.right > row.right) {
+      viewport.scrollLeft += person.right - row.right;
+    }
+  }, []);
+  const selectionIsInDrawer =
+    selectedNodeId !== undefined &&
+    nodes.some((node) => node[entityPrimaryKeyProperty] === selectedNodeId);
+  const selection =
+    selectedNodeId === undefined
+      ? undefined
+      : `${selectionKey ?? ''}:${selectedNodeId}`;
+  const prevSelection = usePrevious(selection);
+  useEffect(() => {
+    if (selection === prevSelection) return;
+    if (!selectionIsInDrawer) return;
+    setIsExpanded(true);
+    // A frame later, once the selected state has rendered. Not cancelled on
+    // re-run: the effect re-runs on the next render, when the previous
+    // selection catches up, and the scroll must still happen.
+    requestAnimationFrame(revealSelected);
+  }, [
+    selection,
+    prevSelection,
+    selectionIsInDrawer,
+    setIsExpanded,
+    revealSelected,
+  ]);
+
   const [isLayoutAnimating, setIsLayoutAnimating] = useState(false);
   const prevNodeCountRef = usePrevious(nodes.length);
 
@@ -121,10 +175,14 @@ export default function NodeDrawer({
 
   const [remeasureKey, setRemeasureKey] = useState(0);
 
+  // The drawer can reorder without the selection changing (a sort value
+  // decrypting, say), so check the selected person is still in view once the
+  // people have settled.
   const handleLayoutAnimationComplete = useCallback(() => {
     setIsLayoutAnimating(false);
     setRemeasureKey((k) => k + 1);
-  }, []);
+    revealSelected();
+  }, [revealSelected]);
 
   const isToggleDisabled = isEmpty && !canExpandWhenEmpty;
 
@@ -143,53 +201,59 @@ export default function NodeDrawer({
           floating && !isExpandedEffective && 'pointer-events-none',
         )}
       >
-        {/* Toggle button */}
-        <motion.div layout="position" className="flex justify-center">
-          <motion.button
-            layout="position"
-            type="button"
-            onClick={() => {
-              if (!isToggleDisabled) setIsExpanded(!isExpanded);
-            }}
-            disabled={isToggleDisabled}
-            className={cx(
-              'bg-surface publish-colors pointer-events-auto flex h-12 items-center gap-2 rounded-t-lg px-8 text-sm transition-colors',
-              willAccept &&
-                (isOver
-                  ? activeDropTargetOverBackground
-                  : activeDropTargetBackground),
-              headingVariants({ level: 'label' }),
-              isToggleDisabled && 'cursor-not-allowed opacity-50',
-            )}
-            data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
-            data-drop-target-valid={willAccept || undefined}
-            data-drop-target-over={isOver || undefined}
-            aria-labelledby={`${unplacedId} ${toggleLabelId}`}
-            aria-expanded={isExpandedEffective}
-          >
-            <MotionChevron
-              className="size-[1em]"
-              aria-hidden
-              animate={{ rotate: isExpandedEffective ? 0 : 180 }}
-            />
-            <span aria-hidden="true" className="font-semibold tabular-nums">
-              {contentFormat.formatNumber(nodes.length)}
-            </span>
-            <span id={unplacedId} className="sr-only">
-              <AppMessage
-                message={messages.unplacedCount}
-                values={{ count: nodes.length }}
-              />
-            </span>
-            <span id={toggleLabelId} className="sr-only">
-              {intl.formatMessage(
-                isExpandedEffective
-                  ? messages.collapseDrawer
-                  : messages.expandDrawer,
+        {/* Toggle button. A drawer that cannot collapse has no tab, but still
+            tells screen readers how many people are left. */}
+        {collapsible ? (
+          <motion.div layout="position" className="flex justify-center">
+            <motion.button
+              layout="position"
+              type="button"
+              onClick={() => {
+                if (!isToggleDisabled) setIsExpanded(!isExpanded);
+              }}
+              disabled={isToggleDisabled}
+              className={cx(
+                'bg-surface publish-colors pointer-events-auto flex h-11 w-32 items-center justify-center rounded-t-[1.375rem] transition-colors',
+                willAccept &&
+                  (isOver
+                    ? activeDropTargetOverBackground
+                    : activeDropTargetBackground),
+                isToggleDisabled && 'cursor-not-allowed opacity-50',
               )}
-            </span>
-          </motion.button>
-        </motion.div>
+              data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
+              data-drop-target-valid={willAccept || undefined}
+              data-drop-target-over={isOver || undefined}
+              aria-labelledby={`${unplacedId} ${toggleLabelId}`}
+              aria-expanded={isExpandedEffective}
+            >
+              <MotionChevron
+                className="size-7"
+                aria-hidden
+                animate={{ rotate: isExpandedEffective ? 0 : 180 }}
+              />
+              <span id={unplacedId} className="sr-only">
+                <AppMessage
+                  message={messages.unplacedCount}
+                  values={{ count: nodes.length }}
+                />
+              </span>
+              <span id={toggleLabelId} className="sr-only">
+                {intl.formatMessage(
+                  isExpandedEffective
+                    ? messages.collapseDrawer
+                    : messages.expandDrawer,
+                )}
+              </span>
+            </motion.button>
+          </motion.div>
+        ) : (
+          <span className="sr-only">
+            <AppMessage
+              message={messages.unplacedCount}
+              values={{ count: nodes.length }}
+            />
+          </span>
+        )}
 
         <motion.div
           layout
@@ -223,6 +287,7 @@ export default function NodeDrawer({
           )}
         >
           <ScrollArea
+            ref={viewportRef}
             orientation="horizontal"
             fade
             remeasureKey={remeasureKey}
@@ -232,7 +297,8 @@ export default function NodeDrawer({
               // Matches the height of a drawer node so the empty drawer
               // expands to a full row.
               <div className="flex min-h-24 w-full items-center justify-center px-8 text-sm opacity-70">
-                <ArrowDownToLine aria-hidden className="size-6" />
+                {/* Only loop while the drawer is open to be seen. */}
+                {isExpandedEffective && <NodeDropAnimation />}
                 <span className="sr-only">
                   <AppMessage message={messages.dropToRemove} />
                 </span>
