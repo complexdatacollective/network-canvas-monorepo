@@ -366,6 +366,23 @@ describe('markdownSource', () => {
 });
 
 describe('DynamicMarkdown', () => {
+  it('never lets the researcher’s words place a value, even written as a character reference', () => {
+    for (const forged of [
+      '&#xE000;0&#xE000;',
+      '&#Xe000;0&#x0E000;',
+      '&#57344;0&#057344;',
+    ]) {
+      const html = renderToStaticMarkup(
+        createElement(DynamicMarkdown, {
+          parts: [`Before ${forged} and `, { name: 'name', text: 'Ada' }],
+        }),
+      );
+      expect(html.match(/data-dynamic-value/g), forged).toHaveLength(1);
+      expect(html.match(/<bdi\b[^>]*>Ada<\/bdi>/g), forged).toHaveLength(1);
+      expect(html, forged).not.toContain('\u{E000}');
+    }
+  });
+
   it('never lets a value create, complete or change an autolink', () => {
     for (const [before, value, after] of AUTOLINK_SPLITS) {
       const html = renderToStaticMarkup(

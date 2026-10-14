@@ -11,7 +11,11 @@ import {
 import { DYNAMIC_VALUE_MARKER } from '@codaco/protocol-validation';
 
 import { runtimeMessages } from '../i18n/runtimeMessages';
-import { type DynamicTextPart, joinMarkdownParts } from './resolveDynamicText';
+import {
+  type DynamicTextPart,
+  joinMarkdownParts,
+  withoutMarkers,
+} from './resolveDynamicText';
 
 /**
  * One value the interview filled into the study's text, in a very subtle
@@ -61,7 +65,6 @@ export function DynamicTextParts({
 
 const MARKER = DYNAMIC_VALUE_MARKER;
 const MARKED_VALUE = new RegExp(`${MARKER}(\\d+)${MARKER}`, 'g');
-const ANY_MARKER = new RegExp(MARKER, 'g');
 /**
  * A marked value inside an attribute, with the empty comments that
  * `joinMarkdownParts` may set around it. Markdown percent-encodes a link
@@ -154,7 +157,7 @@ export function DynamicMarkdown({
     const shown: string[] = [];
     const text = joinMarkdownParts(
       parts.map((part) =>
-        typeof part === 'string' ? part.replace(ANY_MARKER, '') : part,
+        typeof part === 'string' ? withoutMarkers(part) : part,
       ),
       (part) => {
         shown.push(part.text);

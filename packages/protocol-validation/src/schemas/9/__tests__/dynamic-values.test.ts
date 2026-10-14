@@ -330,6 +330,29 @@ describe('dynamic values in stage text', () => {
       expect(issuesOf(showingFlag(guarded('flag')))).toEqual([]);
     });
 
+    it('refuses text whose words are only in the version no answer reaches', () => {
+      const protocol = showingFlag(
+        '{flag, select, missing {} yes {} no {} other {Shown to nobody.}}',
+        { yes: true, no: false },
+      );
+      const index = stageIndex(protocol, 'alterForm');
+      expect(issuesOf(protocol)).toEqual([
+        expect.objectContaining({
+          path: `stages.${index}.form.fields.0.prompt.en`,
+          message: expect.stringContaining('blank in every version'),
+        }),
+      ]);
+      // With a case for only one answer, the other answer reads `other`.
+      expect(
+        issuesOf(
+          showingFlag(
+            '{flag, select, missing {} yes {} other {Shown for no.}}',
+            { yes: true },
+          ),
+        ),
+      ).toEqual([]);
+    });
+
     it('refuses to show a yes/no attribute without labels as words', () => {
       const protocol = showingFlag(guarded('flag'));
       delete personVariables(protocol).flag!.options;

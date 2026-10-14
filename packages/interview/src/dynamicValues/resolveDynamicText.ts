@@ -379,7 +379,16 @@ export const joinMarkdownParts = (
 };
 
 const MARKER = DYNAMIC_VALUE_MARKER;
-const ANY_MARKER = new RegExp(MARKER, 'g');
+// The marker as the researcher could write it: the character, or a numeric
+// character reference that markdown decodes into it.
+const ANY_MARKER = new RegExp(`${MARKER}|&#(?:[xX]0*[eE]000|0*57344);`, 'g');
+
+/**
+ * The researcher's words with every marker taken out, so that only the
+ * interview's own markers place values.
+ */
+export const withoutMarkers = (text: string): string =>
+  text.replace(ANY_MARKER, '');
 /**
  * A marked value's index inside an attribute. Markdown percent-encodes a link
  * destination, so a marker there arrives as its UTF-8 escape.
@@ -402,7 +411,7 @@ const valuesInAttributes = (
 ): ReadonlySet<number> => {
   const marked = joinMarkdownParts(
     parts.map((part) =>
-      typeof part === 'string' ? part.replace(ANY_MARKER, '') : part,
+      typeof part === 'string' ? withoutMarkers(part) : part,
     ),
     (_, index) => `${MARKER}${index}${MARKER}`,
   );
