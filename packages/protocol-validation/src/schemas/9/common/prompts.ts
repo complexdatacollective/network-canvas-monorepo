@@ -195,8 +195,10 @@ export const categoricalBinPromptSchema = promptSchema
       requireType: ['text'],
       usage: 'validatedAttribute',
     }).optional(),
+    // The question the "other" bin asks about the node just put in it, which
+    // is a one-field form about that node.
     otherVariablePrompt: localizedString(nonBlankText(), 'markdown', {
-      dynamicValues: 'prompt',
+      dynamicValues: 'formField',
     }).optional(),
     otherOptionLabel: localizedString(nonBlankText(), 'markdown', {
       dynamicValues: 'prompt',
@@ -255,7 +257,7 @@ export const categoricalBinPromptSchema = promptSchema
             usage: 'validatedAttribute',
           }),
           otherVariablePrompt: localizedString(nonBlankText(), 'markdown', {
-            dynamicValues: 'prompt',
+            dynamicValues: 'formField',
           }),
           otherOptionLabel: localizedString(nonBlankText(), 'markdown', {
             dynamicValues: 'prompt',

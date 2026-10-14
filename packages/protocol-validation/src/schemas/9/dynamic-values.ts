@@ -18,9 +18,10 @@ const DYNAMIC_VALUE_PATH = 'dynamicValuePath' as const;
  *   heading, an Information screen): the participant and the interview;
  * - `prompt`, a stage's question, shown while its interface is on one active
  *   entity where it has one (the pair a Dyad Census asks about, the focal
- *   person of a one-to-many census);
+ *   node of a one-to-many census, the node a Geospatial stage is placing);
  * - `formField`, a form field's caption, shown while the form describes one
- *   entity, whose values earlier fields in the form have already written.
+ *   entity: a node or edge form's fields, and the question a Categorical Bin
+ *   asks about the node just put in its "other" bin.
  */
 export type DynamicValueSite = 'stageText' | 'prompt' | 'formField';
 
@@ -42,10 +43,10 @@ const isIntrinsic = (path: string): path is IntrinsicDynamicValue =>
   Object.hasOwn(INTRINSIC_DYNAMIC_VALUES, path);
 
 /**
- * Whose attribute a value is: the participant (`ego`), the one entity a form
- * or interface is on (`node`, `edge`), the two nodes a Dyad Census asks
- * about (`dyadSource`, `dyadTarget`), or the focal node of a one-to-many
- * census.
+ * Whose value it is: the participant (`ego`), the one entity a form or
+ * interface is on (`node`, `edge`), the two nodes a Dyad Census asks about
+ * (`dyadSource`, `dyadTarget`), the focal node of a one-to-many census, or
+ * the two nodes an edge form's edge joins (`edgeFrom`, `edgeTo`).
  */
 export type DynamicValueRole =
   | 'ego'
@@ -53,7 +54,9 @@ export type DynamicValueRole =
   | 'edge'
   | 'dyadSource'
   | 'dyadTarget'
-  | 'focal';
+  | 'focal'
+  | 'edgeFrom'
+  | 'edgeTo';
 
 export const DYNAMIC_VALUE_ROLE_PREFIXES: Readonly<
   Record<DynamicValueRole, string>
@@ -64,24 +67,61 @@ export const DYNAMIC_VALUE_ROLE_PREFIXES: Readonly<
   dyadSource: 'dyad.source.',
   dyadTarget: 'dyad.target.',
   focal: 'one_to_many.focal.',
+  edgeFrom: 'edge.from.',
+  edgeTo: 'edge.to.',
 };
+
+/**
+ * The roles that are a node, and so have the label the interview shows on
+ * it (see `dynamicValueLabelPathFor`).
+ */
+export const LABELLED_DYNAMIC_VALUE_ROLES: ReadonlySet<DynamicValueRole> =
+  new Set<DynamicValueRole>([
+    'node',
+    'dyadSource',
+    'dyadTarget',
+    'focal',
+    'edgeFrom',
+    'edgeTo',
+  ]);
+
+/**
+ * The roles text can name only by their label. An edge's two ends can be
+ * nodes of any type, so no codebook says which attributes they have.
+ */
+const LABEL_ONLY_ROLES: ReadonlySet<DynamicValueRole> =
+  new Set<DynamicValueRole>(['edgeFrom', 'edgeTo']);
+
+// Codebook ids are letters, digits and `._:-`, so no attribute is named this.
+const LABEL_PATH_SEGMENT = '$label';
 
 export type ParsedDynamicValuePath =
   | Readonly<{ kind: 'intrinsic'; name: IntrinsicDynamicValue }>
+  | Readonly<{ kind: 'label'; role: DynamicValueRole }>
   | Readonly<{ kind: 'attribute'; role: DynamicValueRole; variableId: string }>;
+
+const ROLE_PREFIX_ENTRIES = Object.entries(DYNAMIC_VALUE_ROLE_PREFIXES) as [
+  DynamicValueRole,
+  string,
+][];
 
 /** What a binding's `path` names, or undefined when it names nothing. */
 export const parseDynamicValuePath = (
   path: string,
 ): ParsedDynamicValuePath | undefined => {
   if (isIntrinsic(path)) return { kind: 'intrinsic', name: path };
-  for (const [role, prefix] of Object.entries(DYNAMIC_VALUE_ROLE_PREFIXES)) {
+  for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
+    if (
+      LABELLED_DYNAMIC_VALUE_ROLES.has(role) &&
+      path === `${prefix}${LABEL_PATH_SEGMENT}`
+    ) {
+      return { kind: 'label', role };
+    }
+  }
+  for (const [role, prefix] of ROLE_PREFIX_ENTRIES) {
+    if (LABEL_ONLY_ROLES.has(role)) continue;
     if (path.startsWith(prefix) && path.length > prefix.length) {
-      return {
-        kind: 'attribute',
-        role: role as DynamicValueRole,
-        variableId: path.slice(prefix.length),
-      };
+      return { kind: 'attribute', role, variableId: path.slice(prefix.length) };
     }
   }
   return undefined;
@@ -92,6 +132,16 @@ export const dynamicValuePathFor = (
   role: DynamicValueRole,
   variableId: string,
 ): string => `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${variableId}`;
+
+/**
+ * The `path` naming a node role's label: the text the interview shows on that
+ * node, chosen from its attributes by the same rules (a variable called
+ * "name", then one whose name contains "name", then the first text answer)
+ * and falling back to its type's name. It is never missing, and unlike any
+ * one attribute it names the node however its type records names.
+ */
+export const dynamicValueLabelPathFor = (role: DynamicValueRole): string =>
+  `${DYNAMIC_VALUE_ROLE_PREFIXES[role]}${LABEL_PATH_SEGMENT}`;
 
 const DynamicValuePathSchema = z
   .string()
@@ -158,28 +208,40 @@ export const DynamicValuesSchema = z
 
 export type DynamicValues = z.infer<typeof DynamicValuesSchema>;
 
-/** Stages whose prompts are shown about two people at a time. */
+/** Stages whose prompts are shown about two nodes at a time. */
 const DYAD_STAGE_TYPES: ReadonlySet<string> = new Set([
   'DyadCensus',
   'TieStrengthCensus',
 ]);
 
 /**
- * The roles whose attributes a site can show, from the stage it is on and
- * where on it it sits. This is the one table of what is available where: the
+ * What a form field's form describes: its entity, and whether that is the
+ * stage's own subject. Only then can text name the entity's attributes: a
+ * Network Composer edge type's form describes an edge type of its own, which
+ * no stage binding can name unambiguously.
+ */
+export type DynamicValueForm = Readonly<{
+  entity: StageSubject['entity'];
+  isStageSubject: boolean;
+}>;
+
+/**
+ * The roles a site can show values of, from the stage it is on and where on
+ * it it sits. This is the one table of what is available where: the
  * protocol's validation and Architect's palette both read it.
  *
  * Ego values are available everywhere, because every stage runs inside an
  * interview's network. A stage's prompts add the entities its interface is
  * on while the prompt shows: a Dyad Census's pair, a one-to-many census's
- * focal person. A form field adds the entity the form describes, when that is
- * the stage's own subject (`formSubject`). An interface that shows many
- * people at once exposes none of theirs.
+ * focal node, the node a Geospatial stage is placing. A form field adds the
+ * entity its form describes, when that is the stage's own subject, and an
+ * edge form adds the two nodes its edge joins, by label. An interface that
+ * shows many nodes at once exposes none of theirs.
  */
 export const dynamicValueRolesAt = (
   stageType: string,
   site: DynamicValueSite,
-  formSubject: StageSubject | undefined,
+  form: DynamicValueForm | undefined,
 ): ReadonlySet<DynamicValueRole> => {
   const roles = new Set<DynamicValueRole>(['ego']);
   if (site === 'prompt') {
@@ -188,10 +250,15 @@ export const dynamicValueRolesAt = (
       roles.add('dyadTarget');
     }
     if (stageType === 'OneToManyDyadCensus') roles.add('focal');
+    if (stageType === 'Geospatial') roles.add('node');
   }
-  if (site === 'formField' && formSubject !== undefined) {
-    if (formSubject.entity === 'node') roles.add('node');
-    if (formSubject.entity === 'edge') roles.add('edge');
+  if (site === 'formField' && form !== undefined) {
+    if (form.entity === 'node' && form.isStageSubject) roles.add('node');
+    if (form.entity === 'edge') {
+      if (form.isStageSubject) roles.add('edge');
+      roles.add('edgeFrom');
+      roles.add('edgeTo');
+    }
   }
   return roles;
 };
@@ -296,6 +363,8 @@ const ROLE_NAMES: Readonly<Record<DynamicValueRole, string>> = {
   dyadSource: 'the first node of the pair',
   dyadTarget: 'the second node of the pair',
   focal: 'the node being asked about',
+  edgeFrom: 'the first node of the edge',
+  edgeTo: 'the second node of the edge',
 };
 
 /** How a binding reads at a site (see `DynamicValueStatus`). */
@@ -320,14 +389,21 @@ export const dynamicValueStatus = (
       },
     };
   }
-  const variables = context.variablesFor(parsed.role);
-  const variable = variables?.[parsed.variableId];
   if (!context.roles.has(parsed.role)) {
     return {
       status: 'unavailable',
       reason: `values about ${ROLE_NAMES[parsed.role]} cannot be shown here`,
     };
   }
+  // A node on screen always shows a label, its type's name at least.
+  if (parsed.kind === 'label') {
+    return {
+      status: 'available',
+      argument: { cases: [], numeric: false, optional: false },
+    };
+  }
+  const variables = context.variablesFor(parsed.role);
+  const variable = variables?.[parsed.variableId];
   if (variable === undefined) {
     return {
       status: 'unknown',

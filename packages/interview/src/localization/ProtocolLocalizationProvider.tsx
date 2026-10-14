@@ -29,6 +29,7 @@ import { useDynamicValueSources } from '../dynamicValues/DynamicValueScope';
 import {
   type DynamicTextPart,
   type DynamicValueFormatters,
+  type DynamicValueSources,
   resolveDynamicText,
 } from '../dynamicValues/resolveDynamicText';
 import { contentFormatFor, resolveContentLocale } from './contentFormat';
@@ -239,12 +240,28 @@ export type ResolvedProtocolText = ResolvedLocalizedString &
 export function useResolveLocalizedString(): (
   value: LocalizedString,
 ) => ResolvedProtocolText {
+  const sources = useDynamicValueSources();
+  const resolveIn = useResolveLocalizedStringIn();
+  return useCallback(
+    (value: LocalizedString) => resolveIn(value, sources),
+    [resolveIn, sources],
+  );
+}
+
+/**
+ * `useResolveLocalizedString` with the dynamic values given rather than read
+ * where it is called, for text resolved for somewhere else: a dialog about
+ * one node, opened from an event (see `withDynamicValueEntities`).
+ */
+export function useResolveLocalizedStringIn(): (
+  value: LocalizedString,
+  sources: DynamicValueSources | null,
+) => ResolvedProtocolText {
   const { localization, resolutionOrder, format, locale } =
     useProtocolLocalizationState();
-  const sources = useDynamicValueSources();
   const intl = useAppIntl();
   return useCallback(
-    (value: LocalizedString) => {
+    (value: LocalizedString, sources: DynamicValueSources | null) => {
       const resolved = resolveLocalizedString(
         value,
         localization,
@@ -279,7 +296,7 @@ export function useResolveLocalizedString(): (
       }
       return { ...resolved, text: format(resolved.locale, resolved.text) };
     },
-    [localization, resolutionOrder, format, locale, sources, intl],
+    [localization, resolutionOrder, format, locale, intl],
   );
 }
 

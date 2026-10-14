@@ -55,6 +55,8 @@ const BINDINGS: DynamicValues = {
   languages: { path: 'ego.languages', cases: { french: 'fr' } },
   smokes: { path: 'ego.smokes', cases: { yes: true } },
   partner: { path: 'dyad.target.name' },
+  first: { path: 'dyad.source.$label' },
+  second: { path: 'dyad.target.$label' },
   today: { path: 'now' },
 };
 
@@ -65,6 +67,7 @@ const sources = (
   bindings: BINDINGS,
   intrinsics: { now: new Date('2026-10-13T12:00:00Z') },
   attributes: { ego },
+  labels: {},
   variablesFor: (role) => (role === 'ego' ? VARIABLES : undefined),
   ...extra,
 });
@@ -170,6 +173,31 @@ describe('resolveDynamicText', () => {
     expect(
       resolve('{partner, select, missing {them} other {{partner}}}', {})?.text,
     ).toBe('them');
+  });
+
+  it('shows the label of each node on screen as written', () => {
+    expect(
+      resolve('Do {first} and {second} know each other?', {}, 'en', {
+        labels: { dyadSource: 'Jim', dyadTarget: '{Alice} #1' },
+      }),
+    ).toEqual({
+      parts: [
+        'Do ',
+        { name: 'first', text: 'Jim' },
+        ' and ',
+        { name: 'second', text: '{Alice} #1' },
+        ' know each other?',
+      ],
+      text: 'Do Jim and {Alice} #1 know each other?',
+    });
+  });
+
+  it('reads the label of a node that is not on screen as missing', () => {
+    expect(
+      resolve('{first, select, missing {Them} other {{first}}}', {}, 'en', {
+        labels: { dyadTarget: 'Alice' },
+      })?.text,
+    ).toBe('Them');
   });
 
   it("shows today's date", () => {

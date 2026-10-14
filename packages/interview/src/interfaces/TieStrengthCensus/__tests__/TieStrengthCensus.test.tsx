@@ -386,4 +386,32 @@ describe('TieStrengthCensus dynamic values', () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it('names each node of the pair by the label it shows', async () => {
+    const [first, second] = makeNodes();
+    renderInterface([], codebook, false, {
+      stage: {
+        ...stage,
+        dynamicValues: {
+          first: { path: 'dyad.source.$label' },
+          second: { path: 'dyad.target.$label' },
+        },
+        prompts: stage.prompts.map((prompt) => ({
+          ...prompt,
+          negativeLabel: { en: '{first} and {second} are not close' },
+        })),
+      } as StageProps<'TieStrengthCensus'>['stage'],
+      // The second has no name, so it shows its type's.
+      nodes: [
+        { ...first!, [entityAttributesProperty]: { name: 'Ada' } },
+        second!,
+      ],
+    });
+
+    expect(
+      await screen.findByRole('option', {
+        name: 'Ada and Person are not close',
+      }),
+    ).toBeInTheDocument();
+  });
 });

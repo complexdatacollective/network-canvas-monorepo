@@ -25,6 +25,10 @@ import PassphraseEntry from '../../components/PassphraseEntry';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import {
+  useDynamicValueSources,
+  withDynamicValueEntities,
+} from '../../dynamicValues/DynamicValueScope';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
 import { shownLabel } from '../../forms/ProtocolField';
 import { useValidationNetwork } from '../../forms/useValidationNetwork';
@@ -38,6 +42,7 @@ import { useStageSelector } from '../../hooks/useStageSelector';
 import {
   type ResolvedProtocolText,
   useResolveLocalizedString,
+  useResolveLocalizedStringIn,
 } from '../../localization/ProtocolLocalizationProvider';
 import {
   getValidationContext,
@@ -61,7 +66,8 @@ import {
   getDecryptionScope,
   readEncryptedAttribute,
 } from '../Anonymisation/decryptionScope';
-import { useNodeLabel } from '../Anonymisation/useNodeLabel';
+import { useCachedOutcomes } from '../Anonymisation/useDecryptionScope';
+import { useNodeLabel, useNodeLabeller } from '../Anonymisation/useNodeLabel';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
 import CategoricalBinItem from './components/CategoricalBinItem';
 import { useCategoricalBins } from './useCategoricalBins';
@@ -317,6 +323,9 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     return false;
   };
   const resolve = useResolveLocalizedString();
+  const resolveIn = useResolveLocalizedStringIn();
+  const dynamicValueSources = useDynamicValueSources();
+  const labelNode = useNodeLabeller(useCachedOutcomes());
 
   const readOtherAnswer = async (node: NcNode, otherVariable: string) => {
     const stored = node[entityAttributesProperty][otherVariable];
@@ -369,7 +378,15 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
     // proves otherVariablePrompt exists whenever otherVariable is set.
     if (bin.isOther && prompt.otherVariable !== undefined) {
       const { otherVariable, otherVariablePrompt, otherOptionLabel } = prompt;
-      const otherPromptLabel = resolve(otherVariablePrompt);
+      // The question is about the node just dropped, so it can name it.
+      const otherPromptLabel = resolveIn(
+        otherVariablePrompt,
+        dynamicValueSources &&
+          withDynamicValueEntities(dynamicValueSources, {
+            attributes: { node: node[entityAttributesProperty] },
+            labels: { node: labelNode(node) },
+          }),
+      );
 
       // An answer that would be encrypted is not asked for until it could be
       // saved.
