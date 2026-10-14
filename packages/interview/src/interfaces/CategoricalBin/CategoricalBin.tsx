@@ -594,6 +594,7 @@ const CategoricalBin = ({ stage }: CategoricalBinStageProps) => {
           draggable={!selectMode}
           selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
           onNodeClick={selectMode ? choose : undefined}
+          selectionKey={prompt.id}
         />
       </div>
     </div>

@@ -44,6 +44,11 @@ type NodeDrawerProps = {
   selectedNodeId?: string;
   /** Called when a person who cannot be dragged is tapped. */
   onNodeClick?: (node: NcNode) => void;
+  /**
+   * Changes when the selected person should be brought back into view even
+   * if they are still the one selected, as on a new prompt.
+   */
+  selectionKey?: string;
 };
 
 const MotionChevron = motion.create(ChevronDown);
@@ -62,6 +67,7 @@ export default function NodeDrawer({
   draggable = true,
   selectedNodeId,
   onNodeClick,
+  selectionKey,
 }: NodeDrawerProps) {
   const intl = useAppIntl();
   // The count is shown among the protocol's text, so in its digits.
@@ -104,14 +110,18 @@ export default function NodeDrawer({
 
   // A newly selected person is the one being placed, so it must be visible:
   // reopen the drawer if the participant had collapsed it, and scroll the row
-  // to them if they are out of view.
+  // to them if they are out of view. A new prompt counts as a new selection.
   const viewportRef = useRef<HTMLElement>(null);
   const selectionIsInDrawer =
     selectedNodeId !== undefined &&
     nodes.some((node) => node[entityPrimaryKeyProperty] === selectedNodeId);
-  const prevSelectedNodeId = usePrevious(selectedNodeId);
+  const selection =
+    selectedNodeId === undefined
+      ? undefined
+      : `${selectionKey ?? ''}:${selectedNodeId}`;
+  const prevSelection = usePrevious(selection);
   useEffect(() => {
-    if (selectedNodeId === prevSelectedNodeId) return undefined;
+    if (selection === prevSelection) return undefined;
     if (!selectionIsInDrawer) return undefined;
     setIsExpanded(true);
     // A frame later, once the selected state has rendered. Not cancelled on
@@ -132,7 +142,7 @@ export default function NodeDrawer({
       }
     });
     return undefined;
-  }, [selectedNodeId, prevSelectedNodeId, selectionIsInDrawer, setIsExpanded]);
+  }, [selection, prevSelection, selectionIsInDrawer, setIsExpanded]);
 
   const [isLayoutAnimating, setIsLayoutAnimating] = useState(false);
   const prevNodeCountRef = usePrevious(nodes.length);

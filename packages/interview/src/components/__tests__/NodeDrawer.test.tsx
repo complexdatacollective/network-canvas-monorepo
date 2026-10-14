@@ -137,6 +137,40 @@ describe('NodeDrawer', () => {
     await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'true'));
   });
 
+  it('reopens on a new prompt even when the same person is still selected', async () => {
+    const nodes = ['a', 'b'].map((id) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      type: 'person',
+    }));
+    const { rerender } = render(
+      <DndStoreProvider>
+        <NodeDrawer
+          nodes={nodes}
+          draggable={false}
+          selectedNodeId="a"
+          selectionKey="prompt-1"
+        />
+      </DndStoreProvider>,
+    );
+    const tab = screen.getByRole('button', { name: /collapse drawer/i });
+    fireEvent.click(tab);
+    await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'false'));
+
+    rerender(
+      <DndStoreProvider>
+        <NodeDrawer
+          nodes={nodes}
+          draggable={false}
+          selectedNodeId="a"
+          selectionKey="prompt-2"
+        />
+      </DndStoreProvider>,
+    );
+
+    await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'true'));
+  });
+
   it('scrolls a newly selected person into view along the row', async () => {
     const nodes = ['a', 'b', 'c'].map((id) => ({
       [entityPrimaryKeyProperty]: id,
