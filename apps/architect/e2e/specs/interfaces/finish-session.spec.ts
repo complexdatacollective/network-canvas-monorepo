@@ -59,7 +59,8 @@ test('edits the finish stage a new protocol starts with', async ({
     id: 'finish',
     label: { en: 'Not eligible' },
     mode: 'confirmation',
-    content: { en: 'This study is not looking for more people like you.' },
+    // The text was a heading, and typing over it keeps it one.
+    content: { en: '# This study is not looking for more people like you.' },
     outcome: 'ineligible',
   });
   expect(stage).not.toHaveProperty('skipLogic');

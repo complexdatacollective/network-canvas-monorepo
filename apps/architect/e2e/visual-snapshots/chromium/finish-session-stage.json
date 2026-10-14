@@ -1,6 +1,6 @@
 {
   "content": {
-    "en": "This study is not looking for more people like you."
+    "en": "# This study is not looking for more people like you."
   },
   "finishConfirmation": {
     "en": "Are you sure you want to finish the interview?"
@@ -11,16 +11,14 @@
   "finishLabel": {
     "en": "Finish"
   },
-  "finishedNotice": {
-    "en": "This interview is finished, and its answers can no longer be changed."
+  "finishedContent": {
+    "en": "# Interview Finished\n\nThank you for participating!"
   },
   "id": "id-1",
   "label": {
     "en": "Not eligible"
   },
+  "mode": "confirmation",
   "outcome": "ineligible",
-  "title": {
-    "en": "Thank you for your interest"
-  },
   "type": "FinishSession"
 }
