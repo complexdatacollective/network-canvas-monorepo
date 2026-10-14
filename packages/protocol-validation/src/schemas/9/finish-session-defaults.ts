@@ -225,7 +225,7 @@ const holdsSuppliedText = (
 ): boolean => {
   const text = defaultFinishSessionText(locale);
   if (text === undefined) return false;
-  return fields.every((field) => stage[field][locale] === text[field]);
+  return fields.every((field) => stage[field]?.[locale] === text[field]);
 };
 
 /**
@@ -263,7 +263,7 @@ export const defaultFinishSessionTextAfterLanguageChange = (
     fields.map((field) => [
       field,
       suppliedTextAfterLanguageChange(
-        stage[field],
+        stage[field] ?? {},
         (locale) => defaultFinishSessionText(locale)?.[field],
         change,
       ),

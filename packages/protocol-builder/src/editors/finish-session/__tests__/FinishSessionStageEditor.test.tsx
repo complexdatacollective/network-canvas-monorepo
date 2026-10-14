@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -186,6 +186,28 @@ describe('the editor for the screen that ends the interview', () => {
     await user.type(question, 'Finish now?');
     expect(question).toBeInTheDocument();
     expect(question).toHaveValue('Finish now?');
+  });
+
+  it('saves a stage whose closing text was cleared before it was set to finish automatically', async () => {
+    const harness = renderStageEditor(openStage());
+    const user = userEvent.setup();
+
+    fireEvent.change(screen.getByRole('textbox', { name: /Closing text/ }), {
+      target: { value: '' },
+    });
+    await user.click(
+      within(screen.getByRole('listbox', { name: /Finishing/ })).getByRole(
+        'option',
+        { name: /Finish automatically/ },
+      ),
+    );
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument).toMatchObject({
+      type: 'FinishSession',
+      mode: 'automatic',
+    });
+    expect(saved?.stageDocument).not.toHaveProperty('content');
   });
 
   it('offers the three outcomes, each explained', () => {

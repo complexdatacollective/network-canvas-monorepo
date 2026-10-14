@@ -259,7 +259,7 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
 
   return (
     <FinishSessionLayout>
-      <ScreenText value={stage.content} />
+      <ScreenText value={stage.content ?? {}} />
       <Button
         color="primary"
         disabled={state === 'finishing'}
@@ -332,7 +332,7 @@ export function CompletedInterview({
           value={
             finished || stage.mode === 'automatic'
               ? stage.finishedContent
-              : stage.content
+              : (stage.content ?? {})
           }
           textRef={textRef}
         />

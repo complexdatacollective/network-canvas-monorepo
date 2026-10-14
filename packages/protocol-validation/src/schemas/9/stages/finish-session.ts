@@ -76,11 +76,13 @@ export const finishSessionStage = baseStageSchema.extend({
   // it over falling back, and show a participant nothing.
   label: localizedString(nonBlankText(), 'plain', { mayBeEmpty: true }),
   // The closing screen, shown in confirmation mode. Its heading is part of
-  // the text.
+  // the text. An automatic stage shows none, so its text may be absent
+  // altogether: one set to finish automatically after its text was cleared
+  // has nowhere left to write it.
   content: localizedString(nonBlankText(), 'markdown', {
     mayBeEmpty: true,
     dynamicValues: 'stageText',
-  }),
+  }).optional(),
   // The finished screen, shown once the interview has ended.
   finishedContent: localizedString(nonBlankText(), 'markdown', {
     mayBeEmpty: true,
