@@ -129,6 +129,20 @@ export const AnalyticsEvent = Schema.Struct({
 
 export const PARTICIPANT_EXCEPTION_EVENT = '$exception';
 
+export const ParticipantEventTimestamp = Schema.String.check(
+  Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, {
+    expected: 'an ISO 8601 UTC timestamp',
+  }),
+  Schema.makeFilter<string>((timestamp) => {
+    const instant = Date.parse(timestamp);
+    return (
+      (Number.isFinite(instant) &&
+        new Date(instant).toISOString() === timestamp) ||
+      'must be a real instant'
+    );
+  }),
+);
+
 const ExceptionTypeName = Schema.String.check(
   Schema.isMinLength(1),
   Schema.isMaxLength(200),

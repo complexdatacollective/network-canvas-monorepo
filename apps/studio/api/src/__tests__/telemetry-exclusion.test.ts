@@ -497,6 +497,11 @@ const scenario = (
     );
     yield* rpc(
       'participant.analytics',
+      { events: [{ ...stageEntered, timestamp: SEEDED.participantCode }] },
+      asParticipant,
+    );
+    yield* rpc(
+      'participant.analytics',
       {
         events: [
           usability('stage_entered', {

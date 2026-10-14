@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   MAX_ANALYTICS_EVENTS,
   MAX_ANALYTICS_PROPERTIES_BYTES,
+  ParticipantEventTimestamp,
   ParticipantExceptionList,
 } from '@codaco/studio-contract/schema/participant';
 
@@ -115,6 +116,11 @@ describe('the participant analytics client', () => {
       Schema.decodeUnknownOption(ParticipantExceptionList, {
         onExcessProperty: 'error',
       })(properties?.$exception_list)._tag,
+    ).toBe('Some');
+    expect(
+      Schema.decodeUnknownOption(ParticipantEventTimestamp)(
+        send.mock.calls[0]?.[0][0]?.timestamp,
+      )._tag,
     ).toBe('Some');
   });
 

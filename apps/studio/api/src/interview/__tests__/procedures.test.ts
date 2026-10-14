@@ -1119,6 +1119,29 @@ describe.skipIf(!testDb)('participant analytics', () => {
     expect(await captured()).toEqual([]);
   });
 
+  it('refuses a batch whose event carries anything but an ISO timestamp', async () => {
+    const { sessionToken } = await begin();
+    for (const timestamp of [
+      'Jane Doe',
+      '2026-10-07',
+      '2026-10-07T09:00:00Z',
+      '2026-02-30T09:00:00.000Z',
+    ]) {
+      await client.callExit(
+        asParticipant(
+          sessionToken,
+          client.rpc('participant.analytics', {
+            events: [
+              { ...entered, timestamp: '2026-10-07T09:00:00.000Z' },
+              { ...entered, timestamp },
+            ],
+          }),
+        ),
+      );
+    }
+    expect(await captured()).toEqual([]);
+  });
+
   it('keeps one identity for a session across pages, and a different one per session', async () => {
     const first = await begin();
     const second = await begin();

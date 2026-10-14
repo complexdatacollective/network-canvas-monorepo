@@ -4,6 +4,7 @@ import type { ComponentType, StageType } from '@codaco/protocol-validation';
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 
 import type { interviewLocales } from '../i18n/locales';
+import { MAX_ELAPSED_MS } from './elapsed';
 
 export type AnalyticsStageType = StageType | 'FinishSession';
 
@@ -93,7 +94,6 @@ export type AnalyticsFieldComponent = ComponentType | 'unknown';
 
 const MAX_INDEX = 10_000;
 const MAX_COUNT = 1_000_000;
-const MAX_DURATION_MS = 366 * 24 * 60 * 60 * 1000;
 
 const boundedInt = (maximum: number) =>
   Schema.Number.check(
@@ -103,7 +103,7 @@ const boundedInt = (maximum: number) =>
 
 const Index = boundedInt(MAX_INDEX);
 const Count = boundedInt(MAX_COUNT);
-const DurationMs = boundedInt(MAX_DURATION_MS);
+const DurationMs = boundedInt(MAX_ELAPSED_MS);
 
 const EntityId = Schema.String.check(
   Schema.isPattern(

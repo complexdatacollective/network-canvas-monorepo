@@ -11,6 +11,7 @@ import {
   type AnalyticsEvent,
   type AnalyticsInput,
   PARTICIPANT_EXCEPTION_EVENT,
+  ParticipantEventTimestamp,
   ParticipantExceptionList,
 } from '@codaco/studio-contract/schema/participant';
 
@@ -111,16 +112,20 @@ type DecodedEvent = {
   readonly forwarded: ReadonlyArray<string>;
 };
 
+const decodeTimestamp = Schema.decodeUnknownOption(ParticipantEventTimestamp);
+
 const decodeEvent = (
   captured: typeof AnalyticsEvent.Type,
 ): Option.Option<DecodedEvent> => {
+  const timestamp = decodeTimestamp(captured.timestamp);
+  if (Option.isNone(timestamp)) return Option.none();
   const candidates = CATALOGUE.get(captured.event) ?? [];
   for (const candidate of candidates) {
     const decoded = candidate.decode(captured.properties);
     if (Option.isSome(decoded)) {
       return Option.some({
         event: captured.event,
-        timestamp: captured.timestamp,
+        timestamp: timestamp.value,
         decoded: decoded.value,
         forwarded: candidate.forwarded,
       });

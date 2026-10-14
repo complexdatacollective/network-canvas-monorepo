@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 
 import type { RootState } from '../store/store';
 import { AnalyticsContext } from './AnalyticsContext';
+import { elapsedMs } from './elapsed';
 import type { AnalyticsStageType } from './events';
 import { SUPER_PROPS } from './PROPERTY_KEYS';
 import { NULL_TRACKER } from './tracker';
@@ -67,7 +68,7 @@ export function useStageNavigationAnalytics({
       track('stage_exited', {
         [SUPER_PROPS.STAGE_TYPE]: previousType,
         [SUPER_PROPS.STAGE_INDEX]: previousIndex,
-        duration_ms: now - previousEnteredAt,
+        duration_ms: elapsedMs(previousEnteredAt, now),
         exit_direction:
           stage_index > previousIndex
             ? 'forward'
