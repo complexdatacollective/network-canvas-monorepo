@@ -124,8 +124,8 @@ identifiers and times with its own, and sets the common properties itself.
 | `node_form_opened`, `node_form_dismissed_without_save`          | `node_id` when the form is about an existing node                                                                                                                |
 | `node_selected`, `node_deselected`                              | `node_id`                                                                                                                                                        |
 | `node_initial_positioned`, `node_repositioned`, `node_unplaced` | `node_id`                                                                                                                                                        |
-| `node_binned`                                                   | `node_id`, `node_type_index`, `bin_index`                                                                                                                        |
-| `node_rebinned`                                                 | `node_id`, `node_type_index`, `from_bin_index`, `to_bin_index`                                                                                                   |
+| `node_binned`                                                   | `node_id`, `node_type_index`, `bin_index`, `interaction_mode` (`select` or `drag`)                                                                               |
+| `node_rebinned`                                                 | `node_id`, `node_type_index`, `from_bin_index`, `to_bin_index`, `interaction_mode` (`select` or `drag`)                                                          |
 | `bin_expanded`, `bin_collapsed`                                 | `bin_index`                                                                                                                                                      |
 | `pair_shown`                                                    | `node_a_id`, `node_b_id`                                                                                                                                         |
 | `focal_node`                                                    | `node_id`                                                                                                                                                        |
@@ -164,8 +164,10 @@ type, and only if it is one of the standard JavaScript and browser error names
 (such as `TypeError` or `NetworkError`); any other type is sent as `Error`. It
 never carries the message or the stack. With it come `feature` (where it
 happened: `locale-load`, `information-media`, `stage-error-boundary`,
-`external-data` or `geospatial-map-init`) and, for some of those, `locale` (the
-interview's language), `media_kind` (`video`) or `is_offline`.
+`external-data`, `geospatial-map-init` or `encrypted-attributes`) and, for some
+of those, `locale` (the interview's language), `media_kind` (`video`),
+`is_offline` or `reason` (why an encrypted answer could not be read:
+`legacy-format`, `missing-metadata` or `decryption-failed`).
 
 **Not forwarded.** The browser also reports the interview package's version,
 the protocol's content hash, its own app, version and installation values, and
