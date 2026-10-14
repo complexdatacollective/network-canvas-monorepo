@@ -18,12 +18,12 @@ const textIn = (locales: readonly string[], text: string) =>
 const testFinishStage = (locales: readonly string[] = ['en']) => ({
   id: TEST_FINISH_STAGE_ID,
   type: 'FinishSession' as const,
+  mode: 'confirmation' as const,
   label: textIn(locales, 'Finish'),
-  title: textIn(locales, 'Finish'),
-  content: textIn(locales, 'The end.'),
+  content: textIn(locales, '# Finish\n\nThe end.'),
+  finishedContent: textIn(locales, '# Finished\n\nThank you.'),
   finishLabel: textIn(locales, 'Finish'),
   finishConfirmation: textIn(locales, 'Finish the interview?'),
-  finishedNotice: textIn(locales, 'This interview is finished.'),
   finishFailed: textIn(locales, 'The interview could not be finished.'),
   outcome: 'completed' as const,
 });
