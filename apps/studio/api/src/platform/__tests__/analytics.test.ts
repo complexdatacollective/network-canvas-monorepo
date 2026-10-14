@@ -89,6 +89,7 @@ describe('Analytics', () => {
                   distinct_id: 'page-pseudonym',
                   installation_id: INSTALLATION_ID,
                   $groups: { installation: INSTALLATION_ID },
+                  $ip: '0.0.0.0',
                   $geoip_disable: true,
                 },
               },
@@ -97,6 +98,36 @@ describe('Analytics', () => {
         },
       ]);
     }),
+  );
+
+  it.effect(
+    'overwrites the address and location a forwarded event carries, so PostHog stores neither',
+    () =>
+      Effect.gen(function* () {
+        const sent: Sent[] = [];
+        yield* Effect.gen(function* () {
+          const analytics = yield* Analytics;
+          yield* analytics.capture([
+            {
+              event: 'stage_entered',
+              distinctId: 'participant:page-pseudonym',
+              timestamp: '2026-10-07T09:00:00.000Z',
+              properties: { $ip: '203.0.113.9', $geoip_disable: false },
+            },
+          ]);
+        }).pipe(
+          Effect.provide(analyticsUnder(true)),
+          Effect.provideService(FetchHttpClient.Fetch, recordingFetch(sent)),
+        );
+        expect(sent).toHaveLength(1);
+        expect(sent[0]?.body).toMatchObject({
+          batch: [
+            {
+              properties: { $ip: '0.0.0.0', $geoip_disable: true },
+            },
+          ],
+        });
+      }),
   );
 
   it.effect('gives up on a delivery PostHog never answers', () =>
@@ -164,6 +195,7 @@ describe('Analytics', () => {
                     installation_id: INSTALLATION_ID,
                     team_id: 'team-1',
                     $groups: { installation: INSTALLATION_ID, team: 'team-1' },
+                    $ip: '0.0.0.0',
                     $geoip_disable: true,
                   },
                 },

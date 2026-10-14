@@ -1,6 +1,15 @@
 import { monitorEventLoopDelay } from 'node:perf_hooks';
 
-import { Duration, Effect, Layer, Metric, Schedule } from 'effect';
+import { Clock, Duration, Effect, Layer, Metric, Schedule } from 'effect';
+
+import {
+  advanceEpisode,
+  alertAnnotation,
+  type Episode,
+  OPERATOR_ALERTS,
+  quietEpisode,
+  SUSTAINED_ALERT_RULES,
+} from './operator-alerts.ts';
 
 export const eventLoopDelayP99 = Metric.gauge(
   'studio_runtime_event_loop_delay_p99_ms',
@@ -49,7 +58,35 @@ const NANOS_PER_MILLI = 1_000_000;
 
 type EventLoopDelay = ReturnType<typeof monitorEventLoopDelay>;
 
-const sample = (histogram: EventLoopDelay) =>
+export const noteEventLoopDelay = Effect.fnUntraced(function* (
+  episode: Episode,
+  p99: number,
+) {
+  const now = yield* Clock.currentTimeMillis;
+  const step = advanceEpisode(
+    episode,
+    SUSTAINED_ALERT_RULES.eventLoopLag,
+    p99,
+    now,
+  );
+  if (step === 'opened') {
+    yield* Effect.logError(
+      'event-loop delay has stayed above the lag alert threshold',
+    ).pipe(
+      Effect.annotateLogs({
+        p99_ms: p99,
+        ...alertAnnotation(OPERATOR_ALERTS.eventLoopLag),
+      }),
+    );
+  }
+  if (step === 'closed') {
+    yield* Effect.logInfo(
+      'event-loop delay is back under the lag alert threshold',
+    ).pipe(Effect.annotateLogs({ p99_ms: p99 }));
+  }
+});
+
+const sample = (histogram: EventLoopDelay, episode: Episode) =>
   Effect.gen(function* () {
     if (histogram.count > 0) {
       const p99 = histogram.percentile(99) / NANOS_PER_MILLI;
@@ -57,6 +94,7 @@ const sample = (histogram: EventLoopDelay) =>
       histogram.reset();
       yield* Metric.update(eventLoopDelayP99, p99);
       yield* Metric.update(eventLoopDelayMean, mean);
+      yield* noteEventLoopDelay(episode, p99);
     }
     const memory = process.memoryUsage();
     yield* Metric.update(memoryRss, memory.rss);
@@ -78,7 +116,7 @@ export const RuntimeMetrics = {
           (monitor) => Effect.sync(() => monitor.disable()),
         );
         yield* Effect.forkScoped(
-          sample(histogram).pipe(
+          sample(histogram, quietEpisode()).pipe(
             Effect.repeat(
               Schedule.spaced(config.sampleInterval ?? DEFAULT_SAMPLE_INTERVAL),
             ),
