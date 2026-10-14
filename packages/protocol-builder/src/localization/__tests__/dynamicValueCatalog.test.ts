@@ -72,13 +72,27 @@ describe('dynamicValueChoices', () => {
       contextFor('Information', 'stageText'),
     ).map((choice) => choice.path);
     expect(paths).toEqual([
-      'now',
       'ego.name',
       'ego.children',
       'ego.smokes',
       'ego.vapes',
       'ego.drinks',
+      'now',
     ]);
+  });
+
+  it('lists what the text is about first, then the participant, then the interview', () => {
+    const paths = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).map(
+      (choice) => choice.path,
+    );
+    const firstEgo = paths.findIndex((path) => path.startsWith('ego.'));
+    expect(
+      paths.slice(0, firstEgo).every((path) => path.startsWith('dyad.')),
+    ).toBe(true);
+    expect(
+      paths.slice(firstEgo, -1).every((path) => path.startsWith('ego.')),
+    ).toBe(true);
+    expect(paths.at(-1)).toBe('now');
   });
 
   it('adds the pair on a dyad prompt', () => {

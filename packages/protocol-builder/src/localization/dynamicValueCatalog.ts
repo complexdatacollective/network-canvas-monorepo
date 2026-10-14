@@ -106,9 +106,10 @@ const optionsOf = (variable: Record<string, unknown>): DynamicValueOption[] => {
 };
 
 /**
- * Everything text at this place can show: the interview's own values, then
- * for each available role its node's label, where it is a node, and its
- * attributes in codebook order.
+ * Everything text at this place can show: for each available role its node's
+ * label, where it is a node, and its attributes in codebook order, the roles
+ * this place is about first and the participant's own after them, then the
+ * interview's own values.
  */
 export const dynamicValueChoices = (
   context: DynamicValueSiteContext,
@@ -183,11 +184,12 @@ export const dynamicValueChoices = (
           },
         )
       : [];
-  const attributes = [...context.roles].flatMap((role) => [
-    ...labelOf(role),
-    ...attributesOf(role),
-  ]);
-  return [...intrinsics, ...attributes];
+  const roles = [...context.roles];
+  const attributes = [
+    ...roles.filter((role) => role !== 'ego'),
+    ...roles.filter((role) => role === 'ego'),
+  ].flatMap((role) => [...labelOf(role), ...attributesOf(role)]);
+  return [...attributes, ...intrinsics];
 };
 
 /** Words of `text` as an argument name: ASCII letters and digits, camel-cased. */

@@ -18,7 +18,6 @@ import {
 import { TokenPill } from '@codaco/fresco-ui/TokenPill';
 import {
   type DynamicValueBinding,
-  type DynamicValueRole,
   type DynamicValues,
   type DynamicValueSite,
   dynamicValueArgumentsAt,
@@ -91,31 +90,19 @@ const messages = defineMessages({
     id: 'protocolBuilder.dynamicText.roleContext',
     defaultMessage: 'Contextual Attributes',
     description:
-      'Heading in the insert-a-value menu above the attributes of whatever the text is shown alongside: the node or edge a form asks about, or the node a question is asking about. It may not be a person, so the heading does not say what it is.',
+      'Heading in the insert-a-value menu above the attributes of whatever the text is shown alongside: the node or edge a form asks about, the node a question is asking about, or both nodes of a pair a question asks about together (each of those values then starts “First node:” or “Second node:”). It may not be a person, so the heading does not say what it is.',
   },
-  roleDyadSource: {
-    id: 'protocolBuilder.dynamicText.roleDyadSourceGroup',
-    defaultMessage: 'Contextual Attributes: First Node in Pair',
-    description:
-      'Heading in the insert-a-value menu above the attributes of the first of the two nodes a question asks about together, as a pair. A node is one entity in the network, which may not be a person.',
-  },
-  roleDyadTarget: {
-    id: 'protocolBuilder.dynamicText.roleDyadTargetGroup',
-    defaultMessage: 'Contextual Attributes: Second Node in Pair',
-    description:
-      'Heading in the insert-a-value menu above the attributes of the second of the two nodes a question asks about together, as a pair. A node is one entity in the network, which may not be a person.',
-  },
-  dyadSourceValue: {
+  firstNodeValue: {
     id: 'protocolBuilder.dynamicText.dyadSourceValue',
-    defaultMessage: '{attribute} (first node in pair)',
+    defaultMessage: 'First node: {attribute}',
     description:
-      'Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”.',
+      'Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the first of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person.',
   },
-  dyadTargetValue: {
+  secondNodeValue: {
     id: 'protocolBuilder.dynamicText.dyadTargetValue',
-    defaultMessage: '{attribute} (second node in pair)',
+    defaultMessage: 'Second node: {attribute}',
     description:
-      'Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”.',
+      'Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the second of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person.',
   },
   nodeLabel: {
     id: 'protocolBuilder.dynamicText.nodeLabel',
@@ -131,15 +118,15 @@ const messages = defineMessages({
   },
   firstNodeLabel: {
     id: 'protocolBuilder.dynamicText.firstNodeLabel',
-    defaultMessage: 'First node label',
+    defaultMessage: 'First node: label',
     description:
-      'Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on the first of two nodes the text is about, either the first node of a pair a question asks about together or the first of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes.',
+      'Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the first node’s attributes such as “First node: nickname”: the label the interview shows on the first of two nodes the text is about, either the first node of a pair a question asks about together or the first of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes.',
   },
   secondNodeLabel: {
     id: 'protocolBuilder.dynamicText.secondNodeLabel',
-    defaultMessage: 'Second node label',
+    defaultMessage: 'Second node: label',
     description:
-      'Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on the second of two nodes the text is about, either the second node of a pair a question asks about together or the second of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes.',
+      'Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the second node’s attributes such as “Second node: nickname”: the label the interview shows on the second of two nodes the text is about, either the second node of a pair a question asks about together or the second of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes.',
   },
   byAnswer: {
     id: 'protocolBuilder.dynamicText.byAnswer',
@@ -242,17 +229,6 @@ const messages = defineMessages({
   },
 });
 
-const ROLE_MESSAGES = {
-  ego: messages.roleEgo,
-  node: messages.roleContext,
-  edge: messages.roleContext,
-  dyadSource: messages.roleDyadSource,
-  dyadTarget: messages.roleDyadTarget,
-  focal: messages.roleContext,
-  edgeFrom: messages.roleContext,
-  edgeTo: messages.roleContext,
-} satisfies Record<DynamicValueRole, unknown>;
-
 /** How many examples a plural version's label gives of its numbers. */
 const EXAMPLE_COUNT = 3;
 
@@ -281,22 +257,22 @@ const namingFor = (intl: IntlShape): Naming => ({
     // The two nodes of a pair have the same attributes, so their values say
     // which node they belong to; any other value is named by its attribute.
     if (choice.role === 'dyadSource') {
-      return intl.formatMessage(messages.dyadSourceValue, { attribute });
+      return intl.formatMessage(messages.firstNodeValue, { attribute });
     }
     if (choice.role === 'dyadTarget') {
-      return intl.formatMessage(messages.dyadTargetValue, { attribute });
+      return intl.formatMessage(messages.secondNodeValue, { attribute });
     }
     return attribute;
   },
+  // Everything the text is shown with, one node, a pair or an edge's two
+  // ends, is listed together; a value of a pair's node says which node.
   groupLabel: (choice) =>
     intl.formatMessage(
       choice.role === undefined
         ? messages.interviewGroup
-        : // A node's label is about what the text is shown with, wherever
-          // that node's attributes are listed.
-          choice.kind === 'label'
-          ? messages.roleContext
-          : ROLE_MESSAGES[choice.role],
+        : choice.role === 'ego'
+          ? messages.roleEgo
+          : messages.roleContext,
     ),
 });
 

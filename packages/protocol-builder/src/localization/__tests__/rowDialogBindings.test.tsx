@@ -155,14 +155,14 @@ describe('a value with answers inserted in a row dialog', () => {
   };
 
   it('is bound without cases when only the value itself is shown', async () => {
-    expect(
-      await insertAndSave(/contactFreq \(first node in pair\).*Ordinal/),
-    ).toEqual([{ path: 'dyad.source.contactFreq' }]);
+    expect(await insertAndSave(/First node: contactFreq.*Ordinal/)).toEqual([
+      { path: 'dyad.source.contactFreq' },
+    ]);
   });
 
   it('is bound with its cases when it is shown by answer', async () => {
     const [binding] = await insertAndSave(
-      /contactFreq \(first node in pair\).*Different wording for each answer/,
+      /First node: contactFreq.*Different wording for each answer/,
     );
     expect(binding).toEqual({
       path: 'dyad.source.contactFreq',
@@ -187,7 +187,7 @@ describe('a value shown by answer in an open dialog', () => {
     );
     await harness.user.click(
       await screen.findByRole('option', {
-        name: /contactFreq \(first node in pair\).*Different wording for each answer/,
+        name: /First node: contactFreq.*Different wording for each answer/,
       }),
     );
     expect(
@@ -251,12 +251,12 @@ describe('a yes-or-no value without labels for its answers', () => {
     );
 
     const asItself = await screen.findByRole('option', {
-      name: /flagged \(first node in pair\).*Add labels for its yes and no answers first/,
+      name: /First node: flagged.*Add labels for its yes and no answers first/,
     });
     expect(asItself).toHaveAttribute('aria-disabled', 'true');
     expect(
       screen.getByRole('option', {
-        name: /flagged \(first node in pair\).*Different wording for each answer/,
+        name: /First node: flagged.*Different wording for each answer/,
       }),
     ).not.toHaveAttribute('aria-disabled', 'true');
 

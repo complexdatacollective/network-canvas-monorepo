@@ -1528,16 +1528,16 @@
     "description": "Second line of an entry in the insert-a-value menu. Choosing it inserts a piece of text with a version for each kind of number (such as one or several), so the words agree with the number, as in “1 child” and “3 children”."
   },
   "protocolBuilder.dynamicText.dyadSourceValue": {
-    "defaultMessage": "{attribute} (first node in pair)",
-    "description": "Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”."
+    "defaultMessage": "First node: {attribute}",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the first of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."
   },
   "protocolBuilder.dynamicText.dyadTargetValue": {
-    "defaultMessage": "{attribute} (second node in pair)",
-    "description": "Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”."
+    "defaultMessage": "Second node: {attribute}",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: an attribute of the second of the two nodes a question asks about together, as a pair. attribute is the attribute’s name as the researcher wrote it, such as “nickname”. A node is one entity in the network, which may not be a person."
   },
   "protocolBuilder.dynamicText.firstNodeLabel": {
-    "defaultMessage": "First node label",
-    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on the first of two nodes the text is about, either the first node of a pair a question asks about together or the first of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
+    "defaultMessage": "First node: label",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the first node’s attributes such as “First node: nickname”: the label the interview shows on the first of two nodes the text is about, either the first node of a pair a question asks about together or the first of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
   },
   "protocolBuilder.dynamicText.insertMenu": {
     "defaultMessage": "Inject piped text from interview metadata or a network attribute",
@@ -1565,23 +1565,15 @@
   },
   "protocolBuilder.dynamicText.roleContext": {
     "defaultMessage": "Contextual Attributes",
-    "description": "Heading in the insert-a-value menu above the attributes of whatever the text is shown alongside: the node or edge a form asks about, or the node a question is asking about. It may not be a person, so the heading does not say what it is."
-  },
-  "protocolBuilder.dynamicText.roleDyadSourceGroup": {
-    "defaultMessage": "Contextual Attributes: First Node in Pair",
-    "description": "Heading in the insert-a-value menu above the attributes of the first of the two nodes a question asks about together, as a pair. A node is one entity in the network, which may not be a person."
-  },
-  "protocolBuilder.dynamicText.roleDyadTargetGroup": {
-    "defaultMessage": "Contextual Attributes: Second Node in Pair",
-    "description": "Heading in the insert-a-value menu above the attributes of the second of the two nodes a question asks about together, as a pair. A node is one entity in the network, which may not be a person."
+    "description": "Heading in the insert-a-value menu above the attributes of whatever the text is shown alongside: the node or edge a form asks about, the node a question is asking about, or both nodes of a pair a question asks about together (each of those values then starts “First node:” or “Second node:”). It may not be a person, so the heading does not say what it is."
   },
   "protocolBuilder.dynamicText.roleEgo": {
     "defaultMessage": "Ego Attributes",
     "description": "Heading in the insert-a-value menu above the attributes of the ego, the participant taking part in the interview. “Ego” is the network-research term Architect uses for the participant."
   },
   "protocolBuilder.dynamicText.secondNodeLabel": {
-    "defaultMessage": "Second node label",
-    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on the second of two nodes the text is about, either the second node of a pair a question asks about together or the second of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
+    "defaultMessage": "Second node: label",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu, listed with the second node’s attributes such as “Second node: nickname”: the label the interview shows on the second of two nodes the text is about, either the second node of a pair a question asks about together or the second of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
   },
   "protocolBuilder.dynamicText.switchHasNoLabels": {
     "defaultMessage": "A Toggle has no labels for its answers. Use different wording for each answer instead.",
