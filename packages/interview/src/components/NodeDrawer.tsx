@@ -2,7 +2,7 @@
 
 import { ArrowDownToLine, ChevronDown } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
@@ -103,14 +103,35 @@ export default function NodeDrawer({
   }, [hasNodes, prevHasNodes, setIsExpanded]);
 
   // A newly selected person is the one being placed, so it must be visible:
-  // reopen the drawer if the participant had collapsed it.
+  // reopen the drawer if the participant had collapsed it, and scroll the row
+  // to them if they are out of view.
+  const viewportRef = useRef<HTMLElement>(null);
   const selectionIsInDrawer =
     selectedNodeId !== undefined &&
     nodes.some((node) => node[entityPrimaryKeyProperty] === selectedNodeId);
   const prevSelectedNodeId = usePrevious(selectedNodeId);
   useEffect(() => {
-    if (selectedNodeId === prevSelectedNodeId) return;
-    if (selectionIsInDrawer) setIsExpanded(true);
+    if (selectedNodeId === prevSelectedNodeId) return undefined;
+    if (!selectionIsInDrawer) return undefined;
+    setIsExpanded(true);
+    // A frame later, once the selected state has rendered. Not cancelled on
+    // re-run: the effect re-runs on the next render, when the previous
+    // selection catches up, and the scroll must still happen.
+    requestAnimationFrame(() => {
+      const viewport = viewportRef.current;
+      const selected = viewport?.querySelector('[data-node-selected]');
+      if (!viewport || !selected) return;
+      // Only the row scrolls: scrollIntoView would also scroll the drawer's
+      // clipped, height-animating container.
+      const row = viewport.getBoundingClientRect();
+      const person = selected.getBoundingClientRect();
+      if (person.left < row.left) {
+        viewport.scrollLeft -= row.left - person.left;
+      } else if (person.right > row.right) {
+        viewport.scrollLeft += person.right - row.right;
+      }
+    });
+    return undefined;
   }, [selectedNodeId, prevSelectedNodeId, selectionIsInDrawer, setIsExpanded]);
 
   const [isLayoutAnimating, setIsLayoutAnimating] = useState(false);
@@ -234,6 +255,7 @@ export default function NodeDrawer({
           )}
         >
           <ScrollArea
+            ref={viewportRef}
             orientation="horizontal"
             fade
             remeasureKey={remeasureKey}
