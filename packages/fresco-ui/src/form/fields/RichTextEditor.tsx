@@ -68,7 +68,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import Button, { buttonVariants, iconButtonVariants } from '../../Button';
 import { Popover, PopoverContent, PopoverTrigger } from '../../Popover';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../../Tooltip';
 import {
   controlVariants,
   inputControlVariants,
@@ -77,6 +76,7 @@ import {
   stateVariants,
 } from '../../styles/controlVariants';
 import { tokenPillClasses, tokenPillIconSpec } from '../../TokenPill';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../Tooltip';
 import { headingVariants } from '../../typography/Heading';
 import { paragraphVariants } from '../../typography/Paragraph';
 import { cva, cx } from '../../utils/cva';
@@ -2084,7 +2084,11 @@ export default function RichTextEditorField({
                     }}
                   >
                     <Tooltip>
-                      <PopoverTrigger asChild nativeButton disabled={isDisabled}>
+                      <PopoverTrigger
+                        asChild
+                        nativeButton
+                        disabled={isDisabled}
+                      >
                         <TooltipTrigger
                           render={
                             <ToolbarButton

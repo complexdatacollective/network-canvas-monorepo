@@ -89,9 +89,7 @@ describe('DynamicMessageSummary', () => {
     );
     const summary = getByTestId('summary');
 
-    expect(
-      summary.querySelector('h2 [data-token="name"]'),
-    ).toBeInTheDocument();
+    expect(summary.querySelector('h2 [data-token="name"]')).toBeInTheDocument();
     expect(summary.querySelectorAll('p')).toHaveLength(2);
     expect(summary.querySelector('hr')).toBeInTheDocument();
   });

@@ -704,7 +704,10 @@ describe('versions holding malformed members', () => {
           content: [
             {
               type: 'versions',
-              attrs: { label: 'Depending on the name', versions: MIXED_VERSIONS },
+              attrs: {
+                label: 'Depending on the name',
+                versions: MIXED_VERSIONS,
+              },
             },
           ],
         },
