@@ -62,6 +62,7 @@ const INSTANCE_STATUS: InstanceStatus = {
   deployment: { mode: 'self-hosted', billing: false },
   setup: { required: false },
   telemetry: false,
+  logLevel: 'Info',
 };
 
 const postedRequestId = (init: RequestInit | undefined): unknown => {

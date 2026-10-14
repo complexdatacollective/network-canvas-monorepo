@@ -1,4 +1,4 @@
-import { Effect, Option } from 'effect';
+import { Effect, Option, References } from 'effect';
 
 import { Principal } from '@codaco/studio-contract/middleware/authenticated';
 import { StatusRpcs } from '@codaco/studio-contract/rpc/status';
@@ -21,6 +21,7 @@ export const StatusHandlers = (deps: RpcDeps) =>
           deps.deployment,
           installation,
           Option.isSome(reporter),
+          yield* References.MinimumLogLevel,
         );
       }),
     // Only the installation's owner is told. There is no owner role: the owner

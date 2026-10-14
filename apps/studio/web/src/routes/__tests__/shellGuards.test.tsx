@@ -133,6 +133,7 @@ beforeEach(() => {
         },
         setup: { required: false },
         telemetry: false,
+        logLevel: 'Info',
         deployment: fixtures.deployment,
       }),
     'me': () =>

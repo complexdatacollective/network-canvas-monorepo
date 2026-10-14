@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -55,8 +56,10 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { createUuid } from '../lib/createUuid.ts';
 import { toStudyId } from '../lib/ids.ts';
+import { teamScope } from '../runtime/browserLogs.ts';
 import { isForbidden } from '../runtime/errors.ts';
 import { HostClient } from '../runtime/hostClient.ts';
+import { observeLocks } from '../runtime/hostFaults.ts';
 import { hostRuntime } from '../runtime/hostSession.ts';
 import {
   reportUnauthorizedFailure,
@@ -71,7 +74,7 @@ const route = getRouteApi('/app/study/$studyId/editor/');
 /**
  * Built once: `ProtocolBuilder` memoises its whole context on this identity.
  */
-const hostAdapter: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
+const baseHostAdapter: RpcAdapter<ProtocolBuilderRpcs> = makeRpcAdapter({
   runtime: hostRuntime,
   client: HostClient,
   onFailure: reportUnauthorizedFailure,
@@ -537,6 +540,10 @@ export default function Editor() {
 function ProtocolEditor({ address }: { address: DraftAddress }) {
   const intl = useAppIntl();
   const draft = useQuery(rpcQuery('protocols.draft', address));
+  const hostAdapter = useMemo(
+    () => observeLocks(baseHostAdapter, teamScope(address.teamId)),
+    [address.teamId],
+  );
 
   if (draft.isPending) {
     return (

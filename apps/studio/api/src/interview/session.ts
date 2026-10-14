@@ -1,4 +1,4 @@
-import { Clock, Effect, Redacted } from 'effect';
+import { Clock, Effect, Option, Redacted, References } from 'effect';
 
 import { ParticipantSession } from '@codaco/studio-contract/middleware/session';
 import {
@@ -9,6 +9,7 @@ import {
 import { TenantScope } from '../db/tenant.ts';
 import { networkFromRows } from '../network/mapping.ts';
 import { readSessionNetwork } from '../network/session-network.ts';
+import { BrowserLogs } from '../platform/browser-logs.ts';
 import { enforceRateLimit } from '../rate-limit/enforce.ts';
 import { participantAnalyticsConfig } from './analytics.ts';
 import { sessionRefusal } from './availability.ts';
@@ -21,6 +22,9 @@ export const readParticipantSession = Effect.fn(
   const session = yield* ParticipantSession;
   yield* enforceRateLimit('participant_session', session.sessionId);
   const now = new Date(yield* Clock.currentTimeMillis);
+  const logLevel = Option.isSome(yield* Effect.serviceOption(BrowserLogs))
+    ? yield* References.MinimumLogLevel
+    : null;
 
   return yield* TenantScope.open(
     session.access,
@@ -88,6 +92,7 @@ export const readParticipantSession = Effect.fn(
         },
         protocol: Redacted.make(protocol),
         analytics,
+        logLevel,
       };
     }),
   );

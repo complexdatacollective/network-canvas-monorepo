@@ -66,4 +66,100 @@ describe('the participant asset resolver', () => {
     const resolve = createAssetResolver([]);
     await expect(resolve('missing')).rejects.toThrow('missing');
   });
+
+  it('reports why an asset failed to load, and nothing for one that loaded', async () => {
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('', { status: 404 }))
+      .mockResolvedValueOnce(new Response('', { status: 503 }))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(new Response(SVG));
+    vi.stubGlobal('fetch', fetchSpy);
+    const failures: string[] = [];
+    const resolve = createAssetResolver(
+      [asset('diagram', `${HASH}.svg`), asset('photo', `${HASH}.png`)],
+      () => (code) => failures.push(code),
+    );
+
+    await expect(resolve('missing')).rejects.toThrow('missing');
+    await expect(resolve('diagram')).rejects.toThrow('404');
+    await expect(resolve('diagram')).rejects.toThrow('503');
+    await expect(resolve('diagram')).rejects.toThrow('Failed to fetch');
+    await expect(resolve('diagram')).resolves.toMatch(/^data:image\/svg\+xml/);
+    await expect(resolve('photo')).resolves.toBe(`/storage/${HASH}`);
+
+    expect(failures).toEqual([
+      'not_found',
+      'not_found',
+      'http_error',
+      'transport',
+    ]);
+  });
+
+  it('reports a failure with what was current when the asset was asked for, not when it failed', async () => {
+    let answer: (response: Response) => void = () => undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolveResponse) => {
+            answer = resolveResponse;
+          }),
+      ),
+    );
+    let stage = 'requesting stage';
+    const failures: string[] = [];
+    const resolve = createAssetResolver(
+      [asset('diagram', `${HASH}.svg`)],
+      () => {
+        const requestedOn = stage;
+        return (code) => failures.push(`${code} on ${requestedOn}`);
+      },
+    );
+
+    const loading = resolve('diagram');
+    stage = 'a later stage';
+    answer(new Response('', { status: 500 }));
+    await expect(loading).rejects.toThrow('500');
+
+    expect(failures).toEqual(['http_error on requesting stage']);
+  });
+
+  it('knows the data URLs it generated for SVGs, and no others', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(SVG)),
+    );
+    const resolve = createAssetResolver([
+      asset('diagram', `${HASH}.svg`),
+      asset('photo', `${HASH}.png`),
+    ]);
+
+    const generated = await resolve('diagram');
+    const stored = await resolve('photo');
+
+    expect(resolve.produced(generated)).toBe(true);
+    expect(resolve.produced(stored)).toBe(false);
+    expect(resolve.produced('data:image/svg+xml,<svg/>')).toBe(false);
+  });
+
+  it('reports a body that fails while it is being read as a transport failure, once', async () => {
+    const response = new Response(SVG);
+    vi.spyOn(response, 'text').mockRejectedValue(
+      new TypeError('network error'),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response),
+    );
+    const failures: string[] = [];
+    const resolve = createAssetResolver(
+      [asset('diagram', `${HASH}.svg`)],
+      () => (code) => failures.push(code),
+    );
+
+    await expect(resolve('diagram')).rejects.toThrow('network error');
+
+    expect(failures).toEqual(['transport']);
+  });
 });

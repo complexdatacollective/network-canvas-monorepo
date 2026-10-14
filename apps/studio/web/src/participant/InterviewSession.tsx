@@ -1,23 +1,44 @@
 import { getRouteApi } from '@tanstack/react-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { Shell } from '@codaco/interview';
 import type {
-  AssetRequestHandler,
   InterviewAnalyticsMetadata,
   StepChangeHandler,
 } from '@codaco/interview/contract';
 
 import { useErrorTelemetry } from '../runtime/telemetry.ts';
 import { createParticipantAnalyticsClient } from './analyticsClient.ts';
-import { createAssetResolver } from './assetUrl.ts';
+import { type AssetResolver, createAssetResolver } from './assetUrl.ts';
 import {
   createParticipantHandlers,
   pageRevisionBase,
+  type SaveOutcome,
 } from './interviewHandlers.ts';
+import {
+  logAnswerSaveFailed,
+  logAnswerSaveRetried,
+  createAssetObserver,
+  logStageFailedToRender,
+  type ParticipantLog,
+  type ParticipantStage,
+  isStorageUrl,
+  participantStage,
+  renderedStep,
+  useParticipantLogs,
+  watchParticipantConnection,
+} from './participantLogs.ts';
 import ParticipantNotice, {
   type ParticipantNoticeKind,
 } from './ParticipantNotice.tsx';
+import { reportStageCrashesTo } from './stageCrashes.ts';
 
 const route = getRouteApi('/participant/session/$sessionToken');
 
@@ -25,6 +46,21 @@ const ANALYTICS: InterviewAnalyticsMetadata = {
   installationId: 'studio',
   hostApp: 'studio',
 };
+
+function StageCrashReporter({
+  log,
+  renderedStage,
+}: {
+  readonly log: ParticipantLog;
+  readonly renderedStage: () => ParticipantStage | undefined;
+}): null {
+  useLayoutEffect(
+    () =>
+      reportStageCrashesTo(() => logStageFailedToRender(log, renderedStage())),
+    [log, renderedStage],
+  );
+  return null;
+}
 
 export default function InterviewSession() {
   const { sessionToken } = route.useParams();
@@ -42,12 +78,29 @@ function InterviewSessionView() {
 
   const { sessionToken } = route.useParams();
   useErrorTelemetry('participant', loaded.analytics);
+  const log = useParticipantLogs(sessionToken, loaded.logLevel);
   const analyticsClient = useMemo(
     () =>
       loaded.analytics
         ? createParticipantAnalyticsClient(sessionToken)
         : undefined,
     [loaded.analytics, sessionToken],
+  );
+  const stageTypes = useMemo(
+    () => payload.protocol.stages.map((stage) => stage.type),
+    [payload],
+  );
+  const renderedStage = useCallback(
+    (element?: Element) => participantStage(stageTypes, renderedStep(element)),
+    [stageTypes],
+  );
+  useEffect(
+    () => watchParticipantConnection(log, renderedStage),
+    [log, renderedStage],
+  );
+  const assetObserver = useMemo(
+    () => createAssetObserver(log, renderedStage),
+    [log, renderedStage],
   );
 
   const { onSync, onFinish, saveStep, flushStep } = useMemo(
@@ -60,8 +113,17 @@ function InterviewSessionView() {
         stageIds: payload.protocol.stages.map((stage) => stage.id),
         getCurrentStep: () => currentStepRef.current,
         onNotice: setNotice,
+        onSaveOutcome: (outcome: SaveOutcome) => {
+          const stage = participantStage(stageTypes, outcome.stageIndex);
+          if (stage === undefined) return;
+          if (outcome.kind === 'retried') {
+            logAnswerSaveRetried(log, stage, outcome.attempts);
+          } else if (outcome.kind === 'failed') {
+            logAnswerSaveFailed(log, stage, outcome.code, outcome.attempts);
+          }
+        },
       }),
-    [loaded, payload],
+    [loaded, payload, stageTypes, log],
   );
 
   useEffect(() => {
@@ -90,26 +152,37 @@ function InterviewSessionView() {
     [saveStep],
   );
 
-  const onRequestAsset = useMemo<AssetRequestHandler>(
-    () => createAssetResolver(payload.protocol.assets),
-    [payload],
+  const onRequestAsset = useMemo<AssetResolver>(
+    () => createAssetResolver(payload.protocol.assets, assetObserver.atRequest),
+    [payload, assetObserver],
+  );
+
+  useEffect(
+    () =>
+      assetObserver.watch(
+        (source) => isStorageUrl(source) || onRequestAsset.produced(source),
+      ),
+    [assetObserver, onRequestAsset],
   );
 
   if (notice !== undefined) return <ParticipantNotice kind={notice} />;
 
   return (
-    <Shell
-      requestedLocale={navigator.languages}
-      payload={payload}
-      currentStep={currentStep}
-      onStepChange={onStepChange}
-      onSync={onSync}
-      onFinish={onFinish}
-      onRequestAsset={onRequestAsset}
-      analytics={ANALYTICS}
-      posthogClient={analyticsClient}
-      disableAnalytics={analyticsClient === undefined}
-      allowUserScaling
-    />
+    <>
+      <StageCrashReporter log={log} renderedStage={renderedStage} />
+      <Shell
+        requestedLocale={navigator.languages}
+        payload={payload}
+        currentStep={currentStep}
+        onStepChange={onStepChange}
+        onSync={onSync}
+        onFinish={onFinish}
+        onRequestAsset={onRequestAsset}
+        analytics={ANALYTICS}
+        posthogClient={analyticsClient}
+        disableAnalytics={analyticsClient === undefined}
+        allowUserScaling
+      />
+    </>
   );
 }

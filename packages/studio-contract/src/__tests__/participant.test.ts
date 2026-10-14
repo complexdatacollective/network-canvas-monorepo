@@ -68,6 +68,7 @@ const sessionPayload = {
   },
   protocol: { schemaVersion: 8, stages: [], codebook: {} },
   analytics: true,
+  logLevel: 'Warn',
 };
 
 const roundTrips = <S extends Schema.Codec<unknown, unknown>>(
@@ -111,7 +112,7 @@ describe('the participant payloads', () => {
     [
       'SessionPayload without analytics',
       SessionPayload,
-      { ...sessionPayload, analytics: false },
+      { ...sessionPayload, analytics: false, logLevel: null },
     ],
     [
       'AnalyticsInput',

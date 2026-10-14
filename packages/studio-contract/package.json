@@ -28,6 +28,7 @@
     "./schema/audit": "./src/schema/audit.ts",
     "./schema/participant": "./src/schema/participant.ts",
     "./schema/telemetry": "./src/schema/telemetry.ts",
+    "./schema/browser-logs": "./src/schema/browserLogs.ts",
     "./middleware/authenticated": "./src/middleware/authenticated.ts",
     "./middleware/team-administration": "./src/middleware/teamAdministration.ts",
     "./middleware/audit-actor": "./src/middleware/auditActor.ts",

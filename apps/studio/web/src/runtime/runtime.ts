@@ -1,13 +1,29 @@
-import { Context, Effect, Layer, ManagedRuntime, type Scope } from 'effect';
+import {
+  Context,
+  Effect,
+  Layer,
+  ManagedRuntime,
+  Predicate,
+  type Scope,
+} from 'effect';
 import * as FetchHttpClient from 'effect/http/FetchHttpClient';
 import * as HttpClient from 'effect/http/HttpClient';
 import * as RpcClient from 'effect/rpc/RpcClient';
 import type * as RpcClientError from 'effect/rpc/RpcClientError';
 import type * as RpcGroup from 'effect/rpc/RpcGroup';
+import type * as RpcMessage from 'effect/rpc/RpcMessage';
 import * as RpcSerialization from 'effect/rpc/RpcSerialization';
 
 import { RPC_PATH, StudioRpcs } from '@codaco/studio-contract/rpc/studio';
 
+import {
+  logResearcher,
+  NO_TEAM,
+  type ResearcherLogScope,
+  studyScope,
+  teamScope,
+} from './browserLogs.ts';
+import { faultCodeOf } from './errors.ts';
 import { delegatingRuntime, interceptRefusals } from './transport.ts';
 
 export type StudioRpcsType = RpcGroup.Rpcs<typeof StudioRpcs>;
@@ -34,13 +50,61 @@ const HttpProtocol = RpcClient.layerProtocolHttp({
   Layer.provide(HttpClientLive),
 );
 
+const requestScope = (
+  request: RpcMessage.FromClientEncoded,
+): ResearcherLogScope => {
+  if (request._tag !== 'Request') return NO_TEAM;
+  const { payload } = request;
+  if (
+    Predicate.hasProperty(payload, 'teamId') &&
+    Predicate.isString(payload.teamId)
+  ) {
+    return teamScope(payload.teamId);
+  }
+  if (
+    Predicate.hasProperty(payload, 'studyId') &&
+    Predicate.isString(payload.studyId)
+  ) {
+    return studyScope(payload.studyId);
+  }
+  return NO_TEAM;
+};
+
+const ObservedProtocol = Layer.effect(RpcClient.Protocol)(
+  Effect.map(RpcClient.Protocol, (protocol) =>
+    RpcClient.Protocol.of({
+      ...protocol,
+      send: (clientId, request, transferables) =>
+        protocol.send(clientId, request, transferables).pipe(
+          Effect.tapError((error) =>
+            Effect.sync(() => {
+              if (
+                request._tag === 'Request' &&
+                faultCodeOf(error) === 'transport'
+              ) {
+                logResearcher(
+                  {
+                    message: 'Request to the server failed',
+                    level: 'Warn',
+                    attributes: { error_code: 'transport' },
+                  },
+                  requestScope(request),
+                );
+              }
+            }),
+          ),
+        ),
+    }),
+  ),
+).pipe(Layer.provide(HttpProtocol));
+
 export class StudioClient extends Context.Service<
   StudioClient,
   StudioRpcClient
 >()('@studio/StudioClient') {
   static readonly layer: Layer.Layer<StudioClient> = Layer.effect(StudioClient)(
     RpcClient.make(StudioRpcs, { flatten: true }),
-  ).pipe(Layer.provide(HttpProtocol));
+  ).pipe(Layer.provide(ObservedProtocol));
 }
 
 /**
