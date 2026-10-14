@@ -102,6 +102,17 @@ export default function NodeDrawer({
     }
   }, [hasNodes, prevHasNodes, setIsExpanded]);
 
+  // A newly selected person is the one being placed, so it must be visible:
+  // reopen the drawer if the participant had collapsed it.
+  const selectionIsInDrawer =
+    selectedNodeId !== undefined &&
+    nodes.some((node) => node[entityPrimaryKeyProperty] === selectedNodeId);
+  const prevSelectedNodeId = usePrevious(selectedNodeId);
+  useEffect(() => {
+    if (selectedNodeId === prevSelectedNodeId) return;
+    if (selectionIsInDrawer) setIsExpanded(true);
+  }, [selectedNodeId, prevSelectedNodeId, selectionIsInDrawer, setIsExpanded]);
+
   const [isLayoutAnimating, setIsLayoutAnimating] = useState(false);
   const prevNodeCountRef = usePrevious(nodes.length);
 

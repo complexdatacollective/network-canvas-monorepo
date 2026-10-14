@@ -303,16 +303,18 @@ describe('OrdinalBin in select mode (#1652)', () => {
     await announcement('Ann');
     // The person being placed is shown once, selected in the drawer.
     expect(screen.getAllByText('Ann')).toHaveLength(1);
-    expect(
-      screen.getByRole('button', { name: 'Ann', exact: true }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Ann' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Place Ann in Close' }));
 
     await waitFor(() => expect(attributesOf('a')?.closeness).toBe(2));
     await announcement('Ben');
-    expect(
-      screen.getByRole('button', { name: 'Ben', exact: true }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Ben' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     expect(track).toHaveBeenCalledWith('node_binned', {
       node_id: 'a',
       node_type_index: 0,

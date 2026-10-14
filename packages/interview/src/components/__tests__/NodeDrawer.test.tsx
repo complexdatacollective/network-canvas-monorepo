@@ -107,6 +107,30 @@ describe('NodeDrawer', () => {
     expect(screen.getByText('٣')).toBeInTheDocument();
   });
 
+  it('reopens when a newly selected person is in it, so the person being placed stays visible', async () => {
+    const nodes = ['a', 'b'].map((id) => ({
+      [entityPrimaryKeyProperty]: id,
+      [entityAttributesProperty]: {},
+      type: 'person',
+    }));
+    const { rerender } = render(
+      <DndStoreProvider>
+        <NodeDrawer nodes={nodes} draggable={false} selectedNodeId="a" />
+      </DndStoreProvider>,
+    );
+    const tab = screen.getByRole('button', { name: /collapse drawer/i });
+    fireEvent.click(tab);
+    await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'false'));
+
+    rerender(
+      <DndStoreProvider>
+        <NodeDrawer nodes={nodes} draggable={false} selectedNodeId="b" />
+      </DndStoreProvider>,
+    );
+
+    await waitFor(() => expect(tab).toHaveAttribute('aria-expanded', 'true'));
+  });
+
   it('disables the toggle while empty when it is not a drop target', () => {
     renderDrawer({});
     const tab = screen.getByRole('button', { name: /expand drawer/i });
