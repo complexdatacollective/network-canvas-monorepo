@@ -76,7 +76,9 @@ const tokenPillIconSpec: DOMOutputSpec = [
  * them: the icon and the label's first word held together, then the rest of
  * the label.
  */
-export const tokenPillContentSpec = (label: string): DOMOutputSpec[] => {
+export const tokenPillContentSpec = (
+  label: string,
+): (DOMOutputSpec | string)[] => {
   const [first, rest] = splitFirstWord(label);
   return [
     ['span', { class: tokenPillLeadClasses }, tokenPillIconSpec, first],

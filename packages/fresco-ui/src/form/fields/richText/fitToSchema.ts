@@ -65,3 +65,29 @@ export const documentInSchema = (
   schema: Schema,
 ): JSONContent =>
   hasForeignMark(document, schema) ? fitNode(document, schema) : document;
+
+/** Whether `schema` can read `node`, with everything it holds. */
+const readableIn = (node: JSONContent, schema: Schema): boolean => {
+  if (!isNode(node) || typeof node.type !== 'string') return false;
+  try {
+    schema.nodeFromJSON(node).check();
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * `content` without the nodes `schema` cannot read: one with no type, a type
+ * the editor does not have, or a shape its type refuses. A version arrives
+ * from stored or pasted JSON, and one node the editor cannot read would stop
+ * the whole field; it is dropped instead, as an unreadable version is. Given
+ * back unchanged (the same array) when every node can be read.
+ */
+export const readableContent = (
+  content: readonly JSONContent[],
+  schema: Schema,
+): readonly JSONContent[] =>
+  content.every((node) => readableIn(node, schema))
+    ? content
+    : content.filter((node) => readableIn(node, schema));

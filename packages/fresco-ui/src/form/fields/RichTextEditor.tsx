@@ -944,6 +944,33 @@ const toolbarTokenButtonStyles = buttonVariants({
   className: 'h-10 gap-1 px-3 text-sm [&>.lucide]:size-4',
 });
 
+/**
+ * Selects the versions element an insertion just placed, if it placed one, so
+ * it opens at once for its versions to be written. `from` is where the
+ * insertion began, and `replaced` how much of the line it replaced.
+ */
+const selectInsertedVersions = (
+  editor: Editor,
+  from: number,
+  sizeBefore: number,
+  replaced: number,
+) => {
+  if (editor.isDestroyed) return;
+  const { doc } = editor.state;
+  const to = Math.min(
+    from + doc.content.size - sizeBefore + replaced,
+    doc.content.size,
+  );
+  let found: number | undefined;
+  doc.nodesBetween(from, to, (node, position) => {
+    if (found !== undefined) return false;
+    if (node.type.name !== VERSIONS_NODE) return true;
+    found = position;
+    return false;
+  });
+  if (found !== undefined) editor.chain().focus().setNodeSelection(found).run();
+};
+
 const editorContentVariants = cva({
   base: cx(
     'order-2 flex-1',
@@ -970,9 +997,9 @@ const editorContentVariants = cva({
         'w-full px-6',
         '[--editable-min-h:calc(var(--spacing)*10+var(--spacing)*2*2+1px)]',
         'min-h-(--editable-min-h)',
-        '[&_.tiptap]:grid [&_.tiptap]:min-h-(--editable-min-h) [&_.tiptap]:content-center',
+        '[&>.tiptap]:grid [&>.tiptap]:min-h-(--editable-min-h) [&>.tiptap]:content-center',
       ),
-      false: cx(multilineContentVariants(), '[&_.tiptap]:min-h-[120px]'),
+      false: cx(multilineContentVariants(), '[&>.tiptap]:min-h-[120px]'),
     },
   },
 });
@@ -1146,6 +1173,22 @@ export default function RichTextEditorField({
   const [isEditingExistingLink, setIsEditingExistingLink] = useState(false);
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  // Whether the researcher is working in the field: its text, a version's
+  // own editor, its toolbar, or a menu the toolbar opened. Followed through
+  // React's focus events, which reach the field from a menu drawn elsewhere
+  // in the page, and settled a task later, since focus moving between two of
+  // these blurs one before it focuses the other. Expanded versions fold back
+  // to their pill once it is false.
+  const [isActive, setIsActive] = useState(false);
+  const inactiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (inactiveTimerRef.current !== null) {
+        clearTimeout(inactiveTimerRef.current);
+      }
+    },
+    [],
+  );
   const options = normalizeToolbarOptions(toolbarOptions, singleLine);
   // By what they say rather than by identity: a host passing a fresh array
   // on every render would otherwise rebuild the editor on every render. The
@@ -1320,8 +1363,9 @@ export default function RichTextEditorField({
       extensions: versionExtensions,
       editable: !disabled && !readOnly,
       onFocusEditor: setVersionEditor,
+      active: isActive,
     }),
-    [versionExtensions, disabled, readOnly, setVersionEditor],
+    [versionExtensions, disabled, readOnly, setVersionEditor, isActive],
   );
   // The schema these extensions make, worked out before there is an editor to
   // ask. A value has to be flattened against the marks the field will actually
@@ -1654,6 +1698,7 @@ export default function RichTextEditorField({
           position,
           Math.min(position + 1, into.state.doc.content.size),
         ) === insertMenu?.trigger;
+      const sizeBefore = into.state.doc.content.size;
       into
         .chain()
         .focus()
@@ -1662,8 +1707,12 @@ export default function RichTextEditorField({
           content,
         )
         .run();
+      selectInsertedVersions(into, position, sizeBefore, typed ? 1 : 0);
     } else {
+      const { from, to } = actOn.state.selection;
+      const sizeBefore = actOn.state.doc.content.size;
       actOn.chain().focus().insertContent(content).run();
+      selectInsertedVersions(actOn, from, sizeBefore, to - from);
     }
     setTriggered(null);
     setIsInsertMenuOpen(false);
@@ -1688,10 +1737,22 @@ export default function RichTextEditorField({
         className,
       })}
       onFocus={(event) => {
+        if (inactiveTimerRef.current !== null) {
+          clearTimeout(inactiveTimerRef.current);
+          inactiveTimerRef.current = null;
+        }
+        setIsActive(true);
         setIsFocused(true);
         onFocus?.(event);
       }}
       onBlur={(event) => {
+        if (inactiveTimerRef.current !== null) {
+          clearTimeout(inactiveTimerRef.current);
+        }
+        inactiveTimerRef.current = setTimeout(() => {
+          inactiveTimerRef.current = null;
+          setIsActive(false);
+        }, 0);
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
           return;
         }

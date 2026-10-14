@@ -666,7 +666,15 @@ describe('versions holding malformed members', () => {
     {
       key: 'other',
       label: 'If known',
-      content: [{ type: 'text', text: 'Hi' }, 'stray'],
+      // Not a node, no type, a type no editor has, and a text node with no
+      // text: each would stop the field, and each is dropped.
+      content: [
+        { type: 'text', text: 'Hi' },
+        'stray',
+        {},
+        { type: 'unknown' },
+        { type: 'text' },
+      ],
     },
   ];
 
@@ -686,13 +694,20 @@ describe('versions holding malformed members', () => {
     );
 
   const expectOnlyWellFormedVersions = async () => {
-    const version = await screen.findByRole('textbox', { name: 'If known' });
+    const version = await screen.findByRole('textbox', {
+      name: 'If known',
+      hidden: true,
+    });
     await waitFor(() => expect(version.textContent).toBe('Hi'));
     expect(
-      screen.getByRole('textbox', { name: 'If not known' }),
+      screen.getByRole('textbox', { name: 'If not known', hidden: true }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: 'No content' })).toBeNull();
-    expect(screen.queryByRole('textbox', { name: 'Numbered key' })).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'No content', hidden: true }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'Numbered key', hidden: true }),
+    ).toBeNull();
   };
 
   it('shows only the well-formed versions of a stored line', async () => {
@@ -729,6 +744,156 @@ describe('versions holding malformed members', () => {
       }),
     });
     await expectOnlyWellFormedVersions();
+  });
+});
+
+describe('versions folded to a pill', () => {
+  const NAME_VERSIONS = {
+    type: 'versions',
+    attrs: {
+      label: 'Wording depending on whether Name is known',
+      summary: 'Name',
+      meta: { argument: 'name' },
+      versions: [
+        { key: 'missing', label: 'If not known', content: [] },
+        {
+          key: 'other',
+          label: 'If known',
+          content: [{ type: 'token', attrs: { id: 'name' } }],
+        },
+      ],
+    },
+  };
+
+  const renderFolding = (value: JSONContent = emptyDocument) => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <>
+        <RichTextEditorField
+          id="greeting"
+          name="greeting"
+          aria-describedby="greeting-hint"
+          aria-label="Greeting"
+          singleLine
+          versions
+          tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+          insertMenu={{
+            label: 'Insert a value',
+            items: [{ id: 'name', label: 'Name', content: NAME_VERSIONS }],
+          }}
+          changeMode="input"
+          value={value}
+          onChange={() => undefined}
+        />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+    const pill = () => screen.getByRole('button', { name: 'Name' });
+    return { user, pill };
+  };
+
+  const holdingVersions = {
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Hello ' }, NAME_VERSIONS],
+      },
+    ],
+  };
+
+  const expectFolded = (pill: HTMLElement) => {
+    expect(pill).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('textbox', { name: 'If not known' })).toBeNull();
+    // Still mounted, so its editors keep their history.
+    expect(
+      screen.getByRole('textbox', { name: 'If not known', hidden: true }),
+    ).toBeInTheDocument();
+  };
+
+  const expectOpen = (pill: HTMLElement) => {
+    expect(pill).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.getByRole('textbox', { name: 'If not known' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'If known' })).toBeVisible();
+  };
+
+  it('shows only its pill, naming the value, until it is selected', async () => {
+    const { pill } = renderFolding(holdingVersions);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+    expect(pill()).toHaveTextContent(/^Name$/);
+    expect(pill().querySelector('svg.lucide-database')).not.toBeNull();
+    expect(editor).toHaveTextContent(/^Hello Name/);
+    expectFolded(pill());
+  });
+
+  it('opens when its pill is clicked, and folds back when the field is left', async () => {
+    const { user, pill } = renderFolding(holdingVersions);
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+
+    await user.click(pill());
+    await waitFor(() => expectOpen(pill()));
+
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await waitFor(() => expectFolded(pill()));
+  });
+
+  it('opens and folds from the keyboard, handing focus back to the line on its pill', async () => {
+    const { user, pill } = renderFolding(holdingVersions);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+
+    await user.click(pill());
+    await waitFor(() => expectOpen(pill()));
+
+    // Escape folds it, and it stays selected in the line.
+    await user.keyboard('{Escape}');
+    await waitFor(() => expectFolded(pill()));
+    expect(editor).toHaveFocus();
+    expect(pill()).toHaveAttribute('data-selected', 'true');
+
+    await user.keyboard('{Enter}');
+    await waitFor(() => expectOpen(pill()));
+    await user.keyboard('{Escape}');
+    await waitFor(() => expectFolded(pill()));
+    await user.keyboard(' ');
+    await waitFor(() => expectOpen(pill()));
+    // Nothing was typed over it.
+    expect(editor).toHaveTextContent(/^Hello Name/);
+
+    // Open, Enter moves into its first version; Escape there folds it and
+    // hands the caret back to the line.
+    await user.keyboard('{Enter}');
+    const missing = screen.getByRole('textbox', { name: 'If not known' });
+    await waitFor(() => expect(missing).toHaveFocus());
+    await user.keyboard('{Escape}');
+    await waitFor(() => expectFolded(pill()));
+    expect(editor).toHaveFocus();
+  });
+
+  it('opens as soon as it is inserted, for its versions to be written', async () => {
+    const { user, pill } = renderFolding();
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    await user.click(editor);
+    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    await user.click(await screen.findByRole('option', { name: /Name/ }));
+
+    await waitFor(() => expectOpen(pill()));
+  });
+
+  it('sizes each version to its words rather than to the field', async () => {
+    renderFolding(holdingVersions);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    // The field's own text area is held to a minimum height; the rule names
+    // only its own editor, never a version's editor nested inside it.
+    const content = editor.parentElement;
+    expect(content?.className).toMatch(/\[&>\.tiptap\]:min-h-/);
+    expect(content?.className).not.toMatch(/\[&_\.tiptap\]:(min-h|grid)/);
   });
 });
 
@@ -772,6 +937,10 @@ describe('a version edited in a field that reports on blur', () => {
       </>,
     );
 
+    // Folded to its pill until it is opened.
+    await user.click(
+      await screen.findByRole('button', { name: 'Depending on the name' }),
+    );
     const version = await screen.findByRole('textbox', { name: 'If known' });
     await user.click(version);
     await user.type(version, ' there');
@@ -928,7 +1097,10 @@ describe('a version holding a mark its field does not offer', () => {
       content: [{ type: 'paragraph', content: [LINKED_VERSIONS] }],
     });
 
-    const version = await screen.findByRole('textbox', { name: 'If known' });
+    const version = await screen.findByRole('textbox', {
+      name: 'If known',
+      hidden: true,
+    });
     await waitFor(() => expect(version.textContent).toBe('Read this site'));
     expect(version.querySelector('a')).toBe(null);
     expect(version.querySelector('strong')).toHaveTextContent('this site');
@@ -950,7 +1122,10 @@ describe('a version holding a mark its field does not offer', () => {
       }),
     });
 
-    const version = await screen.findByRole('textbox', { name: 'If known' });
+    const version = await screen.findByRole('textbox', {
+      name: 'If known',
+      hidden: true,
+    });
     await waitFor(() => expect(version.textContent).toBe('Read this site'));
     expect(version.querySelector('a')).toBe(null);
   });

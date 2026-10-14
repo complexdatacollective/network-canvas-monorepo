@@ -17,10 +17,19 @@ import {
   useEditor,
 } from '@tiptap/react';
 import { isEqual } from 'es-toolkit';
-import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
+import { TokenPillContent, tokenPillClasses } from '../../../TokenPill';
 import { cx } from '../../../utils/cva';
-import { contentInSchema } from './fitToSchema';
+import { contentInSchema, readableContent } from './fitToSchema';
 
 /**
  * One version of a piece of text: what it reads in one case, such as when a
@@ -42,6 +51,11 @@ export type RichTextVersion = Readonly<{
  */
 export type RichTextVersionsAttributes = Readonly<{
   label: string;
+  /**
+   * What the element shows while folded, as a pill: the name of what the
+   * versions depend on, such as “First name”. `label` when not given.
+   */
+  summary?: string;
   versions: readonly RichTextVersion[];
   /** Whatever the consumer needs to read the element back; kept as given. */
   meta?: unknown;
@@ -59,6 +73,11 @@ type NestedEditing = Readonly<{
   editable: boolean;
   /** Told which editor has the caret, so the toolbar acts on it. */
   onFocusEditor: (editor: Editor) => void;
+  /**
+   * Whether the researcher is working in the field. An open element folds
+   * back to its pill when they leave it.
+   */
+  active?: boolean;
 }>;
 
 export const NestedEditingContext = createContext<NestedEditing | null>(null);
@@ -67,10 +86,19 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
+ * Something that names a node type. Whether the editor has that type, and
+ * whether the node has the shape its type needs, is checked by the version's
+ * editor, which knows its schema.
+ */
+const isTypedNode = (value: unknown): value is JSONContent =>
+  isRecord(value) && typeof value.type === 'string';
+
+/**
  * The well-formed versions in a stored or pasted value. Anything can arrive
  * there (a hand-edited document, a paste from elsewhere), so a member without
  * a text key and label and a list of content is dropped, as unreadable JSON
- * is, and a version keeps only the content that is a node at all.
+ * is, and a version keeps only the content that names a node type. Its
+ * editor then drops a node it has no type for, or whose shape it refuses.
  */
 export const versionsIn = (value: unknown): RichTextVersion[] =>
   Array.isArray(value)
@@ -83,7 +111,7 @@ export const versionsIn = (value: unknown): RichTextVersion[] =>
               {
                 key: version.key,
                 label: version.label,
-                content: version.content.filter(isRecord) as JSONContent[],
+                content: version.content.filter(isTypedNode),
               },
             ]
           : [],
@@ -94,8 +122,15 @@ const versionsAttributesOf = (
   attrs: Record<string, unknown>,
 ): RichTextVersionsAttributes => ({
   label: typeof attrs.label === 'string' ? attrs.label : '',
+  ...(typeof attrs.summary === 'string' &&
+    attrs.summary !== '' && { summary: attrs.summary }),
   versions: versionsIn(attrs.versions),
 });
+
+/** Asks an element's view to open, from the line's keyboard handling. */
+const EXPAND_EVENT = 'versions:expand';
+/** Asks an element's view to fold back to its pill. */
+const COLLAPSE_EVENT = 'versions:collapse';
 
 const lineOf = (content: readonly JSONContent[]): JSONContent => ({
   type: 'doc',
@@ -118,10 +153,14 @@ const versionLabelClasses = cx(
   'shrink-0 text-xs font-semibold text-current/70 select-none',
 );
 
+// A version is one line, as tall as its words. Its paragraph is an inline
+// block rather than inline: ProseMirror ends a paragraph that is empty, or
+// that ends in a value, with a line break, and in an inline paragraph that
+// break starts a second, empty line, which doubled the version's height.
 const versionEditorClasses = cx(
   'inline-block min-w-8 rounded-sm bg-current/5 px-1',
   'focus-within:outline-primary focus-within:outline-2',
-  '[&_.tiptap]:outline-none [&_.tiptap_p]:inline',
+  '[&_.tiptap]:outline-none [&_.tiptap_p]:inline-block',
 );
 
 /**
@@ -159,7 +198,7 @@ function VersionEditor({
     () =>
       schema === undefined
         ? version.content
-        : contentInSchema(version.content, schema),
+        : readableContent(contentInSchema(version.content, schema), schema),
     [version.content, schema],
   );
 
@@ -244,7 +283,42 @@ function VersionsView({
   );
   const latest = useRef(attributes);
   latest.current = attributes;
+  const nested = useContext(NestedEditingContext);
+  const active = nested?.active ?? true;
+  const versionsId = useId();
+  const wrapperRef = useRef<HTMLElement>(null);
 
+  // Open while the element is selected, until Escape or leaving the field
+  // folds it back to its pill; selecting it again after the caret has been
+  // elsewhere, or clicking its pill, opens it again. Open, too, while the
+  // caret is in one of its versions: an edit there rewrites the element in
+  // the line, which can move the line's selection off it.
+  const [folded, setFolded] = useState(false);
+  const [focusWithin, setFocusWithin] = useState(false);
+  useEffect(() => {
+    if (!selected) setFolded(false);
+  }, [selected]);
+  useEffect(() => {
+    if (active) return;
+    setFolded(true);
+    setFocusWithin(false);
+  }, [active]);
+  const expanded = (selected || focusWithin) && !folded;
+
+  useEffect(() => {
+    const element = wrapperRef.current;
+    if (element === null) return;
+    const expand = () => setFolded(false);
+    const collapse = () => setFolded(true);
+    element.addEventListener(EXPAND_EVENT, expand);
+    element.addEventListener(COLLAPSE_EVENT, collapse);
+    return () => {
+      element.removeEventListener(EXPAND_EVENT, expand);
+      element.removeEventListener(COLLAPSE_EVENT, collapse);
+    };
+  }, []);
+
+  /** Selects the element, with the caret in the line around it. */
   const selectSelf = () => {
     const position = getPos();
     if (typeof position !== 'number') return;
@@ -257,35 +331,79 @@ function VersionsView({
       })
       .run();
   };
+  /** Folds the element and hands the caret back to the line, on its pill. */
+  const foldToPill = () => {
+    setFolded(true);
+    selectSelf();
+  };
 
   return (
     <NodeViewWrapper
+      ref={wrapperRef}
       as="span"
       role="group"
       aria-label={attributes.label}
       data-versions-element=""
-      data-selected={selected || undefined}
-      className={cx(
-        'mx-0.5 inline-flex max-w-full flex-wrap items-baseline gap-x-2 gap-y-1',
-        'rounded-sm border border-dashed border-current/40 px-1 py-px',
-        'data-selected:outline-primary data-selected:outline-2',
-      )}
+      data-expanded={expanded || undefined}
+      className="mx-0.5"
     >
-      {attributes.versions.map((version, index) => (
-        <VersionEditor
-          key={version.key}
-          version={version}
-          onEscape={selectSelf}
-          onChange={(content) => {
-            const current = latest.current;
-            updateAttributes({
-              versions: current.versions.map((existing, at) =>
-                at === index ? { ...existing, content } : existing,
-              ),
-            });
-          }}
-        />
-      ))}
+      <span
+        role="button"
+        aria-expanded={expanded}
+        aria-controls={versionsId}
+        data-versions-pill=""
+        data-selected={selected || undefined}
+        className={tokenPillClasses('mx-0 cursor-pointer')}
+        // Selects the element and opens it, also when it was already
+        // selected and folded.
+        onClick={() => {
+          selectSelf();
+          setFolded(false);
+        }}
+      >
+        <TokenPillContent label={attributes.summary ?? attributes.label} />
+      </span>
+      <span
+        id={versionsId}
+        // Folded versions stay mounted, so their editors keep their history
+        // and a value being inserted from the toolbar still has its target.
+        hidden={!expanded}
+        onFocus={() => setFocusWithin(true)}
+        // Focus that moves on to the toolbar, or to a menu it opens, is
+        // still working in this version; only the line around it, or
+        // leaving the field, takes it elsewhere.
+        onBlur={(event) => {
+          const next = event.relatedTarget;
+          if (
+            next instanceof Node &&
+            editor.view.dom.contains(next) &&
+            !event.currentTarget.contains(next)
+          ) {
+            setFocusWithin(false);
+          }
+        }}
+        className={cx(
+          expanded ? 'inline-flex' : 'hidden',
+          'ms-1 max-w-full flex-wrap items-baseline gap-x-2 gap-y-1 align-baseline',
+          'rounded-sm border border-dashed border-current/40 px-1 py-px',
+        )}
+      >
+        {attributes.versions.map((version, index) => (
+          <VersionEditor
+            key={version.key}
+            version={version}
+            onEscape={foldToPill}
+            onChange={(content) => {
+              const current = latest.current;
+              updateAttributes({
+                versions: current.versions.map((existing, at) =>
+                  at === index ? { ...existing, content } : existing,
+                ),
+              });
+            }}
+          />
+        ))}
+      </span>
     </NodeViewWrapper>
   );
 }
@@ -298,9 +416,12 @@ const isInVersionEditor = (event: Event) =>
 /**
  * Versions of a piece of text, held in the line as one element. The caret
  * steps over it in the line around it, and it is selected, moved, copied and
- * deleted whole. Each version is edited in place in an editor of its own:
- * Enter on the selected element, or Tab, moves into its versions, and Escape
- * moves back out.
+ * deleted whole. It shows as a pill naming what the versions depend on, and
+ * opens to show its versions while it is selected: clicked, reached with the
+ * keyboard, or just inserted. Each version is edited in place in an editor of
+ * its own: Enter or Space on the selected element opens it, or moves into its
+ * versions once it is open, and Escape moves back out to the pill and folds
+ * the element. Leaving the field folds it too.
  */
 export const VersionsNode = TiptapNode.create({
   name: VERSIONS_NODE,
@@ -316,6 +437,14 @@ export const VersionsNode = TiptapNode.create({
         default: '',
         parseHTML: (element) => element.getAttribute('aria-label') ?? '',
         renderHTML: (attributes) => ({ 'aria-label': attributes.label }),
+      },
+      summary: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-versions-summary'),
+        renderHTML: (attributes) =>
+          typeof attributes.summary === 'string'
+            ? { 'data-versions-summary': attributes.summary }
+            : {},
       },
       meta: {
         default: null,
@@ -364,22 +493,46 @@ export const VersionsNode = TiptapNode.create({
   },
 
   addKeyboardShortcuts() {
+    /** The selected element's view, when the selection is one. */
+    const selectedElement = (editor: Editor): HTMLElement | null => {
+      const { selection } = editor.state;
+      if (
+        !(selection instanceof NodeSelection) ||
+        selection.node.type.name !== VERSIONS_NODE
+      ) {
+        return null;
+      }
+      const dom = editor.view.nodeDOM(selection.from);
+      return dom instanceof HTMLElement
+        ? dom.querySelector<HTMLElement>('[data-versions-element]')
+        : null;
+    };
+
+    // Enter or Space on a folded element opens it; on an open one, moves
+    // into its first version.
+    const openOrEnter = ({ editor }: { editor: Editor }) => {
+      const element = selectedElement(editor);
+      if (element === null) return false;
+      if (!element.hasAttribute('data-expanded')) {
+        element.dispatchEvent(new Event(EXPAND_EVENT));
+        return true;
+      }
+      const first = element.querySelector<HTMLElement>('[role="textbox"]');
+      if (first === null) return false;
+      first.focus();
+      return true;
+    };
+
     return {
-      Enter: ({ editor }) => {
-        const { selection } = editor.state;
-        if (
-          !(selection instanceof NodeSelection) ||
-          selection.node.type.name !== VERSIONS_NODE
-        ) {
+      Enter: openOrEnter,
+      Space: openOrEnter,
+      // Folds an open element back to its pill, which stays selected.
+      Escape: ({ editor }) => {
+        const element = selectedElement(editor);
+        if (element === null || !element.hasAttribute('data-expanded')) {
           return false;
         }
-        const dom = editor.view.nodeDOM(selection.from);
-        const first =
-          dom instanceof HTMLElement
-            ? dom.querySelector<HTMLElement>('[role="textbox"]')
-            : null;
-        if (first === null) return false;
-        first.focus();
+        element.dispatchEvent(new Event(COLLAPSE_EVENT));
         return true;
       },
     };

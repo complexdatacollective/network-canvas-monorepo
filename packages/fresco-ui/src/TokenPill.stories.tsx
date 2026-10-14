@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect } from 'storybook/test';
 
 import { TokenizedText, TokenPill } from './TokenPill';
 
@@ -60,10 +60,9 @@ export const InText: Story = {
     </p>
   ),
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(
-      await canvas.findByText('Number', { selector: '[data-token]' }),
-    ).toBeVisible();
+    const pill = canvasElement.querySelector('[data-token="#"]');
+    await expect(pill).toHaveTextContent('Number');
+    await expect(pill).toBeVisible();
   },
 };
 
@@ -76,7 +75,11 @@ export const UnknownToken: Story = {
   ),
 };
 
-/** A long label stays on one line rather than breaking inside the pill. */
+/**
+ * A long label wraps like the words around it, so a narrow column is never
+ * pushed wider. Its icon stays on the line the label starts on, beside the
+ * label's first word.
+ */
 export const LongLabel: Story = {
   args: { label: 'The name of the person this is about' },
   decorators: [
@@ -86,4 +89,27 @@ export const LongLabel: Story = {
       </p>
     ),
   ],
+};
+
+/** In the narrowest column, the icon still starts the label's first line. */
+export const NarrowColumn: Story = {
+  args: { token: 'partner', label: 'partner of (x) Name' },
+  decorators: [
+    (Story) => (
+      <p className="w-24">
+        <Story />
+      </p>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const pill = canvasElement.querySelector('[data-token="partner"]');
+    const icon = pill?.querySelector('svg');
+    const lead = icon?.parentElement;
+    await expect(icon).toBeVisible();
+    // The icon and the first word are one unbroken run, on one line.
+    await expect(lead?.textContent).toBe('partner');
+    await expect(lead?.getClientRects()).toHaveLength(1);
+    // And the label did wrap after it.
+    await expect(pill?.getClientRects().length).toBeGreaterThan(1);
+  },
 };

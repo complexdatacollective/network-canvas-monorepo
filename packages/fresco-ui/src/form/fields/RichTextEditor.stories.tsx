@@ -836,12 +836,25 @@ export const WithVersionsAndInsertMenu: Story = {
     await userEvent.type(search, 'nam');
     await userEvent.keyboard('{Enter}');
 
+    // Just inserted, the versions are open for writing.
     const missing = await canvas.findByRole('textbox', {
       name: 'When Name is missing',
     });
     await expect(
       canvas.getByRole('group', { name: 'Whether Name is known' }),
     ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Whether Name is known' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    // Each version is as tall as its line of words, not as the field's own
+    // text area: an empty one included.
+    const lineHeight =
+      Number.parseFloat(getComputedStyle(editor).fontSize) * 2.5;
+    for (const name of ['When Name is missing', 'When Name is known']) {
+      await expect(
+        canvas.getByRole('textbox', { name }).getBoundingClientRect().height,
+      ).toBeLessThan(lineHeight);
+    }
     // A version is written in place.
     await userEvent.click(missing);
     await userEvent.keyboard('this person');
@@ -849,10 +862,14 @@ export const WithVersionsAndInsertMenu: Story = {
       expect(JSON.stringify(valueOf(canvasElement))).toContain('this person'),
     );
 
-    // Escape leaves the version with the versions selected; Backspace then
-    // removes them whole, and undo brings them back.
+    // Escape leaves the version with the versions selected and folded to
+    // their pill; Backspace then removes them whole, and undo brings them
+    // back.
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(editor).toHaveFocus());
+    await expect(
+      canvas.getByRole('button', { name: 'Whether Name is known' }),
+    ).toHaveAttribute('aria-expanded', 'false');
     // Apart from the edits before it, so undo takes back only the removal.
     await new Promise((resolve) => setTimeout(resolve, 600));
     await userEvent.keyboard('{Backspace}');
