@@ -249,6 +249,26 @@ export const dynamicValueUnshowableReason = (
 };
 
 /**
+ * Whether every answer `variable` can hold is the option of one of
+ * `binding`'s cases: both answers of a yes/no attribute, or each option of
+ * any other. A present answer then always chooses a case.
+ */
+const casesCoverEveryAnswer = (
+  binding: DynamicValueBinding,
+  variable: DynamicValueVariable,
+): boolean => {
+  const answers =
+    variable.type === 'boolean'
+      ? [true, false]
+      : (variable.options ?? []).map((option) => option.value);
+  const chosen = Object.values(binding.cases ?? {});
+  return (
+    answers.length > 0 &&
+    answers.every((answer) => chosen.some((option) => option === answer))
+  );
+};
+
+/**
  * A binding as one site sees it:
  * - `available`, with its argument for the message checker;
  * - `unavailable`, naming a value that site cannot show;
@@ -341,14 +361,17 @@ export const dynamicValueStatus = (
     };
   }
   const unshowable = dynamicValueUnshowableReason(variable);
+  const cased = CASED_VARIABLE_TYPES.has(variable.type);
   return {
     status: 'available',
     argument: {
-      cases: CASED_VARIABLE_TYPES.has(variable.type)
-        ? Object.keys(binding.cases ?? {})
-        : [],
+      cases: cased ? Object.keys(binding.cases ?? {}) : [],
       numeric: NUMERIC_VARIABLE_TYPES.has(variable.type),
       optional: true,
+      ...(cased &&
+        casesCoverEveryAnswer(binding, variable) && {
+          exhaustive: true,
+        }),
       ...(unshowable !== undefined && { unshowable }),
     },
   };

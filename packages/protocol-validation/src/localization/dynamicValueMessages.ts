@@ -26,6 +26,11 @@ export type DynamicValueArgument = Readonly<{
   cases: readonly string[];
   numeric: boolean;
   optional: boolean;
+  /**
+   * Every value present chooses one of `cases`, as when they cover each
+   * answer of a yes/no or option attribute, so its `other` is never read.
+   */
+  exhaustive?: boolean;
   unshowable?: string;
 }>;
 
@@ -147,15 +152,21 @@ const anyVersionShows = (
     }
   });
 
-/** Every state of a value that has `cases` and may be in `categories`. */
+/**
+ * Every state of a value that has `cases` and may be in `categories`. A
+ * present value matches none of its cases only when they are not
+ * `exhaustive`.
+ */
 const choiceStates = (
-  cases: Iterable<string>,
+  cases: readonly string[],
   categories: Iterable<string>,
   optional: boolean,
+  exhaustive = false,
 ): readonly ChoiceState[] => {
   const states: ChoiceState[] = optional ? [{ missing: true }] : [];
   const allCategories = [...new Set(categories)];
-  for (const key of [undefined, ...cases]) {
+  const keys = exhaustive && cases.length > 0 ? cases : [undefined, ...cases];
+  for (const key of keys) {
     for (const category of allCategories) {
       states.push(
         key === undefined
@@ -203,7 +214,7 @@ const statesNamedIn = (
   return new Map(
     [...cases].map(([name, keys]) => [
       name,
-      choiceStates(keys, ['other', ...(categories.get(name) ?? [])], true),
+      choiceStates([...keys], ['other', ...(categories.get(name) ?? [])], true),
     ]),
   );
 };
@@ -395,6 +406,7 @@ export const findDynamicValueProblem = (
         value.cases,
         value.numeric ? categories : ['other'],
         value.optional,
+        value.exhaustive,
       ),
     ]),
   );
