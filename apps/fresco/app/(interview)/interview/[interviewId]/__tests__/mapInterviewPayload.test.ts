@@ -575,7 +575,8 @@ describe('mapInterviewForViewer', () => {
         ],
       },
       network: {
-        ...finished.network,
+        nodes: [],
+        edges: [],
         ego: {
           _uid: 'ego-1',
           attributes: { age: 'EGO_ANSWER', other: 'OTHER_EGO_ANSWER' },

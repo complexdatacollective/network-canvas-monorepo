@@ -181,8 +181,8 @@ const exclusionProtocol = (): CurrentProtocol => {
     stages: [
       {
         ...nameGenerator,
-        label: SEEDED.stageLabel,
-        prompts: [{ id: 'prompt1', text: SEEDED.promptText }],
+        label: { en: SEEDED.stageLabel },
+        prompts: [{ id: 'prompt1', text: { en: SEEDED.promptText } }],
       },
       ...rest,
     ],
