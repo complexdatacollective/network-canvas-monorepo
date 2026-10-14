@@ -8,7 +8,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { JSONContent } from '@tiptap/react';
-import type { ComponentProps } from 'react';
+import { type ComponentProps, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { withSafeTypingIntoRichText } from '../../../testing/withSafeTypingIntoRichText';
@@ -599,6 +599,872 @@ const clipboardOf = (data: Readonly<Record<string, string>>) =>
     items: [],
   }) as unknown as DataTransfer;
 
+describe('a single-line RichTextEditorField with versions', () => {
+  it('keeps the versions a stored line holds', async () => {
+    const onChange = vi.fn();
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        changeMode="input"
+        value={{
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'Hello' },
+                {
+                  type: 'versions',
+                  attrs: {
+                    label: 'Depending on the name',
+                    meta: { argument: 'name' },
+                    versions: [
+                      { key: 'missing', label: 'If not known', content: [] },
+                      {
+                        key: 'other',
+                        label: 'If known',
+                        content: [
+                          { type: 'text', text: ', ' },
+                          { type: 'token', attrs: { id: 'name' } },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        }}
+        onChange={onChange}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+    expect(
+      await within(editor).findByRole('group', {
+        name: 'Depending on the name',
+      }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('versions holding malformed members', () => {
+  // Stored or pasted versions can hold anything; a member that is not a
+  // version is dropped, as unreadable JSON is, rather than crashing the field.
+  const MIXED_VERSIONS = [
+    { key: 'missing', label: 'If not known', content: [] },
+    { key: 'broken', label: 'No content' },
+    { key: 7, label: 'Numbered key', content: [] },
+    'not a version',
+    null,
+    {
+      key: 'other',
+      label: 'If known',
+      // Not a node, no type, a type no editor has, and a text node with no
+      // text: each would stop the field, and each is dropped.
+      content: [
+        { type: 'text', text: 'Hi' },
+        'stray',
+        {},
+        { type: 'unknown' },
+        { type: 'text' },
+      ],
+    },
+  ];
+
+  const renderField = (value: JSONContent) =>
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        changeMode="input"
+        value={value}
+        onChange={() => undefined}
+      />,
+    );
+
+  const expectOnlyWellFormedVersions = async () => {
+    const version = await screen.findByRole('textbox', {
+      name: 'If known',
+      hidden: true,
+    });
+    await waitFor(() => expect(version.textContent).toBe('Hi'));
+    expect(
+      screen.getByRole('textbox', { name: 'If not known', hidden: true }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('textbox', { name: 'No content', hidden: true }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'Numbered key', hidden: true }),
+    ).toBeNull();
+  };
+
+  it('shows only the well-formed versions of a stored line', async () => {
+    renderField({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'versions',
+              attrs: {
+                label: 'Depending on the name',
+                versions: MIXED_VERSIONS,
+              },
+            },
+          ],
+        },
+      ],
+    });
+    await expectOnlyWellFormedVersions();
+  });
+
+  it('shows only the well-formed versions of a pasted line', async () => {
+    renderField(emptyDocument);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/html': `<p><span data-versions='${JSON.stringify(
+          MIXED_VERSIONS,
+        )}' aria-label="Depending on the name"></span></p>`,
+      }),
+    });
+    await expectOnlyWellFormedVersions();
+  });
+});
+
+describe('versions folded to a pill', () => {
+  const NAME_VERSIONS = {
+    type: 'versions',
+    attrs: {
+      label: 'Wording depending on whether Name is known',
+      summary: 'Name',
+      meta: { argument: 'name' },
+      // In the order the consumer shows them: the value first, then the
+      // version for when it is missing.
+      versions: [
+        {
+          key: 'other',
+          label: 'If known',
+          content: [{ type: 'token', attrs: { id: 'name' } }],
+        },
+        { key: 'missing', label: 'If not known', content: [] },
+      ],
+    },
+  };
+
+  const renderFolding = (value: JSONContent = emptyDocument) => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <>
+        <RichTextEditorField
+          id="greeting"
+          name="greeting"
+          aria-describedby="greeting-hint"
+          aria-label="Greeting"
+          singleLine
+          versions
+          tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+          insertMenu={{
+            label: 'Insert a value',
+            items: [{ id: 'name', label: 'Name', content: NAME_VERSIONS }],
+          }}
+          changeMode="input"
+          value={value}
+          onChange={() => undefined}
+        />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+    // Hidden while the element is open, when it has no accessible name to
+    // be found by, so found by what it is.
+    const pill = () => {
+      const found = document.querySelector<HTMLElement>('[data-versions-pill]');
+      if (found === null) throw new Error('No pill');
+      return found;
+    };
+    return { user, pill };
+  };
+
+  const holdingVersions = {
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Hello ' }, NAME_VERSIONS],
+      },
+    ],
+  };
+
+  const expectFolded = (pill: HTMLElement) => {
+    expect(pill).toHaveAttribute('aria-expanded', 'false');
+    expect(pill).not.toHaveAttribute('hidden');
+    expect(screen.queryByRole('textbox', { name: 'If not known' })).toBeNull();
+    // Still mounted, so its editors keep their history.
+    expect(
+      screen.getByRole('textbox', { name: 'If not known', hidden: true }),
+    ).toBeInTheDocument();
+  };
+
+  const expectOpen = (pill: HTMLElement) => {
+    expect(pill).toHaveAttribute('aria-expanded', 'true');
+    // Open, the versions take the pill's place: the pill is not also shown.
+    expect(pill).toHaveAttribute('hidden');
+    expect(
+      screen.getByRole('textbox', { name: 'If not known' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'If known' })).toBeVisible();
+  };
+
+  it('shows only its pill, naming the value, until it is selected', async () => {
+    const { pill } = renderFolding(holdingVersions);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Name' })).toBe(pill()),
+    );
+    expect(pill()).toHaveTextContent(/^Name$/);
+    expect(pill().querySelector('svg.lucide-syringe')).not.toBeNull();
+    expect(editor).toHaveTextContent(/^Hello Name/);
+    expectFolded(pill());
+  });
+
+  it('opens when its pill is clicked, and folds back when the field is left', async () => {
+    const { user, pill } = renderFolding(holdingVersions);
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+
+    await user.click(pill());
+    await waitFor(() => expectOpen(pill()));
+
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await waitFor(() => expectFolded(pill()));
+  });
+
+  it('opens and folds from the keyboard, handing focus back to the line on its pill', async () => {
+    const { user, pill } = renderFolding(holdingVersions);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+
+    await user.click(pill());
+    await waitFor(() => expectOpen(pill()));
+
+    // Escape folds it, and it stays selected in the line.
+    await user.keyboard('{Escape}');
+    await waitFor(() => expectFolded(pill()));
+    expect(editor).toHaveFocus();
+    expect(pill()).toHaveAttribute('data-selected', 'true');
+
+    await user.keyboard('{Enter}');
+    await waitFor(() => expectOpen(pill()));
+    await user.keyboard('{Escape}');
+    await waitFor(() => expectFolded(pill()));
+    await user.keyboard(' ');
+    await waitFor(() => expectOpen(pill()));
+    // Nothing was typed over it.
+    expect(editor).toHaveTextContent(/^Hello Name/);
+
+    // Open, Enter moves into its first version; Escape there folds it and
+    // hands the caret back to the line.
+    await user.keyboard('{Enter}');
+    const known = screen.getByRole('textbox', { name: 'If known' });
+    await waitFor(() => expect(known).toHaveFocus());
+    await user.keyboard('{Escape}');
+    await waitFor(() => expectFolded(pill()));
+    // Tiptap moves focus in the next animation frame.
+    await waitFor(() => expect(editor).toHaveFocus());
+  });
+
+  it('offers headings, lists and rules only for the text around a version', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <RichTextEditorField
+        id="intro"
+        name="intro"
+        aria-label="Introduction"
+        aria-describedby="intro-hint"
+        versions
+        toolbarOptions={{ headings: true, lists: true, thematicBreak: true }}
+        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        changeMode="input"
+        value={holdingVersions}
+        onChange={() => undefined}
+      />,
+    );
+    const toolbar = within(screen.getByRole('toolbar'));
+    const blockControls = () => [
+      toolbar.getByRole('button', { name: 'Heading 1' }),
+      toolbar.getByRole('button', { name: 'Bullet list' }),
+      toolbar.getByRole('button', { name: 'Thematic break' }),
+    ];
+    const pill = await waitFor(() => {
+      const found = document.querySelector<HTMLElement>('[data-versions-pill]');
+      if (found === null) throw new Error('No pill');
+      return found;
+    });
+    for (const control of blockControls()) {
+      expect(control).not.toHaveAttribute('aria-disabled', 'true');
+    }
+
+    // A version's line holds one line of text: no heading, list or rule
+    // goes in it.
+    await user.click(pill);
+    await user.click(await screen.findByRole('textbox', { name: 'If known' }));
+    await waitFor(() => {
+      for (const control of blockControls()) {
+        expect(control).toHaveAttribute('aria-disabled', 'true');
+      }
+    });
+  });
+
+  it('keeps the Escape that folds it from a dialog around the text', async () => {
+    const { user, pill } = renderFolding(holdingVersions);
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+    // A dialog closes on an Escape that reaches the document.
+    const reachedDocument = vi.fn();
+    document.addEventListener('keydown', reachedDocument);
+    try {
+      await user.click(pill());
+      await waitFor(() => expectOpen(pill()));
+      await user.keyboard('{Escape}');
+      await waitFor(() => expectFolded(pill()));
+
+      await user.keyboard('{Enter}');
+      await waitFor(() => expectOpen(pill()));
+      await user.keyboard('{Enter}');
+      const known = screen.getByRole('textbox', { name: 'If known' });
+      await waitFor(() => expect(known).toHaveFocus());
+      await user.keyboard('{Escape}');
+      await waitFor(() => expectFolded(pill()));
+
+      const escapes = reachedDocument.mock.calls.filter(
+        ([event]) => (event as KeyboardEvent).key === 'Escape',
+      );
+      expect(escapes).toHaveLength(0);
+    } finally {
+      document.removeEventListener('keydown', reachedDocument);
+    }
+  });
+
+  // That a just-inserted element opens is checked in a real browser, by the
+  // WithVersionsAndInsertMenu story: jsdom cannot hold a node selection once
+  // a selectionchange makes ProseMirror read the selection back from the DOM,
+  // so here the element could fold again as soon as it opened.
+
+  it('lists its versions one to a row, in the order it is given them', async () => {
+    const { user, pill } = renderFolding(holdingVersions);
+    await waitFor(() => expect(pill()).toBeInTheDocument());
+    await user.click(pill());
+    await waitFor(() => expectOpen(pill()));
+
+    const rows = screen.getAllByRole('textbox', { name: /^If / });
+    expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual([
+      'If known',
+      'If not known',
+    ]);
+    // A grid of label and line, one row for each version.
+    const list = rows[0]?.closest('[id]:not([role])');
+    expect(list?.className).toMatch(/inline-grid/);
+    expect(list?.className).toMatch(/grid-cols-/);
+  });
+
+  it('says that an empty version shows nothing, without writing it into the text', async () => {
+    const onChange = vi.fn();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        changeMode="input"
+        value={holdingVersions}
+        onChange={onChange}
+      />,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Name' }));
+
+    const missing = await screen.findByRole('textbox', {
+      name: 'If not known',
+    });
+    expect(missing.querySelector('p')).toHaveAttribute(
+      'data-placeholder',
+      'Shows nothing',
+    );
+    expect(missing.textContent).toBe('');
+    // The known version has words, so it has no hint.
+    const known = screen.getByRole('textbox', { name: 'If known' });
+    expect(known.querySelector('p[data-placeholder]')).toBeNull();
+    // Nothing was written into the text by showing the hint.
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('sizes each version to its words rather than to the field', async () => {
+    renderFolding(holdingVersions);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    // The field's own text area is held to a minimum height; the rule names
+    // only its own editor, never a version's editor nested inside it.
+    const content = editor.parentElement;
+    expect(content?.className).toMatch(/\[&>\.tiptap\]:min-h-/);
+    expect(content?.className).not.toMatch(/\[&_\.tiptap\]:(min-h|grid)/);
+  });
+});
+
+describe('undo and redo of values and versions', () => {
+  const NAME_TOKEN = { type: 'token', attrs: { id: 'name' } };
+  const helloDocument = {
+    type: 'doc',
+    content: [
+      { type: 'paragraph', content: [{ type: 'text', text: 'Hello ' }] },
+    ],
+  };
+
+  /**
+   * A host like Architect's: the placeholders it offers come back in another
+   * order once a value is bound, as inserting one binds it.
+   */
+  function ReorderingHost({ initial }: { initial: JSONContent }) {
+    const [value, setValue] = useState<JSONContent | undefined>(initial);
+    const [bound, setBound] = useState(false);
+    const tokens = [
+      { id: 'name', label: 'Name', inToolbar: false },
+      { id: 'age', label: 'Age', inToolbar: false },
+    ];
+    return (
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        tokens={bound ? tokens.toReversed() : tokens}
+        insertMenu={{
+          label: 'Insert a value',
+          items: [{ id: 'name', label: 'Name', content: NAME_TOKEN }],
+        }}
+        changeMode="input"
+        value={value}
+        onChange={(next) => {
+          setValue(next);
+          setBound(true);
+        }}
+      />
+    );
+  }
+
+  it('undoes and redoes a value inserted from the menu, from the keyboard', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(<ReorderingHost initial={helloDocument} />);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    await user.click(editor);
+    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    await user.click(await screen.findByRole('option', { name: /Name/ }));
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
+    );
+    // The caret is back in the text the value went into.
+    await waitFor(() => expect(editor).toHaveFocus());
+
+    await user.keyboard('{Control>}z{/Control}');
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="name"]')).toBeNull(),
+    );
+    expect(editor).toHaveTextContent(/^Hello$/);
+
+    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await waitFor(() =>
+      expect(editor.querySelector('[data-token="name"]')).not.toBeNull(),
+    );
+  });
+
+  it('undoes an edit in a version from the line, and redoes it from the version', async () => {
+    const onChange = vi.fn();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        changeMode="input"
+        value={{
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'Hello' },
+                {
+                  type: 'versions',
+                  attrs: {
+                    label: 'Depending on the name',
+                    meta: { argument: 'name' },
+                    versions: [
+                      { key: 'missing', label: 'If not known', content: [] },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        }}
+        onChange={onChange}
+      />,
+    );
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+    await user.click(
+      await screen.findByRole('button', { name: 'Depending on the name' }),
+    );
+    const version = await screen.findByRole('textbox', {
+      name: 'If not known',
+    });
+    await user.click(version);
+    await user.type(version, ' friend');
+    expect(version.textContent).toBe(' friend');
+
+    // Undone in the line around it.
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(editor).toHaveFocus());
+    await user.keyboard('{Control>}z{/Control}');
+    await waitFor(() => expect(version.textContent).toBe(''));
+
+    // Redone from inside the version: its edits are the line's.
+    const pill = document.querySelector<HTMLElement>('[data-versions-pill]');
+    if (pill === null) throw new Error('No pill');
+    await user.click(pill);
+    const reopened = await screen.findByRole('textbox', {
+      name: 'If not known',
+    });
+    await user.click(reopened);
+    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    await waitFor(() => expect(reopened.textContent).toBe(' friend'));
+
+    // And undone from inside it again.
+    await user.keyboard('{Control>}z{/Control}');
+    await waitFor(() => expect(reopened.textContent).toBe(''));
+    const reported = onChange.mock.lastCall?.[0] as JSONContent;
+    const versions = reported.content?.[0]?.content?.[1]?.attrs?.versions as {
+      content: JSONContent[];
+    }[];
+    expect(versions[0]?.content).toEqual([]);
+  });
+});
+
+describe('a version edited in a field that reports on blur', () => {
+  it('reports the edit when the caret leaves the field', async () => {
+    const onChange = vi.fn();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <>
+        <RichTextEditorField
+          id="greeting"
+          name="greeting"
+          aria-describedby="greeting-hint"
+          aria-label="Greeting"
+          singleLine
+          versions
+          value={{
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [
+                  { type: 'text', text: 'Hello' },
+                  {
+                    type: 'versions',
+                    attrs: {
+                      label: 'Depending on the name',
+                      meta: { argument: 'name' },
+                      versions: [
+                        { key: 'other', label: 'If known', content: [] },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          }}
+          onChange={onChange}
+        />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+
+    // Folded to its pill until it is opened.
+    await user.click(
+      await screen.findByRole('button', { name: 'Depending on the name' }),
+    );
+    const version = await screen.findByRole('textbox', { name: 'If known' });
+    await user.click(version);
+    await user.type(version, ' there');
+    expect(version.textContent).toBe(' there');
+    onChange.mockClear();
+
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const reported = onChange.mock.lastCall?.[0] as JSONContent;
+    const versions = reported.content?.[0]?.content?.[1]?.attrs?.versions as {
+      content: JSONContent[];
+    }[];
+    expect(versions[0]?.content).toEqual([{ type: 'text', text: ' there' }]);
+  });
+});
+
+describe('the toolbar after a version folds', () => {
+  it('acts on the field, not on the version that was last written in', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <>
+        <RichTextEditorField
+          id="greeting"
+          name="greeting"
+          aria-describedby="greeting-hint"
+          aria-label="Greeting"
+          singleLine
+          versions
+          toolbarOptions={{ bold: true }}
+          changeMode="input"
+          value={{
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [
+                  { type: 'text', text: 'Hello' },
+                  {
+                    type: 'versions',
+                    attrs: {
+                      label: 'Depending on the name',
+                      meta: { argument: 'name' },
+                      versions: [
+                        { key: 'other', label: 'If known', content: [] },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          }}
+          onChange={() => undefined}
+        />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Depending on the name' }),
+    );
+    const version = await screen.findByRole('textbox', { name: 'If known' });
+    await user.click(version);
+    await user.type(version, ' there');
+
+    // Leaving the field folds the version back to its pill.
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await screen.findByRole('button', { name: 'Depending on the name' });
+
+    await user.click(screen.getByRole('button', { name: 'Bold' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Greeting' })).toHaveFocus(),
+    );
+  });
+});
+
+describe('a single-line field holding marked values and versions', () => {
+  it('keeps the marks it offers on a value, and the words of linked versions', async () => {
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        toolbarOptions={{ bold: true }}
+        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        changeMode="input"
+        value={{
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'Hello ' },
+                {
+                  type: 'token',
+                  attrs: { id: 'name' },
+                  marks: [{ type: 'bold' }],
+                },
+                { type: 'text', text: ' ' },
+                {
+                  type: 'versions',
+                  marks: [
+                    { type: 'link', attrs: { href: 'https://example.com/' } },
+                  ],
+                  attrs: {
+                    label: 'Depending on the name',
+                    meta: { argument: 'name' },
+                    versions: [
+                      {
+                        key: 'other',
+                        label: 'If known',
+                        content: [{ type: 'text', text: 'welcome' }],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        }}
+        onChange={() => undefined}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+    await waitFor(() =>
+      expect(editor.querySelector('strong')).toHaveTextContent('Name'),
+    );
+    expect(
+      within(editor).getByRole('group', { name: 'Depending on the name' }),
+    ).toBeInTheDocument();
+    expect(editor.querySelector('a')).toBe(null);
+  });
+});
+
+describe('a multi-line field holding a mark it does not offer', () => {
+  it('keeps the words of a link it is mounted with, and of one that arrives later', async () => {
+    const field = (value: JSONContent) => (
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Bio"
+        changeMode="input"
+        value={value}
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(field(LINKED_DOCUMENT));
+    const editor = await screen.findByRole('textbox', { name: 'Bio' });
+    await waitFor(() => expect(editor.textContent).toBe('Never met in person'));
+    expect(editor.querySelector('a')).toBe(null);
+
+    rerender(field(documentWithText));
+    await waitFor(() => expect(editor.textContent).toBe('Existing content'));
+    rerender(field(LINKED_DOCUMENT));
+    await waitFor(() => expect(editor.textContent).toBe('Never met in person'));
+  });
+});
+
+describe('a version holding a mark its field does not offer', () => {
+  // A single-line field offers no links, so a version's own editor has no
+  // `link` mark. A version that holds one anyway (loaded from a message, or
+  // pasted from a multi-line field) must still show its words: an editor
+  // that cannot read a mark starts empty, and the next edit saves the blank.
+  const LINKED_VERSIONS = {
+    type: 'versions',
+    attrs: {
+      label: 'Depending on the name',
+      meta: { argument: 'name' },
+      versions: [
+        {
+          key: 'other',
+          label: 'If known',
+          content: [
+            { type: 'text', text: 'Read ' },
+            {
+              type: 'text',
+              marks: [
+                { type: 'bold' },
+                { type: 'link', attrs: { href: 'https://example.com/' } },
+              ],
+              text: 'this site',
+            },
+          ],
+        },
+      ],
+    },
+  };
+
+  const renderVersionsField = (value: JSONContent) =>
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        toolbarOptions={{ bold: true }}
+        changeMode="input"
+        value={value}
+        onChange={() => undefined}
+      />,
+    );
+
+  it('keeps the words of a linked version it is mounted with', async () => {
+    renderVersionsField({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [LINKED_VERSIONS] }],
+    });
+
+    const version = await screen.findByRole('textbox', {
+      name: 'If known',
+      hidden: true,
+    });
+    await waitFor(() => expect(version.textContent).toBe('Read this site'));
+    expect(version.querySelector('a')).toBe(null);
+    expect(version.querySelector('strong')).toHaveTextContent('this site');
+  });
+
+  it('keeps the words of a linked version pasted into it', async () => {
+    renderVersionsField(emptyDocument);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    const attrs = LINKED_VERSIONS.attrs;
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/html': `<p><span data-versions='${JSON.stringify(
+          attrs.versions,
+        )}' data-versions-meta='${JSON.stringify(attrs.meta)}' aria-label="${
+          attrs.label
+        }"></span></p>`,
+      }),
+    });
+
+    const version = await screen.findByRole('textbox', {
+      name: 'If known',
+      hidden: true,
+    });
+    await waitFor(() => expect(version.textContent).toBe('Read this site'));
+    expect(version.querySelector('a')).toBe(null);
+  });
+});
+
 describe('a single-line RichTextEditorField', () => {
   type SingleLineProps = Pick<
     ComponentProps<typeof RichTextEditorField>,
@@ -1090,8 +1956,50 @@ describe('a RichTextEditorField with tokens', () => {
     const chip = editor.querySelector('[data-token="name"]');
     expect(chip).toHaveTextContent('Name');
     expect(chip).toHaveAttribute('contenteditable', 'false');
-    // The pill read-only text shows is drawn with the same classes.
-    expect(chip?.className).toBe(tokenPillClasses());
+    // The pill read-only text shows is drawn with the same classes, with a
+    // pointer over it, since the pill is one object.
+    expect(chip?.className).toBe(tokenPillClasses('cursor-pointer'));
+    // It opens with the value icon, hidden from screen readers.
+    const icon = chip?.querySelector('svg.lucide-syringe');
+    expect(icon).toHaveAttribute('aria-hidden', 'true');
+    // Held on one line with the label's first word, so it never ends a line
+    // the label does not start on.
+    const lead = chip?.firstElementChild;
+    expect(lead).toHaveClass('whitespace-nowrap');
+    expect(lead?.firstChild).toBe(icon);
+    expect(lead).toHaveTextContent(/^Name$/);
+  });
+
+  it('offers its insert menu from an icon button named, and tipped, by the menu', async () => {
+    const field = renderWithTokens({
+      insertMenu: {
+        label: 'Insert a value',
+        items: [
+          {
+            id: 'name',
+            label: 'Name',
+            content: { type: 'token', attrs: { id: 'name' } },
+          },
+        ],
+      },
+    });
+    await field.editor();
+
+    const button = screen.getByRole('button', { name: 'Insert a value' });
+    // Its name is the menu's; what it shows is the value icon alone.
+    expect(button.textContent).toBe('');
+    expect(button.querySelector('svg.lucide-syringe')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    await field.user.hover(button);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Insert a value',
+    );
+    await field.user.click(button);
+    expect(
+      await screen.findByRole('option', { name: /Name/ }),
+    ).toBeInTheDocument();
   });
 
   it('says which required tokens the text does not include yet', async () => {

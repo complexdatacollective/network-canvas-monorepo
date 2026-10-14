@@ -108,6 +108,19 @@ describe('the sections of an anonymisation stage', () => {
     });
   });
 
+  it('tells assistive technology the explanation fields are required', async () => {
+    openEditor();
+
+    // Both fields can show values the interview fills in, so they are drawn
+    // by the editor for such text rather than the plain one.
+    for (const name of ['Title', 'Body']) {
+      expect(await screen.findByRole('textbox', { name })).toHaveAttribute(
+        'aria-required',
+        'true',
+      );
+    }
+  });
+
   /**
    * The schema refuses an explanation with no heading, but only once the save
    * has been attempted and only against a path. The section has to refuse it
@@ -528,7 +541,8 @@ describe('the attributes a passphrase protects', () => {
       expect(attributeCheckbox('person', 'name')).toBeChecked(),
     );
 
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+    // A rich-text editor rather than an input: it shows its text.
+    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
       'Rewritten heading',
     );
     const saved = await harness.submit();

@@ -767,6 +767,10 @@
     "defaultMessage": "Bullet list",
     "description": "Accessible name of the bullet-list toggle in the editor toolbar."
   },
+  "frescoUi.richTextEditor.emptyVersion": {
+    "defaultMessage": "Shows nothing",
+    "description": "Muted hint shown inside an empty version of a piece of text, such as the version shown when a participant’s name is not known. An empty version is allowed: in that case nothing is shown in its place. The hint is not part of the text."
+  },
   "frescoUi.richTextEditor.heading1": {
     "defaultMessage": "Heading 1",
     "description": "Accessible name of the level-1 heading toggle in the editor toolbar."
@@ -782,6 +786,14 @@
   "frescoUi.richTextEditor.heading4": {
     "defaultMessage": "Heading 4",
     "description": "Accessible name of the level-4 heading toggle in the editor toolbar."
+  },
+  "frescoUi.richTextEditor.insertMenuNoMatches": {
+    "defaultMessage": "Nothing matches your search.",
+    "description": "Shown in the rich text editor’s insert menu when the search matches nothing that can be inserted."
+  },
+  "frescoUi.richTextEditor.insertMenuSearch": {
+    "defaultMessage": "Search",
+    "description": "Accessible name and placeholder of the search box in the rich text editor’s insert menu, which filters the things that can be inserted into the text."
   },
   "frescoUi.richTextEditor.insertRequiredToken": {
     "defaultMessage": "Insert “{token}” (required in this text)",

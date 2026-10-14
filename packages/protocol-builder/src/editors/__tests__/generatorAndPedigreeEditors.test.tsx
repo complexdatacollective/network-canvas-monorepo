@@ -20,7 +20,8 @@ type SectionListEditorCase = Readonly<{
   sections: readonly string[];
   /**
    * The top-level stage keys those sections have a field for, once the group
-   * named by `openGroup` is open.
+   * named by `openGroup` is open, and `dynamicValues`, which every stage
+   * editor registers for the values its text may show.
    */
   ownedKeys: readonly string[];
   /** A group of settings whose fields are on screen only while it is open. */
@@ -51,7 +52,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
-    ownedKeys: ['form', 'label', 'prompts', 'subject'],
+    ownedKeys: ['dynamicValues', 'form', 'label', 'prompts', 'subject'],
   },
   {
     interfaceName: 'FamilyPedigree',
@@ -74,6 +75,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
     ],
     openGroup: 'Drawing the family',
     ownedKeys: [
+      'dynamicValues',
       'edgeConfiguration',
       'framing',
       'label',

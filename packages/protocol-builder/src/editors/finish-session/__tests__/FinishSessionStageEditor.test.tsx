@@ -60,10 +60,12 @@ describe('the editor for the screen that ends the interview', () => {
     expect(
       screen.getByRole('heading', { name: 'Closing screen' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /Heading/ })).toHaveValue(
-      'All *done*',
-    );
-    expect(screen.getByRole('textbox', { name: /^Text/ })).toHaveValue(
+    // Both are rich-text editors, which show the markdown's emphasis rather
+    // than its asterisks.
+    const heading = screen.getByRole('textbox', { name: /Heading/ });
+    expect(heading.textContent).toBe('All done');
+    expect(heading.querySelector('em')).toHaveTextContent(/^done$/);
+    expect(screen.getByRole('textbox', { name: /^Text/ }).textContent).toBe(
       'Thank you for taking part.',
     );
     expect(

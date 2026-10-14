@@ -525,6 +525,27 @@ describe('FieldPreviewPane', () => {
     expect(within(pane).getByText('Very close')).toBeVisible();
   });
 
+  it('names the values a scale label shows rather than crashing', () => {
+    // The scale takes its end labels as words, and the preview has no
+    // participant to fill a value in with: the interview's resolver would
+    // refuse the message. Outside a stage each value is named as written.
+    const pane = renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'closeness',
+      _component: 'VisualAnalogScale',
+      _parameters: {
+        minLabel: en('Not close on {today}'),
+        maxLabel: en(
+          '{today, select, missing {Very} other {Very, on {today}}}',
+        ),
+      },
+      prompt: en('How close are you?'),
+    });
+
+    expect(within(pane).getByText('Not close on [today]')).toBeVisible();
+    expect(within(pane).getByText('[today]')).toBeVisible();
+  });
+
   it('previews the values the row is writing for an invented list attribute', () => {
     renderPreview({
       variable: CREATE_NEW_ATTRIBUTE,

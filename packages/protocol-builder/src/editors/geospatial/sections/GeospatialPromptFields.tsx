@@ -7,6 +7,7 @@ import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
+import { DynamicTextPreview } from '../../../fields/DynamicTextPreview.tsx';
 import { geospatialMessages } from '../../../fields/geospatial/geospatialMessages.ts';
 import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
@@ -130,6 +131,7 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
         label={intl.formatMessage(geospatialMessages.promptTextLabel)}
         hint={intl.formatMessage(geospatialMessages.promptTextHint)}
         component={LocalizedRichTextField}
+        dynamicValues="prompt"
         singleLine
         initialValue={asLocalizedString(item[TEXT_FIELD])}
         required={intl.formatMessage(geospatialMessages.promptTextRequired)}
@@ -180,9 +182,5 @@ export function GeospatialPromptPreview({ item }: RowPreviewProps) {
       </RenderMarkdown>
     );
   }
-  return (
-    <RenderMarkdown render={<div lang={text.lang} dir={text.dir} />}>
-      {text.text}
-    </RenderMarkdown>
-  );
+  return <DynamicTextPreview value={item[TEXT_FIELD]} />;
 }

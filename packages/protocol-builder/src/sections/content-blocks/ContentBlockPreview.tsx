@@ -1,10 +1,9 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
+import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
 import type { RowPreviewProps } from '../../form/rowDialog.tsx';
-import { useLocalizedText } from '../../localization/ProtocolLocalization.tsx';
 import ResourcePreview from '../../resources/components/ResourcePreview.tsx';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import { contentBlockKind } from './contentBlockTypes.ts';
@@ -41,17 +40,11 @@ const asString = (value: unknown): string | undefined =>
  */
 export default function ContentBlockPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const localize = useLocalizedText();
   const protocolContext = useProtocolContext();
   const kind = contentBlockKind(protocolContext, item);
 
   if (kind === 'text') {
-    const shown = localize(item.content);
-    return (
-      <RenderMarkdown render={<div lang={shown.lang} dir={shown.dir} />}>
-        {shown.text}
-      </RenderMarkdown>
-    );
+    return <DynamicTextPreview value={item.content} />;
   }
 
   const content = asString(item.content) ?? '';

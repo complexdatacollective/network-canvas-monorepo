@@ -19,6 +19,7 @@ import {
 } from '@codaco/protocol-builder/localization/localizedText';
 import {
   type CurrentProtocol,
+  findDynamicValueProblems,
   isBlankMessage,
   isBlankText,
   type LocaleTag,
@@ -110,8 +111,12 @@ const findRow = (
   return undefined;
 };
 
+// Text that can show values is kept as written, like a localized message:
+// read as plain or formatted text, its values would be flattened away.
 const kindOf = (row: TranslationRow): TextKind =>
-  row.arguments === undefined ? 'text' : 'message';
+  row.arguments === undefined && row.dynamicValues === undefined
+    ? 'text'
+    : 'message';
 
 /**
  * The cell's translation as its field holds it: the text a researcher reads
@@ -147,6 +152,48 @@ const withCellText = (
         isBlankTranslation(row, text) ? undefined : text,
       )
     : withTranslation(value, locale, isBlankTranslation(row, text) ? '' : text);
+
+/**
+ * Why `text`, as the row's translation in `locale`, cannot show its values:
+ * by the protocol's own check, against the stage's bindings and what the
+ * text's place can show, with the row's other cells as the table holds them
+ * now, saved or not.
+ */
+const dynamicValueProblem = (
+  state: RootState,
+  row: TranslationRow,
+  locale: LocaleTag,
+  text: string,
+  formValues: Readonly<Record<string, FieldValue>>,
+): string | undefined => {
+  const protocol = getProtocol(state);
+  if (!protocol || row.dynamicValues === undefined) return undefined;
+  // A cell emptied in the table holds no translation in that language.
+  const value = protocol.localization.locales.reduce<LocalizedString>(
+    (held, other) => {
+      const name = translationFieldName(row.path, other);
+      return other === locale || !Object.hasOwn(formValues, name)
+        ? held
+        : (withCellText(row, held, other, asText(formValues[name])) ?? {});
+    },
+    row.value,
+  );
+  const at = JSON.stringify([...row.path, locale]);
+  return findDynamicValueProblems(
+    {
+      codebook: protocol.codebook,
+      stages: protocol.stages,
+      defaultLocale: protocol.localization.defaultLocale,
+    },
+    [
+      {
+        path: [...row.path],
+        value: { ...value, [locale]: text },
+        dynamicValues: row.dynamicValues,
+      },
+    ],
+  ).find((problem) => JSON.stringify(problem.path) === at)?.message;
+};
 
 type Words = Readonly<{
   intl: IntlShape;
@@ -189,6 +236,19 @@ const cellValidation =
             parsed?.success === false ? parsed.error.issues[0] : undefined;
           if (issue !== undefined) {
             fail(issue.message);
+            return;
+          }
+        }
+        if (row.dynamicValues !== undefined && !isBlankTranslation(row, text)) {
+          const problem = dynamicValueProblem(
+            state,
+            row,
+            locale,
+            text,
+            formValues,
+          );
+          if (problem !== undefined) {
+            fail(problem);
             return;
           }
         }
@@ -264,24 +324,69 @@ export const useTranslationDraft = ({
     }
   };
 
-  const register = () => {
+  const registerCell = (cellLocale: LocaleTag) => {
     const state = formStore.getState();
-    if (state.fields.has(name)) return;
+    const cellName = translationFieldName(row.path, cellLocale);
+    if (state.fields.has(cellName)) return false;
     state.registerField({
-      name,
-      initialValue: stored,
+      name: cellName,
+      initialValue: storedTranslation(row, cellLocale),
       validation: cellValidation(
         row.path,
-        locale,
+        cellLocale,
         appStore.getState,
         () => words.current,
       ),
     });
-    recheckLeftCells();
+    return true;
+  };
+
+  const register = () => {
+    if (registerCell(locale)) recheckLeftCells();
+  };
+
+  // An edit to the default-language text can break a translation nobody has
+  // touched: one that leaves out a value the text now shows. A cell has a
+  // field only once it is edited, and only a field can refuse the save, so
+  // the first edit to a default-language cell gives each other translation of
+  // a text with values a field of its own, left as it was. It is registered
+  // at once rather than when the cell is left: a save pressed while the
+  // edited cell still has focus validates the fields registered when it
+  // starts, before the cell's blur is handled, and a translation registered
+  // only then would escape the check. The save's own validation then says in
+  // that cell what it lacks; leaving the edited cell says so sooner.
+  const otherTranslations = (): LocaleTag[] => {
+    const protocol = getProtocol(appStore.getState());
+    if (
+      row.dynamicValues === undefined ||
+      !protocol ||
+      locale !== protocol.localization.defaultLocale
+    ) {
+      return [];
+    }
+    return protocol.localization.locales.filter(
+      (other) =>
+        other !== locale &&
+        !isBlankTranslation(row, storedTranslation(row, other)),
+    );
+  };
+
+  const registerOtherTranslations = () => {
+    for (const other of otherTranslations()) registerCell(other);
+  };
+
+  const checkOtherTranslations = () => {
+    const state = formStore.getState();
+    for (const other of otherTranslations()) {
+      registerCell(other);
+      // Validated with every other cell already left, just below.
+      state.setFieldBlurred(translationFieldName(row.path, other));
+    }
   };
 
   const change = (next: string) => {
     register();
+    registerOtherTranslations();
     const state = formStore.getState();
     state.setFieldValue(name, next);
     if (state.getFieldState(name)?.meta.isBlurred)
@@ -295,6 +400,13 @@ export const useTranslationDraft = ({
     if (!state.fields.has(name)) return;
     state.setFieldBlurred(name);
     void state.validateField(name);
+    const left = state.getFieldState(name);
+    if (
+      left !== undefined &&
+      !isEqual(asText(left.value), asText(left.initialValue))
+    ) {
+      checkOtherTranslations();
+    }
     recheckLeftCells();
   };
 

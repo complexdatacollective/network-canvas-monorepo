@@ -104,6 +104,7 @@ export {
   findMissingDynamicPlacement,
   MISSING_CASE,
   type MissingDynamicPlacement,
+  pluralValueExamples,
   TOO_MANY_DYNAMIC_VERSIONS,
 } from './localization/dynamicValueMessages.ts';
 export { escapeMarkdownText } from './localization/markdownText.ts';
@@ -111,6 +112,14 @@ export {
   escapeMessageText,
   messageText,
 } from './localization/messageSyntax.ts';
+export {
+  type MessageNode,
+  type MessageStructureProblem,
+  type MessageSwitch,
+  type MessageVersion,
+  messageStructure,
+  printMessageStructure,
+} from './localization/messageStructure.ts';
 export {
   type ResolvedLocalizedString,
   resolveLocalizedString,
@@ -208,6 +217,7 @@ export {
   dynamicValueContextFor,
   type DynamicValueProblem,
   findDynamicValueProblems,
+  stageDynamicValueContext,
 } from './schemas/9/dynamic-value-validation.ts';
 // What the Family Pedigree's localized messages may use, for an editor of
 // them.
@@ -313,6 +323,7 @@ export {
 // protocol is admissible should call `validateProtocol`.
 export {
   collectLocalizedStrings,
+  collectLocalizedStringsFromSchema,
   type LocalizedStringHit,
 } from './utils/collectLocalizedStrings.ts';
 export { readRosterCsv } from './utils/readRosterCsv.ts';

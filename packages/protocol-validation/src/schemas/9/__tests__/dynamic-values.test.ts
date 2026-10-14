@@ -3,7 +3,10 @@ import { z } from 'zod';
 
 import { collectEntityAttributeReferences } from '../../../utils/collectEntityAttributeReferences.ts';
 import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
-import { dynamicValueContextFor } from '../dynamic-value-validation.ts';
+import {
+  dynamicValueContextFor,
+  stageDynamicValueContext,
+} from '../dynamic-value-validation.ts';
 import { dynamicValueArgumentsAt } from '../dynamic-values.ts';
 import { getLocalizedStringDescriptor } from '../localized-string.ts';
 import ProtocolSchemaV9 from '../schema.ts';
@@ -661,6 +664,20 @@ describe('dynamic values in stage text', () => {
             message: expect.stringContaining('does not exist'),
           }),
         ]);
+      });
+
+      it("names every label the stage's text can show, edge type forms included", () => {
+        const protocol = withLabels('composer');
+        const shown = Object.keys(
+          dynamicValueArgumentsAt(
+            labels,
+            stageDynamicValueContext({
+              codebook: protocol.codebook,
+              stage: stageIn(protocol, 'composer'),
+            }),
+          ),
+        );
+        expect(shown).toEqual(['nodeLabel', 'fromLabel', 'toLabel']);
       });
 
       it('needs no missing version for a label, which is never missing', () => {

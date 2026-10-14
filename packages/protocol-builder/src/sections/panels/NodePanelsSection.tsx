@@ -21,6 +21,7 @@ import Section from '@codaco/fresco-ui/Section';
 import type { Asset } from '@codaco/protocol-validation';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
+import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
 import { LocalizedInputField } from '../../fields/LocalizedStringField.tsx';
 import { FilterRuleSetField } from '../../fields/RuleSetField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
@@ -631,6 +632,7 @@ function PanelEditor({ item, editIndex }: RowEditorProps) {
         <Field<typeof LocalizedInputField>
           name="title"
           component={LocalizedInputField}
+          dynamicValues="stageText"
           label={intl.formatMessage(nodePanelsMessages.panelTitleLabel)}
           hint={intl.formatMessage(nodePanelsMessages.panelTitleHint)}
           initialValue={asLocalizedString(item.title)}
@@ -910,9 +912,11 @@ function PanelPreview({ item }: RowPreviewProps) {
           {intl.formatMessage(nodePanelsMessages.untitledPanel)}
         </p>
       ) : (
-        <p className="m-0 font-bold" lang={title.lang} dir={title.dir}>
-          {title.text}
-        </p>
+        <DynamicTextPreview
+          value={item.title}
+          markdown={false}
+          render={<p className="m-0 font-bold" />}
+        />
       )}
       <p className="m-0 text-sm text-current/70">
         {intl.formatMessage(nodePanelsMessages.panelSummary, { rules, source })}

@@ -287,6 +287,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name={CONTENT_BLOCK_SLOTS.text}
           component={LocalizedRichTextField}
+          dynamicValues="stageText"
           label={intl.formatMessage(contentBlockMessages.contentLabel)}
           hint={intl.formatMessage(contentBlockMessages.contentHint, {
             slotType: 'text',

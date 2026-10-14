@@ -72,9 +72,10 @@ describe('the editor for a page of content', () => {
     expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
       'Information',
     );
-    expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-      'Welcome',
-    );
+    // A rich-text editor rather than an input: it shows its text.
+    expect(
+      screen.getByRole('textbox', { name: 'Page heading' }).textContent,
+    ).toBe('Welcome');
     expect(
       await screen.findByText('Welcome to this interview.'),
     ).toBeInTheDocument();
@@ -89,9 +90,9 @@ describe('the editor for a page of content', () => {
     // proposes because it is creating the stage.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Information/);
-    expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-      '',
-    );
+    expect(
+      screen.getByRole('textbox', { name: 'Page heading' }).textContent,
+    ).toBe('');
   });
 
   it('saves a new stage once the researcher has written it', async () => {
@@ -176,11 +177,13 @@ describe('the editor for a page of content', () => {
   it('refuses to save a stage somebody else is editing', async () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: 'Page heading' }),
-      ).toBeDisabled(),
-    );
+    // A rich-text editor, which says it is unavailable and takes no typing,
+    // rather than carrying an input's `disabled`.
+    await waitFor(() => {
+      const heading = screen.getByRole('textbox', { name: 'Page heading' });
+      expect(heading).toHaveAttribute('aria-disabled', 'true');
+      expect(heading).toHaveAttribute('contenteditable', 'false');
+    });
 
     // The shell's refusal is the guarantee, not the chrome above it: a
     // keyboard, a stale render, or another host's own button can all still

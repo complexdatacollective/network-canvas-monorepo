@@ -101,6 +101,7 @@ export default defineConfig({
             '@codaco/fresco-ui > @codaco/app-i18n > react-intl/server',
             '@base-ui/react',
             '@base-ui/react/accordion',
+            '@base-ui/react/autocomplete',
             '@base-ui/react/checkbox',
             '@base-ui/react/collapsible',
             '@base-ui/react/combobox',
