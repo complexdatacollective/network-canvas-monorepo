@@ -6,6 +6,7 @@
 '@codaco/background-creator': patch
 '@codaco/interviewer': patch
 'fresco': patch
+'@codaco/site-navigation-element': patch
 ---
 
 Node labels are easier to read. Nodes are now filled with a single flat color instead of a two-tone diagonal, and the node colors are adjusted, most of them darker, so their white labels stand out. All eight node colors now meet the WCAG AA contrast ratio of 4.5:1 for text.
