@@ -206,3 +206,33 @@ export function useReleaseRowBindings(open: boolean) {
       );
   }, [open, stageForm, enclosingRow]);
 }
+
+/**
+ * `stage` as a save writes it: without the bindings no text in it uses. A
+ * binding goes once its last use has: a row or section deleted, a value
+ * removed, a value inserted into text that never reached the stage. Only a
+ * binding the stage already held unused when last saved is left alone, as
+ * the editor was given it.
+ */
+export function withoutUnusedBindings<
+  T extends Readonly<Record<string, unknown>>,
+>(stage: T, lastSaved: Readonly<Record<string, unknown>>): T {
+  const { [DYNAMIC_VALUES_PATH]: bindings, ...text } = stage;
+  if (!isRecord(bindings)) return stage;
+  const { [DYNAMIC_VALUES_PATH]: savedBindings, ...savedText } = lastSaved;
+  const inUse = dynamicValueNamesUsedIn(text);
+  const usedWhenSaved = dynamicValueNamesUsedIn(savedText);
+  const keptAsGiven = (name: string) =>
+    isRecord(savedBindings) &&
+    Object.hasOwn(savedBindings, name) &&
+    !usedWhenSaved.has(name);
+  const kept = Object.entries(bindings).filter(
+    ([name]) => inUse.has(name) || keptAsGiven(name),
+  );
+  if (kept.length === Object.keys(bindings).length) return stage;
+  return (
+    kept.length === 0
+      ? text
+      : { ...text, [DYNAMIC_VALUES_PATH]: Object.fromEntries(kept) }
+  ) as T;
+}

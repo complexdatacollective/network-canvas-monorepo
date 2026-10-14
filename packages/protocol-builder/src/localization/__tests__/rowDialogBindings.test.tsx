@@ -84,3 +84,47 @@ describe('values inserted in a row dialog', () => {
     );
   });
 });
+
+describe('a deleted row', () => {
+  it('takes the binding only it used with it', async () => {
+    const { type, fields } = loadFixtureStage('dyad-census-1');
+    const harness = renderStageEditor({
+      stage: {
+        type,
+        fields: {
+          ...fields,
+          dynamicValues: { today: { path: 'now' } },
+          prompts: [
+            {
+              id: 'dated',
+              text: { 'en-US': 'Who did you see on {today}?' },
+              createEdge: 'knows',
+            },
+            {
+              id: 'plain',
+              text: { 'en-US': 'Who do you know?' },
+              createEdge: 'knows',
+            },
+          ],
+        },
+      },
+      registry: dyadCensusStageEditor,
+    });
+    await harness.opened();
+
+    const [deleteDated] = screen.getAllByRole('button', {
+      name: 'Delete prompt',
+    });
+    if (deleteDated === undefined) throw new Error('No prompt to delete');
+    await harness.user.click(deleteDated);
+    const confirm = within(await screen.findByRole('dialog'));
+    await harness.user.click(confirm.getByRole('button', { name: /Delete/ }));
+    await dialogClosed();
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.prompts).toEqual([
+      expect.objectContaining({ id: 'plain' }),
+    ]);
+    expect(saved?.stageDocument).not.toHaveProperty('dynamicValues');
+  });
+});

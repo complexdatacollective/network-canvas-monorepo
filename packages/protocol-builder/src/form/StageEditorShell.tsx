@@ -40,7 +40,10 @@ import {
 import { applyCommands, type Command } from '@codaco/studio-sync/apply';
 
 import { useProtocolLocalization } from '../localization/ProtocolLocalization.tsx';
-import { useDynamicValuesRegistration } from '../localization/useDynamicValueSite.ts';
+import {
+  useDynamicValuesRegistration,
+  withoutUnusedBindings,
+} from '../localization/useDynamicValueSite.ts';
 import type {
   StageEditorActions,
   StageSection,
@@ -368,15 +371,20 @@ function StageEditorFormBody({
       // As the stage will be saved: holding exactly the wording settings that
       // apply to it (see `stageDocument`), so the schema judges what is
       // saved, and the draft the form goes on editing is what was stored.
-      const fields = savedStageFields(
-        identity,
-        documentFromSubmission({
-          currentFields: working.current,
-          submittedValues: values as Record<string, FieldValue>,
-          mountedPaths: mountedPathsOf(storeApi),
-          dormantFields: dormantFieldsOf(storeApi),
-        }),
-        localization,
+      // Without the value bindings no text uses any more (see
+      // `withoutUnusedBindings`), however their last use went.
+      const fields = withoutUnusedBindings(
+        savedStageFields(
+          identity,
+          documentFromSubmission({
+            currentFields: working.current,
+            submittedValues: values as Record<string, FieldValue>,
+            mountedPaths: mountedPathsOf(storeApi),
+            dormantFields: dormantFieldsOf(storeApi),
+          }),
+          localization,
+        ),
+        saved,
       );
       working.current = fields;
 
@@ -442,6 +450,7 @@ function StageEditorFormBody({
       outline,
       readOnly,
       save,
+      saved,
       sections,
       setSaved,
       storeApi,
