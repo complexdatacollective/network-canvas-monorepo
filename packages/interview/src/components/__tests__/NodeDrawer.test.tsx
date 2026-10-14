@@ -16,7 +16,6 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
-import { TestProtocolLocalization } from '../../interfaces/__tests__/TestProtocolLocalization';
 import NodeDrawer from '../NodeDrawer';
 
 // A drawn person reads the session store; what these tests own is the drawer
@@ -87,24 +86,19 @@ function renderDrawer(props: Partial<React.ComponentProps<typeof NodeDrawer>>) {
 }
 
 describe('NodeDrawer', () => {
-  it('shows the count in the digits of the language the protocol is read in', () => {
-    render(
-      <DndStoreProvider>
-        <TestProtocolLocalization
-          localization={{ defaultLocale: 'ar-EG', locales: ['ar-EG'] }}
-        >
-          <NodeDrawer
-            nodes={['a', 'b', 'c'].map((id) => ({
-              [entityPrimaryKeyProperty]: id,
-              [entityAttributesProperty]: {},
-              type: 'person',
-            }))}
-          />
-        </TestProtocolLocalization>
-      </DndStoreProvider>,
-    );
+  it('names how many people are in the drawer without showing a count', () => {
+    renderDrawer({
+      nodes: ['a', 'b', 'c'].map((id) => ({
+        [entityPrimaryKeyProperty]: id,
+        [entityAttributesProperty]: {},
+        type: 'person',
+      })),
+    });
 
-    expect(screen.getByText('٣')).toBeInTheDocument();
+    const tab = screen.getByRole('button', { name: /3 unplaced/i });
+    expect(Array.from(tab.querySelectorAll('span:not(.sr-only)'))).toHaveLength(
+      0,
+    );
   });
 
   it('disables the toggle while empty when it is not a drop target', () => {

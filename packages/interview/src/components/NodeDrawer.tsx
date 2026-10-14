@@ -9,13 +9,11 @@ import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
 import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import DrawerNode from '../interfaces/Sociogram/DrawerNode';
-import { useContentFormat } from '../localization/useContentFormat';
 
 type NodeDrawerProps = {
   nodes: NcNode[];
@@ -64,8 +62,6 @@ export default function NodeDrawer({
   onNodeClick,
 }: NodeDrawerProps) {
   const intl = useAppIntl();
-  // The count is shown among the protocol's text, so in its digits.
-  const contentFormat = useContentFormat();
   const unplacedId = useId();
   const toggleLabelId = useId();
   const [internalExpanded, setInternalExpanded] = useState(nodes.length > 0);
@@ -153,12 +149,11 @@ export default function NodeDrawer({
             }}
             disabled={isToggleDisabled}
             className={cx(
-              'bg-surface publish-colors pointer-events-auto flex h-12 items-center gap-2 rounded-t-lg px-8 text-sm transition-colors',
+              'bg-surface publish-colors pointer-events-auto flex h-12 min-w-24 items-center justify-center rounded-t-lg px-8 transition-colors',
               willAccept &&
                 (isOver
                   ? activeDropTargetOverBackground
                   : activeDropTargetBackground),
-              headingVariants({ level: 'label' }),
               isToggleDisabled && 'cursor-not-allowed opacity-50',
             )}
             data-zone-id={!isExpandedEffective ? dropZoneId : undefined}
@@ -168,13 +163,10 @@ export default function NodeDrawer({
             aria-expanded={isExpandedEffective}
           >
             <MotionChevron
-              className="size-[1em]"
+              className="size-7"
               aria-hidden
               animate={{ rotate: isExpandedEffective ? 0 : 180 }}
             />
-            <span aria-hidden="true" className="font-semibold tabular-nums">
-              {contentFormat.formatNumber(nodes.length)}
-            </span>
             <span id={unplacedId} className="sr-only">
               <AppMessage
                 message={messages.unplacedCount}
