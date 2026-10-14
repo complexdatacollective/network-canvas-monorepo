@@ -217,6 +217,7 @@ export {
   dynamicValueContextFor,
   type DynamicValueProblem,
   findDynamicValueProblems,
+  stageDynamicValueContext,
 } from './schemas/9/dynamic-value-validation.ts';
 // What the Family Pedigree's localized messages may use, for an editor of
 // them.

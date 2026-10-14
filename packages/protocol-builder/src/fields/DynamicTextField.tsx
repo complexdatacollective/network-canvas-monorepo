@@ -109,13 +109,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.dynamicText.dyadSourceValue',
     defaultMessage: '{attribute} (first node in pair)',
     description:
-      'Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”, or the translated “Node label”, the label the interview shows on the node.',
+      'Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”.',
   },
   dyadTargetValue: {
     id: 'protocolBuilder.dynamicText.dyadTargetValue',
     defaultMessage: '{attribute} (second node in pair)',
     description:
-      'Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”, or the translated “Node label”, the label the interview shows on the node.',
+      'Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”.',
   },
   nodeLabel: {
     id: 'protocolBuilder.dynamicText.nodeLabel',
@@ -129,17 +129,17 @@ const messages = defineMessages({
     description:
       'Short note under “Node label” in the insert-a-value menu, saying that the value is the same text the interview shows on the node itself. Other items in the menu show the kind of answer here, such as “Text” or “Number”.',
   },
-  edgeFromLabel: {
-    id: 'protocolBuilder.dynamicText.edgeFromLabel',
-    defaultMessage: 'Node label (first node of edge)',
+  firstNodeLabel: {
+    id: 'protocolBuilder.dynamicText.firstNodeLabel',
+    defaultMessage: 'First node label',
     description:
-      'Name of an inserted value, as it appears in the text: the label the interview shows on the first of the two nodes an edge connects, in a question about that edge. An edge is a connection between two nodes; a node is one entity in the network, which may not be a person.',
+      'Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on the first of two nodes the text is about, either the first node of a pair a question asks about together or the first of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes.',
   },
-  edgeToLabel: {
-    id: 'protocolBuilder.dynamicText.edgeToLabel',
-    defaultMessage: 'Node label (second node of edge)',
+  secondNodeLabel: {
+    id: 'protocolBuilder.dynamicText.secondNodeLabel',
+    defaultMessage: 'Second node label',
     description:
-      'Name of an inserted value, as it appears in the text: the label the interview shows on the second of the two nodes an edge connects, in a question about that edge. An edge is a connection between two nodes; a node is one entity in the network, which may not be a person.',
+      'Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on the second of two nodes the text is about, either the second node of a pair a question asks about together or the second of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes.',
   },
   byAnswer: {
     id: 'protocolBuilder.dynamicText.byAnswer',
@@ -266,16 +266,18 @@ type Naming = Readonly<{
 const namingFor = (intl: IntlShape): Naming => ({
   valueLabel: (choice) => {
     if (choice.role === undefined) return intl.formatMessage(messages.today);
-    if (choice.role === 'edgeFrom') {
-      return intl.formatMessage(messages.edgeFromLabel);
+    if (choice.kind === 'label') {
+      // Of two nodes on screen, a pair's or an edge's ends, a label says
+      // which node it is; a node alone just has its label.
+      if (choice.role === 'dyadSource' || choice.role === 'edgeFrom') {
+        return intl.formatMessage(messages.firstNodeLabel);
+      }
+      if (choice.role === 'dyadTarget' || choice.role === 'edgeTo') {
+        return intl.formatMessage(messages.secondNodeLabel);
+      }
+      return intl.formatMessage(messages.nodeLabel);
     }
-    if (choice.role === 'edgeTo') {
-      return intl.formatMessage(messages.edgeToLabel);
-    }
-    const attribute =
-      choice.kind === 'label'
-        ? intl.formatMessage(messages.nodeLabel)
-        : (choice.variableName ?? choice.variableId);
+    const attribute = choice.variableName ?? choice.variableId;
     // The two nodes of a pair have the same attributes, so their values say
     // which node they belong to; any other value is named by its attribute.
     if (choice.role === 'dyadSource') {
@@ -290,7 +292,11 @@ const namingFor = (intl: IntlShape): Naming => ({
     intl.formatMessage(
       choice.role === undefined
         ? messages.interviewGroup
-        : ROLE_MESSAGES[choice.role],
+        : // A node's label is about what the text is shown with, wherever
+          // that node's attributes are listed.
+          choice.kind === 'label'
+          ? messages.roleContext
+          : ROLE_MESSAGES[choice.role],
     ),
 });
 
@@ -617,7 +623,7 @@ export function DynamicMessageEditor({
     }
   }
 
-  const tokens: RichTextEditorToken[] = [...choiceByName].flatMap(
+  const offeredTokens: RichTextEditorToken[] = [...choiceByName].flatMap(
     ([bindingName, choice]) => {
       const label = naming.valueLabel(choice);
       return [
@@ -628,6 +634,21 @@ export function DynamicMessageEditor({
       ];
     },
   );
+  // A value the text already names that this place cannot offer now, such as
+  // an attribute whose type has changed, keeps a pill under its own name, so
+  // the editor still holds the text and an edit never drops its words.
+  const unofferedTokens: RichTextEditorToken[] = [
+    ...new Set([
+      ...Object.keys(bindings),
+      ...(message === '' ? [] : dynamicValueNamesIn(message)),
+    ]),
+  ]
+    .filter((bindingName) => !choiceByName.has(bindingName))
+    .flatMap((bindingName) => [
+      { id: bindingName, label: bindingName, inToolbar: false },
+      { id: countTokenId(bindingName), label: bindingName, inToolbar: false },
+    ]);
+  const tokens = [...offeredTokens, ...unofferedTokens];
 
   const insertMenu: RichTextInsertMenu = {
     label: intl.formatMessage(messages.insertMenu),

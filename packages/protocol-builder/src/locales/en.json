@@ -1529,19 +1529,15 @@
   },
   "protocolBuilder.dynamicText.dyadSourceValue": {
     "defaultMessage": "{attribute} (first node in pair)",
-    "description": "Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”, or the translated “Node label”, the label the interview shows on the node."
+    "description": "Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”."
   },
   "protocolBuilder.dynamicText.dyadTargetValue": {
     "defaultMessage": "{attribute} (second node in pair)",
-    "description": "Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”, or the translated “Node label”, the label the interview shows on the node."
+    "description": "Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”."
   },
-  "protocolBuilder.dynamicText.edgeFromLabel": {
-    "defaultMessage": "Node label (first node of edge)",
-    "description": "Name of an inserted value, as it appears in the text: the label the interview shows on the first of the two nodes an edge connects, in a question about that edge. An edge is a connection between two nodes; a node is one entity in the network, which may not be a person."
-  },
-  "protocolBuilder.dynamicText.edgeToLabel": {
-    "defaultMessage": "Node label (second node of edge)",
-    "description": "Name of an inserted value, as it appears in the text: the label the interview shows on the second of the two nodes an edge connects, in a question about that edge. An edge is a connection between two nodes; a node is one entity in the network, which may not be a person."
+  "protocolBuilder.dynamicText.firstNodeLabel": {
+    "defaultMessage": "First node label",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on the first of two nodes the text is about, either the first node of a pair a question asks about together or the first of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
   },
   "protocolBuilder.dynamicText.insertMenu": {
     "defaultMessage": "Inject piped text from interview metadata or a network attribute",
@@ -1582,6 +1578,10 @@
   "protocolBuilder.dynamicText.roleEgo": {
     "defaultMessage": "Ego Attributes",
     "description": "Heading in the insert-a-value menu above the attributes of the ego, the participant taking part in the interview. “Ego” is the network-research term Architect uses for the participant."
+  },
+  "protocolBuilder.dynamicText.secondNodeLabel": {
+    "defaultMessage": "Second node label",
+    "description": "Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on the second of two nodes the text is about, either the second node of a pair a question asks about together or the second of the two nodes an edge connects. The label is taken from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person; an edge is a connection between two nodes."
   },
   "protocolBuilder.dynamicText.switchHasNoLabels": {
     "defaultMessage": "A Toggle has no labels for its answers. Use different wording for each answer instead.",

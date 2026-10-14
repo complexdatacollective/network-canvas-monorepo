@@ -7,13 +7,13 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import {
   type DynamicValues,
-  dynamicValueContextFor,
   type FamilyPedigreeNominationPrompt,
   type FinishOutcome,
   type FramingSetting,
   type Item,
   type LocalizedString,
   type Panel,
+  stageDynamicValueContext,
 } from '@codaco/protocol-validation';
 import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
@@ -449,28 +449,18 @@ const StageContent = ({
 const Stage = (props: StageProps) => {
   const { protocol } = useContext(SummaryContext);
   const { configuration, type } = props;
-  const site = useMemo(() => {
-    const stage = { ...configuration, type };
-    const bindings = (
-      isRecord(configuration.dynamicValues) ? configuration.dynamicValues : {}
-    ) as DynamicValues;
-    const contextAt = (at: 'prompt' | 'formField') =>
-      dynamicValueContextFor({
+  const site = useMemo(
+    () => ({
+      context: stageDynamicValueContext({
         codebook: protocol.codebook,
-        stage,
-        sitePath: [],
-        site: at,
-      });
-    const prompt = contextAt('prompt');
-    const formField = contextAt('formField');
-    return {
-      context: {
-        ...prompt,
-        roles: new Set([...prompt.roles, ...formField.roles]),
-      },
-      bindings,
-    };
-  }, [configuration, type, protocol.codebook]);
+        stage: { ...configuration, type },
+      }),
+      bindings: (isRecord(configuration.dynamicValues)
+        ? configuration.dynamicValues
+        : {}) as DynamicValues,
+    }),
+    [configuration, type, protocol.codebook],
+  );
   return (
     <SummaryDynamicValuesContext value={site}>
       <StageContent {...props} />

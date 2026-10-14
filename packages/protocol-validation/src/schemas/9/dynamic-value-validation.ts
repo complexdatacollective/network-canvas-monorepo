@@ -139,6 +139,35 @@ export const dynamicValueContextFor = ({
   };
 };
 
+/**
+ * What any text on `stage` can show, for a place that shows the stage's text
+ * rather than editing one site of it (a collapsed preview, the protocol
+ * summary): every value its prompts or its forms' fields could show, the
+ * ends of a Network Composer edge type's form included.
+ */
+export const stageDynamicValueContext = ({
+  codebook,
+  stage,
+}: {
+  codebook: unknown;
+  stage: unknown;
+}): DynamicValueSiteContext => {
+  const contextAt = (site: DynamicValueSite) =>
+    dynamicValueContextFor({ codebook, stage, sitePath: [], site });
+  const prompt = contextAt('prompt');
+  const formField = contextAt('formField');
+  const stageType =
+    isRecord(stage) && typeof stage.type === 'string' ? stage.type : '';
+  const edgeForm = dynamicValueRolesAt(stageType, 'formField', {
+    entity: 'edge',
+    isStageSubject: false,
+  });
+  return {
+    ...prompt,
+    roles: new Set([...prompt.roles, ...formField.roles, ...edgeForm]),
+  };
+};
+
 const describeVersion = (when: MissingDynamicPlacement['when']): string =>
   Object.entries(when)
     .map(([name, state]) =>

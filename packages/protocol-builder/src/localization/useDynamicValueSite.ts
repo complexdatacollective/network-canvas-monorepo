@@ -15,6 +15,7 @@ import {
   type DynamicValueSiteContext,
   dynamicValueContextFor,
   dynamicValueRolesAt,
+  stageDynamicValueContext,
 } from '@codaco/protocol-validation';
 
 import { EditedRowContext } from '../form/editedRow.ts';
@@ -210,25 +211,16 @@ export function useStageDynamicValues(): Pick<
   const { codebook } = useProtocolContext();
   const subject = useStageValue('subject');
   const rawBindings = useStageValue(DYNAMIC_VALUES_PATH);
-  return useMemo(() => {
-    const stage = { type: identity.type, subject };
-    const contextAt = (site: 'prompt' | 'formField') =>
-      dynamicValueContextFor({ codebook, stage, sitePath: [], site });
-    const prompt = contextAt('prompt');
-    const formField = contextAt('formField');
-    // A Network Composer connection type's form names its edge's ends.
-    const edgeForm = dynamicValueRolesAt(identity.type, 'formField', {
-      entity: 'edge',
-      isStageSubject: false,
-    });
-    return {
-      context: {
-        ...prompt,
-        roles: new Set([...prompt.roles, ...formField.roles, ...edgeForm]),
-      },
+  return useMemo(
+    () => ({
+      context: stageDynamicValueContext({
+        codebook,
+        stage: { type: identity.type, subject },
+      }),
       bindings: isRecord(rawBindings) ? (rawBindings as DynamicValues) : {},
-    };
-  }, [identity.type, subject, codebook, rawBindings]);
+    }),
+    [identity.type, subject, codebook, rawBindings],
+  );
 }
 
 /**
