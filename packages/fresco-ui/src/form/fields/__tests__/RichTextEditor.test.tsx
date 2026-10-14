@@ -1232,6 +1232,66 @@ describe('a version edited in a field that reports on blur', () => {
   });
 });
 
+describe('the toolbar after a version folds', () => {
+  it('acts on the field, not on the version that was last written in', async () => {
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <>
+        <RichTextEditorField
+          id="greeting"
+          name="greeting"
+          aria-describedby="greeting-hint"
+          aria-label="Greeting"
+          singleLine
+          versions
+          toolbarOptions={{ bold: true }}
+          changeMode="input"
+          value={{
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [
+                  { type: 'text', text: 'Hello' },
+                  {
+                    type: 'versions',
+                    attrs: {
+                      label: 'Depending on the name',
+                      meta: { argument: 'name' },
+                      versions: [
+                        { key: 'other', label: 'If known', content: [] },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          }}
+          onChange={() => undefined}
+        />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Depending on the name' }),
+    );
+    const version = await screen.findByRole('textbox', { name: 'If known' });
+    await user.click(version);
+    await user.type(version, ' there');
+
+    // Leaving the field folds the version back to its pill.
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await screen.findByRole('button', { name: 'Depending on the name' });
+
+    await user.click(screen.getByRole('button', { name: 'Bold' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Greeting' })).toHaveFocus(),
+    );
+  });
+});
+
 describe('a single-line field holding marked values and versions', () => {
   it('keeps the marks it offers on a value, and the words of linked versions', async () => {
     render(

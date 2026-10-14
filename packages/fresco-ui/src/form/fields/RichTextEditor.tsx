@@ -1861,6 +1861,9 @@ export default function RichTextEditorField({
         inactiveTimerRef.current = setTimeout(() => {
           inactiveTimerRef.current = null;
           setIsActive(false);
+          // The version folds but stays mounted, so the toolbar would go on
+          // acting on its hidden text the next time it is used directly.
+          setVersionEditor(null);
         }, 0);
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
           return;
