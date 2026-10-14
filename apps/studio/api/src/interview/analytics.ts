@@ -1,4 +1,4 @@
-import { Effect, Option, Schema } from 'effect';
+import { Clock, Effect, Option, Schema } from 'effect';
 
 import {
   ENTITY_ID_PROPERTIES,
@@ -182,8 +182,24 @@ const exceptionList = (decoded: Readonly<Record<string, unknown>>) => {
   ];
 };
 
+const MAX_EVENT_AGE_MS = 10 * 60 * 1000;
+
+const anchoredTimestamps = (
+  events: ReadonlyArray<DecodedEvent>,
+  receivedAt: number,
+): ReadonlyArray<string> => {
+  const reported = events.map((decoded) => Date.parse(decoded.timestamp));
+  const latest = Math.max(...reported);
+  return reported.map((instant) =>
+    new Date(
+      receivedAt - Math.min(Math.max(0, latest - instant), MAX_EVENT_AGE_MS),
+    ).toISOString(),
+  );
+};
+
 const forwardableEvent = (
-  { event, timestamp, decoded, forwarded }: DecodedEvent,
+  { event, decoded, forwarded }: DecodedEvent,
+  timestamp: string,
   config: ForwardingConfig,
   sessionId: string,
 ): AnalyticsCapture => ({
@@ -230,6 +246,10 @@ export const forwardParticipantEvents = Effect.fn(
 
   const batch = decodeBatch(input);
   if (Option.isNone(batch)) return;
+  const timestamps = anchoredTimestamps(
+    batch.value,
+    yield* Clock.currentTimeMillis,
+  );
 
   const config = yield* TenantScope.open(
     session.access,
@@ -245,8 +265,13 @@ export const forwardParticipantEvents = Effect.fn(
   if (config === null) return;
 
   yield* analytics.capture(
-    batch.value.map((decoded) =>
-      forwardableEvent(decoded, config, session.sessionId),
+    batch.value.map((decoded, index) =>
+      forwardableEvent(
+        decoded,
+        timestamps[index] ?? new Date(0).toISOString(),
+        config,
+        session.sessionId,
+      ),
     ),
   );
 });

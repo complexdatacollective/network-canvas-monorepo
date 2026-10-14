@@ -1033,7 +1033,7 @@ describe.skipIf(!testDb)('participant analytics', () => {
       {
         event: 'stage_entered',
         distinctId,
-        timestamp: '2026-10-07T09:00:00.000Z',
+        timestamp: expect.any(String),
         properties: {
           stage_type: 'NameGenerator',
           stage_index: 1,
@@ -1044,7 +1044,7 @@ describe.skipIf(!testDb)('participant analytics', () => {
       {
         event: 'node_added',
         distinctId,
-        timestamp: '2026-10-07T09:00:00.000Z',
+        timestamp: expect.any(String),
         properties: {
           node_id: stableEventUuid(
             `${installationId}:${sessionId}:entity:0b6f8a52-3c1d-4e2f-9a7b-5c4d3e2f1a0b`,
@@ -1121,6 +1121,42 @@ describe.skipIf(!testDb)('participant analytics', () => {
       await send(sessionToken, [entered, forged]);
     }
     expect(await captured()).toEqual([]);
+  });
+
+  it('stamps events with the server clock, keeping only their order and spacing', async () => {
+    const { sessionToken } = await begin();
+    const before = Date.now();
+    await client.callExit(
+      asParticipant(
+        sessionToken,
+        client.rpc('participant.analytics', {
+          events: [
+            { ...entered, timestamp: '1998-12-01T00:00:00.000Z' },
+            { ...entered, timestamp: '1999-01-01T00:00:00.000Z' },
+            { ...entered, timestamp: '1999-01-01T00:00:01.500Z' },
+            { ...entered, timestamp: '1999-01-01T00:01:00.000Z' },
+          ],
+        }),
+      ),
+    );
+    const after = Date.now();
+    const forwardedAt = (await captured()).map((event) =>
+      Date.parse(event.timestamp),
+    );
+    expect(forwardedAt).toHaveLength(4);
+    const [stale, first, second, latest] = forwardedAt as [
+      number,
+      number,
+      number,
+      number,
+    ];
+    expect(latest).toBeGreaterThanOrEqual(before);
+    expect(latest).toBeLessThanOrEqual(after);
+    expect([latest - stale, latest - first, latest - second]).toEqual([
+      10 * 60 * 1000,
+      60_000,
+      58_500,
+    ]);
   });
 
   it('refuses a batch whose event carries anything but an ISO timestamp', async () => {
