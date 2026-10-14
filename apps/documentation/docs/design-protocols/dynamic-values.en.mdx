@@ -34,7 +34,7 @@ Which values a text can show depends on where it sits. See [What each kind of te
 
 ## Inserting a value
 
-Every text that can show values has an **Insert a value** button in its toolbar. To insert a value:
+Every text that can show values has an **Insert a value** button in its toolbar. The button shows a database icon, and its name appears when you point at it. To insert a value:
 
 1. Click in the text where the value should go.
 2. Click **Insert a value**, or type `{`.
@@ -51,7 +51,7 @@ Under each value, the menu says what kind of attribute it is.
 
 To type a brace as an ordinary character, press Escape after typing `{`. The menu closes and the brace stays in your text.
 
-In the text, a value appears as a pill named after its attribute, such as **nickname**. A value that belongs to someone other than the participant is named for whose it is, such as **First person: nickname**. Today's date appears as **Today's date**. The same pills appear in the [translation table](/en/design-protocols/translating-your-protocol#the-translation-table) and on the protocol's **Summary** tab.
+In the text, a value appears as a pill that starts with the database icon and is named after its attribute, such as **nickname**. A value that belongs to someone other than the participant is named for whose it is, such as **First person: nickname**. Today's date appears as **Today's date**. The same pills appear in the [translation table](/en/design-protocols/translating-your-protocol#the-translation-table) and on the protocol's **Summary** tab.
 
 Architect keeps track of the values each stage's text shows. An attribute that some text shows counts as in use in the [codebook](/en/design-protocols/key-concepts/codebook), so you can't delete it until you remove it from that text.
 
@@ -65,6 +65,8 @@ So that the participant never meets a gap, a value that can be missing goes in w
 - **If not known**, which is shown instead when the value is missing.
 
 Architect adds both versions for you when you insert a value. Write the words that fit each case in each version. A version can be left empty, so that nothing is shown in that case.
+
+In the editor, a value with versions shows only as its pill until you select it. Click the pill, or reach it with the arrow keys and press Enter or Space, to open its versions; press Escape, or leave the text, to fold it back into the pill. A value you have just inserted starts open, so that you can write its versions straight away. Everywhere else, such as the list of form fields, the field preview and the protocol's **Summary** tab, the value shows only as its pill.
 
 For example, an Ego Form's title could thank the participant by name:
 
@@ -159,7 +161,7 @@ When your protocol has more than one language (see [Translating Your Protocol](/
 
 There is one exception. A version for a word form that only one number takes, such as English "1 child", may leave the number out, because the words already say which number it is.
 
-In the translation table, a cell shows values as pills, and each set of versions as a list. When you edit a cell, **Insert a value** offers the values the stage already shows. To show a new value, add it in the stage editor first.
+In the translation table, a cell shows values, and each set of versions, as pills. When you edit a cell, select a pill to open its versions, as in the stage editor. When you edit a cell, **Insert a value** offers the values the stage already shows. To show a new value, add it in the stage editor first.
 
 When a translation leaves out a value, the cell says so, such as "Include “nickname” wherever the original text shows it.", and the table won't save until you fix it. If a text chooses between so many versions that its translation can't be checked, the cell asks you to use fewer values that change the wording.
 
