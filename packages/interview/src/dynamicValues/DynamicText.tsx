@@ -18,8 +18,8 @@ import {
 } from './resolveDynamicText';
 
 /**
- * One value the interview filled into the study's text, in a very subtle
- * tint of the accent colour so the participant can tell it was filled in for
+ * One value the interview filled into the study's text, tinted with the
+ * primary colour so the participant can tell it was filled in for
  * them. The tint is mixed into the colour of the surrounding text, so it
  * stays readable on any background.
  * Screen readers hear "Dynamic value: …" instead of the bare value. The
@@ -31,7 +31,7 @@ function DynamicValue({ text }: { text: string }) {
   return (
     <span
       data-dynamic-value=""
-      className="text-[color-mix(in_oklab,currentColor_75%,var(--accent))]"
+      className="text-[color-mix(in_oklab,currentColor_50%,var(--primary))]"
     >
       <bdi aria-hidden="true">{text}</bdi>
       <span className="sr-only">

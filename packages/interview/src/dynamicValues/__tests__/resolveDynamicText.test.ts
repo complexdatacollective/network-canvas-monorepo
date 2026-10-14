@@ -94,7 +94,7 @@ describe('resolveDynamicText', () => {
   });
 
   it('takes the missing version for every kind of missing value', () => {
-    for (const missing of [undefined, null, '', []]) {
+    for (const missing of [undefined, null, '', '   ', []]) {
       expect(resolve(GREETING, { name: missing })).toEqual({
         parts: ['Hello!'],
         text: 'Hello!',
@@ -358,6 +358,24 @@ describe('markdownSource', () => {
     );
     expect(source).toContain('<!---->');
     expect(html).toContain('<strong>Ada</strong>');
+  });
+
+  it('never lets a value finish a block marker the researcher wrote', () => {
+    for (const [marker, element] of [
+      ['#', '<h1'],
+      ['1.', '<ol'],
+      ['-', '<ul'],
+    ] as const) {
+      const source = markdownSource({
+        text: '',
+        parts: [marker, { name: 'name', text: ' heading' }],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      expect(html).not.toContain(element);
+      expect(getMarkdownLabelText(source)).toBe(`${marker} heading`);
+    }
   });
 
   it('leaves text without values as it is', () => {

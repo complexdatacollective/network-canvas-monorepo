@@ -30,6 +30,7 @@ import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { DynamicValueEntity } from '../../dynamicValues/DynamicValueScope';
 import { markdownSource } from '../../dynamicValues/resolveDynamicText';
+import { useValuesUntilExit } from '../../dynamicValues/useValuesUntilExit';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import useStageValidation from '../../hooks/useStageValidation';
@@ -412,15 +413,16 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
     }
   };
 
+  // The pair the prompts name stays the outgoing one until it has left.
+  const pairOnScreen = useValuesUntilExit(`${promptIndex}_${pairIndex}`, {
+    dyadSource: fromNode?.[entityAttributesProperty],
+    dyadTarget: toNode?.[entityAttributesProperty],
+  });
+
   return (
     // The pair on screen is who the prompts can name: the first and second
     // person, as the pair shows them.
-    <DynamicValueEntity
-      attributes={{
-        dyadSource: fromNode?.[entityAttributesProperty],
-        dyadTarget: toNode?.[entityAttributesProperty],
-      }}
-    >
+    <DynamicValueEntity attributes={pairOnScreen.values}>
       <div className="interface">
         {hasPairs && (
           <motion.div
@@ -431,7 +433,12 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
             className="flex w-full flex-1 flex-col items-center"
           >
             <motion.div className="flex w-full grow flex-col items-center justify-center">
-              <AnimatePresence mode="wait" custom={isForwards} initial={false}>
+              <AnimatePresence
+                mode="wait"
+                custom={isForwards}
+                initial={false}
+                onExitComplete={pairOnScreen.onExitComplete}
+              >
                 <Pair
                   key={`${promptIndex}_${pairIndex}`}
                   edgeColor={edgeColor}

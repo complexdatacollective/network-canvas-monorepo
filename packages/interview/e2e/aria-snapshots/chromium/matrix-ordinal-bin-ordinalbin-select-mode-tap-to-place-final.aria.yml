@@ -13,7 +13,7 @@
   - listbox "Item list":
     - option "Alice"
   - status: Nothing left to place.
-  - button "0 unplaced Expand drawer" [disabled]
+  - text: 0 unplaced
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

@@ -1,3 +1,4 @@
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { getMarkdownAttributeValues } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   DYNAMIC_VALUE_MARKER,
@@ -54,13 +55,11 @@ type ResolvedDynamicValue =
       count?: number;
     }>;
 
-/** Null, undefined, empty text and an empty list are missing; 0 and false are not. */
-const isMissing = (value: unknown): boolean =>
-  value === null ||
-  value === undefined ||
-  value === '' ||
-  (typeof value === 'number' && Number.isNaN(value)) ||
-  (Array.isArray(value) && value.length === 0);
+/**
+ * Missing as the interview's forms judge an answer missing: null, undefined,
+ * text of only spaces, NaN and an empty list. 0 and false are answers.
+ */
+const isMissing = isUnanswered;
 
 const caseOf = (
   binding: DynamicValueBinding,
@@ -325,7 +324,11 @@ const literalMarkdown = (value: string): string =>
     // indented code), so its whitespace is collapsed.
     .replace(/\s+/g, ' ')
     .replace(AUTOLINK_TRIGGERS, `$&${WORD_JOINER}`)
-    .replace(MARKDOWN_PUNCTUATION, '\\$&');
+    .replace(MARKDOWN_PUNCTUATION, '\\$&')
+    // The space left at its start could still finish a marker the researcher
+    // wrote at the start of a line (`#` or `1.` before the answer ` heading`).
+    // A character reference shows the same space but never forms a block.
+    .replace(/^ /, '&#32;');
 
 // Markdown can also find a token across the edge of a value: a bare link
 // (`https:` in the researcher's words and `//evil.example` in a participant's

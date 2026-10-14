@@ -297,7 +297,7 @@
   },
   "protocolBuilder.binBehaviours.interactionModeLabel": {
     "defaultMessage": "Interaction mode",
-    "description": "Label of the control choosing between dragging nodes into bins and tapping a bin for one node at a time."
+    "description": "Label of the control choosing between dragging nodes into bins and tapping a bin to place the selected node."
   },
   "protocolBuilder.binBehaviours.requireCompletePlacementHint": {
     "defaultMessage": "The participant cannot continue from a prompt until every node is in a bin.",
@@ -308,12 +308,12 @@
     "description": "Label of the switch that stops the participant moving on from a bin stage while any member of their network is still waiting to be placed into a bin."
   },
   "protocolBuilder.binBehaviours.selectDescription": {
-    "defaultMessage": "The stage shows one node at a time, and the participant taps the bin it belongs in. The next node then appears. Tapping a node already in a bin lets the participant move it.",
-    "description": "Says what the participant does in tap-to-place mode. A stage is one step of an interview."
+    "defaultMessage": "One node in the drawer is selected, and the participant taps the bin it belongs in. The next node is then selected. Tapping a different node, even one already in a bin, selects it instead.",
+    "description": "Says what the participant does in tap-to-place mode. The drawer is the tray at the foot of the screen that unplaced nodes wait in; the selected node is highlighted there. A bin is one of the groups or points on a scale nodes are sorted into."
   },
   "protocolBuilder.binBehaviours.selectLabel": {
     "defaultMessage": "Tap to place",
-    "description": "Name of the choice where the stage shows one node at a time and the participant taps the bin it belongs in. Offered as one of two cards; the sentence under it is selectDescription."
+    "description": "Name of the choice where one node is selected and the participant taps the bin it belongs in. Offered as one of two cards; the sentence under it is selectDescription."
   },
   "protocolBuilder.binBehaviours.title": {
     "defaultMessage": "Placing nodes",
