@@ -61,8 +61,8 @@ type ProgressStage = { type: string; prompts?: readonly unknown[] };
  * Participant-facing progress for a freshly entered stage. Pass the protocol's
  * stages (finish stage included) and the host-controlled step; `totalSteps` is
  * the stage count and `progress` matches the interview's own progress bar at
- * the start of `currentStep` (prompt index 0). On the last stage, the finish
- * stage, progress is 100.
+ * the start of `currentStep` (prompt index 0). On any finish stage progress is
+ * 100: the interview ends there, whichever of several it is.
  */
 export function getInterviewProgress(
   stages: readonly ProgressStage[],
@@ -73,7 +73,11 @@ export function getInterviewProgress(
   const promptCount = stage?.prompts?.length ?? 1;
 
   return {
-    progress: calculateProgress(currentStep, totalSteps, 0, promptCount),
+    // Every finish stage ends the interview, not only the last one.
+    progress:
+      stage?.type === 'FinishSession'
+        ? 100
+        : calculateProgress(currentStep, totalSteps, 0, promptCount),
     totalSteps,
   };
 }

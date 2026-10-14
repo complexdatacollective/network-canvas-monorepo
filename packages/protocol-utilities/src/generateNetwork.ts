@@ -225,6 +225,7 @@ export function generateNetwork(
   const totalStages = stages.length;
   let currentStep = 0;
   let droppedOut = false;
+  let reachedFinish = false;
 
   for (let i = 0; i < stages.length; i++) {
     const stage = stages[i]!;
@@ -260,6 +261,15 @@ export function generateNetwork(
         currentStep = i;
         break;
       }
+    }
+
+    // A route ends at the first finish stage it reaches, which may be an
+    // earlier one than the last when skip logic sends routes to different
+    // endings. Nothing after it runs.
+    if (isFinishSessionStage(stage)) {
+      reachedFinish = true;
+      currentStep = i;
+      break;
     }
 
     // Content stages run no handler at all: they add no node or edge and write
@@ -332,13 +342,11 @@ export function generateNetwork(
     markStageInProgress(ctx, draft, inProgressStage);
   }
 
-  // A completed interview rests on the finish stage it ended at, where a
-  // participant's finished interview is recorded. A list without one (only a
-  // fragment of a protocol, as tests pass) rests on its last stage.
-  if (!droppedOut) {
-    const finishIndex = stages.findLastIndex(isFinishSessionStage);
-    currentStep =
-      finishIndex === -1 ? Math.max(totalStages - 1, 0) : finishIndex;
+  // A completed interview rests on the finish stage it ended at (set above),
+  // where a participant's finished interview is recorded. A list without one
+  // (only a fragment of a protocol, as tests pass) rests on its last stage.
+  if (!droppedOut && !reachedFinish) {
+    currentStep = Math.max(totalStages - 1, 0);
   }
 
   return {

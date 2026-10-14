@@ -401,6 +401,18 @@ describe('Shell completed state', () => {
     expect(onAction).toHaveBeenCalledTimes(1);
   });
 
+  // An automatic finish stage has no closing text, so its finished text is
+  // what such a review shows.
+  it('shows a review with only an automatic finish stage its finished text', async () => {
+    const payload = makePayload(null);
+    payload.protocol.stages = [{ ...finishStage, mode: 'automatic' }];
+    renderShell({ payload, reviewMode: true });
+
+    expect(await screen.findByText(FINISHED_TEXT)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'All done' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull();
+  });
+
   it('keeps the participant’s text size when an interview is opened finished', async () => {
     const { container } = renderShell({
       payload: makePayload({ finishStageId: finishStage.id }),

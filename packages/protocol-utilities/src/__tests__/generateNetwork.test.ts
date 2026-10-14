@@ -1550,6 +1550,64 @@ describe('generateNetwork', () => {
       expect(stages[currentStep]).toBe(finish);
     });
 
+    describe('with several finish stages', () => {
+      const makeFinish = (
+        id: string,
+        outcome: 'completed' | 'ineligible',
+      ): Stage =>
+        ({
+          id,
+          type: 'FinishSession',
+          mode: 'automatic',
+          label: en(id),
+          content: en(''),
+          finishedContent: en('# Interview Finished'),
+          finishLabel: en('Finish'),
+          finishConfirmation: en('Finish this interview?'),
+          finishFailed: en('The interview could not be finished.'),
+          outcome,
+        }) as Stage;
+
+      it('stops at the first finish stage it reaches', () => {
+        const stages = [
+          makeTypedNameGeneratorStage('ng-1', 'node-type-1'),
+          makeFinish('end-completed', 'completed'),
+          makeFinish('end-ineligible', 'ineligible'),
+        ];
+
+        const { droppedOut, currentStep } = generateNetwork({
+          codebook: makeCodebook(),
+          stages,
+          seed: 42,
+        });
+
+        expect(droppedOut).toBe(false);
+        expect(stages[currentStep]?.id).toBe('end-completed');
+      });
+
+      it('ends at a later finish stage a skip destination names', () => {
+        const stages = [
+          makeInformationStage(
+            'screener',
+            makeHiddenSkipLogic({ type: 'stage', stageId: 'end-ineligible' }),
+          ),
+          makeTypedNameGeneratorStage('ng-1', 'destination'),
+          makeFinish('end-completed', 'completed'),
+          makeFinish('end-ineligible', 'ineligible'),
+        ];
+
+        const { network, currentStep } = generateNetwork({
+          codebook: makeSkipRoutingCodebook(),
+          stages,
+          seed: 42,
+          respectSkipLogicAndFiltering: true,
+        });
+
+        expect(stages[currentStep]?.id).toBe('end-ineligible');
+        expect(network.nodes).toHaveLength(0);
+      });
+    });
+
     it('a large dropOutFactor forces an early drop-out', () => {
       const stages = Array.from({ length: 20 }, (_, i) =>
         makeTypedNameGeneratorStage(`ng-${i}`, 'node-type-1'),

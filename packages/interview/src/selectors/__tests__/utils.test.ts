@@ -24,6 +24,16 @@ describe('getInterviewProgress', () => {
     expect(getInterviewProgress(stages, 2).progress).toBe(100);
   });
 
+  it('reports 100% progress on a finish stage before the last one', () => {
+    const stages = [
+      { type: 'Information' },
+      { type: 'FinishSession' },
+      { type: 'FinishSession' },
+    ];
+
+    expect(getInterviewProgress(stages, 1).progress).toBe(100);
+  });
+
   it('weights a single-prompt stage as a full step on entry', () => {
     const stages = [
       { type: 'Information' },

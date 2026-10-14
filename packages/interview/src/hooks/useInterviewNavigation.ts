@@ -147,12 +147,11 @@ export default function useInterviewNavigation(
   // to, before the session state has caught up. The session's value wins
   // whenever it changes — compared during render rather than reapplied by an
   // effect, which would paint the superseded figure for a frame first.
-  const sessionProgress = calculateProgress(
-    currentStep,
-    stageCount,
-    promptIndex,
-    promptCount,
-  );
+  // Every finish stage ends the interview, so each one is complete progress.
+  const sessionProgress =
+    stage?.type === 'FinishSession'
+      ? 100
+      : calculateProgress(currentStep, stageCount, promptIndex, promptCount);
   const [progress, setProgress] = useState(sessionProgress);
   const [appliedSessionProgress, setAppliedSessionProgress] =
     useState(sessionProgress);

@@ -83,8 +83,10 @@ several, such as a separate ending for participants who are not eligible.
   rather than in its completed state.
 - A finish stage with no text, which only an Architect preview of a protocol
   still being written can have, shows the Finish button alone.
-- `generateNetwork` leaves a completed synthetic interview on its finish
-  stage, rather than one step past the last stage.
+- `generateNetwork` leaves a completed synthetic interview on the finish
+  stage its route reached, rather than one step past the last stage, and
+  Fresco and Interviewer record that stage and its outcome.
+- Progress is 100% on every finish stage, not only the last one.
 - Skip logic that skips to the finish goes to the first finish stage after the
   stage that owns the rule. Skip logic can also name a later finish stage.
 

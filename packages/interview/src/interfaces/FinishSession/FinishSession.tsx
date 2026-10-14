@@ -38,7 +38,7 @@ import type { StageProps } from '../../types';
 
 type FinishSessionText = Pick<
   FinishSessionStage,
-  'content' | 'finishedContent'
+  'mode' | 'content' | 'finishedContent'
 >;
 
 /** The screen's own words, which the protocol holds as the stage's settings. */
@@ -270,8 +270,9 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
  * validated protocol cannot be; then only the host's actions are shown.
  *
  * `finished` is off for a review of an interview with nothing before its
- * finish stage: it shows the finish stage's closing text read-only, without
- * the Finish button, because the interview is not finished.
+ * finish stage: it shows the text that stage opens with read-only, without
+ * the Finish button, because the interview is not finished. An automatic
+ * finish stage has no closing text, so it shows its finished text.
  */
 export function CompletedInterview({
   stage,
@@ -301,7 +302,11 @@ export function CompletedInterview({
     <FinishSessionLayout>
       {stage && (
         <ScreenText
-          value={finished ? stage.finishedContent : stage.content}
+          value={
+            finished || stage.mode === 'automatic'
+              ? stage.finishedContent
+              : stage.content
+          }
           textRef={textRef}
         />
       )}

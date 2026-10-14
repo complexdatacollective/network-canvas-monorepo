@@ -244,10 +244,12 @@ describe('the finish recorded for generated interviews', () => {
         items: [],
       },
       finishStage,
+      // A later ending, which the generated routes below never reach.
+      { ...finishStage, id: 'end-completed', outcome: 'completed' },
     ],
   };
 
-  it('records the protocol’s finish stage and outcome on a completed interview, and none on one that dropped out', async () => {
+  it('records the finish stage the interview reached, and its outcome, on a completed interview, and none on one that dropped out', async () => {
     findProtocol.mockResolvedValue(protocolWithFinish);
     generateNetwork
       .mockReturnValueOnce({ network: {}, currentStep: 1, droppedOut: false })
@@ -270,11 +272,10 @@ describe('the finish recorded for generated interviews', () => {
 
   it('records them when an interview that dropped out is completed to meet the minimum', async () => {
     findProtocol.mockResolvedValue(protocolWithFinish);
-    generateNetwork.mockReturnValue({
-      network: {},
-      currentStep: 0,
-      droppedOut: true,
-    });
+    generateNetwork
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true })
+      .mockReturnValueOnce({ network: {}, currentStep: 0, droppedOut: true })
+      .mockReturnValue({ network: {}, currentStep: 1, droppedOut: false });
     findInterviews.mockResolvedValue([
       { id: 'created-interview-1', startTime: new Date() },
     ]);
