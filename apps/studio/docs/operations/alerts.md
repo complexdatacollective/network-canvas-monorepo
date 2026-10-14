@@ -73,13 +73,17 @@ from (
   from events
   where event = '$exception'
     and properties.app = 'studio'
-    and timestamp > now() - interval 90 day
+    and timestamp > now() - interval 365 day
   group by issue
 )
 where first_seen > now() - interval 1 hour
 ```
 
 **Threshold.** Above 0.
+
+The lookback matches PostHog's one-year event retention. An issue that has had
+no event for longer than that has no history left to compare with, so if it
+recurs it alerts as new.
 
 **What to do.**
 
