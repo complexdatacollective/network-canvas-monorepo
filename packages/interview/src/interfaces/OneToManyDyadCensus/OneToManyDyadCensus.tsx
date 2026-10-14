@@ -20,6 +20,7 @@ import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { DynamicValueEntity } from '../../dynamicValues/DynamicValueScope';
+import { useValuesUntilExit } from '../../dynamicValues/useValuesUntilExit';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useSortedNodeList, { useStepOrder } from '../../hooks/useSortedNodeList';
 import { useStageSelector } from '../../hooks/useStageSelector';
@@ -216,15 +217,22 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
     [edges, source, createEdge, handleNodeClick],
   );
 
+  // The prompt asks about the focal person, so it can name them. It keeps
+  // naming the outgoing person until they have left.
+  const focalOnScreen = useValuesUntilExit(
+    source?.[entityPrimaryKeyProperty] ?? '',
+    { focal: source?.[entityAttributesProperty] },
+  );
+
   return (
     <div className="interface">
-      {/* The prompt asks about the focal person, so it can name them. */}
-      <DynamicValueEntity
-        attributes={{ focal: source?.[entityAttributesProperty] }}
-      >
+      <DynamicValueEntity attributes={focalOnScreen.values}>
         <Prompts />
       </DynamicValueEntity>
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence
+        mode="popLayout"
+        onExitComplete={focalOnScreen.onExitComplete}
+      >
         {source ? (
           <ConnectedMotionNode
             nodeId={source[entityPrimaryKeyProperty]}
