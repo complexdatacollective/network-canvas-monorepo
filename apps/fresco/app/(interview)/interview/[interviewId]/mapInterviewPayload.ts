@@ -6,6 +6,7 @@ import {
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
+  dynamicValueNamesIn,
   getLocaleMetadata,
   parseDynamicValuePath,
 } from '@codaco/protocol-validation';
@@ -57,8 +58,8 @@ export type InterviewView = 'active' | 'editable-finished' | 'completed';
  *
  * - An unfinished interview opens as it is, to anyone with its link.
  * - A finished interview opens on its completed state, from a payload with
- *   none of the interview's answers but the ego attributes its finish stage's
- *   text shows (`finishTextEgoAttributes`): no other network and no stage
+ *   none of the interview's answers but the ego attributes its finished
+ *   screen shows (`finishTextEgoAttributes`): no other network and no stage
  *   metadata. Nor
  *   does it carry the protocol's resources, whose entries can hold API keys
  *   and whose URLs open the files: the completed state shows only the finish
@@ -99,13 +100,15 @@ export function mapInterviewForViewer(
 }
 
 /**
- * The ego attributes the finished interview's finish stage shows in its text,
- * and no others. The completed state shows that text again whenever the
- * interview is opened, and without them a value the participant read when they
- * finished would read as missing. These are answers the protocol chose to show
- * on that screen; every other answer stays on the server. A finish stage
+ * The ego attributes the finished screen of the finish stage the interview
+ * ended on shows in its text, and no others. The completed state shows that
+ * text whenever the interview is opened, and without them a value the
+ * participant read when they finished would read as missing. These are
+ * answers the protocol chose to show on that screen; every other answer stays
+ * on the server, including one only the closing screen before the Finish
+ * button shows, which the completed state never renders. A finish stage
  * recorded before finish stages were tracked is not known, so every finish
- * stage's values are kept.
+ * stage's finished screen counts.
  */
 function finishTextEgoAttributes(
   payload: InterviewPayload,
@@ -115,7 +118,14 @@ function finishTextEgoAttributes(
   for (const stage of payload.protocol.stages) {
     if (stage.type !== 'FinishSession') continue;
     if (finishStageId !== null && stage.id !== finishStageId) continue;
-    for (const binding of Object.values(stage.dynamicValues ?? {})) {
+    // Every language's version, since the browser picks the language.
+    const shown = new Set(
+      Object.values(stage.finishedContent).flatMap((message) =>
+        dynamicValueNamesIn(message),
+      ),
+    );
+    for (const [name, binding] of Object.entries(stage.dynamicValues ?? {})) {
+      if (!shown.has(name)) continue;
       const parsed = parseDynamicValuePath(binding.path);
       if (parsed?.kind !== 'attribute' || parsed.role !== 'ego') continue;
       // Attribute ids come from the protocol and may name a member every
