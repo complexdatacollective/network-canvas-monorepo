@@ -1,0 +1,15 @@
+- main:
+  - text: Alex and Sam
+  - button "Alex"
+  - button "Sam"
+  - status:
+    - 'heading "Do Dynamic value: Alex and Dynamic value: Sam know each other?" [level=2]'
+  - 'radiogroup "Alex and Sam Do Dynamic value: Alex and Dynamic value: Sam know each other?"':
+    - radio "Yes"
+    - radio "No"
+  - navigation:
+    - button "Settings"
+    - button "Previous Step" [disabled]
+    - progressbar "Progress indicator": x
+    - button "Next Step"
+  - region "Interview notifications"

@@ -2763,6 +2763,10 @@ export class SyntheticInterview {
       config.filter = stage.filter;
     }
 
+    if (stage.dynamicValues) {
+      config.dynamicValues = stage.dynamicValues;
+    }
+
     if (stage.subject) {
       config.subject = stage.subject;
     }

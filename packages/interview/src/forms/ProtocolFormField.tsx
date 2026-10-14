@@ -11,9 +11,13 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
+import { DynamicMarkdown } from '../dynamicValues/DynamicText';
 import { runtimeMessages } from '../i18n/runtimeMessages';
 import { useResolveLocalizedString } from '../localization/ProtocolLocalizationProvider';
-import ProtocolField, { type ProtocolFieldDefinition } from './ProtocolField';
+import ProtocolField, {
+  type ProtocolFieldDefinition,
+  shownLabel,
+} from './ProtocolField';
 
 type ProtocolFormFieldProps = {
   field: ProtocolFieldDefinition;
@@ -57,7 +61,7 @@ function UnavailableAnswer({
   return (
     <UnconnectedField
       name={field.variable}
-      label={resolve(field.label).text}
+      label={shownLabel(resolve(field.label))}
       hint={<AppMessage message={runtimeMessages.answerUnavailableKept} />}
       component={InputField}
       value={intl.formatMessage(runtimeMessages.answerUnavailable)}
@@ -98,7 +102,7 @@ export default function ProtocolFormField({
   const [replacing, setReplacing] = useState(false);
   const resolve = useResolveLocalizedString();
   const authoredHint =
-    field.hint === undefined ? undefined : resolve(field.hint).text;
+    field.hint === undefined ? undefined : resolve(field.hint);
 
   if (unavailable && !replacing) {
     return (
@@ -112,8 +116,14 @@ export default function ProtocolFormField({
         field={asReplacement(field)}
         hint={
           <>
-            {authoredHint !== undefined && (
-              <RenderMarkdown render={<span />}>{authoredHint}</RenderMarkdown>
+            {authoredHint?.parts !== undefined ? (
+              <DynamicMarkdown render={<span />} parts={authoredHint.parts} />
+            ) : (
+              authoredHint !== undefined && (
+                <RenderMarkdown render={<span />}>
+                  {authoredHint.text}
+                </RenderMarkdown>
+              )
             )}
             <p>
               <AppMessage message={runtimeMessages.answerUnavailableKept} />

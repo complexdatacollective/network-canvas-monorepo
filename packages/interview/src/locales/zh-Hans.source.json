@@ -131,6 +131,7 @@
   "interview.runtime.deleteBin": "Delete bin",
   "interview.runtime.drawer": "Drawer",
   "interview.runtime.dropToRemove": "Drop here to remove",
+  "interview.runtime.dynamicValue": "Dynamic value: {value}",
   "interview.runtime.expandDrawer": "Expand drawer",
   "interview.runtime.filter": "Filter...",
   "interview.runtime.firstNode": "First item",

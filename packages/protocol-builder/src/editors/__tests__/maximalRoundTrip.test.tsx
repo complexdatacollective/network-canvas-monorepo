@@ -140,6 +140,8 @@ const mapOptionsOfFixture = (): Record<string, unknown> => {
 const EVERY_STAGE = {
   interviewScript: 'Read this to the participant before you begin.',
   skipLogic,
+  // No editor manages bindings yet, so they must survive a save untouched.
+  dynamicValues: { today: { path: 'now' } },
 };
 
 const MAXIMAL_STAGES: MaximalStage[] = [
@@ -151,6 +153,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       title: { 'en-US': 'Welcome' },
       interviewScript: 'Read this aloud.',
       skipLogic,
+      dynamicValues: EVERY_STAGE.dynamicValues,
       items: [
         {
           id: 'info-item-1',
@@ -176,6 +179,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       label: { 'en-US': 'Ego Form' },
       interviewScript: 'Ask about them.',
       skipLogic,
+      dynamicValues: EVERY_STAGE.dynamicValues,
       form: {
         title: { 'en-US': 'About you' },
         fields: [
@@ -198,6 +202,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       label: { 'en-US': 'Alter Form' },
       interviewScript: 'Ask about each person.',
       skipLogic,
+      dynamicValues: EVERY_STAGE.dynamicValues,
       filter: nodeFilter,
       subject: { entity: 'node', type: 'person' },
       form: {
@@ -221,6 +226,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       label: { 'en-US': 'Alter Edge Form' },
       interviewScript: 'Ask about each relationship.',
       skipLogic,
+      dynamicValues: EVERY_STAGE.dynamicValues,
       filter: edgeFilter,
       subject: { entity: 'edge', type: 'knows' },
       form: {
@@ -244,6 +250,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       label: { 'en-US': 'Name Generator' },
       interviewScript: 'Guidance.',
       skipLogic,
+      dynamicValues: EVERY_STAGE.dynamicValues,
       subject: { entity: 'node', type: 'person' },
       form: {
         title: { 'en-US': 'Add a person' },
@@ -352,6 +359,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
     type: 'FinishSession',
     fields: fixtureMaximal('finish', {
       interviewScript: EVERY_STAGE.interviewScript,
+      dynamicValues: EVERY_STAGE.dynamicValues,
     }),
   },
   {
@@ -652,7 +660,9 @@ describe('a maximal stage of each interface', () => {
       // Nothing is excused unless the case says so: a maximal stage is the one
       // case where every key the interface offers must be on screen, so an
       // empty `unowned` is the whole claim about the outline.
-      await harness.roundTrip({ unowned });
+      // A stage's dynamic value bindings get their editor with the dynamic
+      // value palette (#1667); until then they survive a save untouched.
+      await harness.roundTrip({ unowned: [...unowned, 'dynamicValues'] });
     },
   );
 });

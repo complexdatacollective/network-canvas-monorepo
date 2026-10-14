@@ -1,0 +1,14 @@
+---
+'@codaco/protocol-validation': minor
+---
+
+Schema 9 stage text can show values from the interview, such as the participant's name, an attribute of the node a question is about, or today's date. A stage's `dynamicValues` binds each short argument name its messages use (`{partnerName}`) to a value: today's date (`now`) or an attribute of the participant (`ego.<id>`), the node or edge a form describes (`node.<id>`, `edge.<id>`), the two nodes a Dyad Census asks about (`dyad.source.<id>`, `dyad.target.<id>`) or a one-to-many census's focal node (`one_to_many.focal.<id>`). A categorical, ordinal or boolean value's binding can name `cases` for its options.
+
+- Prompts, form field captions, introduction and panel text, Information screens (but not image descriptions), the anonymisation explanation and the finish screen's heading and text may show values. Stage labels, codebook text, `interfaceText` and wording Network Canvas supplies may not.
+- Each site shows only what is available there: the participant and today's date everywhere, the pair on a Dyad or Tie Strength Census prompt, the focal node on a one-to-many census prompt, and on a form field every attribute of the form's subject. `dynamicValueContextFor`, `dynamicValueArgumentsAt` and `dynamicValueStatus` give that table, and `findDynamicValueProblems` checks a protocol against it.
+- An attribute can always be missing, so it is shown only inside a version for when it has one: `{partnerName, select, missing {…} other {…{partnerName}…}}`. Versions can also follow a value's cases or, for a number, its plural category, chosen by the number with every digit it is shown with. `findDynamicValueProblem` is the one checker, given the text's language; text whose every version the values can reach shows nothing is refused. `dynamicMessageParts` gives the version a message reads for given values.
+- A translation must show every value the protocol's default-language text shows, in the same versions (`findMissingDynamicPlacement`). A plural category only one whole number selects may leave its number out.
+- A binding to an attribute that does not exist, or one that is encrypted, is an error at every text that uses it.
+- Text shows a yes/no attribute by its options' labels, so it can show one as words only when the attribute has a label for both yes and no; otherwise the text is refused with a message naming the attribute and asking for the labels (`dynamicValueUnshowableReason`). Text may still choose its wording by any yes/no attribute, including a Toggle, which never has labels. Bindings count as uses of their attribute in `collectEntityAttributeReferences`.
+- Interview metadata (IDs, start time, protocol name or hash, stage ID) is deliberately not available.
+- Text cannot contain U+E000, which the interview uses to place values (`DYNAMIC_VALUE_MARKER`).

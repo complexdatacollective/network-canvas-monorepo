@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { isBlankMessage } from '../../localization/blankText.ts';
+import { findDynamicMessageSyntaxProblem } from '../../localization/dynamicValueMessages.ts';
 import {
   canonicalizeLocale,
   isCanonicalLocale,
@@ -14,6 +15,7 @@ import {
   type MissingPlacement,
 } from '../../localization/messageArguments.ts';
 import { findMessageSyntaxProblem } from '../../localization/messageSyntax.ts';
+import type { DynamicValueSite } from './dynamic-values.ts';
 
 const LOCALIZED_STRING = 'localizedString' as const;
 
@@ -30,6 +32,11 @@ type LocalizedStringDescriptor = Readonly<{
    * `localizedMessage`); absent for text made only of literal text.
    */
   arguments?: MessageArguments;
+  /**
+   * Where the text sits, for text that may show the stage's dynamic values
+   * (see `DynamicValueSite`); absent for text that may not.
+   */
+  dynamicValues?: DynamicValueSite;
 }>;
 
 /**
@@ -161,6 +168,7 @@ export const localizedString = (
   format: LocalizedStringFormat,
   {
     mayBeEmpty = false,
+    dynamicValues,
   }: {
     /**
      * Allow a string with no translation at all. Only for text something
@@ -169,10 +177,27 @@ export const localizedString = (
      * Canvas supplies none for starts without (`findFinishStageTextProblems`).
      */
     mayBeEmpty?: boolean;
+    /**
+     * Let the text show the stage's dynamic values, and say where it sits,
+     * which decides which ones (see `DynamicValueSite`). Only stage-owned
+     * participant text a researcher writes may: never a stage label, which
+     * shows outside the stage, codebook text reused across stages, or wording
+     * Network Canvas supplies. Each translation is checked here only for what
+     * needs no stage; which values it shows, and how, is checked against the
+     * stage's bindings by the protocol (`findDynamicValueProblems`).
+     */
+    dynamicValues?: DynamicValueSite;
   } = {},
 ) =>
-  localizedTranslations(content, findMessageSyntaxProblem, mayBeEmpty).meta({
-    [LOCALIZED_STRING]: { format },
+  localizedTranslations(
+    content,
+    dynamicValues === undefined
+      ? findMessageSyntaxProblem
+      : findDynamicMessageSyntaxProblem,
+    mayBeEmpty,
+  ).meta({
+    [LOCALIZED_STRING]:
+      dynamicValues === undefined ? { format } : { format, dynamicValues },
   });
 
 const describeMissingPlacement = (
@@ -245,7 +270,11 @@ const isLocalizedStringDescriptor = (
   'format' in value &&
   (value.format === 'plain' || value.format === 'markdown') &&
   (!('arguments' in value) ||
-    (typeof value.arguments === 'object' && value.arguments !== null));
+    (typeof value.arguments === 'object' && value.arguments !== null)) &&
+  (!('dynamicValues' in value) ||
+    value.dynamicValues === 'stageText' ||
+    value.dynamicValues === 'prompt' ||
+    value.dynamicValues === 'formField');
 
 export const getLocalizedStringDescriptor = (
   schema: z.ZodType,

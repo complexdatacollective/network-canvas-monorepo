@@ -18,7 +18,14 @@ import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 import { OrderedList, UnorderedList } from './typography/UnorderedList';
 
-const ALLOWED_MARKDOWN_LABEL_TAGS = ['em', 'strong', 'ul', 'ol', 'li', 'a'];
+export const ALLOWED_MARKDOWN_LABEL_TAGS = [
+  'em',
+  'strong',
+  'ul',
+  'ol',
+  'li',
+  'a',
+];
 export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   ...ALLOWED_MARKDOWN_LABEL_TAGS,
   'h1',
@@ -31,10 +38,17 @@ export const ALLOWED_MARKDOWN_SECTION_TAGS = [
   'a',
 ];
 
+/**
+ * The HTML handling every rendering gets unless it passes its own: raw HTML
+ * is parsed, then sanitized. A caller adding a plugin of its own appends it to
+ * these, so it runs on sanitized output.
+ */
+export const DEFAULT_MARKDOWN_REHYPE_PLUGINS = [rehypeRaw, rehypeSanitize];
+
 const defaultMarkdownOptions = {
   allowedElements: ALLOWED_MARKDOWN_LABEL_TAGS,
   remarkPlugins: [remarkGemoji, remarkGfm],
-  rehypePlugins: [rehypeRaw, rehypeSanitize],
+  rehypePlugins: DEFAULT_MARKDOWN_REHYPE_PLUGINS,
   unwrapDisallowed: true,
 } satisfies Options;
 
@@ -64,6 +78,30 @@ const getMarkdownLabelText = (markdown: string): string =>
   // and URL processing, without a second parser or a browser/server render.
   renderedText(
     ReactMarkdown({ ...defaultMarkdownOptions, children: markdown }),
+  );
+
+const attributeText = (node: unknown): string[] => {
+  if (Array.isArray(node)) return node.flatMap(attributeText);
+  if (!isValidElement<Record<string, unknown>>(node)) return [];
+  return Object.entries(node.props).flatMap(([key, value]) => {
+    if (key === 'children') return attributeText(value);
+    return typeof value === 'string' ? [value] : [];
+  });
+};
+
+/**
+ * Every attribute value (a link's destination or title, an image's source or
+ * text) that RenderMarkdown's default dialect produces from markdown, with
+ * every element allowed. Lets a caller that splices text into markdown find
+ * where the parser put it without a second parser.
+ */
+const getMarkdownAttributeValues = (markdown: string): string[] =>
+  attributeText(
+    ReactMarkdown({
+      ...defaultMarkdownOptions,
+      allowedElements: undefined,
+      children: markdown,
+    }),
   );
 
 // Open links in the OS browser, never inside the app. `window.open` is the one
@@ -175,4 +213,4 @@ const RenderMarkdown = ({
   return markdownContent;
 };
 
-export { getMarkdownLabelText, RenderMarkdown };
+export { getMarkdownAttributeValues, getMarkdownLabelText, RenderMarkdown };

@@ -131,6 +131,7 @@
   "interview.runtime.deleteBin": "删除区",
   "interview.runtime.drawer": "抽屉",
   "interview.runtime.dropToRemove": "放置到此处以移除",
+  "interview.runtime.dynamicValue": "动态值：{value}",
   "interview.runtime.expandDrawer": "展开抽屉",
   "interview.runtime.filter": "筛选...",
   "interview.runtime.firstNode": "第一项",

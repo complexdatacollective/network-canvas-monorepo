@@ -131,6 +131,7 @@
   "interview.runtime.deleteBin": "Lixeira",
   "interview.runtime.drawer": "Gaveta",
   "interview.runtime.dropToRemove": "Solte aqui para remover",
+  "interview.runtime.dynamicValue": "Valor dinâmico: {value}",
   "interview.runtime.expandDrawer": "Expandir gaveta",
   "interview.runtime.filter": "Filtrar...",
   "interview.runtime.firstNode": "Primeiro item",

@@ -507,5 +507,46 @@ export const dyadCensusScenarios: InterfaceScenarios = {
         await expect(page.getByRole('radio')).toHaveCount(0);
       },
     },
+
+    {
+      id: 'dynamic-values-name-the-pair',
+      covers: ['dynamicValues'],
+      seedNetwork: true,
+      build: () => {
+        const synth = new SyntheticInterview();
+        const nodeType = synth.addNodeType({ name: 'Person' });
+        const personName = nodeType.addVariable({ name: 'name', type: 'text' });
+        const stage = synth.addStage('DyadCensus', {
+          subject: { entity: 'node', type: nodeType.id },
+        });
+        stage.stageEntry.dynamicValues = {
+          first: { path: `dyad.source.${personName.id}` },
+          second: { path: `dyad.target.${personName.id}` },
+        };
+        stage.addPrompt({
+          text: {
+            'en-US':
+              '{first, select, missing {Do these two} other {Do {first} and {second, select, missing {this person} other {{second}}}}} know each other?',
+          },
+        });
+        synth.addManualNode(stage.id, nodeType.id, 'n0', {
+          [personName.id]: 'Alex',
+        });
+        synth.addManualNode(stage.id, nodeType.id, 'n1', {
+          [personName.id]: 'Sam',
+        });
+        return synth;
+      },
+      run: async ({ page }) => {
+        // The stage opens on its first pair. The prompt names the pair on screen, each name marked out.
+        const values = page.locator('[data-dynamic-value]');
+        await expect(values).toHaveCount(2);
+        // The visible names, without the screen-reader announcement.
+        await expect(values.locator('bdi')).toHaveText(['Alex', 'Sam']);
+        await expect(
+          page.getByText(/Do Alex.*and Sam.*know each other\?/),
+        ).toBeVisible();
+      },
+    },
   ],
 };

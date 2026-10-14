@@ -1669,5 +1669,64 @@ export const egoFormScenarios: InterfaceScenarios = {
         await expect(nudge).toBeHidden();
       },
     },
+
+    {
+      id: 'dynamic-values-follow-live-answers',
+      covers: ['dynamicValues'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const nameVar = synth.addEgoVariable({
+          type: 'text',
+          component: 'Text',
+          name: 'name',
+        });
+        const ageVar = synth.addEgoVariable({
+          type: 'number',
+          component: 'Number',
+          name: 'age',
+        });
+        const stage = synth.addStage('EgoForm', { form: FORM });
+        stage.stageEntry.dynamicValues = {
+          name: { path: `ego.${nameVar.id}` },
+        };
+        stage.addFormField({
+          variable: nameVar.id,
+          component: 'Text',
+          prompt: 'What is your name?',
+        });
+        stage.addFormField({
+          variable: ageVar.id,
+          component: 'Number',
+          prompt: {
+            'en-US':
+              '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
+          },
+        });
+        return synth;
+      },
+      run: async ({ page }) => {
+        const name = page.getByRole('textbox', { name: 'What is your name?' });
+
+        // A later question shows the earlier answer as it is typed, marked
+        // out, and announces it as a filled-in value.
+        await name.fill('Ada');
+        await expect(
+          page.getByRole('spinbutton', {
+            // Chromium puts a space after the visually hidden announcement.
+            name: /^How old are you, Dynamic value: Ada ?\?$/,
+          }),
+        ).toBeVisible();
+        await expect(
+          page.locator('[data-dynamic-value]', { hasText: 'Ada' }),
+        ).toBeVisible();
+
+        // Clearing the answer shows the version written for a missing value.
+        await name.fill('');
+        await expect(
+          page.getByRole('spinbutton', { name: 'How old are you?' }),
+        ).toBeVisible();
+        await expect(page.locator('[data-dynamic-value]')).toHaveCount(0);
+      },
+    },
   ],
 };
