@@ -1022,6 +1022,48 @@ const finishStageFor = (
   createDefaultFinishSessionStage({ id: finishStageId(stages), localization });
 
 /**
+ * The notice Network Canvas supplied under the closing text of a finished
+ * interview before finish stages had finished text, which that text replaces.
+ */
+const SUPPLIED_FINISHED_NOTICE: Readonly<Record<string, string>> = {
+  'en': 'This interview is finished, and its answers can no longer be changed.',
+  'de': 'Dieses Interview ist beendet. Die Antworten können nicht mehr geändert werden.',
+  'es': 'Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.',
+  'fr': 'Cet entretien est terminé et ses réponses ne peuvent plus être modifiées.',
+  'it': 'Questa intervista è terminata e le sue risposte non possono più essere modificate.',
+  'nl': 'Dit interview is voltooid en de antwoorden kunnen niet meer worden gewijzigd.',
+  'pt-BR':
+    'Esta entrevista foi concluída e as respostas não podem mais ser alteradas.',
+  'zh-Hans': '此访谈已完成，其中的回答无法再更改。',
+  'zh-Hant': '此訪談已完成，其中的回答無法再變更。',
+};
+
+/**
+ * Finished text for a stage whose finished notice a researcher may have
+ * rewritten (with a compensation code, say): the supplied finished text, and
+ * after it each notice that is not the one Network Canvas supplied.
+ */
+const finishedContentKeepingNotice = (
+  notice: unknown,
+  defaults: Readonly<Record<string, string>>,
+): Record<string, string> => {
+  const content: Record<string, string> = { ...defaults };
+  if (!isRecord(notice)) return content;
+  for (const [locale, text] of Object.entries(notice)) {
+    if (typeof text !== 'string' || text.trim() === '') continue;
+    const supplied =
+      SUPPLIED_FINISHED_NOTICE[locale] ??
+      SUPPLIED_FINISHED_NOTICE[locale.split('-')[0] ?? locale];
+    if (text.trim() === supplied) continue;
+    const escaped = escapeMarkdownText(text.trim());
+    const before = content[locale];
+    content[locale] =
+      before === undefined ? escaped : `${before}\n\n${escaped}`;
+  }
+  return content;
+};
+
+/**
  * A finish stage written before finish stages had modes, as a document stored
  * at schema 9 during its development can hold one: its heading becomes the
  * first line of its closing text, its finished notice gives way to finished
@@ -1053,8 +1095,13 @@ const normalizeFinishStages = (
       stage.content = content;
       delete stage.title;
     }
+    if (!('finishedContent' in stage)) {
+      stage.finishedContent = finishedContentKeepingNotice(
+        stage.finishedNotice,
+        defaults.finishedContent,
+      );
+    }
     if ('finishedNotice' in stage) delete stage.finishedNotice;
-    stage.finishedContent ??= defaults.finishedContent;
   }
 };
 

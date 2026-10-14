@@ -302,7 +302,9 @@ describe('v8 to v9 migration', () => {
 describe('a finish stage stored before finish stages had modes', () => {
   // Rows stored at schema 9 while it was being developed are re-migrated
   // from schema 8 by Fresco's deploy normalization.
-  const legacy = (locale: string) => ({
+  const SUPPLIED_NOTICE =
+    'This interview is finished, and its answers can no longer be changed.';
+  const legacy = (locale: string, notice = SUPPLIED_NOTICE) => ({
     id: 'finish',
     type: 'FinishSession',
     label: { [locale]: 'Finish Interview' },
@@ -310,7 +312,7 @@ describe('a finish stage stored before finish stages had modes', () => {
     content: { [locale]: 'Press Finish.' },
     finishLabel: { [locale]: 'Finish' },
     finishConfirmation: { [locale]: 'Finish?' },
-    finishedNotice: { [locale]: 'This interview is finished.' },
+    finishedNotice: { [locale]: notice },
     finishFailed: { [locale]: 'It could not be finished.' },
     outcome: 'completed',
   });
@@ -339,6 +341,27 @@ describe('a finish stage stored before finish stages had modes', () => {
       finishConfirmation: { [defaultLocale]: 'Finish?' },
       finishFailed: { [defaultLocale]: 'It could not be finished.' },
       outcome: 'completed',
+    });
+    expect(ProtocolSchemaV9.safeParse(again).success).toBe(true);
+  });
+  it('keeps a finished notice the researcher wrote, after the finished text', () => {
+    const migrated = migrateProtocol(asSchema8Protocol(completeProtocol()), 9);
+    const { defaultLocale } = migrated.localization;
+    const again = migrateProtocol(
+      {
+        ...migrated,
+        schemaVersion: 8,
+        stages: [
+          ...migrated.stages.slice(0, -1),
+          legacy(defaultLocale, 'Your code is *A1*.'),
+        ],
+      },
+      9,
+    );
+    expect(again.stages.at(-1)).toMatchObject({
+      finishedContent: {
+        [defaultLocale]: `${DEFAULT_FINISH_SESSION_TEXT.en.finishedContent}\n\nYour code is \\*A1\\*.`,
+      },
     });
     expect(ProtocolSchemaV9.safeParse(again).success).toBe(true);
   });

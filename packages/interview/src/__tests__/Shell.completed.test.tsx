@@ -358,6 +358,23 @@ describe('Shell completed state', () => {
       expect(onFinish).not.toHaveBeenCalled();
     });
 
+    it('keeps a finished interview with nothing before its automatic ending finished when reopened to be changed', async () => {
+      const onFinish = vi.fn<FinishHandler>(() => Promise.resolve());
+      const payload = automatic(makePayload({ finishStageId: finishStage.id }));
+      payload.protocol.stages = payload.protocol.stages.filter(
+        (stage) => stage.type === 'FinishSession',
+      );
+      renderShell({
+        payload,
+        currentStep: 0,
+        openFinishedAsActive: true,
+        onFinish,
+      });
+
+      await expectCompletedState();
+      expect(onFinish).not.toHaveBeenCalled();
+    });
+
     it('allows no navigation either way while it finishes', async () => {
       renderShell({
         payload: automatic(makePayload(null)),

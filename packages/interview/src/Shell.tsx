@@ -878,21 +878,47 @@ const Shell = ({
     trackerRef.current = next;
   }, []);
 
+  // A finished interview reopened to be changed would finish again at once
+  // on an automatic finish stage, which also cannot be left backwards, so it
+  // enters at the last stage before the interview ended instead. With no such
+  // stage it has nothing to change, and stays finished.
+  const automaticReentryStep = useMemo(() => {
+    const stageAtStep =
+      currentStep === undefined
+        ? undefined
+        : payload.protocol.stages[currentStep];
+    if (
+      !openFinishedAsActive ||
+      stageAtStep?.type !== 'FinishSession' ||
+      stageAtStep.mode !== 'automatic'
+    ) {
+      return undefined;
+    }
+    return (
+      getLastAvailableAuthoredStageIndex(
+        payload.protocol.stages,
+        payload.session.network,
+      ) ?? null
+    );
+  }, [
+    currentStep,
+    openFinishedAsActive,
+    payload.protocol.stages,
+    payload.session.network,
+  ]);
+  const opensAsActive = openFinishedAsActive && automaticReentryStep !== null;
+
   // A finished session opens in its completed state, at the finish stage the
   // host recorded, unless the host opens it as an unfinished one.
   const initialCompletion = useMemo<InterviewCompletion | null>(
     () =>
-      payload.session.finishTime === null || openFinishedAsActive
+      payload.session.finishTime === null || opensAsActive
         ? null
         : {
             stageId: payload.session.finishStageId ?? null,
             finishedHere: false,
           },
-    [
-      payload.session.finishTime,
-      payload.session.finishStageId,
-      openFinishedAsActive,
-    ],
+    [payload.session.finishTime, payload.session.finishStageId, opensAsActive],
   );
 
   const reviewEntry = useMemo(() => {
@@ -903,26 +929,8 @@ const Shell = ({
     );
     const reviewEnd =
       finishIndex === -1 ? payload.protocol.stages.length : finishIndex;
-    // A finished interview reopened to be changed would finish again at once
-    // on an automatic finish stage, which also cannot be left backwards, so it
-    // enters at the last stage before the interview ended instead.
-    const stageAtStep =
-      currentStep === undefined
-        ? undefined
-        : payload.protocol.stages[currentStep];
-    if (
-      openFinishedAsActive &&
-      stageAtStep?.type === 'FinishSession' &&
-      stageAtStep.mode === 'automatic'
-    ) {
-      return {
-        currentStep:
-          getLastAvailableAuthoredStageIndex(
-            payload.protocol.stages,
-            payload.session.network,
-          ) ?? currentStep,
-        initialStageOverrideIndex,
-      };
+    if (automaticReentryStep !== undefined && automaticReentryStep !== null) {
+      return { currentStep: automaticReentryStep, initialStageOverrideIndex };
     }
     if (
       reviewMode !== true ||
@@ -949,9 +957,9 @@ const Shell = ({
           : initialStageOverrideIndex,
     };
   }, [
+    automaticReentryStep,
     currentStep,
     initialStageOverrideIndex,
-    openFinishedAsActive,
     payload.protocol.stages,
     payload.session.network,
     reviewMode,
