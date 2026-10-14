@@ -862,20 +862,34 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // place of those stored: clearing their name calls them by how they are
   // related, and a new sex at birth changes that word as saving it will.
   const panelLabelMode = panel?.mode;
+  // Cancel takes the relative being added off the canvas while the panel is
+  // still closing, so their last name is kept for its questions until then.
+  const addingId =
+    panelLabelMode?.kind === 'add' ? panelLabelMode.ids[0] : undefined;
+  const addingName = addingId === undefined ? undefined : names.get(addingId);
+  const [lastAdding, setLastAdding] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  if (
+    addingId !== undefined &&
+    addingName !== undefined &&
+    (lastAdding?.id !== addingId || lastAdding.name !== addingName)
+  ) {
+    setLastAdding({ id: addingId, name: addingName });
+  }
+  const addingLabel =
+    addingName ??
+    (lastAdding !== null && lastAdding.id === addingId
+      ? lastAdding.name
+      : formatRelativeTerm('other', words));
   const labelPanelNode = useMemo((): LabelNode | undefined => {
     if (panelLabelMode === undefined) return undefined;
     if (panelLabelMode.kind === 'add') {
-      const [addedId] = panelLabelMode.ids;
-      const label = withoutSoftHyphens(
-        addedId === undefined
-          ? formatRelativeTerm('other', words)
-          : displayName(addedId),
-      );
+      const label = withoutSoftHyphens(addingLabel);
       return () => label;
     }
-    // The participant is called as the canvas calls them ("You"), as every
-    // relative is. Returning undefined for them instead would name them by
-    // the codebook's label rules.
+    // The participant is "You", as the canvas calls them.
     const editedId = panelLabelMode.person.id;
     const answered = [
       config.nameAttribute,
@@ -925,7 +939,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     };
   }, [
     panelLabelMode,
-    displayName,
+    addingLabel,
     words,
     config,
     nodes,
