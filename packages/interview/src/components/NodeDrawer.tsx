@@ -2,7 +2,7 @@
 
 import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
@@ -43,6 +43,11 @@ type NodeDrawerProps = {
   selectedNodeId?: string;
   /** Called when a person who cannot be dragged is tapped. */
   onNodeClick?: (node: NcNode) => void;
+  /**
+   * Changes when the selected person should be brought back into view even
+   * if they are still the one selected, as on a new prompt.
+   */
+  selectionKey?: string;
 };
 
 const MotionChevron = motion.create(ChevronDown);
@@ -61,6 +66,7 @@ export default function NodeDrawer({
   draggable = true,
   selectedNodeId,
   onNodeClick,
+  selectionKey,
 }: NodeDrawerProps) {
   const intl = useAppIntl();
   const unplacedId = useId();
@@ -99,6 +105,48 @@ export default function NodeDrawer({
     }
   }, [hasNodes, prevHasNodes, setIsExpanded]);
 
+  // A newly selected person is the one being placed, so it must be visible:
+  // reopen the drawer if the participant had collapsed it, and scroll the row
+  // to them if they are out of view. A new prompt counts as a new selection.
+  const viewportRef = useRef<HTMLElement>(null);
+  const revealSelected = useCallback(() => {
+    const viewport = viewportRef.current;
+    const selected = viewport?.querySelector('[data-node-selected]');
+    if (!viewport || !selected) return;
+    // Only the row scrolls: scrollIntoView would also scroll the drawer's
+    // clipped, height-animating container.
+    const row = viewport.getBoundingClientRect();
+    const person = selected.getBoundingClientRect();
+    if (person.left < row.left) {
+      viewport.scrollLeft -= row.left - person.left;
+    } else if (person.right > row.right) {
+      viewport.scrollLeft += person.right - row.right;
+    }
+  }, []);
+  const selectionIsInDrawer =
+    selectedNodeId !== undefined &&
+    nodes.some((node) => node[entityPrimaryKeyProperty] === selectedNodeId);
+  const selection =
+    selectedNodeId === undefined
+      ? undefined
+      : `${selectionKey ?? ''}:${selectedNodeId}`;
+  const prevSelection = usePrevious(selection);
+  useEffect(() => {
+    if (selection === prevSelection) return;
+    if (!selectionIsInDrawer) return;
+    setIsExpanded(true);
+    // A frame later, once the selected state has rendered. Not cancelled on
+    // re-run: the effect re-runs on the next render, when the previous
+    // selection catches up, and the scroll must still happen.
+    requestAnimationFrame(revealSelected);
+  }, [
+    selection,
+    prevSelection,
+    selectionIsInDrawer,
+    setIsExpanded,
+    revealSelected,
+  ]);
+
   const [isLayoutAnimating, setIsLayoutAnimating] = useState(false);
   const prevNodeCountRef = usePrevious(nodes.length);
 
@@ -118,10 +166,14 @@ export default function NodeDrawer({
 
   const [remeasureKey, setRemeasureKey] = useState(0);
 
+  // The drawer can reorder without the selection changing (a sort value
+  // decrypting, say), so check the selected person is still in view once the
+  // people have settled.
   const handleLayoutAnimationComplete = useCallback(() => {
     setIsLayoutAnimating(false);
     setRemeasureKey((k) => k + 1);
-  }, []);
+    revealSelected();
+  }, [revealSelected]);
 
   const isToggleDisabled = isEmpty && !canExpandWhenEmpty;
 
@@ -216,6 +268,7 @@ export default function NodeDrawer({
           )}
         >
           <ScrollArea
+            ref={viewportRef}
             orientation="horizontal"
             fade
             remeasureKey={remeasureKey}

@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import type { Stage } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 
-import BinSelectFocus from '../../components/BinSelectFocus';
+import BinSelectAnnouncer from '../../components/BinSelectAnnouncer';
 import NodeDrawer from '../../components/NodeDrawer';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
@@ -113,7 +113,7 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
         </AnimatePresence>
       </div>
       {selectMode && (
-        <BinSelectFocus
+        <BinSelectAnnouncer
           node={focalNode}
           settling={settling}
           promptId={prompt.id}
@@ -125,6 +125,7 @@ const OrdinalBin = ({ stage }: OrdinalBinStageProps) => {
         draggable={!selectMode}
         selectedNodeId={focalNode?.[entityPrimaryKeyProperty]}
         onNodeClick={selectMode ? choose : undefined}
+        selectionKey={prompt.id}
       />
     </div>
   );
