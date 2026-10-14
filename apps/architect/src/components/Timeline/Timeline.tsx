@@ -194,12 +194,6 @@ const Timeline = () => {
     undefined,
   );
 
-  const firstFinishIndex = stages.findIndex(
-    (stage) => stage.type === 'FinishSession',
-  );
-  const appendIndex =
-    firstFinishIndex === -1 ? stages.length : firstFinishIndex;
-
   // Another tab taking the protocol closes a new-stage screen that was open,
   // rather than leaving it to start a stage this tab can no longer add.
   if (readOnly && showNewStageDialog) setShowNewStageDialog(false);
@@ -557,9 +551,10 @@ const Timeline = () => {
             'focusable relative z-1 mt-3 p-4',
             readOnly ? 'cursor-not-allowed' : 'group cursor-pointer',
           )}
-          // A new stage goes before the stage that ends the interview, which
-          // stays last.
-          onClick={() => handleInsertStage(appendIndex)}
+          // Asked for at the very end: a new finish stage goes there, after the
+          // other endings, and any other stage before the first of them
+          // (`creationIndex`).
+          onClick={() => handleInsertStage(stages.length)}
           initial={animate ? 'hidden' : false}
           animate="visible"
           variants={addStageVariants}

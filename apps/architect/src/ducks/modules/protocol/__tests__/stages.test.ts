@@ -8,6 +8,7 @@ import type { AppDispatch } from '~/ducks/store';
 import { commitStage } from '../commitStage';
 import reducer, {
   actionCreators,
+  creationIndex,
   getFamilyPedigreeNodeTypeChangeBlock,
   getInvalidSkipDestinationReferences,
   getSkipDestinationDependentStages,
@@ -508,5 +509,31 @@ describe('protocol.stages', () => {
       expect(action.type).toBe('stages/moveStage');
       expect(action.payload).toEqual({ oldIndex: 2, newIndex: 1 });
     });
+  });
+});
+
+describe('creationIndex', () => {
+  const stages = [
+    { type: 'Information' },
+    { type: 'NameGenerator' },
+    { type: 'FinishSession' },
+    { type: 'FinishSession' },
+  ] as const;
+
+  // The timeline's trailing add control asks for the very end.
+  it('adds a finish stage asked for at the end after the existing endings', () => {
+    expect(
+      creationIndex(stages, { type: 'FinishSession' }, stages.length),
+    ).toBe(4);
+  });
+
+  it('adds any other stage asked for at the end before the first ending', () => {
+    expect(creationIndex(stages, { type: 'Information' }, stages.length)).toBe(
+      2,
+    );
+  });
+
+  it('adds a finish stage where it was asked for among the endings', () => {
+    expect(creationIndex(stages, { type: 'FinishSession' }, 3)).toBe(3);
   });
 });
