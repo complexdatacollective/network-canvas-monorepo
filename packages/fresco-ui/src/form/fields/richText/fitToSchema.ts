@@ -1,6 +1,11 @@
 import type { JSONContent } from '@tiptap/core';
 import type { Schema } from '@tiptap/pm/model';
 
+// A stored value can hold anything (fields tolerate every value shape), so a
+// node that is not an object is left as it is for the editor to refuse.
+const isNode = (node: unknown): node is JSONContent =>
+  typeof node === 'object' && node !== null;
+
 /**
  * The marks a node can keep: the ones `schema` has a type for.
  *
@@ -15,19 +20,27 @@ export const marksInSchema = (
   marks: JSONContent['marks'],
   schema: Schema,
 ): JSONContent['marks'] =>
-  marks?.filter((mark) => Object.hasOwn(schema.marks, mark.type));
+  marks?.filter(
+    (mark) => !isNode(mark) || Object.hasOwn(schema.marks, mark.type),
+  );
 
 const hasForeignMark = (node: JSONContent, schema: Schema): boolean =>
-  (node.marks ?? []).some((mark) => !Object.hasOwn(schema.marks, mark.type)) ||
-  (node.content ?? []).some((child) => hasForeignMark(child, schema));
+  isNode(node) &&
+  ((Array.isArray(node.marks) &&
+    node.marks.some(
+      (mark) => isNode(mark) && !Object.hasOwn(schema.marks, mark.type),
+    )) ||
+    (Array.isArray(node.content) &&
+      node.content.some((child) => hasForeignMark(child, schema))));
 
 const fitNode = (node: JSONContent, schema: Schema): JSONContent => {
+  if (!isNode(node)) return node;
   const { marks, content, ...rest } = node;
   const kept = marksInSchema(marks, schema);
   return {
     ...rest,
     ...(kept !== undefined && kept.length > 0 && { marks: kept }),
-    ...(content !== undefined && {
+    ...(Array.isArray(content) && {
       content: content.map((child) => fitNode(child, schema)),
     }),
   };
