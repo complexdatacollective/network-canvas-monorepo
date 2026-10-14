@@ -7,6 +7,7 @@ import type { ResearcherLogEntry } from '@codaco/studio-contract/schema/browser-
 
 import { FakeWebSocket, installSocketHost } from '../../test/hostHarness.ts';
 import { HostClient } from '../hostClient.ts';
+import { editorVisits } from '../hostFaults.ts';
 
 const logged = vi.hoisted((): ResearcherLogEntry[] => []);
 
@@ -20,6 +21,7 @@ vi.mock('../browserLogs.ts', async (importOriginal) => ({
 const PROTOCOL_ID = 'protocol-under-test';
 
 beforeEach(() => {
+  onTestFinished(editorVisits.open());
   logged.length = 0;
   FakeWebSocket.opened = [];
   FakeWebSocket.openImmediately = false;

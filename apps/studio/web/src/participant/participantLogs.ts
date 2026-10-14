@@ -178,12 +178,14 @@ export function watchParticipantConnection(
   target: EventTargetLike = window,
   now: () => number = Date.now,
 ): () => void {
-  let lostAt: number | undefined;
+  let outage:
+    | { readonly stage: ParticipantStage; readonly lostAt: number }
+    | undefined;
   const onOffline = () => {
-    if (lostAt !== undefined) return;
+    if (outage !== undefined) return;
     const stage = currentStage();
     if (stage === undefined) return;
-    lostAt = now();
+    outage = { stage, lostAt: now() };
     log({
       message: 'Participant connection lost',
       level: 'Warn',
@@ -191,15 +193,16 @@ export function watchParticipantConnection(
     });
   };
   const onOnline = () => {
-    if (lostAt === undefined) return;
-    const duration = Math.min(Math.max(now() - lostAt, 0), MAX_DURATION_MS);
-    lostAt = undefined;
-    const stage = currentStage();
-    if (stage === undefined) return;
+    if (outage === undefined) return;
+    const { stage, lostAt } = outage;
+    outage = undefined;
     log({
       message: 'Participant connection restored',
       level: 'Info',
-      attributes: { ...stage, duration_ms: duration },
+      attributes: {
+        ...stage,
+        duration_ms: Math.min(Math.max(now() - lostAt, 0), MAX_DURATION_MS),
+      },
     });
   };
   target.addEventListener('offline', onOffline);
