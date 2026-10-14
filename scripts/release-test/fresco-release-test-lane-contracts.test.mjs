@@ -392,11 +392,11 @@ test('the element events and properties are the ones Fresco drops', () => {
 
 test('the entity-id properties are the ones the interview runtime pseudonymises', () => {
   const source = readFileSync(
-    join(repoRoot, 'packages/interview/src/analytics/entityIds.ts'),
+    join(repoRoot, 'packages/interview/src/analytics/entityIdProperties.ts'),
     'utf8',
   );
   assert.deepEqual(
-    sorted(declaredStrings(source, 'const ENTITY_ID_PROPS', ']')),
+    sorted(declaredStrings(source, 'export const ENTITY_ID_PROPERTIES', ']')),
     sorted(ENTITY_ID_PROPERTIES),
   );
 });
