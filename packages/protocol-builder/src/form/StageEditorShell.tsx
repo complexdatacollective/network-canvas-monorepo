@@ -449,6 +449,7 @@ function StageEditorFormBody({
     },
     [
       clearRefusedWrite,
+      codebook,
       discardDraft,
       identity,
       localization,
