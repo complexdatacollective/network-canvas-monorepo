@@ -418,9 +418,7 @@
             }
           ]
         },
-        "destination": {
-          "type": "finish"
-        }
+        "destination": { "type": "stage", "stageId": "finish-declined" }
       }
     },
     {
@@ -442,9 +440,7 @@
             }
           ]
         },
-        "destination": {
-          "type": "finish"
-        }
+        "destination": { "type": "stage", "stageId": "finish-declined" }
       },
       "interviewScript": "",
       "form": {
@@ -692,6 +688,30 @@
         "en-US": "# Interview Finished\n\nThank you for participating!"
       },
       "outcome": "completed"
+    },
+    {
+      "id": "finish-declined",
+      "type": "FinishSession",
+      "mode": "confirmation",
+      "label": {
+        "en-US": "Not Taking Part"
+      },
+      "content": {
+        "en-US": "# You Chose Not to Take Part\n\nThank you for your time. Because you chose not to take part in this study, the interview ends here. If you chose this by mistake, go back and change your answer. Otherwise, press Finish."
+      },
+      "finishedContent": {
+        "en-US": "# Interview Finished\n\nThank you for your time."
+      },
+      "finishLabel": {
+        "en-US": "Finish"
+      },
+      "finishConfirmation": {
+        "en-US": "Are you sure you want to finish the interview?"
+      },
+      "finishFailed": {
+        "en-US": "The interview could not be finished. Please try again. If the problem continues, contact the study organizer."
+      },
+      "outcome": "terminated"
     }
   ],
   "interfaceText": {
