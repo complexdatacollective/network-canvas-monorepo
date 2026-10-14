@@ -381,7 +381,7 @@
   "protocolBuilder.dialogForm.resizeHandle": "Größe von Formular und Vorschau anpassen",
   "protocolBuilder.dynamicText.byAnswer": "Unterschiedlicher Wortlaut für jede Antwort",
   "protocolBuilder.dynamicText.byNumber": "Wortlaut passend zur Zahl",
-  "protocolBuilder.dynamicText.insertMenu": "Wert einfügen",
+  "protocolBuilder.dynamicText.insertMenu": "Automatisch ausgefüllten Text aus Interview-Metadaten oder einem Netzwerkattribut einfügen",
   "protocolBuilder.dynamicText.interviewGroup": "Interview",
   "protocolBuilder.dynamicText.needsAnswerLabels": "Fügen Sie zuerst Bezeichnungen für die Ja- und die Nein-Antwort hinzu",
   "protocolBuilder.dynamicText.no": "Nein",

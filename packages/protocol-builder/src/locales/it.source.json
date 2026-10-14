@@ -381,7 +381,7 @@
   "protocolBuilder.dialogForm.resizeHandle": "Resize form and preview panes",
   "protocolBuilder.dynamicText.byAnswer": "Different wording for each answer",
   "protocolBuilder.dynamicText.byNumber": "Wording that fits the number",
-  "protocolBuilder.dynamicText.insertMenu": "Insert a value",
+  "protocolBuilder.dynamicText.insertMenu": "Inject piped text from interview metadata or a network attribute",
   "protocolBuilder.dynamicText.interviewGroup": "Interview",
   "protocolBuilder.dynamicText.needsAnswerLabels": "Add labels for its yes and no answers first",
   "protocolBuilder.dynamicText.no": "No",

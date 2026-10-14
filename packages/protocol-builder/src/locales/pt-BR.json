@@ -381,7 +381,7 @@
   "protocolBuilder.dialogForm.resizeHandle": "Redimensionar os painéis de formulário e pré-visualização",
   "protocolBuilder.dynamicText.byAnswer": "Texto diferente para cada resposta",
   "protocolBuilder.dynamicText.byNumber": "Texto no singular ou plural conforme o número",
-  "protocolBuilder.dynamicText.insertMenu": "Inserir um valor",
+  "protocolBuilder.dynamicText.insertMenu": "Inserir texto preenchido automaticamente com metadados da entrevista ou um atributo de rede",
   "protocolBuilder.dynamicText.interviewGroup": "Entrevista",
   "protocolBuilder.dynamicText.needsAnswerLabels": "Primeiro, adicione rótulos para as respostas “sim” e “não”",
   "protocolBuilder.dynamicText.no": "Não",

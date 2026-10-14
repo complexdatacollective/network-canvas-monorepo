@@ -381,7 +381,7 @@
   "protocolBuilder.dialogForm.resizeHandle": "調整表單與預覽窗格的大小",
   "protocolBuilder.dynamicText.byAnswer": "依每個答案選項使用不同措辭",
   "protocolBuilder.dynamicText.byNumber": "與數字相符的措辭",
-  "protocolBuilder.dynamicText.insertMenu": "插入值",
+  "protocolBuilder.dynamicText.insertMenu": "插入由訪談中繼資料或網絡屬性自動帶入的文字",
   "protocolBuilder.dynamicText.interviewGroup": "訪談",
   "protocolBuilder.dynamicText.needsAnswerLabels": "請先為其「是」與「否」答案加上標籤",
   "protocolBuilder.dynamicText.no": "否",

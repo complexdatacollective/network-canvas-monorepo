@@ -381,7 +381,7 @@
   "protocolBuilder.dialogForm.resizeHandle": "Redimensionner les volets du formulaire et de l’aperçu",
   "protocolBuilder.dynamicText.byAnswer": "Formulation différente pour chaque réponse",
   "protocolBuilder.dynamicText.byNumber": "Formulation adaptée au nombre",
-  "protocolBuilder.dynamicText.insertMenu": "Insérer une valeur",
+  "protocolBuilder.dynamicText.insertMenu": "Insérer du texte rempli automatiquement à partir des métadonnées de l’entretien ou d’un attribut de réseau",
   "protocolBuilder.dynamicText.interviewGroup": "Entretien",
   "protocolBuilder.dynamicText.needsAnswerLabels": "Ajoutez d’abord des libellés pour ses réponses oui et non",
   "protocolBuilder.dynamicText.no": "Non",

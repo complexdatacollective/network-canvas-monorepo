@@ -381,7 +381,7 @@
   "protocolBuilder.dialogForm.resizeHandle": "Grootte van formulier- en voorbeeldpaneel aanpassen",
   "protocolBuilder.dynamicText.byAnswer": "Formulering per antwoord",
   "protocolBuilder.dynamicText.byNumber": "Formulering die past bij het getal",
-  "protocolBuilder.dynamicText.insertMenu": "Waarde invoegen",
+  "protocolBuilder.dynamicText.insertMenu": "Dynamische tekst uit interviewmetadata of een netwerkattribuut invoegen",
   "protocolBuilder.dynamicText.interviewGroup": "Interview",
   "protocolBuilder.dynamicText.needsAnswerLabels": "Voeg eerst labels toe voor de antwoorden ja en nee",
   "protocolBuilder.dynamicText.no": "Nee",
