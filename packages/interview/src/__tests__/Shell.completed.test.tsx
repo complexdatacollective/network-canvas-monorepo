@@ -413,6 +413,19 @@ describe('Shell completed state', () => {
     expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull();
   });
 
+  // Only the first of several endings can be reached with nothing before it.
+  it('shows a review with only finish stages the first one', async () => {
+    const payload = makePayload(null);
+    payload.protocol.stages = [
+      { ...finishStage, id: 'end-first', mode: 'automatic' },
+      { ...finishStage, id: 'end-second' },
+    ];
+    renderShell({ payload, reviewMode: true });
+
+    expect(await screen.findByText(FINISHED_TEXT)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'All done' })).toBeNull();
+  });
+
   it('keeps the participant’s text size when an interview is opened finished', async () => {
     const { container } = renderShell({
       payload: makePayload({ finishStageId: finishStage.id }),

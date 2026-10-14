@@ -178,7 +178,9 @@ function Interview(props: InterviewProps) {
       const { onExit } = props;
       return (
         <CompletedShell
-          stageId={undefined}
+          // The first finish stage, the only one an interview with nothing
+          // before its endings can reach.
+          stageId={stages[0]?.id}
           focusOnMount={false}
           finished={false}
           textScaleStyle={textScaleStyle}

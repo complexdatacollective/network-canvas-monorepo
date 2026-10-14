@@ -218,11 +218,15 @@ const FinishSession = ({ stage }: StageProps<'FinishSession'>) => {
   };
 
   // An automatic finish stage ends the interview as soon as it is shown. The
-  // ref keeps a remount in development (Strict Mode) from finishing twice.
-  const startedAutomatically = useRef(false);
+  // ref holds the signal of the attempt under way, so a re-run of this effect
+  // does not finish twice. Strict Mode's replay in development aborts that
+  // signal, and its attempt then reports nothing, so an aborted attempt is
+  // started again.
+  const automaticAttempt = useRef<AbortSignal | null>(null);
   useEffect(() => {
-    if (stage.mode !== 'automatic' || startedAutomatically.current) return;
-    startedAutomatically.current = true;
+    if (stage.mode !== 'automatic') return;
+    if (automaticAttempt.current && !automaticAttempt.current.aborted) return;
+    automaticAttempt.current = unmountSignal.current?.signal ?? null;
     void finishNow();
   }, [finishNow, stage.mode]);
 
