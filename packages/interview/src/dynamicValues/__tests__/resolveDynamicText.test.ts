@@ -282,6 +282,28 @@ describe('markdownSource', () => {
     expect(html).toContain('>About Ada<');
   });
 
+  it('never lets a value join the words around it into an entity or tag', () => {
+    const splits: readonly (readonly [string, string, string])[] = [
+      ['', 'copy', ';'],
+      ['&', 'copy', ';'],
+      ['&#', '169', ';'],
+      ['<', 'em', '>word</em>'],
+    ];
+    for (const [before, value, after] of splits) {
+      const source = markdownSource({
+        text: '',
+        parts: [before, { name: 'name', text: value }, after],
+      });
+      const html = renderToStaticMarkup(
+        createElement(RenderMarkdown, null, source),
+      );
+      const label = JSON.stringify([before, value, after]);
+      expect(html, label).not.toContain('©');
+      expect(html, label).not.toContain('<em>');
+      expect(html, label).toContain(value);
+    }
+  });
+
   it('never lets a value create, complete or change an autolink', () => {
     for (const [before, value, after] of AUTOLINK_SPLITS) {
       const source = markdownSource({

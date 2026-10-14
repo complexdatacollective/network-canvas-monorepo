@@ -327,21 +327,22 @@ const literalMarkdown = (value: string): string =>
     .replace(AUTOLINK_TRIGGERS, `$&${WORD_JOINER}`)
     .replace(MARKDOWN_PUNCTUATION, '\\$&');
 
-// GFM also finds a bare link across the edge of a value: `https:` in the
-// researcher's words and `//evil.example` in a participant's answer, or the
-// answer `ada` before `@example.com`. An empty HTML comment, which renders as
-// nothing, ends the run of text such a link is found in. It goes only where
-// the words around a value could make a link, so elsewhere nothing comes
+// Markdown can also find a token across the edge of a value: a bare link
+// (`https:` in the researcher's words and `//evil.example` in a participant's
+// answer, or the answer `ada` before `@example.com`), an entity (`&`, the
+// answer `copy`, then `;`) or an HTML tag (`<`, the answer `em`, then `>`).
+// An empty HTML comment, which renders as nothing, ends the run of text such a token is found in. It goes only
+// where the words around a value could make one, so elsewhere nothing comes
 // between a value and the markdown around it.
 const VALUE_BOUNDARY = '<!---->';
-const LINK_TRIGGER = /www\\?\.|[:@]/i;
+const TOKEN_TRIGGER = /www\\?\.|[:@&<]/i;
 const RUN_BEFORE = /\S*$/;
 const RUN_AFTER = /^\S*/;
 
 /**
  * Markdown for resolved text: the researcher's words as written, and each
  * value as `valueMarkdown` writes it, kept apart from the words around it so
- * that together they can never form a bare link. A value written as nothing
+ * that together they can never form a bare link, entity or tag. A value written as nothing
  * is left out.
  */
 export const joinMarkdownParts = (
@@ -361,7 +362,7 @@ export const joinMarkdownParts = (
       if (markdown === '') return '';
       const before = RUN_BEFORE.exec(plain.slice(0, index).join(''))?.[0] ?? '';
       const after = RUN_AFTER.exec(plain.slice(index + 1).join(''))?.[0] ?? '';
-      if (!LINK_TRIGGER.test(`${before}${part.text}${after}`)) return markdown;
+      if (!TOKEN_TRIGGER.test(`${before}${part.text}${after}`)) return markdown;
       const open = before !== '' && /^\S/.test(part.text);
       const close = after !== '' && /\S$/.test(part.text);
       return `${open ? VALUE_BOUNDARY : ''}${markdown}${close ? VALUE_BOUNDARY : ''}`;
