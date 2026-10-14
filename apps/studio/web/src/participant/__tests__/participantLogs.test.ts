@@ -89,6 +89,37 @@ describe('the participant connection watcher', () => {
     ]);
   });
 
+  it('logs the restoration of a logged loss on the stage the loss was logged on, even between stages', () => {
+    const target = new EventTarget();
+    let now = 10_000;
+    const lostOn = showStage(1);
+    const stop = watchParticipantConnection(log, stageOf, target, () => now);
+    target.dispatchEvent(new Event('offline'));
+    lostOn.remove();
+    now += 2_500;
+    target.dispatchEvent(new Event('online'));
+    showStage(0);
+    target.dispatchEvent(new Event('online'));
+    stop();
+
+    expect(logged).toEqual([
+      {
+        message: 'Participant connection lost',
+        level: 'Warn',
+        attributes: { stage_index: 1, interface_type: 'NameGenerator' },
+      },
+      {
+        message: 'Participant connection restored',
+        level: 'Info',
+        attributes: {
+          stage_index: 1,
+          interface_type: 'NameGenerator',
+          duration_ms: 2_500,
+        },
+      },
+    ]);
+  });
+
   it('logs no restoration for a loss it could not log, while no stage was shown', () => {
     const target = new EventTarget();
     let now = 10_000;

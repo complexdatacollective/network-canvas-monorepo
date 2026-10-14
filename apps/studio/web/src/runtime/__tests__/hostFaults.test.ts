@@ -7,7 +7,11 @@ import type { ResearcherLogEntry } from '@codaco/studio-contract/schema/browser-
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { NO_TEAM, type ResearcherLogScope, teamScope } from '../browserLogs.ts';
-import { makeConnectionMonitor, observeLocks } from '../hostFaults.ts';
+import {
+  makeConnectionMonitor,
+  makeEditorVisits,
+  observeLocks,
+} from '../hostFaults.ts';
 
 type Log = (entry: ResearcherLogEntry, scope: ResearcherLogScope) => void;
 
@@ -27,12 +31,15 @@ const monitored = () => {
   const logged: ResearcherLogEntry[] = [];
   const scopes: ResearcherLogScope[] = [];
   let now = 1_000;
+  const visits = makeEditorVisits();
+  let leave = visits.open();
   const watch = makeConnectionMonitor(
     (entry, scope) => {
       logged.push(entry);
       scopes.push(scope);
     },
     () => now,
+    visits,
   );
   const dial = () => {
     const socket = new FakeSocket();
@@ -45,6 +52,12 @@ const monitored = () => {
     dial,
     advance: (ms: number) => {
       now += ms;
+    },
+    leaveEditor: () => {
+      leave();
+    },
+    returnToEditor: () => {
+      leave = visits.open();
     },
   };
 };
@@ -80,6 +93,41 @@ describe('the editor connection monitor', () => {
     expect(logged).toEqual([
       { message: 'Editor connection lost', level: 'Warn', attributes: {} },
     ]);
+  });
+
+  it('logs no restoration in a later editor visit for a loss in an earlier one', () => {
+    const { logged, dial, advance, leaveEditor, returnToEditor } = monitored();
+    const first = dial();
+    first.open();
+    first.closeWith(1006);
+    leaveEditor();
+    advance(60_000);
+    returnToEditor();
+    const second = dial();
+    second.open();
+    second.closeWith(1006);
+    advance(700);
+    dial().open();
+
+    expect(logged).toEqual([
+      { message: 'Editor connection lost', level: 'Warn', attributes: {} },
+      { message: 'Editor connection lost', level: 'Warn', attributes: {} },
+      {
+        message: 'Editor connection restored',
+        level: 'Info',
+        attributes: { duration_ms: 700, attempt_count: 1 },
+      },
+    ]);
+  });
+
+  it('logs no loss while no editor is open', () => {
+    const { logged, dial, leaveEditor } = monitored();
+    const socket = dial();
+    socket.open();
+    leaveEditor();
+    socket.closeWith(1006);
+    dial().open();
+    expect(logged).toEqual([]);
   });
 
   it('logs nothing for a normal closure or a socket that never opened', () => {
