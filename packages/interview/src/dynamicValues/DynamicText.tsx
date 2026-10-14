@@ -14,8 +14,10 @@ import { runtimeMessages } from '../i18n/runtimeMessages';
 import { type DynamicTextPart, joinMarkdownParts } from './resolveDynamicText';
 
 /**
- * One value the interview filled into the study's text, marked out with a
- * dashed outline so the participant can tell it was filled in for them.
+ * One value the interview filled into the study's text, in a very subtle
+ * tint of the accent colour so the participant can tell it was filled in for
+ * them. The tint is mixed into the colour of the surrounding text, so it
+ * stays readable on any background.
  * Screen readers hear "Dynamic value: …" instead of the bare value. The
  * value is isolated for bidirectional text, so a right-to-left name in a
  * left-to-right sentence (or the reverse) cannot reorder the words around it.
@@ -25,7 +27,7 @@ function DynamicValue({ text }: { text: string }) {
   return (
     <span
       data-dynamic-value=""
-      className="rounded-sm border border-dashed border-current box-decoration-clone px-[0.2em]"
+      className="text-[color-mix(in_oklab,currentColor_75%,var(--accent))]"
     >
       <bdi aria-hidden="true">{text}</bdi>
       <span className="sr-only">
