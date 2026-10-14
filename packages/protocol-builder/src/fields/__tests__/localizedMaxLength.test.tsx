@@ -11,7 +11,7 @@ import {
 } from '@codaco/protocol-validation';
 
 import { ProtocolLocalizationProvider } from '../../localization/ProtocolLocalization.tsx';
-import { localizedMaxLength } from '../localizedMaxLength.ts';
+import { localizedMaxLength, VALUE_LENGTH } from '../localizedMaxLength.ts';
 import { LocalizedInputField } from '../LocalizedStringField.tsx';
 
 const LIMIT = 50;
@@ -96,5 +96,33 @@ describe('localizedMaxLength', () => {
 
     await waitFor(() => expect(saved.current).toBeDefined());
     expect(screen.queryByText(TOO_LONG)).not.toBeInTheDocument();
+  });
+
+  it('counts what a participant is shown of a value that can be missing, not the syntax around it', async () => {
+    const user = userEvent.setup();
+    // What inserting an optional value into "Hi " stores.
+    const message = 'Hi {firstName, select, missing {} other {{firstName}}}';
+    expect(message.length).toBeGreaterThan(LIMIT);
+    const saved = renderTitle({ en: message });
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(saved.current).toBeDefined());
+    expect(screen.queryByText(TOO_LONG)).not.toBeInTheDocument();
+  });
+
+  it('counts each value as a short answer and the longest of a set of versions', async () => {
+    const user = userEvent.setup();
+    // One character too many: the words, the value, and the longest version,
+    // whose own value and words count too.
+    const words = 'a'.repeat(LIMIT - 2 * VALUE_LENGTH - 5);
+    const saved = renderTitle({
+      en: `${words}{n}{n, plural, one {bb} other {# ccccc}}`,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(TOO_LONG)).toBeInTheDocument();
+    expect(saved.current).toBeUndefined();
   });
 });
