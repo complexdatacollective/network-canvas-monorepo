@@ -13,7 +13,7 @@ const meta: Meta<typeof NodeDropAnimation> = {
     docs: {
       description: {
         component: `
-A decorative loop of a hand dragging a node onto a drop target, which lights
+A decorative loop, in a light frame, of a pointer dragging a node onto a drop target, which lights
 up as the node arrives and keeps it once dropped. Use it on an empty drop
 target to show that people can be dropped there. It takes its colours from the
 surrounding text colour and the theme's accent, and is hidden from assistive
