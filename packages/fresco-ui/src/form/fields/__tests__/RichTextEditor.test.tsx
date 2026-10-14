@@ -654,6 +654,63 @@ describe('a single-line RichTextEditorField with versions', () => {
   });
 });
 
+describe('a version edited in a field that reports on blur', () => {
+  it('reports the edit when the caret leaves the field', async () => {
+    const onChange = vi.fn();
+    const user = withSafeTypingIntoRichText(userEvent.setup());
+    render(
+      <>
+        <RichTextEditorField
+          id="greeting"
+          name="greeting"
+          aria-describedby="greeting-hint"
+          aria-label="Greeting"
+          singleLine
+          versions
+          value={{
+            type: 'doc',
+            content: [
+              {
+                type: 'paragraph',
+                content: [
+                  { type: 'text', text: 'Hello' },
+                  {
+                    type: 'versions',
+                    attrs: {
+                      label: 'Depending on the name',
+                      meta: { argument: 'name' },
+                      versions: [
+                        { key: 'other', label: 'If known', content: [] },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          }}
+          onChange={onChange}
+        />
+        <button type="button">Elsewhere</button>
+      </>,
+    );
+
+    const version = await screen.findByRole('textbox', { name: 'If known' });
+    await user.click(version);
+    await user.type(version, ' there');
+    expect(version.textContent).toBe(' there');
+    onChange.mockClear();
+
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const reported = onChange.mock.lastCall?.[0] as JSONContent;
+    const versions = reported.content?.[0]?.content?.[1]?.attrs?.versions as {
+      content: JSONContent[];
+    }[];
+    expect(versions[0]?.content).toEqual([{ type: 'text', text: ' there' }]);
+  });
+});
+
 describe('a version holding a mark its field does not offer', () => {
   // A single-line field offers no links, so a version's own editor has no
   // `link` mark. A version that holds one anyway (loaded from a message, or

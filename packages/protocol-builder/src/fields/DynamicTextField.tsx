@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, useMemo, useRef } from 'react';
+import { type ReactNode, useMemo, useRef } from 'react';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -38,6 +38,7 @@ import {
 import { variableTypeLabel } from '../codebook/variableTypeLabels.ts';
 import {
   bindingFor,
+  bindingRecordedFor,
   type DynamicValueChoice,
   dynamicValueChoices,
 } from '../localization/dynamicValueCatalog.ts';
@@ -344,10 +345,9 @@ const messageLabelsFor = ({
       );
     }
     const binding =
-      bindings[node.argument] ??
       (Object.hasOwn(offered, node.argument)
         ? offered[node.argument]
-        : undefined);
+        : undefined) ?? bindings[node.argument];
     const option = binding?.cases?.[key];
     const choice = choiceByName.get(node.argument);
     const matched = choice?.options.find((each) => each.value === option);
@@ -381,6 +381,7 @@ export type DynamicMessageEditorProps = Readonly<{
   ariaDescribedBy: string;
   ariaLabelledBy?: string;
   ariaInvalid?: boolean;
+  ariaRequired?: boolean;
   placeholder?: string;
   autoFocus?: boolean;
   disabled?: boolean;
@@ -414,6 +415,7 @@ export function DynamicMessageEditor({
   ariaDescribedBy,
   ariaLabelledBy,
   ariaInvalid,
+  ariaRequired,
   placeholder,
   autoFocus,
   disabled,
@@ -471,10 +473,16 @@ export function DynamicMessageEditor({
       offered,
       labelText,
     );
-    if (!Object.hasOwn(bindings, bindingName)) {
-      if (setBindings === undefined) continue;
+    const existing = Object.hasOwn(bindings, bindingName)
+      ? bindings[bindingName]
+      : undefined;
+    if (existing === undefined && setBindings === undefined) continue;
+    if (existing !== binding && setBindings !== undefined) {
       offered[bindingName] = binding;
     }
+    // Without a way to change the stage's bindings, the cases are the ones
+    // it already records.
+    const usable = setBindings === undefined ? (existing ?? binding) : binding;
     choiceByName.set(bindingName, choice);
     const valueLabel = naming.valueLabel(choice);
     const group = naming.groupLabel(choice);
@@ -493,7 +501,7 @@ export function DynamicMessageEditor({
         labels,
       ),
     });
-    const caseKeys = Object.keys(binding.cases ?? {});
+    const caseKeys = Object.keys(usable.cases ?? {});
     if (caseKeys.length > 0) {
       items.push({
         id: `answers:${choice.path}`,
@@ -614,13 +622,25 @@ export function DynamicMessageEditor({
     const after = new Set(
       nextMessage === undefined ? [] : dynamicValueNamesIn(nextMessage),
     );
-    const added = [...after].filter(
-      (used) => !Object.hasOwn(bindings, used) && Object.hasOwn(offered, used),
-    );
+    // A value is bound with its cases only once the text shows a version
+    // for one of them, so its plain insertion records none.
+    const recorded: [string, DynamicValueBinding][] = [];
+    for (const used of after) {
+      if (!Object.hasOwn(offered, used)) continue;
+      const offeredBinding = offered[used];
+      if (offeredBinding === undefined) continue;
+      const binding = bindingRecordedFor(
+        used,
+        offeredBinding,
+        Object.hasOwn(bindings, used) ? bindings[used] : undefined,
+        nodes,
+      );
+      if (binding !== undefined) recorded.push([used, binding]);
+    }
     const removed = [...before].filter(
       (used) => !after.has(used) && Object.hasOwn(bindings, used),
     );
-    if (added.length === 0 && removed.length === 0) return;
+    if (recorded.length === 0 && removed.length === 0) return;
     const inUse =
       removed.length === 0 || namesInUse === undefined
         ? new Set<string>()
@@ -631,10 +651,7 @@ export function DynamicMessageEditor({
         nextBindings[bindingName] = binding;
       }
     }
-    for (const used of added) {
-      const binding = offered[used];
-      if (binding !== undefined) nextBindings[used] = binding;
-    }
+    for (const [used, binding] of recorded) nextBindings[used] = binding;
     setBindings(nextBindings);
   };
 
@@ -721,6 +738,7 @@ export function DynamicMessageEditor({
         aria-describedby={ariaDescribedBy}
         aria-labelledby={ariaLabelledBy}
         aria-invalid={ariaInvalid === true || problem !== undefined}
+        aria-required={ariaRequired}
         placeholder={placeholder}
         autoFocus={autoFocus}
         disabled={disabled}
@@ -848,41 +866,78 @@ export function DynamicMessageSummary({
     return choice === undefined ? argument : naming.valueLabel(choice);
   };
 
-  // A run of words and values between two sets of versions. Markdown is read
-  // as a whole run, each value held by a character of its own, so formatting
-  // that spans a value (`**Hi {name}**`) is read as written.
-  const renderRun = (
-    run: readonly MessageNode[],
+  const renderSwitch = (
+    node: MessageSwitch,
     plural: string | undefined,
     key: number,
-  ): ReactNode => {
-    const values: string[] = [];
+  ): ReactNode => (
+    <span key={key} className="my-1 block border-s-2 border-current/20 ps-2">
+      <span className="block text-sm text-current/70">
+        {labels.switchLabel(node)}
+      </span>
+      {node.versions.map((version) => (
+        <span key={version.key} className="block">
+          <span className="text-sm text-current/70">
+            {labels.versionLabel(node, version.key)}:{' '}
+          </span>
+          {render(
+            version.nodes,
+            node.type === 'plural' ? node.argument : plural,
+          )}
+        </span>
+      ))}
+    </span>
+  );
+
+  // The words of one level of the message, each value and each set of
+  // versions held by a character of its own. Markdown is read as a whole, so
+  // formatting that spans a value or a set of versions
+  // (`**Hi {name, select, …} today**`) is read as written.
+  function render(
+    nodes: readonly MessageNode[],
+    plural: string | undefined,
+  ): ReactNode {
+    const held: (string | MessageSwitch)[] = [];
     let source = '';
-    for (const node of run) {
-      if (node.kind === 'text') source += node.text;
-      else if (node.kind === 'argument' || plural !== undefined) {
-        source += String.fromCodePoint(VALUE_MARK + values.length);
-        values.push(node.kind === 'argument' ? node.name : (plural ?? ''));
-      } else source += '#';
+    for (const node of nodes) {
+      if (node.kind === 'text') {
+        source += node.text;
+      } else if (node.kind === 'count' && plural === undefined) {
+        source += '#';
+      } else {
+        source += String.fromCodePoint(VALUE_MARK + held.length);
+        held.push(
+          node.kind === 'switch'
+            ? node
+            : node.kind === 'argument'
+              ? node.name
+              : (plural ?? ''),
+        );
+      }
     }
-    const pill = (value: string, at: number) => (
-      <TokenPill key={at} token={value} label={valueLabel(value)} />
-    );
+    const shown = (index: number, at: number): ReactNode => {
+      const piece = held[index];
+      if (piece === undefined) return undefined;
+      return typeof piece === 'string' ? (
+        <TokenPill key={at} token={piece} label={valueLabel(piece)} />
+      ) : (
+        renderSwitch(piece, plural, at)
+      );
+    };
     if (markdown) {
       return (
         <RenderMarkdown
-          key={key}
           allowedElements={SUMMARY_ALLOWED_ELEMENTS}
           rehypePlugins={SUMMARY_REHYPE_PLUGINS}
           components={{
             span: ({ node, children }) => {
               const index = node?.properties?.[VALUE_PROPERTY];
               if (typeof index !== 'string') return <span>{children}</span>;
-              const value = values[Number(index)];
               // A character past the values is the author's own, kept as is.
-              return value === undefined
-                ? String.fromCodePoint(VALUE_MARK + Number(index))
-                : pill(value, 0);
+              return (
+                shown(Number(index), 0) ??
+                String.fromCodePoint(VALUE_MARK + Number(index))
+              );
             },
           }}
         >
@@ -890,57 +945,11 @@ export function DynamicMessageSummary({
         </RenderMarkdown>
       );
     }
-    return (
-      <Fragment key={key}>
-        {Array.from(source).map((character, index) => {
-          const value = values[(character.codePointAt(0) ?? 0) - VALUE_MARK];
-          return value === undefined ? character : pill(value, index);
-        })}
-      </Fragment>
+    return Array.from(source).map(
+      (character, index) =>
+        shown((character.codePointAt(0) ?? 0) - VALUE_MARK, index) ?? character,
     );
-  };
-
-  const render = (
-    nodes: readonly MessageNode[],
-    plural: string | undefined,
-  ): ReactNode[] => {
-    const shown: ReactNode[] = [];
-    let run: MessageNode[] = [];
-    const endRun = () => {
-      if (run.length > 0) shown.push(renderRun(run, plural, shown.length));
-      run = [];
-    };
-    for (const node of nodes) {
-      if (node.kind !== 'switch') {
-        run.push(node);
-        continue;
-      }
-      endRun();
-      shown.push(
-        <span
-          key={shown.length}
-          className="my-1 block border-s-2 border-current/20 ps-2"
-        >
-          <span className="block text-sm text-current/70">
-            {labels.switchLabel(node)}
-          </span>
-          {node.versions.map((version) => (
-            <span key={version.key} className="block">
-              <span className="text-sm text-current/70">
-                {labels.versionLabel(node, version.key)}:{' '}
-              </span>
-              {render(
-                version.nodes,
-                node.type === 'plural' ? node.argument : plural,
-              )}
-            </span>
-          ))}
-        </span>,
-      );
-    }
-    endRun();
-    return shown;
-  };
+  }
 
   return <>{render(structure.nodes, undefined)}</>;
 }
@@ -996,6 +1005,7 @@ export default function DynamicTextField({
   'aria-describedby': ariaDescribedBy,
   'aria-labelledby': ariaLabelledBy,
   'aria-invalid': ariaInvalid,
+  'aria-required': ariaRequired,
 }: DynamicTextFieldProps) {
   const site = useDynamicValueSite(siteKind, fieldPath);
   const { localization, locale } = useEditingLanguage();
@@ -1023,6 +1033,7 @@ export default function DynamicTextField({
           ariaDescribedBy={ariaDescribedBy}
           ariaLabelledBy={ariaLabelledBy}
           ariaInvalid={ariaInvalid}
+          ariaRequired={ariaRequired === true}
           placeholder={placeholder}
           autoFocus={autoFocus}
           disabled={disabled}

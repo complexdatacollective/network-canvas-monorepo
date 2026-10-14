@@ -200,6 +200,7 @@ export function LocalizedInputField({
         aria-describedby={props['aria-describedby'] ?? ''}
         aria-labelledby={props['aria-labelledby']}
         aria-invalid={props['aria-invalid']}
+        aria-required={props['aria-required']}
         disabled={props.disabled}
         readOnly={props.readOnly}
         placeholder={props.placeholder}
@@ -252,6 +253,7 @@ export function LocalizedRichTextField({
         aria-describedby={props['aria-describedby']}
         aria-labelledby={props['aria-labelledby']}
         aria-invalid={props['aria-invalid']}
+        aria-required={props['aria-required']}
         disabled={props.disabled}
         readOnly={props.readOnly}
         placeholder={props.placeholder}

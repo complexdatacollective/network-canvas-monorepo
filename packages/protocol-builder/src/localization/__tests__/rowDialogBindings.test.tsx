@@ -128,3 +128,41 @@ describe('a deleted row', () => {
     expect(saved?.stageDocument).not.toHaveProperty('dynamicValues');
   });
 });
+
+describe('a value with answers inserted in a row dialog', () => {
+  const insertAndSave = async (option: RegExp) => {
+    const harness = openCensus();
+    await harness.opened();
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Insert a value' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('option', { name: option }),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await dialogClosed();
+    const saved = await harness.submit();
+    return Object.values(saved?.stageDocument.dynamicValues ?? {});
+  };
+
+  it('is bound without cases when only the value itself is shown', async () => {
+    expect(await insertAndSave(/First person: contactFreq.*Ordinal/)).toEqual([
+      { path: 'dyad.source.contactFreq' },
+    ]);
+  });
+
+  it('is bound with its cases when it is shown by answer', async () => {
+    const [binding] = await insertAndSave(
+      /First person: contactFreq.*Different wording for each answer/,
+    );
+    expect(binding).toEqual({
+      path: 'dyad.source.contactFreq',
+      cases: expect.any(Object),
+    });
+    expect(Object.keys(binding?.cases ?? {}).length).toBeGreaterThan(0);
+  });
+});

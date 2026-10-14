@@ -68,6 +68,20 @@ describe('DynamicMessageSummary', () => {
     ).toHaveLength(2);
   });
 
+  it('keeps formatting that opens before a set of versions and closes after it', () => {
+    const { getByTestId } = renderSummary(
+      '**Hello {name, select, missing {there} other {{name}}} today**',
+      true,
+    );
+    const summary = getByTestId('summary');
+
+    const strong = summary.querySelector('strong');
+    expect(strong).toHaveTextContent(/^Hello .*there.*name.*today$/);
+    expect(strong?.querySelector('[data-token="name"]')).toBeInTheDocument();
+    expect(summary.textContent).not.toContain('**');
+    expect(summary.textContent).not.toMatch(/[\u{F0000}-\u{FFFFD}]/u);
+  });
+
   it('shows plain text as written, with its values as pills', () => {
     const { getByTestId } = renderSummary('Hi **{name}**', false);
     const summary = getByTestId('summary');

@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   type DynamicValueSiteContext,
   dynamicValueRolesAt,
+  type MessageNode,
 } from '@codaco/protocol-validation';
 
 import {
   bindingFor,
+  bindingRecordedFor,
   dynamicValueChoices,
   dynamicValueNamesUsedIn,
 } from '../dynamicValueCatalog';
@@ -136,6 +138,79 @@ describe('bindingFor', () => {
         cases: { yes: true, no: false },
       },
     );
+  });
+});
+
+describe('the cases recorded for a value with answers', () => {
+  const closeness = {
+    path: 'dyad.source.closeness',
+    cases: { veryClose: 1, notClose: 'not close' },
+  } as const;
+  const shown: MessageNode[] = [
+    { kind: 'text', text: 'You are ' },
+    { kind: 'argument', name: 'firstCloseness' },
+  ];
+  const byAnswer: MessageNode[] = [
+    {
+      kind: 'switch',
+      argument: 'firstCloseness',
+      type: 'select',
+      versions: [
+        { key: 'veryClose', nodes: [{ kind: 'text', text: 'close' }] },
+        { key: 'other', nodes: [] },
+      ],
+    },
+  ];
+
+  it('binds a value shown only as itself without cases', () => {
+    expect(
+      bindingRecordedFor('firstCloseness', closeness, undefined, shown),
+    ).toEqual({ path: 'dyad.source.closeness' });
+  });
+
+  it('binds a value shown by answer with its cases', () => {
+    expect(
+      bindingRecordedFor('firstCloseness', closeness, undefined, byAnswer),
+    ).toEqual(closeness);
+  });
+
+  it('finds a by-answer version inside another set of versions', () => {
+    const nested: MessageNode[] = [
+      {
+        kind: 'switch',
+        argument: 'name',
+        type: 'select',
+        versions: [{ key: 'other', nodes: byAnswer }],
+      },
+    ];
+    expect(
+      bindingRecordedFor('firstCloseness', closeness, undefined, nested),
+    ).toEqual(closeness);
+  });
+
+  it('adds the cases to a binding once the text shows a version by answer', () => {
+    const plain = { path: 'dyad.source.closeness' };
+    expect(
+      bindingRecordedFor('firstCloseness', closeness, plain, shown),
+    ).toBeUndefined();
+    expect(
+      bindingRecordedFor('firstCloseness', closeness, plain, byAnswer),
+    ).toEqual(closeness);
+  });
+
+  it('offers cases under the name of a binding recorded without them', () => {
+    const choice = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).find(
+      (each) => each.path === 'dyad.source.closeness',
+    );
+    if (choice === undefined) throw new Error('no choice');
+    expect(
+      bindingFor(
+        choice,
+        { close: { path: 'dyad.source.closeness' } },
+        {},
+        labelText,
+      ),
+    ).toEqual({ name: 'close', binding: closeness });
   });
 });
 

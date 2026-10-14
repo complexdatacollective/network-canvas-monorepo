@@ -108,6 +108,19 @@ describe('the sections of an anonymisation stage', () => {
     });
   });
 
+  it('tells assistive technology the explanation fields are required', async () => {
+    openEditor();
+
+    // Both fields can show values the interview fills in, so they are drawn
+    // by the editor for such text rather than the plain one.
+    for (const name of ['Title', 'Body']) {
+      expect(await screen.findByRole('textbox', { name })).toHaveAttribute(
+        'aria-required',
+        'true',
+      );
+    }
+  });
+
   /**
    * The schema refuses an explanation with no heading, but only once the save
    * has been attempted and only against a path. The section has to refuse it

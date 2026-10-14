@@ -1703,6 +1703,15 @@ export default function RichTextEditorField({
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
           return;
         }
+        // An edit in a version's own editor reaches the field's document
+        // while the caret is in the version, after the field's editor has
+        // already lost focus to it, so that editor's blur never reports it.
+        // Leaving the field as a whole does.
+        const pending = unemittedDocumentRef.current;
+        if (changeModeRef.current === 'blur' && pending !== null) {
+          unemittedDocumentRef.current = null;
+          onChangeRef.current?.(pending);
+        }
         setIsFocused(false);
         onBlur?.(event);
       }}

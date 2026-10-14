@@ -10,6 +10,7 @@ import {
   dynamicValueStatus,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
+  type MessageNode,
   MISSING_CASE,
 } from '@codaco/protocol-validation';
 
@@ -216,7 +217,10 @@ const casesFor = (
 
 /**
  * The stage's binding for `choice`, reused when one already shows the same
- * value (and, for a value with answers, names them all), or a new one.
+ * value (and, for a value with answers, names them all), or a new one. A
+ * value with answers that the stage binds without cases (it was only ever
+ * shown as itself) keeps its name, offered with the cases a by-answer
+ * insertion would add to it.
  */
 export const bindingFor = (
   choice: DynamicValueChoice,
@@ -235,6 +239,19 @@ export const bindingFor = (
       }
     }
   }
+  if (choice.options.length > 0) {
+    for (const [name, binding] of Object.entries(bindings)) {
+      if (binding.path === choice.path && binding.cases === undefined) {
+        return {
+          name,
+          binding: {
+            path: choice.path,
+            cases: casesFor(choice.options, labelText),
+          },
+        };
+      }
+    }
+  }
   const name = nameFor(
     choice,
     (candidate) =>
@@ -247,6 +264,43 @@ export const bindingFor = (
         ? { path: choice.path }
         : { path: choice.path, cases: casesFor(choice.options, labelText) },
   };
+};
+
+/** Whether `nodes` show a version for one of `cases` of the value `name`. */
+const selectsOnCases = (
+  nodes: readonly MessageNode[],
+  name: string,
+  cases: Readonly<Record<string, unknown>>,
+): boolean =>
+  nodes.some(
+    (node) =>
+      node.kind === 'switch' &&
+      ((node.argument === name &&
+        node.type === 'select' &&
+        node.versions.some((version) => Object.hasOwn(cases, version.key))) ||
+        node.versions.some((version) =>
+          selectsOnCases(version.nodes, name, cases),
+        )),
+  );
+
+/**
+ * What an edit that leaves the text as `nodes` records for the value `name`,
+ * offered as `offered`, when the stage binds it as `existing`; undefined when
+ * the stage's binding stays as it is. Cases are recorded only once the text
+ * shows a version for one of them: a value only ever shown as itself is
+ * bound without cases, so a later change to its attribute's options leaves
+ * no stale case behind for a researcher who never wrote one.
+ */
+export const bindingRecordedFor = (
+  name: string,
+  offered: DynamicValueBinding,
+  existing: DynamicValueBinding | undefined,
+  nodes: readonly MessageNode[],
+): DynamicValueBinding | undefined => {
+  const cased =
+    offered.cases !== undefined && selectsOnCases(nodes, name, offered.cases);
+  if (existing === undefined) return cased ? offered : { path: offered.path };
+  return existing.cases === undefined && cased ? offered : undefined;
 };
 
 /**
