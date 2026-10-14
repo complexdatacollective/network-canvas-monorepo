@@ -29,6 +29,8 @@ export type MessageDocumentFormat = Readonly<{
 /** What the editor calls a switch and each of its versions. */
 export type MessageDocumentLabels = Readonly<{
   switchLabel: (node: MessageSwitch) => string;
+  /** What a switch's folded pill says: the name of the value it is on. */
+  switchSummary: (node: MessageSwitch) => string;
   versionLabel: (node: MessageSwitch, key: string) => string;
 }>;
 
@@ -233,6 +235,7 @@ export const messageToDocument = (
         };
         const attrs: RichTextVersionsAttributes = {
           label: labels.switchLabel(node),
+          summary: labels.switchSummary(node),
           versions,
           meta,
         };

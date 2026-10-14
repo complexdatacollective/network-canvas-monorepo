@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -34,7 +34,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'How text a participant reads shows in a collapsed row of a stage editor: in the editing language, with markdown rendered as the participant will read it, each value the interview fills in shown as the pill the editor shows, and each set of versions as a list of what it says when.',
+          'How text a participant reads shows in a collapsed row of a stage editor: in the editing language, with markdown rendered as the participant will read it, each value the interview fills in shown as the pill the editor shows, and each set of versions as the pill of the value it is on, as the editor shows it folded.',
       },
     },
   },
@@ -64,6 +64,33 @@ export const PlainText: Story = {
   },
 };
 
+/**
+ * Text with a version for each case of a value shows only the value's pill:
+ * what it says in each case is written, and read, in the editor.
+ */
+export const VersionsShowAsTheirPill: Story = {
+  args: {
+    seedEdit: bindsToday,
+    children: preview({
+      en: 'Welcome.{today, select, missing {} other { Today is {today}.}}',
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const shown = await canvas.findByTestId('preview');
+    // The pill names the value; its first word is held beside its icon.
+    await waitFor(async () => {
+      await expect(
+        shown.querySelector('[data-token="today"]'),
+      ).toHaveTextContent('Today’s date');
+    });
+    await expect(shown.querySelectorAll('[data-token]')).toHaveLength(1);
+    await expect(shown).not.toHaveTextContent('Today is');
+  },
+};
+
 /** A value bound to the stage shows as its pill, named for what it holds. */
 export const ShowingAValue: Story = {
   args: {
@@ -75,9 +102,12 @@ export const ShowingAValue: Story = {
     await awaitPassiveEffects();
 
     const shown = await canvas.findByTestId('preview');
-    await expect(
-      await within(shown).findByText('Today’s date'),
-    ).toBeInTheDocument();
+    // The pill names the value; its first word is held beside its icon.
+    await waitFor(async () => {
+      await expect(
+        shown.querySelector('[data-token="today"]'),
+      ).toHaveTextContent('Today’s date');
+    });
     await expect(shown.querySelector('[data-token="today"]')).not.toBeNull();
     await expect(shown).toHaveTextContent(/^Welcome\. Today is .+\.$/);
   },

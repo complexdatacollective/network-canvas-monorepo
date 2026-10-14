@@ -23,6 +23,7 @@ import {
   type DynamicValueSite,
   dynamicValueArgumentsAt,
   dynamicValueNamesIn,
+  escapeMessageText,
   findDynamicValueProblem,
   findMissingDynamicPlacement,
   type LocaleTag,
@@ -315,6 +316,10 @@ const messageLabelsFor = ({
   locale,
   labelText,
 }: MessageLabelInputs): MessageDocumentLabels => ({
+  switchSummary: (node) => {
+    const choice = choiceByName.get(node.argument);
+    return choice === undefined ? node.argument : naming.valueLabel(choice);
+  },
   switchLabel: (node) => {
     const choice = choiceByName.get(node.argument);
     const value =
@@ -916,27 +921,15 @@ export function DynamicMessageSummary({
     return choice === undefined ? argument : naming.valueLabel(choice);
   };
 
-  const renderSwitch = (
-    node: MessageSwitch,
-    plural: string | undefined,
-    key: number,
-  ): ReactNode => (
-    <span key={key} className="my-1 block border-s-2 border-current/20 ps-2">
-      <span className="block text-sm text-current/70">
-        {labels.switchLabel(node)}
-      </span>
-      {node.versions.map((version) => (
-        <span key={version.key} className="block">
-          <span className="text-sm text-current/70">
-            {labels.versionLabel(node, version.key)}:{' '}
-          </span>
-          {render(
-            version.nodes,
-            node.type === 'plural' ? node.argument : plural,
-          )}
-        </span>
-      ))}
-    </span>
+  // Outside the editor a set of versions is the pill of the value it is on,
+  // as the editor shows it folded: what it says in each case is written, and
+  // read, in the editor.
+  const renderSwitch = (node: MessageSwitch, key: number): ReactNode => (
+    <TokenPill
+      key={key}
+      token={node.argument}
+      label={labels.switchSummary(node)}
+    />
   );
 
   // The words of one level of the message, each value and each set of
@@ -971,7 +964,7 @@ export function DynamicMessageSummary({
       return typeof piece === 'string' ? (
         <TokenPill key={at} token={piece} label={valueLabel(piece)} />
       ) : (
-        renderSwitch(piece, plural, at)
+        renderSwitch(piece, at)
       );
     };
     if (markdown) {
@@ -1003,6 +996,60 @@ export function DynamicMessageSummary({
   }
 
   return <>{render(structure.nodes, undefined)}</>;
+}
+
+/**
+ * `message` as a message that shows no values: each value, and each set of
+ * versions, written as the name its pill shows, in brackets. For text a
+ * preview hands to a control that takes only words (a scale's end labels),
+ * which has no participant to fill a value in with.
+ */
+export const messageWithValueNames = (
+  message: string,
+  nameOf: (argument: string) => string,
+): string => {
+  const structure = messageStructure(message);
+  if (!('nodes' in structure)) return message;
+  const write = (
+    nodes: readonly MessageNode[],
+    plural: string | undefined,
+  ): string =>
+    nodes
+      .map((node) => {
+        switch (node.kind) {
+          case 'text':
+            return node.text;
+          case 'argument':
+            return `[${nameOf(node.name)}]`;
+          case 'count':
+            return plural === undefined ? '#' : `[${nameOf(plural)}]`;
+          case 'switch':
+            return `[${nameOf(node.argument)}]`;
+        }
+      })
+      .join('');
+  return escapeMessageText(write(structure.nodes, undefined));
+};
+
+/** The name each value bound at `site` shows as, by the name it is bound to. */
+export function useDynamicValueNames(
+  site: Pick<DynamicMessageSite, 'context' | 'bindings'>,
+): (argument: string) => string {
+  const intl = useAppIntl();
+  const { context, bindings } = site;
+  return useMemo(() => {
+    const naming = namingFor(intl);
+    const choices = dynamicValueChoices(context);
+    const choiceByName = new Map<string, DynamicValueChoice>();
+    for (const [bindingName, binding] of Object.entries(bindings)) {
+      const choice = choices.find((each) => each.path === binding.path);
+      if (choice !== undefined) choiceByName.set(bindingName, choice);
+    }
+    return (argument: string) => {
+      const choice = choiceByName.get(argument);
+      return choice === undefined ? argument : naming.valueLabel(choice);
+    };
+  }, [intl, context, bindings]);
 }
 
 export type DynamicTextFieldProps = CreateFormFieldProps<

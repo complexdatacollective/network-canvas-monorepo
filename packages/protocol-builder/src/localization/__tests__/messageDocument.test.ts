@@ -16,6 +16,7 @@ import {
 
 const labels: MessageDocumentLabels = {
   switchLabel: (node) => `By ${node.argument}`,
+  switchSummary: (node) => node.argument,
   versionLabel: (node, key) => `${node.argument} ${key}`,
 };
 
@@ -68,6 +69,7 @@ describe('messageToDocument', () => {
               marks: [{ type: 'bold' }],
               attrs: {
                 label: 'By name',
+                summary: 'name',
                 meta: { argument: 'name', type: 'select' },
                 versions: [
                   {

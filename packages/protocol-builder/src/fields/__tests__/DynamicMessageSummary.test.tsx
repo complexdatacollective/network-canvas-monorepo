@@ -58,14 +58,17 @@ describe('DynamicMessageSummary', () => {
     expect(summary.textContent).not.toMatch(/[\u{F0000}-\u{FFFFD}]/u);
   });
 
-  it('draws a plural number as its pill inside formatting', () => {
+  it('shows a set of versions as the pill of the value it is on, never its versions', () => {
     const { getByTestId } = renderSummary(
-      '{n, plural, one {**#** friend} other {**#** friends}}',
+      'You have {n, plural, one {**#** friend} other {**#** friends}}.',
       true,
     );
-    expect(
-      getByTestId('summary').querySelectorAll('strong [data-token="n"]'),
-    ).toHaveLength(2);
+    const summary = getByTestId('summary');
+
+    expect(summary).toHaveTextContent(/^You have n\.$/);
+    expect(summary.querySelectorAll('[data-token]')).toHaveLength(1);
+    expect(summary.querySelector('[data-token="n"]')).toHaveTextContent('n');
+    expect(summary.textContent).not.toContain('friend');
   });
 
   it('keeps formatting that opens before a set of versions and closes after it', () => {
@@ -76,8 +79,9 @@ describe('DynamicMessageSummary', () => {
     const summary = getByTestId('summary');
 
     const strong = summary.querySelector('strong');
-    expect(strong).toHaveTextContent(/^Hello .*there.*name.*today$/);
-    expect(strong?.querySelector('[data-token="name"]')).toBeInTheDocument();
+    expect(strong).toHaveTextContent(/^Hello name today$/);
+    expect(strong?.querySelectorAll('[data-token="name"]')).toHaveLength(1);
+    expect(summary.textContent).not.toContain('there');
     expect(summary.textContent).not.toContain('**');
     expect(summary.textContent).not.toMatch(/[\u{F0000}-\u{FFFFD}]/u);
   });

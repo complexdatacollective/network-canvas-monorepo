@@ -40,7 +40,8 @@ function StageMessage({
  * How text a participant reads shows in a row's collapsed preview: in the
  * editing language, or in the one a participant reading that language would
  * be shown instead, with each value the interview fills in as the pill the
- * editor shows and each set of versions as a list of what it says when.
+ * editor shows, and each set of versions as the pill of the value it is on,
+ * as the editor shows it folded.
  * Markdown is rendered as the participant will read it.
  */
 export function DynamicTextPreview({
