@@ -63,13 +63,38 @@ type NestedEditing = Readonly<{
 
 export const NestedEditingContext = createContext<NestedEditing | null>(null);
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The well-formed versions in a stored or pasted value. Anything can arrive
+ * there (a hand-edited document, a paste from elsewhere), so a member without
+ * a text key and label and a list of content is dropped, as unreadable JSON
+ * is, and a version keeps only the content that is a node at all.
+ */
+export const versionsIn = (value: unknown): RichTextVersion[] =>
+  Array.isArray(value)
+    ? value.flatMap((version: unknown) =>
+        isRecord(version) &&
+        typeof version.key === 'string' &&
+        typeof version.label === 'string' &&
+        Array.isArray(version.content)
+          ? [
+              {
+                key: version.key,
+                label: version.label,
+                content: version.content.filter(isRecord) as JSONContent[],
+              },
+            ]
+          : [],
+      )
+    : [];
+
 const versionsAttributesOf = (
   attrs: Record<string, unknown>,
 ): RichTextVersionsAttributes => ({
   label: typeof attrs.label === 'string' ? attrs.label : '',
-  versions: Array.isArray(attrs.versions)
-    ? (attrs.versions as RichTextVersion[])
-    : [],
+  versions: versionsIn(attrs.versions),
 });
 
 const lineOf = (content: readonly JSONContent[]): JSONContent => ({
@@ -213,7 +238,10 @@ function VersionsView({
   selected,
   updateAttributes,
 }: ReactNodeViewProps) {
-  const attributes = versionsAttributesOf(node.attrs);
+  const attributes = useMemo(
+    () => versionsAttributesOf(node.attrs),
+    [node.attrs],
+  );
   const latest = useRef(attributes);
   latest.current = attributes;
 
@@ -311,7 +339,7 @@ export const VersionsNode = TiptapNode.create({
             const parsed: unknown = JSON.parse(
               element.getAttribute('data-versions') ?? '[]',
             );
-            return Array.isArray(parsed) ? parsed : [];
+            return versionsIn(parsed);
           } catch {
             return [];
           }

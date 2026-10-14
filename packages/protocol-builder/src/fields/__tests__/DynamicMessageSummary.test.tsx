@@ -82,6 +82,56 @@ describe('DynamicMessageSummary', () => {
     expect(summary.textContent).not.toMatch(/[\u{F0000}-\u{FFFFD}]/u);
   });
 
+  it('keeps the headings, paragraphs and rules of text over several lines', () => {
+    const { getByTestId } = renderSummary(
+      '## Welcome {name}\n\nFirst paragraph.\n\n---\n\nSecond paragraph.',
+      true,
+    );
+    const summary = getByTestId('summary');
+
+    expect(
+      summary.querySelector('h2 [data-token="name"]'),
+    ).toBeInTheDocument();
+    expect(summary.querySelectorAll('p')).toHaveLength(2);
+    expect(summary.querySelector('hr')).toBeInTheDocument();
+  });
+
+  it('draws text on one line as a label, without a paragraph', () => {
+    const { getByTestId } = renderSummary('Tell us about **{name}**', true);
+    const summary = getByTestId('summary');
+
+    expect(summary.querySelector('p')).toBeNull();
+    expect(
+      summary.querySelector('strong [data-token="name"]'),
+    ).toBeInTheDocument();
+  });
+
+  it('draws text over several lines by the rules its host passes', () => {
+    const { getByTestId } = render(
+      <ProtocolLocalizationProvider localization={ENGLISH}>
+        <div data-testid="summary">
+          <DynamicMessageSummary
+            message={'# Title {name}\n\nBody'}
+            markdown
+            locale={LOCALE}
+            site={SITE}
+            blockMarkdown={{
+              allowedElements: ['p'],
+              components: {
+                p: ({ children }) => <p data-host="">{children}</p>,
+              },
+            }}
+          />
+        </div>
+      </ProtocolLocalizationProvider>,
+    );
+    const summary = getByTestId('summary');
+
+    expect(summary.querySelector('h1')).toBeNull();
+    expect(summary.querySelectorAll('p[data-host]')).toHaveLength(1);
+    expect(summary).toHaveTextContent(/Title name\s*Body/);
+  });
+
   it('shows plain text as written, with its values as pills', () => {
     const { getByTestId } = renderSummary('Hi **{name}**', false);
     const summary = getByTestId('summary');

@@ -654,6 +654,81 @@ describe('a single-line RichTextEditorField with versions', () => {
   });
 });
 
+describe('versions holding malformed members', () => {
+  // Stored or pasted versions can hold anything; a member that is not a
+  // version is dropped, as unreadable JSON is, rather than crashing the field.
+  const MIXED_VERSIONS = [
+    { key: 'missing', label: 'If not known', content: [] },
+    { key: 'broken', label: 'No content' },
+    { key: 7, label: 'Numbered key', content: [] },
+    'not a version',
+    null,
+    {
+      key: 'other',
+      label: 'If known',
+      content: [{ type: 'text', text: 'Hi' }, 'stray'],
+    },
+  ];
+
+  const renderField = (value: JSONContent) =>
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        changeMode="input"
+        value={value}
+        onChange={() => undefined}
+      />,
+    );
+
+  const expectOnlyWellFormedVersions = async () => {
+    const version = await screen.findByRole('textbox', { name: 'If known' });
+    await waitFor(() => expect(version.textContent).toBe('Hi'));
+    expect(
+      screen.getByRole('textbox', { name: 'If not known' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'No content' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Numbered key' })).toBeNull();
+  };
+
+  it('shows only the well-formed versions of a stored line', async () => {
+    renderField({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'versions',
+              attrs: { label: 'Depending on the name', versions: MIXED_VERSIONS },
+            },
+          ],
+        },
+      ],
+    });
+    await expectOnlyWellFormedVersions();
+  });
+
+  it('shows only the well-formed versions of a pasted line', async () => {
+    renderField(emptyDocument);
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/html': `<p><span data-versions='${JSON.stringify(
+          MIXED_VERSIONS,
+        )}' aria-label="Depending on the name"></span></p>`,
+      }),
+    });
+    await expectOnlyWellFormedVersions();
+  });
+});
+
 describe('a version edited in a field that reports on blur', () => {
   it('reports the edit when the caret leaves the field', async () => {
     const onChange = vi.fn();

@@ -91,6 +91,7 @@ import {
   NestedEditingContext,
   VERSIONS_NODE,
   VersionsNode,
+  versionsIn,
 } from './richText/versionsNode';
 
 const messages = defineMessages({
@@ -313,10 +314,7 @@ const placedTokenIds = (doc: ProseMirrorNode): string => {
     }
   };
   const collectVersions = (versions: unknown) => {
-    if (!Array.isArray(versions)) return;
-    for (const version of versions as { content?: unknown }[]) {
-      collect(version.content);
-    }
+    for (const version of versionsIn(versions)) collect(version.content);
   };
   doc.descendants((node) => {
     const tokenId: unknown = node.attrs.id;

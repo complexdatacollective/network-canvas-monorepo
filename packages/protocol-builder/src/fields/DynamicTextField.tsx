@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo, useRef } from 'react';
+import { type ComponentProps, type ReactNode, useMemo, useRef } from 'react';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -11,6 +11,7 @@ import RichTextEditorField, {
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import {
   ALLOWED_MARKDOWN_LABEL_TAGS,
+  ALLOWED_MARKDOWN_SECTION_TAGS,
   DEFAULT_MARKDOWN_REHYPE_PLUGINS,
   RenderMarkdown,
 } from '@codaco/fresco-ui/RenderMarkdown';
@@ -844,17 +845,40 @@ const SUMMARY_REHYPE_PLUGINS = [
   ...DEFAULT_MARKDOWN_REHYPE_PLUGINS,
   valueMarkPlugin,
 ];
-const SUMMARY_ALLOWED_ELEMENTS = [...ALLOWED_MARKDOWN_LABEL_TAGS, 'span'];
+
+/**
+ * How markdown spread over several lines is drawn: which elements it keeps
+ * and how it draws them. A host with rules of its own, such as a table cell
+ * that draws headings as bold lines, passes its own.
+ */
+export type BlockMarkdown = Readonly<{
+  allowedElements: readonly string[];
+  components?: ComponentProps<typeof RenderMarkdown>['components'];
+}>;
+
+const SECTION_MARKDOWN: BlockMarkdown = {
+  allowedElements: ALLOWED_MARKDOWN_SECTION_TAGS,
+};
+const LABEL_MARKDOWN: BlockMarkdown = {
+  allowedElements: ALLOWED_MARKDOWN_LABEL_TAGS,
+};
 
 export function DynamicMessageSummary({
   message,
   markdown,
   locale,
   site,
+  blockMarkdown = SECTION_MARKDOWN,
 }: Readonly<{
   message: string;
   /** Whether the words are markdown, drawn here with their formatting. */
   markdown: boolean;
+  /**
+   * How markdown with line breaks (an Information screen's text) draws its
+   * paragraphs, headings and rules; text on one line keeps only inline
+   * formatting and lists, as a label does.
+   */
+  blockMarkdown?: BlockMarkdown;
   locale: LocaleTag;
   site: Pick<DynamicMessageSite, 'context' | 'bindings'>;
 }>) {
@@ -863,6 +887,9 @@ export function DynamicMessageSummary({
   const { context, bindings } = site;
   const structure = messageStructure(message);
   if (!('nodes' in structure)) return <>{message}</>;
+  // A field written on one line never holds a line break.
+  const elements = message.includes('\n') ? blockMarkdown : LABEL_MARKDOWN;
+  const allowedElements = [...elements.allowedElements, 'span'];
 
   const labelText = (label: unknown): string =>
     label === undefined
@@ -950,9 +977,10 @@ export function DynamicMessageSummary({
     if (markdown) {
       return (
         <RenderMarkdown
-          allowedElements={SUMMARY_ALLOWED_ELEMENTS}
+          allowedElements={allowedElements}
           rehypePlugins={SUMMARY_REHYPE_PLUGINS}
           components={{
+            ...elements.components,
             span: ({ node, children }) => {
               const index = node?.properties?.[VALUE_PROPERTY];
               if (typeof index !== 'string') return <span>{children}</span>;

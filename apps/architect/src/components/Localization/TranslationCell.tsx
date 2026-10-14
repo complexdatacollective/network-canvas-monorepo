@@ -16,6 +16,7 @@ import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
   DynamicMessageEditor,
   type DynamicMessageSite,
+  type BlockMarkdown,
   DynamicMessageSummary,
 } from '@codaco/protocol-builder/fields/DynamicTextField';
 import {
@@ -166,6 +167,12 @@ const cellMarkdownComponents = {
   h6: headingAsParagraph,
 };
 
+/** The same rules for text that shows values. */
+const CELL_BLOCK_MARKDOWN: BlockMarkdown = {
+  allowedElements: CELL_MARKDOWN_ELEMENTS,
+  components: cellMarkdownComponents,
+};
+
 const CellMarkdown = ({ children }: { children: string }) => (
   <RenderMarkdown
     allowedElements={CELL_MARKDOWN_ELEMENTS}
@@ -265,6 +272,7 @@ const Fallback = ({
             markdown={format === 'markdown'}
             locale={shown.lang}
             site={dynamicSite}
+            blockMarkdown={CELL_BLOCK_MARKDOWN}
           />
         ) : messageArguments !== undefined ? (
           <LocalizedMessageVersionsSummary
@@ -988,6 +996,7 @@ const DynamicCell = ({
                     markdown={markdown}
                     locale={locale}
                     site={site}
+                    blockMarkdown={CELL_BLOCK_MARKDOWN}
                   />
                 </div>
               )}
