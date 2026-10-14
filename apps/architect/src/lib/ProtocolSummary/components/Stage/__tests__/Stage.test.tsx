@@ -187,3 +187,43 @@ describe('Protocol Summary form text that shows values', () => {
     );
   });
 });
+
+describe('Protocol Summary text that reads by a number answer', () => {
+  it('names the numbers of a version only fractions reach', () => {
+    const czechProtocol = {
+      ...protocol,
+      localization: { defaultLocale: 'cs', locales: ['cs'] },
+      codebook: {
+        node: {},
+        edge: {},
+        ego: { variables: { hours: { name: 'Hours', type: 'number' } } },
+      },
+    } as unknown as CurrentProtocol;
+    render(
+      <SummaryContext.Provider
+        value={{
+          protocol: czechProtocol,
+          protocolName: czechProtocol.name,
+          index: [],
+        }}
+      >
+        <Stage
+          id="hours"
+          label={{ cs: 'Hodiny' }}
+          stageNumber={6}
+          type="Information"
+          configuration={{
+            title: {
+              cs: '{hours, select, missing {} other {{hours, plural, one {# hodina} few {# hodiny} many {# hodiny} other {# hodin}}}}',
+            },
+            dynamicValues: { hours: { path: 'ego.hours' } },
+          }}
+        />
+      </SummaryContext.Provider>,
+    );
+
+    expect(
+      screen.getByText('When it is 0.1, 0.2, 0.3, …', { exact: false }),
+    ).toBeInTheDocument();
+  });
+});

@@ -22,4 +22,5 @@ shows values a field cannot edit is shown as it is, with a note saying why.
   with one version per case.
 - `@codaco/protocol-validation` exports `messageStructure` and
   `printMessageStructure`, which turn an ICU message into the tree of
-  versions the editor shows and back.
+  versions the editor shows and back, and `pluralValueExamples`, the plural
+  categories a number answer can reach in a language, fractions included.

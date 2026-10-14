@@ -26,7 +26,7 @@ import {
   type MessageNode,
   type MessageSwitch,
   messageStructure,
-  pluralCountExamples,
+  pluralValueExamples,
   printMessageStructure,
   TOO_MANY_DYNAMIC_VERSIONS,
 } from '@codaco/protocol-validation';
@@ -265,7 +265,7 @@ const presenceSwitch = (
 });
 
 const pluralCategories = (locale: LocaleTag): string[] => {
-  const categories = [...pluralCountExamples(locale).keys()].filter(
+  const categories = [...pluralValueExamples(locale).keys()].filter(
     (category) => category !== 'other',
   );
   return [...categories, 'other'];
@@ -316,7 +316,7 @@ const messageLabelsFor = ({
       const exact = /^=(\d+)$/.exec(key);
       const counts = exact
         ? [Number(exact[1])]
-        : ([...pluralCountExamples(locale)].find(
+        : ([...pluralValueExamples(locale)].find(
             ([category]) => category === key,
           )?.[1] ?? []);
       const shown = counts

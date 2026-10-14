@@ -606,6 +606,45 @@ const SAMPLE_COUNTS: readonly number[] = (() => {
   ];
 })();
 
+// How many numbers name each category.
+const VALUE_EXAMPLES_KEPT = 4;
+
+const valueExamplesByLocale = new Map<
+  string,
+  ReadonlyMap<string, readonly number[]>
+>();
+
+/**
+ * The plural categories some number a value can hold selects in `locale`, in
+ * CLDR order, each with the first few numbers that select it, plainest first.
+ * Unlike `pluralCountExamples`, which counts whole things, this reaches the
+ * categories only a fraction selects, such as Czech `many` or Russian
+ * `other`: a number answer can hold a fraction, and the check below asks for
+ * a version for each of those categories too.
+ */
+export const pluralValueExamples = (
+  locale: LocaleTag,
+): ReadonlyMap<string, readonly number[]> => {
+  const cached = valueExamplesByLocale.get(locale);
+  if (cached !== undefined) return cached;
+  const found = new Map<string, number[]>();
+  for (const count of SAMPLE_COUNTS) {
+    if (count < 0) continue;
+    const category = pluralCategoryOf(locale, count);
+    const examples = found.get(category) ?? [];
+    if (examples.length < VALUE_EXAMPLES_KEPT) examples.push(count);
+    found.set(category, examples);
+  }
+  const examples = new Map(
+    [...PLURAL_CATEGORIES].flatMap((category) => {
+      const counts = found.get(category);
+      return counts === undefined ? [] : [[category, counts] as const];
+    }),
+  );
+  valueExamplesByLocale.set(locale, examples);
+  return examples;
+};
+
 const categoriesByLocale = new Map<string, ReadonlySet<string>>();
 
 /** The plural categories `locale` gives some number. */
