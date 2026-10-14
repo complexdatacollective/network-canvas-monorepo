@@ -189,7 +189,7 @@ describe('Protocol Summary form text that shows values', () => {
 });
 
 describe('Protocol Summary text that reads by a number answer', () => {
-  it('names the numbers of a version only fractions reach', () => {
+  it('shows text that reads by a number as the number’s pill, without listing its versions', () => {
     const czechProtocol = {
       ...protocol,
       localization: { defaultLocale: 'cs', locales: ['cs'] },
@@ -222,8 +222,13 @@ describe('Protocol Summary text that reads by a number answer', () => {
       </SummaryContext.Provider>,
     );
 
-    expect(
-      screen.getByText('When it is 0.1, 0.2, 0.3, …', { exact: false }),
-    ).toBeInTheDocument();
+    // The summary prints only the value the versions are on; the versions,
+    // and the numbers each is for, are read in the editor.
+    const pills = document.querySelectorAll('[data-token]');
+    expect(pills).toHaveLength(1);
+    expect(pills[0]).toHaveAttribute('data-token', 'hours');
+    expect(pills[0]).toHaveTextContent('Hours');
+    expect(screen.queryByText(/When it is/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/hodin/)).not.toBeInTheDocument();
   });
 });
