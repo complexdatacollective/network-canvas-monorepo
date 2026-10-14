@@ -14,3 +14,4 @@ The interview shows a stage's dynamic values in its text. A prompt, form questio
 - A Dyad or Tie Strength Census prompt can show the two people it asks about, and a one-to-many census prompt can show its focal person.
 - `@codaco/fresco-ui`'s `RenderMarkdown` exports its default rehype plugins (`DEFAULT_MARKDOWN_REHYPE_PLUGINS`) and its default label elements (`ALLOWED_MARKDOWN_LABEL_TAGS`) so that a caller can extend them. It also exports `getMarkdownAttributeValues`, which lists the attribute values (link destinations and titles, image sources and text) a piece of markdown produces.
 - `SyntheticInterview` stages can carry `dynamicValues`.
+- `ProtocolField` takes a `label` to show in place of the field's authored label, as it already took a `hint`. Architect's form field preview uses it to show a question that holds values.
