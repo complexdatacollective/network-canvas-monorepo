@@ -96,9 +96,10 @@ describe('NodeDrawer', () => {
     });
 
     const tab = screen.getByRole('button', { name: /3 unplaced/i });
-    expect(Array.from(tab.querySelectorAll('span:not(.sr-only)'))).toHaveLength(
-      0,
-    );
+    // Whatever carries it, no text is visible beside the chevron.
+    const visible = tab.cloneNode(true) as HTMLElement;
+    visible.querySelectorAll('.sr-only').forEach((el) => el.remove());
+    expect(visible.textContent?.trim()).toBe('');
   });
 
   it('disables the toggle while empty when it is not a drop target', () => {

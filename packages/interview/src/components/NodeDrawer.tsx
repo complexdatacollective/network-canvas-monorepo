@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowDownToLine, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, motion } from 'motion/react';
 import { useCallback, useEffect, useId, useState } from 'react';
 
@@ -8,6 +8,7 @@ import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import type { DropCallback } from '@codaco/fresco-ui/dnd/types';
 import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
+import NodeDropAnimation from '@codaco/fresco-ui/NodeDropAnimation';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
@@ -224,7 +225,7 @@ export default function NodeDrawer({
               // Matches the height of a drawer node so the empty drawer
               // expands to a full row.
               <div className="flex min-h-24 w-full items-center justify-center px-8 text-sm opacity-70">
-                <ArrowDownToLine aria-hidden className="size-6" />
+                <NodeDropAnimation />
                 <span className="sr-only">
                   <AppMessage message={messages.dropToRemove} />
                 </span>
