@@ -5,12 +5,14 @@ import {
   type DynamicValueRole,
   type DynamicValues,
   type DynamicValueSiteContext,
+  dynamicValueLabelPathFor,
   dynamicValueNamesIn,
   dynamicValuePathFor,
   dynamicValueStatus,
   dynamicValueUnshowableReason,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
+  LABELLED_DYNAMIC_VALUE_ROLES,
   type MessageNode,
   MISSING_CASE,
   messageStructure,
@@ -18,15 +20,20 @@ import {
 
 /**
  * Something a piece of stage text can show at one place: a value the
- * interview knows, or an attribute of someone on screen there. What Architect
- * offers to insert, built from the same availability rules the protocol is
- * validated against (`dynamicValueStatus`).
+ * interview knows, or an attribute or the label of a node or edge on screen
+ * there. What Architect offers to insert, built from the same availability
+ * rules the protocol is validated against (`dynamicValueStatus`).
  */
 export type DynamicValueChoice = Readonly<{
   path: string;
-  /** The role whose attribute it is, or undefined for an interview value. */
+  /**
+   * What it is: a value the interview knows, an attribute, or the label the
+   * interview shows on a node.
+   */
+  kind: 'intrinsic' | 'attribute' | 'label';
+  /** The role whose value it is, or undefined for an interview value. */
   role: DynamicValueRole | undefined;
-  /** The attribute's name, or the interview value's key. */
+  /** The attribute's name, or the interview value's key; empty for a label. */
   variableId: string;
   /** The codebook's name for the attribute; undefined for an interview value. */
   variableName: string | undefined;
@@ -67,6 +74,8 @@ const ROLE_PREFIXES: Readonly<Record<DynamicValueRole, string>> = {
   dyadSource: 'first',
   dyadTarget: 'second',
   focal: 'focal',
+  edgeFrom: 'first',
+  edgeTo: 'second',
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -97,7 +106,8 @@ const optionsOf = (variable: Record<string, unknown>): DynamicValueOption[] => {
 
 /**
  * Everything text at this place can show: the interview's own values, then
- * each available role's attributes in codebook order.
+ * for each available role its node's label, where it is a node, and its
+ * attributes in codebook order.
  */
 export const dynamicValueChoices = (
   context: DynamicValueSiteContext,
@@ -106,6 +116,7 @@ export const dynamicValueChoices = (
     Object.keys(INTRINSIC_DYNAMIC_VALUES) as IntrinsicDynamicValue[]
   ).map((name): DynamicValueChoice => ({
     path: name,
+    kind: 'intrinsic',
     role: undefined,
     variableId: name,
     variableName: undefined,
@@ -115,8 +126,28 @@ export const dynamicValueChoices = (
     options: [],
     unshowable: undefined,
   }));
-  const attributes = [...context.roles].flatMap((role) =>
-    Object.entries(context.variablesFor(role) ?? {}).flatMap(
+  const labelOf = (role: DynamicValueRole): DynamicValueChoice[] => {
+    if (!LABELLED_DYNAMIC_VALUE_ROLES.has(role)) return [];
+    const path = dynamicValueLabelPathFor(role);
+    if (dynamicValueStatus({ path }, context).status !== 'available') return [];
+    return [
+      {
+        path,
+        kind: 'label',
+        role,
+        variableId: '',
+        variableName: undefined,
+        variableType: 'text',
+        optional: false,
+        numeric: false,
+        options: [],
+        unshowable: undefined,
+      },
+    ];
+  };
+  const attributes = [...context.roles].flatMap((role) => [
+    ...labelOf(role),
+    ...Object.entries(context.variablesFor(role) ?? {}).flatMap(
       ([variableId, variable]): DynamicValueChoice[] => {
         const path = dynamicValuePathFor(role, variableId);
         if (dynamicValueStatus({ path }, context).status !== 'available') {
@@ -128,6 +159,7 @@ export const dynamicValueChoices = (
         return [
           {
             path,
+            kind: 'attribute',
             role,
             variableId,
             variableName:
@@ -148,7 +180,7 @@ export const dynamicValueChoices = (
         ];
       },
     ),
-  );
+  ]);
   return [...intrinsics, ...attributes];
 };
 
@@ -180,8 +212,9 @@ const unique = (base: string, taken: (name: string) => boolean): string => {
 /**
  * The argument name a new binding for `choice` gets: the attribute's name as
  * an identifier, so a translator reads `{partnerName}`, prefixed for the
- * second and first person of a pair and the person being asked about, and
- * numbered when the stage already uses the name.
+ * first and second node of a pair or an edge and the node being asked about,
+ * and numbered when the stage already uses the name. A node's label is
+ * `{nodeLabel}`, or `{firstLabel}` and the like.
  */
 const nameFor = (
   choice: DynamicValueChoice,
@@ -193,11 +226,14 @@ const nameFor = (
       taken,
     );
   }
+  const prefix = ROLE_PREFIXES[choice.role];
+  if (choice.kind === 'label') {
+    return unique(prefix === '' ? 'nodeLabel' : `${prefix}Label`, taken);
+  }
   const own =
     identifierFrom(choice.variableName ?? '') ||
     identifierFrom(choice.variableId) ||
     'value';
-  const prefix = ROLE_PREFIXES[choice.role];
   const base =
     prefix === '' ? own : prefix + own.charAt(0).toUpperCase() + own.slice(1);
   return unique(base, taken);

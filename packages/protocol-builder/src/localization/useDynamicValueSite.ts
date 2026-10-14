@@ -14,6 +14,7 @@ import {
   type DynamicValueSite,
   type DynamicValueSiteContext,
   dynamicValueContextFor,
+  dynamicValueRolesAt,
 } from '@codaco/protocol-validation';
 
 import { EditedRowContext } from '../form/editedRow.ts';
@@ -56,12 +57,13 @@ const withValueAt = (
 };
 
 /**
- * True inside a form that describes an entity of its own rather than the
- * stage's subject (a Network Composer connection type's form). No stage
- * binding can name which entity that is, so its captions show what any stage
- * text can: the participant and today's date.
+ * Inside a form that describes an entity of its own rather than the stage's
+ * subject (a Network Composer connection type's form), that entity. No stage
+ * binding can name its type, so its captions show what needs none: the
+ * participant, today's date and, for an edge, the labels of the two nodes it
+ * joins.
  */
-export const FormOfItsOwnContext = createContext(false);
+export const FormOfItsOwnContext = createContext<'node' | 'edge' | null>(null);
 
 /**
  * Registers the stage's bindings with the stage form, so a binding a text
@@ -107,9 +109,11 @@ export function useDynamicValueSite(
   requested: DynamicValueSite,
   fieldPath: readonly string[] = [],
 ): DynamicValueSiteState {
-  const ownSubject = useContext(FormOfItsOwnContext);
-  const site: DynamicValueSite =
-    requested === 'formField' && ownSubject ? 'stageText' : requested;
+  const ownEntity = useContext(FormOfItsOwnContext);
+  const ownForm = requested === 'formField' && ownEntity !== null;
+  // A form of its own is not among the stage's rows, so its captions are
+  // placed as text about the stage, with the roles its form adds.
+  const site: DynamicValueSite = ownForm ? 'stageText' : requested;
   const { identity, storeApi, liveDraft } = useStageEditorForm();
   const { codebook } = useProtocolContext();
   const row = useContext(EditedRowContext);
@@ -160,7 +164,15 @@ export function useDynamicValueSite(
       };
       sitePath = [...listPath, index, ...fieldPath];
     }
-    return dynamicValueContextFor({ codebook, stage, sitePath, site });
+    const atSite = dynamicValueContextFor({ codebook, stage, sitePath, site });
+    if (!ownForm || ownEntity === null) return atSite;
+    return {
+      ...atSite,
+      roles: dynamicValueRolesAt(identity.type, 'formField', {
+        entity: ownEntity,
+        isStageSubject: false,
+      }),
+    };
   })();
 
   const setBindings = useCallback(
@@ -204,10 +216,15 @@ export function useStageDynamicValues(): Pick<
       dynamicValueContextFor({ codebook, stage, sitePath: [], site });
     const prompt = contextAt('prompt');
     const formField = contextAt('formField');
+    // A Network Composer connection type's form names its edge's ends.
+    const edgeForm = dynamicValueRolesAt(identity.type, 'formField', {
+      entity: 'edge',
+      isStageSubject: false,
+    });
     return {
       context: {
         ...prompt,
-        roles: new Set([...prompt.roles, ...formField.roles]),
+        roles: new Set([...prompt.roles, ...formField.roles, ...edgeForm]),
       },
       bindings: isRecord(rawBindings) ? (rawBindings as DynamicValues) : {},
     };

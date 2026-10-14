@@ -109,13 +109,37 @@ const messages = defineMessages({
     id: 'protocolBuilder.dynamicText.dyadSourceValue',
     defaultMessage: '{attribute} (first node in pair)',
     description:
-      'Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”.',
+      'Name of an inserted value, as it appears in the text: an attribute of the first of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”, or the translated “Node label”, the label the interview shows on the node.',
   },
   dyadTargetValue: {
     id: 'protocolBuilder.dynamicText.dyadTargetValue',
     defaultMessage: '{attribute} (second node in pair)',
     description:
-      'Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”.',
+      'Name of an inserted value, as it appears in the text: an attribute of the second of the two nodes a question asks about together. attribute is the attribute’s name, such as “nickname”, or the translated “Node label”, the label the interview shows on the node.',
+  },
+  nodeLabel: {
+    id: 'protocolBuilder.dynamicText.nodeLabel',
+    defaultMessage: 'Node label',
+    description:
+      'Name of an inserted value, as it appears in the text and in the insert-a-value menu: the label the interview shows on a node, which it takes from the node’s name or another of its answers, or else from the node type’s name. A node is one entity in the network, which may not be a person.',
+  },
+  nodeLabelDescription: {
+    id: 'protocolBuilder.dynamicText.nodeLabelDescription',
+    defaultMessage: 'Text shown on the node',
+    description:
+      'Short note under “Node label” in the insert-a-value menu, saying that the value is the same text the interview shows on the node itself. Other items in the menu show the kind of answer here, such as “Text” or “Number”.',
+  },
+  edgeFromLabel: {
+    id: 'protocolBuilder.dynamicText.edgeFromLabel',
+    defaultMessage: 'Node label (first node of edge)',
+    description:
+      'Name of an inserted value, as it appears in the text: the label the interview shows on the first of the two nodes an edge connects, in a question about that edge. An edge is a connection between two nodes; a node is one entity in the network, which may not be a person.',
+  },
+  edgeToLabel: {
+    id: 'protocolBuilder.dynamicText.edgeToLabel',
+    defaultMessage: 'Node label (second node of edge)',
+    description:
+      'Name of an inserted value, as it appears in the text: the label the interview shows on the second of the two nodes an edge connects, in a question about that edge. An edge is a connection between two nodes; a node is one entity in the network, which may not be a person.',
   },
   byAnswer: {
     id: 'protocolBuilder.dynamicText.byAnswer',
@@ -225,6 +249,8 @@ const ROLE_MESSAGES = {
   dyadSource: messages.roleDyadSource,
   dyadTarget: messages.roleDyadTarget,
   focal: messages.roleContext,
+  edgeFrom: messages.roleContext,
+  edgeTo: messages.roleContext,
 } satisfies Record<DynamicValueRole, unknown>;
 
 /** How many examples a plural version's label gives of its numbers. */
@@ -240,7 +266,16 @@ type Naming = Readonly<{
 const namingFor = (intl: IntlShape): Naming => ({
   valueLabel: (choice) => {
     if (choice.role === undefined) return intl.formatMessage(messages.today);
-    const attribute = choice.variableName ?? choice.variableId;
+    if (choice.role === 'edgeFrom') {
+      return intl.formatMessage(messages.edgeFromLabel);
+    }
+    if (choice.role === 'edgeTo') {
+      return intl.formatMessage(messages.edgeToLabel);
+    }
+    const attribute =
+      choice.kind === 'label'
+        ? intl.formatMessage(messages.nodeLabel)
+        : (choice.variableName ?? choice.variableId);
     // The two nodes of a pair have the same attributes, so their values say
     // which node they belong to; any other value is named by its attribute.
     if (choice.role === 'dyadSource') {
@@ -519,7 +554,9 @@ export function DynamicMessageEditor({
       group,
       ...(unshowable !== undefined
         ? { description: unshowable, disabled: true }
-        : type !== undefined && { description: intl.formatMessage(type) }),
+        : choice.kind === 'label'
+          ? { description: intl.formatMessage(messages.nodeLabelDescription) }
+          : type !== undefined && { description: intl.formatMessage(type) }),
       content: inlineContent(
         choice.optional
           ? [presenceSwitch(bindingName, [argument])]

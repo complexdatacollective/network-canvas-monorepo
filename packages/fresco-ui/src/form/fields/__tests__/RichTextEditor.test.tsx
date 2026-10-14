@@ -895,6 +895,7 @@ describe('versions folded to a pill', () => {
         id="intro"
         name="intro"
         aria-label="Introduction"
+        aria-describedby="intro-hint"
         versions
         toolbarOptions={{ headings: true, lists: true, thematicBreak: true }}
         tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}

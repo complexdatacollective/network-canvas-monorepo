@@ -51,7 +51,7 @@ const contextFor = (
   roles: dynamicValueRolesAt(
     stageType,
     site,
-    withNode ? { entity: 'node', type: 'person' } : undefined,
+    withNode ? { entity: 'node', isStageSubject: true } : undefined,
   ),
   variablesFor: (role) =>
     role === 'ego'
@@ -87,6 +87,45 @@ describe('dynamicValueChoices', () => {
     );
     expect(paths).toContain('dyad.source.closeness');
     expect(paths).toContain('dyad.target.name');
+  });
+
+  it('offers each node on screen by its label, before its attributes', () => {
+    const paths = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).map(
+      (choice) => choice.path,
+    );
+    expect(paths.filter((path) => path.startsWith('dyad.'))).toEqual([
+      'dyad.source.$label',
+      'dyad.source.name',
+      'dyad.source.closeness',
+      'dyad.target.$label',
+      'dyad.target.name',
+      'dyad.target.closeness',
+    ]);
+    const label = dynamicValueChoices(contextFor('DyadCensus', 'prompt')).find(
+      (choice) => choice.path === 'dyad.source.$label',
+    );
+    expect(label).toMatchObject({ kind: 'label', optional: false });
+  });
+
+  it('offers an edge form both ends of its edge by label alone', () => {
+    const context: DynamicValueSiteContext = {
+      roles: dynamicValueRolesAt('AlterEdgeForm', 'formField', {
+        entity: 'edge',
+        isStageSubject: true,
+      }),
+      variablesFor: (role) => (role === 'ego' ? EGO : undefined),
+    };
+    const paths = dynamicValueChoices(context).map((choice) => choice.path);
+    expect(paths).toContain('edge.from.$label');
+    expect(paths).toContain('edge.to.$label');
+    expect(paths.some((path) => path.startsWith('node.'))).toBe(false);
+  });
+
+  it('offers no label where no single node is on screen', () => {
+    const paths = dynamicValueChoices(contextFor('Sociogram', 'prompt')).map(
+      (choice) => choice.path,
+    );
+    expect(paths.some((path) => path.endsWith('$label'))).toBe(false);
   });
 
   it('gives a yes-or-no attribute without labels its two answers', () => {
@@ -132,6 +171,15 @@ describe('bindingFor', () => {
       'secondName',
     );
     expect(bindingFor(choice('now'), {}, {}, labelText).name).toBe('today');
+  });
+
+  it('names a binding for each node of a pair’s label', () => {
+    expect(bindingFor(choice('dyad.source.$label'), {}, {}, labelText)).toEqual(
+      { name: 'firstLabel', binding: { path: 'dyad.source.$label' } },
+    );
+    expect(
+      bindingFor(choice('dyad.target.$label'), {}, {}, labelText).name,
+    ).toBe('secondLabel');
   });
 
   it('numbers a name the stage already uses for something else', () => {

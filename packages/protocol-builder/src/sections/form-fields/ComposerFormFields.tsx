@@ -341,7 +341,7 @@ export function ComposerFormFieldsControl({
   const { readOnly } = useStageEditorForm();
 
   return (
-    <FormOfItsOwnContext value>
+    <FormOfItsOwnContext value="edge">
       <ComposerFormRows {...props} name={name} rows={value}>
         <UnconnectedField<typeof ArrayField<RowValues>>
           name={name}

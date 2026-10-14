@@ -39,6 +39,7 @@ const BINS_FIELD = 'variable';
 const OTHER_FIELD = 'otherVariable';
 const OTHER_LABEL_FIELD = 'otherOptionLabel';
 const OTHER_PROMPT_FIELD = 'otherVariablePrompt';
+const OTHER_PROMPT_PATH = [OTHER_PROMPT_FIELD];
 
 /** Only a categorical attribute has the named values this interface bins by. */
 const BINS_TYPE = 'categorical' as const satisfies VariableType;
@@ -353,7 +354,10 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         <Field<typeof LocalizedRichTextField>
           name={OTHER_PROMPT_FIELD}
           component={LocalizedRichTextField}
-          dynamicValues="prompt"
+          // A question about the node just put in the "other" bin, which is
+          // a one-field form about it.
+          dynamicValues="formField"
+          fieldPath={OTHER_PROMPT_PATH}
           label={intl.formatMessage(
             categoricalBinPromptMessages.otherPromptLabel,
           )}
