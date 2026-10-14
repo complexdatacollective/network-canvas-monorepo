@@ -468,7 +468,7 @@ describe('dynamic values in stage text', () => {
       ).toEqual(['you', 'focal', 'today']);
     });
 
-    it('offers a form field the values of earlier fields, but not its own or later ones', () => {
+    it('offers a form field every value of the person it asks about except its own answer', () => {
       const protocol = editing('alterForm', (stage) => {
         stage.dynamicValues = {
           nick: { path: 'node.nickname' },
@@ -491,12 +491,12 @@ describe('dynamic values in stage text', () => {
           ['form', 'fields', index, 'prompt'],
           'formField',
         );
-      expect(field(0)).toEqual(['kind']);
+      expect(field(0)).toEqual(['name', 'kind']);
       expect(field(1)).toEqual(['nick', 'kind']);
       expect(field(2)).toEqual(['nick', 'name', 'kind']);
     });
 
-    it('applies the earlier-field rule to the participant on an ego form', () => {
+    it('keeps an ego form field from showing its own answer', () => {
       const protocol = editing('egoForm', (stage) => {
         stage.dynamicValues = {
           you: { path: 'ego.egoName' },
@@ -516,7 +516,7 @@ describe('dynamic values in stage text', () => {
           ['form', 'fields', index, 'prompt'],
           'formField',
         );
-      expect(field(0)).toEqual([]);
+      expect(field(0)).toEqual(['age']);
       expect(field(1)).toEqual(['you']);
     });
 
@@ -550,7 +550,7 @@ describe('dynamic values in stage text', () => {
           ['nodeForm', 'fields', 0, 'label'],
           'formField',
         ),
-      ).toEqual(['you', 'today']);
+      ).toEqual(['you', 'them', 'today']);
       expect(
         argumentsAt(
           composer,
