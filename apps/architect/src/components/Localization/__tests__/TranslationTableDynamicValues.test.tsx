@@ -36,13 +36,13 @@ const protocol = {
   ],
 } as unknown as CurrentProtocol;
 
-const renderTable = () => {
+const renderTable = (initial: CurrentProtocol = protocol) => {
   const store = configureStore({
     reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),
   });
-  store.dispatch(setActiveProtocol(structuredClone(protocol)));
+  store.dispatch(setActiveProtocol(structuredClone(initial)));
   render(
     <Provider store={store}>
       <FormStoreProvider>
@@ -112,5 +112,41 @@ describe('TranslationTable: text that shows values', () => {
 
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(getProtocol(store.getState())).toBe(before);
+  });
+
+  it('checks a translation against the original text as the table holds it, saved or not', async () => {
+    const [stage] = protocol.stages;
+    const { store, user } = renderTable({
+      ...protocol,
+      stages: [
+        {
+          ...stage,
+          title: {
+            en: WELCOME,
+            fr: 'Bon retour{name, select, missing {} other {, {name}}}',
+          },
+        },
+      ],
+    } as CurrentProtocol);
+
+    // The value goes from both languages before either is saved.
+    for (const [language, text] of [
+      ['French', 'Bon retour'],
+      ['English', 'Welcome back'],
+    ] as const) {
+      await user.click(titleCell(language));
+      const editor = await screen.findByRole('textbox', {
+        name: cellName(language),
+      });
+      await waitFor(() => expect(editor).toHaveFocus());
+      await user.clear(editor);
+      await user.type(editor, text);
+      await leaveCell(user);
+    }
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(title(store)).toEqual({ en: 'Welcome back', fr: 'Bon retour' }),
+    );
   });
 });

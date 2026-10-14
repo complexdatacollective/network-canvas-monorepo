@@ -156,16 +156,24 @@ const withCellText = (
 /**
  * Why `text`, as the row's translation in `locale`, cannot show its values:
  * by the protocol's own check, against the stage's bindings and what the
- * text's place can show.
+ * text's place can show, with the row's other cells as the table holds them
+ * now, saved or not.
  */
 const dynamicValueProblem = (
   state: RootState,
   row: TranslationRow,
   locale: LocaleTag,
   text: string,
+  formValues: Readonly<Record<string, FieldValue>>,
 ): string | undefined => {
   const protocol = getProtocol(state);
   if (!protocol || row.dynamicValues === undefined) return undefined;
+  const value = protocol.localization.locales.reduce((held, other) => {
+    const name = translationFieldName(row.path, other);
+    return other === locale || !Object.hasOwn(formValues, name)
+      ? held
+      : withCellText(row, held, other, asText(formValues[name]));
+  }, row.value);
   const at = JSON.stringify([...row.path, locale]);
   return findDynamicValueProblems(
     {
@@ -176,7 +184,7 @@ const dynamicValueProblem = (
     [
       {
         path: [...row.path],
-        value: { ...row.value, [locale]: text },
+        value: { ...value, [locale]: text },
         dynamicValues: row.dynamicValues,
       },
     ],
@@ -228,7 +236,13 @@ const cellValidation =
           }
         }
         if (row.dynamicValues !== undefined && !isBlankTranslation(row, text)) {
-          const problem = dynamicValueProblem(state, row, locale, text);
+          const problem = dynamicValueProblem(
+            state,
+            row,
+            locale,
+            text,
+            formValues,
+          );
           if (problem !== undefined) {
             fail(problem);
             return;
