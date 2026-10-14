@@ -1020,6 +1020,43 @@ const finishStageFor = (
 ) =>
   createDefaultFinishSessionStage({ id: finishStageId(stages), localization });
 
+/**
+ * A finish stage written before finish stages had modes, as a document stored
+ * at schema 9 during its development can hold one: its heading becomes the
+ * first line of its closing text, its finished notice gives way to finished
+ * text, and it asks the participant to confirm, as every such stage did.
+ */
+const normalizeFinishStages = (
+  migrated: { stages?: unknown },
+  localization: LocalizationDeclaration,
+) => {
+  if (!Array.isArray(migrated.stages)) return;
+  const defaults = createDefaultFinishSessionStage({
+    id: FINISH_STAGE_ID,
+    localization,
+  });
+  for (const stage of migrated.stages as unknown[]) {
+    if (!isRecord(stage) || stage.type !== 'FinishSession') continue;
+    stage.mode ??= 'confirmation';
+    if ('title' in stage) {
+      const title = isRecord(stage.title) ? stage.title : {};
+      const content = isRecord(stage.content) ? { ...stage.content } : {};
+      for (const [locale, heading] of Object.entries(title)) {
+        if (typeof heading !== 'string' || heading.trim() === '') continue;
+        const text = content[locale];
+        content[locale] =
+          typeof text === 'string' && text.trim() !== ''
+            ? `# ${heading}\n\n${text}`
+            : `# ${heading}`;
+      }
+      stage.content = content;
+      delete stage.title;
+    }
+    if ('finishedNotice' in stage) delete stage.finishedNotice;
+    stage.finishedContent ??= defaults.finishedContent;
+  }
+};
+
 type SiteChange =
   | { kind: 'set'; value: unknown }
   | { kind: 'remove' }
@@ -1207,6 +1244,7 @@ const migrationV8toV9 = createMigration({
     repairFamilyPedigreeText(migrated);
     repairOtherBinText(migrated, localization);
     repairTieStrengthDeclineLabels(migrated, localization);
+    normalizeFinishStages(migrated, localization);
 
     // Every site is found before any is rewritten, so the walk reads the
     // document as schema 8 left it.

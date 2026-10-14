@@ -4,6 +4,7 @@ import type {
 } from '../../localization/localeTag.ts';
 import type { LocalizedString } from './localized-string.ts';
 import type {
+  FinishMode,
   FinishOutcome,
   FinishSessionStage,
 } from './stages/finish-session.ts';
@@ -16,12 +17,14 @@ import {
 
 /**
  * The text a finish stage starts with, in one language. Every value is an ICU
- * message made only of literal text; `title` and `content` are markdown.
+ * message made only of literal text; `content` (the closing screen) and
+ * `finishedContent` (the finished screen) are markdown, each opening with its
+ * heading.
  */
 export type FinishSessionText = Readonly<{
   label: string;
-  title: string;
   content: string;
+  finishedContent: string;
 }>;
 
 /**
@@ -38,63 +41,64 @@ export type FinishSessionText = Readonly<{
 export const DEFAULT_FINISH_SESSION_TEXT = {
   'en': {
     label: 'Finish Interview',
-    title: 'Finish Interview',
     content:
-      'You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+      '# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+    finishedContent: '# Interview Finished\n\nThank you for participating!',
   },
   'de': {
     label: 'Interview beenden',
-    title: 'Interview beenden',
     content:
-      'Sie haben das Ende des Interviews erreicht. Wenn Sie mit den eingegebenen Angaben zufrieden sind, können Sie das Interview jetzt beenden.',
+      '# Interview beenden\n\nSie haben das Ende des Interviews erreicht. Wenn Sie mit den eingegebenen Angaben zufrieden sind, können Sie das Interview jetzt beenden.',
+    finishedContent: '# Interview beendet\n\nVielen Dank für Ihre Teilnahme!',
   },
   'es': {
     label: 'Finalizar entrevista',
-    title: 'Finalizar entrevista',
     content:
-      'Has llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora.',
+      '# Finalizar entrevista\n\nHas llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora.',
+    finishedContent: '# Entrevista finalizada\n\n¡Gracias por participar!',
   },
   'fr': {
     label: 'Terminer l’entretien',
-    title: 'Terminer l’entretien',
     content:
-      'Vous avez atteint la fin de l’entretien. Si les informations que vous avez saisies vous conviennent, vous pouvez maintenant terminer l’entretien.',
+      '# Terminer l’entretien\n\nVous avez atteint la fin de l’entretien. Si les informations que vous avez saisies vous conviennent, vous pouvez maintenant terminer l’entretien.',
+    finishedContent: '# Entretien terminé\n\nMerci de votre participation !',
   },
   'hu': {
     label: 'Interjú befejezése',
-    title: 'Interjú befejezése',
     content:
-      'Elérte az interjú végét. Ha elégedett az Ön által megadott információkkal, most befejezheti az interjút.',
+      '# Interjú befejezése\n\nElérte az interjú végét. Ha elégedett az Ön által megadott információkkal, most befejezheti az interjút.',
+    finishedContent: '# Az interjú véget ért\n\nKöszönjük a részvételt!',
   },
   'it': {
     label: 'Termina l’intervista',
-    title: 'Termina l’intervista',
     content:
-      'Hai raggiunto la fine dell’intervista. Se le informazioni che hai inserito ti soddisfano, puoi terminare l’intervista ora.',
+      '# Termina l’intervista\n\nHai raggiunto la fine dell’intervista. Se le informazioni che hai inserito ti soddisfano, puoi terminare l’intervista ora.',
+    finishedContent: '# Intervista terminata\n\nGrazie per aver partecipato!',
   },
   'nl': {
     label: 'Interview voltooien',
-    title: 'Interview voltooien',
     content:
-      'Je bent aan het einde van het interview. Als je tevreden bent met de gegevens die je hebt ingevuld, kun je het interview nu voltooien.',
+      '# Interview voltooien\n\nJe bent aan het einde van het interview. Als je tevreden bent met de gegevens die je hebt ingevuld, kun je het interview nu voltooien.',
+    finishedContent: '# Interview voltooid\n\nBedankt voor je deelname!',
   },
   'pt-BR': {
     label: 'Concluir entrevista',
-    title: 'Concluir entrevista',
     content:
-      'Você chegou ao fim da entrevista. Se estiver de acordo com as informações que inseriu, pode concluir a entrevista agora.',
+      '# Concluir entrevista\n\nVocê chegou ao fim da entrevista. Se estiver de acordo com as informações que inseriu, pode concluir a entrevista agora.',
+    finishedContent:
+      '# Entrevista concluída\n\nAgradecemos a sua participação!',
   },
   'zh-Hans': {
     label: '完成访谈',
-    title: '完成访谈',
     content:
-      '您已到达访谈的结尾。如果您对所填写的信息感到满意，现在即可完成访谈。',
+      '# 完成访谈\n\n您已到达访谈的结尾。如果您对所填写的信息感到满意，现在即可完成访谈。',
+    finishedContent: '# 访谈已完成\n\n感谢您的参与！',
   },
   'zh-Hant': {
     label: '完成訪談',
-    title: '完成訪談',
     content:
-      '您已來到訪談的尾聲。如果您對填寫的資訊感到滿意，現在就可以完成訪談。',
+      '# 完成訪談\n\n您已來到訪談的尾聲。如果您對填寫的資訊感到滿意，現在就可以完成訪談。',
+    finishedContent: '# 訪談已完成\n\n感謝您的參與！',
   },
 } as const satisfies Readonly<Record<LocaleTag, FinishSessionText>>;
 
@@ -113,8 +117,8 @@ type FinishSessionTextField = keyof FinishSessionText;
 
 const FINISH_SESSION_TEXT_FIELDS = [
   'label',
-  'title',
   'content',
+  'finishedContent',
 ] as const satisfies readonly FinishSessionTextField[];
 
 /**
@@ -127,8 +131,8 @@ export const defaultFinishSessionFields = (
 ): Record<FinishSessionTextField, LocalizedString> => {
   const fields: Record<FinishSessionTextField, Record<LocaleTag, string>> = {
     label: {},
-    title: {},
     content: {},
+    finishedContent: {},
   };
   for (const locale of locales) {
     const text = defaultFinishSessionText(locale);
@@ -144,7 +148,6 @@ export const defaultFinishSessionFields = (
 const FINISH_SESSION_SETTINGS = [
   'finishLabel',
   'finishConfirmation',
-  'finishedNotice',
   'finishFailed',
 ] as const;
 
@@ -168,19 +171,23 @@ const suppliedFinishSessionSettings = (
 /**
  * A finish stage carrying the supplied text in each of the protocol's
  * languages that has it, and the supplied wording of its settings (see
- * `stage-wording/finish-session.ts`), ending the interview as `completed`.
+ * `stage-wording/finish-session.ts`), asking the participant to confirm and
+ * ending the interview as `completed`.
  */
 export const createDefaultFinishSessionStage = ({
   id,
   localization,
+  mode = 'confirmation',
   outcome = 'completed',
 }: {
   id: string;
   localization: LocalizationDeclaration;
+  mode?: FinishMode;
   outcome?: FinishOutcome;
 }): FinishSessionStage => ({
   id,
   type: 'FinishSession',
+  mode,
   ...defaultFinishSessionFields(localization.locales),
   ...suppliedFinishSessionSettings(localization),
   outcome,
@@ -188,8 +195,8 @@ export const createDefaultFinishSessionStage = ({
 
 /** The text a participant reads: what decides whether a stage is still ours. */
 const PARTICIPANT_TEXT_FIELDS = [
-  'title',
   'content',
+  'finishedContent',
 ] as const satisfies readonly FinishSessionTextField[];
 
 const holdsSuppliedText = (
@@ -203,7 +210,7 @@ const holdsSuppliedText = (
 };
 
 /**
- * Whether a finish stage's title and content in one language are still
+ * Whether a finish stage's screens in one language are still
  * exactly the supplied text for that language: the researcher has not changed
  * what the participant reads. Architect only fills in a newly added language
  * when this holds for the default language, because supplied text beside a
@@ -217,8 +224,8 @@ export const hasDefaultFinishSessionText = (
 
 /**
  * The finish stage's text as Network Canvas writes it after a change to the
- * protocol's languages (see `suppliedTextAfterLanguageChange`): its title and
- * content when, in the default language before the change, they are still the
+ * protocol's languages (see `suppliedTextAfterLanguageChange`): its closing and
+ * finished screens when, in the default language before the change, they are still the
  * supplied text, and its label as well while that too is the supplied one.
  * Only those fields are returned; text the researcher has changed is theirs.
  */
