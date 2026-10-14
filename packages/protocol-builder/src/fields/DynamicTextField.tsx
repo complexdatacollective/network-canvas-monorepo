@@ -64,9 +64,10 @@ import { LocalizedStringField } from './LocalizedStringField.tsx';
 const messages = defineMessages({
   insertMenu: {
     id: 'protocolBuilder.dynamicText.insertMenu',
-    defaultMessage: 'Insert a value',
+    defaultMessage:
+      'Inject piped text from interview metadata or a network attribute',
     description:
-      'Toolbar button, and the name of the searchable menu it opens, in a text field a participant reads. It inserts a value the interview fills in, such as the participant’s name or an answer they gave earlier.',
+      'Accessible name and tooltip of a toolbar icon button (a syringe), and the name of the searchable menu it opens, in a text field a participant reads. “Piped text” is survey-software vocabulary for text filled in from earlier data: the button injects a value the interview fills in, such as today’s date (interview metadata) or the participant’s name or an answer they gave earlier (a network attribute).',
   },
   interviewGroup: {
     id: 'protocolBuilder.dynamicText.interviewGroup',

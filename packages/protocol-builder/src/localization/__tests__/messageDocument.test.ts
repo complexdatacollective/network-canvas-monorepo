@@ -71,16 +71,18 @@ describe('messageToDocument', () => {
                 label: 'By name',
                 summary: 'name',
                 meta: { argument: 'name', type: 'select' },
+                // The version that shows the value comes first, the one for
+                // when it is missing last.
                 versions: [
-                  {
-                    key: 'missing',
-                    label: 'name missing',
-                    content: [{ type: 'text', text: 'this person' }],
-                  },
                   {
                     key: 'other',
                     label: 'name other',
                     content: [{ type: 'token', attrs: { id: 'name' } }],
+                  },
+                  {
+                    key: 'missing',
+                    label: 'name missing',
+                    content: [{ type: 'text', text: 'this person' }],
                   },
                 ],
               },
@@ -90,6 +92,26 @@ describe('messageToDocument', () => {
         },
       ],
     });
+  });
+
+  it('shows the version for a missing value last, after each answer’s, and records it first', () => {
+    const message =
+      'Hi{kind, select, missing {} a {, A} b {, B} other {, someone}}!';
+    const structure = messageStructure(message);
+    if (!('nodes' in structure)) throw new Error('unreadable');
+    const document = messageToDocument(structure.nodes, PLAIN, labels);
+    const versions = document.content?.[0]?.content?.[1]?.attrs?.versions as {
+      key: string;
+    }[];
+    expect(versions.map(({ key }) => key)).toEqual([
+      'a',
+      'b',
+      'other',
+      'missing',
+    ]);
+    // Written back as the message had it, so opening a text never reorders
+    // what it says.
+    expect(roundTrip(message, PLAIN)).toBe(message);
   });
 
   it('refuses a value inside a link address', () => {

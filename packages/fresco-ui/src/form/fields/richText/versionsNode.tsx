@@ -145,28 +145,38 @@ const lineOf = (content: readonly JSONContent[]): JSONContent => ({
 const contentOf = (doc: JSONContent): JSONContent[] =>
   doc.content?.[0]?.content ?? [];
 
-const versionClasses = cx(
-  'inline-flex max-w-full items-baseline gap-1 rounded-sm',
-);
+// Each version is a row of the open element's grid: its label, then its
+// line. The row itself draws nothing, so the labels line up in one column.
+const versionClasses = cx('contents');
 
 const versionLabelClasses = cx(
-  'shrink-0 text-xs font-semibold text-current/70 select-none',
+  'text-xs font-semibold text-current/70 select-none',
 );
 
 // A version is one line, as tall as its words. Its paragraph is an inline
 // block rather than inline: ProseMirror ends a paragraph that is empty, or
 // that ends in a value, with a line break, and in an inline paragraph that
 // break starts a second, empty line, which doubled the version's height.
+// An empty version shows a muted hint that it shows nothing; the hint is
+// drawn by the placeholder, never written into the version.
 const versionEditorClasses = cx(
-  'inline-block min-w-8 rounded-sm bg-current/5 px-1',
+  'block min-w-8 rounded-sm bg-current/5 px-1',
   'focus-within:outline-primary focus-within:outline-2',
   '[&_.tiptap]:outline-none [&_.tiptap_p]:inline-block',
+  '[&_.tiptap_p.is-editor-empty::before]:content-[attr(data-placeholder)]',
+  '[&_.tiptap_p.is-editor-empty::before]:pointer-events-none',
+  '[&_.tiptap_p.is-editor-empty::before]:float-left',
+  '[&_.tiptap_p.is-editor-empty::before]:h-0',
+  '[&_.tiptap_p.is-editor-empty::before]:font-normal',
+  '[&_.tiptap_p.is-editor-empty::before]:italic',
+  '[&_.tiptap_p.is-editor-empty::before]:text-current/50',
 );
 
 /**
- * One version's line, edited in place by an editor of its own. A version
- * keeps its own undo history while the caret is in it. Escape hands the caret
- * back to the line around the versions, with the versions selected.
+ * One version's line, edited in place by an editor of its own. It keeps no
+ * history of its own: each edit is an edit of the line around it, undone and
+ * redone there, from either editor. Escape hands the caret back to the line
+ * around the versions, with the versions selected.
  */
 function VersionEditor({
   version,
@@ -178,6 +188,9 @@ function VersionEditor({
   onEscape: () => void;
 }) {
   const nested = useContext(NestedEditingContext);
+  // The content this editor last wrote into the line, to tell its own edit
+  // coming back from a change made in the line, such as an undo.
+  const writtenRef = useRef<readonly JSONContent[] | null>(null);
   const onChangeRef = useRef(onChange);
   const onEscapeRef = useRef(onEscape);
   onChangeRef.current = onChange;
@@ -222,7 +235,9 @@ function VersionEditor({
         },
       },
       onUpdate: ({ editor: updated }) => {
-        onChangeRef.current(contentOf(updated.getJSON()));
+        const written = contentOf(updated.getJSON());
+        writtenRef.current = written;
+        onChangeRef.current(written);
       },
       onFocus: ({ editor: focused }) => {
         nested?.onFocusEditor(focused);
@@ -232,15 +247,23 @@ function VersionEditor({
   );
 
   // The outer document is the record: an undo there, or a value replaced by
-  // the host, reaches this version through its attributes.
+  // the host, reaches this version through its attributes, also while the
+  // caret is in it. What this editor wrote itself is already here.
   useEffect(() => {
-    if (!editor || editor.isDestroyed || editor.isFocused) return;
-    if (!isEqual(contentOf(editor.getJSON()), content)) {
-      editor.commands.setContent(lineOf(content), {
-        emitUpdate: false,
-      });
+    if (!editor || editor.isDestroyed) return;
+    if (isEqual(contentOf(editor.getJSON()), content)) return;
+    if (editor.isFocused && isEqual(writtenRef.current, version.content)) {
+      return;
     }
-  }, [editor, content]);
+    const { from } = editor.state.selection;
+    writtenRef.current = null;
+    editor.commands.setContent(lineOf(content), { emitUpdate: false });
+    if (editor.isFocused) {
+      editor.commands.setTextSelection(
+        Math.min(from, editor.state.doc.content.size - 1),
+      );
+    }
+  }, [editor, content, version.content]);
 
   useEffect(() => {
     editor?.setEditable(nested?.editable ?? false, false);
@@ -353,7 +376,11 @@ function VersionsView({
         aria-controls={versionsId}
         data-versions-pill=""
         data-selected={selected || undefined}
-        className={tokenPillClasses('mx-0 cursor-pointer')}
+        // Open, the element shows its versions in the pill's place.
+        hidden={expanded}
+        className={tokenPillClasses(
+          cx('mx-0 cursor-pointer', expanded && 'hidden'),
+        )}
         // Selects the element and opens it, also when it was already
         // selected and folded.
         onClick={() => {
@@ -382,10 +409,12 @@ function VersionsView({
             setFocusWithin(false);
           }
         }}
+        // One row for each version, its label then its line, in the order
+        // the consumer gives them.
         className={cx(
-          expanded ? 'inline-flex' : 'hidden',
-          'ms-1 max-w-full flex-wrap items-baseline gap-x-2 gap-y-1 align-baseline',
-          'rounded-sm border border-dashed border-current/40 px-1 py-px',
+          expanded ? 'inline-grid' : 'hidden',
+          'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1 align-baseline',
+          'border-primary/40 bg-primary/5 rounded-sm border border-dashed px-2 py-1',
         )}
       >
         {attributes.versions.map((version, index) => (

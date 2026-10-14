@@ -163,7 +163,11 @@ describe('TranslationTable: text that shows values', () => {
       name: cellName('English'),
     });
     await waitFor(() => expect(editor).toHaveFocus());
-    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Inject piped text from interview metadata or a network attribute',
+      }),
+    );
     const [option] = await screen.findAllByRole('option', {
       name: /first_name/,
     });
@@ -198,7 +202,11 @@ describe('TranslationTable: text that shows values', () => {
       name: cellName('English'),
     });
     await waitFor(() => expect(editor).toHaveFocus());
-    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Inject piped text from interview metadata or a network attribute',
+      }),
+    );
     const [option] = await screen.findAllByRole('option', {
       name: /first_name/,
     });
@@ -256,7 +264,11 @@ describe('TranslationTable: text that shows values', () => {
       name: cellName('French'),
     });
     await waitFor(() => expect(editor).toHaveFocus());
-    await user.click(screen.getByRole('button', { name: 'Insert a value' }));
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Inject piped text from interview metadata or a network attribute',
+      }),
+    );
     const offered = (await screen.findAllByRole('option')).map(
       (option) => option.textContent ?? '',
     );

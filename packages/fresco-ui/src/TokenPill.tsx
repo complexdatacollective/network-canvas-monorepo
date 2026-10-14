@@ -1,5 +1,5 @@
 import type { DOMOutputSpec } from '@tiptap/pm/model';
-import { Database } from 'lucide-react';
+import { Syringe } from 'lucide-react';
 import { type ComponentPropsWithoutRef, Fragment } from 'react';
 
 import { cx } from './utils/cva';
@@ -23,7 +23,10 @@ export const tokenPillClasses = (className?: string) =>
     // A long label wraps like the words around it, each line drawn as the
     // pill, so a narrow column or table cell is never pushed wider.
     'mx-0.5 rounded-full border box-decoration-clone px-2 py-px',
-    'border-primary/40 bg-primary/10 font-semibold',
+    // The value's name in bold body type, whatever the text around it is set
+    // in, so a pill in a bold label or a heading reads as it does in the
+    // editor.
+    'border-primary/40 bg-primary/10 font-body font-bold',
     'data-selected:outline-primary data-selected:outline-2',
     '[&.ProseMirror-selectednode]:outline-primary [&.ProseMirror-selectednode]:outline-2',
     className,
@@ -49,7 +52,8 @@ const splitFirstWord = (label: string): readonly [string, string] => {
 const SVG = 'http://www.w3.org/2000/svg';
 
 /**
- * The icon a pill opens with, lucide's `Database` (a recorded value), as DOM
+ * The icon a pill opens with, lucide's `Syringe` (a value injected into the
+ * text), as DOM
  * the editor builds itself: lucide's own drawing of it, attribute for
  * attribute. Hidden from screen readers; the pill's words name it.
  */
@@ -64,11 +68,17 @@ const tokenPillIconSpec: DOMOutputSpec = [
     'stroke-linecap': 'round',
     'stroke-linejoin': 'round',
     'aria-hidden': 'true',
-    'class': `lucide lucide-database ${tokenPillIconClasses}`,
+    'class': `lucide lucide-syringe ${tokenPillIconClasses}`,
   },
-  [`${SVG} ellipse`, { cx: '12', cy: '5', rx: '9', ry: '3' }],
-  [`${SVG} path`, { d: 'M3 5V19A9 3 0 0 0 21 19V5' }],
-  [`${SVG} path`, { d: 'M3 12A9 3 0 0 0 21 12' }],
+  [`${SVG} path`, { d: 'm18 2 4 4' }],
+  [`${SVG} path`, { d: 'm17 7 3-3' }],
+  [
+    `${SVG} path`,
+    { d: 'M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5' },
+  ],
+  [`${SVG} path`, { d: 'm9 11 4 4' }],
+  [`${SVG} path`, { d: 'm5 19-3 3' }],
+  [`${SVG} path`, { d: 'm14 4 6 6' }],
 ];
 
 /**
@@ -96,7 +106,7 @@ export const TokenPillContent = ({ label }: { label: string }) => {
   return (
     <>
       <span className={tokenPillLeadClasses}>
-        <Database aria-hidden className={tokenPillIconClasses} />
+        <Syringe aria-hidden className={tokenPillIconClasses} />
         {first}
       </span>
       {rest}

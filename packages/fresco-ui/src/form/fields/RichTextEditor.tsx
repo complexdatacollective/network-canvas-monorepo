@@ -36,7 +36,6 @@ import { StarterKit } from '@tiptap/starter-kit';
 import { isEqual } from 'es-toolkit';
 import {
   Bold,
-  Database,
   Check,
   Heading1,
   Heading2,
@@ -49,6 +48,7 @@ import {
   Minus,
   Plus,
   Redo,
+  Syringe,
   Trash2,
   Undo,
 } from 'lucide-react';
@@ -164,6 +164,12 @@ const messages = defineMessages({
     id: 'frescoUi.richTextEditor.redo',
     defaultMessage: 'Redo',
     description: 'Accessible name of the redo button in the editor toolbar.',
+  },
+  emptyVersion: {
+    id: 'frescoUi.richTextEditor.emptyVersion',
+    defaultMessage: 'Shows nothing',
+    description:
+      'Muted hint shown inside an empty version of a piece of text, such as the version shown when a participant’s name is not known. An empty version is allowed: in that case nothing is shown in its place. The hint is not part of the text.',
   },
   insertToken: {
     id: 'frescoUi.richTextEditor.insertToken',
@@ -742,7 +748,34 @@ type ExtensionOptions = {
   trigger?: string;
   /** Told when the trigger is typed, and where it now sits. */
   onTrigger: (editor: Editor, position: number) => void;
+  /**
+   * For a version's own editor: the history its edits belong to, the field's.
+   * The version keeps none of its own, and its undo and redo keys act on the
+   * field's, so an edit in a version is undone like any other.
+   */
+  history?: SharedHistory;
+  /** Shows the placeholder while the editor cannot be edited, too. */
+  placeholderWhenReadOnly?: boolean;
 };
+
+/** Undo and redo in an editor that keeps the history for another. */
+type SharedHistory = Readonly<{
+  undo: () => boolean;
+  redo: () => boolean;
+}>;
+
+/** Hands the undo and redo keys to the editor that keeps the history. */
+const createSharedHistoryKeys = (history: SharedHistory) =>
+  Extension.create({
+    name: 'sharedHistoryKeys',
+    addKeyboardShortcuts() {
+      return {
+        'Mod-z': () => history.undo(),
+        'Shift-Mod-z': () => history.redo(),
+        'Mod-y': () => history.redo(),
+      };
+    },
+  });
 
 /**
  * Opens the insert menu when its trigger character is typed. The character
@@ -787,6 +820,8 @@ function createCustomExtensions({
   versions,
   trigger,
   onTrigger,
+  history,
+  placeholderWhenReadOnly = false,
 }: ExtensionOptions): AnyExtension[] {
   const CustomParagraph = Paragraph.extend({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
@@ -859,9 +894,14 @@ function createCustomExtensions({
         : false,
       strike: false,
       underline: false,
+      ...(history !== undefined && { undoRedo: false as const }),
     }),
     CustomParagraph,
   ];
+
+  if (history !== undefined) {
+    extensions.push(createSharedHistoryKeys(history));
+  }
 
   if (singleLine) {
     extensions.push(SingleLineDocument, SingleLineInput);
@@ -899,6 +939,7 @@ function createCustomExtensions({
     extensions.push(
       Placeholder.configure({
         placeholder,
+        showOnlyWhenEditable: !placeholderWhenReadOnly,
       }),
     );
   }
@@ -1146,6 +1187,10 @@ export default function RichTextEditorField({
     anchor: { left: number; top: number; height: number };
   } | null>(null);
   const [isInsertMenuOpen, setIsInsertMenuOpen] = useState(false);
+  // The editor an item from the insert menu was just put into. Closing the
+  // menu hands it the caret, so the next key, Undo included, acts on the
+  // text the item went into rather than on the button that opened the menu.
+  const pickedIntoRef = useRef<Editor | null>(null);
   const onTrigger = useCallback(
     (typedIn: Editor, position: number) => {
       const coords = typedIn.view.coordsAtPos(position);
@@ -1158,6 +1203,7 @@ export default function RichTextEditorField({
           height: coords.bottom - coords.top,
         },
       });
+      pickedIntoRef.current = null;
       setIsInsertMenuOpen(true);
     },
     [setTriggered, setIsInsertMenuOpen],
@@ -1190,15 +1236,20 @@ export default function RichTextEditorField({
     [],
   );
   const options = normalizeToolbarOptions(toolbarOptions, singleLine);
-  // By what they say rather than by identity: a host passing a fresh array
-  // on every render would otherwise rebuild the editor on every render. The
-  // editor holds only what a pill shows; which are required is the toolbar's.
+  // By what they say rather than by identity or order: a host passing a
+  // fresh array on every render, or the same placeholders in another order,
+  // would otherwise rebuild the editor, and a rebuilt editor starts its undo
+  // history again. Inserting a value from the menu reorders the host's list
+  // as the value is bound, so Undo found nothing to undo. The editor holds
+  // only what a pill shows; which are required is the toolbar's.
   const tokensKey = JSON.stringify(
-    (tokensProp ?? []).map(({ id: tokenId, label, text }) => ({
-      id: tokenId,
-      label,
-      ...(text !== undefined && { text }),
-    })),
+    (tokensProp ?? [])
+      .map(({ id: tokenId, label, text }) => ({
+        id: tokenId,
+        label,
+        ...(text !== undefined && { text }),
+      }))
+      .toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)),
   );
   const tokens = useMemo(
     (): readonly RichTextEditorToken[] =>
@@ -1337,8 +1388,33 @@ export default function RichTextEditorField({
       onTrigger,
     ],
   );
+  // The field's own editor, once there is one: it keeps the history of every
+  // edit, those made in a version's own editor included.
+  const fieldEditorRef = useRef<Editor | null>(null);
+  const sharedHistory = useMemo((): SharedHistory => {
+    const inField = (step: 'undo' | 'redo') => () => {
+      const field = fieldEditorRef.current;
+      if (field === null || field.isDestroyed) return false;
+      const done = field.commands[step]();
+      // A step that takes away the version the caret was in hands the caret
+      // to the line, once the version's editor has gone.
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (field.isDestroyed) return;
+        if (active === null || active === document.body) {
+          field.commands.focus();
+        }
+      }, 0);
+      return done;
+    };
+    return { undo: inField('undo'), redo: inField('redo') };
+  }, []);
+  const emptyVersionText = intl.formatMessage(messages.emptyVersion);
   // What each version of a piece of text is edited with: everything the
-  // field's own line can hold, on one line.
+  // field's own line can hold, on one line. A version has no history of its
+  // own: an edit in it is an edit of the field's line, undone from either.
+  // An empty version says that it shows nothing, which is a choice the text
+  // can make, such as leaving out a greeting's name when it is not known.
   const versionExtensions = useMemo(
     () =>
       versions
@@ -1349,13 +1425,24 @@ export default function RichTextEditorField({
             enableLinks: options.links,
             enableThematicBreak: false,
             singleLine: true,
+            placeholder: emptyVersionText,
+            placeholderWhenReadOnly: true,
             tokens,
             versions,
             trigger: insertMenu?.trigger,
             onTrigger,
+            history: sharedHistory,
           })
         : [],
-    [options.links, tokens, versions, insertMenu?.trigger, onTrigger],
+    [
+      options.links,
+      tokens,
+      versions,
+      insertMenu?.trigger,
+      onTrigger,
+      sharedHistory,
+      emptyVersionText,
+    ],
   );
   const caretAnchorRef = useRef<HTMLSpanElement>(null);
   const nestedEditing = useMemo(
@@ -1450,6 +1537,7 @@ export default function RichTextEditorField({
     },
     [autoFocus, editorExtensions],
   );
+  fieldEditorRef.current = editor;
 
   const target =
     versionEditor !== null && !versionEditor.isDestroyed
@@ -1469,9 +1557,15 @@ export default function RichTextEditorField({
       isLink: e?.isActive('link') ?? false,
       isBulletList: e?.isActive('bulletList') ?? false,
       isOrderedList: e?.isActive('orderedList') ?? false,
+      placedTokens: editor === null ? '' : placedTokenIds(editor.state.doc),
+    }),
+  });
+  // The field's editor keeps the history, of edits in its versions too.
+  const historyState = useEditorState({
+    editor,
+    selector: ({ editor: e }) => ({
       canUndo: e?.can().undo() ?? false,
       canRedo: e?.can().redo() ?? false,
-      placedTokens: editor === null ? '' : placedTokenIds(editor.state.doc),
     }),
   });
   const placedTokens = new Set(editorState.placedTokens.split('\n'));
@@ -1708,16 +1802,28 @@ export default function RichTextEditorField({
         )
         .run();
       selectInsertedVersions(into, position, sizeBefore, typed ? 1 : 0);
+      pickedIntoRef.current = into;
     } else {
       const { from, to } = actOn.state.selection;
       const sizeBefore = actOn.state.doc.content.size;
       actOn.chain().focus().insertContent(content).run();
       selectInsertedVersions(actOn, from, sizeBefore, to - from);
+      pickedIntoRef.current = actOn;
     }
     setTriggered(null);
     setIsInsertMenuOpen(false);
   };
   const showHistory = options.history;
+  // Undone or redone in the field's history, with the caret handed back to
+  // the editor it was in: a version's, while that version is still there.
+  const actInHistory = (step: 'undo' | 'redo') => {
+    if (actOn === editor) {
+      editor.chain().focus()[step]().run();
+      return;
+    }
+    editor.commands[step]();
+    if (!actOn.isDestroyed) actOn.commands.focus();
+  };
 
   // Track which groups are visible for separator logic
   const visibleGroups = [
@@ -2140,6 +2246,7 @@ export default function RichTextEditorField({
                     open={isInsertMenuOpen && !isDisabled}
                     onOpenChange={(open) => {
                       setIsInsertMenuOpen(open);
+                      if (open) pickedIntoRef.current = null;
                       if (!open) setTriggered(null);
                     }}
                   >
@@ -2157,7 +2264,7 @@ export default function RichTextEditorField({
                               aria-label={insertMenu.label}
                               onMouseDown={() => setTriggered(null)}
                             >
-                              <Database aria-hidden />
+                              <Syringe aria-hidden />
                             </ToolbarButton>
                           }
                         />
@@ -2168,13 +2275,18 @@ export default function RichTextEditorField({
                       align="start"
                       side="bottom"
                       anchor={triggered === null ? undefined : caretAnchorRef}
-                      // Opened by typing, the menu hands the caret back to
-                      // the text it was typed in.
-                      finalFocus={
-                        triggered === null
-                          ? undefined
-                          : { current: triggered.editor.view.dom }
-                      }
+                      // Closed by a pick, the menu hands the caret to the text
+                      // the item went into; opened by typing, back to the
+                      // text it was typed in.
+                      finalFocus={() => {
+                        const picked = pickedIntoRef.current;
+                        if (picked !== null && !picked.isDestroyed) {
+                          return picked.view.dom;
+                        }
+                        return triggered === null
+                          ? true
+                          : triggered.editor.view.dom;
+                      }}
                     >
                       <InsertMenuList menu={insertMenu} onPick={insertItem} />
                     </PopoverContent>
@@ -2233,17 +2345,17 @@ export default function RichTextEditorField({
               <Toolbar.Group className={toolbarGroupStyles}>
                 <ToolbarButton
                   className={toolbarButtonStyles}
-                  disabled={isDisabled || !editorState.canUndo}
+                  disabled={isDisabled || !historyState?.canUndo}
                   aria-label={intl.formatMessage(messages.undo)}
-                  onClick={() => actOn.chain().focus().undo().run()}
+                  onClick={() => actInHistory('undo')}
                 >
                   <Undo />
                 </ToolbarButton>
                 <ToolbarButton
                   className={toolbarButtonStyles}
-                  disabled={isDisabled || !editorState.canRedo}
+                  disabled={isDisabled || !historyState?.canRedo}
                   aria-label={intl.formatMessage(messages.redo)}
-                  onClick={() => actOn.chain().focus().redo().run()}
+                  onClick={() => actInHistory('redo')}
                 >
                   <Redo />
                 </ToolbarButton>

@@ -32,7 +32,9 @@ const insertTodayInPrompt = async (harness: ReturnType<typeof openCensus>) => {
   await harness.user.click(screen.getByRole('button', { name: 'Edit prompt' }));
   const dialog = within(await screen.findByRole('dialog'));
   await harness.user.click(
-    dialog.getByRole('button', { name: 'Insert a value' }),
+    dialog.getByRole('button', {
+      name: 'Inject piped text from interview metadata or a network attribute',
+    }),
   );
   await harness.user.click(
     await screen.findByRole('option', { name: /Today’s date/ }),
@@ -139,7 +141,9 @@ describe('a value with answers inserted in a row dialog', () => {
     );
     const dialog = within(await screen.findByRole('dialog'));
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Insert a value' }),
+      dialog.getByRole('button', {
+        name: 'Inject piped text from interview metadata or a network attribute',
+      }),
     );
     await harness.user.click(
       await screen.findByRole('option', { name: option }),
@@ -177,7 +181,9 @@ describe('a yes-or-no value without labels for its answers', () => {
     );
     const dialog = within(await screen.findByRole('dialog'));
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Insert a value' }),
+      dialog.getByRole('button', {
+        name: 'Inject piped text from interview metadata or a network attribute',
+      }),
     );
 
     const asItself = await screen.findByRole('option', {
@@ -241,7 +247,9 @@ describe('a form field saved before fields had ids', () => {
     if (first === undefined) throw new Error('No field to edit');
     await harness.user.click(first);
     const dialog = within(await screen.findByRole('dialog'));
-    const [insert] = dialog.getAllByRole('button', { name: 'Insert a value' });
+    const [insert] = dialog.getAllByRole('button', {
+      name: 'Inject piped text from interview metadata or a network attribute',
+    });
     if (insert === undefined) throw new Error('No insert button');
     await harness.user.click(insert);
 
@@ -266,7 +274,9 @@ describe("a value inserted in a form field's question", () => {
     if (first === undefined) throw new Error('No field to edit');
     await harness.user.click(first);
     const dialog = within(await screen.findByRole('dialog'));
-    const [insert] = dialog.getAllByRole('button', { name: 'Insert a value' });
+    const [insert] = dialog.getAllByRole('button', {
+      name: 'Inject piped text from interview metadata or a network attribute',
+    });
     if (insert === undefined) throw new Error('No insert button');
     await harness.user.click(insert);
     await harness.user.click(

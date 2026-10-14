@@ -721,19 +721,23 @@ const nameVersions: JSONContent = {
   type: 'versions',
   attrs: {
     label: 'Whether Name is known',
+    summary: 'Name',
     versions: [
-      { key: 'missing', label: 'When Name is missing', content: [] },
       {
         key: 'other',
         label: 'When Name is known',
         content: [{ type: 'token', attrs: { id: 'name' } }],
       },
+      { key: 'missing', label: 'When Name is missing', content: [] },
     ],
   },
 };
 
+const INSERT_LABEL =
+  'Inject piped text from interview metadata or a network attribute';
+
 const insertMenu: RichTextInsertMenu = {
-  label: 'Insert a value',
+  label: INSERT_LABEL,
   trigger: '{',
   items: [
     {
@@ -802,7 +806,7 @@ const valueOf = (canvasElement: HTMLElement): JSONContent =>
  * <RichTextEditorField
  *   tokens={[{ id: 'name', label: 'Name', text: '{name}', inToolbar: false }]}
  *   versions
- *   insertMenu={{ label: 'Insert a value', trigger: '{', items }}
+ *   insertMenu={{ label: 'Inject piped text…', trigger: '{', items }}
  *   value={value}
  *   onChange={setValue}
  * />
@@ -829,23 +833,51 @@ export const WithVersionsAndInsertMenu: Story = {
     await userEvent.click(editor);
 
     // Inserted from the toolbar, by searching and choosing.
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Insert a value' }),
-    );
+    await userEvent.click(canvas.getByRole('button', { name: INSERT_LABEL }));
     const search = await body.findByRole('combobox', { name: 'Search' });
     await userEvent.type(search, 'nam');
     await userEvent.keyboard('{Enter}');
 
-    // Just inserted, the versions are open for writing.
+    // Just inserted, the versions are open for writing, in the pill's
+    // place, one to a row in the order given; the caret is back in the line.
     const missing = await canvas.findByRole('textbox', {
       name: 'When Name is missing',
     });
-    await expect(
-      canvas.getByRole('group', { name: 'Whether Name is known' }),
-    ).toBeInTheDocument();
-    await expect(
-      canvas.getByRole('button', { name: 'Whether Name is known' }),
-    ).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => expect(editor).toHaveFocus());
+    const group = canvas.getByRole('group', { name: 'Whether Name is known' });
+    const pill = group.querySelector('[data-versions-pill]');
+    await expect(pill).toHaveAttribute('aria-expanded', 'true');
+    await expect(pill).not.toBeVisible();
+    const known = canvas.getByRole('textbox', { name: 'When Name is known' });
+    await expect(known.getBoundingClientRect().top).toBeLessThan(
+      missing.getBoundingClientRect().top,
+    );
+    // An empty version says it shows nothing; the hint is not its text.
+    await expect(missing.querySelector('p')).toHaveAttribute(
+      'data-placeholder',
+      'Shows nothing',
+    );
+    await expect(missing.textContent).toBe('');
+
+    // Undo takes the insertion back, and redo brings it again.
+    await userEvent.keyboard('{Control>}z{/Control}');
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole('group', { name: 'Whether Name is known' }),
+      ).toBeNull(),
+    );
+    await userEvent.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    const restored = await canvas.findByRole('group', {
+      name: 'Whether Name is known',
+    });
+    // Redone, it is open again if the redo selected it; its pill opens it if not.
+    const restoredPill = restored.querySelector<HTMLElement>(
+      '[data-versions-pill]',
+    );
+    if (restoredPill !== null && !restoredPill.hidden) {
+      await userEvent.click(restoredPill);
+    }
+    await canvas.findByRole('textbox', { name: 'When Name is missing' });
     // Each version is as tall as its line of words, not as the field's own
     // text area: an empty one included.
     const lineHeight =
@@ -856,7 +888,9 @@ export const WithVersionsAndInsertMenu: Story = {
       ).toBeLessThan(lineHeight);
     }
     // A version is written in place.
-    await userEvent.click(missing);
+    await userEvent.click(
+      canvas.getByRole('textbox', { name: 'When Name is missing' }),
+    );
     await userEvent.keyboard('this person');
     await waitFor(() =>
       expect(JSON.stringify(valueOf(canvasElement))).toContain('this person'),
@@ -867,9 +901,10 @@ export const WithVersionsAndInsertMenu: Story = {
     // back.
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(editor).toHaveFocus());
-    await expect(
-      canvas.getByRole('button', { name: 'Whether Name is known' }),
-    ).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvas.getByRole('button', { name: 'Name' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
     // Apart from the edits before it, so undo takes back only the removal.
     await new Promise((resolve) => setTimeout(resolve, 600));
     await userEvent.keyboard('{Backspace}');
@@ -930,9 +965,7 @@ export const InsertMenuWithAnUnavailableItem: Story = {
     const editor = await canvas.findByRole('textbox', { name: 'Question' });
     await userEvent.click(editor);
 
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Insert a value' }),
-    );
+    await userEvent.click(canvas.getByRole('button', { name: INSERT_LABEL }));
     const unavailable = await body.findByRole('option', { name: /Smokes/ });
     await expect(unavailable).toHaveAttribute('aria-disabled', 'true');
     await expect(unavailable).toHaveTextContent(
@@ -943,9 +976,7 @@ export const InsertMenuWithAnUnavailableItem: Story = {
     await expect(editor.querySelector('[data-token="smokes"]')).toBeNull();
 
     // An available item still inserts.
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Insert a value' }),
-    );
+    await userEvent.click(canvas.getByRole('button', { name: INSERT_LABEL }));
     await userEvent.click(await body.findByRole('option', { name: /Age/ }));
     await waitFor(() =>
       expect(editor.querySelector('[data-token="age"]')).not.toBeNull(),

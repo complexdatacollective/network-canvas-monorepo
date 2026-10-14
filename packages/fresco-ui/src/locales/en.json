@@ -767,6 +767,10 @@
     "defaultMessage": "Bullet list",
     "description": "Accessible name of the bullet-list toggle in the editor toolbar."
   },
+  "frescoUi.richTextEditor.emptyVersion": {
+    "defaultMessage": "Shows nothing",
+    "description": "Muted hint shown inside an empty version of a piece of text, such as the version shown when a participant’s name is not known. An empty version is allowed: in that case nothing is shown in its place. The hint is not part of the text."
+  },
   "frescoUi.richTextEditor.heading1": {
     "defaultMessage": "Heading 1",
     "description": "Accessible name of the level-1 heading toggle in the editor toolbar."

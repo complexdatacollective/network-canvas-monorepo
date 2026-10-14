@@ -4,10 +4,11 @@ import type {
   RichTextVersion,
   RichTextVersionsAttributes,
 } from '@codaco/fresco-ui/form/fields/RichTextEditor';
-import type {
-  MessageNode,
-  MessageSwitch,
-  MessageVersion,
+import {
+  MISSING_CASE,
+  type MessageNode,
+  type MessageSwitch,
+  type MessageVersion,
 } from '@codaco/protocol-validation';
 
 import {
@@ -49,6 +50,30 @@ type SwitchMeta = Readonly<{
   type: MessageSwitch['type'];
   offset?: number;
 }>;
+
+/**
+ * A switch's versions in the order the editor shows them: what the text reads
+ * when the value is known (or for each answer) first, and the version for
+ * when it is not known last.
+ */
+const inShownOrder = <Version extends Readonly<{ key: string }>>(
+  versions: readonly Version[],
+): Version[] => [
+  ...versions.filter(({ key }) => key !== MISSING_CASE),
+  ...versions.filter(({ key }) => key === MISSING_CASE),
+];
+
+/**
+ * A switch's versions in the order the message records them: the version
+ * for when the value is not known first, as the insert menu writes it, so
+ * opening and editing a text never reorders what it already says.
+ */
+const inRecordedOrder = <Version extends Readonly<{ key: string }>>(
+  versions: readonly Version[],
+): Version[] => [
+  ...versions.filter(({ key }) => key === MISSING_CASE),
+  ...versions.filter(({ key }) => key !== MISSING_CASE),
+];
 
 const isSwitchMeta = (value: unknown): value is SwitchMeta =>
   typeof value === 'object' &&
@@ -220,14 +245,16 @@ export const messageToDocument = (
         });
       } else {
         const inner = node.type === 'plural' ? node.argument : plural;
-        const versions: RichTextVersion[] = node.versions.map((version) => {
-          const nested = level(version.nodes, inner);
-          return {
-            key: version.key,
-            label: labels.versionLabel(node, version.key),
-            content: versionLine(nested.text, nested.pieces, format),
-          };
-        });
+        const versions: RichTextVersion[] = inShownOrder(node.versions).map(
+          (version) => {
+            const nested = level(version.nodes, inner);
+            return {
+              key: version.key,
+              label: labels.versionLabel(node, version.key),
+              content: versionLine(nested.text, nested.pieces, format),
+            };
+          },
+        );
         const meta: SwitchMeta = {
           argument: node.argument,
           type: node.type,
@@ -331,7 +358,7 @@ const pieceNode = (
   }
   const meta: unknown = attrs.meta;
   if (!isSwitchMeta(meta) || !Array.isArray(attrs.versions)) return undefined;
-  const versions = (attrs.versions as RichTextVersion[]).map(
+  const versions = inRecordedOrder(attrs.versions as RichTextVersion[]).map(
     (version): MessageVersion => ({
       key: version.key,
       nodes: messageNodesOf(

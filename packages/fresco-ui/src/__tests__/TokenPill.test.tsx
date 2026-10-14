@@ -21,11 +21,23 @@ describe('TokenPill', () => {
     expect(pillOf(container)?.className).toBe(tokenPillClasses());
   });
 
+  it('sets the value’s name in bold body type, whatever surrounds it', () => {
+    // A field label is bold in the heading face; a pill in it reads as the
+    // editor's pill does, not as the label's own weight and face.
+    const { container } = render(
+      <span className="font-heading font-bold">
+        Hello <TokenPill token="name" label="Name" />
+      </span>,
+    );
+
+    expect(pillOf(container)).toHaveClass('font-body', 'font-bold');
+  });
+
   it('opens with the value icon, hidden from screen readers', () => {
     const { container } = render(<TokenPill token="name" label="Name" />);
 
     const icon = container.querySelector('svg');
-    expect(icon).toHaveClass('lucide-database');
+    expect(icon).toHaveClass('lucide-syringe');
     expect(icon).toHaveAttribute('aria-hidden', 'true');
   });
 
