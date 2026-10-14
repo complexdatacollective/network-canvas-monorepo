@@ -47,8 +47,8 @@ export type ProtocolValidationResult =
 export const FINISH_STAGE_TEXT_MISSING = 'finish_stage_text_missing';
 
 const FINISH_STAGE_TEXT_LABELS = {
-  title: 'heading',
-  content: 'text',
+  content: 'closing text',
+  finishedContent: 'finished text',
 } as const;
 
 /**
@@ -71,8 +71,8 @@ const finishStageTextIssues = (
 export type ValidateProtocolOptions = {
   /**
    * The protocol is still being written, in an editor: allow what a protocol
-   * may lack until it leaves the editor, which is the finish stage's heading
-   * and text in its default language. Everything that reads a protocol
+   * may lack until it leaves the editor, which is the finish stage's closing
+   * and finished text in its default language. Everything that reads a protocol
    * someone has handed over — an import, a publish, a download — leaves this
    * off.
    */

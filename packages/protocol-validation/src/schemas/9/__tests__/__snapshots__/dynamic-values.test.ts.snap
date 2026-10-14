@@ -19,7 +19,7 @@ exports[`dynamic values in stage text > tags exactly the inventoried stage sites
   "FamilyPedigree nominationPrompts.#.text prompt",
   "FamilyPedigree prompt prompt",
   "FinishSession content stageText",
-  "FinishSession title stageText",
+  "FinishSession finishedContent stageText",
   "Geospatial prompts.#.text prompt",
   "Information items.#.content stageText",
   "Information title stageText",

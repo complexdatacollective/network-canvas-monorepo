@@ -17,7 +17,7 @@ import {
   getCurrentStage,
   getNavigationInfo,
   getPromptCount,
-  getStageCount,
+  getProgressStageCount,
 } from '../selectors/session';
 import {
   getNavigableStages,
@@ -106,6 +106,14 @@ export default function useInterviewNavigation(
     ? (getInterface(stage.type) as ElementType<CurrentInterfaceProps>)
     : null;
 
+  // The interview never moves forward from a finish stage: it ends there,
+  // and a later finish stage is reached only by a route that passes this one.
+  // An automatic finish stage cannot be left backwards either: it has
+  // already started ending the interview.
+  const finishMode = stage?.type === 'FinishSession' ? stage.mode : undefined;
+  const blocksForward = finishMode !== undefined;
+  const blocksBackward = finishMode === 'automatic';
+
   const { isReady: isReadyForNextStage } = useReadyForNextStage();
   const { isLastPrompt, isFirstPrompt, promptIndex } =
     useStageSelector(getNavigationInfo);
@@ -113,7 +121,7 @@ export default function useInterviewNavigation(
   const currentNavigation = useSelector((state: RootState) =>
     getNavigableStages(state, currentStep),
   );
-  const stageCount = useSelector(getStageCount);
+  const stageCount = useSelector(getProgressStageCount);
   const promptCount = useStageSelector(getPromptCount);
   // Passed to getInterviewProgress to compute the participant-facing progress
   // meta handed back to the host via onStepChange.
@@ -139,12 +147,11 @@ export default function useInterviewNavigation(
   // to, before the session state has caught up. The session's value wins
   // whenever it changes — compared during render rather than reapplied by an
   // effect, which would paint the superseded figure for a frame first.
-  const sessionProgress = calculateProgress(
-    currentStep,
-    stageCount,
-    promptIndex,
-    promptCount,
-  );
+  // Every finish stage ends the interview, so each one is complete progress.
+  const sessionProgress =
+    stage?.type === 'FinishSession'
+      ? 100
+      : calculateProgress(currentStep, stageCount, promptIndex, promptCount);
   const [progress, setProgress] = useState(sessionProgress);
   const [appliedSessionProgress, setAppliedSessionProgress] =
     useState(sessionProgress);
@@ -220,6 +227,7 @@ export default function useInterviewNavigation(
   };
 
   const moveForward = useCallback(async () => {
+    if (blocksForward) return;
     setForceNavigationDisabled(true);
     setHasAttemptedStageNavigation(true);
 
@@ -268,6 +276,7 @@ export default function useInterviewNavigation(
       setForceNavigationDisabled(false);
     }
   }, [
+    blocksForward,
     dispatch,
     isLastPrompt,
     promptIndex,
@@ -281,6 +290,7 @@ export default function useInterviewNavigation(
   ]);
 
   const moveBackward = useCallback(async () => {
+    if (blocksBackward) return;
     setForceNavigationDisabled(true);
     setHasAttemptedStageNavigation(true);
 
@@ -323,6 +333,7 @@ export default function useInterviewNavigation(
       setForceNavigationDisabled(false);
     }
   }, [
+    blocksBackward,
     setStep,
     dispatch,
     isFirstPrompt,
@@ -344,6 +355,8 @@ export default function useInterviewNavigation(
       // A review never reaches a finish stage: finishing is not something a
       // review can do.
       if (reviewMode && targetIndex >= reviewEnd) return;
+      if (blocksForward && targetIndex > currentStep) return;
+      if (blocksBackward && targetIndex < currentStep) return;
 
       setForceNavigationDisabled(true);
       setHasAttemptedStageNavigation(true);
@@ -401,6 +414,8 @@ export default function useInterviewNavigation(
       }
     },
     [
+      blocksBackward,
+      blocksForward,
       currentStep,
       displayedStep,
       protocolStages,
@@ -526,17 +541,20 @@ export default function useInterviewNavigation(
     moveBackward,
     goToStage,
     disableMoveForward:
+      blocksForward ||
       forceNavigationDisabled ||
       isTransitioning ||
       !canMoveForward ||
       (isAtReviewEnd &&
         (beforeNextHandlerCount === 0 || reviewBoundaryReached)),
     disableMoveBackward:
+      blocksBackward ||
       forceNavigationDisabled ||
       isTransitioning ||
       ((!canMoveBackward || (isFirstPrompt && !hasPreviousAvailableStage)) &&
         (beforeNextHandlerCount === 0 || !hasAttemptedStageNavigation)),
     pulseNext:
+      !blocksForward &&
       (!isAtReviewEnd ||
         (beforeNextHandlerCount > 0 && !reviewBoundaryReached)) &&
       isReadyForNextStage,

@@ -547,12 +547,12 @@ describe('mapInterviewForViewer', () => {
     const finishStage = (id: string, bindings: Record<string, string>) => ({
       id,
       type: 'FinishSession',
+      mode: 'confirmation',
       label: { en: 'Finish' },
-      title: { en: 'Thank you' },
-      content: { en: 'Done.' },
+      content: { en: '# Thank you\n\nDone.' },
+      finishedContent: { en: '# Interview Finished' },
       finishLabel: { en: 'Finish' },
       finishConfirmation: { en: 'Finish this interview?' },
-      finishedNotice: { en: 'This interview is finished.' },
       finishFailed: { en: 'The interview could not be finished.' },
       outcome: 'completed',
       dynamicValues: Object.fromEntries(

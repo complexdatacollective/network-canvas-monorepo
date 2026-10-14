@@ -689,8 +689,7 @@ const ProtocolSchema = z
         }
       });
 
-      // Every route ends at a finish stage, every stage is on a route, and a
-      // protocol has exactly one finish stage.
+      // Every route ends at a finish stage, and every stage is on a route.
       for (const problem of findTimelineStructureProblems(stages)) {
         switch (problem.kind) {
           case 'empty':
@@ -713,13 +712,6 @@ const ProtocolSchema = z
             ctx.addIssue({
               code: 'custom' as const,
               message: `This stage comes after the finish stage at position ${problem.finishStageIndex + 1}, so no participant can reach it.`,
-              path: [problem.stageIndex],
-            });
-            break;
-          case 'second-finish':
-            ctx.addIssue({
-              code: 'custom' as const,
-              message: `A protocol has exactly one finish stage, but this is a second one: the first is at position ${problem.finishStageIndex + 1}.`,
               path: [problem.stageIndex],
             });
             break;

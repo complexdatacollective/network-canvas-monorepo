@@ -223,8 +223,17 @@ export function generateNetwork(
   };
 
   const totalStages = stages.length;
+  // Dropout is drawn against the length of the main route, which ends at the
+  // first finish stage. Endings after it are alternatives a route reaches only
+  // by skipping to one, so adding or reordering them must not change how
+  // likely a participant is to drop out on the way.
+  const firstFinishIndex = stages.findIndex(isFinishSessionStage);
+  const routeLength =
+    firstFinishIndex === -1 ? totalStages : firstFinishIndex + 1;
+  let stagesVisited = 0;
   let currentStep = 0;
   let droppedOut = false;
+  let reachedFinish = false;
 
   for (let i = 0; i < stages.length; i++) {
     const stage = stages[i]!;
@@ -253,13 +262,36 @@ export function generateNetwork(
       }
     }
 
+    // An automatic finish stage ends the interview on arrival, so nobody can
+    // leave it unfinished; a confirming one can be left without pressing
+    // Finish, like any other stage.
+    if (isFinishSessionStage(stage) && stage.mode === 'automatic') {
+      reachedFinish = true;
+      currentStep = i;
+      break;
+    }
+
+    stagesVisited += 1;
+
     if (simulateDropOut) {
-      const dropOutChance = ((i + 1) / totalStages) * ctx.config.dropOutFactor;
+      // Measured by the stages this route has shown rather than by position,
+      // so skipped stages and bypassed endings do not count as progress.
+      const dropOutChance =
+        Math.min(stagesVisited / routeLength, 1) * ctx.config.dropOutFactor;
       if (valueGen.randomFloat(0, 1) < dropOutChance) {
         droppedOut = true;
         currentStep = i;
         break;
       }
+    }
+
+    // A route ends at the first finish stage it reaches, which may be an
+    // earlier one than the last when skip logic sends routes to different
+    // endings. Nothing after it runs.
+    if (isFinishSessionStage(stage)) {
+      reachedFinish = true;
+      currentStep = i;
+      break;
     }
 
     // Content stages run no handler at all: they add no node or edge and write
@@ -332,13 +364,11 @@ export function generateNetwork(
     markStageInProgress(ctx, draft, inProgressStage);
   }
 
-  // A completed interview rests on the finish stage it ended at, where a
-  // participant's finished interview is recorded. A list without one (only a
-  // fragment of a protocol, as tests pass) rests on its last stage.
-  if (!droppedOut) {
-    const finishIndex = stages.findLastIndex(isFinishSessionStage);
-    currentStep =
-      finishIndex === -1 ? Math.max(totalStages - 1, 0) : finishIndex;
+  // A completed interview rests on the finish stage it ended at (set above),
+  // where a participant's finished interview is recorded. A list without one
+  // (only a fragment of a protocol, as tests pass) rests on its last stage.
+  if (!droppedOut && !reachedFinish) {
+    currentStep = Math.max(totalStages - 1, 0);
   }
 
   return {

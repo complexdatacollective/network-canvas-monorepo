@@ -35,7 +35,7 @@ const fixture = vi.hoisted(() => ({
     stageId: 'finish',
     stageIndex: 0,
     locale: 'ja',
-    missing: ['title', 'content'],
+    missing: ['content', 'finishedContent'],
   } as const,
   protocol: {
     id: 'research_protocol',
@@ -207,7 +207,7 @@ it.each(['active', 'library', 'unsaved'] as const)(
 );
 
 it.each(['active', 'library', 'unsaved'] as const)(
-  'refuses the %s download while the finish stage has no heading or text in the default language',
+  'refuses the %s download while the finish stage has no closing or finished text in the default language',
   async (surface) => {
     fixture.refusal = 'finish-stage-text';
     renderSurface(surface);
@@ -217,7 +217,7 @@ it.each(['active', 'library', 'unsaved'] as const)(
       within(dialog).getByText('This protocol can’t be downloaded yet'),
     ).toBeInTheDocument();
     expect(dialog).toHaveTextContent(
-      'The stage that ends the interview has no heading or text in Japanese. The protocol can’t be downloaded until they’re added.',
+      'A stage that ends the interview has no text for its closing screen or its finished screen in Japanese. The protocol can’t be downloaded until',
     );
     fireEvent.click(within(dialog).getByRole('button', { name: 'OK' }));
     await waitFor(() =>

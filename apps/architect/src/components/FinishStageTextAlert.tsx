@@ -15,41 +15,41 @@ const messages = defineMessages({
     id: 'architect.finishStageText.cannotBeDownloadedYet',
     defaultMessage: 'This protocol can’t be downloaded yet',
     description:
-      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while the stage that ends the interview has no heading or text in the protocol’s default language.',
+      'Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language.',
   },
-  missingHeadingAndText: {
-    id: 'architect.finishStageText.missingHeadingAndText',
+  missingClosingAndFinishedText: {
+    id: 'architect.finishStageText.missingClosingAndFinishedText',
     defaultMessage:
-      'The stage that ends the interview has no heading or text in {language}. The protocol can’t be downloaded until they’re added.',
+      'A stage that ends the interview has no text for its closing screen or its finished screen in {language}. The protocol can’t be downloaded until they’re added.',
     description:
-      'Shown while the stage that ends the interview has neither a heading nor text in the protocol’s default language. language is the name of that language, for example “Japanese”.',
+      'Shown while a stage that ends the interview (a Finish Screen stage) has neither the text of its closing screen (where the participant finishes the interview) nor the text of its finished screen (shown once the interview has ended) in the protocol’s default language. language is the name of that language, for example “Japanese”.',
   },
-  missingHeading: {
-    id: 'architect.finishStageText.missingHeading',
+  missingClosingText: {
+    id: 'architect.finishStageText.missingClosingText',
     defaultMessage:
-      'The stage that ends the interview has no heading in {language}. The protocol can’t be downloaded until it’s added.',
+      'A stage that ends the interview has no text for its closing screen in {language}. The protocol can’t be downloaded until it’s added.',
     description:
-      'Shown while the stage that ends the interview has text but no heading in the protocol’s default language. language is the name of that language, for example “Japanese”.',
+      'Shown while a stage that ends the interview (a Finish Screen stage) has no text for its closing screen, where the participant finishes the interview, in the protocol’s default language. language is the name of that language, for example “Japanese”.',
   },
-  missingText: {
-    id: 'architect.finishStageText.missingText',
+  missingFinishedText: {
+    id: 'architect.finishStageText.missingFinishedText',
     defaultMessage:
-      'The stage that ends the interview has no text in {language}. The protocol can’t be downloaded until it’s added.',
+      'A stage that ends the interview has no text for its finished screen in {language}. The protocol can’t be downloaded until it’s added.',
     description:
-      'Shown while the stage that ends the interview has a heading but no text in the protocol’s default language. language is the name of that language, for example “Japanese”.',
+      'Shown while a stage that ends the interview (a Finish Screen stage) has no text for its finished screen, shown to the participant once the interview has ended, in the protocol’s default language. language is the name of that language, for example “Japanese”.',
   },
   editFinishStage: {
     id: 'architect.finishStageText.editFinishStage',
     defaultMessage: 'Edit the stage that ends the interview',
     description:
-      'Link in the notice about the missing heading or text. It opens the editor for the stage that ends the interview.',
+      'Link in the notice about the missing closing or finished screen text. It opens the editor for the stage that ends the interview.',
   },
 });
 
 const describeProblem = ({ missing }: FinishStageTextProblem) => {
-  if (!missing.includes('title')) return messages.missingText;
-  if (!missing.includes('content')) return messages.missingHeading;
-  return messages.missingHeadingAndText;
+  if (!missing.includes('content')) return messages.missingFinishedText;
+  if (!missing.includes('finishedContent')) return messages.missingClosingText;
+  return messages.missingClosingAndFinishedText;
 };
 
 /** The title for a refused download, matching the notice's own. */
@@ -76,8 +76,8 @@ export const FinishStageTextRefusal = ({
 };
 
 /**
- * Stage-list notice shown whenever the stage that ends the interview has no
- * heading or text in the protocol's default language: a new protocol in a
+ * Stage-list notice shown whenever a stage that ends the interview has no
+ * text for a screen it shows in the protocol's default language: a new protocol in a
  * language Network Canvas supplies no closing text for, or text a researcher
  * cleared. The protocol can still be edited and saved; only downloading it is
  * refused. Not dismissable, because the download stays refused until the text

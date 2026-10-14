@@ -75,6 +75,7 @@ import {
 } from './localization/ProtocolLocalizationProvider';
 import { getInterviewId } from './selectors/session';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
+import { getInterviewProgress } from './selectors/utils';
 import {
   getInterfaceText,
   getProtocolLocalization,
@@ -147,7 +148,7 @@ type TextScaleStyle = CSSProperties & { '--interview-text-scale': number };
  * A finished interview shows its completed state; a review of one shows its
  * stages, because reading them is what a review is for. A review of a
  * protocol with no stage before its finish stage has nothing to show, so it
- * shows the finish stage's text, read-only, without the Finish button.
+ * shows the finish stage's closing text, read-only, without the Finish button.
  *
  * The participant's text size is held here, above both, so it carries from
  * the interview into its completed state.
@@ -179,9 +180,11 @@ function Interview(props: InterviewProps) {
       const { onExit } = props;
       return (
         <CompletedShell
-          stageId={undefined}
+          // The first finish stage, the only one an interview with nothing
+          // before its endings can reach.
+          stageId={stages[0]?.id}
           focusOnMount={false}
-          notice={false}
+          finished={false}
           textScaleStyle={textScaleStyle}
           actions={
             onExit
@@ -203,7 +206,7 @@ function Interview(props: InterviewProps) {
       <CompletedShell
         stageId={completion.stageId}
         focusOnMount={completion.finishedHere}
-        notice
+        finished
         textScaleStyle={textScaleStyle}
       />
     );
@@ -225,13 +228,13 @@ function Interview(props: InterviewProps) {
 function CompletedShell({
   stageId,
   focusOnMount,
-  notice,
+  finished,
   textScaleStyle,
   actions,
 }: {
   stageId: string | null | undefined;
   focusOnMount: boolean;
-  notice: boolean;
+  finished: boolean;
   textScaleStyle: TextScaleStyle;
   actions?: readonly CompletedAction[];
 }) {
@@ -268,7 +271,7 @@ function CompletedShell({
             <CompletedInterview
               stage={stage}
               focusOnMount={focusOnMount}
-              notice={notice}
+              finished={finished}
               actions={actions}
             />
           </StageDynamicValues>
@@ -876,21 +879,63 @@ const Shell = ({
     trackerRef.current = next;
   }, []);
 
+  // A finished interview reopened to be changed would finish again at once
+  // on an automatic finish stage, which also cannot be left backwards, so it
+  // enters at the last stage before the interview ended instead. With no such
+  // stage it has nothing to change, and stays finished.
+  const automaticReentryStep = useMemo(() => {
+    const stageAtStep =
+      currentStep === undefined
+        ? undefined
+        : payload.protocol.stages[currentStep];
+    if (
+      !openFinishedAsActive ||
+      stageAtStep?.type !== 'FinishSession' ||
+      stageAtStep.mode !== 'automatic'
+    ) {
+      return undefined;
+    }
+    return (
+      getLastAvailableAuthoredStageIndex(
+        payload.protocol.stages,
+        payload.session.network,
+      ) ?? null
+    );
+  }, [
+    currentStep,
+    openFinishedAsActive,
+    payload.protocol.stages,
+    payload.session.network,
+  ]);
+  const opensAsActive = openFinishedAsActive && automaticReentryStep !== null;
+
+  // A host that controls the step still holds the automatic finish stage, so
+  // moving on from the stage entered instead would ask it for the step it
+  // already has, and nothing would change. It is told where the interview
+  // re-entered, once.
+  const onStepChangeRef = useRef(onStepChange);
+  onStepChangeRef.current = onStepChange;
+  useEffect(() => {
+    if (automaticReentryStep === undefined || automaticReentryStep === null) {
+      return;
+    }
+    onStepChangeRef.current?.(
+      automaticReentryStep,
+      getInterviewProgress(payload.protocol.stages, automaticReentryStep),
+    );
+  }, [automaticReentryStep, payload.protocol.stages]);
+
   // A finished session opens in its completed state, at the finish stage the
   // host recorded, unless the host opens it as an unfinished one.
   const initialCompletion = useMemo<InterviewCompletion | null>(
     () =>
-      payload.session.finishTime === null || openFinishedAsActive
+      payload.session.finishTime === null || opensAsActive
         ? null
         : {
             stageId: payload.session.finishStageId ?? null,
             finishedHere: false,
           },
-    [
-      payload.session.finishTime,
-      payload.session.finishStageId,
-      openFinishedAsActive,
-    ],
+    [payload.session.finishTime, payload.session.finishStageId, opensAsActive],
   );
 
   const reviewEntry = useMemo(() => {
@@ -901,6 +946,9 @@ const Shell = ({
     );
     const reviewEnd =
       finishIndex === -1 ? payload.protocol.stages.length : finishIndex;
+    if (automaticReentryStep !== undefined && automaticReentryStep !== null) {
+      return { currentStep: automaticReentryStep, initialStageOverrideIndex };
+    }
     if (
       reviewMode !== true ||
       currentStep === undefined ||
@@ -926,6 +974,7 @@ const Shell = ({
           : initialStageOverrideIndex,
     };
   }, [
+    automaticReentryStep,
     currentStep,
     initialStageOverrideIndex,
     payload.protocol.stages,

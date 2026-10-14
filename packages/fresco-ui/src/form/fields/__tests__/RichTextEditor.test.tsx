@@ -49,7 +49,50 @@ const otherDocument = {
   ],
 };
 
+const documentWithAHeading = {
+  type: 'doc',
+  content: [
+    {
+      type: 'heading',
+      attrs: { level: 1 },
+      content: [{ type: 'text', text: 'Thank you' }],
+    },
+    {
+      type: 'paragraph',
+      content: [{ type: 'text', text: 'Existing content' }],
+    },
+  ],
+};
+
 describe('RichTextEditorField', () => {
+  it('places the text’s headings below the heading the field sits under', async () => {
+    const editorWithAHeading = (
+      <RichTextEditorField
+        id="closing"
+        name="closing"
+        aria-describedby="closing-hint"
+        aria-label="Closing text"
+        value={documentWithAHeading}
+        onChange={() => undefined}
+      />
+    );
+    const { rerender } = render(
+      <EnclosingHeadingLevel level="h3">
+        {editorWithAHeading}
+      </EnclosingHeadingLevel>,
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Thank you', level: 4 }),
+    ).toBeInTheDocument();
+
+    // At the top of a page there is nothing to sit below.
+    rerender(editorWithAHeading);
+    expect(
+      await screen.findByRole('heading', { name: 'Thank you', level: 1 }),
+    ).not.toHaveAttribute('aria-level');
+  });
+
   it('clears editor content when its controlled value becomes undefined', async () => {
     const { rerender } = render(
       <RichTextEditorField
@@ -1904,55 +1947,6 @@ describe('a multi-line RichTextEditorField', () => {
 
     expect(editor).toHaveAttribute('aria-multiline', 'true');
     expect(editor.querySelectorAll('p')).toHaveLength(2);
-  });
-
-  /**
-   * On the page, a heading in the text sits inside whatever section holds the
-   * field. Announced at its own level 2 under a section's `h3`, it would read
-   * as a heading above that section's, and the page's outline would skip from
-   * it straight back to the next section.
-   */
-  it('announces a heading in its text below the heading it sits under', async () => {
-    render(
-      <EnclosingHeadingLevel level="h3">
-        <RichTextEditorField
-          id="bio"
-          name="bio"
-          aria-describedby="bio-hint"
-          aria-label="Biography"
-          toolbarOptions={{ headings: true }}
-          value={HEADING_DOCUMENT}
-          onChange={() => undefined}
-        />
-      </EnclosingHeadingLevel>,
-    );
-
-    const editor = await screen.findByRole('textbox', { name: 'Biography' });
-    const heading = within(editor).getByRole('heading', { name: 'Never met' });
-
-    // The element stays the text's own, so copying it keeps its level.
-    expect(heading.tagName).toBe('H2');
-    expect(heading).toHaveAttribute('aria-level', '5');
-  });
-
-  it('announces a heading in its text at its own level outside any section', async () => {
-    render(
-      <RichTextEditorField
-        id="bio"
-        name="bio"
-        aria-describedby="bio-hint"
-        aria-label="Biography"
-        toolbarOptions={{ headings: true }}
-        value={HEADING_DOCUMENT}
-        onChange={() => undefined}
-      />,
-    );
-
-    const editor = await screen.findByRole('textbox', { name: 'Biography' });
-    const heading = within(editor).getByRole('heading', { name: 'Never met' });
-
-    expect(heading.tagName).toBe('H2');
-    expect(heading).not.toHaveAttribute('aria-level');
   });
 });
 

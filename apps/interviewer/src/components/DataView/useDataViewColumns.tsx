@@ -280,7 +280,11 @@ export function useDataViewColumns({
                   orientation="horizontal"
                   percentProgress={percent}
                   label={intl.formatMessage(messages.stepProgress, {
-                    step: session.currentStep + 1,
+                    // A protocol's later endings are counted as its first.
+                    step:
+                      totalSteps > 0
+                        ? Math.min(session.currentStep + 1, totalSteps)
+                        : session.currentStep + 1,
                     total: totalSteps,
                     hasTotal: String(totalSteps > 0),
                   })}

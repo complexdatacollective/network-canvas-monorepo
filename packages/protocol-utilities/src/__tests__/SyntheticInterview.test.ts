@@ -3246,20 +3246,20 @@ describe('FinishSession stage', () => {
     expect(stages[1]).toEqual({
       id: 'finish',
       type: 'FinishSession',
+      mode: 'confirmation',
       label: { en: 'Finish Interview', es: 'Finalizar entrevista' },
-      title: { en: 'Finish Interview', es: 'Finalizar entrevista' },
       content: {
-        en: 'You have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
-        es: 'Has llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora.',
+        en: '# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+        es: '# Finalizar entrevista\n\nHas llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora.',
+      },
+      finishedContent: {
+        en: '# Interview Finished\n\nThank you for participating!',
+        es: '# Entrevista finalizada\n\n¡Gracias por participar!',
       },
       finishLabel: { en: 'Finish', es: 'Finalizar' },
       finishConfirmation: {
         en: 'Are you sure you want to finish the interview?',
         es: '¿Seguro que quieres finalizar la entrevista?',
-      },
-      finishedNotice: {
-        en: 'This interview is finished, and its answers can no longer be changed.',
-        es: 'Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.',
       },
       finishFailed: {
         en: 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
@@ -3276,7 +3276,13 @@ describe('FinishSession stage', () => {
     const stage = expectValid(synth).stages.at(-1);
     expect(stage).toMatchObject({
       type: 'FinishSession',
-      title: { ja: 'Finish Interview' },
+      label: { ja: 'Finish Interview' },
+      content: {
+        ja: '# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.',
+      },
+      finishedContent: {
+        ja: '# Interview Finished\n\nThank you for participating!',
+      },
     });
   });
 
@@ -3284,8 +3290,8 @@ describe('FinishSession stage', () => {
     const synth = new SyntheticInterview();
     synth.addInformationStage({ title: 'Welcome' });
     synth.addFinishSessionStage({
-      title: 'Not eligible',
-      content: 'Thank you for your time.',
+      label: 'Not eligible',
+      content: '# Not eligible\n\nThank you for your time.',
       outcome: 'ineligible',
     });
 
@@ -3293,9 +3299,9 @@ describe('FinishSession stage', () => {
     expect(stages).toHaveLength(2);
     expect(stages[1]).toMatchObject({
       type: 'FinishSession',
+      mode: 'confirmation',
       label: { 'en-US': 'Not eligible' },
-      title: { 'en-US': 'Not eligible' },
-      content: { 'en-US': 'Thank you for your time.' },
+      content: { 'en-US': '# Not eligible\n\nThank you for your time.' },
       outcome: 'ineligible',
     });
   });

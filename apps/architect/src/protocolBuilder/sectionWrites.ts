@@ -145,10 +145,11 @@ function submitStage(
 ): SectionWrite {
   const parsed = stageSchema.safeParse(document);
   if (!parsed.success) return refuseParse(parsed.error);
-  // A protocol always ends at its one finish stage, so a stage is never
-  // rewritten into one or out of one: the first would leave it two, the second
-  // none. The reducer would write either, and the protocol would then fail
-  // validation, so it is refused here, as Studio's host refuses it.
+  // A protocol always ends at its finish stages, which sit together at the
+  // end, so a stage is never rewritten into one or out of one: either would
+  // leave a stage no participant could reach, or none to end at. The reducer
+  // would write either, and the protocol would then fail validation, so it is
+  // refused here, as Studio's host refuses it.
   const current = getProtocol(store.getState())?.stages.find(
     ({ id }) => id === stageId,
   );
@@ -347,20 +348,6 @@ export async function createSection(
     const parsed = stageSchema.safeParse({ ...document, id: stageId });
     if (!parsed.success)
       return { ...refuseParse(parsed.error), sectionId: target };
-    // A protocol has exactly one finish stage. The reducer drops a second one
-    // and says nothing, so it is refused here, as Studio's host refuses it.
-    if (
-      isFinishSessionStage(parsed.data) &&
-      (getProtocol(store.getState())?.stages ?? []).some(isFinishSessionStage)
-    ) {
-      return {
-        ...refuse(
-          'A protocol has exactly one finish stage, and this one already has it.',
-          ['type'],
-        ),
-        sectionId: target,
-      };
-    }
     store.dispatch(
       commitStage({
         stageId: null,

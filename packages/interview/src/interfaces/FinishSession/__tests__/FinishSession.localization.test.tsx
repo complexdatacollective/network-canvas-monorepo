@@ -1,3 +1,4 @@
+import { Toast } from '@base-ui/react/toast';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
@@ -14,14 +15,17 @@ import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import { ProtocolLocalizationProvider } from '../../../localization/ProtocolLocalizationProvider';
 import { store as createStore } from '../../../store/store';
 import { SyncFlushProvider } from '../../../store/SyncFlushContext';
+import { InterviewToastViewport } from '../../../toast/InterviewToast';
+import { interviewToastManager } from '../../../toast/interviewToastManager';
 import FinishSession from '../FinishSession';
 
 const finishStage = {
   id: 'finish',
   type: 'FinishSession',
+  mode: 'confirmation',
   label: { en: 'Finish' },
-  title: { en: 'All *done*' },
-  content: { en: 'Thank you for **taking part**.' },
+  content: { en: '# All *done*\n\nThank you for **taking part**.' },
+  finishedContent: { en: '# Finished\n\nThank you.' },
   // The screen's own words are the protocol's, so they follow the protocol's
   // language: here, the wording Network Canvas supplies in each of them.
   finishLabel: { 'en': 'Finish', 'en-GB': 'Finish', 'es': 'Finalizar' },
@@ -29,11 +33,6 @@ const finishStage = {
     'en': 'Are you sure you want to finish the interview?',
     'en-GB': 'Are you sure you want to finish the interview?',
     'es': '¿Seguro que quieres finalizar la entrevista?',
-  },
-  finishedNotice: {
-    'en': 'This interview is finished.',
-    'en-GB': 'This interview is finished.',
-    'es': 'Esta entrevista ha finalizado.',
   },
   finishFailed: {
     'en': 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
@@ -119,6 +118,9 @@ function makeView(
                       moveBackward: () => undefined,
                     })}
                   />
+                  <Toast.Provider toastManager={interviewToastManager}>
+                    <InterviewToastViewport />
+                  </Toast.Provider>
                 </DialogProvider>
               </SyncFlushProvider>
             </ContractProvider>
@@ -139,7 +141,7 @@ beforeAll(async () => {
 
 describe('FinishSession localized recoverable failures', () => {
   it.each(['flush', 'refused', 'finish'] as const)(
-    'keeps a %s failure in the real dialog, changes its language without resubmission, and retries in order',
+    'returns a %s failure to the closing screen with a toast in the protocol language, and retries in order',
     async (failure) => {
       const order: string[] = [];
       const abortStatesAtFinish: boolean[] = [];
@@ -176,36 +178,35 @@ describe('FinishSession localized recoverable failures', () => {
         }),
       );
       expect(
-        await within(dialog).findByText(english, { exact: true }),
-      ).toBeVisible();
-      expect(within(dialog).queryByText(diagnostic)).not.toBeInTheDocument();
+        await screen.findByText(english, { exact: true }),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(dialog).not.toBeInTheDocument());
+      expect(screen.queryByText(diagnostic)).not.toBeInTheDocument();
       expect(order).toEqual(
         failure !== 'finish' ? ['flush'] : ['flush', 'finish'],
       );
       expect(finish).toHaveBeenCalledTimes(failure !== 'finish' ? 0 : 1);
 
       rerender(view('es'));
-      expect(within(dialog).getByText(spanish, { exact: true })).toBeVisible();
-      expect(within(dialog).queryByText(english)).not.toBeInTheDocument();
-      const retry = within(dialog).getByRole('button', {
-        name: 'Finalizar',
-      });
-      expect(retry).toBeEnabled();
-      expect(flush).toHaveBeenCalledTimes(1);
-      expect(finish).toHaveBeenCalledTimes(failure !== 'finish' ? 0 : 1);
+      expect(screen.getByText(spanish, { exact: true })).toBeInTheDocument();
+      expect(screen.queryByText(english)).not.toBeInTheDocument();
 
       rerender(view('en-GB'));
       expect(
-        within(dialog).getByText(
+        screen.getByText(
           'The interview could not be finished. Please try again. If the problem continues, contact the study organiser.',
           { exact: true },
         ),
-      ).toBeVisible();
+      ).toBeInTheDocument();
       rerender(view('es'));
-      await user.click(retry);
-      await waitFor(() =>
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      await user.click(screen.getByRole('button', { name: 'Finalizar' }));
+      const again = await screen.findByRole('dialog', {
+        name: '¿Seguro que quieres finalizar la entrevista?',
+      });
+      await user.click(
+        within(again).getByRole('button', { name: 'Finalizar' }),
       );
+      await waitFor(() => expect(again).not.toBeInTheDocument());
       expect(order).toEqual(
         failure !== 'finish'
           ? ['flush', 'flush', 'finish']
@@ -274,11 +275,15 @@ describe('FinishSession localized recoverable failures', () => {
 
     await user.click(confirmFinish);
     expect(
-      await within(dialog).findByText(english, { exact: true }),
-    ).toBeVisible();
+      await screen.findByText(english, { exact: true }),
+    ).toBeInTheDocument();
     expect(finish).not.toHaveBeenCalled();
 
-    await user.click(confirmFinish);
+    await user.click(screen.getByRole('button', { name: 'Finish' }));
+    const again = await screen.findByRole('dialog', {
+      name: 'Are you sure you want to finish the interview?',
+    });
+    await user.click(within(again).getByRole('button', { name: 'Finish' }));
     await waitFor(() => expect(finish).toHaveBeenCalledTimes(1));
   });
 
@@ -336,7 +341,7 @@ describe('FinishSession localized recoverable failures', () => {
       makeView(
         () => Promise.resolve(true),
         () => Promise.resolve(),
-        { ...finishStage, label: {}, title: {}, content: {} },
+        { ...finishStage, label: {}, content: {}, finishedContent: {} },
       )('en'),
     );
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();

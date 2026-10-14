@@ -24,12 +24,34 @@ export const FinishOutcomeSchema = z.enum(FINISH_OUTCOMES);
 export type FinishOutcome = z.infer<typeof FinishOutcomeSchema>;
 
 /**
- * The end of the interview. The participant reads its title and content, and
- * the Finish button ends the interview; the same text is shown again, with a
- * notice that the interview is finished, whenever it is opened.
+ * How a finish stage ends the interview.
+ *
+ * - `confirmation`: the participant reads the closing screen and ends the
+ *   interview with its Finish button, once they confirm.
+ * - `automatic`: the interview ends as soon as the participant reaches the
+ *   stage, with no closing screen, button or confirmation.
+ */
+export const FINISH_MODES = ['confirmation', 'automatic'] as const;
+
+export const FinishModeSchema = z.enum(FINISH_MODES);
+
+export type FinishMode = z.infer<typeof FinishModeSchema>;
+
+/**
+ * The end of the interview. In confirmation mode the participant reads the
+ * closing screen (`content`) and its Finish button ends the interview once
+ * they confirm; in automatic mode the interview ends as soon as the stage is
+ * reached. Either way the participant then reads the finished screen
+ * (`finishedContent`), which is shown again whenever the finished interview
+ * is opened.
+ *
+ * A protocol may end with several finish stages, one after another, so
+ * different routes can end differently (see `outcome`). Nothing but a finish
+ * stage may follow one, and the interview never moves forward from one.
  *
  * A finish stage has no skip logic: it is where every route through the
- * interview ends, so it can never be left out of one. The key is declared as
+ * interview ends, so it can never be left out of one. A route reaches a later
+ * finish stage by an earlier stage's skip destination. The key is declared as
  * never present, rather than left out, so code reading `skipLogic` from any
  * stage reads it from this one as absent.
  */
@@ -41,32 +63,36 @@ export const finishSessionStage = baseStageSchema.extend({
         'A finish stage cannot have skip logic: every route through the interview ends at one.',
     })
     .optional(),
+  mode: FinishModeSchema,
   // A new protocol in a language Network Canvas supplies no closing text for
   // starts with none of these, rather than with text in another language
   // recorded under its own. The label may stay empty: the interview's stages
-  // menu leaves the finish stage out, so no participant reads it. The title
-  // and content may be empty only while the protocol is being written: it
-  // cannot leave its editor until both are written in its default language
-  // (`findFinishStageTextProblems`, checked by `validateProtocol`).
+  // menu leaves the finish stage out, so no participant reads it. The screens'
+  // text may be empty only while the protocol is being written: it cannot
+  // leave its editor until the text its mode shows is written in its default
+  // language (`findFinishStageTextProblems`, checked by `validateProtocol`).
   //
   // A translation that is there is never blank: the interview would choose
   // it over falling back, and show a participant nothing.
   label: localizedString(nonBlankText(), 'plain', { mayBeEmpty: true }),
-  title: localizedString(nonBlankText(), 'markdown', {
+  // The closing screen, shown in confirmation mode. Its heading is part of
+  // the text. An automatic stage shows none, so its text may be absent
+  // altogether: one set to finish automatically after its text was cleared
+  // has nowhere left to write it.
+  content: localizedString(nonBlankText(), 'markdown', {
     mayBeEmpty: true,
     dynamicValues: 'stageText',
-  }),
-  content: localizedString(nonBlankText(), 'markdown', {
+  }).optional(),
+  // The finished screen, shown once the interview has ended.
+  finishedContent: localizedString(nonBlankText(), 'markdown', {
     mayBeEmpty: true,
     dynamicValues: 'stageText',
   }),
   // The interview's own words on this screen, which Network Canvas supplies
   // (`stage-wording/finish-session.ts`): the Finish button, the question it
-  // asks, the notice once the interview has ended, and what the question says
-  // when the interview could not be ended.
+  // asks, and what the interview says when it could not be ended.
   finishLabel: localizedString(nonBlankText(), 'plain'),
   finishConfirmation: localizedString(nonBlankText(), 'plain'),
-  finishedNotice: localizedString(nonBlankText(), 'plain'),
   finishFailed: localizedString(nonBlankText(), 'plain'),
   outcome: FinishOutcomeSchema,
 });

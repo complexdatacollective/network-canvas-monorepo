@@ -39,8 +39,8 @@ type StageDependencyCandidate = Pick<Stage, 'id' | 'type'> & {
 
 /**
  * Whether deleting this stage would leave the interview with no finish stage
- * to end at. The last finish stage of a protocol cannot be deleted; a protocol
- * that somehow holds more than one may lose the others.
+ * to end at. A protocol's only finish stage cannot be deleted; one with
+ * several may lose any of them but the last that remains.
  */
 export const isLastFinishStage = (
   stages: readonly Pick<Stage, 'id' | 'type'>[],
@@ -53,34 +53,24 @@ export const isLastFinishStage = (
 };
 
 /**
- * Whether an order moves a finish stage from where it is. The stage that ends
- * the interview stays where it is: it cannot be moved, and no stage can be
- * moved past it, which would move it too.
- */
-export const movesFinishStage = (
-  committedStages: readonly Pick<Stage, 'id' | 'type'>[],
-  proposedStages: readonly Pick<Stage, 'id' | 'type'>[],
-) =>
-  committedStages.some(
-    (stage, index) =>
-      stage.type === 'FinishSession' &&
-      proposedStages.findIndex(({ id }) => id === stage.id) !== index,
-  );
-
-/**
- * Where a stage being created is inserted: never after a finish stage, where
- * no participant could reach it. A position at or past the first finish stage
- * puts it just before that stage. A finish stage itself goes at the end; a
- * protocol that already has one gets no second (see `commitStage`).
+ * Where a stage being created is inserted. Finish stages sit together at the
+ * end of the interview, so a stage that is not one never goes after the first
+ * finish stage, where no participant could reach it: a position at or past
+ * that stage puts it just before. A finish stage goes where it was asked for
+ * among the others, and otherwise at the end.
  */
 export const creationIndex = (
   stages: readonly Pick<Stage, 'type'>[],
   stage: Pick<Stage, 'type'>,
   index: number | undefined,
 ) => {
-  if (isFinishSessionStage(stage)) return stages.length;
   const requested = index ?? stages.length;
   const firstFinish = stages.findIndex(isFinishSessionStage);
+  if (isFinishSessionStage(stage)) {
+    return firstFinish !== -1 && requested >= firstFinish
+      ? Math.min(requested, stages.length)
+      : stages.length;
+  }
   return firstFinish === -1 ? requested : Math.min(requested, firstFinish);
 };
 
@@ -220,13 +210,13 @@ const stagesSlice = createSlice({
         return;
       }
 
-      // The interview ends at its finish stage: a move of the finish stage,
-      // or one that would leave a stage after it or the interview ending
+      // The interview ends at its finish stages, which sit together at the
+      // end: they may change places among themselves, but a move that would
+      // leave another stage after the first of them, or the interview ending
       // anywhere else, is refused.
       if (
-        movesFinishStage(state, reorderedStages) ||
         findTimelineStructureProblems(reorderedStages).length >
-          findTimelineStructureProblems(state).length
+        findTimelineStructureProblems(state).length
       ) {
         return;
       }
@@ -261,10 +251,6 @@ const stagesSlice = createSlice({
         const { stageId, stage, index } = action.payload;
 
         if (!stageId) {
-          // A protocol has exactly one finish stage.
-          if (isFinishSessionStage(stage) && state.some(isFinishSessionStage)) {
-            return;
-          }
           state.splice(
             creationIndex(state, stage, index),
             0,

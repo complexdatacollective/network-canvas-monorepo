@@ -1057,23 +1057,23 @@
   },
   "architect.finishStageText.cannotBeDownloadedYet": {
     "defaultMessage": "This protocol can’t be downloaded yet",
-    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while the stage that ends the interview has no heading or text in the protocol’s default language."
+    "description": "Title of the notice on the stage list, and of the dialog shown when a download is refused, while a stage that ends the interview has no text for a screen it shows in the protocol’s default language."
   },
   "architect.finishStageText.editFinishStage": {
     "defaultMessage": "Edit the stage that ends the interview",
-    "description": "Link in the notice about the missing heading or text. It opens the editor for the stage that ends the interview."
+    "description": "Link in the notice about the missing closing or finished screen text. It opens the editor for the stage that ends the interview."
   },
-  "architect.finishStageText.missingHeading": {
-    "defaultMessage": "The stage that ends the interview has no heading in {language}. The protocol can’t be downloaded until it’s added.",
-    "description": "Shown while the stage that ends the interview has text but no heading in the protocol’s default language. language is the name of that language, for example “Japanese”."
+  "architect.finishStageText.missingClosingAndFinishedText": {
+    "defaultMessage": "A stage that ends the interview has no text for its closing screen or its finished screen in {language}. The protocol can’t be downloaded until they’re added.",
+    "description": "Shown while a stage that ends the interview (a Finish Screen stage) has neither the text of its closing screen (where the participant finishes the interview) nor the text of its finished screen (shown once the interview has ended) in the protocol’s default language. language is the name of that language, for example “Japanese”."
   },
-  "architect.finishStageText.missingHeadingAndText": {
-    "defaultMessage": "The stage that ends the interview has no heading or text in {language}. The protocol can’t be downloaded until they’re added.",
-    "description": "Shown while the stage that ends the interview has neither a heading nor text in the protocol’s default language. language is the name of that language, for example “Japanese”."
+  "architect.finishStageText.missingClosingText": {
+    "defaultMessage": "A stage that ends the interview has no text for its closing screen in {language}. The protocol can’t be downloaded until it’s added.",
+    "description": "Shown while a stage that ends the interview (a Finish Screen stage) has no text for its closing screen, where the participant finishes the interview, in the protocol’s default language. language is the name of that language, for example “Japanese”."
   },
-  "architect.finishStageText.missingText": {
-    "defaultMessage": "The stage that ends the interview has no text in {language}. The protocol can’t be downloaded until it’s added.",
-    "description": "Shown while the stage that ends the interview has a heading but no text in the protocol’s default language. language is the name of that language, for example “Japanese”."
+  "architect.finishStageText.missingFinishedText": {
+    "defaultMessage": "A stage that ends the interview has no text for its finished screen in {language}. The protocol can’t be downloaded until it’s added.",
+    "description": "Shown while a stage that ends the interview (a Finish Screen stage) has no text for its finished screen, shown to the participant once the interview has ended, in the protocol’s default language. language is the name of that language, for example “Japanese”."
   },
   "architect.form.arrayFields.option.areYouSureYouWantTo": {
     "defaultMessage": "Are you sure you want to remove this option?",
@@ -1626,6 +1626,10 @@
   "architect.interface.description.FamilyPedigree": {
     "defaultMessage": "An interface where participants draw their family: they select a person and add that person’s parents, siblings, partners or children, describing each new person as they go.",
     "description": "Description of the interview interface in the New Stage chooser."
+  },
+  "architect.interface.description.FinishSession": {
+    "defaultMessage": "A screen that ends the interview. Add more than one to end it in different ways, such as a separate ending for participants who are not eligible.",
+    "description": "Description of the interview interface in the New Stage chooser. Stages that end the interview always sit together at the end of the protocol."
   },
   "architect.interface.description.Geospatial": {
     "defaultMessage": "An interface that captures geospatial data by allowing the user to select items on a map",
@@ -3541,15 +3545,15 @@
   },
   "architect.timeline.finishStageGuards.cannotMoveStage": {
     "defaultMessage": "Cannot move stage",
-    "description": "Title of the notice shown when a move would put a stage after the stage that ends the interview."
+    "description": "Title of the notice shown when a move would put a stage after a stage that ends the interview."
   },
   "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": {
     "defaultMessage": "This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.",
     "description": "Explanation shown when a researcher tries to delete the stage that ends the interview (the finish screen)."
   },
-  "architect.timeline.finishStageGuards.finishStageStaysLast": {
-    "defaultMessage": "The stage that ends the interview has to stay at the end of the protocol. No participant could reach a stage placed after it.",
-    "description": "Explanation shown when a researcher tries to move the stage that ends the interview, or to move another stage after it."
+  "architect.timeline.finishStageGuards.finishStagesStayLast": {
+    "defaultMessage": "Stages that end the interview have to stay together at the end of the protocol. No participant could reach a stage placed after them.",
+    "description": "Explanation shown when a researcher tries to move a stage that ends the interview above another kind of stage, or to move another kind of stage below one. Stages that end the interview can still change places with each other."
   },
   "architect.timeline.insertButton.addStageHere": {
     "defaultMessage": "Add stage here",

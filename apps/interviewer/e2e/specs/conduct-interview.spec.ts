@@ -232,14 +232,12 @@ test.describe('conducting an interview', () => {
       await interviewNav.finish();
 
       // The interview shows its completed state in place: the finish stage's
-      // own text, the built-in notice, no Finish button, and the app's Exit.
+      // finished screen, no Finish button, and the app's Exit.
       await expect(
-        page.getByText(
-          'This interview is finished, and its answers can no longer be changed.',
-        ),
+        page.getByText('Thank you for participating!'),
       ).toBeVisible();
       await expect(
-        page.getByRole('heading', { name: 'Finish Interview' }),
+        page.getByRole('heading', { name: 'Interview Finished' }),
       ).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Finish', exact: true }),
@@ -262,12 +260,10 @@ test.describe('conducting an interview', () => {
       // completed state.
       await page.goto(`/interview/${sessionId}`);
       await expect(
-        page.getByText(
-          'This interview is finished, and its answers can no longer be changed.',
-        ),
+        page.getByText('Thank you for participating!'),
       ).toBeVisible();
       await expect(
-        page.getByRole('heading', { name: 'Finish Interview' }),
+        page.getByRole('heading', { name: 'Interview Finished' }),
       ).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Exit', exact: true }),

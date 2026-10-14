@@ -737,6 +737,15 @@ const SingleLineInput = Extension.create({
 
 type ExtensionOptions = {
   headingLevels: (1 | 2 | 3 | 4)[];
+  /**
+   * The level of the heading the field sits under, or 0 at the top of a page.
+   * The text's own headings are its reader's outline, not the page's: an `h1`
+   * in a field under a section's `h3` is a level-4 heading of the page, and
+   * read as level 1 it would jump the outline back to the top and then skip
+   * two levels at the next section. So each keeps its tag, which is how it
+   * looks, and states its place below the enclosing heading as `aria-level`.
+   */
+  enclosingHeadingDepth: number;
   enableBulletList: boolean;
   enableOrderedList: boolean;
   enableLinks: boolean;
@@ -757,12 +766,6 @@ type ExtensionOptions = {
   history?: SharedHistory;
   /** Shows the placeholder while the editor cannot be edited, too. */
   placeholderWhenReadOnly?: boolean;
-  /**
-   * The level of the heading the editor sits under, from 2 to 6, when one is
-   * stated. A heading written in the text then counts from it in the page's
-   * outline.
-   */
-  enclosingHeadingLevel?: number;
 };
 
 /** Undo and redo in an editor that keeps the history for another. */
@@ -817,6 +820,7 @@ const createInsertTrigger = (
 // Factory function to create custom extensions with typography classes
 function createCustomExtensions({
   headingLevels,
+  enclosingHeadingDepth,
   enableBulletList,
   enableOrderedList,
   enableLinks,
@@ -829,7 +833,6 @@ function createCustomExtensions({
   onTrigger,
   history,
   placeholderWhenReadOnly = false,
-  enclosingHeadingLevel,
 }: ExtensionOptions): AnyExtension[] {
   const CustomParagraph = Paragraph.extend({
     renderHTML({ HTMLAttributes }): DOMOutputSpec {
@@ -846,20 +849,15 @@ function createCustomExtensions({
         3: h3Classes,
         4: h4Classes,
       };
-      // The text's own heading ladder starts again at 1, but on the page it
-      // sits inside a section with a heading of its own: a level 1 heading
-      // there is announced and navigated as one below that section's. Only
-      // the announced level changes, so the element, and the level copied
-      // and pasted with it, stays the text's own.
-      const outline =
-        enclosingHeadingLevel === undefined
-          ? {}
-          : {
-              'aria-level': String(Math.min(enclosingHeadingLevel + level, 6)),
-            };
       return [
         `h${level}`,
-        { ...HTMLAttributes, ...outline, class: classMap[level] ?? h1Classes },
+        {
+          ...HTMLAttributes,
+          class: classMap[level] ?? h1Classes,
+          ...(enclosingHeadingDepth > 0
+            ? { 'aria-level': String(enclosingHeadingDepth + level) }
+            : {}),
+        },
         0,
       ];
     },
@@ -1378,14 +1376,14 @@ export default function RichTextEditorField({
       options.headings.h4,
     ],
   );
-  const enclosingHeading = useEnclosingHeadingLevel();
-  const enclosingHeadingLevel =
-    enclosingHeading === null ? undefined : Number(enclosingHeading.slice(1));
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const enclosingHeadingDepth =
+    enclosingHeadingLevel === null ? 0 : Number(enclosingHeadingLevel.slice(1));
   const editorExtensions = useMemo(
     () =>
       createCustomExtensions({
         headingLevels,
-        enclosingHeadingLevel,
+        enclosingHeadingDepth,
         enableBulletList: options.lists.bullet,
         enableOrderedList: options.lists.ordered,
         enableLinks: options.links,
@@ -1399,7 +1397,7 @@ export default function RichTextEditorField({
       }),
     [
       headingLevels,
-      enclosingHeadingLevel,
+      enclosingHeadingDepth,
       options.lists.bullet,
       options.lists.ordered,
       options.links,
@@ -1444,6 +1442,8 @@ export default function RichTextEditorField({
       versions
         ? createCustomExtensions({
             headingLevels: [],
+            // A version holds no headings, so none needs re-levelling.
+            enclosingHeadingDepth: 0,
             enableBulletList: false,
             enableOrderedList: false,
             enableLinks: options.links,

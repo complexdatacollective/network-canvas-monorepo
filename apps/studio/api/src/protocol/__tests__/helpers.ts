@@ -225,12 +225,14 @@ export function baseProtocol(): CurrentProtocol {
         {
           id: 'finish',
           type: 'FinishSession',
+          mode: 'confirmation',
           label: { en: 'Finish' },
-          title: { en: 'Thank you' },
-          content: { en: 'The interview is complete.' },
+          content: { en: '# Thank you\n\nThe interview is complete.' },
+          finishedContent: {
+            en: '# Interview Finished\n\nThank you for participating!',
+          },
           finishLabel: { en: 'Finish' },
           finishConfirmation: { en: 'Finish this interview?' },
-          finishedNotice: { en: 'This interview is finished.' },
           finishFailed: { en: 'The interview could not be finished.' },
           outcome: 'completed',
         },

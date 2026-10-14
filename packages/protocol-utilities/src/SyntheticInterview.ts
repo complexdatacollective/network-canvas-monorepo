@@ -13,6 +13,7 @@ import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS,
   escapeMarkdownText,
   escapeMessageText,
+  type FinishMode,
   type FinishOutcome,
   type Experiments,
   type LocalizedString,
@@ -1038,21 +1039,23 @@ export class SyntheticInterview {
    * the supplied default text, so most fixtures never need to call this.
    */
   addFinishSessionStage(opts?: {
-    title?: TextInput;
+    mode?: FinishMode;
     content?: TextInput;
+    finishedContent?: TextInput;
     label?: TextInput;
     outcome?: FinishOutcome;
     interviewScript?: string;
   }): FinishSessionHandle {
     const stageId = this.nextId('stage');
-    const title = opts?.title ?? DEFAULT_FINISH_SESSION_TEXT.en.title;
     const entry: StageEntry = {
       id: stageId,
       type: 'FinishSession',
-      label: opts?.label ?? title,
+      label: opts?.label ?? DEFAULT_FINISH_SESSION_TEXT.en.label,
       interviewScript: opts?.interviewScript,
-      title,
+      mode: opts?.mode ?? 'confirmation',
       content: opts?.content ?? DEFAULT_FINISH_SESSION_TEXT.en.content,
+      finishedContent:
+        opts?.finishedContent ?? DEFAULT_FINISH_SESSION_TEXT.en.finishedContent,
       outcome: opts?.outcome ?? 'completed',
       prompts: [],
       presets: [],
@@ -2709,7 +2712,7 @@ export class SyntheticInterview {
     for (let suffix = 2; taken.has(id); suffix += 1) id = `finish-${suffix}`;
     const fields = defaultFinishSessionFields(this.localization.locales);
     const { defaultLocale } = this.localization;
-    for (const field of ['label', 'title', 'content'] as const) {
+    for (const field of ['label', 'content', 'finishedContent'] as const) {
       if (fields[field][defaultLocale] === undefined) {
         fields[field] = {
           ...fields[field],
@@ -2718,7 +2721,13 @@ export class SyntheticInterview {
       }
     }
     return this.withSuppliedText(
-      { id, type: 'FinishSession', ...fields, outcome: 'completed' },
+      {
+        id,
+        type: 'FinishSession',
+        mode: 'confirmation',
+        ...fields,
+        outcome: 'completed',
+      },
       'FinishSession',
     );
   }
@@ -2818,6 +2827,14 @@ export class SyntheticInterview {
 
     if (stage.content !== undefined) {
       config.content = this.localized(stage.content);
+    }
+
+    if (stage.mode !== undefined) {
+      config.mode = stage.mode;
+    }
+
+    if (stage.finishedContent !== undefined) {
+      config.finishedContent = this.localized(stage.finishedContent);
     }
 
     if (stage.outcome !== undefined) {

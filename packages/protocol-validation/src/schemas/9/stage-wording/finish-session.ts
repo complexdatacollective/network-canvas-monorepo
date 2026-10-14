@@ -29,24 +29,7 @@ const FINISH_CONFIRMATION = {
   'zh-Hant': '確定要完成訪談嗎？',
 } as const satisfies SuppliedWording;
 
-/**
- * The notice under the closing text once the interview has ended, shown again
- * whenever the finished interview is opened.
- */
-const FINISHED_NOTICE = {
-  'en': 'This interview is finished, and its answers can no longer be changed.',
-  'de': 'Dieses Interview ist beendet. Die Antworten können nicht mehr geändert werden.',
-  'es': 'Esta entrevista ha finalizado y ya no se pueden cambiar sus respuestas.',
-  'fr': 'Cet entretien est terminé et ses réponses ne peuvent plus être modifiées.',
-  'it': 'Questa intervista è terminata e le sue risposte non possono più essere modificate.',
-  'nl': 'Dit interview is voltooid en de antwoorden kunnen niet meer worden gewijzigd.',
-  'pt-BR':
-    'Esta entrevista foi concluída e as respostas não podem mais ser alteradas.',
-  'zh-Hans': '此访谈已完成，其中的回答无法再更改。',
-  'zh-Hant': '此訪談已完成，其中的回答無法再變更。',
-} as const satisfies SuppliedWording;
-
-/** What the confirmation says when the interview could not be ended. */
+/** What the interview says when it could not be ended. */
 const FINISH_FAILED = {
   'en': 'The interview could not be finished. Please try again. If the problem continues, contact the study organizer.',
   'en-GB':
@@ -66,6 +49,5 @@ const FINISH_FAILED = {
 export const FINISH_SESSION_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   { path: ['finishLabel'], message: FINISH_LABEL },
   { path: ['finishConfirmation'], message: FINISH_CONFIRMATION },
-  { path: ['finishedNotice'], message: FINISHED_NOTICE },
   { path: ['finishFailed'], message: FINISH_FAILED },
 ];

@@ -200,7 +200,7 @@ describe('the finish stage text guard', () => {
     getAssetById.mockResolvedValue({ data: new Blob(['bytes']) });
   });
 
-  it('refuses to bundle a protocol whose finish stage has no heading or text in the default language', async () => {
+  it('refuses to bundle a protocol whose finish stage has no closing or finished text in the default language', async () => {
     const refusal = bundleProtocol(japaneseProtocol());
     await expect(refusal).rejects.toBeInstanceOf(MissingFinishStageTextError);
     await expect(refusal).rejects.toMatchObject({
@@ -208,23 +208,40 @@ describe('the finish stage text guard', () => {
         stageId: 'end',
         stageIndex: 0,
         locale: 'ja',
-        missing: ['title', 'content'],
+        missing: ['content', 'finishedContent'],
       },
     });
     // Refused before any resource is read.
     expect(getAssetById).not.toHaveBeenCalled();
   });
 
-  it('refuses one missing only its text, and names only that', async () => {
+  it('refuses one missing only its finished text, and names only that', async () => {
     const protocol = japaneseProtocol();
     const [finish] = protocol.stages;
     if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
     await expect(
       bundleProtocol({
         ...protocol,
-        stages: [{ ...finish, title: { ja: '終わり' } }],
+        stages: [
+          {
+            ...finish,
+            content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
+          },
+        ],
       }),
-    ).rejects.toMatchObject({ problem: { missing: ['content'] } });
+    ).rejects.toMatchObject({ problem: { missing: ['finishedContent'] } });
+  });
+
+  it('asks an automatic finish stage only for its finished text', async () => {
+    const protocol = japaneseProtocol();
+    const [finish] = protocol.stages;
+    if (finish?.type !== 'FinishSession') throw new Error('no finish stage');
+    await expect(
+      bundleProtocol({
+        ...protocol,
+        stages: [{ ...finish, mode: 'automatic' }],
+      }),
+    ).rejects.toMatchObject({ problem: { missing: ['finishedContent'] } });
   });
 
   it('bundles it once both are written in the default language', async () => {
@@ -236,8 +253,8 @@ describe('the finish stage text guard', () => {
       stages: [
         {
           ...finish,
-          title: { ja: '終わり' },
-          content: { ja: 'ご協力ありがとうございました。' },
+          content: { ja: '# 終わり\n\nご協力ありがとうございました。' },
+          finishedContent: { ja: '# 終了しました' },
         },
       ],
     });

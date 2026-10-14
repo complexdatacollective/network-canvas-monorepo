@@ -1522,12 +1522,14 @@ describe('generateNetwork', () => {
       const finish = {
         id: 'finish',
         type: 'FinishSession' as const,
+        mode: 'confirmation' as const,
         label: en('Finish'),
-        title: en('All done'),
-        content: en('Thank you.'),
+        content: en('# All done\n\nThank you.'),
+        finishedContent: en(
+          '# Interview Finished\n\nThank you for participating!',
+        ),
         finishLabel: en('Finish'),
         finishConfirmation: en('Finish this interview?'),
-        finishedNotice: en('This interview is finished.'),
         finishFailed: en('The interview could not be finished.'),
         outcome: 'completed' as const,
       };
@@ -1546,6 +1548,110 @@ describe('generateNetwork', () => {
       expect(droppedOut).toBe(false);
       expect(currentStep).toBe(2);
       expect(stages[currentStep]).toBe(finish);
+    });
+
+    describe('with several finish stages', () => {
+      const makeFinish = (
+        id: string,
+        outcome: 'completed' | 'ineligible',
+      ): Stage =>
+        ({
+          id,
+          type: 'FinishSession',
+          mode: 'automatic',
+          label: en(id),
+          content: en(''),
+          finishedContent: en('# Interview Finished'),
+          finishLabel: en('Finish'),
+          finishConfirmation: en('Finish this interview?'),
+          finishFailed: en('The interview could not be finished.'),
+          outcome,
+        }) as Stage;
+
+      it('finishes on an automatic ending rather than dropping out there', () => {
+        const stages = [makeFinish('end-completed', 'completed')];
+
+        const { droppedOut, currentStep } = generateNetwork({
+          codebook: makeCodebook(),
+          stages,
+          seed: 42,
+          simulateDropOut: true,
+          config: { dropOutFactor: 100 },
+        });
+
+        expect(droppedOut).toBe(false);
+        expect(currentStep).toBe(0);
+      });
+
+      it('drops out on the way to an ending regardless of the alternative endings after it', () => {
+        const route = [
+          makeTypedNameGeneratorStage('ng-1', 'node-type-1'),
+          makeTypedNameGeneratorStage('ng-2', 'node-type-1'),
+          makeTypedNameGeneratorStage('ng-3', 'node-type-1'),
+          makeFinish('end-completed', 'completed'),
+        ];
+        const outcomes = (stages: Stage[]) =>
+          Array.from({ length: 30 }, (_, seed) => {
+            const { droppedOut, currentStep } = generateNetwork({
+              codebook: makeCodebook(),
+              stages,
+              seed,
+              simulateDropOut: true,
+              config: { dropOutFactor: 0.6 },
+            });
+            return `${droppedOut}:${currentStep}`;
+          });
+
+        const alone = outcomes(route);
+        expect(alone.some((outcome) => outcome.startsWith('true'))).toBe(true);
+        expect(
+          outcomes([
+            ...route,
+            makeFinish('end-ineligible', 'ineligible'),
+            makeFinish('end-declined', 'ineligible'),
+            makeFinish('end-withdrawn', 'ineligible'),
+          ]),
+        ).toEqual(alone);
+      });
+
+      it('stops at the first finish stage it reaches', () => {
+        const stages = [
+          makeTypedNameGeneratorStage('ng-1', 'node-type-1'),
+          makeFinish('end-completed', 'completed'),
+          makeFinish('end-ineligible', 'ineligible'),
+        ];
+
+        const { droppedOut, currentStep } = generateNetwork({
+          codebook: makeCodebook(),
+          stages,
+          seed: 42,
+        });
+
+        expect(droppedOut).toBe(false);
+        expect(stages[currentStep]?.id).toBe('end-completed');
+      });
+
+      it('ends at a later finish stage a skip destination names', () => {
+        const stages = [
+          makeInformationStage(
+            'screener',
+            makeHiddenSkipLogic({ type: 'stage', stageId: 'end-ineligible' }),
+          ),
+          makeTypedNameGeneratorStage('ng-1', 'destination'),
+          makeFinish('end-completed', 'completed'),
+          makeFinish('end-ineligible', 'ineligible'),
+        ];
+
+        const { network, currentStep } = generateNetwork({
+          codebook: makeSkipRoutingCodebook(),
+          stages,
+          seed: 42,
+          respectSkipLogicAndFiltering: true,
+        });
+
+        expect(stages[currentStep]?.id).toBe('end-ineligible');
+        expect(network.nodes).toHaveLength(0);
+      });
     });
 
     it('a large dropOutFactor forces an early drop-out', () => {

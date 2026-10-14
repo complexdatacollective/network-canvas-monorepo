@@ -89,12 +89,12 @@ const protocolIn = (
     {
       id: 'finish',
       type: 'FinishSession',
+      mode: 'confirmation',
       label: text.stage,
-      title: text.title,
       content: text.title,
+      finishedContent: text.title,
       finishLabel: everyLocale(localization, 'Finish'),
       finishConfirmation: everyLocale(localization, 'Finish this interview?'),
-      finishedNotice: everyLocale(localization, 'This interview is finished.'),
       finishFailed: everyLocale(
         localization,
         'The interview could not be finished.',
@@ -261,13 +261,13 @@ describe('addLocales', () => {
           'en': DEFAULT_FINISH_SESSION_TEXT.en.label,
           'pt-BR': DEFAULT_FINISH_SESSION_TEXT['pt-BR'].label,
         },
-        title: {
-          'en': DEFAULT_FINISH_SESSION_TEXT.en.title,
-          'pt-BR': DEFAULT_FINISH_SESSION_TEXT['pt-BR'].title,
-        },
         content: {
           'en': DEFAULT_FINISH_SESSION_TEXT.en.content,
           'pt-BR': DEFAULT_FINISH_SESSION_TEXT['pt-BR'].content,
+        },
+        finishedContent: {
+          'en': DEFAULT_FINISH_SESSION_TEXT.en.finishedContent,
+          'pt-BR': DEFAULT_FINISH_SESSION_TEXT['pt-BR'].finishedContent,
         },
       });
       expect(Object.keys(finish?.label ?? {})).not.toContain('ja');
@@ -298,7 +298,6 @@ describe('addLocales', () => {
       for (const setting of [
         'finishLabel',
         'finishConfirmation',
-        'finishedNotice',
         'finishFailed',
       ] as const) {
         expect(translated[setting]).toHaveProperty('fr');
@@ -373,9 +372,9 @@ describe('removeLocale', () => {
     expect(
       getLocaleRemovalImpact(collectLocalizedStrings(bilingual()), 'fr')
         .translationCount,
-      // Seven texts of the protocol's own, and the finish stage's four
+      // Seven texts of the protocol's own, and the finish stage's three
       // settings.
-    ).toBe(11);
+    ).toBe(10);
   });
 
   it('counts each text once however many readings of it there are', () => {
@@ -391,7 +390,7 @@ describe('removeLocale', () => {
       'fr',
     );
 
-    expect(impact.translationCount).toBe(11);
+    expect(impact.translationCount).toBe(10);
     expect(impact.strandedStrings).toEqual([unsaved]);
   });
 
@@ -674,8 +673,8 @@ describe('text Network Canvas supplies, when a language is corrected or the defa
     const protocol = protocolOf(changeLocale(withSuppliedFinish(), 'en', 'de'));
     expect(protocol.stages.at(-1)).toMatchObject({
       label: { de: DEFAULT_FINISH_SESSION_TEXT.de.label },
-      title: { de: DEFAULT_FINISH_SESSION_TEXT.de.title },
       content: { de: DEFAULT_FINISH_SESSION_TEXT.de.content },
+      finishedContent: { de: DEFAULT_FINISH_SESSION_TEXT.de.finishedContent },
     });
     const pedigree = protocolOf(changeLocale(withPedigree(), 'en', 'de'));
     expect(labelsOf(pedigree, 'node', 'relative', 'sex')).toEqual(

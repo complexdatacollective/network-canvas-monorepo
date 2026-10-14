@@ -48,16 +48,19 @@ const protocol: CurrentProtocol = {
       id: 'finish',
       type: 'FinishSession',
       label: { en: 'Finish', fr: 'Fin' },
-      title: { en: 'All done', fr: 'Terminé' },
-      content: { en: 'Thank you.', fr: 'Merci.' },
+      mode: 'confirmation',
+      content: {
+        en: '# All done\n\nThank you.',
+        fr: '# Terminé\n\nMerci.',
+      },
+      finishedContent: {
+        en: 'This interview is finished.',
+        fr: 'Cet entretien est terminé.',
+      },
       finishLabel: { en: 'Finish', fr: 'Terminer' },
       finishConfirmation: {
         en: 'Finish this interview?',
         fr: 'Terminer l’entretien ?',
-      },
-      finishedNotice: {
-        en: 'This interview is finished.',
-        fr: 'Cet entretien est terminé.',
       },
       finishFailed: {
         en: 'The interview could not be finished.',

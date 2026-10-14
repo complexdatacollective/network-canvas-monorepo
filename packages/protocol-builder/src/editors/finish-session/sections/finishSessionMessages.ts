@@ -2,46 +2,102 @@ import {
   defineMessages,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
-import type { FinishOutcome } from '@codaco/protocol-validation';
+import type { FinishMode, FinishOutcome } from '@codaco/protocol-validation';
 
 /**
  * Everything the finish stage editor says.
  *
- * A finish stage is the screen that ends the interview: the participant reads
- * its heading and text, and finishes the interview from it. Its outcome
+ * A finish stage is the screen that ends the interview. In confirmation mode
+ * the participant reads its closing text and finishes the interview from it;
+ * in automatic mode the interview finishes on arrival. Either way the
+ * participant then reads its finished text. Its outcome
  * records how an interview that ended there ended; the participant never sees
  * it.
  */
 export const finishSessionMessages = defineMessages({
+  modeTitle: {
+    id: 'protocolBuilder.finishSession.modeTitle',
+    defaultMessage: 'How participants finish',
+    description:
+      'Heading of the section where a researcher chooses whether participants confirm that they are finished, or the interview finishes as soon as they reach the screen that ends it.',
+  },
+  modeDescription: {
+    id: 'protocolBuilder.finishSession.modeDescription',
+    defaultMessage:
+      'Choose whether participants confirm that they are finished, or the interview finishes as soon as they reach this screen.',
+    description: 'Description of the section choosing how participants finish.',
+  },
+  modeLabel: {
+    id: 'protocolBuilder.finishSession.modeLabel',
+    defaultMessage: 'Finishing',
+    description:
+      'Label of the choice between confirming the end of the interview and finishing it automatically.',
+  },
+  modeConfirmation: {
+    id: 'protocolBuilder.finishSession.modeConfirmation',
+    defaultMessage: 'Participants confirm',
+    description:
+      'Option: participants read a closing screen, press a button to finish the interview and confirm in a dialog.',
+  },
+  modeConfirmationDescription: {
+    id: 'protocolBuilder.finishSession.modeConfirmationDescription',
+    defaultMessage:
+      'Participants read the closing screen, press a button to finish and confirm when asked. Until then they can go back and change their answers.',
+    description: 'Explanation under the "Participants confirm" option.',
+  },
+  modeAutomatic: {
+    id: 'protocolBuilder.finishSession.modeAutomatic',
+    defaultMessage: 'Finish automatically',
+    description:
+      'Option: the interview finishes as soon as participants reach this screen, with no closing screen, button or question.',
+  },
+  modeAutomaticDescription: {
+    id: 'protocolBuilder.finishSession.modeAutomaticDescription',
+    defaultMessage:
+      'The interview finishes as soon as participants reach this screen, and they can’t go back.',
+    description: 'Explanation under the "Finish automatically" option.',
+  },
   closingTitle: {
     id: 'protocolBuilder.finishSession.closingTitle',
     defaultMessage: 'Closing screen',
     description:
-      'Heading of the section where a researcher writes what a participant reads on the screen that ends the interview.',
+      'Heading of the section where a researcher writes what a participant reads before finishing the interview.',
   },
-  closingDescription: {
-    id: 'protocolBuilder.finishSession.closingDescription',
+  closingScreenDescription: {
+    id: 'protocolBuilder.finishSession.closingScreenDescription',
     defaultMessage:
-      'Write what participants read at the end of the interview. They finish the interview from this screen, and see this text again whenever the finished interview is opened.',
+      'Write what participants read before they finish the interview. Start it with a heading.',
     description: 'Description of the closing-screen section.',
   },
-  headingLabel: {
-    id: 'protocolBuilder.finishSession.headingLabel',
-    defaultMessage: 'Heading',
+  closingTextLabel: {
+    id: 'protocolBuilder.finishSession.closingTextLabel',
+    defaultMessage: 'Closing text',
     description:
-      'Label of the field holding the heading at the top of the screen that ends the interview.',
+      'Label of the field holding the text, heading included, a participant reads before finishing the interview.',
   },
-  textLabel: {
-    id: 'protocolBuilder.finishSession.textLabel',
-    defaultMessage: 'Text',
+  finishedTitle: {
+    id: 'protocolBuilder.finishSession.finishedTitle',
+    defaultMessage: 'Finished screen',
     description:
-      'Label of the field holding the text a participant reads on the screen that ends the interview.',
+      'Heading of the section where a researcher writes what a participant reads once the interview has finished.',
+  },
+  finishedDescription: {
+    id: 'protocolBuilder.finishSession.finishedDescription',
+    defaultMessage:
+      'Write what participants read once the interview has finished. They see it again whenever the finished interview is opened.',
+    description: 'Description of the finished-screen section.',
+  },
+  finishedTextLabel: {
+    id: 'protocolBuilder.finishSession.finishedTextLabel',
+    defaultMessage: 'Finished text',
+    description:
+      'Label of the field holding the text, heading included, a participant reads once the interview has finished.',
   },
   finishingTitle: {
     id: 'protocolBuilder.finishSession.finishingTitle',
     defaultMessage: 'Finishing the interview',
     description:
-      'Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, the notice once it has finished, and the message when finishing fails.',
+      'Heading of the section holding the words a participant sees while finishing the interview: the button, its confirmation question, and the message when finishing fails.',
   },
   finishingDescription: {
     id: 'protocolBuilder.finishSession.finishingDescription',
@@ -61,18 +117,6 @@ export const finishSessionMessages = defineMessages({
     defaultMessage: 'Confirmation question',
     description:
       'Label of the field holding the question a participant is asked before the interview ends.',
-  },
-  finishedNoticeLabel: {
-    id: 'protocolBuilder.finishSession.finishedNoticeLabel',
-    defaultMessage: 'Finished notice',
-    description:
-      'Label of the field holding the notice shown under the closing text once the interview has ended.',
-  },
-  finishedNoticeHint: {
-    id: 'protocolBuilder.finishSession.finishedNoticeHint',
-    defaultMessage:
-      'Shown under the closing text once the interview has finished.',
-    description: 'Guidance under the finished-notice field.',
   },
   finishFailedLabel: {
     id: 'protocolBuilder.finishSession.finishFailedLabel',
@@ -156,5 +200,26 @@ export const finishOutcomeWords: Readonly<
   terminated: {
     label: finishSessionMessages.outcomeTerminated,
     description: finishSessionMessages.outcomeTerminatedDescription,
+  },
+});
+
+/**
+ * Author-facing names for each way a participant finishes. The mode values
+ * are schema contract; these words are editor copy, shared with the host's
+ * printable protocol summary.
+ */
+export const finishModeWords: Readonly<
+  Record<
+    FinishMode,
+    Readonly<{ label: MessageDescriptor; description: MessageDescriptor }>
+  >
+> = Object.freeze({
+  confirmation: {
+    label: finishSessionMessages.modeConfirmation,
+    description: finishSessionMessages.modeConfirmationDescription,
+  },
+  automatic: {
+    label: finishSessionMessages.modeAutomatic,
+    description: finishSessionMessages.modeAutomaticDescription,
   },
 });
