@@ -198,6 +198,31 @@ describe('findDynamicValueProblem', () => {
       'No values are available here.',
     );
   });
+
+  it('chooses versions by a value it cannot show as words, but never shows it', () => {
+    const values: DynamicValueArguments = {
+      flag: {
+        cases: ['yes'],
+        numeric: false,
+        optional: true,
+        unshowable: 'it has no labels.',
+      },
+    };
+    expect(
+      findDynamicValueProblem(
+        '{flag, select, missing {Hm.} yes {Good.} other {Hm.}}',
+        values,
+        'en',
+      ),
+    ).toBeUndefined();
+    expect(
+      findDynamicValueProblem(
+        '{flag, select, missing {Hm.} yes {Said {flag}.} other {Hm.}}',
+        values,
+        'en',
+      ),
+    ).toBe('"flag" cannot be shown as words: it has no labels.');
+  });
 });
 
 describe('dynamicMessageParts', () => {

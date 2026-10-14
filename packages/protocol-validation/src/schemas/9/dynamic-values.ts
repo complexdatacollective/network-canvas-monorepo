@@ -220,9 +220,33 @@ const NUMERIC_VARIABLE_TYPES: ReadonlySet<VariableType> = new Set<VariableType>(
 /** The facts about a variable that decide how a value of it can be used. */
 export type DynamicValueVariable = Readonly<{
   type: VariableType;
+  name?: string;
   encrypted?: boolean;
-  options?: readonly Readonly<{ value: unknown }>[];
+  options?: readonly Readonly<{ value: unknown; label?: unknown }>[];
 }>;
+
+/**
+ * Why text cannot show a value of `variable` as words, or undefined when it
+ * can. Text shows an answer by its option's label, and a yes/no attribute
+ * need not have any: a Toggle never does, and a Boolean question without
+ * labels shows the standard Yes and No, which are in the interface's
+ * language rather than the protocol's. Such an attribute needs a label for
+ * yes and for no before text shows it, though text may choose its wording by
+ * it, which shows no label.
+ */
+export const dynamicValueUnshowableReason = (
+  variable: DynamicValueVariable,
+): string | undefined => {
+  if (variable.type !== 'boolean') return undefined;
+  const labelled = (value: boolean) =>
+    variable.options?.some(
+      (option) => option.value === value && option.label !== undefined,
+    ) ?? false;
+  if (labelled(true) && labelled(false)) return undefined;
+  const attribute =
+    variable.name === undefined ? 'the yes/no attribute' : `"${variable.name}"`;
+  return `${attribute} is a yes/no attribute without labels for both of its answers. Add a label for yes and for no to ${attribute}, or give the text a different wording for each answer.`;
+};
 
 /**
  * A binding as one site sees it:
@@ -316,6 +340,7 @@ export const dynamicValueStatus = (
         'this form asks for it here or later, so it has no value yet where this text is shown',
     };
   }
+  const unshowable = dynamicValueUnshowableReason(variable);
   return {
     status: 'available',
     argument: {
@@ -324,6 +349,7 @@ export const dynamicValueStatus = (
         : [],
       numeric: NUMERIC_VARIABLE_TYPES.has(variable.type),
       optional: true,
+      ...(unshowable !== undefined && { unshowable }),
     },
   };
 };

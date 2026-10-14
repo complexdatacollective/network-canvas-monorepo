@@ -309,6 +309,69 @@ describe('dynamic values in stage text', () => {
     });
   });
 
+  describe('yes/no attributes', () => {
+    type Variables = Record<string, Record<string, unknown>>;
+    const personVariables = (protocol: Protocol): Variables =>
+      (protocol.codebook.node as Record<string, { variables: Variables }>)
+        .person!.variables;
+    const showingFlag = (message: string, cases?: Record<string, boolean>) =>
+      editing('alterForm', (stage) => {
+        stage.dynamicValues = {
+          flag: { path: 'node.flag', ...(cases && { cases }) },
+        };
+        stage.form = {
+          fields: [{ variable: 'nickname', prompt: { en: message } }],
+        };
+      });
+    const UNLABELLED =
+      '"flag" cannot be shown as words: "Flag" is a yes/no attribute without labels for both of its answers. Add a label for yes and for no to "Flag", or give the text a different wording for each answer.';
+
+    it('shows a yes/no attribute with a label for each answer', () => {
+      expect(issuesOf(showingFlag(guarded('flag')))).toEqual([]);
+    });
+
+    it('refuses to show a yes/no attribute without labels as words', () => {
+      const protocol = showingFlag(guarded('flag'));
+      delete personVariables(protocol).flag!.options;
+      const index = stageIndex(protocol, 'alterForm');
+      expect(issuesOf(protocol)).toEqual([
+        {
+          path: `stages.${index}.form.fields.0.prompt.en`,
+          message: UNLABELLED,
+        },
+      ]);
+    });
+
+    it('refuses a yes/no attribute with a label for only one answer', () => {
+      const protocol = showingFlag(guarded('flag'));
+      const flag = personVariables(protocol).flag!;
+      flag.options = (flag.options as { value: boolean }[]).filter(
+        (option) => option.value,
+      );
+      expect(issuesOf(protocol)).toEqual([
+        expect.objectContaining({ message: UNLABELLED }),
+      ]);
+    });
+
+    it('lets text choose its wording by a Toggle, which has no labels, but not show it', () => {
+      const wording =
+        '{flag, select, missing {Anything else?} yes {Tell us why.} other {Anything else?}}';
+      const byAnswer = showingFlag(wording, { yes: true });
+      const flag = personVariables(byAnswer).flag!;
+      flag.component = 'Toggle';
+      delete flag.options;
+      expect(issuesOf(byAnswer)).toEqual([]);
+
+      const shown = showingFlag(guarded('flag'));
+      const toggle = personVariables(shown).flag!;
+      toggle.component = 'Toggle';
+      delete toggle.options;
+      expect(issuesOf(shown)).toEqual([
+        expect.objectContaining({ message: UNLABELLED }),
+      ]);
+    });
+  });
+
   describe('where values are available', () => {
     const argumentsAt = (
       protocol: Protocol,

@@ -17,12 +17,16 @@ import type { MessagePart } from './messageArguments.ts';
  * - `numeric`, whether a plural may choose a version by it;
  * - `optional`, whether it can be missing where the text is shown. Such a
  *   value is shown only inside a version of a select on it that is for when
- *   it has a value, and that select has a `missing` version.
+ *   it has a value, and that select has a `missing` version;
+ * - `unshowable`, why the text cannot show the value itself, though it may
+ *   still choose versions by it (a yes/no attribute with no labels for its
+ *   answers), or undefined when it can.
  */
 export type DynamicValueArgument = Readonly<{
   cases: readonly string[];
   numeric: boolean;
   optional: boolean;
+  unshowable?: string;
 }>;
 
 /** The values a site's text may show, by argument name. */
@@ -297,6 +301,9 @@ const findElementsProblem = (
       case TYPE.argument: {
         const value = argumentOf(values, element.value);
         if (value === undefined) return unknownValue(element.value, values);
+        if (value.unshowable !== undefined) {
+          return `"${element.value}" cannot be shown as words: ${value.unshowable}`;
+        }
         if (value.optional && !guarded.has(element.value)) {
           return unguarded(element.value);
         }
