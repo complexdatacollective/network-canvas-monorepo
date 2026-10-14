@@ -599,6 +599,61 @@ const clipboardOf = (data: Readonly<Record<string, string>>) =>
     items: [],
   }) as unknown as DataTransfer;
 
+describe('a single-line RichTextEditorField with versions', () => {
+  it('keeps the versions a stored line holds', async () => {
+    const onChange = vi.fn();
+    render(
+      <RichTextEditorField
+        id="greeting"
+        name="greeting"
+        aria-describedby="greeting-hint"
+        aria-label="Greeting"
+        singleLine
+        versions
+        tokens={[{ id: 'name', label: 'Name', inToolbar: false }]}
+        changeMode="input"
+        value={{
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                { type: 'text', text: 'Hello' },
+                {
+                  type: 'versions',
+                  attrs: {
+                    label: 'Depending on the name',
+                    meta: { argument: 'name' },
+                    versions: [
+                      { key: 'missing', label: 'If not known', content: [] },
+                      {
+                        key: 'other',
+                        label: 'If known',
+                        content: [
+                          { type: 'text', text: ', ' },
+                          { type: 'token', attrs: { id: 'name' } },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        }}
+        onChange={onChange}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Greeting' });
+    expect(
+      await within(editor).findByRole('group', {
+        name: 'Depending on the name',
+      }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('a single-line RichTextEditorField', () => {
   type SingleLineProps = Pick<
     ComponentProps<typeof RichTextEditorField>,

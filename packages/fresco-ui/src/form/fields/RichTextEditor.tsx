@@ -506,13 +506,14 @@ const addText = (
  * Adds a token to the line, after the space any break before it is owed. A
  * token says something, as text does, so it is never a break itself.
  */
-const addToken = (run: OneLineRun, node: JSONContent) => {
+/** Adds an inline atom: a token, or a set of versions, kept whole. */
+const addAtom = (run: OneLineRun, atom: JSONContent) => {
   if (run.breakPending && run.collected.length > 0) {
     pushRun(run, SPACE, undefined);
   }
 
   run.breakPending = false;
-  run.collected.push({ type: TOKEN_NODE, attrs: { id: node.attrs?.id } });
+  run.collected.push(atom);
 };
 
 /** A run of newlines, however the platform that wrote them spells one. */
@@ -601,7 +602,17 @@ const collectOneLine = (
     }
 
     if (node.type === TOKEN_NODE && Object.hasOwn(schema.nodes, TOKEN_NODE)) {
-      addToken(run, node);
+      addAtom(run, { type: TOKEN_NODE, attrs: { id: node.attrs?.id } });
+      continue;
+    }
+
+    // Its versions live in its attributes, not its content, so it is kept
+    // whole rather than read through.
+    if (
+      node.type === VERSIONS_NODE &&
+      Object.hasOwn(schema.nodes, VERSIONS_NODE)
+    ) {
+      addAtom(run, node);
       continue;
     }
 
