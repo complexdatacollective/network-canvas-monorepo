@@ -10,8 +10,8 @@ The tab on the drawer of people still to place (on bin stages and the
 sociogram) no longer shows a count, which repeated what the drawer already
 shows. Its chevron is larger and the tab stays easy to tap. Screen readers
 still hear how many people are left. When the sociogram's drawer is open and
-empty, a short looping animation of a pointer dragging a person onto a drop
-target replaces the arrow icon; it holds still when reduced motion is on.
+empty, a short looping animation of a pointer bringing a person down into a drop
+zone replaces the arrow icon; it holds still when reduced motion is on.
 
 `@codaco/fresco-ui` adds `NodeDropAnimation`, a decorative loop of a pointer
-dragging a node onto a drop target, for empty drop targets.
+bringing a node down into a drop zone, for empty drop targets.

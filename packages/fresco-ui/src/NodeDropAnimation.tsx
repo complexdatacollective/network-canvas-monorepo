@@ -1,11 +1,12 @@
 'use client';
 
 import { type Easing, motion } from 'motion/react';
+import { useId } from 'react';
 
 import { useShouldSkipAnimations } from './hooks/useSafeAnimate';
 import { cva, cx, type VariantProps } from './utils/cva';
 
-const DURATION = 3.6;
+const DURATION = 3.4;
 
 const nodeDropVariants = cva({
   base: 'shrink-0 overflow-visible',
@@ -21,20 +22,24 @@ const nodeDropVariants = cva({
   },
 });
 
-// Scene coordinates, in viewBox units. The start and the target sit
-// symmetrically about the middle of the frame.
+// Scene coordinates, in viewBox units. The drop zone sits centred in the
+// lower part of the scene, leaving room above it for the node to arrive.
 const WIDTH = 160;
 const HEIGHT = 90;
-const START = { x: 50, y: 46 };
-const TARGET = { x: 110, y: 46 };
-const LIFT = 4;
-const APEX_Y = 26;
+const ZONE = { x: 30, y: 26, width: 100, height: 56, radius: 14 };
+const TARGET = { x: 80, y: 54 };
+// The node comes in from above the scene, a little to the left.
+const FROM = { x: TARGET.x - 18, y: -16 };
 const NODE_RADIUS = 12;
-const TARGET_RADIUS = 15;
-// The pointer's tip rests on the node a little below its centre, and waits
-// below and to the right of the start between drags.
+// The pointer's tip rests on the node a little below its centre, and leaves
+// up and to the right once the node is down.
 const TIP = { x: 2, y: 3 };
-const REST = { x: START.x + 12, y: START.y + 16 };
+const EXIT = { x: TARGET.x + 30, y: -24 };
+
+// Moments in the loop, as fractions of its duration.
+const ARRIVE = 0.4;
+const LET_GO = 0.46;
+const GONE = 0.66;
 
 type Track = { times: number[]; values: number[]; ease?: Easing[] };
 
@@ -57,104 +62,94 @@ function tracks(spec: Record<string, Track>) {
   return { initial, animate, transition };
 }
 
-// A node appears, the pointer arrives and presses it, carries it in one
-// smooth arc to the target and lets go. The pointer goes back to wait while
-// the dropped node fades from the target, and the loop starts again.
+// The pointer carries a node down into the drop zone, sets it down and
+// leaves. The node stays a moment, fades, and the loop starts again.
 const node = tracks({
   x: {
-    times: [0, 0.22, 0.56, 0.93, 0.94, 1],
-    values: [START.x, START.x, TARGET.x, TARGET.x, START.x, START.x],
-    ease: ['linear', 'easeInOut', 'linear', 'linear', 'linear'],
+    times: [0, ARRIVE, 1],
+    values: [FROM.x, TARGET.x, TARGET.x],
+    ease: ['easeOut', 'linear'],
   },
   y: {
-    times: [0, 0.16, 0.22, 0.39, 0.56, 1],
-    values: [START.y, START.y, START.y - LIFT, APEX_Y, TARGET.y, TARGET.y],
-    ease: ['linear', 'easeOut', 'easeOut', 'easeIn', 'linear'],
+    times: [0, ARRIVE, 1],
+    values: [FROM.y, TARGET.y, TARGET.y],
+    ease: ['easeInOut', 'linear'],
   },
   scale: {
-    times: [0, 0.08, 0.16, 0.22, 0.56, 0.62, 1],
-    values: [0.6, 1, 1, 1.1, 1.1, 1, 1],
+    times: [0, ARRIVE, LET_GO, 1],
+    values: [1.1, 1.1, 1, 1],
   },
   opacity: {
-    times: [0, 0.08, 0.82, 0.92, 1],
-    values: [0, 1, 1, 0, 0],
+    times: [0, 0.82, 0.92, 1],
+    values: [1, 1, 0, 0],
   },
 });
 
 const pointer = tracks({
   x: {
-    times: [0, 0.16, 0.22, 0.56, 0.62, 0.8, 1],
+    times: [0, ARRIVE, LET_GO, GONE, 1],
     values: [
-      REST.x,
-      START.x + TIP.x,
-      START.x + TIP.x,
+      FROM.x + TIP.x,
       TARGET.x + TIP.x,
       TARGET.x + TIP.x,
-      REST.x,
-      REST.x,
+      EXIT.x,
+      EXIT.x,
     ],
-    ease: ['easeInOut', 'linear', 'easeInOut', 'linear', 'easeInOut', 'linear'],
+    ease: ['easeOut', 'linear', 'easeIn', 'linear'],
   },
   y: {
-    times: [0, 0.16, 0.22, 0.39, 0.56, 0.62, 0.8, 1],
+    times: [0, ARRIVE, LET_GO, GONE, 1],
     values: [
-      REST.y,
-      START.y + TIP.y,
-      START.y - LIFT + TIP.y,
-      APEX_Y + TIP.y,
+      FROM.y + TIP.y,
       TARGET.y + TIP.y,
       TARGET.y + TIP.y,
-      REST.y,
-      REST.y,
+      EXIT.y,
+      EXIT.y,
     ],
-    ease: [
-      'easeInOut',
-      'easeOut',
-      'easeOut',
-      'easeIn',
-      'linear',
-      'easeInOut',
-      'linear',
-    ],
+    ease: ['easeInOut', 'linear', 'easeIn', 'linear'],
   },
   scale: {
-    times: [0, 0.16, 0.22, 0.56, 0.62, 1],
-    values: [1, 1, 0.85, 0.85, 1, 1],
+    times: [0, ARRIVE, LET_GO, 1],
+    values: [0.85, 0.85, 1, 1],
   },
 });
 
-// The target lights up and grows to meet the node as it arrives, ripples
-// when it lands, and glows while it holds the node.
-const target = tracks({
-  scale: {
-    times: [0, 0.42, 0.52, 0.6, 0.68, 1],
-    values: [1, 1, 1.15, 1.15, 1, 1],
-  },
-});
-const glow = tracks({
+// The zone fills with the accent colour as the node crosses into it, and
+// stays lit while it holds the node.
+const fill = tracks({
   opacity: {
-    times: [0, 0.4, 0.52, 0.62, 0.82, 0.92, 1],
-    values: [0, 0, 1, 0.9, 0.6, 0, 0],
+    times: [0, 0.22, 0.34, 0.82, 0.92, 1],
+    values: [0, 0, 0.35, 0.25, 0, 0],
   },
 });
-const ripple = tracks({
-  scale: { times: [0, 0.58, 0.8, 1], values: [1, 1, 1.7, 1.7] },
-  opacity: { times: [0, 0.58, 0.8, 1], values: [0, 0.6, 0, 0] },
-});
 
-function Frame() {
+function Zone({ filled }: { filled?: boolean }) {
   return (
-    <rect
-      x={4}
-      y={4}
-      width={WIDTH - 8}
-      height={HEIGHT - 8}
-      rx={14}
-      fill="currentColor"
-      fillOpacity={0.06}
-      stroke="currentColor"
-      strokeOpacity={0.15}
-    />
+    <>
+      {filled && (
+        <rect
+          x={ZONE.x}
+          y={ZONE.y}
+          width={ZONE.width}
+          height={ZONE.height}
+          rx={ZONE.radius}
+          fill="var(--accent)"
+          opacity={0.35}
+        />
+      )}
+      <rect
+        x={ZONE.x}
+        y={ZONE.y}
+        width={ZONE.width}
+        height={ZONE.height}
+        rx={ZONE.radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeDasharray="5 4"
+        opacity={0.6}
+      />
+    </>
   );
 }
 
@@ -187,37 +182,28 @@ function Node() {
   );
 }
 
-function TargetRing() {
-  return (
-    <circle
-      r={TARGET_RADIUS}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeDasharray="4 3"
-      opacity={0.6}
-    />
-  );
-}
-
 type NodeDropAnimationProps = {
   className?: string;
 } & VariantProps<typeof nodeDropVariants>;
 
 /**
- * A decorative loop, in a light frame, of a pointer dragging a node onto a
- * drop target, which lights up as the node arrives and keeps it once
+ * A decorative loop of a pointer bringing a node down into a dashed drop
+ * zone, which fills with colour as the node arrives and keeps it once
  * dropped. Use it on an empty drop target to show that people can be dropped
  * there. It takes its colours from the surrounding text colour and the
  * theme's accent, and is hidden from assistive technology, so pair it with
  * text that says what to do. With reduced motion it shows a still frame of
- * the node held over the target.
+ * the node held in the lit zone.
  */
 export default function NodeDropAnimation({
   size,
   className,
 }: NodeDropAnimationProps) {
   const skipAnimations = useShouldSkipAnimations();
+  // The node and pointer fade in through the top edge as they arrive.
+  const id = useId().replace(/[^a-zA-Z0-9-]/g, '');
+  const fadeId = `node-drop-fade-${id}`;
+  const maskId = `node-drop-mask-${id}`;
 
   const svgProps = {
     'aria-hidden': true,
@@ -227,18 +213,13 @@ export default function NodeDropAnimation({
   } as const;
 
   if (skipAnimations) {
-    const held = { x: TARGET.x, y: TARGET.y - 14 };
     return (
       <svg {...svgProps} data-still="">
-        <Frame />
-        <g transform={`translate(${TARGET.x} ${TARGET.y})`}>
-          <circle r={TARGET_RADIUS} fill="var(--accent)" opacity={0.6} />
-          <TargetRing />
-        </g>
-        <g transform={`translate(${held.x} ${held.y}) scale(1.1)`}>
+        <Zone filled />
+        <g transform={`translate(${TARGET.x} ${TARGET.y}) scale(1.1)`}>
           <Node />
         </g>
-        <g transform={`translate(${held.x + TIP.x} ${held.y + TIP.y})`}>
+        <g transform={`translate(${TARGET.x + TIP.x} ${TARGET.y + TIP.y})`}>
           <Pointer />
         </g>
       </svg>
@@ -247,26 +228,39 @@ export default function NodeDropAnimation({
 
   return (
     <svg {...svgProps}>
-      <Frame />
-      <g transform={`translate(${TARGET.x} ${TARGET.y})`}>
-        <motion.g {...target}>
-          <motion.circle r={TARGET_RADIUS} fill="var(--accent)" {...glow} />
-          <TargetRing />
+      <defs>
+        <linearGradient id={fadeId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="white" stopOpacity="0" />
+          <stop offset="0.3" stopColor="white" stopOpacity="1" />
+        </linearGradient>
+        <mask id={maskId} maskUnits="userSpaceOnUse">
+          <rect
+            x={-20}
+            y={0}
+            width={WIDTH + 40}
+            height={HEIGHT}
+            fill={`url(#${fadeId})`}
+          />
+        </mask>
+      </defs>
+      <motion.rect
+        x={ZONE.x}
+        y={ZONE.y}
+        width={ZONE.width}
+        height={ZONE.height}
+        rx={ZONE.radius}
+        fill="var(--accent)"
+        {...fill}
+      />
+      <Zone />
+      <g mask={`url(#${maskId})`}>
+        <motion.g {...node}>
+          <Node />
         </motion.g>
-        <motion.circle
-          r={TARGET_RADIUS}
-          fill="none"
-          stroke="var(--accent)"
-          strokeWidth={2}
-          {...ripple}
-        />
+        <motion.g {...pointer}>
+          <Pointer />
+        </motion.g>
       </g>
-      <motion.g {...node}>
-        <Node />
-      </motion.g>
-      <motion.g {...pointer}>
-        <Pointer />
-      </motion.g>
     </svg>
   );
 }

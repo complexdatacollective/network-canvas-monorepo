@@ -13,13 +13,13 @@ const meta: Meta<typeof NodeDropAnimation> = {
     docs: {
       description: {
         component: `
-A decorative loop, in a light frame, of a pointer dragging a node onto a drop target, which lights
-up as the node arrives and keeps it once dropped. Use it on an empty drop
+A decorative loop of a pointer bringing a node down into a dashed drop zone, which fills
+with colour as the node arrives and keeps it once dropped. Use it on an empty drop
 target to show that people can be dropped there. It takes its colours from the
 surrounding text colour and the theme's accent, and is hidden from assistive
 technology, so pair it with text (visible or \`sr-only\`) that says what to
-do. With reduced motion it shows a still frame of the node held over the
-target.
+do. With reduced motion it shows a still frame of the node held in the lit
+zone.
 
 \`\`\`tsx
 import NodeDropAnimation from '@codaco/fresco-ui/NodeDropAnimation';
