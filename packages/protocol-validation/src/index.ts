@@ -191,6 +191,7 @@ export {
   CASED_VARIABLE_TYPES,
   DYNAMIC_VALUE_ROLE_PREFIXES,
   DYNAMIC_VALUE_VARIABLE_TYPES,
+  type AttributeDynamicValueRole,
   type DynamicValueBinding,
   type DynamicValueForm,
   type DynamicValueRole,
@@ -206,7 +207,9 @@ export {
   dynamicValueUnshowableReason,
   INTRINSIC_DYNAMIC_VALUES,
   type IntrinsicDynamicValue,
-  LABELLED_DYNAMIC_VALUE_ROLES,
+  isAttributeDynamicValueRole,
+  isLabelledDynamicValueRole,
+  type LabelledDynamicValueRole,
   type ParsedDynamicValuePath,
   parseDynamicValuePath,
 } from './schemas/9/dynamic-values.ts';
