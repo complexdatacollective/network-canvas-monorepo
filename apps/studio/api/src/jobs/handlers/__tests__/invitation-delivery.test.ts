@@ -469,6 +469,53 @@ describe.skipIf(!testDb)('invitation delivery on the native queue', () => {
         }),
     );
 
+    it.effect(
+      'records an uncertain outcome at error level when the delivery ends during its send',
+      () =>
+        Effect.gen(function* () {
+          yield* clearQueue();
+          const invitation = yield* seedInvitation();
+          const deliveryId = yield* enqueueDeliveryRow(invitation);
+          const database = yield* Effect.context<TestDatabase>();
+          const endsMidSend = () =>
+            Effect.orDie(
+              ownerRows(
+                `UPDATE team_invitation_deliveries
+                    SET failed_at = clock_timestamp()
+                  WHERE id = $1`,
+                [deliveryId],
+              ),
+            ).pipe(Effect.provide(database), Effect.asVoid);
+
+          const logs = collectLeveledLogs();
+          const step = yield* runDelivery(deliveryId, endsMidSend).pipe(
+            Effect.provide(logs.layer),
+          );
+
+          assert.strictEqual(
+            step._tag === 'settled' ? step.outcome : undefined,
+            'uncertain',
+          );
+          const row = yield* deliveryState(deliveryId);
+          assert.strictEqual(row.sent_at, null);
+          assert.instanceOf(row.failed_at, Date);
+          assert.deepStrictEqual(
+            logs.records
+              .filter(
+                ({ annotations }) => annotations.alert === 'delivery_uncertain',
+              )
+              .map(({ level, message }) => ({ level, message })),
+            [
+              {
+                level: 'Error',
+                message:
+                  'the delivery ended while its send was in flight; its outcome is uncertain',
+              },
+            ],
+          );
+        }),
+    );
+
     it.effect('stamps a failed send before it lets go of the invitation', () =>
       Effect.gen(function* () {
         yield* clearQueue();

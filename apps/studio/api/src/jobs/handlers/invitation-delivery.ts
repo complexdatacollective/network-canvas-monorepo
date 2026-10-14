@@ -266,6 +266,17 @@ export const invitationDelivery = (deps: InvitationDeliveryDeps) => {
         message: attempt.value.message,
       });
     }
+    if (attempt.value.outcome === 'uncertain') {
+      yield* Effect.logError(
+        'the delivery ended while its send was in flight; its outcome is uncertain',
+      ).pipe(
+        Effect.annotateLogs({
+          queue: QUEUE,
+          job_id: job.id,
+          ...alertAnnotation(OPERATOR_ALERTS.deliveryUncertain),
+        }),
+      );
+    }
     return attempt.value.outcome;
   });
 };

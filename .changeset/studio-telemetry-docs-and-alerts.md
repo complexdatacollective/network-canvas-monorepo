@@ -10,7 +10,8 @@ sending server's address PostHog would otherwise record, alongside
 
 The log records operators alert on now carry one of four fixed `alert` codes,
 at error level: `delivery_uncertain` on an invitation delivery whose outcome is
-uncertain, `job_dead_lettered` on a job that ended for good (its last attempt failed,
+uncertain (including one that ended while its send was in flight, which now
+logs its own record), `job_dead_lettered` on a job that ended for good (its last attempt failed,
 its lease expired on its last attempt, which now logs its own record, or its
 payload does not decode for its queue),
 `readiness_failing` on a new record each process writes once when its

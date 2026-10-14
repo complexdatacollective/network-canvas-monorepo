@@ -108,19 +108,26 @@ where service_name = 'studio-api'
 [Alert insight](https://us.posthog.com/project/249487/insights/8BY5tqLd) ·
 code `delivery_uncertain`
 
-**What it means.** An invitation email's delivery attempt failed in a way that
-leaves its outcome unknown: the attempt ended after it may already have handed
-the message to the mail server, and the record of what happened could not be
-written. Studio stamps the delivery `uncertain` and does not retry it, so the
-invitee never gets two copies. The record is
-`the delivery attempt failed; its outcome is uncertain`, with `queue`
-(`invitation-delivery`) and `job_id`.
+**What it means.** An invitation email's delivery attempt ended in a way that
+leaves its outcome unknown, and Studio does not retry it, so the invitee never
+gets two copies. Two records carry the code, each with `queue`
+(`invitation-delivery`) and `job_id`:
+
+- `the delivery attempt failed; its outcome is uncertain`: the attempt failed
+  after it may already have handed the message to the mail server, and the
+  record of what happened could not be written. The delivery is stamped
+  `uncertain`.
+- `the delivery ended while its send was in flight; its outcome is uncertain`:
+  the mail server took the message, but by then the delivery had already been
+  ended by something else, so the send could not be recorded against it. The
+  delivery is stamped `uncertain` unless what ended it already stamped it.
 
 **What to do.**
 
 1. Take `job_id` and the installation from the record. The cause is on the
    worker's stdout and in the delivery's `last_error` in
-   `team_invitation_deliveries`, which also has `uncertain_at` set.
+   `team_invitation_deliveries`, which shows how the delivery ended
+   (`uncertain_at`, or the stamp of whatever ended it first).
 2. Check the mail provider's logs for the message to the invitee. If it was
    accepted, nothing is wrong but the record.
 3. If it was not, the invitee has no email: tell the team that sent it, so they
