@@ -157,12 +157,16 @@ const versionLabelClasses = cx(
 // block rather than inline: ProseMirror ends a paragraph that is empty, or
 // that ends in a value, with a line break, and in an inline paragraph that
 // break starts a second, empty line, which doubled the version's height.
+// The line is at least wide enough for a value and a few words, and its
+// padding and the room after its last value belong to the editor, so a click
+// anywhere in the box puts the caret in the line.
 // An empty version shows a muted hint that it shows nothing; the hint is
 // drawn by the placeholder, never written into the version.
 const versionEditorClasses = cx(
-  'block min-w-8 rounded-sm bg-current/5 px-1',
+  'block min-w-48 rounded-sm bg-current/5',
   'focus-within:outline-primary focus-within:outline-2',
-  '[&_.tiptap]:outline-none [&_.tiptap_p]:inline-block',
+  '[&_.tiptap]:cursor-text [&_.tiptap]:px-2 [&_.tiptap]:py-1 [&_.tiptap]:outline-none',
+  '[&_.tiptap_p]:inline-block [&_.tiptap_p]:min-w-full [&_.tiptap_p]:pr-4',
   '[&_.tiptap_p.is-editor-empty::before]:content-[attr(data-placeholder)]',
   '[&_.tiptap_p.is-editor-empty::before]:pointer-events-none',
   '[&_.tiptap_p.is-editor-empty::before]:float-left',
@@ -413,8 +417,8 @@ function VersionsView({
         // the consumer gives them.
         className={cx(
           expanded ? 'inline-grid' : 'hidden',
-          'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-2 gap-y-1 align-baseline',
-          'border-primary/40 bg-primary/5 rounded-sm border border-dashed px-2 py-1',
+          'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-3 gap-y-2 align-baseline',
+          'border-primary/40 bg-primary/5 rounded-sm border border-dashed px-3 py-2',
         )}
       >
         {attributes.versions.map((version, index) => (
