@@ -23,7 +23,6 @@ import {
   asksGenderIdentity,
   choosesFraming,
   FAMILY_PEDIGREE_SUPPLIED_TEXT,
-  limitsNominationBySex,
 } from '../stage-wording/family-pedigree.ts';
 import { requireSuppliedPlacements } from '../supplied-stage-setting.ts';
 import { categoricalOptionValueSchema } from '../variables/variable.ts';
@@ -468,9 +467,6 @@ const WORDING_ARGUMENTS = {
     owner: TEXT,
   },
   missingDetailsList: { details: TEXT },
-  nominationLimitHint: {
-    sex: { kind: 'select', cases: ['female'] },
-  },
   otherParentBiologicalLabel: { otherIsYou: SELECT_TRUE, other: TEXT },
   panelTitle: {
     relation: {
@@ -660,7 +656,6 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   genderIdentityLabel: plainWording().optional(),
   generatedLabelOf: argumentWording('generatedLabelOf'),
   missingDetailsList: argumentWording('missingDetailsList'),
-  nominationLimitHint: argumentWording('nominationLimitHint').optional(),
   otherParentBiologicalLabel: argumentWording('otherParentBiologicalLabel'),
   otherParentLabel: plainWording(),
   otherParentNone: plainWording(),
@@ -749,12 +744,6 @@ const CONFIGURED_WORDING = [
     key: 'genderIdentityLabel',
     applies: asksGenderIdentity,
     requiredWhen: 'the stage asks about gender identity',
-  },
-  {
-    key: 'nominationLimitHint',
-    applies: limitsNominationBySex,
-    requiredWhen:
-      'a question about the family applies only to people of one sex assigned at birth',
   },
 ] as const;
 

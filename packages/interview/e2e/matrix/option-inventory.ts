@@ -569,7 +569,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'wording.sharedSurrogateLabel',
     'wording.sharedParentsNotSibling',
     'wording.standInPlaceTaken',
-    'wording.nominationLimitHint',
     'wording.siblingTwinLabel',
     'wording.siblingTwinHint',
     'wording.siblingTwinNo',

@@ -41,10 +41,9 @@ type PersonNodeProps = {
   /** Nothing can be done with them for now: the wording is being asked, or
    * the tool in use cannot pair them with the person chosen first. */
   disabled?: boolean;
-  /** The id of why they cannot be chosen, when they are shown unavailable
-   * but stay reachable (a nomination prompt that cannot apply to them):
-   * they are drawn as disabled, and described by it. */
-  unavailableReasonId?: string;
+  /** They are shown unavailable but stay reachable (a nomination prompt
+   * that cannot apply to them): they are drawn as disabled. */
+  unavailable?: boolean;
   /** Their add menu is showing (focus or the mouse is on them). */
   menuOpen: boolean;
   /** One of the two people being connected with the connect tool. */
@@ -82,7 +81,7 @@ export default function PersonNode({
   shape,
   selected,
   disabled = false,
-  unavailableReasonId,
+  unavailable,
   menuOpen,
   linking,
   adopted,
@@ -107,7 +106,6 @@ export default function PersonNode({
   // what else is known about the person, drawn around the symbol, describes
   // it.
   const describedBy = [
-    unavailableReasonId,
     adopted ? adoptedId : undefined,
     hasMissingDetails ? missingId : undefined,
     hasRoles ? rolesId : undefined,
@@ -157,9 +155,9 @@ export default function PersonNode({
           name: withoutSoftHyphens(accessibleName),
         })}
         aria-describedby={describedBy || undefined}
-        aria-disabled={unavailableReasonId ? true : undefined}
+        aria-disabled={unavailable || undefined}
         // Drawn as Node draws a disabled symbol, but still focusable.
-        className={unavailableReasonId ? 'saturate-50' : undefined}
+        className={unavailable ? 'saturate-50' : undefined}
         selected={selected}
         disabled={disabled}
         linking={linking}

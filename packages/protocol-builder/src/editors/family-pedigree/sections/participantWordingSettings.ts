@@ -10,10 +10,7 @@ import { familyPedigreeMessages as messages } from './pedigreeMessages.ts';
  * A setting the stage holds only while its configuration is on. The schema
  * requires it then, so the editor shows it then and no other time.
  */
-export type WordingGate =
-  | 'choosesFraming'
-  | 'asksGenderIdentity'
-  | 'limitsNominationBySex';
+export type WordingGate = 'choosesFraming' | 'asksGenderIdentity';
 
 type WordingSetting = Readonly<{
   /** The setting's key under the stage's `wording`. */
@@ -87,13 +84,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         key: 'missingDetailsList',
         label: messages.wordingMissingDetailsList,
         arguments: PEDIGREE_WORDING_ARGUMENTS.missingDetailsList,
-      },
-      {
-        key: 'nominationLimitHint',
-        label: messages.wordingNominationLimitHint,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.nominationLimitHint,
-        gate: 'limitsNominationBySex',
-        hint: messages.wordingLimitsNominationBySexHint,
       },
     ],
   },

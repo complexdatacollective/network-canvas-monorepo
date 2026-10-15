@@ -696,17 +696,11 @@ export const NominatingConditions: Story = {
     await userEvent.click(canvas.getByTestId('next-button'));
     await canvas.findByText(OVARIAN_PROMPT);
     // Each prompt records its own answer, and this one is not for the
-    // father: he is shown unavailable, saying why, beneath the family and
-    // as his description, and choosing him anyway changes nothing.
-    const limit =
-      'People assigned male at birth can’t be selected for this question.';
+    // father: he is shown unavailable, and choosing him anyway changes
+    // nothing.
     await waitFor(() =>
       expect(father()).toHaveAttribute('aria-disabled', 'true'),
     );
-    await expect(father()).toHaveAccessibleDescription(limit);
-    await expect(
-      canvas.getByTestId('pedigree-nomination-limit'),
-    ).toHaveTextContent(limit);
     await userEvent.click(father());
     await expect(father()).toHaveAttribute('aria-pressed', 'false');
     // Intersex, the participant can still be chosen.
