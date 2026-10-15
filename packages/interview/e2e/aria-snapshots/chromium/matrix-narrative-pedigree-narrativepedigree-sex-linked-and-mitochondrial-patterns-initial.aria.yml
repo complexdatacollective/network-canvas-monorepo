@@ -13,8 +13,8 @@
     - button "Focus on Gerald" [disabled]: "Haemophilia: Status unknown, Hypophosphataemia: Affected, Hearing Loss: Obligate affected, and Mitochondrial Myopathy: Status unknown Gerald"
     - button "Focus on You" [disabled]: "Haemophilia: At risk (affected), Hypophosphataemia: Status unknown, Hearing Loss: Obligate affected, and Mitochondrial Myopathy: At risk (affected) You"
     - button "Focus on Helen" [disabled]: "Haemophilia: At risk (carrier), Hypophosphataemia: Obligate affected, Hearing Loss: Status unknown, and Mitochondrial Myopathy: At risk (affected) Helen"
-  - toolbar "Zoom controls":
-    - button "All conditions"
+  - toolbar "Family tree controls":
+    - button "Select a condition"
     - separator
     - button "Zoom out"
     - button "Zoom in"

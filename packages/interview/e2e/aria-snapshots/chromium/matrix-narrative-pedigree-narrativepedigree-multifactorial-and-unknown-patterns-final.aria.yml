@@ -10,7 +10,7 @@
     - button "Focus on Roy": "Rare Condition: Affected"
     - button "Focus on You": "Rare Condition: Status unknown"
     - button "Focus on Sam": "Rare Condition: Status unknown"
-  - toolbar "Zoom controls":
+  - toolbar "Family tree controls":
     - button "Rare Condition"
     - separator
     - button "Zoom out"

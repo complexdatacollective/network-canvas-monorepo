@@ -10,8 +10,8 @@
     - button "Focus on Diane" [disabled]: "Cystic Fibrosis: Obligate carrier Diane"
     - button "Focus on Roy" [disabled]: "Cystic Fibrosis: Obligate carrier Roy"
     - button "Focus on You" [disabled]: "Cystic Fibrosis: Affected You"
-  - toolbar "Zoom controls":
-    - button "All conditions"
+  - toolbar "Family tree controls":
+    - button "Select a condition"
     - separator
     - button "Zoom out"
     - button "Zoom in"

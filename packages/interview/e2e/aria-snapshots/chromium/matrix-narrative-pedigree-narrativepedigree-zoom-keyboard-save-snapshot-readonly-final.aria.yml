@@ -9,7 +9,7 @@
     - button "Focus on David": "Huntington's Disease: Status unknown"
     - button "Focus on You" [pressed]: "Huntington's Disease: Affected"
   - button "Stop focusing - matrix check"
-  - toolbar "Zoom controls":
+  - toolbar "Family tree controls":
     - button "Huntington's Disease"
     - separator
     - button "Zoom out"

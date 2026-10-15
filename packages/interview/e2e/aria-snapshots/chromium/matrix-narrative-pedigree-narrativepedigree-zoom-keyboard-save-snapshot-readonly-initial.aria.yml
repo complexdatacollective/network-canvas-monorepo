@@ -4,8 +4,8 @@
     - button "Focus on Rose" [disabled]: "Huntington's Disease: Status unknown Rose"
     - button "Focus on David" [disabled]: "Huntington's Disease: Status unknown David"
     - button "Focus on You" [disabled]: "Huntington's Disease: Affected You"
-  - toolbar "Zoom controls":
-    - button "Everything at once - matrix check"
+  - toolbar "Family tree controls":
+    - button "Pick one - matrix check"
     - separator
     - button "Zoom out"
     - button "Zoom in"

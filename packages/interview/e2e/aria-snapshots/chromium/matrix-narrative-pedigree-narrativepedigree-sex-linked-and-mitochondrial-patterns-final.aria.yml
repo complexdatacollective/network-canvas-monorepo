@@ -18,7 +18,7 @@
     - button "Focus on You" [pressed]: "Mitochondrial Myopathy: At risk (affected)"
     - button "Focus on Helen": "Mitochondrial Myopathy: At risk (affected)"
   - button "Clear focus"
-  - toolbar "Zoom controls":
+  - toolbar "Family tree controls":
     - button "Mitochondrial Myopathy"
     - separator
     - button "Zoom out"

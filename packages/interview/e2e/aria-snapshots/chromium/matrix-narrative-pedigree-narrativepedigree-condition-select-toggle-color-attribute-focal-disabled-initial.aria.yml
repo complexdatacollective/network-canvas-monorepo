@@ -7,8 +7,8 @@
     - button "Focus on Rose" [disabled]: "Huntington's Disease: Status unknown Rose"
     - button "Focus on David" [disabled]: "Huntington's Disease: Status unknown David"
     - button "Focus on You" [disabled]: "Huntington's Disease: Status unknown You"
-  - toolbar "Zoom controls":
-    - button "All conditions"
+  - toolbar "Family tree controls":
+    - button "Select a condition"
     - separator
     - button "Zoom out"
     - button "Zoom in"

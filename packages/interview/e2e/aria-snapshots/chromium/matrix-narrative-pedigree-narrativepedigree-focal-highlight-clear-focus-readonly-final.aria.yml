@@ -11,7 +11,7 @@
     - button "Focus on Rose": "Huntington's Disease: Status unknown"
     - button "Focus on David": "Huntington's Disease: Status unknown"
     - button "Focus on You": "Huntington's Disease: Status unknown"
-  - toolbar "Zoom controls":
+  - toolbar "Family tree controls":
     - button "Huntington's Disease"
     - separator
     - button "Zoom out"
