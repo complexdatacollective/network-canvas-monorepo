@@ -2,6 +2,8 @@
 
 import {
   useCallback,
+  useContext,
+  useMemo,
   useEffect,
   useRef,
   useState,
@@ -13,6 +15,7 @@ import { createPortal } from 'react-dom';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 import { messages } from '../messages';
 
@@ -44,12 +47,25 @@ const isClosed = (field: Element) => {
   );
 };
 
+/** Reads a question's value from the form, by the path its field stamps. */
+type ReadValue = (path: string) => unknown;
+
+const isEmptyValue = (value: unknown) =>
+  value === undefined ||
+  value === null ||
+  (typeof value === 'string' && value.trim() === '') ||
+  (Array.isArray(value) && value.length === 0);
+
 /**
- * Whether a question still waits for an answer. A question whose kind cannot
- * be read from its markup counts as waiting, so the form stops there rather
- * than passing it by.
+ * Whether a question still waits for an answer. A question the form holds is
+ * read from its value, so every kind of control counts alike (a slider shows
+ * a position before it is answered; a date picker has no text box). Without
+ * the form, the markup is read; a question whose kind cannot be read from it
+ * counts as waiting, so the form stops there rather than passing it by.
  */
-const isUnanswered = (field: Element) => {
+const isUnanswered = (field: Element, read?: ReadValue) => {
+  const path = field.getAttribute('data-field-path');
+  if (read && path !== null) return isEmptyValue(read(path));
   if (field.querySelector('[role="radio"]')) {
     return !field.querySelector('[role="radio"][aria-checked="true"]');
   }
@@ -91,7 +107,7 @@ const controlOf = (field: Element) =>
   );
 
 /** The questions after `field` still waiting for an answer, in order. */
-const waitingAfter = (root: Element, field: Element) =>
+const waitingAfter = (root: Element, field: Element, read?: ReadValue) =>
   [...root.querySelectorAll(FIELD_SELECTOR)].filter(
     (candidate) =>
       Boolean(
@@ -101,7 +117,7 @@ const waitingAfter = (root: Element, field: Element) =>
       !field.contains(candidate) &&
       isShown(candidate) &&
       !isClosed(candidate) &&
-      isUnanswered(candidate),
+      isUnanswered(candidate, read),
   );
 
 /** Scrolls `next` into view, unless all of it already shows. */
@@ -128,26 +144,26 @@ const STEP_DELAY = 350;
 type StepState = 'answered' | 'optional' | 'required';
 
 /** Whether every question in a step is answered, or what still waits. */
-const stateOf = (step: Element): StepState => {
+const stateOf = (step: Element, read?: ReadValue): StepState => {
   const waiting = [...step.querySelectorAll(FIELD_SELECTOR)].filter(
-    (field) => !isClosed(field) && isUnanswered(field),
+    (field) => !isClosed(field) && isUnanswered(field, read),
   );
   if (waiting.some(isRequired)) return 'required';
   return waiting.length > 0 ? 'optional' : 'answered';
 };
 
-const firstWaiting = (step: Element) =>
+const firstWaiting = (step: Element, read?: ReadValue) =>
   [...step.querySelectorAll(FIELD_SELECTOR)].find(
-    (field) => isShown(field) && !isClosed(field) && isUnanswered(field),
+    (field) => isShown(field) && !isClosed(field) && isUnanswered(field, read),
   );
 
-const firstRequiredWaiting = (step: Element) =>
+const firstRequiredWaiting = (step: Element, read?: ReadValue) =>
   [...step.querySelectorAll(FIELD_SELECTOR)].find(
     (field) =>
       isShown(field) &&
       isRequired(field) &&
       !isClosed(field) &&
-      isUnanswered(field),
+      isUnanswered(field, read),
   );
 
 /** The steps holding at least one question, in the order they show. */
@@ -198,6 +214,11 @@ export default function QuestionFlow({
   finish,
 }: QuestionFlowProps) {
   const intl = useAppIntl();
+  const store = useContext(FormStoreContext);
+  const read = useMemo<ReadValue | undefined>(
+    () => (store ? (path) => store.getState().getValue(path) : undefined),
+    [store],
+  );
   // Steps need somewhere for their buttons; without it the whole form shows.
   const stepped = steppedWanted && navigation != null;
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
@@ -232,8 +253,8 @@ export default function QuestionFlow({
       element.hidden = at !== index;
       element.inert = at !== index;
     });
-    if (step) setState(stateOf(step));
-  }, [stepped, steps, index, step]);
+    if (step) setState(stateOf(step, read));
+  }, [stepped, steps, index, step, read]);
 
   const goTo = useCallback((target: number) => {
     window.clearTimeout(advanceTimer.current);
@@ -249,9 +270,10 @@ export default function QuestionFlow({
     moved.current = false;
     const scroller = scrollerOf(step);
     if (scroller) scroller.scrollTop = 0;
-    const field = firstWaiting(step) ?? step.querySelector(FIELD_SELECTOR);
+    const field =
+      firstWaiting(step, read) ?? step.querySelector(FIELD_SELECTOR);
     if (field) controlOf(field)?.focus({ preventScroll: true });
-  }, [step]);
+  }, [step, read]);
 
   // The steps change as answers bring questions in or take them away, and
   // the step button's label with every answer.
@@ -263,7 +285,7 @@ export default function QuestionFlow({
       frame = requestAnimationFrame(() => {
         survey();
         const shown = root.querySelector(`${STEP_SELECTOR}:not([hidden])`);
-        if (shown) setState(stateOf(shown));
+        if (shown) setState(stateOf(shown, read));
       });
     };
     const observer = new MutationObserver((records) => {
@@ -299,25 +321,29 @@ export default function QuestionFlow({
       attributeFilter: ['aria-checked', 'aria-invalid', 'disabled'],
     });
     root.addEventListener('input', schedule);
+    // Answers given through controls that change no watched markup (a
+    // slider, a date picker) reach the form's values.
+    const unsubscribe = store?.subscribe(schedule);
     schedule();
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
       form?.removeEventListener('submit', onSubmit, true);
       root.removeEventListener('input', schedule);
+      unsubscribe?.();
     };
-  }, [root, stepped, survey, goTo]);
+  }, [root, stepped, survey, goTo, store, read]);
 
   const proceed = useCallback(() => {
     if (!step) return;
-    const missing = firstRequiredWaiting(step);
+    const missing = firstRequiredWaiting(step, read);
     if (missing) {
       controlOf(missing)?.focus({ preventScroll: true });
       bringIntoView(missing);
       return;
     }
     if (!isLast) goTo(index + 1);
-  }, [step, isLast, index, goTo]);
+  }, [step, isLast, index, goTo, read]);
 
   // A chosen option moves the form on, once the answer has rendered along
   // with any question it brings in.
@@ -330,8 +356,8 @@ export default function QuestionFlow({
       const field = target.closest(FIELD_SELECTOR);
       if (!field) return;
       requestAnimationFrame(() => {
-        if (!field.isConnected || isUnanswered(field)) return;
-        const [next] = waitingAfter(root, field);
+        if (!field.isConnected || isUnanswered(field, read)) return;
+        const [next] = waitingAfter(root, field, read);
         if (next) {
           bringIntoView(next);
           return;
@@ -342,7 +368,7 @@ export default function QuestionFlow({
           holder &&
           holder === step &&
           !isLast &&
-          stateOf(holder) !== 'required'
+          stateOf(holder, read) !== 'required'
         ) {
           window.clearTimeout(advanceTimer.current);
           advanceTimer.current = window.setTimeout(
@@ -354,7 +380,7 @@ export default function QuestionFlow({
     };
     root.addEventListener('click', onClick);
     return () => root.removeEventListener('click', onClick);
-  }, [root, stepped, step, isLast, index, goTo]);
+  }, [root, stepped, step, isLast, index, goTo, read]);
 
   useEffect(() => () => window.clearTimeout(advanceTimer.current), []);
 
