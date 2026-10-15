@@ -291,11 +291,11 @@ export default function NarrativePedigreeView({
     component: <Node size="sm" />,
   });
 
-  // When a disease is selected, show only that disease; otherwise show all.
+  // The condition the pedigree shows: the selected one, or none until one is
+  // chosen, when every person is drawn as a plain symbol.
   const shownDiseases = useMemo<ResolvedDisease[]>(() => {
-    if (selectedDiseaseId === null) return diseases;
     const found = diseases.find((d) => d.id === selectedDiseaseId);
-    return found !== undefined ? [found] : diseases;
+    return found !== undefined ? [found] : [];
   }, [selectedDiseaseId, diseases]);
 
   // diseaseId → (personId → status) for every shown disease.
@@ -413,9 +413,9 @@ export default function NarrativePedigreeView({
   // Plain-text per-person disease-status summary for screen readers. The
   // visual status markers are aria-hidden, so this is the only way a
   // screen-reader user learns who is affected/carrier/at-risk. It mirrors
-  // whatever is currently shown (all diseases, or a single selected one) and is
-  // announced via aria-describedby on the person. Returns null when there are
-  // no diseases to describe.
+  // what is currently shown (the selected condition, or nothing before one is
+  // chosen) and is announced via aria-describedby on the person. Returns null
+  // when no condition is shown.
   const statusSummaryFor = (personId: string): string | null => {
     if (shownDiseases.length === 0) return null;
     const parts = shownDiseases.map((disease) => {
@@ -869,21 +869,16 @@ export default function NarrativePedigreeView({
 
       {/* Visually-hidden aria-live region for announcing state changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
-        <AppMessage
-          message={
-            selectedDiseaseId === null
-              ? focalId === null
-                ? messages.showingAll
-                : messages.showingAllFocused
-              : focalId === null
+        {selectedDiseaseLabel !== null && (
+          <AppMessage
+            message={
+              focalId === null
                 ? messages.showingCondition
                 : messages.showingFocused
-          }
-          values={{
-            condition: selectedDiseaseLabel ?? selectedDiseaseId ?? '',
-            name: focalLabel ?? '',
-          }}
-        />
+            }
+            values={{ condition: selectedDiseaseLabel, name: focalLabel ?? '' }}
+          />
+        )}
       </div>
 
       {selectedDisease ? (
