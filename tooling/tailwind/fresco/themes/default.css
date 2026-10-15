@@ -212,9 +212,10 @@
     --overlay-tone: oklch(from var(--overlay) l c h / 0.45);
 
     /* Sequences */
-    --node-1: oklch(
-      from oklch(var(--neon-coral)) calc(l + 0.01) calc(c - 0.01) h
-    );
+    /* Node colors are adjusted from the brand colors so white labels reach
+       WCAG AA 4.5:1 and each node reaches 3:1 against the interview
+       background, on both sRGB and P3 displays. */
+    --node-1: oklch(var(--neon-coral));
     --node-1-contrast: oklch(var(--white));
     --node-2: oklch(
       from oklch(var(--sea-serpent)) calc(l - 0.19) calc(c + 0.01) h

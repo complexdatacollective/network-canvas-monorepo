@@ -20,8 +20,8 @@ const spinnerColors: readonly SpinnerColor[] = [
     dark: 'oklch(76% 0.17 72)', // mustard-dark
   },
   {
-    light: 'oklch(57.33% 0.2584 11.57)', // neon-coral
-    dark: 'oklch(52.33% 0.2584 11.57)', // neon-coral-dark
+    light: 'oklch(58.33% 0.2484 11.57)', // neon-coral
+    dark: 'oklch(53.33% 0.2484 11.57)', // neon-coral-dark
   },
   {
     light: 'oklch(70% 0.2 171.52)', // sea-green

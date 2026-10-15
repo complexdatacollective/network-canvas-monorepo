@@ -11,8 +11,8 @@
   --dark-mod: 0.05;
 
   /* Neon Coral */
-  --neon-coral-lightness: 0.5733;
-  --neon-coral-chroma: 0.2584;
+  --neon-coral-lightness: 0.5833;
+  --neon-coral-chroma: 0.2484;
   --neon-coral-hue: 11.57;
   --neon-coral: var(--neon-coral-lightness) var(--neon-coral-chroma)
     var(--neon-coral-hue);

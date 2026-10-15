@@ -68,7 +68,7 @@ const nodeVariants = cva({
     'focusable relative inline-flex items-center justify-center focus-visible:outline-offset-6',
     'aspect-square min-w-0 shrink-0',
     'text-white',
-    '[--base:var(--node-1)]',
+    '[--base:var(--node-1)] [--dark:oklch(from_var(--base)_calc(l-0.05)_c_h)]',
   ],
   variants: {
     size: {
@@ -120,7 +120,7 @@ const nodeVariants = cva({
   },
 });
 
-// Background layer carrying the fill and, for diamonds, the rotation.
+// Background layer carrying the gradient and, for diamonds, the rotation.
 // Shape transforms must live here rather than on the root element: the root
 // receives inline `transform` positioning (e.g. translate(-50%, -50%)
 // centering on the sociogram canvas) and motion layout projection, both of
@@ -128,7 +128,7 @@ const nodeVariants = cva({
 const shapeLayerVariants = cva({
   base: [
     'pointer-events-none absolute inset-0 rounded-[inherit]',
-    'bg-(--base)',
+    'bg-[linear-gradient(145deg,var(--base)_0%,var(--base)_50%,var(--dark)_50%,var(--dark)_100%)]',
   ],
   variants: {
     shape: {
