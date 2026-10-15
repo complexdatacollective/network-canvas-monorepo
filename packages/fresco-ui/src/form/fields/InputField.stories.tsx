@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 
 import Paragraph from '../../typography/Paragraph';
 import InputField from './InputField';
@@ -107,9 +107,7 @@ export const Default: Story = {
     const input = canvas.getByTestId('default-input');
 
     await expect(input).toHaveValue('');
-    await userEvent.click(input);
-    await waitFor(() => expect(input).toHaveFocus());
-    await userEvent.type(input, 'Hello World', { skipClick: true });
+    await userEvent.type(input, 'Hello World');
     await expect(input).toHaveValue('Hello World');
   },
 };

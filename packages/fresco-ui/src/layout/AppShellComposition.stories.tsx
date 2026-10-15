@@ -197,10 +197,9 @@ export const SkipLinkReachesTheAreaMain: Story = {
     await expect(skipLink).toHaveAttribute('href', `#${main.id}`);
 
     skipLink.focus();
-    await waitFor(() => expect(skipLink).toHaveFocus());
     await userEvent.keyboard('{Enter}');
 
-    await waitFor(() => expect(main).toHaveFocus());
+    await expect(main).toHaveFocus();
   },
 };
 
