@@ -1093,9 +1093,9 @@ function genderIdentityTerms(): ScenarioDefinition {
  * Both biological parents are required. The participant starts alone and
  * undescribed: Next is held back, opening the list of what is still needed,
  * and pressing it again does not get through. Each item leads to where it is
- * resolved — adding a parent, describing the stand-in added for the other,
- * or the participant's own details — and once the list is empty the ring
- * says so and Next moves on.
+ * resolved — adding a parent, or the participant's own details (the
+ * stand-in added for the other parent has nothing missing) — and once the
+ * list is empty the ring says so and Next moves on.
  */
 function completenessParentsRequired(): ScenarioDefinition {
   const { synth, fp, person } = scaffold({
@@ -1149,13 +1149,16 @@ function completenessParentsRequired(): ScenarioDefinition {
       await expect(member(page, 'Mother')).toBeVisible();
 
       // Her addition adds an unnamed stand-in for the other biological
-      // parent (the stand-in rule), whose details the list then asks for.
+      // parent (the stand-in rule). Their sex at birth follows from the
+      // gamete they gave, and gender identity is never a missing detail, so
+      // the list does not ask about them.
       await trackerRing(page).click();
-      await trackerList(page)
-        .getByRole('button', {
+      await expect(
+        trackerList(page).getByRole('button', {
           name: 'Some details are missing for “Biological father”',
-        })
-        .click();
+        }),
+      ).toHaveCount(0);
+      await member(page, 'Biological father').click();
       await describe(page, { gender: 'Man', sex: 'Male' });
       await submitPanel(page, 'Save');
       await expect(member(page, 'Father')).toBeVisible();
@@ -1167,7 +1170,7 @@ function completenessParentsRequired(): ScenarioDefinition {
         .click();
       await expect(
         panel(page).getByText(
-          'Some details are missing: Gender identity and Sex assigned at birth.',
+          'Some details are missing: Sex assigned at birth.',
         ),
       ).toBeVisible();
       await describe(page, { gender: 'Non-binary', sex: 'Intersex' });
@@ -2578,7 +2581,7 @@ function wordingPeopleAndPanel(): ScenarioDefinition {
       // questions.
       await member(page, 'Relative term - matrix check').click();
       await expect(panel(page).getByRole('status')).toContainText(
-        'Details to add (Gender identity wording - matrix check and Sex at birth wording - matrix check) - matrix check',
+        'Details to add (Sex at birth wording - matrix check) - matrix check',
       );
       await cancel();
 
