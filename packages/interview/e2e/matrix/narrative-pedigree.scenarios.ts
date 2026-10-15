@@ -337,7 +337,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page }) => {
-        // Every condition is shown, so there is no key to their symbols.
+        // No condition is shown until one is chosen, so there is no key.
         await expect(conditionPicker(page)).toHaveText(SELECT_CONDITION);
         await expect(conditionKey(page)).toHaveCount(0);
         await expect(
@@ -349,7 +349,8 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // The participant is "You", whatever name they gave themselves.
         await expect(member(page, 'You')).toBeVisible();
         await expect(member(page, 'Rose')).toBeVisible();
-        await expect(page.getByText('Showing all conditions')).toBeVisible();
+        // Nothing is announced before a condition is chosen.
+        await expect(page.getByText(/^Showing /)).toHaveCount(0);
         await expect(page.locator('[data-notation-status]')).toHaveCount(0);
         // Dead-config guards: neither the interviewScript nor the label reaches
         // the DOM.
@@ -411,7 +412,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
 
         await chooseCondition(page, SELECT_CONDITION);
         await expect(page.locator('[data-notation-status]')).toHaveCount(0);
-        await expect(page.getByText('Showing all conditions')).toBeVisible();
+        await expect(
+          page.getByText("Showing Huntington's Disease"),
+        ).toHaveCount(0);
         await expect(conditionKey(page)).toHaveCount(0);
       },
     },

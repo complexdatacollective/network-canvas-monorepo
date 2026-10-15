@@ -1,12 +1,11 @@
 - main:
-  - text: Showing all conditions
   - region "Your family":
-    - button "Focus on George" [disabled]: "Huntington's Disease: Affected George"
-    - button "Focus on Nancy" [disabled]: "Huntington's Disease: Status unknown Nancy"
-    - button "Focus on Margaret" [disabled]: "Huntington's Disease: Status unknown Margaret"
-    - button "Focus on Rose" [disabled]: "Huntington's Disease: Status unknown Rose"
-    - button "Focus on David" [disabled]: "Huntington's Disease: Status unknown David"
-    - button "Focus on You" [disabled]: "Huntington's Disease: Status unknown You"
+    - button "Focus on George" [disabled]
+    - button "Focus on Nancy" [disabled]
+    - button "Focus on Margaret" [disabled]
+    - button "Focus on Rose" [disabled]
+    - button "Focus on David" [disabled]
+    - button "Focus on You" [disabled]
   - toolbar "Family tree controls":
     - button "Select a condition"
     - separator
