@@ -50,6 +50,25 @@ describe('joinReasons', () => {
     );
   });
 
+  test('says a conflict about the participant once, not again for their siblings', () => {
+    const sameSexAs = (childId: string) =>
+      sexRuledOutReason(context, 'new', {
+        rule: 'sameSexGeneticParent',
+        sex: 'female',
+        childId,
+        coParentId: 'mum',
+      });
+    expect(
+      joinReasons(context, [
+        sameSexAs('ava'),
+        sameSexAs('ego'),
+        sameSexAs('ben'),
+      ]),
+    ).toBe(
+      '“Female” is unavailable because this person and “Mum” are both your genetic parents, and “Mum” is recorded as “Female” at birth. Nobody has two genetic parents of the same sex at birth. To choose it, first change the sex at birth of “Mum”, or how one of them is connected to you.',
+    );
+  });
+
   test('says each sentence once, and nothing when there is no reason', () => {
     const surrogate = carrierRecordedReason('ego', 'mum', [
       { value: 'surrogate', label: 'Surrogate' },

@@ -16,6 +16,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 
 import { messages } from '../messages';
 
@@ -141,6 +142,9 @@ const STEP_SELECTOR = '[data-question-step]';
 /** How long a chosen answer shows before the next step replaces it. */
 const STEP_DELAY = 350;
 
+/** How far a step slides as it leaves or comes in, in pixels. */
+const STEP_SLIDE = 40;
+
 type StepState = 'answered' | 'optional' | 'required';
 
 /** The first question in `step` whose answer the form refuses. */
@@ -236,6 +240,13 @@ export default function QuestionFlow({
   const [current, setCurrent] = useState(0);
   const [state, setState] = useState<StepState>('answered');
   const moved = useRef(false);
+  /** The side the step being moved to comes in from: 1 for the next step,
+   * -1 for the one before, 0 when it should simply appear. */
+  const direction = useRef(0);
+  const shownIndex = useRef(0);
+  const shownStep = useRef<Element | undefined>(undefined);
+  const leavingStep = useRef(false);
+  const [, animate] = useSafeAnimate();
   const saving = useRef(false);
   const advanceTimer = useRef<number | undefined>(undefined);
 
@@ -263,15 +274,52 @@ export default function QuestionFlow({
       element.hidden = at !== index;
       element.inert = at !== index;
     });
+    shownIndex.current = index;
+    shownStep.current = step;
     if (step) setState(stateOf(step, read));
   }, [stepped, steps, index, step, read]);
 
-  const goTo = useCallback((target: number) => {
-    window.clearTimeout(advanceTimer.current);
-    saving.current = false;
-    moved.current = true;
-    setCurrent(target);
-  }, []);
+  // Moving on, the step shown leaves to the left and the next comes in from
+  // the right; going back, the other way round.
+  useEffect(() => {
+    const from = direction.current;
+    direction.current = 0;
+    if (!stepped || from === 0 || !(step instanceof HTMLElement)) return;
+    void animate(
+      step,
+      { opacity: [0, 1], x: [from * STEP_SLIDE, 0] },
+      { type: 'spring', stiffness: 400, damping: 36 },
+    );
+  }, [stepped, step, animate]);
+
+  const goTo = useCallback(
+    (target: number) => {
+      // A step already on its way out ignores a second press.
+      if (leavingStep.current) return;
+      window.clearTimeout(advanceTimer.current);
+      saving.current = false;
+      const towards = Math.sign(target - shownIndex.current);
+      const show = () => {
+        leavingStep.current = false;
+        moved.current = true;
+        direction.current = towards;
+        setCurrent(target);
+      };
+      const leaving = shownStep.current;
+      if (towards === 0 || !(leaving instanceof HTMLElement)) {
+        show();
+        return;
+      }
+      leavingStep.current = true;
+      leaving.inert = true;
+      void animate(
+        leaving,
+        { opacity: [1, 0], x: [0, -towards * STEP_SLIDE] },
+        { duration: 0.12, ease: 'easeIn' },
+      ).then(show);
+    },
+    [animate],
+  );
 
   // A new step starts at its top, with the focus on its first question still
   // waiting for an answer.

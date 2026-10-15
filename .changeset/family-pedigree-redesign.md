@@ -67,7 +67,9 @@ named from their sex assigned at birth.
   choice brings the next unanswered one in its group into view, and
   answering a group's last required question moves on to the next group.
   A group whose remaining questions are optional can be skipped, and Back
-  returns to the group before with its answers kept. Changing someone
+  returns to the group before with its answers kept. Moving on slides the
+  group out to the left and the next in from the right, and Back the other
+  way round, unless the device asks for reduced motion. Changing someone
   already in the family still shows all their details at once.
 - Nomination prompts ask the participant to select the relatives a question
   applies to, and can leave out people recorded with one sex assigned at

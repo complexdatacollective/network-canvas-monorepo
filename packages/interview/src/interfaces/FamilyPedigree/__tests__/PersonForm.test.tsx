@@ -1222,9 +1222,8 @@ describe('reasons an answer is unavailable', () => {
     expect(sex).toHaveAccessibleDescription(
       /“Female” is unavailable because this person and “linda” are both your genetic parents, and “linda” is recorded as “Female” at birth\./,
     );
-    expect(sex).toHaveAccessibleDescription(
-      /“Female” is unavailable because this person and “linda” are both genetic parents of sam,/,
-    );
+    // Sam's parents are the same two people, so the conflict is said once.
+    expect(sex).not.toHaveAccessibleDescription(/genetic parents of sam/);
     expect(sex).not.toHaveAccessibleDescription(/your genetic parent, is/);
   });
 
