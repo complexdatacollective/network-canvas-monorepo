@@ -23,7 +23,6 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
-import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
@@ -49,6 +48,7 @@ import {
   type ProtocolFieldErrorEntry,
 } from '../../forms/buildProtocolFieldErrors';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
+import useFormReadyToContinue from '../../forms/useFormReadyToContinue';
 import useProtocolForm from '../../forms/useProtocolForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
@@ -183,8 +183,6 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     };
 
     const storeApi = useContext(FormStoreContext);
-    const { isValid } = useFormMeta();
-    const fieldCount = useFormStore((s) => s.fields.size);
     const formErrors = useFormStore((s) => s.errors);
     const formErrorsRef = useRef(formErrors);
     useLayoutEffect(() => {
@@ -197,9 +195,10 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     const { hasScrolledToBottom, sentinelRef } =
       useScrolledToBottom(scrollAreaRef);
 
+    const isReady = useFormReadyToContinue(hasScrolledToBottom);
     useEffect(() => {
-      onReadyChange(isValid && fieldCount > 0 && hasScrolledToBottom);
-    }, [isValid, fieldCount, hasScrolledToBottom, onReadyChange]);
+      onReadyChange(isReady);
+    }, [isReady, onReadyChange]);
 
     useEffect(() => {
       track('form_opened', {
