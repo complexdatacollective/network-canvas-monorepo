@@ -262,15 +262,12 @@ describe('the family pedigree stage editor', () => {
       subject: { entity: 'node', type: 'family_member' },
       prompt: { 'en-US': PROMPT_TEXT },
       // Every word the interface shows, except the wording question, which a
-      // stage shows only once participants choose their own, and the note on
-      // a question about the family limited to one sex at birth, which this
-      // stage does not ask. The gender identity label among them is written
-      // by the save: the stage gained it when the attribute was bound, with
-      // its wording group closed.
+      // stage shows only once participants choose their own. The gender
+      // identity label among them is written by the save: the stage gained
+      // it when the attribute was bound, with its wording group closed.
       wording: Object.fromEntries(
         Object.entries(EVERY_PEDIGREE_WORD).filter(
-          ([key]) =>
-            !key.startsWith('framing') && key !== 'nominationLimitHint',
+          ([key]) => !key.startsWith('framing'),
         ),
       ),
       nodeConfiguration: {
@@ -1580,9 +1577,6 @@ describe('the wording', () => {
   });
 });
 
-/** What the note on a question limited to one sex at birth is called. */
-const NOMINATION_LIMIT_LABEL = 'Note on a question limited to one sex at birth';
-
 /** The fixture pedigree's question about the family, limited to one sex. */
 const SEX_LIMITED_PROMPT = (() => {
   const { nominationPrompts } = loadFixtureStage('family-pedigree-1').fields;
@@ -1651,43 +1645,6 @@ describe('the participant wording', () => {
       await harness.roundTrip({ unowned: [] });
     },
   );
-
-  it('hides the note on a question limited to one sex at birth while every question is open to anyone', async () => {
-    const harness = openFixture();
-    await harness.opened();
-    await openWordingGroup(harness, 'Drawing the family');
-    await screen.findByRole('textbox', { name: 'Pointer tool button' });
-    // The fixture's question about the family is open to anyone.
-    expect(
-      screen.queryByText(NOMINATION_LIMIT_LABEL, { selector: FIELD_LABEL }),
-    ).toBeNull();
-  });
-
-  it('shows the note on a question limited to one sex at birth, saying when it applies', async () => {
-    const harness = renderStageEditor({
-      stage: familyPedigreeStageWith({
-        nominationPrompts: [SEX_LIMITED_PROMPT],
-        wording: {
-          ...wordingOf(loadFixtureStage('family-pedigree-1').fields),
-          nominationLimitHint: EVERY_PEDIGREE_WORD.nominationLimitHint,
-        },
-      }),
-      editor: familyPedigreeEditor,
-    });
-    await harness.opened();
-    await openWordingGroup(harness, 'Drawing the family');
-
-    expect(
-      await screen.findByText(NOMINATION_LIMIT_LABEL, {
-        selector: FIELD_LABEL,
-      }),
-    ).toBeVisible();
-    expect(
-      screen.getByText(
-        'Shown only when a question about the family applies only to people of one sex assigned at birth.',
-      ),
-    ).toBeVisible();
-  });
 
   it('saves the stage unchanged with every group closed', async () => {
     const harness = openFixture();
@@ -1832,19 +1789,11 @@ describe('the nomination prompts', () => {
     return isRecord(wording) ? (wording as SectionDoc) : {};
   };
 
-  const wordingOf = (document: SectionDoc | undefined) =>
-    isRecord(document?.wording) ? document.wording : {};
-
   const openWithAPrompt = async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWith({
         nominationPrompts: [savedPrompt],
-        // The prompt is limited to one sex at birth, so the stage holds the
-        // note the participant reads under the family tree while it is asked.
-        wording: {
-          ...fixtureWording(),
-          nominationLimitHint: EVERY_PEDIGREE_WORD.nominationLimitHint,
-        },
+        wording: fixtureWording(),
       }),
       editor: familyPedigreeEditor,
     });
@@ -1954,11 +1903,6 @@ describe('the nomination prompts', () => {
         onlyForSexAssignedAtBirth: 'female',
       },
     ]);
-    // The limit asks for the note under the family tree, which the save
-    // writes with Network Canvas's words: its group was never opened.
-    expect(wordingOf(request?.stageDocument).nominationLimitHint).toEqual(
-      EVERY_PEDIGREE_WORD.nominationLimitHint,
-    );
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
       true,
     );
@@ -1990,9 +1934,6 @@ describe('the nomination prompts', () => {
       attribute: HEART_DISEASE,
     });
     expect(prompt).not.toHaveProperty('onlyForSexAssignedAtBirth');
-    expect(wordingOf(request?.stageDocument)).not.toHaveProperty(
-      'nominationLimitHint',
-    );
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
       true,
     );
@@ -2036,10 +1977,6 @@ describe('the nomination prompts', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument).not.toHaveProperty('nominationPrompts');
-    // No question is limited to one sex at birth any more, so its note goes.
-    expect(wordingOf(request?.stageDocument)).not.toHaveProperty(
-      'nominationLimitHint',
-    );
     expect(familyPedigreeStage.safeParse(request?.stageDocument).success).toBe(
       true,
     );

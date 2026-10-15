@@ -391,9 +391,6 @@ const OWN_WORDS = {
     '{relation, select, partner {{isYou, select, true {{term} partnered with you - matrix check} other {{term} partnered with {name} - matrix check}}} formerPartner {{isYou, select, true {{term} ex of you - matrix check} other {{term} ex of {name} - matrix check}}} parent {{isYou, select, true {{term} parenting you - matrix check} other {{term} parenting {name} - matrix check}}} sibling {{isYou, select, true {{term} sibling to you - matrix check} other {{term} sibling to {name} - matrix check}}} owner {{owner} owns {term} - matrix check} other {{isYou, select, true {{term} child of you - matrix check} other {{term} child of {name} - matrix check}}}}',
   ),
   missingDetailsList: message('Details to add ({details}) - matrix check'),
-  nominationLimitHint: message(
-    '{sex, select, female {Only people assigned female at birth here - matrix check} other {Only people assigned male at birth here - matrix check}}',
-  ),
   otherParentBiologicalLabel: message(
     '{otherIsYou, select, true {Are you a genetic parent of the child - matrix check} other {Is {other} a genetic parent of the child - matrix check}}',
   ),
@@ -1817,47 +1814,6 @@ function sexChangeWithdrawsNomination(): ScenarioDefinition {
       await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
       await expect(you).toBeDisabled();
       await expect(you).toHaveAttribute('aria-pressed', 'false');
-    },
-  };
-}
-
-/**
- * A prompt limited to people assigned female at birth says so beneath the
- * family, in the stage's own words, and describes each person it leaves out
- * with them.
- */
-function wordingNominationLimit(): ScenarioDefinition {
-  const words = ['nominationLimitHint'] as const;
-  const scaffolded = scaffold({
-    nominationPrompts: [
-      {
-        text: OVARIAN,
-        variableName: 'ovarianCancer',
-        onlyForSexAssignedAtBirth: 'female',
-      },
-    ],
-    wording: ownWords(...words),
-  });
-  const { synth } = scaffolded;
-  seedDescribedParents(scaffolded);
-  const own = 'Only people assigned female at birth here - matrix check';
-
-  return {
-    id: 'wording-nomination-limit',
-    covers: coversWords(...words),
-    seedNetwork: true,
-    build: () => synth,
-    run: async ({ page, interview }) => {
-      await interview.nextButton.click();
-      await expect(page.getByRole('heading', { name: OVARIAN })).toBeVisible();
-      await expect(page.getByTestId('pedigree-nomination-limit')).toHaveText(
-        own,
-      );
-      const rob = member(page, 'Rob');
-      await expect(rob).toBeDisabled();
-      await expect(rob).toHaveAccessibleDescription(own);
-      await expect(member(page, 'Julie')).not.toHaveAccessibleDescription(own);
-      await expect(page.getByText(/can’t be selected/)).toHaveCount(0);
     },
   };
 }
@@ -3999,7 +3955,6 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     wordingSiblingSurrogate(),
     wordingSiblingParents(),
     wordingStandIns(),
-    wordingNominationLimit(),
     wordingRemovePerson(),
     wordingChangeWouldCutOff(),
   ],
