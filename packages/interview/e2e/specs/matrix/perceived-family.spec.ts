@@ -7,7 +7,7 @@ import { expect, matrixTest } from '../../fixtures/matrix-test.js';
 
 const protocolPath = path.resolve(
   import.meta.dirname,
-  '../../../../protocols/documentation/pedigree-collaboration/queer-perceived-family/protocol.json',
+  '../../../../protocols/e2e/perceived-family/protocol.json',
 );
 
 const person: NcNode = {
