@@ -387,7 +387,9 @@ const withBrother: Family = {
 
 /**
  * On a phone, the add menu opened from the keyboard around someone at the
- * edge of the screen is moved fully into view.
+ * edge of the screen is moved fully into view. (Zoomed out a step: at the
+ * least legible zoom a menu is wider than this narrow canvas, and only the
+ * person is brought into view.)
  */
 export const TheAddMenuOpensInView: Story = {
   render: () => (
@@ -397,6 +399,7 @@ export const TheAddMenuOpensInView: Story = {
     const canvas = within(canvasElement);
     await canvas.findByRole('button', { name: /^You/ });
     await tabIntoFamily(canvasElement);
+    await userEvent.keyboard('-');
     await settled(canvasElement);
     // Every person in turn. Focus moved from someone focused by the
     // keyboard shows as keyboard focus too.
@@ -1320,10 +1323,9 @@ const showWholeFamily = async (canvasElement: HTMLElement) => {
 };
 
 /**
- * The stage opens on the whole family, framed exactly as Show the whole
- * family frames it, however large the family.
+ * The stage opens framed exactly as Show the whole family frames it.
  */
-export const TheStageOpensOnTheWholeFamily: Story = {
+export const TheStageOpensAsTheWholeFamilyButtonFramesIt: Story = {
   render: () => <CanvasStory family={fourGenerations} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -1334,6 +1336,72 @@ export const TheStageOpensOnTheWholeFamily: Story = {
     await settled(canvasElement);
     await showWholeFamily(canvasElement);
     await expectSameView(viewOf(canvasElement), opened, 'the opening view');
+  },
+};
+
+/** The size on screen, in pixels, of the smallest name drawn in a symbol. */
+function smallestNameOnScreen(canvasElement: HTMLElement) {
+  let smallest = Number.POSITIVE_INFINITY;
+  for (const person of within(canvasElement).getAllByTestId(
+    'pedigree-person',
+  )) {
+    const symbol = person.querySelector('button') as HTMLElement;
+    const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
+    for (const text of symbol.querySelectorAll('span')) {
+      if (!text.textContent?.trim()) continue;
+      smallest = Math.min(
+        smallest,
+        Number.parseFloat(getComputedStyle(text).fontSize) * scale,
+      );
+    }
+  }
+  return smallest;
+}
+
+const phonePortrait = {
+  parameters: {
+    viewport: {
+      options: {
+        phonePortrait: {
+          name: 'Phone (portrait)',
+          styles: { width: '390px', height: '844px' },
+          type: 'mobile',
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: 'phonePortrait', isRotated: false } },
+};
+
+/**
+ * On a phone, a family too wide to show whole with every name legible opens
+ * on the participant with names at least the smallest legible size, and
+ * Show the whole family frames it the same way, zoomed out no further.
+ */
+export const NamesStayLegibleOnAPhone: Story = {
+  ...phonePortrait,
+  render: () => <CanvasStory family={fourGenerations} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    await expect(
+      smallestNameOnScreen(canvasElement),
+      'names as the stage opens',
+    ).toBeGreaterThanOrEqual(11.9);
+    await expect(
+      inside(viewOf(canvasElement), canvasBox(canvasElement)),
+      'the participant in view',
+    ).toBe(true);
+    const opened = viewOf(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Zoom out' }));
+    await settled(canvasElement);
+    await showWholeFamily(canvasElement);
+    await expectSameView(viewOf(canvasElement), opened, 'the button');
+    await expect(
+      smallestNameOnScreen(canvasElement),
+      'names after the button',
+    ).toBeGreaterThanOrEqual(11.9);
   },
 };
 

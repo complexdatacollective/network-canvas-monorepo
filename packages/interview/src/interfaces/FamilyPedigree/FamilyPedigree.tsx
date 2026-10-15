@@ -213,6 +213,28 @@ type PanelState = {
   then?: 'sibling' | 'child';
 } | null;
 
+/**
+ * The least zoom at which every name drawn in the given symbols is at least
+ * as large on screen as `text-xs`, the size below which a name stops being
+ * legible.
+ */
+const legibleScale = (symbols: Iterable<HTMLElement>) => {
+  const rootSize =
+    Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
+    16;
+  let smallest = Number.POSITIVE_INFINITY;
+  for (const symbol of symbols) {
+    for (const text of symbol.querySelectorAll('span')) {
+      if (!text.textContent?.trim()) continue;
+      smallest = Math.min(
+        smallest,
+        Number.parseFloat(getComputedStyle(text).fontSize),
+      );
+    }
+  }
+  return Number.isFinite(smallest) ? (rootSize * 0.75) / smallest : 0;
+};
+
 /** The buttons of the add menu shown around a person's symbol, if any. */
 const menuItemsOf = (symbol: HTMLElement) => [
   ...(symbol
@@ -695,17 +717,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // The whole family, clear of the prompt above and the toolbar below, with
   // room around it for anyone's add menu. The room is left on every prompt,
   // including those where no menu is shown, so the same family is framed
-  // the same way whichever prompt it is shown on.
+  // the same way whichever prompt it is shown on. It is shown only as far
+  // out as names stay legible: when the whole family would be drawn
+  // smaller, the participant is shown in the middle at the least legible
+  // zoom instead, and the rest is reached by panning or zooming out.
   const showWholeFamily = useCallback(
     ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
+      const ego = family.egoId ? nodeRefs.current.get(family.egoId) : undefined;
       panZoom.fitToView(layout, clearInsets(), {
         animated,
         reach: addMenuReach(menuReachRef.current),
+        least: ego
+          ? { scale: legibleScale(nodeRefs.current.values()), around: ego }
+          : undefined,
       });
     },
-    [panZoom, clearInsets],
+    [panZoom, clearInsets, family.egoId],
   );
   const zoomButtons = usePedigreeZoomButtons({
     panZoom,
@@ -1007,8 +1036,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     component: <Node size="sm" />,
   });
 
-  // The stage opens on the whole family, once the participant's symbol is
-  // laid out, as Show the whole family frames it. Moving between prompts
+  // The stage opens as Show the whole family frames it, once the
+  // participant's symbol is laid out. Moving between prompts
   // leaves the view where the participant put it.
   const fitted = useRef(false);
   useEffect(() => {
