@@ -36,6 +36,7 @@ import { useTrack } from '../../analytics/useTrack';
 import { buildProtocolFieldErrors } from '../../forms/buildProtocolFieldErrors';
 import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import { submitRegisteredForm } from '../../forms/submitRegisteredForm';
+import useFormReadyToContinue from '../../forms/useFormReadyToContinue';
 import useProtocolForm from '../../forms/useProtocolForm';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
@@ -219,14 +220,10 @@ const EgoFormInner = (props: EgoFormProps) => {
     [coerceValues, dispatch, form.fields, track],
   );
 
+  const isReady = useFormReadyToContinue(hasScrolledToBottom);
   useEffect(() => {
-    if (!isFormValid) {
-      setIsReadyForNext(false);
-      return;
-    }
-
-    setIsReadyForNext(true);
-  }, [isFormValid, setIsReadyForNext]);
+    setIsReadyForNext(isReady);
+  }, [isReady, setIsReadyForNext]);
 
   // Guidance never competes with an error. Once a question has been marked
   // wrong, the error is the thing to read, and a second message asking the
