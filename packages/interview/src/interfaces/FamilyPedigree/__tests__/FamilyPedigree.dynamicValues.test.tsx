@@ -102,6 +102,8 @@ type InterviewOptions = {
   mumOccupation?: string;
   /** The mother's name, encrypted with the key of `PASSPHRASE`. */
   mumEncryptedName?: string;
+  /** Her encrypted name is the label a visit saved, still hers. */
+  encryptedNameIsSavedLabel?: boolean;
   /** Two unnamed sisters of the participant, children of both parents. */
   sisters?: boolean;
   /** The age question must be answered. */
@@ -127,6 +129,7 @@ async function interview({
   mumSavedLabel,
   mumOccupation,
   mumEncryptedName,
+  encryptedNameIsSavedLabel = false,
   sisters = false,
   required = false,
 }: InterviewOptions = {}) {
@@ -226,6 +229,14 @@ async function interview({
     );
     if (!mum) throw new Error('No mother in the network');
     mum[entityAttributesProperty][stage.name] = encrypted.data;
+    if (encryptedNameIsSavedLabel) {
+      payload.stageMetadata = {
+        0: {
+          ...metadata,
+          generatedLabels: { mum: nameFingerprint(encrypted.data) },
+        },
+      };
+    }
     mum[entitySecureAttributesMeta] = { [stage.name]: { iv: encrypted.iv } };
   }
 
@@ -481,5 +492,39 @@ describe('the node label in a Family Pedigree panel’s questions', () => {
 
     await waitFor(() => expect(questionValue()).toBe('Julie'));
     expect(nameBox()).toHaveValue('Julie');
+  }, 60_000);
+
+  it('calls a relative holding an encrypted label saved on an earlier visit by their label as it stands', async () => {
+    await interview({
+      mumEncryptedName: 'Mother (on an earlier visit)',
+      encryptedNameIsSavedLabel: true,
+    });
+    expect(canvasLabel('mum')).toBe('Mother');
+    const user = userEvent.setup();
+    await user.click(
+      within(screen.getByTestId('pedigree-passphrase-notice')).getByRole(
+        'button',
+        { name: 'Passphrase' },
+      ),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Passphrase' });
+    await user.type(
+      within(dialog).getByLabelText(/^Passphrase/, { selector: 'input' }),
+      PASSPHRASE,
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Continue' }));
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByTestId('pedigree-passphrase-notice'),
+        ).not.toBeInTheDocument(),
+      { timeout: 30_000 },
+    );
+    await openPanelOf('mum');
+
+    // The Name question is blank, as she has no name of her own.
+    expect(nameBox()).toHaveValue('');
+    await waitFor(() => expect(questionValue()).toBe('Mother'));
+    expect(canvasLabel('mum')).toBe('Mother');
   }, 60_000);
 });

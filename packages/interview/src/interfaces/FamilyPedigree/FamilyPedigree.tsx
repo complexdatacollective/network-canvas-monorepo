@@ -861,9 +861,11 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // with the panel's name, gender identity and sex assigned at birth in
   // place of those stored: clearing their name calls them by how they are
   // related, and a new sex at birth changes that word as saving it will.
-  // A name typed for someone whose label was saved is theirs, even in the
-  // same words, as saving makes it. Only those three answers change the
-  // label, so it is worked out again only when one of them does.
+  // Once the Name question holds an answer, that answer is their name, as
+  // saving makes it: a name typed for someone whose label was saved is
+  // theirs, even in the same words, and a blank one leaves them unnamed
+  // rather than named by what is stored. Only those three answers change
+  // the label, so it is worked out again only when one of them does.
   const panelLabelMode = panel?.mode;
   // Cancel takes the relative being added off the canvas while the panel is
   // still closing, so their last label is kept for its questions until then.
@@ -904,19 +906,24 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         ([personId]) => personId !== editedId,
       ),
     );
+    const othersDecryptedNames = new Map(
+      [...decryptedNames].filter(([personId]) => personId !== editedId),
+    );
     let last: { key: string; label: string } | undefined;
     return (attributes, answered) => {
       const values = labelling.map((attribute) =>
         readOwnProperty(attributes, attribute),
       );
+      const nameAnswered =
+        readOwnProperty(answered, config.nameAttribute) === true;
       const typedName = values[0];
       const named =
-        readOwnProperty(answered, config.nameAttribute) === true &&
+        nameAnswered &&
         typeof typedName === 'string' &&
         typedName.trim() !== '';
       // A missing answer and any value are kept apart in the key.
       const key = JSON.stringify([
-        named,
+        nameAnswered,
         ...values.map((value) => (value === undefined ? [] : [value])),
       ]);
       if (last?.key === key) return last.label;
@@ -944,7 +951,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
           edges,
           config,
           named ? othersGeneratedLabels : generatedLabels,
-          decryptedNames,
+          nameAnswered ? othersDecryptedNames : decryptedNames,
           standInIds,
         ),
       );
