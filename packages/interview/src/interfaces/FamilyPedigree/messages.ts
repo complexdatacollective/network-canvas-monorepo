@@ -40,8 +40,7 @@ export const messages = defineMessages({
   },
   showWholeFamilyDescription: {
     id: 'interview.familyPedigree.showWholeFamilyDescription',
-    defaultMessage:
-      'Zoom and move your family tree so all of it fits on the screen.',
+    defaultMessage: 'Fit your whole family tree on the screen.',
     description:
       'Tooltip text, under the heading “Show the whole family”, of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Read by participants.',
   },
