@@ -81,7 +81,8 @@ export const messages = defineMessages({
   },
   framingControlDescription: {
     id: 'interview.familyPedigree.framingControlDescription',
-    defaultMessage: 'Choose the words used to describe your relatives.',
+    defaultMessage:
+      'Choose the relationship words your family tree uses for your relatives.',
     description:
       'Tooltip text, under the heading “Wording” (or the stage’s own name for it), of the family tree toolbar button that opens a choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent. Read by participants.',
   },
