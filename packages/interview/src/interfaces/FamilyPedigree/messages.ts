@@ -137,4 +137,10 @@ export const messages = defineMessages({
     description:
       'Read out with a family member’s symbol in the family tree, for each part they played in someone else’s conception or birth (the tree draws no mark for these). "donor" is someone who donated an egg or sperm; "traditionalSurrogate" is an egg donor who also carried the pregnancy; "other" is a surrogate who carried the pregnancy without a genetic tie to the child. When someone has more than one role, the phrases are joined into a list, so write each as it would appear inside a sentence (lower case in English).',
   },
+  skipStep: {
+    id: 'interview.familyPedigree.skipStep',
+    defaultMessage: 'Skip',
+    description:
+      'Button in the side panel where a new family member’s details are given, one group of questions at a time. Shown while some questions in the group are left unanswered; it moves on to the next group without answering them. They can still be answered by going back.',
+  },
 });

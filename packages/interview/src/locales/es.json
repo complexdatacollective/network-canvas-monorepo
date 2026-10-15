@@ -19,6 +19,7 @@
   "interview.familyPedigree.savedAnnouncement": "Datos guardados.",
   "interview.familyPedigree.showWholeFamily": "Mostrar toda la familia",
   "interview.familyPedigree.siblingsAnsweredAnnouncement": "{isYou, select, true {Se ha registrado que no tienes hermanos ni hermanas biológicos.} other {Se ha registrado que «{name}» no tiene hermanos ni hermanas biológicos.}}",
+  "interview.familyPedigree.skipStep": "Omitir",
   "interview.familyPedigree.toolGroupLabel": "Qué ocurre al hacer clic en una persona",
   "interview.familyPedigree.toolsLabel": "Herramientas del árbol familiar",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Tu árbol familiar tiene todo lo necesario} other {Árbol familiar completado al {percent, number, percent}}}. Mostrar lo que falta.",

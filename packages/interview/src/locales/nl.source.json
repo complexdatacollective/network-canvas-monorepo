@@ -19,6 +19,7 @@
   "interview.familyPedigree.savedAnnouncement": "Details saved.",
   "interview.familyPedigree.showWholeFamily": "Show the whole family",
   "interview.familyPedigree.siblingsAnsweredAnnouncement": "{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}",
+  "interview.familyPedigree.skipStep": "Skip",
   "interview.familyPedigree.toolGroupLabel": "What clicking a person does",
   "interview.familyPedigree.toolsLabel": "Family tree tools",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",

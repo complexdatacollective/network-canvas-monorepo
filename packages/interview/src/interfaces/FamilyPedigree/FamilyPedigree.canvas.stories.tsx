@@ -1099,13 +1099,14 @@ export const AChildAddedByTouchCanBeTapped: Story = {
       'No other parent',
       'A biological child',
     ]) {
-      tap(panel.getByRole('radio', { name: answer }));
+      // Choosing sex at birth moves on to how Emma is related.
+      tap(await panel.findByRole('radio', { name: answer }));
     }
     const carried = panel.queryByRole('radiogroup', {
       name: 'Who carried the pregnancy?',
     });
     if (carried) tap(within(carried).getByRole('radio', { name: /^You/ }));
-    tap(panel.getByRole('button', { name: 'Save' }));
+    tap(await panel.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(personPanel(canvasElement)).toBeNull());
     await settled(canvasElement);
     const emma = canvas.getByRole('button', { name: 'Emma' });

@@ -22,6 +22,7 @@ import type {
   FormSubmitHandler,
   ValidationContext,
 } from '@codaco/fresco-ui/form/store/types';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import {
   PEDIGREE_SEX_ASSIGNED_AT_BIRTH,
   type FamilyPedigreeWording,
@@ -102,6 +103,7 @@ import {
   usePedigreeWords,
 } from '../pedigreeWords';
 import { DerivedAnswersScope, useDerivedAnswer } from './derivedAnswers';
+import QuestionFlow from './QuestionFlow';
 import {
   bothSameSexReason,
   cannotCarryReason,
@@ -244,6 +246,11 @@ type NameFieldText = Readonly<{
 
 type PersonFormProps = {
   formId: string;
+  /**
+   * Where a new person's form puts its step buttons, shown a group of
+   * questions at a time. Without it the form shows whole.
+   */
+  stepNavigation?: HTMLElement | null;
   mode: PersonFormMode;
   family: Family;
   config: PedigreeConfig;
@@ -345,6 +352,7 @@ export default function PersonForm({
   labelNode,
   onDraftChange,
   onSubmit,
+  stepNavigation,
 }: PersonFormProps) {
   const words = usePedigreeWords();
   const { wording, text } = words;
@@ -644,11 +652,18 @@ export default function PersonForm({
   return (
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
       <DerivedAnswersScope>
-        <div className="flex flex-col gap-8">
+        <QuestionFlow
+          className="flex flex-col gap-8"
+          stepped={mode.kind === 'add'}
+          navigation={stepNavigation}
+          finish={
+            <SubmitButton form={formId}>{text(wording.save)}</SubmitButton>
+          }
+        >
           {withFormValues(
             <MissingDetailsNotice questions={missingQuestions} />,
           )}
-          <section className="flex flex-col">
+          <section data-question-step className="flex flex-col">
             {asksName && (
               <Field
                 component={InputField}
@@ -660,6 +675,8 @@ export default function PersonForm({
                   : { hint: resolve(nameField.hint).text })}
                 initialValue={person?.name}
                 autoComplete="off"
+                // Someone new is named first, so the panel opens ready to type.
+                {...(mode.kind === 'add' ? { 'data-initial-focus': true } : {})}
                 {...nameValidationProps}
                 validationContext={nameValidationContext}
               />
@@ -695,7 +712,7 @@ export default function PersonForm({
             />
           )}
           {mode.kind === 'add' && (
-            <section className="flex flex-col">
+            <section data-question-step className="flex flex-col">
               <RelationshipFields
                 relation={mode.relation}
                 anchor={mode.anchor}
@@ -727,12 +744,12 @@ export default function PersonForm({
             />
           )}
           {formFields.length > 0 && (
-            <section className="flex flex-col">
+            <section data-question-step className="flex flex-col">
               <PassphraseEntry needed={passphraseNeeded} />
               {fieldComponents}
             </section>
           )}
-        </div>
+        </QuestionFlow>
       </DerivedAnswersScope>
     </FormWithoutProvider>
   );

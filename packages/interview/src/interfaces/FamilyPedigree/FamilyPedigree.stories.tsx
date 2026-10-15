@@ -1304,6 +1304,96 @@ export const ChoosingTheAnswerFilledInKeepsIt: Story = {
 };
 
 /**
+ * Someone new is described a group of questions at a time: who they are,
+ * how they are related, then the study's own questions. The panel opens with
+ * the name ready to type. Each one-choice answer brings the next unanswered
+ * question in the group into view without taking focus from the answer, and
+ * answering the group's last required question moves on by itself. A group
+ * with only optional questions left offers Skip; Back returns with the
+ * answers kept, and the last group ends with Save.
+ */
+export const AddingSomeoneMovesThroughTheQuestions: Story = {
+  args: { requirement: 'none' },
+  render: (args) => <PedigreeStory {...settings(args)} withFormFields />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+
+    const name = await body.findByRole('textbox', { name: /^Name/ });
+    await waitFor(() => expect(name).toHaveFocus());
+    await userEvent.keyboard('Rosa');
+    await expect(name).toHaveValue('Rosa');
+    await expect(body.queryByRole('button', { name: 'Back' })).toBeNull();
+    await expect(body.queryByRole('button', { name: 'Save' })).toBeNull();
+
+    const woman = await body.findByRole('radio', { name: 'Woman' });
+    await userEvent.click(woman);
+    await expect(woman).toHaveFocus();
+
+    // Sex assigned at birth is the group's last required question.
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    const carried = await body.findByRole(
+      'radiogroup',
+      { name: /^Did this parent carry the pregnancy\?/ },
+      { timeout: 3000 },
+    );
+    await waitFor(() => expect(name).not.toBeVisible());
+
+    // Only an optional question is left, so the group can be skipped.
+    await expect(carried).toBeVisible();
+    await userEvent.click(await body.findByRole('button', { name: 'Back' }));
+    await waitFor(() => expect(name).toBeVisible());
+    await expect(name).toHaveValue('Rosa');
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Continue' }),
+    );
+    await userEvent.click(await body.findByRole('button', { name: 'Skip' }));
+
+    // The study's own questions come last, with the age ready to type.
+    const age = await body.findByRole('spinbutton', { name: /^Age/ });
+    await waitFor(() => expect(age).toHaveFocus());
+    await expect(carried).not.toBeVisible();
+    await expect(
+      await body.findByRole('button', { name: 'Save' }),
+    ).toBeVisible();
+    await expect(body.queryByRole('button', { name: 'Skip' })).toBeNull();
+  },
+};
+
+/**
+ * A name the form refuses holds the first group of questions: answering the
+ * rest does not move on, and Continue hands the name the focus.
+ */
+export const ARefusedAnswerKeepsItsGroupOpen: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory {...settings(args)} nameValidation={{ maxLength: 3 }} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+
+    const name = await body.findByRole('textbox', { name: /^Name/ });
+    await waitFor(() => expect(name).toHaveFocus());
+    await userEvent.keyboard('Rosalind');
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await waitFor(() => expect(name).toHaveAttribute('aria-invalid', 'true'));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+
+    const proceed = await body.findByRole('button', { name: 'Continue' });
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await expect(name).toBeVisible();
+    await userEvent.click(proceed);
+    await waitFor(() => expect(name).toHaveFocus());
+    await expect(body.queryByRole('button', { name: 'Back' })).toBeNull();
+  },
+};
+
+/**
  * A surrogate carried Jun; his brother Sam has nobody recorded as carrying
  * him. Jun's new mother, a biological parent, is not asked whether she
  * carried Jun, but once Sam is chosen as her child too she is asked whether
@@ -1371,13 +1461,18 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
     // Recorded as male at birth, she could not have been pregnant, nor a
     // genetic parent beside the father, so her kind of parent and Sam are
     // taken back with the answer. Female again, a biological parent in the
-    // unnamed mother's place again, she is asked again.
-    await userEvent.click(body.getByRole('radio', { name: 'Male' }));
+    // unnamed mother's place again, she is asked again. Sex at birth is
+    // asked in the first group of questions, and answering it there moves
+    // back on to her relationships.
+    await userEvent.click(body.getByRole('button', { name: 'Back' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Male' }));
+    await waitFor(() => expect(sam).toBeVisible());
     await waitFor(() => expect(carriedSam()).toBeNull());
     await waitFor(() => expect(sam).not.toBeChecked());
-    await userEvent.click(body.getByRole('radio', { name: 'Female' }));
+    await userEvent.click(body.getByRole('button', { name: 'Back' }));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
     await userEvent.click(
-      body.getByRole('radio', { name: 'Biological parent' }),
+      await body.findByRole('radio', { name: 'Biological parent' }),
     );
     await waitFor(() => expect(sam).toBeChecked());
     await waitFor(() => expect(carriedSam()).not.toBeNull());
@@ -3848,6 +3943,12 @@ export const EncryptedFormField: Story = {
     );
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    // The study's own questions come after her relationship, which shows
+    // once her sex at birth is chosen.
+    await body.findByRole('button', { name: 'Back' });
+    await userEvent.click(
+      await body.findByRole('button', { name: /^(Continue|Skip)$/ }),
+    );
     await userEvent.type(
       await body.findByRole('textbox', { name: NICKNAME_PROMPT }),
       'Bee',

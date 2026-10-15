@@ -220,12 +220,24 @@ async function addRelativeOf(
   await expect(panel(page)).toBeVisible();
 }
 
-/** Answers the panel's own questions about a person. */
+/**
+ * Answers the panel's own questions about a person. Someone new is described
+ * a group of questions at a time; these are in the first group, so the panel
+ * goes back to it if needed, and answering sex at birth moves on to the next.
+ */
 async function describe(
   page: Page,
   details: { name?: string; gender?: string; sex: string },
 ) {
   const form = panel(page);
+  const sex = form.getByRole('radiogroup', { name: /^Sex assigned at birth/ });
+  const back = form.getByRole('button', { name: 'Back', exact: true });
+  while (!(await sex.isVisible()) && (await back.isVisible())) {
+    await back.click();
+  }
+  const stepped =
+    (await form.getByRole('button', { name: 'Save', exact: true }).count()) ===
+    0;
   if (details.name !== undefined) {
     await form.getByRole('textbox', { name: /^Name/ }).fill(details.name);
   }
@@ -235,15 +247,27 @@ async function describe(
       .getByRole('radio', { name: details.gender, exact: true })
       .click();
   }
-  await form
-    .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
-    .getByRole('radio', { name: details.sex, exact: true })
+  await sex.getByRole('radio', { name: details.sex, exact: true }).click();
+  if (stepped) await expect(sex).toBeHidden();
+}
+
+/** Moves a new person's panel on to its next group of questions. */
+async function nextStep(page: Page) {
+  await panel(page)
+    .getByRole('button', { name: /^(Continue|Skip)$/ })
     .click();
 }
 
-/** Submits the panel with the named button and waits for it to close. */
+/**
+ * Submits the panel with the named button and waits for it to close. Someone
+ * new is saved from the last group of questions, so the panel moves on to it.
+ */
 async function submitPanel(page: Page, button: 'Save') {
-  await panel(page).getByRole('button', { name: button, exact: true }).click();
+  const save = panel(page).getByRole('button', { name: button, exact: true });
+  for (let step = 0; step < 5 && !(await save.isVisible()); step++) {
+    await nextStep(page);
+  }
+  await save.click();
   await expect(panel(page)).toHaveCount(0);
 }
 
@@ -720,6 +744,7 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
       await expect(member(page, 'Partner')).toBeVisible();
 
       await addRelativeOf(page, 'You', 'child');
+      await describe(page, { sex: 'Male' });
       // The child's other parent is the partner just added.
       await expect(
         panel(page)
@@ -728,7 +753,6 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
           })
           .getByRole('radio', { name: 'Partner', exact: true }),
       ).toBeChecked();
-      await describe(page, { sex: 'Male' });
       await submitPanel(page, 'Save');
       await expect(member(page, 'Son')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(6);
@@ -1556,6 +1580,7 @@ function formFieldsMissingDetails(): ScenarioDefinition {
 
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
+      await nextStep(page);
       await panel(page)
         .getByRole('spinbutton', { name: /^How old are they\?/ })
         .fill('30');
@@ -1784,10 +1809,7 @@ function sexChangeWithdrawsNomination(): ScenarioDefinition {
       await expect(page.getByRole('heading', { name: PROMPT })).toBeVisible();
       await you.click();
       await expect(panel(page)).toBeVisible();
-      await panel(page)
-        .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
-        .getByRole('radio', { name: 'Male', exact: true })
-        .click();
+      await describe(page, { sex: 'Male' });
       await submitPanel(page, 'Save');
       await expect.poll(ariFlag).toBe(false);
 
@@ -2147,6 +2169,7 @@ function encryptedFormField(): ScenarioDefinition {
 
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
+      await nextStep(page);
       await panel(page).getByRole('textbox', { name: NICKNAME }).fill('Bee');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Bea')).toBeVisible();
@@ -2845,6 +2868,7 @@ function wordingFramingChoice(): ScenarioDefinition {
       await gamete.click();
       await expect(title).toHaveCount(0);
       await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Female' });
       await expect(sharedParents).toBeVisible();
       await expect(
         panel(page).getByText('Gamete placeholders note - matrix check'),
@@ -2893,6 +2917,7 @@ function wordingFramingChoice(): ScenarioDefinition {
       await control.click();
       await gendered.click();
       await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Female' });
       await expect(
         panel(page).getByText('Gendered placeholders note - matrix check'),
       ).toBeVisible();
@@ -2975,6 +3000,7 @@ function wordingAddParent(): ScenarioDefinition {
     build: () => synth,
     run: async ({ page }) => {
       await addRelativeOf(page, 'You', 'parent');
+      await describe(page, { sex: 'Female' });
       const form = panel(page);
       const kind = form.getByRole('radiogroup', {
         name: /^Kind of new parent - matrix check/,
@@ -3009,10 +3035,7 @@ function wordingAddParent(): ScenarioDefinition {
       ).toBeVisible();
 
       // A new parent recorded as male at birth could not have carried them.
-      await form
-        .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
-        .getByRole('radio', { name: 'Male', exact: true })
-        .click();
+      await describe(page, { sex: 'Male' });
       await expect(
         form
           .getByText(
@@ -3023,10 +3046,7 @@ function wordingAddParent(): ScenarioDefinition {
 
       // One who could have is asked, but Julie is recorded as having, so the
       // question is unavailable.
-      await form
-        .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
-        .getByRole('radio', { name: 'Female', exact: true })
-        .click();
+      await describe(page, { sex: 'Female' });
       const unavailable = form.getByRole('radiogroup', {
         name: /^Did the new parent carry them - matrix check/,
       });
@@ -3113,10 +3133,7 @@ function wordingAddChild(): ScenarioDefinition {
       // Julie is Ari's one genetic parent so far; another of her sex cannot
       // be a second.
       await addRelativeOf(page, 'You', 'parent');
-      await panel(page)
-        .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
-        .getByRole('radio', { name: 'Female', exact: true })
-        .click();
+      await describe(page, { sex: 'Female' });
       await expect(
         panel(page)
           .getByText(
@@ -3127,6 +3144,7 @@ function wordingAddChild(): ScenarioDefinition {
       await cancel();
 
       await addRelativeOf(page, 'You', 'child');
+      await describe(page, { sex: 'Female' });
       const form = panel(page);
       const otherParent = form.getByRole('radiogroup', {
         name: /^The other parent is - matrix check/,
@@ -3446,6 +3464,7 @@ function wordingAddSibling(): ScenarioDefinition {
     build: () => synth,
     run: async ({ page }) => {
       await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Female' });
       const form = panel(page);
       const shared = form.getByRole('group', {
         name: /^Parents shared with you - matrix check/,
@@ -3559,6 +3578,7 @@ function wordingSiblingBiologicalParent(): ScenarioDefinition {
     build: () => synth,
     run: async ({ page }) => {
       await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Female' });
       const which = panel(page).getByRole('radiogroup', {
         name: /^Genetic parent of the sibling - matrix check/,
       });
@@ -3606,6 +3626,7 @@ function wordingSiblingDonors(): ScenarioDefinition {
     build: () => synth,
     run: async ({ page }) => {
       await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Female' });
       const shared = panel(page).getByRole('group', {
         name: /^Your donors or surrogate in common - matrix check/,
       });
@@ -3655,6 +3676,7 @@ function wordingSiblingSurrogate(): ScenarioDefinition {
     build: () => synth,
     run: async ({ page }) => {
       await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Female' });
       const form = panel(page);
       const surrogate = form.getByRole('group', {
         name: /^Same surrogate as you - matrix check/,
@@ -3710,6 +3732,7 @@ function wordingSiblingParents(): ScenarioDefinition {
     run: async (ctx) => {
       const { page } = ctx;
       await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Male' });
       const form = panel(page);
       // Amy, chosen as one biological parent, leaves Rob or Sam as the
       // other.
@@ -3800,21 +3823,18 @@ function wordingStandIns(): ScenarioDefinition {
 
       // Hal shares Ari's unnamed father, with a mother of his own.
       await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { name: 'Hal', gender: 'Man', sex: 'Male' });
       await panel(page)
         .getByRole('group', { name: /^Which parents do they share with you/ })
         .getByRole('checkbox', { name: 'Julie', exact: true })
         .uncheck();
-      await describe(page, { name: 'Hal', gender: 'Man', sex: 'Male' });
       await submitPanel(page, 'Save');
       await expect(member(page, 'Hal')).toBeVisible();
 
       // A biological father added to Ari takes the stand-in's place for Hal
       // too, so Hal is chosen and cannot be unticked, saying why.
       await addRelativeOf(page, 'You', 'parent');
-      await panel(page)
-        .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
-        .getByRole('radio', { name: 'Male', exact: true })
-        .click();
+      await describe(page, { sex: 'Male' });
       const alsoParentOf = panel(page).getByRole('group', {
         name: /^Are they also the parent of/,
       });
