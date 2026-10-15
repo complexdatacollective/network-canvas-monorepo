@@ -860,7 +860,24 @@ test('an answer dropped from its record fails even though the value appears else
     ],
   );
   assert.deepEqual(nodeAnswerProblems(files, { carla: { hours: '5' } }), [
-    'no exported file has a record for node carla',
+    'no exported csv file has a record for node carla',
+    'no exported graphml file has a record for node carla',
+  ]);
+});
+
+test('a node the GraphML leaves out is not covered by its CSV row', () => {
+  const files = [
+    {
+      name: 'a_attributeList_Person.csv',
+      text: personCsv([['ana', ENCRYPTED_PLACEHOLDER, '5', 'true', 'false']]),
+    },
+    { name: 'a.graphml', text: personGraphml([]) },
+  ];
+  assert.deepEqual(nodeAnswerProblems(files, { ana: { hours: '5' } }), [
+    'no exported graphml file has a record for node ana',
+  ]);
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'ana'), [
+    'no exported graphml file has a record for node ana, so its encrypted answer was not exported in that format',
   ]);
 });
 
@@ -884,7 +901,10 @@ test('an encrypted answer exported in plain text fails, wherever it appears', ()
       name: 'a_attributeList_person.csv',
       text: personCsv([['linda', ENCRYPTED_PLACEHOLDER]]),
     },
-    { name: 'a.graphml', text: '<data key="name">Linda</data>' },
+    {
+      name: 'a.graphml',
+      text: `${personGraphml([['linda', ENCRYPTED_PLACEHOLDER]])}<!-- Linda -->`,
+    },
   ];
   assert.deepEqual(encryptedValueProblems(files, 'Linda', 'linda'), [
     'a.graphml holds "Linda" in plain text',
@@ -894,8 +914,10 @@ test('an encrypted answer exported in plain text fails, wherever it appears', ()
 test('an export that dropped the encrypted attribute altogether proves nothing', () => {
   const files = [{ name: 'a_attributeList_person.csv', text: 'id\r\n1' }];
   const problems = encryptedValueProblems(files, 'Linda', 'linda');
-  assert.equal(problems.length, 1);
-  assert.match(problems[0], /no exported file has a record for node linda/);
+  assert.deepEqual(problems, [
+    'no exported csv file has a record for node linda, so its encrypted answer was not exported in that format',
+    'no exported graphml file has a record for node linda, so its encrypted answer was not exported in that format',
+  ]);
 });
 
 test("another person's placeholder does not stand in for a dropped answer", () => {

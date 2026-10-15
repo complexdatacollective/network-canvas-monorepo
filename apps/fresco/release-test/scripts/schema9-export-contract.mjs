@@ -144,6 +144,7 @@ function nodeRecords(files, nodeId) {
         const cells = splitCsvRow(line);
         if (cells[uuid] === nodeId)
           records.push({
+            format: 'csv',
             name,
             fields: new Map(
               header.map((column, index) => [column, cells[index]]),
@@ -169,7 +170,7 @@ function nodeRecords(files, nodeId) {
           ),
         );
         if (fields.get(ncUUIDProperty) === nodeId)
-          records.push({ name, fields });
+          records.push({ format: 'graphml', name, fields });
       }
     }
   }
@@ -177,12 +178,22 @@ function nodeRecords(files, nodeId) {
 }
 
 /**
+ * The formats an export holds no record of a node in. The lanes export both,
+ * so a node missing from either is an answer lost in that format, which a
+ * record in the other cannot stand in for.
+ */
+const formatsWithout = (records) =>
+  ['csv', 'graphml'].filter(
+    (format) => !records.some((record) => record.format === format),
+  );
+
+/**
  * Whether one person's encrypted answer stayed out of the export: no file may
  * hold the plaintext, and that person's own exported record has to carry the
  * placeholder. A placeholder anywhere else proves nothing about this answer:
  * another person's encrypted value (a relative the pedigree labelled itself,
  * say) would carry one even if this answer had been lost. Every record the
- * export holds for the person must carry it, and there must be at least one.
+ * export holds for the person must carry it, in both the CSV and the GraphML.
  */
 export function encryptedValueProblems(
   files,
@@ -194,9 +205,9 @@ export function encryptedValueProblems(
     .filter(({ text }) => text.includes(plaintext))
     .map(({ name }) => `${name} holds "${plaintext}" in plain text`);
   const records = nodeRecords(files, nodeId);
-  if (records.length === 0)
+  for (const format of formatsWithout(records))
     problems.push(
-      `no exported file has a record for node ${nodeId}, so its encrypted answer was not exported at all`,
+      `no exported ${format} file has a record for node ${nodeId}, so its encrypted answer was not exported in that format`,
     );
   for (const { name, fields } of records)
     if (fields.get(attribute) !== ENCRYPTED_PLACEHOLDER)
@@ -213,17 +224,17 @@ export function encryptedValueProblems(
  * per option, such as `context_work`). Searching the archive's text instead
  * would find a short answer such as "5" or "work" in any header or other
  * record, and pass with the answer itself dropped. Every record the export
- * holds for the node must carry every value (a node appears in its CSV and in
- * the GraphML), and there must be at least one.
+ * holds for the node must carry every value, and the node must have a record
+ * in both the CSV and the GraphML.
  */
 export function nodeAnswerProblems(files, expected) {
   const problems = [];
   for (const [nodeId, answers] of Object.entries(expected)) {
     const records = nodeRecords(files, nodeId);
-    if (records.length === 0) {
-      problems.push(`no exported file has a record for node ${nodeId}`);
-      continue;
-    }
+    for (const format of formatsWithout(records))
+      problems.push(
+        `no exported ${format} file has a record for node ${nodeId}`,
+      );
     for (const { name, fields } of records)
       for (const [attribute, value] of Object.entries(answers))
         if (fields.get(attribute) !== value)
