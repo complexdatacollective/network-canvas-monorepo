@@ -27,6 +27,10 @@
     "defaultMessage": "{isYou, select, true {Now select the person to connect to you.} other {Now select the person to connect to “{name}”.}}",
     "description": "Read out to screen reader users, not shown, once the first of two people to connect has been selected. name is that person’s name or how they are related to the participant."
   },
+  "interview.familyPedigree.connectToolDescription": {
+    "defaultMessage": "Select two family members to connect them and say how they are related.",
+    "description": "Tooltip text, under the heading “Connect” (or the stage’s own name for it), of the family tree toolbar tool that joins two people already in the tree: the participant selects one, then another, then chooses how they are related, such as parent or partner. Read by participants."
+  },
   "interview.familyPedigree.connectedParentAnnouncement": {
     "defaultMessage": "{relationship} ({kind})",
     "description": "Screen reader announcement after connecting two people as parent and child. relationship is the chosen menu option (for example “Julie” is a parent of “Rob”); kind is the kind of parent chosen (for example Adoptive parent)."
@@ -35,6 +39,10 @@
     "defaultMessage": "{isYou, select, true {Now select the person to disconnect from you.} other {Now select the person to disconnect from “{name}”.}}",
     "description": "Read out to screen reader users, not shown, once the first of two people to disconnect has been selected. name is that person’s name or how they are related to the participant."
   },
+  "interview.familyPedigree.disconnectToolDescription": {
+    "defaultMessage": "Select two connected family members to remove the connection between them.",
+    "description": "Tooltip text, under the heading “Disconnect” (or the stage’s own name for it), of the family tree toolbar tool that removes a relationship line: the participant selects one person, then someone they are connected to, and confirms. Read by participants."
+  },
   "interview.familyPedigree.disconnectedAnnouncement": {
     "defaultMessage": "{firstIsYou, select, true {The connection between you and “{second}” was removed.} other {The connection between “{first}” and “{second}” was removed.}}",
     "description": "Screen reader announcement after the connection between two people is removed. first and second are their names or how they are related to the participant."
@@ -42,6 +50,10 @@
   "interview.familyPedigree.framingChosenAnnouncement": {
     "defaultMessage": "{framing, select, gamete {Family members are now described with words like egg parent, sperm parent and sibling.} other {Family members are now described with words like mother, father, sister and brother.}}",
     "description": "Screen-reader announcement after the participant chooses the words used to describe family members, which changes the labels of everyone they have not named. {framing} is \"gamete\" for the words that do not depend on gender, otherwise the words that follow gender."
+  },
+  "interview.familyPedigree.framingControlDescription": {
+    "defaultMessage": "Choose the relationship words your family tree uses for your relatives.",
+    "description": "Tooltip text, under the heading “Wording” (or the stage’s own name for it), of the family tree toolbar button that opens a choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent. Read by participants."
   },
   "interview.familyPedigree.personAccessibleName": {
     "defaultMessage": "{isYou, select, true {You} other {{name}}}",
@@ -54,6 +66,10 @@
   "interview.familyPedigree.personMissingDetailsDescription": {
     "defaultMessage": "Some details are missing.",
     "description": "Read out after the name of a family member’s symbol in the family tree when required details about the person have not been given yet, which the tree shows with a warning icon."
+  },
+  "interview.familyPedigree.pointerToolDescription": {
+    "defaultMessage": "Select a family member to edit their details or add their relatives.",
+    "description": "Tooltip text, under the heading “Add and edit” (or the stage’s own name for it), of the family tree toolbar tool that is chosen by default: with it, selecting a family member opens their details, and buttons beside them add a parent, sibling, partner or child. Read by participants."
   },
   "interview.familyPedigree.removedAnnouncement": {
     "defaultMessage": "{name} removed from your family.",
@@ -73,7 +89,11 @@
   },
   "interview.familyPedigree.showWholeFamily": {
     "defaultMessage": "Show the whole family",
-    "description": "Accessible name of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Shown as an icon, without a tooltip."
+    "description": "Accessible name of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Also the heading of the button’s tooltip."
+  },
+  "interview.familyPedigree.showWholeFamilyDescription": {
+    "defaultMessage": "Fit your whole family tree on the screen.",
+    "description": "Tooltip text, under the heading “Show the whole family”, of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Read by participants."
   },
   "interview.familyPedigree.siblingsAnsweredAnnouncement": {
     "defaultMessage": "{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}",
@@ -94,6 +114,14 @@
   "interview.familyPedigree.trackerProgressLabel": {
     "defaultMessage": "{complete, select, true {Your family tree has everything needed} other {Family tree {percent, number, percent} complete}}. Show what’s still needed.",
     "description": "Accessible name of the round progress indicator in the corner of the family tree, which opens the list of family members still needed. percent is a fraction between 0 and 1."
+  },
+  "interview.familyPedigree.zoomInDescription": {
+    "defaultMessage": "Make your family tree bigger, to see part of it more closely.",
+    "description": "Tooltip text, under the heading “Zoom in”, of the family tree toolbar button that increases magnification. Read by participants."
+  },
+  "interview.familyPedigree.zoomOutDescription": {
+    "defaultMessage": "Make your family tree smaller, to see more of it at once.",
+    "description": "Tooltip text, under the heading “Zoom out”, of the family tree toolbar button that decreases magnification. Read by participants."
   },
   "interview.interfaces.addNamePlaceholder": {
     "defaultMessage": "Type a name, then press Enter",

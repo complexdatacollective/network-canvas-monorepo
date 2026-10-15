@@ -157,6 +157,25 @@ export function PedigreeViewport({
  * area handles + and − too (`zoomForKey`), so the keys zoom with focus on
  * any of its controls, as they do in the canvas.
  */
+/**
+ * A pedigree toolbar button's tooltip: its name, and a sentence saying what
+ * it does.
+ */
+export function ToolTip({
+  name,
+  description,
+}: {
+  name: string;
+  description: string;
+}) {
+  return (
+    <div className="flex max-w-xs flex-col gap-1">
+      <span className="font-semibold">{name}</span>
+      <span>{description}</span>
+    </div>
+  );
+}
+
 export function usePedigreeZoomButtons({
   panZoom,
   onShowWholeFamily,
@@ -170,6 +189,12 @@ export function usePedigreeZoomButtons({
     <ToolbarIconButton
       key="zoom-out"
       aria-label={intl.formatMessage(interfaceMessages.zoomOut)}
+      tooltip={
+        <ToolTip
+          name={intl.formatMessage(interfaceMessages.zoomOut)}
+          description={intl.formatMessage(messages.zoomOutDescription)}
+        />
+      }
       icon={<ZoomOut />}
       disabled={zoomLimits.atMin}
       onClick={() => panZoom.zoomBy(-ZOOM_STEP)}
@@ -178,6 +203,12 @@ export function usePedigreeZoomButtons({
     <ToolbarIconButton
       key="zoom-in"
       aria-label={intl.formatMessage(interfaceMessages.zoomIn)}
+      tooltip={
+        <ToolTip
+          name={intl.formatMessage(interfaceMessages.zoomIn)}
+          description={intl.formatMessage(messages.zoomInDescription)}
+        />
+      }
       icon={<ZoomIn />}
       disabled={zoomLimits.atMax}
       onClick={() => panZoom.zoomBy(ZOOM_STEP)}
@@ -186,7 +217,12 @@ export function usePedigreeZoomButtons({
     <ToolbarIconButton
       key="zoom-fit"
       aria-label={intl.formatMessage(messages.showWholeFamily)}
-      tooltip={false}
+      tooltip={
+        <ToolTip
+          name={intl.formatMessage(messages.showWholeFamily)}
+          description={intl.formatMessage(messages.showWholeFamilyDescription)}
+        />
+      }
       icon={<Scan />}
       onClick={onShowWholeFamily}
       data-testid="pedigree-zoom-fit"

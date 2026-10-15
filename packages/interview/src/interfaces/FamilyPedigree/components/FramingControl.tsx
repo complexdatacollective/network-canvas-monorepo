@@ -3,6 +3,7 @@
 import { Speech } from 'lucide-react';
 import { type Ref, useEffect, useRef } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import {
@@ -13,7 +14,9 @@ import {
 import type { FramingId } from '@codaco/protocol-validation';
 
 import { useContentFormat } from '../../../localization/useContentFormat';
+import { ToolTip } from '../../pedigree-common/PedigreeCanvas';
 import { formatRelativeTerm } from '../kinship';
+import { messages } from '../messages';
 import { configuredWord, usePedigreeWords } from '../pedigreeWords';
 
 type FramingControlProps = {
@@ -48,6 +51,7 @@ function FramingControl({
   const words = usePedigreeWords();
   const { wording, text } = words;
   const contentFormat = useContentFormat();
+  const intl = useAppIntl();
   // The toolbar button, as well as whoever the ref is forwarded to.
   const trigger = useRef<HTMLButtonElement | null>(null);
   const setTrigger = (element: HTMLButtonElement | null) => {
@@ -96,6 +100,14 @@ function FramingControl({
       trigger={
         <ToolbarIconButton
           aria-label={text(configuredWord(wording.framingControlLabel))}
+          tooltip={
+            <ToolTip
+              name={text(configuredWord(wording.framingControlLabel))}
+              description={intl.formatMessage(
+                messages.framingControlDescription,
+              )}
+            />
+          }
           icon={<Speech />}
           data-testid="pedigree-framing"
         />
