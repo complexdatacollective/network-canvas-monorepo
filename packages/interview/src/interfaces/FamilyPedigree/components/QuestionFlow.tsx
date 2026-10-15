@@ -431,10 +431,6 @@ export default function QuestionFlow({
       if (!target.closest('[role="radio"]')) return;
       const field = target.closest(FIELD_SELECTOR);
       if (!field) return;
-      // This listener runs before the form records the click, so the field
-      // still shows its earlier answer. Changing an answer already given,
-      // as when going back to review a step, does not move the form on.
-      const changedAnswer = !isUnanswered(field, read);
       requestAnimationFrame(() => {
         if (!field.isConnected || isUnanswered(field, read)) return;
         const [next] = waitingAfter(root, field, read);
@@ -447,7 +443,6 @@ export default function QuestionFlow({
         const holder = field.closest(STEP_SELECTOR);
         if (
           stepped &&
-          !changedAnswer &&
           holder &&
           holder === step &&
           !isLast &&
