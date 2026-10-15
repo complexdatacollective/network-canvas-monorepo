@@ -41,7 +41,8 @@
 // moves every interview's resume position and stage records with the stages
 // they belong to. Given the migration lane's two readings of the database
 // (--migration <dir>, holding before.json and after.json from
-// migration-lane.mjs), an interview's currentStep and the keys of its
+// migration-lane.mjs, unless its seeded.json says the lane was not
+// applicable), an interview's currentStep and the keys of its
 // stageMetadata are reconciled where they moved exactly as the stage they
 // point at did, matched by stage id (migration-contract.mjs). One that moved
 // anywhere else stays a difference.
@@ -606,10 +607,14 @@ function main() {
     else if (argv[i] === '--migration') {
       const dir = resolve(argv[(i += 1)]);
       const read = (name) => JSON.parse(readFileSync(join(dir, name), 'utf8'));
-      migrationReadings = {
-        before: protocolsOf(read('before.json')),
-        after: protocolsOf(read('after.json')),
-      };
+      // A lane that stood down (the released image already runs the pending
+      // schema, so nothing was migrated) leaves no readings, and there is
+      // nothing to reconcile: every difference is reported as it is.
+      if (!read('seeded.json').notApplicable)
+        migrationReadings = {
+          before: protocolsOf(read('before.json')),
+          after: protocolsOf(read('after.json')),
+        };
     } else positional.push(argv[i]);
   }
   if (positional.length !== 2 || !workRoot) {

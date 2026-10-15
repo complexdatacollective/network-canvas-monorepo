@@ -1234,8 +1234,14 @@ test('the export diff reconciles a step only as far as its stage moved', () => {
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, name), `${JSON.stringify(value)}\n`);
   };
+  write(join(work, 'migration'), 'seeded.json', { interviewId: 'parked' });
   write(join(work, 'migration'), 'before.json', before);
   write(join(work, 'migration'), 'after.json', after);
+  // A lane that stood down leaves only its seeded.json saying so.
+  write(join(work, 'not-applicable'), 'seeded.json', {
+    interviewId: 'parked',
+    notApplicable: 'the released image already runs schema 9',
+  });
   const interview = (currentStep, stageMetadata) => ({
     data: { id: 'parked', protocolId: 'p1', currentStep, stageMetadata },
   });
@@ -1245,7 +1251,7 @@ test('the export diff reconciles a step only as far as its stage moved', () => {
     interview(2, { 2: { seen: true } }),
   );
   let runs = 0;
-  const diff = (current, withReadings) => {
+  const diff = (current, readingsDir) => {
     runs += 1;
     const dir = join(work, `current-${runs}`);
     write(dir, 'api-interview-parked.json', current);
@@ -1260,14 +1266,14 @@ test('the export diff reconciles a step only as far as its stage moved', () => {
         join(work, `work-${runs}`),
         '--out',
         out,
-        ...(withReadings ? ['--migration', join(work, 'migration')] : []),
+        ...(readingsDir ? ['--migration', join(work, readingsDir)] : []),
       ],
       { stdio: 'pipe' },
     );
     return JSON.parse(readFileSync(out, 'utf8'));
   };
   const moved = interview(4, { 4: { seen: true } });
-  const reconciled = diff(moved, true);
+  const reconciled = diff(moved, 'migration');
   assert.deepEqual(reconciled.identical, ['api-interview-parked.json']);
   assert.match(JSON.stringify(reconciled.reconciled), /currentStep moved/);
   assert.match(JSON.stringify(reconciled.reconciled), /stageMetadata re-keyed/);
@@ -1276,9 +1282,17 @@ test('the export diff reconciles a step only as far as its stage moved', () => {
     diff(moved, false).changed.map((c) => c.file),
     ['api-interview-parked.json'],
   );
+  // Nor with a lane that stood down: it has no readings to reconcile with,
+  // and the diff still runs rather than failing on the missing files.
+  assert.deepEqual(
+    diff(moved, 'not-applicable').changed.map((c) => c.file),
+    ['api-interview-parked.json'],
+  );
   // Resumed on the inserted Information stage: not where its stage went.
   assert.deepEqual(
-    diff(interview(3, { 4: { seen: true } }), true).changed.map((c) => c.file),
+    diff(interview(3, { 4: { seen: true } }), 'migration').changed.map(
+      (c) => c.file,
+    ),
     ['api-interview-parked.json'],
   );
 });
