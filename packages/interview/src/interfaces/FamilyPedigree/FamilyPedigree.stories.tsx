@@ -1798,6 +1798,9 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
   render: (args) => (
     <PedigreeStory
       {...settings(args)}
+      // A stand-in's details to give: whether they are still living, a
+      // required field. Gender identity is never a missing detail.
+      withFormFields
       family={{
         people: [
           {
@@ -2822,6 +2825,9 @@ export const ARecommendationIsShownAgainWhenItGrows: Story = {
   render: (args) => (
     <PedigreeStory
       {...settings(args)}
+      // A stand-in's details to give: whether they are still living, a
+      // required field. Gender identity is never a missing detail.
+      withFormFields
       followedByPeopleList
       family={{
         people: [
@@ -2891,6 +2897,9 @@ export const RemovingTheOnlyParentShowsTheRecommendationAgain: Story = {
   render: (args) => (
     <PedigreeStory
       {...settings(args)}
+      // A stand-in's details to give: whether they are still living, a
+      // required field. Gender identity is never a missing detail.
+      withFormFields
       followedByPeopleList
       family={{
         people: [
@@ -4140,9 +4149,9 @@ export const RecordingAnswersKeepsTheFamily: Story = {
     );
     await expectFamilyInSession();
 
-    // Leaving (Next again past the recommended list) and coming back changes
-    // none of it, and the parent is still drawn.
-    await userEvent.click(canvas.getByTestId('next-button'));
+    // Leaving and coming back changes none of it, and the parent is still
+    // drawn. The family is complete: the stand-in's sex follows from the
+    // gamete they gave, and gender identity is never a missing detail.
     await leaveForPeopleList(canvasElement);
     await expect(await canvas.findByText('Egg parent')).toBeInTheDocument();
     await expectFamilyInSession();
