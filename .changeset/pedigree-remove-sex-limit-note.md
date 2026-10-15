@@ -1,7 +1,6 @@
 ---
 '@codaco/interview': patch
 '@codaco/protocol-validation': patch
-'@codaco/protocol-builder': patch
 '@codaco/architect': patch
 '@codaco/interviewer': patch
 'fresco': patch
