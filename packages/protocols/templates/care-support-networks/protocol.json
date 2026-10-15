@@ -19,7 +19,7 @@
               "value": "postpartum"
             }
           ],
-          "validation": { "required": true }
+          "validation": { "required": true, "maxSelected": 1 }
         },
         "weeks_since_birth": {
           "name": "weeks_since_birth",
@@ -468,6 +468,12 @@
     },
     {
       "id": "ng-support-functions",
+      "dynamicValues": {
+        "careStage": {
+          "path": "ego.care_stage",
+          "cases": { "pregnant": "pregnant", "postpartum": "postpartum" }
+        }
+      },
       "type": "NameGenerator",
       "label": { "en-US": "People who support you" },
       "interviewScript": "Use these prompts in turn. The same person can be named under more than one prompt. Functions that no one is named for are meaningful: they may indicate a support gap to explore with the participant.",
@@ -499,13 +505,13 @@
         {
           "id": "p-informational",
           "text": {
-            "en-US": "Who do you turn to for **information or advice** about your pregnancy or the baby?"
+            "en-US": "Who do you turn to for **information or advice** about {careStage, select, missing {your pregnancy or the baby} pregnant {your pregnancy} postpartum {the baby} other {your pregnancy or the baby}}?"
           }
         },
         {
           "id": "p-practical",
           "text": {
-            "en-US": "Who helps you with **practical tasks or childcare** — things like meals, errands, housework, or looking after the baby?"
+            "en-US": "Who helps you with **practical tasks or childcare** — things like meals, errands, housework, or {careStage, select, missing {looking after the baby} pregnant {getting ready for the baby} postpartum {looking after the baby} other {looking after the baby}}?"
           }
         },
         {
@@ -552,6 +558,7 @@
     },
     {
       "id": "alter-support-detail",
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": { "en-US": "About each supporter" },
       "subject": {
@@ -562,24 +569,24 @@
         "fields": [
           {
             "variable": "relationship",
-            "prompt": { "en-US": "What is this person's relationship to you?" }
+            "prompt": { "en-US": "What is {nodeLabel}'s relationship to you?" }
           },
           {
             "variable": "proximity",
             "prompt": {
-              "en-US": "Where is this person, relative to you, most of the time?"
+              "en-US": "Where is {nodeLabel}, relative to you, most of the time?"
             }
           },
           {
             "variable": "contact_frequency",
             "prompt": {
-              "en-US": "How often are you in contact with this person at the moment?"
+              "en-US": "How often are you in contact with {nodeLabel} at the moment?"
             }
           },
           {
             "variable": "support_functions",
             "prompt": {
-              "en-US": "Which kinds of support does this person give you?"
+              "en-US": "Which kinds of support does {nodeLabel} give you?"
             },
             "hint": { "en-US": "Select all that apply." }
           }
@@ -588,6 +595,12 @@
     },
     {
       "id": "bin-reliance",
+      "dynamicValues": {
+        "careStage": {
+          "path": "ego.care_stage",
+          "cases": { "pregnant": "pregnant", "postpartum": "postpartum" }
+        }
+      },
       "type": "OrdinalBin",
       "label": { "en-US": "How much you rely on each person" },
       "subject": { "entity": "node", "type": "supporter" },
@@ -595,7 +608,7 @@
         {
           "id": "p-reliance",
           "text": {
-            "en-US": "Thinking about your care and the baby, **how much do you rely on each person** for support overall? Drag each person into the band that fits best."
+            "en-US": "Thinking about {careStage, select, missing {your care and the baby} pregnant {your pregnancy} postpartum {your care and the baby} other {your care and the baby}}, **how much do you rely on each person** for support overall? Drag each person into the band that fits best."
           },
           "variable": "reliance",
           "color": "ord-color-seq-1"

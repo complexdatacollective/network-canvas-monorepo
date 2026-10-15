@@ -468,6 +468,7 @@
     },
     {
       "id": "composer-network",
+      "dynamicValues": { "transitionWhen": { "path": "ego.transition_when" } },
       "addNamePlaceholder": {
         "en-US": "Type a name, then press Enter"
       },
@@ -510,12 +511,16 @@
           {
             "variable": "knew_before",
             "component": "Toggle",
-            "label": { "en-US": "Knew them before the change" }
+            "label": {
+              "en-US": "Knew them before {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
+            }
           },
           {
             "variable": "arrived_with_change",
             "component": "Toggle",
-            "label": { "en-US": "New since the change" }
+            "label": {
+              "en-US": "New since {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
+            }
           },
           {
             "variable": "helped_through",
@@ -530,12 +535,16 @@
           {
             "variable": "lost_touch",
             "component": "Toggle",
-            "label": { "en-US": "Lost touch since" }
+            "label": {
+              "en-US": "Lost touch since {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
+            }
           },
           {
             "variable": "closeness_before",
             "component": "LikertScale",
-            "label": { "en-US": "How close you were before" }
+            "label": {
+              "en-US": "How close you were before {transitionWhen, select, missing {the change} other {{transitionWhen}}}"
+            }
           },
           {
             "variable": "closeness_now",
@@ -625,10 +634,13 @@
           "label": { "en-US": "Before and since" },
           "layoutVariable": "layout",
           "highlight": [
-            { "variable": "knew_before", "label": { "en-US": "knew_before" } },
+            {
+              "variable": "knew_before",
+              "label": { "en-US": "Knew them before the change" }
+            },
             {
               "variable": "arrived_with_change",
-              "label": { "en-US": "arrived_with_change" }
+              "label": { "en-US": "New since the change" }
             }
           ]
         },
@@ -639,11 +651,11 @@
           "highlight": [
             {
               "variable": "helped_through",
-              "label": { "en-US": "helped_through" }
+              "label": { "en-US": "Helped you through it" }
             },
             {
               "variable": "made_it_harder",
-              "label": { "en-US": "made_it_harder" }
+              "label": { "en-US": "Made things harder" }
             }
           ]
         },
@@ -656,7 +668,10 @@
             "display": ["knows"]
           },
           "highlight": [
-            { "variable": "lost_touch", "label": { "en-US": "lost_touch" } }
+            {
+              "variable": "lost_touch",
+              "label": { "en-US": "Lost touch since the change" }
+            }
           ]
         },
         {

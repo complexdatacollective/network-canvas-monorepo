@@ -607,6 +607,7 @@
     },
     {
       "id": "alter-form-attributes",
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": { "en-US": "About each person" },
       "subject": {
@@ -617,19 +618,19 @@
         "fields": [
           {
             "variable": "relationship",
-            "prompt": { "en-US": "How is this person related to you?" }
+            "prompt": { "en-US": "How is {nodeLabel} related to you?" }
           },
           {
             "variable": "knows_about_mh",
             "prompt": {
-              "en-US": "Does this person **know about your mental health**?"
+              "en-US": "Does {nodeLabel} **know about your mental health**?"
             },
             "hint": { "en-US": "That is, have you told them about it?" }
           },
           {
             "variable": "is_clinical",
             "prompt": {
-              "en-US": "Is this person a **formal or clinical source of help**?"
+              "en-US": "Is {nodeLabel} a **formal or clinical source of help**?"
             },
             "hint": {
               "en-US": "For example, a doctor, therapist, counsellor, or other professional."
@@ -759,11 +760,11 @@
           "highlight": [
             {
               "variable": "support_emotional",
-              "label": { "en-US": "support_emotional" }
+              "label": { "en-US": "Emotional support" }
             },
             {
               "variable": "is_source_of_stress",
-              "label": { "en-US": "is_source_of_stress" }
+              "label": { "en-US": "Source of stress" }
             }
           ]
         },
@@ -774,9 +775,12 @@
           "highlight": [
             {
               "variable": "knows_about_mh",
-              "label": { "en-US": "knows_about_mh" }
+              "label": { "en-US": "Knows about your mental health" }
             },
-            { "variable": "is_clinical", "label": { "en-US": "is_clinical" } }
+            {
+              "variable": "is_clinical",
+              "label": { "en-US": "Formal or clinical help" }
+            }
           ]
         }
       ],
