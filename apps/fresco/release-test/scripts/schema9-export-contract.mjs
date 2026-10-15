@@ -7,6 +7,7 @@
 import {
   ncFinishOutcomeProperty,
   ncSessionProperty,
+  ncUUIDProperty,
 } from '../../../../packages/shared-consts/src/export-process.ts';
 
 /** The cells of one CSV row: quoted cells may hold commas and doubled quotes. */
@@ -37,17 +38,17 @@ const attributeOf = (tag, name) =>
   new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1];
 
 /**
- * Where each exported interview ended, as each format records it, keyed by
- * the session id the export gives the interview.
- *
- * `csv` reads every ego CSV that has the finish outcome column (an empty cell
- * is recorded as ''); `graphml` reads every graph's nc:finishOutcome
- * (recorded as '' when the graph has none — GraphML leaves the attribute out
- * when there is no outcome).
+ * Every outcome each format records, in the order it records them, keyed by
+ * the session id the export gives the interview. An interview a format
+ * records more than once keeps every reading, so a repeat can be reported
+ * instead of the last one silently winning.
  */
-export function finishOutcomesByFormat(files) {
+function outcomeReadings(files) {
   const csv = {};
   const graphml = {};
+  const record = (readings, session, outcome) => {
+    (readings[session] ??= []).push(outcome);
+  };
   for (const { name, text } of files) {
     if (/\.csv$/i.test(name)) {
       const lines = text.split(/\r?\n/).filter((line) => line !== '');
@@ -57,13 +58,13 @@ export function finishOutcomesByFormat(files) {
       if (outcome === -1 || session === -1) continue;
       for (const line of lines.slice(1)) {
         const cells = splitCsvRow(line);
-        csv[cells[session]] = cells[outcome] ?? '';
+        record(csv, cells[session], cells[outcome] ?? '');
       }
     } else if (/\.graphml$/i.test(name)) {
       for (const tag of text.match(GRAPH_START_TAG) ?? []) {
         const session = attributeOf(tag, 'nc:sessionUUID');
         if (session !== undefined)
-          graphml[session] = attributeOf(tag, 'nc:finishOutcome') ?? '';
+          record(graphml, session, attributeOf(tag, 'nc:finishOutcome') ?? '');
       }
     }
   }
@@ -71,21 +72,50 @@ export function finishOutcomesByFormat(files) {
 }
 
 /**
+ * Where each exported interview ended, as each format records it, keyed by
+ * the session id the export gives the interview.
+ *
+ * `csv` reads every ego CSV that has the finish outcome column (an empty cell
+ * is recorded as ''); `graphml` reads every graph's nc:finishOutcome
+ * (recorded as '' when the graph has none — GraphML leaves the attribute out
+ * when there is no outcome). An interview recorded more than once reads as
+ * its last record here; finishOutcomeProblems reports the repeat.
+ */
+export function finishOutcomesByFormat(files) {
+  const readings = outcomeReadings(files);
+  const last = (byFormat) =>
+    Object.fromEntries(
+      Object.entries(byFormat).map(([session, outcomes]) => [
+        session,
+        outcomes.at(-1),
+      ]),
+    );
+  return { csv: last(readings.csv), graphml: last(readings.graphml) };
+}
+
+/**
  * Compares the outcomes an export records with the ones expected, per
  * interview and per format. Returns the problems; an empty list is a pass.
- * Both formats must record every expected interview: an interview missing
- * from a format is a problem, never a pass by omission.
+ * Both formats must record every expected interview exactly once: an
+ * interview missing from a format is a problem, never a pass by omission, and
+ * one recorded twice is a problem even when one of its records is right,
+ * because a researcher's analysis would read both.
  */
 export function finishOutcomeProblems(files, expected) {
-  const found = finishOutcomesByFormat(files);
+  const found = outcomeReadings(files);
   const problems = [];
-  for (const [format, outcomes] of Object.entries(found)) {
+  for (const [format, readings] of Object.entries(found)) {
     for (const [session, outcome] of Object.entries(expected)) {
-      if (!Object.hasOwn(outcomes, session))
+      const recorded = readings[session];
+      if (!recorded)
         problems.push(`${format} has no row for interview ${session}`);
-      else if (outcomes[session] !== outcome)
+      else if (recorded.length > 1)
         problems.push(
-          `${format} records interview ${session} as "${outcomes[session]}", expected "${outcome}"`,
+          `${format} records interview ${session} ${recorded.length} times (${recorded.map((value) => `"${value}"`).join(', ')})`,
+        );
+      else if (recorded[0] !== outcome)
+        problems.push(
+          `${format} records interview ${session} as "${recorded[0]}", expected "${outcome}"`,
         );
     }
   }
@@ -96,18 +126,59 @@ export function finishOutcomeProblems(files, expected) {
 export const ENCRYPTED_PLACEHOLDER = 'ENCRYPTED';
 
 /**
- * Whether an encrypted answer stayed out of the export: no file may hold the
- * plaintext, and the placeholder has to be there — an export that merely
- * lacks the attribute (or the person) would otherwise pass as well as one
- * that protected it.
+ * The exported records of one node: each CSV row whose UUID column holds its
+ * id, and each GraphML <node> element with that id. Each record is the list
+ * of values it holds.
  */
-export function encryptedValueProblems(files, plaintext) {
+function nodeRecords(files, nodeId) {
+  const records = [];
+  for (const { name, text } of files) {
+    if (/\.csv$/i.test(name)) {
+      const lines = text.split(/\r?\n/).filter((line) => line !== '');
+      const uuid = splitCsvRow(lines[0] ?? '').indexOf(ncUUIDProperty);
+      if (uuid === -1) continue;
+      for (const line of lines.slice(1)) {
+        const cells = splitCsvRow(line);
+        if (cells[uuid] === nodeId) records.push({ name, values: cells });
+      }
+    } else if (/\.graphml$/i.test(name)) {
+      const element = new RegExp(
+        `<node\\b[^>]*\\sid="${nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>([\\s\\S]*?)</node>`,
+        'g',
+      );
+      for (const [, body] of text.matchAll(element))
+        records.push({
+          name,
+          values: [...body.matchAll(/<data\b[^>]*>([^<]*)<\/data>/g)].map(
+            ([, value]) => value,
+          ),
+        });
+    }
+  }
+  return records;
+}
+
+/**
+ * Whether one person's encrypted answer stayed out of the export: no file may
+ * hold the plaintext, and that person's own exported record has to carry the
+ * placeholder. A placeholder anywhere else proves nothing about this answer:
+ * another person's encrypted value (a relative the pedigree labelled itself,
+ * say) would carry one even if this answer had been lost. Every record the
+ * export holds for the person must carry it, and there must be at least one.
+ */
+export function encryptedValueProblems(files, plaintext, nodeId) {
   const problems = files
     .filter(({ text }) => text.includes(plaintext))
     .map(({ name }) => `${name} holds "${plaintext}" in plain text`);
-  if (!files.some(({ text }) => text.includes(ENCRYPTED_PLACEHOLDER)))
+  const records = nodeRecords(files, nodeId);
+  if (records.length === 0)
     problems.push(
-      `no exported file holds the ${ENCRYPTED_PLACEHOLDER} placeholder, so the encrypted attribute was not exported at all`,
+      `no exported file has a record for node ${nodeId}, so its encrypted answer was not exported at all`,
     );
+  for (const { name, values } of records)
+    if (!values.includes(ENCRYPTED_PLACEHOLDER))
+      problems.push(
+        `${name}'s record for node ${nodeId} has no ${ENCRYPTED_PLACEHOLDER} placeholder, so its encrypted answer was dropped`,
+      );
   return problems;
 }

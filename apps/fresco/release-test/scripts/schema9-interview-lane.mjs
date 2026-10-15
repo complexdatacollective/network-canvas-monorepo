@@ -107,6 +107,13 @@ const TRANSCRIPT = {
   declinedName: 'Declina Prueba',
 };
 
+/** The fixture's Family Pedigree person type and the attributes read here. */
+const RELATIVE = {
+  type: 'node-type-9009-17',
+  name: 'var-9009-18',
+  ego: 'var-9009-22',
+};
+
 const checks = [];
 const result = { ok: false, checks };
 let browser;
@@ -464,11 +471,11 @@ try {
         .fill(TRANSCRIPT.relative);
       await panel
         .getByRole('radiogroup', { name: /^Identidad de género/ })
-        .getByRole('radio', { name: 'Woman', exact: true })
+        .getByRole('radio', { name: 'Mujer', exact: true })
         .click();
       await panel
         .getByRole('radiogroup', { name: /^Sexo asignado al nacer/ })
-        .getByRole('radio', { name: 'Female', exact: true })
+        .getByRole('radio', { name: 'Femenino', exact: true })
         .click();
       await panel
         .getByRole('radiogroup', { name: /^¿Fue este progenitor/ })
@@ -526,15 +533,48 @@ try {
 
   checks.push(
     await attempt('schema9-encrypted-name-stored-encrypted', async () => {
-      const row = psql(
-        `select position(${sqlText(TRANSCRIPT.relative)} in network::text) || '|' || position(${sqlText(TRANSCRIPT.egoName)} in network::text) || '|' || (select count(*) from jsonb_array_elements(network::jsonb->'nodes') n where n->>'type' = 'node-type-9009-17' and n->'_secureAttributes' ? 'var-9009-18') from "Interview" where id = ${sqlText(result.interviewId)};`,
+      const stored = JSON.parse(
+        psql(
+          `select json_build_object('nodes', network::jsonb->'nodes', 'stageMetadata', "stageMetadata", 'relative', position(${sqlText(TRANSCRIPT.relative)} in network::text), 'ego', position(${sqlText(TRANSCRIPT.egoName)} in network::text)) from "Interview" where id = ${sqlText(result.interviewId)};`,
+        ),
       );
-      const [relative, ego, secured] = row.split('|').map(Number);
+      // The stage labels the relatives it adds itself ("Sperm parent"), and
+      // holds that label in the same encrypted name attribute, so a count of
+      // encrypted names would pass with Linda's lost. Her node is the one
+      // relative who is neither the participant nor a person the stage
+      // records as labelled by itself.
+      const generated = new Set();
+      const collect = (value) => {
+        if (!value || typeof value !== 'object') return;
+        for (const [key, inner] of Object.entries(value)) {
+          if (key === 'generatedLabels' && inner && typeof inner === 'object')
+            for (const id of Object.keys(inner)) generated.add(id);
+          else collect(inner);
+        }
+      };
+      collect(stored.stageMetadata);
+      const relatives = (stored.nodes ?? []).filter(
+        (node) => node.type === RELATIVE.type,
+      );
+      const named = relatives.filter(
+        (node) =>
+          node.attributes?.[RELATIVE.ego] !== true && !generated.has(node._uid),
+      );
+      const linda = named.length === 1 ? named[0] : undefined;
+      result.relativeNodeId = linda?._uid;
+      const value = linda?.attributes?.[RELATIVE.name];
+      const held =
+        linda !== undefined &&
+        typeof value !== 'string' &&
+        value !== undefined &&
+        value !== null &&
+        Object.hasOwn(linda._secureAttributes ?? {}, RELATIVE.name);
       // The ego's name is the positive control: a network that could not be
       // read at all would not hold the relative's name either.
       return {
-        pass: relative === 0 && ego > 0 && secured >= 1,
-        detail: `"${TRANSCRIPT.relative}" in the stored network: ${relative > 0}; the ego's unencrypted name found: ${ego > 0}; relatives whose name is held encrypted: ${secured}`,
+        pass:
+          stored.relative === 0 && stored.ego > 0 && generated.size > 0 && held,
+        detail: `"${TRANSCRIPT.relative}" in the stored network: ${stored.relative > 0}; the ego's unencrypted name found: ${stored.ego > 0}; relatives the stage labelled itself: ${generated.size}; relatives the participant named: ${named.length}${linda ? ` (node ${linda._uid}, name held encrypted: ${held})` : ''}`,
       };
     }),
   );
@@ -643,15 +683,20 @@ try {
   checks.push(
     await attempt('schema9-export-keeps-encrypted-value-out', async () => {
       if (!exported) throw new Error('no export was read');
+      if (!result.relativeNodeId)
+        throw new Error(
+          `the stored network did not identify ${TRANSCRIPT.relative}'s node`,
+        );
       const problems = encryptedValueProblems(
         exported.files,
         TRANSCRIPT.relative,
+        result.relativeNodeId,
       );
       return {
         pass: problems.length === 0,
         detail: problems.length
           ? problems.join('; ')
-          : `"${TRANSCRIPT.relative}" is in no exported file, and the encrypted placeholder is`,
+          : `"${TRANSCRIPT.relative}" is in no exported file, and each exported record of her node (${result.relativeNodeId}) carries the encrypted placeholder`,
       };
     }),
   );

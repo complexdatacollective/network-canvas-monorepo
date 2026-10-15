@@ -737,6 +737,23 @@ test('an interview left out of a format is a problem, not a pass by omission', (
   assert.equal(finishOutcomeProblems([], { s1: 'completed' }).length, 2);
 });
 
+test('an interview recorded twice is a problem even when one record is right', () => {
+  const files = exported(
+    [
+      ['s1', 'terminated', 'Rosa'],
+      ['s1', 'completed', 'Rosa'],
+    ],
+    [
+      ['s1', 'terminated'],
+      ['s1', 'completed'],
+    ],
+  );
+  assert.deepEqual(finishOutcomeProblems(files, { s1: 'completed' }), [
+    'csv records interview s1 2 times ("terminated", "completed")',
+    'graphml records interview s1 2 times ("terminated", "completed")',
+  ]);
+});
+
 test('an interview finished before outcomes existed records none, and that is checkable', () => {
   const files = exported([['old', '', 'Mira']], [['old']]);
   assert.deepEqual(finishOutcomeProblems(files, { old: '' }), []);
@@ -764,34 +781,76 @@ test('the finish outcome is read from the column and attribute the exporters wri
   assert.match(consts, /ncSessionProperty = 'networkCanvasSessionID'/);
 });
 
+const personCsv = (rows) =>
+  ['networkCanvasUUID,name', ...rows.map(([id, name]) => `${id},${name}`)].join(
+    '\r\n',
+  );
+const personGraphml = (nodes) =>
+  nodes
+    .map(
+      ([id, name]) =>
+        `<node id="${id}"><data key="type">person</data><data key="name">${name}</data></node>`,
+    )
+    .join('');
+
 test('an encrypted answer exported as its placeholder passes', () => {
   const files = [
     {
       name: 'a_attributeList_person.csv',
-      text: `id,name\r\n1,${ENCRYPTED_PLACEHOLDER}`,
+      text: personCsv([['linda', ENCRYPTED_PLACEHOLDER]]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([['linda', ENCRYPTED_PLACEHOLDER]]),
     },
   ];
-  assert.deepEqual(encryptedValueProblems(files, 'Linda'), []);
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'linda'), []);
 });
 
 test('an encrypted answer exported in plain text fails, wherever it appears', () => {
   const files = [
     {
       name: 'a_attributeList_person.csv',
-      text: `id,name\r\n1,${ENCRYPTED_PLACEHOLDER}`,
+      text: personCsv([['linda', ENCRYPTED_PLACEHOLDER]]),
     },
     { name: 'a.graphml', text: '<data key="name">Linda</data>' },
   ];
-  assert.deepEqual(encryptedValueProblems(files, 'Linda'), [
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'linda'), [
     'a.graphml holds "Linda" in plain text',
   ]);
 });
 
 test('an export that dropped the encrypted attribute altogether proves nothing', () => {
   const files = [{ name: 'a_attributeList_person.csv', text: 'id\r\n1' }];
-  const problems = encryptedValueProblems(files, 'Linda');
+  const problems = encryptedValueProblems(files, 'Linda', 'linda');
   assert.equal(problems.length, 1);
-  assert.match(problems[0], /placeholder/);
+  assert.match(problems[0], /no exported file has a record for node linda/);
+});
+
+test("another person's placeholder does not stand in for a dropped answer", () => {
+  // The pedigree labels a relative itself and encrypts that label too, so the
+  // placeholder appears in the export even when Linda's own answer is lost.
+  const files = [
+    {
+      name: 'a_attributeList_person.csv',
+      text: personCsv([
+        ['linda', ''],
+        ['generated', ENCRYPTED_PLACEHOLDER],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([
+        ['linda', ''],
+        ['generated', ENCRYPTED_PLACEHOLDER],
+      ]),
+    },
+  ];
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'linda'), [
+    "a_attributeList_person.csv's record for node linda has no ENCRYPTED placeholder, so its encrypted answer was dropped",
+    "a.graphml's record for node linda has no ENCRYPTED placeholder, so its encrypted answer was dropped",
+  ]);
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'generated'), []);
 });
 
 // ---------------------------------------------------------------------------

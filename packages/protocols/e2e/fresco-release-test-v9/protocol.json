@@ -116,37 +116,43 @@
               {
                 "value": "woman",
                 "label": {
-                  "en": "Woman"
+                  "en": "Woman",
+                  "es": "Mujer"
                 }
               },
               {
                 "value": "man",
                 "label": {
-                  "en": "Man"
+                  "en": "Man",
+                  "es": "Hombre"
                 }
               },
               {
                 "value": "nonBinary",
                 "label": {
-                  "en": "Non-binary"
+                  "en": "Non-binary",
+                  "es": "No binario"
                 }
               },
               {
                 "value": "differentIdentity",
                 "label": {
-                  "en": "A different identity"
+                  "en": "A different identity",
+                  "es": "Otra identidad"
                 }
               },
               {
                 "value": "unknown",
                 "label": {
-                  "en": "Don’t know"
+                  "en": "Don’t know",
+                  "es": "No lo sé"
                 }
               },
               {
                 "value": "preferNotToSay",
                 "label": {
-                  "en": "Prefer not to say"
+                  "en": "Prefer not to say",
+                  "es": "Prefiero no decirlo"
                 }
               }
             ]
@@ -159,31 +165,36 @@
               {
                 "value": "female",
                 "label": {
-                  "en": "Female"
+                  "en": "Female",
+                  "es": "Femenino"
                 }
               },
               {
                 "value": "male",
                 "label": {
-                  "en": "Male"
+                  "en": "Male",
+                  "es": "Masculino"
                 }
               },
               {
                 "value": "intersex",
                 "label": {
-                  "en": "Intersex"
+                  "en": "Intersex",
+                  "es": "Intersexual"
                 }
               },
               {
                 "value": "unknown",
                 "label": {
-                  "en": "Don’t know"
+                  "en": "Don’t know",
+                  "es": "No lo sé"
                 }
               },
               {
                 "value": "preferNotToSay",
                 "label": {
-                  "en": "Prefer not to say"
+                  "en": "Prefer not to say",
+                  "es": "Prefiero no decirlo"
                 }
               }
             ]
@@ -200,7 +211,8 @@
       "edge-type-9009-23": {
         "name": "Family",
         "label": {
-          "en": "Family"
+          "en": "Family",
+          "es": "Familia"
         },
         "color": "edge-color-seq-1",
         "variables": {
@@ -212,55 +224,64 @@
               {
                 "value": "partner",
                 "label": {
-                  "en": "Partner"
+                  "en": "Partner",
+                  "es": "Pareja"
                 }
               },
               {
                 "value": "biological",
                 "label": {
-                  "en": "Biological parent"
+                  "en": "Biological parent",
+                  "es": "Progenitor biológico"
                 }
               },
               {
                 "value": "adoptive",
                 "label": {
-                  "en": "Adoptive parent"
+                  "en": "Adoptive parent",
+                  "es": "Progenitor adoptivo"
                 }
               },
               {
                 "value": "social",
                 "label": {
-                  "en": "Step or social parent"
+                  "en": "Step or social parent",
+                  "es": "Padrastro, madrastra o progenitor social"
                 }
               },
               {
                 "value": "donor",
                 "label": {
-                  "en": "Egg or sperm donor"
+                  "en": "Egg or sperm donor",
+                  "es": "Donante de óvulos o esperma"
                 }
               },
               {
                 "value": "surrogate",
                 "label": {
-                  "en": "Surrogate"
+                  "en": "Surrogate",
+                  "es": "Gestante subrogada"
                 }
               },
               {
                 "value": "identicalTwin",
                 "label": {
-                  "en": "Identical twin"
+                  "en": "Identical twin",
+                  "es": "Gemelo idéntico"
                 }
               },
               {
                 "value": "fraternalTwin",
                 "label": {
-                  "en": "Fraternal twin"
+                  "en": "Fraternal twin",
+                  "es": "Mellizo"
                 }
               },
               {
                 "value": "unknownZygosityTwin",
                 "label": {
-                  "en": "Twin, not known if identical"
+                  "en": "Twin, not known if identical",
+                  "es": "Gemelo, sin saber si idéntico"
                 }
               }
             ]
@@ -990,7 +1011,8 @@
         "es": "No participa"
       },
       "content": {
-        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now."
+        "en": "# Finish Interview\n\nYou have reached the end of the interview. If you are satisfied with the information you have entered, you may finish the interview now.",
+        "es": "# Finalizar entrevista\n\nHas llegado al final de la entrevista. Si estás conforme con la información que has introducido, puedes finalizar la entrevista ahora."
       },
       "mode": "automatic",
       "finishedContent": {

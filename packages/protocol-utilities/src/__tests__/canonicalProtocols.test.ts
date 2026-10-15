@@ -15,6 +15,7 @@ const protocolsRoot = path.resolve(import.meta.dirname, '../../../protocols');
 // Kept at schema 8 so the v8 to v9 migration is exercised against real input.
 const MIGRATION_FIXTURES = new Set([
   path.join('e2e', 'fresco-release-test', 'protocol.json'),
+  path.join('e2e', 'fresco-release-test-migration', 'protocol.json'),
 ]);
 
 const sources = readdirSync(protocolsRoot, {
