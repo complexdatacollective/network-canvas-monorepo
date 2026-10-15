@@ -191,9 +191,23 @@ export async function reencryptProtocolMigration(
   const record = await db.protocolMigrations.get(previousHash);
   if (!record?.source) return;
   const row = await encryptProtocol(await decryptProtocol(record.source.row));
-  await db.protocolMigrations.put({
-    ...record,
-    source: { ...record.source, row },
+  // The crypto runs outside a transaction, so another tab may have deleted
+  // the protocol, and this record with it, or replaced the record meanwhile.
+  // Writing then would bring a deleted record back, so the row is committed
+  // only onto the record it was read from.
+  await db.transaction('rw', db.protocolMigrations, async () => {
+    const current = await db.protocolMigrations.get(previousHash);
+    if (
+      !current?.source ||
+      current.hash !== record.hash ||
+      current.migratedAt !== record.migratedAt
+    ) {
+      return;
+    }
+    await db.protocolMigrations.put({
+      ...current,
+      source: { ...current.source, row },
+    });
   });
 }
 
