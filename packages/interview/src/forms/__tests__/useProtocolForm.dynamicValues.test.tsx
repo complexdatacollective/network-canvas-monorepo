@@ -196,8 +196,11 @@ describe('useProtocolForm dynamic values', () => {
       target: { value: 'Ada' },
     });
     expect(shownLabel()).toBe('Their relative');
+    // With which of the form's questions hold an answer, so that one typed
+    // to match a stored value can be told from it.
     expect(labelNode).toHaveBeenLastCalledWith(
       expect.objectContaining({ name: 'Ada' }),
+      expect.objectContaining({ name: true }),
     );
 
     // A categorical answer reaches it as it is given, as the array it is
@@ -206,6 +209,7 @@ describe('useProtocolForm dynamic values', () => {
     expect(shownLabel()).toBe('Their aunt');
     expect(labelNode).toHaveBeenLastCalledWith(
       expect.objectContaining({ name: 'Ada', kinds: ['aunt'] }),
+      expect.objectContaining({ name: true, kinds: true }),
     );
   });
 

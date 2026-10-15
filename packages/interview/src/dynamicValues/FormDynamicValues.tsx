@@ -67,9 +67,13 @@ const ROLES: Readonly<Record<StageSubject['entity'], DynamicValueRole>> = {
  * How an interface that shows its nodes by labels of its own (a Family
  * Pedigree's) names the node a form describes, given the node's attributes
  * as the form's answers leave them: every answer, categorical ones included.
+ * `answered` says, by variable, whether the form holds an answer for it, so
+ * that an answer typed to match what is stored can be told from the stored
+ * value itself.
  */
 export type LabelNode = (
   attributes: Readonly<Record<string, unknown>>,
+  answered: Readonly<Record<string, boolean>>,
 ) => string;
 
 /**
@@ -229,8 +233,8 @@ export function FormDynamicValues({
       liveAttributes === undefined ||
       formSubject?.entity !== 'node'
         ? undefined
-        : labelNode(liveAttributes),
-    [labelNode, liveAttributes, formSubject],
+        : labelNode(liveAttributes, answered),
+    [labelNode, liveAttributes, answered, formSubject],
   );
   const nodeLabel = labelNode === undefined ? ruleLabel : ownLabel;
   const fromLabel = useNodeLabel(fromNode);

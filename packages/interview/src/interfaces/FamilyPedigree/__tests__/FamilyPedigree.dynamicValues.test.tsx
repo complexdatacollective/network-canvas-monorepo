@@ -255,14 +255,19 @@ const symbolOf = (id: string) => {
 const canvasLabel = (id: string) =>
   withoutSoftHyphens(symbolOf(id).textContent ?? '').trim();
 
+/** The ids of the symbols drawn for the relatives being added. */
+const addedIds = () =>
+  screen
+    .getAllByTestId('pedigree-person')
+    .map((node) => node.getAttribute('data-person-id'))
+    .filter(
+      (id): id is string =>
+        id !== null && !['ego', 'mum', 'dad', 'sis1', 'sis2'].includes(id),
+    );
+
 /** The id of the symbol drawn for the relative being added. */
 const addedId = () => {
-  const drawn = screen
-    .getAllByTestId('pedigree-person')
-    .map((node) => node.getAttribute('data-person-id'));
-  const added = drawn.find(
-    (id) => id !== null && !['ego', 'mum', 'dad', 'sis1', 'sis2'].includes(id),
-  );
+  const [added] = addedIds();
   if (!added) throw new Error('No relative being added is drawn');
   return added;
 };
@@ -338,12 +343,44 @@ describe('the node label in a Family Pedigree panel’s questions', () => {
     expect(canvasLabel(addedId())).toBe('Ann');
   });
 
+  it('calls a relative being added by the label drawn on them when another relative’s matches it', async () => {
+    await interview({ mumSex: null });
+    const user = userEvent.setup();
+    await user.hover(symbolOf('ego'));
+    await user.click(await screen.findByTestId('pedigree-menu-parent'));
+    await screen.findByTestId('pedigree-person-panel');
+    // The participant has both their genetic parents, so a third parent's
+    // kind starts unanswered, and they are drawn by the plain word. Once
+    // she is recorded as female at birth, that word matches the other
+    // unnamed parent's, and only her accessible name tells the two apart.
+    await user.click(within(panel()).getByRole('radio', { name: 'Female' }));
+    await waitFor(() => expect(canvasLabel('mum')).toBe('Parent'));
+    expect(canvasLabel(addedId())).toBe('Parent');
+    expect(symbolOf(addedId())).not.toHaveAccessibleName('Parent');
+
+    await waitFor(() => expect(questionValue()).toBe('Parent'));
+  });
+
   it('calls a relative holding a label saved on an earlier visit by their label as it stands', async () => {
     await interview({ mumSavedLabel: 'Mother (on an earlier visit)' });
     expect(canvasLabel('mum')).toBe('Mother');
     await openPanelOf('mum');
 
     await waitFor(() => expect(questionValue()).toBe('Mother'));
+  });
+
+  it('calls a relative by a name typed in the same words as their saved label, as saving it will', async () => {
+    await interview({ mumSavedLabel: 'Mother (on an earlier visit)' });
+    const user = await openPanelOf('mum');
+    await waitFor(() => expect(questionValue()).toBe('Mother'));
+
+    await user.type(nameBox(), 'Mother (on an earlier visit)');
+    await waitFor(() =>
+      expect(questionValue()).toBe('Mother (on an earlier visit)'),
+    );
+
+    await saveAndClose(user);
+    expect(canvasLabel('mum')).toBe('Mother (on an earlier visit)');
   });
 
   it('never calls an unnamed relative by an answer to another question', async () => {
