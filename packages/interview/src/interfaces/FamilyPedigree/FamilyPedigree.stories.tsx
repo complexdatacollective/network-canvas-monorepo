@@ -1303,6 +1303,44 @@ export const ChoosingTheAnswerFilledInKeepsIt: Story = {
 };
 
 /**
+ * Someone new is named first, so the panel opens with the name ready to
+ * type. Each question answered with one choice brings the next one still
+ * unanswered into view, without taking focus from the answer given.
+ */
+export const AddingSomeoneMovesThroughTheQuestions: Story = {
+  args: { requirement: 'none' },
+  render: (args) => <PedigreeStory {...settings(args)} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+
+    const name = await body.findByRole('textbox', { name: /^Name/ });
+    await waitFor(() => expect(name).toHaveFocus());
+    await userEvent.keyboard('Rosa');
+    await expect(name).toHaveValue('Rosa');
+
+    const scroller = await body.findByTestId('pedigree-person-panel-body');
+    const sex = await body.findByRole('radiogroup', {
+      name: /^Sex assigned at birth/,
+    });
+    const inView = () => {
+      const view = scroller.getBoundingClientRect();
+      const box = sex.getBoundingClientRect();
+      return box.top >= view.top && box.bottom <= view.bottom;
+    };
+    // The panel is short enough that the question starts out of view.
+    await expect(inView()).toBe(false);
+
+    const woman = await body.findByRole('radio', { name: 'Woman' });
+    await userEvent.click(woman);
+    await waitFor(() => expect(inView()).toBe(true), { timeout: 3000 });
+    await expect(woman).toHaveFocus();
+  },
+};
+
+/**
  * A surrogate carried Jun; his brother Sam has nobody recorded as carrying
  * him. Jun's new mother, a biological parent, is not asked whether she
  * carried Jun, but once Sam is chosen as her child too she is asked whether

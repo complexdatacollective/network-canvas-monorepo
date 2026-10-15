@@ -114,6 +114,7 @@ import {
   type UnavailableAnswer,
   sexRuledOutReason,
 } from './unavailableReasons';
+import useAdvanceAfterChoice from './useAdvanceAfterChoice';
 
 export type PersonFormMode =
   | {
@@ -641,10 +642,12 @@ export default function PersonForm({
         )
       : [];
 
+  const advanceAfterChoice = useAdvanceAfterChoice();
+
   return (
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
       <DerivedAnswersScope>
-        <div className="flex flex-col gap-8">
+        <div ref={advanceAfterChoice} className="flex flex-col gap-8">
           {withFormValues(
             <MissingDetailsNotice questions={missingQuestions} />,
           )}
@@ -660,6 +663,8 @@ export default function PersonForm({
                   : { hint: resolve(nameField.hint).text })}
                 initialValue={person?.name}
                 autoComplete="off"
+                // Someone new is named first, so the panel opens ready to type.
+                {...(mode.kind === 'add' ? { 'data-initial-focus': true } : {})}
                 {...nameValidationProps}
                 validationContext={nameValidationContext}
               />

@@ -1,7 +1,7 @@
 'use client';
 
 import { Drawer } from '@base-ui/react/drawer';
-import type { ReactNode, Ref } from 'react';
+import { useRef, type ReactNode, type Ref } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -43,6 +43,7 @@ export default function PersonDrawer({
 }: PersonDrawerProps) {
   const intl = useAppIntl();
   const portalContainer = usePortalContainer();
+  const initialFocusRef = useRef<HTMLDivElement>(null);
 
   return (
     <Drawer.Root
@@ -59,6 +60,13 @@ export default function PersonDrawer({
         <Drawer.Viewport className="pointer-events-none fixed inset-y-0 right-0 w-full max-w-md">
           <Drawer.Popup
             ref={popupRef}
+            // A control the form marks takes focus as the panel opens; any
+            // other panel starts at its first control.
+            initialFocus={() =>
+              initialFocusRef.current?.querySelector<HTMLElement>(
+                '[data-initial-focus]',
+              ) ?? true
+            }
             finalFocus={() => returnFocus()}
             className={[
               'bg-surface-1 publish-colors text-text elevation-high pointer-events-auto absolute inset-0 flex flex-col',
@@ -85,7 +93,11 @@ export default function PersonDrawer({
                 drawer itself stays mounted, so opening it is a change it can
                 animate. The footer's submit button sits within the store. */}
             <FormStoreProvider key={formKey}>
-              <div className="min-h-0 flex-1 overflow-y-auto p-6">
+              <div
+                ref={initialFocusRef}
+                data-testid="pedigree-person-panel-body"
+                className="min-h-0 flex-1 overflow-y-auto p-6"
+              >
                 {children}
               </div>
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-current/10 p-4">
