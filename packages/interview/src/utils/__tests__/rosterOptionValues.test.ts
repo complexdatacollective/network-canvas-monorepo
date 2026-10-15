@@ -158,6 +158,17 @@ describe('roster option values renamed by the schema 9 upgrade', () => {
     ).toEqual({ likes: ['Yes'] });
   });
 
+  it('keeps a list for an attribute with no options as it is', () => {
+    expect(
+      getVariableTypeReplacements(
+        'roster.json',
+        [row({ scores: [1, 1, 2] })],
+        codebook,
+        subject,
+      )[0]![entityAttributesProperty],
+    ).toEqual({ scores: [1, 1, 2] });
+  });
+
   it('keeps text that names no option as it is', () => {
     expect(typed({ likes: '["Maybe"]', rank: 'Middle' })).toEqual({
       likes: ['Maybe'],

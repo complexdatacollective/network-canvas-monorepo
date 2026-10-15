@@ -229,7 +229,10 @@ const resolveOptionAnswer = (
   variable: ReturnType<typeof getCodebookVariable>,
   value: unknown,
 ): AttributeValue => {
-  if (!Array.isArray(value)) {
+  if (
+    !Array.isArray(value) ||
+    (variable?.type !== 'categorical' && variable?.type !== 'ordinal')
+  ) {
     return resolveCategoricalOption(variable, value) as AttributeValue;
   }
   return [

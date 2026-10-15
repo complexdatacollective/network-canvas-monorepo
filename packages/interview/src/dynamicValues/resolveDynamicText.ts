@@ -159,8 +159,10 @@ const formatDate = (value: unknown, locale: string): string => {
         Number(day ?? 1),
       );
       // A day that is not on the calendar (`2024-02-31`) rolls over into
-      // another; show what was stored rather than a different date.
+      // another, and year 0 is before the first a date picker offers; show
+      // what was stored rather than a different date.
       if (
+        Number(year) < 1 ||
         date.getUTCMonth() !== Number(month ?? 1) - 1 ||
         date.getUTCDate() !== Number(day ?? 1)
       ) {
