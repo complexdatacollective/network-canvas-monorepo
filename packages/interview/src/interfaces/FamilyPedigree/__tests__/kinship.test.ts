@@ -795,6 +795,27 @@ describe('step and in-law relatives', () => {
         ).her?.[1],
       ).toBe('otherRelative');
     });
+    test("an adopted partner's birth parent is not a parent-in-law, but their adoptive parent is", () => {
+      // Daniel, adopted by Martin, also has his birth father recorded.
+      expect(
+        tiesOf(
+          [
+            ego,
+            man('daniel', { name: 'Daniel' }),
+            man('martin'),
+            man('birthDad'),
+          ],
+          [
+            link('ego', 'daniel', 'partner'),
+            link('martin', 'daniel', 'adoptive'),
+            link('birthDad', 'daniel', 'biological'),
+          ],
+        ),
+      ).toMatchObject({
+        martin: ['Father-in-law', 'parentInLaw'],
+        birthDad: ['Daniel’s Biological father', 'otherRelative'],
+      });
+    });
   });
 
   describe("a child's partner", () => {
