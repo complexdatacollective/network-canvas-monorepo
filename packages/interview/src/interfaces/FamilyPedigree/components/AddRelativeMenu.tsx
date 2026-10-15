@@ -159,7 +159,11 @@ export default function AddRelativeMenu({
                   // another: the text colour at rest, primary on hover. The
                   // fill changes at once, so the hover does not read as lag.
                   'bg-text text-background ui-enabled:hover:bg-primary ui-enabled:hover:text-primary-contrast',
-                  'transition-[box-shadow,opacity,translate]',
+                  // Opacity is left to the entrance animation alone. Were it
+                  // also a CSS transition, Safari and Firefox would fade the
+                  // buttons in a second time, from transparent, when that
+                  // animation hands its final opacity over to the style.
+                  'transition-[box-shadow,translate]',
                 )}
               />
             }
