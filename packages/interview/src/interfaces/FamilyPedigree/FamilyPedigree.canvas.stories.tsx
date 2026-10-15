@@ -1296,48 +1296,53 @@ export const ZoomKeysWorkFromTheToolbar: Story = {
   },
 };
 
-/** The size on screen, in pixels, of the smallest name drawn in a symbol. */
-function smallestNameOnScreen(canvasElement: HTMLElement) {
-  let smallest = Number.POSITIVE_INFINITY;
-  for (const person of within(canvasElement).getAllByTestId(
-    'pedigree-person',
-  )) {
-    const symbol = person.querySelector('button') as HTMLElement;
-    const scale = symbol.getBoundingClientRect().width / symbol.offsetWidth;
-    for (const text of symbol.querySelectorAll('span')) {
-      if (!text.textContent?.trim()) continue;
-      smallest = Math.min(
-        smallest,
-        Number.parseFloat(getComputedStyle(text).fontSize) * scale,
-      );
-    }
-  }
-  return smallest;
-}
+/** Where the participant's symbol is drawn, and how large: the view, as
+ * the participant sees it. */
+const viewOf = (canvasElement: HTMLElement) =>
+  boxOf(personSymbol(canvasElement, 'ego'));
 
-const phonePortrait = {
-  parameters: {
-    viewport: {
-      options: {
-        phonePortrait: {
-          name: 'Phone (portrait)',
-          styles: { width: '390px', height: '844px' },
-          type: 'mobile',
-        },
-      },
-    },
-  },
-  globals: { viewport: { value: 'phonePortrait', isRotated: false } },
+const expectSameView = async (actual: Box, expected: Box, what: string) => {
+  for (const side of ['left', 'top', 'right', 'bottom'] as const) {
+    await expect(
+      Math.abs(actual[side] - expected[side]),
+      `${what} (${side})`,
+    ).toBeLessThan(1);
+  }
+};
+
+const showWholeFamily = async (canvasElement: HTMLElement) => {
+  await userEvent.click(
+    within(canvasElement).getByRole('button', {
+      name: 'Show the whole family',
+    }),
+  );
+  await settled(canvasElement);
 };
 
 /**
- * On a phone, each prompt opens with every name drawn at least as large as
- * the smallest legible size, on the family's own prompt (here a family too
- * wide to show whole at that size, which opens on the participant) and on
- * a nomination prompt, where relatives are chosen by name.
+ * The stage opens on the whole family, framed exactly as Show the whole
+ * family frames it, however large the family.
  */
-export const NamesOpenLegibleOnAPhone: Story = {
-  ...phonePortrait,
+export const TheStageOpensOnTheWholeFamily: Story = {
+  render: () => <CanvasStory family={fourGenerations} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: /^You/ });
+    await settled(canvasElement);
+    const opened = viewOf(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Zoom in' }));
+    await settled(canvasElement);
+    await showWholeFamily(canvasElement);
+    await expectSameView(viewOf(canvasElement), opened, 'the opening view');
+  },
+};
+
+/**
+ * Moving to another prompt leaves the view where the participant put it,
+ * and Show the whole family frames the family the same way on a nomination
+ * prompt, where no add menu is shown, as on the family's own prompt.
+ */
+export const TheViewStaysPutBetweenPrompts: Story = {
   render: () => (
     <CanvasStory
       family={fourGenerations}
@@ -1348,52 +1353,33 @@ export const NamesOpenLegibleOnAPhone: Story = {
     const canvas = within(canvasElement);
     await canvas.findByRole('button', { name: /^You/ });
     await settled(canvasElement);
-    await expect(
-      smallestNameOnScreen(canvasElement),
-      'names on the family prompt',
-    ).toBeGreaterThanOrEqual(11.9);
-    await expect(
-      inside(
-        boxOf(personSymbol(canvasElement, 'ego')),
-        canvasBox(canvasElement),
-      ),
-      'the participant in view',
-    ).toBe(true);
-    await userEvent.click(canvas.getByTestId('next-button'));
-    await canvas.findByText(HEART_PROMPT);
+    const whole = viewOf(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Zoom in' }));
     await settled(canvasElement);
-    await expect(
-      smallestNameOnScreen(canvasElement),
-      'names on the nomination prompt',
-    ).toBeGreaterThanOrEqual(11.9);
-  },
-};
+    dragCanvas(canvas.getByTestId('pedigree-canvas'), 40, -30);
+    await settled(canvasElement);
+    const chosen = viewOf(canvasElement);
+    await expect(chosen.left, 'the view moved').not.toBeCloseTo(whole.left);
 
-/**
- * On a nomination prompt, where no add menu is shown, showing the whole
- * family leaves no room for one, so a small family is drawn at its natural
- * size on a phone, names legible.
- */
-export const TheWholeFamilyOnANominationPromptLeavesNoMenuRoom: Story = {
-  ...phonePortrait,
-  render: () => (
-    <CanvasStory
-      family={twoGenerations}
-      nominationPrompts={[{ text: HEART_PROMPT }]}
-    />
-  ),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByRole('button', { name: /^You/ });
     await userEvent.click(canvas.getByTestId('next-button'));
     await canvas.findByText(HEART_PROMPT);
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Show the whole family' }),
-    );
     await settled(canvasElement);
-    await expect(smallestNameOnScreen(canvasElement)).toBeGreaterThanOrEqual(
-      11.9,
+    await expectSameView(viewOf(canvasElement), chosen, 'after Next');
+
+    await showWholeFamily(canvasElement);
+    await expectSameView(
+      viewOf(canvasElement),
+      whole,
+      'the whole family on the nomination prompt',
     );
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Zoom in' }));
+    await settled(canvasElement);
+    const zoomed = viewOf(canvasElement);
+    await userEvent.click(canvas.getByTestId('previous-button'));
+    await waitFor(() => expect(canvas.queryByText(HEART_PROMPT)).toBeNull());
+    await settled(canvasElement);
+    await expectSameView(viewOf(canvasElement), zoomed, 'after Back');
   },
 };
 

@@ -213,28 +213,6 @@ type PanelState = {
   then?: 'sibling' | 'child';
 } | null;
 
-/**
- * The least zoom at which every name drawn in the given symbols is at least
- * as large on screen as `text-xs`, the size below which a name stops being
- * legible.
- */
-const legibleScale = (symbols: Iterable<HTMLElement>) => {
-  const rootSize =
-    Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
-    16;
-  let smallest = Number.POSITIVE_INFINITY;
-  for (const symbol of symbols) {
-    for (const text of symbol.querySelectorAll('span')) {
-      if (!text.textContent?.trim()) continue;
-      smallest = Math.min(
-        smallest,
-        Number.parseFloat(getComputedStyle(text).fontSize),
-      );
-    }
-  }
-  return Number.isFinite(smallest) ? (rootSize * 0.75) / smallest : 0;
-};
-
 /** The buttons of the add menu shown around a person's symbol, if any. */
 const menuItemsOf = (symbol: HTMLElement) => [
   ...(symbol
@@ -715,30 +693,19 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
   // The whole family, clear of the prompt above and the toolbar below, with
-  // room around it for anyone's add menu while one can be shown (not on a
-  // nomination prompt). Each prompt opens on it only as far out as names
-  // stay legible: when the whole family would be drawn smaller, it opens on
-  // the participant at the least legible zoom instead, and the participant
-  // shows the rest by panning, zooming or showing the whole family.
-  const nominating = nomination !== undefined;
+  // room around it for anyone's add menu. The room is left on every prompt,
+  // including those where no menu is shown, so the same family is framed
+  // the same way whichever prompt it is shown on.
   const showWholeFamily = useCallback(
-    ({
-      animated = true,
-      legible = false,
-    }: { animated?: boolean; legible?: boolean } = {}) => {
+    ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
-      const ego = family.egoId ? nodeRefs.current.get(family.egoId) : undefined;
       panZoom.fitToView(layout, clearInsets(), {
         animated,
-        reach: nominating ? undefined : addMenuReach(menuReachRef.current),
-        least:
-          legible && ego
-            ? { scale: legibleScale(nodeRefs.current.values()), around: ego }
-            : undefined,
+        reach: addMenuReach(menuReachRef.current),
       });
     },
-    [panZoom, clearInsets, nominating, family.egoId],
+    [panZoom, clearInsets],
   );
   const zoomButtons = usePedigreeZoomButtons({
     panZoom,
@@ -1040,17 +1007,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     component: <Node size="sm" />,
   });
 
-  // Each prompt opens on the whole family, once the participant's symbol is
-  // laid out. The stage's first appears there at once; moving between
-  // prompts glides to it.
-  const fittedForPrompt = useRef<string | null>(null);
+  // The stage opens on the whole family, once the participant's symbol is
+  // laid out, as Show the whole family frames it. Moving between prompts
+  // leaves the view where the participant put it.
+  const fitted = useRef(false);
   useEffect(() => {
-    if (fittedForPrompt.current === prompt.id) return;
+    if (fitted.current) return;
     if (!family.egoId || nodeWidth === 0) return;
     if (!nodeRefs.current.has(family.egoId)) return;
-    const first = fittedForPrompt.current === null;
-    fittedForPrompt.current = prompt.id;
-    showWholeFamily({ animated: !first, legible: true });
+    fitted.current = true;
+    showWholeFamily({ animated: false });
   });
 
   // Adding someone can move everyone else in the layout. The person in
@@ -1324,6 +1290,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Reaching a nomination prompt puts away whatever was under way in
   // building the family.
+  const nominating = nomination !== undefined;
   useEffect(() => {
     if (!nominating) return;
     setDraft(null);

@@ -325,17 +325,11 @@ export type PanZoom = {
   zoomBy: (exponent: number, focus?: ZoomFocus) => void;
   /** Fits an element of the content in the viewport, inside the given
    * insets, at no more than its natural size, with room for controls that
-   * reach out around it. Given `least`, it zooms out no further than
-   * `least.scale`: when the element would need to, it is shown at that
-   * zoom with `least.around` in the middle instead. */
+   * reach out around it. */
   fitToView: (
     element: HTMLElement,
     insets: Insets,
-    options?: {
-      animated?: boolean;
-      reach?: Reach;
-      least?: { scale: number; around: HTMLElement };
-    },
+    options?: { animated?: boolean; reach?: Reach },
   ) => void;
   /** Keeps an element where it is on screen across a change of layout,
    * given where it was in the content before the change. */
@@ -672,7 +666,7 @@ export function usePanZoom({
   );
 
   const fitToView = useCallback<PanZoom['fitToView']>(
-    (element, insets, { animated = true, reach, least } = {}) => {
+    (element, insets, { animated = true, reach } = {}) => {
       const viewport = viewportRef.current;
       if (!viewport) return;
       const width = element.offsetWidth;
@@ -695,17 +689,6 @@ export function usePanZoom({
         MIN_SCALE,
         1,
       );
-      if (least && nextScale < least.scale) {
-        const middle = contentPositionOf(least.around);
-        const leastScale = clamp(least.scale, MIN_SCALE, 1);
-        moveTo(
-          insets.left + availableWidth / 2 - middle.x * leastScale,
-          insets.top + availableHeight / 2 - middle.y * leastScale,
-          leastScale,
-          animated,
-        );
-        return;
-      }
       moveTo(
         insets.left + availableWidth / 2 - centre.x * nextScale,
         insets.top + availableHeight / 2 - centre.y * nextScale,
