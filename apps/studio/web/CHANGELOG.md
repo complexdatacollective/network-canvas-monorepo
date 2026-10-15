@@ -1,5 +1,70 @@
 # @codaco/studio-web
 
+## 0.4.0
+
+### Minor Changes
+
+- Studio reports unexpected failures to its telemetry destination, once each,
+  while `STUDIO_TELEMETRY` is on. A defect in an RPC or HTTP handler is reported
+  with its request id and team id, and a job that fails for good is reported
+  with its queue and job id. An interrupted request and a typed refusal are never
+  reported. Each report carries the error's type, its stack frames and the
+  installation id, never the error's message. With no OpenTelemetry endpoint set
+  the report is a PostHog Error Tracking event with no person profile, sent with
+  Effect's HTTP client. With an endpoint set it is an error-level log record with
+  `exception.*` attributes. With telemetry off the reporter is never built.
+
+  The public `status` RPC now says whether telemetry is on. The researcher web
+  app, and a participant page whose session says so, catch uncaught errors and
+  unhandled rejections and send the error's type and its frames inside Studio's
+  own bundle to a new same-origin `telemetry.report` RPC, without cookies. The
+  API drops these reports while telemetry is off, refuses any frame that does not
+  name a bundle file, and limits them to 30 a minute per client address
+  (`error_report_address`). Nothing is written to cookies or local storage, and
+  `posthog-js` is no longer part of the Studio bundle. A `studio-web` image
+  built with the BuildKit secrets `posthog_personal_api_key` and
+  `posthog_project_id`, and the build arg `SOURCE_MAPS_TARGET` naming the
+  destination project, uploads the source maps of the bundle it ships to PostHog
+  and deletes them before the image is assembled. Without them nothing is
+  uploaded. The build fails if the build arg and the secrets are not supplied
+  together.
+
+  Exported spans and log records no longer carry an error message, even one that
+  spans several lines, and span events no longer carry the `effect.cause` text.
+
+- The researcher web app and participant pages now send operational logs to the
+  same telemetry destination as the server, through the api, while
+  `STUDIO_TELEMETRY` is on. The public `status` RPC reports the configured
+  `STUDIO_LOG_LEVEL`, and `participant.session` reports it to an interview page
+  (`null` while telemetry is off), so a page logs at that level and sends nothing
+  while telemetry is off.
+
+  The researcher app logs RPC requests that never reached the server, editor
+  connections that dropped and came back, editing locks that were lost or
+  refused, screens that failed to render, and update checks that failed.
+  Participant pages log only entries from a fixed catalogue: a session that
+  failed to load, an answer save that failed or succeeded only after retrying, a
+  connection lost or restored, an asset that failed to load, and a stage that
+  failed to render. Every entry has a constant message, and its attributes are
+  limited to a stage index, an interface type, a fault code, an attempt count and
+  a duration.
+
+  The api receives these records at `/api/telemetry/researcher/logs` (signed-in
+  researchers) and `/api/telemetry/participant/logs` (a valid participant
+  session), same origin only, with a 64 KiB body bound and two new rate limits:
+  `researcher_log` (60 a minute per researcher) and `participant_log` (30 a minute
+  per participant session). It refuses a whole participant batch that holds any
+  record outside the catalogue or any extra or free-text attribute, drops any
+  researcher record that is not a catalogued entry, drops records below the
+  configured level, and forwards the rest as `service.name = studio-web` with the
+  installation id, the surface and, where it is known, the team.
+
+### Patch Changes
+
+- The api now forwards a participant page's usability events to PostHog only when every event in the batch is in the interview's analytics catalogue and every property decodes to its declared type, with no property the catalogue does not declare. A batch holding any other event, an extra property, free text where a code or number is expected, or a timestamp that is not an ISO 8601 UTC instant is refused whole and nothing in it is forwarded, as the participant log route refuses a batch.
+
+  Of what decodes, the api forwards the event's catalogued codes, numbers and flags. It replaces each entity id with an id derived on the server from the installation, the session and the page's id. It stamps each event with the server's clock, keeping from the page's timestamps only the order and spacing of the batch's events, up to ten minutes apart. It reports an exception's type only when it is a standard JavaScript or DOM error name, and `Error` otherwise. It withholds the interview package version, the protocol digest, a stage crash's component stack, and the identifiers the page reports about itself, which the server sets. The participant contract now declares the `$exception_list` shape and the timestamp a participant page sends.
+
 ## 0.3.0
 
 ### Minor Changes
