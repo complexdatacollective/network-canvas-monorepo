@@ -3386,7 +3386,8 @@ function wordingEditPerson(): ScenarioDefinition {
       // Julie carried Ari, Bea and Cal, so she cannot be recorded as male at
       // birth; nor can she, as a genetic parent beside Rob (of Ari and Bea)
       // and Dan (of Cal), who are. The answer is described by each reason,
-      // in the stage's own words, the children Julie carried named together.
+      // in the stage's own words. A reason that is about Ari is said once,
+      // about Ari, and not again for Bea and Cal.
       const sexAnswer = (name: string) =>
         form
           .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
@@ -3394,12 +3395,18 @@ function wordingEditPerson(): ScenarioDefinition {
       await expect(sexAnswer('Male')).toBeDisabled();
       for (const reason of [
         /Carried you so not Male - matrix check/,
-        /Carried (Bea and Cal|Cal and Bea) so not Male - matrix check/,
         /This person and Rob parent you, both Male - matrix check/,
-        /This person and Rob parent Bea, both Male - matrix check/,
         /This person and Dan parent Cal, both Male - matrix check/,
       ]) {
         await expect(sexAnswer('Male')).toHaveAccessibleDescription(reason);
+      }
+      for (const repeated of [
+        /Carried (Bea|Cal)/,
+        /This person and Rob parent Bea/,
+      ]) {
+        await expect(sexAnswer('Male')).not.toHaveAccessibleDescription(
+          repeated,
+        );
       }
       await expect(sexAnswer('Male')).not.toHaveAccessibleDescription(
         /is unavailable because/,
@@ -3410,10 +3417,12 @@ function wordingEditPerson(): ScenarioDefinition {
       await expect(sexAnswer('Female')).toBeDisabled();
       for (const reason of [
         /This person and Julie parent you, both Female - matrix check/,
-        /This person and Julie parent Bea, both Female - matrix check/,
       ]) {
         await expect(sexAnswer('Female')).toHaveAccessibleDescription(reason);
       }
+      await expect(sexAnswer('Female')).not.toHaveAccessibleDescription(
+        /This person and Julie parent Bea/,
+      );
       await expect(sexAnswer('Female')).not.toHaveAccessibleDescription(
         /is unavailable because/,
       );
