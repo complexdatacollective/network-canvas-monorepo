@@ -71,9 +71,11 @@ function ConditionControl({
       ref={ref}
       trigger={
         <ToolbarButton data-testid="narrative-pedigree-condition">
-          <span className="flex max-w-xs min-w-0 items-center gap-2">
+          <span className="flex min-w-0 items-center gap-2">
             {selected && <ColourDot color={selected.color} />}
-            <span className="min-w-0 truncate">
+            {/* A long name is cut short with an ellipsis, so the toolbar
+                keeps its width; the menu shows every name in full. */}
+            <span className="max-w-48 min-w-0 truncate">
               {selected?.label ?? words.selectCondition}
             </span>
             <ChevronUp aria-hidden className="size-4 shrink-0" />
