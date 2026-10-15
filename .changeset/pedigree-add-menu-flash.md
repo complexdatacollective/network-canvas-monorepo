@@ -1,5 +1,8 @@
 ---
 '@codaco/interview': patch
+'@codaco/architect': patch
+'@codaco/interviewer': patch
+'fresco': patch
 ---
 
 On the Family Pedigree, the buttons that add a relative no longer flash
