@@ -816,6 +816,24 @@ describe('step and in-law relatives', () => {
         birthDad: ['Daniel’s Biological father', 'otherRelative'],
       });
     });
+    test('a birth parent whose partner adopted the child still raised them', () => {
+      // A step-parent adoption: Daniel's mother raises him with Martin, who
+      // adopted him.
+      expect(
+        tiesOf(
+          [ego, man('daniel', { name: 'Daniel' }), man('martin'), woman('mum')],
+          [
+            link('ego', 'daniel', 'partner'),
+            link('mum', 'martin', 'partner'),
+            link('martin', 'daniel', 'adoptive'),
+            link('mum', 'daniel', 'biological'),
+          ],
+        ),
+      ).toMatchObject({
+        martin: ['Father-in-law', 'parentInLaw'],
+        mum: ['Mother-in-law', 'parentInLaw'],
+      });
+    });
   });
 
   describe("a child's partner", () => {
