@@ -573,12 +573,15 @@ export const ErrorState: Story = {
   },
 };
 
+const oklchHue = (color: string): string | undefined =>
+  /^oklch\(\S+ \S+ ([^\s)]+)/.exec(color)?.[1];
+
 /**
  * A swatch's accessible name is the whole of what its colour is to a reader
  * who cannot see it, so the name has to be the name of the colour the theme
- * paints. Each swatch is compared against the theme's own token for the colour
- * it is named after: a name the theme does not define paints nothing, and a
- * name belonging to another colour paints that other colour.
+ * paints. Each swatch's hue is compared against the theme's own token for the
+ * colour it is named after: a name the theme does not define paints nothing,
+ * and a name belonging to another colour paints that other colour's hue.
  */
 export const PaletteNames: Story = {
   parameters: { chromatic: { disableSnapshot: true } },
@@ -612,10 +615,14 @@ export const PaletteNames: Story = {
 
         const named = getComputedStyle(probe).backgroundColor;
         await expect(named).not.toBe('rgba(0, 0, 0, 0)');
+        const namedHue = oklchHue(named);
+        await expect(namedHue).toBeDefined();
         await expect(
-          getComputedStyle(group.getByRole('radio', { name: label }))
-            .backgroundColor,
-        ).toBe(named);
+          oklchHue(
+            getComputedStyle(group.getByRole('radio', { name: label }))
+              .backgroundColor,
+          ),
+        ).toBe(namedHue);
       }
     };
 

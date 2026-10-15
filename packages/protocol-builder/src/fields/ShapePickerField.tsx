@@ -106,6 +106,7 @@ export default function ShapePickerField({
         <Radio.Root
           key={shape.value}
           value={shape.value}
+          aria-disabled={readOnly || undefined}
           nativeButton
           render={(
             // `Node`'s own `onDragStart`/`onDragEnd` are pointer-gesture props

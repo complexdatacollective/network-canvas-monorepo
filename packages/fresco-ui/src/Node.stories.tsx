@@ -4,6 +4,10 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 
 import { useFitText } from './hooks/useFitText';
 import Node, { labelVariants, NodeColors } from './Node';
+import {
+  canvasSupportsColorSpace,
+  contrastRatio,
+} from './storybook-support/colorContrast';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
@@ -274,6 +278,72 @@ export const Colors: Story = {
           'Colors are defined in the theme and can be customized per-protocol. The focus ring color matches the node color.',
       },
     },
+  },
+};
+
+export const InterviewColors: Story = {
+  globals: { theme: 'interview' },
+  render: () => (
+    <div className="grid grid-cols-4 gap-6">
+      {NodeColors.filter((c) => c !== 'custom').map((color, i) => (
+        <div
+          key={color}
+          data-node-swatch={color}
+          className="flex flex-col items-center gap-2"
+        >
+          <Node color={color} label={`Color ${i + 1}`} />
+          <span className="text-xs text-current/70">{i + 1}</span>
+        </div>
+      ))}
+    </div>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Every node color on the interview background. White labels reach 4.5:1 and the lighter half of every node reaches 3:1 against the background, on sRGB and P3 displays.',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const swatches = [
+      ...canvasElement.querySelectorAll<HTMLElement>('[data-node-swatch]'),
+    ];
+    await expect(swatches).toHaveLength(8);
+
+    const colorSpaces = (['srgb', 'display-p3'] as const).filter(
+      canvasSupportsColorSpace,
+    );
+    await expect(colorSpaces).toContain('srgb');
+
+    const resolve = (host: Element, declaration: string) => {
+      const probe = host.appendChild(document.createElement('div'));
+      probe.style.display = 'none';
+      probe.style.backgroundColor = declaration;
+      const color = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return color;
+    };
+
+    for (const swatch of swatches) {
+      const node = swatch.firstElementChild;
+      if (!node) throw new Error('A swatch renders no node.');
+
+      const base = resolve(node, 'var(--base)');
+      const label = getComputedStyle(node).color;
+      const background = resolve(swatch, 'var(--background)');
+      await expect(base).not.toBe('rgba(0, 0, 0, 0)');
+      await expect(background).not.toBe('rgba(0, 0, 0, 0)');
+
+      for (const colorSpace of colorSpaces) {
+        await expect(
+          contrastRatio(label, base, colorSpace),
+        ).toBeGreaterThanOrEqual(4.5);
+        await expect(
+          contrastRatio(base, background, colorSpace),
+        ).toBeGreaterThanOrEqual(3);
+      }
+    }
   },
 };
 

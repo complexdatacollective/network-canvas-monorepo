@@ -12,16 +12,16 @@ type SpinnerColor = { light: string; dark: string };
 
 const spinnerColors: readonly SpinnerColor[] = [
   {
-    light: 'oklch(73.83% 0.13 217.55)', // sea-serpent
-    dark: 'oklch(68.83% 0.13 217.55)', // sea-serpent-dark
+    light: 'oklch(73.83% 0.13 230)', // sea-serpent
+    dark: 'oklch(68.83% 0.13 230)', // sea-serpent-dark
   },
   {
-    light: 'oklch(81% 0.17 86.39)', // mustard
-    dark: 'oklch(76% 0.17 86.39)', // mustard-dark
+    light: 'oklch(81% 0.17 72)', // mustard
+    dark: 'oklch(76% 0.17 72)', // mustard-dark
   },
   {
-    light: 'oklch(57.33% 0.2584 11.57)', // neon-coral
-    dark: 'oklch(52.33% 0.2584 11.57)', // neon-coral-dark
+    light: 'oklch(58.33% 0.2484 11.57)', // neon-coral
+    dark: 'oklch(53.33% 0.2484 11.57)', // neon-coral-dark
   },
   {
     light: 'oklch(70% 0.2 171.52)', // sea-green
