@@ -55,16 +55,34 @@ describe('QuestionFlow step animation', () => {
     await user.click(await screen.findByRole('button', { name: 'Skip' }));
     await waitFor(() => expect(screen.getByTestId('first')).not.toBeVisible());
     expect(movesOf()).toEqual([
-      ['first', { opacity: [1, 0], x: [0, -40] }],
-      ['second', { opacity: [0, 1], x: [40, 0] }],
+      [
+        'first',
+        {
+          opacity: [1, 0],
+          transform: ['translateX(0px)', 'translateX(-40px)'],
+        },
+      ],
+      [
+        'second',
+        { opacity: [0, 1], transform: ['translateX(40px)', 'translateX(0px)'] },
+      ],
     ]);
 
     animate.mockClear();
     await user.click(screen.getByRole('button', { name: 'Back' }));
     await waitFor(() => expect(screen.getByTestId('second')).not.toBeVisible());
     expect(movesOf()).toEqual([
-      ['second', { opacity: [1, 0], x: [0, 40] }],
-      ['first', { opacity: [0, 1], x: [-40, 0] }],
+      [
+        'second',
+        { opacity: [1, 0], transform: ['translateX(0px)', 'translateX(40px)'] },
+      ],
+      [
+        'first',
+        {
+          opacity: [0, 1],
+          transform: ['translateX(-40px)', 'translateX(0px)'],
+        },
+      ],
     ]);
   });
 

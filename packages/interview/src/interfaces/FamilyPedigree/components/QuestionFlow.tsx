@@ -5,6 +5,7 @@ import {
   useContext,
   useMemo,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -145,6 +146,8 @@ const STEP_DELAY = 350;
 /** How far a step slides as it leaves or comes in, in pixels. */
 const STEP_SLIDE = 40;
 
+const slid = (by: number) => `translateX(${by}px)`;
+
 type StepState = 'answered' | 'optional' | 'required';
 
 /** The first question in `step` whose answer the form refuses. */
@@ -280,14 +283,17 @@ export default function QuestionFlow({
   }, [stepped, steps, index, step, read]);
 
   // Moving on, the step shown leaves to the left and the next comes in from
-  // the right; going back, the other way round.
-  useEffect(() => {
+  // the right; going back, the other way round. The step starts out of
+  // place before it is first painted, so it never shows in place first.
+  useLayoutEffect(() => {
     const from = direction.current;
     direction.current = 0;
     if (!stepped || from === 0 || !(step instanceof HTMLElement)) return;
+    step.style.opacity = '0';
+    step.style.transform = slid(from * STEP_SLIDE);
     void animate(
       step,
-      { opacity: [0, 1], x: [from * STEP_SLIDE, 0] },
+      { opacity: [0, 1], transform: [slid(from * STEP_SLIDE), slid(0)] },
       { type: 'spring', stiffness: 400, damping: 36 },
     );
   }, [stepped, step, animate]);
@@ -314,7 +320,7 @@ export default function QuestionFlow({
       leaving.inert = true;
       void animate(
         leaving,
-        { opacity: [1, 0], x: [0, -towards * STEP_SLIDE] },
+        { opacity: [1, 0], transform: [slid(0), slid(-towards * STEP_SLIDE)] },
         { duration: 0.12, ease: 'easeIn' },
       ).then(show);
     },
