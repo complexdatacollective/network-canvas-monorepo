@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import Paragraph from '../../typography/Paragraph';
 import SegmentedCodeField from './SegmentedCodeField';
@@ -138,7 +138,7 @@ export const Default: Story = {
     const firstSegment = canvas.getByLabelText('Digit 1 of 6');
 
     await userEvent.click(firstSegment);
-    await expect(firstSegment).toHaveFocus();
+    await waitFor(() => expect(firstSegment).toHaveFocus());
     await userEvent.keyboard('1');
     await userEvent.keyboard('2');
     await userEvent.keyboard('3');
