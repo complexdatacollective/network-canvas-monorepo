@@ -301,7 +301,7 @@ export const InterviewColors: Story = {
     docs: {
       description: {
         story:
-          'Every node color on the interview background. White labels reach 4.5:1 and every node reaches 3:1 against the background, on sRGB and P3 displays.',
+          'Every node color on the interview background. White labels reach 4.5:1 and the lighter half of every node reaches 3:1 against the background, on sRGB and P3 displays.',
       },
     },
   },
