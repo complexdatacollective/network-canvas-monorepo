@@ -36,23 +36,6 @@ export const choosesFraming = (
 ): boolean => stage.framing === 'participantPreference';
 
 /**
- * Whether a question about the family applies only to people of one sex
- * assigned at birth (`onlyForSexAssignedAtBirth` on a nomination prompt),
- * which says so beneath the family while it is asked.
- */
-export const limitsNominationBySex = (
-  stage: Readonly<{ nominationPrompts?: unknown }>,
-): boolean =>
-  Array.isArray(stage.nominationPrompts) &&
-  stage.nominationPrompts.some(
-    (prompt: unknown) =>
-      typeof prompt === 'object' &&
-      prompt !== null &&
-      'onlyForSexAssignedAtBirth' in prompt &&
-      prompt.onlyForSexAssignedAtBirth !== undefined,
-  );
-
-/**
  * Whether the stage asks about gender identity, which it does when
  * `nodeConfiguration.genderIdentity` is set.
  */
@@ -1169,22 +1152,6 @@ const STAND_IN_PLACE_TAKEN = {
     '{anchorIsYou, select, true {{count, plural, other {{names}與您有同一位未命名的父母，因此此人也成為其父母。}}} other {{count, plural, other {{names}與「{anchor}」有同一位未命名的父母，因此此人也成為其父母。}}}}',
 } as const satisfies SuppliedWording;
 
-/** The note under the family tree while a question about the family applies only to people of one sex assigned at birth. Shown only on such a question. */
-const NOMINATION_LIMIT_HINT = {
-  'en': '{sex, select, female {People assigned male at birth can’t be selected for this question.} other {People assigned female at birth can’t be selected for this question.}}',
-  'de': '{sex, select, female {Personen, denen bei der Geburt das männliche Geschlecht zugewiesen wurde, können für diese Frage nicht ausgewählt werden.} other {Personen, denen bei der Geburt das weibliche Geschlecht zugewiesen wurde, können für diese Frage nicht ausgewählt werden.}}',
-  'es': '{sex, select, female {Las personas a las que se asignó el sexo masculino al nacer no se pueden seleccionar para esta pregunta.} other {Las personas a las que se asignó el sexo femenino al nacer no se pueden seleccionar para esta pregunta.}}',
-  'fr': '{sex, select, female {Les personnes à qui le sexe masculin a été attribué à la naissance ne peuvent pas être sélectionnées pour cette question.} other {Les personnes à qui le sexe féminin a été attribué à la naissance ne peuvent pas être sélectionnées pour cette question.}}',
-  'it': '{sex, select, female {Le persone a cui è stato assegnato il sesso maschile alla nascita non possono essere selezionate per questa domanda.} other {Le persone a cui è stato assegnato il sesso femminile alla nascita non possono essere selezionate per questa domanda.}}',
-  'nl': '{sex, select, female {Mensen bij wie bij de geboorte het mannelijk geslacht is vastgesteld, kunnen voor deze vraag niet worden geselecteerd.} other {Mensen bij wie bij de geboorte het vrouwelijk geslacht is vastgesteld, kunnen voor deze vraag niet worden geselecteerd.}}',
-  'pt-BR':
-    '{sex, select, female {Pessoas designadas do sexo masculino ao nascer não podem ser selecionadas para esta pergunta.} other {Pessoas designadas do sexo feminino ao nascer não podem ser selecionadas para esta pergunta.}}',
-  'zh-Hans':
-    '{sex, select, female {此问题不能选择出生时被指定为男性的人。} other {此问题不能选择出生时被指定为女性的人。}}',
-  'zh-Hant':
-    '{sex, select, female {此問題不能選擇出生時被指定為男性的人。} other {此問題不能選擇出生時被指定為女性的人。}}',
-} as const satisfies SuppliedWording;
-
 /** The question asking which of the parents a new biological sibling shares is their other biological parent, when the first answer still leaves more than one. */
 const SIBLING_OTHER_BIOLOGICAL_PARENT_LABEL = {
   'en': 'Which of them is the sibling’s other biological parent?',
@@ -1360,11 +1327,6 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
   },
   { path: ['wording', 'generatedLabelOf'], message: GENERATED_LABEL_OF },
   { path: ['wording', 'missingDetailsList'], message: MISSING_DETAILS_LIST },
-  {
-    path: ['wording', 'nominationLimitHint'],
-    message: NOMINATION_LIMIT_HINT,
-    when: limitsNominationBySex,
-  },
   {
     path: ['wording', 'otherParentBiologicalLabel'],
     message: OTHER_PARENT_BIOLOGICAL_LABEL,

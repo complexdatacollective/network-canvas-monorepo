@@ -5615,17 +5615,9 @@
     "defaultMessage": "Label for a relative",
     "description": "Label of a family member, named by how they relate to the participant."
   },
-  "protocolBuilder.pedigree.wording.limitsNominationBySexHint": {
-    "defaultMessage": "Shown only when a question about the family applies only to people of one sex assigned at birth.",
-    "description": "Hint on the wording setting that is shown only while a nomination prompt is limited to people of one sex assigned at birth."
-  },
   "protocolBuilder.pedigree.wording.missingDetailsList": {
     "defaultMessage": "Missing details notice",
     "description": "Label of the notice listing what details are still missing for a family member."
-  },
-  "protocolBuilder.pedigree.wording.nominationLimitHint": {
-    "defaultMessage": "Note on a question limited to one sex at birth",
-    "description": "Label of the note shown under the family tree while a question about the family applies only to people of one sex assigned at birth, saying who cannot be selected for it."
   },
   "protocolBuilder.pedigree.wording.otherParentBiologicalLabel": {
     "defaultMessage": "Other parent is biological question",

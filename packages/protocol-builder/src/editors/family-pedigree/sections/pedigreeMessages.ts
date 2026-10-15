@@ -1248,12 +1248,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the notice listing what details are still missing for a family member.',
   },
-  wordingNominationLimitHint: {
-    id: 'protocolBuilder.pedigree.wording.nominationLimitHint',
-    defaultMessage: 'Note on a question limited to one sex at birth',
-    description:
-      'Label of the note shown under the family tree while a question about the family applies only to people of one sex assigned at birth, saying who cannot be selected for it.',
-  },
   wordingConnectQuestion: {
     id: 'protocolBuilder.pedigree.wording.connectQuestion',
     defaultMessage: 'Connect question',
@@ -1688,13 +1682,6 @@ export const familyPedigreeMessages = defineMessages({
       'Shown only when participants choose the words used for family members.',
     description:
       'Hint on the wording settings that are shown only when participants choose the words used for family members.',
-  },
-  wordingLimitsNominationBySexHint: {
-    id: 'protocolBuilder.pedigree.wording.limitsNominationBySexHint',
-    defaultMessage:
-      'Shown only when a question about the family applies only to people of one sex assigned at birth.',
-    description:
-      'Hint on the wording setting that is shown only while a nomination prompt is limited to people of one sex assigned at birth.',
   },
   wordingGenderIdentityHint: {
     id: 'protocolBuilder.pedigree.wording.genderIdentityHint',

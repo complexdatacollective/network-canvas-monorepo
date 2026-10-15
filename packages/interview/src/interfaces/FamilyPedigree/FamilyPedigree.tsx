@@ -167,11 +167,7 @@ import PedigreeLayout from './pedigree-layout/components/PedigreeLayout';
 import { FAMILY_PEDIGREE_GAPS } from './pedigree-layout/layoutDimensions';
 import type { PedigreeLink } from './pedigree-layout/types';
 import { pedigreeLinksOf } from './pedigreeLinks';
-import {
-  configuredWord,
-  PedigreeWordsProvider,
-  usePedigreeWordsOf,
-} from './pedigreeWords';
+import { PedigreeWordsProvider, usePedigreeWordsOf } from './pedigreeWords';
 import { relationshipWrites } from './relationshipToParticipant';
 import { reproductiveRolesOf } from './reproductiveRoles';
 import {
@@ -314,16 +310,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // birth was changed elsewhere in the interview) can still be deselected.
   const canSelect = (person: Person) =>
     canNominate(person) || isNominated(person);
-  // A prompt limited to one sex says so beneath the family, and the people
-  // it leaves out stay reachable, shown unavailable and described by it.
-  const nominationLimitId = useId();
-  const nominationLimit = nomination?.onlyForSexAssignedAtBirth;
-  const nominationLimitHint =
-    nominationLimit === undefined
-      ? undefined
-      : text(configuredWord(wording.nominationLimitHint), {
-          sex: nominationLimit,
-        });
 
   // The stage's own record: the framing the participant chose, when the
   // stage leaves it to them.
@@ -1743,10 +1729,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       setLastFocusedId(personId);
       const person = family.byId.get(personId);
       if (!person) return;
-      if (!canSelect(person)) {
-        if (nominationLimitHint) setAnnouncement(nominationLimitHint);
-        return;
-      }
+      if (!canSelect(person)) return;
       void dispatch(
         updateNode({
           nodeId: personId,
@@ -2703,16 +2686,12 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                       nomination ? isNominated(person) : personId === selectedId
                     }
                     // Someone a nomination prompt leaves out stays reachable,
-                    // shown unavailable and described by the prompt's limit.
+                    // shown unavailable.
                     disabled={
                       wordingForced ||
                       (!nomination && pairUnavailable(personId))
                     }
-                    unavailableReasonId={
-                      nomination && !canSelect(person) && nominationLimitHint
-                        ? nominationLimitId
-                        : undefined
-                    }
+                    unavailable={!!nomination && !canSelect(person)}
                     linking={
                       tool !== 'pointer' &&
                       (personId === linkingId || personId === connectorTargetId)
@@ -2782,15 +2761,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   </Button>
                 </div>
               </Alert>
-            )}
-            {nominationLimitHint && (
-              <p
-                id={nominationLimitId}
-                className="text-sm opacity-80"
-                data-testid="pedigree-nomination-limit"
-              >
-                {nominationLimitHint}
-              </p>
             )}
             {/* Once a pair is picked, the menu or the confirmation asks its
               own question, so the hint asks for no one else. */}

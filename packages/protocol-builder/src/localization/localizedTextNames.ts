@@ -769,12 +769,6 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingMissingDetailsList)],
     ),
     rule(
-      'wording.nominationLimitHint',
-      PEDIGREE_WORDING,
-      PEDIGREE_WORDING_DRAWING,
-      [2, words(familyPedigreeMessages.wordingNominationLimitHint)],
-    ),
-    rule(
       'wording.connectQuestion',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_CONNECTING,
