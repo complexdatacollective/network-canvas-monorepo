@@ -278,9 +278,10 @@ const mergeKey = (reason: Reason) => {
  * The reasons as one hint. Each names the answers it disables, so no
  * lead-in is repeated; reasons that differ only in the child they are about
  * are said once, naming the children together ("you are recorded as having
- * carried “Ava” and “Ben”"), except that the participant, when one of them,
- * is spoken of in a sentence of their own. Each sentence is said once.
- * Undefined with none.
+ * carried “Ava” and “Ben”"). When the participant is one of those children,
+ * the reason is said once, about them alone: the sentence about them
+ * describes the same conflict, so repeating it for the others only says it
+ * twice. Each sentence is said once. Undefined with none.
  */
 export function joinReasons(
   context: ReasonContext,
@@ -309,11 +310,20 @@ export function joinReasons(
     }
     groups.push({ reason, childIds: childId === undefined ? [] : [childId] });
   }
+  const aboutYou = new Set(
+    groups
+      .filter(({ childIds }) => childIds.some((id) => isYou(context, id)))
+      .map(({ reason }) => mergeKey(reason)),
+  );
   const sentences = [
     ...new Set(
-      groups.map(({ reason, childIds }) =>
-        formatReason(context, reason, childIds),
-      ),
+      groups
+        .filter(
+          ({ reason, childIds }) =>
+            childIds.some((id) => isYou(context, id)) ||
+            !aboutYou.has(mergeKey(reason)),
+        )
+        .map(({ reason, childIds }) => formatReason(context, reason, childIds)),
     ),
   ];
   return sentences.length > 0 ? sentences.join(' ') : undefined;
