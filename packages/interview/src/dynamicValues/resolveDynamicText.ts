@@ -124,6 +124,8 @@ export type DynamicValueFormatters = Readonly<{
 }>;
 
 const DATE_ONLY = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
+const ISO_INSTANT =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/;
 
 const dateFormats = new Map<string, Intl.DateTimeFormat>();
 const dateFormat = (
@@ -176,10 +178,13 @@ const formatDate = (value: unknown, locale: string): string => {
       }).format(date);
     }
   }
+  // Only a full ISO date and time is read as an instant: the engine's own
+  // parser accepts other text (`2024-1`) and invents the parts it lacks.
   const date =
     value instanceof Date
       ? value
-      : typeof value === 'string' || typeof value === 'number'
+      : typeof value === 'number' ||
+          (typeof value === 'string' && ISO_INSTANT.test(value))
         ? new Date(value)
         : undefined;
   if (date === undefined || Number.isNaN(date.getTime())) return String(value);
