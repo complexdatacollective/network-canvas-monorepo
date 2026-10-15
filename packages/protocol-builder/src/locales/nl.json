@@ -867,7 +867,7 @@
   "protocolBuilder.narrativePedigree.keyHeadingLabel": "Kop van de legenda",
   "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": "Zal deze aandoening ontwikkelen",
   "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": "Draagt deze aandoening",
-  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": "Tooltip van „Momentopname opslaan“",
+  "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": "Knop „Momentopname opslaan“",
   "protocolBuilder.narrativePedigree.snapshotConditionHint": "De titel van de stamboom en de naam van de aandoening worden ingevuld op de twee plaatsen van de tijdelijke tekst.",
   "protocolBuilder.narrativePedigree.snapshotConditionLabel": "Titel van de momentopname voor een aandoening",
   "protocolBuilder.narrativePedigree.snapshotInheritanceHint": "De titel van de stamboom, de naam van de aandoening en de naam van de persoon worden ingevuld op de drie plaatsen van de tijdelijke tekst.",

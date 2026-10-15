@@ -3471,9 +3471,9 @@
     "defaultMessage": "Carries this condition",
     "description": "Label of the setting holding the key entry for a person who carries the selected condition."
   },
-  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": {
-    "defaultMessage": "Save snapshot tooltip",
-    "description": "Label of the setting holding the tooltip of the tool that saves an image of the pedigree."
+  "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": {
+    "defaultMessage": "Save snapshot button",
+    "description": "Label of the setting holding the text of the button, below the key, that saves an image of the pedigree."
   },
   "protocolBuilder.narrativePedigree.snapshotConditionHint": {
     "defaultMessage": "The pedigree title and the condition name are filled in where the two placeholders are.",

@@ -328,7 +328,7 @@ export const KeyboardOperation: Story = {
     await waitFor(() => expect(scaleOf(content)).toBeGreaterThan(before));
 
     await userEvent.click(
-      canvas.getByRole('button', { name: 'Breast Cancer' }),
+      canvas.getByRole('option', { name: 'Breast Cancer' }),
     );
     const youNow = canvas.getByRole('button', { name: 'Focus on You' });
     youNow.focus();

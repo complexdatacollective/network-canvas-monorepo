@@ -486,11 +486,11 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Label of the setting holding the tooltip of the tool that clears the selected focal person.',
   },
-  saveSnapshotTooltipLabel: {
-    id: 'protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel',
-    defaultMessage: 'Save snapshot tooltip',
+  saveSnapshotButtonLabel: {
+    id: 'protocolBuilder.narrativePedigree.saveSnapshotButtonLabel',
+    defaultMessage: 'Save snapshot button',
     description:
-      'Label of the setting holding the tooltip of the tool that saves an image of the pedigree.',
+      'Label of the setting holding the text of the button, below the key, that saves an image of the pedigree.',
   },
   conditionHeadingLabel: {
     id: 'protocolBuilder.narrativePedigree.conditionHeadingLabel',

@@ -867,7 +867,7 @@
   "protocolBuilder.narrativePedigree.keyHeadingLabel": "图例标题",
   "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": "将患上此病症",
   "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": "携带此病症",
-  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": "“保存快照”工具提示",
+  "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": "“保存快照”按钮",
   "protocolBuilder.narrativePedigree.snapshotConditionHint": "系谱标题和病症名称会填入两个占位符所在的位置。",
   "protocolBuilder.narrativePedigree.snapshotConditionLabel": "单一病症快照的标题",
   "protocolBuilder.narrativePedigree.snapshotInheritanceHint": "系谱标题、病症名称和人员姓名会填入三个占位符所在的位置。",

@@ -867,7 +867,7 @@
   "protocolBuilder.narrativePedigree.keyHeadingLabel": "Encabezado de la leyenda",
   "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": "Desarrollará esta afección",
   "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": "Es portador/a de esta afección",
-  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": "Información emergente de «Guardar imagen»",
+  "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": "Botón «Guardar imagen»",
   "protocolBuilder.narrativePedigree.snapshotConditionHint": "El título de la genealogía y el nombre de la afección se insertan donde están los dos marcadores.",
   "protocolBuilder.narrativePedigree.snapshotConditionLabel": "Título de la captura para una afección",
   "protocolBuilder.narrativePedigree.snapshotInheritanceHint": "El título de la genealogía, el nombre de la afección y el nombre de la persona se insertan donde están los tres marcadores.",

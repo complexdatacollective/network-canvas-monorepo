@@ -539,11 +539,11 @@ export const HereditaryCancerRisk: Story = {
   render: () => <CegrmWrapper seed={11} step={4} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const condition = await canvas.findByRole('button', {
+    const condition = await canvas.findByRole('option', {
       name: 'Hereditary breast/ovarian cancer',
     });
     await userEvent.click(condition);
-    await expect(condition).toHaveAttribute('aria-pressed', 'true');
+    await expect(condition).toHaveAttribute('aria-selected', 'true');
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Focus on You' }),
     );

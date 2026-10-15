@@ -867,7 +867,7 @@
   "protocolBuilder.narrativePedigree.keyHeadingLabel": "Titre de la légende",
   "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": "Développera cette affection",
   "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": "Est porteur de cette affection",
-  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": "Info-bulle « Enregistrer l’instantané »",
+  "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": "Bouton « Enregistrer un instantané »",
   "protocolBuilder.narrativePedigree.snapshotConditionHint": "Le titre de la généalogie et le nom de l’affection sont insérés aux deux emplacements réservés.",
   "protocolBuilder.narrativePedigree.snapshotConditionLabel": "Titre de l’instantané pour une affection",
   "protocolBuilder.narrativePedigree.snapshotInheritanceHint": "Le titre de la généalogie, le nom de l’affection et le nom de la personne sont insérés aux trois emplacements réservés.",

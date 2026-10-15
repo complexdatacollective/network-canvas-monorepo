@@ -867,7 +867,7 @@
   "protocolBuilder.narrativePedigree.keyHeadingLabel": "Título da legenda",
   "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": "Vai desenvolver esta condição",
   "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": "É portador desta condição",
-  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": "Dica de «Salvar captura»",
+  "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": "Botão «Salvar instantâneo»",
   "protocolBuilder.narrativePedigree.snapshotConditionHint": "O título da genealogia e o nome da condição são preenchidos onde estão os dois marcadores.",
   "protocolBuilder.narrativePedigree.snapshotConditionLabel": "Título da captura de uma condição",
   "protocolBuilder.narrativePedigree.snapshotInheritanceHint": "O título da genealogia, o nome da condição e o nome da pessoa são preenchidos onde estão os três marcadores.",

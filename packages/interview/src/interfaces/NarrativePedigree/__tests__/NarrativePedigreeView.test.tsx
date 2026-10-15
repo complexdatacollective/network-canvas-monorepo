@@ -382,7 +382,7 @@ function renderView(options: StoreOptions = {}, locale = 'en') {
 // Selects (or, when already selected, clears) a condition by clicking its row in
 // the key's "Conditions" list.
 async function selectCondition(name: string) {
-  await userEvent.click(await screen.findByRole('button', { name }));
+  await userEvent.click(await screen.findByRole('option', { name }));
 }
 
 // The single-condition status symbol ([data-notation-status]) is queried inside
@@ -584,7 +584,7 @@ describe('NarrativePedigreeView — node mode selection', () => {
       screen.getByRole('button', { name: 'Centrar en Mother' }),
     ).toHaveAccessibleDescription('Condition <b>A</b>: Afectado/a');
     expect(
-      screen.getByRole('button', { name: 'Condition <b>A</b>' }),
+      screen.getByRole('option', { name: 'Condition <b>A</b>' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Quitar el foco' }),
@@ -667,10 +667,12 @@ describe('NarrativePedigreeView — condition colours', () => {
     };
     renderView({ narrativeStage: stage });
 
-    const conditionButton = await screen.findByRole('button', {
+    const conditionButton = await screen.findByRole('option', {
       name: 'Disease A',
     });
-    expect(conditionButton.querySelector('[aria-hidden]')).toHaveStyle({
+    expect(
+      conditionButton.querySelector('span[aria-hidden][style]'),
+    ).toHaveStyle({
       backgroundColor: 'var(--node-3)',
     });
 
@@ -1141,7 +1143,7 @@ describe('NarrativePedigreeView — localized condition labels', () => {
       </Provider>,
     );
 
-    const conditionButton = await screen.findByRole('button', {
+    const conditionButton = await screen.findByRole('option', {
       name: arabicLabel,
     });
     expect(conditionButton.closest('[lang], [dir]')).toBeNull();

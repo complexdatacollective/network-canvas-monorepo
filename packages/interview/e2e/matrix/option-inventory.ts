@@ -756,7 +756,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'readOnlyInvariant',
     'keyHeading',
     'tooltips.clearFocus',
-    'tooltips.saveSnapshot',
     'conditionText.heading',
     'conditionText.instruction',
     'conditionText.notation.affected',

@@ -286,8 +286,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(19, 'diseases', 0, 'label'), 'plain'),
   // The Narrative Pedigree's own words, which Network Canvas supplies.
   site(stage(19, 'keyHeading'), 'plain'),
+  site(stage(19, 'saveSnapshot'), 'plain'),
   site(stage(19, 'tooltips', 'clearFocus'), 'plain'),
-  site(stage(19, 'tooltips', 'saveSnapshot'), 'plain'),
   site(stage(19, 'conditionText', 'heading'), 'plain'),
   site(stage(19, 'conditionText', 'instruction'), 'plain'),
   site(stage(19, 'conditionText', 'notation', 'affected'), 'plain'),

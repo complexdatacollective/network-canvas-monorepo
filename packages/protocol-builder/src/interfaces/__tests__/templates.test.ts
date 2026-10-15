@@ -294,9 +294,9 @@ describe('a new stage given nothing but a name', () => {
       ...(type === 'NarrativePedigree'
         ? {
             keyHeading: { en: 'Key' },
+            saveSnapshot: { en: 'Save snapshot' },
             tooltips: {
               clearFocus: { en: 'Clear focus' },
-              saveSnapshot: { en: 'Save snapshot' },
             },
             conditionText: {
               heading: { en: 'Conditions' },

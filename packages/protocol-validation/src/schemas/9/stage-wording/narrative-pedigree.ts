@@ -133,7 +133,8 @@ const CLEAR_FOCUS_TOOLTIP = {
   'zh-Hant': '清除焦點',
 } as const satisfies SuppliedWording;
 
-const SAVE_SNAPSHOT_TOOLTIP = {
+/** The label of the button that saves an image of the pedigree. */
+const SAVE_SNAPSHOT = {
   'en': 'Save snapshot',
   'de': 'Momentaufnahme speichern',
   'es': 'Guardar imagen',
@@ -179,8 +180,8 @@ const showsAtRiskStatuses = (stage: StageRecord) =>
 export const NARRATIVE_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] =
   [
     { path: ['keyHeading'], message: KEY_HEADING },
+    { path: ['saveSnapshot'], message: SAVE_SNAPSHOT },
     { path: ['tooltips', 'clearFocus'], message: CLEAR_FOCUS_TOOLTIP },
-    { path: ['tooltips', 'saveSnapshot'], message: SAVE_SNAPSHOT_TOOLTIP },
     { path: ['conditionText', 'heading'], message: CONDITION_HEADING },
     { path: ['conditionText', 'instruction'], message: CONDITION_INSTRUCTION },
     {

@@ -1619,12 +1619,12 @@
       "keyHeading": {
         "en-US": "Key"
       },
+      "saveSnapshot": {
+        "en-US": "Save snapshot"
+      },
       "tooltips": {
         "clearFocus": {
           "en-US": "Clear focus"
-        },
-        "saveSnapshot": {
-          "en-US": "Save snapshot"
         }
       },
       "conditionText": {

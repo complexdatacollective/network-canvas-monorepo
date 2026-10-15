@@ -867,7 +867,7 @@
   "protocolBuilder.narrativePedigree.keyHeadingLabel": "Key heading",
   "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": "Will develop this condition",
   "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": "Carries this condition",
-  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": "Save snapshot tooltip",
+  "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": "Save snapshot button",
   "protocolBuilder.narrativePedigree.snapshotConditionHint": "The pedigree title and the condition name are filled in where the two placeholders are.",
   "protocolBuilder.narrativePedigree.snapshotConditionLabel": "Snapshot title for a condition",
   "protocolBuilder.narrativePedigree.snapshotInheritanceHint": "The pedigree title, the condition name and the name of the person are filled in where the three placeholders are.",

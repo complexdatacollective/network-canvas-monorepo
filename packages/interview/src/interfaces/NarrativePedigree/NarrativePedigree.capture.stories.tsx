@@ -41,10 +41,10 @@ export const Capture: StoryObj = {
   // and possibly affected relatives down to the participant's children.
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const condition = await canvas.findByRole('button', {
+    const condition = await canvas.findByRole('option', {
       name: 'Haemophilia A',
     });
     await userEvent.click(condition);
-    await expect(condition).toHaveAttribute('aria-pressed', 'true');
+    await expect(condition).toHaveAttribute('aria-selected', 'true');
   },
 };

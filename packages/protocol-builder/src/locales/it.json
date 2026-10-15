@@ -867,7 +867,7 @@
   "protocolBuilder.narrativePedigree.keyHeadingLabel": "Titolo della legenda",
   "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": "Svilupperà questa condizione",
   "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": "È portatore di questa condizione",
-  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": "Suggerimento di «Salva istantanea»",
+  "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": "Pulsante «Salva istantanea»",
   "protocolBuilder.narrativePedigree.snapshotConditionHint": "Il titolo della genealogia e il nome della condizione vengono inseriti dove si trovano i due segnaposto.",
   "protocolBuilder.narrativePedigree.snapshotConditionLabel": "Titolo dell’istantanea per una condizione",
   "protocolBuilder.narrativePedigree.snapshotInheritanceHint": "Il titolo della genealogia, il nome della condizione e il nome della persona vengono inseriti dove si trovano i tre segnaposto.",

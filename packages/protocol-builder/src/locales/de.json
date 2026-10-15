@@ -867,7 +867,7 @@
   "protocolBuilder.narrativePedigree.keyHeadingLabel": "Überschrift der Legende",
   "protocolBuilder.narrativePedigree.obligateAffectedNotationLabel": "Wird diese Erkrankung entwickeln",
   "protocolBuilder.narrativePedigree.obligateCarrierNotationLabel": "Trägt diese Erkrankung",
-  "protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel": "Tooltip für „Momentaufnahme speichern“",
+  "protocolBuilder.narrativePedigree.saveSnapshotButtonLabel": "Schaltfläche „Momentaufnahme speichern“",
   "protocolBuilder.narrativePedigree.snapshotConditionHint": "Der Titel des Stammbaums und der Name der Erkrankung werden an den beiden Platzhalterstellen eingesetzt.",
   "protocolBuilder.narrativePedigree.snapshotConditionLabel": "Titel der Momentaufnahme für eine Erkrankung",
   "protocolBuilder.narrativePedigree.snapshotInheritanceHint": "Der Titel des Stammbaums, der Name der Erkrankung und der Name der Person werden an den drei Platzhalterstellen eingesetzt.",

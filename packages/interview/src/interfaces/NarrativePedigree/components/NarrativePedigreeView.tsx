@@ -155,7 +155,7 @@ export default function NarrativePedigreeView({
     keyHeading: resolve(stage.keyHeading).text,
     heading: resolve(stage.conditionText.heading).text,
     instruction: resolve(stage.conditionText.instruction).text,
-    saveSnapshot: resolve(stage.tooltips.saveSnapshot).text,
+    saveSnapshot: resolve(stage.saveSnapshot).text,
     notation: {
       affected: resolve(stage.conditionText.notation.affected).text,
       obligateAffected: resolve(stage.conditionText.notation.obligateAffected)

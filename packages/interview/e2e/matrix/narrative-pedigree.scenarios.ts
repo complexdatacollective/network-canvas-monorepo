@@ -370,12 +370,12 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         ).toHaveCount(0);
         await expect(page.locator('[data-dimmed="true"]')).toHaveCount(0);
 
-        const conditionButton = page.getByRole('button', {
+        const conditionButton = page.getByRole('option', {
           name: "Huntington's Disease",
           exact: true,
         });
         await conditionButton.click();
-        await expect(conditionButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(conditionButton).toHaveAttribute('aria-selected', 'true');
         await expect(
           page.locator('[data-node-id="grandparent"] [data-notation-status]'),
         ).toHaveAttribute('data-notation-status', 'affected');
@@ -385,7 +385,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // Architect persists a node palette token; the runtime resolves it to
         // the matching theme variable for both CSS and SVG consumers.
         await expect(
-          conditionButton.locator('span[aria-hidden]').first(),
+          conditionButton.locator('span[aria-hidden][style]'),
         ).toHaveAttribute('style', 'background-color: var(--node-1);');
         await expect(
           page.locator('[data-node-id="grandparent"] [data-filled-shape]'),
@@ -395,7 +395,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         ).toBeVisible();
 
         await conditionButton.click();
-        await expect(conditionButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(conditionButton).toHaveAttribute('aria-selected', 'false');
         await expect(page.locator('[data-notation-status]')).toHaveCount(0);
         await expect(page.getByText('Showing all conditions')).toBeVisible();
       },
@@ -410,7 +410,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         const before = await protocol.getNetworkState(interview.interviewId);
 
         await page
-          .getByRole('button', { name: "Huntington's Disease", exact: true })
+          .getByRole('option', { name: "Huntington's Disease", exact: true })
           .click();
 
         const egoFocal = member(page, 'You');
@@ -690,7 +690,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
 
         // X-linked recessive: affected uncle, obligate-carrier maternal
         // grandmother (two affected sons), and a maternal-line-only focal walk.
-        const haemophiliaButton = page.getByRole('button', {
+        const haemophiliaButton = page.getByRole('option', {
           name: 'Haemophilia',
           exact: true,
         });
@@ -722,7 +722,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
 
         // X-linked dominant: every daughter of the affected father is
         // non-unknown; a son of the same father stays unknown.
-        const hypophosphataemiaButton = page.getByRole('button', {
+        const hypophosphataemiaButton = page.getByRole('option', {
           name: 'Hypophosphataemia',
           exact: true,
         });
@@ -738,7 +738,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // Y-linked: only males down the paternal line carry a non-unknown
         // status; a daughter is unknown; focusing the grandson highlights only
         // the paternal father->son chain.
-        const hearingLossButton = page.getByRole('button', {
+        const hearingLossButton = page.getByRole('option', {
           name: 'Hearing Loss',
           exact: true,
         });
@@ -770,7 +770,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // Mitochondrial: focusing a maternal-line descendant highlights only
         // the egg (cytoplasm) chain up to the great-grandmother source; a
         // paternal-line relative stays dimmed.
-        const myopathyButton = page.getByRole('button', {
+        const myopathyButton = page.getByRole('option', {
           name: 'Mitochondrial Myopathy',
           exact: true,
         });
@@ -1016,7 +1016,6 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         'readOnlyInvariant',
         'keyHeading',
         'tooltips.clearFocus',
-        'tooltips.saveSnapshot',
         'conditionText.heading',
         'conditionText.instruction',
         'conditionText.notation.affected',
@@ -1050,7 +1049,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           wording: {
             'keyHeading': KEY_HEADING,
             'tooltips.clearFocus': CLEAR_FOCUS,
-            'tooltips.saveSnapshot': SAVE_SNAPSHOT,
+            'saveSnapshot': SAVE_SNAPSHOT,
             'conditionText.heading': CONDITION_HEADING,
             'conditionText.instruction': CONDITION_INSTRUCTION,
             'conditionText.notation.affected': NOTATION_AFFECTED,
@@ -1140,7 +1139,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // Once a condition is chosen, a snapshot is headed by the stage's own
         // message for a condition (the file is named after the heading).
         await page
-          .getByRole('button', { name: "Huntington's Disease", exact: true })
+          .getByRole('option', { name: "Huntington's Disease", exact: true })
           .click();
         const saveSnapshot = page.getByRole('button', {
           name: SAVE_SNAPSHOT,

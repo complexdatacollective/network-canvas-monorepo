@@ -1198,9 +1198,9 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
       // The wording Network Canvas supplies, written in the protocol's only
       // language.
       keyHeading: { en: 'Key' },
+      saveSnapshot: { en: 'Save snapshot' },
       tooltips: {
         clearFocus: { en: 'Clear focus' },
-        saveSnapshot: { en: 'Save snapshot' },
       },
       conditionText: {
         heading: { en: 'Conditions' },

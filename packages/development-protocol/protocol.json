@@ -2246,14 +2246,14 @@
         "en-US": "Key",
         "es": "Leyenda"
       },
+      "saveSnapshot": {
+        "en-US": "Save snapshot",
+        "es": "Guardar imagen"
+      },
       "tooltips": {
         "clearFocus": {
           "en-US": "Clear focus",
           "es": "Quitar el foco"
-        },
-        "saveSnapshot": {
-          "en-US": "Save snapshot",
-          "es": "Guardar imagen"
         }
       },
       "conditionText": {

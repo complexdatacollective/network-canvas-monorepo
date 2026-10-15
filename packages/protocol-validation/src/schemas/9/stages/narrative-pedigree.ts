@@ -174,9 +174,9 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
   // drawn only while `showAtRiskStatuses` is on, and are required then
   // (`missingRequiredStageSettings`).
   keyHeading: localizedString(nonBlankText(), 'plain'),
+  saveSnapshot: localizedString(nonBlankText(), 'plain'),
   tooltips: z.strictObject({
     clearFocus: localizedString(nonBlankText(), 'plain'),
-    saveSnapshot: localizedString(nonBlankText(), 'plain'),
   }),
   conditionText: z.strictObject({
     heading: localizedString(nonBlankText(), 'plain'),

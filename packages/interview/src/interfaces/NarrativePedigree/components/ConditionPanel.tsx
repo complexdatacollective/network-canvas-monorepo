@@ -1,15 +1,13 @@
 'use client';
 
+import { useId } from 'react';
+
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { IconButton } from '@codaco/fresco-ui/Button';
+import { Button } from '@codaco/fresco-ui/Button';
+import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@codaco/fresco-ui/Tooltip';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import { messages } from '../messages';
@@ -60,6 +58,8 @@ export default function ConditionPanel({
   onSnapshot,
 }: ConditionPanelProps) {
   const intl = useAppIntl();
+  const headingId = useId();
+  const instructionId = useId();
   // When a single condition is shown, draw the notation key in its colour so the
   // key matches the pedigree; otherwise use a neutral vivid node colour.
   const selectedDisease =
@@ -89,31 +89,37 @@ export default function ConditionPanel({
         <div className="flex flex-col gap-2 py-2">
           {diseases.length > 0 && (
             <>
-              <Heading level="label" margin="none">
+              <Heading level="label" margin="none" id={headingId}>
                 {words.heading}
               </Heading>
-              <p className="text-sm opacity-80">{words.instruction}</p>
-              {diseases.map((disease) => {
-                const isSelected = disease.id === selectedDiseaseId;
-                return (
-                  <button
-                    key={disease.id}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => onSelect(isSelected ? null : disease.id)}
-                    className={`focusable flex items-center gap-4 rounded px-2 py-1 text-left text-base ${
-                      isSelected ? 'bg-white/15 font-bold' : 'hover:bg-white/5'
-                    }`}
-                  >
-                    <span
-                      aria-hidden
-                      className="size-4 shrink-0 rounded-full"
-                      style={{ backgroundColor: disease.color }}
-                    />
-                    {disease.label}
-                  </button>
-                );
-              })}
+              <p id={instructionId} className="text-sm opacity-80">
+                {words.instruction}
+              </p>
+              <RichSelectGroupField
+                aria-labelledby={headingId}
+                aria-describedby={instructionId}
+                size="sm"
+                options={diseases.map((disease) => ({
+                  value: disease.id,
+                  // Plain text: a condition's name is never markdown.
+                  label: (
+                    <span className="flex items-center gap-2">
+                      <span
+                        aria-hidden
+                        className="size-4 shrink-0 rounded-full"
+                        style={{ backgroundColor: disease.color }}
+                      />
+                      {disease.label}
+                    </span>
+                  ),
+                }))}
+                value={selectedDiseaseId ?? undefined}
+                // Choosing the shown condition again returns to all conditions.
+                onChange={(chosen) => {
+                  if (typeof chosen !== 'string') return;
+                  onSelect(chosen === selectedDiseaseId ? null : chosen);
+                }}
+              />
               <hr className="my-1 border-t border-(--outline)" />
             </>
           )}
@@ -128,26 +134,17 @@ export default function ConditionPanel({
       </ScrollArea>
 
       {/* Footer — snapshot action, fixed below the scrolling key. */}
-      <div className="flex shrink-0 justify-center border-t border-(--outline) p-4">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <IconButton
-                color="primary"
-                aria-label={words.saveSnapshot}
-                icon={
-                  <Icon
-                    name="Camera"
-                    aria-hidden="true"
-                    className="size-[1em]"
-                  />
-                }
-                onClick={onSnapshot}
-              />
-            }
-          />
-          <TooltipContent>{words.saveSnapshot}</TooltipContent>
-        </Tooltip>
+      <div className="shrink-0 border-t border-(--outline) p-4">
+        <Button
+          color="primary"
+          className="w-full"
+          icon={
+            <Icon name="Camera" aria-hidden="true" className="size-[1em]" />
+          }
+          onClick={onSnapshot}
+        >
+          {words.saveSnapshot}
+        </Button>
       </div>
     </Surface>
   );

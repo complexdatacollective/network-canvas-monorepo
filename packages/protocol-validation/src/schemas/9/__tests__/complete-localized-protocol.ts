@@ -656,9 +656,9 @@ export const completeProtocol = () => ({
       ],
       showAtRiskStatuses: true,
       keyHeading: localized('Key'),
+      saveSnapshot: localized('Save snapshot'),
       tooltips: {
         clearFocus: localized('Clear focus'),
-        saveSnapshot: localized('Save snapshot'),
       },
       conditionText: {
         heading: localized('Conditions'),

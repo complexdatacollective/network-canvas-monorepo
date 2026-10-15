@@ -5,9 +5,9 @@
  */
 export const narrativePedigreeWords = ({ atRisk = false } = {}) => ({
   keyHeading: { en: 'Key', es: 'Leyenda' },
+  saveSnapshot: { en: 'Save snapshot', es: 'Guardar imagen' },
   tooltips: {
     clearFocus: { en: 'Clear focus', es: 'Quitar el foco' },
-    saveSnapshot: { en: 'Save snapshot', es: 'Guardar imagen' },
   },
   conditionText: {
     heading: { en: 'Conditions', es: 'Afecciones' },
