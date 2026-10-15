@@ -119,7 +119,7 @@ export const MitochondrialDonation: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
-      await canvas.findByRole('button', { name: 'Mitochondrial Myopathy' }),
+      await canvas.findByRole('option', { name: 'Mitochondrial Myopathy' }),
     );
     await expect(
       await canvas.findByRole('button', { name: 'Focus on Chloe Nolan' }),

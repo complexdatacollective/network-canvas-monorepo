@@ -4,8 +4,9 @@
     - heading "Key" [level=4]
     - heading "Conditions" [level=4]
     - paragraph: Select a condition to see who it affects.
-    - button "Heart Disease"
-    - button "Rare Condition" [pressed]
+    - listbox "Conditions":
+      - option "Heart Disease"
+      - option "Rare Condition" [selected]
     - separator
     - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
     - button "Save snapshot"

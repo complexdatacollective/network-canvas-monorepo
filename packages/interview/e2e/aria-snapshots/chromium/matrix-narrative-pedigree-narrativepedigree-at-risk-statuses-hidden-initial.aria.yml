@@ -4,7 +4,8 @@
     - heading "Key" [level=4]
     - heading "Conditions" [level=4]
     - paragraph: Select a condition to see who it affects.
-    - button "Cystic Fibrosis"
+    - listbox "Conditions":
+      - option "Cystic Fibrosis"
     - separator
     - text: Has this condition Will develop this condition Carries this condition Not known
     - button "Save snapshot"

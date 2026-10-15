@@ -4,7 +4,8 @@
     - heading "Guide - matrix check" [level=4]
     - heading "Diagnoses - matrix check" [level=4]
     - paragraph: Pick one to see who has it - matrix check
-    - button "Huntington's Disease" [pressed]
+    - listbox "Diagnoses - matrix check":
+      - option "Huntington's Disease" [selected]
     - separator
     - text: Has it now - matrix check Will get it - matrix check Passes it on - matrix check Nobody knows - matrix check
     - button "Keep a picture - matrix check"

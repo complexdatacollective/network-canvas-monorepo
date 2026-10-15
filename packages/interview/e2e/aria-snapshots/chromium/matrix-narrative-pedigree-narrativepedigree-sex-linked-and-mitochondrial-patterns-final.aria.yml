@@ -4,10 +4,11 @@
     - heading "Key" [level=4]
     - heading "Conditions" [level=4]
     - paragraph: Select a condition to see who it affects.
-    - button "Haemophilia"
-    - button "Hypophosphataemia"
-    - button "Hearing Loss"
-    - button "Mitochondrial Myopathy" [pressed]
+    - listbox "Conditions":
+      - option "Haemophilia"
+      - option "Hypophosphataemia"
+      - option "Hearing Loss"
+      - option "Mitochondrial Myopathy" [selected]
     - separator
     - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
     - button "Save snapshot"

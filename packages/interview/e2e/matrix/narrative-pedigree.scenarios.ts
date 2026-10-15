@@ -465,7 +465,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       build: () => buildCousinUnion(false),
       run: async ({ page }) => {
         await page
-          .getByRole('button', { name: 'Cystic Fibrosis', exact: true })
+          .getByRole('option', { name: 'Cystic Fibrosis', exact: true })
           .click();
 
         // The affected child and its two obligate-carrier parents show certain
@@ -515,7 +515,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       build: () => buildCousinUnion(true),
       run: async ({ page }) => {
         await page
-          .getByRole('button', { name: 'Cystic Fibrosis', exact: true })
+          .getByRole('option', { name: 'Cystic Fibrosis', exact: true })
           .click();
 
         // With at-risk display ON the same relative now carries an
@@ -852,7 +852,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // Multifactorial: only the two nominated people are affected; no
         // carrier/at-risk inference is made, so everyone else is unknown.
         await page
-          .getByRole('button', { name: 'Heart Disease', exact: true })
+          .getByRole('option', { name: 'Heart Disease', exact: true })
           .click();
         await expect(
           page.locator('[data-notation-status="affected"]'),
@@ -873,10 +873,10 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // Unknown pattern: the single nominated person is affected, the rest
         // unknown — again with no inference.
         await page
-          .getByRole('button', { name: 'Heart Disease', exact: true })
+          .getByRole('option', { name: 'Heart Disease', exact: true })
           .click(); // deselect
         await page
-          .getByRole('button', { name: 'Rare Condition', exact: true })
+          .getByRole('option', { name: 'Rare Condition', exact: true })
           .click();
         await expect(
           page.locator('[data-notation-status="affected"]'),

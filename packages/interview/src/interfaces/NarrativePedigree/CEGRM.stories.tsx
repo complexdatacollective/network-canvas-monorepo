@@ -512,7 +512,7 @@ export const FamilyHealthNarrative: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
-      await canvas.findByRole('button', { name: 'Reported cancer history' }),
+      await canvas.findByRole('option', { name: 'Reported cancer history' }),
     );
     await expect(
       await canvas.findByRole('button', { name: 'Focus on You' }),
