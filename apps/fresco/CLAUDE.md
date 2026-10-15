@@ -306,16 +306,25 @@ then runs two Docker stacks via
 
 - **Upgrade lane** (ports 3210/5533/9310): seeds the currently released GHCR
   image through its setup wizard (sample protocol, synthetic interviews, data
-  export), swaps the app container to the pending image against the live
-  volumes so its `migrate-and-start.sh` migrations run on real data, verifies
-  data integrity, dashboard CRUD, settings, and the interview data API, and
-  diffs pre- vs post-upgrade exports (`release-test/scripts/diff-exports.mjs`)
-  for unanticipated differences.
+  export), and leaves one interview of a schema 8 protocol unfinished on the
+  stage behind an introduction panel (`migration-lane.mjs --phase seed`). It
+  then swaps the app container to the pending image against the live volumes
+  so its `migrate-and-start.sh` migrations run on real data, and reads what
+  the schema 9 migration did to every stored protocol and interview
+  (`--phase migrated`). It captures the exports, and then lets that
+  participant come back: the interview resumes where it was, its former panel
+  shows as an Information stage, and it can be finished and exported
+  (`--phase resume`). Finally it verifies data integrity, dashboard CRUD,
+  settings, and the interview data API, and diffs pre- vs post-upgrade exports
+  (`release-test/scripts/diff-exports.mjs`) for unanticipated differences.
 - **Fresh lane** (ports 3211/5534/9311): verifies the new-deployment setup
   process of the pending image end-to-end, and then runs the script-driven
   checks on that instance — a whole interview conducted from the first stage to
-  the finish screen and out through an export, what `/api/health` tells an
-  anonymous caller, and the researcher interface in another language.
+  the finish screen and out through an export; a schema 9 interview conducted
+  in Spanish (language chooser, dynamic values, an encrypted answer, bins with
+  tap-to-place and the completion gate, a skipped empty stage, both finish
+  stages and the outcome each records, and the export); what `/api/health`
+  tells an anonymous caller; and the researcher interface in another language.
 - **Analytics lane** (ports 3212/5535/9312): the one deployment in the run with
   analytics **enabled**, against a sink that terminates TLS and records every
   request. It also imports the damaged protocol fixtures, because "opening a
@@ -329,11 +338,13 @@ run holds four stacks only as long as it has to.
 
 #### The script-driven lanes
 
-Those last three lanes are driven by deterministic scripts under
-`release-test/scripts/` rather than by an agent reading a checklist:
-`interview-lane.mjs`, `health-lane.mjs`, `localization-lane.mjs`,
+Those last three lanes, and the upgrade lane's migration checks, are driven
+by deterministic scripts under `release-test/scripts/` rather than by an agent
+reading a checklist: `interview-lane.mjs`, `schema9-interview-lane.mjs`,
+`migration-lane.mjs`, `health-lane.mjs`, `localization-lane.mjs`,
 `analytics-lane.mjs` and `two-factor-lane.mjs`, over a shared Playwright driver
-(`fresco-driver.mjs`) and a lane table (`lanes.mjs`) that
+(`fresco-driver.mjs`), the interview navigation they share
+(`interview-walk.mjs`), and a lane table (`lanes.mjs`) that
 `scripts/release-test/fresco-release-test-workflow.test.mjs` binds to `up.sh`.
 What they check has a fixed answer — which payload was sent, which page was
 served, whether a request was refused — and an assertion in code is the same
@@ -351,11 +362,26 @@ refuses a lane that came up as the wrong deployment — an analytics lane with
 analytics disabled would send nothing at all, and every payload assertion in it
 would pass over an empty file.
 
+The migration lane's seed phase has to run between two of the seed agent's
+own items — after the synthetic interviews, before the baseline snapshot —
+so that agent runs it, and the workflow binds its checks from the
+`artifacts/migration/seed-result.json` the script leaves rather than from the
+agent's account of them. The migration interview is one of the seeded
+interviews every later count includes (`SEEDED_INTERVIEWS`), so the export
+diff compares it too. Its Family Pedigree is converted to the redesigned one
+by the upgrade, which changes that interview's codebook and the edge list and
+GraphML keys exported for it; the diff judge is told to attribute those
+differences to the redesign's changeset.
+
 The judgment in those lanes lives in pure modules —
 `relay-payload-protocol.mjs` (what an enabled deployment may send),
-`localization-contract.mjs` (whether a page actually changed language) and
+`localization-contract.mjs` (whether a page actually changed language),
 `interview-export-contract.mjs` (whether an export carries the answers that
-were given) — so each oracle is exercised on synthetic input in
+were given), `schema9-export-contract.mjs` (whether an export records each
+interview's finish outcome and keeps an encrypted answer out) and
+`migration-contract.mjs` (what the schema 8 to 9 upgrade must have done to
+each stored protocol and interview, judged from database readings taken
+either side of the swap) — so each oracle is exercised on synthetic input in
 `scripts/release-test/fresco-release-test-lane-contracts.test.mjs`, where it is
 also shown failing on input that breaks the behaviour it guards. Lists those
 contracts are written against are bound to the application's own: the element
@@ -363,10 +389,19 @@ events and properties to `lib/posthog-client.ts`, the entity-id properties to
 `@codaco/interview`, and the import-failure vocabulary to
 `@codaco/protocol-validation`.
 
+The export diff reconciles the differences the schema 9 migration is
+expected to make. Given the migration lane's readings (`--migration
+artifacts/migration`), that includes an interview's `currentStep` and
+`stageMetadata` moving exactly as far as the stages they point at moved when an
+introduction panel became an Information stage in front of them. A step that
+moved anywhere else is still a difference.
+
 The protocol fixtures are built rather than committed
 (`release-test/scripts/make-fixtures.mjs`, from
-`packages/protocols/e2e/fresco-release-test`): the protocol an interview is
-conducted with, and the damaged ones — a missing resource, a damaged archive, a
+`packages/protocols/e2e/fresco-release-test`,
+`fresco-release-test-v9` and `fresco-release-test-migration`): the protocol an
+interview is conducted with, the schema 9 protocol in English and Spanish,
+the schema 8 protocol the upgrade migrates, and the damaged ones — a missing resource, a damaged archive, a
 protocol that inflates past the shared limit, and the pair of filters that
 shows a fractional comparison value accepted and a fractional COUNT refused. A
 repository is the wrong place for a deliberately corrupt archive and an entry

@@ -1,8 +1,10 @@
 // Offline tests for the release test's lane contracts.
 //
 // The script-driven lanes drive a browser, but what they CONCLUDE lives in
-// three pure modules — the analytics payload contract, the localization
-// comparison and the export reader — and those are exercised here on synthetic
+// pure modules — the analytics payload contract, the localization
+// comparison, the export reader, what a schema 9 export has to record, and
+// what the schema 8 to 9 upgrade has to do to stored protocols and
+// interviews — and those are exercised here on synthetic
 // input rather than only through a running stack. Every test names the
 // fail-open it prevents: each negative assertion is shown failing on a payload
 // that breaks the behaviour it guards, and each positive control is shown
@@ -14,7 +16,8 @@
 // property renamed in the app, or an error kind added to the package, would
 // otherwise leave a check looking for something nobody sends any more.
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -42,6 +45,23 @@ const { judgeAuthoredText, judgeInterpolated, judgeRendering, longestLiteral } =
 const { readInterviewExport } = await import(
   join(scripts, 'interview-export-contract.mjs')
 );
+
+const {
+  ENCRYPTED_PLACEHOLDER,
+  encryptedValueProblems,
+  finishOutcomeProblems,
+  finishOutcomesByFormat,
+  splitCsvRow,
+} = await import(join(scripts, 'schema9-export-contract.mjs'));
+
+const {
+  MIGRATED_SCHEMA,
+  expectedStep,
+  interviewMigrationProblems,
+  introductionPanelProblems,
+  protocolMigrationProblems,
+  remapStageMetadata,
+} = await import(join(scripts, 'migration-contract.mjs'));
 
 // ---------------------------------------------------------------------------
 // Building payloads the way posthog does
@@ -633,4 +653,502 @@ test('an unreadable archive is reported as unreadable, not as empty', async () =
   const found = await readInterviewExport(path);
   assert.equal(found.entries, 0);
   assert.match(found.error, /could not be read/);
+});
+
+// ---------------------------------------------------------------------------
+// What a schema 9 export records
+// ---------------------------------------------------------------------------
+
+// An ego CSV and a GraphML file as the exporters write them, one row and one
+// graph per interview.
+const egoCsv = (rows) =>
+  [
+    'networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,networkCanvasProtocolName,networkCanvasFinishOutcome,name',
+    ...rows.map(
+      ([session, outcome, name]) =>
+        `e-${session},case,${session},"Protocol, with a comma",${outcome},${name}`,
+    ),
+  ].join('\r\n');
+const graphml = (graphs) =>
+  `<?xml version="1.0"?><graphml>${graphs
+    .map(
+      ([session, outcome]) =>
+        `<graph edgedefault="undirected" nc:sessionUUID="${session}" nc:protocolUID="p"${outcome ? ` nc:finishOutcome="${outcome}"` : ''}><node id="n"/></graph>`,
+    )
+    .join('')}</graphml>`;
+const exported = (csvRows, graphs) => [
+  { name: 'a_ego.csv', text: egoCsv(csvRows) },
+  { name: 'a_edgeList.csv', text: 'from,to\r\n1,2' },
+  { name: 'a.graphml', text: graphml(graphs) },
+];
+
+test('a quoted CSV cell keeps its commas and doubled quotes', () => {
+  assert.deepEqual(splitCsvRow('a,"b, c","say ""hi""",'), [
+    'a',
+    'b, c',
+    'say "hi"',
+    '',
+  ]);
+});
+
+test('each format reports where every exported interview ended', () => {
+  const files = exported(
+    [
+      ['s1', 'completed', 'Rosa'],
+      ['s2', 'terminated', 'Declina'],
+    ],
+    [
+      ['s1', 'completed'],
+      ['s2', 'terminated'],
+    ],
+  );
+  assert.deepEqual(finishOutcomesByFormat(files), {
+    csv: { s1: 'completed', s2: 'terminated' },
+    graphml: { s1: 'completed', s2: 'terminated' },
+  });
+  assert.deepEqual(
+    finishOutcomeProblems(files, { s1: 'completed', s2: 'terminated' }),
+    [],
+  );
+});
+
+test('an outcome recorded wrongly in either format fails', () => {
+  const wrongInCsv = exported(
+    [['s1', 'terminated', 'Rosa']],
+    [['s1', 'completed']],
+  );
+  assert.deepEqual(finishOutcomeProblems(wrongInCsv, { s1: 'completed' }), [
+    'csv records interview s1 as "terminated", expected "completed"',
+  ]);
+  const missingInGraphml = exported([['s1', 'completed', 'Rosa']], [['s1']]);
+  assert.deepEqual(
+    finishOutcomeProblems(missingInGraphml, { s1: 'completed' }),
+    ['graphml records interview s1 as "", expected "completed"'],
+  );
+});
+
+test('an interview left out of a format is a problem, not a pass by omission', () => {
+  const files = exported([['s1', 'completed', 'Rosa']], [['s1', 'completed']]);
+  assert.deepEqual(
+    finishOutcomeProblems(files, { s1: 'completed', s2: 'terminated' }),
+    ['csv has no row for interview s2', 'graphml has no row for interview s2'],
+  );
+  // An export with no data at all fails every expected interview, twice.
+  assert.equal(finishOutcomeProblems([], { s1: 'completed' }).length, 2);
+});
+
+test('an interview finished before outcomes existed records none, and that is checkable', () => {
+  const files = exported([['old', '', 'Mira']], [['old']]);
+  assert.deepEqual(finishOutcomeProblems(files, { old: '' }), []);
+  assert.equal(finishOutcomeProblems(files, { old: 'completed' }).length, 2);
+});
+
+test('the finish outcome is read from the column and attribute the exporters write', () => {
+  const helpers = readFileSync(
+    join(
+      repoRoot,
+      'packages/network-exporters/src/formatters/graphml/helpers.ts',
+    ),
+    'utf8',
+  );
+  assert.ok(helpers.includes("'nc:finishOutcome'"));
+  assert.ok(helpers.includes("'nc:sessionUUID'"));
+  const consts = readFileSync(
+    join(repoRoot, 'packages/shared-consts/src/export-process.ts'),
+    'utf8',
+  );
+  assert.match(
+    consts,
+    /ncFinishOutcomeProperty = 'networkCanvasFinishOutcome'/,
+  );
+  assert.match(consts, /ncSessionProperty = 'networkCanvasSessionID'/);
+});
+
+test('an encrypted answer exported as its placeholder passes', () => {
+  const files = [
+    {
+      name: 'a_attributeList_person.csv',
+      text: `id,name\r\n1,${ENCRYPTED_PLACEHOLDER}`,
+    },
+  ];
+  assert.deepEqual(encryptedValueProblems(files, 'Linda'), []);
+});
+
+test('an encrypted answer exported in plain text fails, wherever it appears', () => {
+  const files = [
+    {
+      name: 'a_attributeList_person.csv',
+      text: `id,name\r\n1,${ENCRYPTED_PLACEHOLDER}`,
+    },
+    { name: 'a.graphml', text: '<data key="name">Linda</data>' },
+  ];
+  assert.deepEqual(encryptedValueProblems(files, 'Linda'), [
+    'a.graphml holds "Linda" in plain text',
+  ]);
+});
+
+test('an export that dropped the encrypted attribute altogether proves nothing', () => {
+  const files = [{ name: 'a_attributeList_person.csv', text: 'id\r\n1' }];
+  const problems = encryptedValueProblems(files, 'Linda');
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /placeholder/);
+});
+
+// ---------------------------------------------------------------------------
+// What the schema 8 to 9 upgrade does to a deployment's data
+// ---------------------------------------------------------------------------
+
+// Two readings of one deployment, as migration-lane.mjs takes them either
+// side of the swap: a schema 8 protocol with an Ego Form and an Alter Form
+// behind introduction panels, then what schema 9 makes of it.
+const SKIP = { action: 'SKIP', filter: { join: 'AND', rules: [] } };
+const readings = () => {
+  const before = {
+    protocols: [
+      {
+        id: 'p1',
+        name: 'migration',
+        schemaVersion: 8,
+        stages: [
+          { id: 'welcome', type: 'Information' },
+          {
+            id: 'about-you',
+            type: 'EgoForm',
+            introductionPanel: {
+              title: 'About {you}',
+              text: 'First, a little about you.',
+            },
+            form: { fields: [] },
+          },
+          {
+            id: 'each-person',
+            type: 'AlterForm',
+            introductionPanel: {
+              title: 'About each person',
+              text: 'Now each person.',
+            },
+            skipLogic: SKIP,
+            form: { fields: [] },
+          },
+        ],
+      },
+    ],
+    interviews: [
+      {
+        id: 'parked',
+        protocolId: 'p1',
+        currentStep: 2,
+        finishTime: null,
+        finishStageId: null,
+        finishOutcome: null,
+        networkHash: 'h-parked',
+        stageMetadataKeys: ['2'],
+      },
+      {
+        id: 'finished',
+        protocolId: 'p1',
+        currentStep: 3,
+        finishTime: '2026-10-01 12:00:00',
+        finishStageId: null,
+        finishOutcome: null,
+        networkHash: 'h-finished',
+        stageMetadataKeys: [],
+      },
+    ],
+  };
+  const introduction = (id, title, text, skipLogic) => ({
+    id: `${id}-introduction`,
+    type: 'Information',
+    label: { en: title },
+    title: { en: title },
+    items: [{ id: 'introduction-text', type: 'text', content: { en: text } }],
+    ...(skipLogic ? { skipLogic } : {}),
+  });
+  const after = {
+    protocols: [
+      {
+        id: 'p1',
+        name: 'migration',
+        schemaVersion: MIGRATED_SCHEMA,
+        stages: [
+          { id: 'welcome', type: 'Information' },
+          introduction(
+            'about-you',
+            "About '{'you'}'",
+            'First, a little about you.',
+          ),
+          {
+            id: 'about-you',
+            type: 'EgoForm',
+            form: { title: { en: "About '{'you'}'" }, fields: [] },
+          },
+          introduction(
+            'each-person',
+            'About each person',
+            'Now each person.',
+            SKIP,
+          ),
+          {
+            id: 'each-person',
+            type: 'AlterForm',
+            skipLogic: SKIP,
+            form: { fields: [] },
+          },
+          { id: 'finish', type: 'FinishSession' },
+        ],
+      },
+    ],
+    interviews: [
+      { ...before.interviews[0], currentStep: 4, stageMetadataKeys: ['4'] },
+      { ...before.interviews[1], currentStep: 5 },
+    ],
+  };
+  return { before, after };
+};
+
+test('a step follows its stage by id, and the old finish screen becomes the finish stage', () => {
+  const { before, after } = readings();
+  const [b, a] = [before.protocols[0], after.protocols[0]];
+  assert.equal(expectedStep(b, a, 0), 0);
+  assert.equal(expectedStep(b, a, 1), 2);
+  assert.equal(expectedStep(b, a, 2), 4);
+  assert.equal(expectedStep(b, a, 3), 5);
+  assert.equal(expectedStep(b, a, 4), null);
+  assert.equal(expectedStep(b, a, -1), null);
+  assert.equal(expectedStep(b, a, 1.5), null);
+  const noFinish = { stages: a.stages.slice(0, -1) };
+  assert.equal(expectedStep(b, noFinish, 3), null);
+});
+
+test('stage records are re-keyed onto the stages they belong to', () => {
+  const { before, after } = readings();
+  const [b, a] = [before.protocols[0], after.protocols[0]];
+  assert.deepEqual(remapStageMetadata({ 1: 'x', 2: 'y' }, b, a), {
+    2: 'x',
+    4: 'y',
+  });
+  assert.equal(remapStageMetadata({ 9: 'x' }, b, a), null);
+  assert.equal(remapStageMetadata({ '01': 'x' }, b, a), null);
+});
+
+test('a correctly migrated deployment satisfies every migration oracle', () => {
+  const { before, after } = readings();
+  assert.deepEqual(protocolMigrationProblems(before, after), []);
+  assert.deepEqual(introductionPanelProblems(before, after), []);
+  assert.deepEqual(interviewMigrationProblems(before, after), []);
+});
+
+test('empty readings fail every migration oracle rather than passing', () => {
+  const empty = { protocols: [], interviews: [] };
+  assert.equal(protocolMigrationProblems(empty, empty).length, 1);
+  assert.equal(introductionPanelProblems(empty, empty).length, 1);
+  assert.equal(interviewMigrationProblems(empty, empty).length, 1);
+});
+
+test('a protocol left behind, still on schema 8 or without a finish stage fails', () => {
+  const { before, after } = readings();
+  const stale = structuredClone(after);
+  stale.protocols[0].schemaVersion = 8;
+  assert.match(
+    protocolMigrationProblems(before, stale).join('\n'),
+    /stored as schema 8, not 9/,
+  );
+  const unfinished = structuredClone(after);
+  unfinished.protocols[0].stages.pop();
+  assert.match(
+    protocolMigrationProblems(before, unfinished).join('\n'),
+    /does not end at a finish stage \(its last stage is AlterForm\)/,
+  );
+  assert.match(
+    protocolMigrationProblems(before, { protocols: [], interviews: [] }).join(
+      '\n',
+    ),
+    /no longer stored/,
+  );
+});
+
+test('an introduction panel that was kept, dropped or copied wrongly fails', () => {
+  const { before, after } = readings();
+  const cases = [
+    [
+      (a) => {
+        a.protocols[0].stages[4].introductionPanel = { title: 'x' };
+      },
+      /still has an introduction panel/,
+    ],
+    [
+      (a) => {
+        a.protocols[0].stages.splice(3, 1);
+      },
+      /"each-person" is not preceded by its Information stage/,
+    ],
+    [
+      (a) => {
+        a.protocols[0].stages[3].items[0].content = { en: 'Now.' };
+      },
+      /does not show the panel's text/,
+    ],
+    [
+      (a) => {
+        delete a.protocols[0].stages[3].skipLogic;
+      },
+      /does not take the stage's skip logic/,
+    ],
+    [
+      (a) => {
+        // The title copied without escaping: "{you}" would be read as an
+        // argument rather than shown.
+        a.protocols[0].stages[2].form.title = { en: 'About {you}' };
+      },
+      /the form is titled/,
+    ],
+    [
+      (a) => {
+        a.protocols[0].stages[1].title = { en: 'Introduction' };
+      },
+      /its Information stage is titled/,
+    ],
+  ];
+  for (const [breakIt, problem] of cases) {
+    const broken = structuredClone(after);
+    breakIt(broken);
+    assert.match(introductionPanelProblems(before, broken).join('\n'), problem);
+  }
+});
+
+test('an interview that moved, changed or gained an outcome in the upgrade fails', () => {
+  const { before, after } = readings();
+  const cases = [
+    // Resumed on the Information stage the migration put in front of it.
+    [
+      (a) => {
+        a.interviews[0].currentStep = 3;
+      },
+      /resumes at step 3, but the stage it was on \(step 2\) is now step 4/,
+    ],
+    // Left on the old finish screen's index rather than the finish stage.
+    [
+      (a) => {
+        a.interviews[1].currentStep = 3;
+      },
+      /resumes at step 3/,
+    ],
+    [
+      (a) => {
+        a.interviews[0].networkHash = 'other';
+      },
+      /answers changed in the upgrade/,
+    ],
+    [
+      (a) => {
+        a.interviews[0].stageMetadataKeys = ['2'];
+      },
+      /stage records are kept under \["2"\], not \["4"\]/,
+    ],
+    [
+      (a) => {
+        a.interviews[1].finishTime = null;
+      },
+      /finish time changed/,
+    ],
+    [
+      (a) => {
+        a.interviews[1].finishOutcome = 'completed';
+        a.interviews[1].finishStageId = 'finish';
+      },
+      /was given an outcome \("completed" at "finish"\)/,
+    ],
+    [
+      (a) => {
+        a.interviews.pop();
+      },
+      /interview finished is no longer stored/,
+    ],
+    [
+      (a) => {
+        a.interviews[0].protocolId = 'p2';
+      },
+      /moved to another protocol/,
+    ],
+  ];
+  for (const [breakIt, problem] of cases) {
+    const broken = structuredClone(after);
+    breakIt(broken);
+    assert.match(
+      interviewMigrationProblems(before, broken).join('\n'),
+      problem,
+    );
+  }
+});
+
+test('the panel oracle names what the migration itself writes', () => {
+  // Bound to the package: the ids and the escape the oracle expects are the
+  // ones the migration uses, so a rename there fails here rather than on a
+  // release run.
+  const migration = readFileSync(
+    join(repoRoot, 'packages/protocol-validation/src/schemas/9/migration.ts'),
+    'utf8',
+  );
+  assert.match(migration, /escapeMessageText/);
+  assert.match(migration, /-introduction/);
+  assert.match(migration, /'introduction-text'/);
+});
+
+// The export diff reconciles an interview's step and stage records only when
+// they moved exactly as the stage they point at did, and only when it is
+// given the readings that say how the stages moved.
+test('the export diff reconciles a step only as far as its stage moved', () => {
+  const { before, after } = readings();
+  const work = mkdtempSync(join(tmpdir(), 'fresco-diff-migration-'));
+  const write = (dir, name, value) => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, name), `${JSON.stringify(value)}\n`);
+  };
+  write(join(work, 'migration'), 'before.json', before);
+  write(join(work, 'migration'), 'after.json', after);
+  const interview = (currentStep, stageMetadata) => ({
+    data: { id: 'parked', protocolId: 'p1', currentStep, stageMetadata },
+  });
+  write(
+    join(work, 'baseline'),
+    'api-interview-parked.json',
+    interview(2, { 2: { seen: true } }),
+  );
+  let runs = 0;
+  const diff = (current, withReadings) => {
+    runs += 1;
+    const dir = join(work, `current-${runs}`);
+    write(dir, 'api-interview-parked.json', current);
+    const out = join(work, `summary-${runs}.json`);
+    execFileSync(
+      process.execPath,
+      [
+        join(scripts, 'diff-exports.mjs'),
+        join(work, 'baseline'),
+        dir,
+        '--work',
+        join(work, `work-${runs}`),
+        '--out',
+        out,
+        ...(withReadings ? ['--migration', join(work, 'migration')] : []),
+      ],
+      { stdio: 'pipe' },
+    );
+    return JSON.parse(readFileSync(out, 'utf8'));
+  };
+  const moved = interview(4, { 4: { seen: true } });
+  const reconciled = diff(moved, true);
+  assert.deepEqual(reconciled.identical, ['api-interview-parked.json']);
+  assert.match(JSON.stringify(reconciled.reconciled), /currentStep moved/);
+  assert.match(JSON.stringify(reconciled.reconciled), /stageMetadata re-keyed/);
+  // Without the readings the same move is a difference.
+  assert.deepEqual(
+    diff(moved, false).changed.map((c) => c.file),
+    ['api-interview-parked.json'],
+  );
+  // Resumed on the inserted Information stage: not where its stage went.
+  assert.deepEqual(
+    diff(interview(3, { 4: { seen: true } }), true).changed.map((c) => c.file),
+    ['api-interview-parked.json'],
+  );
 });

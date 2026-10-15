@@ -36,7 +36,17 @@
 // a difference. GraphML writes nc:finishOutcome only when there is an outcome,
 // so it has nothing to reconcile.
 //
-// Usage: node diff-exports.mjs <baselineDir> <currentDir> --work <dir> [--out <file>]
+// The upgrade also inserts stages — an Information stage in front of every
+// stage that had an introduction panel, and a finish stage at the end — and
+// moves every interview's resume position and stage records with the stages
+// they belong to. Given the migration lane's two readings of the database
+// (--migration <dir>, holding before.json and after.json from
+// migration-lane.mjs), an interview's currentStep and the keys of its
+// stageMetadata are reconciled where they moved exactly as the stage they
+// point at did, matched by stage id (migration-contract.mjs). One that moved
+// anywhere else stays a difference.
+//
+// Usage: node diff-exports.mjs <baselineDir> <currentDir> --work <dir> [--out <file>] [--migration <dir>]
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
@@ -51,6 +61,7 @@ import { join, relative, resolve } from 'node:path';
 
 import { escapeMessageText } from '../../../../packages/protocol-validation/src/localization/messageSyntax.ts';
 import { ncFinishOutcomeProperty } from '../../../../packages/shared-consts/src/export-process.ts';
+import { expectedStep, remapStageMetadata } from './migration-contract.mjs';
 
 const DIFF_EXCERPT_LINES = 60;
 
@@ -214,9 +225,12 @@ function undoLanguageMigration(baseline, current, key, tally) {
   const restored = {};
   for (const [field, value] of Object.entries(current)) {
     if (!(field in baseline)) {
+      // A type's derived label is wrapped as a message; a variable's stays
+      // plain text.
       if (
         field === 'label' &&
-        isMigratedMessage(value, labelFromName(baseline, key))
+        (isMigratedMessage(value, labelFromName(baseline, key)) ||
+          value === labelFromName(baseline, key))
       ) {
         tally.labelsAdded += 1;
         continue;
@@ -278,6 +292,65 @@ const finishFieldDifferences = (tally, noun) =>
   );
 
 /**
+ * The stage lists of the migration lane's two readings, by protocol id, or
+ * null when the diff was not given them.
+ */
+let migrationReadings = null;
+
+const protocolsOf = (reading) =>
+  new Map(
+    (Array.isArray(reading?.protocols) ? reading.protocols : []).map(
+      (protocol) => [protocol.id, protocol],
+    ),
+  );
+
+/**
+ * `item` with its currentStep and stageMetadata keys put back where they were
+ * before the upgrade, when they moved exactly as the stages they point at
+ * did. `protocolId` names the protocol the interview is recorded against.
+ */
+function withoutMovedStages(baselineItem, item, protocolId, tally) {
+  if (!migrationReadings || typeof protocolId !== 'string') return item;
+  const before = migrationReadings.before.get(protocolId);
+  const after = migrationReadings.after.get(protocolId);
+  if (!before || !after) return item;
+  const restored = { ...item };
+  if (
+    Number.isInteger(baselineItem.currentStep) &&
+    item.currentStep !== baselineItem.currentStep &&
+    item.currentStep === expectedStep(before, after, baselineItem.currentStep)
+  ) {
+    restored.currentStep = baselineItem.currentStep;
+    tally.currentStep = (tally.currentStep ?? 0) + 1;
+  }
+  if (
+    isRecord(baselineItem.stageMetadata) &&
+    isRecord(item.stageMetadata) &&
+    JSON.stringify(baselineItem.stageMetadata) !==
+      JSON.stringify(item.stageMetadata)
+  ) {
+    const moved = remapStageMetadata(baselineItem.stageMetadata, before, after);
+    if (
+      moved &&
+      JSON.stringify(normalizeJsonDeep(moved)) ===
+        JSON.stringify(normalizeJsonDeep(item.stageMetadata))
+    ) {
+      restored.stageMetadata = baselineItem.stageMetadata;
+      tally.stageMetadata = (tally.stageMetadata ?? 0) + 1;
+    }
+  }
+  return restored;
+}
+
+const stageMoveDifferences = (tally, noun) =>
+  [
+    tally.currentStep &&
+      `${noun(tally.currentStep)} currentStep moved with the stage it points at, as the upgrade inserted stages before it`,
+    tally.stageMetadata &&
+      `${noun(tally.stageMetadata)} stageMetadata re-keyed onto the stages' new positions`,
+  ].filter(Boolean);
+
+/**
  * The interview collection: each interview gains the finish fields as null.
  * Interviews are paired with the baseline's by id, so one that exists on only
  * one side is compared as it stands.
@@ -290,13 +363,18 @@ function reconcileInterviewCollection(baseline, current) {
   const data = current.data.map((item) => {
     const baselineItem = isRecord(item) ? baselineById.get(item.id) : undefined;
     return baselineItem
-      ? withoutAddedFinishFields(baselineItem, item, tally)
+      ? withoutMovedStages(
+          baselineItem,
+          withoutAddedFinishFields(baselineItem, item, tally),
+          item.protocolId,
+          tally,
+        )
       : item;
   });
-  const differences = finishFieldDifferences(
-    tally,
-    (count) => `${count} interview(s):`,
-  );
+  const differences = [
+    ...finishFieldDifferences(tally, (count) => `${count} interview(s):`),
+    ...stageMoveDifferences(tally, (count) => `${count} interview(s):`),
+  ];
   if (differences.length === 0) return null;
   return {
     text: `${JSON.stringify(normalizeJsonDeep({ ...current, data }), null, 2)}\n`,
@@ -318,12 +396,16 @@ function reconcileInterviewJson(baselineText, currentText) {
   if (!isRecord(baseline?.data) || !isRecord(current?.data)) return null;
   const differences = [];
   const finishTally = {};
-  const data = withoutAddedFinishFields(
+  const data = withoutMovedStages(
     baseline.data,
-    current.data,
+    withoutAddedFinishFields(baseline.data, current.data, finishTally),
+    current.data.protocolId,
     finishTally,
   );
-  differences.push(...finishFieldDifferences(finishTally, () => 'interview'));
+  differences.push(
+    ...finishFieldDifferences(finishTally, () => 'interview'),
+    ...stageMoveDifferences(finishTally, () => 'interview'),
+  );
   const upgrade = upgradedProtocol(baseline, current);
   if (upgrade) {
     const tally = { wrapped: 0, labelsAdded: 0, emptyLeftOut: 0 };
@@ -521,11 +603,18 @@ function main() {
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--out') outFile = argv[(i += 1)];
     else if (argv[i] === '--work') workRoot = argv[(i += 1)];
-    else positional.push(argv[i]);
+    else if (argv[i] === '--migration') {
+      const dir = resolve(argv[(i += 1)]);
+      const read = (name) => JSON.parse(readFileSync(join(dir, name), 'utf8'));
+      migrationReadings = {
+        before: protocolsOf(read('before.json')),
+        after: protocolsOf(read('after.json')),
+      };
+    } else positional.push(argv[i]);
   }
   if (positional.length !== 2 || !workRoot) {
     console.error(
-      'Usage: node diff-exports.mjs <baselineDir> <currentDir> --work <dir> [--out <file>]',
+      'Usage: node diff-exports.mjs <baselineDir> <currentDir> --work <dir> [--out <file>] [--migration <dir>]',
     );
     process.exit(1);
   }

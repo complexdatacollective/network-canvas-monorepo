@@ -34,6 +34,7 @@ import {
 } from './fresco-driver.mjs';
 import { readInterviewExport } from './interview-export-contract.mjs';
 import {
+  exportAllInterviews,
   nextStage as nextStageOf,
   openInterview,
   psqlFor,
@@ -211,9 +212,10 @@ try {
     }),
   );
 
-  // A video announces itself with the description the researcher wrote for it,
-  // and falls back to the file's own name only when nobody wrote one — a
-  // description of nothing but spaces being nobody having written one.
+  // A video announces itself with the description the researcher wrote for it.
+  // Without one — a description of nothing but spaces being nobody having
+  // written one — it is named by the interview's own word for a video player,
+  // never by the file's name, which is the researcher's filing label.
   checks.push(
     await attempt('interview-video-descriptions', async () => {
       const labels = await page.evaluate(() =>
@@ -222,18 +224,64 @@ try {
         ),
       );
       const described = 'A short clip of a duck, with sound';
-      const fileName = 'withSound.mp4';
+      const undescribed = 'Video';
       return {
         pass:
           labels.length === 2 &&
           labels[0] === described &&
-          labels[1] === fileName,
-        detail: `video labels: ${JSON.stringify(labels)} (expected the researcher's description, then the file's own name for the blank one)`,
+          labels[1] === undescribed,
+        detail: `video labels: ${JSON.stringify(labels)} (expected the researcher's description, then "${undescribed}" for the blank one)`,
       };
     }),
   );
 
   await nextStage();
+
+  // The fixture is schema 8, and its Ego Form opens with an introduction
+  // panel. Imported into a schema 9 deployment, the panel's text becomes an
+  // Information stage of its own just before the form, and its title the
+  // form's title — so the participant reads the text on a screen with no
+  // questions on it, and then a form headed by the panel's title.
+  checks.push(
+    await attempt(
+      'interview-introduction-panel-is-information-stage',
+      async () => {
+        const step = await settledStep();
+        const intro = await page
+          .getByText('Tell us about')
+          .first()
+          .isVisible()
+          .catch(() => false);
+        const emphasised = await page
+          .locator('main strong')
+          .allTextContents()
+          .catch(() => []);
+        const fields = await page.locator('[data-field-name]').count();
+        await nextStage();
+        const formStep = await settledStep();
+        const formTitle = await page
+          .getByRole('heading', { name: 'Introduction' })
+          .first()
+          .isVisible()
+          .catch(() => false);
+        const formField = await page
+          .locator('[data-field-name="ego_name"]')
+          .isVisible()
+          .catch(() => false);
+        return {
+          pass:
+            step === '1' &&
+            intro &&
+            emphasised.includes('you') &&
+            fields === 0 &&
+            formStep === '2' &&
+            formTitle &&
+            formField,
+          detail: `step ${step} showed the panel text: ${intro} (emphasis ${JSON.stringify(emphasised)}, ${fields} question(s)); step ${formStep} is the form headed "Introduction": ${formTitle && formField}`,
+        };
+      },
+    ),
+  );
 
   checks.push(
     await attempt('interview-ego-form-answered', async () => {
@@ -379,20 +427,26 @@ try {
               pass: false,
               detail: `finishTime recorded (${finishedAt}), but the finish was stored as outcome "${outcome}" at stage "${stageId}" rather than "completed" at the finish stage`,
             };
-          // Finishing leaves the participant on the interview's completed state
-          // rather than navigating anywhere.
-          const notice = page.getByText(
-            'This interview is finished, and its answers can no longer be changed.',
-          );
-          const shown = await notice
+          // Finishing leaves the participant on the interview's completed
+          // state: the finish stage's finished text, which for a protocol
+          // migrated from schema 8 is the text the interview always showed.
+          // The stage the database names has to be the one on screen, too.
+          const shown = await page
+            .getByRole('heading', { name: 'Interview Finished' })
             .waitFor({ state: 'visible', timeout: 15_000 })
             .then(() => true)
             .catch(() => false);
+          const thanked = await page
+            .getByText('Thank you for participating!')
+            .isVisible()
+            .catch(() => false);
+          const back = await page
+            .getByTestId('previous-button')
+            .isVisible()
+            .catch(() => false);
           return {
-            pass: shown,
-            detail: shown
-              ? `finishTime recorded: ${finishedAt}, outcome ${outcome} at stage ${stageId}; the completed state is shown`
-              : `finishTime recorded (${finishedAt}), but the completed state's notice was not shown on ${page.url()}`,
+            pass: shown && thanked && !back && stageId === 'finish',
+            detail: `finishTime recorded (${finishedAt}), outcome ${outcome} at stage ${stageId}; completed state shown: ${shown && thanked}; a way back into the interview offered: ${back}`,
           };
         }),
       );
@@ -402,26 +456,11 @@ try {
         await attempt('interview-export-carries-the-answers', async () => {
           await signIn(page, { lane: laneName });
           await page.waitForURL(/\/dashboard/, { timeout: 90_000 });
-          await page.goto(`${config.baseUrl}/dashboard/interviews`, {
-            waitUntil: 'networkidle',
-          });
-          // A menu, then the format dialog, then a build that streams for as
-          // long as the archive takes.
-          const download = page.waitForEvent('download', { timeout: 300_000 });
-          await page
-            .getByRole('button', { name: 'Export Interview Data' })
-            .click();
-          await page
-            .getByRole('menuitem', { name: /Export all interviews/ })
-            .click();
-          const dialog = page.getByRole('dialog');
-          await dialog.waitFor({ state: 'visible', timeout: 30_000 });
-          await dialog
-            .getByRole('button', { name: /Start export|Export/ })
-            .first()
-            .click();
-          const archivePath = join(outDir, 'interview-export.zip');
-          await (await download).saveAs(archivePath);
+          const archivePath = await exportAllInterviews(
+            page,
+            config.baseUrl,
+            join(outDir, 'interview-export.zip'),
+          );
           result.exportPath = archivePath;
           const found = await readInterviewExport(archivePath);
           const missing = expectedAnswers().filter(
