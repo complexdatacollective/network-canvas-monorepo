@@ -10,11 +10,7 @@ export const narrativePedigreeWords = ({ atRisk = false } = {}) => ({
     clearFocus: { en: 'Clear focus', es: 'Quitar el foco' },
   },
   conditionText: {
-    heading: { en: 'Conditions', es: 'Afecciones' },
-    instruction: {
-      en: 'Select a condition to see who it affects.',
-      es: 'Selecciona una afección para ver a quién afecta.',
-    },
+    allConditions: { en: 'All conditions', es: 'Todas las afecciones' },
     notation: {
       affected: { en: 'Has this condition', es: 'Tiene esta afección' },
       obligateAffected: {

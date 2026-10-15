@@ -179,8 +179,7 @@ const narrativePedigreeStageShape = baseStageSchema.extend({
     clearFocus: localizedString(nonBlankText(), 'plain'),
   }),
   conditionText: z.strictObject({
-    heading: localizedString(nonBlankText(), 'plain'),
-    instruction: localizedString(nonBlankText(), 'plain'),
+    allConditions: localizedString(nonBlankText(), 'plain'),
     notation: z.strictObject({
       affected: localizedString(nonBlankText(), 'plain'),
       obligateAffected: localizedString(nonBlankText(), 'plain'),

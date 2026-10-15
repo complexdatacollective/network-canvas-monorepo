@@ -31,10 +31,9 @@ const TEXT: readonly WordingSetting[] = [
   { path: 'keyHeading', label: messages.keyHeadingLabel },
   { path: 'saveSnapshot', label: messages.saveSnapshotButtonLabel },
   { path: 'tooltips.clearFocus', label: messages.clearFocusTooltipLabel },
-  { path: 'conditionText.heading', label: messages.conditionHeadingLabel },
   {
-    path: 'conditionText.instruction',
-    label: messages.conditionInstructionLabel,
+    path: 'conditionText.allConditions',
+    label: messages.allConditionsLabel,
   },
   {
     path: 'conditionText.notation.affected',

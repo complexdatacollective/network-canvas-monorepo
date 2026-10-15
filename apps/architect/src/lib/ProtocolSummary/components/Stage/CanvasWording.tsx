@@ -115,12 +115,8 @@ const WORDING: Partial<Record<string, WordingSpec>> = {
       label: narrativePedigreeMessages.clearFocusTooltipLabel,
     },
     {
-      path: 'conditionText.heading',
-      label: narrativePedigreeMessages.conditionHeadingLabel,
-    },
-    {
-      path: 'conditionText.instruction',
-      label: narrativePedigreeMessages.conditionInstructionLabel,
+      path: 'conditionText.allConditions',
+      label: narrativePedigreeMessages.allConditionsLabel,
     },
     {
       path: 'conditionText.notation.affected',

@@ -19,7 +19,11 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { type NodeShape } from '@codaco/fresco-ui/Node';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
-import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
+import {
+  SegmentedToolbar,
+  ToolbarButton,
+  ToolbarSeparator,
+} from '@codaco/fresco-ui/SegmentedToolbar';
 import {
   Tooltip,
   TooltipContent,
@@ -81,6 +85,9 @@ import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { affectedSet, getStatusLabel, type Status } from '../genetics/status';
 import { computeContributors } from '../highlight';
 import { messages } from '../messages';
+import ConditionControl, {
+  type ConditionControlWords,
+} from './ConditionControl';
 import ConditionPanel, { type ConditionPanelWords } from './ConditionPanel';
 import { Sticker } from './Sticker';
 
@@ -151,11 +158,12 @@ export default function NarrativePedigreeView({
   const atRiskCarrier = useOptionalLocalizedText(
     stage.conditionText.notation.atRiskCarrier,
   );
+  const conditionControlWords: ConditionControlWords = {
+    allConditions: resolve(stage.conditionText.allConditions).text,
+  };
+  const saveSnapshotText = resolve(stage.saveSnapshot).text;
   const conditionWords: ConditionPanelWords = {
     keyHeading: resolve(stage.keyHeading).text,
-    heading: resolve(stage.conditionText.heading).text,
-    instruction: resolve(stage.conditionText.instruction).text,
-    saveSnapshot: resolve(stage.saveSnapshot).text,
     notation: {
       affected: resolve(stage.conditionText.notation.affected).text,
       obligateAffected: resolve(stage.conditionText.notation.obligateAffected)
@@ -562,6 +570,16 @@ export default function NarrativePedigreeView({
     showWholeFamily({ animated: false });
   });
 
+  // The key opens beside the canvas while a condition is shown and closes
+  // with it, which resizes the canvas; the family is fitted to the new size.
+  const keyShown = selectedDisease !== undefined;
+  const keyWasShown = useRef(keyShown);
+  useEffect(() => {
+    if (keyWasShown.current === keyShown) return;
+    keyWasShown.current = keyShown;
+    showWholeFamily();
+  }, [keyShown, showWholeFamily]);
+
   // Roving focus: the family is a single tab stop, and the arrow keys move
   // between people by where they sit in the tree.
   const [lastFocusedId, setLastFocusedId] = useState<string | null>(null);
@@ -720,6 +738,96 @@ export default function NarrativePedigreeView({
   const highlightedNodeIds = focalId !== null ? highlight.nodes : undefined;
   const highlightedEdgeKeys = focalId !== null ? highlight.edges : undefined;
 
+  // Pedigree pane — beside the key, the flex (second) pane, rendered on the
+  // left: the Family Pedigree's canvas, with its toolbar below.
+  const pedigreePane = (
+    <div
+      data-narrative-pedigree-view
+      className="relative flex min-h-0 min-w-0 grow flex-col overflow-hidden"
+    >
+      <PedigreeViewport
+        viewportRef={viewportRef}
+        contentRef={contentRef}
+        panZoom={panZoom}
+        onKeyDown={handleCanvasKeyDown}
+        onClick={handleCanvasClick}
+      >
+        <PedigreeLayout
+          nodeIds={nodeIds}
+          links={layoutLinks}
+          nodeNames={nodeNames}
+          nodeShapes={nodeShapes}
+          edgeColor={edgeColor}
+          nodeWidth={nodeWidth}
+          nodeHeight={nodeHeight}
+          renderNode={renderPerson}
+          highlightedNodeIds={highlightedNodeIds}
+          highlightedEdgeKeys={highlightedEdgeKeys}
+        />
+      </PedigreeViewport>
+      <div
+        ref={toolbarRef}
+        className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
+        onKeyDown={(event) => zoomForKey(event, panZoom)}
+      >
+        {focalId !== null && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  size="sm"
+                  variant="default"
+                  aria-label={clearFocusText}
+                  icon={
+                    <Icon
+                      name="RotateCcw"
+                      aria-hidden="true"
+                      className="size-[1em]"
+                    />
+                  }
+                  className="pointer-events-auto"
+                  onClick={() => setFocalId(null)}
+                />
+              }
+            />
+            <TooltipContent>{clearFocusText}</TooltipContent>
+          </Tooltip>
+        )}
+        <SegmentedToolbar
+          aria-label={intl.formatMessage(messages.zoomControls)}
+          size="lg"
+          className="pointer-events-auto max-w-full min-w-0"
+        >
+          {diseases.length > 0 && (
+            <ConditionControl
+              words={conditionControlWords}
+              diseases={diseases}
+              selectedDiseaseId={selectedDiseaseId}
+              onSelect={(id) => {
+                setSelectedDiseaseId(id);
+                // Focusing requires a single shown condition; clear it on
+                // return to "all conditions" so a stale focal highlight never
+                // lingers.
+                if (id === null) {
+                  setFocalId(null);
+                }
+              }}
+            />
+          )}
+          {diseases.length > 0 && <ToolbarSeparator />}
+          {zoomButtons}
+          <ToolbarSeparator />
+          <ToolbarButton onClick={() => setIsCapturing(true)}>
+            <span className="flex items-center gap-2">
+              <Icon name="Camera" aria-hidden="true" className="size-[1em]" />
+              {saveSnapshotText}
+            </span>
+          </ToolbarButton>
+        </SegmentedToolbar>
+      </div>
+    </div>
+  );
+
   return (
     <div className="interface relative flex h-full w-full flex-col p-0">
       {measurementContainer}
@@ -768,100 +876,33 @@ export default function NarrativePedigreeView({
         />
       </div>
 
-      <ResizableFlexPanel
-        reverse
-        storageKey="np-key-panel"
-        defaultBasis={26}
-        min={16}
-        max={45}
-        minSizePx={300}
-        className="min-h-0 w-full grow"
-        aria-label={intl.formatMessage(messages.resizeKey)}
-      >
-        {/* Key panel — the resized (first) pane. In `reverse` mode it renders on
-            the right edge and holds a fixed pixel minimum (minSizePx), so it
-            never collapses; the pedigree pane gives up space instead, and the
-            family can be panned and zoomed within it. */}
-        <ConditionPanel
-          words={conditionWords}
-          diseases={diseases}
-          selectedDiseaseId={selectedDiseaseId}
-          onSelect={(id) => {
-            setSelectedDiseaseId(id);
-            // Focusing requires a single shown condition; clear it on return to
-            // "all conditions" so a stale focal highlight never lingers.
-            if (id === null) {
-              setFocalId(null);
-            }
-          }}
-          showAtRiskStatuses={showAtRiskStatuses}
-          onSnapshot={() => setIsCapturing(true)}
-        />
-
-        {/* Pedigree pane — the flex (second) pane, rendered on the left: the
-            Family Pedigree's canvas, with its zoom controls below. */}
-        <div
-          data-narrative-pedigree-view
-          className="relative flex min-h-0 min-w-0 grow flex-col overflow-hidden"
+      {selectedDisease ? (
+        <ResizableFlexPanel
+          reverse
+          storageKey="np-key-panel"
+          defaultBasis={26}
+          min={16}
+          max={45}
+          minSizePx={300}
+          className="min-h-0 w-full grow"
+          aria-label={intl.formatMessage(messages.resizeKey)}
         >
-          <PedigreeViewport
-            viewportRef={viewportRef}
-            contentRef={contentRef}
-            panZoom={panZoom}
-            onKeyDown={handleCanvasKeyDown}
-            onClick={handleCanvasClick}
-          >
-            <PedigreeLayout
-              nodeIds={nodeIds}
-              links={layoutLinks}
-              nodeNames={nodeNames}
-              nodeShapes={nodeShapes}
-              edgeColor={edgeColor}
-              nodeWidth={nodeWidth}
-              nodeHeight={nodeHeight}
-              renderNode={renderPerson}
-              highlightedNodeIds={highlightedNodeIds}
-              highlightedEdgeKeys={highlightedEdgeKeys}
-            />
-          </PedigreeViewport>
-          <div
-            ref={toolbarRef}
-            className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex flex-col items-center gap-2 px-4"
-            onKeyDown={(event) => zoomForKey(event, panZoom)}
-          >
-            {focalId !== null && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <IconButton
-                      size="sm"
-                      variant="default"
-                      aria-label={clearFocusText}
-                      icon={
-                        <Icon
-                          name="RotateCcw"
-                          aria-hidden="true"
-                          className="size-[1em]"
-                        />
-                      }
-                      className="pointer-events-auto"
-                      onClick={() => setFocalId(null)}
-                    />
-                  }
-                />
-                <TooltipContent>{clearFocusText}</TooltipContent>
-              </Tooltip>
-            )}
-            <SegmentedToolbar
-              aria-label={intl.formatMessage(messages.zoomControls)}
-              size="lg"
-              className="pointer-events-auto max-w-full min-w-0"
-            >
-              {zoomButtons}
-            </SegmentedToolbar>
-          </div>
-        </div>
-      </ResizableFlexPanel>
+          {/* Key panel — the resized (first) pane, shown only while a
+              condition is: it explains that condition's symbols. In `reverse`
+              mode it renders on the right edge and holds a fixed pixel minimum
+              (minSizePx), so it never collapses; the pedigree pane gives up
+              space instead, and the family can be panned and zoomed within
+              it. */}
+          <ConditionPanel
+            words={conditionWords}
+            glyphColour={selectedDisease.color}
+            showAtRiskStatuses={showAtRiskStatuses}
+          />
+          {pedigreePane}
+        </ResizableFlexPanel>
+      ) : (
+        <div className="flex min-h-0 w-full grow">{pedigreePane}</div>
+      )}
     </div>
   );
 }

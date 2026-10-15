@@ -512,8 +512,19 @@ export const FamilyHealthNarrative: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
-      await canvas.findByRole('option', { name: 'Reported cancer history' }),
+      await canvas.findByTestId('narrative-pedigree-condition'),
     );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole(
+        'menuitemradio',
+        {
+          name: 'Reported cancer history',
+        },
+      ),
+    );
+    await expect(
+      canvas.getByTestId('narrative-pedigree-condition'),
+    ).toHaveTextContent('Reported cancer history');
     await expect(
       await canvas.findByRole('button', { name: 'Focus on You' }),
     ).toBeVisible();
@@ -539,11 +550,20 @@ export const HereditaryCancerRisk: Story = {
   render: () => <CegrmWrapper seed={11} step={4} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const condition = await canvas.findByRole('option', {
-      name: 'Hereditary breast/ovarian cancer',
-    });
-    await userEvent.click(condition);
-    await expect(condition).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(
+      await canvas.findByTestId('narrative-pedigree-condition'),
+    );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole(
+        'menuitemradio',
+        {
+          name: 'Hereditary breast/ovarian cancer',
+        },
+      ),
+    );
+    await expect(
+      canvas.getByTestId('narrative-pedigree-condition'),
+    ).toHaveTextContent('Hereditary breast/ovarian cancer');
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Focus on You' }),
     );

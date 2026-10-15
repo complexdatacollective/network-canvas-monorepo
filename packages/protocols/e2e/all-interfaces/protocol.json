@@ -1156,11 +1156,8 @@
         }
       },
       "conditionText": {
-        "heading": {
-          "en-US": "Conditions"
-        },
-        "instruction": {
-          "en-US": "Select a condition to see who it affects."
+        "allConditions": {
+          "en-US": "All conditions"
         },
         "notation": {
           "affected": {

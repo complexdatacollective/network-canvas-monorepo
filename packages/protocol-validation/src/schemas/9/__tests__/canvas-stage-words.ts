@@ -22,8 +22,7 @@ export const narrativePedigreeWords = () => ({
     clearFocus: localized('Clear focus'),
   },
   conditionText: {
-    heading: localized('Conditions'),
-    instruction: localized('Select a condition to see who it affects.'),
+    allConditions: localized('All conditions'),
     notation: {
       affected: localized('Has this condition'),
       obligateAffected: localized('Will develop this condition'),

@@ -1,16 +1,5 @@
 - main:
   - text: Showing all conditions
-  - complementary "Condition key":
-    - heading "Key" [level=4]
-    - heading "Conditions" [level=4]
-    - paragraph: Select a condition to see who it affects.
-    - listbox "Conditions":
-      - option "Heart Disease"
-      - option "Rare Condition"
-    - separator
-    - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
-    - button "Save snapshot"
-  - slider "Resize the condition key panel"
   - region "Your family":
     - button "Focus on Mary" [disabled]: "Heart Disease: Status unknown and Rare Condition: Status unknown Mary"
     - button "Focus on Diane" [disabled]: "Heart Disease: Affected and Rare Condition: Status unknown Diane"
@@ -18,9 +7,13 @@
     - button "Focus on You" [disabled]: "Heart Disease: Affected and Rare Condition: Status unknown You"
     - button "Focus on Sam" [disabled]: "Heart Disease: Status unknown and Rare Condition: Status unknown Sam"
   - toolbar "Zoom controls":
+    - button "All conditions"
+    - separator
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
+    - separator
+    - button "Save snapshot"
   - navigation:
     - button "Settings"
     - button "Previous Step"

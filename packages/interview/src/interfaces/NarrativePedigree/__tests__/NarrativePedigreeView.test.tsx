@@ -379,10 +379,13 @@ function renderView(options: StoreOptions = {}, locale = 'en') {
   };
 }
 
-// Selects (or, when already selected, clears) a condition by clicking its row in
-// the key's "Conditions" list.
+// Opens the toolbar's condition picker and chooses a condition (or "All
+// conditions") from its menu.
 async function selectCondition(name: string) {
-  await userEvent.click(await screen.findByRole('option', { name }));
+  await userEvent.click(
+    await screen.findByTestId('narrative-pedigree-condition'),
+  );
+  await userEvent.click(await screen.findByRole('menuitemradio', { name }));
 }
 
 // The single-condition status symbol ([data-notation-status]) is queried inside
@@ -584,8 +587,8 @@ describe('NarrativePedigreeView — node mode selection', () => {
       screen.getByRole('button', { name: 'Centrar en Mother' }),
     ).toHaveAccessibleDescription('Condition <b>A</b>: Afectado/a');
     expect(
-      screen.getByRole('option', { name: 'Condition <b>A</b>' }),
-    ).toBeInTheDocument();
+      screen.getByTestId('narrative-pedigree-condition'),
+    ).toHaveTextContent('Condition <b>A</b>');
     expect(
       screen.getByRole('button', { name: 'Quitar el foco' }),
     ).toBeInTheDocument();
@@ -635,7 +638,7 @@ describe('NarrativePedigreeView — node mode selection', () => {
     );
   });
 
-  it('returns to plain nodes when the selected condition is clicked again', async () => {
+  it('returns to plain nodes when all conditions is chosen', async () => {
     renderView();
     await waitForFamily();
 
@@ -644,7 +647,7 @@ describe('NarrativePedigreeView — node mode selection', () => {
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
-    await selectCondition('Disease A');
+    await selectCondition('All conditions');
     await waitFor(() =>
       expect(viewMarker('[data-notation-status]')).toBeNull(),
     );
@@ -667,16 +670,26 @@ describe('NarrativePedigreeView — condition colours', () => {
     };
     renderView({ narrativeStage: stage });
 
-    const conditionButton = await screen.findByRole('option', {
+    await userEvent.click(
+      await screen.findByTestId('narrative-pedigree-condition'),
+    );
+    const conditionOption = await screen.findByRole('menuitemradio', {
       name: 'Disease A',
     });
     expect(
-      conditionButton.querySelector('span[aria-hidden][style]'),
+      conditionOption.querySelector('span[aria-hidden][style]'),
     ).toHaveStyle({
       backgroundColor: 'var(--node-3)',
     });
 
-    await userEvent.click(conditionButton);
+    await userEvent.click(conditionOption);
+    expect(
+      screen
+        .getByTestId('narrative-pedigree-condition')
+        .querySelector('span[aria-hidden][style]'),
+    ).toHaveStyle({
+      backgroundColor: 'var(--node-3)',
+    });
     await waitFor(() =>
       expect(
         member('mother').querySelector('[data-filled-shape]'),
@@ -960,6 +973,10 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
   it('drops the at-risk rows from the key panel when showAtRiskStatuses is off', async () => {
     renderCousinView(false);
     await waitForFamily();
+    await selectCondition('AR Disease');
+    expect(
+      await screen.findByRole('complementary', { name: 'Condition key' }),
+    ).toBeInTheDocument();
 
     expect(screen.queryByText('May develop this condition')).toBeNull();
     expect(screen.queryByText('May carry this condition')).toBeNull();
@@ -968,7 +985,15 @@ describe('NarrativePedigreeView — at-risk display gate', () => {
   it('lists the at-risk rows in the key panel when showAtRiskStatuses is on', async () => {
     renderCousinView(true);
     await waitForFamily();
+    // The key appears only once a condition is shown.
+    expect(
+      screen.queryByRole('complementary', { name: 'Condition key' }),
+    ).toBeNull();
 
+    await selectCondition('AR Disease');
+    expect(
+      await screen.findByRole('complementary', { name: 'Condition key' }),
+    ).toBeInTheDocument();
     expect(screen.getByText('May develop this condition')).toBeTruthy();
     expect(screen.getByText('May carry this condition')).toBeTruthy();
   });
@@ -1143,10 +1168,13 @@ describe('NarrativePedigreeView — localized condition labels', () => {
       </Provider>,
     );
 
-    const conditionButton = await screen.findByRole('option', {
+    await userEvent.click(
+      await screen.findByTestId('narrative-pedigree-condition'),
+    );
+    const conditionOption = await screen.findByRole('menuitemradio', {
       name: arabicLabel,
     });
-    expect(conditionButton.closest('[lang], [dir]')).toBeNull();
-    expect(conditionButton.querySelector('[lang], [dir]')).toBeNull();
+    expect(conditionOption.closest('[lang], [dir]')).toBeNull();
+    expect(conditionOption.querySelector('[lang], [dir]')).toBeNull();
   });
 });

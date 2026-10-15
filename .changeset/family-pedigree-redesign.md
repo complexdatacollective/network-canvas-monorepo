@@ -72,9 +72,9 @@ named from their sex assigned at birth.
 **The Narrative Pedigree** reads the redesigned Family Pedigree. It draws the
 same family on the same canvas, labels people as the Family Pedigree does,
 and can be operated from the keyboard: arrow keys move between people, Enter
-or Space focuses on someone, and + and − zoom. Its key lists the conditions
-as options to pick from, each beside its colour, and picking the chosen one
-again returns to all conditions. Sex-linked inheritance reads sex
+or Space focuses on someone, and + and − zoom. Its toolbar offers the
+conditions in a menu, each beside its colour, with a first choice that shows
+all conditions, and a key to the symbols appears once a condition is chosen. Sex-linked inheritance reads sex
 assigned at birth. An intersex person is treated as uncertain, and a parent
 whose sex isn't known is placed by the gamete their co-parent's sex implies.
 Arrow keys no longer start a drag of either pedigree's canvas.

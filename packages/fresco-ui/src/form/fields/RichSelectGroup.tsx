@@ -1,14 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
-import {
-  isValidElement,
-  type ReactElement,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { Label } from '../../Label';
 import {
@@ -172,12 +165,7 @@ const selectionSpring = {
 
 export type RichSelectOption = {
   value: string | number;
-  /**
-   * Text is rendered as markdown. An element is rendered as given, for a label
-   * that carries more than text (a colour swatch beside a name) or plain text
-   * that must not be read as markdown.
-   */
-  label: PresentationalText | ReactElement;
+  label: PresentationalText;
   description?: PresentationalText;
   disabled?: boolean;
   className?: string;
@@ -513,13 +501,9 @@ export default function RichSelectGroupField(props: RichSelectGroupProps) {
             className="m-0! justify-self-start"
             {...presentationalTextProps(option.label)}
           >
-            {isValidElement(option.label) ? (
-              option.label
-            ) : (
-              <RenderMarkdown>
-                {presentationalTextValue(option.label)}
-              </RenderMarkdown>
-            )}
+            <RenderMarkdown>
+              {presentationalTextValue(option.label)}
+            </RenderMarkdown>
           </Label>
           {option.description && (
             <span

@@ -328,8 +328,19 @@ export const KeyboardOperation: Story = {
     await waitFor(() => expect(scaleOf(content)).toBeGreaterThan(before));
 
     await userEvent.click(
-      canvas.getByRole('option', { name: 'Breast Cancer' }),
+      await canvas.findByTestId('narrative-pedigree-condition'),
     );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole(
+        'menuitemradio',
+        {
+          name: 'Breast Cancer',
+        },
+      ),
+    );
+    await expect(
+      canvas.getByTestId('narrative-pedigree-condition'),
+    ).toHaveTextContent('Breast Cancer');
     const youNow = canvas.getByRole('button', { name: 'Focus on You' });
     youNow.focus();
     await expect(youNow).toHaveFocus();

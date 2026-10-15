@@ -3231,6 +3231,10 @@
     "defaultMessage": "Has this condition",
     "description": "Label of the setting holding the key entry for a person who has the selected condition."
   },
+  "protocolBuilder.narrativePedigree.allConditionsLabel": {
+    "defaultMessage": "All conditions option",
+    "description": "Label of the setting holding the text of the choice, in the participant's condition picker, that shows every condition at once instead of one."
+  },
   "protocolBuilder.narrativePedigree.atRiskAffectedNotationLabel": {
     "defaultMessage": "May develop this condition",
     "description": "Label of the setting holding the key entry for a person who may develop the selected condition."
@@ -3282,14 +3286,6 @@
   "protocolBuilder.narrativePedigree.clearFocusTooltipLabel": {
     "defaultMessage": "Clear focus tooltip",
     "description": "Label of the setting holding the tooltip of the tool that clears the selected focal person."
-  },
-  "protocolBuilder.narrativePedigree.conditionHeadingLabel": {
-    "defaultMessage": "Conditions heading",
-    "description": "Label of the setting holding the heading of the panel that lists the conditions."
-  },
-  "protocolBuilder.narrativePedigree.conditionInstructionLabel": {
-    "defaultMessage": "Condition instruction",
-    "description": "Label of the setting holding the sentence asking the participant to choose a condition."
   },
   "protocolBuilder.narrativePedigree.diseaseColorHint": {
     "defaultMessage": "Select a color for this disease.",

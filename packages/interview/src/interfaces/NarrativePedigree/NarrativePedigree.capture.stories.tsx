@@ -41,10 +41,22 @@ export const Capture: StoryObj = {
   // and possibly affected relatives down to the participant's children.
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const condition = await canvas.findByRole('option', {
-      name: 'Haemophilia A',
-    });
-    await userEvent.click(condition);
-    await expect(condition).toHaveAttribute('aria-selected', 'true');
+    await userEvent.click(
+      await canvas.findByTestId('narrative-pedigree-condition'),
+    );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole(
+        'menuitemradio',
+        {
+          name: 'Haemophilia A',
+        },
+      ),
+    );
+    await expect(
+      canvas.getByTestId('narrative-pedigree-condition'),
+    ).toHaveTextContent('Haemophilia A');
+    // The picker's button takes focus back once a choice is made; the
+    // picture shouldn't carry its focus ring.
+    canvas.getByTestId('narrative-pedigree-condition').blur();
   },
 };

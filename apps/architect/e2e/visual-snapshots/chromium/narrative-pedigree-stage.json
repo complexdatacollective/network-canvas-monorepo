@@ -1,10 +1,7 @@
 {
   "conditionText": {
-    "heading": {
-      "en": "Conditions"
-    },
-    "instruction": {
-      "en": "Select a condition to see who it affects."
+    "allConditions": {
+      "en": "All conditions"
     },
     "notation": {
       "affected": {

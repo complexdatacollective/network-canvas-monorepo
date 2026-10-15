@@ -2257,13 +2257,9 @@
         }
       },
       "conditionText": {
-        "heading": {
-          "en-US": "Conditions",
-          "es": "Afecciones"
-        },
-        "instruction": {
-          "en-US": "Select a condition to see who it affects.",
-          "es": "Selecciona una afección para ver a quién afecta."
+        "allConditions": {
+          "en-US": "All conditions",
+          "es": "Todas las afecciones"
         },
         "notation": {
           "affected": {
