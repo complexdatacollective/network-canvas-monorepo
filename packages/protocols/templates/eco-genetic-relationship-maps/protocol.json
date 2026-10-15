@@ -964,6 +964,10 @@
         "sexAssignedAtBirthAttribute": "sexAssignedAtBirth",
         "egoAttribute": "is_ego"
       },
+      "dynamicValues": {
+        "nodeLabel": { "path": "node.$label" },
+        "isEgo": { "path": "node.is_ego", "cases": { "yes": true } }
+      },
       "edgeConfiguration": {
         "type": "family_relationship",
         "kindAttribute": "relationshipKind",
@@ -975,13 +979,13 @@
           {
             "variable": "living_status",
             "prompt": {
-              "en-US": "Is this person living or deceased?"
+              "en-US": "{isEgo, select, yes {Are you living or deceased?} other {Is {nodeLabel} living or deceased?}}"
             }
           },
           {
             "variable": "birth_year",
             "prompt": {
-              "en-US": "What year was this person born?"
+              "en-US": "{isEgo, select, yes {What year were you born?} other {What year was {nodeLabel} born?}}"
             },
             "hint": {
               "en-US": "Leave this blank if you do not know."
