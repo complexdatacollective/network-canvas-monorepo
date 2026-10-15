@@ -10,6 +10,7 @@ import {
   entityPrimaryKeyProperty,
 } from '@codaco/shared-consts';
 
+import { elapsedMs } from '../../analytics/elapsed';
 import { useTrack } from '../../analytics/useTrack';
 import Canvas from '../../canvas/Canvas';
 import StageBackground from '../../canvas/StageBackground';
@@ -157,7 +158,7 @@ const Sociogram = (stageProps: SociogramProps) => {
       track('simulation_finished', {
         duration_ms:
           simStartedAtRef.current !== null
-            ? Date.now() - simStartedAtRef.current
+            ? elapsedMs(simStartedAtRef.current)
             : 0,
         node_count: canvasNodes.length,
         edge_count: edges.length,

@@ -279,6 +279,12 @@
     },
     {
       "id": "ego-form",
+      "dynamicValues": {
+        "egoHivStatus": {
+          "path": "ego.ego_hiv_status",
+          "cases": { "positive": "positive" }
+        }
+      },
       "type": "EgoForm",
       "label": {
         "en-US": "About you"
@@ -302,7 +308,7 @@
           {
             "variable": "on_art",
             "prompt": {
-              "en-US": "If you are living with HIV, are you currently taking antiretroviral treatment?"
+              "en-US": "{egoHivStatus, select, missing {If you are living with HIV, are you currently taking antiretroviral treatment?} positive {Are you currently taking antiretroviral treatment?} other {If you are living with HIV, are you currently taking antiretroviral treatment?}}"
             },
             "hint": {
               "en-US": "Antiretroviral treatment is also known as ART."
@@ -423,6 +429,10 @@
     },
     {
       "id": "alter-form-partnership",
+      "dynamicValues": {
+        "nodeLabel": { "path": "node.$label" },
+        "partnershipStart": { "path": "node.partnership_start" }
+      },
       "type": "AlterForm",
       "label": { "en-US": "About each partnership" },
       "subject": {
@@ -434,33 +444,33 @@
           {
             "variable": "partner_type",
             "prompt": {
-              "en-US": "How would you describe your relationship with this person?"
+              "en-US": "How would you describe your relationship with {nodeLabel}?"
             }
           },
           {
             "variable": "partner_age",
-            "prompt": { "en-US": "About how old is this person, in years?" }
+            "prompt": { "en-US": "About how old is {nodeLabel}, in years?" }
           },
           {
             "variable": "partner_gender",
-            "prompt": { "en-US": "What is this person's gender?" }
+            "prompt": { "en-US": "What is {nodeLabel}'s gender?" }
           },
           {
             "variable": "partner_serostatus",
             "prompt": {
-              "en-US": "As far as you know, what is this person's HIV status?"
+              "en-US": "As far as you know, what is {nodeLabel}'s HIV status?"
             }
           },
           {
             "variable": "condom_use",
             "prompt": {
-              "en-US": "When you had sex with this person, how often did you use a condom?"
+              "en-US": "When you had sex with {nodeLabel}, how often did you use a condom?"
             }
           },
           {
             "variable": "shared_injection_equipment",
             "prompt": {
-              "en-US": "Did you ever share injection equipment with this person?"
+              "en-US": "Did you ever share injection equipment with {nodeLabel}?"
             },
             "hint": {
               "en-US": "Injection equipment includes needles, syringes, cookers, cotton, or water."
@@ -469,7 +479,7 @@
           {
             "variable": "partnership_start",
             "prompt": {
-              "en-US": "When did your sexual or injection relationship with this person begin?"
+              "en-US": "When did your sexual or injection relationship with {nodeLabel} begin?"
             },
             "hint": { "en-US": "An approximate month and year is fine." }
           },
@@ -477,7 +487,7 @@
             "variable": "partnership_end",
             "prompt": { "en-US": "When did it end?" },
             "hint": {
-              "en-US": "If it is still going on, you can leave this blank or choose this month."
+              "en-US": "{partnershipStart, select, missing {} other {It began in {partnershipStart}. }}If it is still going on, you can leave this blank or choose this month."
             }
           }
         ]

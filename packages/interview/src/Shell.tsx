@@ -62,6 +62,7 @@ import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
 import type { InterviewCatalog } from './i18n/catalog';
 import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
+import { interviewLocales } from './i18n/locales';
 import { navigationMessages } from './i18n/navigationMessages';
 import { CompletedInterview } from './interfaces/FinishSession/FinishSession';
 import { InterfaceTextOverlay } from './localization/InterfaceTextOverlay';
@@ -593,12 +594,15 @@ function LanguageUnavailableNotice() {
   return (
     <Toast.Provider>
       <LocaleLoadFailureToast
-        onFailure={(error, locale) =>
+        onFailure={(error, locale) => {
+          const failed = interviewLocales.find(
+            (entry) => entry.locale === locale,
+          );
           captureException(ensureError(error), {
             feature: 'locale-load',
-            locale,
-          })
-        }
+            ...(failed && { locale: failed.locale }),
+          });
+        }}
       />
       <Toaster />
     </Toast.Provider>
@@ -804,7 +808,7 @@ const Shell = ({
   const trackerRef = useRef<Tracker>(NULL_TRACKER);
   const trackerHolder: Tracker = useMemo(
     () => ({
-      track: (e, p) => trackerRef.current.track(e, p),
+      track: (e, ...p) => trackerRef.current.track(e, ...p),
       captureException: (err, p) => trackerRef.current.captureException(err, p),
     }),
     [],

@@ -10,6 +10,11 @@ import { InstallationIdentity } from './installation-identity.ts';
 
 export const POSTHOG_INGESTION_HOST = 'https://us.i.posthog.com';
 
+export const POSTHOG_LOCATION_OVERRIDES = {
+  $ip: '0.0.0.0',
+  $geoip_disable: true,
+} as const;
+
 const DELIVERY_TIMEOUT = '5 seconds';
 
 const INSTALLATION_GROUP = 'installation';
@@ -98,7 +103,7 @@ const wireEvent = (captured: AnalyticsCapture, installationId: string) => ({
         ? {}
         : { [TEAM_GROUP]: captured.groups.team }),
     },
-    $geoip_disable: true,
+    ...POSTHOG_LOCATION_OVERRIDES,
   },
 });
 

@@ -1,10 +1,14 @@
-import { Cause, Duration, Effect, Layer, Option, Record } from 'effect';
+import { Cause, Duration, Effect, Layer, Option, Record, Ref } from 'effect';
 import { HttpRouter, HttpServerResponse } from 'effect/http';
 import type { SqlClient } from 'effect/sql';
 
 import { deepestMessage, isMissingRole } from '../db/errors.ts';
 import { databaseAlive } from '../db/readiness.ts';
 import { checkSchemaEffect, type SchemaState } from '../db/schema.ts';
+import {
+  alertAnnotation,
+  OPERATOR_ALERTS,
+} from '../platform/operator-alerts.ts';
 import { WebSocketDrain } from '../platform/ws-drain.ts';
 import { HttpSpanLive } from './middleware/http-span.ts';
 
@@ -92,6 +96,31 @@ export const readiness: (checks: HealthChecks) => Effect.Effect<Readiness> =
     return { status, checks: results };
   });
 
+const failingChecks = (result: Readiness): string =>
+  Object.entries(result.checks)
+    .filter(([, verdict]) => verdict.startsWith('failed'))
+    .map(([name]) => name)
+    .sort()
+    .join(',');
+
+const recordTransition = Effect.fnUntraced(function* (
+  failing: Ref.Ref<boolean>,
+  result: Readiness,
+) {
+  const nowFailing = result.status === 'failing';
+  const wasFailing = yield* Ref.getAndSet(failing, nowFailing);
+  if (nowFailing === wasFailing) return;
+  if (nowFailing) {
+    return yield* Effect.logError('readiness is failing').pipe(
+      Effect.annotateLogs({
+        ...alertAnnotation(OPERATOR_ALERTS.readinessFailing),
+        failing_checks: failingChecks(result),
+      }),
+    );
+  }
+  yield* Effect.logInfo('readiness has recovered');
+});
+
 /**
  * A draining replica answers `/readyz` with 503 so a load balancer stops
  * routing to it. This is best-effort: the window lasts only as long as the
@@ -114,8 +143,10 @@ export function HealthRoutes(
         onNone: () => Effect.succeed(false),
         onSome: (service) => service.draining,
       });
+      const failing = yield* Ref.make(false);
       const verdict = Effect.gen(function* () {
         const result = yield* readiness(checks);
+        yield* recordTransition(failing, result);
         if (!(yield* draining)) return result;
         return {
           status: 'failing',

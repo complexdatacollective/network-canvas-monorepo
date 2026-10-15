@@ -118,7 +118,7 @@ describe.skipIf(!testDb)(
       );
 
     it.live(
-      'logs one warning, without a stack, and `/readyz` names the state rather than the driver’s error',
+      'logs one error, without a stack, and `/readyz` names the state rather than the driver’s error',
       () => {
         const logs = capture();
         return Effect.scoped(
@@ -160,15 +160,19 @@ describe.skipIf(!testDb)(
             });
             assert.notInclude(JSON.stringify(result), TENANT_ROLES.app);
 
-            const warnings = logs.lines.filter((line) => line.level === 'Warn');
+            const errors = logs.lines.filter((line) => line.level === 'Error');
             assert.strictEqual(
-              warnings.length,
+              errors.length,
               1,
-              `expected the one waiting warning, got:\n${warnings.map((line) => line.text.slice(0, 120)).join('\n')}`,
+              `expected the one waiting error, got:\n${errors.map((line) => line.text.slice(0, 120)).join('\n')}`,
             );
             assert.include(
-              warnings[0]?.text,
+              errors[0]?.text,
               'Waiting for it, with no restart needed',
+            );
+            assert.deepStrictEqual(
+              logs.lines.filter((line) => line.level === 'Warn'),
+              [],
             );
             assert.isAbove(logs.lines.length, 0);
             for (const line of logs.lines) {

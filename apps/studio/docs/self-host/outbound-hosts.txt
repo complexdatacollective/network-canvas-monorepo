@@ -9,6 +9,11 @@
 #
 # The SMTP host is deliberately absent: it is whatever `SMTP_URL` names, so
 # there is no fixed value to allow. #1897's job points it at a local sink.
+#
+# The OpenTelemetry endpoint is absent for the same reason: when
+# OTEL_EXPORTER_OTLP_ENDPOINT is set, its host is contacted instead of
+# us.i.posthog.com for logs, traces, metrics and error reports, and it is
+# whatever that variable names. #1897's job leaves it unset.
 
 # Container images.
 ghcr.io

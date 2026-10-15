@@ -543,14 +543,19 @@ describe('mapInterviewForViewer', () => {
     },
   );
 
-  it('keeps only the ego values the finish stage it ended on shows in its text', () => {
-    const finishStage = (id: string, bindings: Record<string, string>) => ({
+  it('keeps only the ego values the finished screen it ended on shows', () => {
+    const finishStage = (
+      id: string,
+      bindings: Record<string, string>,
+      finishedText: string,
+    ) => ({
       id,
       type: 'FinishSession',
       mode: 'confirmation',
       label: { en: 'Finish' },
-      content: { en: '# Thank you\n\nDone.' },
-      finishedContent: { en: '# Interview Finished' },
+      // The closing screen, which the completed state never shows.
+      content: { en: '# Thank you, {closing}' },
+      finishedContent: { en: finishedText, fr: '# Merci {town}' },
       finishLabel: { en: 'Finish' },
       finishConfirmation: { en: 'Finish this interview?' },
       finishFailed: { en: 'The interview could not be finished.' },
@@ -565,13 +570,18 @@ describe('mapInterviewForViewer', () => {
       protocol: {
         ...finished.protocol,
         stages: [
-          finishStage('finish-completed', {
-            age: 'ego.age',
-            town: 'ego.town',
-            node: 'node.name',
-            inherited: 'ego.constructor',
-          }),
-          finishStage('finish-other', { other: 'ego.other' }),
+          finishStage(
+            'finish-completed',
+            {
+              age: 'ego.age',
+              town: 'ego.town',
+              closing: 'ego.closing',
+              node: 'node.name',
+              inherited: 'ego.constructor',
+            },
+            '# Done at {age}, {node} {inherited}',
+          ),
+          finishStage('finish-other', { other: 'ego.other' }, '# Done {other}'),
         ],
       },
       network: {
@@ -579,7 +589,12 @@ describe('mapInterviewForViewer', () => {
         edges: [],
         ego: {
           _uid: 'ego-1',
-          attributes: { age: 'EGO_ANSWER', other: 'OTHER_EGO_ANSWER' },
+          attributes: {
+            age: 'EGO_ANSWER',
+            town: 'TOWN_ANSWER',
+            closing: 'CLOSING_ANSWER',
+            other: 'OTHER_EGO_ANSWER',
+          },
         },
       },
     };
@@ -590,12 +605,15 @@ describe('mapInterviewForViewer', () => {
     });
 
     expect(result.view).toBe('completed');
+    // A value any language's version of the finished screen shows is kept.
     expect(result.payload.session.network.ego.attributes).toStrictEqual({
       age: 'EGO_ANSWER',
+      town: 'TOWN_ANSWER',
     });
     const sent = JSON.stringify(SuperJSON.serialize(result));
     for (const marker of [
       ...ANSWER_MARKERS.filter((m) => m !== 'EGO_ANSWER'),
+      'CLOSING_ANSWER',
       'OTHER_EGO_ANSWER',
     ]) {
       expect(sent).not.toContain(marker);

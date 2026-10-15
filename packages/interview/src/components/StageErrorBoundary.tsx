@@ -7,6 +7,7 @@ import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import type { CaptureException } from '../analytics/tracker';
 import { useCaptureException } from '../analytics/useTrack';
 import useOnline from '../hooks/useOnline';
 import { runtimeMessages as messages } from '../i18n/runtimeMessages';
@@ -26,7 +27,7 @@ function formatDebugInfo(error: Error): string {
 
 type StageErrorBoundaryInnerProps = {
   children: ReactNode;
-  captureException: (error: Error, props?: Record<string, unknown>) => void;
+  captureException: CaptureException;
   isOffline: boolean;
 };
 

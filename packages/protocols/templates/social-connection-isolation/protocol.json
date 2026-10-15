@@ -481,6 +481,7 @@
     },
     {
       "id": "ordinal-bin-closeness",
+      "behaviours": { "interactionMode": "select" },
       "type": "OrdinalBin",
       "label": { "en-US": "How Close Are They?" },
       "subject": {
@@ -491,7 +492,7 @@
         {
           "id": "closeness-bands",
           "text": {
-            "en-US": "Drag each person into the band that best describes how close you feel to them, from **not close** to **very close**."
+            "en-US": "For each person, tap the band that best describes how close you feel to them, from **not close** to **very close**."
           },
           "variable": "closeness",
           "color": "ord-color-seq-1"
@@ -519,6 +520,7 @@
     },
     {
       "id": "alter-form-attributes",
+      "dynamicValues": { "nodeLabel": { "path": "node.$label" } },
       "type": "AlterForm",
       "label": { "en-US": "About Each Person" },
       "subject": {
@@ -529,33 +531,33 @@
         "fields": [
           {
             "variable": "relationship",
-            "prompt": { "en-US": "What is this person's relationship to you?" }
+            "prompt": { "en-US": "What is {nodeLabel}'s relationship to you?" }
           },
           {
             "variable": "age_band",
-            "prompt": { "en-US": "Roughly how old is this person?" }
+            "prompt": { "en-US": "Roughly how old is {nodeLabel}?" }
           },
           {
             "variable": "contact_frequency",
             "prompt": {
-              "en-US": "How often are you in contact with this person?"
+              "en-US": "How often are you in contact with {nodeLabel}?"
             }
           },
           {
             "variable": "contact_mode",
             "prompt": {
-              "en-US": "How do you usually keep in contact with this person?"
+              "en-US": "How do you usually keep in contact with {nodeLabel}?"
             },
             "hint": { "en-US": "Select all that apply." }
           },
           {
             "variable": "lives_with",
-            "prompt": { "en-US": "Does this person live with you?" }
+            "prompt": { "en-US": "Does {nodeLabel} live with you?" }
           },
           {
             "variable": "support_emotional",
             "prompt": {
-              "en-US": "Could you turn to this person for **emotional** support?"
+              "en-US": "Could you turn to {nodeLabel} for **emotional** support?"
             },
             "hint": {
               "en-US": "Such as talking things over when you feel down."
@@ -564,7 +566,7 @@
           {
             "variable": "support_practical",
             "prompt": {
-              "en-US": "Could you turn to this person for **practical** support?"
+              "en-US": "Could you turn to {nodeLabel} for **practical** support?"
             },
             "hint": { "en-US": "Such as help with tasks, transport, or money." }
           }
@@ -573,6 +575,7 @@
     },
     {
       "id": "dyad-census-knows",
+      "dynamicValues": { "focalLabel": { "path": "one_to_many.focal.$label" } },
       "type": "OneToManyDyadCensus",
       "label": { "en-US": "Who Knows Whom" },
       "interviewScript": "For each person in turn, the respondent taps everyone else that person knows. This systematically elicits the complete set of alter-alter ties — more reliably than a free-draw sociogram, which tends to under-capture them — giving the density and fragmentation measures that isolation analysis depends on. It is also lower-burden than an all-pairs dyad census.",
@@ -587,7 +590,7 @@
         {
           "id": "p-knows",
           "text": {
-            "en-US": "Here is one of the people you named. Tap **everyone else who knows this person**, as far as you are aware."
+            "en-US": "Tap **everyone else who knows {focalLabel}**, as far as you are aware."
           },
           "createEdge": "knows"
         }

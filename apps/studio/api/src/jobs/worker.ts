@@ -32,6 +32,10 @@ import {
 import { MaintenanceDatabase } from '../db/client.ts';
 import { MaintenanceScope, Transaction } from '../db/tenant.ts';
 import { ErrorReporter } from '../platform/error-reporter.ts';
+import {
+  alertAnnotation,
+  OPERATOR_ALERTS,
+} from '../platform/operator-alerts.ts';
 import { JobClock, type JobClockShape } from './clock.ts';
 import {
   causeError,
@@ -589,7 +593,13 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         }
         yield* Effect.logError(
           'job carries a payload this queue does not declare',
-        ).pipe(Effect.annotateLogs({ queue, job_id: jobId }));
+        ).pipe(
+          Effect.annotateLogs({
+            queue,
+            job_id: jobId,
+            ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
+          }),
+        );
         yield* reportFailure(exit.cause, queue, jobId);
         const dead: JobStep = { _tag: 'dead', jobId };
         return dead;
@@ -610,20 +620,24 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
         yield* leaseLost(queue, jobId, claimed.attempts);
         return idle;
       }
-      yield* (
-        step._tag === 'retrying'
-          ? Effect.logWarning('job attempt failed; retrying', exit.cause)
-          : Effect.logError(
-              'job attempt failed and will not be retried',
-              exit.cause,
-            )
-      ).pipe(
-        Effect.annotateLogs({
-          queue,
-          job_id: jobId,
-          attempt: claimed.attempts,
-        }),
-      );
+      const attemptAnnotations = {
+        queue,
+        job_id: jobId,
+        attempt: claimed.attempts,
+      };
+      yield* step._tag === 'retrying'
+        ? Effect.logWarning('job attempt failed; retrying', exit.cause).pipe(
+            Effect.annotateLogs(attemptAnnotations),
+          )
+        : Effect.logError(
+            'job attempt failed and will not be retried',
+            exit.cause,
+          ).pipe(
+            Effect.annotateLogs({
+              ...attemptAnnotations,
+              ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
+            }),
+          );
       if (step._tag !== 'retrying') {
         yield* reportFailure(exit.cause, queue, jobId);
       }
@@ -679,6 +693,15 @@ const make = Effect.fnUntraced(function* (config: JobWorkerConfig) {
     for (;;) {
       const { reaped, ended } = yield* MaintenanceScope.open(onePass);
       for (const { queue, jobId } of ended) {
+        yield* Effect.logError(
+          'job lease expired on its last attempt; it will not be retried',
+        ).pipe(
+          Effect.annotateLogs({
+            queue,
+            job_id: jobId,
+            ...alertAnnotation(OPERATOR_ALERTS.jobDeadLettered),
+          }),
+        );
         yield* reportLeaseExpired(queue, jobId);
       }
       settled += reaped;

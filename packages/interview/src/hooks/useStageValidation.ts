@@ -4,6 +4,7 @@ import { type ReactNode, useContext, useEffect, useRef } from 'react';
 
 import type { ToastVariant } from '@codaco/fresco-ui/Toast';
 
+import type { StageValidationKind } from '../analytics/events';
 import { useTrack } from '../analytics/useTrack';
 import { StageMetadataContext } from '../contexts/StageMetadataContext';
 import { useInterviewToast } from '../toast/useInterviewToast';
@@ -17,7 +18,7 @@ type StageConstraint = {
    * Examples: "min_nodes", "required_field", "passphrase_mismatch".
    * Never a rendered message.
    */
-  kind?: string;
+  kind?: StageValidationKind;
   toast: {
     description: string | ReactNode;
     variant: ToastVariant;
