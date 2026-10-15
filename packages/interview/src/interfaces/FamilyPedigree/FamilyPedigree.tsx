@@ -715,30 +715,26 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   // Some of the family always stays in the clear part of the canvas.
   const panZoom = usePanZoom({ viewportRef, contentRef, clearInsets });
   // The whole family, clear of the prompt above and the toolbar below, with
-  // room around it for anyone's add menu while one can be shown (not on a
-  // nomination prompt). Each prompt opens on it only as far out as names
-  // stay legible: when the whole family would be drawn smaller, it opens on
-  // the participant at the least legible zoom instead, and the participant
-  // shows the rest by panning, zooming or showing the whole family.
-  const nominating = nomination !== undefined;
+  // room around it for anyone's add menu. The room is left on every prompt,
+  // including those where no menu is shown, so the same family is framed
+  // the same way whichever prompt it is shown on. It is shown only as far
+  // out as names stay legible: when the whole family would be drawn
+  // smaller, the participant is shown in the middle at the least legible
+  // zoom instead, and the rest is reached by panning or zooming out.
   const showWholeFamily = useCallback(
-    ({
-      animated = true,
-      legible = false,
-    }: { animated?: boolean; legible?: boolean } = {}) => {
+    ({ animated = true }: { animated?: boolean } = {}) => {
       const layout = contentRef.current?.firstElementChild;
       if (!(layout instanceof HTMLElement)) return;
       const ego = family.egoId ? nodeRefs.current.get(family.egoId) : undefined;
       panZoom.fitToView(layout, clearInsets(), {
         animated,
-        reach: nominating ? undefined : addMenuReach(menuReachRef.current),
-        least:
-          legible && ego
-            ? { scale: legibleScale(nodeRefs.current.values()), around: ego }
-            : undefined,
+        reach: addMenuReach(menuReachRef.current),
+        least: ego
+          ? { scale: legibleScale(nodeRefs.current.values()), around: ego }
+          : undefined,
       });
     },
-    [panZoom, clearInsets, nominating, family.egoId],
+    [panZoom, clearInsets, family.egoId],
   );
   const zoomButtons = usePedigreeZoomButtons({
     panZoom,
@@ -1040,17 +1036,16 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     component: <Node size="sm" />,
   });
 
-  // Each prompt opens on the whole family, once the participant's symbol is
-  // laid out. The stage's first appears there at once; moving between
-  // prompts glides to it.
-  const fittedForPrompt = useRef<string | null>(null);
+  // The stage opens as Show the whole family frames it, once the
+  // participant's symbol is laid out. Moving between prompts
+  // leaves the view where the participant put it.
+  const fitted = useRef(false);
   useEffect(() => {
-    if (fittedForPrompt.current === prompt.id) return;
+    if (fitted.current) return;
     if (!family.egoId || nodeWidth === 0) return;
     if (!nodeRefs.current.has(family.egoId)) return;
-    const first = fittedForPrompt.current === null;
-    fittedForPrompt.current = prompt.id;
-    showWholeFamily({ animated: !first, legible: true });
+    fitted.current = true;
+    showWholeFamily({ animated: false });
   });
 
   // Adding someone can move everyone else in the layout. The person in
@@ -1323,6 +1318,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
 
   // Reaching a nomination prompt puts away whatever was under way in
   // building the family.
+  const nominating = nomination !== undefined;
   useEffect(() => {
     if (!nominating) return;
     setDraft(null);

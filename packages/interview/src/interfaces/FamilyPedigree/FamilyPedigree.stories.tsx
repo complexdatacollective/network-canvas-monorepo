@@ -653,21 +653,22 @@ export const NominatingConditions: Story = {
     const father = () => canvas.getByRole('button', { name: /^Father/ });
     const mother = () => canvas.getByRole('button', { name: /^Mother/ });
     await canvas.findByText(PROMPT);
-    // Each new prompt brings back the whole family, wherever it was left.
+    // The view stays where it was left as the prompt changes, and Show the
+    // whole family brings everyone back.
     const viewport = canvas.getByTestId('pedigree-canvas');
+    const someoneOutOfView = () =>
+      canvas
+        .getAllByTestId('pedigree-person')
+        .some((person) => !isInView(person, viewport.getBoundingClientRect()));
     dragFamilyRight(viewport);
-    await waitFor(() =>
-      expect(
-        canvas
-          .getAllByTestId('pedigree-person')
-          .some(
-            (person) => !isInView(person, viewport.getBoundingClientRect()),
-          ),
-      ).toBe(true),
-    );
+    await waitFor(() => expect(someoneOutOfView()).toBe(true));
     await userEvent.click(canvas.getByTestId('next-button'));
 
     await canvas.findByText(HEART_PROMPT);
+    await expect(someoneOutOfView()).toBe(true);
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Show the whole family' }),
+    );
     await waitFor(() => expectWholeFamilyInView(canvasElement));
     // Selecting is all there is: no tools, and no details panel.
     await waitFor(() =>
