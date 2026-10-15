@@ -100,7 +100,7 @@
   "interview.narrativePedigree.showingCondition": "{condition} wird angezeigt",
   "interview.narrativePedigree.showingFocused": "{condition} wird angezeigt. Fokus auf {name}. Angezeigt wird, wer zur Vererbung bei dieser Person beiträgt.",
   "interview.narrativePedigree.statusUnknown": "Status unbekannt",
-  "interview.narrativePedigree.zoomControls": "Zoom-Steuerung",
+  "interview.narrativePedigree.toolbarLabel": "Steuerung für den Stammbaum",
   "interview.navigation.currentTextSize": "Aktuelle Textgröße: {size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "Text verkleinern",
   "interview.navigation.exitFailed": "Ihre Antworten konnten nicht gespeichert werden, daher wurde das Interview nicht geschlossen. Bitte versuchen Sie es erneut. Wenn das Problem weiterhin besteht, wenden Sie sich an die Studienleitung.",

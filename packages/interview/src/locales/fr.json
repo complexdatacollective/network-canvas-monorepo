@@ -100,7 +100,7 @@
   "interview.narrativePedigree.showingCondition": "Affichage : {condition}",
   "interview.narrativePedigree.showingFocused": "Affichage : {condition}. Vue centrée sur {name}. Les personnes dont {name} a hérité sont mises en évidence.",
   "interview.narrativePedigree.statusUnknown": "Statut inconnu",
-  "interview.narrativePedigree.zoomControls": "Commandes de zoom",
+  "interview.narrativePedigree.toolbarLabel": "Commandes de l’arbre généalogique",
   "interview.navigation.currentTextSize": "Taille actuelle du texte : {size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "Réduire la taille du texte",
   "interview.navigation.exitFailed": "Vos réponses n’ont pas pu être enregistrées, l’entretien n’a donc pas été fermé. Veuillez réessayer. Si le problème persiste, contactez l’équipe responsable de l’étude.",

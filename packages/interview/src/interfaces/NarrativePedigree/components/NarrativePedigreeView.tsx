@@ -572,12 +572,22 @@ export default function NarrativePedigreeView({
 
   // The key opens beside the canvas while a condition is shown and closes
   // with it, which resizes the canvas; the family is fitted to the new size.
+  // The canvas and its toolbar are mounted afresh in the new layout, so the
+  // condition picker loses focus along with its menu; it gets it back.
   const keyShown = selectedDisease !== undefined;
   const keyWasShown = useRef(keyShown);
   useEffect(() => {
     if (keyWasShown.current === keyShown) return;
     keyWasShown.current = keyShown;
     showWholeFamily();
+    const focused = document.activeElement;
+    if (focused === null || focused === document.body) {
+      toolbarRef.current
+        ?.querySelector<HTMLElement>(
+          '[data-testid="narrative-pedigree-condition"]',
+        )
+        ?.focus();
+    }
   }, [keyShown, showWholeFamily]);
 
   // Roving focus: the family is a single tab stop, and the arrow keys move
@@ -794,7 +804,7 @@ export default function NarrativePedigreeView({
           </Tooltip>
         )}
         <SegmentedToolbar
-          aria-label={intl.formatMessage(messages.zoomControls)}
+          aria-label={intl.formatMessage(messages.toolbarLabel)}
           size="lg"
           className="pointer-events-auto max-w-full min-w-0"
         >

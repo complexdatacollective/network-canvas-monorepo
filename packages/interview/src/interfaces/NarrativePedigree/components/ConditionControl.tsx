@@ -33,9 +33,10 @@ type ConditionControlProps = {
   ref?: Ref<HTMLButtonElement>;
 };
 
-// The choice that shows every condition. A disease id is a protocol
-// identifier, which never starts with a NUL character.
-const ALL_CONDITIONS = '\u0000all';
+// Radio values: the choice of no condition, and each condition by its id
+// behind a prefix, so no id can be mistaken for the choice of none.
+const NO_CONDITION = 'none';
+const conditionValue = (id: string) => `condition:${id}`;
 
 function ColourDot({ color }: { color: string }) {
   return (
@@ -81,17 +82,30 @@ function ConditionControl({
       }
       contentProps={{
         side: 'top',
-        className: 'max-h-(--available-height) max-w-[calc(100vw-2rem)]',
+        // A long list scrolls within the space above the toolbar.
+        className:
+          'flex max-h-(--available-height) max-w-[calc(100vw-2rem)] flex-col',
       }}
     >
       <DropdownMenuRadioGroup
-        value={selectedDiseaseId ?? ALL_CONDITIONS}
+        className="-m-1 min-h-0 overflow-y-auto p-1"
+        value={
+          selectedDiseaseId === null
+            ? NO_CONDITION
+            : conditionValue(selectedDiseaseId)
+        }
         onValueChange={(chosen: unknown) => {
-          if (typeof chosen !== 'string') return;
-          onSelect(chosen === ALL_CONDITIONS ? null : chosen);
+          if (chosen === NO_CONDITION) {
+            onSelect(null);
+            return;
+          }
+          const disease = diseases.find(
+            (candidate) => conditionValue(candidate.id) === chosen,
+          );
+          if (disease) onSelect(disease.id);
         }}
       >
-        <DropdownMenuRadioItem value={ALL_CONDITIONS} closeOnClick>
+        <DropdownMenuRadioItem value={NO_CONDITION} closeOnClick>
           <span className="flex items-center gap-2">
             <span aria-hidden className="size-4 shrink-0" />
             {words.selectCondition}
@@ -100,7 +114,7 @@ function ConditionControl({
         {diseases.map((disease) => (
           <DropdownMenuRadioItem
             key={disease.id}
-            value={disease.id}
+            value={conditionValue(disease.id)}
             closeOnClick
           >
             <span className="flex items-center gap-2">

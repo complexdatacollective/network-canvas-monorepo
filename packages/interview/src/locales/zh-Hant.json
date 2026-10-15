@@ -100,7 +100,7 @@
   "interview.narrativePedigree.showingCondition": "目前顯示 {condition}",
   "interview.narrativePedigree.showingFocused": "目前顯示 {condition}。聚焦於 {name}。顯示此人的遺傳來自哪些人。",
   "interview.narrativePedigree.statusUnknown": "狀態不明",
-  "interview.narrativePedigree.zoomControls": "縮放控制項",
+  "interview.narrativePedigree.toolbarLabel": "家譜圖控制項",
   "interview.navigation.currentTextSize": "目前文字大小：{size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "縮小文字",
   "interview.navigation.exitFailed": "無法儲存你的回答，因此訪談尚未關閉。請再試一次。如果問題持續發生，請聯絡研究團隊。",
