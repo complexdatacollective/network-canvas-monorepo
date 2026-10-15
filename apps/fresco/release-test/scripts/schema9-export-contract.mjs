@@ -178,14 +178,23 @@ function nodeRecords(files, nodeId) {
 }
 
 /**
- * The formats an export holds no record of a node in. The lanes export both,
- * so a node missing from either is an answer lost in that format, which a
- * record in the other cannot stand in for.
+ * What is wrong with how many records of a node each format holds. The lanes
+ * export both formats, so a node missing from either is an answer lost in
+ * that format, which a record in the other cannot stand in for; and a node
+ * recorded twice in one format is a duplicated person in the researcher's
+ * data, even when both copies agree.
  */
-const formatsWithout = (records) =>
-  ['csv', 'graphml'].filter(
-    (format) => !records.some((record) => record.format === format),
-  );
+const recordCountProblems = (records, nodeId) =>
+  ['csv', 'graphml'].flatMap((format) => {
+    const count = records.filter((record) => record.format === format).length;
+    if (count === 0)
+      return [`no exported ${format} file has a record for node ${nodeId}`];
+    if (count > 1)
+      return [
+        `the exported ${format} files hold ${count} records for node ${nodeId}`,
+      ];
+    return [];
+  });
 
 /**
  * Whether one person's encrypted answer stayed out of the export: no file may
@@ -205,10 +214,7 @@ export function encryptedValueProblems(
     .filter(({ text }) => text.includes(plaintext))
     .map(({ name }) => `${name} holds "${plaintext}" in plain text`);
   const records = nodeRecords(files, nodeId);
-  for (const format of formatsWithout(records))
-    problems.push(
-      `no exported ${format} file has a record for node ${nodeId}, so its encrypted answer was not exported in that format`,
-    );
+  problems.push(...recordCountProblems(records, nodeId));
   for (const { name, fields } of records)
     if (fields.get(attribute) !== ENCRYPTED_PLACEHOLDER)
       problems.push(
@@ -231,10 +237,7 @@ export function nodeAnswerProblems(files, expected) {
   const problems = [];
   for (const [nodeId, answers] of Object.entries(expected)) {
     const records = nodeRecords(files, nodeId);
-    for (const format of formatsWithout(records))
-      problems.push(
-        `no exported ${format} file has a record for node ${nodeId}`,
-      );
+    problems.push(...recordCountProblems(records, nodeId));
     for (const { name, fields } of records)
       for (const [attribute, value] of Object.entries(answers))
         if (fields.get(attribute) !== value)

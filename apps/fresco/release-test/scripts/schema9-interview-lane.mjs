@@ -667,6 +667,7 @@ try {
           TRANSCRIPT.people.map((name) => [
             ids[name] ?? `(no stored node named ${name})`,
             {
+              name,
               hours: TRANSCRIPT.hours[name],
               ...Object.fromEntries(
                 Object.values(TRANSCRIPT.context).map(({ value }) => [
@@ -695,7 +696,7 @@ try {
                 ]
                   .filter(Boolean)
                   .join('; ')
-              : `every answer both walks gave is in the export (${exported.entries} file(s)), and each person's hours and context are in that person's own CSV and GraphML records`,
+              : `every answer both walks gave is in the export (${exported.entries} file(s)), and each person's name, hours and context are in that person's one CSV row and one GraphML node`,
       };
     }),
   );

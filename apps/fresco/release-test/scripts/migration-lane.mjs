@@ -540,7 +540,7 @@ async function resume() {
         (answer) => !exported.text.includes(answer),
       );
       // "3" and "7" would be found anywhere in the archive's text, so each
-      // person's hours are read from that person's own records.
+      // person's name and hours are read from that person's own records.
       const ids = nodeIdsBy(psql, seeded.interviewId, {
         type: 'person',
         attribute: 'name',
@@ -550,7 +550,7 @@ async function resume() {
         Object.fromEntries(
           TRANSCRIPT.people.map((name) => [
             ids[name] ?? `(no stored node named ${name})`,
-            { hours: TRANSCRIPT.hours[name] },
+            { name, hours: TRANSCRIPT.hours[name] },
           ]),
         ),
       );

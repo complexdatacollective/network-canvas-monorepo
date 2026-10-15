@@ -975,6 +975,7 @@ try {
           uid: n._uid,
           isEgo: n.attributes?.is_ego === true,
           name: n.attributes?.fm_name ?? null,
+          gender: n.attributes?.genderIdentity ?? null,
           sex: n.attributes?.sexAssignedAtBirth ?? null,
         })),
       edges: (s.network.edges ?? []).map((e) => ({
@@ -1042,6 +1043,7 @@ try {
   const familyExact =
     family.length === 3 &&
     Boolean(famEgo && linda && standIn) &&
+    JSON.stringify(linda.gender) === '["woman"]' &&
     JSON.stringify(linda.sex) === '["female"]' &&
     JSON.stringify(standIn.sex) === '["male"]' &&
     familyEdges.length === 2 &&

@@ -877,7 +877,7 @@ test('a node the GraphML leaves out is not covered by its CSV row', () => {
     'no exported graphml file has a record for node ana',
   ]);
   assert.deepEqual(encryptedValueProblems(files, 'Linda', 'ana'), [
-    'no exported graphml file has a record for node ana, so its encrypted answer was not exported in that format',
+    'no exported graphml file has a record for node ana',
   ]);
 });
 
@@ -915,8 +915,32 @@ test('an export that dropped the encrypted attribute altogether proves nothing',
   const files = [{ name: 'a_attributeList_person.csv', text: 'id\r\n1' }];
   const problems = encryptedValueProblems(files, 'Linda', 'linda');
   assert.deepEqual(problems, [
-    'no exported csv file has a record for node linda, so its encrypted answer was not exported in that format',
-    'no exported graphml file has a record for node linda, so its encrypted answer was not exported in that format',
+    'no exported csv file has a record for node linda',
+    'no exported graphml file has a record for node linda',
+  ]);
+});
+
+test('a node exported twice in one format is a duplicated person, even when the copies agree', () => {
+  const files = [
+    {
+      name: 'a_attributeList_Person.csv',
+      text: personCsv([
+        ['ana', ENCRYPTED_PLACEHOLDER, '5', 'true', 'false'],
+        ['ana', ENCRYPTED_PLACEHOLDER, '5', 'true', 'false'],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([
+        ['ana', ENCRYPTED_PLACEHOLDER, '5', 'true', 'false'],
+      ]),
+    },
+  ];
+  assert.deepEqual(nodeAnswerProblems(files, { ana: { hours: '5' } }), [
+    'the exported csv files hold 2 records for node ana',
+  ]);
+  assert.deepEqual(encryptedValueProblems(files, 'Linda', 'ana'), [
+    'the exported csv files hold 2 records for node ana',
   ]);
 });
 
