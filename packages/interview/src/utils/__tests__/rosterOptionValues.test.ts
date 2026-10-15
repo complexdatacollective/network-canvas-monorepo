@@ -82,6 +82,46 @@ describe('roster option values renamed by the schema 9 upgrade', () => {
     ).toEqual({ likes: ['1'] });
   });
 
+  it('reads a boolean cell as the text option a legacy boolean became', () => {
+    const legacyBoolean = {
+      node: {
+        person: {
+          ...codebook.node!.person!,
+          variables: {
+            likes: {
+              name: 'likes',
+              type: 'categorical',
+              options: [
+                { label: 'Yes', value: 'true' },
+                { label: 'No', value: 'false' },
+              ],
+            },
+            rank: {
+              name: 'rank',
+              type: 'ordinal',
+              options: [{ label: 'Yes', value: 'true' }],
+            },
+          },
+        },
+      },
+    } as unknown as Codebook;
+    const read = (file: string, attributes: Record<string, unknown>) =>
+      getVariableTypeReplacements(
+        file,
+        [row(attributes)],
+        legacyBoolean,
+        subject,
+      )[0]![entityAttributesProperty];
+
+    expect(read('roster.csv', { likes: '[true,false]', rank: 'true' })).toEqual(
+      { likes: ['true', 'false'], rank: 'true' },
+    );
+    expect(read('roster.json', { likes: [true], rank: true })).toEqual({
+      likes: ['true'],
+      rank: 'true',
+    });
+  });
+
   it('reads an ordinal cell spelled as the option was before', () => {
     expect(typed({ rank: ' Low\t' })).toEqual({ rank: 'Low' });
   });
