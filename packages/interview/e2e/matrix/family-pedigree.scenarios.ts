@@ -102,10 +102,8 @@ function scaffold(options: PedigreeOptions = {}) {
   }
   if (options.before === 'anonymisation') {
     synth.addStage('Anonymisation', {
-      explanationText: {
-        title: 'Protect your data',
-        body: 'This study encrypts the names of your family.',
-      },
+      explanationText:
+        '# Protect your data\n\nThis study encrypts the names of your family.',
     });
   }
   const people = synth.addNodeType({ name: 'Person' });

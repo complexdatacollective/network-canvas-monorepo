@@ -561,12 +561,7 @@
       },
       "type": "Anonymisation",
       "explanationText": {
-        "title": {
-          "en-US": "Keep the people you mention private"
-        },
-        "body": {
-          "en-US": "Choose a passphrase that only you know. The **names** you give and any **private notes** you write will be encrypted with it before they are saved, so that nobody can read them in the study's data — including the researchers.\n\nThey will still appear on screen during this interview, so anyone who can see the screen can read them.\n\nPick something you will remember: you will need the same passphrase if you return to this interview, and it **cannot be recovered** if it is forgotten. Please do not tell it to the interviewer."
-        }
+        "en-US": "# Keep the people you mention private\n\nChoose a passphrase that only you know. The **names** you give and any **private notes** you write will be encrypted with it before they are saved, so that nobody can read them in the study's data — including the researchers.\n\nThey will still appear on screen during this interview, so anyone who can see the screen can read them.\n\nPick something you will remember: you will need the same passphrase if you return to this interview, and it **cannot be recovered** if it is forgotten. Please do not tell it to the interviewer."
       },
       "validation": {
         "minLength": 8,

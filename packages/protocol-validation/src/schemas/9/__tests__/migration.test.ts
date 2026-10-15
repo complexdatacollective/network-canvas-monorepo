@@ -193,10 +193,7 @@ const protocolWithPassphraseRules = (
         id: 'anonymisation',
         type: 'Anonymisation' as const,
         label: localized('Anonymisation'),
-        explanationText: {
-          title: localized('Privacy'),
-          body: localized('Choose a passphrase.'),
-        },
+        explanationText: localized('# Privacy\n\nChoose a passphrase.'),
         ...(validation !== undefined && { validation }),
       },
     ],
@@ -900,6 +897,72 @@ const BLANK_TEXT = [
   ['a non-breaking space', '\u00a0'],
   ['a zero-width space', '\u200b'],
 ] as const;
+
+// The base protocol's Anonymisation stage with the given explanation, as
+// schema 8 stored it, migrated to schema 9.
+const migratedExplanation = (explanationText: Record<string, unknown>) => {
+  const document = schema8WithPassphraseRules(undefined);
+  const stage = document.stages.find(({ id }) => id === 'anonymisation');
+  if (!stage) throw new Error('No Anonymisation stage');
+  stage.explanationText = explanationText;
+  return migrateProtocol(document, 9).stages.find(
+    ({ id }) => id === 'anonymisation',
+  );
+};
+
+describe('Migrating an Anonymisation title from schema 8 to 9', () => {
+  it('writes the title as a heading above the text', () => {
+    expect(
+      migratedExplanation({ title: 'Privacy', body: 'Choose a passphrase.' }),
+    ).toMatchObject({
+      explanationText: localized('# Privacy\n\nChoose a passphrase.'),
+    });
+  });
+
+  it('escapes the title so it shows as written', () => {
+    expect(
+      migratedExplanation({
+        title: '*New* rules [v2] #',
+        body: 'Choose a passphrase.',
+      }),
+    ).toMatchObject({
+      explanationText: localized(
+        '# \\*New\\* rules \\[v2\\] \\#\n\nChoose a passphrase.',
+      ),
+    });
+  });
+
+  it('puts a title written on several lines on one line', () => {
+    expect(
+      migratedExplanation({
+        title: ' Keep this\nprivate ',
+        body: 'Choose a passphrase.',
+      }),
+    ).toMatchObject({
+      explanationText: localized('# Keep this private\n\nChoose a passphrase.'),
+    });
+  });
+
+  it.each(BLANK_TEXT)('leaves out a title of %s', (_, title) => {
+    expect(
+      migratedExplanation({ title, body: 'Choose a passphrase.' }),
+    ).toMatchObject({ explanationText: localized('Choose a passphrase.') });
+  });
+
+  it('keeps the title alone when the text shows nothing', () => {
+    expect(migratedExplanation({ title: 'Privacy', body: ' ' })).toMatchObject({
+      explanationText: localized('# Privacy'),
+    });
+  });
+
+  it('says so in the migration notes', () => {
+    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
+
+    expect(note?.notes).toContain(
+      "An Anonymisation stage's title is now the first line of its explanation, written as a heading",
+    );
+  });
+});
 
 type Schema8Stage = Record<string, unknown>;
 

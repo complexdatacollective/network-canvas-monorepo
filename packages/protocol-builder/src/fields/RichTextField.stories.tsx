@@ -10,8 +10,8 @@ import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
 import { LocalizedRichTextField } from './LocalizedStringField.tsx';
 
-/** The prose an anonymisation stage shows before asking for a passphrase. */
-const EXPLANATION_FIELD = 'explanationText.body';
+/** What an anonymisation stage tells the participant before asking for a passphrase. */
+const EXPLANATION_FIELD = 'explanationText';
 const EXPLANATION_LABEL = 'Explanation';
 
 /** The instruction a family pedigree shows while the family is being drawn. */
@@ -57,20 +57,9 @@ const censusPrompt = (
 
 /** A stage whose participant-facing prose has not been written yet. */
 const nothingWritten = (host: InMemoryHost) => {
-  const { document } = host.store.read(ANONYMISATION);
-  const explanationText = document.explanationText;
-  // Read defensively rather than trusted: the host holds whatever the protocol
-  // last sent, which is a document a collaborator can leave half-written.
-  const title: unknown =
-    typeof explanationText === 'object' && explanationText !== null
-      ? Reflect.get(explanationText, 'title')
-      : undefined;
-  host.store.applyAsCollaborator(ANONYMISATION, {
-    ...document,
-    // The heading beside it is kept: this story is about the box that is
-    // empty, and a stage missing both halves is a different state.
-    explanationText: { title },
-  });
+  const { explanationText: _written, ...rest } =
+    host.store.read(ANONYMISATION).document;
+  host.store.applyAsCollaborator(ANONYMISATION, rest);
 };
 
 const meta = {

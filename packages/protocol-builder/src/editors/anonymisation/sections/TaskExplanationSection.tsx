@@ -1,31 +1,20 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
-import { localizedMaxLength } from '../../../fields/localizedMaxLength.ts';
-import {
-  LocalizedInputField,
-  LocalizedRichTextField,
-} from '../../../fields/LocalizedStringField.tsx';
+import { LocalizedRichTextField } from '../../../fields/LocalizedStringField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { anonymisationMessages } from './anonymisationMessages.ts';
 
-/** The schema keeps this stage's explanation in one object with two parts. */
-const TITLE_FIELD = 'explanationText.title';
-const BODY_FIELD = 'explanationText.body';
-
-/** A heading, so it has to read as one rather than as a paragraph. */
-const TITLE_LIMIT = 50;
+const EXPLANATION_FIELD = 'explanationText';
 
 /**
- * What the participant is told before they choose a passphrase.
+ * What the participant is told before they choose a passphrase, heading
+ * included: the text is markdown, and its first line is usually a heading.
  *
  * Not a capability: an anonymisation stage without an explanation is a stage
  * that asks a participant for a secret and tells them nothing about it, and
- * the protocol schema refuses it. Both halves are owned together because they
- * are the two parts of one schema object — a section owning part of a nested
- * value has to render all of it, or the part it does not render is written
- * back over on save.
+ * the protocol schema refuses it.
  */
 export default function TaskExplanationSection() {
   const intl = useAppIntl();
@@ -37,24 +26,11 @@ export default function TaskExplanationSection() {
         anonymisationMessages.explanationDescription,
       )}
     >
-      <Field<typeof LocalizedInputField>
-        name={TITLE_FIELD}
-        component={LocalizedInputField}
-        dynamicValues="stageText"
-        label={intl.formatMessage(
-          anonymisationMessages.explanationHeadingLabel,
-        )}
-        placeholder={intl.formatMessage(
-          anonymisationMessages.explanationHeadingPlaceholder,
-        )}
-        required={REQUIRED}
-        custom={localizedMaxLength(TITLE_LIMIT, intl)}
-      />
       <Field<typeof LocalizedRichTextField>
-        name={BODY_FIELD}
+        name={EXPLANATION_FIELD}
         component={LocalizedRichTextField}
         dynamicValues="stageText"
-        label={intl.formatMessage(anonymisationMessages.explanationBodyLabel)}
+        label={intl.formatMessage(anonymisationMessages.explanationTextLabel)}
         placeholder={intl.formatMessage(
           anonymisationMessages.explanationBodyPlaceholder,
         )}

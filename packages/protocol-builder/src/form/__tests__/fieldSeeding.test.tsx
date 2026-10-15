@@ -21,25 +21,32 @@ const renderField = (fields: SectionDoc, children: ReactNode) =>
 
 describe('a field seeded from the document the form was handed', () => {
   it('seeds a field from the path it is really registered under', async () => {
-    renderField(
-      {
-        label: en('Welcome'),
-        explanationText: { title: en('Before we start') },
+    renderStageEditor({
+      stage: {
+        type: 'EgoForm',
+        fields: {
+          label: en('About you'),
+          form: { title: en('Before we start') },
+        },
       },
-      <FieldNamespace prefix="explanationText">
-        <Field
-          name="title"
-          label="Panel title"
-          component={LocalizedInputField}
-        />
-      </FieldNamespace>,
-    );
+      sections: (
+        <BuilderSection title="Introduction">
+          <FieldNamespace prefix="form">
+            <Field
+              name="title"
+              label="Form title"
+              component={LocalizedInputField}
+            />
+          </FieldNamespace>
+        </BuilderSection>
+      ),
+    });
 
     // The namespace is part of where this field lives. Reading the opened
     // document from the root instead would start the control blank and then
     // save that blank over what the author wrote.
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Panel title' })).toHaveValue(
+      expect(screen.getByRole('textbox', { name: 'Form title' })).toHaveValue(
         'Before we start',
       ),
     );

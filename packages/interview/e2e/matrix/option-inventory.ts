@@ -133,8 +133,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   Anonymisation: [
     'dynamicValues',
-    'explanationText.title',
-    'explanationText.body',
+    'explanationText',
     'label',
     'interviewScript',
     'skipLogic',

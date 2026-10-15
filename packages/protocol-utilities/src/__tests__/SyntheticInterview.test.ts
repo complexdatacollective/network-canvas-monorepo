@@ -944,23 +944,16 @@ describe('SyntheticInterview', () => {
     it('creates subjectless stage with explanationText', () => {
       const si = new SyntheticInterview();
       si.addStage('Anonymisation', {
-        explanationText: {
-          title: 'Protect Your Data',
-          body: 'Enter a passphrase.',
-        },
+        explanationText: '# Protect Your Data\n\nEnter a passphrase.',
       });
 
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       expect(stageConfig.type).toBe('Anonymisation');
       expect(stageConfig.subject).toBeUndefined();
-
-      const explText = stageConfig.explanationText as {
-        title: LocalizedString;
-        body: LocalizedString;
-      };
-      expect(explText.title).toEqual({ 'en-US': 'Protect Your Data' });
-      expect(explText.body).toEqual({ 'en-US': 'Enter a passphrase.' });
+      expect(stageConfig.explanationText).toEqual({
+        'en-US': '# Protect Your Data\n\nEnter a passphrase.',
+      });
     });
 
     it('provides default explanationText', () => {
@@ -969,12 +962,8 @@ describe('SyntheticInterview', () => {
 
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
-      const explText = stageConfig.explanationText as {
-        title: LocalizedString;
-        body: LocalizedString;
-      };
-      expect(explText.title).toBeTruthy();
-      expect(explText.body).toBeTruthy();
+      const explText = stageConfig.explanationText as LocalizedString;
+      expect(explText['en-US']).toMatch(/^# .+\n\n.+/);
     });
   });
 

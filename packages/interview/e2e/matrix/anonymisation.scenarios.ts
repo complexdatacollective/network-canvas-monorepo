@@ -81,8 +81,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
     {
       id: 'markdown-explanation-happy-path',
       covers: [
-        'explanationText.title',
-        'explanationText.body',
+        'explanationText',
         'label',
         'interviewScript',
         'passwordField.showToggle',
@@ -99,10 +98,8 @@ export const anonymisationScenarios: InterfaceScenarios = {
         synth.addStage('Anonymisation', {
           label: 'Internal Label',
           interviewScript: 'Say hello',
-          explanationText: {
-            title: 'Data Anonymisation',
-            body: '## How It Works\n\nUse a **memorable** phrase.\n\n1. Choose one\n2. Confirm it',
-          },
+          explanationText:
+            '# Data Anonymisation\n\n## How It Works\n\nUse a **memorable** phrase.\n\n1. Choose one\n2. Confirm it',
         });
         synth.addInformationStage({
           title: 'Thank you',
@@ -115,11 +112,12 @@ export const anonymisationScenarios: InterfaceScenarios = {
         const anon = new AnonymisationFixture(page);
         await interview.next(); // dismiss the intro Information stage
 
+        // The text's leading `#` heading is the stage title.
         await expect(
-          page.getByRole('heading', { name: 'Data Anonymisation' }),
+          page.getByRole('heading', { name: 'Data Anonymisation', level: 1 }),
         ).toBeVisible();
         await expect(
-          page.getByRole('heading', { name: 'How It Works' }),
+          page.getByRole('heading', { name: 'How It Works', level: 2 }),
         ).toBeVisible();
         await expect(
           page.locator('strong', { hasText: 'memorable' }),
@@ -163,10 +161,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
           text: 'Before the anonymisation stage.',
         });
         synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'Create a passphrase.',
-          },
+          explanationText: '# Protect your data\n\nCreate a passphrase.',
         });
         synth.addInformationStage({
           title: 'Complete',
@@ -250,10 +245,8 @@ export const anonymisationScenarios: InterfaceScenarios = {
         // The minimum is below the default of 8 on purpose: a researcher's own
         // minimum replaces the default, even when it is lower.
         synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'Create a passphrase between 4 and 20 characters.',
-          },
+          explanationText:
+            '# Protect your data\n\nCreate a passphrase between 4 and 20 characters.',
           validation: { minLength: 4, maxLength: 20 },
         });
         synth.addInformationStage({
@@ -318,10 +311,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
           text: 'Before the anonymisation stage.',
         });
         synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'Create a passphrase.',
-          },
+          explanationText: '# Protect your data\n\nCreate a passphrase.',
         });
         synth.addInformationStage({
           title: 'Complete',
@@ -387,10 +377,8 @@ export const anonymisationScenarios: InterfaceScenarios = {
           encrypted: true,
         });
         synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'This study encrypts participant names.',
-          },
+          explanationText:
+            '# Protect your data\n\nThis study encrypts participant names.',
         });
         const generator = synth.addStage('NameGeneratorQuickAdd', {
           subject: { entity: 'node', type: person.id },
@@ -448,10 +436,8 @@ export const anonymisationScenarios: InterfaceScenarios = {
           encrypted: true,
         });
         synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'This study encrypts participant names.',
-          },
+          explanationText:
+            '# Protect your data\n\nThis study encrypts participant names.',
         });
         const generator = synth.addStage('NameGeneratorQuickAdd', {
           subject: { entity: 'node', type: person.id },
@@ -557,10 +543,8 @@ export const anonymisationScenarios: InterfaceScenarios = {
           encrypted: true,
         });
         synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'This study encrypts participant names.',
-          },
+          explanationText:
+            '# Protect your data\n\nThis study encrypts participant names.',
         });
         const generator = synth.addStage('NameGeneratorQuickAdd', {
           subject: { entity: 'node', type: person.id },
@@ -662,10 +646,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
           encrypted: true,
         });
         synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'Create a passphrase.',
-          },
+          explanationText: '# Protect your data\n\nCreate a passphrase.',
         });
         const generator = synth.addStage('NameGeneratorQuickAdd', {
           subject: { entity: 'node', type: person.id },
@@ -820,10 +801,7 @@ export const anonymisationScenarios: InterfaceScenarios = {
           { promptIndices: [0] },
         );
         synth.addStage('Anonymisation', {
-          explanationText: {
-            title: 'Protect your data',
-            body: 'Create a passphrase.',
-          },
+          explanationText: '# Protect your data\n\nCreate a passphrase.',
         });
         const later = synth.addStage('NameGeneratorQuickAdd', {
           subject: { entity: 'node', type: person.id },

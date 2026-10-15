@@ -27,24 +27,25 @@ test('creates a valid Anonymisation stage from scratch', async ({
   // switched off here (a capability, off by default), so it registers nothing
   // and the saved stage is unchanged.
   //
-  // Both halves of the explanation keep their schema paths
-  // (`explanationText.title` / `explanationText.body`, TaskExplanationSection.tsx)
-  // while the CONTROLS carry released Architect's own names, "Title" and
-  // "Body". They are reached through the `data-field-name` seam because names
-  // that generic belong to more than one control on a stage editor.
-  await editor
-    .field('explanationText.title')
-    .getByRole('textbox', { name: 'Title', exact: true })
-    .fill('Protecting Your Privacy');
-
-  // The explanation body is a RichText field. `RichTextField` passes its
+  // The explanation is one RichText field (`explanationText`,
+  // TaskExplanationSection.tsx) whose first line is usually a heading: what
+  // released Architect kept as a separate title. `RichTextField` passes its
   // `label` down to the Tiptap editor's accessible name, so the name is the
-  // field's own wording rather than its path.
-  const explanation = editor
-    .field('explanationText.body')
-    .getByRole('textbox', { name: 'Body', exact: true });
+  // field's own wording rather than its path. The heading is made the way a
+  // researcher makes one, with the toolbar's "Heading 1" before typing.
+  const explanationField = editor.field('explanationText');
+  const explanation = explanationField.getByRole('textbox', {
+    name: 'Explanation',
+    exact: true,
+  });
   await expect(explanation).toBeEditable();
-  await explanation.fill('Enter your passphrase below, then continue.');
+  await explanation.click();
+  await explanationField.getByRole('button', { name: 'Heading 1' }).click();
+  await architectPage.keyboard.type('Protecting Your Privacy');
+  await architectPage.keyboard.press('Enter');
+  await architectPage.keyboard.type(
+    'Enter your passphrase below, then continue.',
+  );
 
   // The passphrase rules (a capability, switched off by default) and the
   // encrypted attributes (per-type checkbox groups, and this protocol has no
@@ -64,8 +65,7 @@ test('creates a valid Anonymisation stage from scratch', async ({
   // The editor saves each text under the protocol's default language, which
   // is `en` in `emptyProtocol()`.
   expect(stage.explanationText).toEqual({
-    title: { en: 'Protecting Your Privacy' },
-    body: { en: 'Enter your passphrase below, then continue.' },
+    en: '# Protecting Your Privacy\n\nEnter your passphrase below, then continue.',
   });
 
   expect(await stageSnapshotJson(stage)).toMatchSnapshot(

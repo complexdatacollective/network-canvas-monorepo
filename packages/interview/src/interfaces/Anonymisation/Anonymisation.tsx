@@ -24,7 +24,6 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface, { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { ALLOWED_MARKDOWN_SECTION_TAGS } from '@codaco/fresco-ui/RenderMarkdown';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import EncryptionBackground from '../../components/EncryptedBackground';
@@ -34,7 +33,6 @@ import { useCelebrate } from '../../hooks/useCelebrate';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { LocalizedMarkdown } from '../../localization/LocalizedMarkdown';
-import { LocalizedText } from '../../localization/LocalizedText';
 import type { StageProps } from '../../types';
 import { interfaceMessages } from '../messages';
 import PassphraseCheckStatus from './PassphraseCheckStatus';
@@ -169,12 +167,8 @@ function AnonymisationInner(props: AnonymisationProps) {
               delay: 0.2,
             }}
           >
-            <LocalizedText
-              value={explanationText.title}
-              render={<Heading level="h1" />}
-            />
             <LocalizedMarkdown
-              value={explanationText.body}
+              value={explanationText}
               allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}
             />
 

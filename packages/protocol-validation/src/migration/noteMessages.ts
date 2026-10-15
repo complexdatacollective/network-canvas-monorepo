@@ -394,6 +394,13 @@ export const migrationNoteMessages = defineMessages({
     description:
       'One complete Markdown bullet in schema 9 migration approval guidance: contradictoryPassphraseRules. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers; the lengths are the shortest and longest passphrase the researcher allowed. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text.',
   },
+  schema9AnonymisationTitle: {
+    id: 'protocolValidation.migrationNotes.schema9.anonymisationTitle',
+    defaultMessage:
+      "An Anonymisation stage's title is now the first line of its explanation, written as a heading, so the stage has one text to edit and translate. What participants see does not change.",
+    description:
+      'One complete Markdown bullet in schema 9 migration approval guidance, shown to researchers when an older protocol is upgraded. Anonymisation is the name of the interface (stage type) that asks a participant to choose a passphrase protecting some of their answers. Its explanation is the text the participant reads on that screen before choosing the passphrase; its title was a separate field shown as the heading above that text, and is now written inside the text as a heading.',
+  },
   schema9DuplicateOptionValues: {
     id: 'protocolValidation.migrationNotes.schema9.duplicateOptionValues',
     defaultMessage:
@@ -624,6 +631,7 @@ const migrationNoteSets = {
       migrationNoteMessages.schema9BlankFieldQuestions,
       migrationNoteMessages.schema9EncryptedAttributes,
       migrationNoteMessages.schema9ContradictoryPassphraseRules,
+      migrationNoteMessages.schema9AnonymisationTitle,
       migrationNoteMessages.schema9DuplicateOptionValues,
       migrationNoteMessages.schema9OptionValueNames,
       migrationNoteMessages.schema9IntroductionPanels,

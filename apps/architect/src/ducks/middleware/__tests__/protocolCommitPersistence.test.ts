@@ -305,10 +305,7 @@ describe('validated protocol commit persistence', () => {
         id: 'anon',
         type: 'Anonymisation',
         label: { en: 'Anonymisation' },
-        explanationText: {
-          title: { en: 'Privacy' },
-          body: { en: 'Choose a passphrase.' },
-        },
+        explanationText: { en: '# Privacy\n\nChoose a passphrase.' },
       },
     ];
     protocol.codebook = {

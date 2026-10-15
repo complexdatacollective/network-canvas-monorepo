@@ -77,6 +77,15 @@ const migrateStep = (document: unknown) =>
  * so the migrated label is the name of what it labels: the sibling `name` of
  * a codebook definition, and the highlighted attribute's name.
  */
+// Schema 8 held an Anonymisation stage's heading as a title of its own, which
+// the migration writes as the first line of the text.
+const explanationBehind = (source: unknown): string | undefined =>
+  isRecord(source) &&
+  typeof source.title === 'string' &&
+  typeof source.body === 'string'
+    ? `# ${source.title}\n\n${source.body}`
+    : undefined;
+
 const nameBehindLabel = (document: unknown, at: Path): unknown => {
   const owner = getAt(document, at.slice(0, -1));
   if (typeof owner !== 'string') {
@@ -255,7 +264,9 @@ describe('v8 to v9 localization migration', () => {
       }
       const source = getAt(document, at);
       const expectedText =
-        typeof source === 'string' ? source : nameBehindLabel(document, at);
+        typeof source === 'string'
+          ? source
+          : (explanationBehind(source) ?? nameBehindLabel(document, at));
       expect(Object.keys(value)).toEqual(['en']);
       expect(messageText(value.en ?? '')).toBe(expectedText);
     }

@@ -183,12 +183,12 @@ describe('<Issues />', () => {
   });
 
   describe('a field that fails several rules', () => {
-    // Reachable today via an Anonymisation title over 50
-    // characters that trims to empty: `required` and `maxLength` both fail, and
-    // the form store keeps every message.
-    const FIELD = 'explanationText.title';
-    const LABEL = 'Explanation Title';
-    const ANCHOR_ID = 'field_explanationText_title';
+    // A required text with a length limit that is over the limit and trims to
+    // empty: `required` and `maxLength` both fail, and the form store keeps
+    // every message.
+    const FIELD = 'title';
+    const LABEL = 'Title';
+    const ANCHOR_ID = 'field_title';
     const MESSAGES = [
       'This field is required.',
       'Too long. Enter fewer than 50 characters.',
@@ -425,8 +425,8 @@ describe('a field the stage editor renders itself', () => {
  * left exactly where they started with the invalid control somewhere below.
  */
 describe('<Issues /> focus', () => {
-  const TITLE = 'explanationText.title';
-  const TEXT = 'explanationText.body';
+  const TITLE = 'title';
+  const TEXT = 'content';
 
   const renderTwoInvalidFields = async () => {
     const view = renderStageForm({
@@ -434,14 +434,14 @@ describe('<Issues /> focus', () => {
         <>
           <ArchitectField
             name={TITLE}
-            label="Explanation Title"
+            label="Title"
             component={InputField}
             initialValue=""
             validation={{ required: true }}
           />
           <ArchitectField
             name={TEXT}
-            label="Explanation Text"
+            label="Content"
             component={InputField}
             initialValue=""
             validation={{ required: true }}

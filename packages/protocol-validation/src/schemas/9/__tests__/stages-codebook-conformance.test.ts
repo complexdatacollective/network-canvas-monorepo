@@ -349,35 +349,32 @@ describe('Anonymisation explanationText non-empty', () => {
     id: 'anon1',
     label: localized('Anonymisation'),
     type: 'Anonymisation' as const,
-    explanationText: {
-      title: localized('Why we do this'),
-      body: localized('Your responses are encrypted.'),
-    },
+    explanationText: localized(
+      '# Why we do this\n\nYour responses are encrypted.',
+    ),
   };
 
-  it('accepts non-empty explanationText title and body', () => {
+  it('accepts a non-empty explanationText', () => {
     expect(anonymisationStage.safeParse(baseStage).success).toBe(true);
   });
 
-  it('rejects an empty explanationText title', () => {
+  it('rejects an empty explanationText', () => {
     expect(
       anonymisationStage.safeParse({
         ...baseStage,
-        explanationText: {
-          title: localized(''),
-          body: localized('Your responses are encrypted.'),
-        },
+        explanationText: localized(''),
       }).success,
     ).toBe(false);
   });
 
-  it('rejects an empty explanationText body', () => {
+  // The heading is part of the text, so the title it replaced is refused.
+  it('rejects the separate title and body schema 8 had', () => {
     expect(
       anonymisationStage.safeParse({
         ...baseStage,
         explanationText: {
           title: localized('Why we do this'),
-          body: localized(''),
+          body: localized('Your responses are encrypted.'),
         },
       }).success,
     ).toBe(false);

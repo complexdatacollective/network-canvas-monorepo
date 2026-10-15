@@ -18,14 +18,8 @@
       },
       "type": "Anonymisation",
       "explanationText": {
-        "title": {
-          "en-US": "This interview uses enhanced privacy protection",
-          "es": "Esta entrevista usa una protección de privacidad reforzada"
-        },
-        "body": {
-          "en-US": "This interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button.",
-          "es": "Esta entrevista te permite cifrar los nombres de las personas que menciones para que nadie más que tú pueda verlos, ni siquiera el equipo de investigación que realiza este estudio. \n\nPara usar esta función, introduce una frase de contraseña abajo y haz clic en el botón."
-        }
+        "en-US": "# This interview uses enhanced privacy protection\n\nThis interview allows you to encrypt the names of the people you mention so that they cannot be seen by anyone but you - even the researchers running this study. \n\nTo use this feature, enter a passphrase below, and click the button.",
+        "es": "# Esta entrevista usa protección reforzada de la privacidad\n\nEsta entrevista te permite cifrar los nombres de las personas que menciones para que nadie más que tú pueda verlos, ni siquiera el equipo de investigación que realiza este estudio. \n\nPara usar esta función, introduce una frase de contraseña abajo y pulsa el botón."
       },
       "validation": {
         "minLength": 4,

@@ -235,8 +235,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(14, 'tooltips', 'pauseLayout'), 'plain'),
   site(stage(14, 'tooltips', 'resumeLayout'), 'plain'),
 
-  site(stage(15, 'explanationText', 'title'), 'plain'),
-  site(stage(15, 'explanationText', 'body'), 'markdown'),
+  site(stage(15, 'explanationText'), 'markdown'),
 
   site(stage(16, 'prompts', 0, 'text'), 'markdown'),
 

@@ -33,7 +33,7 @@ const openEditor = () =>
  * whatever the catalog said, including nothing at all.
  */
 describe('the anonymisation sections, read in Spanish', () => {
-  it('names the explanation section and both of its fields', async () => {
+  it('names the explanation section and describes what it asks for', async () => {
     openEditor();
 
     expect(
@@ -41,12 +41,13 @@ describe('the anonymisation sections, read in Spanish', () => {
         name: 'Explicación de la tarea',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Título' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Cuerpo' })).toBeInTheDocument();
     expect(
       screen.getByText(
         'Explica el proceso de anonimización a los participantes antes de que introduzcan su frase de contraseña.',
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('textbox', { name: 'Explicación' }),
     ).toBeInTheDocument();
   });
 

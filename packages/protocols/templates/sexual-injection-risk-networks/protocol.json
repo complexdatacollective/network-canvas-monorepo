@@ -251,12 +251,7 @@
       "type": "Anonymisation",
       "label": { "en-US": "Create your private passphrase" },
       "explanationText": {
-        "title": {
-          "en-US": "Protect the identities of the people you mention"
-        },
-        "body": {
-          "en-US": "Because the people you will describe are sensitive, this interview lets you **encrypt** the labels you give them so that they cannot be read by anyone but you — not even the researchers running this study.\n\nTo turn this on, choose a passphrase below and enter it. You will need the same passphrase if you ever return to this interview, so pick something you will remember. Do not share it with the interviewer."
-        }
+        "en-US": "# Protect the identities of the people you mention\n\nBecause the people you will describe are sensitive, this interview lets you **encrypt** the labels you give them so that they cannot be read by anyone but you — not even the researchers running this study.\n\nTo turn this on, choose a passphrase below and enter it. You will need the same passphrase if you ever return to this interview, so pick something you will remember. Do not share it with the interviewer."
       },
       "validation": {
         "minLength": 8,
