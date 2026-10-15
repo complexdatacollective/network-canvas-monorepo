@@ -12,6 +12,7 @@ import {
   useState,
 } from 'react';
 import { useSelector } from 'react-redux';
+import { useShallow } from 'zustand/react/shallow';
 
 import {
   createMessageError,
@@ -23,7 +24,6 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
-import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
@@ -33,6 +33,8 @@ import type {
   FormSubmissionResult,
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
+import { validateFieldValue } from '@codaco/fresco-ui/form/validation/helpers';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { TitlelessForm } from '@codaco/protocol-validation';
@@ -183,8 +185,43 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     };
 
     const storeApi = useContext(FormStoreContext);
-    const { isValid } = useFormMeta();
     const fieldCount = useFormStore((s) => s.fields.size);
+    const fieldValues = useFormStore(
+      useShallow((s) => Array.from(s.fields.values(), (field) => field.value)),
+    );
+    const allAnswered = fieldValues.every((value) => !isUnanswered(value));
+
+    // Whether the current answers would pass their checks, worked out without
+    // showing anything. The store's own `isValid` cannot say: a field with
+    // checks counts as invalid until it has been validated, which only happens
+    // once the participant leaves it, so answers already given (or typed into
+    // the last question without leaving it) never counted.
+    const [answersPass, setAnswersPass] = useState(false);
+    useEffect(() => {
+      if (!storeApi) return undefined;
+      let current = true;
+      const { fields, getFormValues } = storeApi.getState();
+      const formValues = getFormValues();
+      void Promise.all(
+        Array.from(fields.values(), (field) =>
+          field.validation
+            ? validateFieldValue(
+                field.value,
+                field.validation,
+                formValues,
+              ).then(
+                (result) => result.success,
+                () => false,
+              )
+            : true,
+        ),
+      ).then((results) => {
+        if (current) setAnswersPass(results.every(Boolean));
+      });
+      return () => {
+        current = false;
+      };
+    }, [storeApi, fieldValues]);
     const formErrors = useFormStore((s) => s.errors);
     const formErrorsRef = useRef(formErrors);
     useLayoutEffect(() => {
@@ -197,9 +234,31 @@ const SlideContentInner = forwardRef<SlideHandle, SlideFormProps>(
     const { hasScrolledToBottom, sentinelRef } =
       useScrolledToBottom(scrollAreaRef);
 
+    // Ready once the answers pass their checks and every question has either
+    // been answered or been seen: a long form whose optional questions are
+    // left blank only counts as finished after it has been scrolled to the end.
+    // An error on display (a refused save, a check the participant has just
+    // failed) holds readiness back too, until it is resolved.
+    const hasErrors =
+      formErrors.formErrors.length > 0 ||
+      Object.values(formErrors.fieldErrors).some(
+        (messages) => messages && messages.length > 0,
+      );
     useEffect(() => {
-      onReadyChange(isValid && fieldCount > 0 && hasScrolledToBottom);
-    }, [isValid, fieldCount, hasScrolledToBottom, onReadyChange]);
+      onReadyChange(
+        answersPass &&
+          !hasErrors &&
+          fieldCount > 0 &&
+          (allAnswered || hasScrolledToBottom),
+      );
+    }, [
+      answersPass,
+      hasErrors,
+      fieldCount,
+      allAnswered,
+      hasScrolledToBottom,
+      onReadyChange,
+    ]);
 
     useEffect(() => {
       track('form_opened', {
