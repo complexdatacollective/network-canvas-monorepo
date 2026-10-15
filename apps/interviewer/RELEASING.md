@@ -184,8 +184,9 @@ version being shipped. Without `args`, the workflow drives
 which is the right target for ad-hoc health checks between releases. Either
 way it runs every core user journey with headless Playwright: protocol management, a
 complete interview conducted entirely offline (the committed release-smoke
-walker over the eight-stage fixture protocol, proving the precache serves the
-whole engine without network), session and data management, export in every
+walker over the fifteen-stage, two-language schema 9 fixture protocol,
+proving the precache serves the whole engine without network and that the
+schema 9 runtime works offline), session and data management, export in every
 format combination, device-lock enrolment through revocation, service-worker
 and offline behaviour, and settings. Each journey runs in its own isolated
 browser profile; every reported failure is independently re-examined by a

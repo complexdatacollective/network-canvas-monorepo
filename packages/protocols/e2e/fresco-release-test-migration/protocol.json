@@ -1,0 +1,266 @@
+{
+  "name": "Fresco Release Test (schema 8 migration)",
+  "description": "Schema 8 protocol the Fresco release test seeds on the RELEASED image, so the upgrade carries what the schema 9 migration rewrites: introduction panels (which become Information stages, and an Ego Form panel title its form heading) and a schema 8 Family Pedigree stage (converted to the redesigned stage, together with every interview session pedigree record). Interviews are generated for it and parked on those stages by apps/fresco/release-test/scripts/migration-lane.mjs.",
+  "schemaVersion": 8,
+  "lastModified": "2026-10-15T00:00:00.000Z",
+  "codebook": {
+    "ego": {
+      "variables": {
+        "ego_name": {
+          "name": "ego_name",
+          "type": "text",
+          "component": "Text"
+        }
+      }
+    },
+    "node": {
+      "person": {
+        "name": "Person",
+        "color": "node-color-seq-1",
+        "icon": "add-a-person",
+        "shape": {
+          "default": "circle"
+        },
+        "variables": {
+          "name": {
+            "name": "name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "required": true
+            }
+          },
+          "hours": {
+            "name": "hours",
+            "type": "number",
+            "component": "Number"
+          }
+        }
+      },
+      "family_member": {
+        "name": "family member",
+        "color": "node-color-seq-2",
+        "icon": "add-a-person",
+        "shape": {
+          "default": "circle"
+        },
+        "variables": {
+          "fm_name": {
+            "name": "fm_name",
+            "type": "text",
+            "component": "Text",
+            "validation": {
+              "unique": true
+            }
+          },
+          "is_ego": {
+            "name": "is_ego",
+            "type": "boolean",
+            "component": "Toggle"
+          },
+          "fm_relationship_to_ego": {
+            "name": "fm_relationship_to_ego",
+            "type": "text",
+            "component": "Text"
+          },
+          "biologicalSex": {
+            "name": "biologicalSex",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "female",
+                "label": "Female"
+              },
+              {
+                "value": "male",
+                "label": "Male"
+              },
+              {
+                "value": "intersex",
+                "label": "Intersex or a variation in sex characteristics"
+              },
+              {
+                "value": "unknown",
+                "label": "Don’t know"
+              },
+              {
+                "value": "preferNotToSay",
+                "label": "Prefer not to say"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "edge": {
+      "family_edge": {
+        "name": "family_edge",
+        "color": "edge-color-seq-1",
+        "variables": {
+          "relationshipType": {
+            "name": "relationshipType",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "biological",
+                "label": "Biological"
+              },
+              {
+                "value": "social",
+                "label": "Social"
+              },
+              {
+                "value": "donor",
+                "label": "Donor"
+              },
+              {
+                "value": "surrogate",
+                "label": "Surrogate"
+              },
+              {
+                "value": "adoptive",
+                "label": "Adoptive"
+              },
+              {
+                "value": "partner",
+                "label": "Partner"
+              }
+            ]
+          },
+          "isActive": {
+            "name": "isActive",
+            "type": "boolean"
+          },
+          "isGestationalCarrier": {
+            "name": "isGestationalCarrier",
+            "type": "boolean"
+          },
+          "gameteRole": {
+            "name": "gameteRole",
+            "type": "categorical",
+            "options": [
+              {
+                "value": "egg",
+                "label": "Egg"
+              },
+              {
+                "value": "sperm",
+                "label": "Sperm"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "stages": [
+    {
+      "id": "welcome",
+      "type": "Information",
+      "label": "Welcome",
+      "title": "Welcome",
+      "items": [
+        {
+          "id": "welcome-text",
+          "type": "text",
+          "content": "This protocol is stored by the released Fresco before the upgrade."
+        }
+      ]
+    },
+    {
+      "id": "about-you",
+      "type": "EgoForm",
+      "label": "About you",
+      "introductionPanel": {
+        "title": "About you",
+        "text": "First, a little about **you**."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "ego_name",
+            "prompt": "What is your name?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "people",
+      "type": "NameGeneratorQuickAdd",
+      "label": "People",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "quickAdd": "name",
+      "prompts": [
+        {
+          "id": "people-prompt",
+          "text": "Who are the people you know?"
+        }
+      ]
+    },
+    {
+      "id": "each-person",
+      "type": "AlterForm",
+      "label": "About each person",
+      "subject": {
+        "entity": "node",
+        "type": "person"
+      },
+      "introductionPanel": {
+        "title": "About each person",
+        "text": "Now some questions about each person you named."
+      },
+      "form": {
+        "fields": [
+          {
+            "variable": "hours",
+            "prompt": "How many hours a week do you spend with them?"
+          }
+        ]
+      }
+    },
+    {
+      "id": "family",
+      "type": "FamilyPedigree",
+      "label": "Family",
+      "nodeConfig": {
+        "type": "family_member",
+        "nodeLabelVariable": "fm_name",
+        "egoVariable": "is_ego",
+        "relationshipVariable": "fm_relationship_to_ego",
+        "biologicalSexVariable": "biologicalSex"
+      },
+      "edgeConfig": {
+        "type": "family_edge",
+        "relationshipTypeVariable": "relationshipType",
+        "isActiveVariable": "isActive",
+        "isGestationalCarrierVariable": "isGestationalCarrier",
+        "gameteRoleVariable": "gameteRole"
+      },
+      "framing": {
+        "mode": "fixed",
+        "value": "gamete"
+      },
+      "boundaries": {
+        "requireGrandparents": "off",
+        "requireChildrenContributors": "off"
+      },
+      "censusPrompt": "Who is in your family?"
+    },
+    {
+      "id": "goodbye",
+      "type": "Information",
+      "label": "Goodbye",
+      "title": "Goodbye",
+      "items": [
+        {
+          "id": "goodbye-text",
+          "type": "text",
+          "content": "That is the end of this protocol."
+        }
+      ]
+    }
+  ]
+}

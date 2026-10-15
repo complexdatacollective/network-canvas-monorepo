@@ -16,7 +16,6 @@
 // Prints one JSON line: { ok, checks, interviewId, nodeIds, ... }. The workflow
 // binds the check ids to a list of its own, so a run that stops performing one
 // fails rather than reporting a shorter list.
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -34,7 +33,13 @@ import {
   uploadProtocol,
 } from './fresco-driver.mjs';
 import { readInterviewExport } from './interview-export-contract.mjs';
-import { lane, postgresContainer } from './lanes.mjs';
+import {
+  nextStage as nextStageOf,
+  openInterview,
+  psqlFor,
+  settledStep as settledStepOf,
+} from './interview-walk.mjs';
+import { lane } from './lanes.mjs';
 import { relayHost } from './relay-host.mjs';
 
 const RELAY_HOST = relayHost();
@@ -83,20 +88,7 @@ const TRANSCRIPT = {
 /** Markdown emphasis removed, which is what a screen reader is handed. */
 const plain = (markdown) => markdown.replaceAll('**', '').replaceAll('_', '');
 
-const psql = (sql) =>
-  execFileSync('docker', [
-    'exec',
-    postgresContainer(laneName),
-    'psql',
-    '-U',
-    'postgres',
-    '-t',
-    '-A',
-    '-c',
-    sql,
-  ])
-    .toString()
-    .trim();
+const psql = psqlFor(laneName);
 
 const checks = [];
 const result = { ok: false, checks };
@@ -171,39 +163,8 @@ try {
   }
 
   // --- the interview ------------------------------------------------------
-  // Every stage marker on the page, because a stage that is leaving stays
-  // mounted while it animates out: for part of a second there are two, and a
-  // reader that assumed one either throws or reads whichever it happened to
-  // find. A settled interview has exactly one.
-  const currentSteps = () =>
-    page.evaluate(() =>
-      [...document.querySelectorAll('[data-stage-step]')].map((element) =>
-        element.getAttribute('data-stage-step'),
-      ),
-    );
-  const settledStep = async (timeoutMs = 30_000) => {
-    const deadline = Date.now() + timeoutMs;
-    for (;;) {
-      const steps = await currentSteps();
-      if (steps.length === 1) return steps[0];
-      if (Date.now() > deadline)
-        throw new Error(
-          `the interview never settled on one stage (saw ${steps.length})`,
-        );
-      await page.waitForTimeout(250);
-    }
-  };
-  const nextStage = async () => {
-    const before = await settledStep();
-    await page.getByTestId('next-button').click();
-    const deadline = Date.now() + 30_000;
-    while (Date.now() < deadline) {
-      await page.waitForTimeout(250);
-      const steps = await currentSteps();
-      if (steps.length === 1 && steps[0] !== before) return;
-    }
-    throw new Error(`the stage did not advance from step ${before}`);
-  };
+  const settledStep = () => settledStepOf(page);
+  const nextStage = () => nextStageOf(page);
 
   checks.push(
     await attempt('interview-opens', async () => {
@@ -212,28 +173,8 @@ try {
       });
       await page.waitForURL(/\/interview\//, { timeout: 60_000 });
       result.interviewId = new URL(page.url()).pathname.split('/').pop();
-      // The first render of this route on a freshly started container can come
-      // back as the app's error screen, and the next attempt serves the
-      // interview — so the open is retried the way a participant would retry
-      // it, on either symptom: an error screen, or a stage that never
-      // appeared. Bounded and counted, so an interview that needed retries is
-      // visible in the detail rather than smoothed away.
-      let attempts = 0;
-      for (; attempts < 4; attempts += 1) {
-        if (attempts > 0) {
-          await page.goto(page.url(), { waitUntil: 'domcontentloaded' });
-          await page.waitForTimeout(2000);
-        }
-        const broken = await page
-          .getByRole('button', { name: 'Copy Debug Information' })
-          .isVisible()
-          .catch(() => false);
-        if (broken) continue;
-        const steps = await currentSteps().catch(() => []);
-        if (steps.length >= 1) break;
-        await page.waitForTimeout(3000);
-      }
-      result.openAttempts = attempts + 1;
+      const attempts = await openInterview(page);
+      result.openAttempts = attempts;
       const settled = await settledStep();
       const heading = await page
         .getByRole('heading', { name: 'Welcome' })
@@ -241,7 +182,7 @@ try {
         .textContent();
       return {
         pass: settled === '0' && Boolean(heading?.includes('Welcome')),
-        detail: `interview ${result.interviewId} opened on step ${settled} after ${attempts + 1} attempt(s)`,
+        detail: `interview ${result.interviewId} opened on step ${settled} after ${attempts} attempt(s)`,
       };
     }),
   );
