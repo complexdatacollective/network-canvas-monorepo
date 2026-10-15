@@ -1314,8 +1314,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             family,
             completeness.scope,
             (person) =>
-              missingDetailsFor(person, requiredFormVariables, config).length >
-              0,
+              missingDetailsFor(person, requiredFormVariables).length > 0,
           )
         : null,
     [family, completeness, requiredFormVariables, config],
@@ -1611,7 +1610,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       mode: {
         kind: 'edit',
         person,
-        missing: missingDetailsFor(person, requiredFormVariables, config),
+        missing: missingDetailsFor(person, requiredFormVariables),
         unavailable,
       },
       ...(then ? { then } : {}),
@@ -2723,8 +2722,8 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     hasMissingDetails={
                       !nomination &&
                       family.byId.has(personId) &&
-                      missingDetailsFor(person, requiredFormVariables, config)
-                        .length > 0
+                      missingDetailsFor(person, requiredFormVariables).length >
+                        0
                     }
                     adopted={shown.links.some(
                       (link) =>

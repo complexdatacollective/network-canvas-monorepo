@@ -556,7 +556,7 @@ export const familyPedigreeMessages = defineMessages({
     defaultMessage:
       'Check that participants have recorded a minimum part of their family, and every required detail about each person, before they continue. Switched off, they can continue with whatever they have drawn.',
     description:
-      'Description of the completeness section. The participant is the person being interviewed. The required details are sex assigned at birth, gender identity when the stage asks it, and any additional person field the codebook marks as required. Whether the participant may continue without them is the enforcement choice below.',
+      'Description of the completeness section. The participant is the person being interviewed. The required details are sex assigned at birth and any additional person field the codebook marks as required; gender identity is never required. Whether the participant may continue without them is the enforcement choice below.',
   },
   completenessWaiting: {
     id: 'protocolBuilder.pedigree.completenessWaiting',

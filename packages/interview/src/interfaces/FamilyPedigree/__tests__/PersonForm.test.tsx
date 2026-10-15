@@ -32,7 +32,10 @@ import {
   unlockWith,
 } from '../../Anonymisation/__tests__/encryptionFixtures';
 import { generateSecureAttributes } from '../../Anonymisation/utils';
-import PersonForm, { type PersonFormResult } from '../components/PersonForm';
+import PersonForm, {
+  type GenderIdentityOption,
+  type PersonFormResult,
+} from '../components/PersonForm';
 import {
   familyWithPlan,
   type MissingDetail,
@@ -102,6 +105,8 @@ type Setup = {
   optionLabels?: OwnedOptionLabels;
   /** What storing the submission comes to. */
   submitted?: Promise<FormSubmissionResult>;
+  /** Asks about gender identity, offering these options. */
+  genderIdentityOptions?: GenderIdentityOption[];
   /**
    * The protocol's default language, which its wording is shown in. The
    * fixture's own text is English, so English is declared too.
@@ -124,6 +129,7 @@ function renderPersonForm(
     decryptedNames = new Map(),
     optionLabels = OPTION_LABELS,
     submitted = Promise.resolve({ success: true }),
+    genderIdentityOptions,
     protocolLocale = 'en',
   }: Setup,
 ) {
@@ -227,9 +233,13 @@ function renderPersonForm(
             : { kind: 'edit', person: edited, missing, unavailable: [] }
         }
         family={family}
-        config={{ ...config, genderIdentity: undefined }}
+        config={
+          genderIdentityOptions
+            ? config
+            : { ...config, genderIdentity: undefined }
+        }
         framing="gendered"
-        genderIdentityOptions={[]}
+        genderIdentityOptions={genderIdentityOptions ?? []}
         optionLabels={optionLabels}
         formFields={formFields}
         generatedLabels={{}}
@@ -342,6 +352,22 @@ describe('the person form', () => {
       screen.getByRole('radio', { name: 'Assigned female at birth' }),
     ).toBeChecked();
     expect(screen.queryByRole('radio', { name: 'Female' })).toBeNull();
+  });
+
+  it('saves without a gender identity, which a participant may not know', async () => {
+    const { onSubmit, user } = renderPersonForm('dad', {
+      nodes: [person('dad', { sex: ['male'] })],
+      genderIdentityOptions: [
+        { value: 'woman', label: 'Woman' },
+        { value: 'man', label: 'Man' },
+      ],
+    });
+    expect(screen.getByRole('radio', { name: 'Man' })).not.toBeChecked();
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    const [result] = onSubmit.mock.calls[0] ?? [];
+    expect(result?.set).not.toHaveProperty('gender');
   });
 
   it('leaves a name of only spaces unnamed', async () => {
