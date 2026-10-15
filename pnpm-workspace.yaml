@@ -66,8 +66,8 @@ catalog:
   # protocol-validation's locale helpers land.
   '@formatjs/intl-localematcher': ^0.9.0
   '@microsoft/api-extractor': ^7.59.3
-  '@next/bundle-analyzer': ^16.3.8
-  '@next/third-parties': ^16.3.8
+  '@next/bundle-analyzer': ^16.4.0
+  '@next/third-parties': ^16.4.0
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.63.0
@@ -142,7 +142,7 @@ catalog:
   jszip: ^3.10.2
   lucide-react: ^1.49.0
   motion: ^13.4.6
-  next: ^16.3.8
+  next: ^16.4.0
   # Catalogued so the root's formatter and Architect's cannot drift apart.
   # Architect's E2E helper formats stage snapshots in-process (see
   # `apps/architect/e2e/helpers/normalize-stage.ts`) and depends on producing
