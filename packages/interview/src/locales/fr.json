@@ -19,7 +19,7 @@
   "interview.familyPedigree.savedAnnouncement": "Informations enregistrées.",
   "interview.familyPedigree.showWholeFamily": "Afficher toute la famille",
   "interview.familyPedigree.siblingsAnsweredAnnouncement": "{isYou, select, true {C’est noté : vous n’avez ni frère ni sœur biologique.} other {C’est noté : « {name} » n’a ni frère ni sœur biologique.}}",
-  "interview.familyPedigree.skipQuestion": "Passer cette question",
+  "interview.familyPedigree.skipStep": "Passer",
   "interview.familyPedigree.toolGroupLabel": "Effet d’un clic sur une personne",
   "interview.familyPedigree.toolsLabel": "Outils de l’arbre généalogique",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Votre arbre généalogique contient tout ce qu’il faut} other {Arbre généalogique complet à {percent, number, percent}}}. Afficher ce qu’il reste à faire.",

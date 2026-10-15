@@ -61,11 +61,14 @@ named from their sex assigned at birth.
   participant, and cleared from anyone no longer connected.
 - The stage is not left forwards until the participant has chosen its
   wording, when the stage lets them choose.
-- The panel for someone new opens with the cursor in the name field. Each
-  question answered with a single choice brings the next unanswered question
-  into view, so the participant can work down the form without scrolling. A
-  question that may be left unanswered offers "Skip this question", which
-  moves on the same way.
+- The panel for someone new asks its questions a group at a time: who the
+  person is, how they are related, then the study's own questions. It opens
+  with the cursor in the name field. A question answered with a single
+  choice brings the next unanswered one in its group into view, and
+  answering a group's last required question moves on to the next group.
+  A group whose remaining questions are optional can be skipped, and Back
+  returns to the group before with its answers kept. Changing someone
+  already in the family still shows all their details at once.
 - Nomination prompts ask the participant to select the relatives a question
   applies to, and can leave out people recorded with one sex assigned at
   birth.

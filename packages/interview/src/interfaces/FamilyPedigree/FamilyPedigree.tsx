@@ -693,6 +693,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
   const contentRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const [stepNavigation, setStepNavigation] = useState<HTMLElement | null>(
+    null,
+  );
   const promptRef = useRef<HTMLDivElement>(null);
   const toolbarAreaRef = useRef<HTMLDivElement>(null);
   const menuReachRef = useRef<HTMLSpanElement>(null);
@@ -2953,10 +2956,23 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     <AppMessage message={commonMessages.delete} />
                   </Button>
                 )}
-              <Button type="button" variant="text" onClick={cancelPanel}>
+              {/* While adding, Cancel sits apart from the step buttons. */}
+              <Button
+                type="button"
+                variant="text"
+                className={panel?.mode.kind === 'add' ? 'mr-auto' : undefined}
+                onClick={cancelPanel}
+              >
                 <AppMessage message={commonMessages.cancel} />
               </Button>
-              <SubmitButton form={formId}>{text(wording.save)}</SubmitButton>
+              {/* A new person is described a group of questions at a time,
+                  and their form puts its own step buttons here, ending with
+                  Save. */}
+              {panel?.mode.kind === 'add' ? (
+                <span ref={setStepNavigation} className="contents" />
+              ) : (
+                <SubmitButton form={formId}>{text(wording.save)}</SubmitButton>
+              )}
             </>
           }
         >
@@ -2993,6 +3009,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                   : undefined
               }
               labelNode={labelPanelNode}
+              stepNavigation={stepNavigation}
               onDraftChange={handleDraftChange}
               onSubmit={handleSubmit}
             />

@@ -19,7 +19,7 @@
   "interview.familyPedigree.savedAnnouncement": "資訊已儲存。",
   "interview.familyPedigree.showWholeFamily": "顯示整個家庭",
   "interview.familyPedigree.siblingsAnsweredAnnouncement": "{isYou, select, true {已記錄您沒有親生兄弟姊妹。} other {已記錄「{name}」沒有親生兄弟姊妹。}}",
-  "interview.familyPedigree.skipQuestion": "略過此問題",
+  "interview.familyPedigree.skipStep": "略過",
   "interview.familyPedigree.toolGroupLabel": "點選人物時的動作",
   "interview.familyPedigree.toolsLabel": "家譜圖工具",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {您的家譜圖已包含所有必要資訊} other {家譜圖已完成 {percent, number, percent}}}。顯示尚需完成的項目。",

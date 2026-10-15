@@ -5,10 +5,12 @@ import {
   useEffect,
   useRef,
   useState,
+  type KeyboardEvent,
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 
@@ -20,8 +22,6 @@ const TEXT_SELECTOR =
 
 /** Space left above the next question, so the end of the last one shows. */
 const LEAD_IN = 32;
-
-const nameOf = (field: Element) => field.getAttribute('data-field-name') ?? '';
 
 const isShown = (field: Element) => field.getClientRects().length > 0;
 
@@ -91,11 +91,7 @@ const controlOf = (field: Element) =>
   );
 
 /** The questions after `field` still waiting for an answer, in order. */
-const waitingAfter = (
-  root: Element,
-  field: Element,
-  skipped: ReadonlySet<string>,
-) =>
+const waitingAfter = (root: Element, field: Element) =>
   [...root.querySelectorAll(FIELD_SELECTOR)].filter(
     (candidate) =>
       Boolean(
@@ -105,7 +101,6 @@ const waitingAfter = (
       !field.contains(candidate) &&
       isShown(candidate) &&
       !isClosed(candidate) &&
-      !skipped.has(nameOf(candidate)) &&
       isUnanswered(candidate),
   );
 
@@ -125,96 +120,204 @@ const bringIntoView = (next: Element) => {
   });
 };
 
-/** Where a question's skip link goes: below its answers, above its errors. */
-const slots = new WeakMap<Element, HTMLElement>();
-const slotOf = (field: Element) => {
-  let slot = slots.get(field);
-  if (!slot?.isConnected) {
-    slot = document.createElement('div');
-    slot.className = 'mt-2 flex';
-    (field.firstElementChild ?? field).after(slot);
-    slots.set(field, slot);
-  }
-  return slot;
+const STEP_SELECTOR = '[data-question-step]';
+
+/** How long a chosen answer shows before the next step replaces it. */
+const STEP_DELAY = 350;
+
+type StepState = 'answered' | 'optional' | 'required';
+
+/** Whether every question in a step is answered, or what still waits. */
+const stateOf = (step: Element): StepState => {
+  const waiting = [...step.querySelectorAll(FIELD_SELECTOR)].filter(
+    (field) => !isClosed(field) && isUnanswered(field),
+  );
+  if (waiting.some(isRequired)) return 'required';
+  return waiting.length > 0 ? 'optional' : 'answered';
 };
 
-type Skippable = { field: Element; labelId: string | undefined };
+const firstWaiting = (step: Element) =>
+  [...step.querySelectorAll(FIELD_SELECTOR)].find(
+    (field) => isShown(field) && !isClosed(field) && isUnanswered(field),
+  );
+
+const firstRequiredWaiting = (step: Element) =>
+  [...step.querySelectorAll(FIELD_SELECTOR)].find(
+    (field) =>
+      isShown(field) &&
+      isRequired(field) &&
+      !isClosed(field) &&
+      isUnanswered(field),
+  );
+
+/** The steps holding at least one question, in the order they show. */
+const stepsIn = (root: Element) =>
+  [...root.querySelectorAll(STEP_SELECTOR)].filter(
+    (step) => step.querySelector(FIELD_SELECTOR) !== null,
+  );
+
+type QuestionFlowProps = {
+  className?: string;
+  children: ReactNode;
+  /**
+   * Shows the form a step at a time: each element marked
+   * `data-question-step` is one step. Without it, or without `navigation`,
+   * the whole form shows, and only the scrolling below applies.
+   */
+  stepped?: boolean;
+  /** Where the step buttons go (the panel's footer). */
+  navigation?: HTMLElement | null;
+  /** The control that ends the last step (the panel's Save button). */
+  finish?: ReactNode;
+};
 
 /**
- * Carries the participant down the form. Once a question is answered with a
- * single choice, the next question still waiting for an answer is brought
- * into view, so nobody has to scroll to find it. Only a chosen option moves
- * the form on: typed answers, ticked boxes and arrow keys (which move through
- * the options of one question) leave it where it is, and nothing moves when
- * every later question is already answered, so going back to change an
- * answer does not jump away. Focus stays on the answer just given.
+ * Carries the participant through the form.
  *
- * A question that may be left unanswered offers a link to skip it, which
- * moves on the same way and hands focus to the next question. A skipped
- * question can still be answered; it is only passed over when moving on.
- * The first question has none, since the participant starts there.
+ * Within what shows, a question answered with a single choice brings the
+ * next question still waiting for an answer into view, so nobody has to
+ * scroll to find it. Only a chosen option moves the form on: typed answers,
+ * ticked boxes and arrow keys (which move through the options of one
+ * question) leave it where it is, and nothing moves when every later
+ * question is already answered, so going back to change an answer does not
+ * jump away.
+ *
+ * Stepped, the form shows one group of questions at a time. Answering the
+ * last question still waiting in a step with a single choice moves on to the
+ * next step by itself, once nothing required is left in it. The step's own
+ * button continues, reading "Skip" while optional questions are left
+ * unanswered; a required question left unanswered keeps the step open and
+ * takes the focus instead. Back returns to the step before. An answer the
+ * form refuses on saving opens the step holding it.
  */
 export default function QuestionFlow({
   className,
   children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) {
+  stepped: steppedWanted = false,
+  navigation,
+  finish,
+}: QuestionFlowProps) {
   const intl = useAppIntl();
+  // Steps need somewhere for their buttons; without it the whole form shows.
+  const stepped = steppedWanted && navigation != null;
   const [root, setRoot] = useState<HTMLDivElement | null>(null);
-  const skipped = useRef(new Set<string>());
-  const [skippable, setSkippable] = useState<readonly Skippable[]>([]);
+  const [steps, setSteps] = useState<readonly Element[]>([]);
+  const [current, setCurrent] = useState(0);
+  const [state, setState] = useState<StepState>('answered');
+  const moved = useRef(false);
+  const saving = useRef(false);
+  const advanceTimer = useRef<number | undefined>(undefined);
+
+  const index = Math.min(current, Math.max(steps.length - 1, 0));
+  const step = steps[index];
+  const isLast = index >= steps.length - 1;
 
   const survey = useCallback(() => {
-    if (!root) return;
-    const fields = [...root.querySelectorAll(FIELD_SELECTOR)].filter(isShown);
-    const next = fields
-      .slice(1)
-      .filter(
-        (field) =>
-          !isRequired(field) &&
-          !isClosed(field) &&
-          !skipped.current.has(nameOf(field)) &&
-          isUnanswered(field) &&
-          waitingAfter(root, field, skipped.current).length > 0,
-      )
-      .map((field) => ({
-        field,
-        labelId: field.querySelector('[id$="-label"]')?.id,
-      }));
-    setSkippable((current) =>
-      current.length === next.length &&
-      current.every((entry, index) => entry.field === next[index]?.field)
-        ? current
+    if (!root || !stepped) return;
+    const next = stepsIn(root);
+    setSteps((known) =>
+      known.length === next.length &&
+      known.every((entry, at) => entry === next[at])
+        ? known
         : next,
     );
-  }, [root]);
+  }, [root, stepped]);
 
-  // What can be skipped changes with every answer and every question the
-  // answers bring in or take away.
+  // Only the current step shows; the others stay in the form, hidden, so
+  // their answers are kept and saved with the rest.
   useEffect(() => {
-    if (!root) return;
+    if (!stepped) return;
+    steps.forEach((element, at) => {
+      if (!(element instanceof HTMLElement)) return;
+      element.hidden = at !== index;
+      element.inert = at !== index;
+    });
+    if (step) setState(stateOf(step));
+  }, [stepped, steps, index, step]);
+
+  const goTo = useCallback((target: number) => {
+    window.clearTimeout(advanceTimer.current);
+    saving.current = false;
+    moved.current = true;
+    setCurrent(target);
+  }, []);
+
+  // A new step starts at its top, with the focus on its first question still
+  // waiting for an answer.
+  useEffect(() => {
+    if (!moved.current || !step) return;
+    moved.current = false;
+    const scroller = scrollerOf(step);
+    if (scroller) scroller.scrollTop = 0;
+    const field = firstWaiting(step) ?? step.querySelector(FIELD_SELECTOR);
+    if (field) controlOf(field)?.focus({ preventScroll: true });
+  }, [step]);
+
+  // The steps change as answers bring questions in or take them away, and
+  // the step button's label with every answer.
+  useEffect(() => {
+    if (!root || !stepped) return;
     let frame = 0;
     const schedule = () => {
       cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(survey);
+      frame = requestAnimationFrame(() => {
+        survey();
+        const shown = root.querySelector(`${STEP_SELECTOR}:not([hidden])`);
+        if (shown) setState(stateOf(shown));
+      });
     };
-    const observer = new MutationObserver(schedule);
+    const observer = new MutationObserver((records) => {
+      // An answer refused on saving opens the step that holds it. Answers
+      // that become invalid otherwise (one answer taking back another) wait
+      // in their step until the participant gets there.
+      const refused = !saving.current
+        ? undefined
+        : records.find(
+            (record) =>
+              record.attributeName === 'aria-invalid' &&
+              record.target instanceof Element &&
+              record.target.getAttribute('aria-invalid') === 'true' &&
+              record.target.closest(`${STEP_SELECTOR}[hidden]`),
+          );
+      if (refused?.target instanceof Element) {
+        const holder = refused.target.closest(STEP_SELECTOR);
+        const at = stepsIn(root).findIndex((entry) => entry === holder);
+        if (at >= 0) goTo(at);
+        saving.current = false;
+      }
+      schedule();
+    });
+    const form = root.closest('form');
+    const onSubmit = () => {
+      saving.current = true;
+    };
+    form?.addEventListener('submit', onSubmit, true);
     observer.observe(root, {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ['aria-checked', 'disabled', 'data-disabled', 'hidden'],
+      attributeFilter: ['aria-checked', 'aria-invalid', 'disabled'],
     });
     root.addEventListener('input', schedule);
     schedule();
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      form?.removeEventListener('submit', onSubmit, true);
       root.removeEventListener('input', schedule);
     };
-  }, [root, survey]);
+  }, [root, stepped, survey, goTo]);
+
+  const proceed = useCallback(() => {
+    if (!step) return;
+    const missing = firstRequiredWaiting(step);
+    if (missing) {
+      controlOf(missing)?.focus({ preventScroll: true });
+      bringIntoView(missing);
+      return;
+    }
+    if (!isLast) goTo(index + 1);
+  }, [step, isLast, index, goTo]);
 
   // A chosen option moves the form on, once the answer has rendered along
   // with any question it brings in.
@@ -228,42 +331,75 @@ export default function QuestionFlow({
       if (!field) return;
       requestAnimationFrame(() => {
         if (!field.isConnected || isUnanswered(field)) return;
-        const [next] = waitingAfter(root, field, skipped.current);
-        if (next) bringIntoView(next);
+        const [next] = waitingAfter(root, field);
+        if (next) {
+          bringIntoView(next);
+          return;
+        }
+        const holder = field.closest(STEP_SELECTOR);
+        if (
+          stepped &&
+          holder &&
+          holder === step &&
+          !isLast &&
+          stateOf(holder) !== 'required'
+        ) {
+          window.clearTimeout(advanceTimer.current);
+          advanceTimer.current = window.setTimeout(
+            () => goTo(index + 1),
+            STEP_DELAY,
+          );
+        }
       });
     };
     root.addEventListener('click', onClick);
     return () => root.removeEventListener('click', onClick);
-  }, [root]);
+  }, [root, stepped, step, isLast, index, goTo]);
 
-  const skip = (field: Element) => {
-    if (!root) return;
-    skipped.current.add(nameOf(field));
-    const [next] = waitingAfter(root, field, skipped.current);
-    survey();
-    if (!next) return;
-    controlOf(next)?.focus({ preventScroll: true });
-    bringIntoView(next);
+  useEffect(() => () => window.clearTimeout(advanceTimer.current), []);
+
+  // Enter in a typed answer continues to the next step rather than saving
+  // the form from its first page.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!stepped || isLast || event.key !== 'Enter') return;
+    if (!(event.target instanceof HTMLInputElement)) return;
+    event.preventDefault();
+    proceed();
   };
 
+  const showsSteps = stepped && steps.length > 1;
+
   return (
-    <div ref={setRoot} className={className}>
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- Enter is handled for the inputs inside, which keep their own semantics.
+    <div ref={setRoot} className={className} onKeyDown={onKeyDown}>
       {children}
-      {skippable.map(({ field, labelId }) =>
+      {stepped &&
+        navigation &&
         createPortal(
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            aria-describedby={labelId}
-            onClick={() => skip(field)}
-          >
-            {intl.formatMessage(messages.skipQuestion)}
-          </Button>,
-          slotOf(field),
-          nameOf(field),
-        ),
-      )}
+          <>
+            {showsSteps && index > 0 && (
+              <Button
+                type="button"
+                variant="text"
+                onClick={() => goTo(index - 1)}
+              >
+                {intl.formatMessage(commonMessages.back)}
+              </Button>
+            )}
+            {showsSteps && !isLast ? (
+              <Button type="button" color="primary" onClick={proceed}>
+                {intl.formatMessage(
+                  state === 'optional'
+                    ? messages.skipStep
+                    : commonMessages.continue,
+                )}
+              </Button>
+            ) : (
+              finish
+            )}
+          </>,
+          navigation,
+        )}
     </div>
   );
 }
