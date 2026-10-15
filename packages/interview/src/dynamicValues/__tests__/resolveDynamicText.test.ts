@@ -163,6 +163,16 @@ describe('resolveDynamicText', () => {
     );
   });
 
+  it('shows a stored date that is not on the calendar as it was stored', () => {
+    const message = '{born, select, missing {?} other {{born}}}';
+    expect(resolve(message, { born: '2024-02-31' })?.text).toBe('2024-02-31');
+    expect(resolve(message, { born: '2024-13' })?.text).toBe('2024-13');
+    expect(resolve(message, { born: '2024-00-10' })?.text).toBe('2024-00-10');
+    expect(resolve(message, { born: '2024-02-29' })?.text).toBe(
+      'February 29, 2024',
+    );
+  });
+
   it('keeps a year before 100 as written', () => {
     const message = '{born, select, missing {?} other {{born}}}';
     expect(resolve(message, { born: '0050-03-05' })?.text).toBe('March 5, 50');

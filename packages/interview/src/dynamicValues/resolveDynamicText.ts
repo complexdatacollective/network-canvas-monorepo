@@ -158,6 +158,14 @@ const formatDate = (value: unknown, locale: string): string => {
         Number(month ?? 1) - 1,
         Number(day ?? 1),
       );
+      // A day that is not on the calendar (`2024-02-31`) rolls over into
+      // another; show what was stored rather than a different date.
+      if (
+        date.getUTCMonth() !== Number(month ?? 1) - 1 ||
+        date.getUTCDate() !== Number(day ?? 1)
+      ) {
+        return value;
+      }
       return dateFormat(locale, {
         timeZone: 'UTC',
         year: 'numeric',
