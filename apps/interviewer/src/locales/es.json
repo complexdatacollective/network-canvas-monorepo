@@ -117,7 +117,7 @@
   "interviewer.interview.interviewCouldNotBeOpened": "No se pudo abrir la entrevista",
   "interviewer.interview.interviewNotFound": "Entrevista no encontrada",
   "interviewer.interview.interviewUnavailable": "Entrevista no disponible",
-  "interviewer.interview.interviewsOfProtocolCouldNotBeUpdated": "Algunas entrevistas registradas con este protocolo no se pudieron actualizar para que funcionen con esta versión de la aplicación, por lo que todavía no se puede continuar esta entrevista. El protocolo y todas sus entrevistas se han conservado exactamente como estaban, y la aplicación lo volverá a intentar cada vez que se inicie. Sus respuestas siguen disponibles en la pantalla de datos.",
+  "interviewer.interview.interviewsOfProtocolCouldNotBeUpdated": "Algunas entrevistas registradas con este protocolo no se pudieron actualizar para que funcionen con esta versión de la aplicación, por lo que todavía no se puede continuar esta entrevista. El protocolo y todas sus entrevistas se han conservado exactamente como estaban, y la aplicación lo volverá a intentar cada vez que se inicie. Las respuestas siguen disponibles en la pantalla de datos.",
   "interviewer.interview.readOnlyReview": "Revisión de solo lectura",
   "interviewer.interview.returnHome": "Volver al inicio",
   "interviewer.interview.theDataSavedForThisInterviewCouldNot": "No se pudieron leer los datos guardados de esta entrevista, por lo que no se ha abierto. Los datos guardados no se han modificado.",

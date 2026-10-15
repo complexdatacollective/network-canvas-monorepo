@@ -11,7 +11,7 @@
   "interview.familyPedigree.disconnectHintLinking": "{isYou, select, true {Sélectionnez maintenant la personne à détacher de vous.} other {Sélectionnez maintenant la personne à détacher de « {name} ».}}",
   "interview.familyPedigree.disconnectToolDescription": "Sélectionnez deux membres de votre famille reliés entre eux pour supprimer le lien qui les unit.",
   "interview.familyPedigree.disconnectedAnnouncement": "{firstIsYou, select, true {Le lien entre vous et « {second} » a été supprimé.} other {Le lien entre « {first} » et « {second} » a été supprimé.}}",
-  "interview.familyPedigree.framingChosenAnnouncement": "{framing, select, gamete {Les membres de la famille sont désormais décrits avec des mots comme parent de l’ovule, parent du sperme et frère ou sœur.} other {Les membres de la famille sont désormais décrits avec des mots comme mère, père, sœur et frère.}}",
+  "interview.familyPedigree.framingChosenAnnouncement": "{framing, select, gamete {Les membres de la famille sont désormais décrits avec des mots comme parent d’ovule, parent de sperme et frère ou sœur.} other {Les membres de la famille sont désormais décrits avec des mots comme mère, père, sœur et frère.}}",
   "interview.familyPedigree.framingControlDescription": "Choisissez les termes de parenté utilisés dans votre arbre généalogique pour désigner vos proches.",
   "interview.familyPedigree.personAccessibleName": "{isYou, select, true {Vous} other {{name}}}",
   "interview.familyPedigree.personAdoptedDescription": "Adopté(e).",

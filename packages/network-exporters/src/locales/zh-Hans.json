@@ -3,7 +3,7 @@
   "networkExporters.stage.formatting": "正在格式化会话…",
   "networkExporters.stage.generating": "正在生成文件…",
   "networkExporters.stage.outputting": "正在写入输出…",
-  "networkExporters.warning.columnRenamed.description": "部分列原本会与同一文件中的另一列同名。为避免丢失任何回答，每一列都改用带编号的名称写入。被重命名的列如下：",
+  "networkExporters.warning.columnRenamed.description": "部分列原本会与同一文件中的另一列同名。为避免丢失任何回答，这些列各自改用带编号的名称写入。被重命名的列如下：",
   "networkExporters.warning.columnRenamed.fromVariableItem": "在“{protocolName}”的 {format, select, csv {CSV} other {GraphML}} 文件中，{entity, select, ego {自我} other {“{entityTypeName}”}}的“{column}”列（来自变量“{variable}”）已写为“{renamedTo}”。",
   "networkExporters.warning.columnRenamed.item": "在“{protocolName}”的 {format, select, csv {CSV} other {GraphML}} 文件中，{entity, select, ego {自我} other {“{entityTypeName}”}}的“{column}”列已写为“{renamedTo}”。",
   "networkExporters.warning.columnRenamed.title": "部分列已重命名",

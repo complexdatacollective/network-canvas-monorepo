@@ -209,7 +209,7 @@
   "frescoUi.richTextEditor.removeLink": "Remover link",
   "frescoUi.richTextEditor.removeLinkShort": "Remover",
   "frescoUi.richTextEditor.thematicBreak": "Linha divisória",
-  "frescoUi.richTextEditor.tokens": "Inserir um marcador",
+  "frescoUi.richTextEditor.tokens": "Inserir um espaço reservado",
   "frescoUi.richTextEditor.undo": "Desfazer",
   "frescoUi.segmentedCodeField.codeInput": "Campo de código",
   "frescoUi.segmentedCodeField.segment": "Dígito {position, number} de {total, number}",
