@@ -381,6 +381,8 @@ export default function QuestionFlow({
         if (!field.isConnected || isUnanswered(field, read)) return;
         const [next] = waitingAfter(root, field, read);
         if (next) {
+          // A later answer that brings in a question keeps the step open.
+          window.clearTimeout(advanceTimer.current);
           bringIntoView(next);
           return;
         }
@@ -393,10 +395,17 @@ export default function QuestionFlow({
           stateOf(holder, read) !== 'required'
         ) {
           window.clearTimeout(advanceTimer.current);
-          advanceTimer.current = window.setTimeout(
-            () => goTo(index + 1),
-            STEP_DELAY,
-          );
+          // The step is checked again when the pause ends, in case an
+          // answer given meanwhile left something waiting.
+          advanceTimer.current = window.setTimeout(() => {
+            if (
+              stateOf(holder, read) === 'required' ||
+              waitingAfter(root, field, read).length > 0
+            ) {
+              return;
+            }
+            goTo(index + 1);
+          }, STEP_DELAY);
         }
       });
     };
