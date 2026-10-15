@@ -107,7 +107,9 @@ export const Default: Story = {
     const input = canvas.getByTestId('default-input');
 
     await expect(input).toHaveValue('');
-    await userEvent.type(input, 'Hello World');
+    await userEvent.click(input);
+    await expect(input).toHaveFocus();
+    await userEvent.type(input, 'Hello World', { skipClick: true });
     await expect(input).toHaveValue('Hello World');
   },
 };

@@ -138,6 +138,7 @@ export const Default: Story = {
     const firstSegment = canvas.getByLabelText('Digit 1 of 6');
 
     await userEvent.click(firstSegment);
+    await expect(firstSegment).toHaveFocus();
     await userEvent.keyboard('1');
     await userEvent.keyboard('2');
     await userEvent.keyboard('3');
