@@ -221,8 +221,8 @@ mailbox` in the browser log just before. It is not memory (it happens on an
   `--disable-gpu-compositing`, `--disable-gpu-memory-buffer-video-frames`,
   `--use-gl=disabled`, `--in-process-gpu`, `--single-process` and
   `--disable-features=UseMultiPlaneFormatForSoftwareVideo` all still crash.
-  Matches the unresolved https://github.com/microsoft/playwright/issues/30409;
-  there is no flag or newer build to adopt (1.63.0 is current), and the guest's
+  See https://github.com/microsoft/playwright/issues/30409 for the upstream
+  report. The tested flags above did not prevent the crash, and the guest's
   apt has no chromium of its own. Consequence: nothing that presents a decoded
   video frame in Chromium can run here — including the `architect-release-test`
   sample build, which refuses this host. Run that from the macOS host instead
