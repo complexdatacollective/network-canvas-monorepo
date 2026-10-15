@@ -680,7 +680,7 @@
   "architect.protocolSummary.stage.familyPedigree.genderWordsMasculine": "Mannelijke termen (vader, broer)",
   "architect.protocolSummary.stage.familyPedigree.genderWordsNeutral": "Neutrale termen (ouder, broer of zus)",
   "architect.protocolSummary.stage.familyPedigree.genderWordsUnknown": "Onbekend (neutrale termen; biologische moeder of biologische vader voor een biologische ouder)",
-  "architect.protocolSummary.stage.familyPedigree.gestationalCarrier": "Ouder die de zwangerschap draagt",
+  "architect.protocolSummary.stage.familyPedigree.gestationalCarrier": "Persoon die de zwangerschap heeft gedragen",
   "architect.protocolSummary.stage.familyPedigree.name": "Naam",
   "architect.protocolSummary.stage.familyPedigree.nameQuestion": "Naamvraag",
   "architect.protocolSummary.stage.familyPedigree.nameQuestionHint": "Aanwijzing bij de naamvraag",
