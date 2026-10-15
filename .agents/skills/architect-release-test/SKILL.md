@@ -38,8 +38,37 @@ manual pass.)
 | `--unpinned`       | —                | skip both pins; the run cannot be promotable            |
 
 Slice keys: `protocol-lifecycle`, `stages-and-timeline`,
-`codebook-and-summary`, `stage-preview`, `sample-protocol-build`.
-Reachability always runs.
+`codebook-and-summary`, `stage-preview`, `localization`, `dynamic-values`,
+`finish-stages`, `bins-and-encryption`, `templates-and-upgrade`,
+`sample-protocol-build`. Reachability always runs.
+
+**The schema 9 slices** author what schema 9 added, in the Browser pane:
+
+- `localization` — adds a second language on the Languages page, translates a
+  text in the translation table, sees the "Participants can’t choose a
+  language" note, and clears it by adding a Language Chooser stage.
+- `dynamic-values` — creates an ego attribute, inserts it and "Today’s date"
+  into an Information stage through the insert ("piped text") menu, checks the
+  menu's groups, the "If known" / "If not known" versions and the folded pill,
+  that they persist, and previews the stage.
+- `finish-stages` — the finish stage every protocol starts with, its
+  confirmation and automatic modes, a second finish stage, the reorder rule
+  (finish stages swap among themselves, never rise above another stage) and
+  the refusal to delete the last one.
+- `bins-and-encryption` — a Categorical Bin with tap to place and the
+  completion gate, and an Anonymisation stage that encrypts a text attribute
+  with no experiment to enable, its explanation led by a Heading 1.
+- `templates-and-upgrade` — opens the CEGRM template (Family Pedigree,
+  Narrative Pedigree, two finish stages), edits its pedigree, confirms no form
+  or census editor offers an introduction panel, and opens a schema 8
+  protocol, which must arrive upgraded (its introduction panel an Information
+  stage, a finish stage added). The pane has no file chooser, so the agent
+  hands the start screen's file input a small schema 8 `.netcanvas` built by a
+  script the workflow writes (`legacyUpgradeScript`), as Fresco's release test
+  does for uploads.
+
+The interview's own E2E suites cover how these features render to
+participants; a preview popup the pane refuses leaves that unobserved here.
 
 **The sample-protocol build** is the core end-user check. An analyst agent
 reads `packages/protocols/sample` at `sampleRef` (the commit the deployment
@@ -47,7 +76,9 @@ builds, so the specification matches the app under test) and writes a
 stage-by-stage build plan. Sonnet builder agents then recreate every stage,
 codebook entry and resource by driving Architect's UI the way a person
 would: they upload the assets through the file chooser and learn the UI
-from the screens and the end-user docs, not the app source. An Opus auditor
+from the screens and the end-user docs, not the app source. They create the
+protocol in the specification's languages and build its first finish stage
+by editing the one every new protocol starts with. An Opus auditor
 downloads the result as a user would, validates it, and compares it with the
 canonical protocol, attributing each difference to the app, to a driver
 slip, or to data no user sets. It also runs `scripts/check-built-protocol.mjs`
