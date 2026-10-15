@@ -159,6 +159,7 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
+      protocolHash: 'protocol-hash',
       getCurrentStep: () => 2,
     });
 
@@ -211,6 +212,7 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
+      protocolHash: 'protocol-hash',
       getCurrentStep: () => 0,
     });
 
@@ -252,6 +254,7 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 41,
+      protocolHash: 'protocol-hash',
       getCurrentStep: () => 0,
     });
 
@@ -274,6 +277,7 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
+      protocolHash: 'protocol-hash',
       getCurrentStep: () => 0,
     });
 
@@ -303,6 +307,7 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
+      protocolHash: 'protocol-hash',
       getCurrentStep: () => 0,
     });
 
@@ -326,6 +331,7 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: drifted,
+      protocolHash: 'protocol-hash',
       getCurrentStep: () => 0,
     });
 
@@ -352,6 +358,7 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 4,
+      protocolHash: 'protocol-hash',
       getCurrentStep: () => 0,
     });
 
@@ -368,6 +375,7 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
+      protocolHash: 'protocol-hash',
       getCurrentStep: () => 0,
     });
 
@@ -393,6 +401,7 @@ describe('createInterviewSyncHandler', () => {
     const onSync = createInterviewSyncHandler({
       interviewId: 'interview-1',
       initialSyncRevision: 0,
+      protocolHash: 'protocol-hash',
       getCurrentStep: () => 0,
     });
 

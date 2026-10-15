@@ -1,7 +1,6 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import {
   NcNetworkSchema,
   ensureError,
@@ -75,23 +74,29 @@ const routeHandler = async (
   }
 
   // An upgrade restarts the server but not the browsers already showing an
-  // interview, and an upgrade that migrates the protocol migrates its stored
-  // interviews too. A tab opened before it still holds the interview as the
-  // previous schema wrote it, and every write replaces the stored network and
-  // stage metadata wholesale, so its next write would undo that migration.
-  // Such a tab sends no schema version, or an older one: refuse its writes.
-  // Reloading the page starts it from the migrated interview.
-  if (
-    typeof rawPayload !== 'object' ||
-    rawPayload === null ||
-    !('schemaVersion' in rawPayload) ||
-    rawPayload.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION
-  ) {
-    return NextResponse.json(
+  // interview, and an upgrade that migrates or normalizes a protocol rewrites
+  // its stored interviews too. A tab opened before it still holds the
+  // interview as it was, and every write replaces the stored network and stage
+  // metadata wholesale, so its next write would undo that rewrite. Every such
+  // upgrade gives the protocol a new hash, including one that leaves its schema
+  // version as it was, so the page's protocol hash is what identifies the tab:
+  // a write without one, or with a hash the protocol no longer has, is
+  // refused. Reloading the page starts it from the rewritten interview.
+  const staleTab = () =>
+    NextResponse.json(
       { error: 'Interview was upgraded since this page loaded' },
       { status: 409 },
     );
+
+  if (
+    typeof rawPayload !== 'object' ||
+    rawPayload === null ||
+    !('protocolHash' in rawPayload) ||
+    typeof rawPayload.protocolHash !== 'string'
+  ) {
+    return staleTab();
   }
+  const { protocolHash } = rawPayload;
 
   const Schema = z.object({
     id: z.string(),
@@ -109,7 +114,7 @@ const routeHandler = async (
      *
      * Required, so there is no shape of request that reaches the row without an
      * order to be judged in. A browser still running a bundle from before an
-     * upgrade is refused above, by its schema version.
+     * upgrade is refused above, by its protocol hash.
      *
      * `lastUpdated` above is deliberately not used for this. It is a wall-clock
      * millisecond stamped by the interview reducer for a different purpose, so
@@ -142,11 +147,16 @@ const routeHandler = async (
       syncRevision: true,
       network: true,
       stageMetadata: true,
+      protocol: { select: { hash: true } },
     },
   });
 
   if (!stored) {
     return NextResponse.json({ error: 'Interview not found' }, { status: 404 });
+  }
+
+  if (stored.protocol.hash !== protocolHash) {
+    return staleTab();
   }
 
   if (freezeEnabled && stored.finishTime) {
@@ -191,6 +201,9 @@ const routeHandler = async (
           gte: syncRevision - MAX_REVISION_ADVANCE,
         },
         ...(freezeEnabled ? { finishTime: null } : {}),
+        // Checked again in the write itself, like the revision, so an upgrade
+        // committing after the read above still turns this write into a no-op.
+        protocol: { hash: protocolHash },
       },
       data: {
         network,
@@ -211,12 +224,16 @@ const routeHandler = async (
     // Nothing matched. Either the row holds a revision this write does not beat
     // — one that lost its race, so the interview already holds newer state — or
     // the jump was too large to be plausible, or the interview has been frozen
-    // since it was read, or there is no such interview at all. Only the last is
-    // a failure, so tell it apart rather than reporting success for a write
-    // that had nowhere to land.
+    // or upgraded since it was read, or there is no such interview at all. The
+    // last two are failures, so tell them apart rather than reporting success
+    // for a write that had nowhere to land.
     const current = await prisma.interview.findUnique({
       where: { id: interviewId },
-      select: { syncRevision: true, finishTime: true },
+      select: {
+        syncRevision: true,
+        finishTime: true,
+        protocol: { select: { hash: true } },
+      },
     });
 
     if (!current) {
@@ -224,6 +241,10 @@ const routeHandler = async (
         { error: 'Interview not found' },
         { status: 404 },
       );
+    }
+
+    if (current.protocol.hash !== protocolHash) {
+      return staleTab();
     }
 
     if (freezeEnabled && current.finishTime) {

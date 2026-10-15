@@ -3,7 +3,6 @@ import {
   type SessionSnapshot,
   type SyncHandler,
 } from '@codaco/interview/contract';
-import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 
 // Matches the interval the interview engine used to apply on every host's
 // behalf, so a participant's answers reach the server at the same rate as
@@ -24,6 +23,12 @@ type Args = {
    * older than what is stored.
    */
   initialSyncRevision: number;
+  /**
+   * The hash of the protocol the page loaded the interview with. Every upgrade
+   * that rewrites a protocol and its interviews gives the protocol a new hash,
+   * so the endpoint uses it to refuse a tab left open across one.
+   */
+  protocolHash: string;
   /** Reads the host's current step at the moment a write is put on the wire. */
   getCurrentStep: () => number;
 };
@@ -77,6 +82,7 @@ async function readOutcome(response: Response): Promise<SyncOutcome> {
 export function createInterviewSyncHandler({
   interviewId,
   initialSyncRevision,
+  protocolHash,
   getCurrentStep,
 }: Args): SyncHandler {
   let inFlight: AbortController | null = null;
@@ -124,9 +130,9 @@ export function createInterviewSyncHandler({
       lastUpdated: session.lastUpdated,
       currentStep: getCurrentStep(),
       syncRevision: revision,
-      // The schema the page loaded the interview in, so the endpoint can
+      // The protocol the page loaded the interview with, so the endpoint can
       // refuse a tab left open across an upgrade that migrated it.
-      schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      protocolHash,
     });
 
     try {

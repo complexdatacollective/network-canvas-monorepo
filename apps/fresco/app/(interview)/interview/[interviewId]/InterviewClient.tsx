@@ -79,12 +79,13 @@ export default function InterviewClient({
         : createInterviewSyncHandler({
             interviewId: payload.session.id,
             initialSyncRevision,
+            protocolHash: payload.protocol.hash,
             // Read through the ref, not the render's value: the memo runs once, and
             // the step a write should record is the one in force when it goes on
             // the wire.
             getCurrentStep: () => currentStepRef.current,
           }),
-    [view, payload.session.id, initialSyncRevision],
+    [view, payload.session.id, payload.protocol.hash, initialSyncRevision],
   );
 
   // Once this resolves the Shell shows the interview's completed state in

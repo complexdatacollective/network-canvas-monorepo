@@ -1,8 +1,6 @@
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
-
 const {
   captureExceptionMock,
   findUniqueMock,
@@ -73,6 +71,8 @@ const legacyNetwork = {
   },
 };
 
+const PROTOCOL_HASH = 'protocol-hash';
+
 function makeRequest(network: unknown, extra: Record<string, unknown> = {}) {
   return new NextRequest('http://localhost/interview/interview-1/sync', {
     method: 'POST',
@@ -83,7 +83,7 @@ function makeRequest(network: unknown, extra: Record<string, unknown> = {}) {
       currentStep: 2,
       lastUpdated: '2026-08-12T00:00:00.000Z',
       syncRevision: 1,
-      schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+      protocolHash: PROTOCOL_HASH,
       ...extra,
     }),
   });
@@ -122,10 +122,12 @@ function installInterviewRow(
     stageMetadata: unknown;
     finishTime: Date | null;
     currentStep: number;
+    protocol: { hash: string };
   } | null = initial
     ? {
         stageMetadata: null,
         finishTime: null,
+        protocol: { hash: PROTOCOL_HASH },
         ...initial,
         currentStep: 0,
       }
@@ -140,6 +142,7 @@ function installInterviewRow(
         id: string;
         syncRevision: { lt: number; gte: number };
         finishTime?: null;
+        protocol: { hash: string };
       };
       data: { syncRevision: number; network: unknown; currentStep: number };
     }) => {
@@ -148,7 +151,8 @@ function installInterviewRow(
       if (
         row.syncRevision >= where.syncRevision.lt ||
         row.syncRevision < where.syncRevision.gte ||
-        (where.finishTime === null && row.finishTime !== null)
+        (where.finishTime === null && row.finishTime !== null) ||
+        row.protocol.hash !== where.protocol.hash
       ) {
         return Promise.resolve({ count: 0 });
       }
@@ -173,6 +177,7 @@ describe('interview sync route', () => {
       stageMetadata: null,
       finishTime: null,
       syncRevision: 0,
+      protocol: { hash: PROTOCOL_HASH },
     });
   });
 
@@ -186,6 +191,7 @@ describe('interview sync route', () => {
       where: {
         id: 'interview-1',
         syncRevision: { lt: 1, gte: 1 - 10_000 },
+        protocol: { hash: PROTOCOL_HASH },
       },
       data: {
         network: {
@@ -234,9 +240,12 @@ describe('interview sync route', () => {
   });
 
   it('refuses a write from a page loaded before an upgrade, leaving the row as it is', async () => {
+    // No hash is what a bundle from before an upgrade to schema 9 sends; a
+    // different one is a page loaded before an upgrade rewrote its protocol,
+    // whether or not that upgrade changed the schema version.
     for (const extra of [
-      { schemaVersion: undefined },
-      { schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION - 1 },
+      { protocolHash: undefined },
+      { protocolHash: 'hash-before-the-upgrade' },
     ]) {
       const response = await post(
         makeRequest(networkNamed('stale'), { syncRevision: 1, ...extra }),
@@ -244,6 +253,27 @@ describe('interview sync route', () => {
       expect(response.status).toBe(409);
     }
     expect(updateManyMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses a write when an upgrade rewrites the protocol while the write is in flight', async () => {
+    const readRow = installInterviewRow({
+      syncRevision: 4,
+      network: networkNamed('upgraded'),
+    });
+    findUniqueMock.mockImplementationOnce(() => {
+      const snapshot = { ...readRow() };
+      const row = readRow();
+      if (row) row.protocol = { hash: 'hash-after-the-upgrade' };
+      return Promise.resolve(snapshot);
+    });
+
+    const response = await post(
+      makeRequest(networkNamed('stale'), { syncRevision: 5 }),
+    );
+
+    expect(response.status).toBe(409);
+    expect(readRow()?.network).toEqual(networkNamed('upgraded'));
+    expect(readRow()?.syncRevision).toBe(4);
   });
 
   it('keeps the generic HTTP 400 response for malformed JSON', async () => {
@@ -411,7 +441,7 @@ describe('interview sync route', () => {
             network: networkNamed('unnumbered'),
             currentStep: 2,
             lastUpdated: '2026-08-12T00:00:00.000Z',
-            schemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+            protocolHash: PROTOCOL_HASH,
           }),
         },
       );
@@ -432,6 +462,7 @@ describe('interview sync route', () => {
       findUniqueMock.mockResolvedValue({
         finishTime: new Date('2026-08-12T00:00:00.000Z'),
         syncRevision: 9,
+        protocol: { hash: PROTOCOL_HASH },
       });
 
       const response = await post(
