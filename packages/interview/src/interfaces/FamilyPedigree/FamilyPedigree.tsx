@@ -95,6 +95,7 @@ import {
 import {
   focusNeighbourInDirection,
   PedigreeViewport,
+  ToolTip,
   usePedigreeZoomButtons,
   zoomForKey,
 } from '../pedigree-common/PedigreeCanvas';
@@ -2817,18 +2818,42 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     <ToolbarIconButton
                       value="pointer"
                       aria-label={text(wording.pointerTool)}
+                      tooltip={
+                        <ToolTip
+                          name={text(wording.pointerTool)}
+                          description={intl.formatMessage(
+                            messages.pointerToolDescription,
+                          )}
+                        />
+                      }
                       icon={<MousePointer2 />}
                       data-testid="pedigree-tool-pointer"
                     />
                     <ToolbarIconButton
                       value="connect"
                       aria-label={text(wording.connectTool)}
+                      tooltip={
+                        <ToolTip
+                          name={text(wording.connectTool)}
+                          description={intl.formatMessage(
+                            messages.connectToolDescription,
+                          )}
+                        />
+                      }
                       icon={<Waypoints />}
                       data-testid="pedigree-tool-connect"
                     />
                     <ToolbarIconButton
                       value="disconnect"
                       aria-label={text(wording.disconnectTool)}
+                      tooltip={
+                        <ToolTip
+                          name={text(wording.disconnectTool)}
+                          description={intl.formatMessage(
+                            messages.disconnectToolDescription,
+                          )}
+                        />
+                      }
                       icon={<Unlink />}
                       data-testid="pedigree-tool-disconnect"
                     />

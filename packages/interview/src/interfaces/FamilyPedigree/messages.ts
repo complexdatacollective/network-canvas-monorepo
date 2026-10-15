@@ -36,7 +36,54 @@ export const messages = defineMessages({
     id: 'interview.familyPedigree.showWholeFamily',
     defaultMessage: 'Show the whole family',
     description:
-      'Accessible name of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Shown as an icon, without a tooltip.',
+      'Accessible name of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Also the heading of the button’s tooltip.',
+  },
+  showWholeFamilyDescription: {
+    id: 'interview.familyPedigree.showWholeFamilyDescription',
+    defaultMessage: 'Fit your whole family tree on the screen.',
+    description:
+      'Tooltip text, under the heading “Show the whole family”, of the toolbar icon button that zooms and moves the family tree so everyone in it fits on screen. Read by participants.',
+  },
+  zoomInDescription: {
+    id: 'interview.familyPedigree.zoomInDescription',
+    defaultMessage:
+      'Make your family tree bigger, to see part of it more closely.',
+    description:
+      'Tooltip text, under the heading “Zoom in”, of the family tree toolbar button that increases magnification. Read by participants.',
+  },
+  zoomOutDescription: {
+    id: 'interview.familyPedigree.zoomOutDescription',
+    defaultMessage: 'Make your family tree smaller, to see more of it at once.',
+    description:
+      'Tooltip text, under the heading “Zoom out”, of the family tree toolbar button that decreases magnification. Read by participants.',
+  },
+  pointerToolDescription: {
+    id: 'interview.familyPedigree.pointerToolDescription',
+    defaultMessage:
+      'Select a family member to edit their details or add their relatives.',
+    description:
+      'Tooltip text, under the heading “Add and edit” (or the stage’s own name for it), of the family tree toolbar tool that is chosen by default: with it, selecting a family member opens their details, and buttons beside them add a parent, sibling, partner or child. Read by participants.',
+  },
+  connectToolDescription: {
+    id: 'interview.familyPedigree.connectToolDescription',
+    defaultMessage:
+      'Select two family members to connect them and say how they are related.',
+    description:
+      'Tooltip text, under the heading “Connect” (or the stage’s own name for it), of the family tree toolbar tool that joins two people already in the tree: the participant selects one, then another, then chooses how they are related, such as parent or partner. Read by participants.',
+  },
+  disconnectToolDescription: {
+    id: 'interview.familyPedigree.disconnectToolDescription',
+    defaultMessage:
+      'Select two connected family members to remove the connection between them.',
+    description:
+      'Tooltip text, under the heading “Disconnect” (or the stage’s own name for it), of the family tree toolbar tool that removes a relationship line: the participant selects one person, then someone they are connected to, and confirms. Read by participants.',
+  },
+  framingControlDescription: {
+    id: 'interview.familyPedigree.framingControlDescription',
+    defaultMessage:
+      'Choose the relationship words your family tree uses for your relatives.',
+    description:
+      'Tooltip text, under the heading “Wording” (or the stage’s own name for it), of the family tree toolbar button that opens a choice between sets of words for relatives, such as mother and father, or egg parent and sperm parent. Read by participants.',
   },
   trackerProgressLabel: {
     id: 'interview.familyPedigree.trackerProgressLabel',
