@@ -32,8 +32,8 @@ const TEXT: readonly WordingSetting[] = [
   { path: 'saveSnapshot', label: messages.saveSnapshotButtonLabel },
   { path: 'tooltips.clearFocus', label: messages.clearFocusTooltipLabel },
   {
-    path: 'conditionText.allConditions',
-    label: messages.allConditionsLabel,
+    path: 'conditionText.selectCondition',
+    label: messages.selectConditionLabel,
   },
   {
     path: 'conditionText.notation.affected',

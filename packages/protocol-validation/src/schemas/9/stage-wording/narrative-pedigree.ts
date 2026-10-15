@@ -17,17 +17,18 @@ const KEY_HEADING = {
   'zh-Hant': '圖例',
 } as const satisfies SuppliedWording;
 
-/** The condition picker's choice that shows every condition at once. */
-const ALL_CONDITIONS = {
-  'en': 'All conditions',
-  'de': 'Alle Erkrankungen',
-  'es': 'Todas las afecciones',
-  'fr': 'Toutes les affections',
-  'it': 'Tutte le condizioni',
-  'nl': 'Alle aandoeningen',
-  'pt-BR': 'Todas as condições',
-  'zh-Hans': '所有病症',
-  'zh-Hant': '所有病症',
+/** The condition menu's text while no condition is chosen, and its choice
+ * for choosing none. */
+const SELECT_CONDITION = {
+  'en': 'Select a condition',
+  'de': 'Erkrankung auswählen',
+  'es': 'Selecciona una afección',
+  'fr': 'Sélectionnez une affection',
+  'it': 'Seleziona una condizione',
+  'nl': 'Selecteer een aandoening',
+  'pt-BR': 'Selecione uma condição',
+  'zh-Hans': '选择一种病症',
+  'zh-Hant': '選擇一種病症',
 } as const satisfies SuppliedWording;
 
 /** The legend's meaning of the affected symbol. */
@@ -170,8 +171,8 @@ export const NARRATIVE_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] =
     { path: ['saveSnapshot'], message: SAVE_SNAPSHOT },
     { path: ['tooltips', 'clearFocus'], message: CLEAR_FOCUS_TOOLTIP },
     {
-      path: ['conditionText', 'allConditions'],
-      message: ALL_CONDITIONS,
+      path: ['conditionText', 'selectCondition'],
+      message: SELECT_CONDITION,
     },
     {
       path: ['conditionText', 'notation', 'affected'],

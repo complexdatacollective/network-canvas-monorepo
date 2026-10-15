@@ -492,11 +492,11 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Label of the setting holding the text of the button, below the key, that saves an image of the pedigree.',
   },
-  allConditionsLabel: {
-    id: 'protocolBuilder.narrativePedigree.allConditionsLabel',
-    defaultMessage: 'All conditions option',
+  selectConditionLabel: {
+    id: 'protocolBuilder.narrativePedigree.selectConditionLabel',
+    defaultMessage: '“Select a condition” option',
     description:
-      "Label of the setting holding the text of the choice, in the participant's condition picker, that shows every condition at once instead of one.",
+      "Label of the setting holding the text the participant's condition menu shows while no condition is chosen, which is also the menu's choice for showing none.",
   },
   affectedNotationLabel: {
     id: 'protocolBuilder.narrativePedigree.affectedNotationLabel',

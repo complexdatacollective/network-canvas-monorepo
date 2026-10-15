@@ -21,7 +21,7 @@ type Disease = {
 
 /** The control's words, from the stage's settings. */
 export type ConditionControlWords = Readonly<{
-  allConditions: string;
+  selectCondition: string;
 }>;
 
 type ConditionControlProps = {
@@ -73,7 +73,7 @@ function ConditionControl({
           <span className="flex max-w-xs min-w-0 items-center gap-2">
             {selected && <ColourDot color={selected.color} />}
             <span className="min-w-0 truncate">
-              {selected?.label ?? words.allConditions}
+              {selected?.label ?? words.selectCondition}
             </span>
             <ChevronUp aria-hidden className="size-4 shrink-0" />
           </span>
@@ -94,7 +94,7 @@ function ConditionControl({
         <DropdownMenuRadioItem value={ALL_CONDITIONS} closeOnClick>
           <span className="flex items-center gap-2">
             <span aria-hidden className="size-4 shrink-0" />
-            {words.allConditions}
+            {words.selectCondition}
           </span>
         </DropdownMenuRadioItem>
         {diseases.map((disease) => (

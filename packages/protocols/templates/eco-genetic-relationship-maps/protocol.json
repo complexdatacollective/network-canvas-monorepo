@@ -1628,8 +1628,8 @@
         }
       },
       "conditionText": {
-        "allConditions": {
-          "en-US": "All conditions"
+        "selectCondition": {
+          "en-US": "Select a condition"
         },
         "notation": {
           "affected": {

@@ -661,7 +661,7 @@ export const completeProtocol = () => ({
         clearFocus: localized('Clear focus'),
       },
       conditionText: {
-        allConditions: localized('All conditions'),
+        selectCondition: localized('Select a condition'),
         notation: {
           affected: localized('Has this condition'),
           obligateAffected: localized('Will develop this condition'),

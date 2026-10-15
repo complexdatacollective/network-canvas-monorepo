@@ -136,7 +136,7 @@ const canvasScale = (page: Page): Promise<number> =>
   });
 
 // The condition picker's choice that shows every condition.
-const ALL_CONDITIONS = 'All conditions';
+const SELECT_CONDITION = 'Select a condition';
 
 // The toolbar's condition picker: a button showing the chosen condition.
 const conditionPicker = (page: Page) =>
@@ -157,7 +157,7 @@ async function chooseCondition(page: Page, name: string) {
 // each distinct from the text Network Canvas supplies, so an assertion on one
 // proves the stage's own setting is what the participant sees.
 const KEY_HEADING = 'Guide - matrix check';
-const ALL_CONDITIONS_WORDING = 'Everything at once - matrix check';
+const SELECT_CONDITION_WORDING = 'Pick one - matrix check';
 const CLEAR_FOCUS = 'Stop focusing - matrix check';
 const SAVE_SNAPSHOT = 'Keep a picture - matrix check';
 const NOTATION_AFFECTED = 'Has it now - matrix check';
@@ -338,7 +338,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       },
       run: async ({ page }) => {
         // Every condition is shown, so there is no key to their symbols.
-        await expect(conditionPicker(page)).toHaveText(ALL_CONDITIONS);
+        await expect(conditionPicker(page)).toHaveText(SELECT_CONDITION);
         await expect(conditionKey(page)).toHaveCount(0);
         await expect(
           page.getByRole('region', { name: 'Your family' }),
@@ -387,7 +387,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         ).toHaveCount(0);
         await expect(page.locator('[data-dimmed="true"]')).toHaveCount(0);
 
-        await expect(conditionPicker(page)).toHaveText(ALL_CONDITIONS);
+        await expect(conditionPicker(page)).toHaveText(SELECT_CONDITION);
         await chooseCondition(page, "Huntington's Disease");
         await expect(
           page.locator('[data-node-id="grandparent"] [data-notation-status]'),
@@ -409,7 +409,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
 
         await expect(conditionKey(page)).toBeVisible();
 
-        await chooseCondition(page, ALL_CONDITIONS);
+        await chooseCondition(page, SELECT_CONDITION);
         await expect(page.locator('[data-notation-status]')).toHaveCount(0);
         await expect(page.getByText('Showing all conditions')).toBeVisible();
         await expect(conditionKey(page)).toHaveCount(0);
@@ -724,7 +724,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           page.locator('[data-node-id="paternal-grandfather"]'),
         ).toHaveAttribute('data-dimmed', 'true');
         await clearFocus.click();
-        await chooseCondition(page, ALL_CONDITIONS);
+        await chooseCondition(page, SELECT_CONDITION);
 
         // X-linked dominant: every daughter of the affected father is
         // non-unknown; a son of the same father stays unknown.
@@ -735,7 +735,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         await expect(
           page.locator('[data-node-id="ego"] [data-notation-status]'),
         ).toHaveAttribute('data-notation-status', 'unknown');
-        await chooseCondition(page, ALL_CONDITIONS);
+        await chooseCondition(page, SELECT_CONDITION);
 
         // Y-linked: only males down the paternal line carry a non-unknown
         // status; a daughter is unknown; focusing the grandson highlights only
@@ -763,7 +763,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           'true',
         );
         await clearFocus.click();
-        await chooseCondition(page, ALL_CONDITIONS);
+        await chooseCondition(page, SELECT_CONDITION);
 
         // Mitochondrial: focusing a maternal-line descendant highlights only
         // the egg (cytoplasm) chain up to the great-grandmother source; a
@@ -1003,7 +1003,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         'readOnlyInvariant',
         'keyHeading',
         'tooltips.clearFocus',
-        'conditionText.allConditions',
+        'conditionText.selectCondition',
         'conditionText.notation.affected',
         'conditionText.notation.obligateAffected',
         'conditionText.notation.obligateCarrier',
@@ -1036,7 +1036,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
             'keyHeading': KEY_HEADING,
             'tooltips.clearFocus': CLEAR_FOCUS,
             'saveSnapshot': SAVE_SNAPSHOT,
-            'conditionText.allConditions': ALL_CONDITIONS_WORDING,
+            'conditionText.selectCondition': SELECT_CONDITION_WORDING,
             'conditionText.notation.affected': NOTATION_AFFECTED,
             'conditionText.notation.obligateAffected':
               NOTATION_OBLIGATE_AFFECTED,
@@ -1064,7 +1064,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
 
         // The condition picker offers every condition in the stage's own
         // words, not the words Network Canvas supplies.
-        await expect(conditionPicker(page)).toHaveText(ALL_CONDITIONS_WORDING);
+        await expect(conditionPicker(page)).toHaveText(
+          SELECT_CONDITION_WORDING,
+        );
         await expect(
           page.getByRole('button', { name: SAVE_SNAPSHOT, exact: true }),
         ).toBeVisible();

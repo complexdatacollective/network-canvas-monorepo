@@ -159,7 +159,7 @@ export default function NarrativePedigreeView({
     stage.conditionText.notation.atRiskCarrier,
   );
   const conditionControlWords: ConditionControlWords = {
-    allConditions: resolve(stage.conditionText.allConditions).text,
+    selectCondition: resolve(stage.conditionText.selectCondition).text,
   };
   const saveSnapshotText = resolve(stage.saveSnapshot).text;
   const conditionWords: ConditionPanelWords = {

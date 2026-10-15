@@ -558,9 +558,9 @@ const NARRATIVE_PEDIGREE_WORDING = [
     narrativePedigreeMessages.clearFocusTooltipLabel,
   ),
   settingRule(
-    'conditionText.allConditions',
+    'conditionText.selectCondition',
     narrativePedigreeMessages.wordingTitle,
-    narrativePedigreeMessages.allConditionsLabel,
+    narrativePedigreeMessages.selectConditionLabel,
   ),
   settingRule(
     'conditionText.notation.affected',

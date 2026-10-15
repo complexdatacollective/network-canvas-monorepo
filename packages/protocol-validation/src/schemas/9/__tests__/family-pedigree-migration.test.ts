@@ -1203,7 +1203,7 @@ describe('v8 to v9 Narrative Pedigree migration', () => {
         clearFocus: { en: 'Clear focus' },
       },
       conditionText: {
-        allConditions: { en: 'All conditions' },
+        selectCondition: { en: 'Select a condition' },
         notation: {
           affected: { en: 'Has this condition' },
           obligateAffected: { en: 'Will develop this condition' },

@@ -299,7 +299,7 @@ describe('a new stage given nothing but a name', () => {
               clearFocus: { en: 'Clear focus' },
             },
             conditionText: {
-              allConditions: { en: 'All conditions' },
+              selectCondition: { en: 'Select a condition' },
               notation: {
                 affected: { en: 'Has this condition' },
                 obligateAffected: { en: 'Will develop this condition' },

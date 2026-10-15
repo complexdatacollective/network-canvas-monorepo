@@ -647,7 +647,7 @@ describe('NarrativePedigreeView — node mode selection', () => {
       expect(viewMarker('[data-notation-status]')).toBeTruthy(),
     );
 
-    await selectCondition('All conditions');
+    await selectCondition('Select a condition');
     await waitFor(() =>
       expect(viewMarker('[data-notation-status]')).toBeNull(),
     );

@@ -2257,9 +2257,9 @@
         }
       },
       "conditionText": {
-        "allConditions": {
-          "en-US": "All conditions",
-          "es": "Todas las afecciones"
+        "selectCondition": {
+          "en-US": "Select a condition",
+          "es": "Selecciona una afección"
         },
         "notation": {
           "affected": {

@@ -550,7 +550,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
       ...EVERY_STAGE,
       showAtRiskStatuses: true,
       conditionText: {
-        allConditions: { 'en-US': 'All conditions' },
+        selectCondition: { 'en-US': 'Select a condition' },
         notation: {
           affected: { 'en-US': 'Has this condition' },
           obligateAffected: { 'en-US': 'Will develop this condition' },

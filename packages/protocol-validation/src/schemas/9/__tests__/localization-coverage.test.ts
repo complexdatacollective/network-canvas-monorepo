@@ -288,7 +288,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(19, 'keyHeading'), 'plain'),
   site(stage(19, 'saveSnapshot'), 'plain'),
   site(stage(19, 'tooltips', 'clearFocus'), 'plain'),
-  site(stage(19, 'conditionText', 'allConditions'), 'plain'),
+  site(stage(19, 'conditionText', 'selectCondition'), 'plain'),
   site(stage(19, 'conditionText', 'notation', 'affected'), 'plain'),
   site(stage(19, 'conditionText', 'notation', 'obligateAffected'), 'plain'),
   site(stage(19, 'conditionText', 'notation', 'obligateCarrier'), 'plain'),

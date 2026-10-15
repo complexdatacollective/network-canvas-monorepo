@@ -31,7 +31,7 @@ Portuguese, and Simplified and Traditional Chinese):
   no-match and search-failed texts.
 - Network Composer, Narrative, Sociogram and Narrative Pedigree: the name box
   placeholder, panel headings, the tools' tooltips, and the Narrative
-  Pedigree's key, its condition menu's "All conditions" choice, snapshot
+  Pedigree's key, its condition menu's "Select a condition" choice, snapshot
   button and snapshot headings.
 - Family Pedigree: every word of drawing, connecting and adding to the family,
   as the stage's `wording`, including the name question and the checklist of
