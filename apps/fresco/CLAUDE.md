@@ -317,6 +317,13 @@ then runs two Docker stacks via
   (`--phase resume`). Finally it verifies data integrity, dashboard CRUD,
   settings, and the interview data API, and diffs pre- vs post-upgrade exports
   (`release-test/scripts/diff-exports.mjs`) for unanticipated differences.
+  Once the released image itself runs schema 9, it migrates the schema 8
+  fixture on import and a release carries no schema 8 data across: every
+  phase then reports `notApplicable` with no checks (the seed still leaves an
+  interview, so the lane's counts hold), and the workflow records a warning.
+  It accepts that only when all three phases agree; any other mix is
+  unaccounted. A later schema bump needs its own migration fixture, and the
+  seed fails loudly until it has one.
 - **Fresh lane** (ports 3211/5534/9311): verifies the new-deployment setup
   process of the pending image end-to-end, and then runs the script-driven
   checks on that instance — a whole interview conducted from the first stage to

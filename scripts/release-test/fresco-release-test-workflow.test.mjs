@@ -4522,3 +4522,52 @@ test('every lane a prompt starts is a lane up.sh defines', async () => {
       `a prompt drives lane "${lane}", which up.sh does not define`,
     );
 });
+
+// Once the released image runs schema 9 itself, it migrates the schema 8
+// fixture on import and the release carries no schema 8 data across. The
+// lane says so in every phase instead of failing its seed, and the run is
+// still certifiable — but only on one consistent reading.
+const NOT_APPLICABLE =
+  'the released image stores the schema 8 fixture as schema 9, the schema the pending image runs';
+const migrationNotApplicable = (r) => {
+  for (const label of [
+    'migration-seed-result',
+    'migration-lane',
+    'migration-resume-lane',
+  ])
+    r[label] = { ok: true, checks: [], notApplicable: NOT_APPLICABLE };
+  return r;
+};
+
+test('a migration lane every phase reports not applicable is a warning, not a gap', async () => {
+  const { result } = await run(migrationNotApplicable(happyPath()));
+  assert.equal(result.verdict, 'go', JSON.stringify(result.unaccounted));
+  assert.equal(result.releasable, true);
+  assert.ok(
+    result.warnings.some((w) => w.includes(NOT_APPLICABLE)),
+    JSON.stringify(result.warnings),
+  );
+});
+
+test('a migration lane only one phase reports not applicable cannot be trusted', async () => {
+  const r = migrationNotApplicable(happyPath());
+  r['migration-lane'] = passingScript('migration');
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('not every phase agreed')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a not-applicable migration phase that still ran checks cannot be trusted', async () => {
+  const r = migrationNotApplicable(happyPath());
+  r['migration-resume-lane'].checks = passingScript('migrationResume').checks;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('not every phase agreed')),
+    JSON.stringify(result.unaccounted),
+  );
+});

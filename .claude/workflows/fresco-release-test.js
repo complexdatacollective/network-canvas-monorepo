@@ -384,6 +384,11 @@ const SCRIPT_LANE_SCHEMA = {
       },
     },
     error: { type: 'string' },
+    notApplicable: {
+      type: 'string',
+      description:
+        'Only when the script printed one: its "notApplicable" field, verbatim',
+    },
   },
   required: ['ok', 'checks'],
 };
@@ -1174,7 +1179,7 @@ const scriptPrompt = (
   what,
 ) => `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once (Bash timeout 1800000 — it drives a browser through ${what}):
 node ${SCRIPTS}/${script} ${args}
-It prints ONE line of JSON on stdout and nothing else. Return its "ok" and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as printed, none added, none dropped, none reworded. On a non-zero exit it still prints that line; return it. Do not interpret what the checks mean, do not investigate a failure, do not re-run the script, do not start or restart any container, and change nothing on disk. The workflow decides what they mean.`;
+It prints ONE line of JSON on stdout and nothing else. Return its "ok", its "notApplicable" when it has one, and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as printed, none added, none dropped, none reworded. On a non-zero exit it still prints that line; return it. Do not interpret what the checks mean, do not investigate a failure, do not re-run the script, do not start or restart any container, and change nothing on disk. The workflow decides what they mean.`;
 
 // A script run INSIDE a checklist agent's sequence (the migration lane's seed
 // phase has to land between two of the seed agent's items) is bound the same
@@ -1184,7 +1189,7 @@ const scriptResultPrompt = (
   file,
   what,
 ) => `Your working directory is already the correct repository checkout — do NOT cd anywhere else (this may be a git worktree whose files are absent from the main checkout). Run exactly this, once: cat ${file}
-It is the JSON result a script left after checking ${what}. Return its "ok" and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as written, none added, none dropped, none reworded. If the file does not exist or is not JSON, return ok:false with what cat printed in "error" and an empty checks array. Do not interpret the checks, do not run anything else, and change nothing on disk. The workflow decides what they mean.`;
+It is the JSON result a script left after checking ${what}. Return its "ok", its "notApplicable" when it has one, and its "checks" array VERBATIM — every entry, with its id, status and detail exactly as written, none added, none dropped, none reworded. If the file does not exist or is not JSON, return ok:false with what cat printed in "error" and an empty checks array. Do not interpret the checks, do not run anything else, and change nothing on disk. The workflow decides what they mean.`;
 
 // ---------------------------------------------------------------------------
 
@@ -1927,7 +1932,41 @@ const scriptLanes = {
   },
 };
 
+// The migration lane carries schema 8 data across the upgrade, which only a
+// release that introduces schema 9 does. Once the released image itself runs
+// schema 9 it migrates the fixture on import, and every phase says so in
+// `notApplicable` instead of reporting checks. That is accepted only as one
+// consistent reading: all three phases agree, completed, and checked nothing.
+// Anything else is unaccounted, and the phases are then held to their checks.
+const MIGRATION_AREAS = ['migrationSeed', 'migration', 'migrationResume'];
+const notApplicableReasons = MIGRATION_AREAS.map((area) => {
+  const reason = scriptLanes[area].result?.notApplicable;
+  return typeof reason === 'string' && reason.trim() ? reason.trim() : null;
+});
+let migrationNotApplicable = false;
+if (notApplicableReasons.some(Boolean)) {
+  const consistent = MIGRATION_AREAS.every((area, index) => {
+    const result = scriptLanes[area].result;
+    return (
+      notApplicableReasons[index] !== null &&
+      result?.ok === true &&
+      Array.isArray(result.checks) &&
+      result.checks.length === 0
+    );
+  });
+  if (consistent) {
+    migrationNotApplicable = true;
+    warnings.push(
+      `migration lane: the schema 8 upgrade was not exercised — ${notApplicableReasons[0]}`,
+    );
+  } else
+    unaccounted.push(
+      `migration lane: ${MIGRATION_AREAS.filter((_, index) => notApplicableReasons[index]).join(', ')} reported the lane not applicable, but not every phase agreed with no checks run, so the reading cannot be trusted`,
+    );
+}
+
 for (const [area, { result, what }] of Object.entries(scriptLanes)) {
+  if (migrationNotApplicable && MIGRATION_AREAS.includes(area)) continue;
   const expected = expectedScriptChecks[area];
   if (!result) {
     unaccounted.push(

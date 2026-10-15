@@ -195,3 +195,17 @@ export async function importProtocol(
   }
   return id;
 }
+
+/**
+ * The ids of an interview's nodes of one type, keyed by the value one of
+ * their attributes holds (a person's name), so an oracle can find that
+ * person's own exported record.
+ */
+export function nodeIdsBy(psql, interviewId, { type, attribute }) {
+  const rows = JSON.parse(
+    psql(
+      `select coalesce(json_object_agg(n->'attributes'->>${sqlText(attribute)}, n->>'_uid'), '{}') from "Interview", jsonb_array_elements(network::jsonb->'nodes') n where id = ${sqlText(interviewId)} and n->>'type' = ${sqlText(type)} and n->'attributes' ? ${sqlText(attribute)};`,
+    ),
+  );
+  return rows;
+}

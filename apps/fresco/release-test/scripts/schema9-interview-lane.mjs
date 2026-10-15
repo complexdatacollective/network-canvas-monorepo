@@ -41,6 +41,7 @@ import {
   exportAllInterviews,
   importProtocol,
   nextStage,
+  nodeIdsBy,
   previousStage,
   psqlFor,
   settledStep,
@@ -51,6 +52,7 @@ import { lane } from './lanes.mjs';
 import {
   encryptedValueProblems,
   finishOutcomeProblems,
+  nodeAnswerProblems,
 } from './schema9-export-contract.mjs';
 
 const argv = process.argv.slice(2);
@@ -106,6 +108,9 @@ const TRANSCRIPT = {
   relative: 'Linda',
   declinedName: 'Declina Prueba',
 };
+
+/** The fixture's person type, and the attribute that names each person. */
+const PERSON = { type: 'node-type-9009-3', attribute: 'var-9009-4' };
 
 /** The fixture's Family Pedigree person type and the attributes read here. */
 const RELATIVE = {
@@ -652,14 +657,45 @@ try {
       const missing = expected.filter(
         (answer) => !exported.text.includes(answer),
       );
+      // The short answers ("5", "work") would be found anywhere in the
+      // archive's text, so each person's are read from that person's own
+      // records: a categorical answer is one true/false column per option.
+      const ids = nodeIdsBy(psql, result.interviewId, PERSON);
+      const misplaced = nodeAnswerProblems(
+        exported.files,
+        Object.fromEntries(
+          TRANSCRIPT.people.map((name) => [
+            ids[name] ?? `(no stored node named ${name})`,
+            {
+              hours: TRANSCRIPT.hours[name],
+              ...Object.fromEntries(
+                Object.values(TRANSCRIPT.context).map(({ value }) => [
+                  `context_${value}`,
+                  String(value === TRANSCRIPT.context[name].value),
+                ]),
+              ),
+            },
+          ]),
+        ),
+      );
       return {
-        pass: exported.entries > 0 && missing.length === 0,
+        pass:
+          exported.entries > 0 &&
+          missing.length === 0 &&
+          misplaced.length === 0,
         detail:
           exported.entries === 0
             ? `the export archive held no data files${exported.error ? ` (${exported.error})` : ''}`
-            : missing.length === 0
-              ? `every answer both walks gave is in the export (${exported.entries} file(s))`
-              : `the export does not carry: ${missing.join(' | ')}`,
+            : missing.length || misplaced.length
+              ? [
+                  missing.length
+                    ? `the export does not carry: ${missing.join(' | ')}`
+                    : '',
+                  ...misplaced,
+                ]
+                  .filter(Boolean)
+                  .join('; ')
+              : `every answer both walks gave is in the export (${exported.entries} file(s)), and each person's hours and context are in that person's own CSV and GraphML records`,
       };
     }),
   );

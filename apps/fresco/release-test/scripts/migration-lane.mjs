@@ -25,6 +25,13 @@
 //                     the unfinished interview as its participant, and
 //                     finishes it, and exports it.
 //
+// Once the released image itself runs schema 9, it migrates the schema 8
+// fixture on import and the release under test carries no schema 8 data
+// across. The seed phase then still creates its interview, so the upgrade
+// lane's interview counts hold, and every phase reports `notApplicable` with
+// the reason and no checks; the workflow accepts that only when all three
+// phases agree, and records that the upgrade was not exercised.
+//
 // The seed phase's interview is one of the seeded interviews the upgrade lane
 // compares before and after the upgrade, so it is created before the seed
 // takes its snapshots, and the workflow counts it.
@@ -38,6 +45,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { CURRENT_SCHEMA_VERSION } from '../../../../packages/protocol-validation/src/schemas/index.ts';
 import {
   attempt,
   check,
@@ -53,6 +61,7 @@ import {
   exportAllInterviews,
   importProtocol,
   nextStage,
+  nodeIdsBy,
   openInterview,
   previousStage,
   psqlFor,
@@ -66,7 +75,13 @@ import {
   introductionPanelProblems,
   protocolMigrationProblems,
 } from './migration-contract.mjs';
-import { finishOutcomeProblems } from './schema9-export-contract.mjs';
+import {
+  finishOutcomeProblems,
+  nodeAnswerProblems,
+} from './schema9-export-contract.mjs';
+
+/** The schema the fixture is written in, which this lane carries across. */
+const FIXTURE_SCHEMA = '8';
 
 const argv = process.argv.slice(2);
 const argument = (name, fallback) => {
@@ -174,8 +189,9 @@ async function seed() {
             `select "schemaVersion" from "Protocol" where id = ${sqlText(id)};`,
           )
         : '';
+      result.storedSchema = version;
       return {
-        pass: Boolean(id) && version === '8',
+        pass: Boolean(id) && version === FIXTURE_SCHEMA,
         detail: id
           ? `imported as ${id}, stored as schema ${version}`
           : 'the protocol never appeared in the database within 120s',
@@ -183,6 +199,33 @@ async function seed() {
     }),
   );
   if (!result.protocolId) throw new Error('no protocol to conduct');
+
+  // A released image that already runs the pending schema stored the fixture
+  // migrated: there is no schema 8 data for this release to carry across.
+  if (result.storedSchema === String(CURRENT_SCHEMA_VERSION)) {
+    checks.length = 0;
+    result.notApplicable = `the released image stores the schema ${FIXTURE_SCHEMA} fixture as schema ${result.storedSchema}, the schema the pending image runs, so this release carries no schema ${FIXTURE_SCHEMA} data across`;
+    const started = await startInterview(
+      page,
+      config.baseUrl,
+      result.protocolId,
+      TRANSCRIPT.participant,
+    );
+    result.interviewId = started.interviewId;
+    writeFileSync(
+      SEEDED,
+      JSON.stringify(
+        {
+          protocolId: result.protocolId,
+          interviewId: result.interviewId,
+          notApplicable: result.notApplicable,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
 
   // The released interview, as its participant meets it: the Ego Form shows
   // its panel above its question; the Alter Form opens on its panel.
@@ -263,8 +306,12 @@ async function seed() {
 
 /** On the pending image, before anything opens an interview. */
 function migrated() {
-  const before = JSON.parse(readFileSync(BEFORE, 'utf8'));
   const seeded = JSON.parse(readFileSync(SEEDED, 'utf8'));
+  if (seeded.notApplicable) {
+    result.notApplicable = seeded.notApplicable;
+    return;
+  }
+  const before = JSON.parse(readFileSync(BEFORE, 'utf8'));
   const after = readDatabase();
   writeFileSync(AFTER, JSON.stringify(after, null, 2));
   const verdict = (id, problems, success) =>
@@ -309,6 +356,10 @@ function migrated() {
 /** On the pending image, after the export capture: the participant returns. */
 async function resume() {
   const seeded = JSON.parse(readFileSync(SEEDED, 'utf8'));
+  if (seeded.notApplicable) {
+    result.notApplicable = seeded.notApplicable;
+    return;
+  }
   const after = JSON.parse(readFileSync(AFTER, 'utf8'));
   const protocol = after.protocols.find((p) => p.id === seeded.protocolId);
   const stepOf = (id) =>
@@ -488,6 +539,22 @@ async function resume() {
       const missing = answers.filter(
         (answer) => !exported.text.includes(answer),
       );
+      // "3" and "7" would be found anywhere in the archive's text, so each
+      // person's hours are read from that person's own records.
+      const ids = nodeIdsBy(psql, seeded.interviewId, {
+        type: 'person',
+        attribute: 'name',
+      });
+      const misplaced = nodeAnswerProblems(
+        exported.files,
+        Object.fromEntries(
+          TRANSCRIPT.people.map((name) => [
+            ids[name] ?? `(no stored node named ${name})`,
+            { hours: TRANSCRIPT.hours[name] },
+          ]),
+        ),
+      );
+      missing.push(...misplaced);
       return {
         pass:
           exported.entries > 0 && problems.length === 0 && missing.length === 0,

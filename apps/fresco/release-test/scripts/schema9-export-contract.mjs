@@ -127,32 +127,50 @@ export const ENCRYPTED_PLACEHOLDER = 'ENCRYPTED';
 
 /**
  * The exported records of one node: each CSV row whose UUID column holds its
- * id, and each GraphML <node> element with that id. Each record is the list
- * of values it holds.
+ * id, and each GraphML <node> whose networkCanvasUUID data holds it (GraphML
+ * numbers its nodes, so the element id is not the node's id). Each record
+ * maps an attribute's exported name — the CSV column, or the GraphML key's
+ * attr.name — to its value.
  */
 function nodeRecords(files, nodeId) {
   const records = [];
   for (const { name, text } of files) {
     if (/\.csv$/i.test(name)) {
       const lines = text.split(/\r?\n/).filter((line) => line !== '');
-      const uuid = splitCsvRow(lines[0] ?? '').indexOf(ncUUIDProperty);
+      const header = splitCsvRow(lines[0] ?? '');
+      const uuid = header.indexOf(ncUUIDProperty);
       if (uuid === -1) continue;
       for (const line of lines.slice(1)) {
         const cells = splitCsvRow(line);
-        if (cells[uuid] === nodeId) records.push({ name, values: cells });
+        if (cells[uuid] === nodeId)
+          records.push({
+            name,
+            fields: new Map(
+              header.map((column, index) => [column, cells[index]]),
+            ),
+          });
       }
     } else if (/\.graphml$/i.test(name)) {
-      const element = new RegExp(
-        `<node\\b[^>]*\\sid="${nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^>]*>([\\s\\S]*?)</node>`,
-        'g',
+      const keyNames = new Map(
+        [...text.matchAll(/<key\b[^>]*>/g)].map(([tag]) => [
+          attributeOf(tag, 'id'),
+          attributeOf(tag, 'attr.name'),
+        ]),
       );
-      for (const [, body] of text.matchAll(element))
-        records.push({
-          name,
-          values: [...body.matchAll(/<data\b[^>]*>([^<]*)<\/data>/g)].map(
-            ([, value]) => value,
+      for (const [, body] of text.matchAll(
+        /<node\b[^>]*>([\s\S]*?)<\/node>/g,
+      )) {
+        const fields = new Map(
+          [...body.matchAll(/<data\b([^>]*)>([^<]*)<\/data>/g)].map(
+            ([, attributes, value]) => {
+              const key = attributeOf(` ${attributes}`, 'key');
+              return [keyNames.get(key) ?? key, value];
+            },
           ),
-        });
+        );
+        if (fields.get(ncUUIDProperty) === nodeId)
+          records.push({ name, fields });
+      }
     }
   }
   return records;
@@ -166,7 +184,12 @@ function nodeRecords(files, nodeId) {
  * say) would carry one even if this answer had been lost. Every record the
  * export holds for the person must carry it, and there must be at least one.
  */
-export function encryptedValueProblems(files, plaintext, nodeId) {
+export function encryptedValueProblems(
+  files,
+  plaintext,
+  nodeId,
+  attribute = 'name',
+) {
   const problems = files
     .filter(({ text }) => text.includes(plaintext))
     .map(({ name }) => `${name} holds "${plaintext}" in plain text`);
@@ -175,10 +198,38 @@ export function encryptedValueProblems(files, plaintext, nodeId) {
     problems.push(
       `no exported file has a record for node ${nodeId}, so its encrypted answer was not exported at all`,
     );
-  for (const { name, values } of records)
-    if (!values.includes(ENCRYPTED_PLACEHOLDER))
+  for (const { name, fields } of records)
+    if (fields.get(attribute) !== ENCRYPTED_PLACEHOLDER)
       problems.push(
-        `${name}'s record for node ${nodeId} has no ${ENCRYPTED_PLACEHOLDER} placeholder, so its encrypted answer was dropped`,
+        `${name}'s record for node ${nodeId} holds ${attribute}=${JSON.stringify(fields.get(attribute) ?? null)}, not the ${ENCRYPTED_PLACEHOLDER} placeholder, so its encrypted answer was dropped`,
       );
+  return problems;
+}
+
+/**
+ * Whether each person's answers reached that person's own exported records.
+ * `expected` maps a node id to the attributes its records must hold, by
+ * exported name (a categorical answer is exported as one true/false column
+ * per option, such as `context_work`). Searching the archive's text instead
+ * would find a short answer such as "5" or "work" in any header or other
+ * record, and pass with the answer itself dropped. Every record the export
+ * holds for the node must carry every value (a node appears in its CSV and in
+ * the GraphML), and there must be at least one.
+ */
+export function nodeAnswerProblems(files, expected) {
+  const problems = [];
+  for (const [nodeId, answers] of Object.entries(expected)) {
+    const records = nodeRecords(files, nodeId);
+    if (records.length === 0) {
+      problems.push(`no exported file has a record for node ${nodeId}`);
+      continue;
+    }
+    for (const { name, fields } of records)
+      for (const [attribute, value] of Object.entries(answers))
+        if (fields.get(attribute) !== value)
+          problems.push(
+            `${name}'s record for node ${nodeId} holds ${attribute}=${JSON.stringify(fields.get(attribute) ?? null)}, expected ${JSON.stringify(value)}`,
+          );
+  }
   return problems;
 }

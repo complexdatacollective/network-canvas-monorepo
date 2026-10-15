@@ -50,6 +50,7 @@ const {
   ENCRYPTED_PLACEHOLDER,
   encryptedValueProblems,
   finishOutcomeProblems,
+  nodeAnswerProblems,
   finishOutcomesByFormat,
   splitCsvRow,
 } = await import(join(scripts, 'schema9-export-contract.mjs'));
@@ -782,16 +783,86 @@ test('the finish outcome is read from the column and attribute the exporters wri
 });
 
 const personCsv = (rows) =>
-  ['networkCanvasUUID,name', ...rows.map(([id, name]) => `${id},${name}`)].join(
-    '\r\n',
-  );
+  [
+    'nodeID,networkCanvasUUID,name,hours,context_work,context_family',
+    ...rows.map(
+      ([id, name, hours = '', work = '', family = ''], index) =>
+        `${index + 1},${id},${name},${hours},${work},${family}`,
+    ),
+  ].join('\r\n');
+// GraphML numbers its nodes and carries each node's id as data, and names its
+// keys opaquely: the attribute's name is on the <key>.
 const personGraphml = (nodes) =>
-  nodes
-    .map(
-      ([id, name]) =>
-        `<node id="${id}"><data key="type">person</data><data key="name">${name}</data></node>`,
-    )
-    .join('');
+  [
+    '<graphml>',
+    '<key id="networkCanvasUUID" attr.name="networkCanvasUUID" attr.type="string" for="all"/>',
+    '<key id="var-1" attr.name="name" attr.type="string" for="node"/>',
+    '<key id="hours" attr.name="hours" attr.type="int" for="node"/>',
+    '<key id="context_a1" attr.name="context_work" attr.type="boolean" for="node"/>',
+    '<key id="context_b2" attr.name="context_family" attr.type="boolean" for="node"/>',
+    '<graph>',
+    ...nodes.map(
+      ([id, name, hours, work, family], index) =>
+        `<node id="${index + 1}"><data key="networkCanvasUUID">${id}</data><data key="var-1">${name}</data>${hours === undefined ? '' : `<data key="hours">${hours}</data><data key="context_a1">${work}</data><data key="context_b2">${family}</data>`}</node>`,
+    ),
+    '</graph></graphml>',
+  ].join('');
+
+test("each person's answers are read from that person's own records", () => {
+  const files = [
+    {
+      name: 'a_attributeList_Person.csv',
+      text: personCsv([
+        ['ana', 'Ana', '5', 'true', 'false'],
+        ['bruno', 'Bruno', '12', 'false', 'true'],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([
+        ['ana', 'Ana', '5', 'true', 'false'],
+        ['bruno', 'Bruno', '12', 'false', 'true'],
+      ]),
+    },
+  ];
+  const expected = {
+    ana: { hours: '5', context_work: 'true', context_family: 'false' },
+    bruno: { hours: '12', context_work: 'false', context_family: 'true' },
+  };
+  assert.deepEqual(nodeAnswerProblems(files, expected), []);
+});
+
+test('an answer dropped from its record fails even though the value appears elsewhere', () => {
+  // Bruno's hours are lost; "5" is still in the archive, as Ana's answer.
+  const files = [
+    {
+      name: 'a_attributeList_Person.csv',
+      text: personCsv([
+        ['ana', 'Ana', '5', 'true', 'false'],
+        ['bruno', 'Bruno', '', 'false', 'true'],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      text: personGraphml([
+        ['ana', 'Ana', '5', 'true', 'false'],
+        ['bruno', 'Bruno', '5', 'true', 'true'],
+      ]),
+    },
+  ];
+  assert.deepEqual(
+    nodeAnswerProblems(files, {
+      bruno: { hours: '5', context_work: 'false' },
+    }),
+    [
+      'a_attributeList_Person.csv\'s record for node bruno holds hours="", expected "5"',
+      'a.graphml\'s record for node bruno holds context_work="true", expected "false"',
+    ],
+  );
+  assert.deepEqual(nodeAnswerProblems(files, { carla: { hours: '5' } }), [
+    'no exported file has a record for node carla',
+  ]);
+});
 
 test('an encrypted answer exported as its placeholder passes', () => {
   const files = [
@@ -847,8 +918,8 @@ test("another person's placeholder does not stand in for a dropped answer", () =
     },
   ];
   assert.deepEqual(encryptedValueProblems(files, 'Linda', 'linda'), [
-    "a_attributeList_person.csv's record for node linda has no ENCRYPTED placeholder, so its encrypted answer was dropped",
-    "a.graphml's record for node linda has no ENCRYPTED placeholder, so its encrypted answer was dropped",
+    'a_attributeList_person.csv\'s record for node linda holds name="", not the ENCRYPTED placeholder, so its encrypted answer was dropped',
+    'a.graphml\'s record for node linda holds name="", not the ENCRYPTED placeholder, so its encrypted answer was dropped',
   ]);
   assert.deepEqual(encryptedValueProblems(files, 'Linda', 'generated'), []);
 });
