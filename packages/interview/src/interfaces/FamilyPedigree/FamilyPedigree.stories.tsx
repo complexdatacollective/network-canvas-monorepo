@@ -1456,15 +1456,18 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
     // genetic parent beside the father, so her kind of parent and Sam are
     // taken back with the answer. Female again, a biological parent in the
     // unnamed mother's place again, she is asked again. Sex at birth is
-    // asked in the first group of questions, and answering it there moves
-    // back on to her relationships.
+    // asked in the first group of questions; changing an answer already
+    // given there does not move the form on by itself, so the participant
+    // continues back to her relationships.
     await userEvent.click(body.getByRole('button', { name: 'Back' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Male' }));
+    await userEvent.click(body.getByRole('button', { name: 'Continue' }));
     await waitFor(() => expect(sam).toBeVisible());
     await waitFor(() => expect(carriedSam()).toBeNull());
     await waitFor(() => expect(sam).not.toBeChecked());
     await userEvent.click(body.getByRole('button', { name: 'Back' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await userEvent.click(body.getByRole('button', { name: 'Continue' }));
     await userEvent.click(
       await body.findByRole('radio', { name: 'Biological parent' }),
     );
