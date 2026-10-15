@@ -37,12 +37,15 @@ import {
   isFamilyPedigreeStageMetadata,
   type NcEdge,
   type NcNode,
+  type VariableValue,
+  VariableValueSchema,
 } from '@codaco/shared-consts';
 
 import PassphraseOverlay from '../../components/PassphraseOverlay';
 import Prompts from '../../components/Prompts/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import type { LabelNode } from '../../dynamicValues/FormDynamicValues';
 import {
   writeFailureMessage,
   writeSubmissionResult,
@@ -62,6 +65,7 @@ import {
   getNodeColorSelector,
   getStageMetadata,
 } from '../../selectors/session';
+import { applyEntityAttributePatch } from '../../store/entityAttributePatch';
 import { getCodebook, getStages } from '../../store/modules/protocol';
 import {
   addEdge,
@@ -130,6 +134,7 @@ import {
   labelEveryone,
   labelOfNoKind,
   labelWrites,
+  withoutSoftHyphens,
 } from './generatedLabels';
 import { formatRelativeTerm } from './kinship';
 import { messages } from './messages';
@@ -845,6 +850,131 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       names.get(personId) ?? formatRelativeTerm('other', words),
     [names, words],
   );
+
+  // What the panel's questions call the relative they ask about wherever
+  // they show the node's label: the label the pedigree draws on them, as
+  // the panel's answers leave them, without the soft hyphens the canvas
+  // breaks long words at, as the label is saved when the participant leaves.
+  // A relative being added is drawn as the answers stand (`draft`), so they
+  // are called as the canvas draws them. One being edited is drawn as saved
+  // until the answers are, so their label is worked out from the family
+  // with the panel's name, gender identity and sex assigned at birth in
+  // place of those stored: clearing their name calls them by how they are
+  // related, and a new sex at birth changes that word as saving it will.
+  // Once the Name question holds an answer, that answer is their name, as
+  // saving makes it: a name typed for someone whose label was saved is
+  // theirs, even in the same words, and a blank one leaves them unnamed
+  // rather than named by what is stored. Only those three answers change
+  // the label, so it is worked out again only when one of them does.
+  const panelLabelMode = panel?.mode;
+  // Cancel takes the relative being added off the canvas while the panel is
+  // still closing, so their last label is kept for its questions until then.
+  const addingId =
+    panelLabelMode?.kind === 'add' ? panelLabelMode.ids[0] : undefined;
+  const addingDrawn = addingId === undefined ? undefined : labels.get(addingId);
+  const [lastAdding, setLastAdding] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
+  if (
+    addingId !== undefined &&
+    addingDrawn !== undefined &&
+    (lastAdding?.id !== addingId || lastAdding.label !== addingDrawn)
+  ) {
+    setLastAdding({ id: addingId, label: addingDrawn });
+  }
+  const addingLabel =
+    addingDrawn ??
+    (lastAdding !== null && lastAdding.id === addingId
+      ? lastAdding.label
+      : formatRelativeTerm('other', words));
+  const labelPanelNode = useMemo((): LabelNode | undefined => {
+    if (panelLabelMode === undefined) return undefined;
+    if (panelLabelMode.kind === 'add') {
+      const label = withoutSoftHyphens(addingLabel);
+      return () => label;
+    }
+    // The participant is "You", as the canvas calls them.
+    const editedId = panelLabelMode.person.id;
+    const labelling = [
+      config.nameAttribute,
+      ...(config.genderIdentity ? [config.genderIdentity.attribute] : []),
+      config.sexAssignedAtBirthAttribute,
+    ];
+    const othersGeneratedLabels = Object.fromEntries(
+      Object.entries(generatedLabels).filter(
+        ([personId]) => personId !== editedId,
+      ),
+    );
+    const othersDecryptedNames = new Map(
+      [...decryptedNames].filter(([personId]) => personId !== editedId),
+    );
+    let last: { key: string; label: string } | undefined;
+    return (attributes, answered) => {
+      const values = labelling.map((attribute) =>
+        readOwnProperty(attributes, attribute),
+      );
+      const nameAnswered =
+        readOwnProperty(answered, config.nameAttribute) === true;
+      const typedName = values[0];
+      const named =
+        nameAnswered &&
+        typeof typedName === 'string' &&
+        typedName.trim() !== '';
+      // A missing answer and any value are kept apart in the key.
+      const key = JSON.stringify([
+        nameAnswered,
+        ...values.map((value) => (value === undefined ? [] : [value])),
+      ]);
+      if (last?.key === key) return last.label;
+      const set: Record<string, VariableValue> = {};
+      const unset: string[] = [];
+      for (const [index, attribute] of labelling.entries()) {
+        const value = VariableValueSchema.safeParse(values[index]);
+        if (value.success) writeOwnProperty(set, attribute, value.data);
+        else unset.push(attribute);
+      }
+      const edited = participantsFamily(
+        readFamily(
+          nodes.map((node) =>
+            node[entityPrimaryKeyProperty] === editedId
+              ? {
+                  ...node,
+                  [entityAttributesProperty]: applyEntityAttributePatch(
+                    node[entityAttributesProperty],
+                    undefined,
+                    { set, unset },
+                  ).attributes,
+                }
+              : node,
+          ),
+          edges,
+          config,
+          named ? othersGeneratedLabels : generatedLabels,
+          nameAnswered ? othersDecryptedNames : decryptedNames,
+          standInIds,
+        ),
+      );
+      const label = withoutSoftHyphens(
+        labelEveryone(edited, framing, contentFormat, words).get(editedId) ??
+          formatRelativeTerm('other', words),
+      );
+      last = { key, label };
+      return label;
+    };
+  }, [
+    panelLabelMode,
+    addingLabel,
+    words,
+    config,
+    nodes,
+    edges,
+    generatedLabels,
+    decryptedNames,
+    standInIds,
+    framing,
+    contentFormat,
+  ]);
 
   // Announce an addition once the new person is in the family, so they can be
   // described by how they are related when they have no name.
@@ -2863,6 +2993,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
                     }
                   : undefined
               }
+              labelNode={labelPanelNode}
               onDraftChange={handleDraftChange}
               onSubmit={handleSubmit}
             />

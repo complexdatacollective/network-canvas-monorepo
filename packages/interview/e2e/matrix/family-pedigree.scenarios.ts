@@ -1573,6 +1573,76 @@ function formFieldsMissingDetails(): ScenarioDefinition {
   };
 }
 
+/**
+ * A question showing the node label ("Node label" in Architect) names each
+ * relative as the pedigree does, never by the codebook's label rules, which
+ * would show the type's label for anyone unnamed: an unnamed relative by the
+ * word the canvas shows for them, the participant as "You", a relative being
+ * added as they are drawn while the panel's answers change, and a relative
+ * whose name is cleared by the word saving gives them.
+ */
+function dynamicValuesNameRelativesAsDrawn(): ScenarioDefinition {
+  const { synth, fp, person, relate, parents } = scaffold({
+    askGenderIdentity: false,
+  });
+  fp.stageEntry.dynamicValues = { who: { path: 'node.$label' } };
+  fp.addFormField({
+    component: 'Number',
+    prompt: { 'en-US': 'How old is {who}?' },
+  });
+  person('ego', { sex: 'female', isEgo: true });
+  person('mum', { sex: 'female' });
+  person('dad', { name: 'Tom', sex: 'male' });
+  relate('mum', 'dad', 'partner');
+  parents('mum', 'dad', 'ego');
+
+  return {
+    id: 'dynamic-values-name-relatives-as-drawn',
+    covers: ['dynamicValues'],
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      // The value filled into the question, without the screen-reader
+      // announcement.
+      const shown = panel(page).locator('[data-dynamic-value] bdi');
+      const cancel = async () => {
+        await panel(page)
+          .getByRole('button', { name: 'Cancel', exact: true })
+          .click();
+        await expect(panel(page)).toHaveCount(0);
+      };
+
+      await member(page, 'Mother').click();
+      await expect(shown).toHaveText(['Mother']);
+      await expect(
+        panel(page).getByRole('spinbutton', {
+          // Chromium puts a space after the visually hidden announcement.
+          name: /^How old is Dynamic value: Mother ?\?$/,
+        }),
+      ).toBeVisible();
+      await cancel();
+
+      await member(page, 'You').click();
+      await expect(shown).toHaveText(['You']);
+      await cancel();
+
+      await member(page, 'Tom').click();
+      await expect(shown).toHaveText(['Tom']);
+      await panel(page).getByRole('textbox', { name: /^Name/ }).fill('');
+      await expect(shown).toHaveText(['Father']);
+      await submitPanel(page, 'Save');
+      await expect(member(page, 'Father')).toBeVisible();
+
+      await addRelativeOf(page, 'You', 'sibling');
+      await expect(shown).toHaveText(['Sibling']);
+      await expect(member(page, 'Sibling')).toBeVisible();
+      await describe(page, { name: 'Ann', sex: 'Female' });
+      await expect(shown).toHaveText(['Ann']);
+      await expect(member(page, 'Ann')).toBeVisible();
+    },
+  };
+}
+
 const HEART = 'Who in your family has had heart disease?';
 const OVARIAN = 'Who in your family has had ovarian cancer?';
 const PROSTATE = 'Who in your family has had prostate cancer?';
@@ -3873,6 +3943,7 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     extendedScope('secondDegree'),
     extendedScope('thirdDegree'),
     formFieldsMissingDetails(),
+    dynamicValuesNameRelativesAsDrawn(),
     nominationPrompts(),
     sexChangeWithdrawsNomination(),
     connectAndDisconnect(),
