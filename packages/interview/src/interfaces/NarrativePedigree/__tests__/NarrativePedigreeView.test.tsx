@@ -1026,6 +1026,7 @@ describe('NarrativePedigreeView — per-person status summary (a11y)', () => {
   it("exposes each member's disease status via their accessible description", async () => {
     renderView();
     await waitForFamily();
+    await selectCondition('Disease A');
 
     // The name conveys the focal action + person; the description conveys the
     // disease status. Mother has Disease A (autosomal dominant) → affected.
@@ -1033,12 +1034,12 @@ describe('NarrativePedigreeView — per-person status summary (a11y)', () => {
     expect(member('mother')).toHaveAccessibleDescription(/Disease A: Affected/);
   });
 
-  it('summarises every condition in the default view (before one is selected)', async () => {
+  it('describes no condition before one is selected, matching the plain symbols', async () => {
     renderView();
     await waitForFamily();
 
-    expect(member('mother')).toHaveAccessibleDescription(/Disease A:/);
-    expect(member('mother')).toHaveAccessibleDescription(/Disease B:/);
+    expect(member('mother')).not.toHaveAccessibleDescription(/Disease A:/);
+    expect(member('mother')).not.toHaveAccessibleDescription(/Disease B:/);
   });
 
   it('narrows the summary to the selected condition', async () => {
@@ -1056,6 +1057,7 @@ describe('NarrativePedigreeView — per-person status summary (a11y)', () => {
   it('references the summary via a non-aria-hidden, reachable element', async () => {
     renderView();
     await waitForFamily();
+    await selectCondition('Disease A');
 
     const summaryId = member('mother').getAttribute('aria-describedby');
     expect(summaryId).toBeTruthy();
@@ -1110,6 +1112,7 @@ describe('NarrativePedigreeView — sex assigned at birth', () => {
       },
     });
     await waitForFamily();
+    await selectCondition('X-linked');
     for (const name of ['Sam', 'Alex', 'Kim']) {
       const sibling = screen.getByRole('button', { name: `Focus on ${name}` });
       expect(sibling).toHaveAccessibleDescription(/^X-linked: /);

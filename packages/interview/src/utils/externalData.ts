@@ -185,8 +185,8 @@ type AttributeValue = NcNode[EntityAttributesProperty][string];
  * the codebook knows whether the value is a string, number or boolean.
  * Compared in NFC so a header spelled decomposed still finds the option, and
  * then as an option name, so text an option was renamed from still finds it.
- * A number is matched as its text when no option has it as a number. Text
- * that names no option is kept as it is.
+ * A number or boolean is matched as its text when no option has that value.
+ * Text that names no option is kept as it is.
  */
 const resolveCategoricalOption = (
   variable: ReturnType<typeof getCodebookVariable>,
@@ -194,7 +194,9 @@ const resolveCategoricalOption = (
 ) => {
   if (
     (variable?.type !== 'categorical' && variable?.type !== 'ordinal') ||
-    (typeof optionText !== 'string' && typeof optionText !== 'number')
+    (typeof optionText !== 'string' &&
+      typeof optionText !== 'number' &&
+      typeof optionText !== 'boolean')
   ) {
     return optionText;
   }
@@ -202,8 +204,9 @@ const resolveCategoricalOption = (
     return optionText;
   }
 
-  // A number a cell parsed to is compared as its text: the migration merges
-  // `1` into an earlier `"1"`, which a roster may still write as `[1]`.
+  // A number or boolean a cell parsed to is compared as its text: the
+  // migration merges `1` into an earlier `"1"`, which a roster may still write
+  // as `[1]`, and turns a legacy `true` option into `"true"`.
   const target = String(optionText).normalize('NFC');
   const exact = variable.options.find(
     (option) => String(option.value).normalize('NFC') === target,
@@ -226,7 +229,10 @@ const resolveOptionAnswer = (
   variable: ReturnType<typeof getCodebookVariable>,
   value: unknown,
 ): AttributeValue => {
-  if (!Array.isArray(value)) {
+  if (
+    !Array.isArray(value) ||
+    (variable?.type !== 'categorical' && variable?.type !== 'ordinal')
+  ) {
     return resolveCategoricalOption(variable, value) as AttributeValue;
   }
   return [

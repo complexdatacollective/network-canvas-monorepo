@@ -91,3 +91,64 @@ describe('QuestionFlow step animation', () => {
     expect(animate).not.toHaveBeenCalled();
   });
 });
+
+function Choice() {
+  const [value, setValue] = useState<string | null>(null);
+  return (
+    <div role="radiogroup" aria-label="Colour" data-field-name="colour">
+      {['Red', 'Blue'].map((option) => (
+        <button
+          key={option}
+          type="button"
+          role="radio"
+          aria-checked={value === option}
+          onClick={() => setValue(option)}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ChoiceFlow() {
+  const [navigation, setNavigation] = useState<HTMLElement | null>(null);
+  return (
+    <TestProtocolLocalization>
+      <QuestionFlow stepped navigation={navigation} finish={<span />}>
+        <section data-question-step data-testid="first">
+          <Choice />
+        </section>
+        <section data-question-step data-testid="second">
+          <label>
+            Second
+            <input data-field-name="second" />
+          </label>
+        </section>
+      </QuestionFlow>
+      <footer ref={setNavigation} />
+    </TestProtocolLocalization>
+  );
+}
+
+describe('QuestionFlow moving on after a choice', () => {
+  it('moves on after a first answer, but not after changing one on going back', async () => {
+    const user = userEvent.setup();
+    render(<ChoiceFlow />);
+    await screen.findByRole('button', { name: 'Skip' });
+
+    await user.click(screen.getByRole('radio', { name: 'Red' }));
+    await waitFor(() => expect(screen.getByTestId('first')).not.toBeVisible());
+
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    await waitFor(() => expect(screen.getByTestId('second')).not.toBeVisible());
+
+    await user.click(screen.getByRole('radio', { name: 'Blue' }));
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(screen.getByTestId('second')).not.toBeVisible();
+    expect(screen.getByRole('radio', { name: 'Blue' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+  });
+});
