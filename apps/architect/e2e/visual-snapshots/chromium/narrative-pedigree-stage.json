@@ -1,8 +1,5 @@
 {
   "conditionText": {
-    "selectCondition": {
-      "en": "Select a condition"
-    },
     "notation": {
       "affected": {
         "en": "Has this condition"
@@ -16,6 +13,9 @@
       "unknown": {
         "en": "Not known"
       }
+    },
+    "selectCondition": {
+      "en": "Select a condition"
     },
     "snapshotCondition": {
       "en": "{title}: {condition}"
