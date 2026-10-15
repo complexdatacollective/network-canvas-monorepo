@@ -101,7 +101,7 @@
   "interview.narrativePedigree.showingCondition": "正在显示 {condition}",
   "interview.narrativePedigree.showingFocused": "正在显示 {condition}。已聚焦于 {name}。正在显示哪些人与其遗传有关。",
   "interview.narrativePedigree.statusUnknown": "状态未知",
-  "interview.narrativePedigree.zoomControls": "缩放控件",
+  "interview.narrativePedigree.toolbarLabel": "家谱图控件",
   "interview.navigation.currentTextSize": "当前文字大小：{size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "减小文字大小",
   "interview.navigation.exitFailed": "无法保存你的回答，因此访谈尚未关闭。请重试。如果问题仍然存在，请联系研究组织者。",

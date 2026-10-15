@@ -2,15 +2,7 @@
   - text: Showing Mitochondrial Myopathy. Focused on You. Showing who contributes to their inheritance.
   - complementary "Condition key":
     - heading "Key" [level=4]
-    - heading "Conditions" [level=4]
-    - paragraph: Select a condition to see who it affects.
-    - button "Haemophilia"
-    - button "Hypophosphataemia"
-    - button "Hearing Loss"
-    - button "Mitochondrial Myopathy" [pressed]
-    - separator
     - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
-    - button "Save snapshot"
   - slider "Resize the condition key panel"
   - region "Your family":
     - button "Focus on Agnes": "Mitochondrial Myopathy: Affected"
@@ -26,10 +18,14 @@
     - button "Focus on You" [pressed]: "Mitochondrial Myopathy: At risk (affected)"
     - button "Focus on Helen": "Mitochondrial Myopathy: At risk (affected)"
   - button "Clear focus"
-  - toolbar "Zoom controls":
+  - toolbar "Family tree controls":
+    - button "Mitochondrial Myopathy"
+    - separator
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
+    - separator
+    - button "Save snapshot"
   - navigation:
     - button "Settings"
     - button "Previous Step"

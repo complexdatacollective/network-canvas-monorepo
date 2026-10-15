@@ -1,72 +1,40 @@
 'use client';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { IconButton } from '@codaco/fresco-ui/Button';
-import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@codaco/fresco-ui/Tooltip';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 
 import { messages } from '../messages';
 import { NotationKey, type NotationWords } from './NotationKey';
 
-type Disease = {
-  id: string;
-  label: string;
-  color: string;
-};
-
-/** The panel's words, from the stage's settings. */
+/** The key's words, from the stage's settings. */
 export type ConditionPanelWords = Readonly<{
   keyHeading: string;
-  heading: string;
-  instruction: string;
-  saveSnapshot: string;
   notation: NotationWords;
 }>;
 
 type ConditionPanelProps = {
   words: ConditionPanelWords;
-  diseases: Disease[];
-  selectedDiseaseId: string | null;
-  onSelect: (id: string | null) => void;
+  /** The shown condition's colour, which the key's symbols take so the key
+   * matches the pedigree. */
+  glyphColour: string;
   // Whether the at-risk (probabilistic) notation is shown. Mirrors the
   // NarrativePedigree stage option; the key panel must list only the markers
   // actually drawn on the pedigree, so the two at-risk rows are omitted when this
   // is false.
   showAtRiskStatuses: boolean;
-  // Captures the current pedigree as an image (the footer action).
-  onSnapshot: () => void;
 };
 
-// The notation key illustrates the symbols, not a specific disease. When a
-// single condition is shown, the glyphs take that condition's colour so the key
-// matches the pedigree; when all conditions are shown they fall back to a vivid
-// node colour (not charcoal, which is invisible on the dark key panel).
-const KEY_GLYPH_FALLBACK_COLOUR = 'var(--node-1)';
 const KEY_GLYPH_SHAPE = 'circle' as const;
 
+/** The key to the symbols drawn for the shown condition. */
 export default function ConditionPanel({
   words,
-  diseases,
-  selectedDiseaseId,
-  onSelect,
+  glyphColour,
   showAtRiskStatuses,
-  onSnapshot,
 }: ConditionPanelProps) {
   const intl = useAppIntl();
-  // When a single condition is shown, draw the notation key in its colour so the
-  // key matches the pedigree; otherwise use a neutral vivid node colour.
-  const selectedDisease =
-    selectedDiseaseId !== null
-      ? diseases.find((disease) => disease.id === selectedDiseaseId)
-      : undefined;
-  const glyphColour = selectedDisease?.color ?? KEY_GLYPH_FALLBACK_COLOUR;
 
   return (
     <Surface
@@ -84,40 +52,8 @@ export default function ConditionPanel({
         </Heading>
       </div>
 
-      {/* Body — clickable disease list + status-notation key, scrolls. */}
       <ScrollArea className="min-h-0 flex-1" viewportClassName="px-4">
         <div className="flex flex-col gap-2 py-2">
-          {diseases.length > 0 && (
-            <>
-              <Heading level="label" margin="none">
-                {words.heading}
-              </Heading>
-              <p className="text-sm opacity-80">{words.instruction}</p>
-              {diseases.map((disease) => {
-                const isSelected = disease.id === selectedDiseaseId;
-                return (
-                  <button
-                    key={disease.id}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => onSelect(isSelected ? null : disease.id)}
-                    className={`focusable flex items-center gap-4 rounded px-2 py-1 text-left text-base ${
-                      isSelected ? 'bg-white/15 font-bold' : 'hover:bg-white/5'
-                    }`}
-                  >
-                    <span
-                      aria-hidden
-                      className="size-4 shrink-0 rounded-full"
-                      style={{ backgroundColor: disease.color }}
-                    />
-                    {disease.label}
-                  </button>
-                );
-              })}
-              <hr className="my-1 border-t border-(--outline)" />
-            </>
-          )}
-
           <NotationKey
             words={words.notation}
             glyphColour={glyphColour}
@@ -126,29 +62,6 @@ export default function ConditionPanel({
           />
         </div>
       </ScrollArea>
-
-      {/* Footer — snapshot action, fixed below the scrolling key. */}
-      <div className="flex shrink-0 justify-center border-t border-(--outline) p-4">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <IconButton
-                color="primary"
-                aria-label={words.saveSnapshot}
-                icon={
-                  <Icon
-                    name="Camera"
-                    aria-hidden="true"
-                    className="size-[1em]"
-                  />
-                }
-                onClick={onSnapshot}
-              />
-            }
-          />
-          <TooltipContent>{words.saveSnapshot}</TooltipContent>
-        </Tooltip>
-      </div>
     </Surface>
   );
 }

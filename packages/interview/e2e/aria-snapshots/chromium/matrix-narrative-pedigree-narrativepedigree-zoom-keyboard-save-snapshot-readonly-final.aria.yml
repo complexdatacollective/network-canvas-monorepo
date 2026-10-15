@@ -2,22 +2,21 @@
   - text: Showing Huntington's Disease. Focused on You. Showing who contributes to their inheritance.
   - complementary "Condition key":
     - heading "Guide - matrix check" [level=4]
-    - heading "Diagnoses - matrix check" [level=4]
-    - paragraph: Pick one to see who has it - matrix check
-    - button "Huntington's Disease" [pressed]
-    - separator
     - text: Has it now - matrix check Will get it - matrix check Passes it on - matrix check Nobody knows - matrix check
-    - button "Keep a picture - matrix check"
   - slider "Resize the condition key panel"
   - region "Your family":
     - button "Focus on Rose": "Huntington's Disease: Status unknown"
     - button "Focus on David": "Huntington's Disease: Status unknown"
     - button "Focus on You" [pressed]: "Huntington's Disease: Affected"
   - button "Stop focusing - matrix check"
-  - toolbar "Zoom controls":
+  - toolbar "Family tree controls":
+    - button "Huntington's Disease"
+    - separator
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
+    - separator
+    - button "Keep a picture - matrix check"
   - navigation:
     - button "Settings"
     - button "Previous Step"

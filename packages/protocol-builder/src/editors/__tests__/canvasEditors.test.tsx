@@ -175,6 +175,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'dynamicValues',
       'keyHeading',
       'label',
+      'saveSnapshot',
       'showAtRiskStatuses',
       'sourceStageId',
       'tooltips',

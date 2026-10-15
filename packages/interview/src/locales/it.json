@@ -101,7 +101,7 @@
   "interview.narrativePedigree.showingCondition": "Visualizzazione di {condition}",
   "interview.narrativePedigree.showingFocused": "Visualizzazione di {condition}. In primo piano: {name}. Sono evidenziate le persone che contribuiscono alla sua eredità genetica.",
   "interview.narrativePedigree.statusUnknown": "Stato non noto",
-  "interview.narrativePedigree.zoomControls": "Controlli dello zoom",
+  "interview.narrativePedigree.toolbarLabel": "Controlli dell’albero genealogico",
   "interview.navigation.currentTextSize": "Dimensione attuale del testo: {size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "Riduci la dimensione del testo",
   "interview.navigation.exitFailed": "Non è stato possibile salvare le tue risposte, quindi l’intervista non è stata chiusa. Riprova. Se il problema persiste, contatta chi organizza lo studio.",

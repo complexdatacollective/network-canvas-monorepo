@@ -656,13 +656,12 @@ export const completeProtocol = () => ({
       ],
       showAtRiskStatuses: true,
       keyHeading: localized('Key'),
+      saveSnapshot: localized('Save snapshot'),
       tooltips: {
         clearFocus: localized('Clear focus'),
-        saveSnapshot: localized('Save snapshot'),
       },
       conditionText: {
-        heading: localized('Conditions'),
-        instruction: localized('Select a condition to see who it affects.'),
+        selectCondition: localized('Select a condition'),
         notation: {
           affected: localized('Has this condition'),
           obligateAffected: localized('Will develop this condition'),

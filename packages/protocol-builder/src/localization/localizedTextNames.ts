@@ -548,24 +548,19 @@ const NARRATIVE_PEDIGREE_WORDING = [
     narrativePedigreeMessages.keyHeadingLabel,
   ),
   settingRule(
+    'saveSnapshot',
+    narrativePedigreeMessages.wordingTitle,
+    narrativePedigreeMessages.saveSnapshotButtonLabel,
+  ),
+  settingRule(
     'tooltips.clearFocus',
     narrativePedigreeMessages.wordingTitle,
     narrativePedigreeMessages.clearFocusTooltipLabel,
   ),
   settingRule(
-    'tooltips.saveSnapshot',
+    'conditionText.selectCondition',
     narrativePedigreeMessages.wordingTitle,
-    narrativePedigreeMessages.saveSnapshotTooltipLabel,
-  ),
-  settingRule(
-    'conditionText.heading',
-    narrativePedigreeMessages.wordingTitle,
-    narrativePedigreeMessages.conditionHeadingLabel,
-  ),
-  settingRule(
-    'conditionText.instruction',
-    narrativePedigreeMessages.wordingTitle,
-    narrativePedigreeMessages.conditionInstructionLabel,
+    narrativePedigreeMessages.selectConditionLabel,
   ),
   settingRule(
     'conditionText.notation.affected',

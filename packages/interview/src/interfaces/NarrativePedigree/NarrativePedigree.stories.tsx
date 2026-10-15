@@ -81,11 +81,20 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const condition = await canvas.findByRole('button', {
-      name: "Huntington's Disease",
-    });
-    await userEvent.click(condition);
-    await expect(condition).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(
+      await canvas.findByTestId('narrative-pedigree-condition'),
+    );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole(
+        'menuitemradio',
+        {
+          name: "Huntington's Disease",
+        },
+      ),
+    );
+    await expect(
+      canvas.getByTestId('narrative-pedigree-condition'),
+    ).toHaveTextContent("Huntington's Disease");
     await userEvent.click(
       await canvas.findByRole('button', { name: 'Focus on You' }),
     );
@@ -119,8 +128,19 @@ export const MitochondrialDonation: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
-      await canvas.findByRole('button', { name: 'Mitochondrial Myopathy' }),
+      await canvas.findByTestId('narrative-pedigree-condition'),
     );
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole(
+        'menuitemradio',
+        {
+          name: 'Mitochondrial Myopathy',
+        },
+      ),
+    );
+    await expect(
+      canvas.getByTestId('narrative-pedigree-condition'),
+    ).toHaveTextContent('Mitochondrial Myopathy');
     await expect(
       await canvas.findByRole('button', { name: 'Focus on Chloe Nolan' }),
     ).toBeVisible();

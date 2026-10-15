@@ -5,15 +5,14 @@
  */
 export const narrativePedigreeWords = ({ atRisk = false } = {}) => ({
   keyHeading: { en: 'Key', es: 'Leyenda' },
+  saveSnapshot: { en: 'Save snapshot', es: 'Guardar imagen' },
   tooltips: {
     clearFocus: { en: 'Clear focus', es: 'Quitar el foco' },
-    saveSnapshot: { en: 'Save snapshot', es: 'Guardar imagen' },
   },
   conditionText: {
-    heading: { en: 'Conditions', es: 'Afecciones' },
-    instruction: {
-      en: 'Select a condition to see who it affects.',
-      es: 'Selecciona una afección para ver a quién afecta.',
+    selectCondition: {
+      en: 'Select a condition',
+      es: 'Selecciona una afección',
     },
     notation: {
       affected: { en: 'Has this condition', es: 'Tiene esta afección' },

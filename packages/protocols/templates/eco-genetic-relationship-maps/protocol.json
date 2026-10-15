@@ -1619,20 +1619,17 @@
       "keyHeading": {
         "en-US": "Key"
       },
+      "saveSnapshot": {
+        "en-US": "Save snapshot"
+      },
       "tooltips": {
         "clearFocus": {
           "en-US": "Clear focus"
-        },
-        "saveSnapshot": {
-          "en-US": "Save snapshot"
         }
       },
       "conditionText": {
-        "heading": {
-          "en-US": "Conditions"
-        },
-        "instruction": {
-          "en-US": "Select a condition to see who it affects."
+        "selectCondition": {
+          "en-US": "Select a condition"
         },
         "notation": {
           "affected": {

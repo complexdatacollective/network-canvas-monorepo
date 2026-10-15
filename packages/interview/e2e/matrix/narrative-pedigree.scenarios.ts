@@ -135,12 +135,29 @@ const canvasScale = (page: Page): Promise<number> =>
       : Number.NaN;
   });
 
+// The condition picker's choice that shows every condition.
+const SELECT_CONDITION = 'Select a condition';
+
+// The toolbar's condition picker: a button showing the chosen condition.
+const conditionPicker = (page: Page) =>
+  page.getByTestId('narrative-pedigree-condition');
+
+// The key to the symbols, shown only while a condition is.
+const conditionKey = (page: Page) =>
+  page.locator('aside[aria-label="Condition key"]');
+
+// Chooses a condition, or every condition, from the picker's menu.
+async function chooseCondition(page: Page, name: string) {
+  await conditionPicker(page).click();
+  await page.getByRole('menuitemradio', { name, exact: true }).click();
+  await expect(conditionPicker(page)).toHaveText(name);
+}
+
 // A researcher's own wording for the key, its tools and the snapshot heading,
 // each distinct from the text Network Canvas supplies, so an assertion on one
 // proves the stage's own setting is what the participant sees.
 const KEY_HEADING = 'Guide - matrix check';
-const CONDITION_HEADING = 'Diagnoses - matrix check';
-const CONDITION_INSTRUCTION = 'Pick one to see who has it - matrix check';
+const SELECT_CONDITION_WORDING = 'Pick one - matrix check';
 const CLEAR_FOCUS = 'Stop focusing - matrix check';
 const SAVE_SNAPSHOT = 'Keep a picture - matrix check';
 const NOTATION_AFFECTED = 'Has it now - matrix check';
@@ -320,9 +337,9 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         return synth;
       },
       run: async ({ page }) => {
-        await expect(
-          page.locator('aside[aria-label="Condition key"]'),
-        ).toBeVisible();
+        // Every condition is shown, so there is no key to their symbols.
+        await expect(conditionPicker(page)).toHaveText(SELECT_CONDITION);
+        await expect(conditionKey(page)).toHaveCount(0);
         await expect(
           page.getByRole('region', { name: 'Your family' }),
         ).toBeVisible();
@@ -370,12 +387,8 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         ).toHaveCount(0);
         await expect(page.locator('[data-dimmed="true"]')).toHaveCount(0);
 
-        const conditionButton = page.getByRole('button', {
-          name: "Huntington's Disease",
-          exact: true,
-        });
-        await conditionButton.click();
-        await expect(conditionButton).toHaveAttribute('aria-pressed', 'true');
+        await expect(conditionPicker(page)).toHaveText(SELECT_CONDITION);
+        await chooseCondition(page, "Huntington's Disease");
         await expect(
           page.locator('[data-node-id="grandparent"] [data-notation-status]'),
         ).toHaveAttribute('data-notation-status', 'affected');
@@ -385,7 +398,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // Architect persists a node palette token; the runtime resolves it to
         // the matching theme variable for both CSS and SVG consumers.
         await expect(
-          conditionButton.locator('span[aria-hidden]').first(),
+          conditionPicker(page).locator('span[aria-hidden][style]'),
         ).toHaveAttribute('style', 'background-color: var(--node-1);');
         await expect(
           page.locator('[data-node-id="grandparent"] [data-filled-shape]'),
@@ -394,10 +407,12 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           page.getByText("Showing Huntington's Disease"),
         ).toBeVisible();
 
-        await conditionButton.click();
-        await expect(conditionButton).toHaveAttribute('aria-pressed', 'false');
+        await expect(conditionKey(page)).toBeVisible();
+
+        await chooseCondition(page, SELECT_CONDITION);
         await expect(page.locator('[data-notation-status]')).toHaveCount(0);
         await expect(page.getByText('Showing all conditions')).toBeVisible();
+        await expect(conditionKey(page)).toHaveCount(0);
       },
     },
     {
@@ -409,9 +424,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       run: async ({ page, protocol, interview }) => {
         const before = await protocol.getNetworkState(interview.interviewId);
 
-        await page
-          .getByRole('button', { name: "Huntington's Disease", exact: true })
-          .click();
+        await chooseCondition(page, "Huntington's Disease");
 
         const egoFocal = member(page, 'You');
         await egoFocal.click();
@@ -464,9 +477,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       seedNetwork: true,
       build: () => buildCousinUnion(false),
       run: async ({ page }) => {
-        await page
-          .getByRole('button', { name: 'Cystic Fibrosis', exact: true })
-          .click();
+        await chooseCondition(page, 'Cystic Fibrosis');
 
         // The affected child and its two obligate-carrier parents show certain
         // notation; the carriers draw the hatch-fill glyph.
@@ -514,9 +525,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       seedNetwork: true,
       build: () => buildCousinUnion(true),
       run: async ({ page }) => {
-        await page
-          .getByRole('button', { name: 'Cystic Fibrosis', exact: true })
-          .click();
+        await chooseCondition(page, 'Cystic Fibrosis');
 
         // With at-risk display ON the same relative now carries an
         // at-risk-carrier glyph with a "?".
@@ -555,7 +564,8 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         // The key lists both at-risk rows in the stage's own words, and not
         // in the words Network Canvas supplies. (A row's text is matched as
         // part of the row, whose glyph also draws a "?".)
-        const key = page.locator('aside[aria-label="Condition key"]');
+        await chooseCondition(page, 'Cystic Fibrosis');
+        const key = conditionKey(page);
         await expect(key.getByText(NOTATION_AT_RISK_AFFECTED)).toBeVisible();
         await expect(key.getByText(NOTATION_AT_RISK_CARRIER)).toBeVisible();
         await expect(key.getByText('May develop this condition')).toHaveCount(
@@ -690,11 +700,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
 
         // X-linked recessive: affected uncle, obligate-carrier maternal
         // grandmother (two affected sons), and a maternal-line-only focal walk.
-        const haemophiliaButton = page.getByRole('button', {
-          name: 'Haemophilia',
-          exact: true,
-        });
-        await haemophiliaButton.click();
+        await chooseCondition(page, 'Haemophilia');
         await expect(
           page.locator('[data-node-id="uncle"] [data-notation-status]'),
         ).toHaveAttribute('data-notation-status', 'affected');
@@ -718,31 +724,23 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           page.locator('[data-node-id="paternal-grandfather"]'),
         ).toHaveAttribute('data-dimmed', 'true');
         await clearFocus.click();
-        await haemophiliaButton.click(); // deselect
+        await chooseCondition(page, SELECT_CONDITION);
 
         // X-linked dominant: every daughter of the affected father is
         // non-unknown; a son of the same father stays unknown.
-        const hypophosphataemiaButton = page.getByRole('button', {
-          name: 'Hypophosphataemia',
-          exact: true,
-        });
-        await hypophosphataemiaButton.click();
+        await chooseCondition(page, 'Hypophosphataemia');
         await expect(
           page.locator('[data-node-id="sister"] [data-notation-status]'),
         ).toHaveAttribute('data-notation-status', 'obligateAffected');
         await expect(
           page.locator('[data-node-id="ego"] [data-notation-status]'),
         ).toHaveAttribute('data-notation-status', 'unknown');
-        await hypophosphataemiaButton.click(); // deselect
+        await chooseCondition(page, SELECT_CONDITION);
 
         // Y-linked: only males down the paternal line carry a non-unknown
         // status; a daughter is unknown; focusing the grandson highlights only
         // the paternal father->son chain.
-        const hearingLossButton = page.getByRole('button', {
-          name: 'Hearing Loss',
-          exact: true,
-        });
-        await hearingLossButton.click();
+        await chooseCondition(page, 'Hearing Loss');
         await expect(
           page.locator('[data-node-id="father"] [data-notation-status]'),
         ).toHaveAttribute('data-notation-status', 'obligateAffected');
@@ -765,16 +763,12 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           'true',
         );
         await clearFocus.click();
-        await hearingLossButton.click(); // deselect
+        await chooseCondition(page, SELECT_CONDITION);
 
         // Mitochondrial: focusing a maternal-line descendant highlights only
         // the egg (cytoplasm) chain up to the great-grandmother source; a
         // paternal-line relative stays dimmed.
-        const myopathyButton = page.getByRole('button', {
-          name: 'Mitochondrial Myopathy',
-          exact: true,
-        });
-        await myopathyButton.click();
+        await chooseCondition(page, 'Mitochondrial Myopathy');
         await egoFocal.click();
         await expect(page.locator('[data-node-id="mother"]')).toHaveAttribute(
           'data-dimmed',
@@ -851,9 +845,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
       run: async ({ page }) => {
         // Multifactorial: only the two nominated people are affected; no
         // carrier/at-risk inference is made, so everyone else is unknown.
-        await page
-          .getByRole('button', { name: 'Heart Disease', exact: true })
-          .click();
+        await chooseCondition(page, 'Heart Disease');
         await expect(
           page.locator('[data-notation-status="affected"]'),
         ).toHaveCount(2);
@@ -872,12 +864,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
 
         // Unknown pattern: the single nominated person is affected, the rest
         // unknown — again with no inference.
-        await page
-          .getByRole('button', { name: 'Heart Disease', exact: true })
-          .click(); // deselect
-        await page
-          .getByRole('button', { name: 'Rare Condition', exact: true })
-          .click();
+        await chooseCondition(page, 'Rare Condition');
         await expect(
           page.locator('[data-notation-status="affected"]'),
         ).toHaveCount(1);
@@ -1016,9 +1003,7 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         'readOnlyInvariant',
         'keyHeading',
         'tooltips.clearFocus',
-        'tooltips.saveSnapshot',
-        'conditionText.heading',
-        'conditionText.instruction',
+        'conditionText.selectCondition',
         'conditionText.notation.affected',
         'conditionText.notation.obligateAffected',
         'conditionText.notation.obligateCarrier',
@@ -1050,9 +1035,8 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
           wording: {
             'keyHeading': KEY_HEADING,
             'tooltips.clearFocus': CLEAR_FOCUS,
-            'tooltips.saveSnapshot': SAVE_SNAPSHOT,
-            'conditionText.heading': CONDITION_HEADING,
-            'conditionText.instruction': CONDITION_INSTRUCTION,
+            'saveSnapshot': SAVE_SNAPSHOT,
+            'conditionText.selectCondition': SELECT_CONDITION_WORDING,
             'conditionText.notation.affected': NOTATION_AFFECTED,
             'conditionText.notation.obligateAffected':
               NOTATION_OBLIGATE_AFFECTED,
@@ -1078,21 +1062,11 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
         const you = member(page, 'You');
         await expect(you).toBeVisible();
 
-        // The condition key carries the stage's own words, and none of the
-        // words Network Canvas supplies.
-        const key = page.locator('aside[aria-label="Condition key"]');
-        for (const [own, supplied] of [
-          [KEY_HEADING, 'Key'],
-          [CONDITION_HEADING, 'Conditions'],
-          [CONDITION_INSTRUCTION, 'Select a condition to see who it affects.'],
-          [NOTATION_AFFECTED, 'Has this condition'],
-          [NOTATION_OBLIGATE_AFFECTED, 'Will develop this condition'],
-          [NOTATION_OBLIGATE_CARRIER, 'Carries this condition'],
-          [NOTATION_UNKNOWN, 'Not known'],
-        ] as const) {
-          await expect(key.getByText(own, { exact: true })).toBeVisible();
-          await expect(key.getByText(supplied, { exact: true })).toHaveCount(0);
-        }
+        // The condition picker offers every condition in the stage's own
+        // words, not the words Network Canvas supplies.
+        await expect(conditionPicker(page)).toHaveText(
+          SELECT_CONDITION_WORDING,
+        );
         await expect(
           page.getByRole('button', { name: SAVE_SNAPSHOT, exact: true }),
         ).toBeVisible();
@@ -1139,9 +1113,21 @@ export const narrativePedigreeScenarios: InterfaceScenarios = {
 
         // Once a condition is chosen, a snapshot is headed by the stage's own
         // message for a condition (the file is named after the heading).
-        await page
-          .getByRole('button', { name: "Huntington's Disease", exact: true })
-          .click();
+        await chooseCondition(page, "Huntington's Disease");
+
+        // The key, shown now a condition is, carries the stage's own words,
+        // and none of the words Network Canvas supplies.
+        const key = conditionKey(page);
+        for (const [own, supplied] of [
+          [KEY_HEADING, 'Key'],
+          [NOTATION_AFFECTED, 'Has this condition'],
+          [NOTATION_OBLIGATE_AFFECTED, 'Will develop this condition'],
+          [NOTATION_OBLIGATE_CARRIER, 'Carries this condition'],
+          [NOTATION_UNKNOWN, 'Not known'],
+        ] as const) {
+          await expect(key.getByText(own, { exact: true })).toBeVisible();
+          await expect(key.getByText(supplied, { exact: true })).toHaveCount(0);
+        }
         const saveSnapshot = page.getByRole('button', {
           name: SAVE_SNAPSHOT,
           exact: true,

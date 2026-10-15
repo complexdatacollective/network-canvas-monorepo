@@ -294,15 +294,12 @@ describe('a new stage given nothing but a name', () => {
       ...(type === 'NarrativePedigree'
         ? {
             keyHeading: { en: 'Key' },
+            saveSnapshot: { en: 'Save snapshot' },
             tooltips: {
               clearFocus: { en: 'Clear focus' },
-              saveSnapshot: { en: 'Save snapshot' },
             },
             conditionText: {
-              heading: { en: 'Conditions' },
-              instruction: {
-                en: 'Select a condition to see who it affects.',
-              },
+              selectCondition: { en: 'Select a condition' },
               notation: {
                 affected: { en: 'Has this condition' },
                 obligateAffected: { en: 'Will develop this condition' },

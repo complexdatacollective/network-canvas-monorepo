@@ -101,7 +101,7 @@
   "interview.narrativePedigree.showingCondition": "Se muestra {condition}",
   "interview.narrativePedigree.showingFocused": "Se muestra {condition}. Vista centrada en {name}. Se muestra quién contribuye a su herencia.",
   "interview.narrativePedigree.statusUnknown": "Estado desconocido",
-  "interview.narrativePedigree.zoomControls": "Controles de zoom",
+  "interview.narrativePedigree.toolbarLabel": "Controles del árbol familiar",
   "interview.navigation.currentTextSize": "Tamaño actual del texto: {size, number, ::percent}",
   "interview.navigation.decreaseTextSize": "Reducir el tamaño del texto",
   "interview.navigation.exitFailed": "No se pudieron guardar tus respuestas, así que la entrevista no se ha cerrado. Inténtalo de nuevo. Si el problema continúa, ponte en contacto con la persona que organiza el estudio.",

@@ -1,17 +1,5 @@
 - main:
   - text: Showing all conditions
-  - complementary "Condition key":
-    - heading "Key" [level=4]
-    - heading "Conditions" [level=4]
-    - paragraph: Select a condition to see who it affects.
-    - button "Haemophilia"
-    - button "Hypophosphataemia"
-    - button "Hearing Loss"
-    - button "Mitochondrial Myopathy"
-    - separator
-    - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
-    - button "Save snapshot"
-  - slider "Resize the condition key panel"
   - region "Your family":
     - button "Focus on Agnes" [disabled]: "Haemophilia: At risk (carrier), Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: Affected Agnes"
     - button "Focus on Herbert" [disabled]: "Haemophilia: Status unknown, Hypophosphataemia: Status unknown, Hearing Loss: Status unknown, and Mitochondrial Myopathy: Status unknown Herbert"
@@ -25,10 +13,14 @@
     - button "Focus on Gerald" [disabled]: "Haemophilia: Status unknown, Hypophosphataemia: Affected, Hearing Loss: Obligate affected, and Mitochondrial Myopathy: Status unknown Gerald"
     - button "Focus on You" [disabled]: "Haemophilia: At risk (affected), Hypophosphataemia: Status unknown, Hearing Loss: Obligate affected, and Mitochondrial Myopathy: At risk (affected) You"
     - button "Focus on Helen" [disabled]: "Haemophilia: At risk (carrier), Hypophosphataemia: Obligate affected, Hearing Loss: Status unknown, and Mitochondrial Myopathy: At risk (affected) Helen"
-  - toolbar "Zoom controls":
+  - toolbar "Family tree controls":
+    - button "Select a condition"
+    - separator
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
+    - separator
+    - button "Save snapshot"
   - navigation:
     - button "Settings"
     - button "Previous Step"

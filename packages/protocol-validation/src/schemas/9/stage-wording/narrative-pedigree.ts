@@ -17,30 +17,18 @@ const KEY_HEADING = {
   'zh-Hant': '圖例',
 } as const satisfies SuppliedWording;
 
-/** The heading over the stage's conditions, in the condition panel. */
-const CONDITION_HEADING = {
-  'en': 'Conditions',
-  'de': 'Erkrankungen',
-  'es': 'Afecciones',
-  'fr': 'Affections',
-  'it': 'Condizioni',
-  'nl': 'Aandoeningen',
-  'pt-BR': 'Condições',
-  'zh-Hans': '病症',
-  'zh-Hant': '病症',
-} as const satisfies SuppliedWording;
-
-/** The instruction above the conditions, asking the participant to pick one. */
-const CONDITION_INSTRUCTION = {
-  'en': 'Select a condition to see who it affects.',
-  'de': 'Wählen Sie eine Erkrankung aus, um zu sehen, wen sie betrifft.',
-  'es': 'Selecciona una afección para ver a quién afecta.',
-  'fr': 'Sélectionnez une affection pour voir qui elle touche.',
-  'it': 'Seleziona una condizione per vedere quali persone ne sono affette.',
-  'nl': 'Selecteer een aandoening om te zien bij wie die voorkomt.',
-  'pt-BR': 'Selecione uma condição para ver quem ela afeta.',
-  'zh-Hans': '选择一种病症，查看它影响了哪些人。',
-  'zh-Hant': '請選擇一種病症，查看哪些人受到影響。',
+/** The condition menu's text while no condition is chosen, and its choice
+ * for choosing none. */
+const SELECT_CONDITION = {
+  'en': 'Select a condition',
+  'de': 'Erkrankung auswählen',
+  'es': 'Selecciona una afección',
+  'fr': 'Sélectionnez une affection',
+  'it': 'Seleziona una condizione',
+  'nl': 'Selecteer een aandoening',
+  'pt-BR': 'Selecione uma condição',
+  'zh-Hans': '选择一种病症',
+  'zh-Hant': '選擇一種病症',
 } as const satisfies SuppliedWording;
 
 /** The legend's meaning of the affected symbol. */
@@ -133,7 +121,8 @@ const CLEAR_FOCUS_TOOLTIP = {
   'zh-Hant': '清除焦點',
 } as const satisfies SuppliedWording;
 
-const SAVE_SNAPSHOT_TOOLTIP = {
+/** The label of the button that saves an image of the pedigree. */
+const SAVE_SNAPSHOT = {
   'en': 'Save snapshot',
   'de': 'Momentaufnahme speichern',
   'es': 'Guardar imagen',
@@ -179,10 +168,12 @@ const showsAtRiskStatuses = (stage: StageRecord) =>
 export const NARRATIVE_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] =
   [
     { path: ['keyHeading'], message: KEY_HEADING },
+    { path: ['saveSnapshot'], message: SAVE_SNAPSHOT },
     { path: ['tooltips', 'clearFocus'], message: CLEAR_FOCUS_TOOLTIP },
-    { path: ['tooltips', 'saveSnapshot'], message: SAVE_SNAPSHOT_TOOLTIP },
-    { path: ['conditionText', 'heading'], message: CONDITION_HEADING },
-    { path: ['conditionText', 'instruction'], message: CONDITION_INSTRUCTION },
+    {
+      path: ['conditionText', 'selectCondition'],
+      message: SELECT_CONDITION,
+    },
     {
       path: ['conditionText', 'notation', 'affected'],
       message: HAS_CONDITION,

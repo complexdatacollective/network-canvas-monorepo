@@ -107,20 +107,16 @@ const WORDING: Partial<Record<string, WordingSpec>> = {
   NarrativePedigree: wording(narrativePedigreeMessages.wordingTitle, [
     { path: 'keyHeading', label: narrativePedigreeMessages.keyHeadingLabel },
     {
+      path: 'saveSnapshot',
+      label: narrativePedigreeMessages.saveSnapshotButtonLabel,
+    },
+    {
       path: 'tooltips.clearFocus',
       label: narrativePedigreeMessages.clearFocusTooltipLabel,
     },
     {
-      path: 'tooltips.saveSnapshot',
-      label: narrativePedigreeMessages.saveSnapshotTooltipLabel,
-    },
-    {
-      path: 'conditionText.heading',
-      label: narrativePedigreeMessages.conditionHeadingLabel,
-    },
-    {
-      path: 'conditionText.instruction',
-      label: narrativePedigreeMessages.conditionInstructionLabel,
+      path: 'conditionText.selectCondition',
+      label: narrativePedigreeMessages.selectConditionLabel,
     },
     {
       path: 'conditionText.notation.affected',

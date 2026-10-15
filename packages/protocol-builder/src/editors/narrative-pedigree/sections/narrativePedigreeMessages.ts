@@ -486,23 +486,17 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Label of the setting holding the tooltip of the tool that clears the selected focal person.',
   },
-  saveSnapshotTooltipLabel: {
-    id: 'protocolBuilder.narrativePedigree.saveSnapshotTooltipLabel',
-    defaultMessage: 'Save snapshot tooltip',
+  saveSnapshotButtonLabel: {
+    id: 'protocolBuilder.narrativePedigree.saveSnapshotButtonLabel',
+    defaultMessage: 'Save snapshot button',
     description:
-      'Label of the setting holding the tooltip of the tool that saves an image of the pedigree.',
+      'Label of the setting holding the text of the button, below the key, that saves an image of the pedigree.',
   },
-  conditionHeadingLabel: {
-    id: 'protocolBuilder.narrativePedigree.conditionHeadingLabel',
-    defaultMessage: 'Conditions heading',
+  selectConditionLabel: {
+    id: 'protocolBuilder.narrativePedigree.selectConditionLabel',
+    defaultMessage: '“Select a condition” option',
     description:
-      'Label of the setting holding the heading of the panel that lists the conditions.',
-  },
-  conditionInstructionLabel: {
-    id: 'protocolBuilder.narrativePedigree.conditionInstructionLabel',
-    defaultMessage: 'Condition instruction',
-    description:
-      'Label of the setting holding the sentence asking the participant to choose a condition.',
+      "Label of the setting holding the text the participant's condition menu shows while no condition is chosen, which is also the menu's choice for showing none.",
   },
   affectedNotationLabel: {
     id: 'protocolBuilder.narrativePedigree.affectedNotationLabel',

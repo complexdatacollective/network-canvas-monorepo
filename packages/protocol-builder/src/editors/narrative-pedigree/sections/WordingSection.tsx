@@ -29,12 +29,11 @@ const STAGE_TYPE = 'NarrativePedigree';
 /** The words that are not messages with placeholders: each is plain text. */
 const TEXT: readonly WordingSetting[] = [
   { path: 'keyHeading', label: messages.keyHeadingLabel },
+  { path: 'saveSnapshot', label: messages.saveSnapshotButtonLabel },
   { path: 'tooltips.clearFocus', label: messages.clearFocusTooltipLabel },
-  { path: 'tooltips.saveSnapshot', label: messages.saveSnapshotTooltipLabel },
-  { path: 'conditionText.heading', label: messages.conditionHeadingLabel },
   {
-    path: 'conditionText.instruction',
-    label: messages.conditionInstructionLabel,
+    path: 'conditionText.selectCondition',
+    label: messages.selectConditionLabel,
   },
   {
     path: 'conditionText.notation.affected',

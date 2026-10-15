@@ -1,14 +1,5 @@
 - main:
   - text: Showing all conditions
-  - complementary "Condition key":
-    - heading "Key" [level=4]
-    - heading "Conditions" [level=4]
-    - paragraph: Select a condition to see who it affects.
-    - button "Huntington's Disease"
-    - separator
-    - text: Has this condition Will develop this condition Carries this condition Not known
-    - button "Save snapshot"
-  - slider "Resize the condition key panel"
   - region "Your family":
     - button "Focus on Liz" [disabled]: "Huntington's Disease: Status unknown Liz"
     - button "Focus on Rose" [disabled]: "Huntington's Disease: Status unknown Rose"
@@ -16,10 +7,14 @@
     - button "Focus on Ann" [disabled]: "Huntington's Disease: Status unknown Ann"
     - button "Focus on You" [disabled]: "Huntington's Disease: Status unknown You"
     - button "Focus on Max" [disabled]: "Huntington's Disease: Status unknown Max"
-  - toolbar "Zoom controls":
+  - toolbar "Family tree controls":
+    - button "Select a condition"
+    - separator
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
+    - separator
+    - button "Save snapshot"
   - navigation:
     - button "Settings"
     - button "Previous Step"

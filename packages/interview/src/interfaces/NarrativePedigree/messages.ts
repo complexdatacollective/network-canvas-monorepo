@@ -43,11 +43,11 @@ export const messages = defineMessages({
     description:
       'Clinical status tooltip and screen-reader label when the inheritance information does not establish a displayed genetic status.',
   },
-  zoomControls: {
-    id: 'interview.narrativePedigree.zoomControls',
-    defaultMessage: 'Zoom controls',
+  toolbarLabel: {
+    id: 'interview.narrativePedigree.toolbarLabel',
+    defaultMessage: 'Family tree controls',
     description:
-      'Accessible name for the toolbar under the family tree with buttons that zoom out, zoom in and show the whole family.',
+      'Accessible name for the toolbar under the family tree. It holds the menu that chooses which medical condition the tree shows, the buttons that zoom out, zoom in and show the whole family, and the button that saves a picture of the tree.',
   },
   focusOn: {
     id: 'interview.narrativePedigree.focusOn',

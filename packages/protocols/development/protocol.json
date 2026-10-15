@@ -2246,24 +2246,20 @@
         "en-US": "Key",
         "es": "Leyenda"
       },
+      "saveSnapshot": {
+        "en-US": "Save snapshot",
+        "es": "Guardar imagen"
+      },
       "tooltips": {
         "clearFocus": {
           "en-US": "Clear focus",
           "es": "Quitar el foco"
-        },
-        "saveSnapshot": {
-          "en-US": "Save snapshot",
-          "es": "Guardar imagen"
         }
       },
       "conditionText": {
-        "heading": {
-          "en-US": "Conditions",
-          "es": "Afecciones"
-        },
-        "instruction": {
-          "en-US": "Select a condition to see who it affects.",
-          "es": "Selecciona una afección para ver a quién afecta."
+        "selectCondition": {
+          "en-US": "Select a condition",
+          "es": "Selecciona una afección"
         },
         "notation": {
           "affected": {

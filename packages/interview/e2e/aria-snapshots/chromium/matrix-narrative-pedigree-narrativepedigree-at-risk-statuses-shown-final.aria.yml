@@ -2,12 +2,7 @@
   - text: Showing Cystic Fibrosis
   - complementary "Condition key":
     - heading "Key" [level=4]
-    - heading "Conditions" [level=4]
-    - paragraph: Select a condition to see who it affects.
-    - button "Cystic Fibrosis" [pressed]
-    - separator
     - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
-    - button "Save snapshot"
   - slider "Resize the condition key panel"
   - region "Your family":
     - button "Focus on Albert": "Cystic Fibrosis: Status unknown"
@@ -19,10 +14,14 @@
     - button "Focus on Diane": "Cystic Fibrosis: Obligate carrier"
     - button "Focus on Roy": "Cystic Fibrosis: Obligate carrier"
     - button "Focus on You": "Cystic Fibrosis: Affected"
-  - toolbar "Zoom controls":
+  - toolbar "Family tree controls":
+    - button "Cystic Fibrosis"
+    - separator
     - button "Zoom out"
     - button "Zoom in"
     - button "Show the whole family"
+    - separator
+    - button "Save snapshot"
   - navigation:
     - button "Settings"
     - button "Previous Step"
