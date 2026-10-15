@@ -1362,6 +1362,37 @@ export const AddingSomeoneMovesThroughTheQuestions: Story = {
 };
 
 /**
+ * A name the form refuses holds the first group of questions: answering the
+ * rest does not move on, and Continue hands the name the focus.
+ */
+export const ARefusedAnswerKeepsItsGroupOpen: Story = {
+  args: { requirement: 'none' },
+  render: (args) => (
+    <PedigreeStory {...settings(args)} nameValidation={{ maxLength: 3 }} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.hover(await canvas.findByRole('button', { name: /^You/ }));
+    await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
+
+    const name = await body.findByRole('textbox', { name: /^Name/ });
+    await waitFor(() => expect(name).toHaveFocus());
+    await userEvent.keyboard('Rosalind');
+    await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
+    await waitFor(() => expect(name).toHaveAttribute('aria-invalid', 'true'));
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+
+    const proceed = await body.findByRole('button', { name: 'Continue' });
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await expect(name).toBeVisible();
+    await userEvent.click(proceed);
+    await waitFor(() => expect(name).toHaveFocus());
+    await expect(body.queryByRole('button', { name: 'Back' })).toBeNull();
+  },
+};
+
+/**
  * A surrogate carried Jun; his brother Sam has nobody recorded as carrying
  * him. Jun's new mother, a biological parent, is not asked whether she
  * carried Jun, but once Sam is chosen as her child too she is asked whether

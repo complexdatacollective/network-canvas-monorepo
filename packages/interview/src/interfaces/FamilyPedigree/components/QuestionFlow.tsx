@@ -103,7 +103,7 @@ const controlOf = (field: Element) =>
   ) ??
   field.querySelector<HTMLElement>(TEXT_SELECTOR) ??
   field.querySelector<HTMLElement>(
-    '[role="checkbox"]:not([disabled]), button:not([disabled])',
+    'select:not([disabled]), [role="checkbox"]:not([disabled]), button:not([disabled])',
   );
 
 /** The questions after `field` still waiting for an answer, in order. */
@@ -143,8 +143,18 @@ const STEP_DELAY = 350;
 
 type StepState = 'answered' | 'optional' | 'required';
 
-/** Whether every question in a step is answered, or what still waits. */
+/** The first question in `step` whose answer the form refuses. */
+const firstInvalid = (step: Element) =>
+  step.querySelector('[aria-invalid="true"]')?.closest(FIELD_SELECTOR) ??
+  undefined;
+
+/**
+ * Whether every question in a step is answered, or what still waits. An
+ * answer the form refuses holds the step like a required question left
+ * unanswered.
+ */
 const stateOf = (step: Element, read?: ReadValue): StepState => {
+  if (firstInvalid(step)) return 'required';
   const waiting = [...step.querySelectorAll(FIELD_SELECTOR)].filter(
     (field) => !isClosed(field) && isUnanswered(field, read),
   );
@@ -310,8 +320,20 @@ export default function QuestionFlow({
       schedule();
     });
     const form = root.closest('form');
+    // An answer refused before its step was left shows no change on
+    // saving, so once the form has validated, a step still holding a refused
+    // answer is opened too.
     const onSubmit = () => {
       saving.current = true;
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (!saving.current) return;
+          const at = stepsIn(root).findIndex(
+            (entry) => entry.hasAttribute('hidden') && firstInvalid(entry),
+          );
+          if (at >= 0) goTo(at);
+        }),
+      );
     };
     form?.addEventListener('submit', onSubmit, true);
     observer.observe(root, {
@@ -336,7 +358,7 @@ export default function QuestionFlow({
 
   const proceed = useCallback(() => {
     if (!step) return;
-    const missing = firstRequiredWaiting(step, read);
+    const missing = firstRequiredWaiting(step, read) ?? firstInvalid(step);
     if (missing) {
       controlOf(missing)?.focus({ preventScroll: true });
       bringIntoView(missing);
