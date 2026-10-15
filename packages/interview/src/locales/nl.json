@@ -19,6 +19,7 @@
   "interview.familyPedigree.savedAnnouncement": "Gegevens opgeslagen.",
   "interview.familyPedigree.showWholeFamily": "Hele familie tonen",
   "interview.familyPedigree.siblingsAnsweredAnnouncement": "{isYou, select, true {Vastgelegd dat je geen biologische broers of zussen hebt.} other {Vastgelegd dat “{name}” geen biologische broers of zussen heeft.}}",
+  "interview.familyPedigree.skipQuestion": "Deze vraag overslaan",
   "interview.familyPedigree.toolGroupLabel": "Wat klikken op een persoon doet",
   "interview.familyPedigree.toolsLabel": "Hulpmiddelen voor de stamboom",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Je stamboom bevat alles wat nodig is} other {Stamboom voor {percent, number, percent} compleet}}. Tonen wat nog nodig is.",

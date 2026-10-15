@@ -19,6 +19,7 @@
   "interview.familyPedigree.savedAnnouncement": "Angaben gespeichert.",
   "interview.familyPedigree.showWholeFamily": "Ganze Familie anzeigen",
   "interview.familyPedigree.siblingsAnsweredAnnouncement": "{isYou, select, true {Festgehalten, dass Sie keine leiblichen Geschwister haben.} other {Festgehalten, dass „{name}“ keine leiblichen Geschwister hat.}}",
+  "interview.familyPedigree.skipQuestion": "Diese Frage überspringen",
   "interview.familyPedigree.toolGroupLabel": "Was ein Klick auf eine Person bewirkt",
   "interview.familyPedigree.toolsLabel": "Werkzeuge für den Stammbaum",
   "interview.familyPedigree.trackerProgressLabel": "{complete, select, true {Ihr Stammbaum enthält alles Nötige} other {Stammbaum zu {percent, number, percent} vollständig}}. Anzeigen, was noch fehlt.",

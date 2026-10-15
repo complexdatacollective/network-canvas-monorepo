@@ -79,6 +79,10 @@
     "defaultMessage": "{isYou, select, true {Recorded that you have no biological brothers or sisters.} other {Recorded that “{name}” has no biological brothers or sisters.}}",
     "description": "Screen reader announcement after answering, from the list of family members still needed, that a person has no siblings. name is the person’s name or how they are related to the participant."
   },
+  "interview.familyPedigree.skipQuestion": {
+    "defaultMessage": "Skip this question",
+    "description": "Link under a question the participant may leave unanswered, in the side panel where a family member’s details are given. It moves on to the next question without answering this one; the question can still be answered later."
+  },
   "interview.familyPedigree.toolGroupLabel": {
     "defaultMessage": "What clicking a person does",
     "description": "Accessible name of the pair of buttons in the toolbar that choose what selecting a person does."

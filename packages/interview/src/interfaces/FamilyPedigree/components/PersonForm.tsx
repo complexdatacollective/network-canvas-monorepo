@@ -102,6 +102,7 @@ import {
   usePedigreeWords,
 } from '../pedigreeWords';
 import { DerivedAnswersScope, useDerivedAnswer } from './derivedAnswers';
+import QuestionFlow from './QuestionFlow';
 import {
   bothSameSexReason,
   cannotCarryReason,
@@ -114,7 +115,6 @@ import {
   type UnavailableAnswer,
   sexRuledOutReason,
 } from './unavailableReasons';
-import useAdvanceAfterChoice from './useAdvanceAfterChoice';
 
 export type PersonFormMode =
   | {
@@ -642,12 +642,10 @@ export default function PersonForm({
         )
       : [];
 
-  const advanceAfterChoice = useAdvanceAfterChoice();
-
   return (
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
       <DerivedAnswersScope>
-        <div ref={advanceAfterChoice} className="flex flex-col gap-8">
+        <QuestionFlow className="flex flex-col gap-8">
           {withFormValues(
             <MissingDetailsNotice questions={missingQuestions} />,
           )}
@@ -737,7 +735,7 @@ export default function PersonForm({
               {fieldComponents}
             </section>
           )}
-        </div>
+        </QuestionFlow>
       </DerivedAnswersScope>
     </FormWithoutProvider>
   );

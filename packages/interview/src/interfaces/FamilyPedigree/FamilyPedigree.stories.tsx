@@ -1305,11 +1305,13 @@ export const ChoosingTheAnswerFilledInKeepsIt: Story = {
 /**
  * Someone new is named first, so the panel opens with the name ready to
  * type. Each question answered with one choice brings the next one still
- * unanswered into view, without taking focus from the answer given.
+ * unanswered into view, without taking focus from the answer given. A
+ * question that may be left unanswered can be skipped, which moves on to
+ * the next question and hands it the focus.
  */
 export const AddingSomeoneMovesThroughTheQuestions: Story = {
   args: { requirement: 'none' },
-  render: (args) => <PedigreeStory {...settings(args)} />,
+  render: (args) => <PedigreeStory {...settings(args)} withFormFields />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(canvasElement.ownerDocument.body);
@@ -1337,6 +1339,24 @@ export const AddingSomeoneMovesThroughTheQuestions: Story = {
     await userEvent.click(woman);
     await waitFor(() => expect(inView()).toBe(true), { timeout: 3000 });
     await expect(woman).toHaveFocus();
+
+    // Age may be left unanswered; skipping it moves on to whether they are
+    // still living.
+    const age = await body.findByRole('spinbutton', { name: /^Age/ });
+    const ageQuestion = age.closest('[data-field-name]');
+    const skipAge = await within(ageQuestion as HTMLElement).findByRole(
+      'button',
+      { name: 'Skip this question' },
+    );
+    await userEvent.click(skipAge);
+    const living = await body.findByRole('radiogroup', {
+      name: /^Is this person still living\?/,
+    });
+    await waitFor(() =>
+      expect(living.contains(document.activeElement)).toBe(true),
+    );
+    await waitFor(() => expect(skipAge).not.toBeInTheDocument());
+    await expect(age).toHaveValue(null);
   },
 };
 
