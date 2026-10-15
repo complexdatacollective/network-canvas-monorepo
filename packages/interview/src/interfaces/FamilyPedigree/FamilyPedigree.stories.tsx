@@ -1340,9 +1340,22 @@ export const AddingSomeoneMovesThroughTheQuestions: Story = {
     await waitFor(() => expect(inView()).toBe(true), { timeout: 3000 });
     await expect(woman).toHaveFocus();
 
-    // Age may be left unanswered; skipping it moves on to whether they are
-    // still living.
+    // Whether she carried the pregnancy may be left unanswered; skipping it
+    // hands the focus to the age, typed into its own box.
+    await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    const carried = await body.findByRole('radiogroup', {
+      name: /^Did this parent carry the pregnancy\?/,
+    });
+    await userEvent.click(
+      await within(
+        carried.closest('[data-field-name]') as HTMLElement,
+      ).findByRole('button', { name: 'Skip this question' }),
+    );
     const age = await body.findByRole('spinbutton', { name: /^Age/ });
+    await waitFor(() => expect(age).toHaveFocus());
+
+    // Age may be left unanswered too; skipping it moves on to whether they
+    // are still living.
     const ageQuestion = age.closest('[data-field-name]');
     const skipAge = await within(ageQuestion as HTMLElement).findByRole(
       'button',

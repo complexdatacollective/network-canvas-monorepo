@@ -85,8 +85,9 @@ const controlOf = (field: Element) =>
   field.querySelector<HTMLElement>(
     '[role="radio"]:not([disabled]):not([data-disabled])',
   ) ??
+  field.querySelector<HTMLElement>(TEXT_SELECTOR) ??
   field.querySelector<HTMLElement>(
-    `${TEXT_SELECTOR}, [role="checkbox"]:not([disabled]), button:not([disabled])`,
+    '[role="checkbox"]:not([disabled]), button:not([disabled])',
   );
 
 /** The questions after `field` still waiting for an answer, in order. */
