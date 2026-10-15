@@ -161,6 +161,29 @@ function pick<T>(gender: Gendered, terms: { woman: T; man: T; other: T }) {
 }
 
 /**
+ * Whether `parentId`, a biological parent of `childId`, is a birth parent who
+ * did not raise them: the child was adopted, and not by this parent's
+ * partner, as in a step-parent adoption, where the biological parent goes on
+ * raising the child with the partner who adopted them.
+ */
+function isBirthParentApart(
+  family: Family,
+  parentId: string | undefined,
+  childId: string | undefined,
+) {
+  const adopters = family.links
+    .filter((link) => link.kind === 'adoptive' && link.target === childId)
+    .map((link) => link.source);
+  if (adopters.length === 0) return false;
+  return !family.links.some(
+    (link) =>
+      link.kind === 'partner' &&
+      ((link.source === parentId && adopters.includes(link.target)) ||
+        (link.target === parentId && adopters.includes(link.source))),
+  );
+}
+
+/**
  * Whether the step or social parent link from `parentId` to `childId` is a
  * step-parent's: the step or social parent has a partnership, current or
  * former, with one of the child's biological or adoptive parents, and did
@@ -297,6 +320,14 @@ function stepTerm(
             if (gamete === 'sperm') return 'spermParent';
             return 'parent';
           }
+          // A birth parent of someone adopted away from them is named as
+          // such, beside the adoptive parents.
+          if (
+            gender !== 'other' &&
+            isBirthParentApart(family, step.to, fromId)
+          ) {
+            return gender === 'woman' ? 'biologicalMother' : 'biologicalFather';
+          }
           if (gender === 'other') {
             // With their gender identity not known, a biological parent is
             // named by the gamete they gave, in gendered words.
@@ -397,13 +428,23 @@ const isDescent = (step: Step) =>
 const RAISING_KINDS: ReadonlySet<PedigreeRelationshipKind> =
   new Set<PedigreeRelationshipKind>(['biological', 'adoptive', 'social']);
 
-/** A step a step or in-law tie can pass through: a parent or child who
- * raises them, a sibling, or a current partner. */
-const isStepOrInLawStep = (step: Step) => {
+/** A step a step or in-law tie can pass through, from `fromId`: a parent or
+ * child who raises them (not a birth parent of someone adopted away), a sibling,
+ * or a current partner. */
+const isStepOrInLawStep = (
+  family: Family,
+  step: Step,
+  fromId: string | undefined,
+) => {
   switch (step.type) {
     case 'parent':
-    case 'child':
-      return RAISING_KINDS.has(step.kind);
+    case 'child': {
+      if (!RAISING_KINDS.has(step.kind)) return false;
+      if (step.kind !== 'biological') return true;
+      return step.type === 'parent'
+        ? !isBirthParentApart(family, step.to, fromId)
+        : !isBirthParentApart(family, fromId, step.to);
+    }
     case 'sibling':
       return true;
     case 'partner':
@@ -528,7 +569,13 @@ export function kinTermFor(
   // Step and in-law ties pass only through parents and children who raise
   // them and through partnerships that are current: a donor's or surrogate's
   // partner, or a parent's former partner, is not a step-parent.
-  if (!path.every(isStepOrInLawStep)) return undefined;
+  const fromOf = (index: number) =>
+    index === 0 ? fromId : path[index - 1]!.to;
+  if (
+    !path.every((step, index) => isStepOrInLawStep(family, step, fromOf(index)))
+  ) {
+    return undefined;
+  }
   // A sibling's sibling who shares no parent with the participant, but whose
   // parent is partnered with one of theirs, is a step-sibling.
   if (shape === 'sibling,sibling') {
@@ -563,8 +610,6 @@ export function kinTermFor(
     case 'parent,parent':
     case 'parent,parent,partner':
     case 'parent,partner,parent': {
-      const fromOf = (index: number) =>
-        index === 0 ? fromId : path[index - 1]!.to;
       const stepLinksOnly = path.every(
         (step, index) =>
           step.type !== 'parent' ||
