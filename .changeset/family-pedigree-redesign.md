@@ -20,7 +20,9 @@ the participant leaves unnamed are shown by a kinship word in the stage's
 wording: gendered (mother, brother), gamete-based (egg parent, sperm parent),
 or the participant's own choice. When gender identity is asked, those words
 follow each person's gender identity; otherwise they follow sex assigned at
-birth.
+birth. Gender identity may be left unanswered, because a participant may not
+know a relative's gender identity; an unanswered biological parent is then
+named from their sex assigned at birth.
 
 - Names the participant types follow the name attribute's validation in the
   codebook. Encrypted name attributes work, using the usual passphrase prompt.

@@ -8,7 +8,7 @@
     - alert:
       - text: "Error:"
       - paragraph: "Change would strand 1 person: Sam - matrix check"
-    - text: Gender identity Required
+    - text: Gender identity
     - radiogroup "Gender identity":
       - radio "Woman"
       - text: Woman

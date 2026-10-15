@@ -272,12 +272,10 @@ describe('readFamily with an attribute named __proto__', () => {
       [],
       config,
     );
-    expect(
-      missingDetailsFor(family.byId.get('a')!, ['__proto__'], config),
-    ).toEqual([{ variable: '__proto__' }]);
-    expect(
-      missingDetailsFor(family.byId.get('b')!, ['__proto__'], config),
-    ).toEqual([]);
+    expect(missingDetailsFor(family.byId.get('a')!, ['__proto__'])).toEqual([
+      { variable: '__proto__' },
+    ]);
+    expect(missingDetailsFor(family.byId.get('b')!, ['__proto__'])).toEqual([]);
   });
 });
 
@@ -362,31 +360,18 @@ describe('relatives', () => {
 describe('missingDetailsFor', () => {
   test('lists the built-in details not yet given', () => {
     const family = nuclearFamily();
-    expect(missingDetailsFor(family.byId.get('dad')!, [], config)).toEqual([
+    expect(missingDetailsFor(family.byId.get('dad')!, [])).toEqual([
       'sexAssignedAtBirth',
     ]);
-    expect(missingDetailsFor(family.byId.get('sib')!, [], config)).toEqual([
-      'genderIdentity',
+    expect(missingDetailsFor(family.byId.get('sib')!, [])).toEqual([
       'sexAssignedAtBirth',
     ]);
   });
 
-  test('gender identity is asked for only when the stage collects it', () => {
-    const family = readFamily(
-      [person('a', { sex: ['male'] }), person('b')],
-      [],
-      configWithoutGenderIdentity,
-    );
-    expect(
-      missingDetailsFor(family.byId.get('a')!, [], configWithoutGenderIdentity),
-    ).toEqual([]);
-    expect(
-      missingDetailsFor(family.byId.get('b')!, [], configWithoutGenderIdentity),
-    ).toEqual(['sexAssignedAtBirth']);
-    // The same person, with the question configured, is missing it.
-    expect(missingDetailsFor(family.byId.get('a')!, [], config)).toEqual([
-      'genderIdentity',
-    ]);
+  test('gender identity is never missing, even when the stage asks it', () => {
+    const family = readFamily([person('a', { sex: ['male'] })], [], config);
+    expect(family.byId.get('a')!.genderIdentity).toBeUndefined();
+    expect(missingDetailsFor(family.byId.get('a')!, [])).toEqual([]);
   });
 
   test('a name is never required', () => {
@@ -395,7 +380,7 @@ describe('missingDetailsFor', () => {
       [],
       config,
     );
-    expect(missingDetailsFor(family.byId.get('a')!, [], config)).toEqual([]);
+    expect(missingDetailsFor(family.byId.get('a')!, [])).toEqual([]);
   });
 
   test('includes required researcher fields that are empty', () => {
@@ -412,9 +397,9 @@ describe('missingDetailsFor', () => {
       [],
       config,
     );
-    expect(
-      missingDetailsFor(family.byId.get('a')!, ['age', 'notes'], config),
-    ).toEqual([{ variable: 'notes' }]);
+    expect(missingDetailsFor(family.byId.get('a')!, ['age', 'notes'])).toEqual([
+      { variable: 'notes' },
+    ]);
   });
 });
 

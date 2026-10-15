@@ -605,10 +605,7 @@ export function siblingTie(
   return { half: !sameSet(aParents, bParents), adoptive: true };
 }
 
-export type MissingDetail =
-  | 'genderIdentity'
-  | 'sexAssignedAtBirth'
-  | { variable: string };
+export type MissingDetail = 'sexAssignedAtBirth' | { variable: string };
 
 const isEmpty = (value: VariableValue | undefined) =>
   value === undefined ||
@@ -617,22 +614,19 @@ const isEmpty = (value: VariableValue | undefined) =>
   (Array.isArray(value) && value.length === 0);
 
 /**
- * The required details not yet given for a person: the interface's own
- * person attributes (gender identity only where the stage collects it), then
- * every researcher field whose attribute the codebook marks required. A name
- * is never missing, even when the name attribute is required: a participant
- * may not know it, and anyone left unnamed is given a label from how they
- * are related to the participant when the participant leaves the stage.
+ * The required details not yet given for a person: sex assigned at birth,
+ * then every researcher field whose attribute the codebook marks required.
+ * A name and gender identity are never missing: a participant may not know
+ * either. Anyone left unnamed is given a label from how they are related to
+ * the participant when the participant leaves the stage, and anyone whose
+ * gender identity is unanswered takes kinship words from sex assigned at
+ * birth.
  */
 export function missingDetailsFor(
   person: Person,
   requiredFormVariables: readonly string[],
-  config: Pick<PedigreeConfig, 'genderIdentity'>,
 ): MissingDetail[] {
   const missing: MissingDetail[] = [];
-  if (config.genderIdentity && person.genderIdentity === undefined) {
-    missing.push('genderIdentity');
-  }
   if (person.sexAssignedAtBirth === undefined) {
     missing.push('sexAssignedAtBirth');
   }

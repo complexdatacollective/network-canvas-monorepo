@@ -6,8 +6,7 @@ import type {
   PedigreeSexAssignedAtBirth,
 } from '@codaco/protocol-validation';
 
-import type { MissingDetail, PedigreeConfig } from './model';
-import { configuredWord } from './pedigreeWords';
+import type { PedigreeConfig } from './model';
 
 /**
  * The participant-facing labels of the interface-owned value sets, by value:
@@ -95,15 +94,3 @@ export const childKindWording = (
       return wording.childKindSurrogate;
   }
 };
-
-/**
- * The question a built-in detail is missing: gender identity is asked only
- * when the stage asks about it, so its words are held only then.
- */
-export const builtInDetailWording = (
-  wording: FamilyPedigreeWording,
-  detail: Exclude<MissingDetail, { variable: string }>,
-): LocalizedString =>
-  detail === 'genderIdentity'
-    ? configuredWord(wording.genderIdentityLabel)
-    : wording.sexAssignedAtBirthLabel;

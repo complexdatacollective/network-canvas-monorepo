@@ -95,11 +95,7 @@ import {
   twinSetOf,
   twinsOf,
 } from '../model';
-import {
-  builtInDetailWording,
-  childKindWording,
-  type OwnedOptionLabels,
-} from '../options';
+import { childKindWording, type OwnedOptionLabels } from '../options';
 import {
   configuredWord,
   type PedigreeWords,
@@ -635,11 +631,8 @@ export default function PersonForm({
       ? mode.missing.map((detail) =>
           typeof detail === 'string'
             ? {
-                name:
-                  detail === 'genderIdentity'
-                    ? (config.genderIdentity?.attribute ?? '')
-                    : config.sexAssignedAtBirthAttribute,
-                label: text(builtInDetailWording(wording, detail)),
+                name: config.sexAssignedAtBirthAttribute,
+                label: text(wording.sexAssignedAtBirthLabel),
               }
             : {
                 name: detail.variable,
@@ -678,7 +671,6 @@ export default function PersonForm({
                 nameMode="opaque"
                 label={text(configuredWord(wording.genderIdentityLabel))}
                 options={genderIdentityOptions}
-                required
                 initialValue={person?.genderIdentity}
               />
             )}
