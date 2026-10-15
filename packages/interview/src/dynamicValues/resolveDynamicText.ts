@@ -125,7 +125,7 @@ export type DynamicValueFormatters = Readonly<{
 
 const DATE_ONLY = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
 const ISO_INSTANT =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/;
+  /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?$/;
 
 const dateFormats = new Map<string, Intl.DateTimeFormat>();
 const dateFormat = (
@@ -142,6 +142,27 @@ const dateFormat = (
 };
 
 /**
+ * The UTC day a stored year, month and day name, or undefined when they name
+ * none: a day that is not on the calendar (`2024-02-31`) would roll over into
+ * another, and year 0 is before the first a date picker offers.
+ */
+const calendarDate = (
+  year: string,
+  month = '01',
+  day = '01',
+): Date | undefined => {
+  // Date.UTC reads years 0-99 as 1900-1999; setUTCFullYear takes the year as
+  // written.
+  const date = new Date(0);
+  date.setUTCFullYear(Number(year), Number(month) - 1, Number(day));
+  return Number(year) >= 1 &&
+    date.getUTCMonth() === Number(month) - 1 &&
+    date.getUTCDate() === Number(day)
+    ? date
+    : undefined;
+};
+
+/**
  * A date as the participant's language writes it. A date picker stores a day
  * (`2024-03-05`), a month (`2024-03`) or a year (`2024`), which are calendar
  * dates rather than instants, so they are formatted in UTC and never shift a
@@ -151,25 +172,10 @@ const formatDate = (value: unknown, locale: string): string => {
   if (typeof value === 'string') {
     const match = DATE_ONLY.exec(value);
     if (match) {
-      const [, year, month, day] = match;
-      // Date.UTC reads years 0-99 as 1900-1999; setUTCFullYear takes the
-      // year as written.
-      const date = new Date(0);
-      date.setUTCFullYear(
-        Number(year),
-        Number(month ?? 1) - 1,
-        Number(day ?? 1),
-      );
-      // A day that is not on the calendar (`2024-02-31`) rolls over into
-      // another, and year 0 is before the first a date picker offers; show
-      // what was stored rather than a different date.
-      if (
-        Number(year) < 1 ||
-        date.getUTCMonth() !== Number(month ?? 1) - 1 ||
-        date.getUTCDate() !== Number(day ?? 1)
-      ) {
-        return value;
-      }
+      const [, year = '', month, day] = match;
+      const date = calendarDate(year, month, day);
+      // Shown as stored rather than as a different date.
+      if (date === undefined) return value;
       return dateFormat(locale, {
         timeZone: 'UTC',
         year: 'numeric',
@@ -178,15 +184,18 @@ const formatDate = (value: unknown, locale: string): string => {
       }).format(date);
     }
   }
-  // Only a full ISO date and time is read as an instant: the engine's own
-  // parser accepts other text (`2024-1`) and invents the parts it lacks.
+  // Only a full ISO date and time on the calendar is read as an instant: the
+  // engine's own parser accepts other text (`2024-1`) and invents the parts it
+  // lacks, and rolls an impossible day over into another.
+  const instant = typeof value === 'string' ? ISO_INSTANT.exec(value) : null;
   const date =
     value instanceof Date
       ? value
-      : typeof value === 'number' ||
-          (typeof value === 'string' && ISO_INSTANT.test(value))
+      : typeof value === 'number'
         ? new Date(value)
-        : undefined;
+        : instant && calendarDate(instant[1] ?? '', instant[2], instant[3])
+          ? new Date(value as string)
+          : undefined;
   if (date === undefined || Number.isNaN(date.getTime())) return String(value);
   return dateFormat(locale, { dateStyle: 'long' }).format(date);
 };

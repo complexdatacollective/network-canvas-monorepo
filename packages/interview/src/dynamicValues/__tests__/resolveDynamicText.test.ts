@@ -173,6 +173,12 @@ describe('resolveDynamicText', () => {
     expect(resolve(message, { born: '2024-01-01junk' })?.text).toBe(
       '2024-01-01junk',
     );
+    expect(resolve(message, { born: '2024-02-31T00:00Z' })?.text).toBe(
+      '2024-02-31T00:00Z',
+    );
+    expect(resolve(message, { born: '0000-01-01T00:00Z' })?.text).toBe(
+      '0000-01-01T00:00Z',
+    );
     expect(resolve(message, { born: '2024-03-05T12:00:00Z' })?.text).toBe(
       'March 5, 2024',
     );
