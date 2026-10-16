@@ -382,11 +382,13 @@
         "en": "About you",
         "es": "Sobre ti"
       },
-      "form": {
+      "introductionPanel": {
         "title": {
           "en": "About you",
           "es": "Sobre ti"
-        },
+        }
+      },
+      "form": {
         "fields": [
           {
             "variable": "ego-var-9009-1",

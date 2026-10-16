@@ -68,8 +68,13 @@ const FORM_EDITORS: FormEditorCase[] = [
     interfaceName: 'EgoForm',
     stageId: 'ego-form-1',
     editor: egoFormStageEditor,
-    sections: ['Form configuration', 'Skip logic', 'Interviewer guidance'],
-    ownedKeys: ['dynamicValues', 'form', 'label'],
+    sections: [
+      'Task introduction',
+      'Form configuration',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['dynamicValues', 'form', 'introductionPanel', 'label'],
   },
   {
     interfaceName: 'AlterForm',

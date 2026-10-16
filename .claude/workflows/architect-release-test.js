@@ -410,9 +410,8 @@ protocol-design PWA. Target deployment: ${target}
 `;
 
 // The schema 8 protocol the upgrade check opens. Small enough to travel inline,
-// and shaped to show what the 8 to 9 migration does: the Ego Form's
-// introduction panel becomes the form's title, its text becomes an Information
-// stage before the form, and the interview gains its finish stage.
+// and shaped to show what the 8 to 9 migration does: the Ego Form keeps its
+// introduction panel, and the interview gains its finish stage.
 const legacyProtocol = (name) => ({
   name,
   description: 'Schema 8 protocol opened by the Architect release test.',
@@ -824,12 +823,14 @@ This slice opens two protocols: a template, named exactly "${name}", and an
 upgraded schema 8 protocol, which arrives already named "${name} legacy"
 (it begins with your name, so it is yours too).
 Before schema 9, form and census stages opened with an introduction panel
-(its editor section was titled "Task introduction", with "Title" and
-"Introduction text" fields); those panels are now Information stages.
+(its editor section is titled "Task introduction", with "Title" and
+"Introduction text" fields). An Ego Form keeps it; on the Per Alter Form,
+Per Alter Edge Form, Dyad Census and Tie-Strength Census those panels are
+now Information stages.
 1. "open-template": On the start screen open the "Templates" tab and open the
    template "Colored Eco-Genetic Relationship Map (CEGRM)" from its card (or
    its card menu > Open). It asks for a name first: enter "${name}" exactly
-   and confirm. Confirm the editor opens under that name with 18 stages on the
+   and confirm. Confirm the editor opens under that name with 16 stages on the
    timeline, including "Family pedigree", "How the condition runs in the
    family", and ending with the two finish stages "Finish Interview" and "Not
    Taking Part".
@@ -843,16 +844,15 @@ Before schema 9, form and census stages opened with an introduction panel
    confirm its "Source stage" box names "Family pedigree"; leave without
    saving. Then try to delete "Family pedigree" with its "Delete stage"
    control: confirm a "Cannot delete stage" dialog refuses (another stage
-   reads this pedigree), press "OK", and confirm the timeline still has 18
+   reads this pedigree), press "OK", and confirm the timeline still has 16
    stages.
 4. "no-intro-panels": Open the Ego Form "About you" and confirm it has a
-   "Form title" field and no introduction section (nothing titled "Task
-   introduction" in the page or the "Stage sections" outline); leave without
-   saving. Then, for each of "Per Alter Form", "Per Alter Edge Form", "Dyad
+   "Task introduction" section whose "Title" reads "A little about you" and
+   no "Form title" field; leave without saving. Then, for each of "Per Alter Form", "Per Alter Edge Form", "Dyad
    Census" and "Tie-Strength Census": use "Add new stage", choose it, confirm
    its "Stage sections" outline and page have no introduction section, and
    leave without saving ("Cancel", discarding if asked). Confirm the timeline
-   still has 18 stages afterwards.
+   still has 16 stages afterwards.
 5. "schema8-upgrade": Return to the start screen. A schema 8 protocol is
    opened by handing its file to the start screen's file input — the stand-in
    for the file chooser this pane cannot operate, and the only page script
@@ -865,10 +865,9 @@ ${legacyUpgradeScript(`${name} legacy`)}
    schema version 8 and can be upgraded to schema version 9, and listing what
    the migration will do, including that introduction panels are replaced by
    Information stages. Press "Create upgraded copy". Confirm the editor opens
-   "${name} legacy" with exactly these stages in order: "Welcome", "Legacy
-   introduction" (an Information stage whose text reads "Legacy introduction
-   text."), "About you" (an Ego Form whose "Form title" is "Legacy
-   introduction" and which has no introduction section), and "Finish
+   "${name} legacy" with exactly these stages in order: "Welcome", "About
+   you" (an Ego Form whose "Task introduction" has the title "Legacy
+   introduction" and the text "Legacy introduction text."), and "Finish
    Interview". Fail if no dialog follows a dispatched file, if the upgrade
    reports an error, or if the stages differ; blocked only if the script
    cannot run or the start screen has no file input.

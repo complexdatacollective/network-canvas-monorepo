@@ -19,7 +19,7 @@ function egoFormWithTextField(
     name: variableName,
   });
   const stage = synth.addStage('EgoForm', {
-    form: { title: 'About you', fields: [] },
+    introductionPanel: { title: 'About you' },
   });
   stage.addFormField({
     variable: variable.id,

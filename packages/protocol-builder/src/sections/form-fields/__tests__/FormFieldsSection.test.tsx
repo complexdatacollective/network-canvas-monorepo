@@ -470,10 +470,10 @@ describe('the fields a form collects', () => {
     ).toBeInTheDocument();
   });
 
-  it("collects the participant's own attributes on an ego form, under the form's title", async () => {
+  it("collects the participant's own attributes on an ego form, with no title to author", async () => {
     const harness = renderStageEditor({
       stageId: 'ego-form-1',
-      sections: <FormFieldsSection subject="ego" hasTitle />,
+      sections: <FormFieldsSection subject="ego" />,
     });
 
     const dialog = await openField(harness, 'Edit field');
@@ -485,13 +485,12 @@ describe('the fields a form collects', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    // A rich-text editor rather than an input: it shows its text.
     expect(
-      screen.getByRole('textbox', { name: 'Form title' }).textContent,
-    ).toBe('Introduction');
-    // An ego form has no subject to own, and its name belongs to a section
-    // this mount does not include.
-    await harness.roundTrip();
+      screen.queryByRole('textbox', { name: 'Form title' }),
+    ).not.toBeInTheDocument();
+    // An ego form has no subject to own; its name and its introduction panel
+    // belong to sections this mount does not include.
+    await harness.roundTrip({ unowned: ['introductionPanel'] });
   });
 
   it('offers to invent the first attribute the participant has', async () => {

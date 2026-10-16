@@ -41,7 +41,8 @@ describe('installPreviewProtocol', () => {
         );
         // A gallery protocol older than schema 9 gains the finish stage the
         // v8 → v9 migration appends, and an Information stage before each
-        // stage that had an introduction panel, named after that stage.
+        // stage other than an Ego Form that had an introduction panel, named
+        // after that stage.
         const downloadTypes = download.stages.map(({ type }) => type);
         const migrated = install.protocol.stages;
         const authored = migrated.filter(

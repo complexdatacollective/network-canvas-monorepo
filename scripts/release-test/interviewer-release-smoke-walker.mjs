@@ -242,19 +242,18 @@ const interviewMain = () =>
 const STEP = {
   language: 0,
   information: 1,
-  egoIntroduction: 2,
-  egoForm: 3,
-  anonymisation: 4,
-  quickAdd: 5,
-  sociogram: 6,
-  dyadIntroduction: 7,
-  dyadCensus: 8,
-  catBin: 9,
-  emptyAlterForm: 10,
-  ordinalBin: 11,
-  familyPedigree: 12,
-  finish: 13,
-  finishDeclined: 14,
+  egoForm: 2,
+  anonymisation: 3,
+  quickAdd: 4,
+  sociogram: 5,
+  dyadIntroduction: 6,
+  dyadCensus: 7,
+  catBin: 8,
+  emptyAlterForm: 9,
+  ordinalBin: 10,
+  familyPedigree: 11,
+  finish: 12,
+  finishDeclined: 13,
 };
 const PEOPLE = ['Alex', 'Blair', 'Casey'];
 const PASSPHRASE = 'smoke-pass1';
@@ -587,20 +586,15 @@ try {
   );
   await nextStage();
 
-  // Stage 2 — Information: the EgoForm's instructions, a stage of their own
-  // since schema 9.
-  await expectStep(STEP.egoIntroduction);
-  await expect(page.getByText('Tell us about')).toBeVisible();
-  record('stage-ego-introduction', true);
-  await nextStage();
-
-  // Stage 3 — EgoForm. Fill the required name; blur is load-bearing:
+  // Stage 2 — EgoForm. Fill the required name; blur is load-bearing:
   // protocol forms validate on blur, and the next-button only becomes ready
   // once validation has run (interview-nav.ts). Decline consent first: the
   // next stage's skip logic must send the participant straight to the
   // second finish stage, bypassing every stage between; Back must return to
   // the form, and accepting consent restores the full route.
   await expectStep(STEP.egoForm);
+  // The form's introduction panel is shown above its questions.
+  await expect(page.getByText('Tell us about')).toBeVisible();
   const egoField = page.locator('[data-field-name="ego_name"] input');
   await expect(egoField).toBeVisible();
   await egoField.fill('Smoke Tester');
@@ -630,7 +624,7 @@ try {
   record('stage-egoform', true, 'ego_name filled, consent accepted');
   await nextStage();
 
-  // Stage 4 — Anonymisation (packages/interview/e2e/fixtures/
+  // Stage 3 — Anonymisation (packages/interview/e2e/fixtures/
   // anonymisation-fixture.ts): choose a passphrase; every person's name is
   // an encrypted attribute from here on.
   await expectStep(STEP.anonymisation);
@@ -643,7 +637,7 @@ try {
   record('stage-anonymisation', true, 'passphrase chosen and accepted');
   await nextStage();
 
-  // Stage 5 — NameGeneratorQuickAdd: the prompt inserts the ego's name
+  // Stage 4 — NameGeneratorQuickAdd: the prompt inserts the ego's name
   // (dynamic value ego.ego_name), then create three nodes.
   await expectStep(STEP.quickAdd);
   const quickAddPrompt = page.getByText(/^Who are the people you know/).first();
@@ -674,7 +668,7 @@ try {
   );
   await nextStage();
 
-  // Stage 6 — Sociogram: place all three (layout writes), then click two
+  // Stage 5 — Sociogram: place all three (layout writes), then click two
   // nodes in turn to create a "Knows" edge on the same prompt.
   await expectStep(STEP.sociogram);
   await dragNodeToCanvasPosition('Alex', { x: 0.3, y: 0.35 });
@@ -687,7 +681,7 @@ try {
   record('stage-sociogram', true, '3 placed, 1 Knows edge');
   await nextStage();
 
-  // Stage 7 — Information: the DyadCensus's instructions.
+  // Stage 6 — Information: the DyadCensus's instructions.
   await expectStep(STEP.dyadIntroduction);
   await expect(
     page.getByText('You will be asked about each pair of people you named.'),
@@ -695,7 +689,7 @@ try {
   record('stage-dyad-introduction', true);
   await nextStage();
 
-  // Stage 8 — DyadCensus: answer all three pairs (Yes for the first, No
+  // Stage 7 — DyadCensus: answer all three pairs (Yes for the first, No
   // after). Each pair's prompt inserts both people's labels (dynamic values
   // dyad.source.$label / dyad.target.$label), which must be exactly the pair
   // on screen. The ~350 ms auto-advance timer races a fixed sleep under
@@ -749,7 +743,7 @@ try {
       : '3 pairs answered, each prompt named its pair, stage auto-advanced',
   );
 
-  // Stage 9 — CategoricalBin with the completion gate: with a person still
+  // Stage 8 — CategoricalBin with the completion gate: with a person still
   // unplaced, Next must be refused with the notice and the step unchanged;
   // once all three are placed it advances. The deployed build does not
   // expose bin membership as role=option (verified empirically), so the
@@ -773,7 +767,7 @@ try {
   await shot('stage-catbin');
   record('stage-catbin', true, 'Alex→Work, Blair→Social, Casey→Family placed');
 
-  // Stage 10 — an AlterForm whose filter matches nobody has nothing to ask:
+  // Stage 9 — an AlterForm whose filter matches nobody has nothing to ask:
   // navigation must pass it going forward AND going back.
   await nextStage();
   await expectStep(STEP.ordinalBin);
@@ -787,7 +781,7 @@ try {
     `step ${STEP.catBin}→${STEP.ordinalBin} forward and ${STEP.ordinalBin}→${STEP.catBin} back, never showing the empty follow-up form (step ${STEP.emptyAlterForm})`,
   );
 
-  // Stage 11 — OrdinalBin in select mode (packages/interview/e2e/matrix/
+  // Stage 10 — OrdinalBin in select mode (packages/interview/e2e/matrix/
   // ordinal-bin.scenarios.ts select-mode-tap-to-place): tap a person in the
   // drawer to make them the one being placed, then tap a bin.
   const announcer = page.getByTestId('bin-select-announcer');
@@ -812,7 +806,7 @@ try {
   );
   await nextStage();
 
-  // Stage 12 — FamilyPedigree (packages/interview/e2e/matrix/
+  // Stage 11 — FamilyPedigree (packages/interview/e2e/matrix/
   // family-pedigree.scenarios.ts): the participant appears as "You"; add a
   // parent through the new-person wizard.
   await expectStep(STEP.familyPedigree);

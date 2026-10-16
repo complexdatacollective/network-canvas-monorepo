@@ -53,17 +53,15 @@ New pages with no screenshots yet:
 
 ## Stage introduction panels removed (schema 9)
 
-Schema 9 removed the introduction panel from the Ego Form, Per Alter Form,
-Per Alter Edge Form, Dyad Census and Tie-Strength Census. Instructions now
-go in an Information stage placed before the stage, and the Ego Form's form
-has a title shown above its questions. The Building a protocol tutorial now
-shows these two captures only to Architect Classic readers; Architect needs
-fresh ones:
+Schema 9 removed the introduction panel from the Per Alter Form, Per Alter
+Edge Form, Dyad Census and Tie-Strength Census. Instructions now go in an
+Information stage placed before the stage; the Ego Form keeps its panel. The
+Building a protocol tutorial now shows this capture only to Architect Classic
+readers; Architect needs a fresh one:
 
-| Image                                | Page                                                    | What changed                                                                                                                                |
-| ------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `architect-guide/ego-form.png`       | `design-protocols/tutorials/building-a-protocol.en.mdx` | Shows the removed **Task introduction** section. Recapture the Ego Form editor showing its form title, then show it in the `current` block. |
-| `architect-guide/per-alter-form.png` | `design-protocols/tutorials/building-a-protocol.en.mdx` | Shows the removed **Task introduction** section. Recapture the Per Alter Form editor, then show it in the `current` block.                  |
+| Image                                | Page                                                    | What changed                                                                                                               |
+| ------------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `architect-guide/per-alter-form.png` | `design-protocols/tutorials/building-a-protocol.en.mdx` | Shows the removed **Task introduction** section. Recapture the Per Alter Form editor, then show it in the `current` block. |
 
 The Per Alter Form and Per Alter Edge Form interface pages no longer show
 `interface-documentation/per-alter-form/architect-intro.png` and

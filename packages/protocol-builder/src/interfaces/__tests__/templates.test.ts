@@ -117,7 +117,7 @@ describe('getInterfaceTemplate', () => {
  *
  * The answer to "does a template produce a stage that can be saved?", written
  * down for every interface rather than asked about one. It is `subject`,
- * `prompts`, `form` and their kin all the way down: the
+ * `prompts`, `form`, `introductionPanel` and their kin all the way down: the
  * node type a stage works with, the questions it asks, the words a participant
  * reads. None of that is a default a template could hold — one that invented
  * it would be authoring the study — so the sections of the editor are what
@@ -134,7 +134,7 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   Anonymisation: ['explanationText'],
   CategoricalBin: ['prompts', 'subject'],
   DyadCensus: ['prompts', 'subject'],
-  EgoForm: ['form'],
+  EgoForm: ['form', 'introductionPanel'],
   FamilyPedigree: [
     'edgeConfiguration',
     'nodeConfiguration',

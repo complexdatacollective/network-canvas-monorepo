@@ -211,8 +211,11 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         id: 'consent',
         type: 'EgoForm',
         label: { en: 'Consent' },
-        form: {
+        introductionPanel: {
           title: { en: 'Consent' },
+          text: { en: 'Review the study information.' },
+        },
+        form: {
           fields: [
             {
               variable: asEntityAttributeReference('screening'),

@@ -152,8 +152,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'egoForm1',
             type: 'EgoForm',
             label: localized('Ego Form'),
+            introductionPanel: { title: localized('Ego Form Intro') },
             form: {
-              title: localized('Ego Form Intro'),
               fields: [
                 {
                   variable: 'egoName',
@@ -183,8 +183,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'egoForm1',
             type: 'EgoForm',
             label: localized('Ego Form'),
+            introductionPanel: { title: localized('Ego Form Intro') },
             form: {
-              title: localized('Ego Form Intro'),
               fields: [
                 {
                   variable: 'egoName',
@@ -285,8 +285,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'egoForm1',
             type: 'EgoForm',
             label: localized('Ego Form'),
+            introductionPanel: { title: localized('Ego Form Intro') },
             form: {
-              title: localized('Ego Form Intro'),
               fields: [
                 {
                   variable: 'egoName',
@@ -316,8 +316,8 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             id: 'egoForm1',
             type: 'EgoForm',
             label: localized('Ego Form'),
+            introductionPanel: { title: localized('Ego Form Intro') },
             form: {
-              title: localized('Ego Form Intro'),
               fields: [
                 {
                   variable: 'nonexistentEgoVariable',
