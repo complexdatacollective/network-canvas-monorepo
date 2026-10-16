@@ -21,10 +21,6 @@ Chooser stage type has a colour and icon.
 space they are given when the text they show is long. The text is cut off with
 an ellipsis instead of running past the edge of its dialog.
 
-A button whose label is too long for it now cuts the label off with an
-ellipsis at its end, instead of clipping both the start and the end of the
-label.
-
 `ProgressBar` takes a `tone` of `neutral` (the default, unchanged) or `info`.
 An `info` bar fills its unfinished progress with the info colour, so a bar
 under way reads apart from both an empty track and a complete bar.
