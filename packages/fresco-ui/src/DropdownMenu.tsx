@@ -237,7 +237,7 @@ const DropdownMenuRadioItem = React.forwardRef<
     inset?: boolean;
     icon?: React.ReactNode;
   }
->(({ className, children, icon = <CheckIcon />, ...props }, ref) => (
+>(({ className, children, icon, ...props }, ref) => (
   <Menu.RadioItem
     ref={ref}
     className={cx(dropdownItemVariants(), 'flex items-center px-4', className)}
@@ -247,12 +247,15 @@ const DropdownMenuRadioItem = React.forwardRef<
       keepMounted
       className={cx(
         proportionalLucideIconVariants(),
-        // Kept mounted so every item reserves the tick's space; only the
-        // checked item shows it.
-        'flex items-center justify-center data-unchecked:invisible',
+        'flex items-center justify-center',
+        // The default tick is kept mounted so every item reserves its space,
+        // and only the checked item shows it. A custom icon describes its
+        // option (a sort direction, a theme), so every item shows its own;
+        // the checked item is marked by its highlight instead.
+        icon === undefined && 'data-unchecked:invisible',
       )}
     >
-      {icon}
+      {icon ?? <CheckIcon />}
     </Menu.RadioItemIndicator>
     {children}
   </Menu.RadioItem>

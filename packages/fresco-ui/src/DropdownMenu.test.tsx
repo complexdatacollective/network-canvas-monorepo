@@ -74,4 +74,30 @@ describe('DropdownMenuRadioItem', () => {
     expect(bottom).toHaveAttribute('data-checked');
     expect(bottom).not.toHaveAttribute('data-unchecked');
   });
+
+  it('shows a custom icon on every item, checked or not', async () => {
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<button>open</button>} />
+        <DropdownMenuContent>
+          <DropdownMenuRadioGroup value="asc">
+            <DropdownMenuRadioItem value="asc" icon={<svg />}>
+              Ascending
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="desc" icon={<svg />}>
+              Descending
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    await userEvent.click(screen.getByText('open'));
+
+    const item = await screen.findByRole('menuitemradio', {
+      name: 'Descending',
+    });
+    const indicator = item.querySelector('svg')?.parentElement;
+    expect(indicator).toHaveAttribute('data-unchecked');
+    expect(indicator).not.toHaveClass('data-unchecked:invisible');
+  });
 });
