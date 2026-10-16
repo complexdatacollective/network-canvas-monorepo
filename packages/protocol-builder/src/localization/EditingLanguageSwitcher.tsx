@@ -70,6 +70,12 @@ export function EditingLanguageSwitcher({
             <Button
               size="sm"
               variant="text"
+              // Text follows the surface the field sits on, so the trigger
+              // stays legible on dark and coloured surfaces. Hover tints that
+              // same colour rather than inverting to `--published-bg`, which
+              // a surface may not set.
+              color="dynamic"
+              className="ui-enabled:hover:bg-current/10 ui-enabled:hover:text-current"
               icon={<Languages aria-hidden="true" />}
             />
           }
