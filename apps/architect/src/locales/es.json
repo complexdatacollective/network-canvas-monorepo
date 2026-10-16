@@ -884,7 +884,6 @@
   "architect.testingMapboxTokenAlert.usingATestingMapboxToken": "Se está usando un token de prueba de Mapbox",
   "architect.timeline.announcement.deleted": "Se eliminó la etapa {position, number}. {remaining, plural, =0 {No quedan etapas.} one {Queda 1 etapa.} other {Quedan # etapas.}}",
   "architect.timeline.announcement.moved": "Se movió la etapa {fromPosition, number} a la posición {toPosition, number} de {total, number}.",
-  "architect.timeline.finishStageGuards.cannotDeleteStage": "No se puede eliminar la etapa",
   "architect.timeline.finishStageGuards.cannotMoveStage": "No se puede mover la etapa",
   "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": "Esta etapa finaliza la entrevista y todo protocolo necesita una, por lo que no se puede eliminar. En su lugar, puedes cambiar su texto y su resultado.",
   "architect.timeline.finishStageGuards.finishStagesStayLast": "Las etapas que finalizan la entrevista deben permanecer juntas al final del protocolo. Ningún participante podría llegar a una etapa colocada después de ellas.",

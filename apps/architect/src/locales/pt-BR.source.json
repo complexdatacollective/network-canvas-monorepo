@@ -884,7 +884,6 @@
   "architect.testingMapboxTokenAlert.usingATestingMapboxToken": "Using a testing Mapbox token",
   "architect.timeline.announcement.deleted": "Deleted stage {position, number}. {remaining, plural, =0 {No stages remain.} one {1 stage remains.} other {# stages remain.}}",
   "architect.timeline.announcement.moved": "Moved stage {fromPosition, number} to position {toPosition, number} of {total, number}.",
-  "architect.timeline.finishStageGuards.cannotDeleteStage": "Cannot delete stage",
   "architect.timeline.finishStageGuards.cannotMoveStage": "Cannot move stage",
   "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": "This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.",
   "architect.timeline.finishStageGuards.finishStagesStayLast": "Stages that end the interview have to stay together at the end of the protocol. No participant could reach a stage placed after them.",

@@ -884,7 +884,6 @@
   "architect.testingMapboxTokenAlert.usingATestingMapboxToken": "Utilisation d’un jeton de test Mapbox",
   "architect.timeline.announcement.deleted": "Étape {position, number} supprimée. {remaining, plural, =0 {Il ne reste aucune étape.} one {Il reste 1 étape.} other {Il reste # étapes.}}",
   "architect.timeline.announcement.moved": "Étape {fromPosition, number} déplacée en position {toPosition, number} sur {total, number}.",
-  "architect.timeline.finishStageGuards.cannotDeleteStage": "Impossible de supprimer l’étape",
   "architect.timeline.finishStageGuards.cannotMoveStage": "Impossible de déplacer l’étape",
   "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": "Cette étape termine l’entretien et chaque protocole doit en comporter une ; elle ne peut donc pas être supprimée. Vous pouvez en revanche modifier son texte et son résultat.",
   "architect.timeline.finishStageGuards.finishStagesStayLast": "Les étapes qui terminent l’entretien doivent rester ensemble à la fin du protocole. Aucune personne participante ne pourrait atteindre une étape placée après elles.",

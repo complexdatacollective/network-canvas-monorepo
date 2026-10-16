@@ -884,7 +884,6 @@
   "architect.testingMapboxTokenAlert.usingATestingMapboxToken": "Uso di un token Mapbox di prova",
   "architect.timeline.announcement.deleted": "Fase {position, number} eliminata. {remaining, plural, =0 {Non resta nessuna fase.} one {Resta 1 fase.} many {Restano # di fasi.} other {Restano # fasi.}}",
   "architect.timeline.announcement.moved": "Fase {fromPosition, number} spostata nella posizione {toPosition, number} di {total, number}.",
-  "architect.timeline.finishStageGuards.cannotDeleteStage": "Impossibile eliminare la fase",
   "architect.timeline.finishStageGuards.cannotMoveStage": "Impossibile spostare la fase",
   "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": "Questa fase conclude l’intervista e ogni protocollo ne ha bisogno, quindi non può essere eliminata. Puoi invece modificarne il testo e l’esito.",
   "architect.timeline.finishStageGuards.finishStagesStayLast": "Le fasi che concludono l’intervista devono restare raggruppate alla fine del protocollo. Nessuna persona partecipante potrebbe raggiungere una fase collocata dopo di esse.",

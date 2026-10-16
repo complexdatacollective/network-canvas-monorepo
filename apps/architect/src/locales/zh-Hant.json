@@ -884,7 +884,6 @@
   "architect.testingMapboxTokenAlert.usingATestingMapboxToken": "正在使用 Mapbox 測試權杖",
   "architect.timeline.announcement.deleted": "已刪除階段 {position, number}。{remaining, plural, =0 {沒有剩餘的階段。} other {剩餘 # 個階段。}}",
   "architect.timeline.announcement.moved": "已將階段 {fromPosition, number} 移至第 {toPosition, number} 個位置（共 {total, number} 個）。",
-  "architect.timeline.finishStageGuards.cannotDeleteStage": "無法刪除階段",
   "architect.timeline.finishStageGuards.cannotMoveStage": "無法移動階段",
   "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": "此階段用於結束訪談，每個協定都需要有一個，因此無法刪除。您可以改為變更它的文字和結果。",
   "architect.timeline.finishStageGuards.finishStagesStayLast": "結束訪談的階段必須一起維持在協定末尾。參與者無法抵達排在它們之後的任何階段。",

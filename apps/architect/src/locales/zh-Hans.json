@@ -884,7 +884,6 @@
   "architect.testingMapboxTokenAlert.usingATestingMapboxToken": "正在使用 Mapbox 测试令牌",
   "architect.timeline.announcement.deleted": "已删除阶段 {position, number}。{remaining, plural, =0 {没有剩余阶段。} other {剩余 # 个阶段。}}",
   "architect.timeline.announcement.moved": "已将阶段 {fromPosition, number} 移动到第 {toPosition, number} 个位置（共 {total, number} 个）。",
-  "architect.timeline.finishStageGuards.cannotDeleteStage": "无法删除阶段",
   "architect.timeline.finishStageGuards.cannotMoveStage": "无法移动阶段",
   "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": "此阶段用于结束访谈，每个协议都需要有一个，因此无法删除。您可以改为编辑它的文本和结果。",
   "architect.timeline.finishStageGuards.finishStagesStayLast": "结束访谈的阶段必须一起保持在协议末尾。参与者无法到达排在它们之后的任何阶段。",

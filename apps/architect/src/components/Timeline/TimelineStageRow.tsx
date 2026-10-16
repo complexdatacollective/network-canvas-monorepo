@@ -3,6 +3,7 @@ import { Reorder, useDragControls, type Variants } from 'motion/react';
 import {
   useCallback,
   useEffect,
+  useId,
   useRef,
   type MouseEvent,
   type PointerEvent,
@@ -12,6 +13,11 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import { useKeyboardReorder } from '@codaco/fresco-ui/dnd/useKeyboardReorder';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@codaco/fresco-ui/Tooltip';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
@@ -102,6 +108,11 @@ type TimelineStageRowProps = {
    */
   onMove: (stageId: string, targetIndex: number) => boolean;
   onDelete: (stageId: string) => void;
+  /**
+   * Why this stage cannot be deleted, when it cannot. The delete control then
+   * stays visible but unavailable, with this as its tooltip.
+   */
+  deleteBlockedReason?: string;
   /** Commit a pointer drag that has just finished on this row. */
   onDragCommit: (stageId: string) => void;
   /**
@@ -144,12 +155,14 @@ const TimelineStageRow = ({
   onOpen,
   onMove,
   onDelete,
+  deleteBlockedReason,
   onDragCommit,
   registerOpenControl,
   variants,
 }: TimelineStageRowProps) => {
   const intl = useAppIntl();
   const readOnly = useProtocolReadOnly();
+  const deleteReasonId = useId();
   const pointerStart = useRef({ x: 0, y: 0 });
   const didDrag = useRef(false);
 
@@ -343,22 +356,50 @@ const TimelineStageRow = ({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <IconButton
-            icon={<Trash2 />}
-            aria-label={intl.formatMessage(messages.deleteStage, {
-              position: position,
-              stageName: stageName,
-            })}
-            color="destructive"
-            disabled={readOnly}
-            // `invisible` rather than unmounted, for the same reason the
-            // control is `opacity-0` at rest: the row never changes size.
-            className={readOnly ? 'invisible' : revealOnRowInterest}
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(stage.id);
-            }}
-          />
+          {/* An unavailable delete stays focusable (aria-disabled rather than
+              disabled), so its reason reaches keyboard and pointer users as a
+              tooltip and screen readers as its description. */}
+          <Tooltip disabled={deleteBlockedReason === undefined}>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  icon={<Trash2 />}
+                  aria-label={intl.formatMessage(messages.deleteStage, {
+                    position: position,
+                    stageName: stageName,
+                  })}
+                  aria-disabled={deleteBlockedReason !== undefined || undefined}
+                  aria-describedby={
+                    deleteBlockedReason === undefined
+                      ? undefined
+                      : deleteReasonId
+                  }
+                  color="destructive"
+                  disabled={readOnly}
+                  // `invisible` rather than unmounted, for the same reason the
+                  // control is `opacity-0` at rest: the row never changes size.
+                  className={readOnly ? 'invisible' : revealOnRowInterest}
+                  onClick={(event) => {
+                    // A press on the row opens the stage, so even a refused
+                    // delete keeps the press to itself.
+                    event.stopPropagation();
+                    if (deleteBlockedReason !== undefined) return;
+                    onDelete(stage.id);
+                  }}
+                />
+              }
+            />
+            {deleteBlockedReason !== undefined && (
+              <TooltipContent side="left" className="max-w-64">
+                {deleteBlockedReason}
+              </TooltipContent>
+            )}
+          </Tooltip>
+          {deleteBlockedReason !== undefined && (
+            <span id={deleteReasonId} hidden>
+              {deleteBlockedReason}
+            </span>
+          )}
         </div>
       </div>
     </Reorder.Item>
