@@ -119,10 +119,19 @@ export const FittedNames = ({ names }: { names: readonly string[] }) => {
       measure.textContent = '';
       setNamed(count);
     };
+    let cancelled = false;
     fit();
+    // Web fonts change glyph widths after first paint without resizing the
+    // field, so measure again once they load.
+    void document.fonts?.ready.then(() => {
+      if (!cancelled) fit();
+    });
     const observer = new ResizeObserver(fit);
     observer.observe(box);
-    return () => observer.disconnect();
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
   }, [names.length, summary]);
 
   return (
