@@ -1427,7 +1427,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
 
     expect(note?.notes).toContain(
-      'Introduction panels within interfaces have been removed',
+      'Introduction panels within interfaces other than the Ego Form have been removed',
     );
   });
 });
