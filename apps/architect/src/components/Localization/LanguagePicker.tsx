@@ -81,7 +81,7 @@ const renderLanguageOption = (
  * count of the rest: "English, Spanish and 4 others". Measured rather than a
  * fixed count, because names and the list's width both vary.
  */
-const FittedNames = ({ names }: { names: readonly string[] }) => {
+export const FittedNames = ({ names }: { names: readonly string[] }) => {
   const intl = useAppIntl();
   const boxRef = useRef<HTMLSpanElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
@@ -116,6 +116,7 @@ const FittedNames = ({ names }: { names: readonly string[] }) => {
         if (measure.offsetWidth <= width) break;
         count -= 1;
       }
+      measure.textContent = '';
       setNamed(count);
     };
     fit();
