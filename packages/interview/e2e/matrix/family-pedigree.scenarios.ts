@@ -223,7 +223,8 @@ async function addRelativeOf(
 /**
  * Answers the panel's own questions about a person. Someone new is described
  * a group of questions at a time; these are in the first group, so the panel
- * goes back to it if needed, and answering sex at birth moves on to the next.
+ * goes back to it if needed, and moves on to the next once sex at birth is
+ * answered.
  */
 async function describe(
   page: Page,
@@ -247,8 +248,15 @@ async function describe(
       .getByRole('radio', { name: details.gender, exact: true })
       .click();
   }
+  // A first answer moves the panel on by itself; changing one on going back
+  // waits for Continue.
+  const answered =
+    (await sex.getByRole('radio', { checked: true }).count()) > 0;
   await sex.getByRole('radio', { name: details.sex, exact: true }).click();
-  if (stepped) await expect(sex).toBeHidden();
+  if (stepped) {
+    if (answered) await nextStep(page);
+    await expect(sex).toBeHidden();
+  }
 }
 
 /** Moves a new person's panel on to its next group of questions. */
