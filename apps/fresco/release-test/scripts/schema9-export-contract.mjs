@@ -125,14 +125,35 @@ export function finishOutcomeProblems(files, expected) {
 /** The placeholder the exporters write in place of an encrypted value. */
 export const ENCRYPTED_PLACEHOLDER = 'ENCRYPTED';
 
+/** Each GraphML key's attr.name, by the key's id. */
+const graphmlKeyNames = (text) =>
+  new Map(
+    [...text.matchAll(/<key\b[^>]*>/g)].map(([tag]) => [
+      attributeOf(tag, 'id'),
+      attributeOf(tag, 'attr.name'),
+    ]),
+  );
+
+/** The <data> elements of a stretch of GraphML, by their key's attr.name. */
+const graphmlFields = (body, keyNames) =>
+  new Map(
+    [...body.matchAll(/<data\b([^>]*)>([^<]*)<\/data>/g)].map(
+      ([, attributes, value]) => {
+        const key = attributeOf(` ${attributes}`, 'key');
+        return [keyNames.get(key) ?? key, value];
+      },
+    ),
+  );
+
 /**
- * The exported records of one node: each CSV row whose UUID column holds its
- * id, and each GraphML <node> whose networkCanvasUUID data holds it (GraphML
- * numbers its nodes, so the element id is not the node's id). Each record
+ * The exported records of one node or edge: each CSV row whose UUID column
+ * holds its id (a node's attribute list, an edge's edge list), and each
+ * GraphML <node> or <edge> whose networkCanvasUUID data holds it (GraphML
+ * numbers its elements, so the element id is not the entity's id). Each record
  * maps an attribute's exported name — the CSV column, or the GraphML key's
  * attr.name — to its value.
  */
-function nodeRecords(files, nodeId) {
+function entityRecords(files, entityId, element) {
   const records = [];
   for (const { name, text } of files) {
     if (/\.csv$/i.test(name)) {
@@ -142,7 +163,7 @@ function nodeRecords(files, nodeId) {
       if (uuid === -1) continue;
       for (const line of lines.slice(1)) {
         const cells = splitCsvRow(line);
-        if (cells[uuid] === nodeId)
+        if (cells[uuid] === entityId)
           records.push({
             format: 'csv',
             name,
@@ -152,24 +173,14 @@ function nodeRecords(files, nodeId) {
           });
       }
     } else if (/\.graphml$/i.test(name)) {
-      const keyNames = new Map(
-        [...text.matchAll(/<key\b[^>]*>/g)].map(([tag]) => [
-          attributeOf(tag, 'id'),
-          attributeOf(tag, 'attr.name'),
-        ]),
+      const keyNames = graphmlKeyNames(text);
+      const pattern = new RegExp(
+        `<${element}\\b[^>]*>([\\s\\S]*?)<\\/${element}>`,
+        'g',
       );
-      for (const [, body] of text.matchAll(
-        /<node\b[^>]*>([\s\S]*?)<\/node>/g,
-      )) {
-        const fields = new Map(
-          [...body.matchAll(/<data\b([^>]*)>([^<]*)<\/data>/g)].map(
-            ([, attributes, value]) => {
-              const key = attributeOf(` ${attributes}`, 'key');
-              return [keyNames.get(key) ?? key, value];
-            },
-          ),
-        );
-        if (fields.get(ncUUIDProperty) === nodeId)
+      for (const [, body] of text.matchAll(pattern)) {
+        const fields = graphmlFields(body, keyNames);
+        if (fields.get(ncUUIDProperty) === entityId)
           records.push({ format: 'graphml', name, fields });
       }
     }
@@ -177,24 +188,36 @@ function nodeRecords(files, nodeId) {
   return records;
 }
 
+const nodeRecords = (files, nodeId) => entityRecords(files, nodeId, 'node');
+
 /**
- * What is wrong with how many records of a node each format holds. The lanes
- * export both formats, so a node missing from either is an answer lost in
- * that format, which a record in the other cannot stand in for; and a node
- * recorded twice in one format is a duplicated person in the researcher's
- * data, even when both copies agree.
+ * What is wrong with how many records of one thing each format holds. The
+ * lanes export both formats, so a record missing from either is an answer
+ * lost in that format, which a record in the other cannot stand in for; and
+ * a record repeated in one format is a duplicated person, relationship or
+ * interview in the researcher's data, even when the copies agree.
  */
-const recordCountProblems = (records, nodeId) =>
+const recordCountProblems = (records, what) =>
   ['csv', 'graphml'].flatMap((format) => {
     const count = records.filter((record) => record.format === format).length;
     if (count === 0)
-      return [`no exported ${format} file has a record for node ${nodeId}`];
+      return [`no exported ${format} file has a record for ${what}`];
     if (count > 1)
-      return [
-        `the exported ${format} files hold ${count} records for node ${nodeId}`,
-      ];
+      return [`the exported ${format} files hold ${count} records for ${what}`];
     return [];
   });
+
+/** Every value `answers` names, compared with each record that should hold it. */
+const fieldProblems = (records, answers, what) => {
+  const problems = [];
+  for (const { name, fields } of records)
+    for (const [attribute, value] of Object.entries(answers))
+      if (fields.get(attribute) !== value)
+        problems.push(
+          `${name}'s record for ${what} holds ${attribute}=${JSON.stringify(fields.get(attribute) ?? null)}, expected ${JSON.stringify(value)}`,
+        );
+  return problems;
+};
 
 /**
  * Whether one person's encrypted answer stayed out of the export: no file may
@@ -214,7 +237,7 @@ export function encryptedValueProblems(
     .filter(({ text }) => text.includes(plaintext))
     .map(({ name }) => `${name} holds "${plaintext}" in plain text`);
   const records = nodeRecords(files, nodeId);
-  problems.push(...recordCountProblems(records, nodeId));
+  problems.push(...recordCountProblems(records, `node ${nodeId}`));
   for (const { name, fields } of records)
     if (fields.get(attribute) !== ENCRYPTED_PLACEHOLDER)
       problems.push(
@@ -234,16 +257,101 @@ export function encryptedValueProblems(
  * in both the CSV and the GraphML.
  */
 export function nodeAnswerProblems(files, expected) {
-  const problems = [];
-  for (const [nodeId, answers] of Object.entries(expected)) {
+  return Object.entries(expected).flatMap(([nodeId, answers]) => {
     const records = nodeRecords(files, nodeId);
-    problems.push(...recordCountProblems(records, nodeId));
-    for (const { name, fields } of records)
-      for (const [attribute, value] of Object.entries(answers))
-        if (fields.get(attribute) !== value)
-          problems.push(
-            `${name}'s record for node ${nodeId} holds ${attribute}=${JSON.stringify(fields.get(attribute) ?? null)}, expected ${JSON.stringify(value)}`,
-          );
+    const what = `node ${nodeId}`;
+    return [
+      ...recordCountProblems(records, what),
+      ...fieldProblems(records, answers, what),
+    ];
+  });
+}
+
+/**
+ * Whether each relationship reached its own exported records: one row of an
+ * edge list CSV and one GraphML <edge>, found by the edge's id. `expected`
+ * maps an edge id to what its records must hold, by exported name — the ends
+ * as `networkCanvasSourceUUID` and `networkCanvasTargetUUID`, so a
+ * relationship drawn between the wrong people fails, and each answer as the
+ * node answers are (one true/false column per option of a categorical one).
+ */
+export function edgeAnswerProblems(files, expected) {
+  return Object.entries(expected).flatMap(([edgeId, answers]) => {
+    const records = entityRecords(files, edgeId, 'edge');
+    const what = `edge ${edgeId}`;
+    return [
+      ...recordCountProblems(records, what),
+      ...fieldProblems(records, answers, what),
+    ];
+  });
+}
+
+/**
+ * Each interview's ego records, keyed by the session id the export gives it:
+ * the ego CSV row carrying that session id, and the attributes of the GraphML
+ * graph whose nc:sessionUUID is that id — the ego's own data, which the graph
+ * holds outside every <node> and <edge>.
+ */
+function egoRecords(files) {
+  const bySession = {};
+  const record = (session, entry) => {
+    (bySession[session] ??= []).push(entry);
+  };
+  for (const { name, text } of files) {
+    if (/\.csv$/i.test(name)) {
+      const lines = text.split(/\r?\n/).filter((line) => line !== '');
+      const header = splitCsvRow(lines[0] ?? '');
+      const session = header.indexOf(ncSessionProperty);
+      if (session === -1) continue;
+      for (const line of lines.slice(1)) {
+        const cells = splitCsvRow(line);
+        record(cells[session], {
+          format: 'csv',
+          name,
+          fields: new Map(
+            header.map((column, index) => [column, cells[index]]),
+          ),
+        });
+      }
+    } else if (/\.graphml$/i.test(name)) {
+      const keyNames = graphmlKeyNames(text);
+      for (const [graph, tag] of text.matchAll(
+        /(<graph\b(?:[^>"]|"[^"]*")*>)[\s\S]*?<\/graph>/g,
+      )) {
+        const session = attributeOf(tag, 'nc:sessionUUID');
+        if (session === undefined) continue;
+        const own = graph
+          .slice(tag.length)
+          .replace(/<(node|edge)\b[^>]*\/>/g, '')
+          .replace(/<(node|edge)\b[^>]*>[\s\S]*?<\/\1>/g, '');
+        record(session, {
+          format: 'graphml',
+          name,
+          fields: graphmlFields(own, keyNames),
+        });
+      }
+    }
   }
-  return problems;
+  return bySession;
+}
+
+/**
+ * Whether each interview's ego answers reached that interview's own ego
+ * records. `expected` maps a session id to the ego attributes its records
+ * must hold, by exported name. A search of the whole archive would pass an
+ * answer recorded on another interview's ego, or anywhere else at all; this
+ * holds each answer to the one ego CSV row and the one GraphML graph the
+ * export gives that session, and reports a session either format leaves out
+ * or records twice.
+ */
+export function egoAnswerProblems(files, expected) {
+  const bySession = egoRecords(files);
+  return Object.entries(expected).flatMap(([session, answers]) => {
+    const records = bySession[session] ?? [];
+    const what = `the ego of interview ${session}`;
+    return [
+      ...recordCountProblems(records, what),
+      ...fieldProblems(records, answers, what),
+    ];
+  });
 }

@@ -48,6 +48,8 @@ const { readInterviewExport } = await import(
 
 const {
   ENCRYPTED_PLACEHOLDER,
+  edgeAnswerProblems,
+  egoAnswerProblems,
   encryptedValueProblems,
   finishOutcomeProblems,
   nodeAnswerProblems,
@@ -60,6 +62,7 @@ const {
   expectedStep,
   interviewMigrationProblems,
   introductionPanelProblems,
+  pedigreeMigrationProblems,
   protocolMigrationProblems,
   remapStageMetadata,
 } = await import(join(scripts, 'migration-contract.mjs'));
@@ -970,6 +973,181 @@ test("another person's placeholder does not stand in for a dropped answer", () =
   assert.deepEqual(encryptedValueProblems(files, 'Linda', 'generated'), []);
 });
 
+// Each interview's ego, as the exporters write it: one ego CSV row per
+// interview, carrying its session id, and one GraphML graph per interview,
+// whose own <data> (outside every <node> and <edge>) is the ego's.
+const egoAnswersCsv = (rows) =>
+  [
+    'networkCanvasEgoUUID,networkCanvasCaseID,networkCanvasSessionID,ego_name,consent',
+    ...rows.map(
+      ([session, name, consent]) =>
+        `e-${session},case,${session},${name},${consent}`,
+    ),
+  ].join('\r\n');
+const egoAnswersGraphml = (graphs) =>
+  [
+    '<graphml>',
+    '<key id="networkCanvasUUID" attr.name="networkCanvasUUID" attr.type="string" for="all"/>',
+    '<key id="ego-var-1" attr.name="ego_name" attr.type="string" for="graph"/>',
+    '<key id="ego-var-2" attr.name="consent" attr.type="boolean" for="graph"/>',
+    '<key id="var-1" attr.name="ego_name" attr.type="string" for="node"/>',
+    ...graphs.map(
+      ([session, name, consent, nodeName]) =>
+        `<graph edgedefault="undirected" nc:sessionUUID="${session}">${name === undefined ? '' : `<data key="networkCanvasUUID">e-${session}</data><data key="ego-var-1">${name}</data><data key="ego-var-2">${consent}</data>`}<node id="1"><data key="networkCanvasUUID">n-${session}</data><data key="var-1">${nodeName ?? 'someone'}</data></node></graph>`,
+    ),
+    '</graphml>',
+  ].join('');
+const egoFiles = (rows, graphs = rows) => [
+  { name: 'a_ego.csv', text: egoAnswersCsv(rows) },
+  { name: 'a.graphml', text: egoAnswersGraphml(graphs) },
+];
+const ROSA = { ego_name: 'Rosa', consent: 'true' };
+const DECLINA = { ego_name: 'Declina', consent: 'false' };
+
+test("each interview's ego answers are read from that interview's own ego records", () => {
+  const files = egoFiles([
+    ['s1', 'Rosa', 'true'],
+    ['s2', 'Declina', 'false'],
+  ]);
+  assert.deepEqual(egoAnswerProblems(files, { s1: ROSA, s2: DECLINA }), []);
+});
+
+test("an ego answer recorded on another interview's ego fails, though the archive holds it", () => {
+  // The two interviews' names swapped: every name is somewhere in the
+  // archive, which is all a search of its text could see.
+  const files = egoFiles([
+    ['s1', 'Declina', 'true'],
+    ['s2', 'Rosa', 'false'],
+  ]);
+  assert.deepEqual(egoAnswerProblems(files, { s1: ROSA }), [
+    'a_ego.csv\'s record for the ego of interview s1 holds ego_name="Declina", expected "Rosa"',
+    'a.graphml\'s record for the ego of interview s1 holds ego_name="Declina", expected "Rosa"',
+  ]);
+});
+
+test("a person's answer under the same name is not the ego's", () => {
+  // The GraphML graph lost its ego data; a node in it still holds "Rosa"
+  // under an attribute of the same name.
+  const files = egoFiles(
+    [['s1', 'Rosa', 'true']],
+    [['s1', undefined, undefined, 'Rosa']],
+  );
+  assert.deepEqual(egoAnswerProblems(files, { s1: { ego_name: 'Rosa' } }), [
+    'a.graphml\'s record for the ego of interview s1 holds ego_name=null, expected "Rosa"',
+  ]);
+});
+
+test('an interview a format leaves out, or records twice, fails', () => {
+  const missing = egoFiles([['s1', 'Rosa', 'true']], []);
+  assert.deepEqual(egoAnswerProblems(missing, { s1: ROSA }), [
+    'no exported graphml file has a record for the ego of interview s1',
+  ]);
+  const twice = egoFiles(
+    [
+      ['s1', 'Rosa', 'true'],
+      ['s1', 'Rosa', 'true'],
+    ],
+    [['s1', 'Rosa', 'true']],
+  );
+  assert.deepEqual(egoAnswerProblems(twice, { s1: ROSA }), [
+    'the exported csv files hold 2 records for the ego of interview s1',
+  ]);
+  assert.equal(egoAnswerProblems([], { s1: ROSA }).length, 2);
+});
+
+// A relationship as the exporters write it: one edge list row and one
+// GraphML <edge>, each carrying the edge's id and both ends' ids.
+const familyEdgeCsv = (rows) =>
+  [
+    'edgeID,networkCanvasEgoUUID,networkCanvasUUID,networkCanvasSourceUUID,networkCanvasTargetUUID,kind_biological,kind_partner,gestationalCarrier',
+    ...rows.map(
+      ([id, from, to, biological, partner, carrier], index) =>
+        `${index + 1},ego,${id},${from},${to},${biological},${partner},${carrier}`,
+    ),
+  ].join('\r\n');
+const familyEdgeGraphml = (edges) =>
+  [
+    '<graphml>',
+    '<key id="networkCanvasUUID" attr.name="networkCanvasUUID" attr.type="string" for="all"/>',
+    '<key id="networkCanvasSourceUUID" attr.name="networkCanvasSourceUUID" attr.type="string" for="edge"/>',
+    '<key id="networkCanvasTargetUUID" attr.name="networkCanvasTargetUUID" attr.type="string" for="edge"/>',
+    '<key id="kind_a" attr.name="kind_biological" attr.type="boolean" for="edge"/>',
+    '<key id="kind_b" attr.name="kind_partner" attr.type="boolean" for="edge"/>',
+    '<key id="carrier" attr.name="gestationalCarrier" attr.type="boolean" for="edge"/>',
+    '<graph>',
+    ...edges.map(
+      ([id, from, to, biological, partner, carrier], index) =>
+        `<edge id="${index + 1}" source="1" target="2"><data key="networkCanvasUUID">${id}</data><data key="networkCanvasSourceUUID">${from}</data><data key="networkCanvasTargetUUID">${to}</data><data key="kind_a">${biological}</data><data key="kind_b">${partner}</data><data key="carrier">${carrier}</data></edge>`,
+    ),
+    '</graph></graphml>',
+  ].join('');
+const LINDA_PARENT = {
+  networkCanvasSourceUUID: 'linda',
+  networkCanvasTargetUUID: 'ego',
+  kind_biological: 'true',
+  kind_partner: 'false',
+  gestationalCarrier: 'true',
+};
+
+test("each relationship's answers are read from that relationship's own records", () => {
+  const rows = [
+    ['parent', 'linda', 'ego', 'true', 'false', 'true'],
+    ['partners', 'linda', 'robert', 'false', 'true', ''],
+  ];
+  const files = [
+    { name: 'a_edgeList_family.csv', text: familyEdgeCsv(rows) },
+    { name: 'a.graphml', text: familyEdgeGraphml(rows) },
+  ];
+  assert.deepEqual(edgeAnswerProblems(files, { parent: LINDA_PARENT }), []);
+});
+
+test('a relationship between the wrong people, of the wrong kind, or without its carrier fails', () => {
+  const files = [
+    {
+      name: 'a_edgeList_family.csv',
+      // Drawn from Linda to Robert rather than to the participant.
+      text: familyEdgeCsv([
+        ['parent', 'linda', 'robert', 'true', 'false', 'true'],
+      ]),
+    },
+    {
+      name: 'a.graphml',
+      // Recorded as a partnership, and the carrier answer lost.
+      text: familyEdgeGraphml([
+        ['parent', 'linda', 'ego', 'false', 'true', ''],
+      ]),
+    },
+  ];
+  assert.deepEqual(edgeAnswerProblems(files, { parent: LINDA_PARENT }), [
+    'a_edgeList_family.csv\'s record for edge parent holds networkCanvasTargetUUID="robert", expected "ego"',
+    'a.graphml\'s record for edge parent holds kind_biological="false", expected "true"',
+    'a.graphml\'s record for edge parent holds kind_partner="true", expected "false"',
+    'a.graphml\'s record for edge parent holds gestationalCarrier="", expected "true"',
+  ]);
+});
+
+test('a relationship the GraphML leaves out is not covered by its edge list row', () => {
+  const row = ['parent', 'linda', 'ego', 'true', 'false', 'true'];
+  const files = [
+    { name: 'a_edgeList_family.csv', text: familyEdgeCsv([row]) },
+    { name: 'a.graphml', text: familyEdgeGraphml([]) },
+  ];
+  assert.deepEqual(edgeAnswerProblems(files, { parent: LINDA_PARENT }), [
+    'no exported graphml file has a record for edge parent',
+  ]);
+  // Nor is a node with that id an edge.
+  assert.deepEqual(
+    edgeAnswerProblems(
+      [{ name: 'a.graphml', text: personGraphml([['parent', 'Linda']]) }],
+      { parent: {} },
+    ),
+    [
+      'no exported csv file has a record for edge parent',
+      'no exported graphml file has a record for edge parent',
+    ],
+  );
+});
+
 // ---------------------------------------------------------------------------
 // What the schema 8 to 9 upgrade does to a deployment's data
 // ---------------------------------------------------------------------------
@@ -1017,8 +1195,14 @@ const readings = () => {
         finishTime: null,
         finishStageId: null,
         finishOutcome: null,
-        networkHash: 'h-parked',
-        stageMetadataKeys: ['2'],
+        network: {
+          ego: { _uid: 'ego', attributes: { name: 'Mira' } },
+          nodes: [
+            { _uid: 'alex', type: 'person', attributes: { name: 'Alex' } },
+          ],
+          edges: [],
+        },
+        stageMetadata: { 2: { seen: true } },
       },
       {
         id: 'finished',
@@ -1027,8 +1211,12 @@ const readings = () => {
         finishTime: '2026-10-01 12:00:00',
         finishStageId: null,
         finishOutcome: null,
-        networkHash: 'h-finished',
-        stageMetadataKeys: [],
+        network: {
+          ego: { _uid: 'ego-2', attributes: {} },
+          nodes: [],
+          edges: [],
+        },
+        stageMetadata: {},
       },
     ],
   };
@@ -1075,7 +1263,11 @@ const readings = () => {
       },
     ],
     interviews: [
-      { ...before.interviews[0], currentStep: 4, stageMetadataKeys: ['4'] },
+      {
+        ...structuredClone(before.interviews[0]),
+        currentStep: 4,
+        stageMetadata: { 4: { seen: true } },
+      },
       { ...before.interviews[1], currentStep: 5 },
     ],
   };
@@ -1211,13 +1403,13 @@ test('an interview that moved, changed or gained an outcome in the upgrade fails
     ],
     [
       (a) => {
-        a.interviews[0].networkHash = 'other';
+        a.interviews[0].network.nodes[0].attributes.name = 'Alexa';
       },
-      /answers changed in the upgrade/,
+      /answers changed in the upgrade: node alex \(person\)'s name was "Alex", is now "Alexa"/,
     ],
     [
       (a) => {
-        a.interviews[0].stageMetadataKeys = ['2'];
+        a.interviews[0].stageMetadata = { 2: { seen: true } };
       },
       /stage records are kept under \["2"\], not \["4"\]/,
     ],
@@ -1255,6 +1447,288 @@ test('an interview that moved, changed or gained an outcome in the upgrade fails
       problem,
     );
   }
+});
+
+test('a rule lost from either stage, or never there to carry, fails', () => {
+  const { before, after } = readings();
+  const rewritten = structuredClone(after);
+  rewritten.protocols[0].stages[4].skipLogic = {
+    ...SKIP,
+    action: 'SHOW',
+  };
+  assert.match(
+    introductionPanelProblems(before, rewritten).join('\n'),
+    /"each-person": the stage's skip logic is now .*SHOW/,
+  );
+  // Both stages lost the rule together: they agree, and are both wrong.
+  const bothLost = structuredClone(after);
+  delete bothLost.protocols[0].stages[3].skipLogic;
+  delete bothLost.protocols[0].stages[4].skipLogic;
+  const problems = introductionPanelProblems(before, bothLost).join('\n');
+  assert.match(problems, /the stage's skip logic is now null/);
+  assert.match(
+    problems,
+    /its Information stage does not take the stage's skip logic/,
+  );
+  // A deployment whose panels belong to no stage with a rule proves nothing
+  // about carrying one, however well every panel else was migrated.
+  const ruleless = structuredClone(before);
+  delete ruleless.protocols[0].stages[2].skipLogic;
+  const untested = structuredClone(after);
+  delete untested.protocols[0].stages[3].skipLogic;
+  delete untested.protocols[0].stages[4].skipLogic;
+  assert.deepEqual(introductionPanelProblems(ruleless, untested), [
+    'no introduction panel in the reading before the upgrade belongs to a stage with skip logic, so carrying a rule onto its Information stage went untested',
+  ]);
+});
+
+// A schema 8 Family Pedigree family either side of the upgrade, as
+// migration-lane.mjs reads it: the participant, Linda (egg, carried the
+// pregnancy), Robert (sperm, no sex recorded) and their partnership, with the
+// schema 8 stage record that lists them. The upgrade drops the current-partner
+// flag schema 8 set on parent relationships, records the carrier flag as
+// false where none was recorded, works out Robert's sex from his gamete, and
+// removes the record, since the stage fixed its framing.
+const pedigreeReadings = () => {
+  const pedigree = {
+    id: 'family',
+    type: 'FamilyPedigree',
+    nodeConfig: {
+      type: 'fm',
+      nodeLabelVariable: 'fm_name',
+      egoVariable: 'is_ego',
+      biologicalSexVariable: 'sex',
+    },
+    edgeConfig: {
+      type: 'fe',
+      relationshipTypeVariable: 'kind',
+      isActiveVariable: 'active',
+      isGestationalCarrierVariable: 'carrier',
+      gameteRoleVariable: 'gamete',
+    },
+  };
+  const person = (id, attributes) => ({ _uid: id, type: 'fm', attributes });
+  const edge = (id, from, to, attributes) => ({
+    _uid: id,
+    type: 'fe',
+    from,
+    to,
+    attributes,
+  });
+  const interview = (network, stageMetadata, currentStep) => ({
+    id: 'family-interview',
+    protocolId: 'p2',
+    currentStep,
+    finishTime: null,
+    finishStageId: null,
+    finishOutcome: null,
+    network,
+    stageMetadata,
+  });
+  const network = {
+    ego: { _uid: 'ego-node', attributes: { ego_name: 'Mira' } },
+    nodes: [
+      { _uid: 'alex', type: 'person', attributes: { name: 'Alex' } },
+      person('you', { is_ego: true, sex: ['female'] }),
+      person('linda', { is_ego: false, fm_name: 'Linda', sex: ['female'] }),
+      person('robert', { is_ego: false, fm_name: 'Robert' }),
+    ],
+    edges: [
+      edge('egg', 'linda', 'you', {
+        kind: ['biological'],
+        active: true,
+        carrier: true,
+        gamete: ['egg'],
+      }),
+      edge('sperm', 'robert', 'you', {
+        kind: ['biological'],
+        active: true,
+        gamete: ['sperm'],
+      }),
+      edge('partners', 'linda', 'robert', { kind: ['partner'], active: true }),
+    ],
+  };
+  const before = {
+    protocols: [
+      {
+        id: 'p2',
+        name: 'pedigree',
+        schemaVersion: 8,
+        stages: [
+          { id: 'people', type: 'NameGenerator' },
+          pedigree,
+          { id: 'next', type: 'Information' },
+        ],
+      },
+    ],
+    interviews: [
+      interview(
+        network,
+        {
+          1: {
+            isNetworkCommitted: true,
+            edgeIdVersion: 1,
+            nodes: ['you', 'linda', 'robert'].map((id) => ({ id })),
+            edges: ['egg', 'sperm', 'partners'].map((id) => ({ id })),
+          },
+        },
+        2,
+      ),
+    ],
+  };
+  const migrated = structuredClone(network);
+  migrated.nodes[3].attributes.sex = ['male'];
+  delete migrated.edges[0].attributes.active;
+  delete migrated.edges[1].attributes.active;
+  migrated.edges[1].attributes.carrier = false;
+  const after = {
+    protocols: [
+      {
+        id: 'p2',
+        name: 'pedigree',
+        schemaVersion: MIGRATED_SCHEMA,
+        stages: [
+          { id: 'people', type: 'NameGenerator' },
+          { id: 'family', type: 'FamilyPedigree' },
+          { id: 'next', type: 'Information' },
+          { id: 'finish', type: 'FinishSession' },
+        ],
+      },
+    ],
+    interviews: [interview(migrated, {}, 2)],
+  };
+  return { before, after };
+};
+
+test('a family carried across the upgrade as the redesigned stage reads it passes', () => {
+  const { before, after } = pedigreeReadings();
+  assert.deepEqual(pedigreeMigrationProblems(before, after), []);
+  // The pedigree's own changes are not "answers changed" elsewhere.
+  assert.deepEqual(interviewMigrationProblems(before, after), []);
+  // A participant's framing choice is the one thing the record keeps.
+  before.interviews[0].stageMetadata[1].selectedFraming = 'gendered';
+  assert.match(
+    pedigreeMigrationProblems(before, after).join('\n'),
+    /stage record is null after the upgrade, not \{"framing":"gendered"\}/,
+  );
+  after.interviews[0].stageMetadata = { 1: { framing: 'gendered' } };
+  assert.deepEqual(pedigreeMigrationProblems(before, after), []);
+});
+
+test('each loss of a family in the upgrade is named', () => {
+  const { before, after } = pedigreeReadings();
+  const who = 'interview family-interview\'s "family" pedigree';
+  const cases = [
+    [
+      (a) => {
+        a.interviews[0].network.nodes.splice(2, 1);
+      },
+      `${who} lost "Linda" (linda)`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.nodes[2].attributes.fm_name = 'Lynda';
+      },
+      `${who}: "Linda" (linda)'s fm_name was "Linda", is now "Lynda"`,
+    ],
+    [
+      (a) => {
+        // A sex at birth recorded before the upgrade is never replaced.
+        a.interviews[0].network.nodes[2].attributes.sex = ['male'];
+      },
+      `${who}: "Linda" (linda)'s sex was ["female"], is now ["male"]`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.edges[0].attributes.carrier = false;
+      },
+      `${who}: the biological relationship from "Linda" (linda) to person you had carrier=true, now false`,
+    ],
+    [
+      (a) => {
+        // Only a parent relationship sheds the flag; partners keep it.
+        delete a.interviews[0].network.edges[2].attributes.active;
+      },
+      `${who}: the partner relationship from "Linda" (linda) to "Robert" (robert) had active=true, now null`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.edges[0].attributes.gamete = ['sperm'];
+      },
+      `${who}: the biological relationship from "Linda" (linda) to person you had gamete=["egg"], now ["sperm"]`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.edges[1].to = 'linda';
+      },
+      `${who}: the biological relationship from "Robert" (robert) to person you now joins robert to linda`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.edges.splice(1, 1);
+      },
+      `${who} lost the biological relationship from "Robert" (robert) to person you`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.nodes.push({
+          _uid: 'stranger',
+          type: 'fm',
+          attributes: {},
+        });
+      },
+      `${who} gained a person nobody recorded (stranger)`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].stageMetadata = {
+          1: { isNetworkCommitted: true, nodes: [], edges: [] },
+        };
+      },
+      /stage record is .* after the upgrade, not null \(still in the schema 8 shape\)/,
+    ],
+  ];
+  for (const [breakIt, problem] of cases) {
+    const broken = structuredClone(after);
+    breakIt(broken);
+    const problems = pedigreeMigrationProblems(before, broken);
+    if (typeof problem === 'string')
+      assert.ok(
+        problems.includes(problem),
+        `${problem}\n not in\n${problems.join('\n')}`,
+      );
+    else assert.match(problems.join('\n'), problem);
+  }
+});
+
+test('the rest of a pedigree interview is still held to being unchanged', () => {
+  const { before, after } = pedigreeReadings();
+  after.interviews[0].network.nodes[0].attributes.name = 'Alexa';
+  after.interviews[0].network.ego.attributes.ego_name = 'Mara';
+  const problems = interviewMigrationProblems(before, after).join('\n');
+  assert.match(
+    problems,
+    /node alex \(person\)'s name was "Alex", is now "Alexa"/,
+  );
+  assert.match(problems, /the ego's ego_name was "Mira", is now "Mara"/);
+});
+
+test('readings with no family in them prove nothing about a family', () => {
+  const { before, after } = readings();
+  assert.deepEqual(pedigreeMigrationProblems(before, after), [
+    'no interview held a Family Pedigree family before the upgrade, so nothing showed that one survives it',
+  ]);
+  // A pedigree holding only the participant is not a family either.
+  const lone = pedigreeReadings();
+  for (const reading of [lone.before, lone.after]) {
+    reading.interviews[0].network.nodes =
+      reading.interviews[0].network.nodes.slice(0, 2);
+    reading.interviews[0].network.edges = [];
+  }
+  lone.before.interviews[0].stageMetadata = {};
+  assert.deepEqual(pedigreeMigrationProblems(lone.before, lone.after), [
+    'no interview held a Family Pedigree family before the upgrade, so nothing showed that one survives it',
+  ]);
 });
 
 test('the panel oracle names what the migration itself writes', () => {
