@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest';
 // actual data shape correct for the paths under test.
 import type { Protocol } from '../../schemas/index.ts';
 import { collectEntityAttributeReferences } from '../collectEntityAttributeReferences.ts';
-import { localized } from '../test-utils.ts';
 import { validateEntityAttributeReferences } from '../validateEntityAttributeReferences.ts';
 
 const protocol = {
@@ -19,17 +18,15 @@ const protocol = {
     node: {
       person: {
         name: 'Person',
-        label: localized('Person'),
         color: 'node-color-seq-1',
         variables: {
-          age: { name: 'age', label: 'age', type: 'number' },
+          age: { name: 'age', type: 'number' },
           end: {
             name: 'end',
-            label: 'end',
             type: 'datetime',
             validation: { greaterThanOrEqualToVariable: 'start' },
           },
-          start: { name: 'start', label: 'start', type: 'datetime' },
+          start: { name: 'start', type: 'datetime' },
         },
       },
     },

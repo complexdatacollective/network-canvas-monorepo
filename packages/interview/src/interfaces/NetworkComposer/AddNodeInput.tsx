@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useAppIntl } from '@codaco/app-i18n/react';
 import { fieldElementIds } from '@codaco/fresco-ui/form/Field/fieldElements';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
@@ -13,11 +12,8 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 
 import { useTrackWrite } from '../../store/WritesInFlightContext';
-import { interfaceMessages } from '../messages';
 
 type AddNodeInputProps = {
-  /** Protocol label for the entity being added, e.g. "Person". */
-  entityLabel: string;
   /** The stage's words for the empty name field. */
   placeholder: string;
   /** Codebook variable the quick-add name is written to. */
@@ -49,7 +45,6 @@ type AddNodeInputProps = {
  * `validateForm()` call before deciding whether to create the node.
  */
 function AddNodeField({
-  entityLabel,
   placeholder,
   targetVariable,
   onCreate,
@@ -57,7 +52,6 @@ function AddNodeField({
   validationContext,
   ...validationProps
 }: AddNodeInputProps) {
-  const intl = useAppIntl();
   const trackWrite = useTrackWrite();
   const validateForm = useFormStore((state) => state.validateForm);
   const pathOperations = useFormStore((state) => state.pathOperations);
@@ -161,9 +155,7 @@ function AddNodeField({
         // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: the
         // popover exists to capture a name, so focus belongs here on open.
         autoFocus
-        aria-label={intl.formatMessage(interfaceMessages.entityName, {
-          entityLabel,
-        })}
+        aria-label={placeholder}
         placeholder={placeholder}
         id={id}
         name={targetVariable}

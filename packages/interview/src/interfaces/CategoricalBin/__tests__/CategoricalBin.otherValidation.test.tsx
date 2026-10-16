@@ -157,13 +157,11 @@ function buildCodebook(
     node: {
       [NODE_TYPE]: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           [CATEGORY_VARIABLE]: {
             name: 'Category',
-            label: 'Category',
             type: 'categorical',
             component: 'CheckboxGroup',
             // The schema's categoricalOptionsSchema requires >= 2 options at
@@ -187,13 +185,11 @@ function buildCodebook(
               }),
           [NOTE_VARIABLE]: {
             name: 'Existing note',
-            label: 'Existing note',
             type: 'text',
             component: 'Text',
           },
           [COLLIDING_SIBLING_VARIABLE]: {
             name: 'Collision-prone sibling',
-            label: 'Collision-prone sibling',
             type: 'text',
             component: 'Text',
           },
@@ -331,7 +327,6 @@ function renderCategoricalBin(
               variables: {
                 [EGO_NAME_VARIABLE]: {
                   name: 'Name',
-                  label: 'Name',
                   type: 'text',
                 },
               },

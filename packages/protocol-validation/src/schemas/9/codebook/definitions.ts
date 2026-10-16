@@ -9,7 +9,6 @@ import {
   type NodeColorReference,
 } from '../color-reference.ts';
 import { entityAttributeReference } from '../entity-attribute-reference.ts';
-import { localizedString, nonBlankText } from '../localized-string.ts';
 import {
   EdgeVariablesSchema,
   EgoVariablesSchema,
@@ -78,7 +77,6 @@ const ShapeSchema = z.strictObject({
 
 const NodeDefinitionSchema = z.strictObject({
   name: CodebookNameSchema,
-  label: localizedString(nonBlankText(), 'plain'),
   icon: z.string().optional(),
   variables: VariablesSchema.optional(),
   color: NodeColorReferenceSchema,
@@ -92,7 +90,6 @@ export type EdgeColor = EdgeColorReference;
 
 const EdgeDefinitionSchema = z.strictObject({
   name: CodebookNameSchema,
-  label: localizedString(nonBlankText(), 'plain'),
   color: EdgeColorReferenceSchema.optional(),
   variables: EdgeVariablesSchema.optional(),
 });

@@ -8,7 +8,6 @@
     "node": {
       "person": {
         "name": "Person",
-        "label": { "en-US": "Person" },
         "color": "node-color-seq-1",
         "shape": {
           "default": "circle"
@@ -16,7 +15,6 @@
         "variables": {
           "name": {
             "name": "name",
-            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -26,13 +24,11 @@
           },
           "relationship_words": {
             "name": "relationship_words",
-            "label": "relationship_words",
             "type": "text",
             "component": "TextArea"
           },
           "family_categories": {
             "name": "family_categories",
-            "label": "family_categories",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -56,37 +52,31 @@
           },
           "category_words": {
             "name": "category_words",
-            "label": "category_words",
             "type": "text",
             "component": "Text"
           },
           "feels_family": {
             "name": "feels_family",
-            "label": "feels_family",
             "type": "boolean",
             "component": "Toggle"
           },
           "emotional_support": {
             "name": "emotional_support",
-            "label": "emotional_support",
             "type": "boolean",
             "component": "Toggle"
           },
           "practical_support": {
             "name": "practical_support",
-            "label": "practical_support",
             "type": "boolean",
             "component": "Toggle"
           },
           "identity_affirming": {
             "name": "identity_affirming",
-            "label": "identity_affirming",
             "type": "boolean",
             "component": "Toggle"
           },
           "closeness": {
             "name": "closeness",
-            "label": "closeness",
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
@@ -106,7 +96,6 @@
           },
           "family_layout": {
             "name": "family_layout",
-            "label": "family_layout",
             "type": "layout"
           }
         }
@@ -115,7 +104,6 @@
     "edge": {
       "knows": {
         "name": "Knows",
-        "label": { "en-US": "Knows" },
         "color": "edge-color-seq-1",
         "variables": {}
       }
@@ -409,7 +397,14 @@
           "label": { "en-US": "Everyone on your map" },
           "layoutVariable": "family_layout",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en-US": "Knows"
+                }
+              }
+            ]
           }
         },
         {
@@ -436,7 +431,14 @@
             }
           ],
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en-US": "Knows"
+                }
+              }
+            ]
           }
         }
       ],

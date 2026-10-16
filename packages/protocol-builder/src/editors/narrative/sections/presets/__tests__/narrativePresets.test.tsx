@@ -478,7 +478,6 @@ describe('a codebook change made while a preset dialog is open', () => {
       node: {
         person: personWithVariable(harness, 'seating', {
           name: 'seating',
-          label: 'seating',
           type: 'layout',
         }),
       },

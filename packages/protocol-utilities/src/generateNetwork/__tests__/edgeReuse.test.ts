@@ -164,8 +164,16 @@ describe('edge reuse across stages', () => {
       layoutVariable: 'layout',
       background: { circles: true },
       edges: [
-        { id: 'e1', subject: { entity: 'edge', type: 'knows' } },
-        { id: 'e2', subject: { entity: 'edge', type: 'knows' } },
+        {
+          id: 'e1',
+          subject: { entity: 'edge', type: 'knows' },
+          label: { en: 'Connection' },
+        },
+        {
+          id: 'e2',
+          subject: { entity: 'edge', type: 'knows' },
+          label: { en: 'Connection' },
+        },
       ],
     } as unknown as Stage;
 

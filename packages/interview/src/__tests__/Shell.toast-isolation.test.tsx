@@ -136,12 +136,11 @@ function makePayload(id: string): InterviewPayload {
         node: {
           person: {
             name: 'Person',
-            label: { en: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             icon: 'add-a-person',
             variables: {
-              name: { name: 'Name', label: 'Name', type: 'text' },
+              name: { name: 'Name', type: 'text' },
             },
           },
         },

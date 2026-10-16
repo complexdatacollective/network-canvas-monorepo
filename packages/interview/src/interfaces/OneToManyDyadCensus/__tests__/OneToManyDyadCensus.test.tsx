@@ -51,18 +51,16 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        [NAME_VAR]: { name: 'name', label: 'Name', type: 'text' },
+        [NAME_VAR]: { name: 'name', type: 'text' },
       },
     },
   },
   edge: {
     [EDGE_TYPE]: {
       name: 'Friendship',
-      label: { en: 'Friendship' },
       color: 'edge-color-seq-1',
       variables: {},
     },

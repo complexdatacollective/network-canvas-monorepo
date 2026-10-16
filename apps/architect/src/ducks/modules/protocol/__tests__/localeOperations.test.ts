@@ -58,13 +58,11 @@ const protocolIn = (
     node: {
       [NODE_TYPE]: {
         name: 'Person',
-        label: text.nodeType,
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           [VARIABLE]: {
             name: 'closeness',
-            label: text.variable,
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [

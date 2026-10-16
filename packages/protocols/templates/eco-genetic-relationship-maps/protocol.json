@@ -8,7 +8,6 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
-          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": {
@@ -33,13 +32,11 @@
         },
         "ego_age": {
           "name": "ego_age",
-          "label": "ego_age",
           "type": "number",
           "component": "Number"
         },
         "ego_education": {
           "name": "ego_education",
-          "label": "ego_education",
           "type": "ordinal",
           "component": "RadioGroup",
           "options": [
@@ -112,7 +109,6 @@
         "variables": {
           "name": {
             "name": "name",
-            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -122,24 +118,20 @@
           },
           "is_ego": {
             "name": "is_ego",
-            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
           "non_kin": {
             "name": "non_kin",
             "type": "boolean",
-            "component": "Toggle",
-            "label": "non_kin"
+            "component": "Toggle"
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           },
           "tie_type": {
             "name": "tie_type",
-            "label": "tie_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -183,7 +175,6 @@
           },
           "tie_type_other": {
             "name": "tie_type_other",
-            "label": "tie_type_other",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -192,19 +183,16 @@
           },
           "has_condition": {
             "name": "has_condition",
-            "label": "has_condition",
             "type": "boolean",
             "component": "Toggle"
           },
           "had_testing": {
             "name": "had_testing",
-            "label": "had_testing",
             "type": "boolean",
             "component": "Toggle"
           },
           "living_status": {
             "name": "living_status",
-            "label": "living_status",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -230,13 +218,11 @@
           },
           "birth_year": {
             "name": "birth_year",
-            "label": "birth_year",
             "type": "number",
             "component": "Number"
           },
           "closeness": {
             "name": "closeness",
-            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -268,7 +254,6 @@
           },
           "contact_frequency": {
             "name": "contact_frequency",
-            "label": "contact_frequency",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -312,43 +297,36 @@
           },
           "exch_information": {
             "name": "exch_information",
-            "label": "exch_information",
             "type": "boolean",
             "component": "Toggle"
           },
           "exch_tangible": {
             "name": "exch_tangible",
-            "label": "exch_tangible",
             "type": "boolean",
             "component": "Toggle"
           },
           "exch_emotional": {
             "name": "exch_emotional",
-            "label": "exch_emotional",
             "type": "boolean",
             "component": "Toggle"
           },
           "exch_spiritual": {
             "name": "exch_spiritual",
-            "label": "exch_spiritual",
             "type": "boolean",
             "component": "Toggle"
           },
           "role_gatherer": {
             "name": "role_gatherer",
-            "label": "role_gatherer",
             "type": "boolean",
             "component": "Toggle"
           },
           "role_disseminator": {
             "name": "role_disseminator",
-            "label": "role_disseminator",
             "type": "boolean",
             "component": "Toggle"
           },
           "role_blocker": {
             "name": "role_blocker",
-            "label": "role_blocker",
             "type": "boolean",
             "component": "Toggle"
           },
@@ -392,8 +370,7 @@
                   "en-US": "Prefer not to say"
                 }
               }
-            ],
-            "label": "genderIdentity"
+            ]
           },
           "sexAssignedAtBirth": {
             "name": "sexAssignedAtBirth",
@@ -429,12 +406,8 @@
                   "en-US": "Prefer not to say"
                 }
               }
-            ],
-            "label": "sexAssignedAtBirth"
+            ]
           }
-        },
-        "label": {
-          "en-US": "Person"
         }
       }
     },
@@ -501,29 +474,20 @@
                   "en-US": "Twin, not known if identical"
                 }
               }
-            ],
-            "label": "relationshipKind"
+            ]
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
-            "label": "isGestationalCarrier",
             "type": "boolean"
           },
           "isCurrentPartner": {
             "name": "isCurrentPartner",
-            "type": "boolean",
-            "label": "isCurrentPartner"
+            "type": "boolean"
           }
-        },
-        "label": {
-          "en-US": "Family relationship"
         }
       },
       "knows": {
         "name": "Knows",
-        "label": {
-          "en-US": "Knows"
-        },
         "color": "edge-color-seq-2"
       }
     }
@@ -1529,7 +1493,14 @@
           },
           "layoutVariable": "layout",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en-US": "Knows"
+                }
+              }
+            ]
           }
         },
         {
@@ -1539,7 +1510,14 @@
           },
           "layoutVariable": "layout",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en-US": "Knows"
+                }
+              }
+            ]
           },
           "highlight": [
             {
@@ -1575,7 +1553,14 @@
           },
           "layoutVariable": "layout",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en-US": "Knows"
+                }
+              }
+            ]
           },
           "highlight": [
             {

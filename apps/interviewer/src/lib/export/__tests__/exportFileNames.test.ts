@@ -38,7 +38,6 @@ const codebook: Codebook = {
       id,
       {
         name,
-        label: { en: name },
         color: 'node-color-seq-1' as const,
         shape: { default: 'circle' as const },
       },

@@ -61,11 +61,9 @@ function makeWrapper(
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
-              label: { en: NODE_TYPE },
               variables: {
                 [VAR]: {
                   name: VAR,
-                  label: 'Born on',
                   type: 'datetime',
                   component,
                   ...(parameters !== undefined ? { parameters } : {}),

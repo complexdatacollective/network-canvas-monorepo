@@ -424,7 +424,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
         );
         expect(relativesNotRecorded).toEqual({
           name: 'relativesNotRecorded',
-          label: 'relativesNotRecorded',
           type: 'categorical',
           options: localizedOptions(PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS),
         });
@@ -937,7 +936,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
       const migrated = migrateValid(schema8Protocol());
       expect(variableAt(migrated, 'edge', 'family', 'gameteRole')).toEqual({
         name: 'gameteRole',
-        label: 'gameteRole',
         type: 'categorical',
         options: localizedOptions(SCHEMA_8_GAMETE_ROLE_OPTIONS),
       });
@@ -945,7 +943,6 @@ describe('v8 to v9 Family Pedigree migration', () => {
         variableAt(migrated, 'node', 'person', 'relationshipToEgo'),
       ).toEqual({
         name: 'relationshipToEgo',
-        label: 'relationshipToEgo',
         type: 'text',
       });
     });

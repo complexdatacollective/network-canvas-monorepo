@@ -157,7 +157,11 @@ describe('the network composer sections, read in Spanish', () => {
     renderStageEditor({
       ...composerHolding({
         edges: [
-          { id: 'gone-1', subject: { entity: 'edge', type: 'former_edge' } },
+          {
+            id: 'gone-1',
+            subject: { entity: 'edge', type: 'former_edge' },
+            label: { en: 'Connection' },
+          },
         ],
       }),
       locale: 'es',

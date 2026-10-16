@@ -10,7 +10,6 @@
       "variables": {
         "ego_hiv_status": {
           "name": "ego_hiv_status",
-          "label": "ego_hiv_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "validation": {
@@ -31,7 +30,6 @@
         },
         "on_prep": {
           "name": "on_prep",
-          "label": "on_prep",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -41,7 +39,6 @@
         },
         "on_art": {
           "name": "on_art",
-          "label": "on_art",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -51,7 +48,6 @@
         },
         "last_hiv_test": {
           "name": "last_hiv_test",
-          "label": "last_hiv_test",
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
@@ -60,7 +56,6 @@
         },
         "injects_drugs": {
           "name": "injects_drugs",
-          "label": "injects_drugs",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -73,14 +68,12 @@
     "node": {
       "partner": {
         "name": "Partner",
-        "label": { "en-US": "Partner" },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": { "default": "circle" },
         "variables": {
           "partner_label": {
             "name": "partner_label",
-            "label": "partner_label",
             "type": "text",
             "component": "Text",
             "encrypted": true,
@@ -91,7 +84,6 @@
           },
           "partner_type": {
             "name": "partner_type",
-            "label": "partner_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -112,7 +104,6 @@
           },
           "partner_age": {
             "name": "partner_age",
-            "label": "partner_age",
             "type": "number",
             "component": "Number",
             "validation": {
@@ -122,7 +113,6 @@
           },
           "partner_gender": {
             "name": "partner_gender",
-            "label": "partner_gender",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -145,7 +135,6 @@
           },
           "partner_serostatus": {
             "name": "partner_serostatus",
-            "label": "partner_serostatus",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -159,7 +148,6 @@
           },
           "condom_use": {
             "name": "condom_use",
-            "label": "condom_use",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -172,7 +160,6 @@
           },
           "shared_injection_equipment": {
             "name": "shared_injection_equipment",
-            "label": "shared_injection_equipment",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -182,7 +169,6 @@
           },
           "partnership_start": {
             "name": "partnership_start",
-            "label": "partnership_start",
             "type": "datetime",
             "component": "DatePicker",
             "parameters": {
@@ -191,7 +177,6 @@
           },
           "partnership_end": {
             "name": "partnership_end",
-            "label": "partnership_end",
             "type": "datetime",
             "component": "DatePicker",
             "parameters": {
@@ -200,7 +185,6 @@
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           }
         }
@@ -209,7 +193,6 @@
     "edge": {
       "knows": {
         "name": "Knows",
-        "label": { "en-US": "Knows" },
         "color": "edge-color-seq-1",
         "variables": {}
       }

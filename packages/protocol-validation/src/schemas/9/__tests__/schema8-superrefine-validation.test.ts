@@ -49,19 +49,16 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
             ...personDefinition.variables,
             closeFriend: {
               name: 'Close_Friend',
-              label: 'Close friend',
               type: 'boolean',
               component: 'Boolean',
             },
             coworker: {
               name: 'Coworker',
-              label: 'Coworker',
               type: 'boolean',
               component: 'Toggle',
             },
             secretName: {
               name: 'Secret_Name',
-              label: 'Secret name',
               type: 'text',
               component: 'Text',
               encrypted: true,
@@ -1954,7 +1951,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 confirmAge: {
                   name: 'ConfirmAge',
-                  label: 'ConfirmAge',
                   type: 'number',
                   validation: {
                     sameAs: 'age',
@@ -1984,7 +1980,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 confirmAge: {
                   name: 'ConfirmAge',
-                  label: 'ConfirmAge',
                   type: 'number',
                   validation: {
                     sameAs: 'nonexistentVariable',
@@ -2031,7 +2026,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 uniqueId: {
                   name: 'UniqueID',
-                  label: 'UniqueID',
                   type: 'text',
                   validation: {
                     differentFrom: 'name',
@@ -2061,7 +2055,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 uniqueId: {
                   name: 'UniqueID',
-                  label: 'UniqueID',
                   type: 'text',
                   validation: {
                     differentFrom: 'nonexistentVariable',
@@ -2108,7 +2101,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 maxAge: {
                   name: 'MaximumAge',
-                  label: 'MaximumAge',
                   type: 'number',
                   validation: {
                     greaterThanVariable: 'age',
@@ -2138,7 +2130,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
-                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     lessThanVariable: 'age',
@@ -2168,7 +2159,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
-                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'age',
@@ -2198,7 +2188,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
-                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'nonexistentVariable',
@@ -2245,7 +2234,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 maxAge: {
                   name: 'MaximumAge',
-                  label: 'MaximumAge',
                   type: 'number',
                   validation: {
                     lessThanOrEqualToVariable: 'age',
@@ -2275,7 +2263,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 maxAge: {
                   name: 'MaximumAge',
-                  label: 'MaximumAge',
                   type: 'number',
                   validation: {
                     lessThanOrEqualToVariable: 'nonexistentVariable',
@@ -2320,7 +2307,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               ...baseValidProtocol.codebook.ego.variables,
               confirmName: {
                 name: 'ConfirmName',
-                label: 'ConfirmName',
                 type: 'text',
                 validation: {
                   sameAs: 'egoName',
@@ -2349,7 +2335,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.edge.knows.variables,
                 maxDuration: {
                   name: 'MaximumDuration',
-                  label: 'MaximumDuration',
                   type: 'number',
                   validation: {
                     greaterThanVariable: 'duration',
@@ -2377,7 +2362,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               ...baseValidProtocol.codebook.ego.variables,
               invalidRef: {
                 name: 'InvalidReference',
-                label: 'InvalidReference',
                 type: 'text',
                 validation: {
                   sameAs: 'nonexistentEgoVar',
@@ -2623,7 +2607,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
               ...baseValidProtocol.codebook.node.person.variables,
               homeLocation: {
                 name: 'Home_Location',
-                label: 'Home_Location',
                 type: 'location',
               },
             },
@@ -2800,7 +2783,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                 ...baseValidProtocol.codebook.node.person.variables,
                 minAge: {
                   name: 'MinimumAge',
-                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'age',
@@ -2833,7 +2815,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
                   baseValidProtocol.codebook.node.person.variables.strength,
                 minAge: {
                   name: 'MinimumAge',
-                  label: 'MinimumAge',
                   type: 'number',
                   validation: {
                     greaterThanOrEqualToVariable: 'age',
@@ -2901,21 +2882,18 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         node: {
           person: {
             name: 'Person',
-            label: localized('Person'),
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
-              isEgo: { name: 'IsEgo', label: 'IsEgo', type: 'boolean' },
-              name: { name: 'Name', label: 'Name', type: 'text' },
+              isEgo: { name: 'IsEgo', type: 'boolean' },
+              name: { name: 'Name', type: 'text' },
               gender: {
                 name: 'Gender',
-                label: 'Gender',
                 type: 'categorical',
                 options: genderIdentityOptions,
               },
               sab: {
                 name: 'Sab',
-                label: 'Sab',
                 type: sexAssignedAtBirthType,
                 readOnly: true,
                 options: sexAssignedAtBirthOptions,
@@ -2926,18 +2904,16 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
         edge: {
           family: {
             name: 'Family',
-            label: localized('Family'),
             color: 'edge-color-seq-1',
             variables: {
               kind: {
                 name: 'Kind',
-                label: 'Kind',
                 type: 'categorical',
                 readOnly: true,
                 options: relationshipKindOptions,
               },
-              carrier: { name: 'Carrier', label: 'Carrier', type: 'boolean' },
-              current: { name: 'Current', label: 'Current', type: 'boolean' },
+              carrier: { name: 'Carrier', type: 'boolean' },
+              current: { name: 'Current', type: 'boolean' },
             },
           },
         },

@@ -20,7 +20,6 @@ vi.mock('../../../../hooks/useCelebrate', () => ({
 const { nodeTypeDefinition } = vi.hoisted(() => ({
   nodeTypeDefinition: {
     name: 'person_internal',
-    label: { en: 'Friend' },
     shape: 'circle',
   },
 }));

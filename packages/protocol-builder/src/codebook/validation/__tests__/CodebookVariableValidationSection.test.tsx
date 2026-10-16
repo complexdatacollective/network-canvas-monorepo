@@ -117,20 +117,17 @@ const personHolding = (type: string) => ({
   node: {
     person: {
       name: 'person',
-      label: { 'en-US': 'person' },
       color: 'node-color-seq-1',
       icon: 'add-a-person',
       shape: { default: 'circle' },
       variables: {
         story: {
           name: 'story',
-          label: 'story',
           type,
           component: COMPONENTS[type],
         },
         retelling: {
           name: 'retelling',
-          label: 'retelling',
           type,
           component: COMPONENTS[type],
         },
@@ -377,7 +374,6 @@ describe('rules written while the codebook is moving', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: 'ego_name',
             type: 'text',
             validation: { maxLength: 9 },
           },
@@ -545,7 +541,6 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -568,7 +563,6 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -585,7 +579,6 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: 'ego_name',
             type: 'text',
           },
         },
@@ -614,7 +607,6 @@ describe('the switch, while a collaborator is changing the same attribute', () =
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -806,7 +798,6 @@ describe('the marker a refused write leaves behind', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: 'ego_name',
             type: 'text',
             validation: { required: true },
           },
@@ -832,7 +823,6 @@ describe('the marker a refused write leaves behind', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: 'ego_name',
             type: 'text',
           },
         },

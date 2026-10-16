@@ -132,8 +132,8 @@ function makePayload({
       codebook: {
         ego: {
           variables: {
-            name: { name: 'name', label: 'Name', type: 'text' },
-            nickname: { name: 'nickname', label: 'Nickname', type: 'text' },
+            name: { name: 'name', type: 'text' },
+            nickname: { name: 'nickname', type: 'text' },
           },
         },
         node: {},
@@ -291,8 +291,8 @@ describe('dynamic values in a stage’s text', () => {
     ] as InterviewPayload['protocol']['stages'];
     payload.protocol.codebook.ego = {
       variables: {
-        name: { name: 'name', label: 'Name', type: 'text', component: 'Text' },
-        age: { name: 'age', label: 'Age', type: 'number', component: 'Number' },
+        name: { name: 'name', type: 'text', component: 'Text' },
+        age: { name: 'age', type: 'number', component: 'Number' },
       },
     } as InterviewPayload['protocol']['codebook']['ego'];
     renderShell(payload);
@@ -342,8 +342,8 @@ describe('dynamic values in a stage’s text', () => {
     ] as InterviewPayload['protocol']['stages'];
     payload.protocol.codebook.ego = {
       variables: {
-        name: { name: 'name', label: 'Name', type: 'text', component: 'Text' },
-        age: { name: 'age', label: 'Age', type: 'number', component: 'Number' },
+        name: { name: 'name', type: 'text', component: 'Text' },
+        age: { name: 'age', type: 'number', component: 'Number' },
       },
     } as InterviewPayload['protocol']['codebook']['ego'];
     renderShell(payload);
@@ -382,11 +382,10 @@ describe('dynamic values in a stage’s text', () => {
     ] as InterviewPayload['protocol']['stages'];
     payload.protocol.codebook.ego = {
       variables: {
-        name: { name: 'name', label: 'Name', type: 'text', component: 'Text' },
-        age: { name: 'age', label: 'Age', type: 'number', component: 'Number' },
+        name: { name: 'name', type: 'text', component: 'Text' },
+        age: { name: 'age', type: 'number', component: 'Number' },
         guess: {
           name: 'guess',
-          label: 'Guess',
           type: 'number',
           component: 'Number',
           validation: { differentFrom: asEntityAttributeReference('age') },
@@ -443,7 +442,6 @@ describe('dynamic values in a stage’s text', () => {
         ...payload.protocol.codebook.ego?.variables,
         colour: {
           name: 'colour',
-          label: 'Colour',
           type: 'categorical',
           options: [{ label: { en: '**Deep** _red_' }, value: 'red' }],
         },

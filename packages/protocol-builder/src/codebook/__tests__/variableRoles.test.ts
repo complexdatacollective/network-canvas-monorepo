@@ -48,13 +48,11 @@ const sections = (): Record<string, SectionDoc> => ({
   ...settings,
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
     name: 'Person',
-    label: { en: 'Person' },
     color: 'node-color-seq-1',
     shape: { default: 'circle' },
     variables: {
       category: {
         name: 'Category',
-        label: 'Category',
         type: 'categorical',
         options: [
           { label: { en: 'One' }, value: 'one' },

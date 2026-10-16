@@ -19,7 +19,6 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
 
 const sectionOf = (variables: Record<string, unknown>): SectionDoc => ({
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables,
@@ -27,14 +26,12 @@ const sectionOf = (variables: Record<string, unknown>): SectionDoc => ({
 
 const text = (name: string) => ({
   name,
-  label: name,
   type: 'text',
   component: 'Text',
 });
 
 const categorical = (name: string, values: readonly string[]) => ({
   name,
-  label: name,
   type: 'categorical',
   component: 'CheckboxGroup',
   options: values.map((value) => ({ label: { en: value }, value })),

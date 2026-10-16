@@ -47,11 +47,10 @@ const protocol = (name = 'Kinship Study'): CurrentProtocol => ({
     node: {
       [NODE_TYPE_ID]: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          [VARIABLE_ID]: { name: 'Age', label: 'Age', type: 'number' },
+          [VARIABLE_ID]: { name: 'Age', type: 'number' },
         },
       },
     },
@@ -133,7 +132,7 @@ describe('operations that change nothing and the protocol timeline', () => {
     store.dispatch(
       codebookActions.updateVariable({
         variable: VARIABLE_ID,
-        configuration: { name: 'Age', label: 'Age', type: 'number' },
+        configuration: { name: 'Age', type: 'number' },
       }),
     );
 
@@ -149,7 +148,6 @@ describe('operations that change nothing and the protocol timeline', () => {
         variable: VARIABLE_ID,
         configuration: {
           name: 'Age in years',
-          label: 'Age in years',
           type: 'number',
         },
       }),

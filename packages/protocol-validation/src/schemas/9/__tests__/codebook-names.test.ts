@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { localized } from '../../../utils/test-utils.ts';
 import {
   EdgeDefinitionSchema,
   NodeDefinitionSchema,
@@ -21,12 +20,11 @@ const INVALID_NAMES = [
 
 const nodeType = (name: string) => ({
   name,
-  label: localized('Person'),
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
 });
 
-const edgeType = (name: string) => ({ name, label: localized('Knows') });
+const edgeType = (name: string) => ({ name });
 
 const nameIssuePaths = (
   schema: typeof NodeDefinitionSchema | typeof EdgeDefinitionSchema,

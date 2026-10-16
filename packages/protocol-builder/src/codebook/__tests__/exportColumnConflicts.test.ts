@@ -57,7 +57,6 @@ const sectionOf = (
   variables: Record<string, Record<string, unknown>>,
 ): SectionDoc => ({
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: Object.fromEntries(
@@ -197,7 +196,6 @@ describe('creating an attribute', () => {
     expect(() =>
       create(section, {
         name: 'foo',
-        label: 'foo',
         type: 'ordinal',
         component: 'RadioGroup',
         options: [

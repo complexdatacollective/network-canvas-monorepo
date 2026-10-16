@@ -25,24 +25,21 @@ export const NODE_TYPE = 'person';
 export const encryptedVariables: Record<string, Variable> = {
   name: {
     name: 'name',
-    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
   nickname: {
     name: 'nickname',
-    label: 'nickname',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  age: { name: 'age', label: 'age', type: 'number', component: 'Number' },
+  age: { name: 'age', type: 'number', component: 'Number' },
 };
 
 const personDefinition = {
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: encryptedVariables,

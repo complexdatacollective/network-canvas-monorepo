@@ -29,8 +29,15 @@ export const narrativeStage = baseStageSchema.extend({
         }).optional(),
         edges: z
           .strictObject({
+            // Each edge type the preset draws, with the words its legend
+            // shows for it: the participant never reads a type's name.
             display: z
-              .array(entityTypeReference({ entity: 'edge' }))
+              .array(
+                z.strictObject({
+                  type: entityTypeReference({ entity: 'edge' }),
+                  label: localizedString(nonBlankText(), 'plain'),
+                }),
+              )
               .optional(),
           })
           .optional(),

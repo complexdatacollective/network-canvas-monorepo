@@ -30,7 +30,6 @@ vi.mock('../../hooks/useStageSelector', () => ({
       case 'getNodeTypeDefinition':
         return {
           name: 'Person',
-          label: { en: 'Person' },
           shape: { default: 'circle' },
         };
       case 'getPromptAdditionalAttributes':
@@ -140,7 +139,6 @@ describe('AddNodeInput ARIA references', () => {
   it('resolves every ARIA reference on the add-node input', () => {
     const { container } = render(
       <AddNodeInput
-        entityLabel="Person"
         placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
@@ -153,7 +151,6 @@ describe('AddNodeInput ARIA references', () => {
   it('resolves every ARIA reference when the target variable is required', () => {
     const { container } = render(
       <AddNodeInput
-        entityLabel="Person"
         placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
@@ -167,7 +164,6 @@ describe('AddNodeInput ARIA references', () => {
   it('still describes the error region it renders itself', () => {
     render(
       <AddNodeInput
-        entityLabel="Person"
         placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}

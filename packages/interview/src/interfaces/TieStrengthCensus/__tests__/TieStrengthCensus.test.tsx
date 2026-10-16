@@ -65,7 +65,6 @@ const makeCodebook = (
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {},
@@ -74,12 +73,10 @@ const makeCodebook = (
   edge: {
     [EDGE_TYPE]: {
       name: 'Friendship',
-      label: { en: 'Friendship' },
       color: 'edge-color-seq-1',
       variables: {
         [EDGE_VAR]: {
           name: EDGE_VAR,
-          label: 'Strength',
           type: 'ordinal',
           component: 'RadioGroup',
           options,

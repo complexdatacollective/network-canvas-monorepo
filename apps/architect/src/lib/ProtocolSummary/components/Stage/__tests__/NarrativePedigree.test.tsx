@@ -15,13 +15,11 @@ const protocol = {
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           has_condition: {
             name: 'has_condition',
-            label: 'has_condition',
             type: 'boolean',
           },
         },

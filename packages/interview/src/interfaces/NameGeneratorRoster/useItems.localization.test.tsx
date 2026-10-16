@@ -15,7 +15,7 @@ const { sourceNodes, typeDefinition } = vi.hoisted(() => ({
     name: 'person_internal',
     label: { en: 'Researcher subject' },
     variables: {
-      name: { name: 'name', label: 'Name', type: 'text' },
+      name: { name: 'name', type: 'text' },
     },
   },
 }));

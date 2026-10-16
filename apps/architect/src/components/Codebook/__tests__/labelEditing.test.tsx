@@ -38,11 +38,10 @@ const bilingual: CurrentProtocol = {
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
-          age: { name: 'age', type: 'number', label: 'Age' },
+          age: { name: 'age', type: 'number' },
         },
       },
     },

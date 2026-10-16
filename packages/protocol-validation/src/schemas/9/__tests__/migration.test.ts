@@ -513,7 +513,6 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     const base = createBaseProtocol();
     const ordinal = (values: OptionValue[]) => ({
       name: 'Closeness',
-      label: 'Closeness',
       type: 'ordinal' as const,
       options: values.map((value) => ({ label: localized(`${value}`), value })),
     });
@@ -1934,7 +1933,6 @@ describe('Migrating optional text that shows nothing from schema 8 to 9', () => 
             ...base.codebook.ego.variables,
             egoCloseness: {
               name: 'EgoCloseness',
-              label: 'EgoCloseness',
               type: 'scalar',
               component: 'VisualAnalogScale',
               parameters: {

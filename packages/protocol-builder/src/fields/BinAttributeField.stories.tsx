@@ -206,7 +206,6 @@ export const MoreBinsThanFit: Story = {
           ...variables,
           contactFreq: {
             name: 'contactFreq',
-            label: 'contactFreq',
             type: 'ordinal',
             options: [
               { label: { 'en-US': 'Daily' }, value: 6 },

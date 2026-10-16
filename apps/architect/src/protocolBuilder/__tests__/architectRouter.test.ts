@@ -483,7 +483,6 @@ describe("Architect's in-process protocol-builder host", () => {
           ...committed?.variables,
           spare: {
             name: 'spare',
-            label: 'Spare',
             type: 'text',
             component: 'Text',
           },
@@ -1581,7 +1580,6 @@ describe("Architect's in-process protocol-builder host", () => {
         variables: {
           ego_age: {
             name: 'ego_age',
-            label: 'Age',
             type: 'number',
             component: 'Number',
           },
@@ -1605,7 +1603,6 @@ describe("Architect's in-process protocol-builder host", () => {
       kind: 'codebookEdge',
       document: Redacted.make({
         name: 'Edge',
-        label: { [FIXTURE_LANGUAGE]: 'Edge' },
         color: 'edge-color-seq-2',
         variables: {},
       }),
@@ -1620,7 +1617,6 @@ describe("Architect's in-process protocol-builder host", () => {
         variables: {
           f: {
             name: 'f',
-            label: 'F',
             type: 'ordinal',
             options,
           },

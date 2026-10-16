@@ -174,7 +174,6 @@ export const ACollaboratorRevisesTheCodebook: Story = {
         variables: {
           ego_name: {
             name: 'given_name',
-            label: 'given_name',
             type: 'text',
             component: 'TextArea',
           },

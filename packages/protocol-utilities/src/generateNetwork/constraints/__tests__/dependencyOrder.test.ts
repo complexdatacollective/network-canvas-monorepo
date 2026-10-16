@@ -11,10 +11,9 @@ describe('resolveGenerationOrder', () => {
   it('puts a sameAs target before nothing, because the pair becomes one group', () => {
     const entity = buildEntityConstraints(
       {
-        a: { name: 'A', label: 'A', type: 'text' },
+        a: { name: 'A', type: 'text' },
         b: {
           name: 'B',
-          label: 'B',
           type: 'text',
           validation: { sameAs: asEntityAttributeReference('a') },
         },
@@ -40,7 +39,6 @@ describe('resolveGenerationOrder', () => {
       {
         later: {
           name: 'Later',
-          label: 'Later',
           type: 'number',
           validation: {
             greaterThanVariable: asEntityAttributeReference('earlier'),
@@ -48,7 +46,6 @@ describe('resolveGenerationOrder', () => {
         },
         earlier: {
           name: 'Earlier',
-          label: 'Earlier',
           type: 'number',
         },
       },
@@ -68,11 +65,10 @@ describe('resolveGenerationOrder', () => {
       {
         b: {
           name: 'B',
-          label: 'B',
           type: 'text',
           validation: { differentFrom: asEntityAttributeReference('a') },
         },
-        a: { name: 'A', label: 'A', type: 'text' },
+        a: { name: 'A', type: 'text' },
       },
       TODAY,
     );
@@ -87,13 +83,11 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: { greaterThanVariable: asEntityAttributeReference('b') },
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: { greaterThanVariable: asEntityAttributeReference('a') },
         },
@@ -112,13 +106,11 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: { sameAs: asEntityAttributeReference('b') },
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: { greaterThanVariable: asEntityAttributeReference('a') },
         },
@@ -134,7 +126,6 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'text',
           validation: { sameAs: asEntityAttributeReference('missing') },
         },
@@ -151,8 +142,8 @@ describe('resolveGenerationOrder', () => {
   it('orders independent variables deterministically by codebook order', () => {
     const entity = buildEntityConstraints(
       {
-        z: { name: 'Z', label: 'Z', type: 'text' },
-        a: { name: 'A', label: 'A', type: 'text' },
+        z: { name: 'Z', type: 'text' },
+        a: { name: 'A', type: 'text' },
       },
       TODAY,
     );
@@ -165,7 +156,6 @@ describe('resolveGenerationOrder', () => {
       {
         end: {
           name: 'End',
-          label: 'End',
           type: 'number',
           validation: {
             greaterThanVariable: asEntityAttributeReference('start'),
@@ -173,7 +163,6 @@ describe('resolveGenerationOrder', () => {
         },
         start: {
           name: 'Start',
-          label: 'Start',
           type: 'number',
           validation: { lessThanVariable: asEntityAttributeReference('end') },
         },
@@ -194,13 +183,11 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'text',
           validation: { differentFrom: asEntityAttributeReference('b') },
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'text',
           validation: { differentFrom: asEntityAttributeReference('a') },
         },
@@ -216,7 +203,6 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
@@ -224,7 +210,6 @@ describe('resolveGenerationOrder', () => {
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
@@ -252,7 +237,6 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
@@ -260,7 +244,6 @@ describe('resolveGenerationOrder', () => {
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('c'),
@@ -268,7 +251,6 @@ describe('resolveGenerationOrder', () => {
         },
         c: {
           name: 'C',
-          label: 'C',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
@@ -295,7 +277,6 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
@@ -303,7 +284,6 @@ describe('resolveGenerationOrder', () => {
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
@@ -311,7 +291,6 @@ describe('resolveGenerationOrder', () => {
         },
         c: {
           name: 'C',
-          label: 'C',
           type: 'number',
           validation: {
             lessThanVariable: asEntityAttributeReference('a'),
@@ -333,7 +312,6 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
@@ -341,7 +319,6 @@ describe('resolveGenerationOrder', () => {
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('c'),
@@ -349,7 +326,6 @@ describe('resolveGenerationOrder', () => {
         },
         c: {
           name: 'C',
-          label: 'C',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
@@ -357,7 +333,6 @@ describe('resolveGenerationOrder', () => {
         },
         d: {
           name: 'D',
-          label: 'D',
           type: 'number',
           validation: {
             lessThanVariable: asEntityAttributeReference('a'),
@@ -379,7 +354,6 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
@@ -388,7 +362,6 @@ describe('resolveGenerationOrder', () => {
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
@@ -409,7 +382,6 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
@@ -417,7 +389,6 @@ describe('resolveGenerationOrder', () => {
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
@@ -425,7 +396,6 @@ describe('resolveGenerationOrder', () => {
         },
         c: {
           name: 'C',
-          label: 'C',
           type: 'number',
           validation: { greaterThanVariable: asEntityAttributeReference('a') },
         },
@@ -451,7 +421,6 @@ describe('resolveGenerationOrder', () => {
       {
         end: {
           name: 'End',
-          label: 'End',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('start'),
@@ -459,7 +428,6 @@ describe('resolveGenerationOrder', () => {
         },
         start: {
           name: 'Start',
-          label: 'Start',
           type: 'number',
           validation: {
             lessThanOrEqualToVariable: asEntityAttributeReference('end'),
@@ -482,13 +450,11 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: { sameAs: asEntityAttributeReference('b') },
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('a'),
@@ -506,19 +472,16 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: { greaterThanVariable: asEntityAttributeReference('b') },
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: { greaterThanVariable: asEntityAttributeReference('c') },
         },
         c: {
           name: 'C',
-          label: 'C',
           type: 'number',
           validation: { greaterThanVariable: asEntityAttributeReference('a') },
         },
@@ -537,13 +500,11 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'text',
           validation: { sameAs: asEntityAttributeReference('b') },
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'text',
           validation: { differentFrom: asEntityAttributeReference('a') },
         },
@@ -562,7 +523,6 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: {
             greaterThanOrEqualToVariable: asEntityAttributeReference('b'),
@@ -570,7 +530,6 @@ describe('resolveGenerationOrder', () => {
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: { greaterThanVariable: asEntityAttributeReference('a') },
         },
@@ -589,13 +548,11 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: { sameAs: asEntityAttributeReference('b') },
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: {
             greaterThanVariable: asEntityAttributeReference('a'),
@@ -617,13 +574,11 @@ describe('resolveGenerationOrder', () => {
       {
         a: {
           name: 'A',
-          label: 'A',
           type: 'number',
           validation: { sameAs: asEntityAttributeReference('b') },
         },
         b: {
           name: 'B',
-          label: 'B',
           type: 'number',
           validation: { greaterThanVariable: asEntityAttributeReference('a') },
         },

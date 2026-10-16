@@ -80,7 +80,6 @@ export const RELATIVES_NOT_RECORDED_VARIABLE: Readonly<
   Record<string, unknown>
 > = Object.freeze({
   name: 'relativesNotRecorded',
-  label: 'relativesNotRecorded',
   type: 'categorical',
   options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(({ value, label }) => ({
     value,

@@ -54,37 +54,31 @@ const ATTRIBUTES: Readonly<Record<VariableType, string>> = Object.freeze({
 const personVariables: SectionDoc['variables'] = {
   flag: {
     name: 'Flag',
-    label: 'Flag',
     type: 'boolean',
     component: 'Boolean',
   },
   note: {
     name: 'Note',
-    label: 'Note',
     type: 'text',
     component: 'Text',
   },
   age: {
     name: 'Age',
-    label: 'Age',
     type: 'number',
     component: 'Number',
   },
   closeness: {
     name: 'Closeness',
-    label: 'Closeness',
     type: 'scalar',
     component: 'VisualAnalogScale',
   },
   born: {
     name: 'Born',
-    label: 'Born',
     type: 'datetime',
     component: 'DatePicker',
   },
   band: {
     name: 'Band',
-    label: 'Band',
     type: 'ordinal',
     component: 'RadioGroup',
     options: [
@@ -94,7 +88,6 @@ const personVariables: SectionDoc['variables'] = {
   },
   mood: {
     name: 'Mood',
-    label: 'Mood',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [
@@ -104,13 +97,12 @@ const personVariables: SectionDoc['variables'] = {
   },
   // The two the schema calls non-renderable: they are recorded by the stage
   // that captures them rather than by a form control, so they carry none.
-  place: { name: 'Place', label: 'Place', type: 'location' },
-  spot: { name: 'Spot', label: 'Spot', type: 'layout' },
+  place: { name: 'Place', type: 'location' },
+  spot: { name: 'Spot', type: 'layout' },
 };
 
 const personDefinition = {
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-2',
   shape: { default: 'square' },
   variables: personVariables,

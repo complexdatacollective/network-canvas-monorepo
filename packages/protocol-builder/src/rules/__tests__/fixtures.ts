@@ -16,28 +16,25 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-2',
       shape: { default: 'square' },
       variables: {
-        age: { name: 'Age', label: 'Age', type: 'number' },
+        age: { name: 'Age', type: 'number' },
         mood: {
           name: 'Mood',
-          label: 'Mood',
           type: 'categorical',
           options: [
             { label: { en: 'Happy' }, value: 'happy' },
             { label: { en: 'Sad' }, value: 'sad' },
           ],
         },
-        note: { name: 'Note', label: 'Note', type: 'text' },
+        note: { name: 'Note', type: 'text' },
         // A date attribute whose picker records years, between two bounds:
         // the two things a rule's date operand has to still agree with, and
         // both of them ordinary edits to the variable long after a rule was
         // written against it.
         born: {
           name: 'Born',
-          label: 'Born',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'year', min: '1800', max: '1810' },
@@ -45,13 +42,12 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
         // Answered with a point on the sociogram, which no rule can compare
         // against: an attribute the codebook still describes and no rule can
         // be built on.
-        home: { name: 'Home', label: 'Home', type: 'layout' },
+        home: { name: 'Home', type: 'layout' },
         // Encrypted: answered in the interview with ciphertext only the
         // participant's passphrase opens, so a rule over interview answers
         // cannot read it.
         secret: {
           name: 'Secret',
-          label: 'Secret',
           type: 'text',
           encrypted: true,
         },
@@ -59,7 +55,6 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
     },
     place: {
       name: 'Place',
-      label: { en: 'Place' },
       color: 'node-color-seq-3',
       shape: { default: 'circle' },
     },
@@ -67,12 +62,10 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
   edge: {
     friend: {
       name: 'Friend',
-      label: { en: 'Friend' },
       color: 'edge-color-seq-3',
       variables: {
         closeness: {
           name: 'Closeness',
-          label: 'Closeness',
           type: 'scalar',
         },
       },
@@ -80,7 +73,7 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
   },
   ego: {
     variables: {
-      egoName: { name: 'EgoName', label: 'EgoName', type: 'text' },
+      egoName: { name: 'EgoName', type: 'text' },
     },
   },
 });
@@ -117,21 +110,19 @@ const baseSections: Record<string, SectionDoc> = {
   },
   [personSection]: {
     name: 'Person',
-    label: { en: 'Person' },
     color: 'node-color-seq-2',
     shape: { default: 'square' },
     variables: {
-      age: { name: 'Age', label: 'Age', type: 'number' },
+      age: { name: 'Age', type: 'number' },
       // A second attribute of the SAME type, so a change of attribute leaves
       // the operator that was chosen for the first one still on offer: that is
       // what makes a cleared operator evidence of the cascade rather than of
       // the option simply having gone.
-      height: { name: 'Height', label: 'Height', type: 'number' },
+      height: { name: 'Height', type: 'number' },
       // A scalar is recorded as a number on a normalised scale, and is offered
       // the same comparison operators a number is.
       closeness: {
         name: 'Closeness',
-        label: 'Closeness',
         type: 'scalar',
       },
       // A yes/no attribute: the one whose operand control has a value for
@@ -139,27 +130,24 @@ const baseSections: Record<string, SectionDoc> = {
       // unless the operand table says so.
       flag: {
         name: 'Flag',
-        label: 'Flag',
         type: 'boolean',
         component: 'Boolean',
       },
       // Text, so an operator a NUMBER accepts can be stored against it.
-      note: { name: 'Note', label: 'Note', type: 'text' },
+      note: { name: 'Note', type: 'text' },
       // Answered with a point on the sociogram: an attribute the codebook
       // still describes, and that no rule can be built against.
-      home: { name: 'Home', label: 'Home', type: 'layout' },
+      home: { name: 'Home', type: 'layout' },
       // A date attribute whose picker is bounded, and coarse enough that the
       // bounds are readable off the control the researcher meets.
       born: {
         name: 'Born',
-        label: 'Born',
         type: 'datetime',
         component: 'DatePicker',
         parameters: { type: 'year', min: '1800', max: '1810' },
       },
       mood: {
         name: 'Mood',
-        label: 'Mood',
         type: 'categorical',
         options: [
           { label: { en: 'Happy' }, value: 'happy' },
@@ -171,7 +159,6 @@ const baseSections: Record<string, SectionDoc> = {
       // interview compares an operand against the stored answer by identity.
       strength: {
         name: 'Strength',
-        label: 'Strength',
         type: 'ordinal',
         options: [
           { label: { en: 'Weak' }, value: 1 },
@@ -181,7 +168,6 @@ const baseSections: Record<string, SectionDoc> = {
       // Encrypted, so only a panel over an imported file may name it.
       secret: {
         name: 'Secret',
-        label: 'Secret',
         type: 'text',
         encrypted: true,
       },
@@ -189,12 +175,11 @@ const baseSections: Record<string, SectionDoc> = {
   },
   [friendSection]: {
     name: 'Friend',
-    label: { en: 'Friend' },
     color: 'edge-color-seq-3',
   },
   [egoSection]: {
     variables: {
-      egoName: { name: 'EgoName', label: 'EgoName', type: 'text' },
+      egoName: { name: 'EgoName', type: 'text' },
     },
   },
 };

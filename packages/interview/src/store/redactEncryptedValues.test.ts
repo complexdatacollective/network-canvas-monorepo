@@ -12,19 +12,17 @@ import { createEncryptedValueRedaction } from './redactEncryptedValues';
 const variables: Record<string, Variable> = {
   name: {
     name: 'name',
-    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  age: { name: 'age', label: 'age', type: 'number', component: 'Number' },
+  age: { name: 'age', type: 'number', component: 'Number' },
 };
 
 const redaction = createEncryptedValueRedaction({
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables,
@@ -62,13 +60,11 @@ describe('redacting encrypted values for development tools', () => {
       node: {
         person: {
           name: 'Person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             [entitySecureAttributesMeta]: {
               name: entitySecureAttributesMeta,
-              label: 'secret',
               type: 'text',
               component: 'Text',
               encrypted: true,

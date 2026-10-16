@@ -25,7 +25,6 @@ const trilingual: CurrentProtocol = {
     node: {
       person: {
         name: 'Person',
-        label: { en: 'People', es: 'Personas' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
       },

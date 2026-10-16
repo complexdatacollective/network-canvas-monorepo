@@ -59,7 +59,6 @@ describe('Shape Mapping Validation', () => {
     >;
     variables.is_person = {
       name: 'Is_Person',
-      label: 'Is_Person',
       type: 'boolean',
     };
     protocol.codebook.node.person.shape = {

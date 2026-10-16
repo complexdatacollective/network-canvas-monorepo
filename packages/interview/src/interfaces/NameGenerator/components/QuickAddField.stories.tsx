@@ -29,14 +29,12 @@ const buildMockProtocol = (icon: string, maxNodes: number) => ({
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon,
         variables: {
           name: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
           },
         },

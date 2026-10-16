@@ -527,7 +527,6 @@ describe('a disease the source pedigree stopped recording', () => {
           add: {
             hasConditionX: {
               name: 'hasConditionX',
-              label: 'hasConditionX',
               type: 'text',
             },
           },
@@ -607,7 +606,6 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
           add: {
             hasConditionX: {
               name: 'hasConditionX',
-              label: 'hasConditionX',
               type: 'text',
             },
           },

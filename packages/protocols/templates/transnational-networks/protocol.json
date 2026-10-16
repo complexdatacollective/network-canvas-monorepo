@@ -26,7 +26,6 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
-          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": { "required": true },
@@ -53,7 +52,6 @@
         },
         "birth_country": {
           "name": "birth_country",
-          "label": "birth_country",
           "type": "categorical",
           "component": "CheckboxGroup",
           "validation": {
@@ -81,7 +79,6 @@
         },
         "arrival_year": {
           "name": "arrival_year",
-          "label": "arrival_year",
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
@@ -91,7 +88,6 @@
         },
         "residency_status": {
           "name": "residency_status",
-          "label": "residency_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "validation": {
@@ -150,7 +146,6 @@
         },
         "language_proficiency": {
           "name": "language_proficiency",
-          "label": "language_proficiency",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -182,7 +177,6 @@
         },
         "years_since_migration": {
           "name": "years_since_migration",
-          "label": "years_since_migration",
           "type": "number",
           "component": "Number",
           "validation": {
@@ -192,7 +186,6 @@
         },
         "acculturative_stress": {
           "name": "acculturative_stress",
-          "label": "acculturative_stress",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -243,7 +236,6 @@
     "node": {
       "person": {
         "name": "Person",
-        "label": { "en-US": "Person", "es": "Persona", "hu": "Személy" },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": {
@@ -252,7 +244,6 @@
         "variables": {
           "alter_name": {
             "name": "alter_name",
-            "label": "alter_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -262,7 +253,6 @@
           },
           "relationship": {
             "name": "relationship",
-            "label": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -313,7 +303,6 @@
           },
           "origin_country": {
             "name": "origin_country",
-            "label": "origin_country",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -356,7 +345,6 @@
           },
           "shared_language": {
             "name": "shared_language",
-            "label": "shared_language",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -399,7 +387,6 @@
           },
           "how_met": {
             "name": "how_met",
-            "label": "how_met",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "validation": {
@@ -454,7 +441,6 @@
           },
           "co_ethnic": {
             "name": "co_ethnic",
-            "label": "co_ethnic",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -470,7 +456,6 @@
           },
           "support_type": {
             "name": "support_type",
-            "label": "support_type",
             "type": "categorical",
             "component": "CheckboxGroup",
             "validation": {
@@ -513,7 +498,6 @@
           },
           "closeness": {
             "name": "closeness",
-            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -561,12 +545,10 @@
           },
           "alter_location": {
             "name": "alter_location",
-            "label": "alter_location",
             "type": "location"
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           }
         }
@@ -575,11 +557,6 @@
     "edge": {
       "knows": {
         "name": "Knows",
-        "label": {
-          "en-US": "Knows",
-          "es": "Se conocen",
-          "hu": "Ismerik egymást"
-        },
         "color": "edge-color-seq-1"
       }
     }
@@ -1256,7 +1233,16 @@
           "layoutVariable": "layout",
           "groupVariable": "origin_country",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en-US": "Knows",
+                  "es": "Se conocen",
+                  "hu": "Ismerik egymást"
+                }
+              }
+            ]
           },
           "highlight": [
             {
@@ -1279,7 +1265,16 @@
           "layoutVariable": "layout",
           "groupVariable": "support_type",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en-US": "Knows",
+                  "es": "Se conocen",
+                  "hu": "Ismerik egymást"
+                }
+              }
+            ]
           }
         }
       ],

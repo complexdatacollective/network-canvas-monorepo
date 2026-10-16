@@ -27,14 +27,32 @@ export const codebookVariables = (
   ];
 };
 
-// A schema 8 Narrative preset named each highlighted attribute by its id.
-const highlightIds = (stage: unknown) => {
+// A schema 8 Narrative preset named each highlighted attribute, and each edge
+// type its legend showed, by its id.
+const legendIds = (stage: unknown) => {
   if (!isRecord(stage) || !Array.isArray(stage.presets)) return;
   for (const preset of stage.presets) {
-    if (!isRecord(preset) || !Array.isArray(preset.highlight)) continue;
-    preset.highlight = preset.highlight.map((highlight: unknown) =>
-      isRecord(highlight) ? highlight.variable : highlight,
-    );
+    if (!isRecord(preset)) continue;
+    if (Array.isArray(preset.highlight)) {
+      preset.highlight = preset.highlight.map((highlight: unknown) =>
+        isRecord(highlight) ? highlight.variable : highlight,
+      );
+    }
+    if (isRecord(preset.edges) && Array.isArray(preset.edges.display)) {
+      preset.edges.display = preset.edges.display.map((edge: unknown) =>
+        isRecord(edge) ? edge.type : edge,
+      );
+    }
+  }
+};
+
+// A schema 8 Network Composer named each edge type in its toolbar by the
+// type's name, so its edges carried no label.
+const composerEdgeLabels = (stage: unknown) => {
+  if (!isRecord(stage) || stage.type !== 'NetworkComposer') return;
+  if (!Array.isArray(stage.edges)) return;
+  for (const edge of stage.edges) {
+    if (isRecord(edge)) delete edge.label;
   }
 };
 
@@ -53,8 +71,8 @@ const explanationTitle = (stage: unknown) => {
 /**
  * A schema 9 protocol written in English, as schema 8 held it: each localized
  * string is its English text, put through `rewrite` (text with placeholders,
- * which schema 8 never held, stays localized), codebook definitions
- * have no label, Narrative highlights are attribute ids, an Anonymisation
+ * which schema 8 never held, stays localized), Narrative highlights and
+ * legend edges are ids, Network Composer edges have no label, an Anonymisation
  * explanation's heading is a title of its own, and the language
  * chooser and language settings, which schema 8 did not have, are gone.
  */
@@ -93,14 +111,9 @@ export const asSchema8Protocol = (
     }
     Reflect.set(parent, key, rewrite(text));
   }
-  for (const definition of [
-    ...codebookTypes(document),
-    ...codebookVariables(document),
-  ]) {
-    delete definition.label;
-  }
   for (const stage of document.stages) {
-    highlightIds(stage);
+    legendIds(stage);
+    composerEdgeLabels(stage);
     explanationTitle(stage);
   }
   // Schema 8 has neither stage type: the interview chose no language, and

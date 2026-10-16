@@ -41,13 +41,11 @@ function makeProtocol(stageOverrides: Partial<Stage> = {}): CurrentProtocol {
       node: {
         person: {
           name: 'Person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             name: {
               name: 'Name',
-              label: 'Name',
               type: 'text',
               component: 'Text',
             },

@@ -48,18 +48,15 @@ function makeWrapper() {
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
-              label: { en: NODE_TYPE },
               variables: {
                 requiredToggle: {
                   name: 'requiredToggle',
-                  label: 'requiredToggle',
                   type: 'boolean',
                   component: 'Toggle',
                   validation: { required: true },
                 },
                 optionalToggle: {
                   name: 'optionalToggle',
-                  label: 'optionalToggle',
                   type: 'boolean',
                   component: 'Toggle',
                 },
@@ -68,7 +65,6 @@ function makeWrapper() {
                 // being rendered by a `Toggle`.
                 singletonOptions: {
                   name: 'singletonOptions',
-                  label: 'singletonOptions',
                   type: 'boolean',
                   options: [{ label: { en: 'Yes' }, value: true }],
                   validation: { required: true },

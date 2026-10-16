@@ -97,13 +97,11 @@ const mockProtocol = {
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         displayVariable: 'name',
         iconVariant: 'add-a-person',
         variables: {
           name: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
             component: 'Text',
             validation: {
@@ -114,7 +112,6 @@ const mockProtocol = {
           },
           email: {
             name: 'Email',
-            label: 'Email',
             type: 'text',
             component: 'Text',
             validation: {
@@ -123,7 +120,6 @@ const mockProtocol = {
           },
           age: {
             name: 'Age',
-            label: 'Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -133,7 +129,6 @@ const mockProtocol = {
           },
           gender: {
             name: 'Gender',
-            label: 'Gender',
             type: 'categorical',
             component: 'RadioGroup',
             options: [
@@ -148,13 +143,11 @@ const mockProtocol = {
           },
           occupation: {
             name: 'Occupation',
-            label: 'Occupation',
             type: 'text',
             component: 'Text',
           },
           favoriteColors: {
             name: 'Favorite Colors',
-            label: 'Favorite Colors',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
@@ -173,7 +166,6 @@ const mockProtocol = {
           },
           birthDate: {
             name: 'Birth Date',
-            label: 'Birth Date',
             type: 'datetime',
             component: 'DatePicker',
             parameters: {
@@ -184,7 +176,6 @@ const mockProtocol = {
           },
           startDate: {
             name: 'Start Date',
-            label: 'Start Date',
             type: 'datetime',
             component: 'RelativeDatePicker',
             parameters: {
@@ -195,7 +186,6 @@ const mockProtocol = {
           },
           happiness: {
             name: 'Happiness Level',
-            label: 'Happiness Level',
             type: 'scalar',
             component: 'VisualAnalogScale',
             parameters: {
@@ -205,7 +195,6 @@ const mockProtocol = {
           },
           satisfaction: {
             name: 'Job Satisfaction',
-            label: 'Job Satisfaction',
             type: 'ordinal',
             component: 'LikertScale',
             options: [
@@ -218,19 +207,16 @@ const mockProtocol = {
           },
           isEmployed: {
             name: 'Currently Employed',
-            label: 'Currently Employed',
             type: 'boolean',
             component: 'Toggle',
           },
           acceptTerms: {
             name: 'Accept Terms',
-            label: 'Accept Terms',
             type: 'boolean',
             component: 'Boolean',
           },
           preferredContact: {
             name: 'Preferred Contact Method',
-            label: 'Preferred Contact Method',
             type: 'categorical',
             component: 'ToggleButtonGroup',
             placeholder: 'Select a method...',
@@ -242,7 +228,6 @@ const mockProtocol = {
           },
           bio: {
             name: 'Biography',
-            label: 'Biography',
             type: 'text',
             component: 'TextArea',
             validation: {
@@ -251,7 +236,6 @@ const mockProtocol = {
           },
           nickname: {
             name: 'Nickname',
-            label: 'Nickname',
             type: 'text',
             component: 'Text',
             validation: {
@@ -260,7 +244,6 @@ const mockProtocol = {
           },
           password: {
             name: 'Password',
-            label: 'Password',
             type: 'text',
             component: 'Text',
             validation: {
@@ -270,7 +253,6 @@ const mockProtocol = {
           },
           confirmPassword: {
             name: 'Confirm Password',
-            label: 'Confirm Password',
             type: 'text',
             component: 'Text',
             validation: {
@@ -280,7 +262,6 @@ const mockProtocol = {
           },
           startAge: {
             name: 'Start Age',
-            label: 'Start Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -289,7 +270,6 @@ const mockProtocol = {
           },
           endAge: {
             name: 'End Age',
-            label: 'End Age',
             type: 'number',
             component: 'Number',
             validation: {
@@ -299,7 +279,6 @@ const mockProtocol = {
           },
           alternateEmail: {
             name: 'Alternate Email',
-            label: 'Alternate Email',
             type: 'text',
             component: 'Text',
             validation: {

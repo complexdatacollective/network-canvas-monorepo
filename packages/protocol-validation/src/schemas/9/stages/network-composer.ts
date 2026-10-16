@@ -198,6 +198,9 @@ export const networkComposerStage = baseStageSchema.extend({
       z.strictObject({
         id: z.string(),
         subject: EdgeStageSubjectSchema,
+        // The words participants choose this edge type by in the toolbar,
+        // and the title of its editor: they never read the type's name.
+        label: localizedString(nonBlankText(), 'plain'),
         form: ComposerFormSchema.optional(),
       }),
     )

@@ -100,7 +100,6 @@ function hostWithSpareType(): InMemoryHost {
       ...sectionsFromProtocol(FIXTURE),
       [SPARE]: {
         name: 'Spare',
-        label: { 'en-US': 'Spare' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {},
@@ -267,7 +266,6 @@ const CALLS: readonly Call[] = [
         kind: 'codebookNode',
         document: Redacted.make({
           name: 'Place',
-          label: { 'en-US': 'Place' },
           color: 'node-color-seq-3',
           shape: { default: 'circle' },
           variables: {},
@@ -284,7 +282,6 @@ const CALLS: readonly Call[] = [
         kind: 'codebookEdge',
         document: Redacted.make({
           name: 'Knows',
-          label: { 'en-US': 'Knows' },
           color: 'edge-color-seq-1',
         }),
       }),
@@ -302,7 +299,6 @@ const CALLS: readonly Call[] = [
           variables: {
             ego_age: {
               name: 'ego_age',
-              label: 'Age',
               type: 'number',
               component: 'Number',
             },

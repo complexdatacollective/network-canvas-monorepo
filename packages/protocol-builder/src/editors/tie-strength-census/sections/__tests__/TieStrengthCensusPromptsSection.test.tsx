@@ -674,7 +674,6 @@ describe('a tie-strength prompt whose scale has gone', () => {
       edge: {
         knows: {
           name: 'knows',
-          label: { 'en-US': 'knows' },
           color: 'edge-color-seq-1',
           variables: {},
         },

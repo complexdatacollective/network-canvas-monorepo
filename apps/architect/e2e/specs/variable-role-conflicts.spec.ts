@@ -51,13 +51,11 @@ function conflictProtocol(): CurrentProtocol {
       node: {
         person: {
           name: 'Person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             sharedVar: {
               name: 'sharedVar',
-              label: 'sharedVar',
               type: 'categorical',
               // Referenced by an AlterForm field below — schema.ts's
               // logic refinements reject a form-field variable with no
@@ -68,20 +66,17 @@ function conflictProtocol(): CurrentProtocol {
             },
             formOnlyVar: {
               name: 'formOnlyVar',
-              label: 'formOnlyVar',
               type: 'categorical',
               component: 'CheckboxGroup',
               options: categoricalOptions,
             },
             binOnlyVar: {
               name: 'binOnlyVar',
-              label: 'binOnlyVar',
               type: 'categorical',
               options: categoricalOptions,
             },
             cleanVar: {
               name: 'cleanVar',
-              label: 'cleanVar',
               type: 'categorical',
               options: categoricalOptions,
             },

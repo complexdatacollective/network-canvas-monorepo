@@ -693,33 +693,9 @@ const nameOrKey = (definition: unknown, key: string) => {
   return typeof name === 'string' && !isBlankText(name) ? name : key;
 };
 
-/**
- * Schema 8 had no label for an entity type or attribute, so its label starts
- * as its name. The codebook key stands in for a missing or empty name,
- * because a label may not be empty.
- */
-const addLabels = (definitions: unknown) => {
-  if (!isRecord(definitions)) return;
-  for (const [key, definition] of Object.entries(definitions)) {
-    if (!isRecord(definition)) continue;
-    if (definition.label === undefined) {
-      definition.label = nameOrKey(definition, key);
-    }
-  }
-};
-
-const addCodebookLabels = (codebook: unknown) => {
-  if (!isRecord(codebook)) return;
-  for (const entity of ['node', 'edge'] as const) {
-    const types = codebook[entity];
-    addLabels(types);
-    if (!isRecord(types)) continue;
-    for (const type of Object.values(types)) {
-      if (isRecord(type)) addLabels(type.variables);
-    }
-  }
-  if (isRecord(codebook.ego)) addLabels(codebook.ego.variables);
-};
+/** The edge type definitions of a codebook. */
+const edgeTypesOf = (codebook: unknown): Record<string, unknown> =>
+  isRecord(codebook) && isRecord(codebook.edge) ? codebook.edge : {};
 
 /** The attribute definitions of the entity type a stage subject names. */
 const subjectVariables = (
@@ -796,22 +772,33 @@ const removeEncryptedAttributeComparisons = (protocol: unknown) => {
  * A schema 8 Narrative legend showed each highlighted attribute's name, so
  * each highlight keeps that name as its label. The attribute is looked up on
  * the stage subject's node type, and its id stands in for a missing or empty
- * name.
+ * name. Each edge type the legend shows keeps its type's name as its label in
+ * the same way.
  */
-const addHighlightLabels = (protocol: unknown) => {
+const addLegendLabels = (protocol: unknown) => {
   if (!isRecord(protocol) || !Array.isArray(protocol.stages)) return;
   const { codebook } = protocol;
+  const edgeTypes = edgeTypesOf(codebook);
   for (const stage of protocol.stages) {
     if (!isRecord(stage) || stage.type !== 'Narrative') continue;
     if (!Array.isArray(stage.presets)) continue;
     const variables = subjectVariables(codebook, 'node', stage.subject);
     for (const preset of stage.presets) {
-      if (!isRecord(preset) || !Array.isArray(preset.highlight)) continue;
-      preset.highlight = preset.highlight.map((variable: unknown) =>
-        typeof variable === 'string'
-          ? { variable, label: nameOrKey(variables[variable], variable) }
-          : variable,
-      );
+      if (!isRecord(preset)) continue;
+      if (Array.isArray(preset.highlight)) {
+        preset.highlight = preset.highlight.map((variable: unknown) =>
+          typeof variable === 'string'
+            ? { variable, label: nameOrKey(variables[variable], variable) }
+            : variable,
+        );
+      }
+      if (isRecord(preset.edges) && Array.isArray(preset.edges.display)) {
+        preset.edges.display = preset.edges.display.map((type: unknown) =>
+          typeof type === 'string'
+            ? { type, label: nameOrKey(edgeTypes[type], type) }
+            : type,
+        );
+      }
     }
   }
 };
@@ -859,6 +846,12 @@ const addComposerCaptions = (protocol: unknown) => {
         edge.form,
         subjectVariables(codebook, 'edge', edge.subject),
       );
+      // A schema 8 toolbar named each edge type by its name, so each edge
+      // keeps that name as its label.
+      const type = isRecord(edge.subject) ? edge.subject.type : undefined;
+      if (edge.label === undefined && typeof type === 'string') {
+        edge.label = nameOrKey(edgeTypesOf(codebook)[type], type);
+      }
     }
   }
 };
@@ -885,7 +878,7 @@ const asMarkdownText = (text: string | Record<string, unknown>): unknown => {
  * label of only spaces, which showed a preset with no name. A preset label
  * that shows nothing takes the default the 7 to 8 migration gives a missing
  * one, "Preset" and its position; a highlight label, the attribute's name, as
- * `addHighlightLabels` gives one. Text already localized loses only its
+ * `addLegendLabels` gives one. Text already localized loses only its
  * translations that show nothing, which then fall back to another.
  */
 const repairNarrativeLabels = (protocol: unknown) => {
@@ -1253,12 +1246,11 @@ const migrationV8toV9 = createMigration({
     // Before the pedigree conversion, which reads the options it keeps.
     remapMergedOptionValues(migrated, mergedOptionValuesOf(migrated.codebook));
     removeDuplicateOptionValues(migrated.codebook);
-    // Before the codebook labels and the localization pass, so the attribute
-    // and stage the conversion adds are labelled and localized with the rest.
+    // Before the localization pass, so the attribute and stage the
+    // conversion adds are localized with the rest.
     migrateFamilyPedigreeStages(migrated);
     migrateNarrativePedigreeStages(migrated);
-    addCodebookLabels(migrated.codebook);
-    addHighlightLabels(migrated);
+    addLegendLabels(migrated);
     addComposerCaptions(migrated);
     addFormFieldPrompts(migrated);
     addSuppliedStageText(migrated, localization);

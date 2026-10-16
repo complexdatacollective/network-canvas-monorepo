@@ -21,14 +21,12 @@ const codebook = {
   node: {
     person: {
       name: 'Person',
-      label: localized('Person'),
       color: 'node-color-seq-1',
       variables: {
-        [NAME]: { name: 'name', label: 'name', type: 'text' },
-        [AGE]: { name: 'age', label: 'age', type: 'number' },
+        [NAME]: { name: 'name', type: 'text' },
+        [AGE]: { name: 'age', type: 'number' },
         [ROSTER_ONLY]: {
           name: 'abbreviated_name',
-          label: 'abbreviated_name',
           type: 'text',
         },
       },

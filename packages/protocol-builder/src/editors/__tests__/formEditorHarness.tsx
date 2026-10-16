@@ -220,7 +220,6 @@ export const personDefinition = (
   variables: Record<string, unknown>,
 ): SectionDoc => ({
   name: 'person',
-  label: { 'en-US': 'person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
@@ -232,7 +231,6 @@ export const knowsDefinition = (
   variables: Record<string, unknown>,
 ): SectionDoc => ({
   name: 'knows',
-  label: { 'en-US': 'knows' },
   color: 'edge-color-seq-2',
   variables,
 });
@@ -350,7 +348,6 @@ const seedCategoricalAttribute = (
         ...asRecord(definition.variables),
         [SEEDED_CATEGORICAL]: {
           name: 'contact_setting',
-          label: 'contact_setting',
           type: 'categorical',
           // One of the two controls the schema lets a categorical be collected
           // with. A control belonging to another type — `RadioGroup` is the
@@ -450,7 +447,6 @@ export const authorsDateSettingsFromField = async (
   // on the form field, which holds only its question.
   expect(asRecord(codebookVariables(harness, subject)[dateId])).toMatchObject({
     name: 'met_on',
-    label: 'met_on',
     type: 'datetime',
     component: 'DatePicker',
   });

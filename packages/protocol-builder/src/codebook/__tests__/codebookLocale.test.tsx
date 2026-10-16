@@ -66,14 +66,12 @@ const context: ProtocolBuilderProtocolContext = {
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         icon: 'add-a-person',
         shape: { default: 'circle' },
         variables: {
           age: {
             name: 'Age',
-            label: 'Age',
             type: 'number',
             component: 'Number',
           },
@@ -83,12 +81,10 @@ const context: ProtocolBuilderProtocolContext = {
     edge: {
       knows: {
         name: 'Knows',
-        label: { en: 'Knows' },
         color: 'edge-color-seq-1',
         variables: {
           closeness: {
             name: 'Closeness',
-            label: 'Closeness',
             type: 'number',
           },
         },
@@ -98,7 +94,6 @@ const context: ProtocolBuilderProtocolContext = {
       variables: {
         consent: {
           name: 'Consent',
-          label: 'Consent',
           type: 'boolean',
         },
       },
@@ -264,7 +259,6 @@ describe('the codebook read in Spanish', () => {
  */
 const PERSON_DOCUMENT: SectionDoc = {
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
@@ -273,7 +267,6 @@ const PERSON_DOCUMENT: SectionDoc = {
     // is something the sweep can actually open.
     ethnicity: {
       name: 'Ethnicity',
-      label: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
@@ -283,7 +276,6 @@ const PERSON_DOCUMENT: SectionDoc = {
     },
     age: {
       name: 'Age',
-      label: 'Age',
       type: 'number',
       component: 'Number',
     },
@@ -697,13 +689,11 @@ describe('the codebook editors swept for English', () => {
     const user = userEvent.setup();
     const localVariable = {
       name: 'comment',
-      label: 'Comment',
       type: 'text',
       component: 'Text',
     };
     const remoteVariable = {
       name: 'comment',
-      label: 'Comment',
       type: 'number',
       component: 'NumberInput',
     };
@@ -765,14 +755,12 @@ describe('the codebook editors swept for English', () => {
     const variables: Readonly<Record<string, unknown>> = {
       age: {
         name: 'Age',
-        label: 'Age',
         type: 'number',
         component: 'Number',
         validation: { minValue: 0 },
       },
       height: {
         name: 'Height',
-        label: 'Height',
         type: 'number',
         component: 'Number',
       },

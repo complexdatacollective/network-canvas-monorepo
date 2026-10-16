@@ -139,8 +139,8 @@ export default function PresetSwitcher({
         getNetworkNodes,
         (codebook, subjectType, nodes) => {
           const edges = (currentPreset?.edges?.display ?? []).map(
-            (type: string) => ({
-              label: codebook?.edge?.[type]?.label,
+            ({ type, label }) => ({
+              label,
               color: codebook?.edge?.[type]?.color ?? 'edge-color-seq-1',
             }),
           );
@@ -323,9 +323,7 @@ export default function PresetSwitcher({
                         className="flex items-center gap-4 text-base"
                       >
                         <EdgeSwatch color={edge.color} />
-                        {edge.label && (
-                          <LocalizedText value={edge.label} render={<span />} />
-                        )}
+                        <LocalizedText value={edge.label} render={<span />} />
                       </div>
                     ))}
                   </div>

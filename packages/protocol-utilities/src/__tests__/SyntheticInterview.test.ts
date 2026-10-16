@@ -431,9 +431,11 @@ describe('SyntheticInterview', () => {
       const protocol = si.getProtocol();
       const stageConfig = protocol.stages[0] as Record<string, unknown>;
       const presets = stageConfig.presets as {
-        edges: { display: string[] };
+        edges: { display: { type: string; label: Record<string, string> }[] };
       }[];
-      expect(presets[0]!.edges.display).toEqual([et.id]);
+      expect(presets[0]!.edges.display).toEqual([
+        { type: et.id, label: { 'en-US': 'Friendship' } },
+      ]);
     });
 
     it('supports behaviours (freeDraw, allowRepositioning)', () => {
@@ -3062,41 +3064,6 @@ describe('localization', () => {
     expect(messageText(text?.['en-US'] ?? '')).toBe('Who uses {curly} braces?');
   });
 
-  it('labels codebook entries with their names unless given a label', () => {
-    const synth = new SyntheticInterview();
-    const person = synth.addNodeType({ name: 'Person' });
-    const friend = synth.addEdgeType({
-      name: 'Friend',
-      label: 'Close friend',
-    });
-    const age = person.addVariable({ name: 'age', type: 'number' });
-    const closeness = friend.addVariable({
-      name: 'closeness',
-      label: 'How close?',
-      type: 'ordinal',
-      options: [
-        { label: 'Very close', value: 1 },
-        { label: 'Distant', value: 2 },
-      ],
-    });
-    const mood = synth.addEgoVariable({ name: 'mood', type: 'text' });
-
-    const { codebook } = expectValid(synth);
-    const personType = codebook.node?.[person.id];
-    const friendType = codebook.edge?.[friend.id];
-    expect(personType?.label).toEqual({ 'en-US': 'Person' });
-    expect(personType?.variables?.[age.id]?.label).toBe('age');
-    expect(friendType?.label).toEqual({ 'en-US': 'Close friend' });
-    expect(friendType?.variables?.[closeness.id]).toMatchObject({
-      label: 'How close?',
-      options: [
-        { label: { 'en-US': 'Very close' }, value: 1 },
-        { label: { 'en-US': 'Distant' }, value: 2 },
-      ],
-    });
-    expect(codebook.ego?.variables?.[mood.id]?.label).toBe('mood');
-  });
-
   it('writes plain text in a default language set after it was added', () => {
     const synth = new SyntheticInterview();
     const stage = synth.addStage('NameGenerator', { label: 'Amigos' });
@@ -3120,7 +3087,6 @@ describe('localization', () => {
     });
     const person = synth.addNodeType({
       name: 'Person',
-      label: { 'en-US': 'Person', 'es': 'Persona', 'ar': 'شخص' },
     });
     const closeness = person.addVariable({
       name: 'closeness',
@@ -3160,11 +3126,6 @@ describe('localization', () => {
       locales: ['en-US', 'es', 'ar'],
     });
     const personType = protocol.codebook.node?.[person.id];
-    expect(personType?.label).toEqual({
-      'en-US': 'Person',
-      'es': 'Persona',
-      'ar': 'شخص',
-    });
     expect(personType?.variables?.[closeness.id]).toMatchObject({
       options: [
         {

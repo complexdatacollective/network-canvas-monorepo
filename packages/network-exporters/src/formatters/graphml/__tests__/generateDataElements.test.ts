@@ -28,11 +28,10 @@ const codebookWithName = (encrypted: boolean): Codebook => ({
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'name-uuid': { name: 'name', label: 'Name', type: 'text', encrypted },
+        'name-uuid': { name: 'name', type: 'text', encrypted },
       },
     },
   },

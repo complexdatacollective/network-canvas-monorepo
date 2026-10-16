@@ -68,7 +68,6 @@ function renderForm(
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
-              label: { en: 'Person' },
               variables: {
                 name: { name: 'name', type: 'text', component: 'Text' },
                 close: { name: 'close', type: 'boolean' },
@@ -275,7 +274,6 @@ describe('useProtocolForm dynamic values on an edge form', () => {
             node: {
               [NODE_TYPE]: {
                 name: NODE_TYPE,
-                label: { en: 'Person' },
                 variables: {
                   name: { name: 'name', type: 'text', component: 'Text' },
                 },
@@ -284,7 +282,6 @@ describe('useProtocolForm dynamic values on an edge form', () => {
             edge: {
               knows: {
                 name: 'knows',
-                label: { en: 'Knows' },
                 variables: {
                   note: { name: 'note', type: 'text', component: 'Text' },
                 },

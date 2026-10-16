@@ -21,7 +21,6 @@ const protocol: CurrentProtocol = {
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person', fr: 'Personne' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {},
@@ -73,7 +72,6 @@ describe('labels of new codebook entries', () => {
           entity: 'node',
           configuration: {
             name: 'friend',
-            label: { en: 'Friend', fr: 'Ami' },
             color: 'node-color-seq-2',
             shape: { default: 'circle' },
           },

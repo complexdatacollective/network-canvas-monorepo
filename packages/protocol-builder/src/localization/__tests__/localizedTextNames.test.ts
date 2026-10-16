@@ -25,7 +25,6 @@ const fixtureStage = (type: string): Path => {
 
 const scaleVariable = (name: string, minLabel: string, maxLabel: string) => ({
   name,
-  label: name,
   type: 'scalar',
   component: 'VisualAnalogScale',
   parameters: { minLabel: en(minLabel), maxLabel: en(maxLabel) },
@@ -104,13 +103,12 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   ],
   [
     ['codebook', 'node', 'person', 'variables', 'contactOther'],
-    { name: 'contactOther', label: 'Other', type: 'text', component: 'Text' },
+    { name: 'contactOther', type: 'text', component: 'Text' },
   ],
   [
     ['codebook', 'node', 'family_member', 'variables', 'fm_occupation'],
     {
       name: 'Occupation',
-      label: 'Occupation',
       type: 'text',
       component: 'Text',
     },
@@ -123,7 +121,6 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     ['codebook', 'ego', 'variables', 'ego_mood'],
     {
       name: 'Mood',
-      label: 'Mood',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
@@ -229,7 +226,6 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     ['codebook', 'node', 'family_member', 'variables', 'relativesNotRecorded'],
     {
       name: 'relativesNotRecorded',
-      label: 'relativesNotRecorded',
       type: 'categorical',
       options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(
         ({ value, label }) => ({ value, label: en(label) }),

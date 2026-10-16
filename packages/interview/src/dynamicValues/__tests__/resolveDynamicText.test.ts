@@ -22,12 +22,11 @@ import {
 } from '../resolveDynamicText';
 
 const VARIABLES: Record<string, Variable> = {
-  name: { name: 'name', label: 'Name', type: 'text' },
-  age: { name: 'age', label: 'Age', type: 'number' },
-  born: { name: 'born', label: 'Born', type: 'datetime' },
+  name: { name: 'name', type: 'text' },
+  age: { name: 'age', type: 'number' },
+  born: { name: 'born', type: 'datetime' },
   closeness: {
     name: 'closeness',
-    label: 'Closeness',
     type: 'ordinal',
     options: [
       { label: { en: 'Not close' }, value: 0 },
@@ -36,7 +35,6 @@ const VARIABLES: Record<string, Variable> = {
   },
   languages: {
     name: 'languages',
-    label: 'Languages',
     type: 'categorical',
     options: [
       { label: { en: 'English' }, value: 'en' },
@@ -44,7 +42,7 @@ const VARIABLES: Record<string, Variable> = {
       { label: { en: 'Spanish' }, value: 'es' },
     ],
   },
-  smokes: { name: 'smokes', label: 'Smokes', type: 'boolean' },
+  smokes: { name: 'smokes', type: 'boolean' },
 } as Record<string, Variable>;
 
 const BINDINGS: DynamicValues = {

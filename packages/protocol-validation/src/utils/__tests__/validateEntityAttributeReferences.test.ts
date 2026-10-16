@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Codebook } from '../../schemas/9/schema.ts';
-import { localized } from '../test-utils.ts';
 import { validateReferences } from '../validateEntityAttributeReferences.ts';
 
 // Minimal fixture: Variable discriminated-union requires many optional fields
@@ -11,12 +10,11 @@ const codebook = {
   node: {
     person: {
       name: 'Person',
-      label: localized('Person'),
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        age: { name: 'age', label: 'age', type: 'number' },
-        rank: { name: 'rank', label: 'rank', type: 'ordinal' },
+        age: { name: 'age', type: 'number' },
+        rank: { name: 'rank', type: 'ordinal' },
       },
     },
   },

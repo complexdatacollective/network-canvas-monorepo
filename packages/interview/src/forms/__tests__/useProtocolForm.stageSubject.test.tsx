@@ -70,49 +70,41 @@ function makeWrapper() {
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
-              label: { en: NODE_TYPE },
               variables: {
                 [NAME_VAR]: {
                   name: NAME_VAR,
-                  label: 'Full name',
                   type: 'text',
                   component: 'Text',
                   validation: { unique: true },
                 },
                 [DISPLAY_NAME_VAR]: {
                   name: DISPLAY_NAME_VAR,
-                  label: 'Display name',
                   type: 'text',
                   component: 'Text',
                 },
                 [ALIAS_VAR]: {
                   name: ALIAS_VAR,
-                  label: 'Alias',
                   type: 'text',
                   component: 'Text',
                   validation: { sameAs: DISPLAY_NAME_VAR },
                 },
                 [DOTTED_VAR]: {
                   name: DOTTED_VAR,
-                  label: 'Favorite colour',
                   type: 'text',
                   component: 'Text',
                 },
                 ['__proto__']: {
                   name: '__proto__',
-                  label: '__proto__',
                   type: 'text',
                   component: 'Text',
                 },
                 constructor: {
                   name: 'constructor',
-                  label: 'constructor',
                   type: 'text',
                   component: 'Text',
                 },
                 prototype: {
                   name: 'prototype',
-                  label: 'prototype',
                   type: 'text',
                   component: 'Text',
                 },

@@ -486,7 +486,6 @@ describe('a rule this filter cannot be about', () => {
         variables: {
           ego_name: {
             name: 'ego_name',
-            label: 'Name',
             type: 'text',
           },
         },

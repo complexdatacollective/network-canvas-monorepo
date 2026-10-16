@@ -74,17 +74,14 @@ function makeWrapper(
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
-              label: { en: 'Person', fr: 'Personne' },
               variables: {
                 age: {
                   name: 'age_years',
-                  label: 'Age',
                   type: 'number',
                   component: 'Number',
                 },
                 siblings: {
                   name: 'sibling_count',
-                  label: 'Siblings',
                   type: 'number',
                   component: 'Number',
                 },

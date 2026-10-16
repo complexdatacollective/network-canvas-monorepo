@@ -81,13 +81,11 @@ describe('validation layering', () => {
       ...protocol.codebook.node,
       colleague: {
         name: 'Colleague',
-        label: { en: 'Colleague' },
         color: 'node-color-seq-2',
         shape: { default: 'circle' },
         variables: {
           personName: {
             name: 'OtherName',
-            label: 'Other name',
             type: 'text',
           },
         },

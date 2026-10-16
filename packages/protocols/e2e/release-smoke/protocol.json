@@ -11,10 +11,6 @@
     "node": {
       "person": {
         "name": "Person",
-        "label": {
-          "en-US": "Person",
-          "es": "Persona"
-        },
         "color": "node-color-seq-1",
         "shape": {
           "default": "circle"
@@ -22,7 +18,6 @@
         "variables": {
           "name": {
             "name": "name",
-            "label": "name",
             "type": "text",
             "component": "Text",
             "encrypted": true,
@@ -32,12 +27,10 @@
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           },
           "context": {
             "name": "context",
-            "label": "context",
             "type": "categorical",
             "options": [
               {
@@ -65,7 +58,6 @@
           },
           "closeness": {
             "name": "closeness",
-            "label": "closeness",
             "type": "ordinal",
             "options": [
               {
@@ -93,7 +85,6 @@
           },
           "follow_up": {
             "name": "follow_up",
-            "label": "follow_up",
             "type": "boolean",
             "component": "Toggle"
           }
@@ -109,7 +100,6 @@
         "variables": {
           "fm_name": {
             "name": "fm_name",
-            "label": "fm_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -118,7 +108,6 @@
           },
           "is_ego": {
             "name": "is_ego",
-            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
@@ -168,8 +157,7 @@
                   "es": "Prefiero no decirlo"
                 }
               }
-            ],
-            "label": "genderIdentity"
+            ]
           },
           "sexAssignedAtBirth": {
             "name": "sexAssignedAtBirth",
@@ -210,31 +198,18 @@
                   "es": "Prefiero no decirlo"
                 }
               }
-            ],
-            "label": "sexAssignedAtBirth"
+            ]
           }
-        },
-        "label": {
-          "en-US": "family member",
-          "es": "familiar"
         }
       }
     },
     "edge": {
       "knows": {
         "name": "Knows",
-        "label": {
-          "en-US": "Knows",
-          "es": "Se conocen"
-        },
         "color": "edge-color-seq-1"
       },
       "friends": {
         "name": "Friends",
-        "label": {
-          "en-US": "Friends",
-          "es": "Amigos"
-        },
         "color": "edge-color-seq-2"
       },
       "family_edge": {
@@ -308,23 +283,16 @@
                   "es": "Gemelo, sin saber si idéntico"
                 }
               }
-            ],
-            "label": "relationshipKind"
+            ]
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
-            "label": "isGestationalCarrier",
             "type": "boolean"
           },
           "isCurrentPartner": {
             "name": "isCurrentPartner",
-            "type": "boolean",
-            "label": "isCurrentPartner"
+            "type": "boolean"
           }
-        },
-        "label": {
-          "en-US": "family_edge",
-          "es": "vínculo familiar"
         }
       }
     },
@@ -332,7 +300,6 @@
       "variables": {
         "ego_name": {
           "name": "ego_name",
-          "label": "ego_name",
           "type": "text",
           "component": "Text",
           "validation": {
@@ -341,7 +308,6 @@
         },
         "consent": {
           "name": "consent",
-          "label": "consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": {

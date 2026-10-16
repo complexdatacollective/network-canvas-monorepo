@@ -169,19 +169,16 @@ export function baseProtocol(): CurrentProtocol {
         node: {
           person: {
             name: 'Person',
-            label: { en: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
               personName: {
                 name: 'Name',
-                label: 'Name',
                 type: 'text',
                 component: 'Text',
               },
               layoutPosition: {
                 name: 'Layout_Position',
-                label: 'Layout position',
                 type: 'layout',
               },
             },
@@ -190,7 +187,6 @@ export function baseProtocol(): CurrentProtocol {
         edge: {
           knows: {
             name: 'Knows',
-            label: { en: 'Knows' },
             color: 'edge-color-seq-1',
           },
         },

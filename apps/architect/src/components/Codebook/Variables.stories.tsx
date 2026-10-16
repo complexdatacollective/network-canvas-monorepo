@@ -136,14 +136,12 @@ const createBilingualStore = () => {
         node: {
           person: {
             name: 'Person',
-            label: { en: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
               [SHORT_NAME_ID]: {
                 name: 'age',
                 type: 'number',
-                label: 'Age',
               },
             },
           },

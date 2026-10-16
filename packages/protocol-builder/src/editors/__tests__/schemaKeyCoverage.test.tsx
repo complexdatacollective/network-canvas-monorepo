@@ -192,19 +192,16 @@ describe.each(MAXIMAL)(
       addFamilyMemberVariables(harness, {
         [MEMBER_FORM_ATTRIBUTE]: {
           name: MEMBER_FORM_ATTRIBUTE,
-          label: MEMBER_FORM_ATTRIBUTE,
           type: 'text',
           component: 'Text',
         },
         [RELATIVES_NOT_RECORDED_ATTRIBUTE]: RELATIVES_NOT_RECORDED_VARIABLE,
         [NOMINATION_ATTRIBUTE]: {
           name: NOMINATION_ATTRIBUTE,
-          label: NOMINATION_ATTRIBUTE,
           type: 'boolean',
         },
         [RELATIONSHIP_ATTRIBUTE]: {
           name: RELATIONSHIP_ATTRIBUTE,
-          label: RELATIONSHIP_ATTRIBUTE,
           type: 'categorical',
           options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
             value,

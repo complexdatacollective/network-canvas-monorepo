@@ -135,7 +135,6 @@ describe('Schema 9 attribute names', () => {
                 ...person.variables,
                 'nombre completo': {
                   name: 'Nombre completo',
-                  label: 'Nombre completo',
                   type: 'text',
                 },
               },

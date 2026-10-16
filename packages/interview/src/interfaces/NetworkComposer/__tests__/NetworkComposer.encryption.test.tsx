@@ -160,7 +160,6 @@ const PASSPHRASE = 'composer passphrase';
 
 const encryptedText = (name: string): Variable => ({
   name,
-  label: name,
   type: 'text',
   component: 'Text',
   encrypted: true,
@@ -168,11 +167,10 @@ const encryptedText = (name: string): Variable => ({
 
 const variables: Record<string, Variable> = {
   [QUICK_ADD_VAR]: encryptedText('name'),
-  [LAYOUT_VAR]: { name: 'position', label: 'position', type: 'layout' },
+  [LAYOUT_VAR]: { name: 'position', type: 'layout' },
   [NOTES_VAR]: encryptedText('notes'),
   [PLACE_VAR]: {
     name: 'place',
-    label: 'place',
     type: 'text',
     component: 'Text',
   },
@@ -182,7 +180,6 @@ const uniqueNameVariables: Record<string, Variable> = {
   ...variables,
   [QUICK_ADD_VAR]: {
     name: 'name',
-    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
@@ -599,7 +596,6 @@ describe('NetworkComposer validating an encrypted name', () => {
     ...uniqueNameVariables,
     [GROUP_VAR]: {
       name: 'team',
-      label: 'team',
       type: 'categorical',
       options: [{ value: 'red', label: { en: 'Team Red' } }],
     },
@@ -982,13 +978,11 @@ describe('NetworkComposer side panel checking an answer against a protected one'
     ...variables,
     [QUICK_ADD_VAR]: {
       name: 'name',
-      label: 'name',
       type: 'text',
       component: 'Text',
     },
     [PLACE_VAR]: {
       name: 'place',
-      label: 'place',
       type: 'text',
       component: 'Text',
       validation: { differentFrom: asEntityAttributeReference(NOTES_VAR) },

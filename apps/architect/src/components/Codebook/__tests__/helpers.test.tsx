@@ -32,7 +32,6 @@ const state = {
           variables: {
             1: {
               name: 'name',
-              label: 'name',
               type: 'text' as const,
             },
           },
@@ -40,13 +39,11 @@ const state = {
         node: {
           person: {
             name: 'Person',
-            label: { en: 'Person' },
             color: 'node-color-seq-1' as const,
             shape: { default: 'circle' as const },
             variables: {
               2: {
                 name: 'name',
-                label: 'name',
                 type: 'text' as const,
               },
             },
@@ -55,12 +52,10 @@ const state = {
         edge: {
           friend: {
             name: 'Friend',
-            label: { en: 'Friend' },
             color: 'edge-color-seq-1' as const,
             variables: {
               3: {
                 name: 'name',
-                label: 'name',
                 type: 'text' as const,
               },
             },
@@ -290,19 +285,16 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
             node: {
               person: {
                 name: 'Person',
-                label: { en: 'Person' },
                 color: 'node-color-seq-1',
                 shape: { default: 'circle' },
                 variables: {
                   'owner.id': {
                     name: 'Owner',
-                    label: 'Owner',
                     type: 'number',
                     validation: { sameAs: 'target.id' },
                   },
                   'target.id': {
                     name: 'Target',
-                    label: 'Target',
                     type: 'number',
                   },
                 },
@@ -336,7 +328,6 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
             node: {
               'person.v2': {
                 name: 'Person',
-                label: { en: 'Person' },
                 color: 'node-color-seq-1',
                 shape: {
                   default: 'circle',
@@ -349,7 +340,6 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
                 variables: {
                   category: {
                     name: 'Category',
-                    label: 'Category',
                     type: 'categorical',
                     options: [{ label: { en: 'A' }, value: 'a' }],
                   },

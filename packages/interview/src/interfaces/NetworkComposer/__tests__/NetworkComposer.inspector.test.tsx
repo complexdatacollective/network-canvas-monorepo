@@ -135,24 +135,20 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
         [QUICK_ADD_VAR]: {
           name: 'name',
-          label: 'Name',
           type: 'text' as const,
           component: 'Text' as const,
         },
         [LAYOUT_VAR]: {
           name: 'position',
-          label: 'Position',
           type: 'layout' as const,
         },
         [NODE_NAME_VAR]: {
           name: 'Full name',
-          label: 'Full name',
           type: 'text' as const,
           component: 'Text' as const,
         },
@@ -162,12 +158,10 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Knows',
-      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {
         [EDGE_STRENGTH_VAR]: {
           name: 'Strength',
-          label: 'Strength',
           type: 'text' as const,
           component: 'Text' as const,
         },
@@ -406,7 +400,6 @@ describe('NetworkComposer inspector — node', () => {
             [PROTOTYPE_VAR]: {
               component: 'Text',
               name: 'Prototype value',
-              label: 'Prototype value',
               type: 'text',
             },
           },
@@ -580,13 +573,11 @@ describe('NetworkComposer inspector — undo and redo changing what the drawer s
           ...personType.variables,
           [NICKNAME_VAR]: {
             name: 'Nickname',
-            label: 'Nickname',
             type: 'text' as const,
             component: 'Text' as const,
           },
           [GROUP_VAR]: {
             name: 'Team',
-            label: 'Team',
             type: 'categorical' as const,
             component: 'CheckboxGroup' as const,
             options: [

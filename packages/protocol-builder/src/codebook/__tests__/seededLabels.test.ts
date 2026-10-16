@@ -24,7 +24,6 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
 
 const PERSON: SectionDoc = {
   name: 'Persona',
-  label: { es: 'Persona' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: {},
@@ -49,15 +48,14 @@ describe('the label a new attribute is created with', () => {
   it('is its name, as plain text', () => {
     expect(createdVariable({ name: '  cercanía ', type: 'text' })).toEqual({
       name: 'cercanía',
-      label: 'cercanía',
       type: 'text',
     });
   });
 
   it('is the one the researcher wrote, when they wrote one', () => {
-    expect(
-      createdVariable({ name: 'cercania', label: 'Cercanía', type: 'text' }),
-    ).toMatchObject({ label: 'Cercanía' });
+    expect(createdVariable({ name: 'cercania', type: 'text' })).toMatchObject({
+      label: 'Cercanía',
+    });
   });
 });
 

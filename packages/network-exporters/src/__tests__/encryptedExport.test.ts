@@ -31,38 +31,34 @@ const options: ExportOptions = {
 
 const codebook: Codebook = {
   ego: {
-    variables: { 'e-note': { name: 'note', label: 'Note', type: 'text' } },
+    variables: { 'e-note': { name: 'note', type: 'text' } },
   },
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
         'p-name': {
           name: 'name',
-          label: 'Name',
           type: 'text',
           encrypted: true,
         },
         'p-nickname': {
           name: 'nickname',
-          label: 'Nickname',
           type: 'text',
           encrypted: true,
         },
-        'p-city': { name: 'city', label: 'City', type: 'text' },
+        'p-city': { name: 'city', type: 'text' },
       },
     },
   },
   edge: {
     knows: {
       name: 'Knows',
-      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {
-        'k-since': { name: 'since', label: 'Since', type: 'text' },
+        'k-since': { name: 'since', type: 'text' },
       },
     },
   },
@@ -259,38 +255,34 @@ describe.each([
 // would leave them), and a type whose name the codebook does mark encrypted.
 const recordedCodebook: Codebook = {
   ego: {
-    variables: { 'e-note': { name: 'note', label: 'Note', type: 'text' } },
+    variables: { 'e-note': { name: 'note', type: 'text' } },
   },
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-name': { name: 'name', label: 'Name', type: 'text' },
-        'p-age': { name: 'age', label: 'Age', type: 'number' },
+        'p-name': { name: 'name', type: 'text' },
+        'p-age': { name: 'age', type: 'number' },
         'p-pets': {
           name: 'pets',
-          label: 'Pets',
           type: 'categorical',
           options: [
             { label: { en: 'Cat' }, value: 'cat' },
             { label: { en: 'Dog' }, value: 'dog' },
           ],
         },
-        'p-city': { name: 'city', label: 'City', type: 'text' },
+        'p-city': { name: 'city', type: 'text' },
       },
     },
     contact: {
       name: 'Contact',
-      label: { en: 'Contact' },
       color: 'node-color-seq-2',
       shape: { default: 'circle' },
       variables: {
         'c-name': {
           name: 'name',
-          label: 'Name',
           type: 'text',
           encrypted: true,
         },
@@ -300,10 +292,9 @@ const recordedCodebook: Codebook = {
   edge: {
     knows: {
       name: 'Knows',
-      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {
-        'k-since': { name: 'since', label: 'Since', type: 'text' },
+        'k-since': { name: 'since', type: 'text' },
       },
     },
   },
