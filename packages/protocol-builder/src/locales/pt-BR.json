@@ -1263,6 +1263,7 @@
   "protocolBuilder.pedigree.nameLabel": "Nome",
   "protocolBuilder.pedigree.namePromptHint": "Mostrado acima do campo em que os participantes digitam o nome de um familiar. Começa com um texto fornecido pelo Network Canvas, que você pode alterar.",
   "protocolBuilder.pedigree.namePromptLabel": "Pergunta do nome",
+  "protocolBuilder.pedigree.nameRequiredUnavailable": "Indisponível nesta etapa. Cada familiar sempre tem um nome: o que a pessoa participante digita ou um rótulo gerado a partir da relação com a pessoa participante.",
   "protocolBuilder.pedigree.nominationAddLabel": "Criar nova pergunta de nomeação",
   "protocolBuilder.pedigree.nominationAddTitle": "Criar pergunta de nomeação",
   "protocolBuilder.pedigree.nominationDescription": "Se quiser, faça perguntas sobre a família inteira depois que ela for desenhada, como “Quem na sua família já teve doença cardíaca?”. Participantes respondem a cada uma, uma de cada vez, selecionando todas as pessoas às quais ela se aplica, e a interface define um atributo booleano nessas pessoas.",

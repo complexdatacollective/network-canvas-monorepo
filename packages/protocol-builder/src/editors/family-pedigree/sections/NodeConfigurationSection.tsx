@@ -87,6 +87,9 @@ export default function NodeConfigurationSection() {
             draftBoundElsewhere={otherAnswerVariables.name}
             draftSlotMap={draftSlotMap}
             offerValidation
+            unavailableValidationRules={{
+              required: intl.formatMessage(messages.nameRequiredUnavailable),
+            }}
           />
           {supplied !== undefined && (
             <>

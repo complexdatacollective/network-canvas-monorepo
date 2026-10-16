@@ -1263,6 +1263,7 @@
   "protocolBuilder.pedigree.nameLabel": "Name",
   "protocolBuilder.pedigree.namePromptHint": "Wird über dem Feld angezeigt, in das Teilnehmende den Namen eines Familienmitglieds eingeben. Der Text beginnt mit einem von Network Canvas bereitgestellten Wortlaut, den Sie ändern können.",
   "protocolBuilder.pedigree.namePromptLabel": "Namensfrage",
+  "protocolBuilder.pedigree.nameRequiredUnavailable": "Für diesen Abschnitt nicht verfügbar. Jedes Familienmitglied hat immer einen Namen: den, den die teilnehmende Person eingibt, oder eine Bezeichnung, die aus seiner Beziehung zur teilnehmenden Person erzeugt wird.",
   "protocolBuilder.pedigree.nominationAddLabel": "Neue Nennungsfrage erstellen",
   "protocolBuilder.pedigree.nominationAddTitle": "Nennungsfrage erstellen",
   "protocolBuilder.pedigree.nominationDescription": "Stellen Sie optional Fragen zur ganzen Familie, sobald sie gezeichnet ist, etwa „Wer in Ihrer Familie hatte eine Herzerkrankung?“. Teilnehmende beantworten jede Frage nacheinander, indem sie alle Personen auswählen, auf die sie zutrifft, und die Oberfläche setzt bei diesen ein boolesches Attribut.",

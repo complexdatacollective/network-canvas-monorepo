@@ -1263,6 +1263,7 @@
   "protocolBuilder.pedigree.nameLabel": "Nom",
   "protocolBuilder.pedigree.namePromptHint": "Affiché au-dessus du champ où les personnes participantes saisissent le nom d’un membre de la famille. Il commence par un libellé fourni par Network Canvas, que vous pouvez modifier.",
   "protocolBuilder.pedigree.namePromptLabel": "Question sur le nom",
+  "protocolBuilder.pedigree.nameRequiredUnavailable": "Non disponible pour cette étape. Chaque membre de la famille a toujours un nom : celui que saisit la personne participante, ou un libellé généré à partir de sa relation avec la personne participante.",
   "protocolBuilder.pedigree.nominationAddLabel": "Créer une consigne de désignation",
   "protocolBuilder.pedigree.nominationAddTitle": "Créer une consigne de désignation",
   "protocolBuilder.pedigree.nominationDescription": "Posez éventuellement des questions sur l’ensemble de la famille une fois qu’elle est dessinée, comme « Qui dans votre famille a eu une maladie cardiaque ? ». Les personnes participantes répondent à chacune tour à tour en sélectionnant toutes les personnes concernées, et l’interface définit un attribut booléen sur ces personnes.",

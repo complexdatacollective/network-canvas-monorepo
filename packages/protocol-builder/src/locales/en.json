@@ -5055,6 +5055,10 @@
     "defaultMessage": "Name question",
     "description": "Label of the box holding the words above the name box in the side panel, where the participant types a family member’s name."
   },
+  "protocolBuilder.pedigree.nameRequiredUnavailable": {
+    "defaultMessage": "Not available for this stage. Every family member always has a name: the one the participant types, or a label generated from their relationship to the participant.",
+    "description": "Shown beneath the \"required\" validation rule of the family members’ name attribute, which the researcher cannot switch on in this stage. The interview gives every family member a name, so requiring one would never stop the participant. The participant is the person being interviewed."
+  },
   "protocolBuilder.pedigree.nominationAddLabel": {
     "defaultMessage": "Create new nomination prompt",
     "description": "Button that opens the dialog for writing one more question about the whole family. Whole rather than a generic “Add”, because a stage editor shows several lists at once."
