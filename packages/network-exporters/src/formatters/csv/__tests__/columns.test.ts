@@ -28,7 +28,6 @@ const personCodebook = (variables: Variables): Codebook => ({
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables,
@@ -92,7 +91,6 @@ describe('the cells of categorical columns', () => {
     personCodebook({
       rating: {
         name: 'rating',
-        label: 'Rating',
         type: 'categorical',
         options: values.map((value) => ({
           label: { en: String(value) },
@@ -138,11 +136,10 @@ describe('a variable column with the name of a built-in column', () => {
   it('is renamed, keeps its values, and is reported once', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        id: { name: 'nodeID', label: 'Node ID', type: 'text' },
-        uid: { name: '_uid', label: 'Uid', type: 'text' },
+        id: { name: 'nodeID', type: 'text' },
+        uid: { name: '_uid', type: 'text' },
         ego: {
           name: 'networkCanvasUUID',
-          label: 'Network canvas UUID',
           type: 'text',
         },
       }),
@@ -174,10 +171,9 @@ describe('variable columns with the same name', () => {
   it('leaves the first in codebook order, and renames the later one', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        text: { name: 'colour_red', label: 'Colour red', type: 'text' },
+        text: { name: 'colour_red', type: 'text' },
         choice: {
           name: 'colour',
-          label: 'Colour',
           type: 'categorical',
           options: [
             { label: { en: 'Red' }, value: 'red' },
@@ -202,8 +198,8 @@ describe('variable columns with the same name', () => {
   it('never gives a renamed column the name of another column', () => {
     const { headers, rows } = exportAttributeList(
       personCodebook({
-        first: { name: 'nodeID', label: 'Node ID', type: 'text' },
-        second: { name: 'nodeID_2', label: 'Node ID 2', type: 'text' },
+        first: { name: 'nodeID', type: 'text' },
+        second: { name: 'nodeID_2', type: 'text' },
       }),
       withNodes(person({ first: 'one', second: 'two' })),
     );
@@ -218,10 +214,9 @@ describe('variable columns with the same name', () => {
     const decomposed = 'x_Cafe\u0301';
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        first: { name: composed, label: 'Café', type: 'text' },
+        first: { name: composed, type: 'text' },
         second: {
           name: 'x',
-          label: 'X',
           type: 'categorical',
           options: [{ label: { en: 'Café' }, value: 'Cafe\u0301' }],
         },
@@ -238,8 +233,8 @@ describe('variable columns with the same name', () => {
   it('compares headers as written, with the formula guard', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        formula: { name: '=total', label: 'Total', type: 'text' },
-        guarded: { name: "'=total", label: 'Total', type: 'text' },
+        formula: { name: '=total', type: 'text' },
+        guarded: { name: "'=total", type: 'text' },
       }),
       withNodes(person({ formula: 'one', guarded: 'two' })),
     );
@@ -253,8 +248,8 @@ describe('variable columns with the same name', () => {
   it('does not rename names that differ only in case', () => {
     const { headers, warnings } = exportAttributeList(
       personCodebook({
-        lower: { name: 'age', label: 'Age', type: 'number' },
-        upper: { name: 'Age', label: 'Age', type: 'number' },
+        lower: { name: 'age', type: 'number' },
+        upper: { name: 'Age', type: 'number' },
       }),
       withNodes(person({ lower: 1, upper: 2 })),
     );
@@ -268,7 +263,6 @@ describe('variable columns with the same name', () => {
       personCodebook({
         rating: {
           name: 'rating',
-          label: 'Rating',
           type: 'categorical',
           options: [
             { label: { en: 'One' }, value: 1 },
@@ -288,7 +282,7 @@ describe('variable columns with the same name', () => {
   it('renames an attribute the codebook does not declare after every variable', () => {
     const { headers, rows, warnings } = exportAttributeList(
       personCodebook({
-        name: { name: 'name', label: 'Name', type: 'text' },
+        name: { name: 'name', type: 'text' },
       }),
       withNodes(person({ nickname: 'Dee', name: 'Deirdre' })),
     );
@@ -298,7 +292,7 @@ describe('variable columns with the same name', () => {
 
     const clash = exportAttributeList(
       personCodebook({
-        name: { name: 'nickname', label: 'Nickname', type: 'text' },
+        name: { name: 'nickname', type: 'text' },
       }),
       withNodes(person({ nickname: 'Dee', name: 'Deirdre' })),
     );
@@ -318,10 +312,9 @@ describe('variable columns with the same name', () => {
       personCodebook({
         text: {
           name: 'pos_screenSpaceX',
-          label: 'Pos screen space x',
           type: 'text',
         },
-        layout: { name: 'pos', label: 'Pos', type: 'layout' },
+        layout: { name: 'pos', type: 'layout' },
       }),
       withNodes(person({ text: 'note', layout: { x: 0.5, y: 0.25 } })),
       true,
@@ -348,21 +341,19 @@ describe('a file with no nodes', () => {
       node: {
         person: {
           name: 'Person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            id: { name: 'nodeID', label: 'Node ID', type: 'text' },
-            name: { name: 'name', label: 'Name', type: 'text' },
+            id: { name: 'nodeID', type: 'text' },
+            name: { name: 'name', type: 'text' },
           },
         },
         place: {
           name: 'Place',
-          label: { en: 'Place' },
           color: 'node-color-seq-2',
           shape: { default: 'square' },
           variables: {
-            name: { name: 'name', label: 'Name', type: 'text' },
+            name: { name: 'name', type: 'text' },
           },
         },
       },
@@ -385,10 +376,9 @@ describe('the edge list', () => {
       edge: {
         knows: {
           name: 'Knows',
-          label: { en: 'Knows' },
           color: 'edge-color-seq-1',
           variables: {
-            from: { name: 'from', label: 'From', type: 'text' },
+            from: { name: 'from', type: 'text' },
           },
         },
       },
@@ -437,10 +427,9 @@ describe('the ego list', () => {
     const codebook: Codebook = {
       ego: {
         variables: {
-          internal: { name: 'caseId', label: 'Case id', type: 'text' },
+          internal: { name: 'caseId', type: 'text' },
           printed: {
             name: 'networkCanvasCaseID',
-            label: 'Network canvas case ID',
             type: 'text',
           },
         },

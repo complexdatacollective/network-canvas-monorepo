@@ -59,37 +59,31 @@ const protocolWith = (
     node: {
       person: {
         name: 'Person',
-        label: localized('Person'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' as const },
         variables: {
           name: {
             name: 'Name',
-            label: 'Name',
             type: 'text' as const,
             component: 'Text',
           },
-          isEgo: { name: 'IsEgo', label: 'IsEgo', type: 'boolean' as const },
+          isEgo: { name: 'IsEgo', type: 'boolean' as const },
           hd: {
             name: 'HeartDisease',
-            label: 'HeartDisease',
             type: 'boolean' as const,
           },
           gender: {
             name: 'Gender',
-            label: 'Gender',
             type: 'categorical' as const,
             options: genderOptions,
           },
           sab: {
             name: 'Sab',
-            label: 'Sab',
             type: 'categorical' as const,
             options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
           },
           rel: {
             name: 'Relationship',
-            label: 'Relationship',
             type: 'categorical' as const,
             options: PEDIGREE_RELATIONSHIPS_TO_PARTICIPANT.map((value) => ({
               value,
@@ -98,12 +92,10 @@ const protocolWith = (
           },
           relText: {
             name: 'RelationshipText',
-            label: 'RelationshipText',
             type: 'text' as const,
           },
           partial: {
             name: 'Partial',
-            label: 'Partial',
             type: 'categorical' as const,
             options: [
               { value: 'parent', label: localized('Parent') },
@@ -116,23 +108,19 @@ const protocolWith = (
     edge: {
       family: {
         name: 'Family',
-        label: localized('Family'),
         color: 'edge-color-seq-1',
         variables: {
           kind: {
             name: 'Kind',
-            label: 'Kind',
             type: 'categorical' as const,
             options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
           },
           carrier: {
             name: 'Carrier',
-            label: 'Carrier',
             type: 'boolean' as const,
           },
           current: {
             name: 'Current',
-            label: 'Current',
             type: 'boolean' as const,
           },
         },

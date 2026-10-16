@@ -57,14 +57,12 @@ const PASSPHRASE = 'name generator passphrase';
 const variables: Record<string, Variable> = {
   [NAME_VAR]: {
     name: 'name',
-    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
   [NICKNAME_VAR]: {
     name: 'nickname',
-    label: 'nickname',
     type: 'text',
     component: 'Text',
   },

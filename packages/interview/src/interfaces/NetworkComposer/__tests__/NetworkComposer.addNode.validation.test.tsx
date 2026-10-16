@@ -75,20 +75,17 @@ function buildCodebook(
     node: {
       [NODE_TYPE]: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           [QUICK_ADD_VAR]: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
           },
           [LAYOUT_VAR]: {
             name: 'position',
-            label: 'Position',
             type: 'layout',
           },
         },
@@ -322,14 +319,15 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
 
     render(
       <AddNodeInput
-        entityLabel="Person"
         placeholder="Type a name, then press Enter"
         targetVariable="safe.__proto__.polluted"
         onCreate={onCreate}
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: /person name/i });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     await userEvent.type(input, 'Alice');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -351,14 +349,15 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
 
     render(
       <AddNodeInput
-        entityLabel="Person"
         placeholder="Type a name, then press Enter"
         targetVariable={QUICK_ADD_VAR}
         onCreate={onCreate}
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: /person name/i });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     await userEvent.type(input, 'Alice');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -385,14 +384,15 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
 
     render(
       <AddNodeInput
-        entityLabel="Person"
         placeholder="Type a name, then press Enter"
         targetVariable={QUICK_ADD_VAR}
         onCreate={onCreate}
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: /person name/i });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     await userEvent.type(input, 'Alice');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 

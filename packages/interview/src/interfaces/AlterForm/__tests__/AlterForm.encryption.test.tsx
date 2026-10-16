@@ -333,7 +333,6 @@ describe('AlterForm comparing an answer with a protected one', () => {
     ...encryptedVariables,
     nickname: {
       name: 'nickname',
-      label: 'Nickname',
       type: 'text',
       component: 'Text',
       validation: { differentFrom: asEntityAttributeReference('name') },

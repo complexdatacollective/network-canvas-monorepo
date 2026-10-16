@@ -198,14 +198,12 @@ describe('NameGeneratorRoster adding people whose answers are encrypted', () => 
     const { store, draggable } = await renderRoster('fresh', {
       'var-name': {
         name: 'name',
-        label: 'name',
         type: 'text',
         component: 'Text',
         encrypted: true,
       },
       'var-age': {
         name: 'age',
-        label: 'age',
         type: 'number',
         component: 'Number',
       },

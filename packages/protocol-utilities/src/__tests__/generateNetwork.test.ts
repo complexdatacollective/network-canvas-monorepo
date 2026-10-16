@@ -49,7 +49,6 @@ function makeCodebook(overrides?: Partial<Codebook>): Codebook {
         variables: {
           'var-name': {
             name: 'Name',
-            label: 'Name',
             type: 'text',
           },
         },
@@ -253,7 +252,7 @@ function makeSkipRoutingCodebook(): Codebook {
   const nodeDefinition: NonNullable<Codebook['node']>[string] = {
     color: 'node-color-seq-1',
     variables: {
-      'var-name': { name: 'Name', label: 'Name', type: 'text' },
+      'var-name': { name: 'Name', type: 'text' },
     },
   };
 
@@ -262,7 +261,6 @@ function makeSkipRoutingCodebook(): Codebook {
       variables: {
         consent: {
           name: 'Consent',
-          label: 'Consent',
           type: 'boolean',
         },
       },
@@ -274,7 +272,6 @@ function makeSkipRoutingCodebook(): Codebook {
           ...nodeDefinition.variables,
           blocked: {
             name: 'Blocked',
-            label: 'Blocked',
             type: 'text',
             validation: { minLength: 10, maxLength: 5 },
           },
@@ -295,12 +292,10 @@ describe('generateNetwork', () => {
           variables: {
             'var-name': {
               name: 'Name',
-              label: 'Name',
               type: 'text',
             },
             'var-nickname': {
               name: 'Nickname',
-              label: 'Nickname',
               type: 'text',
             },
           },
@@ -331,12 +326,10 @@ describe('generateNetwork', () => {
           variables: {
             'var-name': {
               name: 'Name',
-              label: 'Name',
               type: 'text',
             },
             'highlighted': {
               name: 'Highlighted',
-              label: 'Highlighted',
               type: 'boolean',
             },
           },
@@ -678,12 +671,10 @@ describe('generateNetwork', () => {
             variables: {
               'var-name': {
                 name: 'Name',
-                label: 'Name',
                 type: 'text',
               },
               'var-ordinal': {
                 name: 'Closeness',
-                label: 'Closeness',
                 type: 'ordinal',
                 options: [
                   { label: en('Low'), value: 1 },
@@ -693,7 +684,6 @@ describe('generateNetwork', () => {
               },
               'var-cat': {
                 name: 'Group',
-                label: 'Group',
                 type: 'categorical',
                 options: [
                   { label: en('A'), value: 'a' },
@@ -702,7 +692,6 @@ describe('generateNetwork', () => {
               },
               'var-other': {
                 name: 'Other group',
-                label: 'Other group',
                 type: 'text',
               },
             },
@@ -817,12 +806,10 @@ describe('generateNetwork', () => {
             variables: {
               'var-name': {
                 name: 'Name',
-                label: 'Name',
                 type: 'text',
               },
               'var-layout': {
                 name: 'Layout',
-                label: 'Layout',
                 type: 'layout',
               },
             },
@@ -1374,7 +1361,6 @@ describe('generateNetwork', () => {
             variables: {
               'var-strength': {
                 name: 'Strength',
-                label: 'Strength',
                 type: 'text',
               },
             },

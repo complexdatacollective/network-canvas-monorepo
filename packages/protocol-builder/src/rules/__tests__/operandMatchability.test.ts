@@ -42,13 +42,11 @@ const codebookFor = (type: VariableType): Codebook =>
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           v: {
             name: 'V',
-            label: 'V',
             type,
             ...(type === 'categorical' || type === 'ordinal'
               ? { options: OPTIONS }

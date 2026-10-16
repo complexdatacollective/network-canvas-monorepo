@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { localized } from '../../../utils/test-utils.ts';
-import {
-  EdgeDefinitionSchema,
-  NodeDefinitionSchema,
-} from '../codebook/definitions.ts';
 import { FormFieldSchema, FormSchema } from '../common/forms.ts';
 import { panelSchema } from '../common/panels.ts';
 import { promptSchema } from '../common/prompts.ts';
@@ -193,23 +189,6 @@ const REQUIRED_TEXT_SITES: readonly {
     path: ['explanationText'],
   },
   {
-    name: 'a node type label',
-    schema: NodeDefinitionSchema,
-    valid: (label) => ({
-      name: 'Person',
-      label,
-      color: 'node-color-seq-1',
-      shape: { default: 'circle' },
-    }),
-    path: ['label'],
-  },
-  {
-    name: 'an edge type label',
-    schema: EdgeDefinitionSchema,
-    valid: (label) => ({ name: 'Knows', label }),
-    path: ['label'],
-  },
-  {
     name: 'a roster card property label',
     schema: nameGeneratorRosterStage,
     valid: (label) => ({
@@ -339,6 +318,25 @@ const BLANK_REFUSED_SITES: readonly {
     path: ['presets', 0, 'highlight', 0, 'label'],
   },
   {
+    name: 'a Narrative edge legend label',
+    schema: narrativeStage,
+    holding: (label) => ({
+      id: 'narrative',
+      type: 'Narrative',
+      label: localized('Narrative'),
+      subject: { entity: 'node', type: 'person' },
+      presets: [
+        {
+          id: 'preset',
+          label: localized('Preset 1'),
+          layoutVariable: 'layout',
+          edges: { display: [{ type: 'knows', label }] },
+        },
+      ],
+    }),
+    path: ['presets', 0, 'edges', 'display', 0, 'label'],
+  },
+  {
     name: 'a Family Pedigree prompt',
     schema: familyPedigreeStage,
     holding: (prompt) => ({
@@ -399,7 +397,6 @@ describe.each(BLANK_REFUSED_SITES)('$name', ({ schema, holding, path }) => {
 describe('a scale attribute end label', () => {
   const scale = (maxLabel: Record<string, string>) => ({
     name: 'Closeness',
-    label: 'Closeness',
     type: 'scalar',
     component: ComponentTypes.VisualAnalogScale,
     parameters: { minLabel: localized('Not close'), maxLabel },
@@ -439,7 +436,6 @@ describe.each(REQUIRED_TEXT_SITES)('$name', ({ schema, valid, path }) => {
 describe('option labels', () => {
   const booleanVariable = (label: Record<string, string>) => ({
     name: 'Smokes',
-    label: 'Smokes',
     type: 'boolean',
     component: ComponentTypes.Boolean,
     options: [
@@ -449,7 +445,6 @@ describe('option labels', () => {
   });
   const categoricalVariable = (label: Record<string, string>) => ({
     name: 'Colour',
-    label: 'Colour',
     type: 'categorical',
     options: [
       { label, value: 'red' },

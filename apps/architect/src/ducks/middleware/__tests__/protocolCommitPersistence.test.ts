@@ -312,19 +312,16 @@ describe('validated protocol commit persistence', () => {
       node: {
         person: {
           name: 'Person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             first: {
               name: 'first',
-              label: 'first',
               type: 'text',
               encrypted: true,
             },
             second: {
               name: 'second',
-              label: 'second',
               type: 'text',
               encrypted: true,
             },

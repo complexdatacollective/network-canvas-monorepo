@@ -73,32 +73,27 @@ const protocolWith = (stages: Stage[]) => ({
     node: {
       family_member: {
         name: 'Family member',
-        label: localized('Family member'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' as const },
         variables: {
           fmName: {
             name: 'fm_name',
-            label: 'fm_name',
             type: 'text',
             component: 'Text',
           },
-          isEgo: { name: 'is_ego', label: 'is_ego', type: 'boolean' },
+          isEgo: { name: 'is_ego', type: 'boolean' },
           genderIdentity: {
             name: 'genderIdentity',
-            label: 'genderIdentity',
             type: 'categorical',
             options: GENDER_IDENTITY_OPTIONS,
           },
           sexAssignedAtBirth: {
             name: 'sexAssignedAtBirth',
-            label: 'sexAssignedAtBirth',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
           },
           hasConditionX: {
             name: 'hasConditionX',
-            label: 'hasConditionX',
             type: 'boolean',
             component: 'Toggle',
           },
@@ -108,23 +103,19 @@ const protocolWith = (stages: Stage[]) => ({
     edge: {
       family_edge: {
         name: 'Family edge',
-        label: localized('Family edge'),
         color: 'edge-color-seq-1',
         variables: {
           relationshipKind: {
             name: 'relationshipKind',
-            label: 'relationshipKind',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
           },
           isGestationalCarrier: {
             name: 'isGestationalCarrier',
-            label: 'isGestationalCarrier',
             type: 'boolean',
           },
           isCurrentPartner: {
             name: 'isCurrentPartner',
-            label: 'isCurrentPartner',
             type: 'boolean',
           },
         },

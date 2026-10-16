@@ -272,6 +272,19 @@ export const composerMessages = defineMessages({
     description:
       'Guidance under the connection-type control of a network composer. The codebook is where a protocol defines the kinds of connection its network holds.',
   },
+  connectionLabelLabel: {
+    id: 'protocolBuilder.networkCanvas.composerEdgeLabelLabel',
+    defaultMessage: 'Label',
+    description:
+      'Label of the text box holding the words participants see for one kind of connection on a network composer.',
+  },
+  connectionLabelHint: {
+    id: 'protocolBuilder.networkCanvas.composerEdgeLabelHint',
+    defaultMessage:
+      'What participants see for this kind of connection, in the toolbar and above its questions. Left empty, the edge type name is used.',
+    description:
+      'Guidance under the connection label box of a network composer. The edge type name is the researcher’s own name for the kind of connection, from the codebook.',
+  },
   connectionTypeRequired: {
     id: 'protocolBuilder.networkCanvas.composerEdgeTypeRequired',
     defaultMessage: 'Choose the kind of connection this draws.',

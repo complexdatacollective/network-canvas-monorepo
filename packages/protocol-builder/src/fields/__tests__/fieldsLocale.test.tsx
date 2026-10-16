@@ -67,7 +67,6 @@ const informationStage = (id: string, label: string): SectionDoc => ({
 
 const personDefinition: SectionDoc = {
   name: 'Person',
-  label: en('Person'),
   color: 'node-color-seq-2',
   shape: { default: 'square' },
   variables: {},

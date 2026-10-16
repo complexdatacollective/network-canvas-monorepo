@@ -52,13 +52,11 @@ import type {
 const mocks = vi.hoisted(() => {
   const person = {
     name: 'Person',
-    label: { en: 'Person' },
     color: 'node-color-seq-1' as const,
     shape: { default: 'circle' as const },
     variables: {
       age: {
         name: 'Age',
-        label: 'Age',
         type: 'number' as const,
         component: 'Number' as const,
       },
@@ -66,13 +64,11 @@ const mocks = vi.hoisted(() => {
       // control alone — the pair a rebound row is told apart by.
       yearsKnown: {
         name: 'Years known',
-        label: 'Years known',
         type: 'number' as const,
         component: 'Number' as const,
       },
       satisfaction: {
         name: 'Satisfaction',
-        label: 'Satisfaction',
         type: 'scalar' as const,
         component: 'VisualAnalogScale' as const,
         parameters: {
@@ -82,7 +78,6 @@ const mocks = vi.hoisted(() => {
       },
       consents: {
         name: 'Consents',
-        label: 'Consents',
         type: 'boolean' as const,
         component: 'Boolean' as const,
         validation: { required: true },

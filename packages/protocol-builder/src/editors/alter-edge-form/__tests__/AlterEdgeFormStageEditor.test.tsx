@@ -191,7 +191,6 @@ describe('the editor for a form about each relationship', () => {
         knows: knowsDefinition({
           closeness: {
             name: 'closeness',
-            label: 'closeness',
             type: 'ordinal',
             options: [
               { label: { 'en-US': 'Very close' }, value: 3 },

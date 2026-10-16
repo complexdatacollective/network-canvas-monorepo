@@ -33,14 +33,14 @@ const protocolIn = (
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           closeness: {
             name: 'closeness',
-            label: 'Closeness',
-            type: 'text',
+            type: 'categorical',
+            component: 'CheckboxGroup',
+            options: [{ value: 'close', label: { en: 'Close' } }],
           },
         },
       },
@@ -66,10 +66,9 @@ describe('getLocalizationCoverage()', () => {
   it('counts the texts translated into each declared language', () => {
     const coverage = getLocalizationCoverage(stateWith(trilingual()));
 
-    // The node type's label, the stage's label and its title, and the ten
-    // words the interview itself shows, which Network Canvas supplies in all
-    // three languages. The attribute's label is not translated, so it is not
-    // counted.
+    // The attribute's one answer option, the stage's label and its title,
+    // and the ten words the interview itself shows, which Network Canvas
+    // supplies in all three languages.
     expect(coverage.total).toBe(13);
     expect(coverage.locales).toEqual([
       { locale: 'en', isDefault: true, translated: 13, missing: 0 },
@@ -127,10 +126,19 @@ describe('getTranslationGroups()', () => {
         place: { kind: 'codebook', entity: 'node', entityType: 'person' },
         rows: [
           {
-            path: ['codebook', 'node', 'person', 'label'],
-            field: ['label'],
-            format: 'plain',
-            value: { en: 'Person' },
+            path: [
+              'codebook',
+              'node',
+              'person',
+              'variables',
+              'closeness',
+              'options',
+              0,
+              'label',
+            ],
+            field: ['variables', 'closeness', 'options', 0, 'label'],
+            format: 'markdown',
+            value: { en: 'Close' },
           },
         ],
       },

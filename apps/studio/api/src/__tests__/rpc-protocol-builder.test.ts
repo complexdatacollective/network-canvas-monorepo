@@ -1098,7 +1098,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
           variables: {
             ego_age: {
               name: 'ego_age',
-              label: 'Age',
               type: 'number',
               component: 'Number',
             },

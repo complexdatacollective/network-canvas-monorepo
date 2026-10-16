@@ -122,8 +122,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const composer = new NetworkComposerFixture(page);
 
         // Two nodes, added back-to-back (the popover stays open).
-        await composer.addNode('Person', 'Alice');
-        await composer.addNode('Person', 'Bob');
+        await composer.addNode('Alice');
+        await composer.addNode('Bob');
 
         // No behaviours.automaticLayout → MANUAL.
         await expect(composer.root).toHaveAttribute(
@@ -194,7 +194,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
       },
       run: async ({ page, protocol, interview }) => {
         const composer = new NetworkComposerFixture(page);
-        await composer.addNode('Person', 'Carol');
+        await composer.addNode('Carol');
         await composer.selectTool();
         await composer.dragNodeTo('Carol', { x: 0.6, y: 0.6 });
 
@@ -375,7 +375,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         await page
           .getByRole('button', { name: ADD_PERSON_TOOLTIP, exact: true })
           .click();
-        const nameField = page.getByLabel('Person name');
+        const nameField = composer.addNodeInput;
         await expect(nameField).toHaveAttribute(
           'placeholder',
           NAME_PLACEHOLDER,
@@ -435,9 +435,9 @@ export const networkComposerScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.nodes
             .length ?? 0;
 
-        await composer.addNode('Person', 'Eve');
-        await composer.addNode('Person', 'Frank');
-        await composer.addNode('Person', 'Gina');
+        await composer.addNode('Eve');
+        await composer.addNode('Frank');
+        await composer.addNode('Gina');
         await composer.selectTool();
 
         // No edge or groups tools when the stage declares neither.
@@ -518,7 +518,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
           return s?.nodes[0]?.[entityAttributesProperty][hullTapRefs.community];
         };
 
-        await composer.addNode('Person', 'Hank');
+        await composer.addNode('Hank');
         await composer.selectTool();
         await composer.pickGroup('School');
 
@@ -586,9 +586,9 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const composer = new NetworkComposerFixture(page);
 
         // Grid places Ida/Jack at x≈0.12/0.22 and Kim at x≈0.32 (all y≈0.12).
-        await composer.addNode('Person', 'Ida');
-        await composer.addNode('Person', 'Jack');
-        await composer.addNode('Person', 'Kim');
+        await composer.addNode('Ida');
+        await composer.addNode('Jack');
+        await composer.addNode('Kim');
         await composer.selectTool();
 
         // Split the lasso gesture so the polygon can be observed mid-drag. The
@@ -764,7 +764,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         // The decorative background does not intercept pointer events: the
         // add-node popover still opens on top of it.
         await composer.addNodeToolButton.click();
-        await expect(page.getByLabel('Person name')).toBeVisible();
+        await expect(composer.addNodeInput).toBeVisible();
       },
     },
 
@@ -824,7 +824,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         // The image does not intercept pointer events: the add-node popover
         // still opens on top of it.
         await composer.addNodeToolButton.click();
-        await expect(page.getByLabel('Person name')).toBeVisible();
+        await expect(composer.addNodeInput).toBeVisible();
       },
     },
 
@@ -953,8 +953,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.edges
             .length ?? 0;
 
-        await composer.addNode('Person', 'Leo');
-        await composer.addNode('Person', 'Mia');
+        await composer.addNode('Leo');
+        await composer.addNode('Mia');
         await composer.selectEdgeType('Friendship');
 
         // Arm on Leo, cancel, re-arm, complete to Mia.
@@ -1034,8 +1034,8 @@ export const networkComposerScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.edges
             .length ?? 0;
 
-        await composer.addNode('Person', 'Nia');
-        await composer.addNode('Person', 'Omar');
+        await composer.addNode('Nia');
+        await composer.addNode('Omar');
 
         await composer.selectEdgeType('Friendship');
         await composer.tapNode('Nia');
@@ -1550,7 +1550,7 @@ export const networkComposerScenarios: InterfaceScenarios = {
         const baseline = await countNodes();
 
         // 1) Add a node.
-        await composer.addNode('Person', 'Sam');
+        await composer.addNode('Sam');
         await expect.poll(countNodes).toBe(baseline + 1);
 
         // 2) Draw an edge Quinn→Rita.
@@ -1634,9 +1634,9 @@ export const networkComposerScenarios: InterfaceScenarios = {
           (await protocol.getNetworkState(interview.interviewId))?.edges
             .length ?? 0;
 
-        await composer.addNode('Person', 'Sam');
-        await composer.addNode('Person', 'Tia');
-        await composer.addNode('Person', 'Uma');
+        await composer.addNode('Sam');
+        await composer.addNode('Tia');
+        await composer.addNode('Uma');
 
         // Draw Sam–Tia.
         await composer.selectEdgeType('Friendship');

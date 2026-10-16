@@ -85,6 +85,7 @@ const stage = {
     {
       id: 'edge-config',
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
+      label: { en: 'Knows' },
     },
   ],
   background: defaultBackground,
@@ -94,18 +95,15 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
         [QUICK_ADD_VAR]: {
           name: 'name',
-          label: 'Name',
           type: 'text' as const,
         },
         [LAYOUT_VAR]: {
           name: 'position',
-          label: 'Position',
           type: 'layout' as const,
         },
       },
@@ -114,7 +112,6 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Knows',
-      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {},
     },
@@ -201,12 +198,12 @@ describe('NetworkComposer canvas', () => {
     expect(screen.getByTestId('network-composer')).toBeTruthy();
   });
 
-  it('renders both placed nodes by their label (codebook type name)', async () => {
+  it('renders both placed nodes as unnamed', async () => {
     renderInterface();
-    // ConnectedNode falls back to codebook.node[type].name when no label
-    // attribute is set, so both nodes render as "Person".
+    // Neither node has a name, and participants never see a codebook type's
+    // name, so both render as "Unnamed".
     await waitFor(() => {
-      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      const nodes = screen.getAllByRole('button', { name: 'Unnamed' });
       expect(nodes).toHaveLength(2);
     });
   });
@@ -217,7 +214,7 @@ describe('NetworkComposer canvas', () => {
     // Activation and dragging are declared to Node, which derives the tab
     // stop itself: focusable exactly when focusing does something.
     await waitFor(() => {
-      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      const nodes = screen.getAllByRole('button', { name: 'Unnamed' });
       expect(nodes).toHaveLength(2);
       for (const node of nodes) {
         expect(node.tabIndex).toBe(0);
@@ -229,7 +226,7 @@ describe('NetworkComposer canvas', () => {
     renderInterface();
 
     await waitFor(() => {
-      const nodes = screen.getAllByRole('button', { name: 'Person' });
+      const nodes = screen.getAllByRole('button', { name: 'Unnamed' });
       for (const node of nodes) {
         expect(node).toHaveAttribute('aria-pressed', 'false');
       }
@@ -239,7 +236,7 @@ describe('NetworkComposer canvas', () => {
   it('keeps focus on a node selected from the keyboard', async () => {
     renderInterface();
 
-    const nodes = await screen.findAllByRole('button', { name: 'Person' });
+    const nodes = await screen.findAllByRole('button', { name: 'Unnamed' });
     const node = nodes[0]!;
     node.focus();
     expect(node).toHaveFocus();
@@ -255,7 +252,7 @@ describe('NetworkComposer canvas', () => {
   it('does not apply stale pointer modifiers to a keyboard selection', async () => {
     renderInterface();
 
-    const nodes = await screen.findAllByRole('button', { name: 'Person' });
+    const nodes = await screen.findAllByRole('button', { name: 'Unnamed' });
     const [first, second] = [nodes[0]!, nodes[1]!];
 
     // A shift-modified pointer tap arrives as a click still carrying the

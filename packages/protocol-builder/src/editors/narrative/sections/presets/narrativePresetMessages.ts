@@ -208,6 +208,24 @@ export const narrativePresetMessages = defineMessages({
     description:
       'Guidance under the preset connection-types tick list, saying that ticking nothing is a real answer rather than an unfinished one.',
   },
+  presetEdgeLegendLabel: {
+    id: 'protocolBuilder.networkCanvas.presetEdgeLegendLabel',
+    defaultMessage: 'Label for “{edgeType}”',
+    description:
+      'Label of the text box naming one drawn edge type in the interview. edgeType is the edge type’s name in the protocol’s codebook, which is not translated.',
+  },
+  presetEdgeLegendHint: {
+    id: 'protocolBuilder.networkCanvas.presetEdgeLegendHint',
+    defaultMessage:
+      'Shown during the interview, in the legend of connections this preset draws.',
+    description:
+      'Guidance under the text box naming one drawn edge type, saying where the label appears.',
+  },
+  presetEdgeLegendRequired: {
+    id: 'protocolBuilder.networkCanvas.presetEdgeLegendRequired',
+    defaultMessage: 'Enter a label for this edge type.',
+    description: 'Shown when the label of a drawn edge type is left empty.',
+  },
   presetHighlightTitle: {
     id: 'protocolBuilder.networkCanvas.presetHighlightTitle',
     defaultMessage: 'Node highlighting',

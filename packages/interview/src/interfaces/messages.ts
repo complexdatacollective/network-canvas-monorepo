@@ -86,12 +86,6 @@ export const interfaceMessages = defineMessages({
     description:
       'Accessible name of the active quick-add toggle while its name-entry field is open.',
   },
-  entityName: {
-    id: 'interview.interfaces.entityName',
-    defaultMessage: '{entityLabel} name',
-    description:
-      'Accessible name for a new-item name field. entityLabel is the unchanged, researcher-authored label for the network entity type.',
-  },
   addNamePlaceholder: {
     id: 'interview.interfaces.addNamePlaceholder',
     defaultMessage: 'Type a name, then press Enter',

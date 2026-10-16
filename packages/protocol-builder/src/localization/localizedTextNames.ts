@@ -3,7 +3,6 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { CurrentProtocol, StageType } from '@codaco/protocol-validation';
 
 import { variableValuesMessages } from '../codebook/codebookMessages.ts';
-import { codebookEntityMessages } from '../codebook/components/CodebookEntityEditor.tsx';
 import { booleanAnswerFieldMessages } from '../codebook/components/VariableBooleanAnswerFields.tsx';
 import { parameterFieldMessages } from '../codebook/components/VariableParameterFields.tsx';
 import { anonymisationMessages } from '../editors/anonymisation/sections/anonymisationMessages.ts';
@@ -342,6 +341,20 @@ const NARRATIVE_PRESETS: Step = [
 ];
 const NARRATIVE_PRESET: Step = [2, numbered(messages.presetPosition)];
 
+const edgeLegendLabel: Label = (context) => {
+  const entry = context.at.slice(0, 5);
+  const type = textAt(context.place, [...entry, 'type']);
+  if (type === undefined) {
+    return context.intl.formatMessage(messages.itemPosition, {
+      position: positionOf(entry.at(-1)),
+    });
+  }
+  return context.intl.formatMessage(
+    narrativePresetMessages.presetEdgeLegendLabel,
+    { edgeType: context.codebook.edge?.[type]?.name ?? type },
+  );
+};
+
 const highlightLabel: Label = (context) => {
   const highlight = context.at.slice(0, 4);
   const variable = textAt(context.place, [...highlight, 'variable']);
@@ -403,6 +416,13 @@ const PEDIGREE_WORDING_ADDING: Step = [
 
 const composerEdgeSubject: SubjectOf = ({ place, at }) =>
   subjectFrom(valueAt(place, [...at.slice(0, 2), 'subject']));
+
+const composerEdgeName: Label = (context) => {
+  const type = textAt(context.place, [...context.at, 'subject', 'type']);
+  return type === undefined
+    ? numbered(messages.itemPosition)(context)
+    : (context.codebook.edge?.[type]?.name ?? type);
+};
 
 const composerEdgeForm: Label = (context) => {
   const type = textAt(context.place, [...context.at, 'subject', 'type']);
@@ -1273,6 +1293,12 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       5,
       highlightLabel,
     ]),
+    rule(
+      'presets.#.edges.display.#.label',
+      NARRATIVE_PRESETS,
+      NARRATIVE_PRESET,
+      [6, edgeLegendLabel],
+    ),
   ],
   NarrativePedigree: [
     ...NARRATIVE_PEDIGREE_WORDING,
@@ -1285,6 +1311,12 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
   ],
   NetworkComposer: [
     ...COMPOSER_WORDING,
+    rule(
+      'edges.#.label',
+      [1, words(composerMessages.connectionsTitle)],
+      [2, composerEdgeName],
+      [3, words(composerMessages.connectionLabelLabel)],
+    ),
     ...composerFieldRules(
       'nodeForm.fields',
       [
@@ -1352,14 +1384,9 @@ const VARIABLE_RULES: readonly Rule[] = [
   ]),
 ];
 
-const entityRules = (entity: 'node' | 'edge'): readonly Rule[] => [
-  rule('label', [1, words(codebookEntityMessages.labelLabel, { entity })]),
-  ...VARIABLE_RULES,
-];
-
 const ENTITY_RULES: Readonly<Record<'node' | 'edge', readonly Rule[]>> = {
-  node: entityRules('node'),
-  edge: entityRules('edge'),
+  node: VARIABLE_RULES,
+  edge: VARIABLE_RULES,
 };
 
 type Located = Readonly<{

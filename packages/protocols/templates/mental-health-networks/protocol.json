@@ -10,7 +10,6 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
-          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": { "required": true },
@@ -29,7 +28,6 @@
         },
         "k6_1": {
           "name": "k6_1",
-          "label": "k6_1",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -43,7 +41,6 @@
         },
         "k6_2": {
           "name": "k6_2",
-          "label": "k6_2",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -57,7 +54,6 @@
         },
         "k6_3": {
           "name": "k6_3",
-          "label": "k6_3",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -71,7 +67,6 @@
         },
         "k6_4": {
           "name": "k6_4",
-          "label": "k6_4",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -85,7 +80,6 @@
         },
         "k6_5": {
           "name": "k6_5",
-          "label": "k6_5",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -99,7 +93,6 @@
         },
         "k6_6": {
           "name": "k6_6",
-          "label": "k6_6",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -113,7 +106,6 @@
         },
         "self_rated_mental_health": {
           "name": "self_rated_mental_health",
-          "label": "self_rated_mental_health",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -127,7 +119,6 @@
         },
         "in_treatment": {
           "name": "in_treatment",
-          "label": "in_treatment",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -140,21 +131,18 @@
     "node": {
       "person": {
         "name": "Person",
-        "label": { "en-US": "Person" },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": { "default": "circle" },
         "variables": {
           "alter_name": {
             "name": "alter_name",
-            "label": "alter_name",
             "type": "text",
             "component": "Text",
             "validation": { "required": true, "unique": true }
           },
           "relationship": {
             "name": "relationship",
-            "label": "relationship",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -185,7 +173,6 @@
           },
           "support_emotional": {
             "name": "support_emotional",
-            "label": "support_emotional",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -195,7 +182,6 @@
           },
           "support_practical": {
             "name": "support_practical",
-            "label": "support_practical",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -205,7 +191,6 @@
           },
           "support_informational": {
             "name": "support_informational",
-            "label": "support_informational",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -215,7 +200,6 @@
           },
           "is_clinical": {
             "name": "is_clinical",
-            "label": "is_clinical",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -225,7 +209,6 @@
           },
           "knows_about_mh": {
             "name": "knows_about_mh",
-            "label": "knows_about_mh",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -235,7 +218,6 @@
           },
           "is_source_of_stress": {
             "name": "is_source_of_stress",
-            "label": "is_source_of_stress",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -245,7 +227,6 @@
           },
           "help_source_type": {
             "name": "help_source_type",
-            "label": "help_source_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -264,7 +245,6 @@
           },
           "contact_frequency": {
             "name": "contact_frequency",
-            "label": "contact_frequency",
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
@@ -277,7 +257,6 @@
           },
           "closeness": {
             "name": "closeness",
-            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -290,7 +269,6 @@
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           }
         }
@@ -299,7 +277,6 @@
     "edge": {
       "knows": {
         "name": "Knows",
-        "label": { "en-US": "Knows" },
         "color": "edge-color-seq-1"
       }
     }

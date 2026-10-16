@@ -68,7 +68,6 @@ function renderForm(
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
-              label: { en: 'Person' },
               variables: {
                 name: { name: 'name', type: 'text', component: 'Text' },
                 close: { name: 'close', type: 'boolean' },
@@ -157,10 +156,10 @@ describe('useProtocolForm dynamic values', () => {
 
   it('names the node being created by its label as it is typed', () => {
     renderForm({ precedingVariables: ['name'] }, 'How old is {label}?');
-    // With no name yet, the node shows its type's.
+    // With no name yet, the node is unnamed.
     expect(
-      screen.getByText('Person', { selector: 'bdi' }).closest('label'),
-    ).toHaveTextContent(/^How old is Person/);
+      screen.getByText('Unnamed', { selector: 'bdi' }).closest('label'),
+    ).toHaveTextContent(/^How old is Unnamed/);
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
       target: { value: 'Ada' },
@@ -168,7 +167,7 @@ describe('useProtocolForm dynamic values', () => {
     expect(
       screen.getByText('Ada', { selector: 'bdi' }).closest('label'),
     ).toHaveTextContent(/^How old is Ada/);
-    expect(screen.queryByText('Person', { selector: 'bdi' })).toBeNull();
+    expect(screen.queryByText('Unnamed', { selector: 'bdi' })).toBeNull();
   });
 
   it('names the node by the interface’s own label in place of the codebook’s rules, from every answer as it is given', () => {
@@ -187,9 +186,9 @@ describe('useProtocolForm dynamic values', () => {
         .getByText(/^How old is/)
         .closest('label')
         ?.querySelector('[data-dynamic-value] bdi')?.textContent;
-    // Not the type's label the codebook's rules give a node with no name.
+    // Not the word the codebook's rules give a node with no name.
     expect(shownLabel()).toBe('Their relative');
-    expect(screen.queryByText('Person', { selector: 'bdi' })).toBeNull();
+    expect(screen.queryByText('Unnamed', { selector: 'bdi' })).toBeNull();
 
     // Nor its name, which the codebook's rules would show.
     fireEvent.change(screen.getByRole('textbox', { name: 'Their name' }), {
@@ -275,7 +274,6 @@ describe('useProtocolForm dynamic values on an edge form', () => {
             node: {
               [NODE_TYPE]: {
                 name: NODE_TYPE,
-                label: { en: 'Person' },
                 variables: {
                   name: { name: 'name', type: 'text', component: 'Text' },
                 },
@@ -284,7 +282,6 @@ describe('useProtocolForm dynamic values on an edge form', () => {
             edge: {
               knows: {
                 name: 'knows',
-                label: { en: 'Knows' },
                 variables: {
                   note: { name: 'note', type: 'text', component: 'Text' },
                 },
@@ -326,10 +323,12 @@ describe('useProtocolForm dynamic values on an edge form', () => {
       </TestProtocolLocalization>,
     );
 
-    // The second node has no name, so it shows its type's.
+    // The second node has no name, so it is unnamed.
     expect(
       screen.getByText('Ada', { selector: 'bdi' }).closest('label'),
-    ).toHaveTextContent(/^How did Ada.* meet Person/);
-    expect(screen.getByText('Person', { selector: 'bdi' })).toBeInTheDocument();
+    ).toHaveTextContent(/^How did Ada.* meet Unnamed/);
+    expect(
+      screen.getByText('Unnamed', { selector: 'bdi' }),
+    ).toBeInTheDocument();
   });
 });

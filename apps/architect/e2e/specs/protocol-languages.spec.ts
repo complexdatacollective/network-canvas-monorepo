@@ -700,7 +700,7 @@ test('keeps a text with values clear of its formatting toolbar while it is trans
         ...english.codebook,
         ego: {
           variables: {
-            lastName: { name: 'last_name', label: 'Last name', type: 'text' },
+            lastName: { name: 'last_name', type: 'text' },
           },
         },
       },

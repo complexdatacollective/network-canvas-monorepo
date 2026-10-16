@@ -1,5 +1,5 @@
 - main:
-  - button "Person"
+  - button "Unnamed"
   - text: Full name Required
   - textbox "Full name"
   - text: Nickname What friends call them

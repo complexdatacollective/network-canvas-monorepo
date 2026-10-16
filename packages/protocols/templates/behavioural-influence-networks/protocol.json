@@ -9,7 +9,6 @@
       "variables": {
         "activity_minutes_week": {
           "name": "activity_minutes_week",
-          "label": "activity_minutes_week",
           "type": "number",
           "component": "Number",
           "validation": {
@@ -19,7 +18,6 @@
         },
         "smoking_status": {
           "name": "smoking_status",
-          "label": "smoking_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
@@ -48,7 +46,6 @@
         },
         "vaping_status": {
           "name": "vaping_status",
-          "label": "vaping_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
@@ -66,7 +63,6 @@
         },
         "diet_quality": {
           "name": "diet_quality",
-          "label": "diet_quality",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -82,7 +78,6 @@
         },
         "alcohol_frequency": {
           "name": "alcohol_frequency",
-          "label": "alcohol_frequency",
           "type": "ordinal",
           "component": "LikertScale",
           "options": [
@@ -101,14 +96,12 @@
     "node": {
       "person": {
         "name": "Person",
-        "label": { "en-US": "Person" },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": { "default": "circle" },
         "variables": {
           "alter_name": {
             "name": "alter_name",
-            "label": "alter_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -118,7 +111,6 @@
           },
           "relationship": {
             "name": "relationship",
-            "label": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -135,7 +127,6 @@
           },
           "closeness": {
             "name": "closeness",
-            "label": "closeness",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -147,7 +138,6 @@
           },
           "alter_smokes": {
             "name": "alter_smokes",
-            "label": "alter_smokes",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -158,7 +148,6 @@
           },
           "alter_activity": {
             "name": "alter_activity",
-            "label": "alter_activity",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -170,7 +159,6 @@
           },
           "alter_diet": {
             "name": "alter_diet",
-            "label": "alter_diet",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -183,7 +171,6 @@
           },
           "alter_drinks": {
             "name": "alter_drinks",
-            "label": "alter_drinks",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -196,7 +183,6 @@
           },
           "shared_domains": {
             "name": "shared_domains",
-            "label": "shared_domains",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -220,7 +206,6 @@
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           }
         }
@@ -229,7 +214,6 @@
     "edge": {
       "knows": {
         "name": "Knows",
-        "label": { "en-US": "Knows" },
         "color": "edge-color-seq-1"
       }
     }

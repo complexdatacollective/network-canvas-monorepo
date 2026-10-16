@@ -23,7 +23,7 @@ import {
 import useSortedNodeList from '../useSortedNodeList';
 
 const variables: Record<string, Variable> = {
-  name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
+  name: { name: 'name', type: 'text', component: 'Text' },
 };
 
 const named = (name: string): NcNode => ({

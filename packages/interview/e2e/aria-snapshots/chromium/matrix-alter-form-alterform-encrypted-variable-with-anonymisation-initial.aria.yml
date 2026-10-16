@@ -1,5 +1,5 @@
 - main:
-  - button "Person"
+  - button "Unnamed"
   - status: "Information: Some answers here are protected by your passphrase. Enter your passphrase to see and change them."
   - navigation:
     - button "Settings"

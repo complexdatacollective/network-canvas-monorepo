@@ -26,11 +26,10 @@ const codebook: Codebook = {
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        nickname: { name: 'Nickname', label: 'Nickname', type: 'text' },
+        nickname: { name: 'Nickname', type: 'text' },
       },
     },
   },

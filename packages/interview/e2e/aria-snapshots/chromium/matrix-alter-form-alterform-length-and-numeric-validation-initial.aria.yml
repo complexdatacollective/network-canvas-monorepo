@@ -1,5 +1,5 @@
 - main:
-  - button "Person"
+  - button "Unnamed"
   - text: Bio
   - textbox "Bio"
   - text: Age

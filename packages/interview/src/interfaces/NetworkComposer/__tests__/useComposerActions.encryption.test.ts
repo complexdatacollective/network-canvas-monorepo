@@ -35,12 +35,11 @@ const PASSPHRASE = 'composer passphrase';
 const variables: Record<string, Variable> = {
   [QUICK_ADD_VAR]: {
     name: 'name',
-    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
   },
-  [LAYOUT_VAR]: { name: 'position', label: 'position', type: 'layout' },
+  [LAYOUT_VAR]: { name: 'position', type: 'layout' },
 };
 
 const stage: StageProps<'NetworkComposer'>['stage'] = {

@@ -145,7 +145,6 @@ const personDocument = (
   variables: Readonly<Record<string, unknown>> = {},
 ): SectionDoc => ({
   name: 'Person',
-  label: { [LOCALE]: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables,
@@ -163,7 +162,6 @@ function renderAttributeEditor(
   const onSubmitDocument = vi.fn<SubmitDocument>(async () => APPLIED);
   const committed = {
     name: 'closeness',
-    label: 'closeness',
     type: 'ordinal',
     options,
   };

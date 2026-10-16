@@ -55,7 +55,6 @@ import {
   type EdgeColor,
   type EdgeDefinition,
   type EntityDefinition,
-  escapeMessageText,
   type Variable,
   type VariablePropertyKey,
 } from '@codaco/protocol-validation';
@@ -131,16 +130,6 @@ const defaultTypeTemplate: Partial<EntityDefinition> = {
 const normalizedName = (name: unknown) =>
   typeof name === 'string' ? { name: normalizeCodebookName(name) } : {};
 
-// Participants see a type's label, not its name. A new type starts with its
-// name as the label in the protocol's default language; a label the caller
-// supplies replaces it.
-const labelFromName = (state: RootState, name: string | undefined) => {
-  const localization = getProtocol(state)?.localization;
-  return name && localization
-    ? { label: { [localization.defaultLocale]: escapeMessageText(name) } }
-    : {};
-};
-
 // Only categorical and ordinal options carry text a researcher typed; a boolean
 // variable's options are true and false. It runs on the variable as stored,
 // because an edit sends only what changed and so may not say the type.
@@ -169,7 +158,7 @@ export const createTypeAsync = createAppAsyncThunk(
       entity,
       configuration,
     }: { entity: Entity; configuration: Partial<EntityDefinition> },
-    { dispatch, getState },
+    { dispatch },
   ) => {
     const type = uuid();
     const name = normalizedName(get(configuration, 'name'));
@@ -178,8 +167,6 @@ export const createTypeAsync = createAppAsyncThunk(
       type,
       configuration: {
         ...defaultTypeTemplate,
-        // The ego has no label: the participant is never shown a type name.
-        ...(entity === 'ego' ? {} : labelFromName(getState(), name.name)),
         ...configuration,
         ...name,
       },
@@ -234,7 +221,6 @@ export const createEdgeAsync = createAppAsyncThunk(
       entity,
       type,
       configuration: {
-        ...labelFromName(state, name.name),
         ...configuration,
         ...name,
       },
@@ -274,9 +260,7 @@ export const createVariableAsync = createAppAsyncThunk(
     }
 
     const state = getState();
-    // An attribute's label is not translated, so it starts as the name itself.
     const safeConfiguration = prune({
-      label: name,
       ...configuration,
       name,
     }) as Variable;

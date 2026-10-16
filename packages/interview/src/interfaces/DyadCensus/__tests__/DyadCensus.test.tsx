@@ -59,7 +59,6 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {},
@@ -68,7 +67,6 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Friend',
-      label: { en: 'Friend' },
       color: 'edge-color-seq-1',
       variables: {},
     },

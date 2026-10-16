@@ -30,7 +30,6 @@ const codebook: Codebook = {
     variables: {
       'ego-case': {
         name: 'networkCanvasCaseID',
-        label: 'Network canvas case ID',
         type: 'text',
       },
     },
@@ -38,20 +37,17 @@ const codebook: Codebook = {
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'p-id': { name: 'nodeID', label: 'Node ID', type: 'text' },
-        'p-label': { name: 'label', label: 'Label', type: 'text' },
+        'p-id': { name: 'nodeID', type: 'text' },
+        'p-label': { name: 'label', type: 'text' },
         'p-red': {
           name: 'Colour_red',
-          label: 'Colour red',
           type: 'text',
         },
         'p-colour': {
           name: 'Colour',
-          label: 'Colour',
           type: 'categorical',
           options: [
             { label: { en: 'Red' }, value: 'red' },
@@ -64,10 +60,9 @@ const codebook: Codebook = {
   edge: {
     knows: {
       name: 'Knows',
-      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {
-        'k-from': { name: 'from', label: 'From', type: 'text' },
+        'k-from': { name: 'from', type: 'text' },
       },
     },
   },

@@ -55,7 +55,6 @@
   "interview.interfaces.drawingControls": "繪圖控制項",
   "interview.interfaces.editingTools": "編輯工具",
   "interview.interfaces.emptyValue": "無值",
-  "interview.interfaces.entityName": "{entityLabel} 名稱",
   "interview.interfaces.errorHeading": "發生錯誤",
   "interview.interfaces.finishingInterview": "正在結束訪談…",
   "interview.interfaces.groupMembershipOptions": "群組歸屬選項",
@@ -135,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "正在檢查您的通關密語…",
   "interview.runtime.choosePassphraseHelp": "此畫面上的部分回答受通關密語保護。請妥善保管通關密語：之後查看或修改這些回答時需要用到它，一旦忘記將無法找回。",
   "interview.runtime.collapseDrawer": "收合待放置區",
+  "interview.runtime.connection": "連結",
   "interview.runtime.copied": "已複製！",
   "interview.runtime.copyDebugInfo": "複製偵錯資訊",
   "interview.runtime.deleteBin": "刪除區",
@@ -159,5 +159,7 @@
   "interview.runtime.replaceUnavailableAnswer": "輸入新的回答",
   "interview.runtime.secondNode": "第二個項目",
   "interview.runtime.taskErrorDescription": "訪談軟體發生錯誤，因此無法顯示此任務。部分任務（例如地圖）需要網路連線，請先檢查網路連線，然後嘗試重新整理頁面。如果問題持續發生，請聯絡研究團隊，並傳送下方可透過按鈕複製的偵錯資訊。您或許可以點選「下一步」按鈕，繼續進行訪談。",
+  "interview.runtime.unnamed": "未命名",
+  "interview.runtime.unnamedNumbered": "未命名 {number}",
   "interview.runtime.unplacedCount": "{count, number} 個尚未放置"
 }

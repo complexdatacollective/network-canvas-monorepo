@@ -33,26 +33,23 @@ const codebook: Codebook = {
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        'var-name': { name: 'Name', label: 'Name', type: 'text' },
-        'var-age': { name: 'Age', label: 'Age', type: 'number' },
+        'var-name': { name: 'Name', type: 'text' },
+        'var-age': { name: 'Age', type: 'number' },
         'var-position': {
           name: 'Position',
-          label: 'Position',
           type: 'layout',
         },
       },
     },
     place: {
       name: 'Place',
-      label: { en: 'Place' },
       color: 'node-color-seq-2',
       shape: { default: 'square' },
       variables: {
-        'var-place-name': { name: 'Name', label: 'Name', type: 'text' },
+        'var-place-name': { name: 'Name', type: 'text' },
       },
     },
   },
@@ -166,16 +163,14 @@ describe('parseExternalNetworkAsset', () => {
       node: {
         person: {
           name: 'Person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             'var-name': {
               name: 'Full Name',
-              label: 'Full Name',
               type: 'text',
             },
-            'var-age': { name: 'Age', label: 'Age', type: 'number' },
+            'var-age': { name: 'Age', type: 'number' },
           },
         },
       },
@@ -258,21 +253,18 @@ describe('parseExternalNetworkAsset', () => {
       node: {
         person: {
           name: 'Person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             'var-name': {
               name: 'Full name',
-              label: 'Full name',
               type: 'text',
             },
-            'var-age': { name: '年龄', label: '年龄', type: 'number' },
-            'var-cafe': { name: 'Café', label: 'Café', type: 'text' },
-            'var-dotted': { name: 'a.b', label: 'a.b', type: 'text' },
+            'var-age': { name: '年龄', type: 'number' },
+            'var-cafe': { name: 'Café', type: 'text' },
+            'var-dotted': { name: 'a.b', type: 'text' },
             'var-closeness': {
               name: 'Closeness',
-              label: 'Closeness',
               type: 'categorical',
               options: [
                 { label: { en: 'Close friend' }, value: 'close friend' },
@@ -353,18 +345,15 @@ describe('parseExternalNetworkAsset', () => {
         node: {
           person: {
             name: 'Person',
-            label: { en: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
               'var-name': {
                 name: 'Full name',
-                label: 'Full name',
                 type: 'text',
               },
               'var-proto': {
                 name: '__proto__',
-                label: '__proto__',
                 type: 'text',
               },
             },

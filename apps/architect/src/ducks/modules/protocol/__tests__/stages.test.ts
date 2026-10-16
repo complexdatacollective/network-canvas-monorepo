@@ -453,11 +453,9 @@ describe('protocol.stages', () => {
             node: {
               person: {
                 name: 'Person',
-                label: localized('Person'),
                 variables: {
                   ssn: {
                     name: 'ssn',
-                    label: 'ssn',
                     type: 'text',
                     encrypted: true,
                   },

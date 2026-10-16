@@ -55,7 +55,6 @@
   "interview.interfaces.drawingControls": "Controles de dibujo",
   "interview.interfaces.editingTools": "Herramientas de edición",
   "interview.interfaces.emptyValue": "Sin valor",
-  "interview.interfaces.entityName": "Nombre de {entityLabel}",
   "interview.interfaces.errorHeading": "Se ha producido un error",
   "interview.interfaces.finishingInterview": "Finalizando la entrevista…",
   "interview.interfaces.groupMembershipOptions": "Opciones de pertenencia a grupos",
@@ -135,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "Comprobando tu frase de contraseña…",
   "interview.runtime.choosePassphraseHelp": "Algunas respuestas de esta pantalla están protegidas por una frase de contraseña. Guárdala en un lugar seguro: la necesitarás para ver o cambiar estas respuestas más adelante, y no se puede recuperar si la olvidas.",
   "interview.runtime.collapseDrawer": "Contraer bandeja",
+  "interview.runtime.connection": "Conexión",
   "interview.runtime.copied": "¡Copiado!",
   "interview.runtime.copyDebugInfo": "Copiar información de diagnóstico",
   "interview.runtime.deleteBin": "Papelera",
@@ -159,5 +159,7 @@
   "interview.runtime.replaceUnavailableAnswer": "Introducir una respuesta nueva",
   "interview.runtime.secondNode": "segundo elemento",
   "interview.runtime.taskErrorDescription": "Se produjo un error en el programa de la entrevista y no se pudo mostrar esta tarea. Algunas tareas, como los mapas, necesitan conexión a internet, así que comprueba tu conexión y después prueba a actualizar la página. Si el problema persiste, ponte en contacto con la persona que organiza el estudio y envíale la información de diagnóstico, que puedes copiar con el botón de abajo. Es posible que puedas continuar la entrevista pulsando la flecha de avance.",
+  "interview.runtime.unnamed": "Sin nombre",
+  "interview.runtime.unnamedNumbered": "Sin nombre {number}",
   "interview.runtime.unplacedCount": "{count, number} sin colocar"
 }

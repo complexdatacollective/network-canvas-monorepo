@@ -9,7 +9,6 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
-          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "options": [
@@ -30,7 +29,6 @@
         },
         "transition_type": {
           "name": "transition_type",
-          "label": "transition_type",
           "type": "categorical",
           "component": "CheckboxGroup",
           "options": [
@@ -89,7 +87,6 @@
         },
         "transition_when": {
           "name": "transition_when",
-          "label": "transition_when",
           "type": "datetime",
           "component": "DatePicker",
           "parameters": {
@@ -98,7 +95,6 @@
         },
         "transition_summary": {
           "name": "transition_summary",
-          "label": "transition_summary",
           "type": "text",
           "component": "TextArea"
         }
@@ -107,7 +103,6 @@
     "node": {
       "person": {
         "name": "Person",
-        "label": { "en-US": "Person" },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": {
@@ -116,7 +111,6 @@
         "variables": {
           "social_circle": {
             "name": "social_circle",
-            "label": "social_circle",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -160,7 +154,6 @@
           },
           "knew_before": {
             "name": "knew_before",
-            "label": "knew_before",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -176,7 +169,6 @@
           },
           "arrived_with_change": {
             "name": "arrived_with_change",
-            "label": "arrived_with_change",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -192,7 +184,6 @@
           },
           "lost_touch": {
             "name": "lost_touch",
-            "label": "lost_touch",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -208,7 +199,6 @@
           },
           "helped_through": {
             "name": "helped_through",
-            "label": "helped_through",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -224,7 +214,6 @@
           },
           "made_it_harder": {
             "name": "made_it_harder",
-            "label": "made_it_harder",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -240,7 +229,6 @@
           },
           "closeness_before": {
             "name": "closeness_before",
-            "label": "closeness_before",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -268,7 +256,6 @@
           },
           "closeness_now": {
             "name": "closeness_now",
-            "label": "closeness_now",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -296,18 +283,15 @@
           },
           "how_we_met": {
             "name": "how_we_met",
-            "label": "how_we_met",
             "type": "text",
             "component": "TextArea"
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           },
           "ea198045-6a3a-44e9-86b7-a02263b9f891": {
             "name": "name",
-            "label": "name",
             "type": "text",
             "validation": {
               "required": true,
@@ -320,12 +304,10 @@
     "edge": {
       "knows": {
         "name": "Knows",
-        "label": { "en-US": "Knows" },
         "color": "edge-color-seq-1"
       },
       "close": {
         "name": "Close",
-        "label": { "en-US": "Close" },
         "color": "edge-color-seq-2"
       }
     }
@@ -522,6 +504,9 @@
           "subject": {
             "entity": "edge",
             "type": "knows"
+          },
+          "label": {
+            "en-US": "Knows"
           }
         },
         {
@@ -529,6 +514,9 @@
           "subject": {
             "entity": "edge",
             "type": "close"
+          },
+          "label": {
+            "en-US": "Close"
           }
         }
       ]
@@ -620,7 +608,14 @@
           "layoutVariable": "layout",
           "groupVariable": "social_circle",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en-US": "Knows"
+                }
+              }
+            ]
           },
           "highlight": [
             {
@@ -634,7 +629,14 @@
           "label": { "en-US": "Who is close to whom" },
           "layoutVariable": "layout",
           "edges": {
-            "display": ["close"]
+            "display": [
+              {
+                "type": "close",
+                "label": {
+                  "en-US": "Close"
+                }
+              }
+            ]
           }
         }
       ]

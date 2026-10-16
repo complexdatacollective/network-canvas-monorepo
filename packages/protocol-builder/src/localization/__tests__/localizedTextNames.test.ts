@@ -25,7 +25,6 @@ const fixtureStage = (type: string): Path => {
 
 const scaleVariable = (name: string, minLabel: string, maxLabel: string) => ({
   name,
-  label: name,
   type: 'scalar',
   component: 'VisualAnalogScale',
   parameters: { minLabel: en(minLabel), maxLabel: en(maxLabel) },
@@ -104,13 +103,12 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
   ],
   [
     ['codebook', 'node', 'person', 'variables', 'contactOther'],
-    { name: 'contactOther', label: 'Other', type: 'text', component: 'Text' },
+    { name: 'contactOther', type: 'text', component: 'Text' },
   ],
   [
     ['codebook', 'node', 'family_member', 'variables', 'fm_occupation'],
     {
       name: 'Occupation',
-      label: 'Occupation',
       type: 'text',
       component: 'Text',
     },
@@ -123,7 +121,6 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     ['codebook', 'ego', 'variables', 'ego_mood'],
     {
       name: 'Mood',
-      label: 'Mood',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
@@ -229,7 +226,6 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
     ['codebook', 'node', 'family_member', 'variables', 'relativesNotRecorded'],
     {
       name: 'relativesNotRecorded',
-      label: 'relativesNotRecorded',
       type: 'categorical',
       options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(
         ({ value, label }) => ({ value, label: en(label) }),
@@ -309,6 +305,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       {
         id: 'composer-knows',
         subject: { entity: 'edge', type: 'knows' },
+        label: en('Knows'),
         form: { fields: [composerScaleField('bond', 'How strong is it?')] },
       },
     ],
@@ -665,6 +662,34 @@ describe('nameLocalizedText', () => {
         key: '["presets",0,"highlight",0,"label"]',
         label: 'Label for “Flag for follow-up”',
       },
+    ]);
+  });
+
+  it('names a Narrative edge legend label by the edge type it draws', () => {
+    expect(
+      name([
+        ...stageAt('Narrative'),
+        'presets',
+        0,
+        'edges',
+        'display',
+        0,
+        'label',
+      ])?.at(-1),
+    ).toEqual({
+      key: '["presets",0,"edges","display",0,"label"]',
+      label: `Label for “${protocol.codebook.edge?.knows?.name}”`,
+    });
+  });
+
+  it('names a Network Composer connection label by its edge type', () => {
+    expect(name([...stageAt('NetworkComposer'), 'edges', 0, 'label'])).toEqual([
+      { key: '["edges"]', label: 'Edge configuration' },
+      {
+        key: '["edges",0]',
+        label: protocol.codebook.edge?.knows?.name,
+      },
+      { key: '["edges",0,"label"]', label: 'Label' },
     ]);
   });
 

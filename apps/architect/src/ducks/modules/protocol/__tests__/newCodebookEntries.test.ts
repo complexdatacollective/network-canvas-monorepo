@@ -21,7 +21,6 @@ const protocol: CurrentProtocol = {
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person', fr: 'Personne' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {},
@@ -44,8 +43,10 @@ const makeStore = () => {
 const codebookOf = (store: ReturnType<typeof makeStore>) =>
   getProtocol(store.getState())?.codebook;
 
-describe('labels of new codebook entries', () => {
-  it('labels a new node type with its name in the default language', async () => {
+// Participants never see a codebook name, so a codebook entry has only its
+// name: nothing writes a label beside it.
+describe('new codebook entries', () => {
+  it('gives a new node type only its name', async () => {
     const store = makeStore();
 
     const { type } = await store
@@ -61,43 +62,24 @@ describe('labels of new codebook entries', () => {
       )
       .unwrap();
 
-    expect(codebookOf(store)?.node?.[type]?.label).toEqual({ fr: 'Ami' });
+    const created = codebookOf(store)?.node?.[type];
+    expect(created?.name).toBe('Ami');
+    expect(created).not.toHaveProperty('label');
   });
 
-  it('keeps a label the caller supplies', async () => {
-    const store = makeStore();
-
-    const { type } = await store
-      .dispatch(
-        createTypeAsync({
-          entity: 'node',
-          configuration: {
-            name: 'friend',
-            label: { en: 'Friend', fr: 'Ami' },
-            color: 'node-color-seq-2',
-            shape: { default: 'circle' },
-          },
-        }),
-      )
-      .unwrap();
-
-    expect(codebookOf(store)?.node?.[type]?.label).toEqual({
-      en: 'Friend',
-      fr: 'Ami',
-    });
-  });
-
-  it('labels a new edge type with its name in the default language', async () => {
+  it('gives a new edge type only its name', async () => {
     const store = makeStore();
 
     const { type } = await store
       .dispatch(createEdgeAsync({ name: 'Connaît' }))
       .unwrap();
 
-    expect(codebookOf(store)?.edge?.[type]?.label).toEqual({ fr: 'Connaît' });
+    const created = codebookOf(store)?.edge?.[type];
+    expect(created?.name).toBe('Connaît');
+    expect(created).not.toHaveProperty('label');
   });
 
-  it('labels a new variable with its name, as plain text', async () => {
+  it('gives a new variable only its name', async () => {
     const store = makeStore();
 
     const { variable } = await store
@@ -110,8 +92,8 @@ describe('labels of new codebook entries', () => {
       )
       .unwrap();
 
-    expect(codebookOf(store)?.node?.person?.variables?.[variable]?.label).toBe(
-      'âge {années}',
-    );
+    const created = codebookOf(store)?.node?.person?.variables?.[variable];
+    expect(created?.name).toBe('âge {années}');
+    expect(created).not.toHaveProperty('label');
   });
 });

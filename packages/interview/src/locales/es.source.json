@@ -55,7 +55,6 @@
   "interview.interfaces.drawingControls": "Drawing controls",
   "interview.interfaces.editingTools": "Editing tools",
   "interview.interfaces.emptyValue": "No value",
-  "interview.interfaces.entityName": "{entityLabel} name",
   "interview.interfaces.errorHeading": "Something went wrong",
   "interview.interfaces.finishingInterview": "Finishing the interview…",
   "interview.interfaces.groupMembershipOptions": "Group membership options",
@@ -135,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "Checking your passphrase…",
   "interview.runtime.choosePassphraseHelp": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.",
   "interview.runtime.collapseDrawer": "Collapse drawer",
+  "interview.runtime.connection": "Connection",
   "interview.runtime.copied": "Copied!",
   "interview.runtime.copyDebugInfo": "Copy Debug Info",
   "interview.runtime.deleteBin": "Delete bin",
@@ -159,5 +159,7 @@
   "interview.runtime.replaceUnavailableAnswer": "Enter a new answer",
   "interview.runtime.secondNode": "second item",
   "interview.runtime.taskErrorDescription": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
+  "interview.runtime.unnamed": "Unnamed",
+  "interview.runtime.unnamedNumbered": "Unnamed {number}",
   "interview.runtime.unplacedCount": "{count, number} unplaced"
 }

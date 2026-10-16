@@ -145,6 +145,70 @@ describe('Protocol Summary stage', () => {
   });
 });
 
+describe('Protocol Summary edge labels participants see', () => {
+  const withEdgeType = {
+    ...protocol,
+    codebook: {
+      node: {},
+      edge: { knows: { name: 'knows', color: 'edge-color-seq-1' } },
+      ego: {},
+    },
+  } satisfies CurrentProtocol;
+
+  const renderConfigured = (
+    type: string,
+    configuration: Record<string, unknown>,
+  ) =>
+    render(
+      <SummaryContext.Provider
+        value={{
+          protocol: withEdgeType,
+          protocolName: withEdgeType.name,
+          index: [],
+        }}
+      >
+        <Stage
+          id="stage"
+          label={{ en: 'A stage' }}
+          stageNumber={1}
+          type={type}
+          configuration={configuration}
+        />
+      </SummaryContext.Provider>,
+    );
+
+  it('prints each edge type a Narrative preset draws with its legend label', () => {
+    renderConfigured('Narrative', {
+      presets: [
+        {
+          id: 'preset',
+          label: { en: 'Everyone' },
+          layoutVariable: 'layout',
+          edges: { display: [{ type: 'knows', label: { en: 'Friends' } }] },
+        },
+      ],
+    });
+
+    const edges = screen.getByRole('row', { name: /Show edges/ });
+    expect(within(edges).getByText('Friends')).toBeInTheDocument();
+    expect(within(edges).getByText('knows')).toBeInTheDocument();
+  });
+
+  it('prints each edge type a Network Composer stage lets participants draw with its label', () => {
+    renderConfigured('NetworkComposer', {
+      edges: [
+        {
+          subject: { entity: 'edge', type: 'knows' },
+          label: { en: 'Friends' },
+        },
+      ],
+    });
+
+    const row = screen.getByRole('row', { name: /Friends/ });
+    expect(within(row).getByText('knows')).toBeInTheDocument();
+  });
+});
+
 describe('Protocol Summary stage wording that the interview fills in', () => {
   it('prints a notice’s versions by the arguments its setting declares, not as values the stage binds', () => {
     render(

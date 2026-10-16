@@ -136,12 +136,11 @@ function makePayload(id: string): InterviewPayload {
         node: {
           person: {
             name: 'Person',
-            label: { en: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             icon: 'add-a-person',
             variables: {
-              name: { name: 'Name', label: 'Name', type: 'text' },
+              name: { name: 'Name', type: 'text' },
             },
           },
         },
@@ -311,7 +310,7 @@ describe('Shell toast ownership', () => {
     const user = userEvent.setup();
     await user.click(within(first).getByTestId('quick-add-toggle'));
     const input = await within(first).findByRole('textbox', {
-      name: 'Person name',
+      name: 'Type a name, then press Enter',
     });
     await user.click(input);
     await user.paste('Álvaro & <first>');
@@ -438,7 +437,9 @@ describe('Shell toast ownership', () => {
     const user = userEvent.setup();
     await user.click(screen.getByTestId('quick-add-toggle'));
     await user.click(
-      await screen.findByRole('textbox', { name: 'Person name' }),
+      await screen.findByRole('textbox', {
+        name: 'Type a name, then press Enter',
+      }),
     );
     await user.paste('Ana');
     await user.keyboard('{Enter}');

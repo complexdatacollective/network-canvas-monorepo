@@ -567,7 +567,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         ref: { entity: 'node', typeId: 'place' },
         definition: {
           name: 'Place',
-          label: { en: 'Place' },
           color: 'node-color-seq-3',
           shape: { default: 'square' },
         },
@@ -588,7 +587,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           ref: { entity: 'node', typeId: 'place' },
           definition: {
             name: 'Place',
-            label: { en: 'Place' },
             color: 'node-color-seq-3',
             shape: { default: 'square' },
           },
@@ -617,7 +615,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
           ref: { entity: 'node', typeId: 'person type' },
           definition: {
             name: 'Person Type',
-            label: { en: 'Person type' },
             color: 'node-color-seq-3',
             shape: { default: 'square' },
           },
@@ -732,7 +729,6 @@ describe.skipIf(!storeDb)('ProtocolStore drafts', () => {
         ref: { entity: 'edge', typeId: 'knows' },
         definition: {
           name: 'Knows',
-          label: { en: 'Knows' },
           color: 'edge-color-seq-2',
         },
       }),

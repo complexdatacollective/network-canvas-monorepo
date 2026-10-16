@@ -154,7 +154,6 @@ function renderPersonForm(
           node: {
             person: {
               name: 'person',
-              label: { en: 'Person' },
               variables: {
                 name: {
                   name: 'name',
@@ -416,7 +415,6 @@ describe('the person form', () => {
           {
             [NICKNAME]: {
               name: NICKNAME,
-              label: NICKNAME,
               type: 'text',
               component: 'Text',
               encrypted: true,

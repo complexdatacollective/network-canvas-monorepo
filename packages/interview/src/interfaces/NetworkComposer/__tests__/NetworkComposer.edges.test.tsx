@@ -63,6 +63,7 @@ const stage = {
     {
       id: 'edge-config',
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
+      label: { en: 'Knows' },
     },
   ],
   background: {
@@ -75,14 +76,12 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
-        [QUICK_ADD_VAR]: { name: 'name', label: 'Name', type: 'text' },
+        [QUICK_ADD_VAR]: { name: 'name', type: 'text' },
         [LAYOUT_VAR]: {
           name: 'position',
-          label: 'Position',
           type: 'layout',
         },
       },
@@ -91,7 +90,6 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'knows_edge',
-      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {},
     },

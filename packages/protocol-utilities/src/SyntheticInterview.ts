@@ -433,7 +433,6 @@ export class SyntheticInterview {
     const entry: NodeTypeEntry = {
       id,
       name: opts?.name ?? `Person ${this.nodeTypeCounter}`,
-      label: opts?.label,
       color: opts?.color ?? NODE_COLORS[colorIndex]!,
       icon: opts?.icon ?? 'add-a-person',
       shape: opts?.shape ?? { default: 'circle' },
@@ -472,7 +471,6 @@ export class SyntheticInterview {
     const entry: EdgeTypeEntry = {
       id,
       name: opts?.name ?? `Edge ${this.edgeTypeCounter}`,
-      label: opts?.label,
       color: opts?.color ?? EDGE_COLORS[colorIndex]!,
       variables: new Map(),
     };
@@ -526,7 +524,6 @@ export class SyntheticInterview {
     const entry: VariableEntry = {
       id: varId,
       name,
-      label: opts?.label,
       type,
       component: opts?.component,
       options,
@@ -567,7 +564,6 @@ export class SyntheticInterview {
     const entry: VariableEntry = {
       id: varId,
       name,
-      label: opts?.label,
       type,
       component: opts?.component,
       options,
@@ -597,7 +593,6 @@ export class SyntheticInterview {
     const entry: VariableEntry = {
       id: varId,
       name: opts?.name ?? this.defaultVariableName(type),
-      label: opts?.label,
       type,
       component: opts?.component,
       options,
@@ -1326,6 +1321,10 @@ export class SyntheticInterview {
             const edgeEntry: NetworkComposerEdgeEntry = {
               id: this.nextId('composer-edge'),
               subject: { entity: 'edge', type: edgeTypeId },
+              label:
+                opts?.label ??
+                this.edgeTypes.get(edgeTypeId)?.name ??
+                edgeTypeId,
             };
             if (opts?.form) {
               edgeEntry.form = {
@@ -1660,7 +1659,12 @@ export class SyntheticInterview {
     // Resolve edges
     let edges: PresetEntry['edges'];
     if (opts?.edges?.display) {
-      edges = { display: opts.edges.display };
+      edges = {
+        display: opts.edges.display.map((type) => ({
+          type,
+          label: this.edgeTypes.get(type)?.name ?? type,
+        })),
+      };
     }
 
     return {
@@ -2603,7 +2607,6 @@ export class SyntheticInterview {
   private buildVariable(entry: VariableEntry): Record<string, unknown> {
     const variable: Record<string, unknown> = {
       name: entry.name,
-      label: entry.label ?? entry.name,
       type: entry.type,
     };
     if (entry.component) variable.component = entry.component;
@@ -2631,7 +2634,6 @@ export class SyntheticInterview {
       }
       node[id] = {
         name: entry.name,
-        label: this.localized(entry.label ?? entry.name),
         color: entry.color,
         icon: entry.icon,
         shape: entry.shape,
@@ -2643,7 +2645,6 @@ export class SyntheticInterview {
     for (const [id, entry] of this.edgeTypes) {
       const edgeEntry: Record<string, unknown> = {
         name: entry.name,
-        label: this.localized(entry.label ?? entry.name),
         color: entry.color,
       };
       // Serialize edge type variables if any exist
@@ -2822,6 +2823,14 @@ export class SyntheticInterview {
       config.presets = stage.presets.map((preset) => ({
         ...preset,
         label: this.localized(preset.label),
+        ...(preset.edges && {
+          edges: {
+            display: preset.edges.display.map((edge) => ({
+              ...edge,
+              label: this.localized(edge.label),
+            })),
+          },
+        }),
         highlight: preset.highlight?.map((highlight) => ({
           ...highlight,
           label: this.localized(highlight.label),
@@ -3000,6 +3009,7 @@ export class SyntheticInterview {
       if (stage.networkComposerEdges) {
         config.edges = stage.networkComposerEdges.map((edge) => ({
           ...edge,
+          label: this.localized(edge.label),
           ...(edge.form
             ? {
                 form: {

@@ -16,9 +16,9 @@ a person's name or a number, that Network Canvas's English includes, and how
 participants are shown the best available translation of each text: in their
 own language or a close regional match, then in the other languages their
 browser lists, then in the default language, then in any language that has it.
-It explains that node type, edge type, Narrative highlight and Network
-Composer field labels are translated while attribute labels are plain text
-that participants don't see, and the Narrative and Network Composer pages say
+It explains that participants never see codebook names, and that Narrative
+legend labels, Network Composer edge type labels and Network Composer field
+labels are translated, and the Narrative and Network Composer pages say
 where each label is shown and that every Network Composer field needs a label.
 A new page documents the Language Chooser interface, including how to manage
 the protocol's languages from its editor in Architect. The preview, Fresco and

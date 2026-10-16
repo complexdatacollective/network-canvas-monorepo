@@ -45,8 +45,6 @@ const protocolIn = (
   text: {
     stage: Record<string, string>;
     title: Record<string, string>;
-    nodeType: Record<string, string>;
-    variable: string;
     options: [Record<string, string>, Record<string, string>];
   },
 ): CurrentProtocol => ({
@@ -58,13 +56,11 @@ const protocolIn = (
     node: {
       [NODE_TYPE]: {
         name: 'Person',
-        label: text.nodeType,
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           [VARIABLE]: {
             name: 'closeness',
-            label: text.variable,
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [
@@ -110,8 +106,6 @@ const monolingual = () =>
     {
       stage: { en: 'Welcome' },
       title: { en: 'Hello' },
-      nodeType: { en: 'Person' },
-      variable: 'Closeness',
       options: [{ en: 'Close' }, { en: 'Distant' }],
     },
   );
@@ -122,8 +116,6 @@ const bilingual = () =>
     {
       stage: { en: 'Welcome', fr: 'Bienvenue' },
       title: { en: 'Hello', fr: 'Bonjour' },
-      nodeType: { en: 'Person', fr: 'Personne' },
-      variable: 'Closeness',
       options: [{ en: 'Close', fr: 'Proche' }, { en: 'Distant' }],
     },
   );
@@ -140,8 +132,6 @@ const textOf = (protocol: CurrentProtocol) => {
   return {
     stage: stage?.label,
     title: stage && 'title' in stage ? stage.title : undefined,
-    nodeType: nodeType?.label,
-    variable: variable?.label,
     options:
       variable && 'options' in variable
         ? variable.options?.map(({ label }) => label)
@@ -372,9 +362,9 @@ describe('removeLocale', () => {
     expect(
       getLocaleRemovalImpact(collectLocalizedStrings(bilingual()), 'fr')
         .translationCount,
-      // Seven texts of the protocol's own, and the finish stage's three
+      // Six texts of the protocol's own, and the finish stage's three
       // settings.
-    ).toBe(10);
+    ).toBe(9);
   });
 
   it('counts each text once however many readings of it there are', () => {
@@ -390,7 +380,7 @@ describe('removeLocale', () => {
       'fr',
     );
 
-    expect(impact.translationCount).toBe(10);
+    expect(impact.translationCount).toBe(9);
     expect(impact.strandedStrings).toEqual([unsaved]);
   });
 
@@ -404,8 +394,6 @@ describe('removeLocale', () => {
     expect(textOf(protocol)).toEqual({
       stage: { en: 'Welcome' },
       title: { en: 'Hello' },
-      nodeType: { en: 'Person' },
-      variable: 'Closeness',
       options: [{ en: 'Close' }, { en: 'Distant' }],
     });
     expect((await validateProtocol(protocol)).success).toBe(true);
@@ -525,8 +513,6 @@ describe('changeLocale', () => {
     expect(textOf(protocol)).toEqual({
       stage: { es: 'Welcome' },
       title: { es: 'Hello' },
-      nodeType: { es: 'Person' },
-      variable: 'Closeness',
       options: [{ es: 'Close' }, { es: 'Distant' }],
     });
     expect((await validateProtocol(protocol)).success).toBe(true);

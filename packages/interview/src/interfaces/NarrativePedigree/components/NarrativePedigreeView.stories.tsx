@@ -161,7 +161,6 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-2',
       shape: {
         default: 'diamond',
@@ -180,7 +179,6 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Family',
-      label: { en: 'Family' },
       color: 'edge-color-seq-1',
     },
   },

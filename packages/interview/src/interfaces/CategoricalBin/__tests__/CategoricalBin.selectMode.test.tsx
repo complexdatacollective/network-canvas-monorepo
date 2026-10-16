@@ -120,14 +120,12 @@ const codebook: Codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
-        name: { name: 'name', label: 'Name', type: 'text', component: 'Text' },
+        name: { name: 'name', type: 'text', component: 'Text' },
         category: {
           name: 'Category',
-          label: 'Category',
           type: 'categorical',
           component: 'CheckboxGroup',
           options: [
@@ -137,7 +135,6 @@ const codebook: Codebook = {
         },
         otherReason: {
           name: 'Other reason',
-          label: 'Other reason',
           type: 'text',
           component: 'Text',
         },

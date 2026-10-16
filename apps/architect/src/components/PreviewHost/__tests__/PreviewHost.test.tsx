@@ -168,11 +168,9 @@ function makeUnsatisfiableProtocol() {
       node: {
         'node-1': {
           name: 'Person',
-          label: { en: 'Person' },
           variables: {
             'var-code': {
               name: 'Code',
-              label: 'Code',
               type: 'text',
               validation: { minLength: 24, maxLength: 10 },
             },
@@ -303,14 +301,12 @@ function makeConsentRouteProtocol(): CurrentProtocol {
       node: {
         person: {
           name: 'Person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: { name: 'Name', label: 'Name', type: 'text' },
+            name: { name: 'Name', type: 'text' },
             layout: {
               name: 'Layout',
-              label: 'Layout',
               type: 'layout',
             },
           },
@@ -321,12 +317,10 @@ function makeConsentRouteProtocol(): CurrentProtocol {
         variables: {
           screening: {
             name: 'Screening',
-            label: 'Screening',
             type: 'boolean',
           },
           consent: {
             name: 'Consent',
-            label: 'Consent',
             type: 'boolean',
           },
         },
@@ -533,7 +527,6 @@ describe('PreviewHost', () => {
             variables: {
               'var-ord': {
                 name: 'Closeness',
-                label: 'Closeness',
                 type: 'ordinal',
                 options: [
                   { label: { en: 'Low' }, value: 1 },

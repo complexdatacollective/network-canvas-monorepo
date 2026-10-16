@@ -83,10 +83,9 @@ beforeAll(() => {
 });
 
 const variables: Record<string, Variable> = {
-  name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
+  name: { name: 'name', type: 'text', component: 'Text' },
   neighbourhood: {
     name: 'Neighbourhood',
-    label: 'Neighbourhood',
     type: 'text',
     component: 'Text',
     encrypted: true,

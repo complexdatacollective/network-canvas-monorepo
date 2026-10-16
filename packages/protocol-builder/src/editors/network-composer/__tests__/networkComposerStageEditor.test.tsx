@@ -257,6 +257,7 @@ describe('the network composer stage editor', () => {
             {
               id: 'composer-edge-1',
               subject: { entity: 'edge', type: 'knows' },
+              label: { en: 'Connection' },
               form: {
                 fields: [
                   {

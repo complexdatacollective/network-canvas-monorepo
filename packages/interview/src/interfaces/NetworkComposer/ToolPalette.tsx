@@ -64,8 +64,6 @@ type ToolPaletteProps = {
   undoStore: UndoStoreApi;
   edges: EdgeEntry[];
   words: ComposerToolWords;
-  /** Protocol label for the node entity, shown in the add-node field. */
-  nodeLabel: string;
   /** Codebook variable the quick-add name is written to. */
   quickAddTargetVariable: string;
   onAddNode: (name: string) => Promise<boolean>;
@@ -121,7 +119,6 @@ export default function ToolPalette({
   undoStore,
   edges,
   words,
-  nodeLabel,
   quickAddTargetVariable,
   onAddNode,
   addNodeLocked,
@@ -217,7 +214,6 @@ export default function ToolPalette({
             <PassphraseNotice status="locked" className="w-72" />
           ) : (
             <AddNodeInput
-              entityLabel={nodeLabel}
               placeholder={words.addNamePlaceholder}
               targetVariable={quickAddTargetVariable}
               onCreate={onAddNode}

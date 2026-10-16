@@ -64,7 +64,6 @@ import {
   type CodebookDraftIssue,
   type CodebookSubject,
   type CodebookVariableDraft,
-  withSeededVariableLabel,
 } from '../editing.ts';
 import type {
   OptionRowChoiceValue,
@@ -144,19 +143,6 @@ const messages = defineMessages({
       'This name is used when referring to the attribute and in exported data.',
     description:
       'Guidance under the attribute name field. Exported data is the file a researcher analyses after the interviews.',
-  },
-  labelLabel: {
-    id: 'protocolBuilder.codebookVariable.labelLabel',
-    defaultMessage: 'Attribute label',
-    description:
-      'Label of the field holding a readable label for this attribute (a codebook variable), as opposed to the attribute name the exported data uses.',
-  },
-  labelHint: {
-    id: 'protocolBuilder.codebookVariable.labelHint',
-    defaultMessage:
-      'A readable label for this attribute. It is not translated. Left empty, the attribute name is used.',
-    description:
-      'Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute.',
   },
   typeLabel: {
     id: 'protocolBuilder.codebookVariable.typeLabel',
@@ -242,7 +228,7 @@ const messages = defineMessages({
   },
 });
 
-const VARIABLE_EDITOR_PROPERTIES = ['name', 'label', 'type'] as const;
+const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
 
 /**
  * What the answers surface REPLACES, which is `options` whatever it renders.
@@ -517,20 +503,17 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     parameterShape,
     stageManaged,
   );
-  // A label left empty is written from the name, as every other way of
-  // creating an attribute writes it.
-  const labelledDraft = withSeededVariableLabel(draft);
   const submittedDraft =
     props.mode === 'create'
       ? draftWithOwnedBlocks(
-          labelledDraft,
+          draft,
           seededDraft.options,
           parameterShape,
           optionsShape,
         )
       : withoutStageManagedOptions(
           draftOwnedByVariableEditor(
-            labelledDraft,
+            draft,
             seededDraft.options,
             lockedOptions !== null,
             typeChanged,
@@ -849,7 +832,6 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const labelCell = (index: number) => `${optionKeys[index] ?? index}-label`;
 
   const nameErrors = messagesAt(issues, 'name');
-  const labelErrors = messagesAt(issues, 'label');
   const typeErrors = messagesAt(issues, 'type');
   const optionErrors = messagesAt(issues, 'options');
   const answerIssues = booleanAnswerMessages(issues);
@@ -988,20 +970,6 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             readOnly={interactionDisabled}
             errors={nameErrors}
             showErrors={nameErrors.length > 0}
-          />
-          <UnconnectedField
-            name="variable-label"
-            label={intl.formatMessage(messages.labelLabel)}
-            hint={intl.formatMessage(messages.labelHint)}
-            component={InputField}
-            placeholder={
-              typeof draft.name === 'string' ? draft.name : undefined
-            }
-            value={typeof draft.label === 'string' ? draft.label : ''}
-            onChange={(label) => replaceProperty('label', label ?? '')}
-            readOnly={interactionDisabled}
-            errors={labelErrors}
-            showErrors={labelErrors.length > 0}
           />
           {typeFixed ? (
             // Shown rather than offered: the host's attribute can only be

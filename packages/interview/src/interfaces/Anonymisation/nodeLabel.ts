@@ -1,9 +1,5 @@
 import type { Variable } from '@codaco/protocol-validation';
-import {
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  type NcNode,
-} from '@codaco/shared-consts';
+import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
 import {
@@ -60,28 +56,24 @@ export function readNodeLabelSource(
 }
 
 type NodeLabelTextOptions = {
-  /** The label of the node's type, which a node with no text of its own shows. */
-  typeLabel: string;
+  /** The label a node with no text of its own shows. */
+  unnamed: string;
   /** The label of an answer that can never be read. */
   unavailable: string;
   outcomeOf: OutcomeOf;
 };
 
 /**
- * The label `node` shows, read from its `source`: the plaintext of an
+ * The label a node shows, read from its `source`: the plaintext of an
  * encrypted answer once it has decrypted readable, and never anything derived
  * from it otherwise, so the lock while it is locked or still decrypting. A
- * node with no text shows its type's label, or its id when that is blank.
+ * node with no text shows `unnamed`.
  */
 export function nodeLabelText(
-  node: NcNode,
   source: NodeLabelSource,
-  { typeLabel, unavailable, outcomeOf }: NodeLabelTextOptions,
+  { unnamed, unavailable, outcomeOf }: NodeLabelTextOptions,
 ): string {
-  if (source.status === 'plain') {
-    if (source.text !== undefined) return source.text;
-    return typeLabel.trim() === '' ? node[entityPrimaryKeyProperty] : typeLabel;
-  }
+  if (source.status === 'plain') return source.text ?? unnamed;
   if (source.status === 'unreadable') return unavailable;
 
   const outcome = outcomeOf(source.value);

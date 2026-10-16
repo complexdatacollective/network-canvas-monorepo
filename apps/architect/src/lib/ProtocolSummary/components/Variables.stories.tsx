@@ -86,7 +86,6 @@ export const OptionLabelsInEveryLanguage: Story = {
     variables: {
       'consent-preference': {
         name: NAME,
-        label: 'Consent preference',
         type: 'categorical',
         options: [
           {

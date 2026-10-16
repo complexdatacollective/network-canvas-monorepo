@@ -55,7 +55,6 @@
   "interview.interfaces.drawingControls": "Controles de desenho",
   "interview.interfaces.editingTools": "Ferramentas de edição",
   "interview.interfaces.emptyValue": "Nenhum valor",
-  "interview.interfaces.entityName": "Nome de {entityLabel}",
   "interview.interfaces.errorHeading": "Algo deu errado",
   "interview.interfaces.finishingInterview": "Finalizando a entrevista…",
   "interview.interfaces.groupMembershipOptions": "Opções de participação em grupos",
@@ -135,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "Verificando sua frase secreta…",
   "interview.runtime.choosePassphraseHelp": "Algumas respostas desta tela são protegidas por uma frase secreta. Guarde-a em segurança: você precisará dela para ver ou alterar essas respostas depois, e ela não poderá ser recuperada se for esquecida.",
   "interview.runtime.collapseDrawer": "Recolher gaveta",
+  "interview.runtime.connection": "Conexão",
   "interview.runtime.copied": "Copiado!",
   "interview.runtime.copyDebugInfo": "Copiar informações de depuração",
   "interview.runtime.deleteBin": "Lixeira",
@@ -159,5 +159,7 @@
   "interview.runtime.replaceUnavailableAnswer": "Digitar uma nova resposta",
   "interview.runtime.secondNode": "segundo item",
   "interview.runtime.taskErrorDescription": "Ocorreu um erro no software da entrevista, e esta tarefa não pôde ser exibida. Algumas tarefas, como mapas, precisam de conexão com a internet: verifique sua conexão e depois tente atualizar a página. Se o problema persistir, entre em contato com a equipe responsável pelo estudo e envie os dados de depuração, que você pode copiar com o botão abaixo. Talvez você consiga continuar sua entrevista clicando no botão de avançar.",
+  "interview.runtime.unnamed": "Sem nome",
+  "interview.runtime.unnamedNumbered": "Sem nome {number}",
   "interview.runtime.unplacedCount": "Não posicionados: {count, number}"
 }

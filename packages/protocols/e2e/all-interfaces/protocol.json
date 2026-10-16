@@ -7,9 +7,6 @@
     "node": {
       "person": {
         "name": "person",
-        "label": {
-          "en-US": "person"
-        },
         "color": "node-color-seq-1",
         "icon": "add-a-person",
         "shape": {
@@ -18,7 +15,6 @@
         "variables": {
           "name": {
             "name": "name",
-            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -27,29 +23,24 @@
           },
           "relationship_to_ego": {
             "name": "relationship_to_ego",
-            "label": "relationship_to_ego",
             "type": "text",
             "component": "Text"
           },
           "composerName": {
             "name": "composerName",
-            "label": "composerName",
             "type": "text",
             "component": "Text"
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           },
           "location": {
             "name": "location",
-            "label": "location",
             "type": "location"
           },
           "contactFreq": {
             "name": "contactFreq",
-            "label": "contactFreq",
             "type": "ordinal",
             "options": [
               {
@@ -74,7 +65,6 @@
           },
           "contactType": {
             "name": "contactType",
-            "label": "contactType",
             "type": "categorical",
             "options": [
               {
@@ -99,19 +89,16 @@
           },
           "flagged": {
             "name": "flagged",
-            "label": "flagged",
             "type": "boolean",
             "component": "Boolean"
           },
           "highlighted": {
             "name": "highlighted",
-            "label": "highlighted",
             "type": "boolean",
             "component": "Boolean"
           },
           "age": {
             "name": "age",
-            "label": "age",
             "type": "number"
           }
         }
@@ -126,7 +113,6 @@
         "variables": {
           "fm_name": {
             "name": "fm_name",
-            "label": "fm_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -135,7 +121,6 @@
           },
           "is_ego": {
             "name": "is_ego",
-            "label": "is_ego",
             "type": "boolean",
             "component": "Toggle"
           },
@@ -179,8 +164,7 @@
                   "en-US": "Prefer not to say"
                 }
               }
-            ],
-            "label": "genderIdentity"
+            ]
           },
           "sexAssignedAtBirth": {
             "name": "sexAssignedAtBirth",
@@ -216,17 +200,12 @@
                   "en-US": "Prefer not to say"
                 }
               }
-            ],
-            "label": "sexAssignedAtBirth"
+            ]
           },
           "hasConditionX": {
             "name": "hasConditionX",
-            "label": "hasConditionX",
             "type": "boolean"
           }
-        },
-        "label": {
-          "en-US": "family member"
         }
       }
     },
@@ -234,7 +213,6 @@
       "variables": {
         "ego_name": {
           "name": "ego_name",
-          "label": "ego_name",
           "type": "text",
           "component": "Text"
         }
@@ -303,34 +281,24 @@
                   "en-US": "Twin, not known if identical"
                 }
               }
-            ],
-            "label": "relationshipKind"
+            ]
           },
           "isGestationalCarrier": {
             "name": "isGestationalCarrier",
-            "label": "isGestationalCarrier",
             "type": "boolean"
           },
           "isCurrentPartner": {
             "name": "isCurrentPartner",
-            "type": "boolean",
-            "label": "isCurrentPartner"
+            "type": "boolean"
           }
-        },
-        "label": {
-          "en-US": "family_edge"
         }
       },
       "knows": {
         "name": "knows",
-        "label": {
-          "en-US": "knows"
-        },
         "color": "edge-color-seq-2",
         "variables": {
           "closeness": {
             "name": "closeness",
-            "label": "closeness",
             "type": "ordinal",
             "options": [
               {
@@ -355,7 +323,6 @@
           },
           "edgeNotes": {
             "name": "edgeNotes",
-            "label": "edgeNotes",
             "type": "text",
             "component": "TextArea"
           }
@@ -813,7 +780,14 @@
           "layoutVariable": "layout",
           "groupVariable": "contactType",
           "edges": {
-            "display": ["knows"]
+            "display": [
+              {
+                "type": "knows",
+                "label": {
+                  "en-US": "knows"
+                }
+              }
+            ]
           },
           "highlight": [
             {

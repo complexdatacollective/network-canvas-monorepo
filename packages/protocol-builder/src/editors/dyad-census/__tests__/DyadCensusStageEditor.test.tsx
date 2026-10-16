@@ -101,7 +101,6 @@ describe('the dyad census editor', () => {
       edge: {
         worksWith: {
           name: 'worksWith',
-          label: { 'en-US': 'worksWith' },
           color: 'edge-color-seq-2',
         },
       },

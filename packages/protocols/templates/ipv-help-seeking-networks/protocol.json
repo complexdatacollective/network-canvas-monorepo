@@ -12,14 +12,10 @@
     "node": {
       "person": {
         "name": "Person",
-        "label": {
-          "en-US": "Person"
-        },
         "icon": "add-a-person",
         "variables": {
           "person_name": {
             "name": "person_name",
-            "label": "person_name",
             "encrypted": true,
             "type": "text",
             "component": "Text",
@@ -30,7 +26,6 @@
           },
           "private_note": {
             "name": "private_note",
-            "label": "private_note",
             "encrypted": true,
             "type": "text",
             "component": "TextArea",
@@ -40,22 +35,18 @@
           },
           "support_confidant": {
             "name": "support_confidant",
-            "label": "support_confidant",
             "type": "boolean"
           },
           "support_practical": {
             "name": "support_practical",
-            "label": "support_practical",
             "type": "boolean"
           },
           "unhelpful": {
             "name": "unhelpful",
-            "label": "unhelpful",
             "type": "boolean"
           },
           "relationship": {
             "name": "relationship",
-            "label": "relationship",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -108,7 +99,6 @@
           },
           "contact_frequency": {
             "name": "contact_frequency",
-            "label": "contact_frequency",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -140,7 +130,6 @@
           },
           "knows_about_abuse": {
             "name": "knows_about_abuse",
-            "label": "knows_about_abuse",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -160,7 +149,6 @@
           },
           "safe_to_tell": {
             "name": "safe_to_tell",
-            "label": "safe_to_tell",
             "type": "ordinal",
             "component": "RadioGroup",
             "options": [
@@ -186,7 +174,6 @@
           },
           "reaction": {
             "name": "reaction",
-            "label": "reaction",
             "type": "categorical",
             "component": "CheckboxGroup",
             "options": [
@@ -224,19 +211,16 @@
           },
           "reaction_other": {
             "name": "reaction_other",
-            "label": "reaction_other",
             "encrypted": true,
             "type": "text",
             "component": "Text"
           },
           "close_to_partner": {
             "name": "close_to_partner",
-            "label": "close_to_partner",
             "type": "boolean"
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           }
         },
@@ -247,14 +231,10 @@
       },
       "service": {
         "name": "Service",
-        "label": {
-          "en-US": "Service"
-        },
         "icon": "add-a-place",
         "variables": {
           "service_name": {
             "name": "service_name",
-            "label": "service_name",
             "type": "text",
             "component": "Text",
             "validation": {
@@ -264,7 +244,6 @@
           },
           "service_type": {
             "name": "service_type",
-            "label": "service_type",
             "type": "categorical",
             "component": "ToggleButtonGroup",
             "options": [
@@ -323,12 +302,10 @@
           },
           "service_contacted": {
             "name": "service_contacted",
-            "label": "service_contacted",
             "type": "boolean"
           },
           "service_helpful": {
             "name": "service_helpful",
-            "label": "service_helpful",
             "type": "ordinal",
             "component": "LikertScale",
             "options": [
@@ -368,9 +345,6 @@
     "edge": {
       "knows": {
         "name": "Know each other",
-        "label": {
-          "en-US": "Know each other"
-        },
         "color": "edge-color-seq-1",
         "variables": {}
       }
@@ -379,7 +353,6 @@
       "variables": {
         "participant_consent": {
           "name": "participant_consent",
-          "label": "participant_consent",
           "type": "boolean",
           "component": "Boolean",
           "validation": {
@@ -404,7 +377,6 @@
         },
         "ego_age": {
           "name": "ego_age",
-          "label": "ego_age",
           "type": "number",
           "component": "Number",
           "validation": {
@@ -414,7 +386,6 @@
         },
         "relationship_status": {
           "name": "relationship_status",
-          "label": "relationship_status",
           "type": "categorical",
           "component": "ToggleButtonGroup",
           "options": [
@@ -455,7 +426,6 @@
         },
         "children_in_home": {
           "name": "children_in_home",
-          "label": "children_in_home",
           "type": "boolean",
           "component": "Boolean",
           "options": [

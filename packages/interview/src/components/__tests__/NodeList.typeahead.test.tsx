@@ -291,7 +291,7 @@ describe('NodeList typeahead text', () => {
     expect(shownAndTypedAhead('bob')).toEqual(both('Bob'));
   });
 
-  it("is the type's label that a person with no name shows", async () => {
+  it('is "Unnamed" for a node with no name', async () => {
     const unnamed: NcNode = {
       [entityPrimaryKeyProperty]: 'unnamed',
       type: NODE_TYPE,
@@ -301,6 +301,6 @@ describe('NodeList typeahead text', () => {
     renderList(await lockedStore(nodes), nodes);
     await settle();
 
-    expect(shownAndTypedAhead('unnamed')).toEqual(both('Person'));
+    expect(shownAndTypedAhead('unnamed')).toEqual(both('Unnamed'));
   });
 });

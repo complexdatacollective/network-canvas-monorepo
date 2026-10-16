@@ -81,7 +81,6 @@ describe('diffProtocolSections', () => {
       ...person.variables,
       close_friend: {
         name: 'close_friend',
-        label: 'Close friend',
         type: 'boolean',
       },
     };
@@ -299,7 +298,6 @@ describe('diffProtocolSections', () => {
     // typed by the record it is assigned to.
     const variable: Variable = {
       name: 'constructor',
-      label: 'Constructor',
       type: 'boolean',
     };
     person.variables = { ...person.variables, constructor: variable };

@@ -20,28 +20,24 @@ const mockProtocol = {
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         displayVariable: 'name',
         variables: {
           name: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
           },
         },
       },
       place: {
         name: 'Place',
-        label: { en: 'Place' },
         color: 'node-color-seq-2',
         shape: { default: 'circle' },
         displayVariable: 'name',
         variables: {
           name: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
           },
         },

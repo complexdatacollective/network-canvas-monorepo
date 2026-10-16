@@ -435,6 +435,7 @@ describe('indexes selectors', () => {
               {
                 id: 'composer-edge-1',
                 subject: { entity: 'edge', type: 'friendship-type-id' },
+                label: { en: 'Connection' },
               },
             ],
           },
@@ -660,6 +661,7 @@ describe('indexes selectors', () => {
               {
                 id: 'composer-edge-1',
                 subject: { entity: 'edge', type: 'friendship-type-id' },
+                label: { en: 'Connection' },
               },
             ],
           },
