@@ -150,7 +150,11 @@ function AddNodeField({
   );
 
   return (
-    <div {...containerProps} className="flex w-72 flex-col">
+    <div
+      {...containerProps}
+      data-testid="add-node-input"
+      className="flex w-72 flex-col"
+    >
       <InputField
         // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: the
         // popover exists to capture a name, so focus belongs here on open.

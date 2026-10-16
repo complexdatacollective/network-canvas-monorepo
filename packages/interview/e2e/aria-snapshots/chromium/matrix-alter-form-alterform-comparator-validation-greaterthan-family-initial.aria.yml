@@ -1,5 +1,5 @@
 - main:
-  - button "Person"
+  - button "Unnamed"
   - text: Start
   - button "Decrease value"
   - spinbutton "Start"
