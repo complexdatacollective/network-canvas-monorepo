@@ -32,11 +32,20 @@ const Protocol = () => {
       <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
         {intl.formatMessage(messages.stages)}
       </Heading>
-      <FinishStageTextAlert />
-      <TestingMapboxTokenAlert />
-      <VariableRoleConflictsAlert />
-      <LocalizationAlert />
-      <LanguageChooserAlert />
+      {/*
+       * The notes stack in one block-level column, so their margins collapse
+       * to the Alert's own gap between neighbours. The column ends as far
+       * above the card as it starts below the toolbar's visible edge (the
+       * toolbar's own padding supplies the rest above), and renders nothing
+       * when no note shows, leaving the card where it was.
+       */}
+      <div className="mb-15 w-full max-w-3xl empty:hidden">
+        <FinishStageTextAlert />
+        <TestingMapboxTokenAlert />
+        <VariableRoleConflictsAlert />
+        <LocalizationAlert />
+        <LanguageChooserAlert />
+      </div>
       <ProtocolInfoCard />
       <Timeline />
     </div>

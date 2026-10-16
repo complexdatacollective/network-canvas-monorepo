@@ -115,7 +115,7 @@ const LocalizationAlert = () => {
   };
 
   return (
-    <Alert variant="info" className="mx-auto mb-10 max-w-3xl">
+    <Alert variant="info">
       <div className="mb-2 flex items-center gap-3">
         <AlertTitle className="mb-0! min-w-0 flex-1">
           {intl.formatMessage(messages.missingTitle)}
