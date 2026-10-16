@@ -325,7 +325,9 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: /person name/i });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     await userEvent.type(input, 'Alice');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -353,7 +355,9 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: /person name/i });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     await userEvent.type(input, 'Alice');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
@@ -386,7 +390,9 @@ describe('NetworkComposer quick-add submission lifecycle', () => {
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: /person name/i });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     await userEvent.type(input, 'Alice');
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 

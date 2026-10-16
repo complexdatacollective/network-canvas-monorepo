@@ -309,20 +309,17 @@ describe('variable role helpers', () => {
     const variables = {
       sexAssignedAtBirth: {
         name: 'sexAssignedAtBirth',
-        label: 'sexAssignedAtBirth',
         type: 'categorical' as const,
         options: [{ label: { en: 'Drifted' }, value: 'drifted' }],
       },
       stamped: {
         name: 'stamped',
-        label: 'stamped',
         type: 'ordinal' as const,
         readOnly: true,
         options: [{ label: { en: 'Low' }, value: 1 }],
       },
       ordinary: {
         name: 'ordinary',
-        label: 'ordinary',
         type: 'categorical' as const,
         options: [{ label: { en: 'Yes' }, value: 'yes' }],
       },

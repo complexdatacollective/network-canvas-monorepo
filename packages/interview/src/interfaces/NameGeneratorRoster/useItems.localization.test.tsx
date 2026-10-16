@@ -13,7 +13,6 @@ const { sourceNodes, typeDefinition } = vi.hoisted(() => ({
   ],
   typeDefinition: {
     name: 'person_internal',
-    label: { en: 'Researcher subject' },
     variables: {
       name: { name: 'name', type: 'text' },
     },
@@ -70,7 +69,7 @@ beforeAll(async () => {
 });
 
 describe('roster memoized fallback labels', () => {
-  it('keeps the fallback label, the roster data and authored type labels unchanged across locale changes', () => {
+  it('words the fallback label in the interview language, and leaves the roster data unchanged', () => {
     const before = structuredClone(sourceNodes);
     const tree = (locale: string) => (
       <InterviewI18nProvider requestedLocale={locale}>
@@ -82,15 +81,15 @@ describe('roster memoized fallback labels', () => {
     const { rerender } = render(tree('en'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
-    ).toEqual(['Researcher subject 1', 'Zoë Álvarez']);
+    ).toEqual(['Unnamed 1', 'Zoë Álvarez']);
     rerender(tree('es'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
-    ).toEqual(['Researcher subject 1', 'Zoë Álvarez']);
+    ).toEqual(['Sin nombre 1', 'Zoë Álvarez']);
     expect(sourceNodes).toEqual(before);
     rerender(tree('en-GB'));
     expect(
       screen.getAllByRole('listitem').map((item) => item.textContent),
-    ).toEqual(['Researcher subject 1', 'Zoë Álvarez']);
+    ).toEqual(['Unnamed 1', 'Zoë Álvarez']);
   });
 });

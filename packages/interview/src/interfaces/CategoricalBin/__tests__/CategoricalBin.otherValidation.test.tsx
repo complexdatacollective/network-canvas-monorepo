@@ -177,7 +177,6 @@ function buildCodebook(
             : {
                 [otherVariable]: {
                   name: 'Other reason',
-                  label: 'Other reason',
                   type: 'text' as const,
                   ...(omitOtherComponent ? {} : { component: 'Text' as const }),
                   ...(otherValidation ? { validation: otherValidation } : {}),

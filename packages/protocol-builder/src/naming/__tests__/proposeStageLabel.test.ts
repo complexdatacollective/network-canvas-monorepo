@@ -48,7 +48,6 @@ const contextWith = (
     },
     [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
       name: 'Friendship',
-      label: { en: 'Friendship' },
       variables: {
         closeness: {
           name: 'Closeness',

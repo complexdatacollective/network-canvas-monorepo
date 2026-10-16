@@ -398,7 +398,7 @@ describe('TieStrengthCensus dynamic values', () => {
           negativeLabel: { en: '{first} and {second} are not close' },
         })),
       } as StageProps<'TieStrengthCensus'>['stage'],
-      // The second has no name, so it shows its type's.
+      // The second has no name, so it is unnamed.
       nodes: [
         { ...first!, [entityAttributesProperty]: { name: 'Ada' } },
         second!,
@@ -407,7 +407,7 @@ describe('TieStrengthCensus dynamic values', () => {
 
     expect(
       await screen.findByRole('option', {
-        name: 'Ada and Person are not close',
+        name: 'Ada and Unnamed are not close',
       }),
     ).toBeInTheDocument();
   });

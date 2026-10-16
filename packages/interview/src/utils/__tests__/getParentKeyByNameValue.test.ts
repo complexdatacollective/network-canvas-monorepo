@@ -113,7 +113,6 @@ describe('getParentKeyByNameValue', () => {
             '__proto__',
             {
               name: 'Anything',
-              label: 'Anything',
               type: 'text' as const,
             },
           ],

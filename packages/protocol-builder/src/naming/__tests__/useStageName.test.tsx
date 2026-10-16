@@ -69,7 +69,6 @@ const protocolSections = (extra: SectionMap = {}): SectionMap => ({
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: personNode('Person'),
   [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
     name: 'Friendship',
-    label: { en: 'Friendship' },
     variables: {},
   },
   ...extra,
