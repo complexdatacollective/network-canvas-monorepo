@@ -215,7 +215,6 @@ test.describe('a Spanish browser', () => {
     await chooseLanguage(page, 'en', 'es');
     await interviewNav.startNewSession('Finish-locale-17');
     await interviewNav.next();
-    await interviewNav.next();
     await interviewNav.fillEgoName('Ángela Ñ-21');
     await interviewNav.next();
     await interviewNav.quickAddNode('Irene');
@@ -231,7 +230,7 @@ test.describe('a Spanish browser', () => {
     await expect(finishHeading).toBeVisible();
     await expect
       .poll(async () => (await storedResearch(page)).sessions)
-      .toEqual([expect.objectContaining({ currentStep: 5, finishedAt: null })]);
+      .toEqual([expect.objectContaining({ currentStep: 4, finishedAt: null })]);
     const before = await storedResearch(page);
     expect(before.protocols).toHaveLength(1);
     expect(before.sessions).toHaveLength(1);

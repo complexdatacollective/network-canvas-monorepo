@@ -4,7 +4,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { FAMILY_PEDIGREE_SLOTS } from '@codaco/protocol-validation';
 
-import { LocalizedInputField } from '../../../fields/LocalizedStringField.tsx';
+import {
+  LocalizedInputField,
+  LocalizedRichTextField,
+} from '../../../fields/LocalizedStringField.tsx';
 import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
@@ -84,6 +87,9 @@ export default function NodeConfigurationSection() {
             draftBoundElsewhere={otherAnswerVariables.name}
             draftSlotMap={draftSlotMap}
             offerValidation
+            unavailableValidationRules={{
+              required: intl.formatMessage(messages.nameRequiredUnavailable),
+            }}
           />
           {supplied !== undefined && (
             <>
@@ -99,11 +105,14 @@ export default function NodeConfigurationSection() {
                 )}
                 required={REQUIRED}
               />
-              <Field<typeof LocalizedInputField>
+              {/* Markdown, edited like a form field's hint, which it is
+                  shown as. */}
+              <Field<typeof LocalizedRichTextField>
                 name={NAME_FIELD_PATHS.hint}
-                component={LocalizedInputField}
+                component={LocalizedRichTextField}
                 label={intl.formatMessage(messages.nameHintTextLabel)}
                 hint={intl.formatMessage(messages.nameHintTextHint)}
+                singleLine
                 // A stage holding the question without guidance had it
                 // removed, so the supplied guidance is not put back.
                 initialValue={

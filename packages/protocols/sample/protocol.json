@@ -543,32 +543,18 @@
       ]
     },
     {
-      "id": "400b9810-9dc2-11eb-8192-d9f6b822b280-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Sample Consent Form"
-      },
-      "title": {
-        "en-US": "Sample Consent Form"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "**STUDY TITLE:** A Sample Network Canvas Study\n\n**RESEARCHER DETAILS:** Joshua Melville, Northwestern University\n\n**PURPOSE OF STUDY:** Demonstration\n\nBy answering **yes** below, you confirm the following:\n\n\n1. I have read the information sheet, have asked questions and received satisfactory answers\n1. I understand that this project has been reviewed by, and received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;\n1. I understand that my participation is voluntary and that I am free to withdraw myself or my data at any time, without giving any reason, and without any adverse consequences\n1. I understand who will have access to personal data provided\n1. I understand how personal data will be stored and what will happen to the data at the end of the project\n1. I understand that the research will be written up and published in the public domain.\n1. I understand how to raise concerns or make a complaint\n\n"
-          }
-        }
-      ]
-    },
-    {
       "id": "400b9810-9dc2-11eb-8192-d9f6b822b280",
       "label": { "en-US": "Consent Form" },
       "type": "EgoForm",
-      "form": {
+      "introductionPanel": {
         "title": {
           "en-US": "Sample Consent Form"
         },
+        "text": {
+          "en-US": "**STUDY TITLE:** A Sample Network Canvas Study\n\n**RESEARCHER DETAILS:** Joshua Melville, Northwestern University\n\n**PURPOSE OF STUDY:** Demonstration\n\nBy answering **yes** below, you confirm the following:\n\n\n1. I have read the information sheet, have asked questions and received satisfactory answers\n1. I understand that this project has been reviewed by, and received ethics clearance through, &lt;IRB OR ETHICS BOARD HERE&gt;\n1. I understand that my participation is voluntary and that I am free to withdraw myself or my data at any time, without giving any reason, and without any adverse consequences\n1. I understand who will have access to personal data provided\n1. I understand how personal data will be stored and what will happen to the data at the end of the project\n1. I understand that the research will be written up and published in the public domain.\n1. I understand how to raise concerns or make a complaint\n\n"
+        }
+      },
+      "form": {
         "fields": [
           {
             "variable": "09306238-68e4-498c-8c12-923eb2eec760",
@@ -577,42 +563,6 @@
             }
           }
         ]
-      }
-    },
-    {
-      "id": "e922f680-32ee-11eb-8503-3b4fa95b8bc6-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Conventional Ego Data Collection Example"
-      },
-      "title": {
-        "en-US": "Conventional Ego Data Collection Example"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "This screen shows an example of a more conventional participant-level data collection form. Note the collection of many different types of data, and the use of touch optimized input controls alongside more familiar text entry.\n\nInterviewer is not intended to replace dedicated participant-level survey tools. However, it can be used to collect basic ego data, and is especially useful if you need to collect information that can link your participant to survey data collected through a different platform.\n"
-          }
-        }
-      ],
-      "skipLogic": {
-        "action": "SKIP",
-        "filter": {
-          "rules": [
-            {
-              "type": "ego",
-              "id": "08639361-afc8-482b-845e-52c14abb37e9",
-              "options": {
-                "attribute": "09306238-68e4-498c-8c12-923eb2eec760",
-                "operator": "EXACTLY",
-                "value": false
-              }
-            }
-          ]
-        },
-        "destination": { "type": "stage", "stageId": "finish-declined" }
       }
     },
     {
@@ -636,10 +586,15 @@
         },
         "destination": { "type": "stage", "stageId": "finish-declined" }
       },
-      "form": {
+      "introductionPanel": {
         "title": {
           "en-US": "Conventional Ego Data Collection Example"
         },
+        "text": {
+          "en-US": "This screen shows an example of a more conventional participant-level data collection form. Note the collection of many different types of data, and the use of touch optimized input controls alongside more familiar text entry.\n\nInterviewer is not intended to replace dedicated participant-level survey tools. However, it can be used to collect basic ego data, and is especially useful if you need to collect information that can link your participant to survey data collected through a different platform.\n"
+        }
+      },
+      "form": {
         "fields": [
           {
             "variable": "4ab18994-a252-47cb-ba19-20b6ffc0e927",

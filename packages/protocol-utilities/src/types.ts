@@ -314,6 +314,11 @@ export type StageEntry = {
     maxNodes?: number;
     interactionMode?: 'drag' | 'select';
   };
+  // EgoForm: the heading and text shown above its questions
+  introductionPanel?: {
+    title: TextInput;
+    text?: TextInput;
+  };
   title?: TextInput;
   items?: ItemInput[];
   initialEdges: [number, number][];
@@ -543,6 +548,11 @@ export type AddStageInput = {
   form?: {
     title?: TextInput;
     fields: FormFieldInput[];
+  };
+  // EgoForm: the heading and text shown above its questions
+  introductionPanel?: {
+    title?: TextInput;
+    text?: TextInput;
   };
   // NameGeneratorQuickAdd
   quickAdd?: string;

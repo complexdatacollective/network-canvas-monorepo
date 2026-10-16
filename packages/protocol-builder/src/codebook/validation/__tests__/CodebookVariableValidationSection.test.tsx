@@ -836,3 +836,103 @@ describe('the marker a refused write leaves behind', () => {
     );
   });
 });
+
+/**
+ * A host may rule a rule out of its stage, but a rule the codebook already
+ * holds can still be taken off — and must stay so while the codebook holds
+ * it, or a removal a collaborator's lock refused could never be retried.
+ */
+describe('a rule the mounting stage rules out', () => {
+  const REASON = 'The stage always records one.';
+  const openRulingOut = () =>
+    renderStageEditor({
+      stageId: 'ego-form-1',
+      sections: (
+        <CodebookVariableValidationSection
+          subject={PERSON}
+          variableId="story"
+          unavailableRules={{ required: REASON }}
+        />
+      ),
+    });
+  const holdingRequired = () => {
+    const codebook = personHolding('text');
+    return {
+      node: {
+        person: {
+          ...codebook.node.person,
+          variables: {
+            ...codebook.node.person.variables,
+            story: {
+              ...codebook.node.person.variables.story,
+              validation: { required: true },
+            },
+          },
+        },
+      },
+    };
+  };
+
+  it('cannot be switched on', async () => {
+    const harness = openRulingOut();
+    harness.receiveCodebookUpdate(personHolding('text'));
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    );
+    const required = await screen.findByRole('switch', {
+      name: 'Required answer',
+    });
+    expect(required).toHaveAttribute('aria-disabled', 'true');
+    expect(required).toHaveAccessibleDescription(REASON);
+    await harness.user.click(required);
+    expect(personValidation(harness, 'story')).toBeUndefined();
+  });
+
+  it('can be taken off again after a collaborator’s lock refused it', async () => {
+    const harness = openRulingOut();
+    harness.receiveCodebookUpdate(holdingRequired());
+    await harness.opened();
+    const robin = harness.host.asCollaborator({
+      sessionId: 'session-2',
+      userId: 'user-2',
+      displayName: 'Robin',
+    });
+    await robin.rpcCall('AcquireLock', {
+      protocolId: harness.host.protocolId,
+      sectionId: PERSON_SECTION,
+    });
+
+    // On, and explained: the reason belongs beneath the rule while it stands.
+    const standing = await screen.findByRole('switch', {
+      name: 'Required answer',
+    });
+    expect(standing).toHaveAccessibleDescription(REASON);
+    await harness.user.click(standing);
+    expect(
+      await screen.findByText(
+        'Robin is currently editing a section needed for this change.',
+      ),
+    ).toBeInTheDocument();
+    expect(personValidation(harness, 'story')).toEqual({ required: true });
+    const refused = screen.getByRole('switch', { name: 'Required answer' });
+    expect(refused).not.toHaveAttribute('aria-disabled');
+    expect(refused).toHaveAccessibleDescription(REASON);
+
+    await robin.rpcCall('ReleaseLock', {
+      protocolId: harness.host.protocolId,
+      sectionId: PERSON_SECTION,
+    });
+    // Back on over the saved rule, then off again: the removal retried.
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Required answer' }),
+    );
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Required answer' }),
+    );
+
+    await waitFor(() =>
+      expect(personValidation(harness, 'story')).toBeUndefined(),
+    );
+  });
+});

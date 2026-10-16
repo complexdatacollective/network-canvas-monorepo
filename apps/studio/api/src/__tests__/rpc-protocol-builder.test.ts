@@ -323,13 +323,10 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
 
   it('refuses to delete the last finish stage, naming its place in the stage order', async () => {
     // A copy of the sample protocol, so its endings can go. Its consent
-    // stages route participants who decline to the second ending; once they
-    // no longer do, that ending can be deleted, but the last one cannot.
+    // stage routes participants who decline to the second ending; once it
+    // no longer does, that ending can be deleted, but the last one cannot.
     const target = egolessProtocolId;
-    const consentStages = [
-      'e922f680-32ee-11eb-8503-3b4fa95b8bc6-introduction',
-      'e922f680-32ee-11eb-8503-3b4fa95b8bc6',
-    ];
+    const consentStages = ['e922f680-32ee-11eb-8503-3b4fa95b8bc6'];
     for (const stageId of consentStages) {
       const sectionId = stageSection(stageId);
       const held = await call(

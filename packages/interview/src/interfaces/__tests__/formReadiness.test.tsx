@@ -106,7 +106,8 @@ const stageFor = (kind: Kind) => {
         id: 'stage',
         type: 'EgoForm',
         label: { en: 'Form' },
-        form: { ...form, title: { en: 'About you' } },
+        introductionPanel: { title: { en: 'About you' } },
+        form,
       };
   }
 };

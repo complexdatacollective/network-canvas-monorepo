@@ -2516,11 +2516,7 @@ describe('Migration V7 to V8', () => {
         stage('alterForm1'),
         stage('alterEdgeForm1'),
       ];
-      // Schema 9 gives an Ego Form's form a title again: its introduction
-      // panel's title, never the title schema 7 left unused.
-      if (ego && 'form' in ego) {
-        expect(ego.form).toHaveProperty('title', { en: 'Intro' });
-      }
+      if (ego && 'form' in ego) expect(ego.form).not.toHaveProperty('title');
       if (alter && 'form' in alter)
         expect(alter.form).not.toHaveProperty('title');
       if (alterEdge && 'form' in alterEdge)

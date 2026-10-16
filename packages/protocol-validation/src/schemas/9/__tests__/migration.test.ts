@@ -1182,7 +1182,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     );
   });
 
-  it("makes an Ego Form's panel title the title of its form, and its text an Information stage", async () => {
+  it("keeps an Ego Form's panel where it is, above its questions", async () => {
     const migrated = migrateProtocol(
       schema8WithStages(egoFormWithPanel({ title: 'Welcome', text: 'Hello' })),
       9,
@@ -1192,33 +1192,32 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     expect(stageIds(migrated.stages)).toEqual([
       'nameGenerator1',
       'sociogram1',
-      'ego-form-introduction',
       'ego-form',
       'finish',
     ]);
     expect(migrated.stages[2]).toMatchObject({
-      title: localized('Welcome'),
-      items: [{ type: 'text', content: localized('Hello') }],
+      introductionPanel: {
+        title: localized('Welcome'),
+        text: localized('Hello'),
+      },
     });
-    expect(migrated.stages[3]).toMatchObject({
-      form: { title: localized('Welcome') },
-    });
-    expect(migrated.stages[3]).not.toHaveProperty('introductionPanel');
+    expect(migrated.stages[2]).not.toHaveProperty('form.title');
   });
 
   // Published protocols (SIXHUMENE Waves 1-3) give a panel a body of a single
   // space on purpose, to show only its title.
   it.each(BLANK_TEXT)(
-    'adds no Information stage for an Ego Form whose text is %s',
+    "removes an Ego Form's panel text of %s, so it shows only its title",
     (_, text) => {
-      const stages = migratedStages(
+      const stage = migratedStage(
         schema8WithStages(egoFormWithPanel({ title: 'Welcome', text })),
+        'ego-form',
       );
 
-      expect(stageIds(stages)).not.toContain('ego-form-introduction');
-      expect(stages.find(({ id }) => id === 'ego-form')).toMatchObject({
-        form: { title: localized('Welcome') },
+      expect(stage).toMatchObject({
+        introductionPanel: { title: localized('Welcome') },
       });
+      expect(stage).not.toHaveProperty('introductionPanel.text');
     },
   );
 
@@ -1240,36 +1239,48 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
         schema8WithStages(
           egoFormWithPanel({ title: 'Welcome', text: ' Hello ' }),
         ),
-        'ego-form-introduction',
+        'ego-form',
       ),
-    ).toMatchObject({ items: [{ content: localized(' Hello ') }] });
+    ).toMatchObject({
+      introductionPanel: {
+        title: localized('Welcome'),
+        text: localized(' Hello '),
+      },
+    });
   });
 
   // The 7 to 8 migration gives a panel with no title the stage's label.
   it.each(BLANK_TEXT)(
     'gives a title of %s the stage label, as a missing title gets',
     (_, title) => {
-      const stages = migratedStages(
-        schema8WithStages(egoFormWithPanel({ title, text: 'Hello' })),
-      );
-      expect(stages.find(({ id }) => id === 'ego-form')).toMatchObject({
-        form: { title: localized('About you') },
+      expect(
+        migratedStage(
+          schema8WithStages(egoFormWithPanel({ title, text: 'Hello' })),
+          'ego-form',
+        ),
+      ).toMatchObject({
+        introductionPanel: {
+          title: localized('About you'),
+          text: localized('Hello'),
+        },
       });
       expect(
-        stages.find(({ id }) => id === 'ego-form-introduction'),
-      ).toMatchObject({ title: localized('About you') });
+        migratedStage(
+          schema8WithStages(alterFormWithPanel({ title, text: 'Hello' })),
+          'alter-form-introduction',
+        ),
+      ).toMatchObject({ title: localized('About them') });
     },
   );
 
-  // Schema 9 refuses the blank label itself; the form is still titled.
+  // Schema 9 refuses the blank label itself; the panel is still titled.
   it('gives a blank title "Introduction" when the stage label is blank as well', () => {
     const stages = stagesMigratedFrom(
-      schema8WithStages(egoFormWithPanel({ title: ' ', text: ' ' }, ' ')),
+      schema8WithStages(egoFormWithPanel({ title: ' ', text: ' ' }, ' ')),
     );
-    expect(stages.at(-2)).toHaveProperty(
-      'form.title',
-      localized('Introduction'),
-    );
+    expect(stages.at(-2)).toHaveProperty('introductionPanel', {
+      title: localized('Introduction'),
+    });
   });
 
   // Fresco re-runs this migration over rows already in schema 9 form.
@@ -1287,23 +1298,21 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
         fields: [{ variable: 'egoName', prompt: { en: 'Name?', fr: 'Nom ?' } }],
       },
     };
-    const [introduction, egoForm] = stagesMigratedFrom({
+    const [migrated] = stagesMigratedFrom({
       ...base,
       schemaVersion: 8,
       localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
       stages: [stage],
     });
 
-    expect(egoForm).toHaveProperty('form.title', { fr: 'Bienvenue' });
-    expect(introduction).toMatchObject({
-      id: 'ego-form-introduction',
-      label: { fr: 'Bienvenue' },
-      title: { fr: 'Bienvenue' },
-      items: [{ content: { en: 'Hello' } }],
+    expect(migrated).toMatchObject({
+      introductionPanel: { title: { fr: 'Bienvenue' }, text: { en: 'Hello' } },
     });
+    expect(migrated).not.toHaveProperty('introductionPanel.title.en');
+    expect(migrated).not.toHaveProperty('introductionPanel.text.fr');
   });
 
-  it('adds no Information stage for localized Ego Form text blank in every language, and titles the form from the label', () => {
+  it('removes text already localized that is blank in every language, and titles it from the label', () => {
     const base = createBaseProtocol();
     const stages = stagesMigratedFrom({
       ...base,
@@ -1326,7 +1335,9 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     });
 
     expect(stageIds(stages)).toEqual(['ego-form', 'finish']);
-    expect(stages[0]).toHaveProperty('form.title', { en: 'About you' });
+    expect(stages[0]).toHaveProperty('introductionPanel', {
+      title: { en: 'About you' },
+    });
   });
 
   it('leaves a document already without panels as it is', () => {
@@ -1396,24 +1407,26 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     const result = await validateProtocol(migrated);
 
     expect(result.success).toBe(true);
-    expect(migrated.stages.slice(0, 5)).toMatchObject([
-      { id: 'ego-1', form: { title: localized('About you') } },
+    expect(migrated.stages.slice(0, 4)).toMatchObject([
+      { id: 'ego-1', introductionPanel: { title: localized('About you') } },
       {
-        id: 'ego-2-introduction',
-        title: localized('Stage 2'),
-        items: [{ content: localized('Some more questions.') }],
+        id: 'ego-2',
+        introductionPanel: {
+          title: localized('Stage 2'),
+          text: localized('Some more questions.'),
+        },
       },
-      { id: 'ego-2', form: { title: localized('Stage 2') } },
       { id: 'alter-1-introduction', title: localized('About them'), items: [] },
       { id: 'alter-1' },
     ]);
+    expect(migrated.stages[0]).not.toHaveProperty('introductionPanel.text');
   });
 
   it('says so in the migration notes', () => {
     const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
 
     expect(note?.notes).toContain(
-      'Introduction panels within interfaces have been removed',
+      'Introduction panels within interfaces other than the Ego Form have been removed',
     );
   });
 });

@@ -862,11 +862,9 @@ describe('committed schema 8 protocols', () => {
     return stages.flatMap((stage) => {
       if (!isRecord(stage)) return [undefined];
       const outline = { id: stage.id, type: stage.type };
-      const panel = stage.introductionPanel;
-      if (!isRecord(panel)) return [outline];
-      const hasText =
-        typeof panel.text === 'string' && panel.text.trim() !== '';
-      if (stage.type === 'EgoForm' && !hasText) return [outline];
+      if (!isRecord(stage.introductionPanel) || stage.type === 'EgoForm') {
+        return [outline];
+      }
       return [
         { id: `${String(stage.id)}-introduction`, type: 'Information' },
         outline,
@@ -914,9 +912,9 @@ describe('committed schema 8 protocols', () => {
         JSON.stringify(result.error?.issues, null, 2),
       ).toBe(true);
       expect(migrated.localization).toEqual(ENGLISH_ONLY);
-      // Every stage is kept, in order, each introduction panel becomes the
-      // Information stage just before its stage (an Ego Form's only when the
-      // panel has text), and the finish stage follows them.
+      // Every stage is kept, in order, each introduction panel but an Ego
+      // Form's becomes the Information stage just before its stage, and the
+      // finish stage follows them.
       expect(stageOutline(migrated)).toEqual([
         ...stageOutlineWithIntroductions(schema8),
         { id: 'finish', type: 'FinishSession' },

@@ -132,6 +132,7 @@ function GeospatialWordingSection() {
           <Field<typeof LocalizedInputField>
             name="offlineNotice"
             component={LocalizedInputField}
+            wraps
             label={intl.formatMessage(geospatialWordingMessages.offlineLabel)}
             hint={intl.formatMessage(geospatialWordingMessages.offlineHint)}
             initialValue={startingWording(
@@ -144,6 +145,7 @@ function GeospatialWordingSection() {
           <Field<typeof LocalizedInputField>
             name="mapUnavailable"
             component={LocalizedInputField}
+            wraps
             label={intl.formatMessage(
               geospatialWordingMessages.unavailableLabel,
             )}
@@ -192,6 +194,7 @@ function GeospatialWordingSection() {
               <Field<typeof LocalizedInputField>
                 name="searchNoMatch"
                 component={LocalizedInputField}
+                wraps
                 label={intl.formatMessage(
                   geospatialWordingMessages.searchNoMatchLabel,
                 )}
@@ -208,6 +211,7 @@ function GeospatialWordingSection() {
               <Field<typeof LocalizedInputField>
                 name="searchFailed"
                 component={LocalizedInputField}
+                wraps
                 label={intl.formatMessage(
                   geospatialWordingMessages.searchFailedLabel,
                 )}

@@ -868,33 +868,34 @@ describe('SyntheticInterview', () => {
   });
 
   describe('EgoForm', () => {
-    it('carries the form title shown above the questions', () => {
+    it('carries the introduction shown above the questions', () => {
       const si = new SyntheticInterview();
       const stage = si.addStage('EgoForm', {
-        form: { title: 'Your details', fields: [] },
+        introductionPanel: { title: 'Your details', text: 'A few questions.' },
       });
       stage.addFormField({ component: 'Text', prompt: 'Nickname' });
 
       const stageConfig = si.getProtocol().stages[0] as Record<string, unknown>;
-      expect(stageConfig).not.toHaveProperty('introductionPanel');
-      const form = stageConfig.form as {
-        title: unknown;
-        fields: unknown[];
-      };
-      expect(form.title).toEqual({ 'en-US': 'Your details' });
+      expect(stageConfig.introductionPanel).toEqual({
+        title: { 'en-US': 'Your details' },
+        text: { 'en-US': 'A few questions.' },
+      });
+      const form = stageConfig.form as Record<string, unknown>;
+      expect(form).not.toHaveProperty('title');
       expect(form.fields).toHaveLength(1);
     });
 
-    it('defaults the form title when none is given', () => {
+    it('defaults the introduction title when none is given', () => {
       const si = new SyntheticInterview();
       si.addStage('EgoForm').addFormField({
         component: 'Text',
         prompt: 'Nickname',
       });
 
-      const form = (si.getProtocol().stages[0] as Record<string, unknown>)
-        .form as { title: unknown };
-      expect(form.title).toEqual({ 'en-US': 'About you' });
+      expect(
+        (si.getProtocol().stages[0] as Record<string, unknown>)
+          .introductionPanel,
+      ).toEqual({ title: { 'en-US': 'About you' } });
     });
   });
 
@@ -3162,7 +3163,7 @@ describe('localization', () => {
     const synth = new SyntheticInterview();
     synth.setLocalization({ defaultLocale: 'es', locales: ['en-US', 'es'] });
     const stage = synth.addStage('EgoForm', {
-      form: { title: 'Sobre ti', fields: [] },
+      introductionPanel: { title: 'Sobre ti' },
     });
     stage.addFormField({
       component: 'Text',

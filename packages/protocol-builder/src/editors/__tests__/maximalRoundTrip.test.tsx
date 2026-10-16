@@ -180,8 +180,11 @@ const MAXIMAL_STAGES: MaximalStage[] = [
       interviewScript: 'Ask about them.',
       skipLogic,
       dynamicValues: EVERY_STAGE.dynamicValues,
+      introductionPanel: {
+        title: { 'en-US': 'Introduction' },
+        text: { 'en-US': 'A few questions.' },
+      },
       form: {
-        title: { 'en-US': 'About you' },
         fields: [
           {
             id: 'field-1',

@@ -86,8 +86,11 @@ export function InterviewI18nProvider({
   );
   // The preference whose built-in language is on screen. While a new one
   // loads, or after it fails to, the previous one stays settled; a retry that
-  // loads it settles it then.
-  const [settled, setSettled] = useState(localePreference ?? null);
+  // loads it settles it then. Opening in a language that cannot load shows
+  // the fallback, so the language on screen is what protocol text follows.
+  const [settled, setSettled] = useState<string | null>(() =>
+    rendered.locale === locale ? (localePreference ?? null) : rendered.locale,
+  );
   if (settled !== (localePreference ?? null) && rendered.locale === locale) {
     setSettled(localePreference ?? null);
   }

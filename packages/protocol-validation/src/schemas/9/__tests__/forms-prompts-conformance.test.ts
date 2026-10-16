@@ -143,7 +143,11 @@ describe('Forms & prompts schema conformance', () => {
           id: 'ef1',
           type: 'EgoForm',
           label: localized('Ego Form'),
-          form: { title: localized('Intro'), fields: [] },
+          form: { fields: [] },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
+          },
         },
       ]);
 
@@ -175,16 +179,21 @@ describe('Forms & prompts schema conformance', () => {
     });
   });
 
-  describe('form titles: required on Ego, absent on Alter/AlterEdge', () => {
-    // The title is the heading shown above an ego form's questions.
-    it('rejects an EgoForm whose form has no title', () => {
+  describe('title-less forms for Ego/Alter/AlterEdge', () => {
+    // An ego form's heading is its introduction panel's title.
+    it('rejects an EgoForm whose form carries a title', () => {
       const protocol = createProtocol([
         {
           id: 'ef1',
           type: 'EgoForm',
           label: localized('Ego Form'),
           form: {
+            title: localized('Tell us about yourself'),
             fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+          },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
           },
         },
       ]);
@@ -236,15 +245,18 @@ describe('Forms & prompts schema conformance', () => {
       ).toBe(false);
     });
 
-    it('accepts an EgoForm whose form has a title', () => {
+    it('accepts a title-less EgoForm', () => {
       const protocol = createProtocol([
         {
           id: 'ef1',
           type: 'EgoForm',
           label: localized('Ego Form'),
           form: {
-            title: localized('Tell us about yourself'),
             fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+          },
+          introductionPanel: {
+            title: localized('Intro'),
+            text: localized('text'),
           },
         },
       ]);
@@ -252,6 +264,59 @@ describe('Forms & prompts schema conformance', () => {
       expect(
         ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
       ).toBe(true);
+    });
+
+    it('accepts an EgoForm whose introduction has only a title', () => {
+      const protocol = createProtocol([
+        {
+          id: 'ef1',
+          type: 'EgoForm',
+          label: localized('Ego Form'),
+          form: {
+            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+          },
+          introductionPanel: { title: localized('Intro') },
+        },
+      ]);
+
+      expect(
+        ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
+      ).toBe(true);
+    });
+
+    it('rejects an EgoForm without an introduction', () => {
+      const protocol = createProtocol([
+        {
+          id: 'ef1',
+          type: 'EgoForm',
+          label: localized('Ego Form'),
+          form: {
+            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+          },
+        },
+      ]);
+
+      expect(
+        ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
+      ).toBe(false);
+    });
+
+    it('rejects an EgoForm whose introduction has an empty title', () => {
+      const protocol = createProtocol([
+        {
+          id: 'ef1',
+          type: 'EgoForm',
+          label: localized('Ego Form'),
+          form: {
+            fields: [{ variable: 'egoName', prompt: localized('Your name?') }],
+          },
+          introductionPanel: { title: localized(''), text: localized('text') },
+        },
+      ]);
+
+      expect(
+        ProtocolSchemaV9.safeParse(withFinishStage(protocol)).success,
+      ).toBe(false);
     });
 
     it('still accepts a NameGenerator form that carries a title', () => {
@@ -668,9 +733,10 @@ describe('Forms & prompts schema conformance', () => {
     });
   });
 
-  // Instructions to participants live in an Information stage (#1938).
+  // Instructions to participants live in an Information stage (#1938); only
+  // an Ego Form keeps an introduction, shown above its questions.
   describe('introductionPanel', () => {
-    it('is no longer accepted on a stage', () => {
+    it('is no longer accepted on a stage other than an Ego Form', () => {
       const protocol = createProtocol([
         {
           id: 'af1',

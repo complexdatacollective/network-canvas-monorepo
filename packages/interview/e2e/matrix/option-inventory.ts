@@ -186,7 +186,8 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
   ],
   EgoForm: [
     'dynamicValues',
-    'form.title',
+    'introductionPanel.title',
+    'introductionPanel.text',
     'form.fields-ordering-and-prompt',
     'form.fields[].hint',
     'form.fields[].showValidationHints',

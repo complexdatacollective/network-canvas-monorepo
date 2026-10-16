@@ -372,39 +372,23 @@
       }
     },
     {
-      "id": "stage-ego-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Introduction",
-        "es": "Introducción"
-      },
-      "title": {
-        "en-US": "Introduction",
-        "es": "Introducción"
-      },
-      "items": [
-        {
-          "id": "text",
-          "type": "text",
-          "content": {
-            "en-US": "Tell us about **you**.",
-            "es": "Cuéntanos sobre **ti**."
-          }
-        }
-      ]
-    },
-    {
       "id": "stage-ego",
       "type": "EgoForm",
       "label": {
         "en-US": "About you",
         "es": "Sobre ti"
       },
-      "form": {
+      "introductionPanel": {
         "title": {
           "en-US": "Introduction",
           "es": "Introducción"
         },
+        "text": {
+          "en-US": "Tell us about **you**.",
+          "es": "Cuéntanos sobre **ti**."
+        }
+      },
+      "form": {
         "fields": [
           {
             "variable": "ego_name",

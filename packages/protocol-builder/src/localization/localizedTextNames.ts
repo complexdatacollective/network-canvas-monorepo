@@ -26,6 +26,7 @@ import { binBehavioursMessages } from '../sections/bin-behaviours/binBehavioursM
 import { contentBlockMessages } from '../sections/content-blocks/ContentBlockEditor.tsx';
 import { composerFormFieldMessages } from '../sections/form-fields/composerFormFieldMessages.ts';
 import { formFieldsMessages } from '../sections/form-fields/FormFieldsSection.tsx';
+import { introductionMessages } from '../sections/introduction/IntroductionSection.tsx';
 import { nameGeneratorPromptMessages } from '../sections/name-generator-prompts/NameGeneratorPromptsSection.tsx';
 import { nameGeneratorWordingMessages } from '../sections/name-generator-wording/nameGeneratorWording.tsx';
 import { pageContentMessages } from '../sections/page-content/PageContentSection.tsx';
@@ -250,6 +251,18 @@ const promptText = (textLabel: MessageDescriptor): Rule =>
 
 const NAME_GENERATOR_PROMPT = promptText(nameGeneratorPromptMessages.textLabel);
 const CENSUS_PROMPT = promptText(censusMessages.promptTextLabel);
+
+const INTRODUCTION: Step = [1, words(introductionMessages.title)];
+const INTRODUCTION_RULES: readonly Rule[] = [
+  rule('introductionPanel.title', INTRODUCTION, [
+    2,
+    words(introductionMessages.headingLabel),
+  ]),
+  rule('introductionPanel.text', INTRODUCTION, [
+    2,
+    words(introductionMessages.textLabel),
+  ]),
+];
 
 const FORM: Step = [1, words(formFieldsMessages.title)];
 
@@ -653,10 +666,7 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     ]),
   ],
   DyadCensus: [CENSUS_PROMPT],
-  EgoForm: [
-    rule('form.title', FORM, [2, words(formFieldsMessages.formTitleLabel)]),
-    ...formFieldRules(egoSubject),
-  ],
+  EgoForm: [...INTRODUCTION_RULES, ...formFieldRules(egoSubject)],
   FamilyPedigree: [
     rule(
       'prompt',

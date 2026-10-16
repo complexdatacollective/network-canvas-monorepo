@@ -335,6 +335,35 @@ describe('the family pedigree stage editor', () => {
 
 describe('the attribute slots', () => {
   /**
+   * The interface gives every family member a name — the one typed, or a
+   * label generated from the relationship — so requiring one could never stop
+   * a participant, and the rule is not offered on the name attribute.
+   */
+  it('does not offer the required rule on the name attribute', async () => {
+    const harness = openFixture();
+    await harness.opened();
+
+    const section = (await screen.findByText('Person attributes')).closest(
+      'section',
+    );
+    if (!(section instanceof HTMLElement)) throw new Error('no section');
+    const [validation] = await within(section).findAllByRole('switch', {
+      name: 'Validation',
+    });
+    if (validation === undefined) throw new Error('no validation switch');
+    if (validation.getAttribute('aria-checked') !== 'true') {
+      await harness.user.click(validation);
+    }
+    const required = await within(section).findByRole('switch', {
+      name: 'Required answer',
+    });
+    expect(required).toHaveAttribute('aria-disabled', 'true');
+    expect(required).toHaveAccessibleDescription(
+      'Not available for this stage. Every family member always has a name: the one the participant types, or a label generated from their relationship to the participant.',
+    );
+  });
+
+  /**
    * Gender identity is the researcher's own list. A new attribute starts from
    * the six options the interface suggests, in the researcher's language, the
    * researcher may keep editing them, and the stage is given the words each
@@ -1041,7 +1070,7 @@ describe('the name question', () => {
 
     expect(
       await screen.findByRole('textbox', { name: 'Name question guidance' }),
-    ).toHaveValue('');
+    ).toHaveTextContent('');
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument).nameField).toEqual({
       prompt: { 'en-US': 'Name' },

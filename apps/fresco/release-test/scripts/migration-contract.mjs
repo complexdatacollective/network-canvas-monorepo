@@ -101,9 +101,9 @@ const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 /**
  * Every introduction panel of `before` became what schema 9 makes of it:
  * an Information stage just before its stage, titled and named with the
- * panel's title and showing its text, with the stage's skip logic; an Ego
- * Form's title becomes the form's title, and its text — when it has any — an
- * Information stage before it. No stage carries a panel any more.
+ * panel's title and showing its text, with the stage's skip logic. An Ego
+ * Form is the exception: it keeps its panel, title and text, and gains no
+ * Information stage. No other stage carries a panel any more.
  *
  * Panels whose title or text is blank are outside this oracle: the migration
  * gives them a fallback title, which is its own rule, and the fixtures this
@@ -126,7 +126,7 @@ export function introductionPanelProblems(before, after) {
   for (const protocol of before.protocols) {
     const migrated = stagesOf(afterById.get(protocol.id));
     for (const stage of migrated)
-      if ('introductionPanel' in stage)
+      if (stage.type !== 'EgoForm' && 'introductionPanel' in stage)
         problems.push(
           `"${protocol.name}" stage "${stage.id}" still has an introduction panel`,
         );
@@ -152,15 +152,23 @@ export function introductionPanelProblems(before, after) {
         typeof panel.text === 'string' && panel.text.trim()
           ? panel.text
           : undefined;
-      const isEgoForm = stage.type === 'EgoForm';
-      if (
-        isEgoForm &&
-        !sameJson(migrated[index].form?.title, message(panel.title))
-      )
-        problems.push(
-          `${where}: the form is titled ${JSON.stringify(migrated[index].form?.title)}, not its panel's title "${panel.title}"`,
-        );
-      if (isEgoForm && text === undefined) continue;
+      if (stage.type === 'EgoForm') {
+        const kept = migrated[index].introductionPanel;
+        const expected =
+          text === undefined
+            ? { title: message(panel.title) }
+            : { title: message(panel.title), text: message(text) };
+        if (!sameJson(kept, expected))
+          problems.push(
+            `${where}: its introduction panel is ${JSON.stringify(kept ?? null)}, not the panel it had before the upgrade (${JSON.stringify(expected)})`,
+          );
+        const previous = migrated[index - 1];
+        if (previous?.id === `${stage.id}-introduction`)
+          problems.push(
+            `${where} gained an Information stage "${previous.id}" before it`,
+          );
+        continue;
+      }
       const information = migrated[index - 1];
       const introductionId = `${stage.id}-introduction`;
       if (

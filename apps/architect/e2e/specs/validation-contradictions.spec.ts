@@ -50,14 +50,22 @@ function ageValidation(
 /**
  * An EgoForm carrying one number field on a new `age` attribute, left open.
  *
- * The form's title is filled because an ego form's `form.title` is required,
- * so the stage cannot be saved without it — mirrors ego-form.spec.ts.
+ * The introduction panel is filled because both its halves are
+ * `z.string().min(1)` (protocol-validation's `IntroductionPanelSchema`), so
+ * the stage cannot be saved without them — mirrors ego-form.spec.ts.
  */
 async function egoFormWithAgeField(architectPage: Page): Promise<StageEditor> {
   const editor = new StageEditor(architectPage);
   await editor.createNew('EgoForm');
   await editor.setStageName('About You');
-  await editor.field('form.title').getByRole('textbox').fill('About You');
+  await editor
+    .field('introductionPanel.title')
+    .getByRole('textbox')
+    .fill('About You');
+  await editor.fillRichText(
+    'Introduction text',
+    'Thanks for taking part in this study.',
+  );
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'How old are you?',
@@ -232,7 +240,14 @@ test('the option editor rejects canonically equivalent labels', async ({
   const editor = new StageEditor(architectPage);
   await editor.createNew('EgoForm');
   await editor.setStageName('About You');
-  await editor.field('form.title').getByRole('textbox').fill('About You');
+  await editor
+    .field('introductionPanel.title')
+    .getByRole('textbox')
+    .fill('About You');
+  await editor.fillRichText(
+    'Introduction text',
+    'Thanks for taking part in this study.',
+  );
 
   await editor
     .section('Form configuration')

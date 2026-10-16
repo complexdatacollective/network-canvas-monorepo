@@ -665,6 +665,14 @@ export class SyntheticInterview {
       behaviours,
       initialEdges: opts?.initialEdges ?? [],
       ...(opts?.wording && { wording: opts.wording }),
+      ...(type === 'EgoForm' && {
+        introductionPanel: {
+          title: opts?.introductionPanel?.title ?? EGO_FORM_DEFAULT_TITLE,
+          ...(opts?.introductionPanel?.text !== undefined && {
+            text: opts.introductionPanel.text,
+          }),
+        },
+      }),
     };
 
     // Handle form fields for NameGenerator (node-based)
@@ -684,10 +692,11 @@ export class SyntheticInterview {
       };
     }
 
-    // EgoForm's form title is the heading shown above its questions.
+    // EgoForm's introduction panel is the heading shown above its questions,
+    // so its form has no title of its own.
     if (opts?.form && type === 'EgoForm') {
       entry.form = {
-        title: opts.form.title ?? EGO_FORM_DEFAULT_TITLE,
+        title: EGO_FORM_DEFAULT_TITLE,
         fields: opts.form.fields.map((f) => this.resolveEgoFormField(f)),
       };
     }
@@ -2786,14 +2795,24 @@ export class SyntheticInterview {
           ? { hint: this.localized(field.hint) }
           : {}),
       }));
-      // TitlelessFormSchema: AlterForm/AlterEdgeForm/FamilyPedigree forms must
-      // not carry a title; every other form stage (EgoForm included) keeps it.
+      // TitlelessFormSchema: AlterForm/AlterEdgeForm/EgoForm/FamilyPedigree
+      // forms must not carry a title; every other form stage keeps it.
       config.form =
         stage.type === 'AlterForm' ||
         stage.type === 'AlterEdgeForm' ||
+        stage.type === 'EgoForm' ||
         stage.type === 'FamilyPedigree'
           ? { fields }
           : { title: this.localized(stage.form.title), fields };
+    }
+
+    if (stage.introductionPanel) {
+      config.introductionPanel = {
+        title: this.localized(stage.introductionPanel.title),
+        ...(stage.introductionPanel.text !== undefined && {
+          text: this.localized(stage.introductionPanel.text),
+        }),
+      };
     }
 
     if (stage.prompts.length > 0) {

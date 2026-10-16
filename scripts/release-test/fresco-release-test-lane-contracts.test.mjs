@@ -1377,7 +1377,8 @@ test('a relationship the GraphML leaves out is not covered by its edge list row'
 
 // Two readings of one deployment, as migration-lane.mjs takes them either
 // side of the swap: a schema 8 protocol with an Ego Form and an Alter Form
-// behind introduction panels, then what schema 9 makes of it.
+// behind introduction panels, then what schema 9 makes of it: the Ego Form
+// keeps its panel, the Alter Form's becomes an Information stage.
 const SKIP = { action: 'SKIP', filter: { join: 'AND', rules: [] } };
 const readings = () => {
   const before = {
@@ -1459,15 +1460,14 @@ const readings = () => {
         schemaVersion: MIGRATED_SCHEMA,
         stages: [
           { id: 'welcome', type: 'Information' },
-          introduction(
-            'about-you',
-            "About '{'you'}'",
-            'First, a little about you.',
-          ),
           {
             id: 'about-you',
             type: 'EgoForm',
-            form: { title: { en: "About '{'you'}'" }, fields: [] },
+            introductionPanel: {
+              title: { en: "About '{'you'}'" },
+              text: { en: 'First, a little about you.' },
+            },
+            form: { fields: [] },
           },
           introduction(
             'each-person',
@@ -1488,10 +1488,10 @@ const readings = () => {
     interviews: [
       {
         ...structuredClone(before.interviews[0]),
-        currentStep: 4,
-        stageMetadata: { 4: { seen: true } },
+        currentStep: 3,
+        stageMetadata: { 3: { seen: true } },
       },
-      { ...before.interviews[1], currentStep: 5 },
+      { ...before.interviews[1], currentStep: 4 },
     ],
   };
   return { before, after };
@@ -1501,9 +1501,9 @@ test('a step follows its stage by id, and the old finish screen becomes the fini
   const { before, after } = readings();
   const [b, a] = [before.protocols[0], after.protocols[0]];
   assert.equal(expectedStep(b, a, 0), 0);
-  assert.equal(expectedStep(b, a, 1), 2);
-  assert.equal(expectedStep(b, a, 2), 4);
-  assert.equal(expectedStep(b, a, 3), 5);
+  assert.equal(expectedStep(b, a, 1), 1);
+  assert.equal(expectedStep(b, a, 2), 3);
+  assert.equal(expectedStep(b, a, 3), 4);
   assert.equal(expectedStep(b, a, 4), null);
   assert.equal(expectedStep(b, a, -1), null);
   assert.equal(expectedStep(b, a, 1.5), null);
@@ -1515,8 +1515,8 @@ test('stage records are re-keyed onto the stages they belong to', () => {
   const { before, after } = readings();
   const [b, a] = [before.protocols[0], after.protocols[0]];
   assert.deepEqual(remapStageMetadata({ 1: 'x', 2: 'y' }, b, a), {
-    2: 'x',
-    4: 'y',
+    1: 'x',
+    3: 'y',
   });
   assert.equal(remapStageMetadata({ 9: 'x' }, b, a), null);
   assert.equal(remapStageMetadata({ '01': 'x' }, b, a), null);
@@ -1563,25 +1563,25 @@ test('an introduction panel that was kept, dropped or copied wrongly fails', () 
   const cases = [
     [
       (a) => {
-        a.protocols[0].stages[4].introductionPanel = { title: 'x' };
+        a.protocols[0].stages[3].introductionPanel = { title: 'x' };
       },
       /still has an introduction panel/,
     ],
     [
       (a) => {
-        a.protocols[0].stages.splice(3, 1);
+        a.protocols[0].stages.splice(2, 1);
       },
       /"each-person" is not preceded by its Information stage/,
     ],
     [
       (a) => {
-        a.protocols[0].stages[3].items[0].content = { en: 'Now.' };
+        a.protocols[0].stages[2].items[0].content = { en: 'Now.' };
       },
       /does not show the panel's text/,
     ],
     [
       (a) => {
-        delete a.protocols[0].stages[3].skipLogic;
+        delete a.protocols[0].stages[2].skipLogic;
       },
       /does not take the stage's skip logic/,
     ],
@@ -1589,13 +1589,30 @@ test('an introduction panel that was kept, dropped or copied wrongly fails', () 
       (a) => {
         // The title copied without escaping: "{you}" would be read as an
         // argument rather than shown.
-        a.protocols[0].stages[2].form.title = { en: 'About {you}' };
+        a.protocols[0].stages[1].introductionPanel.title = {
+          en: 'About {you}',
+        };
       },
-      /the form is titled/,
+      /"about-you": its introduction panel is/,
     ],
     [
       (a) => {
-        a.protocols[0].stages[1].title = { en: 'Introduction' };
+        delete a.protocols[0].stages[1].introductionPanel.text;
+      },
+      /"about-you": its introduction panel is/,
+    ],
+    [
+      (a) => {
+        a.protocols[0].stages.splice(1, 0, {
+          id: 'about-you-introduction',
+          type: 'Information',
+        });
+      },
+      /"about-you" gained an Information stage "about-you-introduction"/,
+    ],
+    [
+      (a) => {
+        a.protocols[0].stages[2].title = { en: 'Introduction' };
       },
       /its Information stage is titled/,
     ],
@@ -1613,9 +1630,9 @@ test('an interview that moved, changed or gained an outcome in the upgrade fails
     // Resumed on the Information stage the migration put in front of it.
     [
       (a) => {
-        a.interviews[0].currentStep = 3;
+        a.interviews[0].currentStep = 2;
       },
-      /resumes at step 3, but the stage it was on \(step 2\) is now step 4/,
+      /resumes at step 2, but the stage it was on \(step 2\) is now step 3/,
     ],
     // Left on the old finish screen's index rather than the finish stage.
     [
@@ -1634,14 +1651,14 @@ test('an interview that moved, changed or gained an outcome in the upgrade fails
       (a) => {
         a.interviews[0].stageMetadata = { 2: { seen: true } };
       },
-      /stage records are kept under \["2"\], not \["4"\]/,
+      /stage records are kept under \["2"\], not \["3"\]/,
     ],
     [
       (a) => {
         // Kept under the right step, its contents changed.
-        a.interviews[0].stageMetadata = { 4: { seen: false } };
+        a.interviews[0].stageMetadata = { 3: { seen: false } };
       },
-      /stage record at step 4 is \{"seen":false\}, not \{"seen":true\}/,
+      /stage record at step 3 is \{"seen":false\}, not \{"seen":true\}/,
     ],
     [
       (a) => {
@@ -1682,7 +1699,7 @@ test('an interview that moved, changed or gained an outcome in the upgrade fails
 test('a rule lost from either stage, or never there to carry, fails', () => {
   const { before, after } = readings();
   const rewritten = structuredClone(after);
-  rewritten.protocols[0].stages[4].skipLogic = {
+  rewritten.protocols[0].stages[3].skipLogic = {
     ...SKIP,
     action: 'SHOW',
   };
@@ -1692,8 +1709,8 @@ test('a rule lost from either stage, or never there to carry, fails', () => {
   );
   // Both stages lost the rule together: they agree, and are both wrong.
   const bothLost = structuredClone(after);
+  delete bothLost.protocols[0].stages[2].skipLogic;
   delete bothLost.protocols[0].stages[3].skipLogic;
-  delete bothLost.protocols[0].stages[4].skipLogic;
   const problems = introductionPanelProblems(before, bothLost).join('\n');
   assert.match(problems, /the stage's skip logic is now null/);
   assert.match(
@@ -1705,8 +1722,8 @@ test('a rule lost from either stage, or never there to carry, fails', () => {
   const ruleless = structuredClone(before);
   delete ruleless.protocols[0].stages[2].skipLogic;
   const untested = structuredClone(after);
+  delete untested.protocols[0].stages[2].skipLogic;
   delete untested.protocols[0].stages[3].skipLogic;
-  delete untested.protocols[0].stages[4].skipLogic;
   assert.deepEqual(introductionPanelProblems(ruleless, untested), [
     'no introduction panel in the reading before the upgrade belongs to a stage with skip logic, so carrying a rule onto its Information stage went untested',
   ]);
@@ -1727,12 +1744,11 @@ test('an Information stage the stages menu names wrongly fails', () => {
 
 test('a rule the upgrade gives a stage that had none fails', () => {
   const { before, after } = readings();
-  // The upgrade wrongly puts the same rule on the ruleless Ego Form and on
-  // its Information stage: the two agree, and both skip what was shown.
+  // The upgrade wrongly puts a rule on the ruleless Ego Form: it skips what
+  // was always shown.
   const gained = structuredClone(after);
   for (const stage of gained.protocols[0].stages)
-    if (stage.id === 'about-you' || stage.id === 'about-you-introduction')
-      stage.skipLogic = SKIP;
+    if (stage.id === 'about-you') stage.skipLogic = SKIP;
   const problems = introductionPanelProblems(before, gained).join('\n');
   assert.match(
     problems,
@@ -2415,7 +2431,7 @@ test('the export diff reconciles a step only as far as its stage moved', () => {
     );
     return JSON.parse(readFileSync(out, 'utf8'));
   };
-  const moved = interview(4, { 4: { seen: true } });
+  const moved = interview(3, { 3: { seen: true } });
   const reconciled = diff(moved, 'migration');
   assert.deepEqual(reconciled.identical, ['api-interview-parked.json']);
   assert.match(JSON.stringify(reconciled.reconciled), /currentStep moved/);
@@ -2431,9 +2447,10 @@ test('the export diff reconciles a step only as far as its stage moved', () => {
     diff(moved, 'not-applicable').changed.map((c) => c.file),
     ['api-interview-parked.json'],
   );
-  // Resumed on the inserted Information stage: not where its stage went.
+  // Resumed on the finish stage the migration appended: not where its stage
+  // went.
   assert.deepEqual(
-    diff(interview(3, { 4: { seen: true } }), 'migration').changed.map(
+    diff(interview(4, { 3: { seen: true } }), 'migration').changed.map(
       (c) => c.file,
     ),
     ['api-interview-parked.json'],

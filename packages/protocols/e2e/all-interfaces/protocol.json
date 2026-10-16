@@ -351,10 +351,15 @@
       "label": {
         "en-US": "Ego Form"
       },
-      "form": {
+      "introductionPanel": {
         "title": {
           "en-US": "Introduction"
         },
+        "text": {
+          "en-US": "There are a few questions about you before we begin."
+        }
+      },
+      "form": {
         "fields": [
           {
             "variable": "ego_name",

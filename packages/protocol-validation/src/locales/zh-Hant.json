@@ -87,7 +87,7 @@
   "protocolValidation.migrationNotes.schema9.familyPedigreeRemoved": "由於重新設計的介面不再依原本的方式使用以下兩項家族譜系設定，它們有所變更。要求記錄參與者子女的另一位生物學父母，現在是「父母、兄弟姊妹和子女」及所有更完整的完整性設定的一部分，且不再要求記錄這位父母的家人。記錄每位父母提供哪種配子的屬性會被移除，因為介面現在根據出生時指定的性別推算配子；此屬性及已記錄的回答仍保留在編碼簿中，但不再填寫。",
   "protocolValidation.migrationNotes.schema9.familyPedigreeSharedAttributes": "如果家族譜系中有兩個回答使用同一個屬性，該譜系就無法轉換：兩個提名提示、一個提名提示和一個附加人員欄位，或者姓名和另一個回答。現在每個回答都需要自己的屬性。請在建立該協定的 Architect 版本中為每個回答指定各自的屬性，然後再升級。",
   "protocolValidation.migrationNotes.schema9.finishStage": "結束訪談的畫面現在是協定末尾的一個「完成畫面」階段，因此您可以變更其標題和文字，並像協定的其他內容一樣進行翻譯。",
-  "protocolValidation.migrationNotes.schema9.introductionPanels": "介面中的介紹面板已移除，因此所有給參與者的說明都改用資訊介面。「逐一他者表單」、「逐一他者關係表單」、「二元組普查」或「關係強度普查」階段的介紹面板內容，會移至緊接在原階段之前的一個新資訊階段。每當原階段被略過時，新階段也會一併略過；先前跳至原階段的略過邏輯，現在會改為跳至新階段。",
+  "protocolValidation.migrationNotes.schema9.introductionPanels": "除「自我表單」外，其他介面的介紹面板均已移除，因此這些階段中給參與者的說明改用資訊介面。「逐一他者表單」、「逐一他者關係表單」、「二元組普查」或「關係強度普查」階段的介紹面板內容，會移至緊接在原階段之前的一個新資訊階段。每當原階段被略過時，新階段也會一併略過；先前跳至原階段的略過邏輯，現在會改為跳至新階段。",
   "protocolValidation.migrationNotes.schema9.optionValueNames": "順序與類別選項值的規則現在更加嚴格。值開頭與結尾的空格會被移除，值中的每個 Tab 字元或換行字元都會變成空格，值中的字元會以同一種標準 Unicode 形式儲存。空值會被替換為該選項的標籤；若沒有標籤，則替換為 \"Option\" 後接該選項的位置序號。經上述處理後值相同的選項會依前述規則處理（保留第一個，移除其餘），已記錄的回答、略過邏輯、篩選條件與節點形狀都會更新為新值。",
   "protocolValidation.migrationNotes.schema9.otherBinText": "在「類別分箱」階段中，用於未列出回答的分箱標籤，以及請參與者描述其回答的問題，現在都必須包含文字。若其中任一項只含空格，現在會改用另一項的文字；若另一項也只含空格，則標籤使用「Other」，問題使用「Please specify」。",
   "protocolValidation.migrationNotes.schema9.pedigreeWording": "「家族譜系」階段本身的文字現在屬於該階段，因此您可以變更它，並像協定的其他內容一樣翻譯它：詢問每個人姓名的問題及其提示，以及在家庭必須完整時列出仍缺少內容的清單。它一開始就是訪談一直顯示的文字。",

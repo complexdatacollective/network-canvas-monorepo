@@ -27,28 +27,6 @@
       }
     },
     {
-      "id": "ego-form-1-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Introduction to the ego form",
-        "es": "Introducción al formulario de ego"
-      },
-      "title": {
-        "en-US": "Introduction to the ego form",
-        "es": "Introducción al formulario de ego"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "There are multiple ways to describe **you**.",
-            "es": "Hay muchas maneras de describirte **a ti**."
-          }
-        }
-      ]
-    },
-    {
       "id": "ego-form-1",
       "interviewScript": "This is a **markdown field** that contains notes for the interviewer that are printed with the codebook, and can be reviewed during the interview.\n\nFor now it will only support rich text, but not images or audio.",
       "type": "EgoForm",
@@ -56,11 +34,17 @@
         "en-US": "Ego Form",
         "es": "Formulario de ego"
       },
-      "form": {
+      "introductionPanel": {
         "title": {
           "en-US": "Introduction to the ego form",
           "es": "Introducción al formulario de ego"
         },
+        "text": {
+          "en-US": "There are multiple ways to describe **you**.",
+          "es": "Hay muchas maneras de describirte **a ti**."
+        }
+      },
+      "form": {
         "fields": [
           {
             "variable": "3377af3f-3c79-41da-9b0b-6570fb519b93",

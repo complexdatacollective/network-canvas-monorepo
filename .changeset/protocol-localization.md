@@ -18,7 +18,8 @@ How an interview picks its language:
   again each time the interview opens, until the participant chooses a
   language.
 - A new Language Chooser stage lets participants choose one of the protocol's
-  languages. The languages are listed alphabetically by their own names, sorted
+  languages. It is headed "Choose a language", in the interview's current
+  language. The languages are listed alphabetically by their own names, sorted
   for the language of the interview's own buttons and messages, and the order
   they are stored in has no effect. The current one is selected, and choosing
   another switches the whole interview at once. The choice is saved with the

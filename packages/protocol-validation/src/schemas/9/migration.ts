@@ -532,8 +532,8 @@ const takenStageIds = (stages: unknown): Set<string> =>
   );
 
 /**
- * Schema 9 has one way to give a participant instructions: an Information
- * stage. The introduction panel that opened an Ego Form, Alter Form, Alter
+ * Schema 9 gives a participant instructions between tasks with an
+ * Information stage. The introduction panel that opened an Alter Form, Alter
  * Edge Form, Dyad Census or Tie-Strength Census becomes an Information stage
  * just before it, titled and named with the panel's title (the stages menu
  * shows participants the name) and showing its text. It takes the stage's
@@ -541,10 +541,8 @@ const takenStageIds = (stages: unknown): Set<string> =>
  * that jumped to the stage now jumps to its introduction, so the participant
  * still reads it first.
  *
- * An Ego Form showed its panel as the heading above its questions rather
- * than as a screen of its own, so the panel's title becomes the form's
- * title, which schema 9 shows there instead. Its text, if it has any, still
- * becomes an Information stage before the form.
+ * An Ego Form keeps its introduction panel: it shows as the heading and text
+ * above the questions rather than as a screen of its own.
  *
  * Schema 8 accepted a panel whose title or text was only spaces, and
  * published protocols use a body of spaces on purpose to show a panel with
@@ -571,32 +569,32 @@ const moveIntroductionPanelsToInformationStages = (
       withoutBlankText(panel.title) ??
       fallbackPanelTitle(stage.label, defaultLocale);
     const text = withoutBlankText(panel.text);
-    const isEgoForm = stage.type === 'EgoForm';
-    if (isEgoForm && isRecord(rest.form)) {
-      rest.form = { title: structuredClone(title), ...rest.form };
+    if (stage.type === 'EgoForm') {
+      stage.introductionPanel =
+        text === undefined ? { title } : { title, text };
+      stages.push(stage);
+      continue;
     }
-    if (!isEgoForm || text !== undefined) {
-      const id = freshStageId(
-        typeof stage.id === 'string' ? stage.id : 'stage',
-        '-introduction',
-        taken,
-      );
-      taken.add(id);
-      if (typeof stage.id === 'string') retargets.set(stage.id, id);
-      stages.push({
-        id,
-        type: 'Information',
-        label: structuredClone(title),
-        title,
-        items:
-          text === undefined
-            ? []
-            : [{ id: 'introduction-text', type: 'text', content: text }],
-        ...(stage.skipLogic !== undefined && {
-          skipLogic: structuredClone(stage.skipLogic),
-        }),
-      });
-    }
+    const id = freshStageId(
+      typeof stage.id === 'string' ? stage.id : 'stage',
+      '-introduction',
+      taken,
+    );
+    taken.add(id);
+    if (typeof stage.id === 'string') retargets.set(stage.id, id);
+    stages.push({
+      id,
+      type: 'Information',
+      label: structuredClone(title),
+      title,
+      items:
+        text === undefined
+          ? []
+          : [{ id: 'introduction-text', type: 'text', content: text }],
+      ...(stage.skipLogic !== undefined && {
+        skipLogic: structuredClone(stage.skipLogic),
+      }),
+    });
     stages.push(rest);
   }
 
@@ -1212,7 +1210,7 @@ const migrationV8toV9 = createMigration({
   from: 8,
   to: 9,
   dependencies: {},
-  notes: `- Introduction panels within interfaces have been removed, so all participant-facing instructions use the Information interface. The content of the introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage is moved to a new Information stage just before it. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one.
+  notes: `- Introduction panels within interfaces other than the Ego Form have been removed, so participant-facing instructions on those stages use the Information interface. The content of the introduction panel of a Per Alter Form, Per Alter Edge Form, Dyad Census or Tie-Strength Census stage is moved to a new Information stage just before it. The new stage is skipped whenever the original stage is skipped, and skip logic that jumped to the original stage now jumps to the new one.
 - Protocols can now be written in multiple languages. Existing protocols are presumed to be in English. If your protocol is written in another language, change its default language on the Languages page in Architect.
 - The screen that ends the interview is now a Finish Screen stage at the end of your protocol, so you can change its heading and text and translate them like the rest of your protocol.
 - Encrypted attributes are no longer experimental: the Anonymisation interface can be added in Architect like any other interface.

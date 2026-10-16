@@ -148,8 +148,8 @@ const egoStages: Stage[] = [
     id: 'stage-ego',
     type: 'EgoForm',
     label: { en: 'About you' },
+    introductionPanel: { title: { en: 'About you' } },
     form: {
-      title: { en: 'About you' },
       fields: [
         {
           variable: asEntityAttributeReference(variableId),
