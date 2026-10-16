@@ -115,7 +115,7 @@ export const NodeConfigurationSchema = z.strictObject({
   // form field's prompt and hint. Network Canvas supplies both.
   nameField: z.strictObject({
     prompt: localizedString(nonBlankText(), 'plain'),
-    hint: localizedString(nonBlankText(), 'plain').optional(),
+    hint: localizedString(nonBlankText(), 'markdown').optional(),
   }),
   // Optional: the gender identity question and the words it decides. See
   // `GenderIdentitySchema`.

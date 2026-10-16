@@ -12,6 +12,8 @@ export type WordingSetting = Readonly<{
   path: string;
   label: MessageDescriptor;
   hint?: MessageDescriptor;
+  /** Set for a setting worded as a sentence or more: its field wraps. */
+  wraps?: boolean;
 }>;
 
 /**
@@ -39,6 +41,7 @@ export function WordingRow({
       }
       initialValue={initialValue}
       required={REQUIRED}
+      wraps={setting.wraps}
     />
   );
 }

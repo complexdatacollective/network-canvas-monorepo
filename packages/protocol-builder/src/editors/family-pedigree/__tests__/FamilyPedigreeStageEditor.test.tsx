@@ -1041,7 +1041,7 @@ describe('the name question', () => {
 
     expect(
       await screen.findByRole('textbox', { name: 'Name question guidance' }),
-    ).toHaveValue('');
+    ).toHaveTextContent('');
     const request = await harness.submit();
     expect(nodeConfigurationOf(request?.stageDocument).nameField).toEqual({
       prompt: { 'en-US': 'Name' },

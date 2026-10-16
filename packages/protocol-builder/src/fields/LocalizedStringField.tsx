@@ -27,6 +27,7 @@ import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import DynamicTextField from './DynamicTextField.tsx';
 import OptionLabelField from './OptionLabelField.tsx';
 import RichTextField from './RichTextField.tsx';
+import WrappingTextField from './WrappingTextField.tsx';
 
 const messages = defineMessages({
   showsValuesNotEditable: {
@@ -182,16 +183,27 @@ function ValuesNotEditableHere({ message }: { message: string }) {
   );
 }
 
-/** Plain participant-facing text, one line per language. */
+type WrapsOption = Readonly<{
+  /**
+   * For text that runs to a sentence or more, such as a notice or a message:
+   * the control wraps and grows to show all of it, rather than scrolling it
+   * past the edge of a one-line box. The text stays one paragraph.
+   */
+  wraps?: boolean;
+}>;
+
+/** Plain participant-facing text, one paragraph per language. */
 export function LocalizedInputField({
   value,
   onChange,
   hideUntranslatedNote,
   dynamicValues,
   fieldPath,
+  wraps = false,
   ...props
 }: LocalizedControlProps<ComponentProps<typeof InputField>> &
-  DynamicValuesOption) {
+  DynamicValuesOption &
+  WrapsOption) {
   if (dynamicValues !== undefined) {
     return (
       <DynamicTextField
@@ -222,6 +234,20 @@ export function LocalizedInputField({
       {(translation) =>
         showsValues(translation.message) ? (
           <ValuesNotEditableHere message={translation.message} />
+        ) : wraps ? (
+          <WrappingTextField
+            id={props.id}
+            name={props.name}
+            aria-describedby={props['aria-describedby']}
+            aria-labelledby={props['aria-labelledby']}
+            aria-invalid={props['aria-invalid']}
+            aria-required={props['aria-required']}
+            disabled={props.disabled}
+            readOnly={props.readOnly === true || translation.readOnly}
+            placeholder={props.placeholder}
+            value={translation.value}
+            onChange={(text) => translation.onChange(text)}
+          />
         ) : (
           <InputField
             {...props}
