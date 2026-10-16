@@ -323,7 +323,7 @@ describe('variable role helpers', () => {
         type: 'categorical' as const,
         options: [{ label: { en: 'Yes' }, value: 'yes' }],
       },
-      plain: { name: 'plain', label: 'plain', type: 'text' as const },
+      plain: { name: 'plain', type: 'text' as const },
     };
 
     // The CANONICAL set, not the drifted one the codebook happens to hold:

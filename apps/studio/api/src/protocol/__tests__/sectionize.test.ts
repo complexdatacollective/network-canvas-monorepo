@@ -122,8 +122,8 @@ describe('golden hashes', () => {
     expect(sectionHashes).toMatchInlineSnapshot(`
       {
         "assets": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-        "codebook:edge:knows": "96ba2dfdd02dc597536433e6debfbdaec16f3ffc1738b0377515198ddaa30193",
-        "codebook:node:person": "508208bef9a636733579c7062b00429e206a0410d991a505b5da78b4be9c3fd9",
+        "codebook:edge:knows": "d10d93cc1b4c9ea77f4c6d750eb7a2e1da90346ad9a6b52b59c45a8c4f7aaadb",
+        "codebook:node:person": "5b62bc580a031a23de667d9f7c0005e797a1f97b8e375362b9c5cd7c21375372",
         "settings": "92399b6874ba843f857bdb6b6529531390bea9828151aee29210c970873f3429",
         "stage:finish": "9d53432c1592c77cb24422813ad7716d997cd720d5ef19aaa4a06ed08603ddbc",
         "stage:nameGenerator1": "da989aa0f95cc6223c4ae6e1e8eecd53698a900bae557d0dae58ba43948f9511",
@@ -132,7 +132,7 @@ describe('golden hashes', () => {
       }
     `);
     expect(versionContentHash(sectionHashes)).toMatchInlineSnapshot(
-      `"da103e6b4b3d214b6079fdddb19fe8331dbd6b31ae7f3a49a3dd2e83a37e93ce"`,
+      `"9333730eb818ba3137582052d7612d4deae5687b1bb791e0d619cea53705c344"`,
     );
   });
 });
