@@ -1813,7 +1813,7 @@
   },
   "architect.localization.languageList.changeLanguage": {
     "defaultMessage": "Change {language} to a different language",
-    "description": "Accessible name and tooltip of the edit button in a protocol language’s row. It opens a dialog that records the translations written in that language as another language, for translations recorded under the wrong one. language is the language name."
+    "description": "Accessible name and tooltip of the button, with a two-way arrows icon, in a protocol language’s row. It opens a dialog that records the translations written in that language as another language, for translations recorded under the wrong one. language is the language name."
   },
   "architect.localization.languageList.coverage": {
     "defaultMessage": "{translated, number} of {total, plural, one {# string} other {# strings}} translated",
@@ -1846,6 +1846,10 @@
   "architect.localization.languageList.descriptionSingle": {
     "defaultMessage": "Participants take the interview in this language. Add more languages to let them choose one.",
     "description": "Explanation of the list of protocol languages, shown when the protocol has only one language."
+  },
+  "architect.localization.languageList.editTranslations": {
+    "defaultMessage": "Edit {language} translations",
+    "description": "Accessible name and tooltip of the edit button, with a pencil icon, in a protocol language’s row. It opens the translation table showing that language beside the default language, where its translations can be written and changed. language is the language name."
   },
   "architect.localization.languageList.missingBadge": {
     "defaultMessage": "Missing translations",

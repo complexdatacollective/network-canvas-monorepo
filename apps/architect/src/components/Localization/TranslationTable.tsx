@@ -74,6 +74,7 @@ import {
 } from './translationDrafts';
 import {
   type MissingFilter,
+  readFocusedLanguage,
   readMissingFilter,
   writeMissingFilter,
 } from './translationTableLinks';
@@ -453,8 +454,20 @@ const TranslationTable = ({
   );
   const groupHeadingRef = useGroupHeadingHeights();
   const columnHeadingRef = useColumnHeadingWidths();
-  const [hidden, setHidden] = useState<ReadonlySet<LocaleTag>>(new Set());
   const [searchParams, setSearchParams] = useSearchParams();
+  // Opened on one language, the table shows only its column and the default
+  // language's, the text it is translated from.
+  const [hidden, setHidden] = useState<ReadonlySet<LocaleTag>>(() => {
+    const localization = protocol?.localization;
+    if (!localization) return new Set();
+    const focused = readFocusedLanguage(searchParams, localization.locales);
+    if (focused === undefined) return new Set();
+    return new Set(
+      localization.locales.filter(
+        (locale) => locale !== focused && locale !== localization.defaultLocale,
+      ),
+    );
+  });
   const [query, setQuery] = useState('');
   // A row stays while it is being worked on, even once its last missing
   // translation is written or its text stops matching the search, so the

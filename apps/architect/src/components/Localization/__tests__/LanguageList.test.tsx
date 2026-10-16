@@ -97,15 +97,34 @@ describe('LanguageList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('gives each language two controls, which change and remove it and are named for it', () => {
+  it('gives each language three controls, which edit its translations, change it and remove it, and are named for it', () => {
     renderLanguageList();
 
     expect(
       within(rowOf('German'))
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label')),
-    ).toEqual(['Change German to a different language', 'Remove German']);
+    ).toEqual([
+      'Edit German translations',
+      'Change German to a different language',
+      'Remove German',
+    ]);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('opens the translation table on a language from its row’s edit button', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/protocol/localization');
+    renderLanguageList();
+
+    await user.click(
+      within(rowOf('German')).getByRole('button', {
+        name: 'Edit German translations',
+      }),
+    );
+
+    expect(window.location.pathname).toBe('/protocol/localization');
+    expect(window.location.search).toBe('?table=open&language=de');
   });
 
   it('marks a language that is missing translations, without linking anywhere', () => {
