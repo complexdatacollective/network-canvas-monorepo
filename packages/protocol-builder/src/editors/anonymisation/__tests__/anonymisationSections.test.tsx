@@ -102,11 +102,16 @@ describe('the sections of an anonymisation stage', () => {
     });
     await harness.user.clear(explanation);
     await harness.user.click(screen.getByRole('button', { name: 'Heading 1' }));
-    await harness.user.type(explanation, 'Your answers are protected');
+    // Typing without clicking keeps the caret in the heading just made: a
+    // click into the editor can land below it, in a new paragraph.
+    await harness.user.type(explanation, 'Your answers are protected', {
+      skipClick: true,
+    });
     await harness.user.keyboard('{Enter}');
     await harness.user.type(
       explanation,
       'Choose a passphrase to protect them.',
+      { skipClick: true },
     );
 
     const saved = await harness.submit();
