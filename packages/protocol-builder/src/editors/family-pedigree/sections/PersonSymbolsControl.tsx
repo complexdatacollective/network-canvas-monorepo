@@ -2,16 +2,13 @@ import { get } from 'es-toolkit/compat';
 import { useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { codebookEditingMessages } from '../../../codebook/codebookMessages.ts';
 import {
@@ -122,9 +119,8 @@ export default function PersonSymbolsControl({
   const [appliedGenderTerms, setAppliedGenderTerms] = useState<unknown>();
   /** The answer being written, shown as chosen until the write settles. */
   const [pending, setPending] = useState<SymbolChoice | undefined>();
-  const [failure, setFailure] = useState<
-    Readonly<{ message: string; held: boolean }> | undefined
-  >(undefined);
+  /** Why the last write was refused, shown as the field's error. */
+  const [failure, setFailure] = useState<string | undefined>();
   /** Read when a confirmed choice is acted on, not when it was asked for. */
   const writable = useRef(!readOnly);
   writable.current = !readOnly;
@@ -248,10 +244,7 @@ export default function PersonSymbolsControl({
         },
       );
       if (outcome.status !== 'applied') {
-        setFailure({
-          message: outcome.message,
-          held: outcome.refusal.kind === 'held',
-        });
+        setFailure(outcome.message);
         return;
       }
       if (choice === 'genderIdentity') setAppliedGenderTerms(terms);
@@ -276,7 +269,7 @@ export default function PersonSymbolsControl({
       if (confirmed !== true) return;
     }
     if (!writable.current) {
-      setFailure({ message: READ_ONLY_MESSAGE, held: true });
+      setFailure(READ_ONLY_MESSAGE);
       return;
     }
     await write(choice);
@@ -309,43 +302,31 @@ export default function PersonSymbolsControl({
         </span>
       )}
       <span className="block">{intl.formatMessage(messages.symbolsHint)}</span>
+      {busy && (
+        <span role="status" className="mt-1 block">
+          {intl.formatMessage(codebookEditingMessages.saving)}
+        </span>
+      )}
     </>
   );
 
-  // Wrapping the field takes it out of its siblings, so the wrapper carries
-  // the field's own spacing from what follows it.
   return (
-    <div className="flex flex-col gap-2 not-last:mb-8">
-      <UnconnectedField
-        name="pedigree-symbols"
-        label={intl.formatMessage(messages.symbolsLabel)}
-        hint={hint}
-        component={RichSelectGroupField}
-        options={options}
-        value={pending ?? detected}
-        disabled={readOnly || busy}
-        onChange={(next) => {
-          // Choosing the answer already held writes nothing: the out-of-date
-          // note carries the one action that rewrites it.
-          if (!isSymbolChoice(next) || next === detected) return;
-          void choose(next);
-        }}
-      />
-      {failure !== undefined && (
-        <Alert
-          variant={failure.held ? 'warning' : 'destructive'}
-          density="compact"
-        >
-          <AlertDescription>
-            {formatMessageError(failure.message, intl) ?? failure.message}
-          </AlertDescription>
-        </Alert>
-      )}
-      {busy && (
-        <Paragraph role="status" margin="none" emphasis="muted">
-          {intl.formatMessage(codebookEditingMessages.saving)}
-        </Paragraph>
-      )}
-    </div>
+    <UnconnectedField
+      name="pedigree-symbols"
+      label={intl.formatMessage(messages.symbolsLabel)}
+      hint={hint}
+      component={RichSelectGroupField}
+      options={options}
+      value={pending ?? detected}
+      disabled={readOnly || busy}
+      errors={failure === undefined ? undefined : [failure]}
+      showErrors={failure !== undefined}
+      onChange={(next) => {
+        // Choosing the answer already held writes nothing: the out-of-date
+        // note carries the one action that rewrites it.
+        if (!isSymbolChoice(next) || next === detected) return;
+        void choose(next);
+      }}
+    />
   );
 }
