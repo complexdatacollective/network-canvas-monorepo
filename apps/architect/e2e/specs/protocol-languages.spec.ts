@@ -687,3 +687,60 @@ test('opens the translation table on every missing translation from the protocol
     page.getByRole('heading', { name: 'Languages', level: 1 }),
   ).toBeFocused();
 });
+
+test('keeps a text with values clear of its formatting toolbar while it is translated', async ({
+  architectPage: page,
+  seed,
+}) => {
+  const english = bilingualProtocol();
+  await seed(
+    CurrentProtocolSchema.parse({
+      ...english,
+      codebook: {
+        ...english.codebook,
+        ego: {
+          variables: {
+            lastName: { name: 'last_name', label: 'Last name', type: 'text' },
+          },
+        },
+      },
+      stages: english.stages.map((stage) =>
+        stage.type === 'Information'
+          ? {
+              ...stage,
+              title: {
+                en: 'Hello{name, select, missing {} other {, {name}}}',
+                fr: 'Bonjour{name, select, missing {} other {, {name}}}',
+              },
+              dynamicValues: { name: { path: 'ego.lastName' } },
+            }
+          : stage,
+      ),
+    }),
+  );
+  await page.goto('/protocol/localization?table=open');
+
+  await translationTable(page)
+    .getByRole('button', { name: /Page heading French$/ })
+    .click();
+  const editor = translationCell(page, 'Page content › Page heading', 'French');
+  await expect(editor).toBeFocused();
+
+  // The toolbar sits above the text it formats, not over it, and stays there
+  // once the value is selected and its versions open beneath it.
+  const cell = editor.locator('xpath=ancestor::td');
+  const toolbarClearsText = async () => {
+    const toolbar = await cell.getByRole('toolbar').boundingBox();
+    const text = await editor.boundingBox();
+    expect(toolbar).not.toBeNull();
+    expect(text).not.toBeNull();
+    if (toolbar !== null && text !== null) {
+      expect(toolbar.y + toolbar.height).toBeLessThanOrEqual(text.y + 1);
+    }
+  };
+  await toolbarClearsText();
+  await editor.getByRole('button', { name: 'last_name', exact: true }).click();
+  await expect(editor.getByLabel('If known', { exact: true })).toBeVisible();
+  await toolbarClearsText();
+  await page.screenshot({ path: 'test-results/toolbar-expanded.png' });
+});

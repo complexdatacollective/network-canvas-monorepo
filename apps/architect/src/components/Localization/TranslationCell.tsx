@@ -949,27 +949,26 @@ const DynamicCell = ({
                 />
               </div>
             )}
-            <div className={CELL_EDITOR_CLASSES}>
-              <DynamicMessageEditor
-                key={revision}
-                id={editorId}
-                name={editorId}
-                ariaLabelledBy={labelledBy}
-                ariaDescribedBy={describedBy}
-                ariaInvalid={error !== undefined}
-                autoFocus
-                readOnly={false}
-                markdown={markdown}
-                singleLine={!markdown || singleLine}
-                compact={false}
-                message={message}
-                onMessageChange={(next) => draft.change(next ?? '')}
-                original={original}
-                locale={locale}
-                site={site}
-                showsProblems={false}
-              />
-            </div>
+            <DynamicMessageEditor
+              key={revision}
+              id={editorId}
+              name={editorId}
+              ariaLabelledBy={labelledBy}
+              ariaDescribedBy={describedBy}
+              ariaInvalid={error !== undefined}
+              autoFocus
+              readOnly={false}
+              markdown={markdown}
+              singleLine={!markdown || singleLine}
+              compact={false}
+              message={message}
+              onMessageChange={(next) => draft.change(next ?? '')}
+              original={original}
+              locale={locale}
+              site={site}
+              showsProblems={false}
+              className={CELL_EDITOR_CLASSES}
+            />
           </>
         ) : (
           <>

@@ -434,6 +434,8 @@ export type DynamicMessageEditorProps = Readonly<{
    * translation table does once the researcher leaves the cell.
    */
   showsProblems?: boolean;
+  /** Classes for the editor's own frame, which holds its text and toolbar. */
+  className?: string;
 }>;
 
 /**
@@ -463,6 +465,7 @@ export function DynamicMessageEditor({
   locale,
   site,
   showsProblems = true,
+  className,
 }: DynamicMessageEditorProps) {
   const intl = useAppIntl();
   const { localization } = useEditingLanguage();
@@ -829,6 +832,7 @@ export function DynamicMessageEditor({
         insertMenu={insertMenu}
         value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
         onChange={handleChange}
+        className={className}
       />
       {problem !== undefined && (
         <p className="text-destructive text-sm" role="status">
