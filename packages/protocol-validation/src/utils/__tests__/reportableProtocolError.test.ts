@@ -52,6 +52,25 @@ describe('toReportableProtocolError', () => {
     expect(all).not.toMatch(/Private Study|cm-1|stages|not-an-array/);
   });
 
+  it('drops a message line that looks like a frame', () => {
+    const original = new Error(
+      'Protocol "Study\n    at PRIVATE_DATA (private.js:1:1)" collides',
+    );
+    const reportable = toReportableProtocolError(original);
+
+    expect(reportable.stack).not.toMatch(/PRIVATE_DATA|private\.js|Study/);
+    expect(reportable.stack).toMatch(/\n\s+at /);
+  });
+
+  it('keeps no frames when the stack no longer holds the message', () => {
+    const original = new Error('first');
+    original.message = 'second\n    at PRIVATE_DATA (private.js:1:1)';
+    original.stack = `Error: Study "Private"\n    at PRIVATE_DATA (private.js:1:1)\n    at run (app.js:2:2)`;
+    const reportable = toReportableProtocolError(original);
+
+    expect(reportable.stack).toBe(`Error: ${reportable.message}`);
+  });
+
   it('stops following a cause chain that never ends', () => {
     const looping = new Error('loop');
     Object.assign(looping, { cause: looping });

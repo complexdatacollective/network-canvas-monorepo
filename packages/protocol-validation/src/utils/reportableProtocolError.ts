@@ -6,6 +6,32 @@ const MAX_CAUSE_DEPTH = 5;
 /** Stack lines that name a frame: V8's `    at …`, and SpiderMonkey and JavaScriptCore's `fn@url:line:col`. */
 const FRAME_LINE = /^\s+at |@.*:\d+:\d+$/;
 
+/** A V8 frame line. V8 also writes the message at the head of the stack. */
+const V8_FRAME = /^\s+at /m;
+
+/**
+ * The frames of an error's stack, without its message.
+ *
+ * V8 writes the message into the stack verbatim, so a message that spans
+ * lines can carry a line shaped like a frame. Everything up to the end of the
+ * message is dropped before frames are picked out, and when a V8 stack no
+ * longer contains the message (it was changed after the error was made), no
+ * frame can be told apart from it, so none is kept. SpiderMonkey and
+ * JavaScriptCore stacks hold only frames.
+ */
+function stackFrames(error: Error): string[] {
+  const { stack, message } = error;
+  if (typeof stack !== 'string') return [];
+
+  let body = stack;
+  if (message !== '') {
+    const at = stack.indexOf(message);
+    if (at !== -1) body = stack.slice(at + message.length);
+    else if (V8_FRAME.test(stack)) return [];
+  }
+  return body.split('\n').filter((line) => FRAME_LINE.test(line));
+}
+
 /**
  * A copy of an error that failed to open or upgrade a protocol, safe to send
  * to exception tracking.
@@ -33,10 +59,7 @@ export function toReportableProtocolError(error: unknown, depth = 0): Error {
   const reportable = new Error(message, cause ? { cause } : undefined);
   reportable.name = name;
 
-  const frames =
-    error instanceof Error && typeof error.stack === 'string'
-      ? error.stack.split('\n').filter((line) => FRAME_LINE.test(line))
-      : [];
+  const frames = error instanceof Error ? stackFrames(error) : [];
   reportable.stack = [`${name}: ${message}`, ...frames].join('\n');
 
   return reportable;
