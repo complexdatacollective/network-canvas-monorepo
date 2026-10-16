@@ -336,7 +336,9 @@ then runs two Docker stacks via
   analytics **enabled**, against a sink that terminates TLS and records every
   request. It also imports the damaged protocol fixtures, because "opening a
   damaged file is no longer recorded as an application error" is a claim about
-  what is sent.
+  what is sent. The fractional COUNT fixture is a schema 8 protocol schema 9
+  cannot take, and a protocol Fresco cannot upgrade is a migration bug, so it
+  must arrive both as a `ProtocolImportFailed` refusal and as an exception.
 - **Two-factor lane** (ports 3213/5536/9313): a deployment that sets
   `REQUIRE_TWO_FACTOR`.
 

@@ -18,7 +18,9 @@
 //
 // It also imports the damaged protocol fixtures, because "opening a damaged
 // file is no longer recorded as an application error" is a claim about what is
-// sent, and can only be checked where something is being sent.
+// sent, and can only be checked where something is being sent. One of them is
+// a schema 8 protocol schema 9 cannot take, which Fresco must report both as a
+// refused protocol and as an application error, so migration bugs are found.
 //
 // Usage: node analytics-lane.mjs [--lane analytics]
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -108,8 +110,10 @@ const DAMAGED_FIXTURES = [
   {
     id: 'analytics-fractional-count-refused',
     file: 'fractional-count-filter.netcanvas',
-    expect: /invalid|check the protocol structure/i,
-    why: 'an operator that counts selected options still takes a whole number',
+    // The fixture is schema 8, which allowed this; schema 9 does not, so the
+    // upgrade returns an invalid document and the import says so.
+    expect: /could not be upgraded/i,
+    why: 'an operator that counts selected options takes a whole number in schema 9, so the schema 8 protocol cannot be upgraded',
   },
 ];
 

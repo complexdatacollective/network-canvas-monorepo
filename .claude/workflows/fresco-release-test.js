@@ -802,6 +802,7 @@ const expectedScriptChecks = {
     'analytics-no-deployment-identifiers',
     'analytics-pseudonymous-distinct-id',
     'analytics-damaged-file-not-an-error',
+    'analytics-upgrade-failure-reported-twice',
   ],
   twoFactor: [
     'two-factor-forced-after-setup',

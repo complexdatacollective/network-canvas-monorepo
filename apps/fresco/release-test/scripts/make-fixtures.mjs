@@ -139,7 +139,9 @@ written.missingAsset = await write(
 // records a normalised 0-1 reading and an integer-only value could express no
 // comparison across it — but the operators that COUNT SELECTED OPTIONS still
 // take a whole number, and now say so. Testing only the refusal would prove
-// nothing: a file refused for some other reason looks identical.
+// nothing: a file refused for some other reason looks identical. The protocol
+// is schema 8, which allowed a fractional COUNT, so its refusal is a failed
+// upgrade, which Fresco reports both as a refused protocol and as an error.
 const filtered = (rule) => {
   const document = structuredClone(protocol);
   document.stages.find((entry) => entry.id === 'stage-socio').filter = {

@@ -435,22 +435,29 @@ export const useProtocolImport = () => {
     } catch (e) {
       const error = ensureError(e);
       const protocolFileError = describeProtocolFileErrorMessage(error);
-      // A file the researcher chose being damaged, truncated, or too old to
-      // upgrade is an answer about that file, not a defect in Fresco. Sending
-      // it to exception tracking buries the failures that are defects, and the
-      // message carries researcher-authored resource names. Record the kind
-      // instead, which is a fixed vocabulary and holds nothing from the file.
+      // Every protocol the import refuses is recorded by its kind, a fixed
+      // vocabulary that holds nothing from the file, so refusals can be
+      // counted by cause.
       //
-      // `isProtocolFileFault`, not merely "can this be described": a migration
-      // step that throws because of a bug in it is re-raised as
-      // `MigrationStepError` and describes itself as a protocol that cannot be
-      // upgraded, so treating every describable failure as the file's fault
-      // would hide our own migration defects.
-      if (isProtocolFileFault(error)) {
-        captureClientEvent('ProtocolImportFailed', {
-          reason: getProtocolFileErrorKind(error),
-        });
-      } else {
+      // A file the researcher chose being damaged, truncated, or too old to
+      // upgrade is an answer about that file, not a defect in Fresco, so it
+      // stops there: sending it to exception tracking would bury the failures
+      // that are defects, and the message carries researcher-authored
+      // resource names.
+      //
+      // A protocol that passed its own version's checks and still could not
+      // be upgraded is both. The researcher's protocol was refused, and the
+      // cause is a migration of ours, so it is also an application error.
+      // `isProtocolFileFault` draws that line: a migration step that throws
+      // because of a bug in it is re-raised as `MigrationStepError` and
+      // describes itself as a protocol that cannot be upgraded, so treating
+      // every describable failure as the file's fault would hide our own
+      // migration defects.
+      const refusalKind = getProtocolFileErrorKind(error);
+      if (refusalKind !== null) {
+        captureClientEvent('ProtocolImportFailed', { reason: refusalKind });
+      }
+      if (!isProtocolFileFault(error)) {
         captureClientException(error);
       }
 
