@@ -2,6 +2,7 @@ import { get } from 'es-toolkit/compat';
 import { useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
+import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -119,8 +120,13 @@ export default function PersonSymbolsControl({
   const [appliedGenderTerms, setAppliedGenderTerms] = useState<unknown>();
   /** The answer being written, shown as chosen until the write settles. */
   const [pending, setPending] = useState<SymbolChoice | undefined>();
-  /** Why the last write was refused, shown as the field's error. */
-  const [failure, setFailure] = useState<string | undefined>();
+  /**
+   * Why the last write was refused. A held section is a notice, not a fault,
+   * so it shows in the hint; anything else is the field's error.
+   */
+  const [failure, setFailure] = useState<
+    Readonly<{ message: string; held: boolean }> | undefined
+  >(undefined);
   /** Read when a confirmed choice is acted on, not when it was asked for. */
   const writable = useRef(!readOnly);
   writable.current = !readOnly;
@@ -244,7 +250,10 @@ export default function PersonSymbolsControl({
         },
       );
       if (outcome.status !== 'applied') {
-        setFailure(outcome.message);
+        setFailure({
+          message: outcome.message,
+          held: outcome.refusal.kind === 'held',
+        });
         return;
       }
       if (choice === 'genderIdentity') setAppliedGenderTerms(terms);
@@ -269,7 +278,7 @@ export default function PersonSymbolsControl({
       if (confirmed !== true) return;
     }
     if (!writable.current) {
-      setFailure(READ_ONLY_MESSAGE);
+      setFailure({ message: READ_ONLY_MESSAGE, held: true });
       return;
     }
     await write(choice);
@@ -302,6 +311,11 @@ export default function PersonSymbolsControl({
         </span>
       )}
       <span className="block">{intl.formatMessage(messages.symbolsHint)}</span>
+      {failure?.held === true && (
+        <span role="status" className="text-warning mt-1 block">
+          {formatMessageError(failure.message, intl) ?? failure.message}
+        </span>
+      )}
       {busy && (
         <span role="status" className="mt-1 block">
           {intl.formatMessage(codebookEditingMessages.saving)}
@@ -319,8 +333,10 @@ export default function PersonSymbolsControl({
       options={options}
       value={pending ?? detected}
       disabled={readOnly || busy}
-      errors={failure === undefined ? undefined : [failure]}
-      showErrors={failure !== undefined}
+      errors={
+        failure === undefined || failure.held ? undefined : [failure.message]
+      }
+      showErrors={failure !== undefined && !failure.held}
       onChange={(next) => {
         // Choosing the answer already held writes nothing: the out-of-date
         // note carries the one action that rewrites it.
