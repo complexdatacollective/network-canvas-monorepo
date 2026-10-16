@@ -362,9 +362,9 @@ describe('removeLocale', () => {
     expect(
       getLocaleRemovalImpact(collectLocalizedStrings(bilingual()), 'fr')
         .translationCount,
-      // Seven texts of the protocol's own, and the finish stage's three
+      // Six texts of the protocol's own, and the finish stage's three
       // settings.
-    ).toBe(10);
+    ).toBe(9);
   });
 
   it('counts each text once however many readings of it there are', () => {
@@ -380,7 +380,7 @@ describe('removeLocale', () => {
       'fr',
     );
 
-    expect(impact.translationCount).toBe(10);
+    expect(impact.translationCount).toBe(9);
     expect(impact.strandedStrings).toEqual([unsaved]);
   });
 

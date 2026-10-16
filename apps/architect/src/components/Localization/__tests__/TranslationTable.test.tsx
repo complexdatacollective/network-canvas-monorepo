@@ -14,7 +14,7 @@ import { getProtocol } from '~/selectors/protocol';
 import TranslationTable from '../TranslationTable';
 
 // French is missing the welcome title and text, both thanks texts and the
-// person type's label; Spanish is missing only the thanks texts, which exist
+// person type's one answer option; Spanish is missing only the thanks texts, which exist
 // only in English.
 const trilingual: CurrentProtocol = {
   name: 'Study',
@@ -27,6 +27,16 @@ const trilingual: CurrentProtocol = {
         name: 'Person',
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
+        variables: {
+          closeness: {
+            name: 'closeness',
+            type: 'categorical',
+            component: 'CheckboxGroup',
+            options: [
+              { value: 'close', label: { en: 'Close', es: 'Cercano' } },
+            ],
+          },
+        },
       },
     },
     edge: {},
@@ -166,8 +176,8 @@ describe('TranslationTable', () => {
       'Stage name',
       'Page content › Page heading',
       'Page content › Item 1 › Content',
-      // The person type's label.
-      'Node type label',
+      // The person type's one answer option.
+      'closeness › Option 1 label',
       // The words the interview itself shows, which Network Canvas supplies
       // in all three languages.
       'Interview navigation › Exit button',
@@ -442,7 +452,7 @@ describe('TranslationTable', () => {
       'Page content › Item 1 › Content',
       'Page content › Page heading',
       'Page content › Item 1 › Content',
-      'Node type label',
+      'closeness › Option 1 label',
     ]);
     const thanks = screen
       .getByRole('link', { name: 'Thanks' })
