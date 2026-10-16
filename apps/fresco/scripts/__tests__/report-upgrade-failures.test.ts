@@ -93,10 +93,13 @@ describe('reportProtocolUpgradeFailures', () => {
     });
     expect(captureException).toHaveBeenCalledTimes(1);
     expect(captureException).toHaveBeenCalledWith(
-      failure.error.cause,
+      expect.objectContaining({ name: 'ValidationError' }),
       'install-1',
       expect.objectContaining({ reason: 'invalidBeforeUpgrade' }),
     );
+    const sent = captureException.mock.calls[0]?.[0] as Error;
+    expect(sent).not.toBe(failure.error.cause);
+    expect(sent.message).not.toContain((failure.error.cause as Error).message);
     expect(shutdown).toHaveBeenCalled();
     // Nothing that names the protocol leaves the deployment.
     expect(

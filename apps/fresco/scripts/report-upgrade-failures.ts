@@ -3,6 +3,7 @@ import { PostHog } from 'posthog-node';
 import {
   getProtocolFileErrorKind,
   type ProtocolFileErrorKind,
+  toReportableProtocolError,
 } from '@codaco/protocol-validation';
 import {
   buildAppSuperProperties,
@@ -35,18 +36,19 @@ type SettingsReader = {
 type Reportable = {
   /** The classified kind, from the vocabulary imports report. */
   reason: ProtocolFileErrorKind;
-  /** The error to send: never the wrapper, whose message names the protocol. */
+  /** The error to report: never the wrapper, which only names the protocol. */
   error: unknown;
 };
 
 /**
  * The migration error behind a failed upgrade, and its kind.
  *
- * The deploy script wraps what it caught in an error naming the protocol and
- * its id, which must not leave the deployment, so the first error in the
- * `cause` chain that the package can classify is what gets reported. Anything
- * the package cannot classify still failed the upgrade, so it is reported as
- * `upgradeFailed` with the deepest cause in the chain.
+ * The deploy script wraps what it caught in an error that only names the
+ * protocol, so the first error in the `cause` chain that the package can
+ * classify is what gets reported, which groups it with the same failure
+ * elsewhere. Anything the package cannot classify still failed the upgrade,
+ * so it is reported as `upgradeFailed` with the deepest cause in the chain.
+ * Either way only a message-free copy is sent (`toReportableProtocolError`).
  */
 export function describeUpgradeFailure(error: unknown): Reportable {
   let current: unknown = error;
@@ -120,7 +122,9 @@ export async function reportProtocolUpgradeFailures(
         event: 'ProtocolUpgradeFailed',
         properties: { ...properties, ...common },
       });
-      posthog.captureException(error, distinctId, {
+      // A copy without its message, which can quote the protocol (schema
+      // validation names its paths and values, a collision names both rows).
+      posthog.captureException(toReportableProtocolError(error), distinctId, {
         ...properties,
         ...common,
         context: 'protocol.upgrade',

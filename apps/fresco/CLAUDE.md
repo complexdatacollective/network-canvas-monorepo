@@ -678,7 +678,9 @@ lib/
   the interview route refuses it. Unless analytics are disabled, each one is
   also reported once the transaction is over, as a `ProtocolUpgradeFailed`
   event (its error kind and schema versions only) and as an exception
-  (`scripts/report-upgrade-failures.ts`), so migration bugs can be found.
+  (`scripts/report-upgrade-failures.ts`), so migration bugs can be found. The
+  exception is a message-free copy (`toReportableProtocolError`): a migration
+  error's message can quote the protocol.
 - **Auth** is first-party: sessions in `lib/auth/session.ts`, plus WebAuthn
   passkeys and TOTP. There is no third-party auth library.
 - **Tailwind** with `@codaco/tailwind-config`, components from

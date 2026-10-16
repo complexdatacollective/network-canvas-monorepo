@@ -36,6 +36,7 @@ import {
   isProtocolFileFault,
   type ProtocolFileErrorKind,
 } from './utils/protocolFileErrorKind.ts';
+import { toReportableProtocolError } from './utils/reportableProtocolError.ts';
 import {
   findCollidingAttributeNames,
   getVariableNamesFromNetwork,
@@ -376,6 +377,7 @@ export {
   type ProtocolFileErrorKind,
   ProtocolValidationError,
   type ProtocolValidationIssue,
+  toReportableProtocolError,
   type ProtocolValidationResult,
   type StageReferenceHit,
   type ValidateProtocolOptions,

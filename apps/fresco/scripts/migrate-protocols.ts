@@ -398,24 +398,32 @@ async function migrateOneProtocol(
         { cause: err },
       );
     }
-    let interviews: InterviewMigrationCounts;
+    let normalized:
+      | { interviews: InterviewMigrationCounts }
+      | { failure: unknown };
     try {
-      interviews = await normalizeNonConformantProtocol(prisma, row);
+      normalized = {
+        interviews: await normalizeNonConformantProtocol(prisma, row),
+      };
     } catch (normalizationErr) {
+      normalized = { failure: normalizationErr };
+    }
+    if ('failure' in normalized) {
       const normalizationCause =
-        normalizationErr instanceof Error
-          ? normalizationErr.message
-          : String(normalizationErr);
-      // The cause is the migration's error, not the normalization's: the
-      // upgrade is what failed, and it is what a failed upgrade is reported
-      // and classified by (see `onUpgradeFailure`).
+        normalized.failure instanceof Error
+          ? normalized.failure.message
+          : String(normalized.failure);
+      // Thrown here rather than in the normalization's catch so the cause is
+      // the migration's error: the upgrade is what failed, and it is what a
+      // failed upgrade is reported and classified by (see `onUpgradeFailure`).
       throw new Error(
         `Failed to migrate protocol "${row.name}" (id=${row.id}): ${cause}. ` +
           `Normalizing it from schema version ${NORMALIZATION_SOURCE_VERSION} ` +
           `also failed: ${normalizationCause}`,
-        { cause: normalizationErr },
+        { cause: err },
       );
     }
+    const { interviews } = normalized;
     return { outcome: 'normalized', interviews };
   }
   const newHash = hashProtocol(migrated);

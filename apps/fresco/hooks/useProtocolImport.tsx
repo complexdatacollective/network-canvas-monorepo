@@ -19,6 +19,7 @@ import {
   isProtocolFileFault,
   loadNetcanvasArchive,
   missingAssetsError,
+  toReportableProtocolError,
 } from '@codaco/protocol-validation';
 import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
 import { ensureError } from '@codaco/shared-consts';
@@ -457,8 +458,13 @@ export const useProtocolImport = () => {
       if (refusalKind !== null) {
         captureClientEvent('ProtocolImportFailed', { reason: refusalKind });
       }
+      //
+      // A classified error is sent as a copy that keeps its name and stack
+      // but not its message, which can quote the researcher's protocol.
       if (!isProtocolFileFault(error)) {
-        captureClientException(error);
+        captureClientException(
+          refusalKind === null ? error : toReportableProtocolError(error),
+        );
       }
 
       // Best-effort cleanup of any blobs uploaded before the failure, so a
