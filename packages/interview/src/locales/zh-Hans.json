@@ -55,7 +55,6 @@
   "interview.interfaces.drawingControls": "绘图控件",
   "interview.interfaces.editingTools": "编辑工具",
   "interview.interfaces.emptyValue": "无值",
-  "interview.interfaces.entityName": "{entityLabel} 名称",
   "interview.interfaces.errorHeading": "出现问题",
   "interview.interfaces.finishingInterview": "正在结束访谈…",
   "interview.interfaces.groupMembershipOptions": "群组成员选项",
@@ -159,5 +158,7 @@
   "interview.runtime.replaceUnavailableAnswer": "输入新的回答",
   "interview.runtime.secondNode": "第二项",
   "interview.runtime.taskErrorDescription": "访谈软件出现错误，无法显示此任务。某些任务（例如地图）需要网络连接，请先检查网络连接，然后尝试刷新页面。如果问题仍然存在，请联系研究组织者，并将调试信息发送给他们（可使用下方的按钮复制该信息）。您也许可以点击“下一步”按钮继续访谈。",
+  "interview.runtime.unnamed": "未命名",
+  "interview.runtime.unnamedNumbered": "未命名 {number}",
   "interview.runtime.unplacedCount": "{count, number} 个未放置"
 }

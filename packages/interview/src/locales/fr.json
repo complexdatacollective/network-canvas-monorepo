@@ -55,7 +55,6 @@
   "interview.interfaces.drawingControls": "Commandes de dessin",
   "interview.interfaces.editingTools": "Outils de modification",
   "interview.interfaces.emptyValue": "Aucune valeur",
-  "interview.interfaces.entityName": "Nom ({entityLabel})",
   "interview.interfaces.errorHeading": "Une erreur s’est produite",
   "interview.interfaces.finishingInterview": "Finalisation de l’entretien…",
   "interview.interfaces.groupMembershipOptions": "Options d’appartenance aux groupes",
@@ -159,5 +158,7 @@
   "interview.runtime.replaceUnavailableAnswer": "Saisir une nouvelle réponse",
   "interview.runtime.secondNode": "deuxième élément",
   "interview.runtime.taskErrorDescription": "Une erreur s’est produite dans le logiciel d’entretien et cette tâche n’a pas pu être affichée. Certaines tâches, comme les cartes, nécessitent une connexion Internet : vérifiez votre connexion, puis essayez d’actualiser la page. Si le problème persiste, contactez l’équipe responsable de l’étude et transmettez-lui les informations de débogage, que vous pouvez copier avec le bouton ci-dessous. Vous pourrez peut-être poursuivre votre entretien en cliquant sur le bouton Suivant.",
+  "interview.runtime.unnamed": "Sans nom",
+  "interview.runtime.unnamedNumbered": "Sans nom {number}",
   "interview.runtime.unplacedCount": "À placer : {count, number}"
 }

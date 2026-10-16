@@ -33,6 +33,7 @@ import {
 const KNOWS_ENTRY = {
   id: 'composer-edge-1',
   subject: { entity: 'edge', type: 'knows' },
+  label: { 'en-US': 'Knows' },
 };
 
 /**
@@ -177,10 +178,12 @@ describe('what a network composer lets the participant build', () => {
     // Read whole rather than matched: a form key on an entry nobody has asked
     // a question of yet is a configured form holding nothing, which is not
     // what "the participant may draw this" means.
+    // The words participants pick it by start as the type's name.
     expect(edgesOf(saved?.stageDocument ?? {})).toEqual([
       {
         id: expect.any(String) as unknown as string,
         subject: { entity: 'edge', type: 'knows' },
+        label: { 'en-US': 'knows' },
       },
     ]);
   });
@@ -280,8 +283,13 @@ describe('what a network composer lets the participant build', () => {
       expect(screen.queryByText('Anything else?')).not.toBeInTheDocument(),
     );
     const saved = await harness.submit();
+    // The words that named the old type go with it.
     expect(edgesOf(saved?.stageDocument ?? {})).toEqual([
-      { id: KNOWS_ENTRY.id, subject: { entity: 'edge', type: 'family_edge' } },
+      {
+        id: KNOWS_ENTRY.id,
+        subject: { entity: 'edge', type: 'family_edge' },
+        label: { 'en-US': 'family_edge' },
+      },
     ]);
   });
 
@@ -331,6 +339,7 @@ describe('what a network composer lets the participant build', () => {
       {
         id: 'composer-edge-1',
         subject: { entity: 'edge', type: 'family_edge' },
+        label: { 'en-US': 'family_edge' },
       },
     ]);
   });
@@ -1459,6 +1468,7 @@ describe('what a network composer lets the participant build', () => {
       {
         id: expect.any(String) as unknown as string,
         subject: { entity: 'edge', type: created?.[0] },
+        label: { 'en-US': 'livesWith' },
       },
     ]);
   });

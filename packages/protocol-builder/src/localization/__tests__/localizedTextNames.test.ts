@@ -305,6 +305,7 @@ const ADDITIONS: readonly (readonly [Path, unknown])[] = [
       {
         id: 'composer-knows',
         subject: { entity: 'edge', type: 'knows' },
+        label: en('Knows'),
         form: { fields: [composerScaleField('bond', 'How strong is it?')] },
       },
     ],
@@ -659,6 +660,34 @@ describe('nameLocalizedText', () => {
         key: '["presets",0,"highlight",0,"label"]',
         label: 'Label for “Flag for follow-up”',
       },
+    ]);
+  });
+
+  it('names a Narrative edge legend label by the edge type it draws', () => {
+    expect(
+      name([
+        ...stageAt('Narrative'),
+        'presets',
+        0,
+        'edges',
+        'display',
+        0,
+        'label',
+      ])?.at(-1),
+    ).toEqual({
+      key: '["presets",0,"edges","display",0,"label"]',
+      label: `Label for “${protocol.codebook.edge?.knows?.name}”`,
+    });
+  });
+
+  it('names a Network Composer connection label by its edge type', () => {
+    expect(name([...stageAt('NetworkComposer'), 'edges', 0, 'label'])).toEqual([
+      { key: '["edges"]', label: 'Edge configuration' },
+      {
+        key: '["edges",0]',
+        label: protocol.codebook.edge?.knows?.name,
+      },
+      { key: '["edges",0,"label"]', label: 'Label' },
     ]);
   });
 

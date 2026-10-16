@@ -55,7 +55,6 @@
   "interview.interfaces.drawingControls": "Zeichenwerkzeuge",
   "interview.interfaces.editingTools": "Bearbeitungswerkzeuge",
   "interview.interfaces.emptyValue": "Kein Wert",
-  "interview.interfaces.entityName": "Name für {entityLabel}",
   "interview.interfaces.errorHeading": "Etwas ist schiefgelaufen",
   "interview.interfaces.finishingInterview": "Das Interview wird abgeschlossen…",
   "interview.interfaces.groupMembershipOptions": "Optionen zur Gruppenzugehörigkeit",
@@ -159,5 +158,7 @@
   "interview.runtime.replaceUnavailableAnswer": "Neue Antwort eingeben",
   "interview.runtime.secondNode": "zweiter Eintrag",
   "interview.runtime.taskErrorDescription": "In der Interview-Software ist ein Fehler aufgetreten, daher konnte diese Aufgabe nicht angezeigt werden. Manche Aufgaben (zum Beispiel Karten) benötigen eine Internetverbindung. Prüfen Sie daher Ihre Verbindung und laden Sie dann die Seite neu. Wenn das Problem weiterhin besteht, wenden Sie sich bitte an die Studienleitung und senden Sie ihr die Diagnoseinformationen, die Sie mit der Schaltfläche unten kopieren können. Möglicherweise können Sie das Interview fortsetzen, indem Sie auf „Weiter“ klicken.",
+  "interview.runtime.unnamed": "Ohne Namen",
+  "interview.runtime.unnamedNumbered": "Ohne Namen {number}",
   "interview.runtime.unplacedCount": "{count, number} nicht platziert"
 }

@@ -68,7 +68,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
         label: { 'en-US': 'Ties' },
         layoutVariable: 'layout',
         groupVariable: 'contactType',
-        edges: { display: ['knows'] },
+        edges: { display: [{ type: 'knows', label: { 'en-US': 'knows' } }] },
         highlight: [{ variable: 'flagged', label: { 'en-US': 'Flagged' } }],
       },
     ]);
@@ -368,7 +368,12 @@ describe('a preset naming what the codebook no longer has', () => {
         id: 'narrative-preset-1',
         label: { 'en-US': 'Default layout' },
         layoutVariable: 'layout',
-        edges: { display: ['knows', LOST_EDGE] },
+        edges: {
+          display: [
+            { type: 'knows', label: { 'en-US': 'knows' } },
+            { type: LOST_EDGE, label: { 'en-US': 'Formerly drawn' } },
+          ],
+        },
         highlight: [
           { variable: 'flagged', label: { 'en-US': 'Flagged' } },
           { variable: LOST_HIGHLIGHT, label: { 'en-US': 'Formerly flagged' } },
@@ -413,7 +418,7 @@ describe('a preset naming what the codebook no longer has', () => {
       id: 'narrative-preset-1',
       label: { 'en-US': 'Default layout' },
       layoutVariable: 'layout',
-      edges: { display: ['knows'] },
+      edges: { display: [{ type: 'knows', label: { 'en-US': 'knows' } }] },
       highlight: [{ variable: 'flagged', label: { 'en-US': 'Flagged' } }],
     });
   });
@@ -455,7 +460,7 @@ describe('a codebook change made while a preset dialog is open', () => {
 
     const saved = await harness.submit();
     expect(presetsOf(saved?.stageDocument ?? {})[0]).toMatchObject({
-      edges: { display: ['knows'] },
+      edges: { display: [{ type: 'knows', label: { 'en-US': 'knows' } }] },
     });
   });
 

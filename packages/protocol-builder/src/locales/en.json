@@ -943,14 +943,6 @@
     "defaultMessage": "Some codebook data could not be displayed",
     "description": "Heading of the warning listing parts of the stored codebook this page could not read."
   },
-  "protocolBuilder.codebookEntity.labelHint": {
-    "defaultMessage": "{entity, select, node {The words participants are shown for this node type. Left empty, the type name is used.} other {The words participants are shown for this edge type. Left empty, the type name is used.}}",
-    "description": "Guidance under the entity type label field. The type name is the field above it, holding the researcher’s own name for the type. entity is node or edge."
-  },
-  "protocolBuilder.codebookEntity.labelLabel": {
-    "defaultMessage": "{entity, select, node {Node type label} other {Edge type label}}",
-    "description": "Label of the field holding the words participants are shown for this entity type, as opposed to the type name the researcher and the exported data use. entity is node or edge; the ego has no label."
-  },
   "protocolBuilder.codebookEntity.manageEgoAttributes": {
     "defaultMessage": "Manage attributes",
     "description": "Button on the ego card that opens its attribute list. The ego — the interview participant themselves — has attributes but no type properties, so the button offers those rather than editing a type."
@@ -1182,14 +1174,6 @@
   "protocolBuilder.codebookVariable.interfaceOwnedPick": {
     "defaultMessage": "This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.",
     "description": "Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is a whole English phrase from the protocol schema that names a built-in interface and what it records, for example “the Family Pedigree interface, which marks the participant”. It is not translated here, so it stays in English inside the translated sentence."
-  },
-  "protocolBuilder.codebookVariable.labelHint": {
-    "defaultMessage": "A readable label for this attribute. It is not translated. Left empty, the attribute name is used.",
-    "description": "Guidance under the attribute label field. The attribute name is the field above it, holding the researcher’s own name for the attribute."
-  },
-  "protocolBuilder.codebookVariable.labelLabel": {
-    "defaultMessage": "Attribute label",
-    "description": "Label of the field holding a readable label for this attribute (a codebook variable), as opposed to the attribute name the exported data uses."
   },
   "protocolBuilder.codebookVariable.lockedOptionLabelHeader": {
     "defaultMessage": "Label",
@@ -3695,6 +3679,14 @@
     "defaultMessage": "Edge types",
     "description": "Label of the list holding the kinds of connection a network composer lets the participant draw."
   },
+  "protocolBuilder.networkCanvas.composerEdgeLabelHint": {
+    "defaultMessage": "What participants see for this kind of connection, in the toolbar and above its questions. Left empty, the edge type name is used.",
+    "description": "Guidance under the connection label box of a network composer. The edge type name is the researcher’s own name for the kind of connection, from the codebook."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeLabelLabel": {
+    "defaultMessage": "Label",
+    "description": "Label of the text box holding the words participants see for one kind of connection on a network composer."
+  },
   "protocolBuilder.networkCanvas.composerEdgeNoun": {
     "defaultMessage": "connection type",
     "description": "What one row of a network composer’s connection list is called, used in the accessible names of its edit, delete and reorder controls and in the confirmation that deletes it."
@@ -4030,6 +4022,18 @@
   "protocolBuilder.networkCanvas.presetDisplayEdgesLabel": {
     "defaultMessage": "Edge types",
     "description": "Label of the tick list choosing which edge types a preset draws."
+  },
+  "protocolBuilder.networkCanvas.presetEdgeLegendHint": {
+    "defaultMessage": "Shown during the interview, in the legend of connections this preset draws.",
+    "description": "Guidance under the text box naming one drawn edge type, saying where the label appears."
+  },
+  "protocolBuilder.networkCanvas.presetEdgeLegendLabel": {
+    "defaultMessage": "Label for “{edgeType}”",
+    "description": "Label of the text box naming one drawn edge type in the interview. edgeType is the edge type’s name in the protocol’s codebook, which is not translated."
+  },
+  "protocolBuilder.networkCanvas.presetEdgeLegendRequired": {
+    "defaultMessage": "Enter a label for this edge type.",
+    "description": "Shown when the label of a drawn edge type is left empty."
   },
   "protocolBuilder.networkCanvas.presetGroupEmpty": {
     "defaultMessage": "This type has no attributes with a fixed set of values, so there is nothing to group by.",

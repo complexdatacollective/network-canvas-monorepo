@@ -55,7 +55,6 @@
   "interview.interfaces.drawingControls": "Controlli di disegno",
   "interview.interfaces.editingTools": "Strumenti di modifica",
   "interview.interfaces.emptyValue": "Nessun valore",
-  "interview.interfaces.entityName": "Nome ({entityLabel})",
   "interview.interfaces.errorHeading": "Si è verificato un errore",
   "interview.interfaces.finishingInterview": "Conclusione dell’intervista in corso…",
   "interview.interfaces.groupMembershipOptions": "Opzioni di appartenenza ai gruppi",
@@ -159,5 +158,7 @@
   "interview.runtime.replaceUnavailableAnswer": "Inserisci una nuova risposta",
   "interview.runtime.secondNode": "secondo elemento",
   "interview.runtime.taskErrorDescription": "Si è verificato un errore nel software dell’intervista e non è stato possibile visualizzare questa attività. Alcune attività, come le mappe, richiedono una connessione a internet: controlla la connessione, poi prova ad aggiornare la pagina. Se il problema persiste, contatta chi organizza lo studio e inviagli le informazioni di debug, che puoi copiare con il pulsante qui sotto. Potresti riuscire a continuare l’intervista facendo clic sul pulsante Avanti.",
+  "interview.runtime.unnamed": "Senza nome",
+  "interview.runtime.unnamedNumbered": "Senza nome {number}",
   "interview.runtime.unplacedCount": "{count, number} da posizionare"
 }

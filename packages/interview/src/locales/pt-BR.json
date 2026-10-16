@@ -55,7 +55,6 @@
   "interview.interfaces.drawingControls": "Controles de desenho",
   "interview.interfaces.editingTools": "Ferramentas de edição",
   "interview.interfaces.emptyValue": "Nenhum valor",
-  "interview.interfaces.entityName": "Nome de {entityLabel}",
   "interview.interfaces.errorHeading": "Algo deu errado",
   "interview.interfaces.finishingInterview": "Finalizando a entrevista…",
   "interview.interfaces.groupMembershipOptions": "Opções de participação em grupos",
@@ -159,5 +158,7 @@
   "interview.runtime.replaceUnavailableAnswer": "Digitar uma nova resposta",
   "interview.runtime.secondNode": "segundo item",
   "interview.runtime.taskErrorDescription": "Ocorreu um erro no software da entrevista, e esta tarefa não pôde ser exibida. Algumas tarefas, como mapas, precisam de conexão com a internet: verifique sua conexão e depois tente atualizar a página. Se o problema persistir, entre em contato com a equipe responsável pelo estudo e envie os dados de depuração, que você pode copiar com o botão abaixo. Talvez você consiga continuar sua entrevista clicando no botão de avançar.",
+  "interview.runtime.unnamed": "Sem nome",
+  "interview.runtime.unnamedNumbered": "Sem nome {number}",
   "interview.runtime.unplacedCount": "Não posicionados: {count, number}"
 }

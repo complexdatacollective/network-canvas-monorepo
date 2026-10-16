@@ -49,22 +49,14 @@ const text = (name: string) => ({ name, type: 'text', component: 'Text' });
 
 const layout = (name: string) => ({ name, type: 'layout' });
 
-/**
- * A section as the codebook stores it. The attributes are built as drafts, which
- * the write labels on creation, so a stored one is given its label here.
- */
+/** A section as the codebook stores it. */
 const sectionOf = (
   variables: Record<string, Record<string, unknown>>,
 ): SectionDoc => ({
   name: 'Person',
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
-  variables: Object.fromEntries(
-    Object.entries(variables).map(([id, variable]) => [
-      id,
-      { label: String(variable.name), ...variable },
-    ]),
-  ),
+  variables,
 });
 
 /** What a write refused with, as the researcher would read it. */
@@ -436,7 +428,6 @@ describe('the names the write stores', () => {
     const written = create(sectionOf({}), text('  first_name  '));
     expect(storedVariable(written, 'new-variable')).toMatchObject({
       name: 'first_name',
-      label: 'first_name',
     });
   });
 
@@ -545,7 +536,6 @@ describe('the name of an entity type', () => {
         documentForNewEntity({
           subject: NODE,
           draft: { ...draft, name },
-          localization: LOCALIZATION,
         }).name,
       ).toBe(name);
     },
@@ -556,7 +546,6 @@ describe('the name of an entity type', () => {
       documentForNewEntity({
         subject: NODE,
         draft: { ...draft, name: `  ${'Collègue'.normalize('NFD')} ` },
-        localization: LOCALIZATION,
       }).name,
     ).toBe('Collègue');
     expect(

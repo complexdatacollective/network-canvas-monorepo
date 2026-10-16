@@ -130,7 +130,7 @@ const alsoRecording = (
         add: Object.fromEntries(
           Object.entries(added).map(([variableId, type]) => [
             variableId,
-            { name: variableId, label: variableId, type },
+            { name: variableId, type },
           ]),
         ),
       }),
