@@ -435,7 +435,7 @@ export default function LocaleSwitcher({
               ref={listRef}
               className="max-h-96 overflow-hidden has-data-empty:hidden"
               render={
-                <ScrollArea viewportClassName="flex flex-col gap-1 px-2 pb-2" />
+                <ScrollArea viewportClassName="flex flex-col px-2 pb-2" />
               }
             >
               {(item: LocaleItem) => (

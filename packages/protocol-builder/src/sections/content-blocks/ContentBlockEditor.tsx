@@ -318,6 +318,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
             name="description"
             component={LocalizedInputField}
             label={intl.formatMessage(contentBlockMessages.descriptionLabel)}
+            wraps
             hint={intl.formatMessage(MEDIA_COPY[kind].description)}
             initialValue={asLocalizedString(item.description)}
           />

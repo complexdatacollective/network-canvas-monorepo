@@ -22,6 +22,7 @@ const WORDS: readonly WordingSetting[] = [
   {
     path: 'overtakenEditNotice',
     label: messages.overtakenEditNoticeLabel,
+    wraps: true,
   },
   {
     path: 'groupsHeading',

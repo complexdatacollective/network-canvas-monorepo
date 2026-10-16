@@ -260,6 +260,7 @@ function WordingGroupFields({
           component={LocalizedInputField}
           label={label}
           hint={hint}
+          wraps={setting.wraps}
           initialValue={initialValue}
           required={REQUIRED}
         />

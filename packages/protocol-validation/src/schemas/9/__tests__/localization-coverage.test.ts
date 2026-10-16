@@ -251,7 +251,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(18, 'prompt'), 'markdown'),
   // The Family Pedigree's own wording, which Network Canvas supplies.
   site(stage(18, 'nodeConfiguration', 'nameField', 'prompt'), 'plain'),
-  site(stage(18, 'nodeConfiguration', 'nameField', 'hint'), 'plain'),
+  site(stage(18, 'nodeConfiguration', 'nameField', 'hint'), 'markdown'),
   ...(
     [
       ['parents', 'listItem'],

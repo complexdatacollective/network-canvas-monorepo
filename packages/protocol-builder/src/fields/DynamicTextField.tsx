@@ -434,6 +434,8 @@ export type DynamicMessageEditorProps = Readonly<{
    * translation table does once the researcher leaves the cell.
    */
   showsProblems?: boolean;
+  /** Classes for the editor's own frame, which holds its text and toolbar. */
+  className?: string;
 }>;
 
 /**
@@ -463,6 +465,7 @@ export function DynamicMessageEditor({
   locale,
   site,
   showsProblems = true,
+  className,
 }: DynamicMessageEditorProps) {
   const intl = useAppIntl();
   const { localization } = useEditingLanguage();
@@ -775,14 +778,17 @@ export function DynamicMessageEditor({
   ]);
 
   if (parsed === undefined && message !== '') {
+    // The frame's classes still place the note where the editor would be.
     return (
-      <div id={id} data-name={name} className="flex flex-col gap-2">
-        <Alert variant="warning" density="compact">
-          {intl.formatMessage(messages.unreadable)}
-        </Alert>
-        <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
-          {message}
-        </pre>
+      <div className={className}>
+        <div id={id} data-name={name} className="flex flex-col gap-2">
+          <Alert variant="warning" density="compact">
+            {intl.formatMessage(messages.unreadable)}
+          </Alert>
+          <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
+            {message}
+          </pre>
+        </div>
       </div>
     );
   }
@@ -829,6 +835,7 @@ export function DynamicMessageEditor({
         insertMenu={insertMenu}
         value={content ?? { type: 'doc', content: [{ type: 'paragraph' }] }}
         onChange={handleChange}
+        className={className}
       />
       {problem !== undefined && (
         <p className="text-destructive text-sm" role="status">

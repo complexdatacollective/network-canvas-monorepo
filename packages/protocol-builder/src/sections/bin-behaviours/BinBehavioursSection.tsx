@@ -22,6 +22,7 @@ const UNPLACED_NOTICE: WordingSetting = {
   path: 'unplacedNodesNotice',
   label: binBehavioursMessages.unplacedNoticeLabel,
   hint: binBehavioursMessages.unplacedNoticeHint,
+  wraps: true,
 };
 
 /**

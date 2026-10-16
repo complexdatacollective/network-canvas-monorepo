@@ -74,6 +74,7 @@ export default function FinishingSection() {
           label={intl.formatMessage(
             finishSessionMessages.finishConfirmationLabel,
           )}
+          wraps
           required={REQUIRED}
         />
       )}
@@ -81,6 +82,7 @@ export default function FinishingSection() {
         name={FINISH_FAILED_FIELD}
         component={LocalizedInputField}
         label={intl.formatMessage(finishSessionMessages.finishFailedLabel)}
+        wraps
         required={REQUIRED}
       />
     </BuilderSection>

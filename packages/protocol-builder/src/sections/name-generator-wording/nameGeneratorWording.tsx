@@ -205,6 +205,7 @@ function NameGeneratorWordingSection({
             <Field<typeof LocalizedInputField>
               name="maxNodesNotice"
               component={LocalizedInputField}
+              wraps
               label={intl.formatMessage(
                 nameGeneratorWordingMessages.maxNoticeLabel,
               )}
@@ -223,6 +224,7 @@ function NameGeneratorWordingSection({
             <Field<typeof LocalizedInputField>
               name="externalDataError"
               component={LocalizedInputField}
+              wraps
               label={intl.formatMessage(
                 nameGeneratorWordingMessages.externalErrorLabel,
               )}
@@ -241,6 +243,7 @@ function NameGeneratorWordingSection({
             <Field<typeof LocalizedInputField>
               name="quickAddHint"
               component={LocalizedInputField}
+              wraps
               label={intl.formatMessage(
                 nameGeneratorWordingMessages.quickAddHintLabel,
               )}
@@ -259,6 +262,7 @@ function NameGeneratorWordingSection({
             <Field<typeof LocalizedInputField>
               name="allAddedNotice"
               component={LocalizedInputField}
+              wraps
               label={intl.formatMessage(
                 nameGeneratorWordingMessages.allAddedLabel,
               )}
@@ -294,6 +298,7 @@ function NameGeneratorWordingSection({
               <Field<typeof LocalizedInputField>
                 name="searchNoMatch"
                 component={LocalizedInputField}
+                wraps
                 label={intl.formatMessage(
                   nameGeneratorWordingMessages.searchNoMatchLabel,
                 )}
