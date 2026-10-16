@@ -89,13 +89,14 @@ export async function reportProtocolUpgradeFailures(
     });
     if (disabled?.value === 'true') return;
 
+    // An empty override counts as unset, as it does everywhere else.
     const distinctId =
-      env.INSTALLATION_ID ??
+      env.INSTALLATION_ID ||
       (
         await prisma.appSettings.findUnique({
           where: { key: 'installationId' },
         })
-      )?.value ??
+      )?.value ||
       'unknown';
 
     const posthog = new PostHog(POSTHOG_API_KEY, {

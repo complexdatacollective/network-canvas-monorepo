@@ -111,6 +111,20 @@ describe('reportProtocolUpgradeFailures', () => {
     ).not.toMatch(/Private Study|cm-1/);
   });
 
+  it('treats an empty installation override as unset', async () => {
+    env.INSTALLATION_ID = '';
+    await reportProtocolUpgradeFailures(
+      [storedProtocolFailure()],
+      settings({ installationId: 'install-1' }),
+    );
+    expect(capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        distinctId: 'install-1',
+        properties: expect.objectContaining({ installation_id: 'install-1' }),
+      }),
+    );
+  });
+
   it('sends nothing when the environment disables analytics', async () => {
     env.DISABLE_ANALYTICS = true;
     await reportProtocolUpgradeFailures(
