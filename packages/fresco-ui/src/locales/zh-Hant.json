@@ -198,7 +198,7 @@
   "frescoUi.richTextEditor.heading4": "標題 4",
   "frescoUi.richTextEditor.insertMenuNoMatches": "沒有符合搜尋條件的內容。",
   "frescoUi.richTextEditor.insertMenuSearch": "搜尋",
-  "frescoUi.richTextEditor.insertRequiredToken": "插入「{token}」（此文字必須包含）",
+  "frescoUi.richTextEditor.insertRequiredToken": "插入「{token}」（此文字必須包含「{token}」）",
   "frescoUi.richTextEditor.insertToken": "插入「{token}」",
   "frescoUi.richTextEditor.italic": "斜體",
   "frescoUi.richTextEditor.linkButton": "{hasLink, select, true {編輯連結} other {新增連結}}",

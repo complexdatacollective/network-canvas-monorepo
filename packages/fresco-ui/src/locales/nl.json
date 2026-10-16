@@ -196,7 +196,7 @@
   "frescoUi.richTextEditor.heading2": "Kop 2",
   "frescoUi.richTextEditor.heading3": "Kop 3",
   "frescoUi.richTextEditor.heading4": "Kop 4",
-  "frescoUi.richTextEditor.insertMenuNoMatches": "Er is niets dat overeenkomt met je zoekopdracht.",
+  "frescoUi.richTextEditor.insertMenuNoMatches": "Niets komt overeen met je zoekopdracht.",
   "frescoUi.richTextEditor.insertMenuSearch": "Zoeken",
   "frescoUi.richTextEditor.insertRequiredToken": "“{token}” invoegen (verplicht in deze tekst)",
   "frescoUi.richTextEditor.insertToken": "“{token}” invoegen",

@@ -19,7 +19,7 @@
   "interview.familyPedigree.pointerToolDescription": "Seleziona un familiare per modificarne i dettagli o aggiungere i suoi familiari.",
   "interview.familyPedigree.removedAnnouncement": "Hai rimosso {name} dalla tua famiglia.",
   "interview.familyPedigree.removedWithOthersAnnouncement": "{count, plural, one {Hai rimosso {name} e un’altra persona dalla tua famiglia.} other {Hai rimosso {name} e altre # persone dalla tua famiglia.}}",
-  "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {donatore o donatrice di ovulo o spermatozoo} traditionalSurrogate {donatrice di ovulo che ha portato avanti la gravidanza} other {gestante surrogata}}",
+  "interview.familyPedigree.reproductiveRoleDescription": "{role, select, donor {donatore o donatrice di ovulo o spermatozoo} traditionalSurrogate {donatrice di ovulo che ha portato avanti la gravidanza} other {gestante per altri}}",
   "interview.familyPedigree.savedAnnouncement": "Informazioni salvate.",
   "interview.familyPedigree.showWholeFamily": "Mostra tutta la famiglia",
   "interview.familyPedigree.showWholeFamilyDescription": "Adatta la vista per far stare tutto il tuo albero genealogico sullo schermo.",

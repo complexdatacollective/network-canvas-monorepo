@@ -14,7 +14,7 @@
   "interview.familyPedigree.framingChosenAnnouncement": "{framing, select, gamete {Agora os membros da família são descritos com palavras como genitor do óvulo, genitor do esperma e irmão/irmã.} other {Agora os membros da família são descritos com palavras como mãe, pai, irmã e irmão.}}",
   "interview.familyPedigree.framingControlDescription": "Escolha os termos de parentesco que sua árvore genealógica usa para seus familiares.",
   "interview.familyPedigree.personAccessibleName": "{isYou, select, true {Você} other {{name}}}",
-  "interview.familyPedigree.personAdoptedDescription": "Adotado(a).",
+  "interview.familyPedigree.personAdoptedDescription": "Pessoa adotada.",
   "interview.familyPedigree.personMissingDetailsDescription": "Faltam algumas informações.",
   "interview.familyPedigree.pointerToolDescription": "Selecione um familiar para editar as informações dessa pessoa ou adicionar familiares a ela.",
   "interview.familyPedigree.removedAnnouncement": "Você removeu {name} da sua família.",
