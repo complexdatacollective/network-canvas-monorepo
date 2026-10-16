@@ -66,6 +66,7 @@ const {
   expectedStep,
   interviewMigrationProblems,
   introductionPanelProblems,
+  PEDIGREE_BUILD_PROMPT_ID,
   pedigreeMigrationProblems,
   protocolMigrationProblems,
   remapStageMetadata,
@@ -1854,6 +1855,8 @@ const recordOnlyReadings = () => {
     fm_name: 'Robert',
     sex: ['male'],
   };
+  after.interviews[0].network.nodes[3].stageId = 'family';
+  after.interviews[0].network.nodes[3].promptIDs = ['pedigree'];
   return { before, after };
 };
 
@@ -1948,6 +1951,7 @@ test('a family restored from its stage record passes only as it was recorded', (
   after.protocols[0].codebook = {
     node: { fm: { variables: { fm_name: { encrypted: true } } } },
   };
+  before.protocols[0].codebook = after.protocols[0].codebook;
   assert.ok(
     pedigreeMigrationProblems(before, after).includes(
       `${who}: person robert, restored from its stage record, has fm_name="Robert", not null`,
@@ -2041,6 +2045,87 @@ test('fields beyond the attributes are held to being unchanged too', () => {
   assert.ok(
     pedigreeMigrationProblems(before, after).includes(
       'interview family-interview\'s "family" pedigree: "Linda" (linda)\'s promptIDs was ["build"], is now []',
+    ),
+  );
+});
+
+test('a restored person without the provenance the stage gives, or a duplicated id, fails', () => {
+  const who = 'interview family-interview\'s "family" pedigree';
+  const { before, after } = recordOnlyReadings();
+  const cases = [
+    [
+      (a) => {
+        delete a.interviews[0].network.nodes[3].stageId;
+      },
+      (problems) =>
+        problems.includes(
+          `${who}: "Robert" (robert)'s stageId should be "family", is now null`,
+        ),
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.nodes[3]._secureAttributes = { x: {} };
+      },
+      (problems) =>
+        problems.includes(
+          `${who}: "Robert" (robert)'s _secureAttributes should be null, is now {"x":{}}`,
+        ),
+    ],
+  ];
+  for (const [breakIt, found] of cases) {
+    const broken = structuredClone(after);
+    breakIt(broken);
+    const problems = pedigreeMigrationProblems(before, broken);
+    assert.ok(found(problems), problems.join('\n'));
+  }
+  const doubled = structuredClone(after);
+  doubled.interviews[0].network.nodes.push(
+    structuredClone(doubled.interviews[0].network.nodes[0]),
+  );
+  doubled.interviews[0].network.edges.push(
+    structuredClone(doubled.interviews[0].network.edges[0]),
+  );
+  const problems = interviewMigrationProblems(before, doubled).join('\n');
+  assert.match(problems, /node alex is stored 2 times/);
+  assert.match(problems, /edge egg is stored 2 times/);
+});
+
+test("a restored name's encryption comes from the protocol the participant answered", () => {
+  const { before, after } = recordOnlyReadings();
+  const encrypted = {
+    node: { fm: { variables: { fm_name: { encrypted: true } } } },
+  };
+  before.protocols[0].codebook = encrypted;
+  // The upgrade dropped the flag and wrote the label in plain text: both
+  // sides agree, and both are wrong.
+  const problems = pedigreeMigrationProblems(before, after);
+  const who = 'interview family-interview\'s "family" pedigree';
+  assert.ok(
+    problems.includes(
+      `${who}: the name attribute fm_name was encrypted before the upgrade and is not after it`,
+    ),
+    problems.join('\n'),
+  );
+  assert.ok(
+    problems.includes(
+      `${who}: person robert, restored from its stage record, has fm_name="Robert", not null`,
+    ),
+    problems.join('\n'),
+  );
+});
+
+test('the restored-provenance prompt id is the one the package writes', () => {
+  const source = readFileSync(
+    join(
+      repoRoot,
+      'packages/protocol-validation/src/schemas/9/stages/family-pedigree.ts',
+    ),
+    'utf8',
+  );
+  assert.match(
+    source,
+    new RegExp(
+      `FAMILY_PEDIGREE_BUILD_PROMPT_ID = '${PEDIGREE_BUILD_PROMPT_ID}'`,
     ),
   );
 });

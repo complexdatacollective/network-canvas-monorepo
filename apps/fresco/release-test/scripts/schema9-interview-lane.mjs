@@ -762,6 +762,11 @@ try {
         },
       });
       const ids = nodeIdsBy(psql, result.interviewId, PERSON);
+      const codebook = JSON.parse(
+        psql(
+          `select codebook::jsonb from "Protocol" where id = ${sqlText(result.protocolId)};`,
+        ) || '{}',
+      );
       misplaced.push(
         ...nodeAnswerProblems(
           exported.files,
@@ -771,11 +776,13 @@ try {
               {
                 name,
                 hours: TRANSCRIPT.hours[name],
-                ...Object.fromEntries(
-                  Object.values(TRANSCRIPT.context).map(({ value }) => [
-                    `context_${value}`,
-                    String(value === TRANSCRIPT.context[name].value),
-                  ]),
+                // Every option the codebook lists, not only the ones chosen.
+                ...categoricalColumns(
+                  codebook,
+                  'node',
+                  PERSON.type,
+                  'context',
+                  TRANSCRIPT.context[name].value,
                 ),
               },
             ]),

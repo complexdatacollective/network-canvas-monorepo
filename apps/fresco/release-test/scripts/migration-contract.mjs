@@ -293,6 +293,13 @@ function networkChanges(before, after, skip) {
       );
   for (const key of ['nodes', 'edges']) {
     const noun = key === 'nodes' ? 'node' : 'edge';
+    // Each id once, family included: a second copy would hide behind the
+    // first in every comparison below.
+    const counts = new Map();
+    for (const entity of entitiesOf(after, key))
+      counts.set(entity._uid, (counts.get(entity._uid) ?? 0) + 1);
+    for (const [id, count] of counts)
+      if (count > 1) changes.push(`${noun} ${id} is stored ${count} times`);
     const nowById = new Map(entitiesOf(after, key).map((e) => [e._uid, e]));
     const wasIds = new Set();
     for (const was of entitiesOf(before, key)) {
@@ -427,6 +434,13 @@ const PARENT_KINDS = new Set([
   'surrogate',
 ]);
 
+/**
+ * The prompt id the redesigned pedigree records on everyone it adds
+ * (`FAMILY_PEDIGREE_BUILD_PROMPT_ID` in protocol-validation; a contract test
+ * holds the two together).
+ */
+export const PEDIGREE_BUILD_PROMPT_ID = 'pedigree';
+
 /** Biological parents and gamete donors gave the child an egg or a sperm. */
 const GENETIC_KINDS = new Set(['biological', 'donor']);
 
@@ -485,10 +499,14 @@ function restoredFamily(
     const label = typeof entry.label === 'string' ? entry.label.trim() : '';
     if (label && pedigree.nameAttribute && !nameEncrypted)
       attributes[pedigree.nameAttribute] = label;
+    // Made by the pedigree stage's build prompt, as the redesigned stage
+    // makes everyone it adds.
     restored.people.set(entry.id, {
       _uid: entry.id,
       type: pedigree.personType,
       attributes,
+      stageId: pedigree.id,
+      promptIDs: [PEDIGREE_BUILD_PROMPT_ID],
     });
   }
   const resolve = (id) => aliases.get(id) ?? id;
@@ -629,10 +647,19 @@ export function pedigreeMigrationProblems(before, after) {
       const stageAfter = stagesOf(protocolAfter).find(
         (stage) => stage.id === pedigree.id,
       );
-      const nameEncrypted =
-        protocolAfter?.codebook?.node?.[pedigree.personType]?.variables?.[
+      // Whether the name may hold a label in plain text is settled by the
+      // protocol the participant answered, and the upgrade has to keep it
+      // encrypted: an upgraded codebook that dropped the flag would let a
+      // label be written in plain text with both sides agreeing.
+      const encryptedIn = (protocol) =>
+        protocol?.codebook?.node?.[pedigree.personType]?.variables?.[
           pedigree.nameAttribute
         ]?.encrypted === true;
+      const nameEncrypted = encryptedIn(protocolBefore);
+      if (nameEncrypted && !encryptedIn(protocolAfter))
+        problems.push(
+          `${who}: the name attribute ${pedigree.nameAttribute} was encrypted before the upgrade and is not after it`,
+        );
       const people = entitiesOf(interview.network, 'nodes').filter(
         (node) => node.type === pedigree.personType,
       );
@@ -719,13 +746,13 @@ export function pedigreeMigrationProblems(before, after) {
           continue;
         }
         // Fields beyond the attributes (encrypted values, the stage and
-        // prompt each person came from) stay as they were.
-        if (!isRestored)
-          for (const field of fieldsOf(person, now))
-            if (!sameJson(person[field], now[field]))
-              problems.push(
-                `${who}: ${label.get(person._uid)}'s ${field} was ${JSON.stringify(person[field] ?? null)}, is now ${JSON.stringify(now[field] ?? null)}`,
-              );
+        // prompt each person came from) stay as they were, or, for someone
+        // restored, are what the pedigree stage gives the people it adds.
+        for (const field of fieldsOf(person, now))
+          if (!sameJson(person[field], now[field]))
+            problems.push(
+              `${who}: ${label.get(person._uid)}'s ${field} ${isRestored ? 'should be' : 'was'} ${JSON.stringify(person[field] ?? null)}, is now ${JSON.stringify(now[field] ?? null)}`,
+            );
         const should = expectedPerson(person);
         const is = attributesOf(now);
         for (const key of new Set([
@@ -765,12 +792,11 @@ export function pedigreeMigrationProblems(before, after) {
           );
           continue;
         }
-        if (!isRestored)
-          for (const field of fieldsOf(edge, now, ['from', 'to']))
-            if (!sameJson(edge[field], now[field]))
-              problems.push(
-                `${who}: ${what}'s ${field} was ${JSON.stringify(edge[field] ?? null)}, is now ${JSON.stringify(now[field] ?? null)}`,
-              );
+        for (const field of fieldsOf(edge, now, ['from', 'to']))
+          if (!sameJson(edge[field], now[field]))
+            problems.push(
+              `${who}: ${what}'s ${field} ${isRestored ? 'should be' : 'was'} ${JSON.stringify(edge[field] ?? null)}, is now ${JSON.stringify(now[field] ?? null)}`,
+            );
         if (now.from !== edge.from || now.to !== edge.to)
           problems.push(`${who}: ${what} now joins ${now.from} to ${now.to}`);
         const should = expectedRelationshipAttributes(was, pedigree);
