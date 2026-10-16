@@ -100,6 +100,33 @@ export const PROTOCOL_FILE_ERROR_KINDS = [
  */
 export const APP_DEFECT_KINDS = ['upgradeStepFailed', 'upgradeFailed'];
 
+/**
+ * The error names a failed upgrade reaches exception tracking under: what
+ * `@codaco/protocol-validation` names the errors it classifies as
+ * `upgradeStepFailed` (a step that threw, or one that returned an invalid
+ * document) and `upgradeFailed` (any other `MigrationError`). posthog records
+ * each error's `name` as the `type` of its `$exception_list` entry, so an
+ * exception is matched to the upgrade by what it is rather than by how many
+ * there are: an exception sent for a damaged file cannot stand in for one an
+ * upgrade failed to send. Bound to `migration/errors.ts` by the lane contract
+ * tests.
+ */
+export const UPGRADE_ERROR_NAMES = [
+  'MigrationStepError',
+  'MigrationResultInvalidError',
+  'MigrationError',
+];
+
+const exceptionTypes = (properties) => {
+  const list = Array.isArray(properties.$exception_list)
+    ? properties.$exception_list
+    : [];
+  return [
+    ...list.map((entry) => String(entry?.type ?? '')),
+    String(properties.$exception_type ?? ''),
+  ].filter(Boolean);
+};
+
 const asText = (buffer, encoding = 'utf8') => buffer.toString(encoding);
 
 /**
@@ -507,19 +534,24 @@ export function evaluateAnalyticsContract({
   const upgradeFailures = reasons.filter((reason) =>
     APP_DEFECT_KINDS.includes(reason),
   );
-  // Each failed upgrade owes exactly one exception, so any exception beyond
-  // those was reported for a file that was merely damaged.
-  const surplusExceptions = exceptions.length - upgradeFailures.length;
+  const isUpgradeException = (event) =>
+    exceptionTypes(propertiesOf(event)).some((type) =>
+      UPGRADE_ERROR_NAMES.includes(type),
+    );
+  const upgradeExceptions = exceptions.filter(isUpgradeException);
+  const otherExceptions = exceptions.filter(
+    (event) => !isUpgradeException(event),
+  );
   checks.push(
     check(
       'analytics-damaged-file-not-an-error',
       fileFaults.length > 0 &&
-        surplusExceptions <= 0 &&
+        otherExceptions.length === 0 &&
         unknownReasons.length === 0,
       fileFaults.length === 0
         ? 'no ProtocolImportFailed event naming a damaged file was captured after the damaged imports, so nothing shows how they were reported'
-        : surplusExceptions > 0
-          ? `${exceptions.length} exception event(s) were reported for ${upgradeFailures.length} failed upgrade(s), so ${surplusExceptions} were reported for a damaged file, which buries the failures that are real faults`
+        : otherExceptions.length > 0
+          ? `${otherExceptions.length} exception event(s) other than a failed upgrade's (${[...new Set(otherExceptions.flatMap((event) => exceptionTypes(propertiesOf(event))))].join(', ') || 'no type'}) were reported during the damaged imports, which buries the failures that are real faults`
           : unknownReasons.length > 0
             ? `ProtocolImportFailed carried reason(s) outside the fixed vocabulary: ${unknownReasons.join(', ')} — a free-form reason can hold the researcher's own file and resource names`
             : `${fileFaults.length} damaged import(s) reported as ${[...new Set(fileFaults)].join(', ')}, with no exception event of their own`,
@@ -528,12 +560,13 @@ export function evaluateAnalyticsContract({
   checks.push(
     check(
       'analytics-upgrade-failure-reported-twice',
-      upgradeFailures.length > 0 && exceptions.length >= upgradeFailures.length,
+      upgradeFailures.length > 0 &&
+        upgradeExceptions.length >= upgradeFailures.length,
       upgradeFailures.length === 0
         ? 'no ProtocolImportFailed event named a failed upgrade, so a protocol Fresco could not upgrade was not counted among refused protocols'
-        : exceptions.length < upgradeFailures.length
-          ? `${upgradeFailures.length} failed upgrade(s) were reported as refused, but only ${exceptions.length} exception event(s) were captured, so a migration bug would not reach exception tracking`
-          : `${upgradeFailures.length} failed upgrade(s) reported as ${[...new Set(upgradeFailures)].join(', ')}, each with an exception event`,
+        : upgradeExceptions.length < upgradeFailures.length
+          ? `${upgradeFailures.length} failed upgrade(s) were reported as refused, but only ${upgradeExceptions.length} exception event(s) named a migration error (${UPGRADE_ERROR_NAMES.join(', ')}), so a migration bug would not reach exception tracking`
+          : `${upgradeFailures.length} failed upgrade(s) reported as ${[...new Set(upgradeFailures)].join(', ')}, each with a migration error exception`,
     ),
   );
 
