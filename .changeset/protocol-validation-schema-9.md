@@ -144,10 +144,9 @@ Localization:
   formats are refused, and markup is read as literal text everywhere. `escapeMessageText` turns plain
   text into such a message (escaping `{`, `}` and quoting apostrophes) and
   `messageText` turns it back, so an editor can show and save plain text.
-- Codebook node types and edge types have a required localized `label`, which
-  participants see, beside the `name` that exports and rules use. Codebook
-  variables have a required `label` too, a non-empty plain string that is not
-  translated.
+- Codebook node types, edge types and variables have only a `name`, which
+  exports and rules use and participants never see. Text participants see
+  belongs to the stage that shows it.
 - A Narrative preset's optional `highlight` is a list of
   `{ variable, label }`, where `label` is the localized text the preset
   switcher shows participants for that attribute.

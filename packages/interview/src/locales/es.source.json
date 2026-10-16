@@ -134,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "Checking your passphrase…",
   "interview.runtime.choosePassphraseHelp": "Some answers on this screen are protected by a passphrase. Keep it safe: you will need it to see or change these answers later, and it cannot be recovered if it is forgotten.",
   "interview.runtime.collapseDrawer": "Collapse drawer",
+  "interview.runtime.connection": "Connection",
   "interview.runtime.copied": "Copied!",
   "interview.runtime.copyDebugInfo": "Copy Debug Info",
   "interview.runtime.deleteBin": "Delete bin",

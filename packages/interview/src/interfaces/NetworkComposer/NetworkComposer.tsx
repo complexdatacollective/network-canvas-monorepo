@@ -672,9 +672,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       return {
         kind: 'edge',
         entityId: selectedEdge[entityPrimaryKeyProperty],
+        // An edge an earlier stage drew, of a type this stage does not draw.
         title: selectedEdgeFormEntry
           ? resolve(selectedEdgeFormEntry.label).text
-          : '',
+          : intl.formatMessage(runtimeMessages.connection),
         form: selectedEdgeFormEntry?.form,
         subject: { entity: 'edge', type: selectedEdge.type },
         attributes: selectedEdge[entityAttributesProperty],

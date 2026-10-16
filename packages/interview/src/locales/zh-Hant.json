@@ -134,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "正在檢查您的通關密語…",
   "interview.runtime.choosePassphraseHelp": "此畫面上的部分回答受通關密語保護。請妥善保管通關密語：之後查看或修改這些回答時需要用到它，一旦忘記將無法找回。",
   "interview.runtime.collapseDrawer": "收合待放置區",
+  "interview.runtime.connection": "連結",
   "interview.runtime.copied": "已複製！",
   "interview.runtime.copyDebugInfo": "複製偵錯資訊",
   "interview.runtime.deleteBin": "刪除區",

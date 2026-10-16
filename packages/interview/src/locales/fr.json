@@ -134,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "Vérification de votre phrase secrète…",
   "interview.runtime.choosePassphraseHelp": "Certaines réponses de cet écran sont protégées par une phrase secrète. Conservez-la en lieu sûr : vous en aurez besoin pour afficher ou modifier ces réponses plus tard, et elle ne pourra pas être récupérée si vous l’oubliez.",
   "interview.runtime.collapseDrawer": "Replier le tiroir",
+  "interview.runtime.connection": "Lien",
   "interview.runtime.copied": "Copié !",
   "interview.runtime.copyDebugInfo": "Copier les informations de débogage",
   "interview.runtime.deleteBin": "Corbeille",

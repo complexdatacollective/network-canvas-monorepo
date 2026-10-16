@@ -43,8 +43,7 @@ How an interview picks its language:
   participants draw a translated label of its own, and a Network Composer
   field shows its own translated caption. A node with no name is shown as
   "Unnamed". A form field is always captioned with its own prompt: a prompt can no
-  longer be only spaces, so the attribute's untranslated label never stands in
-  for it.
+  longer be only spaces, so the attribute's name never stands in for it.
 
 In Architect:
 

@@ -539,6 +539,10 @@
     "defaultMessage": "Collapse drawer",
     "description": "Accessible action that folds the item tray closed."
   },
+  "interview.runtime.connection": {
+    "defaultMessage": "Connection",
+    "description": "Title of the panel for a connection between two people or other items on the canvas, shown when the task gives that kind of connection no name of its own."
+  },
   "interview.runtime.copied": {
     "defaultMessage": "Copied!",
     "description": "Confirmation that interview diagnostic information was copied."

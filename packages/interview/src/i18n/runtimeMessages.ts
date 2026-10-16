@@ -98,6 +98,12 @@ export const runtimeMessages = defineMessages({
     description:
       'Label shown on, and read out for, a person or other item the participant added without giving it a name.',
   },
+  connection: {
+    id: 'interview.runtime.connection',
+    defaultMessage: 'Connection',
+    description:
+      'Title of the panel for a connection between two people or other items on the canvas, shown when the task gives that kind of connection no name of its own.',
+  },
   unnamedNumbered: {
     id: 'interview.runtime.unnamedNumbered',
     defaultMessage: 'Unnamed {number}',

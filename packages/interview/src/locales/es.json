@@ -134,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "Comprobando tu frase de contraseña…",
   "interview.runtime.choosePassphraseHelp": "Algunas respuestas de esta pantalla están protegidas por una frase de contraseña. Guárdala en un lugar seguro: la necesitarás para ver o cambiar estas respuestas más adelante, y no se puede recuperar si la olvidas.",
   "interview.runtime.collapseDrawer": "Contraer bandeja",
+  "interview.runtime.connection": "Conexión",
   "interview.runtime.copied": "¡Copiado!",
   "interview.runtime.copyDebugInfo": "Copiar información de diagnóstico",
   "interview.runtime.deleteBin": "Papelera",

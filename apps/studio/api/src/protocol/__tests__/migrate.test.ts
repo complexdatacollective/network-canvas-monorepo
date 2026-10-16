@@ -130,10 +130,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       schemaVersion: number;
       localization: unknown;
       codebook: {
-        node: Record<
-          string,
-          { displayVariable?: string; shape?: unknown; label?: unknown }
-        >;
+        node: Record<string, { displayVariable?: string; shape?: unknown }>;
       };
     };
     expect(document.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
@@ -142,7 +139,7 @@ describe.skipIf(!storeDb)('migrateStoredVersionToDraft', () => {
       defaultLocale: 'en',
       locales: ['en'],
     });
-    expect(document.codebook.node.person!.label).toEqual({ en: 'Person' });
+    expect(document.codebook.node.person).not.toHaveProperty('label');
     expect(document.codebook.node.person!.displayVariable).toBeUndefined();
     expect(document.codebook.node.person!.shape).toBeDefined();
 

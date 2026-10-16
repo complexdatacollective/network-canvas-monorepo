@@ -134,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "正在检查您的密码短语…",
   "interview.runtime.choosePassphraseHelp": "此页面上的部分回答受密码短语保护。请妥善保管密码短语：之后查看或修改这些回答时需要用到它，一旦忘记将无法找回。",
   "interview.runtime.collapseDrawer": "收起抽屉",
+  "interview.runtime.connection": "连接",
   "interview.runtime.copied": "已复制！",
   "interview.runtime.copyDebugInfo": "复制调试信息",
   "interview.runtime.deleteBin": "删除区",

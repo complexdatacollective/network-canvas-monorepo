@@ -134,6 +134,7 @@
   "interview.runtime.checkingPassphrase": "Verifica della passphrase in corso…",
   "interview.runtime.choosePassphraseHelp": "Alcune risposte in questa schermata sono protette da una passphrase. Conservala al sicuro: ti servirà per vedere o modificare queste risposte in seguito, e non potrà essere recuperata se la dimentichi.",
   "interview.runtime.collapseDrawer": "Comprimi il cassetto",
+  "interview.runtime.connection": "Collegamento",
   "interview.runtime.copied": "Copiato!",
   "interview.runtime.copyDebugInfo": "Copia le informazioni di debug",
   "interview.runtime.deleteBin": "Cestino",
