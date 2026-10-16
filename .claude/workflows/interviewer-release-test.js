@@ -606,7 +606,8 @@ check's detail:
    "persisted-offline".
 6. The row survives an online reload, the stored payload is intact
    (nodes, layouts, categorical and ordinal values, both edge types, the
-   family pedigree, ego), every person's name is stored only as ciphertext,
+   family pedigree, ego), every person's name is stored only as ciphertext
+   that decrypts, with the walk's passphrase, to the name given that person,
    the session records the finish stage and outcome the walk ended on, and
    no non-whitelisted console error accumulated across the walk: steps
    "persisted-online", "persisted-payload", "persisted-encryption",

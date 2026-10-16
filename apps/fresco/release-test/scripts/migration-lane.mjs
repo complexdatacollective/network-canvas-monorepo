@@ -11,8 +11,10 @@
 //                     schema 8 protocol with introduction panels and a Family
 //                     Pedigree (packages/protocols/e2e/
 //                     fresco-release-test-migration), conducts an interview of
-//                     it to the stage behind an introduction panel and leaves
-//                     it there unfinished, then reads every protocol and
+//                     it through the schema 8 pedigree (a family of three,
+//                     built with its quick-start questions and finalized) to
+//                     the Alter Form behind an introduction panel and leaves it
+//                     there unfinished, then reads every protocol and
 //                     interview the deployment holds into
 //                     artifacts/migration/before.json.
 //   --phase migrated  on the pending image, straight after the swap and
@@ -22,8 +24,10 @@
 //                     the export capture that follows still sees exactly what
 //                     the migration left.
 //   --phase resume    on the pending image, after the export capture: opens
-//                     the unfinished interview as its participant, and
-//                     finishes it, and exports it.
+//                     the unfinished interview as its participant, goes back
+//                     to the redesigned pedigree to find the family there,
+//                     adds a relative to it, finishes the interview, and
+//                     exports it.
 //
 // Once the released image itself runs schema 9, it migrates the schema 8
 // fixture on import and the release under test carries no schema 8 data
@@ -46,6 +50,10 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { CURRENT_SCHEMA_VERSION } from '../../../../packages/protocol-validation/src/schemas/index.ts';
+import {
+  ncSourceUUID,
+  ncTargetUUID,
+} from '../../../../packages/shared-consts/src/export-process.ts';
 import {
   attempt,
   check,
@@ -73,9 +81,14 @@ import { lane } from './lanes.mjs';
 import {
   interviewMigrationProblems,
   introductionPanelProblems,
+  pedigreeMigrationProblems,
   protocolMigrationProblems,
 } from './migration-contract.mjs';
 import {
+  anythingBut,
+  categoricalColumns,
+  edgeAnswerProblems,
+  egoAnswerProblems,
   finishOutcomeProblems,
   nodeAnswerProblems,
 } from './schema9-export-contract.mjs';
@@ -101,17 +114,94 @@ const SEEDED = join(outDir, 'seeded.json');
 mkdirSync(outDir, { recursive: true });
 const psql = psqlFor(laneName);
 
-/** The answers the seeded interview gives before the upgrade. */
+/**
+ * The answers the seeded interview gives: before the upgrade, the ego's name,
+ * the people, and a family on the schema 8 pedigree (the participant, female;
+ * Linda, who gave the egg and carried the pregnancy; Robert, who gave the
+ * sperm; the two of them current partners); after it, each person's hours,
+ * and a parent of Linda's added on the redesigned pedigree.
+ */
 const TRANSCRIPT = {
   participant: 'migration-resume',
   egoName: 'Mira Upgrade',
   people: ['Alex', 'Blair'],
   hours: { Alex: '3', Blair: '7' },
-  parent: 'Linda',
+  family: { egg: 'Linda', sperm: 'Robert' },
+  grandparent: 'Grace',
 };
 
 /** The fixture's stages, by id: where the walk parks, and what surrounds it. */
 const PARKED_AT = 'each-person';
+const PEDIGREE = 'family';
+
+/** The fixture's Family Pedigree person and relationship, and their attributes. */
+const FAMILY = {
+  type: 'family_member',
+  name: 'fm_name',
+  ego: 'is_ego',
+  sex: 'biologicalSex',
+  edge: 'family_edge',
+  kind: 'relationshipType',
+  active: 'isActive',
+  carrier: 'isGestationalCarrier',
+  gamete: 'gameteRole',
+};
+
+/**
+ * One interview's family as stored: each person by name ("You" for the
+ * participant) with their sex at birth, and each relationship between two of
+ * them with its kind, its gestational carrier flag, its current partner flag
+ * and its gamete role — what both the seed and the resume read back.
+ */
+function storedFamily(interviewId) {
+  const network = JSON.parse(
+    psql(
+      `select network::jsonb from "Interview" where id = ${sqlText(interviewId)};`,
+    ) || '{}',
+  );
+  const people = (network.nodes ?? []).filter((n) => n.type === FAMILY.type);
+  const nameOf = new Map(
+    people.map((n) => [
+      n._uid,
+      n.attributes?.[FAMILY.ego] === true
+        ? 'You'
+        : (n.attributes?.[FAMILY.name] ?? n._uid),
+    ]),
+  );
+  return {
+    people: Object.fromEntries(
+      people.map((n) => [
+        nameOf.get(n._uid),
+        { id: n._uid, sex: n.attributes?.[FAMILY.sex] ?? null },
+      ]),
+    ),
+    relationships: (network.edges ?? [])
+      .filter(
+        (e) => e.type === FAMILY.edge && nameOf.has(e.from) && nameOf.has(e.to),
+      )
+      .map((e) => ({
+        id: e._uid,
+        from: nameOf.get(e.from),
+        to: nameOf.get(e.to),
+        kind: e.attributes?.[FAMILY.kind] ?? null,
+        carrier: e.attributes?.[FAMILY.carrier] ?? null,
+        active: e.attributes?.[FAMILY.active] ?? null,
+        gamete: e.attributes?.[FAMILY.gamete] ?? null,
+      })),
+  };
+}
+
+/** Whether two stored values are the same, arrays and all. */
+const same = (value, expected) =>
+  JSON.stringify(value) === JSON.stringify(expected);
+
+/** The one relationship of `family` from one person to another, if just one. */
+const relationshipBetween = (family, from, to) => {
+  const found = family.relationships.filter(
+    (r) => r.from === from && r.to === to,
+  );
+  return found.length === 1 ? found[0] : undefined;
+};
 
 /**
  * Every protocol and interview the deployment holds, as migration-contract.mjs
@@ -125,12 +215,12 @@ function readDatabase() {
     ) === '1';
   const protocols = JSON.parse(
     psql(
-      `select coalesce(json_agg(json_build_object('id', id, 'name', name, 'schemaVersion', "schemaVersion", 'stages', stages) order by id), '[]') from "Protocol";`,
+      `select coalesce(json_agg(json_build_object('id', id, 'name', name, 'schemaVersion', "schemaVersion", 'stages', stages, 'codebook', codebook) order by id), '[]') from "Protocol";`,
     ),
   );
   const interviews = JSON.parse(
     psql(
-      `select coalesce(json_agg(json_build_object('id', id, 'protocolId', "protocolId", 'currentStep', "currentStep", 'finishTime', "finishTime"::text, 'finishStageId', ${hasFinish ? '"finishStageId"' : 'null'}, 'finishOutcome', ${hasFinish ? '"finishOutcome"::text' : 'null'}, 'networkHash', md5(network::jsonb::text), 'stageMetadataKeys', (select coalesce(json_agg(key order by key), '[]') from jsonb_object_keys(case when jsonb_typeof("stageMetadata"::jsonb) = 'object' then "stageMetadata"::jsonb else '{}'::jsonb end) key)) order by id), '[]') from "Interview";`,
+      `select coalesce(json_agg(json_build_object('id', id, 'protocolId', "protocolId", 'currentStep', "currentStep", 'finishTime', "finishTime"::text, 'finishStageId', ${hasFinish ? '"finishStageId"' : 'null'}, 'finishOutcome', ${hasFinish ? '"finishOutcome"::text' : 'null'}, 'network', network::jsonb, 'stageMetadata', "stageMetadata"::jsonb) order by id), '[]') from "Interview";`,
     ),
   );
   return { protocols, interviews };
@@ -227,10 +317,19 @@ async function seed() {
     return;
   }
 
+  const stages = JSON.parse(
+    psql(
+      `select stages from "Protocol" where id = ${sqlText(result.protocolId)};`,
+    ),
+  );
+  const stepOf = (id) => String(stages.findIndex((stage) => stage.id === id));
+
   // The released interview, as its participant meets it: the Ego Form shows
-  // its panel above its question; the Alter Form opens on its panel.
+  // its panel above its question, then the people, then the schema 8 Family
+  // Pedigree, built through its quick-start questions and finalized, which
+  // is when schema 8 wrote the family to the network.
   checks.push(
-    await attempt('migration-seed-interview-parked', async () => {
+    await attempt('migration-seed-pedigree-recorded', async () => {
       const started = await startInterview(
         page,
         config.baseUrl,
@@ -253,29 +352,89 @@ async function seed() {
         await input.press('Enter');
         await page.getByRole('option', { name }).waitFor({ timeout: 15_000 });
       }
-      await nextStage(page);
+      const pedigreeStep = await nextStage(page);
+      const drawn = await buildSchema8Pedigree(page);
+      // Finalizing commits the family and moves on to the next stage.
+      await page.getByTestId('next-button').click();
+      const confirm = page.getByRole('dialog');
+      await confirm
+        .getByText('Finalize your family pedigree?')
+        .waitFor({ timeout: 15_000 });
+      await confirm.getByRole('button', { name: 'Finalize' }).click();
+      const { egg, sperm } = TRANSCRIPT.family;
+      const deadline = Date.now() + 30_000;
+      let family;
+      let record;
+      for (;;) {
+        family = storedFamily(result.interviewId);
+        record = JSON.parse(
+          psql(
+            `select coalesce("stageMetadata"::jsonb -> ${sqlText(stepOf(PEDIGREE))}, 'null') from "Interview" where id = ${sqlText(result.interviewId)};`,
+          ),
+        );
+        if (
+          (family.relationships.length === 3 && record?.isNetworkCommitted) ||
+          Date.now() > deadline
+        )
+          break;
+        await page.waitForTimeout(1000);
+      }
+      const eggEdge = relationshipBetween(family, egg, 'You');
+      const spermEdge = relationshipBetween(family, sperm, 'You');
+      const partners = family.relationships.filter(
+        (r) => JSON.stringify(r.kind) === '["partner"]',
+      );
+      return {
+        pass:
+          String(pedigreeStep) === stepOf(PEDIGREE) &&
+          same(Object.keys(family.people).toSorted(), [
+            'Linda',
+            'Robert',
+            'You',
+          ]) &&
+          same(family.people.You?.sex, ['female']) &&
+          same(family.people[egg]?.sex, ['female']) &&
+          same(family.people[sperm]?.sex, ['male']) &&
+          family.relationships.length === 3 &&
+          same(eggEdge?.kind, ['biological']) &&
+          same(eggEdge?.gamete, ['egg']) &&
+          eggEdge?.carrier === true &&
+          same(spermEdge?.kind, ['biological']) &&
+          same(spermEdge?.gamete, ['sperm']) &&
+          partners.length === 1 &&
+          partners[0].active === true &&
+          record?.isNetworkCommitted === true &&
+          (record?.nodes ?? []).length === 3,
+        detail: `the pedigree (step ${pedigreeStep}, expected ${stepOf(PEDIGREE)}) drew ${JSON.stringify(drawn)}; stored family ${JSON.stringify(family)}; its stage record committed: ${record?.isNetworkCommitted}, listing ${(record?.nodes ?? []).length} people and ${(record?.edges ?? []).length} relationships`,
+      };
+    }),
+  );
+
+  // Parked behind the Alter Form's panel: its skip logic (skip when nobody
+  // was named) is false for this interview, so the stage is shown.
+  checks.push(
+    await attempt('migration-seed-interview-parked', async () => {
       const at = await settledStep(page);
+      const panel = await page
+        .getByRole('heading', { name: 'About each person' })
+        .first()
+        .isVisible()
+        .catch(() => false);
       // Parked: the database has to hold the position and the answers before
       // anything reads it, and Fresco batches its sync writes.
-      const stages = JSON.parse(
-        psql(
-          `select stages from "Protocol" where id = ${sqlText(result.protocolId)};`,
-        ),
-      );
-      const parkedStep = stages.findIndex((stage) => stage.id === PARKED_AT);
       const deadline = Date.now() + 30_000;
       let row = '';
-      const want = `${parkedStep}|${TRANSCRIPT.egoName}|${TRANSCRIPT.people.length}`;
+      const want = `${stepOf(PARKED_AT)}|${TRANSCRIPT.egoName}|${TRANSCRIPT.people.length}`;
       while (Date.now() < deadline) {
         row = psql(
-          `select "currentStep" || '|' || coalesce(network::jsonb #>> '{ego,attributes,ego_name}', '') || '|' || jsonb_array_length(network::jsonb->'nodes') from "Interview" where id = ${sqlText(result.interviewId)};`,
+          `select "currentStep" || '|' || coalesce(network::jsonb #>> '{ego,attributes,ego_name}', '') || '|' || (select count(*) from jsonb_array_elements(network::jsonb->'nodes') n where n->>'type' = 'person') from "Interview" where id = ${sqlText(result.interviewId)};`,
         );
         if (row === want) break;
         await page.waitForTimeout(1000);
       }
       return {
-        pass: at === String(parkedStep) && row === want,
-        detail: `interview ${result.interviewId} on step ${at}; stored step|ego name|people = ${row} (expected ${want})`,
+        pass: at === stepOf(PARKED_AT) && panel && row === want,
+        detail: `interview ${result.interviewId} on step ${at}, its introduction panel shown: ${panel}; stored step|ego name|people = ${row} (expected ${want})`,
       };
     }),
   );
@@ -336,9 +495,16 @@ function migrated() {
   );
   checks.push(
     verdict(
+      'migration-pedigree-family-kept',
+      pedigreeMigrationProblems(before, after),
+      'every Family Pedigree family recorded before the upgrade is stored after it with every person and relationship and what each recorded, and its stage record is in the shape the redesigned stage reads',
+    ),
+  );
+  checks.push(
+    verdict(
       'migration-interviews-resume-where-they-were',
       interviewMigrationProblems(before, after),
-      `all ${before.interviews.length} interview(s) are stored with their answers and stage records unchanged, resume at the stage they were on, and carry no outcome nothing recorded`,
+      `all ${before.interviews.length} interview(s) are stored with their answers (outside the pedigree family, judged above) and stage records unchanged, resume at the stage they were on, and carry no outcome nothing recorded`,
     ),
   );
   const parked = after.interviews.find((i) => i.id === seeded.interviewId);
@@ -368,6 +534,14 @@ async function resume() {
   browser = participant.browser;
   const page = await newPage(participant.context);
   recordDiagnosticsTo(page, outDir);
+  const { egg, sperm } = TRANSCRIPT.family;
+  const drawnFamily = () =>
+    page
+      .getByRole('region', { name: 'Your family' })
+      .getByRole('button')
+      .allTextContents()
+      .then((names) => names.map((name) => name.trim()).toSorted())
+      .catch(() => []);
 
   checks.push(
     await attempt('migration-interview-resumes-where-it-was', async () => {
@@ -395,6 +569,8 @@ async function resume() {
     }),
   );
 
+  // The Information stage carries the Alter Form's skip logic (skip when
+  // nobody was named), which is false here: it has to be shown.
   checks.push(
     await attempt(
       'migration-introduction-panel-shown-as-information-stage',
@@ -420,6 +596,25 @@ async function resume() {
         };
       },
     ),
+  );
+
+  // The family built on the schema 8 pedigree, drawn by the redesigned one.
+  checks.push(
+    await attempt('migration-pedigree-shown-after-upgrade', async () => {
+      const at = await previousStage(page);
+      await page
+        .getByRole('region', { name: 'Your family' })
+        .getByRole('button', { name: egg, exact: true })
+        .waitFor({ timeout: 15_000 })
+        .catch(() => {});
+      const drawn = await drawnFamily();
+      return {
+        pass:
+          at === stepOf(PEDIGREE) &&
+          JSON.stringify(drawn) === JSON.stringify([egg, sperm, 'You']),
+        detail: `Back from the Information stage reached step ${at} (the pedigree is step ${stepOf(PEDIGREE)}), which draws ${JSON.stringify(drawn)}`,
+      };
+    }),
   );
 
   checks.push(
@@ -454,13 +649,14 @@ async function resume() {
 
   checks.push(
     await attempt('migration-interview-finished-after-upgrade', async () => {
-      // Forward through what is left: the people, the former panel, a
-      // question about each person, the redesigned Family Pedigree (which
-      // holds the participant until their own sex at birth is recorded; a
-      // parent is added too, so the migrated stage is used, not just passed),
-      // the closing Information stage, and the finish stage the migration
-      // appended.
+      // Forward through what is left: the people, the redesigned Family
+      // Pedigree (where a parent of Linda's is added, so the migrated stage
+      // is used, not just passed), the former panel, a question about each
+      // person, the closing Information stage, and the finish stage the
+      // migration appended.
       await nextStage(page);
+      const pedigree = await nextStage(page);
+      const members = await addParentOnPedigree(page, egg);
       await nextStage(page);
       await nextStage(page);
       for (const name of TRANSCRIPT.people) {
@@ -476,11 +672,8 @@ async function resume() {
         await page.getByTestId('next-button').click();
         await page.waitForTimeout(1500);
       }
-      const pedigree = await settledStep(page);
-      const members = await completeFamilyPedigree(page);
-      await nextStage(page);
-      await nextStage(page);
-      const finishStep = await settledStep(page);
+      const goodbye = await settledStep(page);
+      const finishStep = await nextStage(page);
       await page.getByRole('button', { name: 'Finish', exact: true }).click();
       const dialog = page.getByRole('dialog');
       await dialog.waitFor({ timeout: 15_000 });
@@ -495,12 +688,67 @@ async function resume() {
       );
       return {
         pass:
-          pedigree === stepOf('family') &&
+          pedigree === stepOf(PEDIGREE) &&
+          goodbye === stepOf('goodbye') &&
           finishStep === stepOf('finish') &&
-          members.includes(TRANSCRIPT.parent) &&
+          members.includes(TRANSCRIPT.grandparent) &&
           finished &&
           row === 'finish|completed|true',
-        detail: `passed the Family Pedigree (step ${pedigree}, members ${JSON.stringify(members)}) and reached the appended finish stage (step ${finishStep}); finished text shown: ${finished}; stored stage|outcome|finished = ${row}`,
+        detail: `on the Family Pedigree (step ${pedigree}) added ${TRANSCRIPT.grandparent}, members now ${JSON.stringify(members)}; reached the closing stage (step ${goodbye}) and the appended finish stage (step ${finishStep}); finished text shown: ${finished}; stored stage|outcome|finished = ${row}`,
+      };
+    }),
+  );
+
+  // What the network holds once the interview is finished: the family
+  // seeded before the upgrade, as the upgrade left it, and the parent added
+  // after it with the answers the walk gave.
+  let family = { people: {}, relationships: [] };
+  let standIn;
+  checks.push(
+    await attempt('migration-pedigree-answers-stored', async () => {
+      family = storedFamily(seeded.interviewId);
+      const eggEdge = relationshipBetween(family, egg, 'You');
+      const spermEdge = relationshipBetween(family, sperm, 'You');
+      const added = relationshipBetween(family, TRANSCRIPT.grandparent, egg);
+      // Adding one biological parent draws the other as well, unnamed but
+      // labelled by the stage, male to Grace's female: the one person the
+      // walk did not name.
+      const named = new Set([TRANSCRIPT.grandparent, egg, sperm, 'You']);
+      const others = Object.keys(family.people).filter((n) => !named.has(n));
+      standIn = others.length === 1 ? others[0] : undefined;
+      const otherParent = standIn && relationshipBetween(family, standIn, egg);
+      const partners = family.relationships.filter((r) =>
+        same(r.kind, ['partner']),
+      );
+      return {
+        pass:
+          [...named].every((name) => name in family.people) &&
+          standIn !== undefined &&
+          same(family.people.You?.sex, ['female']) &&
+          same(family.people[egg]?.sex, ['female']) &&
+          same(family.people[sperm]?.sex, ['male']) &&
+          same(family.people[TRANSCRIPT.grandparent]?.sex, ['female']) &&
+          same(family.people[standIn]?.sex, ['male']) &&
+          family.relationships.length === 5 &&
+          same(eggEdge?.kind, ['biological']) &&
+          eggEdge?.carrier === true &&
+          eggEdge?.active === null &&
+          same(eggEdge?.gamete, ['egg']) &&
+          same(spermEdge?.kind, ['biological']) &&
+          spermEdge?.carrier === false &&
+          spermEdge?.active === null &&
+          same(spermEdge?.gamete, ['sperm']) &&
+          same(added?.kind, ['biological']) &&
+          added?.carrier === true &&
+          added?.active === null &&
+          added?.gamete === null &&
+          same(otherParent?.kind, ['biological']) &&
+          otherParent?.carrier === false &&
+          otherParent?.active === null &&
+          otherParent?.gamete === null &&
+          partners.length === 1 &&
+          partners[0].active === true,
+        detail: `stored family ${JSON.stringify(family)}`,
       };
     }),
   );
@@ -513,6 +761,7 @@ async function resume() {
   browser = researcher.browser;
   const desk = await newPage(researcher.context);
   recordDiagnosticsTo(desk, outDir);
+  let exported = null;
   checks.push(
     await attempt('migration-export-after-upgrade', async () => {
       await signIn(desk, { lane: laneName });
@@ -523,7 +772,7 @@ async function resume() {
         join(outDir, 'migration-export.zip'),
       );
       result.exportPath = archivePath;
-      const exported = await readInterviewExport(archivePath);
+      exported = await readInterviewExport(archivePath);
       const finishedBefore = JSON.parse(readFileSync(BEFORE, 'utf8'))
         .interviews.filter((i) => i.finishTime !== null)
         .map((i) => i.id);
@@ -531,30 +780,28 @@ async function resume() {
         [seeded.interviewId]: 'completed',
         ...Object.fromEntries(finishedBefore.map((id) => [id, ''])),
       });
-      const answers = [
-        TRANSCRIPT.egoName,
-        ...TRANSCRIPT.people,
-        ...Object.values(TRANSCRIPT.hours),
-      ];
-      const missing = answers.filter(
-        (answer) => !exported.text.includes(answer),
-      );
-      // "3" and "7" would be found anywhere in the archive's text, so each
-      // person's name and hours are read from that person's own records.
+      // Each answer is read from its own record: the ego's name from this
+      // interview's ego row and graph, and each person's name and hours
+      // ("3" and "7" would be found anywhere in the archive's text) from
+      // that person's.
       const ids = nodeIdsBy(psql, seeded.interviewId, {
         type: 'person',
         attribute: 'name',
       });
-      const misplaced = nodeAnswerProblems(
-        exported.files,
-        Object.fromEntries(
-          TRANSCRIPT.people.map((name) => [
-            ids[name] ?? `(no stored node named ${name})`,
-            { name, hours: TRANSCRIPT.hours[name] },
-          ]),
+      const missing = [
+        ...egoAnswerProblems(exported.files, {
+          [seeded.interviewId]: { ego_name: TRANSCRIPT.egoName },
+        }),
+        ...nodeAnswerProblems(
+          exported.files,
+          Object.fromEntries(
+            TRANSCRIPT.people.map((name) => [
+              ids[name] ?? `(no stored node named ${name})`,
+              { name, hours: TRANSCRIPT.hours[name] },
+            ]),
+          ),
         ),
-      );
-      missing.push(...misplaced);
+      ];
       return {
         pass:
           exported.entries > 0 && problems.length === 0 && missing.length === 0,
@@ -567,49 +814,204 @@ async function resume() {
                   : `outcomes as expected: "completed" for ${seeded.interviewId}, none for the ${finishedBefore.length} finished before the upgrade`,
                 missing.length
                   ? `the export does not carry: ${missing.join(' | ')}`
-                  : 'every answer given before and after the upgrade is exported',
+                  : "the ego's name is in this interview's one ego row and graph, and each person's name and hours in that person's one CSV row and one GraphML node",
               ].join('; '),
+      };
+    }),
+  );
+
+  // The family, exported: each person's name and sex at birth (one
+  // true/false column per option) in that person's own records, and each
+  // parent relationship's ends, kind and carrier flag in its own.
+  checks.push(
+    await attempt('migration-export-carries-the-pedigree', async () => {
+      if (!exported) throw new Error('no export was read');
+      const person = (name) =>
+        family.people[name]?.id ?? `(no stored family member named ${name})`;
+      // Categorical answers as the upgraded codebook lists their options.
+      const codebook = JSON.parse(
+        psql(
+          `select codebook::jsonb from "Protocol" where id = ${sqlText(seeded.protocolId)};`,
+        ) || '{}',
+      );
+      const sex = (value) =>
+        categoricalColumns(codebook, 'node', FAMILY.type, FAMILY.sex, value);
+      const kind = (value) =>
+        categoricalColumns(codebook, 'edge', FAMILY.edge, FAMILY.kind, value);
+      // The gamete role schema 8 recorded, or, where none was, no role
+      // marked at all.
+      const gamete = (value) =>
+        value
+          ? categoricalColumns(
+              codebook,
+              'edge',
+              FAMILY.edge,
+              FAMILY.gamete,
+              value,
+            )
+          : {
+              [`${FAMILY.gamete}_egg`]: anythingBut('true'),
+              [`${FAMILY.gamete}_sperm`]: anythingBut('true'),
+            };
+      const edgeBetween = (from, to, answers) => [
+        relationshipBetween(family, from, to)?.id ??
+          `(no stored relationship from ${from} to ${to})`,
+        {
+          [ncSourceUUID]: person(from),
+          [ncTargetUUID]: person(to),
+          ...answers,
+        },
+      ];
+      // A parent relationship is never marked as a current partnership: that
+      // flag is the partners' alone.
+      const parentEdge = (from, to, carrier, role) =>
+        edgeBetween(from, to, {
+          ...kind('biological'),
+          ...gamete(role),
+          [FAMILY.carrier]: String(carrier),
+          [FAMILY.active]: anythingBut('true'),
+        });
+      const problems = [
+        ...nodeAnswerProblems(exported.files, {
+          [person('You')]: sex('female'),
+          [person(egg)]: { [FAMILY.name]: egg, ...sex('female') },
+          [person(sperm)]: { [FAMILY.name]: sperm, ...sex('male') },
+          [person(TRANSCRIPT.grandparent)]: {
+            [FAMILY.name]: TRANSCRIPT.grandparent,
+            ...sex('female'),
+          },
+          [person(standIn)]: sex('male'),
+        }),
+        ...edgeAnswerProblems(
+          exported.files,
+          Object.fromEntries([
+            parentEdge(egg, 'You', true, 'egg'),
+            parentEdge(sperm, 'You', false, 'sperm'),
+            parentEdge(TRANSCRIPT.grandparent, egg, true),
+            parentEdge(standIn, egg, false),
+            // The partnership seeded before the upgrade keeps its flag.
+            edgeBetween(egg, sperm, {
+              ...kind('partner'),
+              ...gamete(),
+              [FAMILY.active]: 'true',
+              [FAMILY.carrier]: anythingBut('true'),
+            }),
+          ]),
+        ),
+      ];
+      return {
+        pass: problems.length === 0,
+        detail: problems.length
+          ? problems.join('; ')
+          : `each of the family (${Object.keys(family.people).join(', ')}) has one CSV row and one GraphML node holding their name and sex at birth, and each relationship one edge list row and one GraphML edge holding its ends, its kind (every option column), the gamete role recorded before the upgrade, its carrier flag and the partnership's current partner flag`,
       };
     }),
   );
 }
 
 /**
- * On the migrated Family Pedigree: adds a parent through the participant's
- * menu, then records the participant's own sex at birth — the redesigned
- * stage asks for it before it lets them continue. Returns the members shown.
+ * On the migrated Family Pedigree: adds a biological parent of `child`, who
+ * carried the pregnancy, through that person's menu. The redesigned panel asks
+ * for a name and sex at birth, then the kind of parent and the carrier
+ * question. Returns the members drawn afterwards.
  */
-async function completeFamilyPedigree(page) {
+async function addParentOnPedigree(page, child) {
   const panel = page.getByTestId('pedigree-person-panel');
-  const sexAtBirth = panel
-    .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
-    .getByRole('radio', { name: 'Female', exact: true });
-  const save = async () => {
-    const button = panel.getByRole('button', { name: 'Save', exact: true });
-    for (let i = 0; i < 5 && !(await button.isVisible()); i++)
-      await panel.getByRole('button', { name: /^(Continue|Skip)$/ }).click();
-    await button.click();
-    await panel.waitFor({ state: 'detached', timeout: 15_000 });
-  };
-
-  await page.getByTestId('pedigree-person').first().hover();
+  await page
+    .getByTestId('pedigree-person')
+    .filter({ hasText: child })
+    .first()
+    .hover();
   await page.getByTestId('pedigree-menu-parent').click();
   await panel.waitFor({ timeout: 15_000 });
-  await panel.getByRole('textbox', { name: /^Name/ }).fill(TRANSCRIPT.parent);
-  await sexAtBirth.click();
-  const carried = panel
-    .getByRole('radiogroup', { name: /carry the pregnancy/ })
-    .getByRole('radio', { name: 'Yes', exact: true });
-  await carried.waitFor({ timeout: 5_000 }).catch(() => {});
-  if (await carried.isVisible().catch(() => false)) await carried.click();
-  await save();
-
-  await page
-    .getByRole('region', { name: 'Your family' })
-    .getByRole('button', { name: 'You' })
+  await panel
+    .getByRole('textbox', { name: /^Name/ })
+    .fill(TRANSCRIPT.grandparent);
+  await panel
+    .getByRole('radiogroup', { name: /^Sex assigned at birth/ })
+    .getByRole('radio', { name: 'Female', exact: true })
     .click();
-  await panel.waitFor({ timeout: 15_000 });
-  await sexAtBirth.click();
-  await save();
+  // The panel's second page asks about the relationship; Save is on it.
+  const save = panel.getByRole('button', { name: 'Save', exact: true });
+  await panel.getByRole('button', { name: 'Continue', exact: true }).click();
+  await save.waitFor({ timeout: 15_000 });
+  await panel
+    .getByRole('radiogroup', { name: /^What kind of parent/ })
+    .getByRole('radio', { name: 'Biological parent', exact: true })
+    .click();
+  await panel
+    .getByRole('radiogroup', { name: /carry the pregnancy/ })
+    .getByRole('radio', { name: 'Yes', exact: true })
+    .click();
+  await save.click();
+  await panel.waitFor({ state: 'detached', timeout: 15_000 });
   return page.getByTestId('pedigree-person').allTextContents();
+}
+
+/**
+ * The schema 8 Family Pedigree's quick start, as the released image draws it
+ * (the interview package's own e2e drives it the same way: packages/interview/
+ * e2e/matrix/family-pedigree.scenarios.ts): the participant's sex at birth,
+ * then the egg and sperm parents by name — neither a donor, the egg parent
+ * carried the pregnancy — no other parents, the two of them current partners,
+ * and no partner of the participant's own. Returns the people drawn.
+ */
+async function buildSchema8Pedigree(page) {
+  const { egg, sperm } = TRANSCRIPT.family;
+  const dialog = page.getByRole('dialog');
+  const field = (name) => dialog.locator(`[data-field-name="${name}"]`);
+  const choose = (name, value) =>
+    field(name)
+      .locator(
+        `[role="radio"][data-value="${value}"], [role="option"][data-value="${value}"]`,
+      )
+      .first()
+      .click();
+  const answer = async (name, value) => {
+    const toggle = field(name).getByRole('switch');
+    if (await toggle.count()) {
+      if (((await toggle.getAttribute('aria-checked')) === 'true') !== value)
+        await toggle.click();
+      return;
+    }
+    await choose(name, String(value));
+  };
+  const next = () => dialog.getByTestId('wizard-next').click();
+
+  await page.getByTestId('pedigree-get-started').click();
+  await dialog.waitFor({ timeout: 15_000 });
+  await choose('biologicalSex', 'female');
+  await next();
+  await answer('egg-parent.is-donor', false);
+  await field('egg-parent.name').getByRole('textbox').fill(egg);
+  await answer('egg-parent.gestationalCarrier', true);
+  await next();
+  await answer('sperm-parent.is-donor', false);
+  await field('sperm-parent.name').getByRole('textbox').fill(sperm);
+  await next();
+  await answer('hasOtherParents', false);
+  await next();
+  await field('partnerships.egg-parent')
+    .getByRole('radiogroup', { name: sperm })
+    .locator('[role="radio"][data-value="current"]')
+    .click();
+  await next();
+  await answer('hasPartner', false);
+  await next();
+  // The hint the quick start ends on holds the page until it is read.
+  await dialog
+    .getByText('Building the rest of your pedigree')
+    .waitFor({ timeout: 15_000 });
+  await dialog.getByTestId('dialog-primary').click();
+  await dialog.waitFor({ state: 'detached', timeout: 15_000 }).catch(() => {});
+  return page
+    .getByRole('main')
+    .getByRole('button', { name: new RegExp(`^(You|${egg}|${sperm})$`) })
+    .evaluateAll((buttons) =>
+      buttons.map(
+        (button) => button.getAttribute('aria-label') ?? button.textContent,
+      ),
+    )
+    .then((names) => names.toSorted())
+    .catch(() => []);
 }

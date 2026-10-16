@@ -25,6 +25,16 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+// The interview's own encryption format, loaded from source, so Linda's
+// stored name is decrypted exactly as the interview would decrypt it.
+import {
+  decryptValue,
+  deriveInterviewKey,
+} from '../../../../packages/interview/src/interfaces/Anonymisation/encryptionFormat.ts';
+import {
+  ncSourceUUID,
+  ncTargetUUID,
+} from '../../../../packages/shared-consts/src/export-process.ts';
 import {
   attempt,
   check,
@@ -50,6 +60,11 @@ import {
 } from './interview-walk.mjs';
 import { lane } from './lanes.mjs';
 import {
+  anythingBut,
+  categoricalColumns,
+  edgeAnswerProblems,
+  edgeSetProblems,
+  egoAnswerProblems,
   encryptedValueProblems,
   finishOutcomeProblems,
   nodeAnswerProblems,
@@ -104,20 +119,51 @@ const TRANSCRIPT = {
     Bruno: { label: 'Familia', value: 'family' },
   },
   // The relative the pedigree records, under the attribute the protocol
-  // encrypts with the participant's passphrase.
+  // encrypts with the participant's passphrase, and the rest of what the
+  // walk answers about her: a woman, female at birth, the participant's
+  // biological parent, who carried the pregnancy.
   relative: 'Linda',
+  relativeAnswers: {
+    genderIdentity: 'woman',
+    sexAssignedAtBirth: 'female',
+    kind: 'biological',
+    gestationalCarrier: true,
+  },
   declinedName: 'Declina Prueba',
 };
 
 /** The fixture's person type, and the attribute that names each person. */
 const PERSON = { type: 'node-type-9009-3', attribute: 'var-9009-4' };
 
-/** The fixture's Family Pedigree person type and the attributes read here. */
+/**
+ * The fixture's Family Pedigree person type and relationship, the attributes
+ * read here, and the names the export gives them (the codebook's variable
+ * names; a categorical answer is one true/false column per option).
+ */
 const RELATIVE = {
   type: 'node-type-9009-17',
   name: 'var-9009-18',
+  genderIdentity: 'var-9009-20',
+  sexAssignedAtBirth: 'var-9009-21',
   ego: 'var-9009-22',
+  edge: 'edge-type-9009-23',
+  kind: 'var-9009-24',
+  gestationalCarrier: 'var-9009-25',
+  currentPartner: 'var-9009-26',
 };
+
+/**
+ * One true/false column per option of one of the relative's categorical
+ * answers, as the stored codebook lists the options.
+ */
+const optionColumns = (codebook, entity, variable, chosen) =>
+  categoricalColumns(
+    codebook,
+    entity,
+    entity === 'node' ? RELATIVE.type : RELATIVE.edge,
+    RELATIVE[variable],
+    chosen,
+  );
 
 const checks = [];
 const result = { ok: false, checks };
@@ -567,19 +613,130 @@ try {
       );
       const linda = named.length === 1 ? named[0] : undefined;
       result.relativeNodeId = linda?._uid;
+      // Encrypted, and still hers: the stored value has to decrypt, with the
+      // passphrase this walk chose and bound to her node and the name
+      // variable, to the name the walk typed. Any ciphertext would pass a
+      // check that only looked for one.
       const value = linda?.attributes?.[RELATIVE.name];
-      const held =
-        linda !== undefined &&
-        typeof value !== 'string' &&
-        value !== undefined &&
-        value !== null &&
-        Object.hasOwn(linda._secureAttributes ?? {}, RELATIVE.name);
+      const iv = linda?._secureAttributes?.[RELATIVE.name]?.iv;
+      let decrypted = '<no ciphertext>';
+      if (Array.isArray(value) && Array.isArray(iv))
+        decrypted = await decryptValue(
+          await deriveInterviewKey(TRANSCRIPT.passphrase, result.interviewId),
+          { iv, data: value },
+          { nodeId: linda._uid, variableId: RELATIVE.name },
+        ).catch((error) => `<refused: ${error?.name ?? error}>`);
+      const held = decrypted === TRANSCRIPT.relative;
       // The ego's name is the positive control: a network that could not be
       // read at all would not hold the relative's name either.
       return {
         pass:
           stored.relative === 0 && stored.ego > 0 && generated.size > 0 && held,
-        detail: `"${TRANSCRIPT.relative}" in the stored network: ${stored.relative > 0}; the ego's unencrypted name found: ${stored.ego > 0}; relatives the stage labelled itself: ${generated.size}; relatives the participant named: ${named.length}${linda ? ` (node ${linda._uid}, name held encrypted: ${held})` : ''}`,
+        detail: `"${TRANSCRIPT.relative}" in the stored network: ${stored.relative > 0}; the ego's unencrypted name found: ${stored.ego > 0}; relatives the stage labelled itself: ${generated.size}; relatives the participant named: ${named.length}${linda ? ` (node ${linda._uid}, stored name decrypts to ${JSON.stringify(decrypted)})` : ''}`,
+      };
+    }),
+  );
+
+  // Linda's other answers, as stored: her gender identity and sex at birth,
+  // and the one relationship that makes her the participant's parent, with
+  // its kind and who carried the pregnancy.
+  checks.push(
+    await attempt('schema9-pedigree-answers-stored', async () => {
+      if (!result.relativeNodeId)
+        throw new Error(
+          `the stored network did not identify ${TRANSCRIPT.relative}'s node`,
+        );
+      const network = JSON.parse(
+        psql(
+          `select network::jsonb from "Interview" where id = ${sqlText(result.interviewId)};`,
+        ),
+      );
+      const linda = network.nodes.find(
+        (node) => node._uid === result.relativeNodeId,
+      );
+      const egos = network.nodes.filter(
+        (node) =>
+          node.type === RELATIVE.type &&
+          node.attributes?.[RELATIVE.ego] === true,
+      );
+      result.familyEgoNodeId = egos.length === 1 ? egos[0]._uid : undefined;
+      const edges = network.edges.filter(
+        (edge) =>
+          edge.type === RELATIVE.edge &&
+          edge.from === result.relativeNodeId &&
+          edge.to === result.familyEgoNodeId,
+      );
+      result.relativeEdgeId = edges.length === 1 ? edges[0]._uid : undefined;
+      // Adding Linda as a biological parent draws the other biological
+      // parent too: the one relative besides her and the participant, who
+      // has to be the participant's parent as well, not an orphan.
+      const others = network.nodes.filter(
+        (node) =>
+          node.type === RELATIVE.type &&
+          node._uid !== result.relativeNodeId &&
+          node._uid !== result.familyEgoNodeId,
+      );
+      result.standInNodeId = others.length === 1 ? others[0]._uid : undefined;
+      const standInEdges = network.edges.filter(
+        (edge) =>
+          edge.type === RELATIVE.edge &&
+          edge.from === result.standInNodeId &&
+          edge.to === result.familyEgoNodeId,
+      );
+      result.standInEdgeId =
+        standInEdges.length === 1 ? standInEdges[0]._uid : undefined;
+      // The family holds those two relationships and no others.
+      const familyEdges = network.edges.filter(
+        (edge) => edge.type === RELATIVE.edge,
+      ).length;
+      const stored = {
+        genderIdentity: linda?.attributes?.[RELATIVE.genderIdentity] ?? null,
+        sexAssignedAtBirth:
+          linda?.attributes?.[RELATIVE.sexAssignedAtBirth] ?? null,
+        parentRelationships: edges.map((edge) => ({
+          kind: edge.attributes?.[RELATIVE.kind] ?? null,
+          gestationalCarrier:
+            edge.attributes?.[RELATIVE.gestationalCarrier] ?? null,
+          currentPartner: edge.attributes?.[RELATIVE.currentPartner] ?? null,
+        })),
+        otherParent: standInEdges.map((edge) => ({
+          kind: edge.attributes?.[RELATIVE.kind] ?? null,
+          gestationalCarrier:
+            edge.attributes?.[RELATIVE.gestationalCarrier] ?? null,
+          currentPartner: edge.attributes?.[RELATIVE.currentPartner] ?? null,
+        })),
+        // Drawn opposite Linda: the other biological parent is male.
+        otherParentSex:
+          others[0]?.attributes?.[RELATIVE.sexAssignedAtBirth] ?? null,
+        familyEdges,
+      };
+      const answers = TRANSCRIPT.relativeAnswers;
+      const expected = {
+        genderIdentity: [answers.genderIdentity],
+        sexAssignedAtBirth: [answers.sexAssignedAtBirth],
+        parentRelationships: [
+          {
+            kind: [answers.kind],
+            gestationalCarrier: answers.gestationalCarrier,
+            // The current partner flag belongs to partners only.
+            currentPartner: null,
+          },
+        ],
+        otherParent: [
+          {
+            kind: [answers.kind],
+            gestationalCarrier: false,
+            currentPartner: null,
+          },
+        ],
+        otherParentSex: ['male'],
+        familyEdges: 2,
+      };
+      return {
+        pass:
+          egos.length === 1 &&
+          JSON.stringify(stored) === JSON.stringify(expected),
+        detail: `${TRANSCRIPT.relative} (node ${result.relativeNodeId}) is stored with ${JSON.stringify(stored)} (expected ${JSON.stringify(expected)}); participants in the family: ${egos.length}; other relatives: ${others.length}`,
       };
     }),
   );
@@ -617,9 +774,9 @@ try {
       let row = '';
       while (Date.now() < deadline) {
         row = psql(
-          `select coalesce("finishStageId", '') || '|' || coalesce("finishOutcome"::text, '') from "Interview" where id = ${sqlText(started.interviewId)};`,
+          `select coalesce("finishStageId", '') || '|' || coalesce("finishOutcome"::text, '') || '|' || ("finishTime" is not null) from "Interview" where id = ${sqlText(started.interviewId)};`,
         );
-        if (row !== '|') break;
+        if (!row.startsWith('||')) break;
         await declinePage.waitForTimeout(1000);
       }
       const back = await declinePage
@@ -628,8 +785,9 @@ try {
         .catch(() => false);
       await declinePage.close();
       return {
-        pass: shown && row === 'finish-declined|terminated' && !back,
-        detail: `declining consent showed the second finish stage: ${shown}; stored stage|outcome = ${row}; a way back offered: ${back}`,
+        // Finished, too: a finish time is what marks an interview complete.
+        pass: shown && row === 'finish-declined|terminated|true' && !back,
+        detail: `declining consent showed the second finish stage: ${shown}; stored stage|outcome|finished = ${row}; a way back offered: ${back}`,
       };
     }),
   );
@@ -647,56 +805,54 @@ try {
       );
       result.exportPath = archivePath;
       exported = await readInterviewExport(archivePath);
-      const expected = [
-        TRANSCRIPT.egoName,
-        ...TRANSCRIPT.people,
-        ...Object.values(TRANSCRIPT.hours),
-        ...Object.values(TRANSCRIPT.context).map(({ value }) => value),
-        TRANSCRIPT.declinedName,
-      ];
-      const missing = expected.filter(
-        (answer) => !exported.text.includes(answer),
-      );
-      // The short answers ("5", "work") would be found anywhere in the
-      // archive's text, so each person's are read from that person's own
-      // records: a categorical answer is one true/false column per option.
+      // Each answer is read from its own record. Each interview's ego answers
+      // from that interview's one ego row and one graph, and the short
+      // answers ("5", "work") — which would be found anywhere in the
+      // archive's text — from each person's own records: a categorical
+      // answer is one true/false column per option.
+      const misplaced = egoAnswerProblems(exported.files, {
+        [result.interviewId]: { ego_name: TRANSCRIPT.egoName, consent: 'true' },
+        [result.declinedInterviewId]: {
+          ego_name: TRANSCRIPT.declinedName,
+          consent: 'false',
+        },
+      });
       const ids = nodeIdsBy(psql, result.interviewId, PERSON);
-      const misplaced = nodeAnswerProblems(
-        exported.files,
-        Object.fromEntries(
-          TRANSCRIPT.people.map((name) => [
-            ids[name] ?? `(no stored node named ${name})`,
-            {
-              name,
-              hours: TRANSCRIPT.hours[name],
-              ...Object.fromEntries(
-                Object.values(TRANSCRIPT.context).map(({ value }) => [
-                  `context_${value}`,
-                  String(value === TRANSCRIPT.context[name].value),
-                ]),
-              ),
-            },
-          ]),
+      const codebook = JSON.parse(
+        psql(
+          `select codebook::jsonb from "Protocol" where id = ${sqlText(result.protocolId)};`,
+        ) || '{}',
+      );
+      misplaced.push(
+        ...nodeAnswerProblems(
+          exported.files,
+          Object.fromEntries(
+            TRANSCRIPT.people.map((name) => [
+              ids[name] ?? `(no stored node named ${name})`,
+              {
+                name,
+                hours: TRANSCRIPT.hours[name],
+                // Every option the codebook lists, not only the ones chosen.
+                ...categoricalColumns(
+                  codebook,
+                  'node',
+                  PERSON.type,
+                  'context',
+                  TRANSCRIPT.context[name].value,
+                ),
+              },
+            ]),
+          ),
         ),
       );
       return {
-        pass:
-          exported.entries > 0 &&
-          missing.length === 0 &&
-          misplaced.length === 0,
+        pass: exported.entries > 0 && misplaced.length === 0,
         detail:
           exported.entries === 0
             ? `the export archive held no data files${exported.error ? ` (${exported.error})` : ''}`
-            : missing.length || misplaced.length
-              ? [
-                  missing.length
-                    ? `the export does not carry: ${missing.join(' | ')}`
-                    : '',
-                  ...misplaced,
-                ]
-                  .filter(Boolean)
-                  .join('; ')
-              : `every answer both walks gave is in the export (${exported.entries} file(s)), and each person's name, hours and context are in that person's one CSV row and one GraphML node`,
+            : misplaced.length
+              ? misplaced.join('; ')
+              : `each interview's ego name and consent are in its one ego CSV row and its one GraphML graph, and each person's name, hours and context in that person's one CSV row and one GraphML node (${exported.entries} file(s))`,
       };
     }),
   );
@@ -713,6 +869,83 @@ try {
         detail: problems.length
           ? problems.join('; ')
           : 'the ego CSV and the GraphML record "completed" and "terminated" for the two interviews',
+      };
+    }),
+  );
+
+  checks.push(
+    await attempt('schema9-export-carries-pedigree-answers', async () => {
+      if (!exported) throw new Error('no export was read');
+      if (!result.relativeNodeId || !result.relativeEdgeId)
+        throw new Error(
+          `the stored network did not identify ${TRANSCRIPT.relative}'s node and her one relationship to the participant`,
+        );
+      const answers = TRANSCRIPT.relativeAnswers;
+      const codebook = JSON.parse(
+        psql(
+          `select codebook::jsonb from "Protocol" where id = ${sqlText(result.protocolId)};`,
+        ) || '{}',
+      );
+      // Every relationship the deployment stores, in every interview the
+      // export holds (it exports them all, earlier lanes' included): the
+      // export holds exactly these.
+      const storedEdges = JSON.parse(
+        psql(
+          `select coalesce(json_agg(e->>'_uid'), '[]') from "Interview", jsonb_array_elements(network::jsonb->'edges') e;`,
+        ) || '[]',
+      );
+      const problems = [
+        ...edgeSetProblems(exported.files, storedEdges),
+        ...nodeAnswerProblems(exported.files, {
+          // The participant's own family node, flagged as the participant,
+          // so the two relationships do not point at nobody.
+          [result.familyEgoNodeId ?? '(no stored participant node)']: {
+            isEgo: 'true',
+          },
+          [result.standInNodeId ?? '(no stored other parent)']: optionColumns(
+            codebook,
+            'node',
+            'sexAssignedAtBirth',
+            'male',
+          ),
+          [result.relativeNodeId]: {
+            ...optionColumns(
+              codebook,
+              'node',
+              'genderIdentity',
+              answers.genderIdentity,
+            ),
+            ...optionColumns(
+              codebook,
+              'node',
+              'sexAssignedAtBirth',
+              answers.sexAssignedAtBirth,
+            ),
+          },
+        }),
+        ...edgeAnswerProblems(exported.files, {
+          [result.relativeEdgeId]: {
+            [ncSourceUUID]: result.relativeNodeId,
+            [ncTargetUUID]: result.familyEgoNodeId,
+            ...optionColumns(codebook, 'edge', 'kind', answers.kind),
+            gestationalCarrier: String(answers.gestationalCarrier),
+            currentPartner: anythingBut('true'),
+          },
+          [result.standInEdgeId ??
+          '(no stored relationship for the other parent)']: {
+            [ncSourceUUID]: result.standInNodeId,
+            [ncTargetUUID]: result.familyEgoNodeId,
+            ...optionColumns(codebook, 'edge', 'kind', answers.kind),
+            gestationalCarrier: 'false',
+            currentPartner: anythingBut('true'),
+          },
+        }),
+      ];
+      return {
+        pass: problems.length === 0,
+        detail: problems.length
+          ? problems.join('; ')
+          : `${TRANSCRIPT.relative}'s one CSV row and one GraphML node hold her gender identity and sex at birth, and her relationship and the other parent's to the participant each have one edge list row and one GraphML edge holding its ends, its kind and its carrier flag`,
       };
     }),
   );

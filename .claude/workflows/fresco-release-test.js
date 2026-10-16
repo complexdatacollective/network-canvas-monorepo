@@ -746,19 +746,23 @@ const expectedScriptChecks = {
     'schema9-pedigree-relative-added',
     'schema9-finished-with-outcome',
     'schema9-encrypted-name-stored-encrypted',
+    'schema9-pedigree-answers-stored',
     'schema9-declined-finishes-automatically',
     'schema9-export-carries-the-answers',
     'schema9-export-records-outcomes',
+    'schema9-export-carries-pedigree-answers',
     'schema9-export-keeps-encrypted-value-out',
   ],
   migrationSeed: [
     'migration-seed-protocol-imported',
     'migration-seed-interview-parked',
+    'migration-seed-pedigree-recorded',
     'migration-seed-read',
   ],
   migration: [
     'migration-protocols-stored-as-schema-9',
     'migration-introduction-panels-are-information-stages',
+    'migration-pedigree-family-kept',
     'migration-interviews-resume-where-they-were',
     'migration-unfinished-interview-kept-in-place',
   ],
@@ -766,8 +770,11 @@ const expectedScriptChecks = {
     'migration-interview-resumes-where-it-was',
     'migration-introduction-panel-shown-as-information-stage',
     'migration-interview-keeps-its-answers',
+    'migration-pedigree-shown-after-upgrade',
     'migration-interview-finished-after-upgrade',
+    'migration-pedigree-answers-stored',
     'migration-export-after-upgrade',
+    'migration-export-carries-the-pedigree',
   ],
   health: [
     'health-answers-anonymously',
@@ -1665,7 +1672,7 @@ Read them with the shell rather than by eye: node -e 'const s=require("./${AUDIT
     );
     upgradeLane.diffVerdict = await agent(
       `You are judging whether a Fresco upgrade changed exported interview data in UNANTICIPATED ways. The same seeded interviews were exported before the upgrade (released build) and after (pending build); a deterministic normalizer already masked ONLY the volatile export-marking fields (GraphML sessionExportTime, CSV sessionExported, JSON lastUpdated/exportTime) and id-sorted API arrays — stable persisted times (sessionStart/sessionFinish, startTime/finishTime) are compared literally, so a difference in them is real. When the released build predates protocol languages, the upgrade migrates every stored protocol to schema 9, and the same script reconciled, file by file, exactly the differences that follow from that — a protocol's schemaVersion moving to 9; codebook text held as { en: <message> }; labels the migration derives from entity type and attribute names; empty optional text it leaves out; and the GraphML nc:protocolUID and nc:codebookHash of a protocol it migrated; and an interview's currentStep and stageMetadata moving exactly as the stages they point at moved, when the migration put an Information stage in front of them (read from the database readings the migration lane took either side of the swap) — and lists them per file under "reconciled". Those are anticipated by design and are not findings; a file whose only differences were reconciled is listed as identical. Whatever remains under "changed" was not predicted by the upgrade, including in those same fields (a label that is not its type's or attribute's name), and is judged as usual. A freshly re-run diff of exactly those files is at ${AUDIT_DIFF_SUMMARY} (JSON: onlyInBaseline / onlyInCurrent / identical / changed with per-file diff excerpts and fullDiff paths under ${AUDIT_DIFF_WORK}/diffs/ / reconciled). Use that one — it describes the files as they stand now; ignore any other summary in that directory.
-Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships.${consumedChangesetsNote} One of the seeded interviews is not synthetic: the migration lane's interview of its own schema 8 protocol, which has a Family Pedigree stage. The upgrade converts that stage to the redesigned Family Pedigree, whose codebook differs (relationship options reordered, relabelled and joined by twin options, a variable for relatives not recorded, a reworded intersex label), so that interview's payload and the edge list and GraphML keys exported for it change accordingly; the changeset that ships the redesign explains those differences, and nothing else. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
+Read ${AUDIT_DIFF_SUMMARY} yourself — do not rely on any count reported to you. Enumerate every differing or one-sided file it lists: every entry of onlyInBaseline, every entry of onlyInCurrent (both plain file-name strings), and the "file" of every entry of changed (objects, whose name lives under the "file" key). For each one, read as much of the full diff as needed to characterize it. Then read the pending changesets (.changeset/*.md in your working directory) — they describe everything this release ships.${consumedChangesetsNote} One of the seeded interviews is not synthetic: the migration lane's interview of its own schema 8 protocol, which has a Family Pedigree stage. The upgrade converts that stage to the redesigned Family Pedigree, whose codebook differs (relationship options reordered, relabelled and joined by twin options, a variable for relatives not recorded, a reworded intersex label), so that interview's payload and the edge list and GraphML keys exported for it change accordingly. The interview carries a family built on the schema 8 pedigree, and the upgrade also rewrites that family's stored record the way the redesigned stage writes one: its parent relationships lose the current-partner flag schema 8 set on them and record the gestational carrier flag as true or false, and the pedigree's schema 8 stage record leaves stageMetadata. The migration lane's own checks hold each of those to exactly that (migration-pedigree-family-kept); the changeset that ships the redesign explains those differences, and nothing else. Classify EACH FILE into exactly one list, as one entry carrying that file's name verbatim in "file":
 - anticipated: explained by a specific pending changeset. Put that changeset's file name without the .md extension in "changeset". An entry naming a changeset that does not exist is treated as unanticipated.
 - unanticipated: everything else. Structural changes to graph data (missing nodes/edges/attributes, changed values) are unanticipated unless a changeset explicitly covers them.
 Every file the summary lists must appear exactly once across the two lists, and you must not invent entries for files it does not list — the workflow compares your entries against the summary on disk and fails the run if any file is unclassified. An empty diff (all identical, nothing one-sided) is pass:true with both lists empty. pass=false if anything is unanticipated.`,

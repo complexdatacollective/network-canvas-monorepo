@@ -306,15 +306,19 @@ then runs two Docker stacks via
 
 - **Upgrade lane** (ports 3210/5533/9310): seeds the currently released GHCR
   image through its setup wizard (sample protocol, synthetic interviews, data
-  export), and leaves one interview of a schema 8 protocol unfinished on the
-  stage behind an introduction panel (`migration-lane.mjs --phase seed`). It
-  then swaps the app container to the pending image against the live volumes
-  so its `migrate-and-start.sh` migrations run on real data, and reads what
-  the schema 9 migration did to every stored protocol and interview
-  (`--phase migrated`). It captures the exports, and then lets that
-  participant come back: the interview resumes where it was, its former panel
-  shows as an Information stage, and it can be finished and exported
-  (`--phase resume`). Finally it verifies data integrity, dashboard CRUD,
+  export), and leaves one interview of a schema 8 protocol unfinished
+  (`migration-lane.mjs --phase seed`): it builds a family on the schema 8
+  Family Pedigree with that stage's quick-start questions and finalizes it,
+  then stops on the stage behind an introduction panel, whose skip logic is
+  false for that interview. It then swaps the app container to the pending
+  image against the live volumes so its `migrate-and-start.sh` migrations run
+  on real data, and reads what the schema 9 migration did to every stored
+  protocol and interview, the family included (`--phase migrated`). It
+  captures the exports, and then lets that participant come back: the
+  interview resumes where it was, its former panel shows as an Information
+  stage, the redesigned pedigree draws the family and takes a new relative,
+  and the interview can be finished and exported with every answer in its own
+  record (`--phase resume`). Finally it verifies data integrity, dashboard CRUD,
   settings, and the interview data API, and diffs pre- vs post-upgrade exports
   (`release-test/scripts/diff-exports.mjs`) for unanticipated differences.
   Once the released image itself runs schema 9, it migrates the schema 8
@@ -328,9 +332,11 @@ then runs two Docker stacks via
   process of the pending image end-to-end, and then runs the script-driven
   checks on that instance — a whole interview conducted from the first stage to
   the finish screen and out through an export; a schema 9 interview conducted
-  in Spanish (language chooser, dynamic values, an encrypted answer, bins with
-  tap-to-place and the completion gate, a skipped empty stage, both finish
-  stages and the outcome each records, and the export); what `/api/health`
+  in Spanish (language chooser, dynamic values, an encrypted answer and the
+  pedigree's other answers about that relative, bins with tap-to-place and
+  the completion gate, a skipped empty stage, both finish stages and the
+  outcome each records, and the export, where each answer is read from the
+  one record of the interview, person or relationship it belongs to); what `/api/health`
   tells an anonymous caller; and the researcher interface in another language.
 - **Analytics lane** (ports 3212/5535/9312): the one deployment in the run with
   analytics **enabled**, against a sink that terminates TLS and records every
@@ -379,18 +385,25 @@ agent's account of them. The migration interview is one of the seeded
 interviews every later count includes (`SEEDED_INTERVIEWS`), so the export
 diff compares it too. Its Family Pedigree is converted to the redesigned one
 by the upgrade, which changes that interview's codebook and the edge list and
-GraphML keys exported for it; the diff judge is told to attribute those
-differences to the redesign's changeset.
+GraphML keys exported for it, and rewrites the family it holds the way the
+redesigned stage writes one: parent relationships lose the current-partner
+flag schema 8 set on them and record the gestational carrier flag as true or
+false, and the schema 8 stage record leaves `stageMetadata`. The migrated
+phase holds the family to exactly that (`migration-pedigree-family-kept`),
+naming each person, relationship or answer that was lost, and the diff judge
+is told to attribute those differences to the redesign's changeset.
 
 The judgment in those lanes lives in pure modules —
 `relay-payload-protocol.mjs` (what an enabled deployment may send),
 `localization-contract.mjs` (whether a page actually changed language),
 `interview-export-contract.mjs` (whether an export carries the answers that
 were given), `schema9-export-contract.mjs` (whether an export records each
-interview's finish outcome and keeps an encrypted answer out) and
+interview's finish outcome, holds each answer in exactly one record per
+format of the interview's ego, person or relationship it belongs to — never
+a search of the whole archive — and keeps an encrypted answer out) and
 `migration-contract.mjs` (what the schema 8 to 9 upgrade must have done to
-each stored protocol and interview, judged from database readings taken
-either side of the swap) — so each oracle is exercised on synthetic input in
+each stored protocol, interview and Family Pedigree family, judged from
+database readings taken either side of the swap and naming what was lost) — so each oracle is exercised on synthetic input in
 `scripts/release-test/fresco-release-test-lane-contracts.test.mjs`, where it is
 also shown failing on input that breaks the behaviour it guards. Lists those
 contracts are written against are bound to the application's own: the element

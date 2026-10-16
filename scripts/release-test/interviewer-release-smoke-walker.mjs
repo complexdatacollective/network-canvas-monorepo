@@ -43,6 +43,14 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// The interview's own encryption format (pure WebCrypto, no imports), loaded
+// from source through Node's type stripping, so the walker decrypts stored
+// answers exactly as the interview does rather than through a copy of it.
+import {
+  decryptValue,
+  deriveInterviewKey,
+} from '../../packages/interview/src/interfaces/Anonymisation/encryptionFormat.ts';
+
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -945,6 +953,9 @@ try {
     return {
       found: true,
       sessionCount: sessions.length,
+      // The interview's id: with the passphrase, all it takes to derive the
+      // key its encrypted answers are stored under.
+      sessionId: s.id ?? null,
       finishStageId: s.finishStageId ?? null,
       finishOutcome: s.finishOutcome ?? null,
       finishedAt: s.finishedAt ?? null,
@@ -958,6 +969,9 @@ try {
             uid: n._uid,
             nameIsCiphertext: isBytes(a.name) && a.name.length === 48,
             nameIv12: isBytes(iv) && iv.length === 12,
+            // The raw stored ciphertext and IV, decrypted below.
+            nameData: isBytes(a.name) ? a.name : null,
+            nameIv: isBytes(iv) ? iv : null,
             secureKeys: Object.keys(n._secureAttributes ?? {}),
             layout:
               a.layout &&
@@ -1071,8 +1085,30 @@ try {
   );
   // Encrypted attributes: every person's name is stored as ciphertext (a
   // short name pads to one 32-byte block plus the 16-byte GCM tag) with only
-  // its 12-byte IV beside it, and no person's plaintext name appears
-  // anywhere in the stored network.
+  // its 12-byte IV beside it, no person's plaintext name appears anywhere in
+  // the stored network, and each ciphertext DECRYPTS — under the key the
+  // walk's passphrase derives for this interview, bound to its own node and
+  // variable — to the name the walk gave that node. AES-GCM authenticates the
+  // node and variable, so a corrupted ciphertext, one written under another
+  // key, or one swapped between nodes is refused rather than read.
+  const decryptedNames = [];
+  if (typeof payload.sessionId === 'string' && people.length > 0) {
+    const key = await deriveInterviewKey(PASSPHRASE, payload.sessionId);
+    for (const p of people) {
+      decryptedNames.push(
+        p.nameData && p.nameIv
+          ? await decryptValue(
+              key,
+              { iv: p.nameIv, data: p.nameData },
+              { nodeId: p.uid, variableId: 'name' },
+            ).catch((err) => `<refused: ${err?.name ?? err}>`)
+          : '<no ciphertext>',
+      );
+    }
+  }
+  // People are in creation order, and the walk added Alex, Blair, Casey.
+  const namesDecrypt =
+    JSON.stringify(decryptedNames) === JSON.stringify(PEOPLE);
   const plaintextLeaks = PEOPLE.filter((n) =>
     (payload.serialized ?? '').includes(`"${n}"`),
   );
@@ -1084,11 +1120,12 @@ try {
         p.nameIv12 &&
         JSON.stringify(p.secureKeys) === '["name"]',
     ) &&
+    namesDecrypt &&
     plaintextLeaks.length === 0;
   record(
     'persisted-encryption',
     encryptionOk,
-    `per person {ciphertext48, iv12, secureKeys}: ${JSON.stringify(people.map((p) => [p.nameIsCiphertext, p.nameIv12, p.secureKeys]))}; plaintext names in stored network: ${JSON.stringify(plaintextLeaks)}`,
+    `per person {ciphertext48, iv12, secureKeys}: ${JSON.stringify(people.map((p) => [p.nameIsCiphertext, p.nameIv12, p.secureKeys]))}; decrypted with the walk's passphrase (creation order): ${JSON.stringify(decryptedNames)} (expected ${JSON.stringify(PEOPLE)}); plaintext names in stored network: ${JSON.stringify(plaintextLeaks)}`,
   );
   // The finish stage the walk ended on, recorded with the session: the
   // normal finish stage and its outcome — not the declined-consent finish
