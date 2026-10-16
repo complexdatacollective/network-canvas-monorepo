@@ -174,6 +174,24 @@ describe('resolveStageQualifier', () => {
     ).toBeNull();
   });
 
+  it('qualifies a finish stage by its outcome, and says when it ends unasked', () => {
+    expect(
+      resolveStageQualifier(
+        { type: 'FinishSession', mode: 'confirmation', outcome: 'completed' },
+        resolvers,
+      ),
+    ).toEqual({ full: '(Completed)', summary: '(Completed)' });
+    expect(
+      resolveStageQualifier(
+        { type: 'FinishSession', mode: 'automatic', outcome: 'terminated' },
+        resolvers,
+      ),
+    ).toEqual({ full: '(Ended Early, Automatic)', summary: '(Ended Early)' });
+    expect(
+      resolveStageQualifier({ type: 'FinishSession' }, resolvers),
+    ).toBeNull();
+  });
+
   it('returns null for stage types without qualifiers', () => {
     expect(resolveStageQualifier({ type: 'Sociogram' }, resolvers)).toBeNull();
   });

@@ -110,6 +110,31 @@ describe('proposeStageLabel', () => {
     ).toBe('Form Name Generator with Panels');
   });
 
+  it('names a finish stage after how the interview ends there', () => {
+    expect(
+      proposeStageLabel(
+        {
+          id: 'stage-1',
+          type: 'FinishSession',
+          mode: 'confirmation',
+          outcome: 'completed',
+        },
+        contextWith(),
+      ),
+    ).toBe('Finish Screen (Completed)');
+    expect(
+      proposeStageLabel(
+        {
+          id: 'stage-1',
+          type: 'FinishSession',
+          mode: 'automatic',
+          outcome: 'ineligible',
+        },
+        contextWith(),
+      ),
+    ).toBe('Finish Screen (Ineligible, Automatic)');
+  });
+
   it('qualifies an Information stage from the asset manifest', () => {
     expect(
       proposeStageLabel(

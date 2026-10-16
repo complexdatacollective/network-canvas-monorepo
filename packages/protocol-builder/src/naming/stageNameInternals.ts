@@ -2,7 +2,14 @@ import { useCallback, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
-import type { Item, StageSubject } from '@codaco/protocol-validation';
+import {
+  type FinishMode,
+  FinishModeSchema,
+  type FinishOutcome,
+  FinishOutcomeSchema,
+  type Item,
+  type StageSubject,
+} from '@codaco/protocol-validation';
 
 import { READ_ONLY_MESSAGE } from '../form/readOnlyRefusal.ts';
 import { REQUIRED } from '../form/requiredField.ts';
@@ -176,6 +183,8 @@ export function useProposedStageLabel(): string {
           subject: draft.subject,
           items: draft.items,
           panels: draft.panels,
+          mode: draft.mode,
+          outcome: draft.outcome,
         },
         protocolContext,
       ),
@@ -210,10 +219,12 @@ type StageNameSources = Readonly<{
   subject: StageSubject | undefined;
   items: Item[] | undefined;
   panels: StageLabelPanel[] | undefined;
+  mode: FinishMode | undefined;
+  outcome: FinishOutcome | undefined;
 }>;
 
 /**
- * The draft as it stands right now, for the three values a name is built from.
+ * The draft as it stands right now, for the values a name is built from.
  *
  * Read through the package's one draft-value hook, so a proposed name sees
  * what every section sees — including a subject only the committed draft holds
@@ -226,14 +237,18 @@ function useStageNameSources(): StageNameSources {
   const rawSubject = useStageValue('subject');
   const rawItems = useStageValue('items');
   const rawPanels = useStageValue('panels');
+  const rawMode = useStageValue('mode');
+  const rawOutcome = useStageValue('outcome');
 
   return useMemo(
     () => ({
       subject: readSubject(rawSubject),
       items: readItems(rawItems),
       panels: readPanels(rawPanels),
+      mode: FinishModeSchema.safeParse(rawMode).data,
+      outcome: FinishOutcomeSchema.safeParse(rawOutcome).data,
     }),
-    [rawItems, rawPanels, rawSubject],
+    [rawItems, rawMode, rawOutcome, rawPanels, rawSubject],
   );
 }
 
