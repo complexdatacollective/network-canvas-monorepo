@@ -32,6 +32,7 @@ import {
   type DynamicValueSources,
   resolveDynamicText,
 } from '../dynamicValues/resolveDynamicText';
+import { useSettledLocalePreference } from '../i18n/InterviewI18nProvider';
 import { contentFormatFor, resolveContentLocale } from './contentFormat';
 import {
   createLocalizedMessageFormatter,
@@ -119,14 +120,16 @@ export function ProtocolLocalizationProvider({
 
   // A stated preference is passed as the only request, so a preference the
   // protocol no longer matches yields its default rather than a browser
-  // language.
+  // language. It applies once the built-in text has changed with it, so the
+  // two change language together.
+  const settledPreference = useSettledLocalePreference(localePreference);
   const locale = useMemo(
     () =>
       selectProtocolLocale(
-        localePreference === null ? requestedLocales : [localePreference],
+        settledPreference === null ? requestedLocales : [settledPreference],
         localization,
       ),
-    [localePreference, requestedLocales, localization],
+    [settledPreference, requestedLocales, localization],
   );
 
   // A stated preference only chooses the interview language: the browser's

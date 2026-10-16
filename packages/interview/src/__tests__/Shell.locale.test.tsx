@@ -669,6 +669,91 @@ describe("Shell participant's language choice", () => {
     }
   });
 
+  it('changes to a chosen language whose built-in text is still loading only once both can change together', async () => {
+    // German is not loaded yet, and loads only when the test lets it.
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { load } = interviewCatalogSource;
+    const gated = (locale: string) =>
+      locale === 'de' ? gate.then(() => load(locale)) : load(locale);
+    const loadSpy = vi
+      .spyOn(interviewCatalogSource, 'load')
+      .mockImplementation(gated);
+    const attemptSpy = vi
+      .spyOn(interviewCatalogSource, 'attempt')
+      .mockImplementation(gated);
+    try {
+      const base = makePayload('german-session');
+      const withGerman = {
+        ...base,
+        session: {
+          ...base.session,
+          localeOptions: [...localization.locales, 'de'].map((locale) =>
+            getLocaleMetadata(locale),
+          ),
+        },
+        protocol: {
+          ...base.protocol,
+          localization: {
+            ...localization,
+            locales: [...localization.locales, 'de'],
+          },
+          stages: [
+            {
+              ...base.protocol.stages[0]!,
+              title: { ...titles, de: 'Ursprüngliche Frage' },
+            },
+          ],
+        },
+      } satisfies InterviewPayload;
+      function Host() {
+        const [stated, setStated] = useState<string | undefined>(undefined);
+        return (
+          <>
+            <button onClick={() => setStated('de')}>State German</button>
+            <Shell
+              {...handlers}
+              payload={withGerman}
+              requestedLocales={['en']}
+              statedLocale={stated}
+              flags={{ isE2E: true }}
+              disableAnalytics
+            />
+          </>
+        );
+      }
+      render(<Host />);
+      await expectVisibleHeading(titles.en);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('button', { name: 'State German' }));
+
+      // While German loads, the protocol's German does not show beside
+      // English controls.
+      expect(liveStore().getState().ui.localePreference).toBe('de');
+      expect(
+        screen.getByRole('heading', { name: titles.en }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Ursprüngliche Frage' }),
+      ).toBeNull();
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+
+      await act(async () => release());
+      await expectVisibleHeading('Ursprüngliche Frage');
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'de');
+      expect(
+        screen.queryByRole('button', { name: nextStep.en }),
+      ).not.toBeInTheDocument();
+      expect(observed.mounts).toBe(1);
+    } finally {
+      loadSpy.mockRestore();
+      attemptSpy.mockRestore();
+    }
+  });
+
   it('does not carry a choice into another interview', async () => {
     const first = renderShell();
     const user = userEvent.setup();

@@ -1,7 +1,13 @@
 'use client';
 
 import { DirectionProvider } from '@base-ui/react/direction-provider';
-import { type ReactNode, useMemo } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useMemo,
+  useState,
+} from 'react';
 
 import { AppI18nProvider, useLocaleCatalog } from '@codaco/app-i18n/react';
 
@@ -11,6 +17,23 @@ import {
   type RequestedLocale,
   resolveInterviewLocale,
 } from './locales';
+
+const SettledPreferenceContext = createContext<
+  { requested: string | null; settled: string | null } | undefined
+>(undefined);
+
+/**
+ * The participant's language preference once the built-in text has changed
+ * to it, or found it cannot, for protocol text to follow in the same render
+ * rather than ahead of it. A preference this provider was not given is taken
+ * as it is.
+ */
+export function useSettledLocalePreference(
+  preference: string | null,
+): string | null {
+  const context = useContext(SettledPreferenceContext);
+  return context?.requested === preference ? context.settled : preference;
+}
 
 /**
  * The built-in interface language: the participant's stated protocol language
@@ -62,6 +85,19 @@ export function InterviewI18nProvider({
     catalog,
     restored,
   );
+  // The preference whose built-in language is on screen, or failed to load.
+  // While a new one loads, the previous one stays settled.
+  const [settled, setSettled] = useState(localePreference ?? null);
+  if (
+    settled !== (localePreference ?? null) &&
+    (rendered.locale === locale || rendered.failure?.locale === locale)
+  ) {
+    setSettled(localePreference ?? null);
+  }
+  const settledValue = useMemo(
+    () => ({ requested: localePreference ?? null, settled }),
+    [localePreference, settled],
+  );
   const direction = interviewLocales.find(
     (entry) => entry.locale === rendered.locale,
   )!.direction;
@@ -74,7 +110,11 @@ export function InterviewI18nProvider({
       loadFailure={rendered.failure}
       manageDocument={false}
     >
-      <DirectionProvider direction={direction}>{children}</DirectionProvider>
+      <DirectionProvider direction={direction}>
+        <SettledPreferenceContext.Provider value={settledValue}>
+          {children}
+        </SettledPreferenceContext.Provider>
+      </DirectionProvider>
     </AppI18nProvider>
   );
 }
