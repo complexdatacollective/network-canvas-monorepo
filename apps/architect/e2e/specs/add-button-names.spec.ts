@@ -177,7 +177,11 @@ async function duplicateAddButtons(page: Page): Promise<AddButtonWalk> {
     failures.push(`stage editor: ${name}`);
   }
 
-  const editTriggers = await page.getByRole('button', { name: /^Edit / }).all();
+  // A protocol language's "Edit … translations" button is not a row editor:
+  // it leaves the stage for the translation table, which has no add buttons.
+  const editTriggers = await page
+    .getByRole('button', { name: /^Edit (?!.* translations$)/ })
+    .all();
   const openedLabels = new Set<string>();
 
   for (const trigger of editTriggers) {

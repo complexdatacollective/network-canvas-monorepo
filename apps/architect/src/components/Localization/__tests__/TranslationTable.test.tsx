@@ -512,6 +512,24 @@ describe('TranslationTable', () => {
     expect(filterMenu()).toHaveDisplayValue('All translations');
   });
 
+  it('keeps the column of the language whose gaps a link lists beside the one it opens on', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/protocol/localization?table=open&missing=fr&language=es',
+    );
+    renderTable();
+
+    expect(
+      screen.getAllByRole('columnheader').map((header) => header.textContent),
+    ).toEqual([
+      'Location',
+      expect.stringMatching(/^EnglishDefault/),
+      expect.stringMatching(/^French/),
+      expect.stringMatching(/^Spanish/),
+    ]);
+  });
+
   it('shows every language when a link asks for one the protocol does not have', () => {
     window.history.replaceState(
       null,
