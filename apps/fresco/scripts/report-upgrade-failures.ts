@@ -52,7 +52,10 @@ type Reportable = {
 export function describeUpgradeFailure(error: unknown): Reportable {
   let current: unknown = error;
   let deepest: unknown = error;
-  while (current instanceof Error) {
+  // A cause chain can loop back on itself; each error is looked at once.
+  const seen = new Set<Error>();
+  while (current instanceof Error && !seen.has(current)) {
+    seen.add(current);
     const kind = getProtocolFileErrorKind(current);
     if (kind !== null) return { reason: kind, error: current };
     deepest = current;

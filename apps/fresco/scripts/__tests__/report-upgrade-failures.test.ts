@@ -70,6 +70,15 @@ describe('describeUpgradeFailure', () => {
     expect(reason).toBe('upgradeFailed');
     expect(error).toBe(root);
   });
+
+  it('stops at a cause chain that loops back on itself', () => {
+    const first = new Error('first');
+    const second = new Error('second', { cause: first });
+    first.cause = second;
+    const { reason, error } = describeUpgradeFailure(first);
+    expect(reason).toBe('upgradeFailed');
+    expect(error).toBe(second);
+  });
 });
 
 describe('reportProtocolUpgradeFailures', () => {
