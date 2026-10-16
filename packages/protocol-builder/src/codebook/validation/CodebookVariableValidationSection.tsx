@@ -144,25 +144,6 @@ const typeOf = (variable: unknown): string => {
   return typeof type === 'string' ? type : '';
 };
 
-/**
- * The host's unavailable rules, less any the codebook still holds.
- *
- * A rule the codebook holds has to stay switchable, whatever the switch on
- * screen says: switching it off is the one edit the host allows, and a write
- * refused (a collaborator holding the lock) leaves the switch off over a rule
- * still saved. Judged from the draft, that switch would lock where it stands
- * and the removal could never be retried.
- */
-const offerableOff = (
-  unavailableRules: Readonly<Record<string, string>>,
-  committed: Readonly<ValidationMap>,
-): Readonly<Record<string, string>> =>
-  Object.fromEntries(
-    Object.entries(unavailableRules).filter(
-      ([ruleKey]) => !Object.hasOwn(committed, ruleKey),
-    ),
-  );
-
 /** What a refused write says, and in which register it says it. */
 type Refusal = Readonly<{ message: string; held: boolean }>;
 
@@ -492,7 +473,14 @@ function VariableValidationSection({
         {...(stageRendering === undefined ? {} : { stageRendering })}
         {...(unavailableRules === undefined
           ? {}
-          : { unavailableRules: offerableOff(unavailableRules, committed) })}
+          : {
+              unavailableRules,
+              // A rule the codebook holds has to stay switchable, whatever the
+              // switch on screen says: a removal refused for a collaborator's
+              // lock leaves the switch off over a rule still saved, and judged
+              // from the draft it would lock there and never be retried.
+              savedRules: Object.keys(committed),
+            })}
       />
     </Section>
   );

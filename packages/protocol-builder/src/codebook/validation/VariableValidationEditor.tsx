@@ -89,6 +89,12 @@ type VariableValidationEditorProps = Readonly<{
    * switched off; the sentence is shown beneath it either way.
    */
   'unavailableRules'?: Readonly<Record<string, string>>;
+  /**
+   * Rules the saved record holds, when it can differ from `value`. One of
+   * `unavailableRules` among them stays switchable even while off on screen,
+   * so a removal the host refused can be made again; its reason still shows.
+   */
+  'savedRules'?: readonly string[];
 }>;
 
 const messages = defineMessages({
@@ -242,6 +248,7 @@ export default function VariableValidationEditor({
   stageRendering,
   ruleHints,
   unavailableRules,
+  savedRules,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
@@ -576,7 +583,8 @@ export default function VariableValidationEditor({
               const isOn = holdsRule(value, rule.value);
               const isUnavailable =
                 !isOn &&
-                (Object.hasOwn(unavailableRules ?? {}, rule.value) ||
+                ((Object.hasOwn(unavailableRules ?? {}, rule.value) &&
+                  savedRules?.includes(rule.value) !== true) ||
                   (isValidationWithListValue(rule.value) &&
                     (legalTargets.get(rule.value)?.size ?? 0) === 0));
 

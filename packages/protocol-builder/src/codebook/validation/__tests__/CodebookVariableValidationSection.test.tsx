@@ -913,18 +913,21 @@ describe('a rule the mounting stage rules out', () => {
       sectionId: PERSON_SECTION,
     });
 
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Required answer' }),
-    );
+    // On, and explained: the reason belongs beneath the rule while it stands.
+    const standing = await screen.findByRole('switch', {
+      name: 'Required answer',
+    });
+    expect(standing).toHaveAccessibleDescription(REASON);
+    await harness.user.click(standing);
     expect(
       await screen.findByText(
         'Robin is currently editing a section needed for this change.',
       ),
     ).toBeInTheDocument();
     expect(personValidation(harness, 'story')).toEqual({ required: true });
-    expect(
-      screen.getByRole('switch', { name: 'Required answer' }),
-    ).not.toHaveAttribute('aria-disabled');
+    const refused = screen.getByRole('switch', { name: 'Required answer' });
+    expect(refused).not.toHaveAttribute('aria-disabled');
+    expect(refused).toHaveAccessibleDescription(REASON);
 
     await robin.rpcCall('ReleaseLock', {
       protocolId: harness.host.protocolId,
