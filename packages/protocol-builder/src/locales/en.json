@@ -5055,6 +5055,10 @@
     "defaultMessage": "Name question",
     "description": "Label of the box holding the words above the name box in the side panel, where the participant types a family member’s name."
   },
+  "protocolBuilder.pedigree.nameRequiredUnavailable": {
+    "defaultMessage": "Not available on this stage. This stage always gives this attribute a value: the name the participant types or, if they leave it blank, a label made from the family member’s relationship to the participant. So ‘Required answer’ would always be met here, even when the participant gives no name. The rule still applies where this attribute is asked elsewhere.",
+    "description": "Shown beneath the locked \"Required answer\" validation rule for the Family Pedigree name attribute, explaining why it cannot be switched on or off in this stage. \"Attribute\" is a codebook variable. The stage is a Family Pedigree, where the participant describes their family members."
+  },
   "protocolBuilder.pedigree.nominationAddLabel": {
     "defaultMessage": "Create new nomination prompt",
     "description": "Button that opens the dialog for writing one more question about the whole family. Whole rather than a generic “Add”, because a stage editor shows several lists at once."

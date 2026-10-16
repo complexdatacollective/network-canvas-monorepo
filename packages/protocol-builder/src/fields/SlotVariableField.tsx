@@ -140,6 +140,11 @@ export type SlotVariableFieldProps = Readonly<{
    */
   offerValidation?: boolean;
   /**
+   * With `offerValidation`, the attribute's rules this slot's interface
+   * settles on its own, each with why. Shown locked, with the reason.
+   */
+  unavailableRules?: Readonly<Record<string, MessageDescriptor>>;
+  /**
    * This slot's stage manages the options of the attribute it binds (see
    * `StageManagedOptionsDescriptor`). Only one stage may, so an attribute
    * whose options another saved stage manages is ruled out of the picker and
@@ -176,6 +181,7 @@ export default function SlotVariableField({
   draftBoundElsewhere,
   draftSlotMap = NO_CLAIMS,
   offerValidation = false,
+  unavailableRules,
   managesOptions = false,
 }: SlotVariableFieldProps) {
   const intl = useAppIntl();
@@ -437,6 +443,7 @@ export default function SlotVariableField({
         <CodebookVariableValidationSection
           subject={subject ?? undefined}
           variableId={currentValue}
+          {...(unavailableRules === undefined ? {} : { unavailableRules })}
         />
       )}
     </>

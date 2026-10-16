@@ -84,6 +84,10 @@ export default function NodeConfigurationSection() {
             draftBoundElsewhere={otherAnswerVariables.name}
             draftSlotMap={draftSlotMap}
             offerValidation
+            // Every family member leaves this stage with a value here, typed
+            // or generated, so `required` would be met without the participant
+            // answering. Shown locked, saying so.
+            unavailableRules={{ required: messages.nameRequiredUnavailable }}
           />
           {supplied !== undefined && (
             <>

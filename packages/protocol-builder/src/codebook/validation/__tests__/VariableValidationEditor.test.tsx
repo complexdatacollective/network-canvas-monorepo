@@ -342,6 +342,58 @@ describe('VariableValidationEditor', () => {
     ).toHaveAccessibleDescription('Defaults to 8 if no minimum is set.');
   });
 
+  /**
+   * A rule the host's interface settles on its own is locked whether it is on
+   * or off, and says why: a toggle that moved would change a rule the
+   * attribute keeps everywhere else it is asked.
+   */
+  it('locks a rule the host makes unavailable, on or off, and says why', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const reason = 'This stage always gives the attribute a value.';
+    const { rerender } = render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="text"
+        currentVariableId="nickname"
+        allVariables={variables}
+        value={{}}
+        onChange={onChange}
+        unavailableRules={{ required: reason }}
+        ruleHints={{ required: 'Guidance the host wrote.' }}
+      />,
+    );
+
+    const off = screen.getByRole('switch', { name: 'Required answer' });
+    expect(off).toHaveAccessibleDescription(reason);
+    expect(off).toHaveAttribute('aria-disabled', 'true');
+    await user.click(off);
+    expect(onChange).not.toHaveBeenCalled();
+
+    rerender(
+      <VariableValidationEditor
+        entity="node"
+        variableType="text"
+        currentVariableId="nickname"
+        allVariables={variables}
+        value={{ required: true }}
+        onChange={onChange}
+        unavailableRules={{ required: reason }}
+      />,
+    );
+
+    const on = screen.getByRole('switch', { name: 'Required answer' });
+    expect(on).toBeChecked();
+    await user.click(on);
+    expect(onChange).not.toHaveBeenCalled();
+
+    // Other rules are untouched.
+    await user.click(
+      screen.getByRole('switch', { name: 'Minimum text length' }),
+    );
+    expect(onChange).toHaveBeenLastCalledWith({ required: true, minLength: 1 });
+  });
+
   /** The editor knows something a host cannot: that the rule cannot be met. */
   it('keeps its own explanation of a rule over a host’s guidance for it', () => {
     render(

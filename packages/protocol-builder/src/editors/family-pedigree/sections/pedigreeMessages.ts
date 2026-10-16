@@ -153,6 +153,13 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Guidance under the name attribute control. The side panel is where the participant describes each family member. The two labels in quotation marks are examples of what the interview generates for an unnamed person, and are translated like the rest of the sentence; Tom is a person’s name. “You” is how the interview labels the participant in their family tree.',
   },
+  nameRequiredUnavailable: {
+    id: 'protocolBuilder.pedigree.nameRequiredUnavailable',
+    defaultMessage:
+      'Not available on this stage. This stage always gives this attribute a value: the name the participant types or, if they leave it blank, a label made from the family member’s relationship to the participant. So ‘Required answer’ would always be met here, even when the participant gives no name. The rule still applies where this attribute is asked elsewhere.',
+    description:
+      'Shown beneath the locked "Required answer" validation rule for the Family Pedigree name attribute, explaining why it cannot be switched on or off in this stage. "Attribute" is a codebook variable. The stage is a Family Pedigree, where the participant describes their family members.',
+  },
   namePromptLabel: {
     id: 'protocolBuilder.pedigree.namePromptLabel',
     defaultMessage: 'Name question',

@@ -82,6 +82,16 @@ type VariableValidationEditorProps = Readonly<{
    * be satisfied, takes precedence.
    */
   'ruleHints'?: Readonly<Record<string, string>>;
+  /**
+   * Rules this host does not let the researcher change, by rule key, each
+   * with the sentence saying why. The row shows the rule's state as the map
+   * holds it, its switch locked either way, and the sentence beneath it in
+   * place of any other guidance.
+   *
+   * For a rule the host's own interface settles on its own: the rule belongs
+   * to the attribute, and may still apply where another surface asks for it.
+   */
+  'unavailableRules'?: Readonly<Record<string, string>>;
 }>;
 
 const messages = defineMessages({
@@ -234,6 +244,7 @@ export default function VariableValidationEditor({
   'aria-describedby': fieldDescribedBy,
   stageRendering,
   ruleHints,
+  unavailableRules,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
@@ -495,6 +506,8 @@ export default function VariableValidationEditor({
     ruleKey: string,
     isUnavailable: boolean,
   ): string | undefined => {
+    const hostReason = unavailableRules?.[ruleKey];
+    if (hostReason !== undefined) return hostReason;
     if (isUnavailable) {
       return candidateIds.length === 0
         ? intl.formatMessage(messages.noOtherAttributeOfThisType)
@@ -565,9 +578,10 @@ export default function VariableValidationEditor({
             {group.rules.map((rule) => {
               const isOn = holdsRule(value, rule.value);
               const isUnavailable =
-                !isOn &&
-                isValidationWithListValue(rule.value) &&
-                (legalTargets.get(rule.value)?.size ?? 0) === 0;
+                Object.hasOwn(unavailableRules ?? {}, rule.value) ||
+                (!isOn &&
+                  isValidationWithListValue(rule.value) &&
+                  (legalTargets.get(rule.value)?.size ?? 0) === 0);
 
               return (
                 <ValidationRule

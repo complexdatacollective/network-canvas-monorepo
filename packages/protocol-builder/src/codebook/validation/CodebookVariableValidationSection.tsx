@@ -54,6 +54,11 @@ export type CodebookVariableValidationSectionProps = Readonly<{
    * comparison its own controls make satisfiable is blocked.
    */
   stageRendering?: StageRendering;
+  /**
+   * Rules the mounting stage settles on its own, each with why — see
+   * `VariableValidationEditor`'s `unavailableRules`.
+   */
+  unavailableRules?: Readonly<Record<string, MessageDescriptor>>;
 }>;
 
 /**
@@ -80,6 +85,7 @@ export default function CodebookVariableValidationSection({
   description,
   disabled = false,
   stageRendering,
+  unavailableRules,
 }: CodebookVariableValidationSectionProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
@@ -111,6 +117,16 @@ export default function CodebookVariableValidationSection({
       )}
       disabled={disabled || readOnly}
       {...(stageRendering === undefined ? {} : { stageRendering })}
+      {...(unavailableRules === undefined
+        ? {}
+        : {
+            unavailableRules: Object.fromEntries(
+              Object.entries(unavailableRules).map(([ruleKey, reason]) => [
+                ruleKey,
+                intl.formatMessage(reason),
+              ]),
+            ),
+          })}
     />
   );
 }
@@ -193,6 +209,7 @@ function VariableValidationSection({
   description,
   disabled,
   stageRendering,
+  unavailableRules,
 }: Readonly<{
   subject: CodebookSubject;
   variableId: string;
@@ -201,6 +218,7 @@ function VariableValidationSection({
   description: string;
   disabled: boolean;
   stageRendering?: StageRendering;
+  unavailableRules?: Readonly<Record<string, string>>;
 }>) {
   const intl = useAppIntl();
   const write = useCodebookSectionWrite();
@@ -439,6 +457,17 @@ function VariableValidationSection({
           setDraft({});
           return true;
         }
+        // A rule the stage settles on its own is not this switch's to take
+        // off either: the rest go, and the panel stays open over it.
+        const locked = Object.keys(draft).filter((ruleKey) =>
+          Object.hasOwn(unavailableRules ?? {}, ruleKey),
+        );
+        if (locked.length > 0) {
+          const kept: ValidationMap = {};
+          for (const ruleKey of locked) kept[ruleKey] = draft[ruleKey] ?? null;
+          handleChange(kept);
+          return false;
+        }
         queued.current = {};
         return await commit({ kind: 'clear' });
       }}
@@ -462,6 +491,7 @@ function VariableValidationSection({
         onChange={handleChange}
         readOnly={disabled}
         {...(stageRendering === undefined ? {} : { stageRendering })}
+        {...(unavailableRules === undefined ? {} : { unavailableRules })}
       />
     </Section>
   );
