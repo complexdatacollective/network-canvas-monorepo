@@ -1,4 +1,6 @@
 import type {
+  FinishMode,
+  FinishOutcome,
   Item,
   Panel,
   StageSubject,
@@ -27,6 +29,8 @@ type QualifierStageFields = {
   type?: StageType;
   panels?: PanelQualifierInput[];
   items?: Item[];
+  mode?: FinishMode;
+  outcome?: FinishOutcome;
 };
 
 /**
@@ -133,6 +137,34 @@ function resolveInformationQualifier(
   return buildListQualifier(mediaLabels, { summaryNoun: 'Media' });
 }
 
+const FINISH_OUTCOME_LABELS: Record<FinishOutcome, string> = {
+  completed: 'Completed',
+  ineligible: 'Ineligible',
+  terminated: 'Ended Early',
+};
+
+/**
+ * A finish stage is told apart by how the interview ended there, and then by
+ * whether it ends without asking: a protocol may end in several, and the
+ * outcome is what distinguishes them. Confirmation, the usual mode, goes
+ * unsaid.
+ */
+function resolveFinishQualifier(
+  outcome: FinishOutcome | undefined,
+  mode: FinishMode | undefined,
+): Qualifier | null {
+  const outcomeLabel = outcome ? FINISH_OUTCOME_LABELS[outcome] : undefined;
+  const parts = [
+    outcomeLabel,
+    mode === 'automatic' ? 'Automatic' : undefined,
+  ].filter((part): part is string => Boolean(part));
+  if (parts.length === 0) {
+    return null;
+  }
+  const full = `(${parts.join(', ')})`;
+  return { full, summary: outcomeLabel ? `(${outcomeLabel})` : full };
+}
+
 export function resolveStageQualifier(
   stage: QualifierStageFields,
   resolvers: QualifierResolvers,
@@ -146,6 +178,8 @@ export function resolveStageQualifier(
         stage.items,
         resolvers.resolveAssetType,
       );
+    case 'FinishSession':
+      return resolveFinishQualifier(stage.outcome, stage.mode);
     default:
       return null;
   }
