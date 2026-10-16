@@ -828,6 +828,64 @@ describe("Shell participant's language choice", () => {
     }
   });
 
+  it('opens with the protocol in the language on screen when the browser language cannot load', async () => {
+    const { load } = interviewCatalogSource;
+    const failing = (locale: string) =>
+      locale === 'nl' ? Promise.reject(new Error('offline')) : load(locale);
+    const loadSpy = vi
+      .spyOn(interviewCatalogSource, 'load')
+      .mockImplementation(failing);
+    const attemptSpy = vi
+      .spyOn(interviewCatalogSource, 'attempt')
+      .mockImplementation(failing);
+    try {
+      const base = makePayload('dutch-browser-session');
+      const withDutch = {
+        ...base,
+        session: {
+          ...base.session,
+          localeOptions: [...localization.locales, 'nl'].map((locale) =>
+            getLocaleMetadata(locale),
+          ),
+        },
+        protocol: {
+          ...base.protocol,
+          localization: {
+            ...localization,
+            locales: [...localization.locales, 'nl'],
+          },
+          stages: [
+            {
+              ...base.protocol.stages[0]!,
+              title: { ...titles, nl: 'Oorspronkelijke vraag' },
+            },
+          ],
+        },
+      } satisfies InterviewPayload;
+
+      await act(async () => {
+        render(
+          <Shell
+            {...handlers}
+            payload={withDutch}
+            requestedLocales={['nl']}
+            flags={{ isE2E: true }}
+            disableAnalytics
+          />,
+        );
+      });
+
+      await expectVisibleHeading(titles.en);
+      expect(
+        screen.queryByRole('heading', { name: 'Oorspronkelijke vraag' }),
+      ).toBeNull();
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+    } finally {
+      loadSpy.mockRestore();
+      attemptSpy.mockRestore();
+    }
+  });
+
   it('does not carry a choice into another interview', async () => {
     const first = renderShell();
     const user = userEvent.setup();
