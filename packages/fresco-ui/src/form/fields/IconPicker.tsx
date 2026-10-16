@@ -288,9 +288,7 @@ export default function IconPicker({
             </Combobox.Empty>
             <Combobox.List
               className="max-h-72 overflow-hidden has-data-empty:hidden"
-              render={
-                <ScrollArea viewportClassName="flex flex-col gap-1 px-2" />
-              }
+              render={<ScrollArea viewportClassName="flex flex-col px-2" />}
             >
               {visibleIcons.map((iconName) => (
                 <Combobox.Item

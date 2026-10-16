@@ -419,6 +419,11 @@ export const controlLabelVariants = cva({
 export const dropdownItemVariants = cva({
   base: cx(
     'flex cursor-pointer items-center gap-2 rounded-sm px-4 py-2',
+    // A small gap between adjacent items, so neighbouring selected or checked
+    // items, which share a solid background, still read as separate rows.
+    // Set on the item rather than its list so every menu, select and combobox
+    // gets the same spacing.
+    '[:is([role^=menuitem],[role=option])+&]:mt-1',
     'transition-colors outline-none select-none',
     // Hover / highlighted / open: subtle translucent background
     'not-data-selected:not-data-checked:hover:bg-surface-1 not-data-selected:not-data-checked:hover:text-surface-1-contrast',

@@ -343,9 +343,7 @@ function ComboboxField(props: ComboboxFieldProps) {
             </Combobox.Empty>
             <Combobox.List
               className="max-h-64 overflow-hidden has-data-empty:hidden"
-              render={
-                <ScrollArea viewportClassName="px-2 flex flex-col gap-1 " />
-              }
+              render={<ScrollArea viewportClassName="flex flex-col px-2" />}
             >
               {(option: ComboboxOption) => (
                 <Combobox.Item
