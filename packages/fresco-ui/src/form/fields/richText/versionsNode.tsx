@@ -149,9 +149,15 @@ const contentOf = (doc: JSONContent): JSONContent[] =>
 // line. The row itself draws nothing, so the labels line up in one column.
 const versionClasses = cx('contents');
 
-const versionLabelClasses = cx(
-  'text-xs font-semibold text-current/70 select-none',
-);
+// Rows line up at their tops rather than their baselines: a version's line is
+// an inline block, whose baseline is its last line, and WebKit sizes a row
+// aligned on that baseline as if the version were one line tall, so a version
+// that wraps grew up out of the box. The label keeps the version's font for
+// its own line, padded as the version's is, so its smaller words still sit on
+// the baseline of the version's first line.
+const versionLabelClasses = cx('py-1 select-none');
+
+const versionLabelTextClasses = cx('text-xs font-semibold text-current/70');
 
 // A version is one line, as tall as its words. Its paragraph is an inline
 // block rather than inline: ProseMirror ends a paragraph that is empty, or
@@ -293,7 +299,7 @@ function VersionEditor({
   return (
     <span className={versionClasses}>
       <span aria-hidden className={versionLabelClasses}>
-        {version.label}
+        <span className={versionLabelTextClasses}>{version.label}</span>
       </span>
       <EditorContent editor={editor} className={versionEditorClasses} />
     </span>
@@ -420,7 +426,7 @@ function VersionsView({
         // the consumer gives them.
         className={cx(
           expanded ? 'inline-grid' : 'hidden',
-          'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-baseline gap-x-3 gap-y-2 align-baseline',
+          'max-w-full grid-cols-[max-content_minmax(0,1fr)] items-start gap-x-3 gap-y-2 align-baseline',
           'border-primary/40 bg-primary/5 rounded-sm border border-dashed px-3 py-2',
         )}
       >
