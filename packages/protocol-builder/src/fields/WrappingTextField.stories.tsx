@@ -29,7 +29,7 @@ function Control({
         id="wrapping-text"
         name="message"
         value={value}
-        onChange={setValue}
+        onChange={(next) => setValue(next ?? '')}
         {...props}
       />
     </div>
