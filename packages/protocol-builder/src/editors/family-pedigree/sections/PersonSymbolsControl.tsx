@@ -4,14 +4,12 @@ import { useRef, useState } from 'react';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { codebookEditingMessages } from '../../../codebook/codebookMessages.ts';
 import {
@@ -122,6 +120,10 @@ export default function PersonSymbolsControl({
   const [appliedGenderTerms, setAppliedGenderTerms] = useState<unknown>();
   /** The answer being written, shown as chosen until the write settles. */
   const [pending, setPending] = useState<SymbolChoice | undefined>();
+  /**
+   * Why the last write was refused. A held section is a notice, not a fault,
+   * so it shows in the hint; anything else is the field's error.
+   */
   const [failure, setFailure] = useState<
     Readonly<{ message: string; held: boolean }> | undefined
   >(undefined);
@@ -309,41 +311,38 @@ export default function PersonSymbolsControl({
         </span>
       )}
       <span className="block">{intl.formatMessage(messages.symbolsHint)}</span>
+      {failure?.held === true && (
+        <span role="status" className="text-warning mt-1 block">
+          {formatMessageError(failure.message, intl) ?? failure.message}
+        </span>
+      )}
+      {busy && (
+        <span role="status" className="mt-1 block">
+          {intl.formatMessage(codebookEditingMessages.saving)}
+        </span>
+      )}
     </>
   );
 
   return (
-    <div className="flex flex-col gap-2">
-      <UnconnectedField
-        name="pedigree-symbols"
-        label={intl.formatMessage(messages.symbolsLabel)}
-        hint={hint}
-        component={RichSelectGroupField}
-        options={options}
-        value={pending ?? detected}
-        disabled={readOnly || busy}
-        onChange={(next) => {
-          // Choosing the answer already held writes nothing: the out-of-date
-          // note carries the one action that rewrites it.
-          if (!isSymbolChoice(next) || next === detected) return;
-          void choose(next);
-        }}
-      />
-      {failure !== undefined && (
-        <Alert
-          variant={failure.held ? 'warning' : 'destructive'}
-          density="compact"
-        >
-          <AlertDescription>
-            {formatMessageError(failure.message, intl) ?? failure.message}
-          </AlertDescription>
-        </Alert>
-      )}
-      {busy && (
-        <Paragraph role="status" margin="none" emphasis="muted">
-          {intl.formatMessage(codebookEditingMessages.saving)}
-        </Paragraph>
-      )}
-    </div>
+    <UnconnectedField
+      name="pedigree-symbols"
+      label={intl.formatMessage(messages.symbolsLabel)}
+      hint={hint}
+      component={RichSelectGroupField}
+      options={options}
+      value={pending ?? detected}
+      disabled={readOnly || busy}
+      errors={
+        failure === undefined || failure.held ? undefined : [failure.message]
+      }
+      showErrors={failure !== undefined && !failure.held}
+      onChange={(next) => {
+        // Choosing the answer already held writes nothing: the out-of-date
+        // note carries the one action that rewrites it.
+        if (!isSymbolChoice(next) || next === detected) return;
+        void choose(next);
+      }}
+    />
   );
 }
