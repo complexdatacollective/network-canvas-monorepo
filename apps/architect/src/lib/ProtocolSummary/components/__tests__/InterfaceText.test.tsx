@@ -75,6 +75,24 @@ describe('Protocol Summary interview text', () => {
     expect(rowFor('Continue button')).toHaveTextContent('Carry on');
   });
 
+  it('prints the screen error message formatted, as the interview shows it', () => {
+    renderWith(
+      protocolWith({
+        messages: {
+          stageError: {
+            en: 'Something went wrong. **Please** [contact us](https://example.com/help).',
+          },
+        },
+      }),
+      <InterfaceText />,
+    );
+
+    const row = rowFor('Screen error message');
+    expect(row).not.toHaveTextContent('**');
+    expect(within(row).getByText('Please').tagName).toBe('STRONG');
+    expect(within(row).getByText('contact us')).toBeVisible();
+  });
+
   it('prints a message with arguments as its versions, not the syntax it is stored in', () => {
     renderWith(withText, <InterfaceText />);
 

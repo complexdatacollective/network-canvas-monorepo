@@ -678,6 +678,34 @@ describe('TranslationTable', () => {
       expect(formattedCell('1', 'French')).toHaveAccessibleDescription('Lisez');
     });
 
+    it('edits the screen error message with links and lists, even while it is one line', async () => {
+      const { user } = renderTable();
+
+      // A one-line formatted text of a stage gets only bold and italic.
+      await user.click(formattedCell('1', 'French'));
+      const stageEditor = await formattedEditor('1', 'French');
+      const stageCell = stageEditor.closest('td');
+      expect(stageCell).not.toBeNull();
+      expect(
+        within(stageCell as HTMLElement).queryByRole('button', {
+          name: 'Add link',
+        }),
+      ).toBeNull();
+
+      const name = /^Interview text Messages › Screen error message English$/;
+      await user.click(screen.getByRole('button', { name }));
+      const editor = await screen.findByRole('textbox', { name });
+      const errorCell = editor.closest('td');
+      expect(errorCell).not.toBeNull();
+      const toolbar = within(errorCell as HTMLElement).getByRole('toolbar');
+      expect(
+        within(toolbar).getByRole('button', { name: 'Add link' }),
+      ).toBeInTheDocument();
+      expect(
+        within(toolbar).getByRole('button', { name: 'Bullet list' }),
+      ).toBeInTheDocument();
+    });
+
     it('says why the only translation cannot be cleared, and Save opens it again', async () => {
       const { store, user } = renderTable();
       const before = getProtocol(store.getState());

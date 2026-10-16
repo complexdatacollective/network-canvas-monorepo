@@ -2,10 +2,13 @@
 
 import React, { Component, type ReactNode } from 'react';
 
-import { AppMessage } from '@codaco/app-i18n/react';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import {
+  ALLOWED_MARKDOWN_SECTION_TAGS,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 
 import type { CaptureException } from '../analytics/tracker';
 import { useCaptureException } from '../analytics/useTrack';
@@ -23,6 +26,21 @@ function formatDebugInfo(error: Error): string {
     ? `${error.name}: ${error.message}`
     : error.name;
   return error.stack ? `${heading}\n\n${error.stack}` : heading;
+}
+
+// The protocol may word this message itself, as markdown, so a researcher can
+// format it and link to where participants can get help (see
+// `InterfaceTextOverlay`). The catalog's wording is plain text, which reads
+// the same rendered as markdown.
+function TaskErrorDescription() {
+  const intl = useAppIntl();
+  return (
+    <div>
+      <RenderMarkdown allowedElements={ALLOWED_MARKDOWN_SECTION_TAGS}>
+        {intl.formatMessage(messages.taskErrorDescription)}
+      </RenderMarkdown>
+    </div>
+  );
 }
 
 type StageErrorBoundaryInnerProps = {
@@ -64,9 +82,7 @@ class StageErrorBoundaryInner extends Component<
             <div className="flex items-center justify-center">
               <Icon name="error" />
             </div>
-            <Paragraph>
-              <AppMessage message={messages.taskErrorDescription} />
-            </Paragraph>
+            <TaskErrorDescription />
           </div>
           <div className="mt-4 flex justify-end">
             <CopyDebugInfoButton debugInfo={formatDebugInfo(error)} />

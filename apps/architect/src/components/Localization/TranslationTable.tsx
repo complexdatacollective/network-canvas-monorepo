@@ -308,7 +308,13 @@ const rowKey = (path: TranslationRow['path']) => JSON.stringify(path);
 // Set apart from the menu's other options, which a language tag could match.
 const languageOption = (locale: LocaleTag) => `language:${locale}`;
 
+/**
+ * Whether a text is edited as one line: one that has no line breaks in any
+ * language. Formatted interview text is the exception, since it is edited
+ * nowhere else: it always gets the whole editor, links and lists included.
+ */
 const isSingleLine = (row: TranslationRow) =>
+  !(row.format === 'markdown' && row.path[0] === 'interfaceText') &&
   Object.values(row.value).every(
     (message) => !messageText(message).includes('\n'),
   );
