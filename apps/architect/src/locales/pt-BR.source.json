@@ -18,7 +18,7 @@
   "architect.additional.protocolOpenDialogs.ifYouChooseToMigrateThe": "If you choose to migrate, the following actions will be automatically performed on your protocol. Read these notes carefully, as these actions may affect your data.",
   "architect.additional.protocolOpenDialogs.inOrderToOpenItYou": "In order to open it, you will need to install a version of Architect that supports schema version {value1}.",
   "architect.additional.protocolOpenDialogs.itCanBeAutomaticallyUpgradedTo": "It can be automatically upgraded to schema version {value1} using our migration feature.",
-  "architect.additional.protocolOpenDialogs.migratingToSchemaVersionWill": "Migrating to schema Version {version} will:",
+  "architect.additional.protocolOpenDialogs.migratingToSchemaVersionWill": "Changes in schema version {version}:",
   "architect.additional.protocolOpenDialogs.oK": "OK",
   "architect.additional.protocolOpenDialogs.pleaseSeeOurDocumentationOnProtocol": "Please see our <ExternalLink> documentation on protocol schemas </ExternalLink> to locate an appropriate version, and for further information on this topic.",
   "architect.additional.protocolOpenDialogs.protocolNotCompatibleWithCurrentVersion": "Protocol not compatible with current version",

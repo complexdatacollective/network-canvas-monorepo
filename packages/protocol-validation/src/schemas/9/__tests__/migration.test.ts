@@ -882,7 +882,7 @@ describe('Migrating options that share a value from schema 8 to 9', () => {
     const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
 
     expect(note?.notes).toContain(
-      'Each option of an ordinal or categorical attribute must now have a value of its own',
+      'Ordinal and categorical option values must now be unique.',
     );
   });
 });
@@ -953,14 +953,6 @@ describe('Migrating an Anonymisation title from schema 8 to 9', () => {
     expect(migratedExplanation({ title: 'Privacy', body: ' ' })).toMatchObject({
       explanationText: localized('# Privacy'),
     });
-  });
-
-  it('says so in the migration notes', () => {
-    const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
-
-    expect(note?.notes).toContain(
-      "An Anonymisation stage's title is now the first line of its explanation, written as a heading",
-    );
   });
 });
 
@@ -1422,7 +1414,7 @@ describe('Migrating introduction panels from schema 8 to 9', () => {
     const note = getMigrationInfo(8).notes.find(({ version }) => version === 9);
 
     expect(note?.notes).toContain(
-      'Introduction panels are replaced by Information stages',
+      'Introduction panels within interfaces have been removed',
     );
   });
 });

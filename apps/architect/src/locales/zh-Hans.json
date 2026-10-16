@@ -18,7 +18,7 @@
   "architect.additional.protocolOpenDialogs.ifYouChooseToMigrateThe": "如果选择迁移，系统将自动对协议执行以下操作。请仔细阅读这些说明，因为这些操作可能会影响您的数据。",
   "architect.additional.protocolOpenDialogs.inOrderToOpenItYou": "要打开此协议，您需要安装支持架构版本 {value1} 的 Architect 版本。",
   "architect.additional.protocolOpenDialogs.itCanBeAutomaticallyUpgradedTo": "可以使用迁移功能将其自动升级到架构版本 {value1}。",
-  "architect.additional.protocolOpenDialogs.migratingToSchemaVersionWill": "迁移到架构版本 {version} 将会：",
+  "architect.additional.protocolOpenDialogs.migratingToSchemaVersionWill": "架构版本 {version} 中的变更：",
   "architect.additional.protocolOpenDialogs.oK": "确定",
   "architect.additional.protocolOpenDialogs.pleaseSeeOurDocumentationOnProtocol": "请参阅我们<ExternalLink>关于协议架构的文档</ExternalLink>，以找到合适的版本并了解有关此主题的更多信息。",
   "architect.additional.protocolOpenDialogs.protocolNotCompatibleWithCurrentVersion": "协议与当前版本不兼容",
