@@ -53,6 +53,7 @@ const {
   anythingBut,
   categoricalColumns,
   edgeAnswerProblems,
+  edgeSetProblems,
   egoAnswerProblems,
   encryptedValueProblems,
   finishOutcomeProblems,
@@ -1181,6 +1182,32 @@ test('a flag nobody set may be blank or left out, but never true', () => {
     [
       'a_edgeList_family.csv\'s record for edge parent holds gestationalCarrier="true", expected anything but "true"',
       'a.graphml\'s record for edge parent holds gestationalCarrier="true", expected anything but "true"',
+    ],
+  );
+});
+
+test('the export holds exactly the stored relationships, once each', () => {
+  const rows = [
+    ['parent', 'linda', 'ego', 'true', 'false', 'true'],
+    ['other', 'robert', 'ego', 'true', 'false', 'false'],
+  ];
+  const files = [
+    { name: 'a_edgeList_family.csv', text: familyEdgeCsv(rows) },
+    { name: 'a.graphml', text: familyEdgeGraphml(rows) },
+  ];
+  assert.deepEqual(edgeSetProblems(files, ['parent', 'other']), []);
+  const extra = [...rows, ['spurious', 'linda', 'robert', 'false', 'true', '']];
+  assert.deepEqual(
+    edgeSetProblems(
+      [
+        { name: 'a_edgeList_family.csv', text: familyEdgeCsv(extra) },
+        { name: 'a.graphml', text: familyEdgeGraphml([...rows, rows[0]]) },
+      ],
+      ['parent', 'other'],
+    ),
+    [
+      'the exported csv files hold the relationships ["other","parent","spurious"], not ["other","parent"]',
+      'the exported graphml files hold the relationships ["other","parent","parent"], not ["other","parent"]',
     ],
   );
 });

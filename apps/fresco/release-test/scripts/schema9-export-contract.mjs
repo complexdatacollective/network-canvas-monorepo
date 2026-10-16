@@ -303,6 +303,39 @@ export function nodeAnswerProblems(files, expected) {
   });
 }
 
+const byText = (a, b) => String(a).localeCompare(String(b));
+
+/**
+ * What is wrong with the set of relationships the export holds: each format
+ * must carry every id in `expectedIds` once and no other, so a relationship
+ * the export (or the interview) made up, or a second copy of one, fails as
+ * surely as one dropped.
+ */
+export function edgeSetProblems(files, expectedIds) {
+  const held = { csv: [], graphml: [] };
+  for (const { name, text } of files) {
+    if (/\.csv$/i.test(name)) {
+      const lines = text.split(/\r?\n/).filter((line) => line !== '');
+      const header = splitCsvRow(lines[0] ?? '');
+      const uuid = header.indexOf(ncUUIDProperty);
+      if (uuid === -1 || !header.includes('networkCanvasSourceUUID')) continue;
+      for (const line of lines.slice(1)) held.csv.push(splitCsvRow(line)[uuid]);
+    } else if (/\.graphml$/i.test(name)) {
+      const keyNames = graphmlKeyNames(text);
+      for (const [, body] of text.matchAll(/<edge\b[^>]*>([\s\S]*?)<\/edge>/g))
+        held.graphml.push(graphmlFields(body, keyNames).get(ncUUIDProperty));
+    }
+  }
+  const expected = [...expectedIds].sort(byText);
+  return Object.entries(held).flatMap(([format, ids]) =>
+    JSON.stringify([...ids].sort(byText)) === JSON.stringify(expected)
+      ? []
+      : [
+          `the exported ${format} files hold the relationships ${JSON.stringify([...ids].sort(byText))}, not ${JSON.stringify(expected)}`,
+        ],
+  );
+}
+
 /**
  * Whether each relationship reached its own exported records: one row of an
  * edge list CSV and one GraphML <edge>, found by the edge's id. `expected`

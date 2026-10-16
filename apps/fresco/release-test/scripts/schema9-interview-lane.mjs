@@ -63,6 +63,7 @@ import {
   anythingBut,
   categoricalColumns,
   edgeAnswerProblems,
+  edgeSetProblems,
   egoAnswerProblems,
   encryptedValueProblems,
   finishOutcomeProblems,
@@ -684,6 +685,10 @@ try {
       );
       result.standInEdgeId =
         standInEdges.length === 1 ? standInEdges[0]._uid : undefined;
+      // The family holds those two relationships and no others.
+      const familyEdges = network.edges.filter(
+        (edge) => edge.type === RELATIVE.edge,
+      ).length;
       const stored = {
         genderIdentity: linda?.attributes?.[RELATIVE.genderIdentity] ?? null,
         sexAssignedAtBirth:
@@ -700,6 +705,10 @@ try {
             edge.attributes?.[RELATIVE.gestationalCarrier] ?? null,
           currentPartner: edge.attributes?.[RELATIVE.currentPartner] ?? null,
         })),
+        // Drawn opposite Linda: the other biological parent is male.
+        otherParentSex:
+          others[0]?.attributes?.[RELATIVE.sexAssignedAtBirth] ?? null,
+        familyEdges,
       };
       const answers = TRANSCRIPT.relativeAnswers;
       const expected = {
@@ -720,6 +729,8 @@ try {
             currentPartner: null,
           },
         ],
+        otherParentSex: ['male'],
+        familyEdges: 2,
       };
       return {
         pass:
@@ -875,8 +886,27 @@ try {
           `select codebook::jsonb from "Protocol" where id = ${sqlText(result.protocolId)};`,
         ) || '{}',
       );
+      // Every relationship the deployment stores, across both interviews:
+      // the export holds exactly these.
+      const storedEdges = JSON.parse(
+        psql(
+          `select coalesce(json_agg(e->>'_uid'), '[]') from "Interview", jsonb_array_elements(network::jsonb->'edges') e where "protocolId" = ${sqlText(result.protocolId)};`,
+        ) || '[]',
+      );
       const problems = [
+        ...edgeSetProblems(exported.files, storedEdges),
         ...nodeAnswerProblems(exported.files, {
+          // The participant's own family node, flagged as the participant,
+          // so the two relationships do not point at nobody.
+          [result.familyEgoNodeId ?? '(no stored participant node)']: {
+            isEgo: 'true',
+          },
+          [result.standInNodeId ?? '(no stored other parent)']: optionColumns(
+            codebook,
+            'node',
+            'sexAssignedAtBirth',
+            'male',
+          ),
           [result.relativeNodeId]: {
             ...optionColumns(
               codebook,
