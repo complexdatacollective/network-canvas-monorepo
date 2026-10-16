@@ -35,10 +35,12 @@ const stage = {
   type: 'EgoForm',
   label: { en: 'About you' },
   dynamicValues: { nickname: { path: 'ego.nickname' } },
-  form: {
+  introductionPanel: {
     title: {
       en: '{nickname, select, missing {About you} other {About {nickname}}}',
     },
+  },
+  form: {
     fields: [{ variable: 'nickname', prompt: { en: 'Your nickname' } }],
   },
 } as unknown as StageProps<'EgoForm'>['stage'];

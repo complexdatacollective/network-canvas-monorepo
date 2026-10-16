@@ -15,6 +15,7 @@ import {
 } from '../sections/__tests__/rowFixtures.tsx';
 import FormFieldsSection from '../sections/form-fields/FormFieldsSection.tsx';
 import InterviewerGuidanceSection from '../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
+import IntroductionSection from '../sections/introduction/IntroductionSection.tsx';
 import NetworkFilterSection from '../sections/network-filter/NetworkFilterSection.tsx';
 import PageContentSection from '../sections/page-content/PageContentSection.tsx';
 import PromptsSection from '../sections/PromptsSection.tsx';
@@ -99,6 +100,7 @@ describe('the stage sections under es, at rest', () => {
       locale: 'es',
       sections: (
         <>
+          <IntroductionSection />
           <SubjectSection entity="node" />
           <PromptsSection
             PromptEditor={TestPromptEditor}

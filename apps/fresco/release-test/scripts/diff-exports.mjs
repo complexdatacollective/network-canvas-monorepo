@@ -37,7 +37,8 @@
 // so it has nothing to reconcile.
 //
 // The upgrade also inserts stages — an Information stage in front of every
-// stage that had an introduction panel, and a finish stage at the end — and
+// stage other than an Ego Form that had an introduction panel, and a finish
+// stage at the end — and
 // moves every interview's resume position and stage records with the stages
 // they belong to. Given the migration lane's two readings of the database
 // (--migration <dir>, holding before.json and after.json from

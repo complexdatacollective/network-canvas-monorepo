@@ -532,8 +532,8 @@ const takenStageIds = (stages: unknown): Set<string> =>
   );
 
 /**
- * Schema 9 has one way to give a participant instructions: an Information
- * stage. The introduction panel that opened an Ego Form, Alter Form, Alter
+ * Schema 9 gives a participant instructions between tasks with an
+ * Information stage. The introduction panel that opened an Alter Form, Alter
  * Edge Form, Dyad Census or Tie-Strength Census becomes an Information stage
  * just before it, titled and named with the panel's title (the stages menu
  * shows participants the name) and showing its text. It takes the stage's
@@ -541,10 +541,8 @@ const takenStageIds = (stages: unknown): Set<string> =>
  * that jumped to the stage now jumps to its introduction, so the participant
  * still reads it first.
  *
- * An Ego Form showed its panel as the heading above its questions rather
- * than as a screen of its own, so the panel's title becomes the form's
- * title, which schema 9 shows there instead. Its text, if it has any, still
- * becomes an Information stage before the form.
+ * An Ego Form keeps its introduction panel: it shows as the heading and text
+ * above the questions rather than as a screen of its own.
  *
  * Schema 8 accepted a panel whose title or text was only spaces, and
  * published protocols use a body of spaces on purpose to show a panel with
@@ -571,32 +569,32 @@ const moveIntroductionPanelsToInformationStages = (
       withoutBlankText(panel.title) ??
       fallbackPanelTitle(stage.label, defaultLocale);
     const text = withoutBlankText(panel.text);
-    const isEgoForm = stage.type === 'EgoForm';
-    if (isEgoForm && isRecord(rest.form)) {
-      rest.form = { title: structuredClone(title), ...rest.form };
+    if (stage.type === 'EgoForm') {
+      stage.introductionPanel =
+        text === undefined ? { title } : { title, text };
+      stages.push(stage);
+      continue;
     }
-    if (!isEgoForm || text !== undefined) {
-      const id = freshStageId(
-        typeof stage.id === 'string' ? stage.id : 'stage',
-        '-introduction',
-        taken,
-      );
-      taken.add(id);
-      if (typeof stage.id === 'string') retargets.set(stage.id, id);
-      stages.push({
-        id,
-        type: 'Information',
-        label: structuredClone(title),
-        title,
-        items:
-          text === undefined
-            ? []
-            : [{ id: 'introduction-text', type: 'text', content: text }],
-        ...(stage.skipLogic !== undefined && {
-          skipLogic: structuredClone(stage.skipLogic),
-        }),
-      });
-    }
+    const id = freshStageId(
+      typeof stage.id === 'string' ? stage.id : 'stage',
+      '-introduction',
+      taken,
+    );
+    taken.add(id);
+    if (typeof stage.id === 'string') retargets.set(stage.id, id);
+    stages.push({
+      id,
+      type: 'Information',
+      label: structuredClone(title),
+      title,
+      items:
+        text === undefined
+          ? []
+          : [{ id: 'introduction-text', type: 'text', content: text }],
+      ...(stage.skipLogic !== undefined && {
+        skipLogic: structuredClone(stage.skipLogic),
+      }),
+    });
     stages.push(rest);
   }
 

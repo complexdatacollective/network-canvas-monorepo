@@ -42,6 +42,7 @@ import Filter from './Filter';
 import FinishScreen from './FinishScreen';
 import Form from './Form';
 import InterviewScript from './InterviewScript';
+import IntroductionPanel from './IntroductionPanel';
 import Items from './Items';
 import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
@@ -140,6 +141,12 @@ const StageContent = ({
   const filter = configuration.filter as Record<string, unknown> | undefined;
   const skipLogic = configuration.skipLogic as
     | Record<string, unknown>
+    | undefined;
+  const introductionPanel = configuration.introductionPanel as
+    | {
+        title: LocalizedString;
+        text?: LocalizedString;
+      }
     | undefined;
   const dataSource = configuration.dataSource as string | undefined;
   const panelTitle = configuration.panelTitle as LocalizedString | undefined;
@@ -392,6 +399,7 @@ const StageContent = ({
           <SkipLogic skipLogic={skipLogic} />
         </SectionFrame>
       )}
+      <IntroductionPanel introductionPanel={introductionPanel ?? null} />
       <MapOptions mapOptions={mapOptions ?? null} />
       <DataSource dataSource={dataSource ?? null} />
       <RosterPanel panelTitle={panelTitle ?? null} />

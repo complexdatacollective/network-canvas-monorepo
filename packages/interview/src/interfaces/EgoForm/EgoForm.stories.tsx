@@ -30,7 +30,7 @@ const FIELD_PRESETS: { component: ComponentType; prompt: string }[] = [
 
 type StoryArgs = {
   fieldCount: number;
-  formTitle: string;
+  introductionTitle: string;
 };
 
 function buildInterview(args: StoryArgs) {
@@ -43,7 +43,7 @@ function buildInterview(args: StoryArgs) {
 
   const stage = interview.addStage('EgoForm', {
     label: 'About You',
-    form: { title: args.formTitle, fields: [] },
+    introductionPanel: { title: args.introductionTitle },
   });
 
   const fieldCount = Math.min(args.fieldCount, FIELD_PRESETS.length);
@@ -91,14 +91,14 @@ const meta: Meta<StoryArgs> = {
       control: { type: 'range', min: 1, max: FIELD_PRESETS.length },
       description: 'Number of form fields',
     },
-    formTitle: {
+    introductionTitle: {
       control: 'text',
       description: 'Heading shown above the questions',
     },
   },
   args: {
     fieldCount: 4,
-    formTitle: 'About You',
+    introductionTitle: 'About You',
   },
 };
 
@@ -119,7 +119,7 @@ function buildValidatedInterview() {
 
   const stage = interview.addStage('EgoForm', {
     label: 'About You (Validated)',
-    form: { title: 'About You', fields: [] },
+    introductionPanel: { title: 'About You' },
   });
 
   stage.addFormField({

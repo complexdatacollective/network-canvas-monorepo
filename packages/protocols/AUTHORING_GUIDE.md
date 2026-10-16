@@ -99,7 +99,7 @@ Every participant-facing field holds an object keyed by those tags, one entry pe
   `escapeMessageText` from `@codaco/protocol-validation` converts plain text for you.
 
 Localized fields include: stage `label`; prompt `text`; form `title`; form field `prompt` and `hint`;
-panel `title`; Information `title` and item `content` /
+`introductionPanel.title` and `.text` (Ego Form only); panel `title`; Information `title` and item `content` /
 `description`; Narrative preset `label` and each `highlight[].label`; variable
 `options[].label` and scalar `minLabel` / `maxLabel`; TieStrengthCensus `negativeLabel`;
 CategoricalBin `otherVariablePrompt` and `otherOptionLabel`; Anonymisation
@@ -201,7 +201,7 @@ key); TieStrength `edgeVariable` (must be an **ordinal edge** variable); sociogr
 Required keys per stage type used by these templates:
 
 - **Information**: `items: [{ "id", "type":"text", "content":"…" }]` (use `text` items; `title?`).
-- **EgoForm**: `form:{title, fields:[{variable(ego key), prompt}]}` (`title` REQUIRED; it is the heading shown above the questions). No stage has an `introductionPanel` in schema 9: to explain a stage to the participant, put an **Information** stage just before it (give it the same `skipLogic` so the two are skipped together).
+- **EgoForm**: `introductionPanel:{title,text?}` (REQUIRED; shown above the questions, and `text` may be left out for a title-only panel) + `form:{fields:[{variable(ego key), prompt}]}` (no `title`). No other stage has an `introductionPanel` in schema 9: to explain another stage to the participant, put an **Information** stage just before it (give it the same `skipLogic` so the two are skipped together).
 - **NameGenerator**: `subject`(node) + `form:{fields:[{variable(node key), prompt}]}` (≥0 fields; include a name field) + `prompts:[{id,text, additionalAttributes?}]` (≥1) + `behaviours?:{minNodes?,maxNodes?}`.
 - **NameGeneratorQuickAdd**: `subject`(node) + `quickAdd:"<a text node-variable key>"` + `prompts:[{id,text}]` (≥1). (No `form`.)
 - **AlterForm**: `subject`(node) + `form:{fields:[{variable(node key),prompt}]}` + `filter?`.

@@ -71,34 +71,18 @@
       ]
     },
     {
-      "id": "stage-ego-introduction",
-      "type": "Information",
-      "label": {
-        "en-US": "Introduction"
-      },
-      "title": {
-        "en-US": "Introduction"
-      },
-      "items": [
-        {
-          "id": "introduction-text",
-          "type": "text",
-          "content": {
-            "en-US": "Tell us about **you**."
-          }
-        }
-      ]
-    },
-    {
       "id": "stage-ego",
       "type": "EgoForm",
       "label": {
         "en-US": "About you"
       },
-      "form": {
+      "introductionPanel": {
         "title": {
           "en-US": "Introduction"
         },
+        "text": { "en-US": "Tell us about **you**." }
+      },
+      "form": {
         "fields": [
           {
             "variable": "ego_name",

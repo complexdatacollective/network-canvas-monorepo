@@ -238,49 +238,40 @@ try {
   await nextStage();
 
   // The fixture is schema 8, and its Ego Form opens with an introduction
-  // panel. Imported into a schema 9 deployment, the panel's text becomes an
-  // Information stage of its own just before the form, and its title the
-  // form's title — so the participant reads the text on a screen with no
-  // questions on it, and then a form headed by the panel's title.
+  // panel. Imported into a schema 9 deployment, the Ego Form keeps that
+  // panel: the participant reads its title and text above the form's
+  // questions, on the same screen.
   checks.push(
-    await attempt(
-      'interview-introduction-panel-is-information-stage',
-      async () => {
-        const step = await settledStep();
-        const intro = await page
-          .getByText('Tell us about')
-          .first()
-          .isVisible()
-          .catch(() => false);
-        const emphasised = await page
-          .locator('main strong')
-          .allTextContents()
-          .catch(() => []);
-        const fields = await page.locator('[data-field-name]').count();
-        await nextStage();
-        const formStep = await settledStep();
-        const formTitle = await page
-          .getByRole('heading', { name: 'Introduction' })
-          .first()
-          .isVisible()
-          .catch(() => false);
-        const formField = await page
-          .locator('[data-field-name="ego_name"]')
-          .isVisible()
-          .catch(() => false);
-        return {
-          pass:
-            step === '1' &&
-            intro &&
-            emphasised.includes('you') &&
-            fields === 0 &&
-            formStep === '2' &&
-            formTitle &&
-            formField,
-          detail: `step ${step} showed the panel text: ${intro} (emphasis ${JSON.stringify(emphasised)}, ${fields} question(s)); step ${formStep} is the form headed "Introduction": ${formTitle && formField}`,
-        };
-      },
-    ),
+    await attempt('interview-ego-form-keeps-introduction-panel', async () => {
+      const step = await settledStep();
+      const title = await page
+        .getByRole('heading', { name: 'Introduction' })
+        .first()
+        .isVisible()
+        .catch(() => false);
+      const intro = await page
+        .getByText('Tell us about')
+        .first()
+        .isVisible()
+        .catch(() => false);
+      const emphasised = await page
+        .locator('main strong')
+        .allTextContents()
+        .catch(() => []);
+      const formField = await page
+        .locator('[data-field-name="ego_name"]')
+        .isVisible()
+        .catch(() => false);
+      return {
+        pass:
+          step === '1' &&
+          title &&
+          intro &&
+          emphasised.includes('you') &&
+          formField,
+        detail: `step ${step}: panel title "Introduction" shown ${title}, panel text ${intro} (emphasis ${JSON.stringify(emphasised)}), the form's first question ${formField}`,
+      };
+    }),
   );
 
   checks.push(

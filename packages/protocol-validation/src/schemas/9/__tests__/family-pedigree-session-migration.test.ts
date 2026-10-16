@@ -22,21 +22,7 @@ import ecoGeneticTemplate from './fixtures/eco-genetic-relationship-maps.schema-
 
 type Fields = Record<string, unknown>;
 
-// The template's two Ego Forms open on introduction panels with text, which
-// the migration turns into Information stages of their own before them. This
-// file follows the pedigree's introduction, so their text is taken out and an
-// Ego Form keeps its panel's title only as its form's title: the pedigree's
-// introduction is then the only stage the migration inserts before the
-// pedigree.
-const template = (): Fields => {
-  const protocol = structuredClone(ecoGeneticTemplate) as Fields;
-  for (const stage of protocol.stages as Fields[]) {
-    if (stage.type === 'EgoForm') {
-      Reflect.deleteProperty(stage.introductionPanel as Fields, 'text');
-    }
-  }
-  return protocol;
-};
+const template = () => structuredClone(ecoGeneticTemplate) as Fields;
 
 const withStages = (
   protocol: Fields,

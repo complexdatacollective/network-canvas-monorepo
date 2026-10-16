@@ -290,8 +290,11 @@ export const completeProtocol = () => ({
       id: 'egoForm',
       type: 'EgoForm',
       label: localized('About you'),
-      form: {
+      introductionPanel: {
         title: localized('About you title'),
+        text: localized('About you text'),
+      },
+      form: {
         fields: [
           {
             variable: 'egoName',

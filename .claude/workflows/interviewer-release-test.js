@@ -36,7 +36,7 @@
 // an exhaustive behaviour suite; per-feature coverage belongs to the app's
 // unit and Playwright e2e suites. Two journeys run committed walkers:
 // conduct-offline (scripts/release-test/interviewer-release-smoke-walker.mjs — the
-// fifteen-stage schema 9 release-smoke fixture protocol conducted ENTIRELY
+// fourteen-stage schema 9 release-smoke fixture protocol conducted ENTIRELY
 // OFFLINE;
 // interfaces are imported eagerly into one engine chunk, so broader
 // stage-type coverage adds no deployment risk coverage and belongs to the
@@ -568,7 +568,7 @@ past false failures came from):
 
 Give that Bash call an explicit timeout of ~6 minutes — the walker enforces
 its own 5-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png).
-It conducts the fifteen-stage, two-language (en-US, es) schema 9 Release
+It conducts the fourteen-stage, two-language (en-US, es) schema 9 Release
 Smoke fixture protocol (packages/protocols/e2e/release-smoke): one online
 visit installs the service worker and imports the protocol, the context
 then goes OFFLINE (with a positive control proving the flip is real), the
@@ -590,7 +590,7 @@ check's detail:
    steps "session-started", "stage-language" (choosing español switches
    the interview's language, interface controls and protocol text, and
    English switches them back), "stage-information" (today's date
-   inserted by a dynamic value), "stage-ego-introduction",
+   inserted by a dynamic value),
    "skip-to-second-finish" (declining consent skips straight to the
    second finish stage; Back returns to the form), "stage-egoform",
    "stage-anonymisation" (passphrase for the encrypted names),

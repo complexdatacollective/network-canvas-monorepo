@@ -490,7 +490,7 @@ function migrated() {
     verdict(
       'migration-introduction-panels-are-information-stages',
       introductionPanelProblems(before, after),
-      'every introduction panel is now an Information stage before its stage (an Ego Form panel titles its form), with its title, text and skip logic',
+      "every introduction panel is now an Information stage before its stage, with its title, text and skip logic, except an Ego Form's, which it keeps",
     ),
   );
   checks.push(
@@ -642,7 +642,7 @@ async function resume() {
           formStep === stepOf('about-you') &&
           value === TRANSCRIPT.egoName &&
           heading,
-        detail: `step ${peopleStep} lists ${JSON.stringify(options)}; step ${formStep}'s form, headed by its former panel's title (${heading}), holds "${value}"`,
+        detail: `step ${peopleStep} lists ${JSON.stringify(options)}; step ${formStep}'s form, under its introduction panel's title (${heading}), holds "${value}"`,
       };
     }),
   );
