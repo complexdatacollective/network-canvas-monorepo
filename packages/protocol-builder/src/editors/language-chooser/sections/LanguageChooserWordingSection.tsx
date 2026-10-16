@@ -1,0 +1,45 @@
+import { useAppIntl } from '@codaco/app-i18n/react';
+
+import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+import { WordingRow, type WordingSetting } from '../../../form/WordingRow.tsx';
+import BuilderSection from '../../../sections/BuilderSection.tsx';
+import {
+  startingWording,
+  useSuppliedStageWording,
+} from '../../../sections/supplied-wording/suppliedStageWording.ts';
+import { languageChooserMessages as messages } from './languageChooserMessages.ts';
+
+const HEADING: WordingSetting = {
+  path: 'title',
+  label: messages.headingLabel,
+  hint: messages.headingHint,
+};
+
+/**
+ * The heading over the languages. It starts with Network Canvas's wording,
+ * which the participant reads in the language the interview is shown in, so
+ * it changes as they choose.
+ */
+export default function LanguageChooserWordingSection() {
+  const intl = useAppIntl();
+  const { committedFields } = useStageEditorForm();
+  const supplied = useSuppliedStageWording('LanguageChooser');
+
+  return (
+    <BuilderSection
+      title={intl.formatMessage(messages.wordingTitle)}
+      description={intl.formatMessage(messages.wordingDescription)}
+    >
+      {supplied !== undefined && (
+        <WordingRow
+          setting={HEADING}
+          initialValue={startingWording(
+            committedFields,
+            HEADING.path,
+            supplied,
+          )}
+        />
+      )}
+    </BuilderSection>
+  );
+}

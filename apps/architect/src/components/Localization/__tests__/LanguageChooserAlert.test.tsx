@@ -30,6 +30,7 @@ const chooser = {
   id: 'language',
   type: 'LanguageChooser' as const,
   label: { en: 'Language', fr: 'Langue' },
+  title: { en: 'Choose a language', fr: 'Choisissez une langue' },
 };
 
 const protocol = (

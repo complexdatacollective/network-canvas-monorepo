@@ -524,7 +524,12 @@ function chooserProtocol(): CurrentProtocol {
     ...emptyProtocol(),
     localization: { defaultLocale: 'en', locales: ['en', 'fr', 'es'] },
     stages: [
-      { id: 'choose-language', type: 'LanguageChooser', label: CHOOSER_LABEL },
+      {
+        id: 'choose-language',
+        type: 'LanguageChooser',
+        label: CHOOSER_LABEL,
+        title: CHOOSER_LABEL,
+      },
       ...emptyProtocol().stages,
     ],
   });

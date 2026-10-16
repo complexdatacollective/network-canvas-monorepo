@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -54,7 +55,11 @@ const ENGLISH_AND_FRENCH: ProtocolLocalization = {
 const openStage = (fields: SectionDoc = {}) => ({
   stage: {
     type: 'LanguageChooser' as const,
-    fields: { label: { [FIXTURE_LANGUAGE]: 'Choose a language' }, ...fields },
+    fields: {
+      label: { [FIXTURE_LANGUAGE]: 'Language' },
+      title: { [FIXTURE_LANGUAGE]: 'Choose a language' },
+      ...fields,
+    },
   },
   editor: mountedAs(languageChooserStageEditor.LanguageChooser),
 });
@@ -107,7 +112,44 @@ describe('the editor for the stage where a participant chooses a language', () =
     await harness.roundTrip();
   });
 
-  it('saves a new stage with nothing but the name it proposes', async () => {
+  it('starts a new stage with the heading Network Canvas supplies, in each language it has', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'LanguageChooser', position: 0 },
+      editor: mountedAs(languageChooserStageEditor.LanguageChooser),
+      localization: ENGLISH_AND_FRENCH,
+    });
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument).toMatchObject({
+      title: {
+        [FIXTURE_LANGUAGE]: 'Choose a language',
+        fr: 'Choisissez une langue',
+      },
+    });
+  });
+
+  it('saves the heading the researcher writes', async () => {
+    const harness = renderStageEditor(openStage());
+    const user = userEvent.setup();
+    // Editable once the editing language is known.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Heading' }),
+      ).not.toHaveAttribute('readonly'),
+    );
+    const heading = screen.getByRole('textbox', { name: 'Heading' });
+    expect(heading).toHaveValue('Choose a language');
+    await user.clear(heading);
+    await user.type(heading, 'Pick the language you prefer');
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument).toMatchObject({
+      title: { [FIXTURE_LANGUAGE]: 'Pick the language you prefer' },
+    });
+  });
+
+  it('saves a new stage with nothing but the name it proposes and its heading', async () => {
     const harness = renderStageEditor({
       create: { type: 'LanguageChooser', position: 0 },
       editor: mountedAs(languageChooserStageEditor.LanguageChooser),
@@ -121,6 +163,7 @@ describe('the editor for the stage where a participant chooses a language', () =
       id: expect.any(String),
       type: 'LanguageChooser',
       label: { [FIXTURE_LANGUAGE]: escapeMessageText(proposed) },
+      title: { [FIXTURE_LANGUAGE]: 'Choose a language' },
     });
   });
 });

@@ -12,6 +12,7 @@ import { censusMessages } from '../editors/dyad-census/sections/censusMessages.t
 import { familyPedigreeMessages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
 import { finishSessionMessages } from '../editors/finish-session/sections/finishSessionMessages.ts';
 import { geospatialWordingMessages } from '../editors/geospatial/sections/geospatialWording.tsx';
+import { languageChooserMessages } from '../editors/language-chooser/sections/languageChooserMessages.ts';
 import { cardDisplayMessages } from '../editors/name-generator-roster/sections/CardDisplaySection.tsx';
 import { sortOptionsMessages } from '../editors/name-generator-roster/sections/SortOptionsSection.tsx';
 import { narrativePedigreeMessages } from '../editors/narrative-pedigree/sections/narrativePedigreeMessages.ts';
@@ -319,6 +320,10 @@ const NAME_GENERATOR_WORDING: Step = [
   words(nameGeneratorWordingMessages.title),
 ];
 const GEOSPATIAL_WORDING: Step = [0, words(geospatialWordingMessages.title)];
+const LANGUAGE_CHOOSER_WORDING: Step = [
+  0,
+  words(languageChooserMessages.wordingTitle),
+];
 
 /** The limit and panel words a name generator stage holds, by setting. */
 const NAME_GENERATOR_LIMIT_RULES: readonly Rule[] = [
@@ -1195,7 +1200,12 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
     rule('title', PAGE_CONTENT, [1, words(pageContentMessages.headingLabel)]),
     ...contentItemRules(PAGE_CONTENT, 'items'),
   ],
-  LanguageChooser: [],
+  LanguageChooser: [
+    rule('title', LANGUAGE_CHOOSER_WORDING, [
+      1,
+      words(languageChooserMessages.headingLabel),
+    ]),
+  ],
   FinishSession: [
     rule('content', FINISH_SCREEN, [
       1,

@@ -146,7 +146,8 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   FinishSession: [],
   Geospatial: ['mapOptions', 'prompts', 'subject'],
   Information: ['items', 'title'],
-  // Its choices are the protocol's own languages, so a name is all it needs.
+  // Its choices are the protocol's own languages and its heading is supplied,
+  // so a name is all it needs.
   LanguageChooser: [],
   NameGenerator: ['form', 'prompts', 'subject'],
   NameGeneratorQuickAdd: ['prompts', 'quickAdd', 'subject'],
@@ -199,7 +200,8 @@ describe('a new stage given nothing but a name', () => {
    * where Network Canvas supplies the wording of a setting, that wording:
    * nothing else seeds the form, so what a researcher's new stage holds is
    * what the template map says, plus a roster's panel title, a family
-   * pedigree's name question and a finish screen's finishing words. A
+   * pedigree's name question, a language chooser's heading and a finish
+   * screen's finishing words. A
    * pedigree's list wording arrives with its completeness requirement, which a
    * new stage does not have. The messages a stage shows a participant are
    * supplied too, where the stage's configuration needs them: a quick-add
@@ -232,6 +234,9 @@ describe('a new stage given nothing but a name', () => {
             },
             outsideAreasLabel: { en: 'Outside Selectable Areas' },
           }
+        : {}),
+      ...(type === 'LanguageChooser'
+        ? { title: { en: 'Choose a language' } }
         : {}),
       ...(type === 'FinishSession'
         ? {

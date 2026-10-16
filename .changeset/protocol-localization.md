@@ -18,10 +18,12 @@ How an interview picks its language:
   again each time the interview opens, until the participant chooses a
   language.
 - A new Language Chooser stage lets participants choose one of the protocol's
-  languages. It is headed "Choose a language", in the interview's current
-  language. The languages are listed alphabetically by their own names, sorted
-  for the language of the interview's own buttons and messages, and the order
-  they are stored in has no effect. The current one is selected, and choosing
+  languages. Its heading is the stage's own text, which starts as "Choose a
+  language" and can be reworded and translated in Architect; participants read
+  it in the interview's current language. The languages are listed
+  alphabetically by their own names, sorted for the language of the
+  interview's own buttons and messages, and the order they are stored in has
+  no effect. The current one is selected, and choosing
   another switches the whole interview at once. The choice is saved with the
   interview. The stage can appear anywhere, more than once.
 - Buttons, menus and other text that Network Canvas provides follow the

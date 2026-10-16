@@ -30,8 +30,6 @@ import {
   sortByLanguageName,
 } from '@codaco/protocol-validation';
 import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
-import { useAppDispatch } from '~/ducks/hooks';
-import { setProtocolDefaultLocale } from '~/ducks/modules/activeProtocol';
 import { promptDiscardDraft } from '~/hooks/useProtocolNavGuard';
 import {
   getLocalizationCoverage,
@@ -200,15 +198,19 @@ type ProtocolLanguagesProps = {
  */
 export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
   const intl = useAppIntl();
-  const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const [, setLocation] = useLocation();
   const protocol = useSelector(getProtocol);
   const coverage = useSelector(getLocalizationCoverage);
   const languageName = useLanguageName();
   const addButtonRef = useRef<HTMLButtonElement>(null);
-  const { addLanguages, changeLanguage, removeLanguage, removalImpact } =
-    useLanguageActions(addButtonRef, draft);
+  const {
+    addLanguages,
+    changeLanguage,
+    removeLanguage,
+    removalImpact,
+    setDefaultLanguage,
+  } = useLanguageActions(addButtonRef, draft);
   const locales = protocol?.localization.locales ?? EMPTY_LOCALES;
   const sortedLocales = useMemo(
     () => sortByLanguageName(locales, languageName, intl.locale),
@@ -263,7 +265,7 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
           value={protocol.localization.defaultLocale}
           onChange={(locale) => {
             if (typeof locale === 'string') {
-              dispatch(setProtocolDefaultLocale({ locale }));
+              setDefaultLanguage(locale);
             }
           }}
         />

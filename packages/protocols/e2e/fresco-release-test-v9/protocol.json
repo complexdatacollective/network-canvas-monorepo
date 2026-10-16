@@ -346,6 +346,10 @@
       "label": {
         "en": "Language",
         "es": "Idioma"
+      },
+      "title": {
+        "en": "Choose a language",
+        "es": "Elige un idioma"
       }
     },
     {

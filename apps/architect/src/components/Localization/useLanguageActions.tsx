@@ -8,7 +8,9 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import {
   collectLocalizedStrings,
+  type LanguageChange,
   type LocaleTag,
+  type LocalizationDeclaration,
   type LocalizedStringHit,
 } from '@codaco/protocol-validation';
 import { useAppDispatch, useAppStore } from '~/ducks/hooks';
@@ -16,12 +18,14 @@ import {
   addProtocolLocales,
   changeProtocolLocale,
   removeProtocolLocale,
+  setProtocolDefaultLocale,
 } from '~/ducks/modules/activeProtocol';
 import {
   getLocaleRemovalImpact,
   type LocaleRemovalImpact,
   type LocalizedStringRewrite,
   movedLocale,
+  unchangedText,
   withoutLocale,
 } from '~/ducks/modules/protocol/localeOperations';
 import { getProtocol } from '~/selectors/protocol';
@@ -125,8 +129,12 @@ const NO_TEXTS: readonly LocalizedStringHit[] = [];
 export type OpenStageDraft = Readonly<{
   /** The stage's texts as the editor holds them, at the stage's own paths. */
   texts: readonly LocalizedStringHit[];
-  /** Applies a change the protocol has just taken to the open stage. */
-  rewrite: (rewrite: LocalizedStringRewrite) => void;
+  /**
+   * Applies a change the protocol has just taken to the open stage: `rewrite`
+   * moves or removes its translations, and `change` is the change to the
+   * protocol's languages, which the wording Network Canvas supplies follows.
+   */
+  rewrite: (rewrite: LocalizedStringRewrite, change: LanguageChange) => void;
 }>;
 
 /**
@@ -176,6 +184,30 @@ export const useLanguageActions = (
     [store],
   );
 
+  const localizationNow = useCallback(
+    () => getProtocol(store.getState())?.localization,
+    [store],
+  );
+
+  /**
+   * Carries a change the protocol has just taken into the open stage, as
+   * `before` and the protocol's languages now describe it. A refused change
+   * leaves the declaration as it was, and the stage untouched.
+   */
+  const followInDraft = useCallback(
+    (
+      before: LocalizationDeclaration | undefined,
+      rewrite: LocalizedStringRewrite,
+      renamed?: Readonly<Record<LocaleTag, LocaleTag>>,
+    ) => {
+      const after = localizationNow();
+      if (before === undefined || after === undefined || after === before)
+        return;
+      rewriteDraft?.(rewrite, { before, after, renamed });
+    },
+    [localizationNow, rewriteDraft],
+  );
+
   const focusAfter = useCallback(
     (returnFocus?: ReturnFocus) => () => {
       const target = returnFocus?.();
@@ -210,8 +242,30 @@ export const useLanguageActions = (
     });
     if (!values) return;
     const locales = chosenLanguages(values);
-    if (locales.length > 0) dispatch(addProtocolLocales({ locales }));
-  }, [availableChoices, declared, dispatch, finalFocus, intl, openDialog]);
+    if (locales.length === 0) return;
+    const before = localizationNow();
+    dispatch(addProtocolLocales({ locales }));
+    followInDraft(before, unchangedText);
+  }, [
+    availableChoices,
+    declared,
+    dispatch,
+    finalFocus,
+    followInDraft,
+    intl,
+    localizationNow,
+    openDialog,
+  ]);
+
+  /** Makes `locale` the language participants start in. */
+  const setDefaultLanguage = useCallback(
+    (locale: LocaleTag) => {
+      const before = localizationNow();
+      dispatch(setProtocolDefaultLocale({ locale }));
+      followInDraft(before, unchangedText);
+    },
+    [dispatch, followInDraft, localizationNow],
+  );
 
   /**
    * Records the text of `from` as another language: every translation, the
@@ -246,12 +300,15 @@ export const useLanguageActions = (
       if (!values) return;
       const tag = values.language;
       if (typeof tag !== 'string') return;
-      const before = declaredNow() ?? [];
+      const before = localizationNow();
       dispatch(changeProtocolLocale({ from, to: tag }));
       // The language as the protocol now declares it, which is the tag after
       // canonicalisation, and nothing at all if the change was refused.
-      const to = declaredNow()?.find((locale) => !before.includes(locale));
-      if (to !== undefined) rewriteDraft?.(movedLocale(from, to));
+      const to = declaredNow()?.find(
+        (locale) => !(before?.locales ?? []).includes(locale),
+      );
+      if (to !== undefined)
+        followInDraft(before, movedLocale(from, to), { [from]: to });
     },
     [
       availableChoices,
@@ -259,10 +316,11 @@ export const useLanguageActions = (
       declaredNow,
       dispatch,
       focusAfter,
+      followInDraft,
       intl,
       languageName,
+      localizationNow,
       openDialog,
-      rewriteDraft,
     ],
   );
 
@@ -281,10 +339,11 @@ export const useLanguageActions = (
         intent: 'destructive',
         finalFocus: focusAfter(returnFocus),
         onConfirm: () => {
+          const before = localizationNow();
           dispatch(removeProtocolLocale({ locale }));
           const after = declaredNow();
           if (after !== undefined && !after.includes(locale)) {
-            rewriteDraft?.(withoutLocale(locale));
+            followInDraft(before, withoutLocale(locale));
           }
         },
       });
@@ -293,13 +352,21 @@ export const useLanguageActions = (
       confirm,
       declaredNow,
       dispatch,
+      focusAfter,
+      followInDraft,
       intl,
       languageName,
+      localizationNow,
       protocol,
       removalImpact,
-      rewriteDraft,
     ],
   );
 
-  return { addLanguages, changeLanguage, removeLanguage, removalImpact };
+  return {
+    addLanguages,
+    changeLanguage,
+    removeLanguage,
+    removalImpact,
+    setDefaultLanguage,
+  };
 };

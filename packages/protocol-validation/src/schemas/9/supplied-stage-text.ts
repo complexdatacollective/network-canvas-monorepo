@@ -15,6 +15,7 @@ import { BIN_SUPPLIED_TEXT } from './stage-wording/bins.ts';
 import { FAMILY_PEDIGREE_SUPPLIED_TEXT } from './stage-wording/family-pedigree.ts';
 import { FINISH_SESSION_SUPPLIED_TEXT } from './stage-wording/finish-session.ts';
 import { GEOSPATIAL_SUPPLIED_TEXT } from './stage-wording/geospatial.ts';
+import { LANGUAGE_CHOOSER_SUPPLIED_TEXT } from './stage-wording/language-chooser.ts';
 import { NAME_GENERATOR_QUICK_ADD_SUPPLIED_TEXT } from './stage-wording/name-generator-quick-add.ts';
 import { NAME_GENERATOR_ROSTER_SUPPLIED_TEXT } from './stage-wording/name-generator-roster.ts';
 import { NAME_GENERATOR_SUPPLIED_TEXT } from './stage-wording/name-generator.ts';
@@ -43,6 +44,7 @@ const SUPPLIED_STAGE_TEXT: Readonly<
   FamilyPedigree: FAMILY_PEDIGREE_SUPPLIED_TEXT,
   FinishSession: FINISH_SESSION_SUPPLIED_TEXT,
   Geospatial: GEOSPATIAL_SUPPLIED_TEXT,
+  LanguageChooser: LANGUAGE_CHOOSER_SUPPLIED_TEXT,
   NameGenerator: NAME_GENERATOR_SUPPLIED_TEXT,
   NameGeneratorQuickAdd: NAME_GENERATOR_QUICK_ADD_SUPPLIED_TEXT,
   NameGeneratorRoster: NAME_GENERATOR_ROSTER_SUPPLIED_TEXT,

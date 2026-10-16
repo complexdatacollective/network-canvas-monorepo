@@ -155,6 +155,9 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
     site(stage(index, 'label'), 'plain', false, index === FINISH_STAGE_INDEX),
   ),
 
+  // The Language Chooser's heading, which Network Canvas supplies.
+  site(stage(0, 'title'), 'plain'),
+
   site(stage(1, 'title'), 'plain'),
   site(stage(1, 'items', 0, 'content'), 'markdown'),
   site(stage(1, 'items', 1, 'description'), 'plain'),

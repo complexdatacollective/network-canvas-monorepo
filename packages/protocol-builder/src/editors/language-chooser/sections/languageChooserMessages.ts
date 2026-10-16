@@ -9,6 +9,32 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  * most of what this file says explains where they come from.
  */
 export const languageChooserMessages = defineMessages({
+  wordingTitle: {
+    id: 'protocolBuilder.languageChooser.wordingTitle',
+    defaultMessage: 'Participant wording',
+    description:
+      'Heading of the section holding the words a participant reads on the stage where they choose the language of their interview.',
+  },
+  wordingDescription: {
+    id: 'protocolBuilder.languageChooser.wordingDescription',
+    defaultMessage:
+      'This starts with wording Network Canvas supplies, which you can change.',
+    description:
+      'Description of the wording section of the language-choosing stage. Its heading starts with wording Network Canvas supplies in each of the protocol’s languages that it has.',
+  },
+  headingLabel: {
+    id: 'protocolBuilder.languageChooser.headingLabel',
+    defaultMessage: 'Heading',
+    description:
+      'Label of the field holding the heading a participant reads above the languages they choose between.',
+  },
+  headingHint: {
+    id: 'protocolBuilder.languageChooser.headingHint',
+    defaultMessage:
+      'Shown above the list of languages. When a participant chooses a language, the heading is shown in that language.',
+    description:
+      'Guidance under the field holding the heading of the language-choosing stage. The heading is shown in the language the participant has chosen, so it changes to that language’s translation as soon as they choose.',
+  },
   languagesTitle: {
     id: 'protocolBuilder.languageChooser.languagesTitle',
     defaultMessage: 'Languages',
