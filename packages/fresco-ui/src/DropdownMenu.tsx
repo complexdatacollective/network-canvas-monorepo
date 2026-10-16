@@ -255,7 +255,7 @@ const DropdownMenuRadioItem = React.forwardRef<
         icon === undefined && 'data-unchecked:invisible',
       )}
     >
-      {icon ?? <CheckIcon />}
+      {icon === undefined ? <CheckIcon /> : icon}
     </Menu.RadioItemIndicator>
     {children}
   </Menu.RadioItem>
