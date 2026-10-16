@@ -54,6 +54,11 @@ export type CodebookVariableValidationSectionProps = Readonly<{
    * comparison its own controls make satisfiable is blocked.
    */
   stageRendering?: StageRendering;
+  /**
+   * Rules the mounting stage cannot let the researcher switch on, each with
+   * the sentence saying why (see `VariableValidationEditor`).
+   */
+  unavailableRules?: Readonly<Record<string, string>>;
 }>;
 
 /**
@@ -80,6 +85,7 @@ export default function CodebookVariableValidationSection({
   description,
   disabled = false,
   stageRendering,
+  unavailableRules,
 }: CodebookVariableValidationSectionProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
@@ -111,6 +117,7 @@ export default function CodebookVariableValidationSection({
       )}
       disabled={disabled || readOnly}
       {...(stageRendering === undefined ? {} : { stageRendering })}
+      {...(unavailableRules === undefined ? {} : { unavailableRules })}
     />
   );
 }
@@ -193,6 +200,7 @@ function VariableValidationSection({
   description,
   disabled,
   stageRendering,
+  unavailableRules,
 }: Readonly<{
   subject: CodebookSubject;
   variableId: string;
@@ -201,6 +209,7 @@ function VariableValidationSection({
   description: string;
   disabled: boolean;
   stageRendering?: StageRendering;
+  unavailableRules?: Readonly<Record<string, string>>;
 }>) {
   const intl = useAppIntl();
   const write = useCodebookSectionWrite();
@@ -462,6 +471,7 @@ function VariableValidationSection({
         onChange={handleChange}
         readOnly={disabled}
         {...(stageRendering === undefined ? {} : { stageRendering })}
+        {...(unavailableRules === undefined ? {} : { unavailableRules })}
       />
     </Section>
   );

@@ -178,6 +178,13 @@ export const familyPedigreeMessages = defineMessages({
       'Shown under the name box, for example to say that a nickname will do. Leave it empty to show nothing.',
     description: 'Guidance under the name-question guidance box.',
   },
+  nameRequiredUnavailable: {
+    id: 'protocolBuilder.pedigree.nameRequiredUnavailable',
+    defaultMessage:
+      'Not available for this stage. Every family member always has a name: the one the participant types, or a label generated from their relationship to the participant.',
+    description:
+      'Shown beneath the "required" validation rule of the family members’ name attribute, which the researcher cannot switch on in this stage. The interview gives every family member a name, so requiring one would never stop the participant. The participant is the person being interviewed.',
+  },
   nameCreateLabel: {
     id: 'protocolBuilder.pedigree.nameCreateLabel',
     defaultMessage: 'Create a new name attribute',

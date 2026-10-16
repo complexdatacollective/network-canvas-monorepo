@@ -140,6 +140,11 @@ export type SlotVariableFieldProps = Readonly<{
    */
   offerValidation?: boolean;
   /**
+   * Validation rules this slot cannot let the researcher switch on, each with
+   * the sentence saying why. Only read with `offerValidation`.
+   */
+  unavailableValidationRules?: Readonly<Record<string, string>>;
+  /**
    * This slot's stage manages the options of the attribute it binds (see
    * `StageManagedOptionsDescriptor`). Only one stage may, so an attribute
    * whose options another saved stage manages is ruled out of the picker and
@@ -176,6 +181,7 @@ export default function SlotVariableField({
   draftBoundElsewhere,
   draftSlotMap = NO_CLAIMS,
   offerValidation = false,
+  unavailableValidationRules,
   managesOptions = false,
 }: SlotVariableFieldProps) {
   const intl = useAppIntl();
@@ -437,6 +443,9 @@ export default function SlotVariableField({
         <CodebookVariableValidationSection
           subject={subject ?? undefined}
           variableId={currentValue}
+          {...(unavailableValidationRules === undefined
+            ? {}
+            : { unavailableRules: unavailableValidationRules })}
         />
       )}
     </>
