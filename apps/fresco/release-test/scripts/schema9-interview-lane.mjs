@@ -25,6 +25,12 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+// The interview's own encryption format, loaded from source, so Linda's
+// stored name is decrypted exactly as the interview would decrypt it.
+import {
+  decryptValue,
+  deriveInterviewKey,
+} from '../../../../packages/interview/src/interfaces/Anonymisation/encryptionFormat.ts';
 import {
   ncSourceUUID,
   ncTargetUUID,
@@ -606,19 +612,26 @@ try {
       );
       const linda = named.length === 1 ? named[0] : undefined;
       result.relativeNodeId = linda?._uid;
+      // Encrypted, and still hers: the stored value has to decrypt, with the
+      // passphrase this walk chose and bound to her node and the name
+      // variable, to the name the walk typed. Any ciphertext would pass a
+      // check that only looked for one.
       const value = linda?.attributes?.[RELATIVE.name];
-      const held =
-        linda !== undefined &&
-        typeof value !== 'string' &&
-        value !== undefined &&
-        value !== null &&
-        Object.hasOwn(linda._secureAttributes ?? {}, RELATIVE.name);
+      const iv = linda?._secureAttributes?.[RELATIVE.name]?.iv;
+      let decrypted = '<no ciphertext>';
+      if (Array.isArray(value) && Array.isArray(iv))
+        decrypted = await decryptValue(
+          await deriveInterviewKey(TRANSCRIPT.passphrase, result.interviewId),
+          { iv, data: value },
+          { nodeId: linda._uid, variableId: RELATIVE.name },
+        ).catch((error) => `<refused: ${error?.name ?? error}>`);
+      const held = decrypted === TRANSCRIPT.relative;
       // The ego's name is the positive control: a network that could not be
       // read at all would not hold the relative's name either.
       return {
         pass:
           stored.relative === 0 && stored.ego > 0 && generated.size > 0 && held,
-        detail: `"${TRANSCRIPT.relative}" in the stored network: ${stored.relative > 0}; the ego's unencrypted name found: ${stored.ego > 0}; relatives the stage labelled itself: ${generated.size}; relatives the participant named: ${named.length}${linda ? ` (node ${linda._uid}, name held encrypted: ${held})` : ''}`,
+        detail: `"${TRANSCRIPT.relative}" in the stored network: ${stored.relative > 0}; the ego's unencrypted name found: ${stored.ego > 0}; relatives the stage labelled itself: ${generated.size}; relatives the participant named: ${named.length}${linda ? ` (node ${linda._uid}, stored name decrypts to ${JSON.stringify(decrypted)})` : ''}`,
       };
     }),
   );
@@ -653,11 +666,35 @@ try {
           edge.to === result.familyEgoNodeId,
       );
       result.relativeEdgeId = edges.length === 1 ? edges[0]._uid : undefined;
+      // Adding Linda as a biological parent draws the other biological
+      // parent too: the one relative besides her and the participant, who
+      // has to be the participant's parent as well, not an orphan.
+      const others = network.nodes.filter(
+        (node) =>
+          node.type === RELATIVE.type &&
+          node._uid !== result.relativeNodeId &&
+          node._uid !== result.familyEgoNodeId,
+      );
+      result.standInNodeId = others.length === 1 ? others[0]._uid : undefined;
+      const standInEdges = network.edges.filter(
+        (edge) =>
+          edge.type === RELATIVE.edge &&
+          edge.from === result.standInNodeId &&
+          edge.to === result.familyEgoNodeId,
+      );
+      result.standInEdgeId =
+        standInEdges.length === 1 ? standInEdges[0]._uid : undefined;
       const stored = {
         genderIdentity: linda?.attributes?.[RELATIVE.genderIdentity] ?? null,
         sexAssignedAtBirth:
           linda?.attributes?.[RELATIVE.sexAssignedAtBirth] ?? null,
         parentRelationships: edges.map((edge) => ({
+          kind: edge.attributes?.[RELATIVE.kind] ?? null,
+          gestationalCarrier:
+            edge.attributes?.[RELATIVE.gestationalCarrier] ?? null,
+          currentPartner: edge.attributes?.[RELATIVE.currentPartner] ?? null,
+        })),
+        otherParent: standInEdges.map((edge) => ({
           kind: edge.attributes?.[RELATIVE.kind] ?? null,
           gestationalCarrier:
             edge.attributes?.[RELATIVE.gestationalCarrier] ?? null,
@@ -676,12 +713,19 @@ try {
             currentPartner: null,
           },
         ],
+        otherParent: [
+          {
+            kind: [answers.kind],
+            gestationalCarrier: false,
+            currentPartner: null,
+          },
+        ],
       };
       return {
         pass:
           egos.length === 1 &&
           JSON.stringify(stored) === JSON.stringify(expected),
-        detail: `${TRANSCRIPT.relative} (node ${result.relativeNodeId}) is stored with ${JSON.stringify(stored)} (expected ${JSON.stringify(expected)}); participants in the family: ${egos.length}`,
+        detail: `${TRANSCRIPT.relative} (node ${result.relativeNodeId}) is stored with ${JSON.stringify(stored)} (expected ${JSON.stringify(expected)}); participants in the family: ${egos.length}; other relatives: ${others.length}`,
       };
     }),
   );
@@ -719,9 +763,9 @@ try {
       let row = '';
       while (Date.now() < deadline) {
         row = psql(
-          `select coalesce("finishStageId", '') || '|' || coalesce("finishOutcome"::text, '') from "Interview" where id = ${sqlText(started.interviewId)};`,
+          `select coalesce("finishStageId", '') || '|' || coalesce("finishOutcome"::text, '') || '|' || ("finishTime" is not null) from "Interview" where id = ${sqlText(started.interviewId)};`,
         );
-        if (row !== '|') break;
+        if (!row.startsWith('||')) break;
         await declinePage.waitForTimeout(1000);
       }
       const back = await declinePage
@@ -730,8 +774,9 @@ try {
         .catch(() => false);
       await declinePage.close();
       return {
-        pass: shown && row === 'finish-declined|terminated' && !back,
-        detail: `declining consent showed the second finish stage: ${shown}; stored stage|outcome = ${row}; a way back offered: ${back}`,
+        // Finished, too: a finish time is what marks an interview complete.
+        pass: shown && row === 'finish-declined|terminated|true' && !back,
+        detail: `declining consent showed the second finish stage: ${shown}; stored stage|outcome|finished = ${row}; a way back offered: ${back}`,
       };
     }),
   );
@@ -855,13 +900,21 @@ try {
             gestationalCarrier: String(answers.gestationalCarrier),
             currentPartner: anythingBut('true'),
           },
+          [result.standInEdgeId ??
+          '(no stored relationship for the other parent)']: {
+            [ncSourceUUID]: result.standInNodeId,
+            [ncTargetUUID]: result.familyEgoNodeId,
+            ...optionColumns(codebook, 'edge', 'kind', answers.kind),
+            gestationalCarrier: 'false',
+            currentPartner: anythingBut('true'),
+          },
         }),
       ];
       return {
         pass: problems.length === 0,
         detail: problems.length
           ? problems.join('; ')
-          : `${TRANSCRIPT.relative}'s one CSV row and one GraphML node hold her gender identity and sex at birth, and her relationship to the participant has one edge list row and one GraphML edge holding its ends, its kind and its carrier flag`,
+          : `${TRANSCRIPT.relative}'s one CSV row and one GraphML node hold her gender identity and sex at birth, and her relationship and the other parent's to the participant each have one edge list row and one GraphML edge holding its ends, its kind and its carrier flag`,
       };
     }),
   );
