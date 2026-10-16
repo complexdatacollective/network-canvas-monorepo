@@ -1,6 +1,7 @@
 ---
 '@codaco/fresco-ui': patch
 '@codaco/architect': patch
+'@codaco/background-creator': patch
 '@codaco/interviewer': patch
 'fresco': patch
 ---
