@@ -336,7 +336,9 @@ then runs two Docker stacks via
   analytics **enabled**, against a sink that terminates TLS and records every
   request. It also imports the damaged protocol fixtures, because "opening a
   damaged file is no longer recorded as an application error" is a claim about
-  what is sent.
+  what is sent. The fractional COUNT fixture is a schema 8 protocol schema 9
+  cannot take, and a protocol Fresco cannot upgrade is a migration bug, so it
+  must arrive both as a `ProtocolImportFailed` refusal and as an exception.
 - **Two-factor lane** (ports 3213/5536/9313): a deployment that sets
   `REQUIRE_TWO_FACTOR`.
 
@@ -673,7 +675,12 @@ lib/
   interview (id, protocol, reason). Nothing is left half-migrated, so
   restoring the previous image works. A protocol that cannot be migrated at
   all is different: it is logged and left in place with its interviews, and
-  the interview route refuses it.
+  the interview route refuses it. Unless analytics are disabled, each one is
+  also reported once the transaction is over, as a `ProtocolUpgradeFailed`
+  event (its error kind and schema versions only) and as an exception
+  (`scripts/report-upgrade-failures.ts`), so migration bugs can be found. The
+  exception is a message-free copy (`toReportableProtocolError`): a migration
+  error's message can quote the protocol.
 - **Auth** is first-party: sessions in `lib/auth/session.ts`, plus WebAuthn
   passkeys and TOTP. There is no third-party auth library.
 - **Tailwind** with `@codaco/tailwind-config`, components from

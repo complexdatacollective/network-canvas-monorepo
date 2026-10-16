@@ -89,6 +89,44 @@ export const PROTOCOL_FILE_ERROR_KINDS = [
   'upgradeFailed',
 ];
 
+/**
+ * The kinds that mean a migration of ours failed, not that the file was wrong.
+ *
+ * Fresco reports these twice, as a refused protocol and as an application
+ * error, so a migration bug can be found in exception tracking and counted
+ * among refusals. Every other kind is the file's fault and must never reach
+ * exception tracking. Bound to the package's own `APP_DEFECT_KINDS` by
+ * `scripts/release-test/fresco-release-test-lane-contracts.test.mjs`.
+ */
+export const APP_DEFECT_KINDS = ['upgradeStepFailed', 'upgradeFailed'];
+
+/**
+ * The error names a failed upgrade reaches exception tracking under: what
+ * `@codaco/protocol-validation` names the errors it classifies as
+ * `upgradeStepFailed` (a step that threw, or one that returned an invalid
+ * document) and `upgradeFailed` (any other `MigrationError`). posthog records
+ * each error's `name` as the `type` of its `$exception_list` entry, so an
+ * exception is matched to the upgrade by what it is rather than by how many
+ * there are: an exception sent for a damaged file cannot stand in for one an
+ * upgrade failed to send. Bound to `migration/errors.ts` by the lane contract
+ * tests.
+ */
+export const UPGRADE_ERROR_NAMES = [
+  'MigrationStepError',
+  'MigrationResultInvalidError',
+  'MigrationError',
+];
+
+const exceptionTypes = (properties) => {
+  const list = Array.isArray(properties.$exception_list)
+    ? properties.$exception_list
+    : [];
+  return [
+    ...list.map((entry) => String(entry?.type ?? '')),
+    String(properties.$exception_type ?? ''),
+  ].filter(Boolean);
+};
+
 const asText = (buffer, encoding = 'utf8') => buffer.toString(encoding);
 
 /**
@@ -471,6 +509,7 @@ export function evaluateAnalyticsContract({
   );
 
   // --- a damaged file is an answer about the file, not a fault -------------
+  // --- and a failed upgrade is both a refusal and a fault ------------------
   const after = (event, from) => {
     const timestamp = String(event.timestamp ?? '');
     return !from || !timestamp || timestamp >= from;
@@ -487,19 +526,47 @@ export function evaluateAnalyticsContract({
   const unknownReasons = reasons.filter(
     (reason) => !PROTOCOL_FILE_ERROR_KINDS.includes(reason),
   );
+  const fileFaults = reasons.filter(
+    (reason) =>
+      PROTOCOL_FILE_ERROR_KINDS.includes(reason) &&
+      !APP_DEFECT_KINDS.includes(reason),
+  );
+  const upgradeFailures = reasons.filter((reason) =>
+    APP_DEFECT_KINDS.includes(reason),
+  );
+  const isUpgradeException = (event) =>
+    exceptionTypes(propertiesOf(event)).some((type) =>
+      UPGRADE_ERROR_NAMES.includes(type),
+    );
+  const upgradeExceptions = exceptions.filter(isUpgradeException);
+  const otherExceptions = exceptions.filter(
+    (event) => !isUpgradeException(event),
+  );
   checks.push(
     check(
       'analytics-damaged-file-not-an-error',
-      importFailures.length > 0 &&
-        exceptions.length === 0 &&
+      fileFaults.length > 0 &&
+        otherExceptions.length === 0 &&
         unknownReasons.length === 0,
-      importFailures.length === 0
-        ? 'no ProtocolImportFailed event was captured after the damaged imports, so nothing shows how they were reported'
-        : exceptions.length > 0
-          ? `${exceptions.length} exception event(s) were reported for a damaged file, which buries the failures that are real faults`
+      fileFaults.length === 0
+        ? 'no ProtocolImportFailed event naming a damaged file was captured after the damaged imports, so nothing shows how they were reported'
+        : otherExceptions.length > 0
+          ? `${otherExceptions.length} exception event(s) other than a failed upgrade's (${[...new Set(otherExceptions.flatMap((event) => exceptionTypes(propertiesOf(event))))].join(', ') || 'no type'}) were reported during the damaged imports, which buries the failures that are real faults`
           : unknownReasons.length > 0
             ? `ProtocolImportFailed carried reason(s) outside the fixed vocabulary: ${unknownReasons.join(', ')} — a free-form reason can hold the researcher's own file and resource names`
-            : `${importFailures.length} damaged import(s) reported as ${[...new Set(reasons)].join(', ')}, with no exception event`,
+            : `${fileFaults.length} damaged import(s) reported as ${[...new Set(fileFaults)].join(', ')}, with no exception event of their own`,
+    ),
+  );
+  checks.push(
+    check(
+      'analytics-upgrade-failure-reported-twice',
+      upgradeFailures.length > 0 &&
+        upgradeExceptions.length >= upgradeFailures.length,
+      upgradeFailures.length === 0
+        ? 'no ProtocolImportFailed event named a failed upgrade, so a protocol Fresco could not upgrade was not counted among refused protocols'
+        : upgradeExceptions.length < upgradeFailures.length
+          ? `${upgradeFailures.length} failed upgrade(s) were reported as refused, but only ${upgradeExceptions.length} exception event(s) named a migration error (${UPGRADE_ERROR_NAMES.join(', ')}), so a migration bug would not reach exception tracking`
+          : `${upgradeFailures.length} failed upgrade(s) reported as ${[...new Set(upgradeFailures)].join(', ')}, each with a migration error exception`,
     ),
   );
 

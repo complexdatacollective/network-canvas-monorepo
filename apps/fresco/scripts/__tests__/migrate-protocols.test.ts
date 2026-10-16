@@ -756,7 +756,23 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await expect(runMigration(prisma)).resolves.toBeUndefined();
+    const onUpgradeFailure = vi.fn();
+    await expect(
+      migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+        onUpgradeFailure,
+      ),
+    ).resolves.toBeUndefined();
+
+    // Handed back for reporting, with the migration's own error as the cause.
+    expect(onUpgradeFailure).toHaveBeenCalledTimes(1);
+    expect(onUpgradeFailure).toHaveBeenCalledWith({
+      error: expect.objectContaining({ cause: expect.any(Error) }),
+      fromSchemaVersion: 7,
+      toSchemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    });
 
     // Nothing was written for the broken row, and the failure names it.
     expect(prisma.protocol.update).not.toHaveBeenCalled();
@@ -829,7 +845,29 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await expect(runMigration(prisma)).resolves.toBeUndefined();
+    const onUpgradeFailure = vi.fn();
+    await expect(
+      migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+        onUpgradeFailure,
+      ),
+    ).resolves.toBeUndefined();
+
+    // Reported by the migration's failure, not the normalization fallback's.
+    expect(onUpgradeFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({
+          // Version 8's own checks, not the fallback's from version 7.
+          cause: expect.objectContaining({
+            name: 'ValidationError',
+            message: expect.stringMatching(/for version 8:/),
+          }),
+        }),
+        fromSchemaVersion: 8,
+      }),
+    );
 
     expect(prisma.protocol.update).not.toHaveBeenCalled();
     const logged = errorSpy.mock.calls.map((call) => String(call[0])).join(' ');
