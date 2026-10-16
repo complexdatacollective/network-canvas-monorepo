@@ -17,7 +17,8 @@ describe('the introduction a participant reads above an Ego Form', () => {
       sections: introduction,
     });
 
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+    // A rich-text editor rather than an input: it shows its text.
+    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
       'Introduction',
     );
     expect(
@@ -110,7 +111,10 @@ describe('the introduction a participant reads above an Ego Form', () => {
       name: 'Introduction text',
     });
 
-    const buttons = within(screen.getByRole('toolbar')).getAllByRole('button');
+    // Both fields are rich text, so each has a toolbar.
+    const buttons = screen
+      .getAllByRole('toolbar')
+      .flatMap((toolbar) => within(toolbar).getAllByRole('button'));
     expect(buttons.length).toBeGreaterThan(1);
     for (const button of buttons) {
       expect(button).toBeDisabled();
