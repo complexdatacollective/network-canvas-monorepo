@@ -778,14 +778,17 @@ export function DynamicMessageEditor({
   ]);
 
   if (parsed === undefined && message !== '') {
+    // The frame's classes still place the note where the editor would be.
     return (
-      <div id={id} data-name={name} className="flex flex-col gap-2">
-        <Alert variant="warning" density="compact">
-          {intl.formatMessage(messages.unreadable)}
-        </Alert>
-        <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
-          {message}
-        </pre>
+      <div className={className}>
+        <div id={id} data-name={name} className="flex flex-col gap-2">
+          <Alert variant="warning" density="compact">
+            {intl.formatMessage(messages.unreadable)}
+          </Alert>
+          <pre className="text-sm break-words whitespace-pre-wrap opacity-80">
+            {message}
+          </pre>
+        </div>
       </div>
     );
   }
