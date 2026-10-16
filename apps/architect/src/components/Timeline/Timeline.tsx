@@ -30,7 +30,7 @@ import {
   getStageMovedAnnouncement,
 } from './announcements';
 import {
-  getFinishStageDeleteWarning,
+  getFinishStageDeleteBlockedReason,
   getFinishStageReorderWarning,
 } from './finishStageGuards';
 import InsertButton from './InsertButton';
@@ -121,6 +121,20 @@ const timelineInsertVariants: Variants = {
   },
 };
 
+/**
+ * The guards hand back their wording as stored message errors, so it can be
+ * checked without a React tree. Decode it here, in the active locale, before it
+ * reaches the dialog: passed through as it is, the dialog shows the encoded
+ * descriptor instead of the sentence.
+ */
+const warningDialogText = (warning: {
+  title: string;
+  description: string;
+}) => ({
+  title: createElement(AppErrorMessage, { error: warning.title }),
+  description: createElement(AppErrorMessage, { error: warning.description }),
+});
+
 const Timeline = () => {
   const intl = useAppIntl();
   const intlRef = useRef(intl);
@@ -143,6 +157,11 @@ const Timeline = () => {
   const animate = !shouldReduceMotion && isFirstMount;
   const { announce } = useAccessibilityAnnouncements();
   const readOnly = useProtocolReadOnly();
+
+  const deleteBlockedReason = (stageId: string) => {
+    const reason = getFinishStageDeleteBlockedReason(stages, stageId);
+    return reason ? intl.formatMessage(reason) : undefined;
+  };
 
   // Local order the Reorder list renders from. motion's onReorder fires per
   // row-crossing during a drag; we track the visual order here and only commit a
@@ -229,14 +248,19 @@ const Timeline = () => {
         (candidate) => candidate.id === stageId,
       );
       const stage = stages[stageIndex];
-      const skipDestinationWarning =
-        getFinishStageDeleteWarning(stages, stageId) ??
-        getSkipDestinationDeleteWarning(stages, stageId);
+      // The row disables this stage's delete control and says why in its
+      // tooltip; the store refuses the delete as well.
+      if (getFinishStageDeleteBlockedReason(stages, stageId)) return;
+
+      const skipDestinationWarning = getSkipDestinationDeleteWarning(
+        stages,
+        stageId,
+      );
       if (skipDestinationWarning) {
         void openDialog({
           type: 'acknowledge',
           intent: 'warning',
-          ...skipDestinationWarning,
+          ...warningDialogText(skipDestinationWarning),
           actions: {
             primary: {
               label: createElement(AppMessage, { message: messages.oK }),
@@ -384,7 +408,7 @@ const Timeline = () => {
         void openDialog({
           type: 'acknowledge',
           intent: 'warning',
-          ...reorderWarning,
+          ...warningDialogText(reorderWarning),
           actions: {
             primary: {
               label: createElement(AppMessage, { message: messages.oK }),
@@ -522,6 +546,7 @@ const Timeline = () => {
               />
               <TimelineStageRow
                 stage={stage}
+                deleteBlockedReason={deleteBlockedReason(stage.id)}
                 index={index}
                 stageCount={orderedStages.length}
                 onOpen={handleEditStage}

@@ -1,4 +1,8 @@
-import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import {
   findTimelineStructureProblems,
   type Stage,
@@ -6,18 +10,12 @@ import {
 import { isLastFinishStage } from '~/ducks/modules/protocol/stages';
 
 const messages = defineMessages({
-  cannotDeleteStage: {
-    id: 'architect.timeline.finishStageGuards.cannotDeleteStage',
-    defaultMessage: 'Cannot delete stage',
-    description:
-      'Title of the notice shown when a researcher tries to delete the stage that ends the interview.',
-  },
   finishStageCannotBeDeleted: {
     id: 'architect.timeline.finishStageGuards.finishStageCannotBeDeleted',
     defaultMessage:
-      'This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.',
+      "You cannot delete this 'finish interview' stage because at least one stage of this kind is required to allow the interview to end.",
     description:
-      'Explanation shown when a researcher tries to delete the stage that ends the interview (the finish screen).',
+      'Tooltip and accessible description of the unavailable delete button of the only stage that ends the interview (the finish screen), saying why it cannot be deleted.',
   },
   cannotMoveStage: {
     id: 'architect.timeline.finishStageGuards.cannotMoveStage',
@@ -41,16 +39,17 @@ type TimelineWarning = {
   description: string;
 };
 
-/** Why the stage that ends the interview cannot be deleted, when it cannot. */
-export const getFinishStageDeleteWarning = (
+/**
+ * Why the stage that ends the interview cannot be deleted, when it cannot. The
+ * timeline disables that stage's delete control and shows this as its tooltip,
+ * so the researcher learns why before trying rather than after.
+ */
+export const getFinishStageDeleteBlockedReason = (
   stages: readonly TimelineStage[],
   stageId: string,
-): TimelineWarning | null =>
+): MessageDescriptor | null =>
   isLastFinishStage(stages, stageId)
-    ? {
-        title: createMessageError(messages.cannotDeleteStage),
-        description: createMessageError(messages.finishStageCannotBeDeleted),
-      }
+    ? messages.finishStageCannotBeDeleted
     : null;
 
 /**

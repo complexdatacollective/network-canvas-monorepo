@@ -376,14 +376,23 @@ test('refuses to delete the stage that ends the interview', async ({
     throw new Error('fixture does not end at a FinishSession stage');
   }
 
-  await new Timeline(architectPage).deleteStage(finish.label);
-  const guardDialog = architectPage.getByRole('dialog', {
-    name: 'Cannot delete stage',
-  });
-  await expect(guardDialog).toContainText(
-    'This stage ends the interview, and every protocol needs one',
-  );
-  await acknowledgeRefusal(guardDialog);
+  // The control is unavailable rather than refusing after the fact: it says
+  // why as its tooltip and description, and pressing it does nothing.
+  const timeline = new Timeline(architectPage);
+  const deleteControl = timeline.deleteControl(finish.label);
+  const reason =
+    "You cannot delete this 'finish interview' stage because at least one stage of this kind is required to allow the interview to end.";
+  await expect(deleteControl).toHaveAttribute('aria-disabled', 'true');
+  await expect(deleteControl).toHaveAccessibleDescription(reason);
+  await timeline.stageCard(finish.label).hover();
+  await deleteControl.hover();
+  await expect(architectPage.getByRole('tooltip')).toHaveText(reason);
+  // Playwright refuses to click an aria-disabled control, which is the point;
+  // force the press, and try the keyboard, to prove neither deletes it.
+  await deleteControl.click({ force: true });
+  await deleteControl.focus();
+  await deleteControl.press('Enter');
+  await expect(architectPage.getByRole('dialog')).toHaveCount(0);
   await settleAfterRefusal(architectPage, editDescription(architectPage));
   const after = stagesOf(await readProtocolJson(architectPage));
   expect(after.map(({ id }) => id)).toEqual(before.map(({ id }) => id));
@@ -408,8 +417,11 @@ test('refuses to move the stage that ends the interview above the other stages',
   }
 
   const timeline = new Timeline(architectPage);
+  // Exact: the encoded message the dialog showed before it was decoded
+  // contains this title as a substring.
   const guardDialog = architectPage.getByRole('dialog', {
     name: 'Cannot move stage',
+    exact: true,
   });
 
   await timeline.openControl(finish.label).focus();
@@ -798,8 +810,11 @@ test('blocks a keyboard reorder that would strand a skip destination', async ({
   await openControl.focus();
   await openControl.press('ArrowUp');
 
+  // Exact: the encoded message the dialog showed before it was decoded
+  // contains this title as a substring.
   const guardDialog = architectPage.getByRole('dialog', {
     name: 'Cannot move stage',
+    exact: true,
   });
 
   await acknowledgeRefusal(guardDialog);

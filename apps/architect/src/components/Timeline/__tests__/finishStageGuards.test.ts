@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import { messageFields } from '~/test/messageText';
 
 import {
-  getFinishStageDeleteWarning,
+  getFinishStageDeleteBlockedReason,
   getFinishStageReorderWarning,
 } from '../finishStageGuards';
+
+const english = createAppIntl({ locale: 'en' });
 
 const intro = { id: 'intro', type: 'Information' as const };
 const names = { id: 'names', type: 'NameGenerator' as const };
@@ -14,19 +17,16 @@ const stages = [intro, names, finish];
 
 describe('Timeline finish stage guards', () => {
   it('explains why the only finish stage cannot be deleted', () => {
-    expect(
-      messageFields(getFinishStageDeleteWarning(stages, 'finish')),
-    ).toEqual({
-      title: 'Cannot delete stage',
-      description:
-        'This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.',
-    });
+    const reason = getFinishStageDeleteBlockedReason(stages, 'finish');
+    expect(reason && english.formatMessage(reason)).toBe(
+      "You cannot delete this 'finish interview' stage because at least one stage of this kind is required to allow the interview to end.",
+    );
   });
 
   it('lets any other stage, or one of two finish stages, be deleted', () => {
-    expect(getFinishStageDeleteWarning(stages, 'names')).toBeNull();
+    expect(getFinishStageDeleteBlockedReason(stages, 'names')).toBeNull();
     expect(
-      getFinishStageDeleteWarning(
+      getFinishStageDeleteBlockedReason(
         [...stages, { ...finish, id: 'finish-2' }],
         'finish',
       ),
