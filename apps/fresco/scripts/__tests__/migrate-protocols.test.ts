@@ -756,7 +756,23 @@ describe('migrateProtocolsToCompatibleVersion', () => {
       },
     ]);
 
-    await expect(runMigration(prisma)).resolves.toBeUndefined();
+    const onUpgradeFailure = vi.fn();
+    await expect(
+      migrateProtocolsToCompatibleVersion(
+        prisma as unknown as Parameters<
+          typeof migrateProtocolsToCompatibleVersion
+        >[0],
+        onUpgradeFailure,
+      ),
+    ).resolves.toBeUndefined();
+
+    // Handed back for reporting, with the migration's own error as the cause.
+    expect(onUpgradeFailure).toHaveBeenCalledTimes(1);
+    expect(onUpgradeFailure).toHaveBeenCalledWith({
+      error: expect.objectContaining({ cause: expect.any(Error) }),
+      fromSchemaVersion: 7,
+      toSchemaVersion: COMPATIBLE_PROTOCOL_SCHEMA_VERSION,
+    });
 
     // Nothing was written for the broken row, and the failure names it.
     expect(prisma.protocol.update).not.toHaveBeenCalled();

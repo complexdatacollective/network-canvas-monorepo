@@ -13,7 +13,9 @@ import { migrateInterviewCategoricals } from './migrate-interview-categoricals';
 import {
   InterviewMigrationFailedError,
   migrateProtocolsToCompatibleVersion,
+  type ProtocolUpgradeFailure,
 } from './migrate-protocols';
+import { reportProtocolUpgradeFailures } from './report-upgrade-failures';
 
 // CLI scripts must use the PG adapter directly because the Neon serverless
 // adapter doesn't work in CLI/Node.js context (only in serverless runtimes)
@@ -119,6 +121,12 @@ async function handleMigrations(): Promise<void> {
 // than splitting the migrations across transactions.
 const DATA_MIGRATION_TIMEOUT_MS = 1000 * 60 * 30;
 
+// Stored protocols the data migration had to leave behind. Reported once the
+// transaction is over, whether it committed or not: the upgrade failed either
+// way, and a report must never hold the transaction open.
+const upgradeFailures: ProtocolUpgradeFailure[] = [];
+let setupFailed = false;
+
 try {
   await handleMigrations();
 
@@ -131,7 +139,10 @@ try {
   // which rolls everything back and stops startup.
   await prisma.$transaction(
     async (tx) => {
-      await migrateProtocolsToCompatibleVersion(tx);
+      upgradeFailures.length = 0;
+      await migrateProtocolsToCompatibleVersion(tx, (failure) =>
+        upgradeFailures.push(failure),
+      );
       await migrateInterviewCategoricals(tx);
     },
     { timeout: DATA_MIGRATION_TIMEOUT_MS },
@@ -143,7 +154,13 @@ try {
   } else {
     console.error('Error during database setup:', error);
   }
-  process.exit(1);
+  // Exits below, once the report has been sent and the client disconnected.
+  setupFailed = true;
 } finally {
+  // Before disconnecting: the report reads the analytics setting through
+  // this client.
+  await reportProtocolUpgradeFailures(upgradeFailures, prisma);
   await prisma.$disconnect();
 }
+
+if (setupFailed) process.exit(1);

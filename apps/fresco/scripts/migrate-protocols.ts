@@ -234,6 +234,17 @@ const EMPTY_NETWORK = {
   ego: { [entityPrimaryKeyProperty]: '', [entityAttributesProperty]: {} },
 };
 
+/** A stored protocol the deploy could not bring up to the target version. */
+export type ProtocolUpgradeFailure = {
+  /**
+   * What stopped it. Its message names the protocol, so only the migration
+   * error in its `cause` chain may leave the deployment.
+   */
+  error: unknown;
+  fromSchemaVersion: number;
+  toSchemaVersion: number;
+};
+
 /** The failure, with the error that caused it when a migration step threw. */
 function describeSessionFailure(error: Error): string {
   const { cause } = error;
@@ -395,6 +406,9 @@ async function migrateOneProtocol(
         normalizationErr instanceof Error
           ? normalizationErr.message
           : String(normalizationErr);
+      // The cause is the migration's error, not the normalization's: the
+      // upgrade is what failed, and it is what a failed upgrade is reported
+      // and classified by (see `onUpgradeFailure`).
       throw new Error(
         `Failed to migrate protocol "${row.name}" (id=${row.id}): ${cause}. ` +
           `Normalizing it from schema version ${NORMALIZATION_SOURCE_VERSION} ` +
@@ -591,10 +605,16 @@ async function normalizeNonConformantProtocol(
  * data, exporting and the interview data API refuse it and report the
  * refusal; the dashboard's filter options leave out its node and edge types.
  *
+ * Each protocol below the target version that is left in place is also
+ * handed to `onUpgradeFailure`, with the error that stopped it, so the caller
+ * can report it once the transaction is over: a stored protocol that the
+ * deployment accepted and can no longer upgrade is a migration defect to find.
+ *
  * Idempotent: conformant protocols at the target version are skipped.
  */
 export async function migrateProtocolsToCompatibleVersion(
   prisma: Prisma.TransactionClient,
+  onUpgradeFailure?: (failure: ProtocolUpgradeFailure) => void,
 ): Promise<void> {
   const protocols = await prisma.protocol.findMany({
     where: { schemaVersion: { lte: TARGET_SCHEMA_VERSION } },
@@ -640,6 +660,11 @@ export async function migrateProtocolsToCompatibleVersion(
       } catch (err) {
         skipped += 1;
         const cause = err instanceof Error ? err.message : String(err);
+        onUpgradeFailure?.({
+          error: err,
+          fromSchemaVersion: row.schemaVersion,
+          toSchemaVersion: TARGET_SCHEMA_VERSION,
+        });
         console.error(
           `Could not migrate protocol "${row.name}" (id=${row.id}) from ` +
             `schema version ${row.schemaVersion}: ${cause}. Leaving it in ` +
