@@ -90,9 +90,6 @@ describe('protocol language reducers and undo', () => {
       locales: ['es'],
     });
     expect(stageLabel(store)).toEqual({ es: 'Welcome' });
-    expect(presentOf(store).codebook.node?.person?.label).toEqual({
-      es: 'Person',
-    });
 
     store.dispatch(timelineActions.undo());
 

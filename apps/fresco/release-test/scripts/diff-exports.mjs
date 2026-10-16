@@ -196,17 +196,10 @@ const isMigratedMessage = (value, text) =>
   Object.keys(value).length === 1 &&
   value[MIGRATED_LOCALE] === escapeMessageText(text);
 
-// The label the migration gives a type or attribute that had none.
-const labelFromName = (definition, key) =>
-  typeof definition.name === 'string' && definition.name !== ''
-    ? definition.name
-    : key;
-
 /**
  * The current codebook with what the schema-9 migration does to the baseline
- * codebook undone: text wrapped as an English message, labels
- * derived from names or keys, and empty text that a field no longer accepts.
- * `key` is the value's key in its parent, which a derived label falls back to.
+ * codebook undone: text wrapped as an English message, and empty text that a
+ * field no longer accepts.
  */
 function undoLanguageMigration(baseline, current, key, tally) {
   if (typeof baseline === 'string' && isMigratedMessage(current, baseline)) {
@@ -226,16 +219,6 @@ function undoLanguageMigration(baseline, current, key, tally) {
   const restored = {};
   for (const [field, value] of Object.entries(current)) {
     if (!(field in baseline)) {
-      // A type's derived label is wrapped as a message; a variable's stays
-      // plain text.
-      if (
-        field === 'label' &&
-        (isMigratedMessage(value, labelFromName(baseline, key)) ||
-          value === labelFromName(baseline, key))
-      ) {
-        tally.labelsAdded += 1;
-        continue;
-      }
       restored[field] = value;
       continue;
     }
@@ -409,7 +392,7 @@ function reconcileInterviewJson(baselineText, currentText) {
   );
   const upgrade = upgradedProtocol(baseline, current);
   if (upgrade) {
-    const tally = { wrapped: 0, labelsAdded: 0, emptyLeftOut: 0 };
+    const tally = { wrapped: 0, emptyLeftOut: 0 };
     data.protocol = {
       ...upgrade.after,
       schemaVersion: upgrade.before.schemaVersion,
@@ -422,7 +405,7 @@ function reconcileInterviewJson(baselineText, currentText) {
     };
     differences.push(
       `protocol schemaVersion ${upgrade.before.schemaVersion} -> ${SCHEMA_WITH_LANGUAGES}`,
-      `codebook: ${tally.wrapped} text value(s) held as { ${MIGRATED_LOCALE}: <message> }, ${tally.labelsAdded} label(s) derived from a name or key, ${tally.emptyLeftOut} empty text value(s) left out`,
+      `codebook: ${tally.wrapped} text value(s) held as { ${MIGRATED_LOCALE}: <message> }, ${tally.emptyLeftOut} empty text value(s) left out`,
     );
   }
   if (differences.length === 0) return null;

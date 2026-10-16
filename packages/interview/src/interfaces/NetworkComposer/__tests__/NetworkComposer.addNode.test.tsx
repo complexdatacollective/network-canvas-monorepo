@@ -51,6 +51,7 @@ const stage = {
     {
       id: 'edge-config',
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
+      label: { en: 'Knows' },
     },
   ],
   background: {

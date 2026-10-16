@@ -74,7 +74,6 @@ const makeStore = () => {
   nodeTypes[SPARE_TYPE] = {
     ...structuredClone(personType),
     name: 'Spare',
-    label: { en: 'Spare' },
     variables: {},
   };
 

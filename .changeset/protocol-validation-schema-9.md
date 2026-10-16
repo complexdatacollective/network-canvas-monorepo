@@ -47,12 +47,13 @@ Schema 9:
   it adds `localization: { defaultLocale: 'en', locales: ['en'] }` and wraps
   every participant-facing string as `{ en: <text> }`, escaped as an ICU literal
   message. Validation refuses the undetermined language `und` (and `und-*`
-  tags) as a declared language, as the default, and as a localized-string key. Codebook node types, edge types and variables get a `label` taken
-  from their name, or from their codebook ID when the name is empty: a node
-  or edge type's label is wrapped like any other text, and a variable's stays
-  plain text. A Narrative preset's `highlight` list of variable IDs becomes a
-  list of `{ variable, label }`, each label taken from the variable's name (or
-  its ID) and wrapped as `{ en: <text> }`. A form field with no caption, or an
+  tags) as a declared language, as the default, and as a localized-string key. A Narrative preset's `highlight` list of variable IDs becomes a list of
+  `{ variable, label }`, and its `edges.display` list of edge type IDs becomes
+  a list of `{ type, label }`, each label taken from the variable's or edge
+  type's name (or its ID) and wrapped as `{ en: <text> }`. Each Network
+  Composer edge entry gets a `label` taken from its edge type's name (or its
+  ID) and wrapped the same way. Codebook node types, edge types and variables
+  have no `label`: participants never see a codebook name. A form field with no caption, or an
   empty or blank one (a Network Composer field's `label`, or any other form
   field's `prompt`), gets its attribute's name (or its ID) as one, escaped so
   that markdown shows it as written, and wrapped the same way. An empty

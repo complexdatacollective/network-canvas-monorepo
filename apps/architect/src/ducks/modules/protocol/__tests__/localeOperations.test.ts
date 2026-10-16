@@ -45,8 +45,6 @@ const protocolIn = (
   text: {
     stage: Record<string, string>;
     title: Record<string, string>;
-    nodeType: Record<string, string>;
-    variable: string;
     options: [Record<string, string>, Record<string, string>];
   },
 ): CurrentProtocol => ({
@@ -108,8 +106,6 @@ const monolingual = () =>
     {
       stage: { en: 'Welcome' },
       title: { en: 'Hello' },
-      nodeType: { en: 'Person' },
-      variable: 'Closeness',
       options: [{ en: 'Close' }, { en: 'Distant' }],
     },
   );
@@ -120,8 +116,6 @@ const bilingual = () =>
     {
       stage: { en: 'Welcome', fr: 'Bienvenue' },
       title: { en: 'Hello', fr: 'Bonjour' },
-      nodeType: { en: 'Person', fr: 'Personne' },
-      variable: 'Closeness',
       options: [{ en: 'Close', fr: 'Proche' }, { en: 'Distant' }],
     },
   );
@@ -138,8 +132,6 @@ const textOf = (protocol: CurrentProtocol) => {
   return {
     stage: stage?.label,
     title: stage && 'title' in stage ? stage.title : undefined,
-    nodeType: nodeType?.label,
-    variable: variable?.label,
     options:
       variable && 'options' in variable
         ? variable.options?.map(({ label }) => label)
@@ -402,8 +394,6 @@ describe('removeLocale', () => {
     expect(textOf(protocol)).toEqual({
       stage: { en: 'Welcome' },
       title: { en: 'Hello' },
-      nodeType: { en: 'Person' },
-      variable: 'Closeness',
       options: [{ en: 'Close' }, { en: 'Distant' }],
     });
     expect((await validateProtocol(protocol)).success).toBe(true);
@@ -523,8 +513,6 @@ describe('changeLocale', () => {
     expect(textOf(protocol)).toEqual({
       stage: { es: 'Welcome' },
       title: { es: 'Hello' },
-      nodeType: { es: 'Person' },
-      variable: 'Closeness',
       options: [{ es: 'Close' }, { es: 'Distant' }],
     });
     expect((await validateProtocol(protocol)).success).toBe(true);

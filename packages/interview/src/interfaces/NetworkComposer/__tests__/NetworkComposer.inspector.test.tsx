@@ -122,6 +122,7 @@ const stage = {
   edges: [
     {
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
+      label: { en: 'Knows' },
       form: edgeForm,
     },
   ],
