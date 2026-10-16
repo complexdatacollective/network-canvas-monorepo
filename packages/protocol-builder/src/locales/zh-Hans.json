@@ -1263,6 +1263,7 @@
   "protocolBuilder.pedigree.nameLabel": "姓名",
   "protocolBuilder.pedigree.namePromptHint": "显示在参与者输入家庭成员姓名的输入框上方。它以 Network Canvas 提供的文字开头，您可以更改。",
   "protocolBuilder.pedigree.namePromptLabel": "姓名问题",
+  "protocolBuilder.pedigree.nameRequiredUnavailable": "在此阶段不可用。此阶段始终会为该属性赋值：参与者输入的姓名，或在参与者留空时，根据该家庭成员与参与者的关系生成的标签。因此在这里，“必填回答”规则总会得到满足，即使参与者没有提供姓名。在其他询问该属性的地方，这条规则仍然适用。",
   "protocolBuilder.pedigree.nominationAddLabel": "新建提名提示",
   "protocolBuilder.pedigree.nominationAddTitle": "创建提名提示",
   "protocolBuilder.pedigree.nominationDescription": "可选：在家庭绘制完成后，就整个家庭提出问题，例如“您家中谁患过心脏病？”。参与者依次回答每个问题，选中所有符合的人，界面会在这些人身上设置一个布尔属性。",

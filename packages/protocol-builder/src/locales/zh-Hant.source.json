@@ -1263,6 +1263,7 @@
   "protocolBuilder.pedigree.nameLabel": "Name",
   "protocolBuilder.pedigree.namePromptHint": "Shown above the box where participants type a family member’s name. It starts with wording Network Canvas supplies, which you can change.",
   "protocolBuilder.pedigree.namePromptLabel": "Name question",
+  "protocolBuilder.pedigree.nameRequiredUnavailable": "Not available on this stage. This stage always gives this attribute a value: the name the participant types or, if they leave it blank, a label made from the family member’s relationship to the participant. So ‘Required answer’ would always be met here, even when the participant gives no name. The rule still applies where this attribute is asked elsewhere.",
   "protocolBuilder.pedigree.nominationAddLabel": "Create new nomination prompt",
   "protocolBuilder.pedigree.nominationAddTitle": "Create nomination prompt",
   "protocolBuilder.pedigree.nominationDescription": "Optionally ask questions about the whole family once it is drawn, such as “Who in your family has had heart disease?”. Participants answer each in turn by selecting everyone it applies to, and the interface sets a boolean attribute on them.",

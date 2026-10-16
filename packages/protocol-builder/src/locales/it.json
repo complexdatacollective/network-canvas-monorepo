@@ -1263,6 +1263,7 @@
   "protocolBuilder.pedigree.nameLabel": "Nome",
   "protocolBuilder.pedigree.namePromptHint": "Mostrata sopra il campo in cui le persone partecipanti scrivono il nome di un familiare. Inizia con un testo fornito da Network Canvas, che puoi modificare.",
   "protocolBuilder.pedigree.namePromptLabel": "Domanda sul nome",
+  "protocolBuilder.pedigree.nameRequiredUnavailable": "Non disponibile in questa fase. Questa fase assegna sempre un valore a questo attributo: il nome scritto dalla persona partecipante oppure, se lo lascia vuoto, un’etichetta basata sulla relazione del familiare con la persona partecipante. Quindi la regola «Risposta obbligatoria» sarebbe sempre rispettata qui, anche quando la persona partecipante non fornisce alcun nome. La regola continua ad applicarsi nelle altre fasi in cui viene raccolto questo attributo.",
   "protocolBuilder.pedigree.nominationAddLabel": "Crea una nuova domanda di nomina",
   "protocolBuilder.pedigree.nominationAddTitle": "Crea una domanda di nomina",
   "protocolBuilder.pedigree.nominationDescription": "Se vuoi, fai domande sull’intera famiglia una volta disegnata, come «Chi nella tua famiglia ha avuto una malattia cardiaca?». Le persone partecipanti rispondono a ciascuna a turno selezionando tutte le persone a cui si applica, e l’interfaccia imposta su di loro un attributo booleano.",

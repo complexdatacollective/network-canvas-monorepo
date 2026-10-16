@@ -1263,6 +1263,7 @@
   "protocolBuilder.pedigree.nameLabel": "Naam",
   "protocolBuilder.pedigree.namePromptHint": "Getoond boven het veld waarin deelnemers de naam van een familielid invullen. Het begint met tekst die Network Canvas levert en die je kunt wijzigen.",
   "protocolBuilder.pedigree.namePromptLabel": "Naamvraag",
+  "protocolBuilder.pedigree.nameRequiredUnavailable": "Niet beschikbaar in deze fase. Deze fase geeft dit attribuut altijd een waarde: de naam die de deelnemer invult of, als die leeg blijft, een label op basis van de relatie van het familielid met de deelnemer. Aan “Verplicht antwoord” zou hier dus altijd worden voldaan, ook als de deelnemer geen naam geeft. Waar dit attribuut elders wordt gevraagd, blijft de regel gelden.",
   "protocolBuilder.pedigree.nominationAddLabel": "Nieuwe selectieprompt aanmaken",
   "protocolBuilder.pedigree.nominationAddTitle": "Selectieprompt aanmaken",
   "protocolBuilder.pedigree.nominationDescription": "Stel eventueel vragen over de hele familie zodra die getekend is, zoals “Wie in je familie heeft een hartziekte gehad?”. Deelnemers beantwoorden ze een voor een door iedereen te selecteren op wie de vraag van toepassing is, en de interface zet bij hen een booleaans attribuut.",
