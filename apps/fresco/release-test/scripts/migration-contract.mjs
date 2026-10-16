@@ -176,6 +176,11 @@ export function introductionPanelProblems(before, after) {
         problems.push(
           `${where}: its Information stage is titled ${JSON.stringify(information.title)}, not "${panel.title}"`,
         );
+      // The stages menu names a stage by its label.
+      if (!sameJson(information.label, message(panel.title)))
+        problems.push(
+          `${where}: its Information stage is labelled ${JSON.stringify(information.label ?? null)} in the stages menu, not "${panel.title}"`,
+        );
       const items = Array.isArray(information.items) ? information.items : [];
       if (
         text !== undefined &&
@@ -392,8 +397,13 @@ export function interviewMigrationProblems(before, after) {
     const keysBefore = Object.keys(
       isRecord(interview.stageMetadata) ? interview.stageMetadata : {},
     ).filter((key) => !pedigreeSteps.has(key));
+    // Each stage record, contents and all, under its stage's new step: a
+    // record holds answers too (a census question answered "no"), so one
+    // kept under the right step with its contents changed is still lost.
     const keys = remapStageMetadata(
-      Object.fromEntries(keysBefore.map((key) => [key, true])),
+      Object.fromEntries(
+        keysBefore.map((key) => [key, interview.stageMetadata[key]]),
+      ),
       protocolBefore,
       protocolAfter,
     );
@@ -413,6 +423,12 @@ export function interviewMigrationProblems(before, after) {
       problems.push(
         `${who}'s stage records are kept under ${JSON.stringify(actualKeys)}, not ${JSON.stringify(expectedKeys)}`,
       );
+    else
+      for (const key of expectedKeys)
+        if (!sameJson(migrated.stageMetadata[key], keys[key]))
+          problems.push(
+            `${who}'s stage record at step ${key} is ${JSON.stringify(migrated.stageMetadata[key])}, not ${JSON.stringify(keys[key])} as it was before the upgrade`,
+          );
     if (migrated.finishTime !== interview.finishTime)
       problems.push(`${who}'s finish time changed in the upgrade`);
     if (migrated.finishOutcome !== null || migrated.finishStageId !== null)

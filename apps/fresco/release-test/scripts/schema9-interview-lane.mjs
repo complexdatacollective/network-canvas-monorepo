@@ -886,11 +886,12 @@ try {
           `select codebook::jsonb from "Protocol" where id = ${sqlText(result.protocolId)};`,
         ) || '{}',
       );
-      // Every relationship the deployment stores, across both interviews:
-      // the export holds exactly these.
+      // Every relationship the deployment stores, in every interview the
+      // export holds (it exports them all, earlier lanes' included): the
+      // export holds exactly these.
       const storedEdges = JSON.parse(
         psql(
-          `select coalesce(json_agg(e->>'_uid'), '[]') from "Interview", jsonb_array_elements(network::jsonb->'edges') e where "protocolId" = ${sqlText(result.protocolId)};`,
+          `select coalesce(json_agg(e->>'_uid'), '[]') from "Interview", jsonb_array_elements(network::jsonb->'edges') e;`,
         ) || '[]',
       );
       const problems = [

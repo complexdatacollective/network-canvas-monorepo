@@ -1501,6 +1501,13 @@ test('an interview that moved, changed or gained an outcome in the upgrade fails
     ],
     [
       (a) => {
+        // Kept under the right step, its contents changed.
+        a.interviews[0].stageMetadata = { 4: { seen: false } };
+      },
+      /stage record at step 4 is \{"seen":false\}, not \{"seen":true\}/,
+    ],
+    [
+      (a) => {
         a.interviews[1].finishTime = null;
       },
       /finish time changed/,
@@ -1566,6 +1573,19 @@ test('a rule lost from either stage, or never there to carry, fails', () => {
   assert.deepEqual(introductionPanelProblems(ruleless, untested), [
     'no introduction panel in the reading before the upgrade belongs to a stage with skip logic, so carrying a rule onto its Information stage went untested',
   ]);
+});
+
+test('an Information stage the stages menu names wrongly fails', () => {
+  const { before, after } = readings();
+  const broken = structuredClone(after);
+  const information = broken.protocols[0].stages.find(
+    (stage) => stage.id === 'each-person-introduction',
+  );
+  information.label = { en: 'Stage 4' };
+  assert.match(
+    introductionPanelProblems(before, broken).join('\n'),
+    /its Information stage is labelled \{"en":"Stage 4"\} in the stages menu/,
+  );
 });
 
 test('a rule the upgrade gives a stage that had none fails', () => {
