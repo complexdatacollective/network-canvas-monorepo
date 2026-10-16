@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -11,17 +11,11 @@ import type { LocaleTag } from '@codaco/protocol-validation';
 import type { LanguageChoice } from './languageChoices';
 
 const messages = defineMessages({
-  languageSingular: {
-    id: 'architect.localization.languageActions.languageSingular',
-    defaultMessage: 'language',
+  otherLanguages: {
+    id: 'architect.localization.languageActions.otherLanguages',
+    defaultMessage: '{count, plural, one {# other} other {# others}}',
     description:
-      'Singular noun in the summary of chosen languages, as in "1 language selected".',
-  },
-  languagePlural: {
-    id: 'architect.localization.languageActions.languagePlural',
-    defaultMessage: 'languages',
-    description:
-      'Plural noun in the summary of chosen languages, as in "3 languages selected".',
+      'Last item of the list of chosen languages when the rest do not fit, as in "English, Spanish and 4 others". The list joins it with "and". count is how many chosen languages are not named.',
   },
   chooseLanguages: {
     id: 'architect.localization.languageActions.chooseLanguages',
@@ -82,17 +76,77 @@ const renderLanguageOption = (
     );
   };
 
+/**
+ * The chosen languages' names, as many as fit the closed list's width, then a
+ * count of the rest: "English, Spanish and 4 others". Measured rather than a
+ * fixed count, because names and the list's width both vary.
+ */
+const FittedNames = ({ names }: { names: readonly string[] }) => {
+  const intl = useAppIntl();
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const [named, setNamed] = useState(names.length);
+
+  const summary = useCallback(
+    (count: number) =>
+      intl.formatList(
+        count >= names.length
+          ? names
+          : [
+              ...names.slice(0, count),
+              intl.formatMessage(messages.otherLanguages, {
+                count: names.length - count,
+              }),
+            ],
+        { type: 'conjunction' },
+      ),
+    [intl, names],
+  );
+
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const measure = measureRef.current;
+    if (!box || !measure) return;
+    const fit = () => {
+      const width = box.clientWidth;
+      // At least one name is shown; if even that is too long it truncates.
+      let count = names.length;
+      while (count > 1) {
+        measure.textContent = summary(count);
+        if (measure.offsetWidth <= width) break;
+        count -= 1;
+      }
+      setNamed(count);
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [names.length, summary]);
+
+  return (
+    <span ref={boxRef} className="relative block truncate">
+      {summary(named)}
+      <span
+        ref={measureRef}
+        aria-hidden
+        className="invisible absolute inset-s-0 top-0 whitespace-nowrap"
+      />
+    </span>
+  );
+};
+
 // Null when nothing is chosen, so the trigger shows its placeholder.
 const renderChosenNames = (
   choices: ReadonlyMap<string | number, LanguageChoice>,
-  intl: IntlShape,
 ) =>
   function ChosenNames(selected: ComboboxOption[]) {
     if (selected.length === 0) return null;
-    return intl.formatList(
-      selected.flatMap((option) => choices.get(option.value)?.name ?? []),
-      { type: 'conjunction' },
+    const names = selected.flatMap(
+      (option) => choices.get(option.value)?.name ?? [],
     );
+    // Keyed by the names, so a new list is measured afresh from all of them.
+    return <FittedNames key={names.join('\n')} names={names} />;
   };
 
 /** The languages chosen in a `LanguagePicker`, from the form's values. */
@@ -110,15 +164,11 @@ type LanguagePickerProps = {
   hint?: string;
   choices: readonly LanguageChoice[];
   initialValue: LocaleTag[];
-  /**
-   * Name the chosen languages in the closed list, rather than count them, so
-   * a preselected language is visible without opening it.
-   */
-  nameChosen?: boolean;
 };
 
 /**
- * A searchable list of languages to choose several from. Read the result with
+ * A searchable list of languages to choose several from. The closed list names
+ * the chosen languages, so they are visible without opening it. Read the result with
  * `chosenLanguages(values)`.
  */
 export const LanguagePicker = ({
@@ -126,7 +176,6 @@ export const LanguagePicker = ({
   hint,
   choices,
   initialValue,
-  nameChosen = false,
 }: LanguagePickerProps) => {
   const intl = useAppIntl();
   const choicesByLocale = useMemo(
@@ -154,14 +203,10 @@ export const LanguagePicker = ({
       initialValue={initialValue}
       options={options}
       renderOption={renderLanguageOption(choicesByLocale, intl)}
-      renderValue={
-        nameChosen ? renderChosenNames(choicesByLocale, intl) : undefined
-      }
+      renderValue={renderChosenNames(choicesByLocale)}
       placeholder={intl.formatMessage(messages.chooseLanguages)}
       searchPlaceholder={intl.formatMessage(messages.searchLanguages)}
       emptyMessage={intl.formatMessage(messages.noLanguagesFound)}
-      singular={intl.formatMessage(messages.languageSingular)}
-      plural={intl.formatMessage(messages.languagePlural)}
       showSelectAll={false}
       required={intl.formatMessage(messages.chooseAtLeastOne)}
     />

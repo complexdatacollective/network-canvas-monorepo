@@ -342,7 +342,6 @@ const NewProtocolDialog = ({
                 )}
                 choices={getLanguageChoices(intl.locale)}
                 initialValue={[preferredLocale]}
-                nameChosen
               />
               <DefaultLanguageField preferred={preferredLocale} />
             </>
