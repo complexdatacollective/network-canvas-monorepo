@@ -516,11 +516,17 @@ const FamilyPedigree = ({
       'name-question',
       nodeConfiguration?.nameField?.prompt,
     ),
-    ...textRow(
-      intl.formatMessage(messages.nameQuestionHint),
-      'name-question-hint',
-      nodeConfiguration?.nameField?.hint,
-    ),
+    ...(nodeConfiguration?.nameField?.hint
+      ? ([
+          [
+            intl.formatMessage(messages.nameQuestionHint),
+            <SummaryMarkdown
+              key="name-question-hint"
+              value={nodeConfiguration.nameField.hint}
+            />,
+          ],
+        ] as [string, ReactNode][])
+      : []),
     ...(nodeConfiguration !== null && genderIdentity === undefined
       ? ([
           [

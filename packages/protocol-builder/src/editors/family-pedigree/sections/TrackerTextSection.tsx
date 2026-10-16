@@ -134,6 +134,7 @@ export default function TrackerTextSection() {
             name={TRACKER_TEXT_PATHS.recommendedNote}
             component={LocalizedInputField}
             label={intl.formatMessage(messages.trackerRecommendedNoteLabel)}
+            wraps
             hint={intl.formatMessage(messages.trackerRecommendedNoteHint)}
             initialValue={startingWording(
               committedFields,

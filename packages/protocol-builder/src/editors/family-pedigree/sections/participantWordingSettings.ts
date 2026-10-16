@@ -20,6 +20,8 @@ type WordingSetting = Readonly<{
   arguments?: MessageArguments;
   gate?: WordingGate;
   hint?: MessageDescriptor;
+  /** Set for a setting worded as a sentence or more: its field wraps. */
+  wraps?: boolean;
 }>;
 
 export type WordingGroup = Readonly<{
@@ -42,8 +44,12 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       { key: 'pointerTool', label: messages.wordingPointerTool },
       { key: 'connectTool', label: messages.wordingConnectTool },
       { key: 'disconnectTool', label: messages.wordingDisconnectTool },
-      { key: 'connectHint', label: messages.wordingConnectHint },
-      { key: 'disconnectHint', label: messages.wordingDisconnectHint },
+      { key: 'connectHint', label: messages.wordingConnectHint, wraps: true },
+      {
+        key: 'disconnectHint',
+        label: messages.wordingDisconnectHint,
+        wraps: true,
+      },
       {
         key: 'framingChoiceTitle',
         label: messages.wordingFramingChoiceTitle,
@@ -53,6 +59,7 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       {
         key: 'framingChoiceDescription',
         label: messages.wordingFramingChoiceDescription,
+        wraps: true,
         gate: 'choosesFraming',
         hint: messages.wordingChoosesFramingHint,
       },
@@ -114,6 +121,7 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       {
         key: 'disconnectConfirmDescription',
         label: messages.wordingDisconnectConfirmDescription,
+        wraps: true,
       },
       {
         key: 'disconnectWouldCutOff',
@@ -174,6 +182,7 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       {
         key: 'biologicalParentHint',
         label: messages.wordingBiologicalParentHint,
+        wraps: true,
       },
       {
         key: 'biologicalParentBoth',
@@ -244,7 +253,11 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         label: messages.wordingSiblingTwinLabel,
         arguments: PEDIGREE_WORDING_ARGUMENTS.siblingTwinLabel,
       },
-      { key: 'siblingTwinHint', label: messages.wordingSiblingTwinHint },
+      {
+        key: 'siblingTwinHint',
+        label: messages.wordingSiblingTwinHint,
+        wraps: true,
+      },
       { key: 'siblingTwinNo', label: messages.wordingSiblingTwinNo },
       {
         key: 'siblingTwinIdentical',
@@ -295,7 +308,7 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         label: messages.wordingTwinsLabel,
         arguments: PEDIGREE_WORDING_ARGUMENTS.twinsLabel,
       },
-      { key: 'twinsHint', label: messages.wordingTwinsHint },
+      { key: 'twinsHint', label: messages.wordingTwinsHint, wraps: true },
       {
         key: 'twinZygosityLabel',
         label: messages.wordingTwinZygosityLabel,
