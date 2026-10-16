@@ -65,6 +65,26 @@ written.healthy = await write(
   archiveOf(protocol, { withMedia: true }),
 );
 
+// The schema 9 protocol the schema 9 walk conducts (schema9-interview-lane.mjs),
+// and the schema 8 protocol the upgrade lane seeds on the released image for
+// the schema 9 migration to carry (migration-lane.mjs). Neither has media.
+for (const [key, directory, file] of [
+  ['schema9', 'fresco-release-test-v9', 'fresco-release-test-v9.netcanvas'],
+  [
+    'migration',
+    'fresco-release-test-migration',
+    'fresco-release-test-migration.netcanvas',
+  ],
+]) {
+  const document = JSON.parse(
+    readFileSync(
+      join(repoRoot, 'packages/protocols/e2e', directory, 'protocol.json'),
+      'utf8',
+    ),
+  );
+  written[key] = await write(file, archiveOf(document, { withMedia: false }));
+}
+
 // A protocol whose manifest names a file the archive does not contain. Fresco
 // refuses it — a resource that never loads would surface to a participant
 // mid-interview — and the refusal names the resource the way the researcher

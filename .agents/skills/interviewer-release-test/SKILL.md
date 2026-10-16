@@ -16,8 +16,11 @@ profiles, independent verification of every reported failure, and a
 deterministic verdict. This skill is the procedure for one run: launch, wait,
 report, follow up. It deliberately covers what the Playwright E2E suite does
 not (service worker and offline behaviour, a complete interview conducted
-entirely offline against the deployed bits, the export format matrix, the
-security wizard). (Codex: the run needs Claude Code's Workflow tool — run
+entirely offline against the deployed bits — including the schema 9 runtime:
+a participant-chosen language, dynamic values, the bin completion gate and
+tap-to-place, empty-stage skipping, encrypted attributes, a family pedigree,
+and a second finish stage reached by skip logic and recorded with the
+session — the export format matrix, the security wizard). (Codex: the run needs Claude Code's Workflow tool — run
 this command from Claude Code.)
 
 ## Launch (Claude Code)

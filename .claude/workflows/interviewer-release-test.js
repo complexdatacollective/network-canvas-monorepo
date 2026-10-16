@@ -36,7 +36,8 @@
 // an exhaustive behaviour suite; per-feature coverage belongs to the app's
 // unit and Playwright e2e suites. Two journeys run committed walkers:
 // conduct-offline (scripts/release-test/interviewer-release-smoke-walker.mjs — the
-// eight-stage release-smoke fixture protocol conducted ENTIRELY OFFLINE;
+// fifteen-stage schema 9 release-smoke fixture protocol conducted ENTIRELY
+// OFFLINE;
 // interfaces are imported eagerly into one engine chunk, so broader
 // stage-type coverage adds no deployment risk coverage and belongs to the
 // e2e and Storybook suites) and security-vault
@@ -554,7 +555,7 @@ Return journey="protocol-management".`,
     key: 'conduct-offline',
     prompt: (
       ctx,
-    ) => `You are the "conduct-offline" journey of the Interviewer release smoke test: conduct a complete interview ENTIRELY OFFLINE via the repo's committed walker, proving the deployment's precache serves the whole interview engine without network and that every data-model write path (ego, node, layout, both edge-creation paths, categorical attribute) persists.
+    ) => `You are the "conduct-offline" journey of the Interviewer release smoke test: conduct a complete interview ENTIRELY OFFLINE via the repo's committed walker, proving the deployment's precache serves the whole interview engine without network, that every data-model write path (ego, node, layout, both edge-creation paths, categorical and ordinal attributes, encrypted attributes, a family pedigree) persists, and that the schema 9 runtime features work offline (participant-chosen language, dynamic values, the bin completion gate and tap-to-place, empty-stage skipping, a second finish stage reached by skip logic, the recorded finish stage).
 ${driving(ctx.workDir, ctx.repoRoot)}
 
 This journey is driven by the repo's canonical walker — RUN it, never
@@ -567,12 +568,12 @@ past false failures came from):
 
 Give that Bash call an explicit timeout of ~6 minutes — the walker enforces
 its own 5-minute hard watchdog (exit 2 = hang, with watchdog-timeout.png).
-It conducts the eight-stage Release Smoke fixture protocol
-(packages/protocols/e2e/release-smoke): one online visit installs the
-service worker and imports the protocol, the context then goes OFFLINE
-(with a positive control proving the flip is real), the entire interview is
-conducted offline, and the completed session is verified on /data at 100%
-both offline and after an online reload. It writes numbered evidence
+It conducts the fifteen-stage, two-language (en-US, es) schema 9 Release
+Smoke fixture protocol (packages/protocols/e2e/release-smoke): one online
+visit installs the service worker and imports the protocol, the context
+then goes OFFLINE (with a positive control proving the flip is real), the
+entire interview is conducted offline, and the completed session is
+verified on /data at 100% both offline and after an online reload. It writes numbered evidence
 screenshots and result.json into the artifacts directory; the last stdout
 line is the result JSON. Exit codes: 0 all passed, 1 check failures,
 2 watchdog hang, 3 setup error — 2 and 3 are failed runs, never passes.
@@ -585,17 +586,31 @@ check's detail:
    worker asset the precache declares is served offline: steps
    "offline-positive-control", "offline-boot", and
    "deferred-chunks-offline".
-3. All eight stages conducted offline: steps "session-started",
-   "stage-information", "stage-ego-introduction", "stage-egoform",
-   "stage-quickadd", "stage-sociogram", "stage-dyad-introduction",
-   "stage-dyadcensus", "stage-catbin".
+3. Every stage conducted offline, with the schema 9 runtime behaving:
+   steps "session-started", "stage-language" (choosing español switches
+   the interview's language, interface controls and protocol text, and
+   English switches them back), "stage-information" (today's date
+   inserted by a dynamic value), "stage-ego-introduction",
+   "skip-to-second-finish" (declining consent skips straight to the
+   second finish stage; Back returns to the form), "stage-egoform",
+   "stage-anonymisation" (passphrase for the encrypted names),
+   "stage-quickadd" (prompt inserts the ego's name), "stage-sociogram",
+   "stage-dyad-introduction", "stage-dyadcensus" (each prompt names its
+   pair), "catbin-completion-gate" (Next refused while a person is
+   unplaced), "stage-catbin", "empty-stage-skipped" (a form with nobody to
+   ask is passed going forward and back), "stage-ordbin" (tap-to-place),
+   "stage-family-pedigree" (a parent added through the new-person
+   panel).
 4. Finish flow completes: step "finish".
 5. Completed session on /data at 100% while STILL offline: step
    "persisted-offline".
 6. The row survives an online reload, the stored payload is intact
-   (nodes, layouts, categorical values, both edge types, ego), and no
-   non-whitelisted console error accumulated across the walk: steps
-   "persisted-online", "persisted-payload", and "console-errors".
+   (nodes, layouts, categorical and ordinal values, both edge types, the
+   family pedigree, ego), every person's name is stored only as ciphertext,
+   the session records the finish stage and outcome the walk ended on, and
+   no non-whitelisted console error accumulated across the walk: steps
+   "persisted-online", "persisted-payload", "persisted-encryption",
+   "persisted-finish", and "console-errors".
 A failed "setup" step means the walker could not start at all — report the
 journey as failed with that note and let the verifier adjudicate.
 

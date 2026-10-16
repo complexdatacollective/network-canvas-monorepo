@@ -7,14 +7,22 @@
 // protocol is imported online, then the entire interview is conducted OFFLINE
 // and the persisted session is verified on /data both offline and after
 // coming back online. This proves the deployment's precache serves the whole
-// engine without network and that every data-model write path (ego, node,
-// layout, both edge-creation paths, categorical attribute) persists.
+// engine without network, that every data-model write path (ego, node,
+// layout, both edge-creation paths, categorical and ordinal attributes,
+// encrypted attributes, a family pedigree) persists, and that the schema 9
+// runtime works offline: a participant-chosen language, dynamic values in
+// stage text, the bin completion gate and tap-to-place, a stage with nobody
+// to show skipped in both directions, a second finish stage reached only by
+// skip logic, and the finish stage recorded with the session.
 //
 // Every interaction is lifted from the repo's proven e2e driving code:
 // apps/interviewer/e2e/fixtures/interview-nav.ts (session start, stage
 // advance, ego form, quick add, finish) and packages/interview/e2e
 // (sociogram pointer drags with the 5px threshold-clearing jiggle, dyad
-// census radios, categorical-bin keyboard DnD via Ctrl+D + arrow + Enter).
+// census radios, categorical-bin keyboard DnD via Ctrl+D + arrow + Enter,
+// select-mode bins, the anonymisation passphrase form, the family pedigree
+// new-person panel) and apps/interviewer/e2e/specs/i18n.spec.ts (language
+// chooser).
 // Change interactions HERE, in step with those fixtures — never let a
 // release-test agent rebuild this from scratch.
 //
@@ -220,6 +228,65 @@ async function shot(name) {
 }
 
 const stageStep = () => page.locator('[data-stage-step]');
+const interviewMain = () =>
+  page.locator('main[data-theme-interview]:not([aria-busy="true"])');
+// The fixture's stage indices (packages/protocols/e2e/release-smoke).
+const STEP = {
+  language: 0,
+  information: 1,
+  egoIntroduction: 2,
+  egoForm: 3,
+  anonymisation: 4,
+  quickAdd: 5,
+  sociogram: 6,
+  dyadIntroduction: 7,
+  dyadCensus: 8,
+  catBin: 9,
+  emptyAlterForm: 10,
+  ordinalBin: 11,
+  familyPedigree: 12,
+  finish: 13,
+  finishDeclined: 14,
+};
+const PEOPLE = ['Alex', 'Blair', 'Casey'];
+const PASSPHRASE = 'smoke-pass1';
+const EXPECTED_CONTEXT = { Alex: 'work', Blair: 'social', Casey: 'family' };
+const EXPECTED_CLOSENESS = { Alex: 3, Blair: 2, Casey: 1 };
+const EXPECTED_CLOSENESS_LABEL = {
+  Alex: 'Very close',
+  Blair: 'Somewhat close',
+  Casey: 'Not close',
+};
+const sortedPair = (pair) =>
+  [...pair].toSorted((a, b) => String(a).localeCompare(String(b))).join('+');
+// Dynamic values (packages/interview/src/dynamicValues/DynamicText.tsx)
+// render each inserted value as a [data-dynamic-value] span: the value in an
+// aria-hidden <bdi> plus a screen-reader-only "Dynamic value: …" twin. Read
+// the inserted values themselves, and the sentence as a sighted reader sees
+// it (screen-reader twins removed).
+const insertedValues = (locator) =>
+  locator.locator('[data-dynamic-value] bdi').allTextContents();
+const sightedText = (locator) =>
+  locator.evaluate((el) => {
+    const copy = el.cloneNode(true);
+    for (const twin of copy.querySelectorAll('[data-dynamic-value] .sr-only'))
+      twin.remove();
+    return (copy.textContent ?? '').trim();
+  });
+async function expectStep(step) {
+  await expect(stageStep()).toHaveAttribute('data-stage-step', String(step), {
+    timeout: 20_000,
+  });
+}
+async function previousStage() {
+  const before = await stageStep().getAttribute('data-stage-step');
+  await page.getByTestId('previous-button').click();
+  await expect
+    .poll(() => stageStep().getAttribute('data-stage-step'), {
+      timeout: 20_000,
+    })
+    .not.toBe(before);
+}
 async function nextStage() {
   const before = await stageStep().getAttribute('data-stage-step');
   await page.getByTestId('next-button').click();
@@ -430,40 +497,159 @@ try {
   await page.getByTestId('new-session-case-id').fill(caseId);
   await page.getByTestId('new-session-submit').click();
   await expect(page).toHaveURL(/\/interview\//, { timeout: 15_000 });
-  await expect(page.locator('main[data-theme-interview]')).toBeVisible({
-    timeout: 15_000,
-  });
+  await expect(interviewMain()).toBeVisible({ timeout: 15_000 });
   await expect(stageStep()).toHaveAttribute('data-stage-step', /\d+/);
   record('session-started', true, `case ID ${caseId}`);
 
-  // Stage 1 — Information: static content renders.
+  // Stage 0 — LanguageChooser (apps/interviewer/e2e/specs/i18n.spec.ts):
+  // the protocol declares en-US and es. Choosing español must switch the
+  // interview's language at once — the built-in list name, the interview's
+  // lang, the interface's own controls AND the protocol's text on the next
+  // stage — and choosing English again must switch every one of them back.
+  await expectStep(STEP.language);
+  await expect(interviewMain()).toHaveAttribute('lang', 'en-US');
+  const languages = page.getByRole('listbox', {
+    name: 'Choose a language',
+    exact: true,
+  });
+  await expect(languages).toBeVisible();
+  await expect(languages.getByRole('option')).toHaveCount(2);
+  const spanish = languages.getByRole('option', { name: 'español' });
+  const english = languages
+    .getByRole('option')
+    .filter({ hasNotText: 'español' });
+  await expect(english).toHaveAttribute('aria-selected', 'true');
+  await spanish.click();
+  await expect(interviewMain()).toHaveAttribute('lang', 'es');
+  await expect(
+    page.getByRole('listbox', { name: 'Elige un idioma', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Configuración', exact: true }),
+  ).toBeVisible();
+  await shot('stage-language-es');
+  await nextStage();
+  // The protocol's own text, in the chosen language.
+  await expect(
+    page.getByRole('heading', { name: 'Prueba de humo' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Release smoke' }),
+  ).toHaveCount(0);
+  await previousStage();
+  await expectStep(STEP.language);
+  await page
+    .getByRole('listbox', { name: 'Elige un idioma', exact: true })
+    .getByRole('option')
+    .filter({ hasNotText: 'español' })
+    .click();
+  await expect(interviewMain()).toHaveAttribute('lang', 'en-US');
+  await expect(languages).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Settings', exact: true }),
+  ).toBeVisible();
+  record(
+    'stage-language',
+    true,
+    'español switched list name, lang, interface controls and protocol text; English switched them back',
+  );
+  await nextStage();
+
+  // Stage 1 — Information: protocol text back in English, with today's date
+  // inserted by a dynamic value ({today} bound to "now").
+  await expectStep(STEP.information);
   await expect(
     page.getByRole('heading', { name: 'Release smoke' }),
   ).toBeVisible();
+  const todayLine = page.getByText(/^This short interview exercises/).first();
+  await expect(todayLine).toBeVisible();
+  const todayExpected = new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'long',
+  }).format(new Date());
+  const todayValues = await insertedValues(todayLine);
+  const todayText = await sightedText(todayLine);
+  const todayRendered =
+    JSON.stringify(todayValues) === JSON.stringify([todayExpected]) &&
+    todayText.endsWith(`Today is ${todayExpected}.`);
   await shot('stage-information');
-  record('stage-information', true);
+  record(
+    'stage-information',
+    todayRendered,
+    `dynamic {today} rendered as ${JSON.stringify(todayText)} (inserted ${JSON.stringify(todayValues)}, expected ${JSON.stringify(todayExpected)})`,
+  );
   await nextStage();
 
   // Stage 2 — Information: the EgoForm's instructions, a stage of their own
   // since schema 9.
+  await expectStep(STEP.egoIntroduction);
   await expect(page.getByText('Tell us about')).toBeVisible();
   record('stage-ego-introduction', true);
   await nextStage();
 
-  // Stage 3 — EgoForm: the form title is the heading above the questions.
-  // Fill the required ego field; blur is load-bearing:
+  // Stage 3 — EgoForm. Fill the required name; blur is load-bearing:
   // protocol forms validate on blur, and the next-button only becomes ready
-  // once validation has run (interview-nav.ts).
+  // once validation has run (interview-nav.ts). Decline consent first: the
+  // next stage's skip logic must send the participant straight to the
+  // second finish stage, bypassing every stage between; Back must return to
+  // the form, and accepting consent restores the full route.
+  await expectStep(STEP.egoForm);
   const egoField = page.locator('[data-field-name="ego_name"] input');
   await expect(egoField).toBeVisible();
   await egoField.fill('Smoke Tester');
   await egoField.blur();
+  const consentRadio = (name) =>
+    page
+      .locator('[data-field-name="consent"]')
+      .getByRole('radio', { name, exact: true });
+  await consentRadio('No, I do not agree to take part.').click();
+  await expect(consentRadio('No, I do not agree to take part.')).toBeChecked();
+  await nextStage();
+  await expectStep(STEP.finishDeclined);
+  await expect(
+    page.getByRole('heading', { name: 'You Chose Not to Take Part' }),
+  ).toBeVisible();
+  await shot('stage-consent-declined');
+  await previousStage();
+  await expectStep(STEP.egoForm);
+  await consentRadio('Yes, I agree to take part.').click();
+  await expect(consentRadio('Yes, I agree to take part.')).toBeChecked();
+  record(
+    'skip-to-second-finish',
+    true,
+    `declined consent jumped ${STEP.egoForm}→${STEP.finishDeclined} ("You Chose Not to Take Part"); Back returned to ${STEP.egoForm}`,
+  );
   await shot('stage-egoform');
-  record('stage-egoform', true, 'ego_name filled');
+  record('stage-egoform', true, 'ego_name filled, consent accepted');
   await nextStage();
 
-  // Stage 4 — NameGeneratorQuickAdd: create three nodes.
-  for (const name of ['Alex', 'Blair', 'Casey']) {
+  // Stage 4 — Anonymisation (packages/interview/e2e/fixtures/
+  // anonymisation-fixture.ts): choose a passphrase; every person's name is
+  // an encrypted attribute from here on.
+  await expectStep(STEP.anonymisation);
+  await page.locator('[data-field-name="passphrase"] input').fill(PASSPHRASE);
+  await page.locator('[data-field-name="passphrase-2"] input').fill(PASSPHRASE);
+  await page.locator('button[type="submit"]', { hasText: 'Continue' }).click();
+  await expect(
+    page.getByText('Passphrase accepted! Click "Next" to continue.'),
+  ).toBeVisible({ timeout: 20_000 });
+  record('stage-anonymisation', true, 'passphrase chosen and accepted');
+  await nextStage();
+
+  // Stage 5 — NameGeneratorQuickAdd: the prompt inserts the ego's name
+  // (dynamic value ego.ego_name), then create three nodes.
+  await expectStep(STEP.quickAdd);
+  const quickAddPrompt = page.getByText(/^Who are the people you know/).first();
+  await expect(quickAddPrompt).toBeVisible();
+  const quickAddValues = await insertedValues(quickAddPrompt);
+  const quickAddText = await sightedText(quickAddPrompt);
+  if (
+    JSON.stringify(quickAddValues) !== '["Smoke Tester"]' ||
+    quickAddText !== 'Who are the people you know, Smoke Tester?'
+  )
+    throw new Error(
+      `quick-add prompt did not insert the ego name: ${JSON.stringify(quickAddText)} inserted ${JSON.stringify(quickAddValues)}`,
+    );
+  for (const name of PEOPLE) {
     const toggle = page.getByTestId('quick-add-toggle');
     if ((await toggle.getAttribute('aria-pressed')) !== 'true')
       await toggle.click();
@@ -473,11 +659,16 @@ try {
     await expect(page.getByRole('option', { name })).toBeVisible();
   }
   await shot('stage-quickadd');
-  record('stage-quickadd', true, 'added Alex, Blair, Casey');
+  record(
+    'stage-quickadd',
+    true,
+    'prompt showed "Who are the people you know, Smoke Tester?"; added Alex, Blair, Casey',
+  );
   await nextStage();
 
-  // Stage 5 — Sociogram: place all three (layout writes), then click two
+  // Stage 6 — Sociogram: place all three (layout writes), then click two
   // nodes in turn to create a "Knows" edge on the same prompt.
+  await expectStep(STEP.sociogram);
   await dragNodeToCanvasPosition('Alex', { x: 0.3, y: 0.35 });
   await dragNodeToCanvasPosition('Blair', { x: 0.65, y: 0.35 });
   await dragNodeToCanvasPosition('Casey', { x: 0.5, y: 0.65 });
@@ -488,22 +679,22 @@ try {
   record('stage-sociogram', true, '3 placed, 1 Knows edge');
   await nextStage();
 
-  // Stage 6 — Information: the DyadCensus's instructions, a stage of their
-  // own since schema 9.
+  // Stage 7 — Information: the DyadCensus's instructions.
+  await expectStep(STEP.dyadIntroduction);
   await expect(
     page.getByText('You will be asked about each pair of people you named.'),
   ).toBeVisible();
   record('stage-dyad-introduction', true);
   await nextStage();
 
-  // Stage 7 — DyadCensus: answer all three pairs (Yes for the first, No
-  // after); the first pair shows straight away, with no intro to dismiss.
-  // The ~350 ms auto-advance timer races a fixed sleep under load, so wait
-  // for the observable PAIR IDENTITY to change after each non-final answer
-  // (the DyadCensusFixture pattern) — the final answer advances the stage
-  // itself.
+  // Stage 8 — DyadCensus: answer all three pairs (Yes for the first, No
+  // after). Each pair's prompt inserts both people's labels (dynamic values
+  // dyad.source.$label / dyad.target.$label), which must be exactly the pair
+  // on screen. The ~350 ms auto-advance timer races a fixed sleep under
+  // load, so wait for the observable PAIR IDENTITY to change after each
+  // non-final answer (the DyadCensusFixture pattern).
+  await expectStep(STEP.dyadCensus);
   await expect(page.getByRole('radio').first()).toBeVisible();
-  const dyadStepBefore = await stageStep().getAttribute('data-stage-step');
   const pairLabels = () =>
     page
       .locator('.w-md')
@@ -511,12 +702,26 @@ try {
       .allTextContents()
       .then((t) => t.join('|'))
       .catch(() => '');
+  const dyadPrompt = page.getByText(/^Are .+ friends\?/).first();
   // Retain the FIRST pair's identity: it receives the walk's only "Yes",
   // so the persisted friends edge must connect exactly these two people.
   let friendsPair = [];
+  const promptMismatches = [];
   for (let pair = 0; pair < 3; pair += 1) {
     const before = await pairLabels();
-    if (pair === 0) friendsPair = before.split('|');
+    const shown = before.split('|');
+    if (pair === 0) friendsPair = shown;
+    await expect(dyadPrompt).toBeVisible();
+    const named = await insertedValues(dyadPrompt);
+    const promptText = await sightedText(dyadPrompt);
+    if (
+      named.length !== 2 ||
+      sortedPair(named) !== sortedPair(shown) ||
+      promptText !== `Are ${named[0]} and ${named[1]} friends?`
+    )
+      promptMismatches.push(
+        `${JSON.stringify(promptText)} inserted ${JSON.stringify(named)} vs on screen ${before}`,
+      );
     await page.getByRole('radio', { name: pair === 0 ? 'Yes' : 'No' }).click();
     if (pair < 2) {
       await expect.poll(pairLabels, { timeout: 15_000 }).not.toBe(before);
@@ -526,36 +731,145 @@ try {
     .poll(() => stageStep().getAttribute('data-stage-step'), {
       timeout: 20_000,
     })
-    .not.toBe(dyadStepBefore);
+    .toBe(String(STEP.catBin));
   await shot('stage-dyadcensus');
-  record('stage-dyadcensus', true, '3 pairs answered, stage auto-advanced');
+  record(
+    'stage-dyadcensus',
+    promptMismatches.length === 0,
+    promptMismatches.length
+      ? `prompt did not name the pair on screen: ${promptMismatches.join('; ')}`
+      : '3 pairs answered, each prompt named its pair, stage auto-advanced',
+  );
 
-  // Stage 8 — CategoricalBin: categorise ALL three nodes (three categorical
-  // writes across distinct bins). The deployed build does not expose bin
-  // membership as role=option (verified empirically), so the oracle is the
-  // unplaced-drawer count reaching zero.
+  // Stage 9 — CategoricalBin with the completion gate: with a person still
+  // unplaced, Next must be refused with the notice and the step unchanged;
+  // once all three are placed it advances. The deployed build does not
+  // expose bin membership as role=option (verified empirically), so the
+  // placement oracle is the unplaced-drawer count reaching zero.
   await dragNodeToBin('Alex', 'Work');
+  await page.getByTestId('next-button').click();
+  await expect(
+    page.getByText('You must place every item before you can continue.'),
+  ).toBeVisible();
+  // Give a wrongly-permitted advance time to land before reading the step.
+  await page.waitForTimeout(1000);
+  await expectStep(STEP.catBin);
+  record(
+    'catbin-completion-gate',
+    true,
+    'Next refused with "You must place every item…" while Blair and Casey were unplaced',
+  );
   await dragNodeToBin('Blair', 'Social');
   await dragNodeToBin('Casey', 'Family');
   await expect(page.getByText('0 unplaced')).toBeVisible();
   await shot('stage-catbin');
   record('stage-catbin', true, 'Alex→Work, Blair→Social, Casey→Family placed');
+
+  // Stage 10 — an AlterForm whose filter matches nobody has nothing to ask:
+  // navigation must pass it going forward AND going back.
+  await nextStage();
+  await expectStep(STEP.ordinalBin);
+  await previousStage();
+  await expectStep(STEP.catBin);
+  await nextStage();
+  await expectStep(STEP.ordinalBin);
+  record(
+    'empty-stage-skipped',
+    true,
+    `step ${STEP.catBin}→${STEP.ordinalBin} forward and ${STEP.ordinalBin}→${STEP.catBin} back, never showing the empty follow-up form (step ${STEP.emptyAlterForm})`,
+  );
+
+  // Stage 11 — OrdinalBin in select mode (packages/interview/e2e/matrix/
+  // ordinal-bin.scenarios.ts select-mode-tap-to-place): tap a person in the
+  // drawer to make them the one being placed, then tap a bin.
+  const announcer = page.getByTestId('bin-select-announcer');
+  const drawerNode = (name) => page.getByRole('button', { name, exact: true });
+  await expect(announcer).toHaveText('Choose where Alex belongs.');
+  await drawerNode('Casey').click();
+  await expect(drawerNode('Casey')).toHaveAttribute('aria-pressed', 'true');
+  await expect(announcer).toHaveText('Choose where Casey belongs.');
+  for (const name of ['Casey', 'Alex', 'Blair']) {
+    const bin = EXPECTED_CLOSENESS_LABEL[name];
+    if ((await drawerNode(name).getAttribute('aria-pressed')) !== 'true')
+      await drawerNode(name).click();
+    await expect(drawerNode(name)).toHaveAttribute('aria-pressed', 'true');
+    await page.getByRole('button', { name: `Place ${name} in ${bin}` }).click();
+  }
+  await expect(announcer).toHaveText('Nothing left to place.');
+  await shot('stage-ordbin');
+  record(
+    'stage-ordbin',
+    true,
+    'tap-to-place: Casey selected out of turn, then Alex and Blair; nothing left to place',
+  );
   await nextStage();
 
-  // FinishSession.
+  // Stage 12 — FamilyPedigree (packages/interview/e2e/matrix/
+  // family-pedigree.scenarios.ts): the participant appears as "You"; add a
+  // parent through the new-person wizard.
+  await expectStep(STEP.familyPedigree);
+  const member = (name) =>
+    page.getByTestId('pedigree-person').getByLabel(name, { exact: true });
+  const panel = page.getByTestId('pedigree-person-panel');
+  await expect(member('You')).toBeVisible();
+  await member('You').hover();
+  await page.getByTestId('pedigree-menu-parent').click();
+  await expect(
+    panel.getByRole('heading', { name: 'Add your parent' }),
+  ).toBeVisible();
+  const sexGroup = panel.getByRole('radiogroup', {
+    name: /^Sex assigned at birth/,
+  });
+  await panel.getByRole('textbox', { name: /^Name/ }).fill('Linda');
+  await panel
+    .getByRole('radiogroup', { name: /^Gender identity/ })
+    .getByRole('radio', { name: 'Woman', exact: true })
+    .click();
+  await sexGroup.getByRole('radio', { name: 'Female', exact: true }).click();
+  const carried = panel
+    .getByRole('radiogroup', { name: /^Did this parent carry the pregnancy\?/ })
+    .getByRole('radio', { name: 'Yes', exact: true });
+  const save = panel.getByRole('button', { name: 'Save', exact: true });
+  // A new person is described a group of questions at a time: answering sex
+  // at birth moves the panel on to the parent's own questions (the matrix
+  // describe() helper), which ask whether this parent carried the pregnancy.
+  await expect(sexGroup).toBeHidden();
+  await expect(carried).toBeVisible();
+  await carried.click();
+  await expect(carried).toBeChecked();
+  for (let step = 0; step < 5 && !(await save.isVisible()); step += 1) {
+    await panel.getByRole('button', { name: /^(Continue|Skip)$/ }).click();
+  }
+  await save.click();
+  await expect(panel).toHaveCount(0);
+  await expect(member('Linda')).toBeVisible();
+  // A biological parent brings a stand-in for the other biological parent
+  // (drawn unnamed as "Biological father"), so the family is three people.
+  await expect(page.getByTestId('pedigree-person')).toHaveCount(3);
+  await expect(member('Biological father')).toBeVisible();
+  await shot('stage-family-pedigree');
+  record(
+    'stage-family-pedigree',
+    true,
+    'added Linda as a parent through the new-person wizard',
+  );
+  await nextStage();
+
+  // FinishSession (confirmation mode).
+  await expectStep(STEP.finish);
   await expect(
     page.getByRole('heading', { name: 'Finish Interview' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Finish' }).click();
+  await page.getByRole('button', { name: 'Finish', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Finish Interview' }).click();
-  // The interview stays on its finish stage, now in its completed state.
+  await dialog.getByRole('button', { name: 'Finish', exact: true }).click();
+  // The interview stays on its finish stage, now showing that stage's own
+  // finished screen (the declined stage's says "Thank you for your time.").
   await expect(
-    page.getByText(
-      'This interview is finished, and its answers can no longer be changed.',
-    ),
+    page.getByRole('heading', { name: 'Interview Finished' }),
   ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Thank you for participating!')).toBeVisible();
   await shot('finish-complete');
   record('finish', true, 'interview completed');
   await page.getByRole('button', { name: 'Exit', exact: true }).click();
@@ -606,8 +920,9 @@ try {
 
   // Phase 6: the PAYLOAD survived, not just the row — a session whose
   // network write was dropped still lists at 100%. Read the stored session
-  // raw (this profile is 'none' mode, so fields are plaintext) and assert
-  // every write path the walk exercised is present.
+  // raw (this profile is 'none' mode, so fields are plaintext; only the
+  // protocol's encrypted attribute is ciphertext) and assert every write
+  // path the walk exercised is present.
   const payload = await page.evaluate(async () => {
     const db = await new Promise((res, rej) => {
       const req = indexedDB.open('interviewer');
@@ -623,82 +938,169 @@ try {
     db.close();
     const s = sessions[0];
     if (!s?.network) return { found: false };
-    const edges = s.network.edges ?? [];
-    const byName = {};
-    const idToName = {};
-    for (const n of s.network.nodes ?? []) {
-      const a = n.attributes ?? {};
-      idToName[n._uid] = a.name;
-      byName[a.name] = {
-        layout:
-          a.layout &&
-          typeof a.layout.x === 'number' &&
-          typeof a.layout.y === 'number'
-            ? { x: a.layout.x, y: a.layout.y }
-            : null,
-        context: Array.isArray(a.context) ? a.context : null,
-      };
-    }
+    const nodes = s.network.nodes ?? [];
+    const isBytes = (v) =>
+      Array.isArray(v) &&
+      v.every((b) => Number.isInteger(b) && b >= 0 && b <= 255);
     return {
       found: true,
       sessionCount: sessions.length,
-      byName,
-      // Endpoint identity, not just type presence: map each edge's node ids
-      // (entityPrimaryKeyProperty '_uid') back to names.
-      edgeList: edges.map((e) => ({
+      finishStageId: s.finishStageId ?? null,
+      finishOutcome: s.finishOutcome ?? null,
+      finishedAt: s.finishedAt ?? null,
+      // People, in creation order (the walk added Alex, Blair, Casey).
+      people: nodes
+        .filter((n) => n.type === 'person')
+        .map((n) => {
+          const a = n.attributes ?? {};
+          const iv = n._secureAttributes?.name?.iv;
+          return {
+            uid: n._uid,
+            nameIsCiphertext: isBytes(a.name) && a.name.length === 48,
+            nameIv12: isBytes(iv) && iv.length === 12,
+            secureKeys: Object.keys(n._secureAttributes ?? {}),
+            layout:
+              a.layout &&
+              typeof a.layout.x === 'number' &&
+              typeof a.layout.y === 'number'
+                ? { x: a.layout.x, y: a.layout.y }
+                : null,
+            context: Array.isArray(a.context) ? a.context : null,
+            closeness: a.closeness ?? null,
+          };
+        }),
+      family: nodes
+        .filter((n) => n.type === 'family_member')
+        .map((n) => ({
+          uid: n._uid,
+          isEgo: n.attributes?.is_ego === true,
+          name: n.attributes?.fm_name ?? null,
+          gender: n.attributes?.genderIdentity ?? null,
+          sex: n.attributes?.sexAssignedAtBirth ?? null,
+        })),
+      edges: (s.network.edges ?? []).map((e) => ({
         type: e.type,
-        ends: [idToName[e.from], idToName[e.to]].toSorted((a, b) =>
-          String(a).localeCompare(String(b)),
-        ),
+        from: e.from,
+        to: e.to,
+        kind: e.attributes?.relationshipKind ?? null,
+        carrier: e.attributes?.isGestationalCarrier ?? null,
       })),
       egoName: (s.network.ego?.attributes ?? {}).ego_name ?? null,
-      nodeCount: (s.network.nodes ?? []).length,
+      consent: (s.network.ego?.attributes ?? {}).consent ?? null,
+      // Every stored string, to prove no plaintext person name survived.
+      serialized: JSON.stringify(s.network),
     };
   });
-  // Values, not counts: each node must carry its EXACT category and its own
-  // layout, and the three layouts must be pairwise distinct (the walk placed
-  // them at distinct spots — three identical coordinates is corruption even
-  // though every count matches).
-  const EXPECTED_CONTEXT = { Alex: 'work', Blair: 'social', Casey: 'family' };
-  const byName = payload.byName ?? {};
+  const people = payload.people ?? [];
+  const nameOf = Object.fromEntries(
+    people.map((p, i) => [p.uid, PEOPLE[i] ?? `?${i}`]),
+  );
+  const byName = Object.fromEntries(people.map((p, i) => [PEOPLE[i], p]));
+  // Values, not counts: each person must carry its EXACT category, ordinal
+  // value and its own layout, and the three layouts must be pairwise
+  // distinct (three identical coordinates is corruption even though every
+  // count matches).
   const contextsExact = Object.entries(EXPECTED_CONTEXT).every(([n, cat]) => {
     const c = byName[n]?.context;
     return Array.isArray(c) && c.length === 1 && c[0] === cat;
   });
-  const layoutPoints = Object.keys(EXPECTED_CONTEXT)
-    .map((n) => byName[n]?.layout)
-    .filter(Boolean);
+  const closenessExact = Object.entries(EXPECTED_CLOSENESS).every(([n, v]) => {
+    const c = byName[n]?.closeness;
+    return Array.isArray(c) ? c.length === 1 && c[0] === v : c === v;
+  });
+  const layoutPoints = PEOPLE.map((n) => byName[n]?.layout).filter(Boolean);
   const layoutsDistinct =
     layoutPoints.length === 3 &&
     new Set(layoutPoints.map((p) => `${p.x},${p.y}`)).size === 3;
   // Edge ENDPOINTS and cardinality, not just type presence: exactly one
   // knows edge between Alex and Blair (the sociogram link), and exactly one
-  // friends edge between the pair the walk answered Yes for — a right-typed
-  // edge on the wrong dyad, or a duplicate, is corrupted relationship data.
-  const edgeList = payload.edgeList ?? [];
-  const sortedPair = (pair) =>
-    [...pair].toSorted((a, b) => String(a).localeCompare(String(b))).join('+');
-  const knowsEdges = edgeList.filter((e) => e.type === 'knows');
-  const friendsEdges = edgeList.filter((e) => e.type === 'friends');
+  // friends edge between the pair the walk answered Yes for.
+  const personEdges = (payload.edges ?? [])
+    .filter((e) => e.type === 'knows' || e.type === 'friends')
+    .map((e) => ({ type: e.type, ends: [nameOf[e.from], nameOf[e.to]] }));
+  const knowsEdges = personEdges.filter((e) => e.type === 'knows');
+  const friendsEdges = personEdges.filter((e) => e.type === 'friends');
   const edgesExact =
-    edgeList.length === 2 &&
+    personEdges.length === 2 &&
     knowsEdges.length === 1 &&
     sortedPair(knowsEdges[0].ends) === 'Alex+Blair' &&
     friendsEdges.length === 1 &&
     friendsPair.length === 2 &&
     sortedPair(friendsEdges[0].ends) === sortedPair(friendsPair);
+  // The family the pedigree drew: the participant, Linda (female, who
+  // carried the pregnancy) and the unnamed stand-in for the other
+  // biological parent (male, saved under its generated label), each joined
+  // to the participant by exactly one biological-parent edge.
+  const family = payload.family ?? [];
+  const famEgo = family.find((f) => f.isEgo);
+  const linda = family.find((f) => f.name === 'Linda');
+  const standIn = family.find((f) => f.name === 'Biological father');
+  const familyEdges = (payload.edges ?? []).filter(
+    (e) => e.type === 'family_edge',
+  );
+  const parentEdge = (parent) =>
+    familyEdges.filter((e) => e.from === parent?.uid && e.to === famEgo?.uid);
+  const familyExact =
+    family.length === 3 &&
+    Boolean(famEgo && linda && standIn) &&
+    JSON.stringify(linda.gender) === '["woman"]' &&
+    JSON.stringify(linda.sex) === '["female"]' &&
+    JSON.stringify(standIn.sex) === '["male"]' &&
+    familyEdges.length === 2 &&
+    parentEdge(linda).length === 1 &&
+    JSON.stringify(parentEdge(linda)[0].kind) === '["biological"]' &&
+    parentEdge(linda)[0].carrier === true &&
+    parentEdge(standIn).length === 1 &&
+    JSON.stringify(parentEdge(standIn)[0].kind) === '["biological"]' &&
+    parentEdge(standIn)[0].carrier !== true;
   const payloadOk =
     payload.found &&
     payload.sessionCount === 1 &&
-    payload.nodeCount === 3 &&
+    people.length === 3 &&
     contextsExact &&
+    closenessExact &&
     layoutsDistinct &&
     edgesExact &&
-    payload.egoName === 'Smoke Tester';
+    familyExact &&
+    payload.egoName === 'Smoke Tester' &&
+    payload.consent === true;
   record(
     'persisted-payload',
     payloadOk,
-    `stored network: ${JSON.stringify(byName)} edges=${JSON.stringify(edgeList)} expectedFriendsPair=${JSON.stringify(friendsPair)} ego=${JSON.stringify(payload.egoName ?? null)} contextsExact=${contextsExact} layoutsDistinct=${layoutsDistinct} edgesExact=${edgesExact} nodeCount=${payload.nodeCount ?? 0}`,
+    `people=${JSON.stringify(byName)} personEdges=${JSON.stringify(personEdges)} expectedFriendsPair=${JSON.stringify(friendsPair)} family=${JSON.stringify(family)} familyEdges=${JSON.stringify(familyEdges)} ego=${JSON.stringify(payload.egoName ?? null)} consent=${JSON.stringify(payload.consent ?? null)} contextsExact=${contextsExact} closenessExact=${closenessExact} layoutsDistinct=${layoutsDistinct} edgesExact=${edgesExact} familyExact=${familyExact}`,
+  );
+  // Encrypted attributes: every person's name is stored as ciphertext (a
+  // short name pads to one 32-byte block plus the 16-byte GCM tag) with only
+  // its 12-byte IV beside it, and no person's plaintext name appears
+  // anywhere in the stored network.
+  const plaintextLeaks = PEOPLE.filter((n) =>
+    (payload.serialized ?? '').includes(`"${n}"`),
+  );
+  const encryptionOk =
+    people.length === 3 &&
+    people.every(
+      (p) =>
+        p.nameIsCiphertext &&
+        p.nameIv12 &&
+        JSON.stringify(p.secureKeys) === '["name"]',
+    ) &&
+    plaintextLeaks.length === 0;
+  record(
+    'persisted-encryption',
+    encryptionOk,
+    `per person {ciphertext48, iv12, secureKeys}: ${JSON.stringify(people.map((p) => [p.nameIsCiphertext, p.nameIv12, p.secureKeys]))}; plaintext names in stored network: ${JSON.stringify(plaintextLeaks)}`,
+  );
+  // The finish stage the walk ended on, recorded with the session: the
+  // normal finish stage and its outcome — not the declined-consent finish
+  // stage the walk visited and left.
+  const finishOk =
+    payload.finishStageId === 'finish' &&
+    payload.finishOutcome === 'completed' &&
+    typeof payload.finishedAt === 'string';
+  record(
+    'persisted-finish',
+    finishOk,
+    `finishStageId=${JSON.stringify(payload.finishStageId ?? null)} finishOutcome=${JSON.stringify(payload.finishOutcome ?? null)} finishedAt=${JSON.stringify(payload.finishedAt ?? null)} (expected "finish"/"completed")`,
   );
 
   // Cross-cutting: every non-whitelisted console error collected across the

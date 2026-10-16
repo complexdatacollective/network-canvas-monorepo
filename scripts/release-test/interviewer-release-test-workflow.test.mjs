@@ -1602,3 +1602,33 @@ test('every journey prompt numbers its checks 1..N to match expectedChecks', asy
     );
   }
 });
+
+test('conduct-offline maps every step the walker records onto a check', () => {
+  // The prompt binds the walker's result.json steps to checks by name; a
+  // step the walker records but the prompt never names is a result the
+  // journey cannot report against any check.
+  const walker = readFileSync(
+    path.join(
+      repoRoot,
+      'scripts',
+      'release-test',
+      'interviewer-release-smoke-walker.mjs',
+    ),
+    'utf8',
+  );
+  const recorded = new Set(
+    [...walker.matchAll(/record\(\s*'([a-z0-9-]+)'/g)].map((m) => m[1]),
+  );
+  // Harness outcomes, not checks: the prompt handles them generically.
+  for (const harness of ['setup', 'watchdog', 'walk'])
+    assert.ok(recorded.delete(harness), `walker no longer records ${harness}`);
+  assert.ok(recorded.size >= 20, `found only ${recorded.size} walker steps`);
+  const start = source.indexOf("key: 'conduct-offline'");
+  const end = source.indexOf("key: 'session-management'");
+  assert.ok(start !== -1 && end > start, 'conduct-offline prompt not found');
+  const prompt = source.slice(start, end);
+  const unmapped = [...recorded].filter(
+    (step) => !prompt.includes(`"${step}"`),
+  );
+  assert.deepEqual(unmapped, []);
+});
