@@ -312,8 +312,10 @@ export default function PersonSymbolsControl({
     </>
   );
 
+  // Wrapping the field takes it out of its siblings, so the wrapper carries
+  // the field's own spacing from what follows it.
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 not-last:mb-8">
       <UnconnectedField
         name="pedigree-symbols"
         label={intl.formatMessage(messages.symbolsLabel)}
