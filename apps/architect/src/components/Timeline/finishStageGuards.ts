@@ -13,7 +13,7 @@ const messages = defineMessages({
   finishStageCannotBeDeleted: {
     id: 'architect.timeline.finishStageGuards.finishStageCannotBeDeleted',
     defaultMessage:
-      'This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.',
+      "You cannot delete this 'finish interview' stage because at least one stage of this kind is required to allow the interview to end.",
     description:
       'Tooltip and accessible description of the unavailable delete button of the only stage that ends the interview (the finish screen), saying why it cannot be deleted.',
   },

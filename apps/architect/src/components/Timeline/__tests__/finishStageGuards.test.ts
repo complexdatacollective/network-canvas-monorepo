@@ -19,7 +19,7 @@ describe('Timeline finish stage guards', () => {
   it('explains why the only finish stage cannot be deleted', () => {
     const reason = getFinishStageDeleteBlockedReason(stages, 'finish');
     expect(reason && english.formatMessage(reason)).toBe(
-      'This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.',
+      "You cannot delete this 'finish interview' stage because at least one stage of this kind is required to allow the interview to end.",
     );
   });
 

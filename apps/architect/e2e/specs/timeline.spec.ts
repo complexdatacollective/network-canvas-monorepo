@@ -381,7 +381,7 @@ test('refuses to delete the stage that ends the interview', async ({
   const timeline = new Timeline(architectPage);
   const deleteControl = timeline.deleteControl(finish.label);
   const reason =
-    'This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.';
+    "You cannot delete this 'finish interview' stage because at least one stage of this kind is required to allow the interview to end.";
   await expect(deleteControl).toHaveAttribute('aria-disabled', 'true');
   await expect(deleteControl).toHaveAccessibleDescription(reason);
   await timeline.stageCard(finish.label).hover();

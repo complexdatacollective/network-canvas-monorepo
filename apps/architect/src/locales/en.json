@@ -3544,7 +3544,7 @@
     "description": "Title of the notice shown when a move would put a stage after a stage that ends the interview."
   },
   "architect.timeline.finishStageGuards.finishStageCannotBeDeleted": {
-    "defaultMessage": "This stage ends the interview, and every protocol needs one, so it cannot be deleted. You can change its text and outcome instead.",
+    "defaultMessage": "You cannot delete this 'finish interview' stage because at least one stage of this kind is required to allow the interview to end.",
     "description": "Tooltip and accessible description of the unavailable delete button of the only stage that ends the interview (the finish screen), saying why it cannot be deleted."
   },
   "architect.timeline.finishStageGuards.finishStagesStayLast": {
