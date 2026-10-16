@@ -460,6 +460,7 @@
   "architect.localization.languageList.defaultNote": "要移除默认语言，请先将另一种语言设为默认语言。",
   "architect.localization.languageList.description": "参与者可以使用这些语言中的任一语言进行访谈。对于尚未翻译的内容，参与者会看到下列语言中第一个有翻译的语言：",
   "architect.localization.languageList.descriptionSingle": "参与者将使用此语言进行访谈。添加更多语言后，参与者即可自行选择语言。",
+  "architect.localization.languageList.editTranslations": "编辑 {language} 翻译",
   "architect.localization.languageList.missingBadge": "缺失翻译",
   "architect.localization.languageList.noText": "目前还没有需要翻译的内容。",
   "architect.localization.languageList.openTable": "打开翻译表",

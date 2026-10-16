@@ -1,4 +1,11 @@
-import { Check, Pencil, Plus, Table2, Trash2 } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Check,
+  Pencil,
+  Plus,
+  Table2,
+  Trash2,
+} from 'lucide-react';
 import { type MouseEvent, useId, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useLocation } from 'wouter';
@@ -98,7 +105,13 @@ const messages = defineMessages({
     id: 'architect.localization.languageList.changeLanguage',
     defaultMessage: 'Change {language} to a different language',
     description:
-      'Accessible name and tooltip of the edit button in a protocol language’s row. It opens a dialog that records the translations written in that language as another language, for translations recorded under the wrong one. language is the language name.',
+      'Accessible name and tooltip of the button, with a two-way arrows icon, in a protocol language’s row. It opens a dialog that records the translations written in that language as another language, for translations recorded under the wrong one. language is the language name.',
+  },
+  editTranslations: {
+    id: 'architect.localization.languageList.editTranslations',
+    defaultMessage: 'Edit {language} translations',
+    description:
+      'Accessible name and tooltip of the edit button, with a pencil icon, in a protocol language’s row. It opens the translation table showing that language beside the default language, where its translations can be written and changed. language is the language name.',
   },
   removeLanguage: {
     id: 'architect.localization.languageList.removeLanguage',
@@ -226,6 +239,14 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
       void promptDiscardDraft(openDialog, () => setLocation(href), true);
     };
   const tableHref = translationTableHref();
+  const openTableOn = (locale: LocaleTag) => {
+    const href = translationTableHref(undefined, locale);
+    if (draft !== undefined && readStageDraft().dirty) {
+      void promptDiscardDraft(openDialog, () => setLocation(href), true);
+      return;
+    }
+    setLocation(href, { state: tableLinkState });
+  };
 
   return (
     <>
@@ -259,6 +280,7 @@ export const ProtocolLanguages = ({ draft }: ProtocolLanguagesProps) => {
               strandedCount={
                 removalImpacts.get(locale)?.strandedStrings.length ?? 0
               }
+              onEdit={() => openTableOn(locale)}
               onChange={(returnFocus) => changeLanguage(locale, returnFocus)}
               onRemove={(returnFocus) => removeLanguage(locale, returnFocus)}
             />
@@ -293,6 +315,7 @@ type LanguageRowProps = {
   entry: LocaleCoverage;
   total: number;
   strandedCount: number;
+  onEdit: () => void;
   onChange: (returnFocus: ReturnFocus) => Promise<void>;
   onRemove: (returnFocus: ReturnFocus) => Promise<void>;
 };
@@ -301,6 +324,7 @@ const LanguageRow = ({
   entry,
   total,
   strandedCount,
+  onEdit,
   onChange,
   onRemove,
 }: LanguageRowProps) => {
@@ -380,13 +404,31 @@ const LanguageRow = ({
         <TooltipTrigger
           render={
             <IconButton
+              variant="text"
+              color="dynamic"
+              aria-label={intl.formatMessage(messages.editTranslations, {
+                language,
+              })}
+              icon={<Pencil aria-hidden />}
+              onClick={onEdit}
+            />
+          }
+        />
+        <TooltipContent side="left" className="max-w-64">
+          {intl.formatMessage(messages.editTranslations, { language })}
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <IconButton
               ref={changeButtonRef}
               variant="text"
               color="dynamic"
               aria-label={intl.formatMessage(messages.changeLanguage, {
                 language,
               })}
-              icon={<Pencil aria-hidden />}
+              icon={<ArrowRightLeft aria-hidden />}
               onClick={() => void onChange(() => changeButtonRef.current)}
             />
           }

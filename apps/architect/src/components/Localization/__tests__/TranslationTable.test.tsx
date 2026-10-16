@@ -494,6 +494,53 @@ describe('TranslationTable', () => {
     expect(shownCount()).toHaveTextContent('Showing 2 of 17 strings');
   });
 
+  it('opens on one language beside the default language when a link asks for it', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/protocol/localization?table=open&language=es',
+    );
+    renderTable();
+
+    expect(
+      screen.getAllByRole('columnheader').map((header) => header.textContent),
+    ).toEqual([
+      'Location',
+      expect.stringMatching(/^EnglishDefault/),
+      expect.stringMatching(/^Spanish/),
+    ]);
+    expect(filterMenu()).toHaveDisplayValue('All translations');
+  });
+
+  it('keeps the column of the language whose gaps a link lists beside the one it opens on', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/protocol/localization?table=open&missing=fr&language=es',
+    );
+    renderTable();
+
+    expect(
+      screen.getAllByRole('columnheader').map((header) => header.textContent),
+    ).toEqual([
+      'Location',
+      expect.stringMatching(/^EnglishDefault/),
+      expect.stringMatching(/^French/),
+      expect.stringMatching(/^Spanish/),
+    ]);
+  });
+
+  it('shows every language when a link asks for one the protocol does not have', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/protocol/localization?table=open&language=de',
+    );
+    renderTable();
+
+    expect(screen.getAllByRole('columnheader')).toHaveLength(4);
+  });
+
   it('opens on every text when a link asks for a language the protocol does not have', () => {
     window.history.replaceState(
       null,

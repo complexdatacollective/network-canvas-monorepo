@@ -4,6 +4,7 @@ const LANGUAGES_PATH = '/protocol/localization';
 const TABLE_PARAM = 'table';
 const TABLE_OPEN = 'open';
 const MISSING_PARAM = 'missing';
+const LANGUAGE_PARAM = 'language';
 const ANY_LANGUAGE = 'any';
 const OPENED_FROM_LANGUAGES_KEY = 'translationTableOpenedFromLanguages';
 
@@ -24,14 +25,17 @@ const filterValue = (filter: MissingFilter) => {
 
 /**
  * The Languages page with the translation table open over it, showing the
- * texts `filter` picks.
+ * texts `filter` picks. With `language`, the table opens on that language's
+ * column beside the default language's, with every other column hidden.
  */
 export const translationTableHref = (
   filter: MissingFilter = { kind: 'all' },
+  language?: LocaleTag,
 ) => {
   const params = new URLSearchParams({ [TABLE_PARAM]: TABLE_OPEN });
   const value = filterValue(filter);
   if (value !== null) params.set(MISSING_PARAM, value);
+  if (language !== undefined) params.set(LANGUAGE_PARAM, language);
   return `${LANGUAGES_PATH}?${params.toString()}`;
 };
 
@@ -43,6 +47,7 @@ export const withoutTranslationTable = (params: URLSearchParams) => {
   const next = new URLSearchParams(params);
   next.delete(TABLE_PARAM);
   next.delete(MISSING_PARAM);
+  next.delete(LANGUAGE_PARAM);
   return next;
 };
 
@@ -87,4 +92,16 @@ export const writeMissingFilter = (
   if (value === null) next.delete(MISSING_PARAM);
   else next.set(MISSING_PARAM, value);
   return next;
+};
+
+/**
+ * The language a translation table URL opens on, if it names one the
+ * protocol has.
+ */
+export const readFocusedLanguage = (
+  params: URLSearchParams,
+  locales: readonly LocaleTag[],
+): LocaleTag | undefined => {
+  const value = params.get(LANGUAGE_PARAM);
+  return value !== null && locales.includes(value) ? value : undefined;
 };

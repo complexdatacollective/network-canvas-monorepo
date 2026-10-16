@@ -460,6 +460,7 @@
   "architect.localization.languageList.defaultNote": "To remove the default language, make another language the default first.",
   "architect.localization.languageList.description": "Participants can take the interview in any of these languages. Where something is not translated, they see the first of the following languages that has a translation:",
   "architect.localization.languageList.descriptionSingle": "Participants take the interview in this language. Add more languages to let them choose one.",
+  "architect.localization.languageList.editTranslations": "Edit {language} translations",
   "architect.localization.languageList.missingBadge": "Missing translations",
   "architect.localization.languageList.noText": "There is nothing to translate yet.",
   "architect.localization.languageList.openTable": "Open translation table",

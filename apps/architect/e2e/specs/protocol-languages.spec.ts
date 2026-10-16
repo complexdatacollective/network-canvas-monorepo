@@ -327,8 +327,9 @@ test('adds a language, keeps the default language from being removed, translates
   // The default language cannot be removed, and its delete button says why.
   // The button stays in the tab order, so the reason reaches keyboard users
   // too, and pressing it does nothing. A row's controls are in the order
-  // change, then delete, so Tab from English's delete button reaches French's
-  // change button first and its delete button second.
+  // edit translations, change, then delete, so Tab from English's delete
+  // button reaches French's edit button, then its change button, then its
+  // delete button.
   const defaultReason =
     'To remove the default language, make another language the default first.';
   const removeFrench = removeButton(page, 'French');
@@ -338,6 +339,13 @@ test('adds a language, keeps the default language from being removed, translates
   await changeEnglish.focus();
   await page.keyboard.press('Tab');
   await expect(removeEnglish).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(
+    page.getByRole('button', {
+      name: 'Edit French translations',
+      exact: true,
+    }),
+  ).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(changeFrench).toBeFocused();
   await expect(changeFrench).toBeEnabled();
