@@ -207,15 +207,51 @@ const recordCountProblems = (records, what) =>
     return [];
   });
 
+/**
+ * An expected value that a record may hold anything for except `value`: for
+ * an answer nobody gave, which the CSV leaves blank and the GraphML leaves
+ * out, but which must never read as `value`.
+ */
+export const anythingBut = (value) => ({ anythingBut: value });
+
+/**
+ * The columns a categorical answer exports as, one true/false column per
+ * option the protocol's codebook lists, named for the variable: only the
+ * chosen option true. Taken from the codebook the server stored rather than
+ * a list kept here, so an option added to the protocol (or by its migration)
+ * is checked too, and an export that marks any other option true fails.
+ */
+export function categoricalColumns(codebook, entity, type, variableId, chosen) {
+  const variable = codebook?.[entity]?.[type]?.variables?.[variableId];
+  const options = Array.isArray(variable?.options)
+    ? variable.options.map((option) =>
+        typeof option === 'object' && option !== null ? option.value : option,
+      )
+    : [];
+  if (!options.includes(chosen))
+    throw new Error(
+      `the stored codebook's ${entity} ${type} variable ${variableId} has no option ${JSON.stringify(chosen)} (options: ${JSON.stringify(options)})`,
+    );
+  return Object.fromEntries(
+    options.map((option) => [
+      `${variable.name}_${option}`,
+      String(option === chosen),
+    ]),
+  );
+}
+
 /** Every value `answers` names, compared with each record that should hold it. */
 const fieldProblems = (records, answers, what) => {
   const problems = [];
   for (const { name, fields } of records)
-    for (const [attribute, value] of Object.entries(answers))
-      if (fields.get(attribute) !== value)
+    for (const [attribute, value] of Object.entries(answers)) {
+      const held = fields.get(attribute);
+      const excluded = typeof value === 'object' && value !== null;
+      if (excluded ? held === value.anythingBut : held !== value)
         problems.push(
-          `${name}'s record for ${what} holds ${attribute}=${JSON.stringify(fields.get(attribute) ?? null)}, expected ${JSON.stringify(value)}`,
+          `${name}'s record for ${what} holds ${attribute}=${JSON.stringify(held ?? null)}, expected ${excluded ? `anything but ${JSON.stringify(value.anythingBut)}` : JSON.stringify(value)}`,
         );
+    }
   return problems;
 };
 

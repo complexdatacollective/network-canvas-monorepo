@@ -85,6 +85,8 @@ import {
   protocolMigrationProblems,
 } from './migration-contract.mjs';
 import {
+  anythingBut,
+  categoricalColumns,
   edgeAnswerProblems,
   egoAnswerProblems,
   finishOutcomeProblems,
@@ -213,7 +215,7 @@ function readDatabase() {
     ) === '1';
   const protocols = JSON.parse(
     psql(
-      `select coalesce(json_agg(json_build_object('id', id, 'name', name, 'schemaVersion', "schemaVersion", 'stages', stages) order by id), '[]') from "Protocol";`,
+      `select coalesce(json_agg(json_build_object('id', id, 'name', name, 'schemaVersion', "schemaVersion", 'stages', stages, 'codebook', codebook) order by id), '[]') from "Protocol";`,
     ),
   );
   const interviews = JSON.parse(
@@ -736,8 +738,10 @@ async function resume() {
           spermEdge?.active === null &&
           same(added?.kind, ['biological']) &&
           added?.carrier === true &&
+          added?.active === null &&
           same(otherParent?.kind, ['biological']) &&
           otherParent?.carrier === false &&
+          otherParent?.active === null &&
           partners.length === 1 &&
           partners[0].active === true,
         detail: `stored family ${JSON.stringify(family)}`,
@@ -820,22 +824,31 @@ async function resume() {
       if (!exported) throw new Error('no export was read');
       const person = (name) =>
         family.people[name]?.id ?? `(no stored family member named ${name})`;
+      // Categorical answers as the upgraded codebook lists their options.
+      const codebook = JSON.parse(
+        psql(
+          `select codebook::jsonb from "Protocol" where id = ${sqlText(seeded.protocolId)};`,
+        ) || '{}',
+      );
       const sex = (value) =>
-        Object.fromEntries(
-          ['female', 'male'].map((option) => [
-            `${FAMILY.sex}_${option}`,
-            String(option === value),
-          ]),
-        );
+        categoricalColumns(codebook, 'node', FAMILY.type, FAMILY.sex, value);
+      // A parent relationship is never marked as a current partnership: that
+      // flag is the partners' alone.
       const parentEdge = (from, to, carrier) => [
         relationshipBetween(family, from, to)?.id ??
           `(no stored relationship from ${from} to ${to})`,
         {
           [ncSourceUUID]: person(from),
           [ncTargetUUID]: person(to),
-          [`${FAMILY.kind}_biological`]: 'true',
-          [`${FAMILY.kind}_partner`]: 'false',
+          ...categoricalColumns(
+            codebook,
+            'edge',
+            FAMILY.edge,
+            FAMILY.kind,
+            'biological',
+          ),
           [FAMILY.carrier]: String(carrier),
+          [FAMILY.active]: anythingBut('true'),
         },
       ];
       const problems = [
@@ -863,7 +876,7 @@ async function resume() {
         pass: problems.length === 0,
         detail: problems.length
           ? problems.join('; ')
-          : `each of the family (${Object.keys(family.people).join(', ')}) has one CSV row and one GraphML node holding their name and sex at birth, and each parent relationship one edge list row and one GraphML edge holding its ends, its kind and its carrier flag`,
+          : `each of the family (${Object.keys(family.people).join(', ')}) has one CSV row and one GraphML node holding their name and sex at birth, and each parent relationship one edge list row and one GraphML edge holding its ends, its kind (every option column), its carrier flag and no current partner flag`,
       };
     }),
   );

@@ -54,6 +54,8 @@ import {
 } from './interview-walk.mjs';
 import { lane } from './lanes.mjs';
 import {
+  anythingBut,
+  categoricalColumns,
   edgeAnswerProblems,
   egoAnswerProblems,
   encryptedValueProblems,
@@ -140,20 +142,20 @@ const RELATIVE = {
   edge: 'edge-type-9009-23',
   kind: 'var-9009-24',
   gestationalCarrier: 'var-9009-25',
-};
-const RELATIVE_EXPORTED = {
-  genderIdentity: ['woman', 'man', 'nonBinary', 'differentIdentity'],
-  sexAssignedAtBirth: ['female', 'male', 'intersex'],
-  kind: ['biological', 'adoptive', 'partner'],
+  currentPartner: 'var-9009-26',
 };
 
-/** One true/false column per option, as the exporters write a categorical. */
-const optionColumns = (variable, chosen) =>
-  Object.fromEntries(
-    RELATIVE_EXPORTED[variable].map((option) => [
-      `${variable}_${option}`,
-      String(option === chosen),
-    ]),
+/**
+ * One true/false column per option of one of the relative's categorical
+ * answers, as the stored codebook lists the options.
+ */
+const optionColumns = (codebook, entity, variable, chosen) =>
+  categoricalColumns(
+    codebook,
+    entity,
+    entity === 'node' ? RELATIVE.type : RELATIVE.edge,
+    RELATIVE[variable],
+    chosen,
   );
 
 const checks = [];
@@ -659,6 +661,7 @@ try {
           kind: edge.attributes?.[RELATIVE.kind] ?? null,
           gestationalCarrier:
             edge.attributes?.[RELATIVE.gestationalCarrier] ?? null,
+          currentPartner: edge.attributes?.[RELATIVE.currentPartner] ?? null,
         })),
       };
       const answers = TRANSCRIPT.relativeAnswers;
@@ -669,6 +672,8 @@ try {
           {
             kind: [answers.kind],
             gestationalCarrier: answers.gestationalCarrier,
+            // The current partner flag belongs to partners only.
+            currentPartner: null,
           },
         ],
       };
@@ -813,19 +818,35 @@ try {
           `the stored network did not identify ${TRANSCRIPT.relative}'s node and her one relationship to the participant`,
         );
       const answers = TRANSCRIPT.relativeAnswers;
+      const codebook = JSON.parse(
+        psql(
+          `select codebook::jsonb from "Protocol" where id = ${sqlText(result.protocolId)};`,
+        ) || '{}',
+      );
       const problems = [
         ...nodeAnswerProblems(exported.files, {
           [result.relativeNodeId]: {
-            ...optionColumns('genderIdentity', answers.genderIdentity),
-            ...optionColumns('sexAssignedAtBirth', answers.sexAssignedAtBirth),
+            ...optionColumns(
+              codebook,
+              'node',
+              'genderIdentity',
+              answers.genderIdentity,
+            ),
+            ...optionColumns(
+              codebook,
+              'node',
+              'sexAssignedAtBirth',
+              answers.sexAssignedAtBirth,
+            ),
           },
         }),
         ...edgeAnswerProblems(exported.files, {
           [result.relativeEdgeId]: {
             [ncSourceUUID]: result.relativeNodeId,
             [ncTargetUUID]: result.familyEgoNodeId,
-            ...optionColumns('kind', answers.kind),
+            ...optionColumns(codebook, 'edge', 'kind', answers.kind),
             gestationalCarrier: String(answers.gestationalCarrier),
+            currentPartner: anythingBut('true'),
           },
         }),
       ];

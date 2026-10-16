@@ -26,6 +26,8 @@ import { gzipSync } from 'node:zlib';
 
 import { test } from 'vitest';
 
+import { migrateFamilyPedigreeSessionRecords } from '../../packages/protocol-validation/src/schemas/9/family-pedigree-session-migration.ts';
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const scripts = join(repoRoot, 'apps/fresco/release-test/scripts');
 const require = createRequire(join(repoRoot, 'package.json'));
@@ -48,6 +50,8 @@ const { readInterviewExport } = await import(
 
 const {
   ENCRYPTED_PLACEHOLDER,
+  anythingBut,
+  categoricalColumns,
   edgeAnswerProblems,
   egoAnswerProblems,
   encryptedValueProblems,
@@ -1126,6 +1130,60 @@ test('a relationship between the wrong people, of the wrong kind, or without its
   ]);
 });
 
+test('a categorical answer is held to every option the codebook lists', () => {
+  const codebook = {
+    edge: {
+      fe: {
+        variables: {
+          k: {
+            name: 'kind',
+            options: [
+              { value: 'biological' },
+              { value: 'partner' },
+              { value: 'donor' },
+            ],
+          },
+        },
+      },
+    },
+  };
+  assert.deepEqual(
+    categoricalColumns(codebook, 'edge', 'fe', 'k', 'biological'),
+    {
+      kind_biological: 'true',
+      kind_partner: 'false',
+      kind_donor: 'false',
+    },
+  );
+  assert.throws(
+    () => categoricalColumns(codebook, 'edge', 'fe', 'k', 'twin'),
+    /has no option "twin"/,
+  );
+});
+
+test('a flag nobody set may be blank or left out, but never true', () => {
+  const rows = [['parent', 'linda', 'ego', 'true', 'false', 'true']];
+  const files = [
+    { name: 'a_edgeList_family.csv', text: familyEdgeCsv(rows) },
+    { name: 'a.graphml', text: familyEdgeGraphml(rows) },
+  ];
+  assert.deepEqual(
+    edgeAnswerProblems(files, {
+      parent: { currentPartner: anythingBut('true') },
+    }),
+    [],
+  );
+  assert.deepEqual(
+    edgeAnswerProblems(files, {
+      parent: { gestationalCarrier: anythingBut('true') },
+    }),
+    [
+      'a_edgeList_family.csv\'s record for edge parent holds gestationalCarrier="true", expected anything but "true"',
+      'a.graphml\'s record for edge parent holds gestationalCarrier="true", expected anything but "true"',
+    ],
+  );
+});
+
 test('a relationship the GraphML leaves out is not covered by its edge list row', () => {
   const row = ['parent', 'linda', 'ego', 'true', 'false', 'true'];
   const files = [
@@ -1482,6 +1540,21 @@ test('a rule lost from either stage, or never there to carry, fails', () => {
   ]);
 });
 
+test('a rule the upgrade gives a stage that had none fails', () => {
+  const { before, after } = readings();
+  // The upgrade wrongly puts the same rule on the ruleless Ego Form and on
+  // its Information stage: the two agree, and both skip what was shown.
+  const gained = structuredClone(after);
+  for (const stage of gained.protocols[0].stages)
+    if (stage.id === 'about-you' || stage.id === 'about-you-introduction')
+      stage.skipLogic = SKIP;
+  const problems = introductionPanelProblems(before, gained).join('\n');
+  assert.match(
+    problems,
+    /"about-you": the stage's skip logic is now .*, not none, as it had before the upgrade/,
+  );
+});
+
 // A schema 8 Family Pedigree family either side of the upgrade, as
 // migration-lane.mjs reads it: the participant, Linda (egg, carried the
 // pregnancy), Robert (sperm, no sex recorded) and their partnership, with the
@@ -1698,6 +1771,249 @@ test('each loss of a family in the upgrade is named', () => {
         `${problem}\n not in\n${problems.join('\n')}`,
       );
     else assert.match(problems.join('\n'), problem);
+  }
+});
+
+test('a sex at birth the recorded gamete does not settle fails', () => {
+  const { before, after } = pedigreeReadings();
+  const who = 'interview family-interview\'s "family" pedigree';
+  // Robert gave the sperm, so the upgrade records him as male, and nothing
+  // else.
+  for (const sex of [['female'], ['intersex'], null]) {
+    const broken = structuredClone(after);
+    broken.interviews[0].network.nodes[3].attributes.sex = sex;
+    assert.ok(
+      pedigreeMigrationProblems(before, broken).includes(
+        `${who}: "Robert" (robert)'s sex was null, is now ${JSON.stringify(sex)} (expected ["male"])`,
+      ),
+      JSON.stringify(sex),
+    );
+  }
+  // Someone no gamete speaks for keeps no sex at birth.
+  const settled = pedigreeReadings();
+  delete settled.before.interviews[0].network.edges[1].attributes.gamete;
+  delete settled.after.interviews[0].network.edges[1].attributes.gamete;
+  assert.ok(
+    pedigreeMigrationProblems(settled.before, settled.after).includes(
+      `${who}: "Robert" (robert)'s sex was null, is now ["male"]`,
+    ),
+  );
+  settled.after.interviews[0].network.nodes[3].attributes.sex = undefined;
+  assert.deepEqual(
+    pedigreeMigrationProblems(settled.before, settled.after),
+    [],
+  );
+});
+
+// The schema 8 path where a finalized pedigree reached only its stage record:
+// Robert and his relationships are in the record and not in the network.
+const recordOnlyReadings = () => {
+  const { before, after } = pedigreeReadings();
+  const network = before.interviews[0].network;
+  network.nodes.splice(3, 1);
+  network.edges.splice(1, 2);
+  before.interviews[0].stageMetadata[1] = {
+    isNetworkCommitted: true,
+    edgeIdVersion: 1,
+    nodes: [
+      // The record's own participant stands for the one in the network.
+      { id: 'record-you', label: 'You', isEgo: true },
+      { id: 'linda', label: 'Linda', isEgo: false },
+      { id: 'robert', label: ' Robert ', isEgo: false },
+    ],
+    edges: [
+      {
+        id: 'sperm',
+        from: 'robert',
+        to: 'record-you',
+        attributes: {
+          kind: ['biological'],
+          active: true,
+          gamete: ['sperm'],
+          note: null,
+        },
+      },
+      {
+        id: 'partners',
+        from: 'linda',
+        to: 'robert',
+        attributes: { kind: ['partner'], active: true },
+      },
+      // Already in the network under the interface's own id.
+      {
+        id: 'old-egg',
+        from: 'linda',
+        to: 'record-you',
+        attributes: { kind: ['biological'] },
+      },
+    ],
+  };
+  // What the upgrade writes for Robert: his label as his name, no participant
+  // flag, and the sex his gamete settles.
+  after.interviews[0].network.nodes[3].attributes = {
+    fm_name: 'Robert',
+    sex: ['male'],
+  };
+  return { before, after };
+};
+
+test('a family restored from its stage record passes only as it was recorded', () => {
+  const { before, after } = recordOnlyReadings();
+  assert.deepEqual(pedigreeMigrationProblems(before, after), []);
+  const who = 'interview family-interview\'s "family" pedigree';
+  const cases = [
+    [
+      (a) => {
+        a.interviews[0].network.nodes[3].attributes.fm_name = 'Bob';
+      },
+      `${who}: "Robert" (robert), restored from its stage record, has fm_name="Bob", not "Robert"`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.nodes[3].attributes.is_ego = true;
+      },
+      `${who}: "Robert" (robert), restored from its stage record, has is_ego=true, not null`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.nodes[3].attributes.sex = ['female'];
+      },
+      `${who}: "Robert" (robert), restored from its stage record, has sex=["female"], not ["male"]`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.edges[1].to = 'linda';
+      },
+      `${who}: the biological relationship from "Robert" (robert) to person you, restored from its stage record, now joins robert to linda`,
+    ],
+    [
+      (a) => {
+        delete a.interviews[0].network.edges[1].attributes.gamete;
+      },
+      `${who}: the biological relationship from "Robert" (robert) to person you, restored from its stage record, had gamete=["sperm"], now null`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.edges[1].attributes.active = true;
+      },
+      `${who}: the biological relationship from "Robert" (robert) to person you, restored from its stage record, had active=true, now true (expected null)`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.nodes.splice(3, 1);
+      },
+      `${who} did not restore "Robert" (robert), whom only its stage record held`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.edges.splice(2, 1);
+      },
+      `${who} did not restore the partner relationship from "Linda" (linda) to "Robert" (robert), restored from its stage record`,
+    ],
+    [
+      (a) => {
+        // A second participant, or a second copy of a relationship the
+        // network already held, is someone nobody recorded.
+        a.interviews[0].network.nodes.push({
+          _uid: 'record-you',
+          type: 'fm',
+          attributes: { is_ego: true },
+        });
+      },
+      `${who} gained a person nobody recorded (record-you)`,
+    ],
+    [
+      (a) => {
+        a.interviews[0].network.edges.push({
+          _uid: 'old-egg',
+          type: 'fe',
+          from: 'linda',
+          to: 'you',
+          attributes: { kind: ['biological'] },
+        });
+      },
+      `${who} gained a relationship nobody recorded (old-egg)`,
+    ],
+  ];
+  for (const [breakIt, problem] of cases) {
+    const broken = structuredClone(after);
+    breakIt(broken);
+    const problems = pedigreeMigrationProblems(before, broken);
+    assert.ok(
+      problems.includes(problem),
+      `${problem}\n not in\n${problems.join('\n')}`,
+    );
+  }
+  // A name the protocol encrypts is one only the interview can write.
+  after.protocols[0].codebook = {
+    node: { fm: { variables: { fm_name: { encrypted: true } } } },
+  };
+  assert.ok(
+    pedigreeMigrationProblems(before, after).includes(
+      `${who}: person robert, restored from its stage record, has fm_name="Robert", not null`,
+    ),
+  );
+});
+
+test('a participant\'s "no children" answer is recorded where the redesigned stage reads it', () => {
+  const { before, after } = pedigreeReadings();
+  before.interviews[0].stageMetadata[1].noChildrenAffirmed = true;
+  after.protocols[0].stages[1].completeness = {
+    relativesNotRecordedAttribute: 'not_recorded',
+  };
+  const who = 'interview family-interview\'s "family" pedigree';
+  assert.ok(
+    pedigreeMigrationProblems(before, after).includes(
+      `${who}: person you's not_recorded was null, is now null (expected ["noChildren"])`,
+    ),
+  );
+  after.interviews[0].network.nodes[1].attributes.not_recorded = ['noChildren'];
+  assert.deepEqual(pedigreeMigrationProblems(before, after), []);
+});
+
+test("the pedigree oracle accepts what the package's own session migration writes", () => {
+  // Bound to the package, so the oracle and the migration cannot drift apart
+  // unnoticed: each family above, run through the migration itself, passes.
+  const schema9Stage = {
+    id: 'family',
+    type: 'FamilyPedigree',
+    subject: { entity: 'node', type: 'fm' },
+    nodeConfiguration: {
+      nameAttribute: 'fm_name',
+      egoAttribute: 'is_ego',
+      sexAssignedAtBirthAttribute: 'sex',
+    },
+    edgeConfiguration: {
+      type: 'fe',
+      kindAttribute: 'kind',
+      gestationalCarrierAttribute: 'carrier',
+      currentPartnerAttribute: 'active',
+    },
+    completeness: { relativesNotRecordedAttribute: 'not_recorded' },
+  };
+  const variants = [
+    pedigreeReadings(),
+    recordOnlyReadings(),
+    (() => {
+      const childless = recordOnlyReadings();
+      childless.before.interviews[0].stageMetadata[1].noChildrenAffirmed = true;
+      return childless;
+    })(),
+  ];
+  for (const { before, after } of variants) {
+    after.protocols[0].stages[1] = schema9Stage;
+    const session = structuredClone({
+      network: before.interviews[0].network,
+      stageMetadata: before.interviews[0].stageMetadata,
+    });
+    migrateFamilyPedigreeSessionRecords(
+      session,
+      after.protocols[0],
+      before.protocols[0],
+    );
+    after.interviews[0].network = session.network;
+    after.interviews[0].stageMetadata = session.stageMetadata;
+    assert.deepEqual(pedigreeMigrationProblems(before, after), []);
   }
 });
 
