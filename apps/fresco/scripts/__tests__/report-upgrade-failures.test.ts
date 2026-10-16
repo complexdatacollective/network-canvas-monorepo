@@ -97,9 +97,13 @@ describe('reportProtocolUpgradeFailures', () => {
       'install-1',
       expect.objectContaining({ reason: 'invalidBeforeUpgrade' }),
     );
-    const sent = captureException.mock.calls[0]?.[0] as Error;
-    expect(sent).not.toBe(failure.error.cause);
-    expect(sent.message).not.toContain((failure.error.cause as Error).message);
+    const sent: unknown = captureException.mock.calls[0]?.[0];
+    const cause = failure.error.cause;
+    if (!(sent instanceof Error) || !(cause instanceof Error)) {
+      throw new Error('expected the exception and its cause to be errors');
+    }
+    expect(sent).not.toBe(cause);
+    expect(sent.message).not.toContain(cause.message);
     expect(shutdown).toHaveBeenCalled();
     // Nothing that names the protocol leaves the deployment.
     expect(

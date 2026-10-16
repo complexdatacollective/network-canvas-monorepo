@@ -10,9 +10,8 @@ import {
   POSTHOG_API_KEY,
   POSTHOG_HOST,
 } from '@codaco/shared-consts';
-
-import pkg from '../package.json';
-import { type ProtocolUpgradeFailure } from './migrate-protocols';
+import pkg from '~/package.json';
+import { type ProtocolUpgradeFailure } from '~/scripts/migrate-protocols';
 
 // The startup scripts run from an image that carries `scripts/`, `lib/db` and
 // `env.js` but not the rest of the app, so this cannot import
