@@ -754,6 +754,80 @@ describe("Shell participant's language choice", () => {
     }
   });
 
+  it('keeps the protocol in the language on screen when a chosen language cannot load', async () => {
+    const { load } = interviewCatalogSource;
+    const failing = (locale: string) =>
+      locale === 'nl' ? Promise.reject(new Error('offline')) : load(locale);
+    const loadSpy = vi
+      .spyOn(interviewCatalogSource, 'load')
+      .mockImplementation(failing);
+    const attemptSpy = vi
+      .spyOn(interviewCatalogSource, 'attempt')
+      .mockImplementation(failing);
+    try {
+      const base = makePayload('dutch-session');
+      const withDutch = {
+        ...base,
+        session: {
+          ...base.session,
+          localeOptions: [...localization.locales, 'nl'].map((locale) =>
+            getLocaleMetadata(locale),
+          ),
+        },
+        protocol: {
+          ...base.protocol,
+          localization: {
+            ...localization,
+            locales: [...localization.locales, 'nl'],
+          },
+          stages: [
+            {
+              ...base.protocol.stages[0]!,
+              title: { ...titles, nl: 'Oorspronkelijke vraag' },
+            },
+          ],
+        },
+      } satisfies InterviewPayload;
+      function Host() {
+        const [stated, setStated] = useState<string | undefined>(undefined);
+        return (
+          <>
+            <button onClick={() => setStated('nl')}>State Dutch</button>
+            <Shell
+              {...handlers}
+              payload={withDutch}
+              requestedLocales={['en']}
+              statedLocale={stated}
+              flags={{ isE2E: true }}
+              disableAnalytics
+            />
+          </>
+        );
+      }
+      render(<Host />);
+      await expectVisibleHeading(titles.en);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('button', { name: 'State Dutch' }));
+      await waitFor(() => expect(loadSpy).toHaveBeenCalledWith('nl'));
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+
+      expect(liveStore().getState().ui.localePreference).toBe('nl');
+      expect(
+        screen.getByRole('heading', { name: titles.en }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Oorspronkelijke vraag' }),
+      ).toBeNull();
+      expect(screen.getByRole('main')).toHaveAttribute('lang', 'en');
+    } finally {
+      loadSpy.mockRestore();
+      attemptSpy.mockRestore();
+    }
+  });
+
   it('does not carry a choice into another interview', async () => {
     const first = renderShell();
     const user = userEvent.setup();

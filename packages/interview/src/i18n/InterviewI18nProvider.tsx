@@ -24,9 +24,8 @@ const SettledPreferenceContext = createContext<
 
 /**
  * The participant's language preference once the built-in text has changed
- * to it, or found it cannot, for protocol text to follow in the same render
- * rather than ahead of it. A preference this provider was not given is taken
- * as it is.
+ * to it, for protocol text to follow in the same render rather than ahead of
+ * it. A preference this provider was not given is taken as it is.
  */
 export function useSettledLocalePreference(
   preference: string | null,
@@ -85,13 +84,11 @@ export function InterviewI18nProvider({
     catalog,
     restored,
   );
-  // The preference whose built-in language is on screen, or failed to load.
-  // While a new one loads, the previous one stays settled.
+  // The preference whose built-in language is on screen. While a new one
+  // loads, or after it fails to, the previous one stays settled; a retry that
+  // loads it settles it then.
   const [settled, setSettled] = useState(localePreference ?? null);
-  if (
-    settled !== (localePreference ?? null) &&
-    (rendered.locale === locale || rendered.failure?.locale === locale)
-  ) {
+  if (settled !== (localePreference ?? null) && rendered.locale === locale) {
     setSettled(localePreference ?? null);
   }
   const settledValue = useMemo(
