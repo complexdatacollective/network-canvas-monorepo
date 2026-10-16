@@ -75,7 +75,7 @@ export function EditingLanguageSwitcher({
               // same colour rather than inverting to `--published-bg`, which
               // a surface may not set.
               color="dynamic"
-              className="ui-enabled:hover:bg-current/10 ui-enabled:hover:text-current"
+              className="ui-enabled:not-aria-expanded:hover:bg-current/10 ui-enabled:not-aria-expanded:hover:text-current"
               icon={<Languages aria-hidden="true" />}
             />
           }
