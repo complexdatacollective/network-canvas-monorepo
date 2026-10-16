@@ -2017,6 +2017,44 @@ test("the pedigree oracle accepts what the package's own session migration write
   }
 });
 
+test('fields beyond the attributes are held to being unchanged too', () => {
+  const { before, after } = pedigreeReadings();
+  before.interviews[0].network.nodes[0]._secureAttributes = {
+    name: { iv: 'a', secureValue: 'b' },
+  };
+  before.interviews[0].network.nodes[2].promptIDs = ['build'];
+  after.interviews[0].network.nodes[0]._secureAttributes = {
+    name: { iv: 'a', secureValue: 'b' },
+  };
+  after.interviews[0].network.nodes[2].promptIDs = ['build'];
+  assert.deepEqual(interviewMigrationProblems(before, after), []);
+  assert.deepEqual(pedigreeMigrationProblems(before, after), []);
+  delete after.interviews[0].network.nodes[0]._secureAttributes;
+  after.interviews[0].network.nodes[2].promptIDs = [];
+  after.interviews[0].network.ego._uid = 'another-ego';
+  const problems = interviewMigrationProblems(before, after).join('\n');
+  assert.match(
+    problems,
+    /node alex \(person\)'s _secureAttributes was \{.*\}, is now null/,
+  );
+  assert.match(problems, /the ego's _uid was "ego-node", is now "another-ego"/);
+  assert.ok(
+    pedigreeMigrationProblems(before, after).includes(
+      'interview family-interview\'s "family" pedigree: "Linda" (linda)\'s promptIDs was ["build"], is now []',
+    ),
+  );
+});
+
+test('a stage record the upgrade makes up fails', () => {
+  const { before, after } = pedigreeReadings();
+  delete before.interviews[0].stageMetadata[1];
+  after.interviews[0].stageMetadata = { 1: { framing: 'gendered' } };
+  assert.match(
+    pedigreeMigrationProblems(before, after).join('\n'),
+    /stage record is \{"framing":"gendered"\} after the upgrade, not null/,
+  );
+});
+
 test('the rest of a pedigree interview is still held to being unchanged', () => {
   const { before, after } = pedigreeReadings();
   after.interviews[0].network.nodes[0].attributes.name = 'Alexa';

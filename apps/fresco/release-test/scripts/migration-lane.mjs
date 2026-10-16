@@ -733,15 +733,19 @@ async function resume() {
           same(eggEdge?.kind, ['biological']) &&
           eggEdge?.carrier === true &&
           eggEdge?.active === null &&
+          same(eggEdge?.gamete, ['egg']) &&
           same(spermEdge?.kind, ['biological']) &&
           spermEdge?.carrier === false &&
           spermEdge?.active === null &&
+          same(spermEdge?.gamete, ['sperm']) &&
           same(added?.kind, ['biological']) &&
           added?.carrier === true &&
           added?.active === null &&
+          added?.gamete === null &&
           same(otherParent?.kind, ['biological']) &&
           otherParent?.carrier === false &&
           otherParent?.active === null &&
+          otherParent?.gamete === null &&
           partners.length === 1 &&
           partners[0].active === true,
         detail: `stored family ${JSON.stringify(family)}`,
@@ -832,25 +836,41 @@ async function resume() {
       );
       const sex = (value) =>
         categoricalColumns(codebook, 'node', FAMILY.type, FAMILY.sex, value);
-      // A parent relationship is never marked as a current partnership: that
-      // flag is the partners' alone.
-      const parentEdge = (from, to, carrier) => [
+      const kind = (value) =>
+        categoricalColumns(codebook, 'edge', FAMILY.edge, FAMILY.kind, value);
+      // The gamete role schema 8 recorded, or, where none was, no role
+      // marked at all.
+      const gamete = (value) =>
+        value
+          ? categoricalColumns(
+              codebook,
+              'edge',
+              FAMILY.edge,
+              FAMILY.gamete,
+              value,
+            )
+          : {
+              [`${FAMILY.gamete}_egg`]: anythingBut('true'),
+              [`${FAMILY.gamete}_sperm`]: anythingBut('true'),
+            };
+      const edgeBetween = (from, to, answers) => [
         relationshipBetween(family, from, to)?.id ??
           `(no stored relationship from ${from} to ${to})`,
         {
           [ncSourceUUID]: person(from),
           [ncTargetUUID]: person(to),
-          ...categoricalColumns(
-            codebook,
-            'edge',
-            FAMILY.edge,
-            FAMILY.kind,
-            'biological',
-          ),
-          [FAMILY.carrier]: String(carrier),
-          [FAMILY.active]: anythingBut('true'),
+          ...answers,
         },
       ];
+      // A parent relationship is never marked as a current partnership: that
+      // flag is the partners' alone.
+      const parentEdge = (from, to, carrier, role) =>
+        edgeBetween(from, to, {
+          ...kind('biological'),
+          ...gamete(role),
+          [FAMILY.carrier]: String(carrier),
+          [FAMILY.active]: anythingBut('true'),
+        });
       const problems = [
         ...nodeAnswerProblems(exported.files, {
           [person('You')]: sex('female'),
@@ -865,10 +885,17 @@ async function resume() {
         ...edgeAnswerProblems(
           exported.files,
           Object.fromEntries([
-            parentEdge(egg, 'You', true),
-            parentEdge(sperm, 'You', false),
+            parentEdge(egg, 'You', true, 'egg'),
+            parentEdge(sperm, 'You', false, 'sperm'),
             parentEdge(TRANSCRIPT.grandparent, egg, true),
             parentEdge(standIn, egg, false),
+            // The partnership seeded before the upgrade keeps its flag.
+            edgeBetween(egg, sperm, {
+              ...kind('partner'),
+              ...gamete(),
+              [FAMILY.active]: 'true',
+              [FAMILY.carrier]: anythingBut('true'),
+            }),
           ]),
         ),
       ];
@@ -876,7 +903,7 @@ async function resume() {
         pass: problems.length === 0,
         detail: problems.length
           ? problems.join('; ')
-          : `each of the family (${Object.keys(family.people).join(', ')}) has one CSV row and one GraphML node holding their name and sex at birth, and each parent relationship one edge list row and one GraphML edge holding its ends, its kind (every option column), its carrier flag and no current partner flag`,
+          : `each of the family (${Object.keys(family.people).join(', ')}) has one CSV row and one GraphML node holding their name and sex at birth, and each relationship one edge list row and one GraphML edge holding its ends, its kind (every option column), the gamete role recorded before the upgrade, its carrier flag and the partnership's current partner flag`,
       };
     }),
   );

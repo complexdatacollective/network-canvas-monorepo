@@ -248,6 +248,12 @@ const inFamily = (pedigrees, entity, nodeTypes) =>
       : entity.type === pedigree.personType,
   );
 
+/** The top-level fields of two records, but their attributes (and `skip`). */
+const fieldsOf = (was, now, skip = []) =>
+  [...new Set([...Object.keys(was), ...Object.keys(now)])].filter(
+    (field) => field !== 'attributes' && !skip.includes(field),
+  );
+
 /**
  * What changed between two networks, entity by entity and attribute by
  * attribute, leaving out the ones `skip` says another oracle judges. Named
@@ -262,11 +268,29 @@ function networkChanges(before, after, skip) {
           `${label} ${key} was ${JSON.stringify(was[key] ?? null)}, is now ${JSON.stringify(now[key] ?? null)}`,
         );
   };
+  const egoBefore = isRecord(before?.ego) ? before.ego : {};
+  const egoAfter = isRecord(after?.ego) ? after.ego : {};
+  for (const field of fieldsOf(egoBefore, egoAfter))
+    if (!sameJson(egoBefore[field], egoAfter[field]))
+      changes.push(
+        `the ego's ${field} was ${JSON.stringify(egoBefore[field] ?? null)}, is now ${JSON.stringify(egoAfter[field] ?? null)}`,
+      );
   compareAttributes(
     "the ego's",
-    attributesOf(isRecord(before) ? before.ego : undefined),
-    attributesOf(isRecord(after) ? after.ego : undefined),
+    attributesOf(egoBefore),
+    attributesOf(egoAfter),
   );
+  const networkBefore = isRecord(before) ? before : {};
+  const networkAfter = isRecord(after) ? after : {};
+  for (const field of fieldsOf(networkBefore, networkAfter, [
+    'nodes',
+    'edges',
+    'ego',
+  ]))
+    if (!sameJson(networkBefore[field], networkAfter[field]))
+      changes.push(
+        `the network's ${field} was ${JSON.stringify(networkBefore[field] ?? null)}, is now ${JSON.stringify(networkAfter[field] ?? null)}`,
+      );
   for (const key of ['nodes', 'edges']) {
     const noun = key === 'nodes' ? 'node' : 'edge';
     const nowById = new Map(entitiesOf(after, key).map((e) => [e._uid, e]));
@@ -280,7 +304,10 @@ function networkChanges(before, after, skip) {
         changes.push(`${label} is gone`);
         continue;
       }
-      for (const field of ['type', 'from', 'to'])
+      // Every persisted field, not only the public attributes: encrypted
+      // values (`_secureAttributes`) and where each came from (`stageId`,
+      // `promptIDs`) have to survive too.
+      for (const field of fieldsOf(was, now))
         if (!sameJson(was[field], now[field]))
           changes.push(
             `${label}'s ${field} was ${JSON.stringify(was[field] ?? null)}, is now ${JSON.stringify(now[field] ?? null)}`,
@@ -691,6 +718,14 @@ export function pedigreeMigrationProblems(before, after) {
           );
           continue;
         }
+        // Fields beyond the attributes (encrypted values, the stage and
+        // prompt each person came from) stay as they were.
+        if (!isRestored)
+          for (const field of fieldsOf(person, now))
+            if (!sameJson(person[field], now[field]))
+              problems.push(
+                `${who}: ${label.get(person._uid)}'s ${field} was ${JSON.stringify(person[field] ?? null)}, is now ${JSON.stringify(now[field] ?? null)}`,
+              );
         const should = expectedPerson(person);
         const is = attributesOf(now);
         for (const key of new Set([
@@ -730,6 +765,12 @@ export function pedigreeMigrationProblems(before, after) {
           );
           continue;
         }
+        if (!isRestored)
+          for (const field of fieldsOf(edge, now, ['from', 'to']))
+            if (!sameJson(edge[field], now[field]))
+              problems.push(
+                `${who}: ${what}'s ${field} was ${JSON.stringify(edge[field] ?? null)}, is now ${JSON.stringify(now[field] ?? null)}`,
+              );
         if (now.from !== edge.from || now.to !== edge.to)
           problems.push(`${who}: ${what} now joins ${now.from} to ${now.to}`);
         const should = expectedRelationshipAttributes(was, pedigree);
@@ -760,12 +801,16 @@ export function pedigreeMigrationProblems(before, after) {
         step !== null && isRecord(migrated.stageMetadata)
           ? migrated.stageMetadata[String(step)]
           : undefined;
-      const framing = isRecord(record) ? record.selectedFraming : undefined;
-      const expectedRecord =
-        framing === 'gamete' || framing === 'gendered'
+      // A schema 8 record keeps only the framing choice; any other record,
+      // or none, is left as it was: a record the upgrade made up would
+      // change how the participant's pedigree resumes.
+      const framing = schema8Record?.selectedFraming;
+      const expectedRecord = schema8Record
+        ? framing === 'gamete' || framing === 'gendered'
           ? { framing }
-          : undefined;
-      if (record !== undefined && !sameJson(recordAfter, expectedRecord))
+          : undefined
+        : record;
+      if (!sameJson(recordAfter, expectedRecord))
         problems.push(
           `${who}'s stage record is ${JSON.stringify(recordAfter ?? null)} after the upgrade, not ${JSON.stringify(expectedRecord ?? null)}${isRecord(recordAfter) && ('nodes' in recordAfter || 'isNetworkCommitted' in recordAfter) ? ' (still in the schema 8 shape)' : ''}`,
         );
