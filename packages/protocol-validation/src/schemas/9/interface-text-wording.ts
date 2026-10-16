@@ -1,4 +1,5 @@
 import type { MessageArguments } from '../../localization/messageArguments.ts';
+import type { LocalizedStringFormat } from './localized-string.ts';
 import type { SuppliedWording } from './supplied-stage-setting.ts';
 
 // The wording Network Canvas supplies for the interface text a protocol holds
@@ -18,6 +19,12 @@ export type InterfaceTextEntry = Readonly<{
    */
   ids: readonly string[];
   arguments?: MessageArguments;
+  /**
+   * How the text is written: markdown for a message the researcher may format
+   * and add links to, which the interview renders as markdown. Absent, the
+   * text is plain.
+   */
+  format?: LocalizedStringFormat;
   message: SuppliedWording;
 }>;
 
@@ -157,6 +164,7 @@ export const BUTTONS_INTERFACE_TEXT = {
 export const MESSAGES_INTERFACE_TEXT = {
   stageError: {
     ids: ['interview.runtime.taskErrorDescription'],
+    format: 'markdown',
     message: {
       'en': 'There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.',
       'de': 'In der Interview-Software ist ein Fehler aufgetreten, daher konnte diese Aufgabe nicht angezeigt werden. Manche Aufgaben (zum Beispiel Karten) benötigen eine Internetverbindung. Prüfen Sie daher Ihre Verbindung und laden Sie dann die Seite neu. Wenn das Problem weiterhin besteht, wenden Sie sich bitte an die Studienleitung und senden Sie ihr die Diagnoseinformationen, die Sie mit der Schaltfläche unten kopieren können. Möglicherweise können Sie das Interview fortsetzen, indem Sie auf „Weiter“ klicken.',
