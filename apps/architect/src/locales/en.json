@@ -1763,14 +1763,6 @@
     "defaultMessage": "{name} ({tag})",
     "description": "One entry in a list of languages. name is the language name in the interface language; tag is its language code, such as \"de\" or \"pt-BR\"."
   },
-  "architect.localization.languageActions.languagePlural": {
-    "defaultMessage": "languages",
-    "description": "Plural noun in the summary of chosen languages, as in \"3 languages selected\"."
-  },
-  "architect.localization.languageActions.languageSingular": {
-    "defaultMessage": "language",
-    "description": "Singular noun in the summary of chosen languages, as in \"1 language selected\"."
-  },
   "architect.localization.languageActions.languagesLabel": {
     "defaultMessage": "Languages",
     "description": "Label of the searchable list of languages to add."
@@ -1778,6 +1770,10 @@
   "architect.localization.languageActions.noLanguagesFound": {
     "defaultMessage": "No language matches your search.",
     "description": "Shown when a language search finds nothing."
+  },
+  "architect.localization.languageActions.otherLanguages": {
+    "defaultMessage": "{count, plural, one {# other} other {# others}}",
+    "description": "Last item of the list of chosen languages when the rest do not fit, as in \"English, Spanish and 4 others\". The list joins it with \"and\". count is how many chosen languages are not named."
   },
   "architect.localization.languageActions.removeConfirm": {
     "defaultMessage": "Remove language",
