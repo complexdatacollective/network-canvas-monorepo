@@ -461,6 +461,7 @@
   "architect.localization.languageList.defaultNote": "Als je de standaardtaal wilt verwijderen, maak dan eerst een andere taal de standaardtaal.",
   "architect.localization.languageList.description": "Deelnemers kunnen in elk van deze talen aan het interview deelnemen. Als iets niet is vertaald, zien ze de eerste van de volgende talen waarin een vertaling bestaat:",
   "architect.localization.languageList.descriptionSingle": "Deelnemers nemen in deze taal deel aan het interview. Voeg meer talen toe zodat ze een taal kunnen kiezen.",
+  "architect.localization.languageList.editTranslations": "Vertalingen in het {language} bewerken",
   "architect.localization.languageList.missingBadge": "Ontbrekende vertalingen",
   "architect.localization.languageList.noText": "Er is nog niets om te vertalen.",
   "architect.localization.languageList.openTable": "Vertaaltabel openen",

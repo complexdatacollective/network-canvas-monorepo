@@ -461,6 +461,7 @@
   "architect.localization.languageList.defaultNote": "Pour supprimer la langue par défaut, définissez d’abord une autre langue par défaut.",
   "architect.localization.languageList.description": "Les personnes participantes peuvent passer l’entretien dans n’importe laquelle de ces langues. Lorsqu’un contenu n’est pas traduit, elles voient la première des langues suivantes qui en propose une traduction :",
   "architect.localization.languageList.descriptionSingle": "Les personnes participantes passent l’entretien dans cette langue. Ajoutez d’autres langues pour leur permettre d’en choisir une.",
+  "architect.localization.languageList.editTranslations": "Modifier les traductions en {language}",
   "architect.localization.languageList.missingBadge": "Traductions manquantes",
   "architect.localization.languageList.noText": "Il n’y a encore rien à traduire.",
   "architect.localization.languageList.openTable": "Ouvrir le tableau des traductions",

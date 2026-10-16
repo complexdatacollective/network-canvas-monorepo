@@ -461,6 +461,7 @@
   "architect.localization.languageList.defaultNote": "Um die Standardsprache zu entfernen, legen Sie zuerst eine andere Sprache als Standard fest.",
   "architect.localization.languageList.description": "Teilnehmende können das Interview in jeder dieser Sprachen absolvieren. Wo etwas nicht übersetzt ist, sehen sie die erste der folgenden Sprachen, in der es eine Übersetzung gibt:",
   "architect.localization.languageList.descriptionSingle": "Teilnehmende absolvieren das Interview in dieser Sprache. Fügen Sie weitere Sprachen hinzu, damit sie eine Sprache wählen können.",
+  "architect.localization.languageList.editTranslations": "Übersetzungen für {language} bearbeiten",
   "architect.localization.languageList.missingBadge": "Fehlende Übersetzungen",
   "architect.localization.languageList.noText": "Es gibt noch nichts zu übersetzen.",
   "architect.localization.languageList.openTable": "Übersetzungstabelle öffnen",

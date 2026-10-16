@@ -461,6 +461,7 @@
   "architect.localization.languageList.defaultNote": "Para remover o idioma padrão, defina primeiro outro idioma como padrão.",
   "architect.localization.languageList.description": "Participantes podem responder à entrevista em qualquer um destes idiomas. Quando algo não está traduzido, aparece o primeiro dos idiomas a seguir que tiver uma tradução:",
   "architect.localization.languageList.descriptionSingle": "Participantes respondem à entrevista neste idioma. Adicione mais idiomas para que possam escolher um.",
+  "architect.localization.languageList.editTranslations": "Editar traduções em {language}",
   "architect.localization.languageList.missingBadge": "Traduções ausentes",
   "architect.localization.languageList.noText": "Ainda não há nada para traduzir.",
   "architect.localization.languageList.openTable": "Abrir tabela de traduções",

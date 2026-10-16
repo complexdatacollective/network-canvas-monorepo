@@ -461,6 +461,7 @@
   "architect.localization.languageList.defaultNote": "Per rimuovere la lingua predefinita, imposta prima un’altra lingua come predefinita.",
   "architect.localization.languageList.description": "Le persone partecipanti possono completare l’intervista in una qualsiasi di queste lingue. Quando qualcosa non è tradotto, vedono la prima delle seguenti lingue che ne ha una traduzione:",
   "architect.localization.languageList.descriptionSingle": "Le persone partecipanti completano l’intervista in questa lingua. Aggiungi altre lingue per permettere loro di scegliere quella che preferiscono.",
+  "architect.localization.languageList.editTranslations": "Modifica le traduzioni in {language}",
   "architect.localization.languageList.missingBadge": "Traduzioni mancanti",
   "architect.localization.languageList.noText": "Non c’è ancora nulla da tradurre.",
   "architect.localization.languageList.openTable": "Apri la tabella delle traduzioni",
