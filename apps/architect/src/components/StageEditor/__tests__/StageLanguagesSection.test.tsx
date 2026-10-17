@@ -43,7 +43,17 @@ const protocol: CurrentProtocol = {
   assetManifest: {},
   codebook: { node: {}, edge: {}, ego: {} },
   stages: [
-    { id: STAGE_ID, type: 'LanguageChooser', label: LABEL },
+    {
+      id: STAGE_ID,
+      type: 'LanguageChooser',
+      label: LABEL,
+      // Network Canvas's heading, as a new stage holds it in each language.
+      title: {
+        en: 'Choose a language',
+        fr: 'Choisissez une langue',
+        de: 'Wählen Sie eine Sprache aus',
+      },
+    },
     {
       id: 'finish',
       type: 'FinishSession',
@@ -181,6 +191,12 @@ describe('the language chooser’s languages in Architect', () => {
     ).toHaveAttribute('href', '/protocol/localization?table=open');
     // The sections the package's own editor has, besides its list.
     expect(
+      screen.getByRole('heading', { name: 'Participant wording' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Heading' })).toHaveValue(
+      'Choose a language',
+    );
+    expect(
       screen.getByRole('heading', { name: 'Skip logic' }),
     ).toBeInTheDocument();
   });
@@ -295,6 +311,15 @@ describe('the language chooser’s languages in Architect', () => {
     await waitFor(() => expect(savedStage(store)?.label).toEqual(changed));
     await waitFor(() => expect(readStageDraft().stage?.label).toEqual(changed));
     await waitFor(() => expect(readStageDraft().dirty).toBe(false));
+    // The heading is still Network Canvas's, so it becomes its Spanish wording
+    // in the open stage as in the protocol.
+    const heading = {
+      en: 'Choose a language',
+      es: 'Elige un idioma',
+      de: 'Wählen Sie eine Sprache aus',
+    };
+    expect(savedStage(store)).toMatchObject({ title: heading });
+    expect(readStageDraft().stage).toMatchObject({ title: heading });
   });
 
   it('saves a stage edited across a language’s removal as a valid protocol', async () => {

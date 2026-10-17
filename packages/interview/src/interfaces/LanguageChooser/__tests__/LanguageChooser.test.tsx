@@ -13,6 +13,8 @@ import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
 import {
   getLocaleMetadata,
   type LocalizationDeclaration,
+  type LocalizedString,
+  suppliedStageText,
 } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -69,10 +71,17 @@ const ENGLISH_SPANISH_ARABIC: LocalizationDeclaration = {
 
 const label = (locale: string) => getLocaleMetadata(locale).label;
 
+// The heading a new chooser starts with: Network Canvas's, in each of the
+// protocol's languages it is supplied in.
+const suppliedTitle = (localization: LocalizationDeclaration) =>
+  suppliedStageText('LanguageChooser', localization)[0]!.value;
+
 function makePayload({
   localization = ENGLISH_SPANISH_ARABIC,
+  title = suppliedTitle(localization),
 }: {
   localization?: LocalizationDeclaration;
+  title?: LocalizedString;
 } = {}) {
   return {
     session: {
@@ -110,6 +119,7 @@ function makePayload({
           id: 'chooser',
           type: 'LanguageChooser',
           label: { [localization.defaultLocale]: 'Language' },
+          title,
         },
         {
           id: 'after',
@@ -191,7 +201,7 @@ describe('LanguageChooser', () => {
         localization: { defaultLocale: 'fr', locales: ['fr'] },
       }),
     });
-    const group = await languageGroup();
+    const group = await languageGroup('Choisissez une langue');
 
     const languages = within(group).getAllByRole('option');
     expect(languages).toHaveLength(1);
@@ -282,13 +292,38 @@ describe('LanguageChooser', () => {
     const shell = screen.getByRole('main');
     await waitFor(() => expect(shell).toHaveAttribute('dir', 'rtl'));
     expect(shell).toHaveAttribute('lang', 'ar');
-    // The interface has no Arabic, so its own text stays in English.
+    // The heading has no Arabic, so it falls back to the default language.
     expect(
       screen.getByRole('listbox', { name: 'Choose a language' }),
     ).toBeVisible();
     expect(
       within(group).getByRole('option', { name: label('ar') }),
     ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('heads the languages with the stage’s own heading, in the language chosen', async () => {
+    renderChooser({
+      payload: makePayload({
+        title: {
+          en: 'Which language suits you?',
+          es: '¿Qué idioma prefieres?',
+        },
+      }),
+    });
+    const user = userEvent.setup();
+    const group = await languageGroup('Which language suits you?');
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Which language suits you?',
+      }),
+    ).toBeVisible();
+
+    await user.click(within(group).getByRole('option', { name: label('es') }));
+
+    expect(
+      await screen.findByRole('listbox', { name: '¿Qué idioma prefieres?' }),
+    ).toBe(group);
   });
 
   it('shows only the heading and the languages', async () => {

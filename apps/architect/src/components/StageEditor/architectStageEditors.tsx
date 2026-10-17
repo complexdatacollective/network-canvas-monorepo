@@ -1,4 +1,5 @@
 import { defineStageEditor } from '@codaco/protocol-builder/editors/defineStageEditor';
+import { languageChooserWording } from '@codaco/protocol-builder/editors/language-chooser/languageChooserWording';
 import { interviewerGuidance } from '@codaco/protocol-builder/sections/interviewer-guidance/interviewerGuidance';
 import { skipLogic } from '@codaco/protocol-builder/sections/skip-logic/skipLogic';
 
@@ -12,6 +13,7 @@ import StageLanguagesSection from './StageLanguagesSection';
  * the package's read-only one.
  */
 export const architectStageEditors = defineStageEditor('LanguageChooser', [
+  languageChooserWording(),
   () => <StageLanguagesSection />,
   skipLogic(),
   interviewerGuidance(),

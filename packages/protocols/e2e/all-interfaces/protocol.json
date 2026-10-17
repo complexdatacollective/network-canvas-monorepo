@@ -1249,6 +1249,9 @@
       "type": "LanguageChooser",
       "label": {
         "en-US": "Language Chooser"
+      },
+      "title": {
+        "en-US": "Choose a language"
       }
     },
     {

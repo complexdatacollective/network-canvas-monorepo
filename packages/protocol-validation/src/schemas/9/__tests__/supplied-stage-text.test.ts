@@ -172,6 +172,48 @@ describe('migrating a roster stage to schema 9', () => {
   });
 });
 
+describe('the Language Chooser heading Network Canvas supplies', () => {
+  it('starts a new chooser with the heading in each protocol language it is supplied in', () => {
+    expect(
+      missingSuppliedStageText(
+        { type: 'LanguageChooser' },
+        { defaultLocale: 'en-US', locales: ['en-US', 'es', 'hu'] },
+      ),
+    ).toEqual([
+      {
+        path: ['title'],
+        value: { 'en-US': 'Choose a language', 'es': 'Elige un idioma' },
+      },
+    ]);
+  });
+
+  it('keeps a heading the chooser already has', () => {
+    const chooser = { type: 'LanguageChooser', title: { en: 'Pick one' } };
+    expect(missingSuppliedStageText(chooser, english)).toEqual([]);
+  });
+
+  // Schema 8 has no Language Chooser, so only a document already in schema 9
+  // form, which Fresco's deploy normalization re-runs this migration over,
+  // can hold one without a heading.
+  it('is given to a schema 9 chooser without one when the migration re-runs', () => {
+    const document = {
+      ...completeProtocol(),
+      schemaVersion: 8,
+      localization: { defaultLocale: 'en', locales: ['en', 'fr'] },
+    };
+    const chooserOf = (protocol: { stages: readonly unknown[] }) =>
+      protocol.stages.find(
+        (stage) => (stage as { type?: unknown }).type === 'LanguageChooser',
+      ) as Record<string, unknown> | undefined;
+    delete chooserOf(document)!.title;
+    const migrated = migrateProtocol(document, 9);
+    expect(chooserOf(migrated)).toMatchObject({
+      title: { en: 'Choose a language', fr: 'Choisissez une langue' },
+    });
+    expect(ProtocolSchemaV9.safeParse(migrated).success).toBe(true);
+  });
+});
+
 describe('the Family Pedigree wording Network Canvas supplies', () => {
   const paths = (stage: Record<string, unknown>) =>
     missingSuppliedStageText(

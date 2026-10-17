@@ -52,6 +52,9 @@ export type LocalizedStringRewrite = (
   value: LocalizedString,
 ) => LocalizedString;
 
+/** Leaves every translation as it is. */
+export const unchangedText: LocalizedStringRewrite = (value) => value;
+
 /** Deletes the translation written in `locale`. */
 export const withoutLocale =
   (locale: LocaleTag): LocalizedStringRewrite =>
@@ -133,6 +136,44 @@ const resolveNewLocale = (
 };
 
 /**
+ * Writes into `target` each stage setting Network Canvas words, as it reads
+ * for `stage` after `change` (see `suppliedStageTextAfterLanguageChange`).
+ */
+const writeSuppliedStageText = (
+  stage: Readonly<{ type: string }>,
+  target: object,
+  change: LanguageChange,
+) => {
+  for (const { path, value } of suppliedStageTextAfterLanguageChange(
+    stage,
+    change,
+  )) {
+    setAtPath(target, path, value);
+  }
+};
+
+/**
+ * A stage, shaped as the protocol holds it, after a change to the protocol's
+ * languages: `rewrite` moves or removes its translations, and the settings
+ * Network Canvas words then follow `change`, as they do in the protocol (see
+ * `withLanguageChange`). It is how the change reaches a stage open in an
+ * editor, whose unsaved fields the protocol does not hold.
+ */
+export const stageAfterLanguageChange = <
+  Stage extends Readonly<{ type: string }>,
+>(
+  stage: Stage,
+  rewrite: LocalizedStringRewrite,
+  change: LanguageChange,
+): Stage => {
+  const document = { stages: [stage] };
+  const [rewritten = stage] = rewriteLocalizedStrings(document, rewrite).stages;
+  return createNextState(rewritten, (draft) => {
+    writeSuppliedStageText(stage, draft, change);
+  });
+};
+
+/**
  * The protocol after a change to its languages. `rewritten` is the protocol
  * with every translation already moved or removed as the change says; each
  * text Network Canvas supplies that the researcher has not changed in the
@@ -183,12 +224,7 @@ const withLanguageChange = (
           defaultFinishSessionTextAfterLanguageChange(stage, change),
         );
       }
-      for (const { path, value } of suppliedStageTextAfterLanguageChange(
-        stage,
-        change,
-      )) {
-        setAtPath(target, path, value);
-      }
+      writeSuppliedStageText(stage, target, change);
     });
     if (original.interfaceText !== undefined) {
       for (const { group, key, value } of interfaceTextAfterLanguageChange(

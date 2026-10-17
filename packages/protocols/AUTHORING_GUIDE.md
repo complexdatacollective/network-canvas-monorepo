@@ -222,14 +222,17 @@ Required keys per stage type used by these templates:
   }
   ```
 - **Anonymisation**: `explanationText` (markdown, usually opening with a `# ` heading as the screen's title) + `validation?:{minLength?,maxLength?}`.
-- **LanguageChooser**: no fields beyond the base stage (no `subject`). Lets the participant pick
-  one of the protocol's `locales`, so add it only when there is more than one. Put it before any
-  stage the participant should read in their chosen language, normally first:
+- **LanguageChooser**: one field beyond the base stage (no `subject`): `title` (required,
+  non-empty localized plain string), the heading over the languages, which Architect starts as
+  "Choose a language". Lets the participant pick one of the protocol's `locales`, so add it only
+  when there is more than one. Put it before any stage the participant should read in their
+  chosen language, normally first:
   ```jsonc
   {
     "id": "language-chooser",
     "type": "LanguageChooser",
-    "label": { "en-US": "Language", "es": "Idioma" }
+    "label": { "en-US": "Language", "es": "Idioma" },
+    "title": { "en-US": "Choose a language", "es": "Elige un idioma" }
   }
   ```
 - **FinishSession** (REQUIRED): every protocol must end with exactly one, as its **last** stage.

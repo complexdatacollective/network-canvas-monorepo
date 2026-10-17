@@ -195,9 +195,12 @@ describe('v8 to v9 localization migration', () => {
         .filter(({ value }) => isEnglishOnly(value))
         .map(({ schema }) => schema),
     );
+    // Schema 8 has no Language Chooser, so a schema 8 document has none of
+    // its text to wrap.
     const missed = [...declarations]
       .filter(([declaration]) => !wrapped.has(declaration))
-      .map(([, where]) => where);
+      .map(([, where]) => where)
+      .filter((where) => !where.includes('[type=LanguageChooser]'));
     expect(missed).toEqual([]);
   });
 

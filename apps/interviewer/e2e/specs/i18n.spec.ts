@@ -297,7 +297,8 @@ test.describe('the language chooser stage', () => {
 
     await spanish.click();
     await expect(spanish).toHaveAttribute('aria-selected', 'true');
-    // The list's name is built in and follows the chosen language.
+    // The list is named by the stage's heading, which follows the chosen
+    // language.
     await expect(
       page.getByRole('listbox', { name: 'Elige un idioma', exact: true }),
     ).toBeVisible();

@@ -11,13 +11,14 @@ import type {
 } from '@codaco/protocol-builder/stageDocument';
 import {
   collectLocalizedStrings,
+  type LanguageChange,
   type LocalizedStringHit,
 } from '@codaco/protocol-validation';
 import { ProtocolLanguages } from '~/components/Localization/LanguageList';
 import type { OpenStageDraft } from '~/components/Localization/useLanguageActions';
 import {
   type LocalizedStringRewrite,
-  rewriteLocalizedStrings,
+  stageAfterLanguageChange,
 } from '~/ducks/modules/protocol/localeOperations';
 import type { RootState } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
@@ -54,17 +55,20 @@ const selectStageIndex =
     return index === -1 ? stages.length : index;
   };
 
-/** Applies a language change to the stage's fields as the protocol holds them. */
+/**
+ * Applies a language change to the stage's fields as the protocol holds them,
+ * including the wording Network Canvas supplies, such as the heading.
+ */
 const rewriteStageFields = (
   identity: StageIdentity,
   fields: StageFormDraft,
-  change: LocalizedStringRewrite,
+  rewrite: LocalizedStringRewrite,
+  change: LanguageChange,
 ): StageFormDraft => {
-  const document = { stages: [{ ...fields, type: identity.type }] };
-  const rewritten = rewriteLocalizedStrings(document, change);
-  const [stage] = rewritten.stages;
-  if (rewritten === document || stage === undefined) return fields;
-  const { type: _type, ...rewrittenFields } = stage;
+  const stage = { ...fields, type: identity.type };
+  const rewritten = stageAfterLanguageChange(stage, rewrite, change);
+  if (rewritten === stage) return fields;
+  const { type: _type, ...rewrittenFields } = rewritten;
   return rewrittenFields;
 };
 
@@ -99,8 +103,10 @@ export default function StageLanguagesSection() {
   );
 
   const rewrite = useCallback(
-    (change: LocalizedStringRewrite) => {
-      mapDocuments((fields) => rewriteStageFields(identity, fields, change));
+    (textRewrite: LocalizedStringRewrite, change: LanguageChange) => {
+      mapDocuments((fields) =>
+        rewriteStageFields(identity, fields, textRewrite, change),
+      );
     },
     [identity, mapDocuments],
   );

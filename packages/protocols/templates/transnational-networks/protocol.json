@@ -590,7 +590,12 @@
     {
       "id": "language-chooser",
       "type": "LanguageChooser",
-      "label": { "en-US": "Language", "es": "Idioma", "hu": "Nyelv" }
+      "label": { "en-US": "Language", "es": "Idioma", "hu": "Nyelv" },
+      "title": {
+        "en-US": "Choose a language",
+        "es": "Elige un idioma",
+        "hu": "Válasszon nyelvet"
+      }
     },
     {
       "id": "information-intro",

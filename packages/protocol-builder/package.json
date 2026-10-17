@@ -25,6 +25,7 @@
     "./editors/family-pedigree/pedigreeMessages": "./src/editors/family-pedigree/sections/pedigreeMessages.ts",
     "./editors/finish-session/finishSessionMessages": "./src/editors/finish-session/sections/finishSessionMessages.ts",
     "./editors/geospatial/geospatialWording": "./src/editors/geospatial/sections/geospatialWording.tsx",
+    "./editors/language-chooser/languageChooserWording": "./src/editors/language-chooser/sections/languageChooserWording.tsx",
     "./editors/narrative-pedigree/narrativePedigreeMessages": "./src/editors/narrative-pedigree/sections/narrativePedigreeMessages.ts",
     "./editors/network-composer/composerMessages": "./src/editors/network-composer/sections/composerMessages.ts",
     "./editors/narrative/narrativeWordingMessages": "./src/editors/narrative/sections/wording/narrativeWordingMessages.ts",
