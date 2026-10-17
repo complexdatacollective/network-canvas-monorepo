@@ -580,10 +580,13 @@ const AUDIT_SCHEMA = {
   properties: {
     ok: { type: 'boolean' },
     stampExists: { type: 'boolean' },
-    stampVersion: { type: 'string' },
-    stampCommit: { type: 'string' },
-    stampImageId: { type: 'string' },
-    stampDirty: { type: 'boolean' },
+    // Required, and null only when there is no stamp: left optional, an
+    // auditor could answer "it exists" and leave its contents out, which
+    // treats a clean build as unverified (it did, on 17 Oct 2026).
+    stampVersion: { type: ['string', 'null'] },
+    stampCommit: { type: ['string', 'null'] },
+    stampImageId: { type: ['string', 'null'] },
+    stampDirty: { type: ['boolean', 'null'] },
     pendingImageId: {
       type: 'string',
       description: 'The id docker reports for the pending image right now',
@@ -657,6 +660,10 @@ const AUDIT_SCHEMA = {
   required: [
     'ok',
     'stampExists',
+    'stampVersion',
+    'stampCommit',
+    'stampImageId',
+    'stampDirty',
     'baselineSnapshotIds',
     'upgradedSnapshotIds',
     'suspectSnapshots',
@@ -1693,7 +1700,7 @@ Every file the summary lists must appear exactly once across the two lists, and 
     `Audit the on-disk artifacts of an automated release test. Your working directory is already the correct repository checkout — do NOT cd anywhere else. Use the shell only; do nothing else — no interpretation, no browsing, no writes, no fixing.
 
 Report, exactly:
-- stampExists: whether ${STAMP} exists. If it does, also report its contents verbatim: stampVersion, stampCommit, stampImageId and stampDirty (the "version", "commit", "imageId" and "dirty" keys of that JSON file). Report the flag as the file states it — do NOT recompute or second-guess it.
+- stampExists: whether ${STAMP} exists. If it does, also report its contents verbatim: stampVersion, stampCommit, stampImageId and stampDirty (the "version", "commit", "imageId" and "dirty" keys of that JSON file); all four are required, and null only when the file does not exist. Report the flag as the file states it — do NOT recompute or second-guess it.
 - pendingImageId: the output of docker image inspect --format '{{.Id}}' ${pendingImage} (omit the field if the image does not exist).
 - headCommit: the output of git rev-parse --short HEAD. worktreeDirty: true if git status --porcelain prints anything, false if it prints nothing. Report what these commands say about the checkout you are in — do not read them from any file.
 - releasedImageDigest: the output of docker image inspect --format '{{index .RepoDigests 0}}' ${releasedImage} (omit the field if that image is not present locally). releasedImageId: the output of docker image inspect --format '{{.Id}}' ${releasedImage} (omit likewise).
