@@ -135,7 +135,7 @@ try {
       while (Date.now() < deadline && !id) {
         await page.waitForTimeout(2000);
         id = psql(
-          `select id from "Protocol" where name like 'fresco-release-test%' order by "importedAt" desc limit 1;`,
+          `select id from "Protocol" where name = 'fresco-release-test.netcanvas' order by "importedAt" desc limit 1;`,
         );
       }
       result.protocolId = id;
@@ -294,7 +294,9 @@ try {
   checks.push(
     await attempt('interview-nodes-created', async () => {
       await page.getByRole('button', { name: 'Add a person' }).click();
-      const input = page.getByRole('textbox', { name: 'Person name' });
+      const input = page.getByRole('textbox', {
+        name: 'Type a name, then press Enter',
+      });
       for (const name of TRANSCRIPT.people) {
         await input.fill(name);
         await input.press('Enter');

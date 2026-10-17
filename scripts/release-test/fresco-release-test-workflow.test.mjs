@@ -1290,6 +1290,23 @@ test('a stamp audit that omits the stamp is not an audit', async () => {
   }
 });
 
+test('the artifact audit must answer every stamp field', async () => {
+  // Optional, an auditor may say the stamp exists and leave its contents out,
+  // which turns a clean build into an unverified one.
+  const { prompts } = await run(happyPath());
+  const audit = prompts.find((p) => p.label === 'audit-artifacts');
+  for (const field of [
+    'stampDirty',
+    'stampVersion',
+    'stampCommit',
+    'stampImageId',
+  ])
+    assert.ok(
+      audit.opts.schema.required.includes(field),
+      `${field} is optional in the audit schema, so the auditor may omit it`,
+    );
+});
+
 test('a malformed stamp field is treated as a missing one', async () => {
   const r = happyPath();
   r['audit-artifacts'].stampImageId = 'not an image id';

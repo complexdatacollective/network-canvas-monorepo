@@ -279,9 +279,9 @@ try {
     }),
   );
 
-  // The interview's own controls follow the participant's browser, never the
-  // researcher's account or Fresco's own language, and leave what the
-  // protocol says alone.
+  // Of the languages its protocol is written in, the interview takes the one
+  // the participant's browser asks for, never the researcher's account or
+  // Fresco's own language, and shows what the protocol says in it.
   checks.push(
     await attempt('localization-seeds-interview-controls', async () => {
       // A new interview of its own, through the participant's own route: an
@@ -289,12 +289,18 @@ try {
       // the controls this check is about are the ones a participant is looking
       // at.
       const protocolId = psql(
-        `select id from "Protocol" where name like 'fresco-release-test%' order by "importedAt" desc limit 1;`,
+        // The schema 9 protocol, which the schema 9 lane imported into this
+        // instance: an interview runs in one of its protocol's languages, so
+        // only a protocol written in Spanish as well as English can show
+        // whether the browser's Spanish chose the interview's language. The
+        // release-test protocol is English only and always runs in English.
+        `select id from "Protocol" where name = 'fresco-release-test-v9.netcanvas' order by "importedAt" desc limit 1;`,
       );
       if (!protocolId)
         return {
           pass: false,
-          detail: 'this lane holds no release-test protocol to open',
+          detail:
+            'this lane holds no schema 9 release-test protocol to open (the schema 9 lane imports it)',
         };
       // A participant's own browser, whose Accept-Language asks for Spanish.
       // It also carries the cookie that keeps Fresco's own pages in English
@@ -365,7 +371,10 @@ try {
       );
       const authored = judgeAuthoredText({
         translatedText: text,
-        authored: ['Fresco release test'],
+        // The Language Chooser's heading in the protocol's own Spanish
+        // (packages/protocols/e2e/fresco-release-test-v9): the protocol's
+        // words, not the runtime's catalog.
+        authored: ['Elige un idioma'],
       });
       result.interviewText = text.slice(0, 400);
       return {
