@@ -702,7 +702,7 @@ CHECKS:
    "resume-probe" node (readable in plaintext — no vault is enrolled in
    this profile). Then exit via the in-interview Settings menu
    (data-testid="settings-button" → "Exit interview",
-   data-testid="exit-button" → confirm "Exit this interview?"). Back on Home
+   data-testid="exit-button" → confirm dialog "Exit interview"). Back on Home
    a "Resume last interview" pill names the protocol and "resume-check";
    clicking it reopens the interview at the SAME [data-stage-step] AND the
    "resume-probe" alter is listed again on the Quick Add stage.
