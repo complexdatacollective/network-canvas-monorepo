@@ -623,7 +623,8 @@ include it.
 3. "translate": Activate "Open translation table" and confirm a dialog named
    "Translation table" opens. Set its "Translations to show" select to
    "Missing French" and confirm it lists exactly one row: stage 1 ("The
-   end")'s "Stage name", with "The end" in the English column and no French.
+   end")'s "Stage name", with "The end" in the default language's column
+   and no French.
    Click its French cell and type "La fin" (do not press Enter), then press
    the dialog's "Save". Confirm the dialog closes and the French row now
    reads "M of M strings translated" with no "Missing translations". Reopen
@@ -638,7 +639,7 @@ include it.
    "Language" and choose "Language Chooser". Confirm the stage editor shows a
    "Languages" region listing both of the protocol's languages. Name the stage
    "Choose a language" and save it ("Finished Editing"). Confirm the timeline
-   shows "Choose a language" above "Finish Interview" and that the
+   shows "Choose a language" above "The end" and that the
    "Participants can’t choose a language" note is gone.
 6. "cleanup": Delete your protocol from the start screen.`,
   },
@@ -951,9 +952,12 @@ The Browser pane refuses every service-worker registration on a plain-http
 origin such as a local vite preview: it never requests the script, and logs
 "An unknown error occurred when fetching the script." for each attempt. That
 says nothing about the build, so for this target judge "service-worker" in
-the Playwright browser (mcp__plugin_playwright_playwright__*) instead: open
-the target there, await navigator.serviceWorker.ready, and report its
-active script URL. In "console", dismiss that one error as this pane
+the Playwright browser instead. Load its tools with ONE ToolSearch call:
+"select:mcp__plugin_playwright_playwright__browser_navigate,mcp__plugin_playwright_playwright__browser_evaluate,mcp__plugin_playwright_playwright__browser_console_messages"
+Navigate it to the target, purge that profile's stale worker the same way
+((await navigator.serviceWorker.getRegistration())?.unregister(), then
+navigate to the target again), await navigator.serviceWorker.ready, and
+report its active script URL. In "console", dismiss that one error as this pane
 limitation, and take the console verdict from the Playwright load too.
 `
     : ''
