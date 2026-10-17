@@ -92,6 +92,24 @@ export const runtimeMessages = defineMessages({
     description:
       'Status shown and announced while an entered passphrase is being checked, which can take a few seconds.',
   },
+  unnamed: {
+    id: 'interview.runtime.unnamed',
+    defaultMessage: 'Unnamed',
+    description:
+      'Label shown on, and read out for, a person or other item the participant added without giving it a name.',
+  },
+  connection: {
+    id: 'interview.runtime.connection',
+    defaultMessage: 'Connection',
+    description:
+      'Title of the panel for a connection between two people or other items on the canvas, shown when the task gives that kind of connection no name of its own.',
+  },
+  unnamedNumbered: {
+    id: 'interview.runtime.unnamedNumbered',
+    defaultMessage: 'Unnamed {number}',
+    description:
+      'Title of an entry in a list of people or other items to choose from when the entry has no name or other details to show. number tells the entries apart: 1, 2, 3 and so on.',
+  },
   answerUnavailable: {
     id: 'interview.runtime.answerUnavailable',
     defaultMessage: 'Answer unavailable',

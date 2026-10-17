@@ -31,14 +31,12 @@ const MAPPING = {
 
 const PERSON: SectionDoc = {
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle', dynamic: MAPPING },
   variables: {
     ethnicity: {
       name: 'Ethnicity',
-      label: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [

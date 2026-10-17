@@ -37,7 +37,6 @@ async function encryptedRawPayload(
       id,
       {
         name: id,
-        label: id,
         type: 'text',
         component: 'Text',
         encrypted: true,

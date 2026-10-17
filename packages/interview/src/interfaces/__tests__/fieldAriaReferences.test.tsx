@@ -30,7 +30,6 @@ vi.mock('../../hooks/useStageSelector', () => ({
       case 'getNodeTypeDefinition':
         return {
           name: 'Person',
-          label: { en: 'Person' },
           shape: { default: 'circle' },
         };
       case 'getPromptAdditionalAttributes':
@@ -112,7 +111,7 @@ describe('QuickAddField ARIA references', () => {
     expectNoDanglingReferences(container);
   });
 
-  it('names the quick-add input after the entity being added', async () => {
+  it('names the quick-add input by its placeholder', async () => {
     render(
       <TestProtocolLocalization>
         <Form onSubmit={() => ({ success: true })}>
@@ -131,7 +130,9 @@ describe('QuickAddField ARIA references', () => {
     // Asserted through the accessible name rather than the attribute, so it
     // fails if a future reference ever displaces the label again.
     expect(
-      await screen.findByRole('textbox', { name: 'Person name' }),
+      await screen.findByRole('textbox', {
+        name: 'Type a label and press enter...',
+      }),
     ).toBeInTheDocument();
   });
 });
@@ -140,7 +141,6 @@ describe('AddNodeInput ARIA references', () => {
   it('resolves every ARIA reference on the add-node input', () => {
     const { container } = render(
       <AddNodeInput
-        entityLabel="Person"
         placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
@@ -153,7 +153,6 @@ describe('AddNodeInput ARIA references', () => {
   it('resolves every ARIA reference when the target variable is required', () => {
     const { container } = render(
       <AddNodeInput
-        entityLabel="Person"
         placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
@@ -167,14 +166,15 @@ describe('AddNodeInput ARIA references', () => {
   it('still describes the error region it renders itself', () => {
     render(
       <AddNodeInput
-        entityLabel="Person"
         placeholder="Type a name, then press Enter"
         targetVariable="name"
         onCreate={async () => true}
       />,
     );
 
-    const input = screen.getByRole('textbox', { name: 'Person name' });
+    const input = screen.getByRole('textbox', {
+      name: 'Type a name, then press Enter',
+    });
     // Not merely "nothing dangles": the region this component does render has
     // to still be named, or suppressing the rest would have cost the errors.
     expect(input.getAttribute('aria-describedby')).toBe(`${input.id}-error`);

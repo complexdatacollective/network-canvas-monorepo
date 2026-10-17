@@ -68,7 +68,6 @@ const EDGE_TYPE = 'friendship';
 const edgeTypes: Codebook['edge'] = {
   [EDGE_TYPE]: {
     name: 'Friendship',
-    label: { en: 'Friendship' },
     color: 'edge-color-seq-1',
     variables: {},
   },

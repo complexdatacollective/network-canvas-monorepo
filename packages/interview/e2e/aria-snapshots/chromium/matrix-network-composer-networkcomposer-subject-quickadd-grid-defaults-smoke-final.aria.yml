@@ -4,8 +4,7 @@
       - button "Select"
       - button "Add node" [expanded] [pressed]
       - dialog:
-        - textbox "Person name":
-          - /placeholder: Type a name, then press Enter
+        - textbox "Type a name, then press Enter"
     - separator
     - group "Layout tools":
       - button "Automatic layout"

@@ -87,8 +87,7 @@ const stage = (index: number, ...rest: (string | number)[]) => [
 ];
 
 const EXPECTED_SITES: readonly ExpectedSite[] = [
-  // Codebook entity type labels, and variable option copy.
-  site([...person, 'label'], 'plain'),
+  // Codebook variable option copy.
   site([...personVariable('category'), 'options', 0, 'label'], 'markdown'),
   site([...personVariable('category'), 'options', 1, 'label'], 'markdown'),
   site([...personVariable('strength'), 'options', 0, 'label'], 'markdown'),
@@ -97,7 +96,6 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site([...personVariable('closeness'), 'parameters', 'maxLabel'], 'markdown'),
   site([...personVariable('flag'), 'options', 0, 'label'], 'markdown'),
   site([...personVariable('flag'), 'options', 1, 'label'], 'markdown'),
-  site(['codebook', 'node', 'relative', 'label'], 'plain'),
   // The answers a Family Pedigree asks for, which participants choose from,
   // so none may be blank.
   ...Array.from({ length: 5 }, (_, index) =>
@@ -130,10 +128,8 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
       'markdown',
     ),
   ),
-  site(['codebook', 'edge', 'knows', 'label'], 'plain'),
   site([...knowsVariable('tieStrength'), 'options', 0, 'label'], 'markdown'),
   site([...knowsVariable('tieStrength'), 'options', 1, 'label'], 'markdown'),
-  site(['codebook', 'edge', 'family', 'label'], 'plain'),
   ...Array.from({ length: PEDIGREE_RELATIONSHIP_KINDS.length }, (_, index) =>
     site(
       [
@@ -201,6 +197,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
   site(stage(7, 'nodeForm', 'fields', 0, 'parameters', 'minLabel'), 'markdown'),
   site(stage(7, 'nodeForm', 'fields', 0, 'parameters', 'maxLabel'), 'markdown'),
   site(stage(7, 'nodeForm', 'fields', 1, 'label'), 'markdown'),
+  site(stage(7, 'edges', 0, 'label'), 'plain'),
   site(stage(7, 'edges', 0, 'form', 'fields', 0, 'label'), 'markdown'),
   // The Network Composer's own words, which Network Canvas supplies.
   site(stage(7, 'addNamePlaceholder'), 'plain'),
@@ -228,6 +225,7 @@ const EXPECTED_SITES: readonly ExpectedSite[] = [
 
   site(stage(14, 'presets', 0, 'label'), 'plain'),
   site(stage(14, 'presets', 0, 'highlight', 0, 'label'), 'plain'),
+  site(stage(14, 'presets', 0, 'edges', 'display', 0, 'label'), 'plain'),
   site(stage(14, 'attributesHeading'), 'plain'),
   site(stage(14, 'linksHeading'), 'plain'),
   site(stage(14, 'groupsHeading'), 'plain'),
@@ -457,21 +455,17 @@ describe('localized string coverage', () => {
   });
 });
 
-describe('attribute labels', () => {
-  const nameLabel = [...personVariable('name'), 'label'] as const;
-
-  it('are plain text rather than copy', () => {
-    expect(failurePaths(withValueAt(nameLabel, 'Full name'))).toEqual([]);
-    expect(failurePaths(withValueAt(nameLabel, { en: 'Full name' }))).toContain(
-      pathKey(nameLabel),
-    );
-  });
-
-  it('may not be empty', () => {
-    expect(failurePaths(withValueAt(nameLabel, ''))).toContain(
-      pathKey(nameLabel),
-    );
-  });
+describe('codebook labels', () => {
+  // Participants never read a type's or an attribute's name, so neither has a
+  // label beside it.
+  it.each([[[...person, 'label']], [[...personVariable('name'), 'label']]])(
+    'refuses a label at %j',
+    (path) => {
+      expect(failurePaths(withValueAt(path, 'Full name'))).toContain(
+        pathKey(path.slice(0, -1)),
+      );
+    },
+  );
 });
 
 describe('Network Composer scale end labels', () => {

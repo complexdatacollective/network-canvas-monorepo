@@ -147,17 +147,15 @@ describe('processAttributes', () => {
       node: {
         person: {
           name: 'person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
             'name-uuid': {
               name: 'name',
-              label: 'Name',
               type: 'text',
               encrypted: true,
             },
-            'city-uuid': { name: 'city', label: 'City', type: 'text' },
+            'city-uuid': { name: 'city', type: 'text' },
           },
         },
       },

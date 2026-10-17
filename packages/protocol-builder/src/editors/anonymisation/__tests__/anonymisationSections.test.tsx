@@ -102,11 +102,16 @@ describe('the sections of an anonymisation stage', () => {
     });
     await harness.user.clear(explanation);
     await harness.user.click(screen.getByRole('button', { name: 'Heading 1' }));
-    await harness.user.type(explanation, 'Your answers are protected');
+    // Typing without clicking keeps the caret in the heading just made: a
+    // click into the editor can land below it, in a new paragraph.
+    await harness.user.type(explanation, 'Your answers are protected', {
+      skipClick: true,
+    });
     await harness.user.keyboard('{Enter}');
     await harness.user.type(
       explanation,
       'Choose a passphrase to protect them.',
+      { skipClick: true },
     );
 
     const saved = await harness.submit();
@@ -546,7 +551,7 @@ describe('the attributes a passphrase protects', () => {
     const person = personDocument(harness);
     const variables = {
       ...(person.variables as Record<string, unknown>),
-      name: { name: 'name', label: 'name', type: 'number' },
+      name: { name: 'name', type: 'number' },
     };
 
     harness.receiveCodebookUpdate({
@@ -1026,7 +1031,6 @@ describe('the attributes a passphrase protects', () => {
               ...(person.variables as Record<string, unknown>),
               relationship_to_ego: {
                 name: 'relationship_to_ego',
-                label: 'relationship_to_ego',
                 type: 'text',
                 encrypted: true,
               },
@@ -1140,7 +1144,6 @@ describe('the attributes a passphrase protects', () => {
 
       collaboratorSets(harness, 'person', 'name', {
         name: 'name',
-        label: 'name',
         type: 'text',
         encrypted: true,
       });
@@ -1165,7 +1168,6 @@ describe('the attributes a passphrase protects', () => {
 
       collaboratorSets(harness, 'person', 'name', {
         name: 'name',
-        label: 'name',
         type: 'text',
       });
 
@@ -1187,7 +1189,6 @@ describe('the attributes a passphrase protects', () => {
 
       collaboratorSets(harness, 'person', 'relationship_to_ego', {
         name: 'relationship_to_ego',
-        label: 'relationship_to_ego',
         type: 'text',
       });
       await waitFor(() =>
@@ -1260,7 +1261,6 @@ describe('the attributes a passphrase protects', () => {
         'fm_name',
         {
           name: 'fm_name',
-          label: 'fm_name',
           type: 'text',
           encrypted: true,
         },
@@ -1309,7 +1309,7 @@ describe('the attributes a passphrase protects', () => {
         harness,
         'family_member',
         'fm_name',
-        { name: 'fm_name', label: 'fm_name', type: 'text' },
+        { name: 'fm_name', type: 'text' },
         { name: 'household member' },
       );
       expect(

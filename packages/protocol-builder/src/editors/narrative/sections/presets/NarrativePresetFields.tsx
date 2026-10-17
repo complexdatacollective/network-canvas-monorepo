@@ -50,8 +50,24 @@ const GROUP_VARIABLE_FIELD = 'groupVariable';
 const DISPLAY_EDGES_FIELD = 'edges.display';
 const HIGHLIGHT_FIELD = 'highlight';
 const HIGHLIGHT_LABELS_FIELD = 'highlightLabels';
+const DISPLAY_LABELS_FIELD = 'displayLabels';
 
 type Highlight = Readonly<{ variable: string; label: unknown }>;
+type DisplayedEdge = Readonly<{ type: string; label: unknown }>;
+
+const displayedEdgesOf = (edges: unknown): DisplayedEdge[] => {
+  if (typeof edges !== 'object' || edges === null) return [];
+  const display: unknown = Reflect.get(edges, 'display');
+  return Array.isArray(display)
+    ? display.flatMap((entry: unknown) => {
+        if (typeof entry !== 'object' || entry === null) return [];
+        const type = asText(Reflect.get(entry, 'type'));
+        return type === undefined
+          ? []
+          : [{ type, label: Reflect.get(entry, 'label') }];
+      })
+    : [];
+};
 
 const highlightsOf = (value: unknown): Highlight[] =>
   Array.isArray(value)
@@ -72,42 +88,71 @@ const labelIn = (labels: unknown, variable: string): unknown =>
     : undefined;
 
 /**
- * Opens a preset with its highlights held in two slots: the tick list holds
- * the attribute ids, and each attribute's label sits under its id. A label
- * field then comes and goes with its tick, and keeps what was typed into it
- * while the box is unticked. Keyed by id rather than by position, because a
- * tick anywhere in the list would otherwise move every label after it.
+ * Opens a preset with its highlights and its drawn edge types each held in two
+ * slots: the tick list holds the ids, and each one's legend label sits under
+ * its id. A label field then comes and goes with its tick, and keeps what was
+ * typed into it while the box is unticked. Keyed by id rather than by
+ * position, because a tick anywhere in the list would otherwise move every
+ * label after it.
  */
 export function expandNarrativePreset(row: RowValues): RowValues {
-  if (!Object.hasOwn(row, HIGHLIGHT_FIELD)) return row;
-  const highlights = highlightsOf(row[HIGHLIGHT_FIELD]);
-  return {
-    ...row,
-    [HIGHLIGHT_FIELD]: highlights.map(({ variable }) => variable),
-    [HIGHLIGHT_LABELS_FIELD]: Object.fromEntries(
-      highlights.map(({ variable, label }) => [variable, label]),
-    ),
-  };
+  let expanded = row;
+  if (Object.hasOwn(row, HIGHLIGHT_FIELD)) {
+    const highlights = highlightsOf(row[HIGHLIGHT_FIELD]);
+    expanded = {
+      ...expanded,
+      [HIGHLIGHT_FIELD]: highlights.map(({ variable }) => variable),
+      [HIGHLIGHT_LABELS_FIELD]: Object.fromEntries(
+        highlights.map(({ variable, label }) => [variable, label]),
+      ),
+    };
+  }
+  if (typeof row.edges === 'object' && row.edges !== null) {
+    const displayed = displayedEdgesOf(row.edges);
+    expanded = {
+      ...expanded,
+      edges: { ...row.edges, display: displayed.map(({ type }) => type) },
+      [DISPLAY_LABELS_FIELD]: Object.fromEntries(
+        displayed.map(({ type, label }) => [type, label]),
+      ),
+    };
+  }
+  return expanded;
 }
 
 /**
- * The preset as the protocol holds it: one highlight per ticked attribute, in
- * tick order, carrying that attribute's label. A label left behind by an
- * attribute that was unticked is dropped with it.
+ * The preset as the protocol holds it: one highlight per ticked attribute and
+ * one drawn edge type per ticked type, in tick order, each carrying its legend
+ * label. A label left behind by an id that was unticked is dropped with it.
  */
 export function collapseNarrativePreset(row: RowValues): RowValues {
   const {
     [HIGHLIGHT_FIELD]: ticked,
     [HIGHLIGHT_LABELS_FIELD]: labels,
+    [DISPLAY_LABELS_FIELD]: edgeLabels,
     ...preset
   } = row;
   const highlight = (asIdList(ticked) ?? []).map((variable) => ({
     variable,
     label: labelIn(labels, variable),
   }));
-  return highlight.length === 0
-    ? preset
-    : { ...preset, [HIGHLIGHT_FIELD]: highlight };
+  const withHighlight =
+    highlight.length === 0
+      ? preset
+      : { ...preset, [HIGHLIGHT_FIELD]: highlight };
+  const edges = preset.edges;
+  if (typeof edges !== 'object' || edges === null) return withHighlight;
+  const display = (asNestedIdList(edges, 'display') ?? []).map((type) => ({
+    type,
+    label: labelIn(edgeLabels, type),
+  }));
+  const { display: _display, ...otherEdges } = edges as Record<string, unknown>;
+  const nextEdges =
+    display.length === 0 ? otherEdges : { ...otherEdges, display };
+  const { edges: _edges, ...withoutEdges } = withHighlight;
+  return Object.keys(nextEdges).length === 0
+    ? withoutEdges
+    : { ...withoutEdges, edges: nextEdges };
 }
 
 /** The picker takes an open prop bag from the field wrapper. */
@@ -119,21 +164,28 @@ const VariablePicker = VariablePickerField as ComponentType<
 type TickChoice = Readonly<{ value: string; label: string }>;
 
 /**
- * What the interview calls one highlighted attribute. The attribute's own
- * label is not translated, so the preset carries one that is; a new tick
- * starts it at the attribute's name, as text in the protocol's default
- * language.
+ * What the interview's legend calls one highlighted attribute or one drawn
+ * edge type. Codebook names are the researcher's and are never shown to
+ * participants, so the preset carries translatable words; a new tick starts
+ * them at the codebook name, as text in the protocol's default language.
  */
-function HighlightLabelField({
-  variable,
-  attributeName,
+function LegendLabelField({
+  labelsField,
+  id,
+  codebookName,
+  label,
+  hint,
+  required,
   committed,
 }: Readonly<{
-  variable: string;
-  attributeName: string;
+  labelsField: string;
+  id: string;
+  codebookName: string;
+  label: string;
+  hint: string;
+  required: string;
   committed: LocalizedString | undefined;
 }>) {
-  const intl = useAppIntl();
   const localization = useProtocolLocalization();
   // Memoized: a field's starting value is part of its registration, and a new
   // object every render would re-register it.
@@ -142,20 +194,18 @@ function HighlightLabelField({
       committed ??
       (localization === undefined
         ? undefined
-        : localizedFromText(localization, attributeName)),
-    [attributeName, committed, localization],
+        : localizedFromText(localization, codebookName)),
+    [codebookName, committed, localization],
   );
   return (
     <Field<typeof LocalizedInputField>
-      name={formatObjectPath([HIGHLIGHT_LABELS_FIELD, variable])}
+      name={formatObjectPath([labelsField, id])}
       nameMode="path"
-      label={intl.formatMessage(messages.presetHighlightLegendLabel, {
-        attribute: attributeName,
-      })}
-      hint={intl.formatMessage(messages.presetHighlightLegendHint)}
+      label={label}
+      hint={hint}
       component={LocalizedInputField}
       initialValue={initialValue}
-      required={intl.formatMessage(messages.presetHighlightLegendRequired)}
+      required={required}
     />
   );
 }
@@ -250,6 +300,10 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     [edgeChoicesOffered],
   );
   const lostEdgeTypes = useLostReferences(displayedEdges, knownEdgeTypes);
+  const edgeTypeNames = useMemo(
+    () => new Map(edgeChoicesOffered.map(({ value, label }) => [value, label])),
+    [edgeChoicesOffered],
+  );
 
   /**
    * Judged against what the list OFFERS rather than against the codebook, so
@@ -354,6 +408,25 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
           options={edgeChoices}
           initialValue={committedDisplay}
         />
+        {displayedEdges.map((type) => {
+          const typeName = edgeTypeNames.get(type) ?? type;
+          return (
+            <LegendLabelField
+              key={type}
+              labelsField={DISPLAY_LABELS_FIELD}
+              id={type}
+              codebookName={typeName}
+              label={intl.formatMessage(messages.presetEdgeLegendLabel, {
+                edgeType: typeName,
+              })}
+              hint={intl.formatMessage(messages.presetEdgeLegendHint)}
+              required={intl.formatMessage(messages.presetEdgeLegendRequired)}
+              committed={asLocalizedString(
+                labelIn(item[DISPLAY_LABELS_FIELD], type),
+              )}
+            />
+          );
+        })}
       </Section>
 
       <Section
@@ -368,10 +441,18 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
           initialValue={committedHighlight}
         />
         {highlightedAttributes.map((variable) => (
-          <HighlightLabelField
+          <LegendLabelField
             key={variable}
-            variable={variable}
-            attributeName={attributeNames.get(variable) ?? variable}
+            labelsField={HIGHLIGHT_LABELS_FIELD}
+            id={variable}
+            codebookName={attributeNames.get(variable) ?? variable}
+            label={intl.formatMessage(messages.presetHighlightLegendLabel, {
+              attribute: attributeNames.get(variable) ?? variable,
+            })}
+            hint={intl.formatMessage(messages.presetHighlightLegendHint)}
+            required={intl.formatMessage(
+              messages.presetHighlightLegendRequired,
+            )}
             committed={asLocalizedString(
               labelIn(item[HIGHLIGHT_LABELS_FIELD], variable),
             )}

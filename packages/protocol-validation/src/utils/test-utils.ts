@@ -20,13 +20,11 @@ export const createBaseProtocol = () => ({
       variables: {
         egoName: {
           name: 'EgoName',
-          label: 'EgoName',
           type: 'text',
           component: 'Text',
         },
         egoAge: {
           name: 'EgoAge',
-          label: 'EgoAge',
           type: 'number',
           component: 'Number',
         },
@@ -35,25 +33,21 @@ export const createBaseProtocol = () => ({
     node: {
       person: {
         name: 'Person',
-        label: localized('Person'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' } as NodeDefinition['shape'],
         variables: {
           name: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
             component: 'Text',
           },
           age: {
             name: 'Age',
-            label: 'Age',
             type: 'number',
             component: 'Number',
           },
           category: {
             name: 'Category',
-            label: 'Category',
             type: 'categorical',
             options: [
               { label: localized('Friend'), value: 'friend' },
@@ -62,7 +56,6 @@ export const createBaseProtocol = () => ({
           },
           strength: {
             name: 'Relationship_Strength',
-            label: 'Relationship_Strength',
             type: 'ordinal',
             options: [
               { label: localized('Weak'), value: 1 },
@@ -72,25 +65,21 @@ export const createBaseProtocol = () => ({
           },
           layoutPosition: {
             name: 'Layout_Position',
-            label: 'Layout_Position',
             type: 'layout',
           },
         },
       },
       colleague: {
         name: 'Colleague',
-        label: localized('Colleague'),
         color: 'node-color-seq-2',
         shape: { default: 'circle' } as NodeDefinition['shape'],
         variables: {
           colleagueName: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
           },
           department: {
             name: 'Department',
-            label: 'Department',
             type: 'text',
           },
         },
@@ -99,12 +88,10 @@ export const createBaseProtocol = () => ({
     edge: {
       knows: {
         name: 'Knows',
-        label: localized('Knows'),
         color: 'edge-color-seq-1',
         variables: {
           closeness: {
             name: 'Closeness',
-            label: 'Closeness',
             type: 'ordinal',
             component: 'RadioGroup',
             options: [
@@ -115,7 +102,6 @@ export const createBaseProtocol = () => ({
           },
           duration: {
             name: 'Duration',
-            label: 'Duration',
             type: 'number',
             component: 'Number',
           },
@@ -123,12 +109,10 @@ export const createBaseProtocol = () => ({
       },
       collaborates: {
         name: 'Collaborates',
-        label: localized('Collaborates'),
         color: 'edge-color-seq-2',
         variables: {
           frequency: {
             name: 'Frequency',
-            label: 'Frequency',
             type: 'ordinal',
             options: [
               { label: localized('Rarely'), value: 1 },

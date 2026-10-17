@@ -1,5 +1,3 @@
-import { get } from 'es-toolkit/compat';
-
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { LocalizedString } from '@codaco/protocol-validation';
@@ -29,7 +27,7 @@ type PresetsProps = {
     label: LocalizedString;
     layoutVariable?: string;
     groupVariable?: string;
-    edges?: { display?: string[] };
+    edges?: { display?: { type: string; label: LocalizedString }[] };
     highlight?: { variable: string; label: LocalizedString }[];
   }> | null;
 };
@@ -67,12 +65,26 @@ const Presets = ({ presets = null }: PresetsProps) => {
                   ],
                   [
                     intl.formatMessage(summaryMessages.showEdges),
-                    <ul key="show-edges">
-                      {get(preset, 'edges.display', []).map((edge: string) => (
-                        <li key={edge}>
-                          <EntityBadge entity="edge" type={edge} tiny link />
-                        </li>
-                      ))}
+                    <ul key="show-edges" className="flex flex-col gap-1">
+                      {(preset.edges?.display ?? []).map(({ type, label }) =>
+                        multilingual ? (
+                          <li
+                            key={type}
+                            className="flex flex-col items-start gap-1"
+                          >
+                            <EntityBadge entity="edge" type={type} tiny link />
+                            <SummaryText value={label} />
+                          </li>
+                        ) : (
+                          <li
+                            key={type}
+                            className="flex flex-wrap items-center gap-2"
+                          >
+                            <SummaryText value={label} />
+                            <EntityBadge entity="edge" type={type} tiny link />
+                          </li>
+                        ),
+                      )}
                     </ul>,
                   ],
                   [

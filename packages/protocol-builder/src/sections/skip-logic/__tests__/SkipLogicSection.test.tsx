@@ -527,7 +527,6 @@ describe('a rule set the researcher cannot save', () => {
       personWith(harness, {
         born: {
           name: 'Born',
-          label: 'Born',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'full' },
@@ -544,7 +543,6 @@ describe('a rule set the researcher cannot save', () => {
         // for one. Only the dates it records have changed.
         born: {
           name: 'Born',
-          label: 'Born',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'year' },
@@ -614,7 +612,7 @@ describe('a rule set the researcher cannot save', () => {
     // something the schema accepts.
     harness.receiveCodebookUpdate(
       personWith(harness, {
-        age: { name: 'Age', label: 'Age', type: 'text' },
+        age: { name: 'Age', type: 'text' },
       }),
     );
 
@@ -669,7 +667,6 @@ describe('a rule set the researcher cannot save', () => {
         // for one. Only the option this rule names has gone.
         contactType: {
           name: 'contactType',
-          label: 'contactType',
           type: 'categorical',
           options: [
             { label: { 'en-US': 'Not working' }, value: 'not-working' },

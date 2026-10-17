@@ -64,42 +64,36 @@ const variableNamingNameBy: Record<
 const variables: Record<string, Variable> = {
   [variableNamingNameBy.sameAs]: {
     name: 'confirm_name',
-    label: 'confirm_name',
     type: 'text',
     component: 'Text',
     validation: { sameAs: nameReference },
   },
   [variableNamingNameBy.greaterThanVariable]: {
     name: 'greater',
-    label: 'greater',
     type: 'number',
     component: 'Number',
     validation: { greaterThanVariable: nameReference },
   },
   [variableNamingNameBy.lessThanVariable]: {
     name: 'less',
-    label: 'less',
     type: 'number',
     component: 'Number',
     validation: { lessThanVariable: nameReference },
   },
   [variableNamingNameBy.greaterThanOrEqualToVariable]: {
     name: 'at_least',
-    label: 'at_least',
     type: 'number',
     component: 'Number',
     validation: { greaterThanOrEqualToVariable: nameReference },
   },
   [variableNamingNameBy.lessThanOrEqualToVariable]: {
     name: 'at_most',
-    label: 'at_most',
     type: 'number',
     component: 'Number',
     validation: { lessThanOrEqualToVariable: nameReference },
   },
   [NAME_VAR]: {
     name: 'name',
-    label: 'name',
     type: 'text',
     component: 'Text',
     encrypted: true,
@@ -107,14 +101,12 @@ const variables: Record<string, Variable> = {
   },
   [NICKNAME_VAR]: {
     name: 'nickname',
-    label: 'nickname',
     type: 'text',
     component: 'Text',
     validation: { differentFrom: nameReference },
   },
   [NOTES_VAR]: {
     name: 'notes',
-    label: 'notes',
     type: 'text',
     component: 'Text',
   },
@@ -126,7 +118,6 @@ const unmarkedVariables: Record<string, Variable> = {
   ...variables,
   [NAME_VAR]: {
     name: 'name',
-    label: 'name',
     type: 'text',
     component: 'Text',
     validation: { unique: true },
@@ -137,7 +128,6 @@ const codebookWith = (nodeVariables: Record<string, Variable>): Codebook => ({
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: nodeVariables,

@@ -14,12 +14,10 @@ const codebook = {
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       variables: {
         category: {
           name: 'Category',
-          label: 'Category',
           type: 'categorical',
           options: [
             { label: { en: 'Friend' }, value: 'friend' },

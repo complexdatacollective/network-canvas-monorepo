@@ -22,7 +22,6 @@ import {
 const booleanPair = {
   boolA: {
     name: 'BoolA',
-    label: 'BoolA',
     type: 'boolean',
     component: 'Boolean',
     options: [{ label: localized('Yes'), value: true }],
@@ -30,7 +29,6 @@ const booleanPair = {
   },
   boolB: {
     name: 'BoolB',
-    label: 'BoolB',
     type: 'boolean',
     component: 'Boolean',
     options: [{ label: localized('Yes'), value: true }],
@@ -106,26 +104,22 @@ const familyPedigreeProtocol = () => ({
     node: {
       person: {
         name: 'Person',
-        label: localized('Person'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           label: {
             name: 'Label',
-            label: 'Label',
             type: 'text',
             component: 'Text',
           },
-          isEgo: { name: 'IsEgo', label: 'IsEgo', type: 'boolean' },
+          isEgo: { name: 'IsEgo', type: 'boolean' },
           genderIdentity: {
             name: 'GenderIdentity',
-            label: 'GenderIdentity',
             type: 'categorical',
             options: GENDER_IDENTITY_OPTIONS,
           },
           sexAssignedAtBirth: {
             name: 'SexAssignedAtBirth',
-            label: 'SexAssignedAtBirth',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
           },
@@ -136,23 +130,19 @@ const familyPedigreeProtocol = () => ({
     edge: {
       family: {
         name: 'Family',
-        label: localized('Family'),
         color: 'edge-color-seq-1',
         variables: {
           relationshipKind: {
             name: 'RelationshipKind',
-            label: 'RelationshipKind',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
           },
           isGestationalCarrier: {
             name: 'IsGestationalCarrier',
-            label: 'IsGestationalCarrier',
             type: 'boolean',
           },
           isCurrentPartner: {
             name: 'IsCurrentPartner',
-            label: 'IsCurrentPartner',
             type: 'boolean',
           },
         },
@@ -407,14 +397,12 @@ describe('shared form stage-effective validation contradictions', () => {
               ...person.variables,
               boolA: {
                 name: 'BoolA',
-                label: 'BoolA',
                 type: 'boolean',
                 component: 'Toggle',
                 validation: { differentFrom: 'boolB' },
               },
               boolB: {
                 name: 'BoolB',
-                label: 'BoolB',
                 type: 'boolean',
                 component: 'Toggle',
               },

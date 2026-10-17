@@ -13,9 +13,10 @@
   a `TextInput`: a plain string, which is escaped into an ICU literal message
   in the default language, or a `LocalizedString` locale map, which is used as
   written.
-- Codebook node types, edge types and variables get a `label`, taken from
-  their name unless you pass one. A node or edge type's label is a
-  `TextInput`; a variable's is a plain string, which is not translated.
+- A Narrative preset's `edges.display` takes edge type IDs and writes each one
+  as `{ type, label }`, with the edge type's name as the label in the default
+  language. A Network Composer edge entry takes a `label` `TextInput`, which
+  defaults to the edge type's name.
 - A Narrative preset still takes `highlight` as a list of variable IDs, and
   writes each one as `{ variable, label }`, with the variable's name as the
   label in the default language.

@@ -35,7 +35,7 @@ function makeInterview() {
       codebook: {
         ego: {
           variables: {
-            agrees: { name: 'Agrees', label: 'Agrees', type: 'boolean' },
+            agrees: { name: 'Agrees', type: 'boolean' },
           },
         },
       },

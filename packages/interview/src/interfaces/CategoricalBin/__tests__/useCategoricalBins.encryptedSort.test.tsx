@@ -28,7 +28,6 @@ const variables: Record<string, Variable> = {
   ...encryptedVariables,
   group: {
     name: 'group',
-    label: 'group',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [{ label: { en: 'Friends' }, value: 'friends' }],

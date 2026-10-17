@@ -9,13 +9,14 @@ import {
   type CurrentProtocol,
   INTERFACE_TEXT_MESSAGES,
   type LocalizedString,
+  type LocalizedStringFormat,
   type MessageArguments,
 } from '@codaco/protocol-validation';
 
 import MiniTable from './MiniTable';
 import SectionFrame from './Stage/SectionFrame';
 import SummaryContext from './SummaryContext';
-import { SummaryMessage, SummaryText } from './SummaryText';
+import { SummaryMarkdown, SummaryMessage, SummaryText } from './SummaryText';
 
 const messages = defineMessages({
   title: {
@@ -30,19 +31,22 @@ const messages = defineMessages({
 export const INTERFACE_TEXT_ANCHOR = 'interface-text';
 
 /**
- * The arguments each of the protocol's interface texts may use, by group and
- * name. They come from the protocol schema, as the translation table's do, so
- * the summary shows a message as the same versions the table shows.
+ * How each of the protocol's interface texts is written, and the arguments it
+ * may use, by group and name. They come from the protocol schema, as the
+ * translation table's do, so the summary shows a message as the same versions
+ * the table shows, and formatted text as formatted.
  */
-const interfaceTextArguments = (
+const interfaceTextSites = (
   interfaceText: unknown,
-): ReadonlyMap<string, MessageArguments> =>
+): ReadonlyMap<
+  string,
+  Readonly<{ format: LocalizedStringFormat; arguments?: MessageArguments }>
+> =>
   new Map(
-    collectLocalizedStrings({ interfaceText }).flatMap(
-      ({ path, arguments: declaration }) =>
-        declaration === undefined || path[0] !== 'interfaceText'
-          ? []
-          : [[path.slice(1).join('.'), declaration] as const],
+    collectLocalizedStrings({ interfaceText }).flatMap((site) =>
+      site.path[0] !== 'interfaceText'
+        ? []
+        : [[site.path.slice(1).join('.'), site] as const],
     ),
   );
 
@@ -78,7 +82,7 @@ const InterfaceText = () => {
   const entries = heldInterfaceText(protocol.interfaceText);
   if (entries.length === 0) return null;
 
-  const declarations = interfaceTextArguments(protocol.interfaceText);
+  const sites = interfaceTextSites(protocol.interfaceText);
   const groups = Map.groupBy(entries, ({ group }) => group);
 
   // The names the translation table gives them: the group, then the entry.
@@ -106,11 +110,16 @@ const InterfaceText = () => {
           <MiniTable
             rotated
             rows={groupEntries.map(({ key, value }) => {
-              const declaration = declarations.get(`${group}.${key}`);
+              const site = sites.get(`${group}.${key}`);
+              const declaration = site?.arguments;
               return [
                 namesOf(group, key).entry,
                 declaration === undefined ? (
-                  <SummaryText key={key} value={value} />
+                  site?.format === 'markdown' ? (
+                    <SummaryMarkdown key={key} value={value} />
+                  ) : (
+                    <SummaryText key={key} value={value} />
+                  )
                 ) : (
                   <SummaryMessage
                     key={key}

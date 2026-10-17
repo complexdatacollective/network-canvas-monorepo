@@ -43,25 +43,11 @@ export function addFamilyMemberVariables(
     node: {
       family_member: {
         ...section,
-        variables: { ...variables, ...withLabels(added) },
+        variables: { ...variables, ...added },
       },
     },
   });
 }
-
-/**
- * Every schema 9 attribute has a label. A test that does not care what it is
- * gets the attribute's name, as Architect's own create flow writes it.
- */
-const withLabels = (
-  added: Readonly<Record<string, Readonly<Record<string, unknown>>>>,
-): Record<string, Readonly<Record<string, unknown>>> =>
-  Object.fromEntries(
-    Object.entries(added).map(([variableId, variable]) => [
-      variableId,
-      { label: variable.name, ...variable },
-    ]),
-  );
 
 /** One more attribute on the fixture's person type. */
 export function addFamilyMemberVariable(
@@ -80,7 +66,6 @@ export const RELATIVES_NOT_RECORDED_VARIABLE: Readonly<
   Record<string, unknown>
 > = Object.freeze({
   name: 'relativesNotRecorded',
-  label: 'relativesNotRecorded',
   type: 'categorical',
   options: PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS.map(({ value, label }) => ({
     value,

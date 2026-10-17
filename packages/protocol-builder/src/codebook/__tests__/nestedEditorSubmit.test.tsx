@@ -43,14 +43,12 @@ const HALF_TYPED = 'Who else have you spoken to';
 
 const PERSON: SectionDoc = {
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
     [ATTRIBUTE]: {
       name: 'relationshipToEgo',
-      label: 'Relationship to you',
       type: 'text',
       component: 'Text',
     },

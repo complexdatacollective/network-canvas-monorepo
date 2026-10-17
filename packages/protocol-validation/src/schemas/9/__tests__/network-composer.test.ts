@@ -13,7 +13,13 @@ const validStage = {
   quickAdd: 'name',
   layoutVariable: 'layoutPosition',
   background: { concentricCircles: 4 },
-  edges: [{ id: 'edge-1', subject: { entity: 'edge', type: 'knows' } }],
+  edges: [
+    {
+      id: 'edge-1',
+      subject: { entity: 'edge', type: 'knows' },
+      label: localized('Connection'),
+    },
+  ],
   addNamePlaceholder: localized('Type a name, then press Enter'),
   overtakenEditNotice: localized('Your edit has not been saved.'),
   tooltips: {
@@ -67,8 +73,16 @@ describe('networkComposerStage schema', () => {
     const result = networkComposerStage.safeParse({
       ...validStage,
       edges: [
-        { id: 'edge-1', subject: { entity: 'edge', type: 'knows' } },
-        { id: 'edge-2', subject: { entity: 'edge', type: 'knows' } },
+        {
+          id: 'edge-1',
+          subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
+        },
+        {
+          id: 'edge-2',
+          subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
+        },
       ],
     });
     expect(result.success).toBe(false);
@@ -105,6 +119,7 @@ describe('networkComposerStage schema', () => {
         {
           id: 'edge-1',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
           form: {
             fields: [
               {
@@ -208,6 +223,7 @@ describe('ComposerFormFieldSchema', () => {
         {
           id: 'friends',
           subject: { entity: 'edge', type: 'friend' },
+          label: localized('Connection'),
           form: {
             fields: [{ variable: 'closeness', component: ComponentTypes.Text }],
           },
@@ -296,6 +312,7 @@ describe('ComposerFormFieldSchema', () => {
         {
           id: 'e1',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
           form: {
             fields: [
               {
@@ -401,6 +418,7 @@ describe('ComposerFormFieldSchema', () => {
         {
           id: 'e1',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
           form: {
             fields: [
               {
@@ -424,6 +442,7 @@ describe('ComposerFormFieldSchema', () => {
         {
           id: 'e1',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
           form: {
             fields: [
               {
@@ -447,6 +466,7 @@ describe('ComposerFormFieldSchema', () => {
         {
           id: 'e1',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
           form: {
             fields: [
               {
@@ -470,6 +490,7 @@ describe('ComposerFormFieldSchema', () => {
         {
           id: 'e1',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
           form: {
             fields: [
               {
@@ -503,6 +524,7 @@ describe('ComposerFormFieldSchema', () => {
         {
           id: 'e1',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
           form: {
             fields: [
               {
@@ -582,6 +604,7 @@ describe('ComposerFormSchema duplicate variables', () => {
         {
           id: 'e1',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
           form: {
             fields: [
               {
@@ -629,6 +652,7 @@ describe('ComposerFormSchema duplicate variables', () => {
         {
           id: 'e1',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Connection'),
           form: {
             fields: [
               {

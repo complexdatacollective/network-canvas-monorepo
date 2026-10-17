@@ -30,12 +30,10 @@ const codebook: Codebook = {
     variables: {
       'ego-internal': {
         name: 'finishOutcome',
-        label: 'Finish outcome',
         type: 'text',
       },
       'ego-printed': {
         name: 'networkCanvasFinishOutcome',
-        label: 'Network canvas finish outcome',
         type: 'text',
       },
     },

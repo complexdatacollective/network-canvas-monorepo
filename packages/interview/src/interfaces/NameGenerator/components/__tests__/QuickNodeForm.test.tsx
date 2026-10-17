@@ -90,14 +90,12 @@ function buildCodebook(
     node: {
       [NODE_TYPE]: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon: 'add-a-person',
         variables: {
           [TARGET_VARIABLE]: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
             ...(omitComponent ? {} : { component: 'Text' }),
             ...(validation ? { validation } : {}),
@@ -105,7 +103,6 @@ function buildCodebook(
           },
           [SIBLING_VARIABLE]: {
             name: 'Flag',
-            label: 'Flag',
             type: 'boolean',
             component: 'Toggle',
           },

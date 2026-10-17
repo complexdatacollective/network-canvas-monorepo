@@ -86,7 +86,13 @@ function networkComposer(overrides: Record<string, unknown> = {}): Stage {
     quickAdd: 'name',
     layoutVariable: 'layout',
     background: { circles: true },
-    edges: [{ id: 'e1', subject: { entity: 'edge', type: 'knows' } }],
+    edges: [
+      {
+        id: 'e1',
+        subject: { entity: 'edge', type: 'knows' },
+        label: { en: 'Connection' },
+      },
+    ],
     ...overrides,
   } as unknown as Stage;
 }
@@ -387,8 +393,16 @@ describe('worstCaseEntityCounts', () => {
       [
         networkComposer({
           edges: [
-            { id: 'e1', subject: { entity: 'edge', type: 'knows' } },
-            { id: 'e2', subject: { entity: 'edge', type: 'knows' } },
+            {
+              id: 'e1',
+              subject: { entity: 'edge', type: 'knows' },
+              label: { en: 'Connection' },
+            },
+            {
+              id: 'e2',
+              subject: { entity: 'edge', type: 'knows' },
+              label: { en: 'Connection' },
+            },
           ],
         }),
       ],
@@ -868,7 +882,6 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
   const adult = personConstraints({
     age: {
       name: 'Age',
-      label: 'Age',
       type: 'number',
       validation: { minValue: 18 },
     },
@@ -957,10 +970,9 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
 
   it('counts no node for a row breaking a rule between two of its own values', () => {
     const dated = personConstraints({
-      startYear: { name: 'Start', label: 'Start', type: 'number' },
+      startYear: { name: 'Start', type: 'number' },
       endYear: {
         name: 'End',
-        label: 'End',
         type: 'number',
         validation: {
           greaterThanVariable: asEntityAttributeReference('startYear'),
@@ -989,10 +1001,9 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     // partner nothing under its own ceiling. That is the completability fold
     // `completionCheckFor` performs, and the draw passes the row over by it.
     const capped = personConstraints({
-      startYear: { name: 'Start', label: 'Start', type: 'number' },
+      startYear: { name: 'Start', type: 'number' },
       endYear: {
         name: 'End',
-        label: 'End',
         type: 'number',
         validation: {
           maxValue: 2000,
@@ -1026,12 +1037,10 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     const exclusive = personConstraints({
       consented: {
         name: 'Consented',
-        label: 'Consented',
         type: 'boolean',
       },
       flag: {
         name: 'Flag',
-        label: 'Flag',
         type: 'boolean',
         validation: {
           differentFrom: asEntityAttributeReference('consented'),
@@ -1103,7 +1112,6 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
     const uniqueNickname = personConstraints({
       nickname: {
         name: 'Nickname',
-        label: 'Nickname',
         type: 'text',
         validation: { unique: true },
       },
@@ -1152,7 +1160,7 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
         constraintsFor({
           person: {},
           organization: {
-            flag: { name: 'Flag', label: 'Flag', type: 'boolean' },
+            flag: { name: 'Flag', type: 'boolean' },
           },
         }),
       );
@@ -1176,7 +1184,6 @@ describe('worstCaseEntityCounts with roster rows the rules reject', () => {
           person: {
             age: {
               name: 'Age',
-              label: 'Age',
               type: 'number',
               validation: { minValue: 18 },
             },

@@ -342,7 +342,6 @@ describe('the protocol state layer', () => {
       kind: 'codebookNode',
       document: Redacted.make({
         name: 'Place',
-        label: { 'en-US': 'Place' },
         color: 'node-color-seq-3',
         shape: { default: 'circle' },
         variables: {},

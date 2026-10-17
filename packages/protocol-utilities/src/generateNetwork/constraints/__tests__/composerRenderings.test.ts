@@ -44,18 +44,15 @@ function codebookWith(options: {
         variables: {
           name: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
             component: 'Text',
           },
           layout: {
             name: 'Layout',
-            label: 'Layout',
             type: 'layout',
           },
           born: {
             name: 'Born',
-            label: 'Born',
             type: 'datetime',
             component: 'DatePicker',
             ...(options.nodeParameters !== undefined
@@ -67,7 +64,6 @@ function codebookWith(options: {
           },
           flag: {
             name: 'Flag',
-            label: 'Flag',
             type: 'boolean',
             component: options.booleanComponent ?? 'Boolean',
             ...(options.booleanOptions !== undefined
@@ -87,7 +83,6 @@ function codebookWith(options: {
         variables: {
           since: {
             name: 'Since',
-            label: 'Since',
             type: 'datetime',
             component: 'DatePicker',
           },
@@ -132,6 +127,7 @@ function composerStage(options: {
       {
         id: 'edge-def-1',
         subject: { entity: 'edge', type: 'knows' },
+        label: { en: 'Connection' },
         ...(options.edgeFields !== undefined
           ? { form: { fields: options.edgeFields.map(referencedField) } }
           : {}),

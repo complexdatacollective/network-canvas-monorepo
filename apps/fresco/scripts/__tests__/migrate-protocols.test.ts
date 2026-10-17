@@ -1510,10 +1510,6 @@ describe('languages in the deploy migration', () => {
     };
     const codebook = inFrenchAndGerman(current.codebook);
     const stages = inFrenchAndGerman(current.stages);
-    expect(codebook).toHaveProperty('node.person.label', {
-      fr: 'Person (fr)',
-      de: 'Person (de)',
-    });
     const prisma = makeMockPrisma();
     prisma.protocol.findMany.mockResolvedValue([
       {

@@ -51,14 +51,12 @@ beforeEach(() => {
 const variables = {
   name: {
     name: 'Name',
-    label: 'Name',
     type: 'text',
     component: 'Text',
     validation: { required: true },
   },
   nickname: {
     name: 'Nickname',
-    label: 'Nickname',
     type: 'text',
     component: 'Text',
   },
@@ -73,7 +71,6 @@ const form = {
 
 const nodeType = {
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
 };

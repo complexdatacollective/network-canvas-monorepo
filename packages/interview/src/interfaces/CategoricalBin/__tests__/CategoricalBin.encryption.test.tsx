@@ -94,17 +94,15 @@ const PROMPT_ID = 'prompt-1';
 const OTHER_BIN_INDEX = 1;
 
 const variables: Record<string, Variable> = {
-  name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
+  name: { name: 'name', type: 'text', component: 'Text' },
   category: {
     name: 'Category',
-    label: 'Category',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [{ label: { en: 'Family' }, value: 1 }],
   },
   otherReason: {
     name: 'Other reason',
-    label: 'Other reason',
     type: 'text',
     component: 'Text',
     encrypted: true,
@@ -349,7 +347,6 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
       ...variables,
       name: {
         name: 'name',
-        label: 'name',
         type: 'text',
         component: 'Text',
         encrypted: true,
@@ -384,7 +381,6 @@ describe('CategoricalBin asking for an encrypted "other" answer', () => {
       ...variables,
       name: {
         name: 'name',
-        label: 'name',
         type: 'text',
         component: 'Text',
         encrypted: true,
@@ -438,7 +434,6 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       ...variables,
       otherReason: {
         name: 'Other reason',
-        label: 'Other reason',
         type: 'text',
         component: 'Text',
         encrypted: true,
@@ -486,14 +481,12 @@ describe('CategoricalBin validating an encrypted "other" answer', () => {
       ...variables,
       name: {
         name: 'name',
-        label: 'name',
         type: 'text',
         component: 'Text',
         encrypted: true,
       },
       otherReason: {
         name: 'Other reason',
-        label: 'Other reason',
         type: 'text',
         component: 'Text',
         validation: { differentFrom: asEntityAttributeReference('name') },

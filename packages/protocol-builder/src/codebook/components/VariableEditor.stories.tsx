@@ -56,7 +56,6 @@ type SurfaceCase = Readonly<{
 
 const CLOSENESS: SectionDoc = {
   name: 'closeness',
-  label: 'closeness',
   type: 'ordinal',
   options: [
     { label: { en: 'Not close' }, value: 1 },
@@ -80,7 +79,6 @@ const SURFACES = {
     variableId: 'consent',
     committed: {
       name: 'consent',
-      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -90,7 +88,6 @@ const SURFACES = {
     },
     draft: {
       name: 'consent',
-      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -109,7 +106,6 @@ const SURFACES = {
     variableId: 'consent',
     committed: {
       name: 'consent',
-      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -120,7 +116,6 @@ const SURFACES = {
     },
     draft: {
       name: 'consent',
-      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -140,7 +135,6 @@ const SURFACES = {
     variableId: 'consent',
     committed: {
       name: 'consent',
-      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -150,7 +144,6 @@ const SURFACES = {
     },
     draft: {
       name: 'consent',
-      label: 'consent',
       type: 'boolean',
       component: 'Boolean',
       options: [
@@ -164,14 +157,12 @@ const SURFACES = {
     variableId: 'met',
     committed: {
       name: 'met',
-      label: 'met',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2020-01-01', max: '2024-12-31' },
     },
     draft: {
       name: 'met',
-      label: 'met',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2024-01-01', max: '2020-01-01' },
@@ -182,7 +173,6 @@ const SURFACES = {
     variableId: 'rapport',
     committed: {
       name: 'rapport',
-      label: 'rapport',
       type: 'scalar',
       component: 'VisualAnalogScale',
       parameters: {
@@ -192,7 +182,6 @@ const SURFACES = {
     },
     draft: {
       name: 'rapport',
-      label: 'rapport',
       type: 'scalar',
       component: 'VisualAnalogScale',
       parameters: {
@@ -215,7 +204,6 @@ const SURFACES = {
     variableId: 'preference',
     committed: {
       name: 'preference',
-      label: 'preference',
       type: 'categorical',
       options: [
         { label: { en: 'Low' }, value: 'low' },
@@ -226,7 +214,6 @@ const SURFACES = {
     },
     draft: {
       name: 'preference',
-      label: 'preference',
       type: 'categorical',
       options: [
         { label: { en: 'Low' }, value: 'low' },
@@ -261,7 +248,6 @@ function VariableEditorDemo({
   const held: SurfaceCase = SURFACES[surface];
   const authoritativeDocument: SectionDoc = {
     name: 'Person',
-    label: { en: 'Person' },
     color: 'node-color-seq-1',
     shape: { default: 'circle' },
     variables: mode === 'update' ? { [held.variableId]: held.committed } : {},

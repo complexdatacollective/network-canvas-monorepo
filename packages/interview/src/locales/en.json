@@ -223,10 +223,6 @@
     "defaultMessage": "No value",
     "description": "Shown in place of a roster detail that has no value: a blank field or an empty list. Replaces a bare dash so screen readers announce it."
   },
-  "interview.interfaces.entityName": {
-    "defaultMessage": "{entityLabel} name",
-    "description": "Accessible name for a new-item name field. entityLabel is the unchanged, researcher-authored label for the network entity type."
-  },
   "interview.interfaces.errorHeading": {
     "defaultMessage": "Something went wrong",
     "description": "Short heading above an external-list loading error. This heading intentionally has no final period."
@@ -539,6 +535,10 @@
     "defaultMessage": "Collapse drawer",
     "description": "Accessible action that folds the item tray closed."
   },
+  "interview.runtime.connection": {
+    "defaultMessage": "Connection",
+    "description": "Title of the panel for a connection between two people or other items on the canvas, shown when the task gives that kind of connection no name of its own."
+  },
   "interview.runtime.copied": {
     "defaultMessage": "Copied!",
     "description": "Confirmation that interview diagnostic information was copied."
@@ -634,6 +634,14 @@
   "interview.runtime.taskErrorDescription": {
     "defaultMessage": "There was an error with the interview software, and this task could not be displayed. Some tasks, such as maps, need an internet connection, so check your connection and then try refreshing the page. If the problem persists, please contact the study organizer and send them the debug information, which you can copy with the button below. You may be able to continue your interview by clicking the next button.",
     "description": "Recovery instructions when an interview screen cannot be displayed, whether from a crash or a lost connection. The copy button is shown below this text."
+  },
+  "interview.runtime.unnamed": {
+    "defaultMessage": "Unnamed",
+    "description": "Label shown on, and read out for, a person or other item the participant added without giving it a name."
+  },
+  "interview.runtime.unnamedNumbered": {
+    "defaultMessage": "Unnamed {number}",
+    "description": "Title of an entry in a list of people or other items to choose from when the entry has no name or other details to show. number tells the entries apart: 1, 2, 3 and so on."
   },
   "interview.runtime.unplacedCount": {
     "defaultMessage": "{count, number} unplaced",

@@ -100,15 +100,14 @@ Every participant-facing field holds an object keyed by those tags, one entry pe
 
 Localized fields include: stage `label`; prompt `text`; form `title`; form field `prompt` and `hint`;
 `introductionPanel.title` and `.text` (Ego Form only); panel `title`; Information `title` and item `content` /
-`description`; Narrative preset `label` and each `highlight[].label`; variable
+`description`; Narrative preset `label`, each `highlight[].label` and each `edges.display[].label`; variable
 `options[].label` and scalar `minLabel` / `maxLabel`; TieStrengthCensus `negativeLabel`;
 CategoricalBin `otherVariablePrompt` and `otherOptionLabel`; Anonymisation
-`explanationText`; FamilyPedigree `censusPrompt`; and the codebook `label` of
-every node type and edge type (§3). The validator reports any participant-facing field left as a
+`explanationText`; and FamilyPedigree `censusPrompt`. The validator reports any participant-facing field left as a
 plain string.
 
 Researcher-facing fields stay plain strings: the protocol `name` and `description`, codebook
-`name`s, a variable's `label` (§4), `interviewScript`, ids, and asset references.
+`name`s, `interviewScript`, ids, and asset references.
 
 ## 3. Codebook (strict: `{ node?, edge?, ego? }`)
 
@@ -118,8 +117,7 @@ All three are optional, but you must define any type a stage references.
 "codebook": {
   "node": {
     "person": {                       // key = node-type id (slug, used as stage subject.type)
-      "name": "Person",               // REQUIRED display name (spaces allowed here)
-      "label": { "en-US": "Person" }, // REQUIRED localized name shown to participants
+      "name": "Person",               // REQUIRED name (spaces allowed here); participants never see it
       "color": "node-color-seq-1",    // REQUIRED: node-color-seq-1 … node-color-seq-8
       "shape": { "default": "circle" }, // REQUIRED: default ∈ circle|square|diamond
       "icon": "add-a-person",          // optional
@@ -128,8 +126,7 @@ All three are optional, but you must define any type a stage references.
   },
   "edge": {
     "knows": {                         // key = edge-type id (slug, used in createEdge / subject)
-      "name": "Knows",                 // REQUIRED, unique across codebook
-      "label": { "en-US": "Knows" },   // REQUIRED localized name shown to participants
+      "name": "Knows",                 // REQUIRED, unique across codebook; participants never see it
       "color": "edge-color-seq-1",     // optional: edge-color-seq-1 … edge-color-seq-8
       "variables": { /* see §4 */ }
     }
@@ -140,9 +137,9 @@ All three are optional, but you must define any type a stage references.
 
 ## 4. Variable definitions (strict per type)
 
-A variable is `{ "name": <slug>, "label": <string>, "type": <type>, "component"?: <component>, … }`.
-`label` is REQUIRED, non-empty plain text, and is not translated; the simplest choice is the same
-text as `name` (`"label": "alter_name"`). `component` is optional but include it. The component
+A variable is `{ "name": <slug>, "type": <type>, "component"?: <component>, … }`. Codebook types
+and variables have no `label`: text participants see belongs to the stage that shows it.
+`component` is optional but include it. The component
 MUST match the type:
 
 | type          | allowed `component`                    | extra keys                                                 | notes                                                                |
@@ -165,20 +162,20 @@ non-ascending integer values are allowed). Option `label`s, and a scalar's `minL
 `maxLabel`, are localized strings. Examples:
 
 ```jsonc
-"alter_name":   { "name": "alter_name", "label": "alter_name", "type": "text", "component": "Text",
+"alter_name":   { "name": "alter_name", "type": "text", "component": "Text",
   "validation": { "required": true } },
-"close_feeling":{ "name": "close_feeling", "label": "close_feeling", "type": "ordinal", "component": "LikertScale",
+"close_feeling":{ "name": "close_feeling", "type": "ordinal", "component": "LikertScale",
   "options": [ {"label":{"en-US":"Not close"},"value":1}, {"label":{"en-US":"Somewhat close"},"value":2},
                {"label":{"en-US":"Very close"},"value":3} ],
   "validation": { "required": true } },
-"relationship": { "name": "relationship", "label": "relationship", "type": "categorical", "component": "CheckboxGroup",
+"relationship": { "name": "relationship", "type": "categorical", "component": "CheckboxGroup",
   "options": [ {"label":{"en-US":"Family"},"value":"family"}, {"label":{"en-US":"Friend"},"value":"friend"} ] },
-"lives_with":   { "name": "lives_with", "label": "lives_with", "type": "boolean", "component": "Boolean",
+"lives_with":   { "name": "lives_with", "type": "boolean", "component": "Boolean",
   "options": [ {"label":{"en-US":"Yes"},"value":true}, {"label":{"en-US":"No"},"value":false} ] },
-"start_date":   { "name": "start_date", "label": "start_date", "type": "datetime", "component": "DatePicker",
+"start_date":   { "name": "start_date", "type": "datetime", "component": "DatePicker",
   "parameters": { "type": "month" } },
-"layout":       { "name": "layout", "label": "layout", "type": "layout" },
-"alter_loc":    { "name": "alter_loc", "label": "alter_loc", "type": "location" }
+"layout":       { "name": "layout", "type": "layout" },
+"alter_loc":    { "name": "alter_loc", "type": "location" }
 ```
 
 **Avoiding duplicate alters.** When the same person may be named under more than one prompt, or
@@ -209,7 +206,7 @@ Required keys per stage type used by these templates:
 - **OrdinalBin**: `subject`(node) + `prompts:[{id,text, variable:"<ordinal node key>", color?, bucketSortOrder?, binSortOrder?}]` (≥1).
 - **CategoricalBin**: `subject`(node) + `prompts:[{id,text, variable:"<categorical node key>", otherVariable?, otherVariablePrompt?, otherOptionLabel?}]` (≥1).
 - **Sociogram**: `subject`(node) + `prompts:[{id,text, layout:{layoutVariable:"<layout node key>"}, edges?:{create?:"<edge key>", display?:["<edge key>"]}, highlight?:{allowHighlighting?:bool, variable?:"<boolean node key>"}}]` (≥1) + `background?:{concentricCircles?:int, skewedTowardCenter?:bool, image?}`.
-- **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:["<edge key>"]}, highlight?:[{variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
+- **Narrative**: `subject`(node) + `presets:[{id, label, layoutVariable:"<layout node key>", groupVariable?:"<node key>", edges?:{display?:[{type:"<edge key>", label:{"en-US":"…"}}]}, highlight?:[{variable:"<boolean node key>", label:{"en-US":"…"}}]}]` (≥1) + `background?` + `behaviours?:{freeDraw?,allowRepositioning?}`.
 - **DyadCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>"}]` (≥1).
 - **TieStrengthCensus**: `subject`(node) + `prompts:[{id,text, createEdge:"<edge key>", edgeVariable:"<ordinal edge key>", negativeLabel:"…"}]` (≥1).
 - **Geospatial**: `subject`(node) + `prompts:[{id,text, variable:"<location node key>"}]` (≥1) + `mapOptions` (all REQUIRED):

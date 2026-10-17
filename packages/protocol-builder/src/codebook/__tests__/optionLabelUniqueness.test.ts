@@ -12,13 +12,11 @@ const SUBJECT = { entity: 'node', type: 'person' } as const;
 
 const personDocument = (options: readonly unknown[]): SectionDoc => ({
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: {
     closeness: {
       name: 'closeness',
-      label: 'closeness',
       type: 'ordinal',
       options,
     },

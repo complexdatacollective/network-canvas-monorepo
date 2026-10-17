@@ -48,13 +48,11 @@ const sections = (): Record<string, SectionDoc> => ({
   ...settings,
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
     name: 'Person',
-    label: { en: 'Person' },
     color: 'node-color-seq-1',
     shape: { default: 'circle' },
     variables: {
       category: {
         name: 'Category',
-        label: 'Category',
         type: 'categorical',
         options: [
           { label: { en: 'One' }, value: 'one' },
@@ -311,24 +309,21 @@ describe('variable role helpers', () => {
     const variables = {
       sexAssignedAtBirth: {
         name: 'sexAssignedAtBirth',
-        label: 'sexAssignedAtBirth',
         type: 'categorical' as const,
         options: [{ label: { en: 'Drifted' }, value: 'drifted' }],
       },
       stamped: {
         name: 'stamped',
-        label: 'stamped',
         type: 'ordinal' as const,
         readOnly: true,
         options: [{ label: { en: 'Low' }, value: 1 }],
       },
       ordinary: {
         name: 'ordinary',
-        label: 'ordinary',
         type: 'categorical' as const,
         options: [{ label: { en: 'Yes' }, value: 'yes' }],
       },
-      plain: { name: 'plain', label: 'plain', type: 'text' as const },
+      plain: { name: 'plain', type: 'text' as const },
     };
 
     // The CANONICAL set, not the drifted one the codebook happens to hold:

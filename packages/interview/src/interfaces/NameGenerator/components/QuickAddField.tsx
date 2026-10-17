@@ -35,10 +35,7 @@ import {
 } from '../../../components/actionButtonVariants';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
-import {
-  useLocalizedString,
-  useResolveLocalizedString,
-} from '../../../localization/ProtocolLocalizationProvider';
+import { useLocalizedString } from '../../../localization/ProtocolLocalizationProvider';
 import { getNodeIconName } from '../../../selectors/name-generator';
 import {
   getNodeColorSelector,
@@ -234,7 +231,6 @@ export default function QuickAddField({
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const icon = useStageSelector(getNodeIconName);
-  const resolve = useResolveLocalizedString();
 
   // When open, the toggle previews the node being created, so it takes the
   // shape the new node will have (resolved against the prompt's additional
@@ -242,17 +238,6 @@ export default function QuickAddField({
   const nodeShape = nodeTypeDefinition
     ? resolveNodeShape(nodeTypeDefinition.shape, newNodeAttributes)
     : 'circle';
-
-  // The input is not wrapped in a BaseField, so nothing renders a label
-  // element for it and `useField` names none (see `renderedElements`): the
-  // control carries its own name. The entity label is what the participant is
-  // being asked for ("Person name"); the placeholder is an instruction, so it
-  // is only the fallback when the codebook type is unavailable.
-  const inputLabel = nodeTypeDefinition
-    ? intl.formatMessage(interfaceMessages.entityName, {
-        entityLabel: resolve(nodeTypeDefinition.label).text,
-      })
-    : placeholder;
 
   // Close form when disabled
   useEffect(() => {
@@ -301,7 +286,10 @@ export default function QuickAddField({
                       type="text"
                       autoFocus
                       placeholder={placeholder}
-                      aria-label={inputLabel}
+                      // Not wrapped in a BaseField, so nothing renders a
+                      // label for it: it is named by the researcher's own
+                      // words asking for a name.
+                      aria-label={placeholder}
                       id={id}
                       name={targetVariable}
                       data-testid="quick-add-input"

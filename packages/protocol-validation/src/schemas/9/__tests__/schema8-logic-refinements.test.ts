@@ -34,7 +34,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
                 ...base.codebook.node.person.variables,
                 position: {
                   name: 'Position',
-                  label: 'Position',
                   type: 'layout',
                 },
               },
@@ -91,7 +90,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
                 ...base.codebook.node.person.variables,
                 nickname: {
                   name: 'Nickname',
-                  label: 'Nickname',
                   type: 'text',
                 },
               },
@@ -298,7 +296,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
                 ...base.codebook.node.person.variables,
                 layoutPos: {
                   name: 'LayoutPos',
-                  label: 'LayoutPos',
                   type: 'layout',
                 },
               },
@@ -331,12 +328,10 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
                 ...base.codebook.node.person.variables,
                 layoutPos: {
                   name: 'LayoutPos',
-                  label: 'LayoutPos',
                   type: 'layout',
                 },
                 flagged: {
                   name: 'Flagged',
-                  label: 'Flagged',
                   type: 'boolean',
                   component: 'Boolean',
                 },
@@ -415,7 +410,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
                 ...base.codebook.node.person.variables,
                 layoutPos: {
                   name: 'LayoutPos',
-                  label: 'LayoutPos',
                   type: 'layout',
                 },
               },
@@ -457,7 +451,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.ego.variables,
               when: {
                 name: 'When',
-                label: 'When',
                 type: 'datetime',
                 component: 'RelativeDatePicker',
                 parameters,
@@ -626,7 +619,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
               ...base.codebook.ego.variables,
               when: {
                 name: 'When',
-                label: 'When',
                 type: 'datetime',
                 component: 'DatePicker',
                 parameters: { type: 'year', min: '0999' },
@@ -665,7 +657,6 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
                 ...base.codebook.node.person.variables,
                 rank: {
                   name: 'Rank',
-                  label: 'Rank',
                   type: 'ordinal',
                   component: 'LikertScale',
                   options: [],

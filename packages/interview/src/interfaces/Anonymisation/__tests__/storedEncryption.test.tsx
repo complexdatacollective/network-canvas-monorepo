@@ -30,17 +30,15 @@ afterEach(() => {
 // The variables as a protocol re-imported without its encryption declares
 // them: the name the interview stored encrypted is no longer marked.
 const unmarkedVariables: Record<string, Variable> = {
-  name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
+  name: { name: 'name', type: 'text', component: 'Text' },
   nickname: {
     name: 'nickname',
-    label: 'nickname',
     type: 'text',
     component: 'Text',
   },
-  age: { name: 'age', label: 'age', type: 'number', component: 'Number' },
+  age: { name: 'age', type: 'number', component: 'Number' },
   pets: {
     name: 'pets',
-    label: 'pets',
     type: 'categorical',
     component: 'CheckboxGroup',
     options: [

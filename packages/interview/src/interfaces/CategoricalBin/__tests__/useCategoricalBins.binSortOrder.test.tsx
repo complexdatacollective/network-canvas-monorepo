@@ -63,11 +63,9 @@ function makeWrapper(networkNodes: NcNode[] = nodes) {
           node: {
             [NODE_TYPE]: {
               name: NODE_TYPE,
-              label: { en: 'Person' },
               variables: {
                 [CAT_VAR]: {
                   name: CAT_VAR,
-                  label: 'Category',
                   type: 'categorical',
                   options: [
                     { label: { en: 'A' }, value: 'a' },
@@ -76,12 +74,10 @@ function makeWrapper(networkNodes: NcNode[] = nodes) {
                 },
                 [NAME_VAR]: {
                   name: NAME_VAR,
-                  label: 'Name',
                   type: 'text',
                 },
                 [AGE_VAR]: {
                   name: AGE_VAR,
-                  label: 'Age',
                   type: 'number',
                 },
               },

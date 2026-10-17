@@ -80,13 +80,11 @@ const protocolPayload: ProtocolPayload = {
     node: {
       [NODE_TYPE]: {
         name: 'Person',
-        label: { en: 'Person', ar: 'شخص' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           [CATEGORY_VARIABLE]: {
             name: 'Category',
-            label: 'Category',
             type: 'categorical',
             component: 'CheckboxGroup',
             options: [

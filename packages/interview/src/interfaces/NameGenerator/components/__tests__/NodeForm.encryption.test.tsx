@@ -299,7 +299,6 @@ const nicknameVariables: Record<string, Variable> = {
   ...encryptedVariables,
   nickname: {
     name: 'nickname',
-    label: 'nickname',
     type: 'text',
     component: 'Text',
     validation: { differentFrom: asEntityAttributeReference('name') },

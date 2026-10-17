@@ -45,14 +45,12 @@ const HOST_WORDS = 'Invalid input: expected object, received undefined';
 
 const NODE_DOCUMENT: SectionDoc = {
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
     age: {
       name: 'Age',
-      label: 'Age',
       type: 'number',
       component: 'Number',
     },
@@ -157,7 +155,6 @@ describe('CodebookEntityEditor', () => {
       subject: { entity: 'edge', type: 'friends' } as const,
       document: {
         name: 'Friends',
-        label: { en: 'Friends' },
         color: 'edge-color-seq-1',
         variables: {},
       },
@@ -551,7 +548,6 @@ describe('CodebookEntityEditor', () => {
       },
       expected: {
         name: 'NewPerson',
-        label: { en: 'NewPerson' },
         color: 'node-color-seq-2',
         icon: 'add-a-person',
         shape: { default: 'square' },
@@ -564,7 +560,6 @@ describe('CodebookEntityEditor', () => {
       draft: { name: 'Knows', color: 'edge-color-seq-2' },
       expected: {
         name: 'Knows',
-        label: { en: 'Knows' },
         color: 'edge-color-seq-2',
         variables: {},
       },

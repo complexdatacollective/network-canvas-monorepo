@@ -7,8 +7,9 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { contentFormatFor } from '../../localization/contentFormat';
 import { resolveRosterNodeLabel } from '../resolveRosterNodeLabel';
+
+const placeholder = (sequentialNumber: number) => `Unnamed ${sequentialNumber}`;
 
 const makeNode = (
   attributes: NcNode[typeof entityAttributesProperty],
@@ -21,8 +22,8 @@ const makeNode = (
 describe('resolveRosterNodeLabel', () => {
   it('returns the value found by the name heuristic when one matches', () => {
     const codebookVariables: NodeDefinition['variables'] = {
-      'var-name': { name: 'name', label: 'Name', type: 'text' },
-      'var-age': { name: 'age', label: 'Age', type: 'number' },
+      'var-name': { name: 'name', type: 'text' },
+      'var-age': { name: 'age', type: 'number' },
     };
 
     const node = makeNode({ 'var-name': 'John Doe', 'var-age': 30 });
@@ -30,7 +31,7 @@ describe('resolveRosterNodeLabel', () => {
     const result = resolveRosterNodeLabel({
       codebookVariables,
       node,
-      subjectLabel: 'Person',
+      placeholder,
       sequentialNumber: 1,
     });
 
@@ -44,7 +45,6 @@ describe('resolveRosterNodeLabel', () => {
     const codebookVariables: NodeDefinition['variables'] = {
       'codebook-name-uuid': {
         name: 'name',
-        label: 'Name',
         type: 'text',
       },
     };
@@ -57,7 +57,7 @@ describe('resolveRosterNodeLabel', () => {
     const result = resolveRosterNodeLabel({
       codebookVariables,
       node,
-      subjectLabel: 'Person',
+      placeholder,
       sequentialNumber: 2,
     });
 
@@ -74,43 +74,28 @@ describe('resolveRosterNodeLabel', () => {
     const result = resolveRosterNodeLabel({
       codebookVariables: undefined,
       node,
-      subjectLabel: 'Person',
+      placeholder,
       sequentialNumber: 3,
     });
 
     expect(result).toBe('42');
   });
 
-  it('returns a placeholder with the subject label and sequential number for a value-less node', () => {
+  it('returns the numbered placeholder for a value-less node', () => {
     const node = makeNode({});
 
     const result = resolveRosterNodeLabel({
       codebookVariables: {
         'codebook-name-uuid': {
           name: 'name',
-          label: 'Name',
           type: 'text',
         },
       },
       node,
-      subjectLabel: 'Person',
+      placeholder,
       sequentialNumber: 3,
     });
 
-    expect(result).toBe('Person 3');
-  });
-
-  // The number follows the protocol's label, so it is written as the
-  // protocol's language writes numbers.
-  it('numbers a placeholder in the language of the label it follows', () => {
-    expect(
-      resolveRosterNodeLabel({
-        codebookVariables: {},
-        node: makeNode({}),
-        subjectLabel: 'شخص',
-        sequentialNumber: 3,
-        formatNumber: contentFormatFor('ar-EG').formatNumber,
-      }),
-    ).toBe('شخص ٣');
+    expect(result).toBe('Unnamed 3');
   });
 });

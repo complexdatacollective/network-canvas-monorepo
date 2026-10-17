@@ -393,7 +393,7 @@ describe('a connection type this protocol does not define', () => {
     // the tick list without the dialog asking for it, which is what makes it
     // tickable and then losable.
     harness.receiveCodebookUpdate({
-      edge: { [LOST_EDGE]: { name: 'Former', label: { 'en-US': 'Former' } } },
+      edge: { [LOST_EDGE]: { name: 'Former' } },
     });
 
     const prompt = await openPrompt(harness);

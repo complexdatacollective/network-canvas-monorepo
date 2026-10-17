@@ -7,7 +7,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import type { NcNode } from '@codaco/shared-consts';
 
 import { runtimeMessages } from '../../i18n/runtimeMessages';
-import { useResolveLocalizedString } from '../../localization/ProtocolLocalizationProvider';
 import { makeGetCodebookForNodeType } from '../../selectors/protocol';
 import {
   decryptInScope,
@@ -28,7 +27,7 @@ import { useReportUnreadable } from './useReportUnreadable';
 export function useNodeLabeller(outcomeOf: OutcomeOf) {
   const intl = useAppIntl();
   const getCodebookForNodeType = useSelector(makeGetCodebookForNodeType);
-  const resolve = useResolveLocalizedString();
+  const unnamed = intl.formatMessage(runtimeMessages.unnamed);
   const unavailable = intl.formatMessage(runtimeMessages.answerUnavailable);
 
   return useCallback(
@@ -39,14 +38,9 @@ export function useNodeLabeller(outcomeOf: OutcomeOf) {
         getCodebookForNodeType(node.type)?.variables ?? {},
       ),
     ) => {
-      const codebook = getCodebookForNodeType(node.type);
-      return nodeLabelText(node, source, {
-        typeLabel: codebook ? resolve(codebook.label).text : '',
-        unavailable,
-        outcomeOf,
-      });
+      return nodeLabelText(source, { unnamed, unavailable, outcomeOf });
     },
-    [getCodebookForNodeType, resolve, unavailable, outcomeOf],
+    [getCodebookForNodeType, unnamed, unavailable, outcomeOf],
   );
 }
 

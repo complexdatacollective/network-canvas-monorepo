@@ -37,7 +37,7 @@ const record = <Value>(entries: readonly (readonly [string, Value])[]) =>
   Object.fromEntries(entries);
 
 const textVariable = (name: string) =>
-  ({ name, label: name, type: 'text' }) satisfies Variable;
+  ({ name, type: 'text' }) satisfies Variable;
 
 const hazardVariables = (nameOf: (id: string) => string) =>
   record(hazards.map((id) => [id, textVariable(nameOf(id))]));
@@ -50,7 +50,6 @@ const codebookFor = (nameOf: (id: string) => string): Codebook => ({
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: hazardVariables(nameOf),
@@ -59,7 +58,6 @@ const codebookFor = (nameOf: (id: string) => string): Codebook => ({
   edge: {
     knows: {
       name: 'Knows',
-      label: { en: 'Knows' },
       variables: hazardVariables(nameOf),
     },
   },
@@ -226,7 +224,6 @@ describe('attributes the codebook does not declare, keyed by Object.prototype ke
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: { 'v-name': textVariable('Name') },
@@ -306,7 +303,6 @@ describe('categorical variables named after Object.prototype keys', () => {
       node: {
         person: {
           name: 'Person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: record(
@@ -314,7 +310,6 @@ describe('categorical variables named after Object.prototype keys', () => {
               id,
               {
                 name: id,
-                label: id,
                 type: 'categorical',
                 options: [
                   { label: { en: 'A' }, value: 'constructor' },
@@ -360,7 +355,6 @@ describe('categorical variables named after Object.prototype keys', () => {
 describe('entity types whose ids are Object.prototype keys', () => {
   const nodeDefinition = (name: string) => ({
     name,
-    label: { en: name },
     color: 'node-color-seq-1' as const,
     shape: { default: 'circle' as const },
     variables: { [`${name}-var`]: textVariable('Name') },

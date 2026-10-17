@@ -39,13 +39,13 @@ How an interview picks its language:
   navigation, dialogs and notifications. Text inside it does not mark a
   language of its own, even when it falls back to another language, apart
   from the Language Chooser, which names each language in that language.
-- Participants see a node or edge type's label, which can be translated,
-  rather than its name. A Narrative preset switcher lists highlighted
-  attributes by the translated labels the preset gives them, and a Network
-  Composer field shows its own translated caption rather than the attribute's
-  label. A form field is always captioned with its own prompt: a prompt can no
-  longer be only spaces, so the attribute's untranslated label never stands in
-  for it.
+- Participants never see a codebook name. A Narrative preset switcher lists
+  highlighted attributes and drawn edge types by the translated labels the
+  preset gives them, a Network Composer stage gives each edge type it lets
+  participants draw a translated label of its own, and a Network Composer
+  field shows its own translated caption. A node with no name is shown as
+  "Unnamed". A form field is always captioned with its own prompt: a prompt can no
+  longer be only spaces, so the attribute's name never stands in for it.
 
 In Architect:
 
@@ -97,11 +97,15 @@ In Architect:
   language. The menus name each language in Architect's language, with its
   own name beside it. A note under a field with a missing translation tells
   you what participants will see instead, and says when their browser's other
-  languages could change that. Node type and edge type labels can be
-  translated too. An attribute's label is plain text and is not translated.
-- Each attribute a Narrative preset highlights has a label of its own, which
-  participants see in the preset switcher. You write and translate it in the
-  Narrative stage editor; it starts as the attribute's name.
+  languages could change that. Node types, edge types and attributes have only a
+  name, which participants never see.
+- Each attribute a Narrative preset highlights and each edge type it draws has
+  a label of its own, which participants see in the preset switcher. You write
+  and translate it in the Narrative stage editor; it starts as the attribute's
+  or edge type's name.
+- Each edge type a Network Composer stage lets participants draw has a label of
+  its own, which participants choose it by. You write and translate it in the
+  stage editor; it starts as the edge type's name.
 - Each Network Composer form field needs a caption, which can be translated.
   Choosing the field's attribute fills in its name as the caption, until you
   write one of your own.

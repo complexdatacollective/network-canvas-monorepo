@@ -72,7 +72,6 @@ const addFreeTextVariable = (
       ...variables,
       [variableId]: {
         name: variableId,
-        label: variableId,
         type: 'text',
         component: 'Text',
       },

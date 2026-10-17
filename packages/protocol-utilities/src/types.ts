@@ -78,8 +78,6 @@ export type VariableOptionInput = {
 export type VariableEntry = {
   id: string;
   name: string;
-  // Codebook label; the variable's name when omitted. Not translated.
-  label?: string;
   type: VariableType;
   component?: ComponentType;
   options?: VariableOptionInput[];
@@ -105,7 +103,6 @@ type ShapeMapping =
 export type NodeTypeEntry = {
   id: string;
   name: string;
-  label?: TextInput;
   color: NodeColorReference;
   icon: string;
   shape: { default: string; dynamic?: ShapeMapping };
@@ -115,7 +112,6 @@ export type NodeTypeEntry = {
 export type EdgeTypeEntry = {
   id: string;
   name: string;
-  label?: TextInput;
   color: EdgeColorReference;
   variables: Map<string, VariableEntry>;
 };
@@ -223,7 +219,7 @@ export type PresetEntry = {
   label: TextInput;
   layoutVariable: string;
   edges?: {
-    display: string[];
+    display: { type: string; label: TextInput }[];
   };
   groupVariable?: string;
   highlight?: { variable: string; label: TextInput }[];
@@ -249,10 +245,12 @@ export type NetworkComposerFormFieldEntry = {
 };
 
 // A drawable edge type within a NetworkComposer stage. Mirrors the schema's
-// `edges[]` entries: an id, an edge subject, and an optional attribute form.
+// `edges[]` entries: an id, an edge subject, its label, and an optional
+// attribute form.
 export type NetworkComposerEdgeEntry = {
   id: string;
   subject: { entity: 'edge'; type: string };
+  label: TextInput;
   form?: { fields: NetworkComposerFormFieldEntry[] };
 };
 
@@ -480,7 +478,6 @@ export type InitialNodesSpec = {
 
 export type AddNodeTypeInput = {
   name?: string;
-  label?: TextInput;
   color?: NodeColorReference;
   icon?: string;
   shape?: { default: string; dynamic?: ShapeMapping };
@@ -488,14 +485,12 @@ export type AddNodeTypeInput = {
 
 export type AddEdgeTypeInput = {
   name?: string;
-  label?: TextInput;
   color?: EdgeColorReference;
 };
 
 export type AddVariableInput = {
   id?: string;
   name?: string;
-  label?: string;
   type?: VariableType;
   component?: ComponentType;
   options?: VariableOptionInput[];
@@ -638,6 +633,8 @@ export type AddStageInput = {
 export type AddNetworkComposerEdgeInput = {
   // Accept an existing edge type id, or omit to auto-create one.
   type?: string;
+  // The words participants choose the edge type by; its name when omitted.
+  label?: TextInput;
   form?: { fields: NetworkComposerFormFieldInput[] };
 };
 

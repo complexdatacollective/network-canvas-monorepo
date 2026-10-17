@@ -1014,7 +1014,6 @@ describe('the in-memory host', () => {
         variables: {
           ego_age: {
             name: 'ego_age',
-            label: 'Age',
             type: 'number',
             component: 'Number',
           },

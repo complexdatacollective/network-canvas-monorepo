@@ -225,7 +225,9 @@ const Narrative = ({ stage }: NarrativeProps) => {
   );
 
   // Filter edges by display types
-  const displayEdgeTypes = currentPreset?.edges?.display;
+  const displayEdgeTypes = currentPreset?.edges?.display?.map(
+    ({ type }) => type,
+  );
   const filteredEdges = useMemo(
     () =>
       showEdges && displayEdgeTypes

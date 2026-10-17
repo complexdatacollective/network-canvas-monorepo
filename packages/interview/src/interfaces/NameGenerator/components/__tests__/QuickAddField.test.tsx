@@ -20,7 +20,6 @@ vi.mock('../../../../hooks/useCelebrate', () => ({
 const { nodeTypeDefinition } = vi.hoisted(() => ({
   nodeTypeDefinition: {
     name: 'person_internal',
-    label: { en: 'Friend' },
     shape: 'circle',
   },
 }));
@@ -199,7 +198,9 @@ describe('QuickAddField', () => {
     );
   });
 
-  it('names the input after the codebook node type label, not its name', async () => {
+  // Participants never see a codebook name, so the input is named by the
+  // words they are asked to type.
+  it('names the input by its placeholder, not the codebook type name', async () => {
     renderField(
       <Form onSubmit={vi.fn(async () => ({ success: true }))}>
         <QuickAddField
@@ -213,7 +214,7 @@ describe('QuickAddField', () => {
 
     const input = await openField();
 
-    expect(input).toHaveAccessibleName(/Friend/);
+    expect(input).toHaveAccessibleName('Type a name');
     expect(input).not.toHaveAccessibleName(/person_internal/);
   });
 

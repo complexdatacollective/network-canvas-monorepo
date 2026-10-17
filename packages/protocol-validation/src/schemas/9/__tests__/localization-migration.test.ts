@@ -73,9 +73,9 @@ const migrateStep = (document: unknown) =>
   migrationV8toV9.migrate(ProtocolSchemaV8.parse(document), {});
 
 /**
- * Schema 8 held no label for a codebook definition or a Narrative highlight,
- * so the migrated label is the name of what it labels: the sibling `name` of
- * a codebook definition, and the highlighted attribute's name.
+ * Schema 8 held no label for a Narrative highlight or legend edge, so the
+ * migrated label is the name of what it labels: the highlighted attribute's
+ * name, and the edge type's name.
  */
 // Schema 8 held an Anonymisation stage's heading as a title of its own, which
 // the migration writes as the first line of the text.
@@ -88,8 +88,17 @@ const explanationBehind = (source: unknown): string | undefined =>
 
 const nameBehindLabel = (document: unknown, at: Path): unknown => {
   const owner = getAt(document, at.slice(0, -1));
+  if (at.at(-3) === 'edges' && isRecord(owner) && isRecord(owner.subject)) {
+    const type = owner.subject.type;
+    return typeof type === 'string'
+      ? getAt(document, ['codebook', 'edge', type, 'name'])
+      : undefined;
+  }
   if (typeof owner !== 'string') {
     return getAt(document, [...at.slice(0, -1), 'name']);
+  }
+  if (at.at(-3) === 'display') {
+    return getAt(document, ['codebook', 'edge', owner, 'name']);
   }
   const subject = getAt(document, [...at.slice(0, 2), 'subject', 'type']);
   if (typeof subject !== 'string') return undefined;
@@ -206,16 +215,15 @@ describe('v8 to v9 localization migration', () => {
         setAt(expected, at, { en: escapeMessageText(value.en ?? '') });
       }
     }
-    for (const definition of codebookTypes(expected)) {
-      definition.label = { en: definition.name };
-    }
-    for (const definition of codebookVariables(expected)) {
-      definition.label = definition.name;
-    }
     setAt(
       expected,
       [...stagePath(expected, 'narrative'), 'presets', 0, 'highlight', 0],
       { variable: 'flag', label: { en: 'Flag' } },
+    );
+    setAt(
+      expected,
+      [...stagePath(expected, 'narrative'), 'presets', 0, 'edges', 'display'],
+      [{ type: 'knows', label: { en: 'Knows' } }],
     );
     if (!isRecord(expected) || !Array.isArray(expected.stages)) {
       throw new Error('Fixture has no stages');
@@ -325,58 +333,14 @@ describe('v8 to v9 localization migration', () => {
   });
 
   describe('codebook labels', () => {
-    it('starts each type label as the name participants already saw', () => {
-      const document = schema8Protocol();
-      setAt(
-        document,
-        ['codebook', 'node', 'person', 'name'],
-        "Friend's {circle}",
-      );
-      const label = getAt(migrateProtocol(document, 9), [
-        'codebook',
-        'node',
-        'person',
-        'label',
-      ]);
-      expect(label).toEqual({ en: escapeMessageText("Friend's {circle}") });
-      expect(isRecord(label) && messageText(String(label.en))).toBe(
-        "Friend's {circle}",
-      );
-    });
-
-    it('uses the codebook key for a type with no name', () => {
-      const document = schema8Protocol();
-      setAt(document, ['codebook', 'edge', 'knows', 'name'], '');
-      expect(
-        getAt(migrateStep(document), ['codebook', 'edge', 'knows', 'label']),
-      ).toEqual({ en: 'knows' });
-    });
-
-    it('starts each attribute label as its name, as plain text', () => {
-      const document = schema8Protocol();
-      const variable = ['codebook', 'node', 'person', 'variables', 'nickname'];
-      setAt(document, [...variable, 'name'], "Friend's {nickname}");
-      expect(getAt(migrateProtocol(document, 9), [...variable, 'label'])).toBe(
-        "Friend's {nickname}",
-      );
-    });
-
-    it('uses the codebook key for an attribute with no name', () => {
-      const document = schema8Protocol();
-      const variable = ['codebook', 'ego', 'variables', 'egoName'];
-      setAt(document, [...variable, 'name'], '');
-      expect(getAt(migrateStep(document), [...variable, 'label'])).toBe(
-        'egoName',
-      );
-    });
-
-    it('keeps a label a document already carries', () => {
-      const document = schema8Protocol();
-      const variable = ['codebook', 'ego', 'variables', 'egoName'];
-      setAt(document, [...variable, 'label'], 'Your name');
-      expect(getAt(migrateStep(document), [...variable, 'label'])).toBe(
-        'Your name',
-      );
+    it('gives no type or attribute a label', () => {
+      const migrated = migrateProtocol(schema8Protocol(), 9);
+      for (const definition of [
+        ...codebookTypes(migrated),
+        ...codebookVariables(migrated),
+      ]) {
+        expect(definition).not.toHaveProperty('label');
+      }
     });
   });
 
@@ -423,6 +387,34 @@ describe('v8 to v9 localization migration', () => {
       ]);
     });
 
+    it('labels each edge type the legend shows with its name, in English', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      setAt(document, [...preset, 'edges', 'display'], ['knows', 'family']);
+      setAt(document, ['codebook', 'edge', 'knows', 'name'], 'Knows {who}');
+
+      expect(
+        getAt(migrateProtocol(document, 9), [...preset, 'edges', 'display']),
+      ).toEqual([
+        { type: 'knows', label: { en: escapeMessageText('Knows {who}') } },
+        { type: 'family', label: { en: 'Family' } },
+      ]);
+    });
+
+    it('uses the edge type id when the edge type has no name or is missing', () => {
+      const document = schema8Protocol();
+      const preset = presetPath(document);
+      setAt(document, [...preset, 'edges', 'display'], ['knows', 'removed']);
+      setAt(document, ['codebook', 'edge', 'knows', 'name'], '');
+
+      expect(
+        getAt(migrateStep(document), [...preset, 'edges', 'display']),
+      ).toEqual([
+        { type: 'knows', label: { en: 'knows' } },
+        { type: 'removed', label: { en: 'removed' } },
+      ]);
+    });
+
     it('leaves a preset with no highlight without one', () => {
       const document = schema8Protocol();
       const preset = presetPath(document);
@@ -465,6 +457,20 @@ describe('v8 to v9 localization migration', () => {
       expect(getAt(migrateProtocol(document, 9), [...field, 'label'])).toEqual({
         en: 'Nickname',
       });
+    });
+
+    it('labels each edge type with its name, in English', () => {
+      const document = schema8Protocol();
+      setAt(document, ['codebook', 'edge', 'knows', 'name'], 'Knows {who}');
+
+      expect(
+        getAt(migrateProtocol(document, 9), [
+          ...composerPath(document),
+          'edges',
+          0,
+          'label',
+        ]),
+      ).toEqual({ en: escapeMessageText('Knows {who}') });
     });
 
     it('captions an edge field with the attribute name its edge type gives', () => {

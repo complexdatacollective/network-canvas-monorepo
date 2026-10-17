@@ -182,8 +182,8 @@ describe('useNodeLabel with encrypted labels', () => {
   it('decrypts a name its record says is encrypted, though the codebook no longer marks it', async () => {
     // As a protocol re-imported without its encryption declares the name.
     const unmarkedVariables: Record<string, Variable> = {
-      name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
-      age: { name: 'age', label: 'age', type: 'number', component: 'Number' },
+      name: { name: 'name', type: 'text', component: 'Text' },
+      age: { name: 'age', type: 'number', component: 'Number' },
     };
     const node = await makeEncryptedPerson('n1', 'Alice', 'pw');
     const store = createEncryptionStore([node], undefined, unmarkedVariables);

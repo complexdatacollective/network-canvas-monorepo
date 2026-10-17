@@ -29,7 +29,7 @@ const fields = [{ variable: 'name' }, { variable: 'age' }];
 /** The codebook of a protocol re-imported without the name's encryption. */
 const unmarkedVariables: Record<string, Variable> = {
   ...encryptedVariables,
-  name: { name: 'name', label: 'name', type: 'text', component: 'Text' },
+  name: { name: 'name', type: 'text', component: 'Text' },
 };
 
 type EncryptionStore = ReturnType<typeof createEncryptionStore>;

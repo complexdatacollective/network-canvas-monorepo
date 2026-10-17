@@ -87,14 +87,12 @@ describe('attributeListRows', () => {
       node: {
         'mock-node-type': {
           name: 'person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            'v-total': { name: '=total', label: 'Total', type: 'text' },
+            'v-total': { name: '=total', type: 'text' },
             'v-score': {
               name: '-score, adjusted',
-              label: 'Score adjusted',
               type: 'text',
             },
           },
@@ -194,17 +192,15 @@ describe('attributeListRows', () => {
         node: {
           'mock-node-type': {
             name: 'person',
-            label: { en: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
               'v-name': {
                 name: 'name',
-                label: 'Name',
                 type: 'text',
                 encrypted: true,
               },
-              'v-city': { name: 'city', label: 'City', type: 'text' },
+              'v-city': { name: 'city', type: 'text' },
             },
           },
         },

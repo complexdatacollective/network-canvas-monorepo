@@ -8,7 +8,6 @@ describe('selectFieldMetadataFromVariables', () => {
       // no codebook component
       closeness: {
         name: 'closeness',
-        label: 'Closeness',
         type: 'scalar' as const,
       },
     };
@@ -31,7 +30,6 @@ describe('selectFieldMetadataFromVariables', () => {
     const variables = {
       age: {
         name: 'age',
-        label: 'Age',
         type: 'number' as const,
         component: 'Number',
       },

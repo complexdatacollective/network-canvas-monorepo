@@ -40,12 +40,10 @@ export const namesCodebook = {
     variables: {
       'ego-name': {
         name: 'Nom (prénom)',
-        label: 'Name (first name)',
         type: 'text',
       },
       'ego-answer': {
         name: 'Réponse oui/non',
-        label: 'Yes/no answer',
         type: 'categorical',
         options: [
           { label: { en: 'Yes' }, value: 'oui' },
@@ -58,28 +56,23 @@ export const namesCodebook = {
   node: {
     person: {
       name: 'Close Friend',
-      label: { en: 'Close friend' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
         'p-name': {
           name: 'Full name',
-          label: 'Full name',
           type: 'text',
         },
         'p-age': {
           name: '年齢 (years)',
-          label: 'Age (years)',
           type: 'number',
         },
         'p-pos': {
           name: 'map position',
-          label: 'Map position',
           type: 'layout',
         },
         'p-eyes': {
           name: 'Eye colour, "natural"',
-          label: 'Eye colour',
           type: 'categorical',
           options: [
             { label: { en: 'Light blue' }, value: 'light blue' },
@@ -89,7 +82,6 @@ export const namesCodebook = {
         },
         'p-rank': {
           name: 'Rank #',
-          label: 'Rank',
           type: 'ordinal',
           options: [
             { label: { en: 'Low' }, value: 1 },
@@ -98,25 +90,21 @@ export const namesCodebook = {
         },
         'p-close': {
           name: 'Is this person close?',
-          label: 'Is this person close?',
           type: 'boolean',
         },
       },
     },
     place: {
       name: '場所',
-      label: { en: 'Place' },
       color: 'node-color-seq-2',
       shape: { default: 'square' },
       variables: {
         'pl-name': {
           name: 'Full name',
-          label: 'Full name',
           type: 'text',
         },
         'pl-note': {
           name: 'Note / remarks',
-          label: 'Note',
           type: 'text',
         },
       },
@@ -125,12 +113,10 @@ export const namesCodebook = {
   edge: {
     knows: {
       name: 'Knows well',
-      label: { en: 'Knows well' },
       color: 'edge-color-seq-1',
       variables: {
         'k-kind': {
           name: 'Kind of tie',
-          label: 'Kind of tie',
           type: 'categorical',
           options: [
             { label: { en: 'Family' }, value: 'family member' },
@@ -139,7 +125,6 @@ export const namesCodebook = {
         },
         'k-weight': {
           name: 'weight (%)',
-          label: 'Weight (%)',
           type: 'number',
         },
       },

@@ -38,12 +38,11 @@ const EDITED_SECTION = sectionId({ kind: 'stage', stageId: EDITED_STAGE_ID });
 
 const personNode = (name: string): SectionDoc => ({
   name,
-  label: { en: name },
   color: 'node-color-seq-1',
   shape: { default: 'circle' },
   variables: {
-    diabetes: { name: 'Diabetes', label: 'Diabetes', type: 'boolean' },
-    asthma: { name: 'Asthma', label: 'Asthma', type: 'boolean' },
+    diabetes: { name: 'Diabetes', type: 'boolean' },
+    asthma: { name: 'Asthma', type: 'boolean' },
   },
 });
 
@@ -70,7 +69,6 @@ const protocolSections = (extra: SectionMap = {}): SectionMap => ({
   [sectionId({ kind: 'codebookNode', typeId: 'person' })]: personNode('Person'),
   [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
     name: 'Friendship',
-    label: { en: 'Friendship' },
     variables: {},
   },
   ...extra,

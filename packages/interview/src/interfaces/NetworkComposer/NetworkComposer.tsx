@@ -174,10 +174,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
   );
 
   const codebook = useSelector(getCodebook);
-  const nodeTypeDefinition = codebook?.node?.[stage.subject.type];
-  const nodeLabel = nodeTypeDefinition
-    ? resolve(nodeTypeDefinition.label).text
-    : stage.subject.type;
 
   // Derive the quick-add target variable's validation props directly from its
   // codebook definition — AddNodeInput renders its own input and only ever
@@ -503,11 +499,10 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
 
   const edgeEntries = (stage.edges ?? []).map((edgeDef) => {
     const edgeType = edgeDef.subject.type;
-    const edgeCbEntry = codebook?.edge?.[edgeType];
     return {
       edgeType,
-      label: edgeCbEntry ? resolve(edgeCbEntry.label).text : edgeType,
-      color: edgeCbEntry?.color,
+      label: resolve(edgeDef.label).text,
+      color: codebook?.edge?.[edgeType]?.color,
     };
   });
 
@@ -661,7 +656,7 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         ? intl.formatMessage(runtimeMessages.answerUnavailable)
         : typeof rawName === 'string' && rawName.trim() !== ''
           ? rawName
-          : nodeLabel;
+          : intl.formatMessage(runtimeMessages.unnamed);
       return {
         kind: 'node',
         entityId: selectedNode[entityPrimaryKeyProperty],
@@ -674,13 +669,13 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
       };
     }
     if (selectedEdge !== null) {
-      const edgeTypeDefinition = codebook?.edge?.[selectedEdge.type];
       return {
         kind: 'edge',
         entityId: selectedEdge[entityPrimaryKeyProperty],
-        title: edgeTypeDefinition
-          ? resolve(edgeTypeDefinition.label).text
-          : selectedEdge.type,
+        // An edge an earlier stage drew, of a type this stage does not draw.
+        title: selectedEdgeFormEntry
+          ? resolve(selectedEdgeFormEntry.label).text
+          : intl.formatMessage(runtimeMessages.connection),
         form: selectedEdgeFormEntry?.form,
         subject: { entity: 'edge', type: selectedEdge.type },
         attributes: selectedEdge[entityAttributesProperty],
@@ -715,7 +710,6 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
         undoStore={undoStore}
         edges={edgeEntries}
         words={toolWords}
-        nodeLabel={nodeLabel}
         quickAddTargetVariable={stage.quickAdd}
         onAddNode={handleAddNode}
         addNodeLocked={addNodeLocked}

@@ -236,7 +236,7 @@ export const nameGeneratorScenarios: InterfaceScenarios = {
         expect(storedAge).toBe(30);
 
         // Bin drag deletes the node.
-        await stage.deleteNode('Contact');
+        await stage.deleteNode('Unnamed');
         const afterDelete = await protocol.getNetworkState(
           interview.interviewId,
         );

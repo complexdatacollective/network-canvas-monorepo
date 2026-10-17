@@ -32,13 +32,11 @@ describe('Sociogram placement selectors', () => {
         node: {
           person: {
             name: 'Person',
-            label: { en: 'Person' },
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             variables: {
               layout: {
                 name: 'Layout',
-                label: 'Layout',
                 type: 'layout',
               },
             },

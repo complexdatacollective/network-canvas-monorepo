@@ -46,7 +46,6 @@ export const completeProtocol = () => ({
       variables: {
         egoName: {
           name: 'EgoName',
-          label: 'Your name',
           type: 'text',
           component: 'Text',
           validation: { required: true, minLength: 2, maxLength: 40 },
@@ -55,35 +54,30 @@ export const completeProtocol = () => ({
         // validation message.
         egoNameAgain: {
           name: 'EgoNameAgain',
-          label: 'Your name again',
           type: 'text',
           component: 'Text',
           validation: { sameAs: 'egoName' },
         },
         egoNickname: {
           name: 'EgoNickname',
-          label: 'Your nickname',
           type: 'text',
           component: 'Text',
           validation: { differentFrom: 'egoName' },
         },
         egoAge: {
           name: 'EgoAge',
-          label: 'Your age',
           type: 'number',
           component: 'Number',
           validation: { minValue: 0, maxValue: 120 },
         },
         egoFirstAge: {
           name: 'EgoFirstAge',
-          label: 'Age at first',
           type: 'number',
           component: 'Number',
           validation: { lessThanVariable: 'egoAge' },
         },
         egoLastAge: {
           name: 'EgoLastAge',
-          label: 'Age at last',
           type: 'number',
           component: 'Number',
           validation: {
@@ -93,14 +87,12 @@ export const completeProtocol = () => ({
         },
         egoMovedAge: {
           name: 'EgoMovedAge',
-          label: 'Age when moved',
           type: 'number',
           component: 'Number',
           validation: { greaterThanOrEqualToVariable: 'egoFirstAge' },
         },
         egoBorn: {
           name: 'EgoBorn',
-          label: 'Born',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { min: '1900-01-01', max: '2020-12-31' },
@@ -110,49 +102,41 @@ export const completeProtocol = () => ({
     node: {
       person: {
         name: 'Person',
-        label: localized('Person'),
         color: 'node-color-seq-1',
         shape,
         variables: {
           name: {
             name: 'Name',
-            label: 'Name',
             type: 'text',
             component: 'Text',
             validation: { unique: true },
           },
           nickname: {
             name: 'Nickname',
-            label: 'Nickname',
             type: 'text',
             component: 'Text',
           },
           layoutPosition: {
             name: 'LayoutPosition',
-            label: 'Position',
             type: 'layout',
           },
           category: {
             name: 'Category',
-            label: 'Category',
             type: 'categorical',
             options: options(['Friend', 'friend'], ['Family', 'family']),
             validation: { minSelected: 1, maxSelected: 2 },
           },
           other: {
             name: 'Other',
-            label: 'Other',
             type: 'text',
           },
           strength: {
             name: 'Strength',
-            label: 'Strength',
             type: 'ordinal',
             options: options(['Weak', 1], ['Strong', 2]),
           },
           closeness: {
             name: 'Closeness',
-            label: 'Closeness',
             type: 'scalar',
             component: 'VisualAnalogScale',
             parameters: {
@@ -162,7 +146,6 @@ export const completeProtocol = () => ({
           },
           flag: {
             name: 'Flag',
-            label: 'Flag',
             type: 'boolean',
             component: 'Boolean',
             options: [
@@ -172,49 +155,41 @@ export const completeProtocol = () => ({
           },
           region: {
             name: 'Region',
-            label: 'Region',
             type: 'location',
           },
         },
       },
       relative: {
         name: 'Relative',
-        label: localized('Relative'),
         color: 'node-color-seq-2',
         shape,
         variables: {
-          isEgo: { name: 'IsEgo', label: 'Is ego', type: 'boolean' },
+          isEgo: { name: 'IsEgo', type: 'boolean' },
           displayName: {
             name: 'DisplayName',
-            label: 'Display name',
             type: 'text',
           },
           sex: {
             name: 'Sex',
-            label: 'Sex',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
           },
           relativesNotRecorded: {
             name: 'RelativesNotRecorded',
-            label: 'Relatives not recorded',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_RELATIVES_NOT_RECORDED_OPTIONS),
           },
           birthYear: {
             name: 'BirthYear',
-            label: 'Birth year',
             type: 'number',
             component: 'Number',
           },
           affected: {
             name: 'Affected',
-            label: 'Affected',
             type: 'boolean',
           },
           nominated: {
             name: 'Nominated',
-            label: 'Nominated',
             type: 'boolean',
           },
         },
@@ -223,18 +198,15 @@ export const completeProtocol = () => ({
     edge: {
       knows: {
         name: 'Knows',
-        label: localized('Knows'),
         color: 'edge-color-seq-1',
         variables: {
           tieStrength: {
             name: 'TieStrength',
-            label: 'Tie strength',
             type: 'ordinal',
             options: options(['Weak tie', 1], ['Strong tie', 2]),
           },
           note: {
             name: 'Note',
-            label: 'Note',
             type: 'text',
             component: 'Text',
           },
@@ -242,23 +214,19 @@ export const completeProtocol = () => ({
       },
       family: {
         name: 'Family',
-        label: localized('Family'),
         color: 'edge-color-seq-2',
         variables: {
           relType: {
             name: 'RelType',
-            label: 'Kind',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
           },
           isActive: {
             name: 'IsActive',
-            label: 'Current',
             type: 'boolean',
           },
           isGc: {
             name: 'IsGc',
-            label: 'Carrier',
             type: 'boolean',
           },
         },
@@ -433,6 +401,7 @@ export const completeProtocol = () => ({
         {
           id: 'knowsEdge',
           subject: { entity: 'edge', type: 'knows' },
+          label: localized('Knows'),
           form: {
             fields: [
               {
@@ -533,7 +502,7 @@ export const completeProtocol = () => ({
           label: localized('Preset'),
           layoutVariable: 'layoutPosition',
           highlight: [{ variable: 'flag', label: localized('Flagged') }],
-          edges: { display: ['knows'] },
+          edges: { display: [{ type: 'knows', label: localized('Knows') }] },
           groupVariable: 'category',
         },
       ],

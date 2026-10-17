@@ -77,19 +77,16 @@ const codebook = {
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
         name: {
           name: 'Name',
-          label: 'Name',
           type: 'text',
           component: 'Text',
         },
         met_on: {
           name: 'Met on',
-          label: 'Met on',
           type: 'datetime',
           component: 'DatePicker',
           parameters: { type: 'full' },
@@ -110,7 +107,6 @@ const requiredNameCodebook = {
         ...codebook.node.person.variables,
         name: {
           name: 'Name',
-          label: 'Name',
           type: 'text',
           component: 'Text',
           validation: { required: true },

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { collectLocalizedStrings } from '../../../utils/collectLocalizedStrings.ts';
 import {
   INTERFACE_TEXT_MESSAGES,
   InterfaceTextSchema,
@@ -366,6 +367,18 @@ describe('the interface text a protocol holds', () => {
       InterfaceTextSchema.safeParse({ interview: { back: { en: 'Back' } } })
         .success,
     ).toBe(false);
+  });
+
+  it('holds the screen error message as markdown, and the rest as plain text', () => {
+    const formats = new Map(
+      collectLocalizedStrings({
+        interfaceText: interfaceTextFor(protocolWith()),
+      }).map(({ path, format }) => [path.join('.'), format]),
+    );
+
+    expect(formats.get('interfaceText.messages.stageError')).toBe('markdown');
+    expect(formats.get('interfaceText.messages.error')).toBe('plain');
+    expect(formats.get('interfaceText.navigation.back')).toBe('plain');
   });
 
   it('names a catalog message for every text', () => {

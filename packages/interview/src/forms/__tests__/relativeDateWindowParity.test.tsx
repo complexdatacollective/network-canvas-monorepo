@@ -133,7 +133,6 @@ function egoCodebook(parameters: {
       variables: {
         [variableId]: {
           name: 'Last seen',
-          label: 'Last seen',
           type: 'datetime',
           component: 'RelativeDatePicker',
           parameters,

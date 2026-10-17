@@ -1145,7 +1145,7 @@ export const nameGeneratorRosterScenarios: InterfaceScenarios = {
         expect(labels).toContain('Bob Jones');
         // ...and the value-less row falls back to a stable placeholder rather
         // than exposing its content-hash _uid.
-        expect(labels).toContain('Person 3');
+        expect(labels).toContain('Unnamed 3');
       },
     },
   ],

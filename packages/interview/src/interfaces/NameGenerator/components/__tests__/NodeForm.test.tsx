@@ -82,7 +82,6 @@ function buildProtocol(variable: Variable): ProtocolPayload {
     node: {
       [NODE_TYPE]: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         icon: 'add-a-person',
@@ -246,7 +245,6 @@ const cases: Record<string, UniqueCase> = {
   text: {
     variable: {
       name: 'Name',
-      label: 'Name',
       type: 'text',
       component: 'Text',
       validation: { unique: true },
@@ -259,7 +257,6 @@ const cases: Record<string, UniqueCase> = {
     // input hands the form '12' while the first alter stores 12.
     variable: {
       name: 'Alter ID',
-      label: 'Alter ID',
       type: 'number',
       component: 'Number',
       validation: { unique: true },
@@ -270,7 +267,6 @@ const cases: Record<string, UniqueCase> = {
   datetime: {
     variable: {
       name: 'Birthday',
-      label: 'Birthday',
       type: 'datetime',
       component: 'DatePicker',
       validation: { unique: true },
@@ -281,7 +277,6 @@ const cases: Record<string, UniqueCase> = {
   boolean: {
     variable: {
       name: 'Employed',
-      label: 'Employed',
       type: 'boolean',
       component: 'Boolean',
       validation: { unique: true },
@@ -292,7 +287,6 @@ const cases: Record<string, UniqueCase> = {
   ordinal: {
     variable: {
       name: 'Closeness',
-      label: 'Closeness',
       type: 'ordinal',
       component: 'RadioGroup',
       options: [
@@ -307,7 +301,6 @@ const cases: Record<string, UniqueCase> = {
   categorical: {
     variable: {
       name: 'Contexts',
-      label: 'Contexts',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [
@@ -344,7 +337,7 @@ describe('NodeForm while a person is being saved', () => {
         }),
     );
     const { onClose } = renderNodeForm(
-      { name: 'answer', label: 'answer', type: 'text', component: 'Text' },
+      { name: 'answer', type: 'text', component: 'Text' },
       { addNode },
     );
 

@@ -38,14 +38,12 @@ const ADD_RULE = 'Add new skip logic rule';
 
 const personDefinition: SectionDoc = {
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-2',
   shape: { default: 'square' },
   variables: {
-    age: { name: 'Age', label: 'Age', type: 'number' },
+    age: { name: 'Age', type: 'number' },
     mood: {
       name: 'Mood',
-      label: 'Mood',
       type: 'categorical',
       options: [
         { label: { en: 'Happy' }, value: 'happy' },
@@ -72,12 +70,11 @@ const baseSections: Record<string, SectionDoc> = {
   [personSection]: personDefinition,
   [friendSection]: {
     name: 'Friend',
-    label: { en: 'Friend' },
     color: 'edge-color-seq-3',
   },
   [egoSection]: {
     variables: {
-      egoName: { name: 'EgoName', label: 'EgoName', type: 'text' },
+      egoName: { name: 'EgoName', type: 'text' },
     },
   },
 };
@@ -693,7 +690,6 @@ describe('a codebook that changes underneath the editor', () => {
 
     harness.collaboratorWrites(placeSection, {
       name: 'Place',
-      label: { en: 'Place' },
       color: 'node-color-seq-3',
       shape: { default: 'circle' },
     });
@@ -731,7 +727,6 @@ describe('a codebook that changes underneath the editor', () => {
         // number where the runtime now compares a list.
         age: {
           name: 'Age',
-          label: 'Age',
           type: 'categorical',
           options: [
             { label: { en: 'Young' }, value: 30 },
@@ -771,7 +766,7 @@ describe('a codebook that changes underneath the editor', () => {
 
     harness.collaboratorWrites(personSection, {
       ...personDefinition,
-      variables: { age: { name: 'Age', label: 'Age', type: 'number' } },
+      variables: { age: { name: 'Age', type: 'number' } },
     });
 
     expect(

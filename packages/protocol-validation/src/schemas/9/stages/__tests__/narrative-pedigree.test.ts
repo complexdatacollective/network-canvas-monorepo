@@ -70,34 +70,28 @@ const makeProtocol = (overrides?: {
     node: {
       person: {
         name: 'Person',
-        label: localized('Person'),
         color: 'node-color-seq-1',
         shape: { default: 'circle' as const },
         variables: {
           egoIsEgo: {
             name: 'EgoIsEgo',
-            label: 'EgoIsEgo',
             type: 'boolean',
           },
           personLabel: {
             name: 'PersonLabel',
-            label: 'PersonLabel',
             type: 'text',
           },
           personSab: {
             name: 'PersonSab',
-            label: 'PersonSab',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
           },
           hasBreastCancer: {
             name: 'HasBreastCancer',
-            label: 'HasBreastCancer',
             type: 'boolean',
           },
           hasOvarianCancer: {
             name: 'HasOvarianCancer',
-            label: 'HasOvarianCancer',
             type: 'boolean',
           },
         },
@@ -106,23 +100,19 @@ const makeProtocol = (overrides?: {
     edge: {
       family: {
         name: 'Family',
-        label: localized('Family'),
         color: 'edge-color-seq-1',
         variables: {
           familyKind: {
             name: 'FamilyKind',
-            label: 'FamilyKind',
             type: 'categorical',
             options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
           },
           familyIsGc: {
             name: 'FamilyIsGc',
-            label: 'FamilyIsGc',
             type: 'boolean',
           },
           familyIsCurrent: {
             name: 'FamilyIsCurrent',
-            label: 'FamilyIsCurrent',
             type: 'boolean',
           },
         },

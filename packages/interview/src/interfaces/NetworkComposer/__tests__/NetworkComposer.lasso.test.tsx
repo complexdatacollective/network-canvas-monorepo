@@ -65,6 +65,7 @@ const stage = {
     {
       id: 'edge-config',
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
+      label: { en: 'Knows' },
     },
   ],
   convexHullVariable: asEntityAttributeReference(GROUP_VAR),
@@ -83,19 +84,16 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
-        [QUICK_ADD_VAR]: { name: 'name', label: 'Name', type: 'text' },
+        [QUICK_ADD_VAR]: { name: 'name', type: 'text' },
         [LAYOUT_VAR]: {
           name: 'position',
-          label: 'Position',
           type: 'layout',
         },
         [GROUP_VAR]: {
           name: 'Team',
-          label: 'Team',
           type: 'categorical',
           options: [
             { value: 'red', label: { en: 'Team Red' } },
@@ -108,7 +106,6 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Knows',
-      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {},
     },

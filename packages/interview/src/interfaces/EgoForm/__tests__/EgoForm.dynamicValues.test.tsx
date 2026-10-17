@@ -69,7 +69,6 @@ const renderEgoForm = () => {
             variables: {
               nickname: {
                 name: 'Nickname',
-                label: 'Nickname',
                 type: 'text',
                 component: 'Text',
               },

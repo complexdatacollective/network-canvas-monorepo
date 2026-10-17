@@ -14,13 +14,11 @@ const protocol = {
     node: {
       person: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {
           gender: {
             name: 'Gender',
-            label: 'Gender',
             type: 'categorical',
             options: [
               { value: 'woman', label: { en: 'Woman' } },

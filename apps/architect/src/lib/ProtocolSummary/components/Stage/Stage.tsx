@@ -31,6 +31,7 @@ import {
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
 import CanvasWording from './CanvasWording';
+import ComposerEdges from './ComposerEdges';
 import DataSource from './DataSource';
 import FamilyPedigree, {
   type FamilyPedigreeCompleteness,
@@ -169,7 +170,7 @@ const StageContent = ({
         layoutVariable?: string;
         groupVariable?: string;
         edges?: {
-          display?: string[];
+          display?: { type: string; label: LocalizedString }[];
         };
         highlight?: { variable: string; label: LocalizedString }[];
       }[]
@@ -410,6 +411,15 @@ const StageContent = ({
       <Behaviours behaviours={behaviours ?? null} />
       <StageWording type={type} configuration={configuration} />
       <Presets presets={presets ?? null} />
+      {type === 'NetworkComposer' && (
+        <ComposerEdges
+          edges={
+            (configuration.edges as
+              | { subject: { type: string }; label: LocalizedString }[]
+              | undefined) ?? null
+          }
+        />
+      )}
       <PageHeading heading={title ?? null} />
       <Items items={items ?? null} />
       <FamilyTreeVariables

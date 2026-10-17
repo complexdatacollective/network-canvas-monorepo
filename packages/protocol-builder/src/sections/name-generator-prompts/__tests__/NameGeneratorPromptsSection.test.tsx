@@ -129,7 +129,6 @@ const searchBox = (window: HTMLElement): HTMLElement =>
 
 const personDefinition = (variables: Record<string, unknown>) => ({
   name: 'person',
-  label: en('person'),
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
@@ -264,19 +263,16 @@ describe("a name generator's prompts", () => {
         person: personDefinition({
           name: {
             name: 'name',
-            label: 'name',
             type: 'text',
             component: 'Text',
           },
           highlighted: {
             name: 'highlighted',
-            label: 'highlighted',
             type: 'boolean',
             component: 'Boolean',
           },
           contacted: {
             name: 'contacted',
-            label: 'contacted',
             type: 'boolean',
           },
         }),

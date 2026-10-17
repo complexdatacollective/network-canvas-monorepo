@@ -79,21 +79,18 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
       node: {
         person: {
           name: 'person',
-          label: { en: 'Person' },
           color: 'node-color-seq-1',
           shape: { default: 'circle' },
           variables: {
-            name: { name: 'name', label: 'Name', type: 'text' },
-            is_ego: { name: 'is_ego', label: 'Is ego', type: 'boolean' },
+            name: { name: 'name', type: 'text' },
+            is_ego: { name: 'is_ego', type: 'boolean' },
             sexAssignedAtBirth: {
               name: 'sexAssignedAtBirth',
-              label: 'Sex assigned at birth',
               type: 'categorical',
               options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
             },
             hasConditionX: {
               name: 'hasConditionX',
-              label: 'Has condition X',
               type: 'boolean',
             },
           },
@@ -102,23 +99,19 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
       edge: {
         family_edge: {
           name: 'family_edge',
-          label: { en: 'Family edge' },
           color: 'edge-color-seq-1',
           variables: {
             relationshipKind: {
               name: 'relationshipKind',
-              label: 'Relationship kind',
               type: 'categorical',
               options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
             },
             isGestationalCarrier: {
               name: 'isGestationalCarrier',
-              label: 'Is gestational carrier',
               type: 'boolean',
             },
             isCurrentPartner: {
               name: 'isCurrentPartner',
-              label: 'Is current partner',
               type: 'boolean',
             },
           },

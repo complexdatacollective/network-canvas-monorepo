@@ -448,14 +448,12 @@ describe('the name generator editor', () => {
       node: {
         colleague: {
           name: 'colleague',
-          label: { 'en-US': 'colleague' },
           color: 'node-color-seq-3',
           icon: 'add-a-person',
           shape: { default: 'circle' },
           variables: {
             colleague_name: {
               name: 'colleague_name',
-              label: 'colleague_name',
               type: 'text',
               component: 'Text',
             },
@@ -535,7 +533,6 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
             ...(person.variables as Record<string, unknown>),
             [FREE_ATTRIBUTE]: {
               name: FREE_ATTRIBUTE,
-              label: FREE_ATTRIBUTE,
               type: 'boolean',
               component: 'Boolean',
             },

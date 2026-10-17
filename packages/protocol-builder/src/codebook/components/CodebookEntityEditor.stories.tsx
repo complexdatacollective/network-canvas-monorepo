@@ -10,20 +10,17 @@ import CodebookEntityEditor from './CodebookEntityEditor.tsx';
 
 const PERSON: SectionDoc = {
   name: 'Person',
-  label: { en: 'Person' },
   color: 'node-color-seq-1',
   icon: 'add-a-person',
   shape: { default: 'circle' },
   variables: {
     name: {
       name: 'Name',
-      label: 'Name',
       type: 'text',
       component: 'Text',
     },
     ethnicity: {
       name: 'Ethnicity',
-      label: 'Ethnicity',
       type: 'categorical',
       component: 'CheckboxGroup',
       options: [

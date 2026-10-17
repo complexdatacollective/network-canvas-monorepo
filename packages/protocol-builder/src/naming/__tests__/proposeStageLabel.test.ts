@@ -36,25 +36,21 @@ const contextWith = (
     [sectionId({ kind: 'stageOrder' })]: { stages: [] },
     [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
         diabetes: {
           name: 'Diabetes',
-          label: 'Diabetes',
           type: 'boolean',
         },
-        asthma: { name: 'Asthma', label: 'Asthma', type: 'boolean' },
+        asthma: { name: 'Asthma', type: 'boolean' },
       },
     },
     [sectionId({ kind: 'codebookEdge', typeId: 'friendship' })]: {
       name: 'Friendship',
-      label: { en: 'Friendship' },
       variables: {
         closeness: {
           name: 'Closeness',
-          label: 'Closeness',
           type: 'scalar',
         },
       },

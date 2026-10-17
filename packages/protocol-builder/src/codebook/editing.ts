@@ -25,11 +25,7 @@ import {
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from '../form/arrayFields/optionCompleteness.ts';
-import {
-  asLocalizedString,
-  localizedFromText,
-  type ProtocolLocalization,
-} from '../localization/localizedText.ts';
+import type { ProtocolLocalization } from '../localization/localizedText.ts';
 import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
@@ -202,8 +198,6 @@ export class MissingVariableError extends Error {
 export type CreateEntityEditInput = Readonly<{
   subject: CodebookSubject;
   draft: CodebookEntityDraft;
-  /** The protocol's languages, which a label seeded from the name is written in. */
-  localization: ProtocolLocalization | undefined;
 }>;
 
 export type UpdateEntityEditInput = Readonly<{
@@ -384,47 +378,6 @@ const withNormalizedEntityName = (document: SectionDoc): SectionDoc => {
   return document;
 };
 
-/**
- * `draft` with a label written from its name where it holds none.
- *
- * A node type or edge type needs participant-facing wording beside its name,
- * but the researcher names it first and may never word it separately, so the
- * name stands in — in the protocol's default language — until they do. Until
- * the protocol's languages are known nothing can be written, and the schema
- * refuses the missing label.
- */
-export const withSeededLabel = <
-  Draft extends Readonly<Record<string, unknown>>,
->(
-  draft: Draft,
-  localization: ProtocolLocalization | undefined,
-): Draft => {
-  if (localization === undefined) return draft;
-  if (asLocalizedString(draft.label) !== undefined) return draft;
-  const name =
-    typeof draft.name === 'string' ? normalizeCodebookName(draft.name) : '';
-  return name === ''
-    ? draft
-    : { ...draft, label: localizedFromText(localization, name) };
-};
-
-/**
- * An attribute `draft` with its name standing in for a label it does not
- * hold. An attribute's label is not translated, so it is plain text.
- */
-export const withSeededVariableLabel = <
-  Draft extends Readonly<Record<string, unknown>>,
->(
-  draft: Draft,
-): Draft => {
-  if (typeof draft.label === 'string' && draft.label.trim() !== '') {
-    return draft;
-  }
-  const name =
-    typeof draft.name === 'string' ? normalizeCodebookName(draft.name) : '';
-  return name === '' ? draft : { ...draft, label: name };
-};
-
 const validateVariableDraft = (
   draft: CodebookVariableDraft,
   localization?: ProtocolLocalization,
@@ -594,13 +547,7 @@ const variablesFromDocument = (
 
 /** The whole section document a new node, edge or ego type is created from. */
 export function documentForNewEntity(input: CreateEntityEditInput): SectionDoc {
-  const document = withNormalizedEntityName(
-    cloneDocument(
-      input.subject.entity === 'ego'
-        ? input.draft
-        : withSeededLabel(input.draft, input.localization),
-    ),
-  );
+  const document = withNormalizedEntityName(cloneDocument(input.draft));
   if (!Object.hasOwn(document, 'variables')) {
     document.variables = Object.create(null);
   }
@@ -784,10 +731,7 @@ export function documentWithCreatedVariable(
   if (Object.hasOwn(variables, input.variableId)) {
     throw new DuplicateVariableIdError(input.variableId);
   }
-  const variable = validateVariableDraft(
-    withSeededVariableLabel(input.draft),
-    input.localization,
-  );
+  const variable = validateVariableDraft(input.draft, input.localization);
   assertVariableNameAvailable(variables, variable);
   assertNoExportColumnConflict(input.subject, variables, variable);
   defineOwn(variables, input.variableId, cloneValue(variable));

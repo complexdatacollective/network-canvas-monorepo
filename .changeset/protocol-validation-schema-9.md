@@ -47,12 +47,13 @@ Schema 9:
   it adds `localization: { defaultLocale: 'en', locales: ['en'] }` and wraps
   every participant-facing string as `{ en: <text> }`, escaped as an ICU literal
   message. Validation refuses the undetermined language `und` (and `und-*`
-  tags) as a declared language, as the default, and as a localized-string key. Codebook node types, edge types and variables get a `label` taken
-  from their name, or from their codebook ID when the name is empty: a node
-  or edge type's label is wrapped like any other text, and a variable's stays
-  plain text. A Narrative preset's `highlight` list of variable IDs becomes a
-  list of `{ variable, label }`, each label taken from the variable's name (or
-  its ID) and wrapped as `{ en: <text> }`. A form field with no caption, or an
+  tags) as a declared language, as the default, and as a localized-string key. A Narrative preset's `highlight` list of variable IDs becomes a list of
+  `{ variable, label }`, and its `edges.display` list of edge type IDs becomes
+  a list of `{ type, label }`, each label taken from the variable's or edge
+  type's name (or its ID) and wrapped as `{ en: <text> }`. Each Network
+  Composer edge entry gets a `label` taken from its edge type's name (or its
+  ID) and wrapped the same way. Codebook node types, edge types and variables
+  have no `label`: participants never see a codebook name. A form field with no caption, or an
   empty or blank one (a Network Composer field's `label`, or any other form
   field's `prompt`), gets its attribute's name (or its ID) as one, escaped so
   that markdown shows it as written, and wrapped the same way. An empty
@@ -143,10 +144,9 @@ Localization:
   formats are refused, and markup is read as literal text everywhere. `escapeMessageText` turns plain
   text into such a message (escaping `{`, `}` and quoting apostrophes) and
   `messageText` turns it back, so an editor can show and save plain text.
-- Codebook node types and edge types have a required localized `label`, which
-  participants see, beside the `name` that exports and rules use. Codebook
-  variables have a required `label` too, a non-empty plain string that is not
-  translated.
+- Codebook node types, edge types and variables have only a `name`, which
+  exports and rules use and participants never see. Text participants see
+  belongs to the stage that shows it.
 - A Narrative preset's optional `highlight` is a list of
   `{ variable, label }`, where `label` is the localized text the preset
   switcher shows participants for that attribute.

@@ -81,13 +81,11 @@ const codebook = {
   node: {
     person: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' },
       variables: {
         name: {
           name: 'Name',
-          label: 'Name',
           type: 'text',
           component: 'Text',
         },
@@ -106,7 +104,6 @@ const requiredNameCodebook = {
       variables: {
         name: {
           name: 'Name',
-          label: 'Name',
           type: 'text',
           component: 'Text',
           validation: { required: true },
@@ -138,13 +135,11 @@ describe('SlidesForm navigation ownership', () => {
             node: {
               person: {
                 name: 'Person',
-                label: { en: 'Person' },
                 color: 'node-color-seq-1',
                 shape: { default: 'circle' },
                 variables: {
                   name: {
                     name: 'Name',
-                    label: 'Name',
                     type: 'text',
                     component: 'Text',
                   },

@@ -8,20 +8,17 @@
     "node": {
       "person": {
         "name": "Person",
-        "label": { "en-US": "Person" },
         "color": "node-color-seq-1",
         "shape": { "default": "circle" },
         "variables": {
           "name": {
             "name": "name",
-            "label": "name",
             "type": "text",
             "component": "Text",
             "validation": { "required": true }
           },
           "close": {
             "name": "close",
-            "label": "close",
             "type": "boolean",
             "component": "Boolean",
             "options": [
@@ -31,7 +28,6 @@
           },
           "layout": {
             "name": "layout",
-            "label": "layout",
             "type": "layout"
           }
         }
@@ -40,7 +36,6 @@
     "edge": {
       "knows": {
         "name": "Knows",
-        "label": { "en-US": "Knows" },
         "color": "edge-color-seq-1"
       }
     },
@@ -48,7 +43,6 @@
       "variables": {
         "ego_name": {
           "name": "ego_name",
-          "label": "ego_name",
           "type": "text",
           "component": "Text",
           "validation": { "required": true }

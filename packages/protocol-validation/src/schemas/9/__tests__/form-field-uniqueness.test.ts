@@ -60,16 +60,14 @@ const pedigreeProtocol = (form?: ReturnType<typeof field>[]) => {
           ...protocol.codebook.node.person,
           variables: {
             ...protocol.codebook.node.person.variables,
-            isEgo: { name: 'IsEgo', label: 'IsEgo', type: 'boolean' },
+            isEgo: { name: 'IsEgo', type: 'boolean' },
             gender: {
               name: 'Gender',
-              label: 'Gender',
               type: 'categorical',
               options: GENDER_IDENTITY_OPTIONS,
             },
             sab: {
               name: 'Sab',
-              label: 'Sab',
               type: 'categorical',
               options: localizedOptions(PEDIGREE_SEX_ASSIGNED_AT_BIRTH_OPTIONS),
             },
@@ -84,12 +82,11 @@ const pedigreeProtocol = (form?: ReturnType<typeof field>[]) => {
             ...protocol.codebook.edge.knows.variables,
             kind: {
               name: 'Kind',
-              label: 'Kind',
               type: 'categorical',
               options: localizedOptions(PEDIGREE_RELATIONSHIP_KIND_OPTIONS),
             },
-            carrier: { name: 'Carrier', label: 'Carrier', type: 'boolean' },
-            current: { name: 'Current', label: 'Current', type: 'boolean' },
+            carrier: { name: 'Carrier', type: 'boolean' },
+            current: { name: 'Current', type: 'boolean' },
           },
         },
       },

@@ -453,7 +453,6 @@ describe.skipIf(!testDb)('the protocol-builder host surface', () => {
               >),
               [variableId]: {
                 name: variableId,
-                label: 'Interrupted',
                 type: 'text',
               },
             },

@@ -18,7 +18,7 @@ describe('getInterviewFilterOptions', () => {
       {
         name: 'Readable',
         codebook: {
-          edge: { friend: { name: 'Friend', label: { en: 'Friend' } } },
+          edge: { friend: { name: 'Friend' } },
         },
       },
       { name: 'Damaged', codebook: { edge: { rival: 'not an entity type' } } },

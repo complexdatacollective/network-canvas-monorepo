@@ -112,7 +112,6 @@ export function createResourceHost(seed: ResourceHostSeed = {}): InMemoryHost {
       [ASSETS_SECTION]: assets,
       [sectionId({ kind: 'codebookNode', typeId: 'person' })]: {
         name: 'Person',
-        label: { 'en-US': 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'circle' },
         variables: {},

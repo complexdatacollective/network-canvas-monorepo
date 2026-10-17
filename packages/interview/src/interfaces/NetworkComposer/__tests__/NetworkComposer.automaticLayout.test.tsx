@@ -61,6 +61,7 @@ const makeStage = (defaultEnabled: boolean) => ({
     {
       id: 'edge-config',
       subject: { entity: 'edge' as const, type: EDGE_TYPE },
+      label: { en: 'Knows' },
     },
   ],
   background: { concentricCircles: 4 },
@@ -71,18 +72,15 @@ const codebook = {
   node: {
     [NODE_TYPE]: {
       name: 'Person',
-      label: { en: 'Person' },
       color: 'node-color-seq-1',
       shape: { default: 'circle' as const },
       variables: {
         [QUICK_ADD_VAR]: {
           name: 'name',
-          label: 'Name',
           type: 'text' as const,
         },
         [LAYOUT_VAR]: {
           name: 'position',
-          label: 'Position',
           type: 'layout' as const,
         },
       },
@@ -91,7 +89,6 @@ const codebook = {
   edge: {
     [EDGE_TYPE]: {
       name: 'Knows',
-      label: { en: 'Knows' },
       color: 'edge-color-seq-1',
       variables: {},
     },

@@ -1,19 +1,14 @@
 import type { NodeDefinition } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcNode } from '@codaco/shared-consts';
 
-import { contentFormatFor } from '../localization/contentFormat';
 import { getNodeLabelAttribute } from './getNodeLabelAttribute';
 
 type ResolveRosterNodeLabelArgs = {
   codebookVariables: NodeDefinition['variables'];
   node: NcNode;
-  subjectLabel: string;
   sequentialNumber: number;
-  /**
-   * Writes the placeholder's number, in the language of the protocol's label
-   * it follows. Absent, English.
-   */
-  formatNumber?: (value: number) => string;
+  /** The title of a card with nothing of its own to show, by its number. */
+  placeholder: (sequentialNumber: number) => string;
 };
 
 // Only string/number values produce a meaningful title; everything else
@@ -35,9 +30,8 @@ const coerceToLabel = (value: unknown): string | null => {
 export const resolveRosterNodeLabel = ({
   codebookVariables,
   node,
-  subjectLabel,
   sequentialNumber,
-  formatNumber = contentFormatFor('en').formatNumber,
+  placeholder,
 }: ResolveRosterNodeLabelArgs): string => {
   const attributes = node[entityAttributesProperty];
 
@@ -56,5 +50,5 @@ export const resolveRosterNodeLabel = ({
     }
   }
 
-  return `${subjectLabel} ${formatNumber(sequentialNumber)}`;
+  return placeholder(sequentialNumber);
 };

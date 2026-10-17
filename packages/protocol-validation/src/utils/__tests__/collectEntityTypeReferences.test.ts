@@ -15,7 +15,13 @@ const protocol = {
       id: 'nc',
       type: 'NetworkComposer',
       subject: { entity: 'node', type: 'person' },
-      edges: [{ id: 'nc-e1', subject: { entity: 'edge', type: 'friendship' } }],
+      edges: [
+        {
+          id: 'nc-e1',
+          subject: { entity: 'edge', type: 'friendship' },
+          label: localized('Connection'),
+        },
+      ],
     },
     {
       id: 'soc',
@@ -51,7 +57,9 @@ const protocol = {
           id: 'preset-1',
           label: localized('Preset'),
           layoutVariable: 'layout-var',
-          edges: { display: ['friendship'] },
+          edges: {
+            display: [{ type: 'friendship', label: localized('Friendship') }],
+          },
         },
       ],
       filter: {

@@ -269,7 +269,6 @@ function makeCodebook(encryptNames = false) {
     node: {
       [NODE_TYPE]: {
         name: 'Person',
-        label: { en: 'Person' },
         color: 'node-color-seq-1',
         shape: { default: 'square' },
         variables: encryptNames
@@ -277,7 +276,6 @@ function makeCodebook(encryptNames = false) {
               [NAME_VAR]: {
                 type: 'text',
                 name: NAME_VAR,
-                label: { en: 'Name' },
                 encrypted: true,
               },
             }
@@ -287,7 +285,6 @@ function makeCodebook(encryptNames = false) {
     edge: {
       [EDGE_TYPE]: {
         name: 'Family',
-        label: { en: 'Family' },
         color: 'edge-color-seq-1',
       },
     },

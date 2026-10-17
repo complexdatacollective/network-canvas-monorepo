@@ -402,6 +402,7 @@ const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
         {
           id: 'composer-edge-1',
           subject: { entity: 'edge', type: 'knows' },
+          label: { en: 'Connection' },
           form: {
             fields: [
               {
