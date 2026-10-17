@@ -96,7 +96,23 @@ export function protocolMigrationProblems(before, after) {
 
 const message = (text) => ({ [MIGRATED_LOCALE]: escapeMessageText(text) });
 
-const sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// Postgres stores protocols as jsonb, which keeps an object's keys in its own
+// order rather than the order they were written in, so two readings of the
+// same value can list them differently. Keys are sorted before comparing;
+// array order still counts.
+const canonical = (value) =>
+  Array.isArray(value)
+    ? value.map(canonical)
+    : isRecord(value)
+      ? Object.fromEntries(
+          Object.keys(value)
+            .sort()
+            .map((key) => [key, canonical(value[key])]),
+        )
+      : value;
+
+const sameJson = (a, b) =>
+  JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 
 /**
  * Every introduction panel of `before` became what schema 9 makes of it:
