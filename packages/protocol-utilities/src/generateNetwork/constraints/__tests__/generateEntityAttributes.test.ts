@@ -197,7 +197,11 @@ describe('generateEntityAttributes', () => {
     // and `b` sets the floor. Only their intersection does.
     const entity = buildEntityConstraints(
       {
-        a: { name: 'A', type: 'text', validation: { maxLength: 24 } },
+        a: {
+          name: 'A',
+          type: 'text',
+          validation: { maxLength: 24 },
+        },
         b: {
           name: 'B',
           type: 'text',
@@ -279,8 +283,8 @@ describe('generateEntityAttributes', () => {
           name: 'A',
           type: 'categorical',
           options: [
-            { label: 'X', value: 'x' },
-            { label: 'Y', value: 'y' },
+            { label: { 'en-US': 'X' }, value: 'x' },
+            { label: { 'en-US': 'Y' }, value: 'y' },
           ],
           validation: { minSelected: 2, maxSelected: 2 },
         },
@@ -288,8 +292,8 @@ describe('generateEntityAttributes', () => {
           name: 'B',
           type: 'categorical',
           options: [
-            { label: 'X', value: 'x' },
-            { label: 'Y', value: 'y' },
+            { label: { 'en-US': 'X' }, value: 'x' },
+            { label: { 'en-US': 'Y' }, value: 'y' },
           ],
           validation: {
             minSelected: 2,
@@ -322,8 +326,8 @@ describe('generateEntityAttributes', () => {
           name: 'A',
           type: 'categorical',
           options: [
-            { label: 'X', value: 'x' },
-            { label: 'Y', value: 'y' },
+            { label: { 'en-US': 'X' }, value: 'x' },
+            { label: { 'en-US': 'Y' }, value: 'y' },
           ],
           validation: { minSelected: 2, maxSelected: 2 },
         },
@@ -331,8 +335,8 @@ describe('generateEntityAttributes', () => {
           name: 'Second Choice',
           type: 'categorical',
           options: [
-            { label: 'X', value: 'x' },
-            { label: 'Y', value: 'y' },
+            { label: { 'en-US': 'X' }, value: 'x' },
+            { label: { 'en-US': 'Y' }, value: 'y' },
           ],
           validation: {
             minSelected: 2,
@@ -525,9 +529,9 @@ describe('generateEntityAttributes', () => {
           name: 'Band',
           type: 'ordinal',
           options: [
-            { label: 'A', value: 1 },
-            { label: 'B', value: 2 },
-            { label: 'C', value: 3 },
+            { label: { 'en-US': 'A' }, value: 1 },
+            { label: { 'en-US': 'B' }, value: 2 },
+            { label: { 'en-US': 'C' }, value: 3 },
           ],
           validation: { unique: true },
         },
@@ -556,8 +560,8 @@ describe('generateEntityAttributes', () => {
           name: 'Band',
           type: 'ordinal',
           options: [
-            { label: 'A', value: 1 },
-            { label: 'B', value: 2 },
+            { label: { 'en-US': 'A' }, value: 1 },
+            { label: { 'en-US': 'B' }, value: 2 },
           ],
           validation: { unique: true },
         },
@@ -1006,8 +1010,16 @@ describe('generateEntityAttributes', () => {
     // `a`: with `d` first, what `b` is left is known only from the propagated
     // bounds, since `a` has not been drawn yet.
     const bounds = { minValue: 0, maxValue: 1 };
-    const a = { name: 'A', type: 'number', validation: bounds } as const;
-    const d = { name: 'D', type: 'number', validation: bounds } as const;
+    const a = {
+      name: 'A',
+      type: 'number',
+      validation: bounds,
+    } as const;
+    const d = {
+      name: 'D',
+      type: 'number',
+      validation: bounds,
+    } as const;
     const b = {
       name: 'B',
       type: 'number',
@@ -1205,7 +1217,11 @@ describe('generateEntityAttributes', () => {
 
     const entity = buildEntityConstraints(
       {
-        born: { name: 'Born', type: 'datetime', ...window },
+        born: {
+          name: 'Born',
+          type: 'datetime',
+          ...window,
+        },
         diagnosed: {
           name: 'Diagnosed',
           type: 'datetime',
@@ -1246,7 +1262,11 @@ describe('generateEntityAttributes', () => {
 
     const entity = buildEntityConstraints(
       {
-        start: { name: 'Start', type: 'datetime', ...window },
+        start: {
+          name: 'Start',
+          type: 'datetime',
+          ...window,
+        },
         finish: {
           name: 'Finish',
           type: 'datetime',
@@ -1526,9 +1546,9 @@ describe('generateEntityAttributes', () => {
 
   it('claims a pinned value, so a later entity is not issued it again', () => {
     const options = [
-      { label: 'A', value: 1 },
-      { label: 'B', value: 2 },
-      { label: 'C', value: 3 },
+      { label: { 'en-US': 'A' }, value: 1 },
+      { label: { 'en-US': 'B' }, value: 2 },
+      { label: { 'en-US': 'C' }, value: 3 },
     ];
     const entity = buildEntityConstraints(
       {
@@ -1586,7 +1606,7 @@ describe('generateEntityAttributes', () => {
         band: {
           name: 'Band',
           type: 'ordinal',
-          options: [{ label: 'A', value: 1 }],
+          options: [{ label: { 'en-US': 'A' }, value: 1 }],
           validation: { unique: true },
         },
       },
@@ -1637,8 +1657,8 @@ describe('generateEntityAttributes', () => {
           name: 'Band',
           type: 'ordinal',
           options: [
-            { label: 'A', value: 1 },
-            { label: 'B', value: 2 },
+            { label: { 'en-US': 'A' }, value: 1 },
+            { label: { 'en-US': 'B' }, value: 2 },
           ],
           validation: { unique: true },
         },
@@ -1694,7 +1714,10 @@ describe('generateEntityAttributes', () => {
 
   it('is deterministic for a given seed', () => {
     const entity = buildEntityConstraints(
-      { a: { name: 'A', type: 'text' }, b: { name: 'B', type: 'number' } },
+      {
+        a: { name: 'A', type: 'text' },
+        b: { name: 'B', type: 'number' },
+      },
       TODAY,
     );
 
@@ -2107,6 +2130,8 @@ describe('a fixed value the greedy draw can only complete by breaking a rule', (
     return {
       id: 'stage-roster',
       type: 'NameGeneratorRoster',
+      externalDataError: { en: 'External data could not be loaded.' },
+      allAddedNotice: { en: 'There is nothing left to add from this list.' },
       label: 'People',
       subject: { entity: 'node', type: 'person' },
       prompts: [{ id: 'p1', text: 'Pick people' }],

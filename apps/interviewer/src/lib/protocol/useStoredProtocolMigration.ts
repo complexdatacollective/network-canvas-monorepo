@@ -6,6 +6,8 @@ import { useToast } from '@codaco/fresco-ui/Toast';
 import { migrateStoredProtocols } from '~/lib/db/api';
 import type { StoredProtocolMigrationResult } from '~/lib/db/migrateStoredProtocols';
 
+import { recordStoredProtocolMigrationFailures } from './storedProtocolMigrationFailures';
+
 const messages = defineMessages({
   updatedTitle: {
     id: 'interviewer.storedProtocolMigration.updatedTitle',
@@ -34,6 +36,20 @@ const messages = defineMessages({
       '{count, plural, =1 {{name} could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.} other {# protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.}}',
     description:
       'Administration text in Interviewer useStoredProtocolMigration.',
+  },
+  interviewsNotUpdatedTitle: {
+    id: 'interviewer.storedProtocolMigration.interviewsNotUpdatedTitle',
+    defaultMessage:
+      '{count, plural, one {A protocol is waiting for an update} other {Protocols are waiting for an update}}',
+    description:
+      'Title of a notice shown when the interviews recorded with one or more protocols could not be updated to work with this version of the app, so those protocols were left as they were.',
+  },
+  interviewsNotUpdatedDescription: {
+    id: 'interviewer.storedProtocolMigration.interviewsNotUpdatedDescription',
+    defaultMessage:
+      '{count, plural, =1 {Some interviews recorded with {name} could not be updated to work with this version of the app. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Until then, its interviews cannot be started or continued, though their responses remain on the data screen.} other {Some interviews recorded with # protocols could not be updated to work with this version of the app. These protocols and all their interviews have been kept exactly as they were, and the app will try again each time it starts. Until then, their interviews cannot be started or continued, though their responses remain on the data screen.}}',
+    description:
+      'Notice shown when the interviews recorded with one or more protocols could not be updated to work with this version of the app. Nothing was changed, and a later version of the app may be able to update them. name is the protocol name.',
   },
 });
 
@@ -74,6 +90,22 @@ function failedToast(names: string[]) {
   };
 }
 
+function interviewsNotUpdatedToast(names: string[]) {
+  return {
+    title: createElement(AppMessage, {
+      message: messages.interviewsNotUpdatedTitle,
+      values: { count: names.length },
+    }),
+    description: createElement(AppMessage, {
+      message: messages.interviewsNotUpdatedDescription,
+      values: {
+        count: names.length,
+        name: names[0] ?? '',
+      },
+    }),
+  };
+}
+
 /**
  * Run the stored-protocol schema migration once per unlocked session, and
  * report what it did.
@@ -86,8 +118,10 @@ function failedToast(names: string[]) {
  *
  * The caller is expected to withhold the app's routes until this reports
  * 'settled', so every protocol that can migrate has migrated before a session
- * loads. A protocol this sweep could NOT migrate is left at its old version
- * and reported in a toast rather than held against the app starting; the
+ * loads. A protocol this sweep could NOT migrate — itself, or together with
+ * all its sessions — is left at its old version and reported in a toast
+ * rather than held against the app starting, and why is recorded for the
+ * protocol's own screens (`storedProtocolMigrationFailures`); the
  * interview route separately refuses to run a session whose protocol is not
  * at the runtime's schema version, so such a row cannot reach the runtime.
  */
@@ -106,7 +140,9 @@ export function useStoredProtocolMigration(
   // every effect twice) re-attaches to the same run instead of either starting
   // a second one or waiting forever on a result it is never told about.
   const run = useRef<Promise<StoredProtocolMigrationResult> | null>(null);
-  const notified = useRef(false);
+  // The sweep whose result has been reported in toasts, so the effect
+  // instances attached to one sweep (StrictMode attaches two) toast once.
+  const notified = useRef<Promise<StoredProtocolMigrationResult> | null>(null);
 
   // `useToast()` returns a fresh object every render, so it cannot be an effect
   // dependency without re-running the sweep on every render. Hold it in a ref
@@ -130,8 +166,9 @@ export function useStoredProtocolMigration(
   useEffect(() => {
     if (!enabled) {
       // Locking drops the session key, so the next unlock has to look again.
+      // Clearing the sweep also retires it: a result it delivers from here on
+      // is about rows read under the previous key, and reports nothing.
       run.current = null;
-      notified.current = false;
       return;
     }
 
@@ -148,21 +185,44 @@ export function useStoredProtocolMigration(
         return { migrated: [], failed: [] };
       })
       .then((result) => {
+        // Every effect of a sweep's result is conditional on that sweep still
+        // being the current one. A lock/unlock cycle while it ran started
+        // another sweep (or none yet), and a superseded sweep resolving late,
+        // in either order, must neither overwrite the current failures nor
+        // take the current sweep's notices.
+        if (run.current !== sweep) return;
+        recordStoredProtocolMigrationFailures(result.failed);
         // Toasts are an app-level side effect of the sweep itself, not of this
-        // component's lifetime, so they are reported once per run regardless of
-        // whether this effect instance is still the live one.
-        if (!notified.current) {
-          notified.current = true;
+        // component's lifetime, so they are reported once per sweep regardless
+        // of whether this effect instance is still the live one.
+        if (notified.current !== sweep) {
+          notified.current = sweep;
           if (result.migrated.length > 0) {
             toastRef.current.add({
               ...migratedToast(result.migrated.map((entry) => entry.name)),
               variant: 'success',
             });
           }
-          if (result.failed.length > 0) {
+          const protocolFailures = result.failed.filter(
+            (entry) => entry.kind === 'protocol',
+          );
+          if (protocolFailures.length > 0) {
             toastRef.current.add({
-              ...failedToast(result.failed.map((entry) => entry.name)),
+              ...failedToast(protocolFailures.map((entry) => entry.name)),
               variant: 'destructive',
+            });
+          }
+          // Nothing is wrong with these protocols or their data: a later
+          // version of the app can update them, so the notice is calm.
+          const sessionFailures = result.failed.filter(
+            (entry) => entry.kind === 'sessions',
+          );
+          if (sessionFailures.length > 0) {
+            toastRef.current.add({
+              ...interviewsNotUpdatedToast(
+                sessionFailures.map((entry) => entry.name),
+              ),
+              variant: 'info',
             });
           }
         }

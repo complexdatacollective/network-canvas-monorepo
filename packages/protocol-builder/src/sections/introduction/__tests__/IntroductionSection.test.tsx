@@ -10,19 +10,20 @@ const introduction = (
   </>
 );
 
-describe('the introduction a participant reads before a task', () => {
+describe('the introduction a participant reads above an Ego Form', () => {
   it('shows both halves of what the stage holds', async () => {
     renderStageEditor({
-      stageId: 'alter-edge-form-1',
+      stageId: 'ego-form-1',
       sections: introduction,
     });
 
-    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
-      'Introduction to the alter edge form',
+    // A rich-text editor rather than an input: it shows its text.
+    expect(screen.getByRole('textbox', { name: 'Title' }).textContent).toBe(
+      'Introduction',
     );
     expect(
       await screen.findByRole('textbox', { name: 'Introduction text' }),
-    ).toHaveTextContent('A few questions about each relationship.');
+    ).toHaveTextContent('There are a few questions about you before we begin.');
   });
 
   it('reports itself finished, and saves the stage unchanged', async () => {
@@ -42,9 +43,8 @@ describe('the introduction a participant reads before a task', () => {
   });
 
   /**
-   * Not a capability: every interface with an introduction requires one, so
-   * there is nothing to switch off and no state in which half of it is
-   * acceptable.
+   * Not a capability: an Ego Form requires an introduction, so
+   * there is nothing to switch off. Only its text may be left out.
    */
   it('offers no way to switch the introduction off', () => {
     renderStageEditor({ stageId: 'ego-form-1', sections: introduction });
@@ -71,6 +71,26 @@ describe('the introduction a participant reads before a task', () => {
     ).toBeInTheDocument();
   });
 
+  // A panel with only a title is a complete introduction: published protocols
+  // open a form with their heading alone.
+  it('saves a stage whose introduction has a heading and no text', async () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      sections: introduction,
+    });
+    const before = harness.seeded.fields.introductionPanel;
+
+    await harness.user.clear(
+      await screen.findByRole('textbox', { name: 'Introduction text' }),
+    );
+    await waitFor(() => expect(harness.outline()[0]?.state).toBe('Finished'));
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.introductionPanel).toEqual({
+      title: Reflect.get(before as object, 'title'),
+    });
+  });
+
   /**
    * Spectating is not reading through a keyhole: the introduction stays legible
    * while somebody else holds the stage, and everything that would change it
@@ -91,7 +111,10 @@ describe('the introduction a participant reads before a task', () => {
       name: 'Introduction text',
     });
 
-    const buttons = within(screen.getByRole('toolbar')).getAllByRole('button');
+    // Both fields are rich text, so each has a toolbar.
+    const buttons = screen
+      .getAllByRole('toolbar')
+      .flatMap((toolbar) => within(toolbar).getAllByRole('button'));
     expect(buttons.length).toBeGreaterThan(1);
     for (const button of buttons) {
       expect(button).toBeDisabled();
@@ -124,53 +147,8 @@ describe('the introduction a participant reads before a task', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.introductionPanel).toEqual({
-      title: 'About you',
-      text: Reflect.get(before as object, 'text') as string,
+      title: { 'en-US': 'About you' },
+      text: Reflect.get(before as object, 'text'),
     });
-  });
-});
-
-/**
- * The introduction's heading is a HEADING, shown at the top of a screen the
- * participant reads — not a label of unbounded length. Left uncapped, a
- * researcher can type a paragraph into it and only find out it does not fit
- * when they run the interview.
- */
-describe('the length of an introduction heading', () => {
-  it('stops the researcher at the length the screen can show', async () => {
-    const harness = renderStageEditor({
-      stageId: 'ego-form-1',
-      sections: introduction,
-    });
-
-    const heading = screen.getByRole('textbox', {
-      name: 'Title',
-    });
-    await harness.user.clear(heading);
-    await harness.user.type(heading, 'A'.repeat(60));
-
-    // Refused rather than silently truncated: the researcher wrote something
-    // and gets to decide what to cut.
-    expect(await harness.submit()).toBeNull();
-    expect(await screen.findByText(/Too long/)).toBeInTheDocument();
-    expect(heading).toHaveValue('A'.repeat(60));
-  });
-
-  it('accepts a heading of exactly that length', async () => {
-    const harness = renderStageEditor({
-      stageId: 'ego-form-1',
-      sections: introduction,
-    });
-
-    const heading = screen.getByRole('textbox', {
-      name: 'Title',
-    });
-    await harness.user.clear(heading);
-    await harness.user.type(heading, 'A'.repeat(50));
-
-    const request = await harness.submit();
-    expect(
-      Reflect.get(request?.stageDocument.introductionPanel as object, 'title'),
-    ).toBe('A'.repeat(50));
   });
 });

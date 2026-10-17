@@ -130,10 +130,7 @@ describe('bundled template Narrative Pedigree colors', () => {
 
     // Guard the generated assertion: the bundled CEGRM template is expected
     // to exercise Narrative Pedigree, so an empty template list is a broken
-    // fixture, not a passing color contract. The Development Protocol is not
-    // included: it deliberately exercises arbitrary CSS colors accepted by
-    // the runtime schema, whereas starter templates must use what this editor
-    // actually offers a researcher.
+    // fixture, not a passing color contract.
     expect(diseaseColors.length).toBeGreaterThan(0);
     expect(
       diseaseColors.filter(({ color }) => !offeredDiseaseColors.has(color)),
@@ -149,7 +146,7 @@ describe('bundled consent flows', () => {
     consentVariableId,
     postConsentStageId,
   } of consentFlows) {
-    it(`${name} ends the interview when consent is declined`, () => {
+    it(`${name} ends the interview at its own ending when consent is declined`, () => {
       const consentStageIndex = protocol.stages.findIndex(
         (stage) => stage.id === consentStageId,
       );
@@ -189,7 +186,18 @@ describe('bundled consent flows', () => {
             },
           ],
         },
-        destination: { type: 'finish' },
+        destination: { type: 'stage' },
+      });
+      // Declining sends the participant to an ending of its own, so their
+      // interview is recorded as ended early rather than completed.
+      const destination = firstPostConsentStage?.skipLogic?.destination;
+      const ending = protocol.stages.find(
+        (stage) =>
+          destination?.type === 'stage' && stage.id === destination.stageId,
+      );
+      expect(ending).toMatchObject({
+        type: 'FinishSession',
+        outcome: 'terminated',
       });
     });
   }

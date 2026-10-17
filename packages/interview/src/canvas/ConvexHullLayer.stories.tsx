@@ -13,9 +13,9 @@ import { createCanvasStore } from './useCanvasStore';
 type CategoricalValue = string | number | boolean;
 
 const CATEGORICAL_OPTIONS = [
-  { value: 'group-a', label: 'Group A' },
-  { value: 'group-b', label: 'Group B' },
-  { value: 'group-c', label: 'Group C' },
+  { value: 'group-a', label: { en: 'Group A' } },
+  { value: 'group-b', label: { en: 'Group B' } },
+  { value: 'group-c', label: { en: 'Group C' } },
 ];
 
 function makeNode(

@@ -66,6 +66,12 @@ export type StoredProtocolAdmissionResult =
     }
   | { success: false; refusal: StoredProtocolRefusal };
 
+/**
+ * A stored protocol is one the researcher is still writing, so it opens
+ * without the closing text it cannot be downloaded without.
+ */
+const DRAFT = { draft: true } as const;
+
 type AdmissionDependencies = {
   validate?: typeof validateProtocol;
   markValidated?: typeof markStoredProtocolValidated;
@@ -119,6 +125,7 @@ const upgradeStoredProtocol = async (
 
   const validation = await (dependencies.validate ?? validateProtocol)(
     migrated,
+    DRAFT,
   );
   if (!validation.success) {
     return {
@@ -204,6 +211,7 @@ export const admitStoredProtocol = async (
 
   const result = await (dependencies.validate ?? validateProtocol)(
     row.protocol,
+    DRAFT,
   );
   if (!result.success) {
     return {

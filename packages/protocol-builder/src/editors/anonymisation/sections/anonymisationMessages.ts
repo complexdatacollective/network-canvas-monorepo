@@ -30,23 +30,11 @@ export const anonymisationMessages = defineMessages({
     description:
       'Description under the heading of the passphrase-explanation section, telling the researcher what this explanation has to cover.',
   },
-  explanationHeadingLabel: {
-    id: 'protocolBuilder.anonymisation.explanationHeadingLabel',
-    defaultMessage: 'Title',
+  explanationTextLabel: {
+    id: 'protocolBuilder.anonymisation.explanationTextLabel',
+    defaultMessage: 'Explanation',
     description:
-      'Label of the field holding the heading at the top of the screen where a participant is asked for a passphrase.',
-  },
-  explanationHeadingPlaceholder: {
-    id: 'protocolBuilder.anonymisation.explanationHeadingPlaceholder',
-    defaultMessage: 'This interview uses enhanced privacy protection',
-    description:
-      'Placeholder shown in the empty explanation-heading field. An example of the heading a participant would read, so it is written in the participant’s second person rather than the researcher’s.',
-  },
-  explanationBodyLabel: {
-    id: 'protocolBuilder.anonymisation.explanationBodyLabel',
-    defaultMessage: 'Body',
-    description:
-      'Label of the field holding the prose a participant reads before being asked to choose a passphrase.',
+      'Label of the field holding the text, heading included, that a participant reads before being asked to choose a passphrase.',
   },
   explanationBodyPlaceholder: {
     id: 'protocolBuilder.anonymisation.explanationBodyPlaceholder',
@@ -80,6 +68,20 @@ export const anonymisationMessages = defineMessages({
       'A longer passphrase is harder to guess and harder to remember. A participant who forgets it cannot recover the answers it protects.',
     description:
       'Guidance under the passphrase-rules control, naming the trade-off a researcher is making when they set a minimum length.',
+  },
+  passphraseRulesMinimumDefault: {
+    id: 'protocolBuilder.anonymisation.passphraseRulesMinimumDefault',
+    defaultMessage:
+      'Defaults to {count, plural, one {# character} other {# characters}} if no minimum is set.',
+    description:
+      'Shown beneath the minimum-length rule in the passphrase rules, saying how short a passphrase a participant may choose when the researcher sets no minimum of their own. count is that default length. A minimum the researcher sets replaces it, even a shorter one.',
+  },
+  passphraseRulesMinimumDefaultLowered: {
+    id: 'protocolBuilder.anonymisation.passphraseRulesMinimumDefaultLowered',
+    defaultMessage:
+      'Defaults to the maximum, {count, plural, one {# character} other {# characters}}, if no minimum is set, because the maximum is shorter than the usual default of {defaultCount, number}.',
+    description:
+      'Shown beneath the minimum-length rule in the passphrase rules in place of the usual default, when the researcher has set a maximum length shorter than that default and no minimum. The interview then lowers the default minimum to the maximum, so a participant can still choose a passphrase. count is the maximum length in characters, which becomes the minimum; defaultCount is the usual default minimum length in characters. A minimum the researcher sets replaces both.',
   },
   passphraseRulesMinimumAboveMaximum: {
     id: 'protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum',
@@ -166,6 +168,13 @@ export const anonymisationMessages = defineMessages({
     defaultMessage: '{attributeName} is no longer encrypted.',
     description:
       'Announced to a screen reader after a checkbox in the encrypted-attributes section is cleared and the codebook change has been applied. Never shown on screen. attributeName is the researcher’s own name for the attribute.',
+  },
+  attributeUsedByRule: {
+    id: 'protocolBuilder.anonymisation.attributeUsedByRule',
+    defaultMessage:
+      '{ruleCount, plural, one {"{attributeName}" cannot be encrypted while a rule in {stageNames} compares its answers. Rules are checked without the participant’s passphrase, so that rule could not read the encrypted answers. Remove the rule, or change it to check only whether the attribute is answered.} other {"{attributeName}" cannot be encrypted while # rules in {stageNames} compare its answers. Rules are checked without the participant’s passphrase, so those rules could not read the encrypted answers. Remove those rules, or change them to check only whether the attribute is answered.}}',
+    description:
+      'Shown in the encrypted-attributes section when a researcher ticks an attribute whose answers a rule already compares (for example, "the name is Alice") — in a stage’s skip logic, a stage’s filter, or the filter of a side panel listing people from the interview — and the tick is refused. A rule that only checks whether the attribute was answered keeps working once it is encrypted, so it does not count. ruleCount is how many comparing rules there are; attributeName is the researcher’s own name for the attribute; stageNames is the names of the stages holding those rules, each in quotation marks, already joined into one phrase in the reader’s language. A stage is one step of an interview.',
   },
 
   typeSwitchDescription: {

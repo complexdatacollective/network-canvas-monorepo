@@ -23,17 +23,6 @@ test('creates a valid AlterEdgeForm stage from scratch', async ({
   // chosen — same reasoning as alter-form.spec.ts.
   await selectOrCreateEdgeType(architectPage, 'knows');
 
-  await editor
-    .field('introductionPanel.title')
-    .getByRole('textbox')
-    .fill('About Each Relationship');
-  // See ego-form.spec.ts: "Introduction text" is the label
-  // `IntroductionSection` gives the field, not the field's own name.
-  await editor.fillRichText(
-    'Introduction text',
-    'Tell us a bit about how these two people know each other.',
-  );
-
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',

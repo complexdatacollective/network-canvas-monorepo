@@ -5,12 +5,9 @@ import { entityAttributesProperty } from '@codaco/shared-consts';
 import { expect } from '../fixtures/matrix-test.js';
 import type { InterfaceScenarios } from './types.js';
 
-// Every EgoForm renders `introductionPanel.title`/`.text` unconditionally
-// (EgoForm.tsx:215-218), so each stage below supplies one.
-const INTRO = {
-  title: 'About you',
-  text: 'Please answer the questions below.',
-};
+// Every EgoForm renders its `introductionPanel` above its questions; stages
+// that do not set one get the SyntheticInterview default title.
+const INTRODUCTION = { title: 'About you' };
 
 // Variable ids that build() creates and run() needs. `build`/`run` live in
 // separate object-literal closures, so the id is stashed on a module-scoped
@@ -83,9 +80,8 @@ export const egoFormScenarios: InterfaceScenarios = {
             text: '## Section\n- item one',
           },
         });
-        // Auto-created variables would take the prompt as their codebook name,
-        // which violates VariableNameSchema (no spaces/`?`), so give each field
-        // an explicit variable with a clean name.
+        // Give each field an explicit variable with a clean name rather than
+        // one derived from its prompt.
         const nameVar = synth.addEgoVariable({
           type: 'text',
           component: 'Text',
@@ -121,7 +117,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       },
       run: async ({ page, stage }) => {
         // introductionPanel renders as real markdown elements, not raw
-        // `##`/`-` text (EgoForm.tsx:215-218, ALLOWED_MARKDOWN_SECTION_TAGS).
+        // `##`/`-` text (ALLOWED_MARKDOWN_SECTION_TAGS).
         await expect(
           page.getByRole('heading', { level: 1, name: 'About You' }),
         ).toBeVisible();
@@ -180,10 +176,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const stage = synth.addStage('EgoForm', {
-          introductionPanel: {
-            title: 'About You',
-            text: 'Answer every question below.',
-          },
+          introductionPanel: { title: 'About You' },
         });
 
         const textVar = synth.addEgoVariable({
@@ -452,7 +445,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
 
         // 7 ordinal options (> 6) turns on the columns layout
         // (useProtocolForm.tsx:268-276).
@@ -538,7 +533,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
 
         const nameVar = synth.addEgoVariable({
           type: 'text',
@@ -616,7 +613,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.minLength/maxLength'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
         const textVar = synth.addEgoVariable({
           type: 'text',
           component: 'Text',
@@ -662,7 +661,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.minValue/maxValue'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
         const numberVar = synth.addEgoVariable({
           type: 'number',
           component: 'Number',
@@ -705,7 +706,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.minSelected/maxSelected'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
         const checkboxVar = synth.addEgoVariable({
           type: 'categorical',
           component: 'CheckboxGroup',
@@ -758,7 +761,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.sameAs', 'validation.differentFrom'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
 
         // Not `required` on purpose: a required field's label text carries a
         // trailing " *", which would break the exact getByLabel below.
@@ -857,7 +862,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['validation.greaterThanVariable-family'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
 
         const startVar = synth.addEgoVariable({
           type: 'number',
@@ -926,7 +933,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['invalid-submit-focuses-first-invalid-control'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
         focusFamilyVarIds = {};
 
         const families: {
@@ -1091,7 +1100,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['required-boolean-renders-as-unselected-choice'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
 
         const booleanVar = synth.addEgoVariable({
           type: 'boolean',
@@ -1181,7 +1192,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       covers: ['comparison-copy-uses-authored-prompt'],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
 
         const targetVar = synth.addEgoVariable({
           type: 'number',
@@ -1249,7 +1262,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
 
         const nameVar = synth.addEgoVariable({
           type: 'text',
@@ -1300,7 +1315,9 @@ export const egoFormScenarios: InterfaceScenarios = {
       ],
       build: () => {
         const synth = new SyntheticInterview();
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
         // anchor 2026-07-01, before 30 days, after 0 → valid window is
         // 2026-06-01 .. 2026-07-01. useProtocolForm pre-computes these into
         // Field-level min/max validators (useProtocolForm.tsx:323-341).
@@ -1358,10 +1375,7 @@ export const egoFormScenarios: InterfaceScenarios = {
         });
         prePopNameVarId = nameVar.id;
         const stage = synth.addStage('EgoForm', {
-          introductionPanel: {
-            title: 'About You',
-            text: 'Please confirm your details.',
-          },
+          introductionPanel: { title: 'About You' },
         });
         stage.addFormField({
           variable: nameVar.id,
@@ -1424,7 +1438,9 @@ export const egoFormScenarios: InterfaceScenarios = {
           title: 'Before',
           text: 'Placeholder stage so Back has somewhere to land.',
         });
-        const stage = synth.addStage('EgoForm', { introductionPanel: INTRO });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
         const ageVar = synth.addEgoVariable({
           type: 'number',
           component: 'Number',
@@ -1509,10 +1525,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const stage = synth.addStage('EgoForm', {
-          introductionPanel: {
-            title: 'About You',
-            text: 'This form has enough fields to overflow the viewport.',
-          },
+          introductionPanel: { title: 'About You' },
         });
         // Enough fields to overflow the viewport, so the nudge is armed at all
         // (useScrolledToBottom latches immediately on a form that fits).
@@ -1576,10 +1589,7 @@ export const egoFormScenarios: InterfaceScenarios = {
       build: () => {
         const synth = new SyntheticInterview();
         const stage = synth.addStage('EgoForm', {
-          introductionPanel: {
-            title: 'About You',
-            text: 'This form has enough fields to overflow the viewport.',
-          },
+          introductionPanel: { title: 'About You' },
         });
         // Enough fields to overflow the viewport so the scroll sentinel does
         // not intersect on mount (which would latch hasScrolledToBottom and
@@ -1696,6 +1706,67 @@ export const egoFormScenarios: InterfaceScenarios = {
         await expect(nudge).toBeHidden();
         await page.clock.fastForward('00:15');
         await expect(nudge).toBeHidden();
+      },
+    },
+
+    {
+      id: 'dynamic-values-follow-live-answers',
+      covers: ['dynamicValues'],
+      build: () => {
+        const synth = new SyntheticInterview();
+        const nameVar = synth.addEgoVariable({
+          type: 'text',
+          component: 'Text',
+          name: 'name',
+        });
+        const ageVar = synth.addEgoVariable({
+          type: 'number',
+          component: 'Number',
+          name: 'age',
+        });
+        const stage = synth.addStage('EgoForm', {
+          introductionPanel: INTRODUCTION,
+        });
+        stage.stageEntry.dynamicValues = {
+          name: { path: `ego.${nameVar.id}` },
+        };
+        stage.addFormField({
+          variable: nameVar.id,
+          component: 'Text',
+          prompt: 'What is your name?',
+        });
+        stage.addFormField({
+          variable: ageVar.id,
+          component: 'Number',
+          prompt: {
+            'en-US':
+              '{name, select, missing {How old are you?} other {How old are you, {name}?}}',
+          },
+        });
+        return synth;
+      },
+      run: async ({ page }) => {
+        const name = page.getByRole('textbox', { name: 'What is your name?' });
+
+        // A later question shows the earlier answer as it is typed, marked
+        // out, and announces it as a filled-in value.
+        await name.fill('Ada');
+        await expect(
+          page.getByRole('spinbutton', {
+            // Chromium puts a space after the visually hidden announcement.
+            name: /^How old are you, Dynamic value: Ada ?\?$/,
+          }),
+        ).toBeVisible();
+        await expect(
+          page.locator('[data-dynamic-value]', { hasText: 'Ada' }),
+        ).toBeVisible();
+
+        // Clearing the answer shows the version written for a missing value.
+        await name.fill('');
+        await expect(
+          page.getByRole('spinbutton', { name: 'How old are you?' }),
+        ).toBeVisible();
+        await expect(page.locator('[data-dynamic-value]')).toHaveCount(0);
       },
     },
   ],

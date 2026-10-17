@@ -318,7 +318,7 @@ describe.skipIf(!storeDb)('the sections_hold_no_asset_keys trigger', () => {
         id: 'nameGenerator1',
         type: 'NameGenerator',
         subject: { entity: 'node', type: 'person' },
-        form: { title: 'Add person', fields: [] },
+        form: { title: { en: 'Add person' }, fields: [] },
       }),
     ).toMatchObject({ state: NOT_REFUSED });
   });

@@ -43,6 +43,18 @@ export async function generateSyntheticSessions(
 
   const externalData = await loadRosterNodesForStages(protocol);
 
+  // A completed synthetic session ends at the finish stage its route reached.
+  const finished = (currentStep: number) => {
+    const finishStage = protocol.protocol.stages[currentStep];
+    const reached =
+      finishStage?.type === 'FinishSession' ? finishStage : undefined;
+    return {
+      finishedAt: new Date().toISOString(),
+      finishStageId: reached?.id ?? null,
+      finishOutcome: reached?.outcome ?? null,
+    };
+  };
+
   const genOptions = {
     codebook: protocol.codebook,
     stages: protocol.protocol.stages,
@@ -73,16 +85,20 @@ export async function generateSyntheticSessions(
       // predecessors.
       generated.push({ sessionId: session.id, droppedOut });
 
-      await updateSession(session.id, {
-        currentStep,
-        progress: getInterviewProgress(protocol.protocol.stages, currentStep)
-          .progress,
-        stageMetadata:
-          stageMetadata === null || stageMetadata === undefined
-            ? undefined
-            : StageMetadataSchema.parse(stageMetadata),
-        finishedAt: droppedOut ? null : new Date().toISOString(),
-      });
+      await updateSession(
+        session.id,
+        {
+          currentStep,
+          progress: getInterviewProgress(protocol.protocol.stages, currentStep)
+            .progress,
+          stageMetadata:
+            stageMetadata === null || stageMetadata === undefined
+              ? undefined
+              : StageMetadataSchema.parse(stageMetadata),
+          ...(droppedOut ? { finishedAt: null } : finished(currentStep)),
+        },
+        { protocolHash },
+      );
 
       if (!droppedOut) completedCount++;
       onProgress?.(i + 1, count);
@@ -101,19 +117,23 @@ export async function generateSyntheticSessions(
             ...genOptions,
             simulateDropOut: false,
           });
-          await updateSession(row.sessionId, {
-            network,
-            currentStep,
-            progress: getInterviewProgress(
-              protocol.protocol.stages,
+          await updateSession(
+            row.sessionId,
+            {
+              network,
               currentStep,
-            ).progress,
-            stageMetadata:
-              stageMetadata === null || stageMetadata === undefined
-                ? undefined
-                : StageMetadataSchema.parse(stageMetadata),
-            finishedAt: new Date().toISOString(),
-          });
+              progress: getInterviewProgress(
+                protocol.protocol.stages,
+                currentStep,
+              ).progress,
+              stageMetadata:
+                stageMetadata === null || stageMetadata === undefined
+                  ? undefined
+                  : StageMetadataSchema.parse(stageMetadata),
+              ...finished(currentStep),
+            },
+            { protocolHash },
+          );
         }
       }
     }

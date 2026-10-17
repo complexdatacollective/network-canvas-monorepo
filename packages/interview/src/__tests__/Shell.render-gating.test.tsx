@@ -2,6 +2,7 @@ import { render, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { getLocaleMetadata } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -27,6 +28,7 @@ const payload = {
     finishTime: null,
     exportTime: null,
     lastUpdated: '2026-01-01T00:00:00.000Z',
+    localeOptions: [getLocaleMetadata('en')],
     network: {
       ego: {
         [entityPrimaryKeyProperty]: 'ego-1',
@@ -41,7 +43,8 @@ const payload = {
     hash: 'protocol-hash',
     importedAt: '2026-01-01T00:00:00.000Z',
     name: 'Render-gating protocol',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     codebook: {
       ego: { variables: {} },
       node: {},
@@ -52,15 +55,15 @@ const payload = {
       {
         id: 'available-stage',
         type: 'Information',
-        label: 'Available stage',
-        title: 'Available stage',
+        label: { en: 'Available stage' },
+        title: { en: 'Available stage' },
         items: [],
       },
       {
         id: 'unavailable-stage',
         type: 'Information',
-        label: 'Unavailable stage',
-        title: 'Unavailable stage',
+        label: { en: 'Unavailable stage' },
+        title: { en: 'Unavailable stage' },
         items: [],
         skipLogic: {
           action: 'SKIP',
@@ -79,8 +82,8 @@ const noActiveAuthoredStagePayload = {
       {
         id: 'route-controlling-stage',
         type: 'Information',
-        label: 'Route-controlling stage',
-        title: 'Route-controlling stage',
+        label: { en: 'Route-controlling stage' },
+        title: { en: 'Route-controlling stage' },
         items: [],
         skipLogic: {
           action: 'SKIP',
@@ -91,8 +94,8 @@ const noActiveAuthoredStagePayload = {
       {
         id: 'bypassed-stage',
         type: 'Information',
-        label: 'Bypassed stage',
-        title: 'Bypassed stage',
+        label: { en: 'Bypassed stage' },
+        title: { en: 'Bypassed stage' },
         items: [],
       },
     ],
@@ -108,6 +111,7 @@ function ControlledShell() {
       currentStep={currentStep}
       onStepChange={setCurrentStep}
       onSync={() => Promise.resolve()}
+      requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
@@ -128,6 +132,7 @@ function ControlledReviewShell() {
       currentStep={currentStep}
       onStepChange={setCurrentStep}
       onSync={() => Promise.resolve()}
+      requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}
@@ -148,6 +153,7 @@ function ControlledNoActiveStageReviewShell() {
       currentStep={currentStep}
       onStepChange={setCurrentStep}
       onSync={() => Promise.resolve()}
+      requestedLocales={[]}
       onFinish={() => Promise.resolve()}
       onRequestAsset={() => Promise.resolve('')}
       analytics={{ installationId: 'test', hostApp: 'test' }}

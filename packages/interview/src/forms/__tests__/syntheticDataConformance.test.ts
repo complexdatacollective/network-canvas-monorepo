@@ -157,7 +157,7 @@ function collectFormScope(stageList: Stage[]): FormScope {
       continue;
     }
 
-    if (!('form' in stage)) continue;
+    if (!('form' in stage) || !stage.form) continue;
     const variables = stage.form.fields.map((field) => field.variable);
 
     if (stage.type === 'EgoForm') {
@@ -295,24 +295,24 @@ function formFields(variables: Variables): { variable: string }[] {
 }
 
 const FOUR_OPTIONS: VariableOptions = [
-  { label: 'Work', value: 'work' },
-  { label: 'Home', value: 'home' },
-  { label: 'School', value: 'school' },
-  { label: 'Sport', value: 'sport' },
+  { label: { en: 'Work' }, value: 'work' },
+  { label: { en: 'Home' }, value: 'home' },
+  { label: { en: 'School' }, value: 'school' },
+  { label: { en: 'Sport' }, value: 'sport' },
 ];
 
 const THREE_OPTIONS: VariableOptions = [
-  { label: 'Low', value: 1 },
-  { label: 'Mid', value: 2 },
-  { label: 'High', value: 3 },
+  { label: { en: 'Low' }, value: 1 },
+  { label: { en: 'Mid' }, value: 2 },
+  { label: { en: 'High' }, value: 3 },
 ];
 
 const FIVE_OPTIONS: VariableOptions = [
-  { label: 'Never', value: 1 },
-  { label: 'Rarely', value: 2 },
-  { label: 'Sometimes', value: 3 },
-  { label: 'Often', value: 4 },
-  { label: 'Always', value: 5 },
+  { label: { en: 'Never' }, value: 1 },
+  { label: { en: 'Rarely' }, value: 2 },
+  { label: { en: 'Sometimes' }, value: 3 },
+  { label: { en: 'Often' }, value: 4 },
+  { label: { en: 'Always' }, value: 5 },
 ];
 
 const MONTH_PARAMETERS = {
@@ -324,7 +324,7 @@ const MONTH_PARAMETERS = {
 /**
  * Every (variable type, validation rule) pair the ego entity may legally
  * declare, per the per-type `.pick()` lists in
- * `protocol-validation/src/schemas/8/variables/variable.ts`. Ego cannot declare
+ * `protocol-validation/src/schemas/9/variables/variable.ts`. Ego cannot declare
  * `unique`, which the node fixtures below cover instead.
  */
 const egoVariables: Variables = {
@@ -764,8 +764,14 @@ const personVariables: Variables = {
     options: THREE_OPTIONS,
     validation: { required: true },
   },
-  personLayout: { name: 'Person layout', type: 'layout' },
-  personPlace: { name: 'Person place', type: 'location' },
+  personLayout: {
+    name: 'Person layout',
+    type: 'layout',
+  },
+  personPlace: {
+    name: 'Person place',
+    type: 'location',
+  },
 };
 
 /**
@@ -895,8 +901,8 @@ const codebook: Codebook = {
 };
 
 // Stage literals are deliberately partial: generation reads only the fields
-// below, and spelling out every author-facing field (introduction panels, form
-// titles, prompt colours) would bury what each fixture is actually exercising.
+// below, and spelling out every author-facing field (form titles, prompt
+// colours) would bury what each fixture is actually exercising.
 //
 // Every rule-bearing variable above sits in one of these forms, because a
 // variable no form renders is a variable the interview never validates. The
@@ -906,31 +912,49 @@ const stages = [
   {
     id: 'stage-ego',
     type: 'EgoForm',
-    label: 'About you',
+    label: { en: 'About you' },
     form: { fields: formFields(egoVariables) },
   },
   {
     id: 'stage-people',
     type: 'NameGenerator',
-    label: 'People',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    label: { en: 'People' },
     subject: { entity: 'node', type: 'person' },
-    prompts: [{ id: 'p1', text: 'Name people' }],
-    form: { title: 'About this person', fields: formFields(personVariables) },
+    prompts: [{ id: 'p1', text: { en: 'Name people' } }],
+    form: {
+      title: { en: 'About this person' },
+      fields: formFields(personVariables),
+    },
     behaviours: { minNodes: 6, maxNodes: 6 },
   },
   {
     id: 'stage-tokens',
     type: 'NameGenerator',
-    label: 'Tokens',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    label: { en: 'Tokens' },
     subject: { entity: 'node', type: 'token' },
-    prompts: [{ id: 'p2', text: 'Name tokens' }],
-    form: { title: 'About this token', fields: formFields(tokenVariables) },
+    prompts: [{ id: 'p2', text: { en: 'Name tokens' } }],
+    form: {
+      title: { en: 'About this token' },
+      fields: formFields(tokenVariables),
+    },
     behaviours: { minNodes: 2, maxNodes: 2 },
   },
   {
     id: 'stage-sociogram',
     type: 'Sociogram',
-    label: 'Connections',
+    label: { en: 'Connections' },
     subject: { entity: 'node', type: 'person' },
     // Two edge-creating prompts over the same six people: each prompt draws
     // its own per-pair probability and rolls every pair against it, so a
@@ -941,13 +965,13 @@ const stages = [
     prompts: [
       {
         id: 'p3',
-        text: 'Connect people',
+        text: { en: 'Connect people' },
         layout: { layoutVariable: 'personLayout' },
         edges: { create: 'friend' },
       },
       {
         id: 'p3b',
-        text: 'Connect people again',
+        text: { en: 'Connect people again' },
         layout: { layoutVariable: 'personLayout' },
         edges: { create: 'friend' },
       },
@@ -956,7 +980,7 @@ const stages = [
   {
     id: 'stage-connections',
     type: 'AlterEdgeForm',
-    label: 'About connections',
+    label: { en: 'About connections' },
     subject: { entity: 'edge', type: 'friend' },
     form: { fields: formFields(friendVariables) },
   },
@@ -1110,10 +1134,19 @@ const hazardCodebook: Codebook = {
 const hazardFormStage = {
   id: 'stage-binned',
   type: 'NameGenerator',
-  label: 'Binned people',
+  minNodesNotice: {
+    en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+  },
+  maxNodesNotice: {
+    en: 'You have completed this task. Click the next arrow to continue.',
+  },
+  label: { en: 'Binned people' },
   subject: { entity: 'node', type: 'binned' },
-  prompts: [{ id: 'p1', text: 'Name people' }],
-  form: { title: 'About this person', fields: formFields(hazardVariables) },
+  prompts: [{ id: 'p1', text: { en: 'Name people' } }],
+  form: {
+    title: { en: 'About this person' },
+    fields: formFields(hazardVariables),
+  },
   behaviours: { minNodes: 8, maxNodes: 8 },
 };
 
@@ -1124,16 +1157,16 @@ const hazardFormAndBinStages = [
   {
     id: 'stage-ordinal-bin',
     type: 'OrdinalBin',
-    label: 'Ordinal bin',
+    label: { en: 'Ordinal bin' },
     subject: { entity: 'node', type: 'binned' },
-    prompts: [{ id: 'p2', text: 'Sort', variable: 'binRank' }],
+    prompts: [{ id: 'p2', text: { en: 'Sort' }, variable: 'binRank' }],
   },
   {
     id: 'stage-categorical-bin',
     type: 'CategoricalBin',
-    label: 'Categorical bin',
+    label: { en: 'Categorical bin' },
     subject: { entity: 'node', type: 'binned' },
-    prompts: [{ id: 'p3', text: 'Sort', variable: 'binContexts' }],
+    prompts: [{ id: 'p3', text: { en: 'Sort' }, variable: 'binContexts' }],
   },
 ] as unknown as Stage[];
 
@@ -1370,7 +1403,7 @@ const crossResolutionStages = [
   {
     id: 'stage-cross-resolution',
     type: 'EgoForm',
-    label: 'Dates',
+    label: { en: 'Dates' },
     form: { fields: formFields(crossResolutionVariables) },
   },
 ] as unknown as Stage[];
@@ -1525,7 +1558,7 @@ const coarseBoundStages = [
   {
     id: 'stage-coarse-bound',
     type: 'EgoForm',
-    label: 'Coarse dates',
+    label: { en: 'Coarse dates' },
     form: { fields: formFields(coarseBoundVariables) },
   },
 ] as unknown as Stage[];
@@ -1639,11 +1672,20 @@ const rosterDateStages = [
   {
     id: 'stage-roster-dates',
     type: 'NameGeneratorRoster',
-    label: 'People',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    panelTitle: { en: 'Available to add' },
+    label: { en: 'People' },
     subject: { entity: 'node', type: 'rosterPerson' },
-    prompts: [{ id: 'p1', text: 'Pick people' }],
+    prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
-      title: 'About this person',
+      title: { en: 'About this person' },
       fields: formFields(rosterDateVariables),
     },
     behaviours: { minNodes: 3, maxNodes: 3 },
@@ -1716,11 +1758,20 @@ const rosterPinStages = [
   {
     id: 'stage-roster-pins',
     type: 'NameGeneratorRoster',
-    label: 'People',
+    externalDataError: { en: 'External data could not be loaded.' },
+    allAddedNotice: { en: 'There is nothing left to add from this list.' },
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    panelTitle: { en: 'Available to add' },
+    label: { en: 'People' },
     subject: { entity: 'node', type: 'rosterPinned' },
-    prompts: [{ id: 'p1', text: 'Pick people' }],
+    prompts: [{ id: 'p1', text: { en: 'Pick people' } }],
     form: {
-      title: 'About this person',
+      title: { en: 'About this person' },
       fields: formFields(rosterPinVariables),
     },
     behaviours: { minNodes: 2, maxNodes: 2 },
@@ -1853,10 +1904,19 @@ const narrowStages = [
   {
     id: 'stage-narrow',
     type: 'NameGenerator',
-    label: 'Narrow people',
+    minNodesNotice: {
+      en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+    },
+    maxNodesNotice: {
+      en: 'You have completed this task. Click the next arrow to continue.',
+    },
+    label: { en: 'Narrow people' },
     subject: { entity: 'node', type: 'narrow' },
-    prompts: [{ id: 'p1', text: 'Name people' }],
-    form: { title: 'About this person', fields: formFields(narrowVariables) },
+    prompts: [{ id: 'p1', text: { en: 'Name people' } }],
+    form: {
+      title: { en: 'About this person' },
+      fields: formFields(narrowVariables),
+    },
     behaviours: { minNodes: 2, maxNodes: 2 },
   },
 ] as unknown as Stage[];

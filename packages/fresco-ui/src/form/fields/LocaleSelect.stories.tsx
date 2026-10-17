@@ -38,7 +38,7 @@ const meta = {
           '```',
           '',
           '- `options` — `readonly AppLocale[]`. Labels are autonyms, rendered',
-          "  under each option's own `lang` so screen readers switch",
+          "  under each option's own `lang` and `dir` so screen readers switch",
           '  pronunciation per option.',
           '- `value` / `onChange` — controlled `string | null`. `null` means',
           '  "no explicit choice"; it selects the automatic entry when one is',
@@ -108,8 +108,9 @@ export const Default: Story = {
 };
 
 /**
- * Each option carries the `lang` of the language it names, so assistive
- * technology reads "Français" with French phonetics rather than English ones.
+ * Each option carries the `lang` and `dir` of the language it names, so
+ * assistive technology reads "Français" with French phonetics rather than
+ * English ones, and "العربية" is laid out right-to-left.
  */
 export const AutonymLanguageAttributes: Story = {
   args: {
@@ -128,6 +129,7 @@ export const AutonymLanguageAttributes: Story = {
         name: locale.label,
       });
       await expect(option).toHaveAttribute('lang', locale.locale);
+      await expect(option).toHaveAttribute('dir', locale.direction);
     }
 
     // The placeholder is not a language and must not claim one.

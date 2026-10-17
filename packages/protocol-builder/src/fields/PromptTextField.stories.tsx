@@ -8,8 +8,11 @@ import EdgeTypeSection from '../editors/dyad-census/sections/EdgeTypeSection.tsx
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import { PromptTextField, PromptTextPreview } from './PromptTextField.tsx';
 
-/** The question the fixture's Dyad Census asks, as the protocol holds it. */
-const WRITTEN = 'Do these **two people** know each other?';
+/**
+ * The question the fixture's Dyad Census asks, as the protocol holds it: one
+ * translation, in the fixture's only language.
+ */
+const WRITTEN = { 'en-US': 'Do these **two people** know each other?' };
 
 /** What this prompt shows the participant is refused when it is nothing. */
 const REFUSAL =

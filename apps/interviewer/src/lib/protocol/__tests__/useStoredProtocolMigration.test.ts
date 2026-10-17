@@ -1,10 +1,14 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { StoredProtocolMigrationResult } from '~/lib/db/migrateStoredProtocols';
 import { renderedMessage } from '~/testUtils/renderedMessage';
 
+import {
+  recordStoredProtocolMigrationFailures,
+  useStoredProtocolMigrationFailure,
+} from '../storedProtocolMigrationFailures';
 import { useStoredProtocolMigration } from '../useStoredProtocolMigration';
 
 const { toastAdd, migrateStoredProtocols } = vi.hoisted(() => ({
@@ -41,6 +45,8 @@ function failed(...names: string[]): StoredProtocolMigrationResult {
       name,
       hash: `hash-${name}`,
       reason: 'nope',
+      kind: 'protocol' as const,
+      sessions: [],
     })),
   };
 }
@@ -123,6 +129,47 @@ describe('useStoredProtocolMigration', () => {
     });
   });
 
+  it('calmly reports a protocol whose interviews could not be updated, and records why for its screens', async () => {
+    sweepResolvesTo({
+      migrated: [],
+      failed: [
+        ...failed('Broken Study').failed,
+        {
+          name: 'Waiting Study',
+          hash: 'hash-waiting',
+          reason: 'one interview could not be migrated',
+          kind: 'sessions',
+          sessions: [{ id: 's1', reason: 'invalid' }],
+        },
+      ],
+    });
+    const { result } = renderHook(() => useStoredProtocolMigration(true));
+    const failure = renderHook(() => ({
+      waiting: useStoredProtocolMigrationFailure('hash-waiting'),
+      broken: useStoredProtocolMigrationFailure('hash-Broken Study'),
+      other: useStoredProtocolMigrationFailure('hash-other'),
+    }));
+
+    await waitFor(() => expect(result.current).toBe('settled'));
+    expect(toastAdd).toHaveBeenCalledTimes(2);
+    expect(toastAdd).toHaveBeenCalledWith({
+      title: renderedMessage('A protocol is waiting for an update'),
+      description: renderedMessage(
+        'Some interviews recorded with Waiting Study could not be updated to work with this version of the app. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Until then, its interviews cannot be started or continued, though their responses remain on the data screen.',
+      ),
+      variant: 'info',
+    });
+    expect(toastAdd).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'destructive' }),
+    );
+    expect(failure.result.current).toEqual({
+      waiting: 'sessions',
+      broken: 'protocol',
+      other: undefined,
+    });
+    act(() => recordStoredProtocolMigrationFailures([]));
+  });
+
   it('reports migrations and failures from the same sweep separately', async () => {
     sweepResolvesTo({
       ...migrated('Alpha Study'),
@@ -180,4 +227,63 @@ describe('useStoredProtocolMigration', () => {
     await waitFor(() => expect(result.current).toBe('settled'));
     expect(migrateStoredProtocols).toHaveBeenCalledTimes(2);
   });
+
+  // A lock/unlock cycle while a sweep is still running starts a second sweep
+  // before the first has resolved. Only the sweep for the current unlocked
+  // session may report: the earlier one's result is about rows read under the
+  // previous key, whichever order the two resolve in.
+  it.each([
+    ['the current sweep resolves first', ['current', 'stale'] as const],
+    ['the superseded sweep resolves first', ['stale', 'current'] as const],
+  ])(
+    'reports only the current sweep when two overlap and %s',
+    async (_label, order) => {
+      const sweeps = {
+        stale: Promise.withResolvers<StoredProtocolMigrationResult>(),
+        current: Promise.withResolvers<StoredProtocolMigrationResult>(),
+      };
+      migrateStoredProtocols
+        .mockReturnValueOnce(sweeps.stale.promise)
+        .mockReturnValueOnce(sweeps.current.promise);
+      const { result, rerender } = renderHook(
+        ({ enabled }: { enabled: boolean }) =>
+          useStoredProtocolMigration(enabled),
+        { initialProps: { enabled: true } },
+      );
+      const failure = renderHook(() => ({
+        stale: useStoredProtocolMigrationFailure('hash-Stale Study'),
+        current: useStoredProtocolMigrationFailure('hash-Current Study'),
+      }));
+
+      rerender({ enabled: false });
+      rerender({ enabled: true });
+      expect(migrateStoredProtocols).toHaveBeenCalledTimes(2);
+
+      const results = {
+        stale: failed('Stale Study'),
+        current: failed('Current Study'),
+      };
+      for (const which of order) {
+        await act(async () => {
+          sweeps[which].resolve(results[which]);
+          await sweeps[which].promise;
+        });
+      }
+
+      await waitFor(() => expect(result.current).toBe('settled'));
+      expect(toastAdd).toHaveBeenCalledTimes(1);
+      expect(toastAdd).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: renderedMessage(
+            'Current Study could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.',
+          ),
+        }),
+      );
+      expect(failure.result.current).toEqual({
+        stale: undefined,
+        current: 'protocol',
+      });
+      act(() => recordStoredProtocolMigrationFailures([]));
+    },
+  );
 });

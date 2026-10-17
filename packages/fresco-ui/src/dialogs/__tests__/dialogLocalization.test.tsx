@@ -84,9 +84,10 @@ it('keeps queued dialog defaults, actions and a rejected action live across loca
   expect(
     within(localized).getByText('Se ha producido un error.'),
   ).toBeInTheDocument();
+  // A confirm that passes no description shows none, in any language.
   expect(
-    within(localized).getByText('Esta acción no se puede deshacer.'),
-  ).toBeInTheDocument();
+    within(localized).queryByText('Esta acción no se puede deshacer.'),
+  ).toBeNull();
 });
 
 it.each(['sync', 'async'] as const)(

@@ -1,6 +1,6 @@
 - main:
-  - button "Zoom In"
-  - button "Zoom Out"
+  - button "Zoom in"
+  - button "Zoom out"
   - button "Recenter Map"
   - status:
     - heading "Where is the work location?" [level=4]

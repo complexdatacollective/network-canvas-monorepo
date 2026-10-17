@@ -11,6 +11,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Hint from '@codaco/fresco-ui/form/Hint';
+import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { MULTI_SELECT_RULE_CLASSES } from '../../form/arrayFields/MultiSelect.tsx';
 import {
@@ -177,7 +178,15 @@ export default function ValidationRule({
       )}
 
       {hint !== undefined && (
-        <div className="w-full max-w-full min-w-0 basis-full wrap-break-word whitespace-normal">
+        <div
+          className={cx(
+            'w-full max-w-full min-w-0 basis-full wrap-break-word whitespace-normal',
+            // A hint is set at 70% of the text colour, which on the filled row
+            // of a rule that is on is 3.4:1 against the fill. Full strength
+            // is 5.2:1.
+            isOn && '[&>div]:text-current',
+          )}
+        >
           <Hint id={ids.hint}>{hint}</Hint>
         </div>
       )}

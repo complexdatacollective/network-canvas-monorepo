@@ -56,7 +56,7 @@ export const Editing: Story = {
     });
     await expect(
       canvas.getByRole('region', { name: 'What the host was asked to commit' }),
-    ).toHaveTextContent('"label": "Network Composer (revised)"');
+    ).toHaveTextContent('"label": { "en-US": "Network Composer (revised)" }');
   },
 };
 

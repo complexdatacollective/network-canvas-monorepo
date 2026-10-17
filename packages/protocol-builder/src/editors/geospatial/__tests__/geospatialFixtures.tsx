@@ -2,12 +2,14 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { geospatialPrompts } from '../sections/geospatialPrompts.tsx';
+import { geospatialWording } from '../sections/geospatialWording.tsx';
 import { mapAppearance } from '../sections/mapAppearance.tsx';
 import { mapSource } from '../sections/mapSource.tsx';
 
 const MapSource = mapSource();
 const Prompts = geospatialPrompts();
 const MapAppearance = mapAppearance();
+const Wording = geospatialWording();
 
 /**
  * Every section a geospatial stage composes that is not one of the shared
@@ -23,6 +25,7 @@ export const geospatialSections = (
     <MapSource />
     <Prompts />
     <MapAppearance />
+    <Wording />
   </>
 );
 

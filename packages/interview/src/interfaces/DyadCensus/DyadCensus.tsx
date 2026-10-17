@@ -4,17 +4,23 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
+import { AppMessage } from '@codaco/app-i18n/react';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
+import { messages as validationMessages } from '@codaco/fresco-ui/form/validation/functions';
 import { useShouldSkipAnimations } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
-import type { DyadCensusMetadataItem } from '@codaco/shared-consts';
+import {
+  type DyadCensusMetadataItem,
+  entityAttributesProperty,
+} from '@codaco/shared-consts';
 
 import { useTrack } from '../../analytics/useTrack';
 import Pair from '../../components/Pair';
 import Prompts from '../../components/Prompts';
 import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
+import { DynamicValueEntity } from '../../dynamicValues/DynamicValueScope';
+import { useValuesUntilExit } from '../../dynamicValues/useValuesUntilExit';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useStageSelector } from '../../hooks/useStageSelector';
 import useStageValidation from '../../hooks/useStageValidation';
@@ -33,8 +39,7 @@ import {
 } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
-import { interfaceMessages } from '../messages';
-import IntroPanel from '../SlidesForm/IntroPanel';
+import { useNodeLabel } from '../Anonymisation/useNodeLabel';
 import {
   getNodePair,
   getStageMetadataResponse,
@@ -55,7 +60,6 @@ const choiceVariants = {
 type DyadCensusProps = StageProps<'DyadCensus'>;
 
 export default function DyadCensus(props: DyadCensusProps) {
-  const intl = useAppIntl();
   const { stage, getNavigationHelpers } = props;
   const { moveForward } = getNavigationHelpers();
   const dispatch = useAppDispatch();
@@ -66,7 +70,6 @@ export default function DyadCensus(props: DyadCensusProps) {
   const pairLabelId = `${baseId}-pair`;
   const promptLabelId = `${baseId}-prompt`;
 
-  const [isIntroduction, setIsIntroduction] = useState(true);
   const [isForwards, setIsForwards] = useState(true);
   const [pairIndex, setPairIndex] = useState(0);
 
@@ -80,6 +83,7 @@ export default function DyadCensus(props: DyadCensusProps) {
   const edgeColor = useSelector(getEdgeColorForType(createEdge));
   const stageMetadata = useStageSelector(getStageMetadata);
   const pairs = useStageSelector(getNodePairs);
+  const hasPairs = pairs.length > 0;
 
   const pair =
     pairIndex >= 0 && pairIndex < pairs.length
@@ -130,22 +134,20 @@ export default function DyadCensus(props: DyadCensusProps) {
 
   const track = useTrack();
   useEffect(() => {
-    if (pair && !isIntroduction) {
+    if (pair) {
       track('pair_shown', { node_a_id: pair[0], node_b_id: pair[1] });
     }
-  }, [pair, isIntroduction, track]);
+  }, [pair, track]);
 
   // Validation
   useStageValidation({
     constraints: [
       {
         direction: 'forwards',
-        isMet: isIntroduction || isAnswered,
+        isMet: !hasPairs || isAnswered,
         kind: 'comparison_response_required',
         toast: {
-          description: (
-            <AppMessage message={interfaceMessages.selectResponse} />
-          ),
+          description: <AppMessage message={validationMessages.required} />,
           variant: 'destructive',
           anchor: 'forward',
         },
@@ -163,12 +165,9 @@ export default function DyadCensus(props: DyadCensusProps) {
     if (direction === 'forwards') {
       setIsForwards(true);
 
-      if (isIntroduction) {
-        if (pairs.length === 0) {
-          return 'FORCE';
-        }
-        setIsIntroduction(false);
-        return false;
+      // Nothing to ask about: leave the stage, skipping any further prompts.
+      if (!hasPairs) {
+        return 'FORCE';
       }
 
       const isLastPair = pairIndex === pairs.length - 1;
@@ -184,19 +183,15 @@ export default function DyadCensus(props: DyadCensusProps) {
     if (direction === 'backwards') {
       setIsForwards(false);
 
-      if (isIntroduction) {
-        return true;
-      }
-
       if (pairIndex > 0) {
         setPairIndex((i) => i - 1);
         return false;
       }
 
-      // pairIndex === 0
+      // pairIndex === 0: step back to the previous prompt's last pair, or
+      // leave the stage from the first prompt.
       if (promptIndex === 0) {
-        setIsIntroduction(true);
-        return false;
+        return true;
       }
 
       setPairIndex(pairs.length - 1);
@@ -298,18 +293,24 @@ export default function DyadCensus(props: DyadCensusProps) {
     );
   };
 
+  // The pair the prompts name stays the outgoing one until it has left.
+  const fromLabel = useNodeLabel(fromNode);
+  const toLabel = useNodeLabel(toNode);
+  const pairOnScreen = useValuesUntilExit(`${promptIndex}_${pairIndex}`, {
+    attributes: {
+      dyadSource: fromNode?.[entityAttributesProperty],
+      dyadTarget: toNode?.[entityAttributesProperty],
+    },
+    labels: { dyadSource: fromLabel, dyadTarget: toLabel },
+  });
+
   return (
-    <div className="interface">
-      <AnimatePresence initial={false} mode="wait">
-        {isIntroduction ? (
-          <IntroPanel
-            title={stage.introductionPanel.title}
-            text={stage.introductionPanel.text}
-            key="intro"
-          />
-        ) : (
+    // The pair on screen is who the prompts can name: the first and second
+    // person, as the pair shows them.
+    <DynamicValueEntity {...pairOnScreen.values}>
+      <div className="interface">
+        {hasPairs && (
           <motion.div
-            key="content"
             variants={{
               initial: { opacity: 0 },
               animate: { opacity: 1 },
@@ -321,7 +322,12 @@ export default function DyadCensus(props: DyadCensusProps) {
             className="flex w-full flex-1 flex-col items-center"
           >
             <motion.div className="flex w-full grow flex-col items-center justify-center">
-              <AnimatePresence mode="wait" custom={isForwards} initial={false}>
+              <AnimatePresence
+                mode="wait"
+                custom={isForwards}
+                initial={false}
+                onExitComplete={pairOnScreen.onExitComplete}
+              >
                 <Pair
                   key={`${promptIndex}_${pairIndex}`}
                   fromNode={fromNode}
@@ -351,16 +357,6 @@ export default function DyadCensus(props: DyadCensusProps) {
                   <BooleanField
                     value={displayedEdge ?? undefined}
                     onChange={setEdge}
-                    options={[
-                      {
-                        label: intl.formatMessage(interfaceMessages.yes),
-                        value: true,
-                      },
-                      {
-                        label: intl.formatMessage(interfaceMessages.no),
-                        value: false,
-                      },
-                    ]}
                     noReset
                     aria-labelledby={`${pairLabelId} ${promptLabelId}`}
                   />
@@ -369,7 +365,7 @@ export default function DyadCensus(props: DyadCensusProps) {
             </MotionSurface>
           </motion.div>
         )}
-      </AnimatePresence>
-    </div>
+      </div>
+    </DynamicValueEntity>
   );
 }

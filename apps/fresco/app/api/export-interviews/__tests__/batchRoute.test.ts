@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ExportEvent } from '@codaco/network-exporters/events';
 import type { ExportOptions } from '@codaco/network-exporters/options';
-import type { ExportReturn } from '@codaco/network-exporters/output';
+import type {
+  ExportReturn,
+  ExportWarning,
+} from '@codaco/network-exporters/output';
 import {
   type ExportStreamEvent,
   parseExportEventBuffer,
@@ -43,9 +46,11 @@ const emptyExportReturn: ExportReturn = {
   status: 'success',
   successfulExports: [],
   failedExports: [],
+  warnings: [],
   output: {},
 };
 
+let exportReturn: ExportReturn = emptyExportReturn;
 let offerBeforeCompleting: ExportEvent[] = [];
 
 vi.mock('@codaco/network-exporters/pipeline', () => ({
@@ -58,7 +63,7 @@ vi.mock('@codaco/network-exporters/pipeline', () => ({
       for (const event of offerBeforeCompleting) {
         yield* Queue.offer(queue, event);
       }
-      return emptyExportReturn;
+      return exportReturn;
     }),
 }));
 
@@ -105,6 +110,7 @@ async function readAllEvents(
 beforeEach(() => {
   afterCallbacks.length = 0;
   offerBeforeCompleting = [];
+  exportReturn = emptyExportReturn;
 });
 
 describe('POST /api/export-interviews/batch', () => {
@@ -115,7 +121,9 @@ describe('POST /api/export-interviews/batch', () => {
 
     const events = await readAllEvents(response.body!);
 
-    expect(events).toEqual([{ type: 'complete', failedSessionIds: [] }]);
+    expect(events).toEqual([
+      { type: 'complete', failedSessionIds: [], warnings: [] },
+    ]);
     expect(afterCallbacks).toHaveLength(1);
   }, 10_000);
 
@@ -131,7 +139,25 @@ describe('POST /api/export-interviews/batch', () => {
 
     expect(events).toEqual([
       ...offerBeforeCompleting,
-      { type: 'complete', failedSessionIds: [] },
+      { type: 'complete', failedSessionIds: [], warnings: [] },
+    ]);
+  }, 10_000);
+
+  it('carries the pipeline warnings in the complete event', async () => {
+    const warning: ExportWarning = {
+      kind: 'xml-illegal-characters',
+      sessionId: 'interview-1',
+      caseId: 'P-7',
+      variables: ['Nickname'],
+      caseIdChanged: false,
+    };
+    exportReturn = { ...emptyExportReturn, warnings: [warning] };
+
+    const response = await POST(batchRequest());
+    const events = await readAllEvents(response.body!);
+
+    expect(events).toEqual([
+      { type: 'complete', failedSessionIds: [], warnings: [warning] },
     ]);
   }, 10_000);
 });

@@ -190,7 +190,7 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Secret value',
+        label: { en: 'Secret value' },
       }),
       revision: held.revision,
     };
@@ -331,7 +331,7 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
       sectionId,
       document: Redacted.make({
         ...Redacted.value(held.document),
-        label: 'Must roll back',
+        label: { en: 'Must roll back' },
       }),
       revision: held.revision,
     };
@@ -355,7 +355,7 @@ describe.skipIf(!testDb)('audited protocol RPC', () => {
     );
     expect(afterFailure.revision).toEqual(before.revision);
     expect(afterFailure.sections[sectionId]).not.toMatchObject({
-      label: 'Must roll back',
+      label: { en: 'Must roll back' },
     });
     const eventCount = await database.run(
       ownerRows<{ count: number }>(

@@ -9,6 +9,11 @@ import {
   VariableTypes,
 } from '@codaco/protocol-validation';
 
+import {
+  isLocalizedString,
+  translationText,
+} from '../localization/localizedText.ts';
+
 const messages = defineMessages({
   resolutionFull: {
     id: 'protocolBuilder.variableParameters.resolutionFull',
@@ -184,9 +189,10 @@ export const dateResolutionOf = (parameters: unknown): DateResolution => {
  * An emptied control reports `''`, not an absent key, so a cleared bound has
  * to read as unauthored here or it would be written back as a blank string.
  * Judged after trimming, the way every other unanswered-or-not question in
- * this package is judged: a scale label of nothing but spaces shows the
- * participant nothing and reads out as nothing. The value is stored as it was
- * typed, though — trimming decides whether there is an answer, not what it is.
+ * this package is judged: a scale label of nothing but spaces, in every
+ * language it is written in, shows the participant nothing and reads out as
+ * nothing. The value is stored as it was typed, though — trimming decides
+ * whether there is an answer, not what it is.
  */
 export const parametersForShape = (
   shape: ParameterShape,
@@ -198,6 +204,14 @@ export const parametersForShape = (
     const value = held[key];
     if (value === undefined || value === null) continue;
     if (typeof value === 'string' && value.trim() === '') continue;
+    if (
+      isLocalizedString(value) &&
+      Object.keys(value).every(
+        (locale) => translationText(value, locale).trim() === '',
+      )
+    ) {
+      continue;
+    }
     written[key] = value;
   }
   return Object.keys(written).length === 0 ? undefined : written;
@@ -240,9 +254,10 @@ export const parametersWith = (
  * who can say what belongs there. Matches Architect, which requires the same
  * two.
  *
- * The controls carry `required` as well, so an empty one is refused by the
- * browser before this runs. This is what catches the case the browser calls
- * answered and a participant would not: a label of nothing but spaces.
+ * The controls carry `required` as well, but they are rich-text editors, not
+ * native inputs, so no browser refuses an empty one: this is what does, and
+ * it also catches a label a participant would read as nothing — spaces only,
+ * in every language it is written in.
  *
  * A relative picker requires nothing — an absent anchor MEANS the date of the
  * interview, and absent day offsets mean the runtime's own defaults. Nor does
@@ -284,7 +299,7 @@ const REQUIRED_MESSAGES = {
  * follows it cannot disagree about what is allowed.
  *
  * A scalar has none of its own: `minLabel`/`maxLabel` are two optional
- * strings with no rule relating them, so the only thing to check is that they
+ * localized labels with no rule relating them, so the only thing to check is that they
  * are there. Everything the whole-variable parse would still catch remains
  * caught — `validateVariableDraft` runs on every request this editor builds.
  */

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { migrateProtocol, validateProtocol } from '../index.ts';
+import {
+  CURRENT_SCHEMA_VERSION,
+  type CurrentProtocol,
+  migrateProtocol,
+  validateProtocol,
+} from '../index.ts';
 import { extractProtocol } from '../utils/extractProtocol.ts';
 import { downloadAndDecryptProtocols } from './utils.ts';
 
@@ -14,7 +19,7 @@ const hasGitHubToken = !!process.env.GITHUB_TOKEN;
  *
  * One loop over all ~90 of them shared a single budget and reported a failure
  * as the corpus stopping somewhere: `migrateProtocol` throws when what it
- * produced does not survive the v8 schema, which ends the loop, leaves every
+ * produced does not survive the current schema, which ends the loop, leaves every
  * protocol after it unvalidated, and names in the report only the rule that
  * was broken — never the protocol that broke it. Splitting the loop gives each
  * protocol a budget it cannot exhaust on another protocol's behalf, and puts
@@ -60,7 +65,7 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
       if (
         !Number.isInteger(protocolVersion) ||
         protocolVersion < 1 ||
-        protocolVersion > 8
+        protocolVersion > CURRENT_SCHEMA_VERSION
       ) {
         ctx.skip(
           `unsupported schema version: ${String(protocol.schemaVersion)}`,
@@ -69,8 +74,8 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
 
       const protocolName = filename.replace(/\.netcanvas$/, '');
 
-      if (protocolVersion === 8) {
-        // Validate v8 protocols directly
+      if (protocolVersion === CURRENT_SCHEMA_VERSION) {
+        // Validate current-version protocols directly
         const protocolWithName = !('name' in protocol)
           ? { ...protocol, name: protocolName }
           : protocol;
@@ -90,18 +95,19 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
         return;
       }
 
-      // For versions 1-7, migrate to v8 then validate. `migrateProtocol`
-      // reports a migration that does not survive the v8 schema by throwing,
-      // so it is logged here as well: that throw is this corpus's likeliest
-      // failure and it carries nothing about which protocol produced it.
-      let migratedProtocol: ReturnType<typeof migrateProtocol>;
+      // Older versions are migrated to the current one, then validated.
+      // `migrateProtocol` reports a migration that does not survive the
+      // current schema by throwing, so it is logged here as well: that throw
+      // is this corpus's likeliest failure and it carries nothing about which
+      // protocol produced it.
+      let migratedProtocol: CurrentProtocol;
       try {
         migratedProtocol = migrateProtocol(protocol, undefined, {
           name: protocolName,
         });
       } catch (error) {
         console.error(
-          `Migration failed for ${filename} (v${protocolVersion} → v8):`,
+          `Migration failed for ${filename} (v${protocolVersion} → v${CURRENT_SCHEMA_VERSION}):`,
           error,
         );
         throw error;
@@ -111,7 +117,7 @@ describe.skipIf(!hasGitHubToken)('Test protocols', () => {
 
       if (!migrationResult.success) {
         console.error(
-          `Migration validation failed for ${filename} (v${protocolVersion} → v8):`,
+          `Migration validation failed for ${filename} (v${protocolVersion} → v${CURRENT_SCHEMA_VERSION}):`,
           migrationResult.error,
         );
       }

@@ -4,25 +4,46 @@ import { describe, expect, it } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { nameGeneratorWording } from '../../name-generator-wording/nameGeneratorWording.tsx';
 import AlterLimitsSection from '../AlterLimitsSection.tsx';
 
 const limits = <AlterLimitsSection />;
+
+/**
+ * The messages section beside the limits, which is what seeds a limit's notice
+ * once the researcher sets the limit: a stage with a limit and no notice is not
+ * saveable, so a test that saves a limit mounts the section that writes it.
+ */
+const NameGeneratorMessages = nameGeneratorWording('NameGenerator');
+const RosterMessages = nameGeneratorWording('NameGeneratorRoster');
+const limitsAndMessages = (
+  <>
+    <AlterLimitsSection />
+    <NameGeneratorMessages />
+  </>
+);
+
+/** Copy in the fixture protocol's only language, as schema 9 holds it. */
+const en = (text: string) => ({ 'en-US': text });
 
 const unlimitedStage = {
   stage: {
     type: 'NameGenerator' as const,
     fields: {
-      label: 'Name Generator',
+      label: en('Name Generator'),
       subject: { entity: 'node', type: 'person' },
       form: {
-        title: 'Add a person',
-        fields: [{ variable: 'name', prompt: 'Name?' }],
+        title: en('Add a person'),
+        fields: [{ variable: 'name', prompt: en('Name?') }],
       },
-      prompts: [{ id: 'prompt-a', text: 'Who do you know?' }],
+      prompts: [{ id: 'prompt-a', text: en('Who do you know?') }],
     },
   },
   sections: limits,
 };
+
+/** The same stage, with the messages section that saves a limit mounted. */
+const savingStage = { ...unlimitedStage, sections: limitsAndMessages };
 
 describe('the nomination limits a name generator may set', () => {
   it('opens already switched on for a stage that has limits', async () => {
@@ -47,12 +68,17 @@ describe('the nomination limits a name generator may set', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-roster-1',
-      sections: limits,
+      sections: (
+        <>
+          <AlterLimitsSection />
+          <RosterMessages />
+        </>
+      ),
     });
 
     // Everything else a roster name generator holds — its name, its type, the
-    // data file it lists from, how its cards read, and what it asks — belongs
-    // to sections this mount does not include.
+    // data file it lists from, how its cards read, what it asks and its panel's
+    // title — belongs to sections this mount does not include.
     await harness.roundTrip({
       unowned: [
         'subject',
@@ -61,6 +87,7 @@ describe('the nomination limits a name generator may set', () => {
         'sortOptions',
         'searchOptions',
         'prompts',
+        'panelTitle',
       ],
     });
   });
@@ -76,7 +103,7 @@ describe('the nomination limits a name generator may set', () => {
   });
 
   it('records a window the researcher entered', async () => {
-    const harness = renderStageEditor(unlimitedStage);
+    const harness = renderStageEditor(savingStage);
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Nomination limits' }),
@@ -134,7 +161,7 @@ describe('the nomination limits a name generator may set', () => {
 
   /** One end is an answer, and the end nobody set is simply not there. */
   it('writes only the end of the window the researcher answered', async () => {
-    const harness = renderStageEditor(unlimitedStage);
+    const harness = renderStageEditor(savingStage);
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Nomination limits' }),
@@ -262,7 +289,7 @@ describe('the nomination limits a name generator may set', () => {
    * the one thing it is here to prove.
    */
   it('clears the refusal from the other end of the window', async () => {
-    const harness = renderStageEditor(unlimitedStage);
+    const harness = renderStageEditor(savingStage);
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Nomination limits' }),
@@ -309,8 +336,8 @@ describe('the nomination limits a name generator may set', () => {
         fields: {
           ...unlimitedStage.stage.fields,
           prompts: [
-            { id: 'prompt-a', text: 'Who do you know?' },
-            { id: 'prompt-b', text: 'Who do you talk to?' },
+            { id: 'prompt-a', text: en('Who do you know?') },
+            { id: 'prompt-b', text: en('Who do you talk to?') },
           ],
         },
       },

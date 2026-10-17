@@ -1,9 +1,10 @@
 {
   "explanationText": {
-    "body": "Enter your passphrase below, then continue.",
-    "title": "Protecting Your Privacy"
+    "en": "# Protecting Your Privacy\n\nEnter your passphrase below, then continue."
   },
   "id": "id-1",
-  "label": "Anonymise Your Data",
+  "label": {
+    "en": "Anonymise Your Data"
+  },
   "type": "Anonymisation"
 }

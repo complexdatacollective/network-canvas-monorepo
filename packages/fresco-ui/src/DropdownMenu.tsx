@@ -42,7 +42,11 @@ function DropdownMenu({
   const [mounted, setMounted] = React.useState(false);
 
   return (
-    <DropdownMenuContext.Provider value={{ mounted, setMounted }}>
+    // A controlled menu shows its content whenever it is open, including when
+    // opened by the caller rather than by its trigger.
+    <DropdownMenuContext.Provider
+      value={{ mounted: props.open ?? mounted, setMounted }}
+    >
       <Menu.Root
         {...props}
         open={props.open ?? mounted}
@@ -129,6 +133,9 @@ const DropdownMenuContent = React.forwardRef<
     align?: 'start' | 'center' | 'end';
     keepMounted?: boolean;
     showArrow?: boolean;
+    /** Positions the menu against this element instead of its trigger, for a
+     * menu opened by the caller. */
+    anchor?: React.ComponentPropsWithoutRef<typeof Menu.Positioner>['anchor'];
   }
 >(
   (
@@ -139,6 +146,7 @@ const DropdownMenuContent = React.forwardRef<
       align = 'center',
       keepMounted = true,
       showArrow = true,
+      anchor,
       children,
       ...props
     },
@@ -158,6 +166,7 @@ const DropdownMenuContent = React.forwardRef<
               sideOffset={sideOffset}
               side={side}
               align={align}
+              anchor={anchor}
               arrowPadding={POPOVER_ARROW_PADDING}
             >
               <Menu.Popup
@@ -228,7 +237,7 @@ const DropdownMenuRadioItem = React.forwardRef<
     inset?: boolean;
     icon?: React.ReactNode;
   }
->(({ className, children, icon = <CheckIcon />, ...props }, ref) => (
+>(({ className, children, icon, ...props }, ref) => (
   <Menu.RadioItem
     ref={ref}
     className={cx(dropdownItemVariants(), 'flex items-center px-4', className)}
@@ -239,9 +248,14 @@ const DropdownMenuRadioItem = React.forwardRef<
       className={cx(
         proportionalLucideIconVariants(),
         'flex items-center justify-center',
+        // The default tick is kept mounted so every item reserves its space,
+        // and only the checked item shows it. A custom icon describes its
+        // option (a sort direction, a theme), so every item shows its own;
+        // the checked item is marked by its highlight instead.
+        icon === undefined && 'data-unchecked:invisible',
       )}
     >
-      {icon}
+      {icon === undefined ? <CheckIcon /> : icon}
     </Menu.RadioItemIndicator>
     {children}
   </Menu.RadioItem>

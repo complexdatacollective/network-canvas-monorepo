@@ -16,7 +16,7 @@ type LocaleSelectProps = {
   /**
    * The locales to offer, in display order. `label` is the autonym — the
    * language's name in itself — and is rendered under that option's own
-   * `lang` so a screen reader pronounces it correctly.
+   * `lang` and `dir` so a screen reader pronounces it correctly.
    */
   'options': readonly AppLocale[];
   /**
@@ -76,11 +76,14 @@ export default function LocaleSelect({
       : [{ value: AUTOMATIC_VALUE, label: automaticLabel }]),
     ...options.map((locale) => ({
       value: locale.locale,
-      label: locale.label,
       // The label is written in the language it names, not in the page's
       // language: without this a screen reader reads "Deutsch" with English
       // phonetics.
-      lang: locale.locale,
+      label: {
+        text: locale.label,
+        lang: locale.locale,
+        dir: locale.direction,
+      },
     })),
   ];
 

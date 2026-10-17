@@ -74,6 +74,27 @@ type VariableValidationEditorProps = Readonly<{
    * own control is what the interview renders, which is most callers.
    */
   'stageRendering'?: StageRendering;
+  /**
+   * Guidance to show beneath particular rules, by rule key, for a host that
+   * knows something about a rule the editor cannot — such as what applies when
+   * the rule is off. Said whether the rule is on or off. The editor's own
+   * explanation of why a rule is unavailable, or of a unique rule that cannot
+   * be satisfied, takes precedence.
+   */
+  'ruleHints'?: Readonly<Record<string, string>>;
+  /**
+   * Rules the host cannot let the researcher switch on, by rule key, each
+   * with the sentence saying why — for a host whose stage decides something
+   * the rule would otherwise govern. A rule already on stays on and can be
+   * switched off; the sentence is shown beneath it either way.
+   */
+  'unavailableRules'?: Readonly<Record<string, string>>;
+  /**
+   * Rules the saved record holds, when it can differ from `value`. One of
+   * `unavailableRules` among them stays switchable even while off on screen,
+   * so a removal the host refused can be made again; its reason still shows.
+   */
+  'savedRules'?: readonly string[];
 }>;
 
 const messages = defineMessages({
@@ -225,6 +246,9 @@ export default function VariableValidationEditor({
   'aria-invalid': ariaInvalid,
   'aria-describedby': fieldDescribedBy,
   stageRendering,
+  ruleHints,
+  unavailableRules,
+  savedRules,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
@@ -486,6 +510,8 @@ export default function VariableValidationEditor({
     ruleKey: string,
     isUnavailable: boolean,
   ): string | undefined => {
+    const hostReason = unavailableRules?.[ruleKey];
+    if (hostReason !== undefined) return hostReason;
     if (isUnavailable) {
       return candidateIds.length === 0
         ? intl.formatMessage(messages.noOtherAttributeOfThisType)
@@ -496,7 +522,7 @@ export default function VariableValidationEditor({
         uniqueValueCount,
       });
     }
-    return undefined;
+    return ruleHints?.[ruleKey];
   };
 
   const targetOptionsFor = (ruleKey: string): TargetOption[] => {
@@ -557,8 +583,10 @@ export default function VariableValidationEditor({
               const isOn = holdsRule(value, rule.value);
               const isUnavailable =
                 !isOn &&
-                isValidationWithListValue(rule.value) &&
-                (legalTargets.get(rule.value)?.size ?? 0) === 0;
+                ((Object.hasOwn(unavailableRules ?? {}, rule.value) &&
+                  savedRules?.includes(rule.value) !== true) ||
+                  (isValidationWithListValue(rule.value) &&
+                    (legalTargets.get(rule.value)?.size ?? 0) === 0));
 
               return (
                 <ValidationRule

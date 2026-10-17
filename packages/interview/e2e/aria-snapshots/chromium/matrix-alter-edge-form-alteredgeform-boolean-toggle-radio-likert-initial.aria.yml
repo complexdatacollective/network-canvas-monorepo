@@ -1,6 +1,24 @@
 - main:
-  - heading "Relationship details" [level=1]
-  - paragraph: Answer the following.
+  - button "Alex"
+  - button "Sam"
+  - text: Have you ever worked together?
+  - radiogroup "Have you ever worked together?":
+    - radio "Yes, we have"
+    - radio "No, never" [checked]
+  - text: Do you see each other regularly?
+  - switch "Do you see each other regularly?"
+  - text: How close is this relationship?
+  - radiogroup "How close is this relationship?":
+    - radio "Very close"
+    - text: Very close
+    - radio "Close"
+    - text: Close
+    - radio "Distant"
+    - text: Distant
+  - text: How much do you trust this person?
+  - group "How much do you trust this person?":
+    - slider "How much do you trust this person?": "2"
+  - text: One Two Three Four Five
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

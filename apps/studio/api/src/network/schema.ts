@@ -121,9 +121,13 @@ const nodes = pgTable(
     attributes: jsonb('attributes')
       .notNull()
       .default(sql`'{}'::jsonb`),
-    // NcEntity['_secureAttributes']: per-variable {iv, salt} for
-    // client-encrypted variable values. Must round-trip or an encrypted
-    // interview cannot be stored.
+    // NcEntity['_secureAttributes']: per-variable { iv } for client-encrypted
+    // variable values (a value collected under schema 8 also carries its own
+    // `salt`). Must round-trip or an encrypted interview cannot be stored.
+    // No header describes the key they were encrypted with, and none is
+    // stored: the key is derived from the participant's passphrase and the
+    // session's id, so session_id must stay the id the interview ran under,
+    // or every encrypted answer becomes unreadable.
     secureAttributes: jsonb('secure_attributes'),
     // NcNode.stageId / NcNode.promptIDs: which stage and prompts created this
     // node. stage_id is a column, not a JSON key, because the monitoring

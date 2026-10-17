@@ -1,6 +1,13 @@
 'use client';
 import { isEqual } from 'es-toolkit';
-import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
+import {
+  type RefObject,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -13,12 +20,13 @@ import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import { formMessages } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
-  selectIsFormDirty,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import type { ComposerForm } from '@codaco/protocol-validation';
 import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
@@ -28,15 +36,14 @@ import useProtocolForm from '../../forms/useProtocolForm';
 import { rejectedWriteMessage } from '../../forms/writeSubmissionResult';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import useSavesInOrder from '../../hooks/useSavesInOrder';
-import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
-import KeepWhileProtected from '../Anonymisation/KeepWhileProtected';
 import PassphraseNotice, {
   type PassphraseNoticeStatus,
 } from '../Anonymisation/PassphraseNotice';
-import discardChangesDialog from '../discardChangesDialog';
-import { interfaceMessages } from '../messages';
+import discardChangesDialog, {
+  failedCheckReason,
+} from '../discardChangesDialog';
 import type { LeaveGuard } from './useComposerStore';
 
 type Attributes = NcNode[typeof entityAttributesProperty];
@@ -47,15 +54,19 @@ export type InspectorProps = {
   subject: Subject;
   attributes: Attributes;
   /**
+   * The attributes whose stored value can never be shown, which are left out
+   * of `attributes` and kept as stored unless a new value is entered.
+   */
+  unavailable?: readonly string[];
+  /**
    * Set while the entity's values cannot be shown or saved because they are
-   * encrypted; the form is replaced by an explanation. A form already shown
-   * is only hidden, so what was entered comes back with it.
+   * encrypted; the form is replaced by an explanation.
    */
   passphraseStatus?: PassphraseNoticeStatus;
   /**
-   * Saves the patch `buildPatch` returns, building it only when the save is
-   * made: after every change, undo and redo asked for before it. A patch of
-   * null saves nothing.
+   * Saves the entity's answers. The patch is built when the save is made,
+   * after every change asked for before it, and building it returns `null`
+   * when there is nothing to save.
    */
   onSave: (
     id: string,
@@ -63,15 +74,23 @@ export type InspectorProps = {
   ) => Promise<void>;
   onDelete: (id: string) => void;
   /**
-   * Holds the participant on this entity while its form has a draft, so
-   * whatever would close the Inspector first saves the draft or asks before
-   * discarding it. Returns the function that releases the hold.
+   * Holds the selection on this entity while its form is open, so whatever
+   * would close the Inspector first saves an edit not saved yet, or asks
+   * before discarding one that cannot be saved. Returns the function that
+   * releases the hold.
    */
   guardDraft: (entityId: string, confirmLeave: LeaveGuard) => () => void;
+  /** The stage's words for leaving an edit an undo or redo overtook. */
+  overtakenEditNotice: string;
 };
 
 // How long to wait after the last edit before validating and persisting.
 const AUTOSAVE_DELAY = 400;
+
+const noopSubmit: FormSubmitHandler = () => ({ success: true as const });
+
+// A save resolves to why it was refused, or to nothing once it is stored.
+const isSaved = (reason: MessageDescriptor | undefined) => reason === undefined;
 
 // One of the form's own saves: the answers it stores, and whether the store
 // has taken them.
@@ -82,28 +101,28 @@ type OwnWrite = { stored: Record<string, FieldValue>; done: boolean };
 // for it then.
 type HeldEdit = { from: FieldValue; shown: FieldValue };
 
+const NO_UNAVAILABLE: readonly string[] = [];
+
 const ownValue = (values: Record<string, FieldValue>, name: string) =>
   Object.hasOwn(values, name) ? values[name] : undefined;
 
-const noopSubmit: FormSubmitHandler = () => ({ success: true as const });
-
-// A save resolves to why it was refused, or to nothing once it is stored.
-const isSaved = (reason: MessageDescriptor | undefined) => reason === undefined;
+// A blank answer is the same as none.
+const sameAnswer = (a: FieldValue, b: FieldValue) =>
+  (isUnanswered(a) && isUnanswered(b)) || isEqual(a, b);
 
 /**
- * Watches the form's values and, once they settle, validates and persists them
- * — so attribute edits save automatically (when valid) without a Save button.
- * Nothing is saved while it is not `enabled`; an edit made before then is
- * saved when it is enabled again.
+ * Watches the form's values and, once they settle, calls `onSettled` to
+ * validate and persist them — so attribute edits save automatically (when
+ * valid) without a Save button. `pendingSave` holds the timer while an edit is
+ * waiting to settle.
  */
 function AutoPersist({
-  enabled,
-  onValidValues,
+  onSettled,
+  pendingSave,
 }: {
-  enabled: boolean;
-  onValidValues: (values: Record<string, FieldValue>) => void;
+  onSettled: () => void;
+  pendingSave: RefObject<ReturnType<typeof setTimeout> | null>;
 }) {
-  const storeApi = useContext(FormStoreContext);
   const values = useFormStore(
     useShallow((state) => {
       const snapshot: Record<string, FieldValue> = {};
@@ -136,18 +155,15 @@ function AutoPersist({
       isInitial.current = false;
       return;
     }
-    if (!enabled || !isDirty || !storeApi) return;
+    if (!isDirty) return;
 
     const handle = setTimeout(() => {
-      void storeApi
-        .getState()
-        .validateForm()
-        .then((valid) => {
-          if (valid) onValidValues(storeApi.getState().getFormValues());
-        });
+      pendingSave.current = null;
+      onSettled();
     }, AUTOSAVE_DELAY);
+    pendingSave.current = handle;
     return () => clearTimeout(handle);
-  }, [enabled, values, isDirty, storeApi, onValidValues]);
+  }, [values, isDirty, onSettled, pendingSave]);
 
   return null;
 }
@@ -157,12 +173,12 @@ function AttributeFormInner({
   form,
   subject,
   attributes,
-  canSave,
+  unavailable,
   onSave,
   guardDraft,
+  overtakenEditNotice,
 }: Omit<InspectorProps, 'form' | 'onDelete' | 'passphraseStatus'> & {
   form: ComposerForm;
-  canSave: boolean;
 }) {
   const initialValues = useMemo(
     () =>
@@ -178,15 +194,21 @@ function AttributeFormInner({
     [attributes],
   );
 
-  const { fieldComponents, coerceValues } = useProtocolForm({
+  const { fieldComponents, coerceValues, passphraseNeeded } = useProtocolForm({
     fields: form.fields ?? [],
     initialValues,
     subject,
     currentEntityId: entityId,
+    unavailableVariables: unavailable,
   });
   const storeApi = useContext(FormStoreContext);
   const { confirm } = useDialog();
-
+  const pendingSave = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The answers the form last saved, or was opened with. An answer changed
+  // outside the form since, as by an undo, is not an edit of the form's.
+  const savedRef = useRef(initialValues);
+  // While saves are under way, settles once every one of them has.
+  const savesUnderWay = useRef<Promise<void> | null>(null);
   // The stored answers the form was last given.
   const givenRef = useRef(initialValues);
   // The answers each of the form's own saves stores, oldest first, from just
@@ -235,11 +257,14 @@ function AttributeFormInner({
 
     const shown = coerceValues(state.getFormValues());
     const held = heldRef.current;
+    const saved = { ...savedRef.current };
     for (const { variable } of fields) {
       const was = previous[variable];
       const now = initialValues[variable];
       if (isEqual(was, now)) continue;
 
+      // Whatever the form does with it, the stored answer is now this one.
+      saved[variable] = now;
       const hold = held.get(variable);
       const from = hold ? hold.from : was;
       if (isEqual(shown[variable], now)) {
@@ -259,6 +284,7 @@ function AttributeFormInner({
         });
       }
     }
+    savedRef.current = saved;
   }, [initialValues, storeApi, form.fields, coerceValues]);
 
   // Changing a question whose edit is held makes the new answer an edit of
@@ -311,10 +337,10 @@ function AttributeFormInner({
         const patchResult = formValuesToAttributePatch(
           coerceValues(values),
           savable,
-          stored,
+          { keepWhenUnanswered: unavailable ?? NO_UNAVAILABLE },
         );
         if (!patchResult.success) {
-          failure = runtimeMessages.submissionFailed;
+          failure = formMessages.submitFailed;
           return null;
         }
 
@@ -323,7 +349,7 @@ function AttributeFormInner({
         // follows an undo, is not made.
         const { set, unset } = patchResult.patch;
         const changesAnswers =
-          unset.length > 0 ||
+          unset.some((name) => stored[name] !== undefined) ||
           Object.entries(set).some(
             ([name, value]) => !isEqual(value, stored[name]),
           );
@@ -352,52 +378,89 @@ function AttributeFormInner({
       if (failure) return showSaveFailure(failure);
       if (ownWrite) ownWrite.done = true;
 
-      // An edit refused earlier is saved now, so the refusal is gone.
-      const state = storeApi?.getState();
-      if (state && state.errors.formErrors.length > 0) {
-        state.setErrors(null);
+      // What is stored now: the answers saved, and, for an edit an undo or
+      // redo overtook, the stored answer it was not saved over.
+      const saved = coerceValues(values);
+      for (const variable of heldRef.current.keys()) {
+        saved[variable] = ownValue(savedRef.current, variable);
       }
+      savedRef.current = saved;
       return undefined;
     },
-    [onSave, entityId, coerceValues, form.fields, storeApi],
+    [onSave, entityId, coerceValues, form.fields, unavailable, storeApi],
   );
-  // A save that takes longer, as protecting an answer can, never lands after
+  // A save that takes longer, as encrypting an answer can, never lands after
   // a newer one.
-  const persist = useSavesInOrder(save, isSaved);
-
-  const handleValidValues = useCallback(
+  const saveInOrder = useSavesInOrder(save, isSaved);
+  const persist = useCallback(
     (values: Record<string, FieldValue>) => {
-      void persist(values);
+      const call = saveInOrder(values);
+      // Saves settle in the order they are asked for, so the newest settles
+      // last.
+      const settled = call.then(
+        () => undefined,
+        () => undefined,
+      );
+      savesUnderWay.current = settled;
+      void settled.then(() => {
+        if (savesUnderWay.current === settled) savesUnderWay.current = null;
+      });
+      return call;
     },
-    [persist],
+    [saveInOrder],
   );
+
+  const showsSaved = useCallback(
+    (values: Record<string, FieldValue>) => {
+      const shown = coerceValues(values);
+      return (form.fields ?? []).every(({ variable }) =>
+        sameAnswer(
+          ownValue(shown, variable),
+          ownValue(savedRef.current, variable),
+        ),
+      );
+    },
+    [coerceValues, form.fields],
+  );
+
+  const saveIfValid = useCallback(async () => {
+    const state = storeApi?.getState();
+    if (state && (await state.validateForm())) {
+      await persist(state.getFormValues());
+    }
+  }, [storeApi, persist]);
 
   // Closing the Inspector, by leaving the stage or by moving the selection
-  // off this entity, saves an edit the autosave has not reached yet, and asks
-  // before discarding one that cannot be saved: an invalid edit, one the
-  // store refused, one hidden because the passphrase cannot read it, or one
-  // an undo or redo overtook.
+  // off this entity, saves an edit not saved yet, even one the autosave has
+  // not reached, and asks before discarding one that cannot be saved: an
+  // invalid edit, one the store refused, or one an undo or redo overtook.
   const confirmLeave = useCallback((): true | Promise<boolean> => {
     const state = storeApi?.getState();
     if (!state) return true;
-    const unsaved =
-      selectIsFormDirty(state) || (canSave && ownWritesRef.current.length > 0);
-    if (!unsaved) return true;
+    if (savesUnderWay.current === null && showsSaved(state.getFormValues())) {
+      return true;
+    }
 
+    if (pendingSave.current !== null) {
+      clearTimeout(pendingSave.current);
+      pendingSave.current = null;
+    }
     return (async () => {
-      let reason: MessageDescriptor | undefined =
-        runtimeMessages.protectedAnswersNotSaved;
-      if (canSave) {
-        reason = (await state.validateForm())
+      // A save refused while the answers are being checked would cut the
+      // check short, so the saves under way settle first.
+      await savesUnderWay.current;
+      if (showsSaved(state.getFormValues())) return true;
+
+      let reason: MessageDescriptor | string | undefined =
+        (await state.validateForm())
           ? await persist(state.getFormValues())
-          : interfaceMessages.discardChangesDescription;
-        // Leaving is not changing the question again, so an edit an undo or
-        // redo overtook is not saved by it.
-        if (reason === undefined && heldRef.current.size > 0) {
-          reason = interfaceMessages.discardOvertakenEditDescription;
-        }
-        if (reason === undefined) return true;
+          : failedCheckReason(passphraseNeeded);
+      // Leaving is not changing the question again, so an edit an undo or
+      // redo overtook is not saved by it.
+      if (reason === undefined && heldRef.current.size > 0) {
+        reason = overtakenEditNotice;
       }
+      if (reason === undefined) return true;
 
       const discarded = await confirm({
         ...discardChangesDialog(reason),
@@ -405,7 +468,14 @@ function AttributeFormInner({
       });
       return discarded === true;
     })();
-  }, [storeApi, canSave, persist, confirm]);
+  }, [
+    storeApi,
+    showsSaved,
+    persist,
+    passphraseNeeded,
+    confirm,
+    overtakenEditNotice,
+  ]);
 
   useBeforeNext(confirmLeave);
   useEffect(
@@ -420,7 +490,7 @@ function AttributeFormInner({
           <div>{fieldComponents}</div>
         </FormWithoutProvider>
       </ScrollArea>
-      <AutoPersist enabled={canSave} onValidValues={handleValidValues} />
+      <AutoPersist onSettled={saveIfValid} pendingSave={pendingSave} />
     </div>
   );
 }
@@ -430,46 +500,36 @@ export default function Inspector({
   form,
   subject,
   attributes,
+  unavailable,
   passphraseStatus,
   onSave,
   onDelete,
   guardDraft,
+  overtakenEditNotice,
 }: InspectorProps) {
   const hasFields = form !== undefined && (form.fields?.length ?? 0) > 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {hasFields ? (
-        <>
-          {passphraseStatus && (
-            <PassphraseNotice
-              status={passphraseStatus}
-              className="text-text/60 min-h-0 flex-1"
-            />
-          )}
-          <KeepWhileProtected
-            values={passphraseStatus ? undefined : attributes}
-          >
-            {(shownAttributes) => (
-              <FormStoreProvider>
-                <AttributeFormInner
-                  entityId={entityId}
-                  form={form}
-                  subject={subject}
-                  attributes={shownAttributes}
-                  canSave={!passphraseStatus}
-                  onSave={onSave}
-                  guardDraft={guardDraft}
-                />
-              </FormStoreProvider>
-            )}
-          </KeepWhileProtected>
-        </>
-      ) : (
-        <div className="text-text/60 flex min-h-0 flex-1 items-center justify-center p-6 text-center">
-          <AppMessage message={interfaceMessages.noAttributes} />
-        </div>
-      )}
+      {hasFields && passphraseStatus ? (
+        <PassphraseNotice
+          status={passphraseStatus}
+          className="text-text/60 min-h-0 flex-1"
+        />
+      ) : hasFields ? (
+        <FormStoreProvider>
+          <AttributeFormInner
+            entityId={entityId}
+            form={form}
+            subject={subject}
+            attributes={attributes}
+            unavailable={unavailable}
+            onSave={onSave}
+            guardDraft={guardDraft}
+            overtakenEditNotice={overtakenEditNotice}
+          />
+        </FormStoreProvider>
+      ) : null}
       <div className="flex shrink-0 items-center border-t border-current/10 p-4">
         <Button
           type="button"

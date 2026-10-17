@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { InheritancePattern } from '@codaco/protocol-validation';
 
+import { gameteLookup, inferGametes } from '../../FamilyPedigree/gametes';
+import { pedigreeConfigFromStage } from '../../FamilyPedigree/model';
+import { readParticipantsFamily } from '../../pedigree-common/membership';
 import { buildComprehensivePedigree } from '../comprehensivePedigreeFixture';
 import { computeStatuses } from '../genetics/computeStatuses';
+import { geneticSexResolver } from '../genetics/familyGenetics';
 import { buildGeneticGraph } from '../genetics/geneticGraph';
-import { resolveSex } from '../genetics/resolveSex';
 import { affectedSet, type Status } from '../genetics/status';
 
 // Guards that the comprehensive example is GENETICALLY COHERENT and EGO-CENTRIC:
@@ -14,21 +17,17 @@ import { affectedSet, type Status } from '../genetics/status';
 // surface every notation symbol (including the one the plain view previously
 // never reached — "will develop it" (obligateAffected)); and mitochondrial
 // DONATION lets the aunt's child escape the mtDNA condition while still
-// inheriting her nuclear genome. Runs the real engine on the seeded fixture.
+// inheriting her nuclear genome. Runs the real engine on the seeded fixture,
+// read as the Narrative Pedigree reads it.
 
-const CFG = {
-  biologicalSexVariable: 'biologicalSex',
-  gameteRoleVariable: 'gameteRole',
-  relationshipTypeVariable: 'relType',
-};
-
-const CONDITIONS: { variable: string; pattern: InheritancePattern }[] = [
-  { variable: 'hasHuntingtons', pattern: 'autosomalDominant' },
-  { variable: 'hasCysticFibrosis', pattern: 'autosomalRecessive' },
-  { variable: 'hasHaemophilia', pattern: 'xLinkedRecessive' },
-  { variable: 'hasHypophosphataemia', pattern: 'xLinkedDominant' },
-  { variable: 'hasYLinkedHearingLoss', pattern: 'yLinked' },
-  { variable: 'hasMitochondrialMyopathy', pattern: 'mitochondrial' },
+// Conditions by the Narrative Pedigree's disease ids.
+const CONDITIONS: { disease: string; pattern: InheritancePattern }[] = [
+  { disease: 'huntingtons', pattern: 'autosomalDominant' },
+  { disease: 'cysticFibrosis', pattern: 'autosomalRecessive' },
+  { disease: 'haemophilia', pattern: 'xLinkedRecessive' },
+  { disease: 'hypophosphataemia', pattern: 'xLinkedDominant' },
+  { disease: 'yLinkedHearingLoss', pattern: 'yLinked' },
+  { disease: 'mitochondrial', pattern: 'mitochondrial' },
 ];
 
 // The fixture is deterministic for a fixed seed (guarded by
@@ -38,20 +37,40 @@ const CONDITIONS: { variable: string; pattern: InheritancePattern }[] = [
 // it adds only the disjoint donor/child nodes and does not change any existing
 // person's status.
 function buildEngine() {
-  const { nodes, edges } = buildComprehensivePedigree(
-    1,
-    true,
-    true,
-  ).getNetwork();
-  const resolveSexFn = (id: string) => resolveSex(id, nodes, edges, CFG);
-  const graph = buildGeneticGraph(nodes, edges, CFG, resolveSexFn);
-  const statusesFor = (variable: string, pattern: InheritancePattern) =>
-    computeStatuses(graph, affectedSet(nodes, variable), pattern, resolveSexFn);
+  const si = buildComprehensivePedigree(1, true, true);
+  const { nodes, edges } = si.getNetwork();
+  const { stages } = si.getProtocol();
+  const source = stages.find((stage) => stage.type === 'FamilyPedigree');
+  const narrative = stages.find((stage) => stage.type === 'NarrativePedigree');
+  if (source?.type !== 'FamilyPedigree') throw new Error('No source stage');
+  if (narrative?.type !== 'NarrativePedigree') throw new Error('No stage');
+  const family = readParticipantsFamily(
+    nodes,
+    edges,
+    pedigreeConfigFromStage(source),
+  );
+  const gametes = inferGametes(family);
+  const resolveSexFn = geneticSexResolver(family, gametes);
+  const graph = buildGeneticGraph(family, resolveSexFn, gameteLookup(gametes));
+  const attributeOf = (disease: string) => {
+    const attribute = narrative.diseases.find(
+      (candidate) => candidate.id === disease,
+    )?.attribute;
+    if (!attribute) throw new Error(`No disease ${disease}`);
+    return attribute;
+  };
+  const statusesFor = (disease: string, pattern: InheritancePattern) =>
+    computeStatuses(
+      graph,
+      affectedSet(family.people, attributeOf(disease)),
+      pattern,
+      resolveSexFn,
+    );
   const statusOf =
-    (variable: string, pattern: InheritancePattern) =>
+    (disease: string, pattern: InheritancePattern) =>
     (uid: string): Status =>
-      statusesFor(variable, pattern).get(uid) ?? 'unknown';
-  return { nodes, graph, statusesFor, statusOf };
+      statusesFor(disease, pattern).get(uid) ?? 'unknown';
+  return { graph, statusesFor, statusOf };
 }
 
 const engine = buildEngine();
@@ -61,7 +80,7 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
     const { statusesFor } = engine;
     const seen = new Set<Status>();
     for (const c of CONDITIONS) {
-      for (const s of statusesFor(c.variable, c.pattern).values()) {
+      for (const s of statusesFor(c.disease, c.pattern).values()) {
         seen.add(s);
       }
     }
@@ -77,7 +96,7 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
   });
 
   it("Huntington's (autosomal dominant) sweeps the maternal line to ego's children", () => {
-    const status = engine.statusOf('hasHuntingtons', 'autosomalDominant');
+    const status = engine.statusOf('huntingtons', 'autosomalDominant');
     expect(status('mgf')).toBe('affected'); // George Bauer
     expect(status('mother')).toBe('affected'); // Rose
     expect(status('ego')).toBe('atRiskAffected');
@@ -89,7 +108,7 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
   });
 
   it("cystic fibrosis: ego's parents are first cousins, so ego is at-risk-affected", () => {
-    const status = engine.statusOf('hasCysticFibrosis', 'autosomalRecessive');
+    const status = engine.statusOf('cysticFibrosis', 'autosomalRecessive');
     expect(status('sib')).toBe('affected'); // Sam (autozygous)
     expect(status('mother')).toBe('obligateCarrier'); // Rose
     expect(status('father')).toBe('obligateCarrier'); // David
@@ -98,7 +117,7 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
   });
 
   it("haemophilia (X-linked recessive): two affected uncles make Nancy an obligate carrier; the line reaches ego's son", () => {
-    const status = engine.statusOf('hasHaemophilia', 'xLinkedRecessive');
+    const status = engine.statusOf('haemophilia', 'xLinkedRecessive');
     expect(status('muncle')).toBe('affected'); // Thomas
     expect(status('muncle2')).toBe('affected'); // Robert
     expect(status('mgm')).toBe('obligateCarrier'); // Nancy (2 affected sons)
@@ -109,7 +128,7 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
   });
 
   it("X-linked dominant: ego's affected father makes ego 'will develop it', and she transmits to both children", () => {
-    const status = engine.statusOf('hasHypophosphataemia', 'xLinkedDominant');
+    const status = engine.statusOf('hypophosphataemia', 'xLinkedDominant');
     expect(status('father')).toBe('affected'); // David
     // An affected father passes his X to every daughter → ego will develop it.
     expect(status('ego')).toBe('obligateAffected');
@@ -119,7 +138,7 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
   });
 
   it("Y-linked descends the partner's Adler male line and infers ego's son 'will develop it'", () => {
-    const status = engine.statusOf('hasYLinkedHearingLoss', 'yLinked');
+    const status = engine.statusOf('yLinkedHearingLoss', 'yLinked');
     expect(status('pf')).toBe('affected'); // Walter Adler
     expect(status('partner')).toBe('affected'); // Chris
     expect(status('son')).toBe('obligateAffected'); // Noah — will develop it
@@ -129,7 +148,7 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
   });
 
   it('mitochondrial: matrilineal to ego and her children; a male does not transmit', () => {
-    const status = engine.statusOf('hasMitochondrialMyopathy', 'mitochondrial');
+    const status = engine.statusOf('mitochondrial', 'mitochondrial');
     expect(status('ggm')).toBe('affected'); // Eleanor
     expect(status('mother')).toBe('atRiskAffected'); // Rose
     expect(status('ego')).toBe('atRiskAffected');
@@ -169,11 +188,11 @@ describe('comprehensive example — every symbol, every pattern, ego-centric', (
     expect(nuclearParents.has('donor')).toBe(false); // Ivy is mtDNA-only
 
     // Margaret is at risk down the maternal line, but Chloe escapes it...
-    const mito = statusOf('hasMitochondrialMyopathy', 'mitochondrial');
+    const mito = statusOf('mitochondrial', 'mitochondrial');
     expect(mito('maunt')).toBe('atRiskAffected'); // Margaret
     expect(mito('mrtchild')).toBe('unknown'); // Chloe escapes the mito condition
     // ...while still inheriting Margaret's nuclear (autosomal) Huntington's risk.
-    const hd = statusOf('hasHuntingtons', 'autosomalDominant');
+    const hd = statusOf('huntingtons', 'autosomalDominant');
     expect(hd('maunt')).toBe('atRiskAffected'); // Margaret
     expect(hd('mrtchild')).toBe('atRiskAffected'); // Chloe stays at risk for HD
   });

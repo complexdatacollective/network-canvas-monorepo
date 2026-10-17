@@ -1,8 +1,8 @@
-import { cookies } from 'next/headers';
 import { after, NextResponse, type NextRequest } from 'next/server';
 
 import { createInterview } from '~/actions/interviews';
 import { env } from '~/env';
+import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
 import { captureEvent, flushPostHog } from '~/lib/posthog-server';
 import { getAppSetting } from '~/queries/appSettings';
 
@@ -26,12 +26,20 @@ const handler = async (
 
   const limitInterviews = await getAppSetting('limitInterviews');
 
-  // if limitInterviews is enabled
-  // Check cookies for interview already completed for this user for this protocol
-  // and redirect to finished page
-  if (limitInterviews && (await cookies()).get(protocolId)) {
-    url.pathname = '/interview/finished';
-    return NextResponse.redirect(url);
+  // When limitInterviews is enabled, a browser that has already finished an
+  // interview of this protocol is sent back to that interview, which shows its
+  // completed state, instead of starting another.
+  if (limitInterviews) {
+    const limitedInterviewId = await getLimitedInterviewId(protocolId);
+
+    if (limitedInterviewId) {
+      url.pathname = `/interview/${limitedInterviewId}`;
+      return NextResponse.redirect(url, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      });
+    }
   }
 
   let participantIdentifier: string | undefined;

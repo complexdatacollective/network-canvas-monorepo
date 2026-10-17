@@ -56,11 +56,13 @@ describe('the save control an editor falls back to', () => {
       const harness = renderStageEditor({ stageId, readOnly: true });
 
       const save = await screen.findByRole('button', { name: 'Save stage' });
-      await waitFor(() =>
-        expect(
-          screen.getByRole('textbox', { name: settleLabel }),
-        ).toBeDisabled(),
-      );
+      // A rich-text editor, which says it is unavailable and takes no
+      // typing, rather than carrying an input's `disabled`.
+      await waitFor(() => {
+        const settled = screen.getByRole('textbox', { name: settleLabel });
+        expect(settled).toHaveAttribute('aria-disabled', 'true');
+        expect(settled).toHaveAttribute('contenteditable', 'false');
+      });
       expect(save).toBeEnabled();
 
       await harness.user.click(save);

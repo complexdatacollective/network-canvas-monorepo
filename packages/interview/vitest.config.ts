@@ -103,6 +103,7 @@ export default defineConfig({
             '@codaco/fresco-ui > cva',
             '@codaco/fresco-ui > cva/config',
             '@codaco/fresco-ui > fuse.js',
+            '@codaco/fresco-ui > immer',
             '@codaco/fresco-ui > nanoid',
             '@codaco/fresco-ui > react-best-merge-refs',
             '@codaco/fresco-ui > react-markdown',
@@ -112,9 +113,15 @@ export default defineConfig({
             '@codaco/fresco-ui > remark-gfm',
             '@codaco/fresco-ui > tailwind-merge',
             '@codaco/fresco-ui > usehooks-ts',
+            '@codaco/protocol-utilities > @faker-js/faker',
+            // `readRosterCsv` loads it with a dynamic import, which the
+            // scanner never follows.
+            '@codaco/protocol-validation > csvtojson',
             '@codaco/protocol-validation > jszip',
             'd3-force',
             'zod',
+            'zod/mini',
+            'zustand/middleware/immer',
             'zustand/shallow',
             'zustand/vanilla',
           ],

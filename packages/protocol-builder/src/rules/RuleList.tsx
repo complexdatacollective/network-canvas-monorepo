@@ -20,6 +20,7 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import type { Codebook } from '@codaco/protocol-validation';
 
+import { useEditingLanguage } from '../localization/ProtocolLocalization.tsx';
 import type { RuleDraft } from './rule.ts';
 import type { RuleTargetType } from './ruleCodebook.ts';
 import { describeRule, duplicateRuleIds } from './ruleDescription.ts';
@@ -65,6 +66,7 @@ type RuleListItemProps = ArrayFieldItemProps<RuleDraft> &
   Readonly<{
     codebook: Readonly<Codebook>;
     allowedTargets: readonly RuleTargetType[];
+    allowEncryptedAttributes: boolean;
     duplicateIds: ReadonlySet<string>;
   }>;
 
@@ -83,10 +85,12 @@ function RuleListItem({
   readOnly,
   codebook,
   allowedTargets,
+  allowEncryptedAttributes,
   duplicateIds,
 }: RuleListItemProps) {
   const rule = asRule(item);
   const intl = useAppIntl();
+  const { localization, locale } = useEditingLanguage();
   const textId = useId();
   const editActionId = useId();
   const deleteActionId = useId();
@@ -98,9 +102,21 @@ function RuleListItem({
         codebook,
         targets: allowedTargets,
         duplicateIds,
+        allowEncryptedAttributes,
         intl,
+        localization,
+        locale,
       }),
-    [allowedTargets, codebook, duplicateIds, intl, rule],
+    [
+      allowEncryptedAttributes,
+      allowedTargets,
+      codebook,
+      duplicateIds,
+      intl,
+      locale,
+      localization,
+      rule,
+    ],
   );
 
   // External editors own the active row while their dialog is open. Hiding it
@@ -222,6 +238,7 @@ const RuleTypesContext = createContext<readonly RuleTypeOption[]>([]);
 type RuleListEditorProps = ArrayFieldEditorProps<RuleDraft> &
   Readonly<{
     allowedTargets: readonly RuleTargetType[];
+    allowEncryptedAttributes: boolean;
     duplicateIds: ReadonlySet<string>;
   }>;
 
@@ -232,6 +249,7 @@ function RuleListEditor({
   onCancel,
   getEditorTrigger,
   allowedTargets,
+  allowEncryptedAttributes,
   duplicateIds,
 }: RuleListEditorProps) {
   const ruleTypes = useContext(RuleTypesContext);
@@ -281,6 +299,7 @@ function RuleListEditor({
       seed={session.seed}
       ruleTypes={ruleTypes}
       allowedTargets={allowedTargets}
+      allowEncryptedAttributes={allowEncryptedAttributes}
       idIsShared={session.idIsShared}
       onSave={onSave}
       onCancel={onCancel}
@@ -300,6 +319,11 @@ export type RuleListProps = Readonly<{
    * left for the protocol schema to refuse.
    */
   allowedTargets: readonly RuleTargetType[];
+  /**
+   * Whether a rule in this set may compare an encrypted attribute's answers.
+   * Off unless the set says so; see `ruleSetAllowsEncryptedAttributes`.
+   */
+  allowEncryptedAttributes?: boolean;
   addButtonLabel: string;
   onChange: (rules: RuleDraft[]) => void;
   hasError?: boolean;
@@ -374,6 +398,7 @@ export default function RuleList({
   codebook,
   ruleTypes,
   allowedTargets,
+  allowEncryptedAttributes = false,
   addButtonLabel,
   onChange,
   hasError = false,
@@ -394,11 +419,12 @@ export default function RuleList({
             {...props}
             codebook={codebook}
             allowedTargets={allowedTargets}
+            allowEncryptedAttributes={allowEncryptedAttributes}
             duplicateIds={duplicateIds}
           />
         );
       },
-    [allowedTargets, codebook, duplicateIds],
+    [allowEncryptedAttributes, allowedTargets, codebook, duplicateIds],
   );
 
   // Deliberately not memoised on `ruleTypes`: see `RuleTypesContext`. Its
@@ -411,11 +437,12 @@ export default function RuleList({
           <RuleListEditor
             {...props}
             allowedTargets={allowedTargets}
+            allowEncryptedAttributes={allowEncryptedAttributes}
             duplicateIds={duplicateIds}
           />
         );
       },
-    [allowedTargets, duplicateIds],
+    [allowEncryptedAttributes, allowedTargets, duplicateIds],
   );
 
   const getId = useMemo(() => ruleRowId(duplicateIds), [duplicateIds]);

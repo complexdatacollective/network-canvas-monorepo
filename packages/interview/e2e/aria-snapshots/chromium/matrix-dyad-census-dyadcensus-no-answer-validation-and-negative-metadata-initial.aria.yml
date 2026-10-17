@@ -1,6 +1,12 @@
 - main:
-  - heading "Intro" [level=1]
-  - paragraph: Intro copy
+  - text: Nikita Crist and Lilliana Wisozk
+  - button "Nikita Crist"
+  - button "Lilliana Wisozk"
+  - status:
+    - heading "Do they know each other?" [level=2]
+  - radiogroup "Nikita Crist and Lilliana Wisozk Do they know each other?":
+    - radio "Yes"
+    - radio "No"
   - navigation:
     - button "Settings"
     - button "Previous Step" [disabled]

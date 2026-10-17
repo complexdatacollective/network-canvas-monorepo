@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { after, connection } from 'next/server';
 import { Suspense } from 'react';
@@ -9,10 +8,11 @@ import Spinner from '@codaco/fresco-ui/Spinner';
 import { loadInterviewCatalog } from '@codaco/interview/catalog';
 import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
 import type { ActivityLocalization } from '~/i18n/activityDetails';
-import { getFrescoI18nInitialization, getServerIntl } from '~/i18n/server';
+import { getRequestedLocales, getServerIntl } from '~/i18n/server';
 import { getAdmittedSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
+import { getLimitedInterviewId } from '~/lib/limitInterviewsCookie';
 import {
   captureEvent,
   captureException,
@@ -26,7 +26,30 @@ import {
 
 import { ErrorMessage } from '../_components/ErrorMessage';
 import InterviewClient from './InterviewClient';
-import { mapInterviewPayload } from './mapInterviewPayload';
+import { mapInterviewForViewer } from './mapInterviewPayload';
+
+const messages = defineMessages({
+  unreadableTitle: {
+    id: 'fresco.interview.page.unreadableTitle',
+    defaultMessage: 'This interview could not be opened',
+    description:
+      'Participant-facing heading shown instead of an interview whose stored protocol or answers could not be read.',
+  },
+  protocolUnreadable: {
+    id: 'fresco.interview.page.protocolUnreadable',
+    defaultMessage:
+      'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
+    description:
+      'Participant-facing explanation shown when the protocol an interview uses could not be read, so the interview was not started.',
+  },
+  sessionUnreadable: {
+    id: 'fresco.interview.page.sessionUnreadable',
+    defaultMessage:
+      'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
+    description:
+      'Participant-facing explanation shown when the answers saved for an interview could not be read, so the interview was not started.',
+  },
+});
 
 export default function Page(props: {
   params: Promise<{ interviewId: string }>;
@@ -52,8 +75,10 @@ async function InterviewContent({
   await connection();
   const { interviewId } = await paramsPromise;
 
+  // A dynamic route segment is never empty, so this is unreachable in
+  // practice; if it ever were, there is no interview to show.
   if (!interviewId) {
-    return 'No interview id found';
+    notFound();
   }
 
   const rawInterview = await getInterviewById(interviewId);
@@ -70,23 +95,33 @@ async function InterviewContent({
 
   const limitInterviews = await getAppSetting('limitInterviews');
 
-  // The completion cookie is a per-browser participant guard. Authenticated
-  // users (e.g. an admin opening an interview from the dashboard) must not be
-  // locked out of every interview for a protocol they previously completed a
-  // test interview for in this browser.
-  if (
-    !session &&
-    limitInterviews &&
-    (await cookies()).get(interview.protocol.id)
-  ) {
-    redirect('/interview/finished');
+  // The completion cookie is a per-browser participant guard: a browser that
+  // finished an interview of this protocol is sent back to that interview,
+  // which shows its completed state, rather than into another one.
+  // Authenticated users (e.g. an admin opening an interview from the
+  // dashboard) must not be locked out of every interview for a protocol they
+  // previously completed a test interview for in this browser.
+  //
+  // A finished interview is not redirected anywhere: it opens on its completed
+  // state, for participants and researchers alike.
+  if (!session && limitInterviews) {
+    const limitedInterviewId = await getLimitedInterviewId(
+      interview.protocol.id,
+    );
+
+    if (limitedInterviewId && limitedInterviewId !== interview.id) {
+      redirect(`/interview/${limitedInterviewId}`);
+    }
   }
 
-  if (!session && interview?.finishTime) {
-    redirect('/interview/finished');
-  }
-
-  const mapped = mapInterviewPayload(interview);
+  // A finished interview's answers reach the browser only for a researcher
+  // who may still change them.
+  const mapped = mapInterviewForViewer(interview, {
+    researcher: session !== null,
+    freezeCompletedInterviews: await getAppSetting(
+      'freezeInterviewsAfterCompletion',
+    ),
+  });
 
   if (!mapped.success) {
     // Starting anyway would hand the client a network built without the stored
@@ -106,11 +141,11 @@ async function InterviewContent({
     const intl = await getServerIntl();
     return (
       <ErrorMessage
-        title={intl.formatMessage(messages.unopenableTitle)}
+        title={intl.formatMessage(messages.unreadableTitle)}
         message={intl.formatMessage(
           mapped.unreadable === 'protocol'
             ? messages.protocolUnreadable
-            : messages.answersUnreadable,
+            : messages.sessionUnreadable,
         )}
       />
     );
@@ -165,17 +200,21 @@ async function InterviewContent({
     }
   });
 
-  const { payload, assetUrls, initialStep, initialSyncRevision } = mapped;
+  const { payload, assetUrls, initialStep, initialSyncRevision, view } = mapped;
 
   const installationId = (await getAppSetting('installationId')) ?? 'unknown';
   // Use the same helper as the rest of the app, so a DISABLE_ANALYTICS
   // environment override also opts the interview runtime out of telemetry.
   const disableAnalytics = (await getDisableAnalytics()) ?? false;
+  // Negotiated from the request rather than in the browser so the server
+  // render and hydration choose the same protocol language.
+  const requestedLocales = await getRequestedLocales();
   // The interview's own messages, in the language its Shell will negotiate
-  // from Fresco's, travel with the page: otherwise hydration waits on a
-  // separate download before the participant sees anything.
-  const { locale } = await getFrescoI18nInitialization();
-  const catalog = await loadInterviewCatalog(locale);
+  // from the same request, travel with the page: otherwise hydration waits on
+  // a separate download before the participant sees anything. A language the
+  // participant chose earlier in this tab is kept only in the browser, so the
+  // Shell loads that language's messages itself when it differs.
+  const catalog = await loadInterviewCatalog(requestedLocales);
 
   return (
     <InterviewClient
@@ -183,34 +222,11 @@ async function InterviewContent({
       assetUrls={assetUrls}
       initialStep={initialStep}
       initialSyncRevision={initialSyncRevision}
+      requestedLocales={requestedLocales}
       installationId={installationId}
       disableAnalytics={disableAnalytics}
+      view={view}
       catalog={catalog}
     />
   );
 }
-
-const messages = defineMessages({
-  answersUnreadable: {
-    id: 'fresco.participantPages.unopenableInterview.answersUnreadable',
-    defaultMessage:
-      'The answers saved for this interview could not be read, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
-    description:
-      'Participant-facing explanation when the answers stored for an interview cannot be read, so the interview is refused rather than restarted empty.',
-  },
-
-  protocolUnreadable: {
-    id: 'fresco.participantPages.unopenableInterview.protocolUnreadable',
-    defaultMessage:
-      'This interview could not be loaded, so it has not been started. Nothing has been changed. Please contact the person who recruited you to this study for assistance.',
-    description:
-      'Participant-facing explanation when the study design behind an interview cannot be read, so the interview is refused.',
-  },
-
-  unopenableTitle: {
-    id: 'fresco.participantPages.unopenableInterview.title',
-    defaultMessage: 'This interview could not be opened',
-    description:
-      'Participant-facing heading when an interview is refused because its stored data cannot be read.',
-  },
-});

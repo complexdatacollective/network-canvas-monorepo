@@ -23,7 +23,8 @@ it('uses the persisted researcher locale for startup restoration before React mo
   store.dispatch(setActiveProtocolId('unchanged_id'));
   const protocol: CurrentProtocol = {
     name: 'Research_Name',
-    schemaVersion: 8,
+    schemaVersion: 9,
+    localization: { defaultLocale: 'en', locales: ['en'] },
     stages: [],
     codebook: {},
   };

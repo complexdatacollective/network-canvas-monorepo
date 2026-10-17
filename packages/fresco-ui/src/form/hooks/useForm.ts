@@ -12,7 +12,9 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { FlattenedErrors, FormConfig } from '../store/types';
 import useFormStore from './useFormStore';
 
-const messages = defineMessages({
+// Exported so the interview runtime reuses the same participant-facing text
+// for a form whose submit handler fails, rather than repeating it.
+export const formMessages = defineMessages({
   submitFailed: {
     id: 'frescoUi.form.submitFailed',
     defaultMessage: 'An error occurred while submitting the form.',
@@ -171,7 +173,7 @@ export function useForm(config: FormConfig) {
         requestErrorFocus();
       } catch {
         setErrors({
-          formErrors: [createMessageError(messages.submitFailed)],
+          formErrors: [createMessageError(formMessages.submitFailed)],
           fieldErrors: {},
         });
       } finally {

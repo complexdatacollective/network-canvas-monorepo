@@ -32,8 +32,8 @@ import { operandRequirement, operatorsForSubject } from '../operators.ts';
 import { describeRule } from '../ruleDescription.ts';
 
 const OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'high', label: 'High' },
+  { value: 'low', label: { en: 'Low' } },
+  { value: 'high', label: { en: 'High' } },
 ];
 
 /** One attribute of the type under test, on one node type. */

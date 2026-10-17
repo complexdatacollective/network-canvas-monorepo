@@ -4,10 +4,10 @@ import Home from '~/components/Home/Home';
 import {
   AssetsPage,
   CodebookPage,
-  ExperimentsPage,
   StageEditorPage,
   SummaryPage,
 } from '~/components/pages';
+import LocalizationPage from '~/components/pages/LocalizationPage';
 import { ActionToolbarProvider } from '~/components/ProjectNav/ActionToolbar';
 import ProjectLayout from '~/components/ProjectNav/ProjectLayout';
 import Protocol from '~/components/Protocol';
@@ -42,13 +42,17 @@ const Routes = () => {
               <CodebookPage />
             </ProjectLayout>
           </Route>
+          <Route path="/protocol/localization">
+            <ProjectLayout>
+              <LocalizationPage />
+            </ProjectLayout>
+          </Route>
           <Route path="/protocol/summary">
             <ProjectLayout>
               <SummaryPage />
             </ProjectLayout>
           </Route>
           <Route path="/protocol/stage/:stageId" component={StageEditorPage} />
-          <Route path="/protocol/experiments" component={ExperimentsPage} />
 
           <Route path="/" component={Home} />
         </Switch>

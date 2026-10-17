@@ -29,6 +29,9 @@ const config = resolveGenerationConfig({ today: TODAY });
 const nameGenerator = {
   id: 'stage-1',
   type: 'NameGenerator',
+  maxNodesNotice: {
+    en: 'You have completed this task. Click the next arrow to continue.',
+  },
   label: 'Name generator',
   subject: { entity: 'node', type: 'person' },
   prompts: [{ id: 'p1', text: 'Name people' }],

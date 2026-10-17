@@ -4,12 +4,17 @@ import Button from '@codaco/fresco-ui/Button';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import {
+  type ProtocolLocalization,
+  resolveTranslation,
+} from '../localization/localizedText.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import type { StageEditorActions } from '../stage-editor-contract.ts';
 import type { StageEditTarget } from '../stageEdit.tsx';
@@ -31,8 +36,18 @@ const COLLABORATOR = {
 };
 
 export type StageEditorStoryHostProps = Readonly<{
-  /** The stage of the shared all-interfaces protocol this story opens. */
+  /**
+   * The stage this story opens: one the shared all-interfaces protocol holds,
+   * or the id `stage` is added under.
+   */
   stageId: string;
+  /**
+   * A stage to add to the protocol, at the end of the interview, for an
+   * interface the fixture holds no stage of.
+   */
+  stage?: Readonly<{ type: StageType; fields: SectionDoc }>;
+  /** The languages the protocol declares, in place of the fixture's own. */
+  localization?: ProtocolLocalization;
   /**
    * The editor under test, given the host's own chrome.
    *
@@ -106,6 +121,8 @@ export type StageEditorStoryHostProps = Readonly<{
  */
 export function StageEditorStoryHost({
   stageId,
+  stage: addedStage,
+  localization,
   renderEditor,
   readOnly = false,
   assets,
@@ -117,7 +134,7 @@ export function StageEditorStoryHost({
     const assetManifest = { ...fixtureAssetManifest(), ...assets };
     const built = createInMemoryHost({
       sections: {
-        ...fixtureProtocolSections(),
+        ...storySections(stageId, addedStage, localization),
         [sectionId({ kind: 'assets' })]: assetManifest,
       },
       // Both places a resource has to exist to be referenced, as
@@ -219,7 +236,35 @@ const hostChrome: StageEditorActions = ({ formId, readOnly }) => (
   </>
 );
 
+/** The fixture's sections, with the story's own stage and languages in them. */
+function storySections(
+  stageId: string,
+  stage: StageEditorStoryHostProps['stage'],
+  localization: ProtocolLocalization | undefined,
+): Record<string, SectionDoc> {
+  const sections: Record<string, SectionDoc> = { ...fixtureProtocolSections() };
+  if (localization !== undefined) {
+    const settings = sectionId({ kind: 'settings' });
+    sections[settings] = { ...sections[settings], localization };
+  }
+  if (stage !== undefined) {
+    sections[sectionId({ kind: 'stage', stageId })] = {
+      id: stageId,
+      type: stage.type,
+      ...stage.fields,
+    };
+    const order = sectionId({ kind: 'stageOrder' });
+    const stored = sections[order]?.stages;
+    const stages = Array.isArray(stored) ? stored : [];
+    sections[order] = {
+      stages: stages.includes(stageId) ? stages : [...stages, stageId],
+    };
+  }
+  return sections;
+}
+
+/** The saved stage's name, in the first language it is written in. */
 const stageLabel = (document: SectionDoc): string => {
-  const label = document.label;
-  return typeof label === 'string' && label !== '' ? label : 'Untitled stage';
+  const { text } = resolveTranslation(document.label, undefined, undefined);
+  return text === '' ? 'Untitled stage' : text;
 };

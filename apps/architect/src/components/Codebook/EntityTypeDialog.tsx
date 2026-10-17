@@ -5,7 +5,9 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
-import DialogForm from '~/components/DialogForm/DialogForm';
+import DialogForm, {
+  type DialogFormProps,
+} from '~/components/DialogForm/DialogForm';
 import { format, parse } from '~/components/TypeEditor/convert';
 import getNewTypeTemplate from '~/components/TypeEditor/getNewTypeTemplate';
 import TypeEditor, {
@@ -77,6 +79,7 @@ type EntityTypeDialogProps = {
   entity?: string;
   type?: string;
   onClose: (newTypeId?: string) => void;
+  finalFocus?: DialogFormProps['finalFocus'];
 };
 
 const EntityTypeDialog = ({
@@ -84,6 +87,7 @@ const EntityTypeDialog = ({
   entity,
   type,
   onClose,
+  finalFocus,
 }: EntityTypeDialogProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
@@ -229,6 +233,7 @@ const EntityTypeDialog = ({
       submitLabel={intl.formatMessage(messages.saveAndClose)}
       onSubmit={handleSubmit}
       validate={validateEntityType}
+      finalFocus={finalFocus}
     >
       <TypeEditor
         entity={entity}

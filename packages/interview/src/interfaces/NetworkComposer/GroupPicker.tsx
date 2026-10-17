@@ -4,7 +4,6 @@ import { Button } from '@codaco/fresco-ui/Button';
 
 export type GroupVariable = {
   id: string;
-  label: string;
   options: { value: string; label: string }[];
 };
 

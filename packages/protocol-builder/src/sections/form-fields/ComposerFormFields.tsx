@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit';
 import {
   createContext,
   type ReactNode,
@@ -19,12 +20,11 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import type { Stage } from '@codaco/protocol-validation';
+import { escapeMarkdownText, type Stage } from '@codaco/protocol-validation';
 
 import {
   useCodebookSectionDocument,
@@ -60,6 +60,8 @@ import {
 import ComposerParametersField, {
   type ComposerParameters,
 } from '../../fields/ComposerParametersField.tsx';
+import { DynamicTextPreview } from '../../fields/DynamicTextPreview.tsx';
+import { LocalizedRichTextField } from '../../fields/LocalizedStringField.tsx';
 import VariablePickerField, {
   createdUnassigned,
   type CreateOptionOutcome,
@@ -85,6 +87,15 @@ import {
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import {
+  asLocalizedString,
+  localizedFromText,
+} from '../../localization/localizedText.ts';
+import {
+  useLocalizedText,
+  useProtocolLocalization,
+} from '../../localization/ProtocolLocalization.tsx';
+import { FormOfItsOwnContext } from '../../localization/useDynamicValueSite.ts';
+import {
   type CodebookSubject,
   variablesForSubject,
 } from '../../protocol-context.ts';
@@ -97,7 +108,7 @@ import AttributeValueFields, {
 } from '../AttributeValueFields.tsx';
 import {
   COLLECTABLE_TYPES,
-  useSubjectVariableNames,
+  useSubjectVariableScope,
   useVariableChoices,
 } from '../canvas/codebookChoices.ts';
 import { asText } from '../canvas/rowValues.ts';
@@ -117,6 +128,10 @@ const COMPONENT_FIELD = 'component';
 const PARAMETERS_FIELD = 'parameters';
 const LABEL_FIELD = 'label';
 const HINT_FIELD = 'hint';
+// Where a field's label and hint sit in its row, for the values they can
+// show (see `useDynamicValueSite`).
+const LABEL_PATH = [LABEL_FIELD];
+const HINT_PATH = [HINT_FIELD];
 const VALIDATION_HINTS_FIELD = 'showValidationHints';
 
 const isRecord = (value: unknown): value is ComposerParameters =>
@@ -326,25 +341,27 @@ export function ComposerFormFieldsControl({
   const { readOnly } = useStageEditorForm();
 
   return (
-    <ComposerFormRows {...props} name={name} rows={value}>
-      <UnconnectedField<typeof ArrayField<RowValues>>
-        name={name}
-        component={ArrayField}
-        label={props.label}
-        hint={props.hint}
-        value={[...value]}
-        onChange={(next) => onChange(next ?? [])}
-        readOnly={readOnly}
-        getId={rowId}
-        addButtonLabel={props.addButtonLabel}
-        itemLabel={messages.fieldNoun}
-        emptyStateMessage={props.emptyStateMessage}
-        itemComponent={RowListItem}
-        editorComponent={RowDialog}
-        itemTemplate={rowTemplate()}
-        sortable
-      />
-    </ComposerFormRows>
+    <FormOfItsOwnContext value="edge">
+      <ComposerFormRows {...props} name={name} rows={value}>
+        <UnconnectedField<typeof ArrayField<RowValues>>
+          name={name}
+          component={ArrayField}
+          label={props.label}
+          hint={props.hint}
+          value={[...value]}
+          onChange={(next) => onChange(next ?? [])}
+          readOnly={readOnly}
+          getId={rowId}
+          addButtonLabel={props.addButtonLabel}
+          itemLabel={messages.fieldNoun}
+          emptyStateMessage={props.emptyStateMessage}
+          itemComponent={RowListItem}
+          editorComponent={RowDialog}
+          itemTemplate={rowTemplate()}
+          sortable
+        />
+      </ComposerFormRows>
+    </FormOfItsOwnContext>
   );
 }
 
@@ -1110,7 +1127,7 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
    * window is being told: the act the researcher asked for has happened as far
    * as this dialog is concerned, and the window closes on the name they typed.
    */
-  const namesInUse = useSubjectVariableNames(subject);
+  const nameScope = useSubjectVariableScope(subject);
   /**
    * Whether there is still a codebook section for the create to land in.
    *
@@ -1128,6 +1145,47 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
     [setRowValue],
   );
 
+  /**
+   * The caption starts as the attribute's name.
+   *
+   * The attribute's own label is plain text that is never translated, so the
+   * field carries a caption of its own, written as markdown that shows the name
+   * as written. A later pick moves a caption that is still empty, or still the
+   * previous attribute's name; one the researcher has written is theirs. A pick
+   * that names no attribute yet leaves the caption alone.
+   */
+  const localization = useProtocolLocalization();
+  const caption = useRowValue(LABEL_FIELD);
+  const attributeName =
+    chosen === NEW_VARIABLE
+      ? inventedName
+      : chosen === undefined
+        ? undefined
+        : variables[chosen]?.name;
+  const seenAttributeName = useRef(attributeName);
+  useEffect(() => {
+    const previous = seenAttributeName.current;
+    if (
+      localization === undefined ||
+      attributeName === undefined ||
+      attributeName.trim() === '' ||
+      previous === attributeName
+    ) {
+      return;
+    }
+    seenAttributeName.current = attributeName;
+    const captionFrom = (name: string) =>
+      localizedFromText(localization, escapeMarkdownText(name));
+    const current = asLocalizedString(caption);
+    if (
+      current !== undefined &&
+      (previous === undefined || !isEqual(current, captionFrom(previous)))
+    ) {
+      return;
+    }
+    setRowValue(LABEL_FIELD, captionFrom(attributeName));
+  }, [attributeName, caption, localization, setRowValue]);
+
   return (
     <>
       <Field<typeof VariablePickerField>
@@ -1144,7 +1202,10 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         // offer an act whose whole content is that it cannot be done.
         {...(subject === undefined || !sectionIsLive
           ? {}
-          : { onCreateOption: invent, namesInUse })}
+          : {
+              onCreateOption: invent,
+              ...(nameScope === undefined ? {} : { nameScope }),
+            })}
       />
       <Field<typeof NativeSelectField>
         name={COMPONENT_FIELD}
@@ -1190,7 +1251,11 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         variableId={chosen === '' ? undefined : chosen}
         revealWhenChosenIn={COMPONENT_FIELD}
         {...(inventing && attributeType !== undefined
-          ? { invented: attributeType, rowComponent: control }
+          ? {
+              invented: attributeType,
+              inventedName,
+              rowComponent: control,
+            }
           : {})}
       />
       {shape !== null && (
@@ -1214,21 +1279,28 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
           />
         </RevealWhenChosen>
       )}
-      <Field<typeof InputField>
+      <Field<typeof LocalizedRichTextField>
         name={LABEL_FIELD}
-        component={InputField}
+        component={LocalizedRichTextField}
+        dynamicValues="formField"
+        fieldPath={LABEL_PATH}
+        singleLine
         label={intl.formatMessage(messages.questionLabel)}
         hint={intl.formatMessage(messages.questionHint)}
         placeholder={intl.formatMessage(messages.questionPlaceholder)}
-        initialValue={asText(item[LABEL_FIELD])}
+        initialValue={asLocalizedString(item[LABEL_FIELD])}
+        required={intl.formatMessage(messages.questionRequired)}
       />
-      <Field<typeof InputField>
+      <Field<typeof LocalizedRichTextField>
         name={HINT_FIELD}
-        component={InputField}
+        component={LocalizedRichTextField}
+        dynamicValues="formField"
+        fieldPath={HINT_PATH}
+        singleLine
         label={intl.formatMessage(messages.helpLabel)}
         hint={intl.formatMessage(messages.helpHint)}
         placeholder={intl.formatMessage(messages.helpPlaceholder)}
-        initialValue={asText(item[HINT_FIELD])}
+        initialValue={asLocalizedString(item[HINT_FIELD])}
       />
       <Field<typeof ToggleField>
         name={VALIDATION_HINTS_FIELD}
@@ -1272,7 +1344,9 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
 function ComposerFormFieldPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
+  const localize = useLocalizedText();
   const { subject } = useComposerFormScope();
+  const label = localize(item[LABEL_FIELD]);
   const variableId = asText(item[VARIABLE_FIELD]);
   const attribute =
     subject === undefined || variableId === undefined
@@ -1281,25 +1355,34 @@ function ComposerFormFieldPreview({ item }: RowPreviewProps) {
   const control = controlsForType(attribute?.type ?? '').find(
     ({ value }) => value === item[COMPONENT_FIELD],
   );
+  /*
+    The stored id where the codebook no longer defines the attribute, as every
+    other preview in this package names a reference it cannot resolve: "Empty
+    field" said the row asked for nothing, and a caption alone hides a
+    reference only the researcher can repair.
+  */
+  const lostAttribute =
+    variableId !== undefined && attribute === undefined
+      ? intl.formatMessage(messages.missingAttribute, {
+          attributeId: variableId,
+        })
+      : undefined;
+  const lostUnderCaption = lostAttribute !== undefined && label.text !== '';
 
   return (
     <div className="flex flex-col gap-2.5">
-      {/*
-        The stored id where the codebook no longer defines the attribute, as
-        every other preview in this package names a reference it cannot
-        resolve: "Empty field" said the row asked for nothing, when what it
-        asks for is a reference only the researcher can repair.
-      */}
-      <span>
-        {asText(item[LABEL_FIELD]) ??
-          attribute?.name ??
-          (variableId === undefined
-            ? intl.formatMessage(messages.emptyPreview)
-            : intl.formatMessage(messages.missingAttribute, {
-                attributeId: variableId,
-              }))}
-      </span>
-      {(attribute !== undefined || control !== undefined) && (
+      {label.text === '' ? (
+        <span>
+          {attribute?.name ??
+            lostAttribute ??
+            intl.formatMessage(messages.emptyPreview)}
+        </span>
+      ) : (
+        <DynamicTextPreview value={item[LABEL_FIELD]} />
+      )}
+      {(attribute !== undefined ||
+        control !== undefined ||
+        lostUnderCaption) && (
         <div className="flex flex-wrap gap-2.5">
           {/* A whole sentence rather than an assembled fragment: what reads
               naturally around an attribute's name is not the same in every
@@ -1311,6 +1394,7 @@ function ComposerFormFieldPreview({ item }: RowPreviewProps) {
               })}
             </Badge>
           )}
+          {lostUnderCaption && <Badge tone="warning">{lostAttribute}</Badge>}
           {/* The control's own name, not a sentence built round it. */}
           {control !== undefined && (
             <Badge>{intl.formatMessage(control.label)}</Badge>

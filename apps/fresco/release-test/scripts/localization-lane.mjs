@@ -5,8 +5,9 @@
 // so nothing exercised the localization at all: whether the preference applies
 // to server-rendered pages, whether it follows the account rather than the
 // device, whether it reaches validation and dialogs and the structured details
-// in the activity feed, and whether it seeds the interview's own controls
-// while leaving protocol-authored text and stored answers alone.
+// in the activity feed, and whether the participant's browser language, rather
+// than the researcher's or Fresco's own, sets the interview's own controls
+// while leaving protocol-authored text alone.
 //
 // The oracle is the shipped catalogs, not a list of sentences: the same pages
 // are read in English and then in Spanish, and every message the English
@@ -89,6 +90,7 @@ const psql = (sql) =>
 const checks = [];
 const result = { ok: false, checks, lane: laneName };
 let browser;
+let participantBrowser;
 
 /**
  * The language switcher in the dashboard's top bar, found by where it sits
@@ -277,13 +279,15 @@ try {
     }),
   );
 
-  // And it seeds the interview's own controls, without touching what the
-  // protocol says or what the participant answered.
+  // The interview's own controls follow the participant's browser, never the
+  // researcher's account or Fresco's own language, and leave what the
+  // protocol says alone.
   checks.push(
     await attempt('localization-seeds-interview-controls', async () => {
       // A new interview of its own, through the participant's own route: an
-      // interview that has been finished redirects away, and the controls this
-      // check is about are the ones a participant is looking at.
+      // interview that has been finished shows only its completed state, and
+      // the controls this check is about are the ones a participant is looking
+      // at.
       const protocolId = psql(
         `select id from "Protocol" where name like 'fresco-release-test%' order by "importedAt" desc limit 1;`,
       );
@@ -292,36 +296,58 @@ try {
           pass: false,
           detail: 'this lane holds no release-test protocol to open',
         };
-      await page.goto(`${config.baseUrl}/onboard/${protocolId}`, {
+      // A participant's own browser, whose Accept-Language asks for Spanish.
+      // It also carries the cookie that keeps Fresco's own pages in English
+      // (`localeMirrorCookie` in apps/fresco/i18n/locales.ts), so Spanish
+      // controls can only have come from the browser's languages.
+      const participant = await launch({ lane: laneName, locale: 'es' });
+      participantBrowser = participant.browser;
+      await participant.context.addCookies([
+        { name: 'fresco.locale', value: 'en', url: config.baseUrl },
+      ]);
+      const interview = await newPage(participant.context);
+      recordDiagnosticsTo(interview, outDir);
+      await interview.goto(`${config.baseUrl}/onboard/${protocolId}`, {
         waitUntil: 'domcontentloaded',
       });
-      await page.waitForURL(/\/interview\//, { timeout: 60_000 });
+      await interview.waitForURL(/\/interview\//, { timeout: 60_000 });
       // The first render of this route on a freshly started container can come
       // back as the app's error screen; reloading serves the interview. Same
       // retry as the interview lane's, for the same reason.
       for (let attempts = 0; attempts < 4; attempts += 1) {
-        const broken = await page
+        const broken = await interview
           .getByRole('button', {
             name: /Copy Debug Information|Copiar informaci/i,
           })
           .isVisible()
           .catch(() => false);
-        if (!broken && (await page.locator('[data-stage-step]').count()) > 0)
+        if (
+          !broken &&
+          (await interview.locator('[data-stage-step]').count()) > 0
+        )
           break;
-        await page.goto(page.url(), { waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(3000);
+        await interview.goto(interview.url(), {
+          waitUntil: 'domcontentloaded',
+        });
+        await interview.waitForTimeout(3000);
       }
       // Wait for the stage itself, not a fixed pause: the authored text this
       // check requires is the stage's own content, and reading before it has
       // rendered reports the protocol's words as lost.
-      await page
+      await interview
         .locator('[data-stage-step]')
         .first()
         .waitFor({ state: 'attached', timeout: 60_000 })
         .catch(() => {});
-      await page.waitForTimeout(4000);
-      const text = await page.locator('body').innerText();
-      const controls = await page.locator('body').ariaSnapshot();
+      await interview.waitForTimeout(4000);
+      const appLanguage = await interview.locator('html').getAttribute('lang');
+      const interviewLanguage = await interview
+        .locator('main[data-theme-interview]')
+        .first()
+        .getAttribute('lang', { timeout: 5000 })
+        .catch(() => null);
+      const text = await interview.locator('body').innerText();
+      const controls = await interview.locator('body').ariaSnapshot();
       const ids = Object.keys(interviewEnglish).filter(
         (id) =>
           typeof interviewSpanish[id] === 'string' &&
@@ -343,16 +369,25 @@ try {
       });
       result.interviewText = text.slice(0, 400);
       return {
-        pass: spanish.length > 0 && english.length === 0 && authored.pass,
+        pass:
+          appLanguage === 'en' &&
+          interviewLanguage === 'es' &&
+          spanish.length > 0 &&
+          english.length === 0 &&
+          authored.pass,
         detail:
-          spanish.length === 0
-            ? "the interview's own controls showed no Spanish at all"
-            : english.length > 0
-              ? `interview controls still in English: ${english
-                  .slice(0, 3)
-                  .map((id) => interviewEnglish[id])
-                  .join('; ')}`
-              : `${spanish.length} interview control message(s) in Spanish; ${authored.detail}`,
+          appLanguage !== 'en'
+            ? `Fresco's own pages were in "${appLanguage}" rather than English, so Spanish controls would not show that the interview followed the browser`
+            : interviewLanguage !== 'es'
+              ? `the interview was marked as "${interviewLanguage}" rather than the browser's Spanish`
+              : spanish.length === 0
+                ? "the interview's own controls showed no Spanish at all"
+                : english.length > 0
+                  ? `interview controls still in English: ${english
+                      .slice(0, 3)
+                      .map((id) => interviewEnglish[id])
+                      .join('; ')}`
+                  : `${spanish.length} interview control message(s) in the browser's Spanish while Fresco's own pages stayed in English; ${authored.detail}`,
       };
     }),
   );
@@ -363,6 +398,7 @@ try {
   checks.push(check('localization-lane-completed', false, error.message));
 } finally {
   await browser?.close().catch(() => {});
+  await participantBrowser?.close().catch(() => {});
 }
 
 report(result);

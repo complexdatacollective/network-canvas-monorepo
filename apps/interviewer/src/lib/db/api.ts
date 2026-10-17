@@ -1,3 +1,4 @@
+import type { SessionFinish } from '@codaco/interview';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
@@ -103,23 +104,29 @@ export async function createSession(args: {
 export async function updateSession(
   id: string,
   patch: Partial<StoredSession>,
+  basis: dexieSessions.SessionWriteBasis,
 ): Promise<StoredSession | undefined> {
-  return dexieSessions.updateSession(id, patch);
+  return dexieSessions.updateSession(id, patch, basis);
 }
 
 export async function whenSessionWritesSettle(): Promise<void> {
   return dexieSessions.whenSessionWritesSettle();
 }
 
-export async function markSessionFinished(id: string): Promise<void> {
-  return dexieSessions.markSessionFinished(id);
+export async function markSessionFinished(
+  id: string,
+  finish: SessionFinish,
+  signal?: AbortSignal,
+): Promise<void> {
+  return dexieSessions.markSessionFinished(id, finish, signal);
 }
 
 export async function markSessionUnfinished(
   id: string,
   stages: CurrentProtocol['stages'],
+  basis: dexieSessions.SessionWriteBasis,
 ): Promise<void> {
-  return dexieSessions.markSessionUnfinished(id, stages);
+  return dexieSessions.markSessionUnfinished(id, stages, basis);
 }
 
 export async function markSessionsExported(ids: string[]): Promise<void> {

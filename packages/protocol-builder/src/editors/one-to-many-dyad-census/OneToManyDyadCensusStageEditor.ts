@@ -12,10 +12,6 @@ import { removeAfterConsideration } from './sections/removeAfterConsideration.ts
  * deliberate departure from Architect: the setting is behaviour of the task
  * the prompts describe, so before them it answers a question the researcher
  * has not been asked yet.
- *
- * No introduction screen: unlike the two pairwise censuses this one shows the
- * whole network from the first question, and the protocol schema has no
- * `introductionPanel` for it to be written into.
  */
 export const oneToManyDyadCensusStageEditor = defineStageEditor(
   'OneToManyDyadCensus',

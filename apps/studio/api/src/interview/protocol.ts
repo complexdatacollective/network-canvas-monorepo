@@ -4,6 +4,7 @@ import type { SqlError } from 'effect/sql';
 import type { ProtocolPayload } from '@codaco/interview/contract';
 import { currentProtocolToPayload } from '@codaco/interview/protocol-payload';
 import {
+  CURRENT_SCHEMA_VERSION,
   CurrentProtocolSchema,
   formatProtocolValidationIssues,
 } from '@codaco/protocol-validation';
@@ -16,6 +17,7 @@ import { SecretsCipher } from '../secrets/services.ts';
 export type PinnedVersion = {
   readonly protocolId: string;
   readonly protocolVersionId: string;
+  readonly schemaVersion: number;
   readonly publishedAt: Date;
 };
 
@@ -55,6 +57,16 @@ export const participantProtocolPayload: (
   version: PinnedVersion,
 ) {
   const teamId = yield* tenantTeamId;
+  if (version.schemaVersion < CURRENT_SCHEMA_VERSION) {
+    // `studio-api migrate` upgrades every version a study that is not closed
+    // still runs (`protocol/upgrade-pinned.ts`); one left behind means the
+    // upgrade did not run, or the study was reopened without it.
+    return yield* Effect.die(
+      new Error(
+        `protocol version ${version.protocolVersionId} is stored at schema ${version.schemaVersion}, and the interview runtime runs only schema ${CURRENT_SCHEMA_VERSION}: run \`studio-api migrate\` to upgrade the versions studies are pinned to`,
+      ),
+    );
+  }
   const document = yield* getVersionDocument(
     teamId,
     version.protocolVersionId,
@@ -69,7 +81,7 @@ export const participantProtocolPayload: (
   if (!parsed.success) {
     return yield* Effect.die(
       new Error(
-        `protocol version ${version.protocolVersionId} is not a valid schema 8 protocol:\n${formatProtocolValidationIssues(
+        `protocol version ${version.protocolVersionId} is not a valid schema ${CURRENT_SCHEMA_VERSION} protocol:\n${formatProtocolValidationIssues(
           parsed.error.issues.map((issue) => ({
             code: issue.code,
             path: issue.path.map(String),

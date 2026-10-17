@@ -63,9 +63,9 @@ const state = {
         },
       },
       stages: [
-        { label: 'foo', id: 'abcd', other: 'ignored' },
-        { label: 'bar', id: 'efgh', other: 'ignored' },
-        { label: 'bazz', id: 'ijkl', other: 'ignored' },
+        { label: { en: 'foo' }, id: 'abcd', other: 'ignored' },
+        { label: { en: 'bar' }, id: 'efgh', other: 'ignored' },
+        { label: { en: 'bazz' }, id: 'ijkl', other: 'ignored' },
       ],
     },
   },
@@ -267,7 +267,7 @@ describe('Codebook in-use status and Used In content agree', () => {
 });
 
 // A codebook record key is constrained only by `/^[a-zA-Z0-9._:-]+$/`
-// (`VariableNameSchema`, which keys the node/edge and variable records alike),
+// (`CodebookIdSchema`, which keys the node/edge and variable records alike),
 // so a dot inside one is legal protocol content. Joining a reference path into
 // a dotted string and splitting it apart again cannot round-trip that: the
 // display used to read the first fragment of the id and, finding no codebook
@@ -278,7 +278,8 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
     const testState = getMockState({
       activeProtocol: {
         present: {
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           name: 'test',
           codebook: {
             node: {
@@ -292,7 +293,10 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
                     type: 'number',
                     validation: { sameAs: 'target.id' },
                   },
-                  'target.id': { name: 'Target', type: 'number' },
+                  'target.id': {
+                    name: 'Target',
+                    type: 'number',
+                  },
                 },
               },
             },
@@ -317,7 +321,8 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
     const testState = getMockState({
       activeProtocol: {
         present: {
-          schemaVersion: 8,
+          schemaVersion: 9,
+          localization: { defaultLocale: 'en', locales: ['en'] },
           name: 'test',
           codebook: {
             node: {
@@ -336,7 +341,7 @@ describe('Codebook usage labels survive a dot inside a codebook record key', () 
                   category: {
                     name: 'Category',
                     type: 'categorical',
-                    options: [{ label: 'A', value: 'a' }],
+                    options: [{ label: { en: 'A' }, value: 'a' }],
                   },
                 },
               },

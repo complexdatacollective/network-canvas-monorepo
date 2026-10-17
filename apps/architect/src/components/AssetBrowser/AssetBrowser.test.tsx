@@ -47,8 +47,23 @@ const makeStore = () => {
     setActiveProtocol(
       CurrentProtocolSchema.parse({
         name: 'Resources test',
-        schemaVersion: 8,
-        stages: [],
+        schemaVersion: 9,
+        localization: { defaultLocale: 'en', locales: ['en'] },
+        // Schema 9 requires the finish stage that ends the interview.
+        stages: [
+          {
+            id: 'finish',
+            type: 'FinishSession',
+            label: { en: 'Finish' },
+            mode: 'confirmation',
+            content: { en: '# All done\n\nThank you.' },
+            finishedContent: { en: 'This interview is finished.' },
+            finishLabel: { en: 'Finish' },
+            finishConfirmation: { en: 'Finish this interview?' },
+            finishFailed: { en: 'The interview could not be finished.' },
+            outcome: 'completed',
+          },
+        ],
         codebook: {},
         assetManifest: {
           [MISSING]: {

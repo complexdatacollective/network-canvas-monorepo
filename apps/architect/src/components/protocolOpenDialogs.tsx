@@ -59,8 +59,9 @@ const additionalMessages = defineMessages({
   },
   migratingToSchemaVersionWill: {
     id: 'architect.additional.protocolOpenDialogs.migratingToSchemaVersionWill',
-    defaultMessage: 'Migrating to schema Version {version} will:',
-    description: 'Visible text in components / protocolOpenDialogs.',
+    defaultMessage: 'Changes in schema version {version}:',
+    description:
+      'Heading above the list of changes for one schema version, in the dialog shown to researchers when Architect offers to upgrade an older protocol. {version} is the schema version number.',
   },
   ifYouChooseToContinueAn: {
     id: 'architect.additional.protocolOpenDialogs.ifYouChooseToContinueAn',

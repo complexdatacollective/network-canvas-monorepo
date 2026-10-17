@@ -15,18 +15,30 @@ const TRIGGER_NAMES = ['Select attribute', 'Change attribute'];
 const isTrigger = (name: string) => TRIGGER_NAMES.includes(name);
 
 /**
+ * A field's own label, which `Field` gives the id `<control id>-label`. A
+ * label inside a control, such as an option card's, has none.
+ */
+export const FIELD_LABEL = 'label[id$="-label"]';
+
+/**
  * One attribute picker, found by the label of the field it answers.
  *
  * The trigger says what it does — "Select attribute" — rather than which
  * question it answers, which is right on screen (the label is right above it)
  * and wrong for a test with three pickers open. So a test names the FIELD, and
  * everything below reaches inside it.
+ *
+ * Only a field's own label is matched (`FIELD_LABEL`), not an option card's:
+ * a choice whose answers repeat a field's name (the pedigree's symbols offer
+ * "Sex assigned at birth") draws each answer in a `label` too.
  */
 export function attributeField(
   label: string,
   scope: HTMLElement = document.body,
 ): HTMLElement {
-  const labelElement = within(scope).getByText(label, { selector: 'label' });
+  const labelElement = within(scope).getByText(label, {
+    selector: FIELD_LABEL,
+  });
   const field = labelElement.closest<HTMLElement>('[data-field-name]');
   if (field === null) {
     throw new Error(

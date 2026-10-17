@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SkipLogic } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  type Filter,
+  type SkipLogic,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -33,6 +37,8 @@ const stage = (id: string, skipLogic?: SkipLogic) => ({
   ...(skipLogic ? { skipLogic } : {}),
 });
 
+const finishStage = () => ({ id: 'finish', type: 'FinishSession' });
+
 describe('buildStageAvailabilityMap', () => {
   it('does not activate a destination while its owning stage remains visible', () => {
     const destination = { type: 'stage' as const, stageId: 's3' };
@@ -46,7 +52,7 @@ describe('buildStageAvailabilityMap', () => {
         }),
         stage('s2'),
         stage('s3'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -62,7 +68,7 @@ describe('buildStageAvailabilityMap', () => {
 
   it('preserves legacy one-screen skip behavior without a destination', () => {
     const availability = buildStageAvailabilityMap(
-      [stage('s0'), stage('s1', alwaysSkipped()), stage('s2'), stage('finish')],
+      [stage('s0'), stage('s1', alwaysSkipped()), stage('s2'), finishStage()],
       network,
     );
 
@@ -83,7 +89,7 @@ describe('buildStageAvailabilityMap', () => {
         stage('s2'),
         stage('s3'),
         stage('s4'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -100,14 +106,14 @@ describe('buildStageAvailabilityMap', () => {
     expect(availability[4]).toEqual({ kind: 'available' });
   });
 
-  it('maps a finish destination to the synthetic final screen', () => {
+  it('maps a finish destination to the finish stage', () => {
     const destination = { type: 'finish' as const };
     const availability = buildStageAvailabilityMap(
       [
         stage('s0', alwaysSkipped(destination)),
         stage('s1'),
         stage('s2'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -129,7 +135,7 @@ describe('buildStageAvailabilityMap', () => {
         stage('s1', alwaysSkipped({ type: 'finish' })),
         stage('s2'),
         stage('s3'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -155,7 +161,7 @@ describe('buildStageAvailabilityMap', () => {
         stage('s2', alwaysSkipped(chainedDestination)),
         stage('s3'),
         stage('s4'),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -181,7 +187,7 @@ describe('buildStageAvailabilityMap', () => {
       [
         stage('s0'),
         stage('s1', alwaysSkipped({ type: 'stage', stageId: 'missing-stage' })),
-        stage('finish'),
+        finishStage(),
       ],
       network,
     );
@@ -189,13 +195,208 @@ describe('buildStageAvailabilityMap', () => {
     expect(availability[1]?.kind).toBe('local-skip');
     expect(availability[2]).toEqual({ kind: 'available' });
   });
+
+  describe('stages with nothing to ask about', () => {
+    const node = (id: string, type = 'person', attributes = {}) => ({
+      [entityPrimaryKeyProperty]: id,
+      type,
+      [entityAttributesProperty]: attributes,
+    });
+    const edge = (id: string, from: string, to: string, type = 'friend') => ({
+      [entityPrimaryKeyProperty]: id,
+      type,
+      from,
+      to,
+      [entityAttributesProperty]: {},
+    });
+    const withEntities = (
+      nodes: NcNetwork['nodes'],
+      edges: NcNetwork['edges'] = [],
+    ): NcNetwork => ({ ...network, nodes, edges });
+    const nodeStage = (id: string, type: string) => ({
+      id,
+      type,
+      subject: { entity: 'node', type: 'person' },
+    });
+    const edgeForm = (id: string) => ({
+      id,
+      type: 'AlterEdgeForm',
+      subject: { entity: 'edge', type: 'friend' },
+    });
+    const kinds = (
+      stages: Parameters<typeof buildStageAvailabilityMap>[0],
+      on: NcNetwork,
+    ) =>
+      Object.values(buildStageAvailabilityMap(stages, on)).map(
+        (availability) => availability.kind,
+      );
+
+    it('takes a form with no one to ask about off the route', () => {
+      const stages = [
+        stage('s0'),
+        nodeStage('form', 'AlterForm'),
+        edgeForm('edge-form'),
+        finishStage(),
+      ];
+
+      expect(kinds(stages, network)).toEqual([
+        'available',
+        'empty',
+        'empty',
+        'available',
+      ]);
+      expect(
+        kinds(
+          stages,
+          withEntities([node('a'), node('b')], [edge('e', 'a', 'b')]),
+        ),
+      ).toEqual(['available', 'available', 'available', 'available']);
+    });
+
+    it('takes a census off the route until there is a pair to ask about', () => {
+      const stages = [
+        nodeStage('dyads', 'DyadCensus'),
+        nodeStage('strength', 'TieStrengthCensus'),
+        finishStage(),
+      ];
+
+      expect(kinds(stages, withEntities([node('a')]))).toEqual([
+        'empty',
+        'empty',
+        'available',
+      ]);
+      expect(kinds(stages, withEntities([node('a'), node('b')]))).toEqual([
+        'available',
+        'available',
+        'available',
+      ]);
+    });
+
+    it.each([
+      ['CategoricalBin', 1],
+      ['OrdinalBin', 1],
+      ['Geospatial', 1],
+      ['Sociogram', 1],
+      ['OneToManyDyadCensus', 2],
+    ] as const)(
+      'takes a %s off the route until it shows %i people',
+      (type, needed) => {
+        const stages = [nodeStage('stage', type), finishStage()];
+        const people = [node('a'), node('b')].slice(0, needed);
+
+        expect(kinds(stages, withEntities(people.slice(1)))).toEqual([
+          'empty',
+          'available',
+        ]);
+        expect(kinds(stages, withEntities(people))).toEqual([
+          'available',
+          'available',
+        ]);
+      },
+    );
+
+    it('takes a Narrative off the route until someone is placed in one of its layouts', () => {
+      const stages = [
+        {
+          ...nodeStage('story', 'Narrative'),
+          presets: [{ layoutVariable: 'close' }, { layoutVariable: 'work' }],
+        },
+        finishStage(),
+      ];
+
+      expect(
+        kinds(
+          stages,
+          withEntities([node('a'), node('b', 'person', { close: null })]),
+        ),
+      ).toEqual(['empty', 'available']);
+      expect(
+        kinds(
+          stages,
+          withEntities([node('a', 'person', { work: { x: 0.5, y: 0.5 } })]),
+        ),
+      ).toEqual(['available', 'available']);
+    });
+
+    it('keeps a Narrative the participant can draw on when it shows no one', () => {
+      expect(
+        kinds(
+          [
+            {
+              ...nodeStage('story', 'Narrative'),
+              behaviours: { freeDraw: true },
+            },
+            finishStage(),
+          ],
+          network,
+        ),
+      ).toEqual(['available', 'available']);
+    });
+
+    it.each([
+      'NameGenerator',
+      'NameGeneratorQuickAdd',
+      'NameGeneratorRoster',
+      'NetworkComposer',
+    ])('keeps a %s, which adds people, when there is no one yet', (type) => {
+      expect(kinds([nodeStage('stage', type), finishStage()], network)).toEqual(
+        ['available', 'available'],
+      );
+    });
+
+    it('counts only the subjects the stage shows', () => {
+      const stages = [
+        {
+          ...nodeStage('form', 'AlterForm'),
+          filter: {
+            join: 'AND',
+            rules: [
+              {
+                id: 'close',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: asEntityAttributeReference('close'),
+                  operator: 'EXACTLY',
+                  value: true,
+                },
+              },
+            ],
+          } satisfies Filter,
+        },
+        finishStage(),
+      ];
+
+      expect(
+        kinds(
+          stages,
+          withEntities([
+            node('a', 'person', { close: false }),
+            node('p', 'pet'),
+          ]),
+        ),
+      ).toEqual(['empty', 'available']);
+      expect(
+        kinds(stages, withEntities([node('a', 'person', { close: true })])),
+      ).toEqual(['available', 'available']);
+    });
+
+    it('leaves a stage its own skip logic hides as a local skip', () => {
+      expect(
+        kinds(
+          [{ ...nodeStage('form', 'AlterForm'), skipLogic: alwaysSkipped() }],
+          network,
+        ),
+      ).toEqual(['local-skip']);
+    });
+  });
 });
 
 describe('getLastAvailableAuthoredStageIndex', () => {
   it('returns the final authored stage on a route without skips', () => {
     expect(
       getLastAvailableAuthoredStageIndex(
-        [stage('s0'), stage('s1'), stage('s2')],
+        [stage('s0'), stage('s1'), stage('s2'), finishStage()],
         network,
       ),
     ).toBe(2);
@@ -209,6 +410,7 @@ describe('getLastAvailableAuthoredStageIndex', () => {
           stage('s1', alwaysSkipped({ type: 'finish' })),
           stage('s2'),
           stage('s3'),
+          finishStage(),
         ],
         network,
       ),
@@ -222,6 +424,7 @@ describe('getLastAvailableAuthoredStageIndex', () => {
           stage('s0', alwaysSkipped({ type: 'finish' })),
           stage('s1'),
           stage('s2'),
+          finishStage(),
         ],
         network,
       ),
@@ -282,5 +485,15 @@ describe('resolveRecoveryStep', () => {
         nextValidStageIndex: 4,
       }),
     ).toBe(4);
+  });
+  it('moves forward from a stage with nothing to ask about', () => {
+    expect(
+      resolveRecoveryStep({
+        currentStep: 2,
+        currentAvailability: { kind: 'empty' },
+        previousValidStageIndex: 0,
+        nextValidStageIndex: 3,
+      }),
+    ).toBe(3);
   });
 });

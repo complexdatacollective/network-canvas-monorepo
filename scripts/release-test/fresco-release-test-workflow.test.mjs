@@ -109,14 +109,17 @@ const happyPath = () => ({
   'seed-baseline': {
     area: 'seed',
     pass: true,
-    checks: passing(9),
+    checks: passing(10),
     apiToken: 'fresco_test_token_0123456789',
     apiPaths: ['/api/v1/protocols-meta', '/api/v1/interview'],
     uiExportCaptured: true,
     networkSnapshots: 5,
-    counts: { protocols: 1, participants: 5, interviews: 5 },
+    counts: { protocols: 2, participants: 5, interviews: 5 },
   },
+  'migration-seed-result': passingScript('migrationSeed'),
   'upgrade-swap': { ok: true, imageId: `sha256:${'b'.repeat(64)}` },
+  'migration-lane': passingScript('migration'),
+  'migration-resume-lane': passingScript('migrationResume'),
   'export-capture': {
     area: 'capture',
     pass: true,
@@ -169,6 +172,7 @@ const happyPath = () => ({
     imageId: `sha256:${'b'.repeat(64)}`,
   },
   'interview-lane': passingScript('interview'),
+  'schema9-interview-lane': passingScript('schema9'),
   'health-lane': passingScript('health'),
   'localization-lane': passingScript('localization'),
   'up-analytics': {
@@ -454,8 +458,8 @@ test('the UI-export skip pair must skip in both directions', async () => {
     ['pass', 'skipped'],
   ]) {
     const r = happyPath();
-    r['seed-baseline'].checks[7] = {
-      name: '8. check 8',
+    r['seed-baseline'].checks[8] = {
+      name: '9. check 9',
       status: seedStatus,
       notes: 'blob capture',
     };
@@ -508,8 +512,8 @@ test('the documented UI-export fallback reaches a clean verdict', async () => {
   // seed 8, capture 3 and capture 4 skip together, the API snapshots carry the
   // comparison, and the run certifies — the fallback the whitelist promises.
   const r = happyPath();
-  r['seed-baseline'].checks[7] = {
-    name: '8. check 8',
+  r['seed-baseline'].checks[8] = {
+    name: '9. check 9',
     status: 'skipped',
     notes: 'no blob was captured',
   };
@@ -536,7 +540,7 @@ test('a skip is rejected when the audit shows its precondition did not hold', as
   // A stated reason is a claim. These three claims can be settled on disk, so
   // an archive that exists refutes the skip that says it does not.
   const cases = [
-    { area: 'seed', item: 8, audit: { baselineUiExport: true } },
+    { area: 'seed', item: 9, audit: { baselineUiExport: true } },
     { area: 'capture', item: 3, audit: { baselineUiExport: true } },
     { area: 'capture', item: 4, audit: { upgradedUiExport: true } },
   ];
@@ -544,8 +548,8 @@ test('a skip is rejected when the audit shows its precondition did not hold', as
     const r = happyPath();
     // Skip the whole chain with plausible reasons, so only the audited
     // precondition can be what fires.
-    r['seed-baseline'].checks[7] = {
-      name: '8. check 8',
+    r['seed-baseline'].checks[8] = {
+      name: '9. check 9',
       status: 'skipped',
       notes: 'no blob captured',
     };
@@ -1709,8 +1713,8 @@ test('without archives on both sides, every interview needs a payload snapshot',
   r['audit-artifacts'].upgradedUiExport = false;
   r['audit-artifacts'].baselineSnapshotIds = ['i1', 'i2', 'i3'];
   r['seed-baseline'].networkSnapshots = 3;
-  r['seed-baseline'].checks[7] = {
-    name: '8. check 8',
+  r['seed-baseline'].checks[8] = {
+    name: '9. check 9',
     status: 'skipped',
     notes: 'no blob captured',
   };
@@ -1735,8 +1739,8 @@ test('one-sided archives do not waive the payload-snapshot requirement', async (
   r['audit-artifacts'].baselineSnapshotIds = [];
   r['seed-baseline'].uiExportCaptured = false;
   r['seed-baseline'].networkSnapshots = 0;
-  r['seed-baseline'].checks[7] = {
-    name: '8. check 8',
+  r['seed-baseline'].checks[8] = {
+    name: '9. check 9',
     status: 'skipped',
     notes: 'no blob captured',
   };
@@ -3859,6 +3863,10 @@ test('keepStack leaves the stacks up and runs no teardown agent', async () => {
 
 const scriptLaneCases = [
   ['interview-lane', 'interview'],
+  ['schema9-interview-lane', 'schema9'],
+  ['migration-seed-result', 'migrationSeed'],
+  ['migration-lane', 'migration'],
+  ['migration-resume-lane', 'migrationResume'],
   ['health-lane', 'health'],
   ['localization-lane', 'localization'],
   ['analytics-lane', 'analytics'],
@@ -4068,23 +4076,145 @@ test('the scripted checks run after the lane agent has finished with the instanc
     );
 });
 
+// The localization lane switches the researcher account to Spanish; the
+// schema 9 lane's researcher steps read English, and its participant's
+// language has to come from the browser rather than from an account.
+test('the schema 9 interview runs before the account changes language', async () => {
+  const { prompts } = await run(happyPath());
+  const order = prompts.map((p) => p.label);
+  assert.ok(
+    order.indexOf('schema9-interview-lane') >
+      order.indexOf('verify-fresh-setup'),
+  );
+  assert.ok(
+    order.indexOf('schema9-interview-lane') <
+      order.indexOf('localization-lane'),
+    `order: ${order.join(', ')}`,
+  );
+  // The setup agent has already configured the instance; a driver that tried
+  // the setup wizard again would fail before it reached an interview.
+  for (const label of ['interview-lane', 'schema9-interview-lane'])
+    assert.match(promptFor(prompts, label), /--lane fresh --signed-in/, label);
+});
+
+// Each migration phase observes a particular moment. The reading after the
+// swap must come before anything opens an interview, the capture must see the
+// interview as the migration left it, and the resumed interview must be
+// finished before integrity counts the dataset and CRUD starts deleting from
+// it.
+test('the migration phases run at the moments they describe', async () => {
+  const { prompts } = await run(happyPath());
+  const order = prompts.map((p) => p.label);
+  const at = (label) => {
+    const index = order.indexOf(label);
+    assert.notEqual(index, -1, `${label} never ran`);
+    return index;
+  };
+  assert.ok(at('seed-baseline') < at('migration-seed-result'));
+  assert.ok(at('migration-seed-result') < at('upgrade-swap'));
+  assert.ok(at('upgrade-swap') < at('migration-lane'));
+  assert.ok(at('migration-lane') < at('export-capture'));
+  assert.ok(at('export-capture') < at('migration-resume-lane'));
+  assert.ok(at('migration-resume-lane') < at('verify-data-integrity'));
+  assert.ok(at('migration-resume-lane') < at('verify-crud'));
+  const seed = promptFor(prompts, 'seed-baseline');
+  const seedItem = seed.indexOf('--phase seed');
+  assert.ok(
+    seedItem > seed.indexOf('synthetic interviews') &&
+      seedItem < seed.indexOf('Snapshot the API'),
+    'the migration seed must land after the synthetic interviews and before the baseline snapshot',
+  );
+  assert.match(promptFor(prompts, 'migration-lane'), /--phase migrated/);
+  assert.match(promptFor(prompts, 'migration-resume-lane'), /--phase resume/);
+  assert.match(
+    promptFor(prompts, 'migration-seed-result'),
+    /artifacts\/migration\/seed-result\.json/,
+  );
+});
+
+// The seed phase runs inside the seed agent's checklist, but its checks are
+// read from the file the script left, not from that agent's account. A seed
+// that failed must still have its reason read.
+test('a failed migration seed is reported by its own checks', async () => {
+  const r = happyPath();
+  r['seed-baseline'].pass = false;
+  r['seed-baseline'].checks[5] = {
+    name: '6. check 6',
+    status: 'fail',
+    notes: 'migration seed failed',
+  };
+  r['migration-seed-result'].checks[1] = {
+    id: 'migration-seed-interview-parked',
+    status: 'fail',
+    detail: 'the interview never reached the Alter Form',
+  };
+  const { result, prompts } = await run(r);
+  assert.ok(prompts.some((p) => p.label === 'migration-seed-result'));
+  assert.equal(result.verdict, 'no-go');
+  assert.ok(
+    result.failures.some((f) =>
+      f.includes('the interview never reached the Alter Form'),
+    ),
+    JSON.stringify(result.failures),
+  );
+});
+
+// The baseline is the synthetic interviews plus the migration lane's own; a
+// seed that reports only the synthetic ones did not seed the interview the
+// upgrade has to carry across.
+test('the seeded dataset counts the migration interview', async () => {
+  const r = happyPath();
+  r['seed-baseline'].counts.interviews = 4;
+  const { result } = await run(r);
+  assert.notEqual(result.verdict, 'go');
+  assert.ok(
+    result.failures.some(
+      (f) => f.includes('reported 4 interviews') && f.includes('5 were seeded'),
+    ),
+    JSON.stringify(result.failures),
+  );
+});
+
+// Both diffs reconcile an interview's step and stage records against the
+// database readings either side of the swap; a diff run without them would
+// report every resumed interview as changed, or — worse — a judge would learn
+// to wave such changes through.
+test('both export diffs are given the migration readings', async () => {
+  const { prompts } = await run(happyPath());
+  for (const label of ['export-capture', 'diff-audit'])
+    assert.match(
+      promptFor(prompts, label),
+      /diff-exports\.mjs [^\n]*--migration apps\/fresco\/release-test\/artifacts\/migration/,
+      label,
+    );
+  assert.match(
+    promptFor(prompts, 'up-released'),
+    /rm -rf [^\n]*artifacts\/migration/,
+  );
+});
+
 // Every id this workflow expects has to be one its driver actually emits, and
 // every id a driver emits has to be one this workflow expects. Without this
 // the two drift silently: a renamed check would read as "the lane did not
 // report it" on every future run, and a new check would never be required.
 test('the expected check ids are exactly the ids the drivers emit', () => {
+  // One driver can answer for several areas: the migration lane runs in three
+  // phases at three points of the upgrade lane, each bound separately.
   const drivers = {
-    interview: 'interview-lane.mjs',
-    health: 'health-lane.mjs',
-    localization: 'localization-lane.mjs',
-    twoFactor: 'two-factor-lane.mjs',
+    'interview-lane.mjs': ['interview'],
+    'schema9-interview-lane.mjs': ['schema9'],
+    'migration-lane.mjs': ['migrationSeed', 'migration', 'migrationResume'],
+    'health-lane.mjs': ['health'],
+    'localization-lane.mjs': ['localization'],
+    'two-factor-lane.mjs': ['twoFactor'],
   };
-  for (const [area, file] of Object.entries(drivers)) {
+  for (const [file, areas] of Object.entries(drivers)) {
     const driver = readFileSync(
       join(repoRoot, 'apps/fresco/release-test/scripts', file),
       'utf8',
     );
-    for (const id of expectedScriptChecks[area])
+    const expected = areas.flatMap((area) => expectedScriptChecks[area]);
+    for (const id of expected)
       assert.ok(
         driver.includes(`'${id}'`),
         `${file} does not emit "${id}", which the workflow requires`,
@@ -4094,7 +4224,7 @@ test('the expected check ids are exactly the ids the drivers emit', () => {
     ].map((m) => m[1]);
     for (const id of new Set(emitted))
       assert.ok(
-        expectedScriptChecks[area].includes(id) || id.endsWith('-completed'),
+        expected.includes(id) || id.endsWith('-completed'),
         `${file} emits "${id}", which the workflow does not expect`,
       );
   }
@@ -4143,6 +4273,10 @@ test('the script agents are told to report the driver, not to interpret it', asy
   const { prompts } = await run(happyPath());
   for (const label of [
     'interview-lane',
+    'schema9-interview-lane',
+    'migration-seed-result',
+    'migration-lane',
+    'migration-resume-lane',
     'health-lane',
     'localization-lane',
     'analytics-lane',
@@ -4387,4 +4521,53 @@ test('every lane a prompt starts is a lane up.sh defines', async () => {
       new RegExp(`\\n  ${lane}\\)`),
       `a prompt drives lane "${lane}", which up.sh does not define`,
     );
+});
+
+// Once the released image runs schema 9 itself, it migrates the schema 8
+// fixture on import and the release carries no schema 8 data across. The
+// lane says so in every phase instead of failing its seed, and the run is
+// still certifiable — but only on one consistent reading.
+const NOT_APPLICABLE =
+  'the released image stores the schema 8 fixture as schema 9, the schema the pending image runs';
+const migrationNotApplicable = (r) => {
+  for (const label of [
+    'migration-seed-result',
+    'migration-lane',
+    'migration-resume-lane',
+  ])
+    r[label] = { ok: true, checks: [], notApplicable: NOT_APPLICABLE };
+  return r;
+};
+
+test('a migration lane every phase reports not applicable is a warning, not a gap', async () => {
+  const { result } = await run(migrationNotApplicable(happyPath()));
+  assert.equal(result.verdict, 'go', JSON.stringify(result.unaccounted));
+  assert.equal(result.releasable, true);
+  assert.ok(
+    result.warnings.some((w) => w.includes(NOT_APPLICABLE)),
+    JSON.stringify(result.warnings),
+  );
+});
+
+test('a migration lane only one phase reports not applicable cannot be trusted', async () => {
+  const r = migrationNotApplicable(happyPath());
+  r['migration-lane'] = passingScript('migration');
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.equal(result.releasable, false);
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('not every phase agreed')),
+    JSON.stringify(result.unaccounted),
+  );
+});
+
+test('a not-applicable migration phase that still ran checks cannot be trusted', async () => {
+  const r = migrationNotApplicable(happyPath());
+  r['migration-resume-lane'].checks = passingScript('migrationResume').checks;
+  const { result } = await run(r);
+  assert.equal(result.verdict, 'incomplete');
+  assert.ok(
+    result.unaccounted.some((u) => u.includes('not every phase agreed')),
+    JSON.stringify(result.unaccounted),
+  );
 });

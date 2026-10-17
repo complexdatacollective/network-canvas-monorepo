@@ -178,6 +178,31 @@ export const WithRadioGroup: Story = {
       </DropdownMenu>
     );
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Position: bottom' }),
+    );
+
+    // Every item keeps the tick's space, so labels line up, but only the
+    // checked item shows it.
+    const tickVisibility = async (name: string) => {
+      const item = await screen.findByRole('menuitemradio', { name });
+      const tick = item.querySelector('svg');
+      if (!tick) throw new Error(`No tick rendered in “${name}”`);
+      return getComputedStyle(tick).visibility;
+    };
+    await expect(await tickVisibility('Bottom')).toBe('visible');
+    await expect(await tickVisibility('Top')).toBe('hidden');
+    await expect(await tickVisibility('Right')).toBe('hidden');
+
+    // Radio items keep the menu open, so the tick moves in place.
+    await userEvent.click(screen.getByRole('menuitemradio', { name: 'Top' }));
+    await waitFor(async () =>
+      expect(await tickVisibility('Top')).toBe('visible'),
+    );
+    await expect(await tickVisibility('Bottom')).toBe('hidden');
+  },
 };
 
 export const WithGroups: Story = {

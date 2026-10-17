@@ -13,6 +13,7 @@ import type { CatalogMessages, CatalogSource } from '../locales.ts';
 import { defineMessages } from '../messages.ts';
 import {
   AppI18nProvider,
+  AppIntlOverlay,
   AppMessage,
   useAppIntl,
   useAppLocale,
@@ -378,6 +379,51 @@ describe('useAppLocale without a provider', () => {
   });
 });
 
+const greetingOverride = (message: { id?: string }) =>
+  message.id === 'demo.greeting' ? 'Kia ora' : undefined;
+
+describe('AppIntlOverlay', () => {
+  it('shows its text for the messages it answers for, and the catalog’s for the rest', () => {
+    const { container } = render(
+      <AppI18nProvider
+        locale="en-GB"
+        locales={registry}
+        messages={{ 'demo.greeting': 'Good day {name}' }}
+      >
+        <AppIntlOverlay override={greetingOverride}>
+          <Greeting name="Ada" />
+          <Count count={2} />
+          <span>
+            <AppMessage message={messages.greeting} values={{ name: 'Ada' }} />
+          </span>
+        </AppIntlOverlay>
+      </AppI18nProvider>,
+    );
+    expect(within(container).getAllByText('Kia ora')).toHaveLength(2);
+    expect(within(container).getByText('2 results')).toBeDefined();
+  });
+
+  it('overlays the English defaults without a provider', () => {
+    const { container } = render(
+      <AppIntlOverlay override={greetingOverride}>
+        <Greeting name="Ada" />
+      </AppIntlOverlay>,
+    );
+    expect(within(container).getByText('Kia ora')).toBeDefined();
+  });
+
+  it('does not reach into a provider mounted beneath it', () => {
+    const { container } = render(
+      <AppIntlOverlay override={greetingOverride}>
+        <AppI18nProvider locale="en" locales={registry}>
+          <Greeting name="Ada" />
+        </AppI18nProvider>
+      </AppIntlOverlay>,
+    );
+    expect(within(container).getByText('Hello Ada')).toBeDefined();
+  });
+});
+
 describe('AppMessage', () => {
   it('renders whole plurals and rich text without a provider', () => {
     const view = render(
@@ -446,11 +492,13 @@ describe('useLocaleCatalog', () => {
     source: CatalogSource;
     locale: string;
     preloaded?: { locale: string; messages: CatalogMessages };
+    restored?: string;
   }) {
     const catalog = useLocaleCatalog(
       props.source,
       props.locale,
       props.preloaded,
+      props.restored,
     );
     return (
       <AppI18nProvider
@@ -600,6 +648,69 @@ describe('useLocaleCatalog', () => {
       expect(screen.getByText('Hola Ada')).toBeDefined();
       expect(screen.queryByText(/Could not load/)).toBeNull();
       expect(es).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('when a locale is restored after mounting', () => {
+    // React hides a suspended tree with an inline style rather than removing it.
+    const shown = (text: string) => {
+      const element = screen.queryByText(text);
+      return element !== null && element.style.display !== 'none';
+    };
+
+    it('suspends until the restored locale has loaded instead of keeping the current one', async () => {
+      const fr = pending(french);
+      const source = createCatalogSource({
+        es: () => Promise.resolve({ default: spanish }),
+        fr: fr.load,
+      });
+      await source.load('es');
+
+      const { rerender } = render(
+        <Suspense fallback={<p>Waiting</p>}>
+          <Host source={source} locale="es" />
+        </Suspense>,
+      );
+      expect(shown('Hola Ada')).toBe(true);
+
+      await act(async () => {
+        rerender(
+          <Suspense fallback={<p>Waiting</p>}>
+            <Host source={source} locale="fr" restored="fr" />
+          </Suspense>,
+        );
+      });
+      expect(screen.getByText('Waiting')).toBeDefined();
+      expect(shown('Hola Ada')).toBe(false);
+
+      await act(async () => fr.release());
+      expect(screen.getByText('Bonjour Ada')).toBeDefined();
+      expect(shown('Bonjour Ada')).toBe(true);
+      expect(screen.queryByText('Waiting')).toBeNull();
+    });
+
+    it('keeps the current language and reports the failure when the restored locale cannot load', async () => {
+      const source = createCatalogSource({
+        es: () => Promise.resolve({ default: spanish }),
+        fr: () => Promise.reject(new Error('offline')),
+      });
+      await source.load('es');
+
+      const { rerender } = render(
+        <Suspense fallback={<p>Waiting</p>}>
+          <Host source={source} locale="es" />
+        </Suspense>,
+      );
+      await act(async () => {
+        rerender(
+          <Suspense fallback={<p>Waiting</p>}>
+            <Host source={source} locale="fr" restored="fr" />
+          </Suspense>,
+        );
+      });
+      expect(shown('Hola Ada')).toBe(true);
+      expect(screen.getByText('Could not load Français')).toBeDefined();
+      expect(document.documentElement.lang).toBe('es');
     });
   });
 

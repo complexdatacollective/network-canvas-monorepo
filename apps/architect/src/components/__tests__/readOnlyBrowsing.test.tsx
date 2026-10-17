@@ -71,8 +71,6 @@ const ALLOWED: readonly AllowedControl[] = [
   },
   { role: 'button', name: /^preview ./i },
   { role: 'button', name: /^download ./i },
-  // Experiments.
-  { role: 'button', name: /^go back$/i },
   // Stage editor: move between sections, close it, preview the stage.
   {
     role: 'button',
@@ -81,6 +79,8 @@ const ALLOWED: readonly AllowedControl[] = [
   },
   { role: 'button', name: /^cancel$/i },
   { role: 'button', name: /^preview settings$/i },
+  // Which of the protocol's languages the editor shows: a view, not an edit.
+  { role: 'button', name: /^editing language/i },
 ];
 
 const ACTION_ROLES: readonly ByRoleMatcher[] = [
@@ -210,7 +210,6 @@ const PAGE_ROUTES: readonly NamedRoute[] = [
   ['Codebook', '/protocol/codebook'],
   ['Resources', '/protocol/assets'],
   ['Summary', '/protocol/summary'],
-  ['Experiments', '/protocol/experiments'],
 ];
 
 const EDITABLE_ROUTES: readonly NamedRoute[] = [

@@ -351,10 +351,13 @@ class NameGeneratorFixture {
   }
 
   /**
-   * Submit the node form by clicking the Finished button.
+   * Submit the node form by clicking the Done button.
    */
   async submitForm(): Promise<void> {
-    const submitButton = this.page.getByRole('button', { name: 'Finished' });
+    const submitButton = this.page.getByRole('button', {
+      name: 'Done',
+      exact: true,
+    });
     await submitButton.click();
     await this.page.getByRole('dialog').waitFor({ state: 'hidden' });
   }
@@ -480,19 +483,26 @@ class OrdinalBinFixture {
 
   /**
    * Get the drawer toggle button.
-   * The button has aria-label "Collapse drawer" or "Expand drawer".
+   * Its accessible name is "<count> unplaced" followed by "Collapse drawer" or
+   * "Expand drawer".
    */
   get drawerToggle(): Locator {
     return this.page.getByRole('button', { name: /drawer/i });
   }
 
   /**
-   * Get the number of unplaced nodes from the drawer toggle text.
+   * Get the number of unplaced nodes from the drawer toggle.
    */
   async getUnplacedCount(): Promise<number> {
+    // The toggle shows only a chevron; its text is the screen-reader label,
+    // which begins with the count ("3 unplaced", then the expand or collapse
+    // words).
     const text = await this.drawerToggle.textContent();
-    const match = /(\d+)\s*unplaced/.exec(text ?? '');
-    return match ? Number.parseInt(match[1] ?? '0', 10) : 0;
+    const count = /^\s*(\d+)/.exec(text ?? '')?.[1];
+    if (count === undefined) {
+      throw new Error(`Drawer toggle has no count: ${text ?? ''}`);
+    }
+    return Number.parseInt(count, 10);
   }
 
   /**
@@ -520,7 +530,8 @@ class OrdinalBinFixture {
    * Get a node in the drawer by its label.
    */
   getNodeInDrawer(label: string): Locator {
-    return this.page.getByRole('button', { name: label }).first();
+    // Exact, because the drawer's own toggle is named "<count> unplaced ...".
+    return this.page.getByRole('button', { name: label, exact: true }).first();
   }
 
   /**
@@ -582,19 +593,26 @@ class CategoricalBinFixture {
 
   /**
    * Get the drawer toggle button showing uncategorized count.
-   * The button has aria-label "Collapse drawer" or "Expand drawer".
+   * Its accessible name is "<count> unplaced" followed by "Collapse drawer" or
+   * "Expand drawer".
    */
   get drawerToggle(): Locator {
     return this.page.getByRole('button', { name: /drawer/i });
   }
 
   /**
-   * Get the number of uncategorized nodes from the drawer toggle text.
+   * Get the number of uncategorized nodes from the drawer toggle.
    */
   async getUnplacedCount(): Promise<number> {
+    // The toggle shows only a chevron; its text is the screen-reader label,
+    // which begins with the count ("3 unplaced", then the expand or collapse
+    // words).
     const text = await this.drawerToggle.textContent();
-    const match = /(\d+)\s*unplaced/.exec(text ?? '');
-    return match ? Number.parseInt(match[1] ?? '0', 10) : 0;
+    const count = /^\s*(\d+)/.exec(text ?? '')?.[1];
+    if (count === undefined) {
+      throw new Error(`Drawer toggle has no count: ${text ?? ''}`);
+    }
+    return Number.parseInt(count, 10);
   }
 
   /**
@@ -668,7 +686,8 @@ class CategoricalBinFixture {
    * Get a node in the drawer by its label.
    */
   getNodeInDrawer(label: string): Locator {
-    return this.page.getByRole('button', { name: label }).first();
+    // Exact, because the drawer's own toggle is named "<count> unplaced ...".
+    return this.page.getByRole('button', { name: label, exact: true }).first();
   }
 
   /**
@@ -1239,11 +1258,9 @@ class NodePanelFixture {
  * Placeholder fixture for DyadCensus stages.
  *
  * DyadCensus iterates through all node pairs with a binary Yes/No choice
- * to create edges. Has an introduction panel and auto-advances (350ms)
- * after each selection.
+ * to create edges. Auto-advances (350ms) after each selection.
  *
  * TODO: Implement interaction methods:
- * - dismissIntro() — click next to dismiss intro panel
  * - selectYes() / selectNo() — click boolean option
  * - getPairLabels() — get the two node labels currently displayed
  * - waitForAutoAdvance() — wait for 350ms auto-advance
@@ -1261,10 +1278,9 @@ class DyadCensusFixture {
  *
  * Similar to DyadCensus but with multiple ordinal options instead of
  * binary Yes/No. Creates/updates edges with an ordinal attribute value.
- * Has introduction panel and auto-advances (350ms).
+ * Auto-advances (350ms).
  *
  * TODO: Implement interaction methods:
- * - dismissIntro() — click next to dismiss intro panel
  * - selectOption(label) — click an ordinal option button
  * - selectNegative() — click the negative/no option
  * - getPairLabels() — get the two node labels currently displayed
@@ -1363,37 +1379,15 @@ class AnonymisationFixture {
 /**
  * Placeholder fixture for SlidesForm stages (AlterForm, AlterEdgeForm).
  *
- * Manages introduction panel and slide-per-item navigation for form stages
- * that iterate over nodes (AlterForm) or edges (AlterEdgeForm).
- * Field interactions are handled by FormFixture.
+ * Manages slide-per-item navigation for form stages that iterate over nodes
+ * (AlterForm) or edges (AlterEdgeForm). Field interactions are handled by
+ * FormFixture.
  *
  * TODO: Implement interaction methods:
- * - dismissIntro() — advance past the introduction panel
  * - getCurrentItemLabel() — get the label of the current node/edge
  * - getSlideIndex() — get current slide position
- * - isOnIntro() — check if intro panel is displayed
  */
 class SlidesFormFixture {
-  readonly page: Page;
-
-  constructor(page: Page) {
-    this.page = page;
-  }
-}
-
-/**
- * Placeholder fixture for FamilyPedigree stages.
- *
- * Multi-step wizard (15 steps) for building family tree data.
- * Creates multiple node types and edge types for family relationships.
- *
- * TODO: Implement interaction methods:
- * - getWizardStep() — get current wizard step
- * - advanceWizard() — advance to next wizard step
- * - getPedigreeView() — get the pedigree visualization locator
- * - getNodeCount() — count non-ego nodes in pedigree
- */
-class FamilyPedigreeFixture {
   readonly page: Page;
 
   constructor(page: Page) {
@@ -1423,7 +1417,6 @@ export class StageFixture {
   readonly narrative: NarrativeFixture;
   readonly anonymisation: AnonymisationFixture;
   readonly slidesForm: SlidesFormFixture;
-  readonly familyPedigree: FamilyPedigreeFixture;
 
   constructor(page: Page) {
     this.page = page;
@@ -1442,7 +1435,6 @@ export class StageFixture {
     this.narrative = new NarrativeFixture(page);
     this.anonymisation = new AnonymisationFixture(page);
     this.slidesForm = new SlidesFormFixture(page);
-    this.familyPedigree = new FamilyPedigreeFixture(page);
   }
 
   /**

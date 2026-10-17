@@ -62,8 +62,7 @@ const sourceMapUpload = async (): Promise<Plugin[]> => {
 export default defineConfig(async () => ({
   plugins: [
     // Pre-parses every message at build time — defineMessages defaults via
-    // the oxc-based formatjs transform, imported locale catalogs likewise —
-    // and drops the ICU parser from production bundles.
+    // the oxc-based formatjs transform, imported locale catalogs likewise.
     ...appI18n(),
     react(),
     tailwindcss(),

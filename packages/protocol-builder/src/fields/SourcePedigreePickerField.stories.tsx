@@ -15,6 +15,7 @@ import {
   useAskStageHasAnyValue,
   useStageValue,
 } from '../form/stageFormHooks.ts';
+import { useLocalizedText } from '../localization/ProtocolLocalization.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
 import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
@@ -66,6 +67,7 @@ const SOURCE_CHANGE_QUESTION: SourceChangeQuestion = Object.freeze({
  */
 function SourcePedigreePicker() {
   const intl = useAppIntl();
+  const localize = useLocalizedText();
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const sourceStageId = useStageValue(SOURCE_FIELD);
@@ -83,22 +85,24 @@ function SourcePedigreePicker() {
       value: option.value,
       label: intl.formatMessage(narrativePedigreeMessages.sourceStageOption, {
         position: option.position,
-        stageLabel: option.label,
+        stageLabel: localize(option.label).text,
       }),
     }));
     if (problem === null || typeof sourceStageId !== 'string') return offered;
+    const chosenName =
+      chosenLabel === undefined ? '' : localize(chosenLabel).text;
     return [
       ...offered,
       {
         value: sourceStageId,
         label: intl.formatMessage(
           narrativePedigreeMessages.sourceUnusableOption,
-          { stageName: chosenLabel ?? sourceStageId },
+          { stageName: chosenName === '' ? sourceStageId : chosenName },
         ),
         disabled: true,
       },
     ];
-  }, [chosenLabel, intl, options, problem, sourceStageId]);
+  }, [chosenLabel, intl, localize, options, problem, sourceStageId]);
 
   // Asked of the same field a real section's reset discards, so the question
   // can neither appear over a change that costs nothing nor stay silent over

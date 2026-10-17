@@ -115,7 +115,7 @@ function makeProtocol(name: string, hash: string): ProtocolWithCounts {
   const protocol = {
     name,
     description: '',
-    schemaVersion: 8,
+    schemaVersion: 9,
     codebook: {},
     stages: [],
   } as unknown as CurrentProtocol;
@@ -123,7 +123,7 @@ function makeProtocol(name: string, hash: string): ProtocolWithCounts {
     id: hash,
     hash,
     name,
-    schemaVersion: 8,
+    schemaVersion: 9,
     importedAt: '2026-07-01T00:00:00.000Z',
     description: '',
     codebook: {},

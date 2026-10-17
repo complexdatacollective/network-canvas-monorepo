@@ -10,7 +10,7 @@
     - option "Mia"
   - heading "Very close" [level=4]
   - listbox "Container for the value 'Very close'"
-  - button "Collapse drawer" [expanded]: 4 unplaced
+  - button "4 unplaced Collapse drawer" [expanded]
   - button "Dana"
   - button "Carol"
   - button "Bob"

@@ -18,9 +18,9 @@ const languageMessages = defineMessages({
   hint: {
     id: 'interviewer.language.hint',
     defaultMessage:
-      'Choose the language for Interviewer and its built-in interview controls on this device. This does not change protocol content or collected data.',
+      "Choose the language Interviewer uses on this device. Interviews follow the participant's browser language, or the language they choose during the interview.",
     description:
-      'Explains that the device language applies to app-provided controls while protocol-authored content and research data stay unchanged.',
+      "Explains that this setting changes only Interviewer's own screens on this device, while each interview is shown in the participant's browser language or the language the participant picks during the interview.",
   },
   automatic: {
     id: 'interviewer.language.automatic',

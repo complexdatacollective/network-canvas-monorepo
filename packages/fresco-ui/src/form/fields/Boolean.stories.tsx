@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 
 import BooleanField from './Boolean';
 
@@ -36,7 +37,7 @@ const meta: Meta<StoryArgs> = {
       table: {
         type: {
           summary:
-            'Array<{ label: string; value: boolean; negative?: boolean }>',
+            'Array<{ label: PresentationalText; value: boolean; negative?: boolean }>',
         },
         defaultValue: {
           summary:
@@ -176,4 +177,41 @@ export const NegativeOptionWithLongLabels: Story = {
     ],
   },
   render: renderField,
+};
+
+export const LocalizedLabels: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Protocol copy arrives as `PresentationalText`: the field's own label and each option label render on an element carrying the text's `lang` and `dir`, so Arabic copy lays out right-to-left inside a left-to-right page.",
+      },
+    },
+  },
+  args: {
+    label: { text: 'هل توافق على المشاركة؟', lang: 'ar', dir: 'rtl' },
+    options: [
+      { label: { text: 'نعم', lang: 'ar', dir: 'rtl' }, value: true },
+      {
+        label: { text: 'لا', lang: 'ar', dir: 'rtl' },
+        value: false,
+        negative: true,
+      },
+    ],
+  },
+  render: renderField,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const group = canvas.getByRole('radiogroup', {
+      name: 'هل توافق على المشاركة؟',
+    });
+    await expect(group).toBeInTheDocument();
+    const yes = canvas.getByText('نعم');
+    await expect(yes.closest('[lang]')).toHaveAttribute('lang', 'ar');
+    await expect(getComputedStyle(yes).direction).toBe('rtl');
+
+    await userEvent.click(canvas.getByRole('radio', { name: 'لا' }));
+    await expect(canvas.getByRole('radio', { name: 'لا' })).toBeChecked();
+  },
 };

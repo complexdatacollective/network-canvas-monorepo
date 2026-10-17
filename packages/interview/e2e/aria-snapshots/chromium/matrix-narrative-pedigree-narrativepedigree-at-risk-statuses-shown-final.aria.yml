@@ -2,30 +2,26 @@
   - text: Showing Cystic Fibrosis
   - complementary "Condition key":
     - heading "Key" [level=4]
-    - heading "Conditions" [level=4]
-    - paragraph: Select a condition to see who it affects.
-    - button "Cystic Fibrosis" [pressed]
-    - separator
-    - heading "What the symbols mean" [level=4]
     - text: Has this condition Will develop this condition Carries this condition May develop this condition May carry this condition Not known
-    - button "Save snapshot"
   - slider "Resize the condition key panel"
-  - button "Focus on Albert": "Cystic Fibrosis: Status unknown"
-  - button "Focus on Mabel": "Cystic Fibrosis: Status unknown"
-  - button "Focus on Iris": "Cystic Fibrosis: At risk (carrier)"
-  - button "Focus on Frank": "Cystic Fibrosis: At risk (carrier)"
-  - button "Focus on Ernest": "Cystic Fibrosis: At risk (carrier)"
-  - button "Focus on Vera": "Cystic Fibrosis: At risk (carrier)"
-  - button "Focus on Diane": "Cystic Fibrosis: Obligate carrier"
-  - button "Focus on Roy": "Cystic Fibrosis: Obligate carrier"
-  - button "Focus on You": "Cystic Fibrosis: Affected"
-  - toolbar "Zoom controls":
-    - group "Zoom controls":
-      - button "Zoom out"
-      - button "Zoom in"
+  - region "Your family":
+    - button "Focus on Albert": "Cystic Fibrosis: Status unknown"
+    - button "Focus on Mabel": "Cystic Fibrosis: Status unknown"
+    - button "Focus on Frank": "Cystic Fibrosis: At risk (carrier)"
+    - button "Focus on Iris": "Cystic Fibrosis: At risk (carrier)"
+    - button "Focus on Ernest": "Cystic Fibrosis: At risk (carrier)"
+    - button "Focus on Vera": "Cystic Fibrosis: At risk (carrier)"
+    - button "Focus on Diane": "Cystic Fibrosis: Obligate carrier"
+    - button "Focus on Roy": "Cystic Fibrosis: Obligate carrier"
+    - button "Focus on You": "Cystic Fibrosis: Affected"
+  - toolbar "Family tree controls":
+    - button "Cystic Fibrosis"
     - separator
-    - group "Viewport controls":
-      - button "Reset zoom"
+    - button "Zoom out"
+    - button "Zoom in"
+    - button "Show the whole family"
+    - separator
+    - button "Save snapshot"
   - navigation:
     - button "Settings"
     - button "Previous Step"

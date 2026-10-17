@@ -1,11 +1,14 @@
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { db } from './db';
+import { supersededHashesOf } from './migrateStoredProtocols';
 import {
+  assertPlaintextStillAllowed,
   decryptAsset,
   decryptProtocol,
   encryptAsset,
   encryptProtocol,
+  preparingPlaintext,
 } from './recordCrypto';
 import type { ProtocolWithCounts, StoredAsset, StoredProtocol } from './types';
 
@@ -92,12 +95,14 @@ export async function saveProtocol(
 
   // Encrypt BEFORE opening the transaction (transaction-liveness rule): the
   // crypto.subtle awaits would let Dexie auto-commit an open tx mid-await.
+  const plaintext = preparingPlaintext();
   const protocolRow = await encryptProtocol(stored);
   const assetRows = await Promise.all(
     assetRecords.map((record) => encryptAsset(record)),
   );
 
-  await db.transaction('rw', db.protocols, db.assets, async () => {
+  await db.transaction('rw', db.protocols, db.assets, db.settings, async () => {
+    await assertPlaintextStillAllowed(plaintext);
     await db.protocols.put(protocolRow);
     await db.assets.where('protocolHash').equals(hash).delete();
     if (assetRows.length > 0) {
@@ -109,11 +114,33 @@ export async function saveProtocol(
 }
 
 export async function deleteProtocol(hash: string): Promise<void> {
-  await db.transaction('rw', db.protocols, db.sessions, db.assets, async () => {
-    await db.assets.where('protocolHash').equals(hash).delete();
-    await db.sessions.where('protocolHash').equals(hash).delete();
-    await db.protocols.where('hash').equals(hash).delete();
-  });
+  await db.transaction(
+    'rw',
+    db.protocols,
+    db.sessions,
+    db.assets,
+    db.protocolMigrations,
+    async () => {
+      // The re-keying records leading to this protocol keep the rows it was
+      // migrated from; they go with it.
+      const superseded = supersededHashesOf(
+        await db.protocolMigrations.toArray(),
+        hash,
+      );
+      await db.assets.where('protocolHash').equals(hash).delete();
+      // An interview tab still running against an older version of this
+      // protocol writes its session back under that version's hash, for the
+      // next launch to carry across. Those sessions are this protocol's
+      // interviews too, and with the records below gone nothing could ever
+      // associate them with it again.
+      await db.sessions
+        .where('protocolHash')
+        .anyOf([hash, ...superseded])
+        .delete();
+      await db.protocols.where('hash').equals(hash).delete();
+      await db.protocolMigrations.bulkDelete(superseded);
+    },
+  );
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
@@ -149,6 +176,39 @@ export async function reencryptProtocol(id: string): Promise<void> {
   const existing = await decryptProtocol(existingRow);
   const row = await encryptProtocol(existing);
   await db.protocols.put(row);
+}
+
+export async function listProtocolMigrationIds(): Promise<string[]> {
+  return db.protocolMigrations.orderBy('previousHash').primaryKeys();
+}
+
+// The source row a re-keying record keeps is a protocol row, encrypted the
+// way it was when the migration replaced it: plaintext if the device was not
+// yet secured. Re-encrypt it like any other protocol row.
+export async function reencryptProtocolMigration(
+  previousHash: string,
+): Promise<void> {
+  const record = await db.protocolMigrations.get(previousHash);
+  if (!record?.source) return;
+  const row = await encryptProtocol(await decryptProtocol(record.source.row));
+  // The crypto runs outside a transaction, so another tab may have deleted
+  // the protocol, and this record with it, or replaced the record meanwhile.
+  // Writing then would bring a deleted record back, so the row is committed
+  // only onto the record it was read from.
+  await db.transaction('rw', db.protocolMigrations, async () => {
+    const current = await db.protocolMigrations.get(previousHash);
+    if (
+      !current?.source ||
+      current.hash !== record.hash ||
+      current.migratedAt !== record.migratedAt
+    ) {
+      return;
+    }
+    await db.protocolMigrations.put({
+      ...current,
+      source: { ...current.source, row },
+    });
+  });
 }
 
 export async function reencryptAsset(id: string): Promise<void> {

@@ -210,6 +210,9 @@ catalogs:
     fuse.js:
       specifier: ^7.5.0
       version: 7.5.0
+    intl-messageformat:
+      specifier: ^12.1.2
+      version: 12.1.2
     jsdom:
       specifier: ^30.1.2
       version: 30.1.2
@@ -476,9 +479,6 @@ importers:
       clsx:
         specifier: 'catalog:'
         version: 2.1.1
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       cva:
         specifier: 1.0.0-beta.12
         version: 1.0.0-beta.12(typescript@7.0.2)
@@ -2579,21 +2579,18 @@ importers:
       '@codaco/tailwind-config':
         specifier: workspace:^
         version: link:../../tooling/tailwind
-      '@faker-js/faker':
-        specifier: 'catalog:'
-        version: 10.6.0
       '@mapbox/search-js-react':
         specifier: ^1.6.0
         version: 1.6.0(mapbox-gl@3.32.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@reduxjs/toolkit':
         specifier: 'catalog:'
         version: 2.13.0(react-redux@9.3.0(@types/react@19.3.0)(react@19.3.0)(redux@5.0.1))(react@19.3.0)
+      '@use-gesture/react':
+        specifier: ^10.3.1
+        version: 10.3.1(react@19.3.0)
       concaveman:
         specifier: ^2.0.0
         version: 2.0.0
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       d3-force:
         specifier: ^3.0.0
         version: 3.0.0
@@ -2606,6 +2603,9 @@ importers:
       immer:
         specifier: ^11.1.18
         version: 11.1.18
+      intl-messageformat:
+        specifier: 'catalog:'
+        version: 12.1.2
       lucide-react:
         specifier: 'catalog:'
         version: 1.49.0(@types/react@19.3.0)(react@19.3.0)
@@ -2882,9 +2882,6 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.104.1(react@19.3.0)
-      csvtojson:
-        specifier: 'catalog:'
-        version: 2.0.14
       effect:
         specifier: 'catalog:'
         version: 4.0.0
@@ -3080,6 +3077,15 @@ importers:
       '@codaco/shared-consts':
         specifier: workspace:^
         version: link:../shared-consts
+      '@formatjs/icu-messageformat-parser':
+        specifier: 'catalog:'
+        version: 3.5.20
+      '@formatjs/intl-localematcher':
+        specifier: 'catalog:'
+        version: 0.9.0
+      csvtojson:
+        specifier: 'catalog:'
+        version: 2.0.14
       jszip:
         specifier: 'catalog:'
         version: 3.10.2
@@ -3230,6 +3236,9 @@ importers:
       '@codaco/protocol-builder-core':
         specifier: workspace:^
         version: link:../protocol-builder-core
+      '@codaco/protocol-validation':
+        specifier: workspace:^
+        version: link:../protocol-validation
       '@codaco/studio-sync':
         specifier: workspace:^
         version: link:../studio-sync
@@ -9301,6 +9310,14 @@ packages:
 
   '@uploadthing/shared@7.1.10':
     resolution: {integrity: sha512-R/XSA3SfCVnLIzFpXyGaKPfbwlYlWYSTuGjTFHuJhdAomuBuhopAHLh2Ois5fJibAHzi02uP1QCKbgTAdmArqg==}
+
+  '@use-gesture/core@10.3.1':
+    resolution: {integrity: sha512-WcINiDt8WjqBdUXye25anHiNxPc0VOrlT8F6LLkU6cycrOGUDyY/yyFmsg3k8i5OLvv25llc0QC45GhR/C8llw==}
+
+  '@use-gesture/react@10.3.1':
+    resolution: {integrity: sha512-Yy19y6O2GJq8f7CHf7L0nxL8bf4PZCPaVOCgJrusOeFHY1LvHgYXnmnXg6N5iwAnbgbZCDjo60SiM6IPJi9C5g==}
+    peerDependencies:
+      react: '>= 16.8.0'
 
   '@valibot/to-json-schema@1.7.1':
     resolution: {integrity: sha512-3qkmU6KXWh8GIThEAW3kuRHPQBMjWkKy+Ppz3WkUucx53DTpOa6siMn4xDGSOhlVyMrDaJTCTMLYPZVAIk1P0A==}
@@ -23228,6 +23245,13 @@ snapshots:
       effect: 3.22.1
       sqids: 0.3.0
 
+  '@use-gesture/core@10.3.1': {}
+
+  '@use-gesture/react@10.3.1(react@19.3.0)':
+    dependencies:
+      '@use-gesture/core': 10.3.1
+      react: 19.3.0
+
   '@valibot/to-json-schema@1.7.1(valibot@1.4.2(typescript@7.0.2))':
     dependencies:
       valibot: 1.4.2(typescript@7.0.2)
@@ -26864,7 +26888,7 @@ snapshots:
 
   icu-minify@4.14.8:
     dependencies:
-      '@formatjs/icu-messageformat-parser': 3.5.20
+      '@formatjs/icu-messageformat-parser': 3.5.21
 
   idb@7.1.1: {}
 

@@ -117,7 +117,11 @@ export async function POST(request: Request) {
           ...new Set(result.failedExports.map((failure) => failure.sessionId)),
         ];
         await writer.write(
-          encodeExportEvent({ type: 'complete', failedSessionIds }),
+          encodeExportEvent({
+            type: 'complete',
+            failedSessionIds,
+            warnings: result.warnings,
+          }),
         );
         await writer.close();
       }),

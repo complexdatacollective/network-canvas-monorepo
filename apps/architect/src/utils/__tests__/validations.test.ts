@@ -4,6 +4,7 @@ import {
   getValidations,
   getValidator,
   createValidations,
+  nameComparisonKey,
 } from '../validations';
 
 const {
@@ -11,7 +12,7 @@ const {
   greaterThanOrEqualTo,
   minDate,
   ISODate,
-  allowedVariableName,
+  codebookName,
   maxLength,
   maxSelected,
   maxValue,
@@ -22,6 +23,7 @@ const {
   requiredAcceptsNull,
   requiredAcceptsZero,
   uniqueArrayAttribute,
+  uniqueArrayName,
   uniqueByList,
 } = createValidations();
 
@@ -353,21 +355,98 @@ describe('Validations', () => {
     });
   });
 
-  describe('uniqueByList()', () => {
-    const subject = uniqueByList(['Alpha', 2, { id: 'item' }]);
+  describe('uniqueArrayName()', () => {
+    const subject = uniqueArrayName(undefined, undefined);
+    const message = 'This value is already in use. Enter a different value.';
 
-    it('rejects case-insensitive string and deeply-equal values', () => {
-      expect(subject('alpha')).toBe('"alpha" is already in use');
-      expect(subject(2)).toBe('"2" is already in use');
-      expect(subject({ id: 'item' })).toBe(
-        '"[object Object]" is already in use',
+    it('compares values as text, so 1 and "1" are the same value', () => {
+      const values = { options: [{ value: 1 }, { value: '1' }] };
+
+      expect(subject('1', values, undefined, 'options[1].value')).toBe(message);
+      expect(subject(1, values, undefined, 'options[0].value')).toBe(message);
+    });
+
+    it('compares values as they are saved: normalized and case-insensitively', () => {
+      const values = {
+        options: [{ value: 'Amigo cercano' }, { value: ' amigo CERCANO ' }],
+      };
+
+      expect(
+        subject(' amigo CERCANO ', values, undefined, 'options[1].value'),
+      ).toBe(message);
+    });
+
+    it('compares values under Unicode canonical equivalence', () => {
+      const values = {
+        options: [{ value: 'Coll\u00e8gue' }, { value: 'Colle\u0300gue' }],
+      };
+
+      expect(
+        subject('Colle\u0300gue', values, undefined, 'options[1].value'),
+      ).toBe(message);
+    });
+
+    it('passes for different values in any script, and for empty values', () => {
+      const values = {
+        options: [{ value: '友人' }, { value: '同僚' }, { value: '' }],
+      };
+
+      expect(
+        subject('同僚', values, undefined, 'options[1].value'),
+      ).toBeUndefined();
+      expect(
+        subject('', values, undefined, 'options[2].value'),
+      ).toBeUndefined();
+    });
+
+    it('does not take a value made of spaces for another such value', () => {
+      const values = { options: [{ value: '  ' }, { value: ' ' }] };
+
+      expect(
+        subject(' ', values, undefined, 'options[1].value'),
+      ).toBeUndefined();
+    });
+  });
+
+  describe('nameComparisonKey()', () => {
+    it('is the same for names that are saved as the same name', () => {
+      expect(nameComparisonKey('  Amigo Cercano ')).toBe(
+        nameComparisonKey('amigo cercano'),
       );
+      expect(nameComparisonKey('Colle\u0300gue')).toBe(
+        nameComparisonKey('Coll\u00e8gue'),
+      );
+      expect(nameComparisonKey(1)).toBe(nameComparisonKey('1'));
+    });
+
+    it('differs for names that are different names', () => {
+      expect(nameComparisonKey('友人')).not.toBe(nameComparisonKey('同僚'));
+      expect(nameComparisonKey('foo bar')).not.toBe(
+        nameComparisonKey('foo_bar'),
+      );
+    });
+  });
+
+  describe('uniqueByList()', () => {
+    const subject = uniqueByList(['Alpha', 'Amigo cercano', '友人']);
+
+    it('rejects a name already in the list, however it is typed', () => {
+      expect(subject('alpha')).toBe('"alpha" is already in use');
+      expect(subject('  amigo CERCANO ')).toBe(
+        '"amigo CERCANO" is already in use',
+      );
+      expect(subject('友人')).toBe('"友人" is already in use');
+      expect(subject('Alph\u0061')).toBe('"Alpha" is already in use');
     });
 
     it('passes for unique and empty values', () => {
       expect(subject('Beta')).toBeUndefined();
       expect(subject('')).toBeUndefined();
       expect(subject(null)).toBeUndefined();
+    });
+
+    it('compares a number as the text it is saved as', () => {
+      expect(uniqueByList(['1'])(1)).toBe('"1" is already in use');
     });
   });
 
@@ -397,27 +476,50 @@ describe('Validations', () => {
     });
   });
 
-  describe('allowedVariableName()', () => {
-    it.each(['name', 'name.with-dashes_and:punctuation', '123'])(
-      'accepts %s',
-      (value) => {
-        expect(allowedVariableName()(value)).toBeUndefined();
-      },
-    );
+  describe('codebookName()', () => {
+    const message =
+      'This can’t contain tabs, line breaks or other control characters';
 
-    it.each(['contains spaces', 'slash/name', 'emoji-🚀', ''])(
-      'rejects %s',
-      (value) => {
-        expect(allowedVariableName()(value)).toBe(
-          'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
-        );
-      },
-    );
+    it.each([
+      'name',
+      'name.with-dashes_and:punctuation',
+      '123',
+      'contains spaces',
+      '友人',
+      'amigo cercano',
+      'Collègue',
+      'Colle\u0300gue',
+      'slash/name',
+      'emoji-🚀',
+      'صديق مقرب',
+    ])('accepts %s', (value) => {
+      expect(codebookName()(value)).toBeUndefined();
+    });
 
-    it('uses the supplied name in its error', () => {
-      expect(allowedVariableName('option value')('not valid')).toContain(
-        'Not a valid option value',
-      );
+    it('judges a name as it will be saved, so padding is not an error', () => {
+      expect(codebookName()('  amigo cercano  ')).toBeUndefined();
+    });
+
+    it.each([
+      ['a tab', 'tab\tinside'],
+      ['a line break', 'line\nbreak'],
+      ['a carriage return', 'carriage\rreturn'],
+      ['a null character', 'nul\u0000l'],
+      ['a unit separator', 'unit\u001fseparator'],
+      ['a lone surrogate', 'lone\ud800surrogate'],
+      ['a noncharacter', 'non\uffffcharacter'],
+    ])('rejects %s', (_, value) => {
+      expect(codebookName()(value)).toBe(message);
+    });
+
+    it('leaves an empty name to the required rule', () => {
+      expect(codebookName()('')).toBeUndefined();
+      expect(codebookName()('   ')).toBeUndefined();
+    });
+
+    it('ignores values that are not text', () => {
+      expect(codebookName()(5)).toBeUndefined();
+      expect(codebookName()(null)).toBeUndefined();
     });
   });
 

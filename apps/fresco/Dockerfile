@@ -162,6 +162,7 @@ RUN --mount=type=cache,target=/root/.npm \
       "dotenv@$(V dotenv)" \
       "zod@$(V zod)" \
       "@t3-oss/env-nextjs@$(V @t3-oss/env-nextjs)" \
+      "posthog-node@$(V posthog-node)" \
       "@codaco/protocol-validation@$(LV @codaco/protocol-validation)"; \
     npm pack --silent --pack-destination /tmp "@codaco/interview@$(LV @codaco/interview)"; \
     mkdir -p /tmp/interview-pack /tmp/runtime/node_modules/@codaco; \

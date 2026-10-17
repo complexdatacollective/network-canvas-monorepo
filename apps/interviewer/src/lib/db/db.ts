@@ -1,15 +1,42 @@
 import Dexie, { type Table } from 'dexie';
 
+import type { VersionedProtocol } from '@codaco/protocol-validation';
+
 import type {
   StoredAssetRow,
   StoredProtocolRow,
   StoredSessionRow,
 } from './recordCrypto';
-import {
-  DEFAULT_SETTINGS,
-  type StoredProtocolMigrationRecord,
-  type StoredSettings,
-} from './types';
+import { DEFAULT_SETTINGS, type StoredSettings } from './types';
+
+/**
+ * A durable record that a schema migration re-keyed a stored protocol from
+ * `previousHash` to `hash`. Written in the same transaction as the re-keying,
+ * and deleted only with the protocol the chain of records leads to. The launch
+ * sweep follows these records to heal any session a legacy writer (a tab still
+ * running the pre-update bundle) wrote back under a superseded hash after the
+ * migration ran.
+ */
+export type StoredProtocolMigrationRecord = {
+  previousHash: string;
+  hash: string;
+  migratedAt: string;
+  /**
+   * The protocol row the migration replaced, exactly as it was stored
+   * (encrypted when the vault is secured), and the schema version it was
+   * migrated to. A session written back under `previousHash` holds data in
+   * that row's schema, so healing replays the migration's session migrator
+   * from it rather than only repointing the session.
+   *
+   * Absent on records written before sessions were migrated with their
+   * protocol (Interviewer 8.3 and earlier). Those migrations repointed every
+   * session without changing it, so healing does the same for them.
+   */
+  source?: {
+    row: StoredProtocolRow;
+    toVersion: VersionedProtocol['schemaVersion'];
+  };
+};
 
 class InterviewerV8DB extends Dexie {
   protocols!: Table<StoredProtocolRow, string>;
@@ -46,6 +73,32 @@ class InterviewerV8DB extends Dexie {
 }
 
 export const db = new InterviewerV8DB();
+
+/**
+ * The settings-table row recording that this device's vault has been
+ * secured. Initial enrolment's re-encryption sweep writes it before it lists
+ * the rows to encrypt, and every write that prepared plaintext rows reads it
+ * inside the transaction that commits them (`assertPlaintextStillAllowed`).
+ * IndexedDB orders the two transactions, so a plaintext write either commits
+ * before the sweep lists rows — and is encrypted by it — or sees this row and
+ * writes nothing. The vault record cannot serve here: it is in localStorage,
+ * which reaches other tabs only some time after it is written.
+ */
+type SecuredMarker = { id: 'secured'; securedAt: string };
+
+const securedMarkers = () => db.table<SecuredMarker, 'secured'>('settings');
+
+export async function markDatabaseSecured(): Promise<void> {
+  await securedMarkers().put({
+    id: 'secured',
+    securedAt: new Date().toISOString(),
+  });
+}
+
+/** Inside a transaction, its scope must include `db.settings`. */
+export async function isDatabaseSecured(): Promise<boolean> {
+  return (await securedMarkers().get('secured')) !== undefined;
+}
 
 export async function getSettings(): Promise<StoredSettings> {
   const existing = await db.settings.get('device');

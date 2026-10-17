@@ -271,6 +271,10 @@
     "defaultMessage": "Requires Internet",
     "description": "Protocol card badge warning that an interview stage needs an internet connection."
   },
+  "interviewer.deckCard.unavailable": {
+    "defaultMessage": "Not available",
+    "description": "Protocol card badge saying that interviews cannot be started or continued from this protocol in this version of the app, because it could not be updated. Opening the protocol explains why."
+  },
   "interviewer.deckSlotCard.dismissTheSampleProtocol": {
     "defaultMessage": "Dismiss the sample protocol",
     "description": "User-facing message in Interviewer Deck Slot Card."
@@ -467,6 +471,10 @@
     "defaultMessage": "Interview unavailable",
     "description": "Visible copy in Interviewer Interview."
   },
+  "interviewer.interview.interviewsOfProtocolCouldNotBeUpdated": {
+    "defaultMessage": "Some interviews recorded with this protocol could not be updated to work with this version of the app, so this interview cannot be continued yet. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Its responses remain available on the data screen.",
+    "description": "Visible copy in Interviewer Interview, shown when the interviews recorded with this interview’s protocol could not be updated to work with this version of the app, so the protocol was left as it was. A later version of the app may be able to update them."
+  },
   "interviewer.interview.readOnlyReview": {
     "defaultMessage": "Read-only review",
     "description": "Visible copy in Interviewer Interview."
@@ -491,14 +499,6 @@
     "defaultMessage": "Exit",
     "description": "Participant completion-screen action handing control back to the researcher, with authentication if required."
   },
-  "interviewer.interviewComplete.interviewComplete": {
-    "defaultMessage": "Interview complete",
-    "description": "Visible copy in Interviewer Interview Complete."
-  },
-  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": {
-    "defaultMessage": "Thank you. This interview is finished and its responses can no longer be changed. Please hand the device back to the researcher.",
-    "description": "Visible copy in Interviewer Interview Complete."
-  },
   "interviewer.language.automatic": {
     "defaultMessage": "Automatic (browser)",
     "description": "Language option that follows this device browser preferences instead of storing an explicit choice."
@@ -508,8 +508,8 @@
     "description": "Error announced when the language applies immediately but cannot persist across reloads."
   },
   "interviewer.language.hint": {
-    "defaultMessage": "Choose the language for Interviewer and its built-in interview controls on this device. This does not change protocol content or collected data.",
-    "description": "Explains that the device language applies to app-provided controls while protocol-authored content and research data stay unchanged."
+    "defaultMessage": "Choose the language Interviewer uses on this device. Interviews follow the participant's browser language, or the language they choose during the interview.",
+    "description": "Explains that this setting changes only Interviewer's own screens on this device, while each interview is shown in the participant's browser language or the language the participant picks during the interview."
   },
   "interviewer.language.label": {
     "defaultMessage": "App language",
@@ -706,6 +706,10 @@
   "interviewer.newSessionForm.caseIDIsRequired": {
     "defaultMessage": "Case ID is required",
     "description": "User-facing message in Interviewer New Session Form."
+  },
+  "interviewer.newSessionForm.interviewsCouldNotBeUpdated": {
+    "defaultMessage": "Some interviews recorded with this protocol could not be updated to work with this version of the app, so new interviews cannot be started from it yet. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Responses already collected remain available on the data screen.",
+    "description": "Visible copy in Interviewer New Session Form, shown when the interviews recorded with this protocol could not be updated to work with this version of the app, so the protocol was left as it was. A later version of the app may be able to update them."
   },
   "interviewer.newSessionForm.startAnyway": {
     "defaultMessage": "Start anyway",
@@ -1666,6 +1670,14 @@
   "interviewer.storedProtocolMigration.failedTitle": {
     "defaultMessage": "{count, plural, one {Protocol could not be updated} other {Protocols could not be updated}}",
     "description": "Administration text in Interviewer useStoredProtocolMigration."
+  },
+  "interviewer.storedProtocolMigration.interviewsNotUpdatedDescription": {
+    "defaultMessage": "{count, plural, =1 {Some interviews recorded with {name} could not be updated to work with this version of the app. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Until then, its interviews cannot be started or continued, though their responses remain on the data screen.} other {Some interviews recorded with # protocols could not be updated to work with this version of the app. These protocols and all their interviews have been kept exactly as they were, and the app will try again each time it starts. Until then, their interviews cannot be started or continued, though their responses remain on the data screen.}}",
+    "description": "Notice shown when the interviews recorded with one or more protocols could not be updated to work with this version of the app. Nothing was changed, and a later version of the app may be able to update them. name is the protocol name."
+  },
+  "interviewer.storedProtocolMigration.interviewsNotUpdatedTitle": {
+    "defaultMessage": "{count, plural, one {A protocol is waiting for an update} other {Protocols are waiting for an update}}",
+    "description": "Title of a notice shown when the interviews recorded with one or more protocols could not be updated to work with this version of the app, so those protocols were left as they were."
   },
   "interviewer.storedProtocolMigration.updatedDescription": {
     "defaultMessage": "{count, plural, =1 {{name} was migrated to the current schema.} other {# protocols were migrated to the current schema.}}",

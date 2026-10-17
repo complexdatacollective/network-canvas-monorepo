@@ -1,0 +1,37 @@
+- main:
+  - status:
+    - heading "Add the members of your family." [level=2]
+  - region "Interview notifications"
+  - dialog "Add your parent":
+    - heading "Add your parent" [level=2]
+    - button "Close"
+    - text: What do you call them? A nickname will do.
+    - textbox "What do you call them?"
+    - text: Gender identity
+    - radiogroup "Gender identity":
+      - radio "Woman"
+      - text: Woman
+      - radio "Man"
+      - text: Man
+      - radio "Non-binary"
+      - text: Non-binary
+      - radio "A different identity"
+      - text: A different identity
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - text: Sex assigned at birth Required
+    - radiogroup "Sex assigned at birth":
+      - radio "Female"
+      - text: Female
+      - radio "Male"
+      - text: Male
+      - radio "Intersex"
+      - text: Intersex
+      - radio "Don’t know"
+      - text: Don’t know
+      - radio "Prefer not to say"
+      - text: Prefer not to say
+    - button "Cancel"
+    - button "Continue"

@@ -19,9 +19,11 @@ import {
   vi,
 } from 'vitest';
 
-import { AppMessage } from '@codaco/app-i18n/react';
 import { AnimationProvider } from '@codaco/fresco-ui/AnimationProvider';
-import { asEntityAttributeReference } from '@codaco/protocol-validation';
+import {
+  asEntityAttributeReference,
+  getLocaleMetadata,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -30,7 +32,6 @@ import {
 import type { InterviewPayload, SyncHandler } from '../contract/types';
 import useStageValidation from '../hooks/useStageValidation';
 import { interviewCatalogSource } from '../i18n/catalog';
-import { runtimeMessages } from '../i18n/runtimeMessages';
 import Shell from '../Shell';
 import {
   InterviewToastProvider,
@@ -113,6 +114,7 @@ function makePayload(id: string): InterviewPayload {
       finishTime: null,
       exportTime: null,
       lastUpdated: '2026-01-01T00:00:00.000Z',
+      localeOptions: [getLocaleMetadata('en')],
       network: {
         ego: {
           [entityPrimaryKeyProperty]: `${id}-ego`,
@@ -127,7 +129,8 @@ function makePayload(id: string): InterviewPayload {
       hash: `${id}-hash`,
       importedAt: '2026-01-01T00:00:00.000Z',
       name: `Authored_${id}`,
-      schemaVersion: 8,
+      schemaVersion: 9,
+      localization: { defaultLocale: 'en', locales: ['en'] },
       codebook: {
         ego: { variables: {} },
         node: {
@@ -136,7 +139,9 @@ function makePayload(id: string): InterviewPayload {
             color: 'node-color-seq-1',
             shape: { default: 'circle' },
             icon: 'add-a-person',
-            variables: { name: { name: 'Name', type: 'text' } },
+            variables: {
+              name: { name: 'Name', type: 'text' },
+            },
           },
         },
         edge: {},
@@ -146,11 +151,29 @@ function makePayload(id: string): InterviewPayload {
         {
           id: `${id}-names`,
           type: 'NameGeneratorQuickAdd',
-          label: `Original_${id}`,
+          minNodesNotice: {
+            en: '{count, plural, one {You must create at least # item before you can continue.} other {You must create at least # items before you can continue.}}',
+          },
+          quickAddHint: { en: 'Press Enter when you are finished.' },
+          label: { en: `Original_${id}` },
           subject: { entity: 'node', type: 'person' },
           quickAdd: asEntityAttributeReference('name'),
-          prompts: [{ id: `${id}-prompt`, text: `Original prompt ${id}` }],
+          prompts: [
+            { id: `${id}-prompt`, text: { en: `Original prompt ${id}` } },
+          ],
           behaviours: { minNodes: 1 },
+        },
+        {
+          id: `${id}-finish`,
+          type: 'FinishSession',
+          mode: 'confirmation',
+          label: { en: 'Finish' },
+          content: { en: '# Finish\n\nThe end.' },
+          finishedContent: { en: '# Finished\n\nThank you.' },
+          finishLabel: { en: 'Finish' },
+          finishConfirmation: { en: 'Finish this interview?' },
+          finishFailed: { en: 'The interview could not be finished.' },
+          outcome: 'completed',
         },
       ],
     },
@@ -169,9 +192,10 @@ function currentStore() {
   return store;
 }
 
-const taskCompleteDescription = (
-  <AppMessage message={runtimeMessages.taskComplete} />
-);
+// The words a stage's maximum shows, as a stage holds them: a toast needs no
+// catalog message to say them.
+const taskCompleteDescription =
+  'You have completed this task. Click the next arrow to continue.';
 
 function StandaloneToast() {
   const { showToast, closeToast } = useStageValidation({ constraints: [] });
@@ -247,7 +271,7 @@ describe('Shell toast ownership', () => {
           {...handlers}
           payload={firstPayload}
           onSync={firstSync}
-          requestedLocale={requestedLocale}
+          requestedLocales={[requestedLocale]}
           flags={{ isE2E: true }}
           disableAnalytics
         />
@@ -263,7 +287,7 @@ describe('Shell toast ownership', () => {
           {...handlers}
           payload={secondPayload}
           onSync={secondSync}
-          requestedLocale="es"
+          requestedLocales={['es']}
           flags={{ isE2E: true }}
           disableAnalytics
         />
@@ -286,7 +310,7 @@ describe('Shell toast ownership', () => {
     const user = userEvent.setup();
     await user.click(within(first).getByTestId('quick-add-toggle'));
     const input = await within(first).findByRole('textbox', {
-      name: 'Person name',
+      name: 'Type a name, then press Enter',
     });
     await user.click(input);
     await user.paste('Álvaro & <first>');
@@ -324,10 +348,13 @@ describe('Shell toast ownership', () => {
 
     firstView.rerender(firstContent('es-MX'));
     expect(within(first).getByRole('dialog')).toBe(notification);
+    // The notice is the stage's own text, which the protocol holds in English
+    // only, so it does not follow the browser's Spanish; the region keeps the
+    // English-only protocol's language.
     expect(notification).toHaveTextContent(
-      'Debes crear al menos 1 elemento antes de continuar.',
+      'You must create at least 1 item before you can continue.',
     );
-    expect(notification.closest('[lang]')).toHaveAttribute('lang', 'es');
+    expect(notification.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(
       within(first).getAllByRole('region', {
         name: 'Notificaciones de la entrevista',
@@ -373,6 +400,54 @@ describe('Shell toast ownership', () => {
     await waitFor(() => expect(firstSync).toHaveBeenCalled());
     expect(secondStore.getState().session).toEqual(beforeSecond);
     expect(secondSync).not.toHaveBeenCalled();
+  });
+
+  // The maximum's notice stays up until the participant moves on, so it is
+  // replaced when the interview's language changes under it.
+  it('says the maximum’s notice again in a language the participant changes to', async () => {
+    const payload = makePayload('limit');
+    payload.protocol.localization = {
+      defaultLocale: 'en',
+      locales: ['en', 'es'],
+    };
+    payload.session.localeOptions = [
+      getLocaleMetadata('en'),
+      getLocaleMetadata('es'),
+    ];
+    const [stage] = payload.protocol.stages as Record<string, unknown>[];
+    if (!stage) throw new Error('No name generator');
+    Object.assign(stage, {
+      behaviours: { maxNodes: 1 },
+      minNodesNotice: undefined,
+      maxNodesNotice: { en: 'That is everyone.', es: 'Eso es todo.' },
+    });
+    const content = (requestedLocale: string) => (
+      <Shell
+        {...handlers}
+        payload={payload}
+        onSync={() => Promise.resolve()}
+        requestedLocales={[requestedLocale]}
+        flags={{ isE2E: true }}
+        disableAnalytics
+      />
+    );
+    const view = render(content('en'), { wrapper: WithoutMotion });
+    await screen.findByRole('button', { name: 'Next Step' });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId('quick-add-toggle'));
+    await user.click(
+      await screen.findByRole('textbox', {
+        name: 'Type a name, then press Enter',
+      }),
+    );
+    await user.paste('Ana');
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('That is everyone.')).toBeInTheDocument();
+
+    view.rerender(content('es'));
+    expect(await screen.findByText('Eso es todo.')).toBeInTheDocument();
+    expect(screen.queryByText('That is everyone.')).not.toBeInTheDocument();
   });
 
   it('retains provider-optional English and the module-manager fallback for standalone controls', async () => {
@@ -460,7 +535,7 @@ describe('Shell stage portal ownership', () => {
           {...handlers}
           payload={firstPayload}
           onSync={firstSync}
-          requestedLocale="en"
+          requestedLocales={['en']}
           flags={{ isE2E: true }}
           disableAnalytics
         />
@@ -478,7 +553,7 @@ describe('Shell stage portal ownership', () => {
           {...handlers}
           payload={secondPayload}
           onSync={secondSync}
-          requestedLocale={requestedLocale}
+          requestedLocales={[requestedLocale]}
           flags={{ isE2E: true }}
           disableAnalytics
         />
@@ -498,7 +573,7 @@ describe('Shell stage portal ownership', () => {
     expect(first).toContainElement(firstBin);
     expect(first).not.toContainElement(secondBin);
     expect(second).toContainElement(secondBin);
-    expect(secondBin.closest('[lang]')).toHaveAttribute('lang', 'es');
+    expect(secondBin.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(secondBin.closest('[dir]')).toHaveAttribute('dir', 'ltr');
 
     const beforeFirst = structuredClone(firstStore.getState().session);
@@ -507,7 +582,7 @@ describe('Shell stage portal ownership', () => {
     secondSync.mockClear();
     secondView.rerender(secondContent('en-GB'));
     expect(within(second).getByLabelText('Delete bin')).toBe(secondBin);
-    expect(secondBin.closest('[lang]')).toHaveAttribute('lang', 'en-GB');
+    expect(secondBin.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(secondBin.closest('[dir]')).toHaveAttribute('dir', 'ltr');
     expect(firstBin.closest('[lang]')).toHaveAttribute('lang', 'en');
     expect(document.documentElement).toHaveAttribute('lang', 'ar');
