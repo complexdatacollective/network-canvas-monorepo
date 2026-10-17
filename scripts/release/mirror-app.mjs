@@ -194,6 +194,11 @@ function capture(cmd, args, opts = {}) {
   return result.stdout.trim();
 }
 
+// The monorepo commit being mirrored.
+function sourceCommit() {
+  return process.env.MONOREPO_SHA || capture('git', ['rev-parse', 'HEAD']);
+}
+
 // Per-app deviations from the default (legacy Electron app) mirror shape.
 // Fresco is a pnpm-installed Next.js app whose Dockerfile builds the mirrored
 // tree directly, so it needs its own workspace manifest and lockfile rather
@@ -670,6 +675,9 @@ function stage({
     // The Dockerfile COPYs pnpm-workspace.yaml unconditionally; the monorepo
     // deleted the app-level one when Fresco moved in, so regenerate it here.
     writeFileSync(join(staging, 'pnpm-workspace.yaml'), frescoWorkspaceYaml());
+    // The Docker build sees the tree without its .git, so the commit the
+    // settings page reports is recorded here (read by next.config.ts).
+    writeFileSync(join(staging, 'source-commit'), `${sourceCommit()}\n`);
   }
 
   if (seedMirrorFrom) {
@@ -965,8 +973,7 @@ function publish({ staging, expectApp, repo, branch, version }) {
     0;
 
   if (hasChanges) {
-    const sourceSha =
-      process.env.MONOREPO_SHA || capture('git', ['rev-parse', 'HEAD']);
+    const sourceSha = sourceCommit();
     const message = `Release v${version} (mirrored from monorepo ${sourceSha})`;
     const authorName =
       process.env.GIT_AUTHOR_NAME || 'Network Canvas Release Bot';
