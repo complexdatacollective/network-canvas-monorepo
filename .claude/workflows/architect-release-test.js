@@ -348,6 +348,11 @@ protocol-design PWA. Target deployment: ${target}
 - read_page lists only elements inside the viewport, so off-screen controls
   look absent. Reach them with computer { action: "scroll_to", ref } —
   coordinate scrolling times out while the pane is hidden.
+- Never let a download reach this pane: on the desktop app it opens a native
+  "Save as…" dialog no tool can answer, which stays on the person's screen.
+  Before any action that downloads a file, install the download hook from
+  scripts/release-test/PANE_DOWNLOADS.md with javascript_tool (again after
+  any navigation or reload); it records the file and cancels the download.
 - Editing-key presses (End, Home, cmd+a) are unreliable in this pane. Set
   field values with form_input, or click precisely and type.
 - Interact through the accessibility tree: read_page (filter interactive),
@@ -498,14 +503,14 @@ const SLICES = [
 4. "reopen": Open your protocol again from its card (card menu > Open) and
    confirm the editor shows it. Return to the start screen.
 5. "export": Open your protocol in the editor and trigger the toolbar's
-   "Download" button. Pass requires POSITIVE success evidence — absence of
-   errors is not enough, because a handler that silently does nothing also
-   produces no errors. The button transitions to a "Downloaded" success
-   state only after the export actually completes: require that transition
-   (or equivalently instrument the download mechanism via javascript_tool —
-   e.g. wrap URL.createObjectURL before clicking — and observe it fire).
-   This pane can never observe the saved file itself; do not mark blocked
-   for that — reserve blocked for the Download control being unreachable.
+   "Download" button, with the download hook installed first. Pass requires
+   POSITIVE success evidence — absence of errors is not enough, because a
+   handler that silently does nothing also produces no errors. Require both
+   the button's transition to its "Downloaded" success state (it reaches it
+   only after the export completes) and a captured download named
+   "*.netcanvas" whose blob is non-empty and starts with "PK" (a zip). The
+   file never reaches disk in this pane; do not mark blocked for that —
+   reserve blocked for the Download control being unreachable.
 6. "delete": Delete your protocol from the start screen and confirm its card
    disappears.`,
   },
