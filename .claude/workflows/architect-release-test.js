@@ -604,25 +604,31 @@ include it.
    offers. Open the "Languages" page through its link in the project
    navigation and confirm the "Protocol languages" list shows exactly one
    language, marked "Default", and that there is no "Open translation table"
-   link (with one language there is nothing to translate into).
+   link (with one language there is nothing to translate into). Then go
+   back to the stages, open "Finish Interview", replace its "Stage name"
+   (the field arrives filled with "Finish Interview"; select all of it
+   first) with "The end", and save ("Finished Editing"). Confirm the
+   timeline shows "The end". Return to the "Languages" page.
 2. "add-language": Press "Add languages". In the "Add languages" dialog open
    the "Languages" box, choose "French (fr)" (if French is already listed,
    choose "Spanish (es)" instead and use Spanish wherever French appears
    below), close the list, and press the dialog's own "Add languages" button.
    Confirm the dialog closes and the list gains a French row that is not
    marked "Default", shows "Missing translations" and an "N of M strings
-   translated" count with N below M (note N and M), and that an "Open
-   translation table" link now appears.
+   translated" count with N exactly one below M (note N and M), and that an
+   "Open translation table" link now appears. Adding a language writes the
+   app's built-in wording in that language (the finish stage's closing and
+   finished text, for example), so only the stage name you wrote is
+   missing.
 3. "translate": Activate "Open translation table" and confirm a dialog named
    "Translation table" opens. Set its "Translations to show" select to
-   "Missing French" and confirm it shows the rows of stage 1, "Finish
-   Interview", that lack French — normally its "Stage name", "Closing text"
-   and "Finished text". Click the French cell of the first row listed
-   (normally "Stage name") and type "Fin de l'entretien" (do not press
-   Enter), then press the dialog's "Save". Confirm the dialog closes and the
-   French row now reads "N+1 of M strings translated". Reopen the table,
-   filter to "Missing French" again, confirm the row you translated is no
-   longer listed, and close it with "Cancel".
+   "Missing French" and confirm it lists exactly one row: stage 1 ("The
+   end")'s "Stage name", with "The end" in the English column and no French.
+   Click its French cell and type "La fin" (do not press Enter), then press
+   the dialog's "Save". Confirm the dialog closes and the French row now
+   reads "M of M strings translated" with no "Missing translations". Reopen
+   the table, filter to "Missing French" again, confirm no row is listed,
+   and close it with "Cancel".
 4. "chooser-note": Go back to the stage timeline ("Return to Stages", or the
    protocol's stage list). Confirm a note titled "Participants can’t choose a
    language" is shown, saying the protocol "has more than one language but no
@@ -746,9 +752,12 @@ computer { action: "key" }. Refusal dialogs close with their "OK" button.
    still "Before finish", "Screened out", "Finish Interview".
 5. "finish-delete": Delete "Screened out" with its "Delete stage" control,
    confirming the dialog, and confirm it leaves the timeline. Then try to
-   delete "Finish Interview" the same way: confirm a "Cannot delete stage"
-   dialog saying "This stage ends the interview, and every protocol needs
-   one". Press "OK" and confirm "Finish Interview" is still on the timeline.
+   delete "Finish Interview": confirm its "Delete stage" control is
+   unavailable before you press it — aria-disabled="true", with an
+   accessible description (aria-describedby; it also shows as a tooltip)
+   saying at least one stage of this kind is required to allow the
+   interview to end. Press it anyway and confirm nothing opens and
+   "Finish Interview" is still on the timeline.
 6. "cleanup": Delete your protocol from the start screen.`,
   },
   {
@@ -935,7 +944,20 @@ the tab, and wait for the app to settle. All five checks apply to this
 post-purge load; where a console or network log cannot be scoped to it,
 re-read after the reload (reload once more into a clean read if you cannot
 tell whether an entry predates the purge).
-## Your checklist
+${
+  target.startsWith('http:')
+    ? `## A plain-http target
+The Browser pane refuses every service-worker registration on a plain-http
+origin such as a local vite preview: it never requests the script, and logs
+"An unknown error occurred when fetching the script." for each attempt. That
+says nothing about the build, so for this target judge "service-worker" in
+the Playwright browser (mcp__plugin_playwright_playwright__*) instead: open
+the target there, await navigator.serviceWorker.ready, and report its
+active script URL. In "console", dismiss that one error as this pane
+limitation, and take the console verdict from the Playwright load too.
+`
+    : ''
+}## Your checklist
 1. "load": Confirm the Architect start screen renders — the create-protocol
    button ("Create a new protocol") and the protocol list area are visible.
    Not just a paint: the controls must be in the accessibility tree.
@@ -1031,6 +1053,10 @@ recreating the canonical sample protocol through Architect's own UI.
   types key by key and appends. Rich-text editors need slowly: true, with
   Enter between paragraphs; their markdown shortcuts (**bold**, "* ", "1. ")
   work while typing.
+- A new stage's "Stage name" arrives filled with a default name, and while
+  that default is untouched, choosing a node type renames the stage after
+  it. Setting the field to text equal to the default does not count as an
+  edit, so choose the node type first and type the stage name after it.
 - Radio inputs sit under labels that intercept clicks: click the label text,
   and add exact: true where names overlap ("No" also matches "Node").
 - To upload a file, click the control that opens the native file chooser; the
