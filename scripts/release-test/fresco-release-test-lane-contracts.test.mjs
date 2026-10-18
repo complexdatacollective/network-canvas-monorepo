@@ -1742,6 +1742,25 @@ test('an Information stage the stages menu names wrongly fails', () => {
   );
 });
 
+test('a panel the database stores with its keys in another order is the same panel', () => {
+  const { before, after } = readings();
+  // Postgres jsonb keeps an object's keys in its own order ("text" before
+  // "title"), so the Ego Form's kept panel reads back reordered.
+  const reordered = structuredClone(after);
+  const egoForm = reordered.protocols[0].stages.find(
+    (stage) => stage.id === 'about-you',
+  );
+  const { title, text } = egoForm.introductionPanel;
+  egoForm.introductionPanel = { text, title };
+  assert.deepEqual(introductionPanelProblems(before, reordered), []);
+  // Reordering is all that is forgiven: different words still fail.
+  egoForm.introductionPanel = { text: { en: 'Something else.' }, title };
+  assert.match(
+    introductionPanelProblems(before, reordered).join('\n'),
+    /"about-you": its introduction panel is .*, not the panel it had before the upgrade/,
+  );
+});
+
 test('a rule the upgrade gives a stage that had none fails', () => {
   const { before, after } = readings();
   // The upgrade wrongly puts a rule on the ruleless Ego Form: it skips what
