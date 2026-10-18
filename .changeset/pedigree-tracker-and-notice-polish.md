@@ -1,5 +1,8 @@
 ---
 '@codaco/interview': patch
+'@codaco/architect': patch
+'@codaco/interviewer': patch
+'fresco': patch
 ---
 
 Family Pedigree: choosing an item from the "what's still needed" list now
