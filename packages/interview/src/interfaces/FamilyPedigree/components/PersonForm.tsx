@@ -782,9 +782,10 @@ const missingFieldWording = (
 };
 
 /** The notice ends with a full stop, which a list ending in a question's own
- * mark ("Is this person still living?") does not need again. */
+ * mark ("Is this person still living?") does not need again, including when
+ * the question closes its Markdown emphasis after the mark. */
 const withoutDoubledFullStop = (notice: string) =>
-  notice.replace(/([?!？！])\s*[.。]$/u, '$1');
+  notice.replace(/([?!？！][*_~`]*)\s*[.。]$/u, '$1');
 
 function MissingDetailsNotice({
   questions,

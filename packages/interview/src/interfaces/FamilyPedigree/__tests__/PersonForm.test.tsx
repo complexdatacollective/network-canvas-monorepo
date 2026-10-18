@@ -851,6 +851,19 @@ describe('the missing details notice', () => {
       /Some details are missing: What do they go by\?$/,
     );
   });
+
+  it('does not add a full stop after a question closing its emphasis', () => {
+    renderPersonForm('bea', {
+      nodes: [person('bea'), person('ego', { isEgo: true })],
+      missing: [{ variable: NICKNAME }],
+      formFields: [
+        { ...nicknameField, prompt: { en: '**What do they go by?**' } },
+      ],
+    });
+    expect(screen.getByText(/^Some details are missing/)).toHaveTextContent(
+      /What do they go by\?\**$/,
+    );
+  });
   // The notice is the protocol's wording, so the details it lists are joined
   // as that wording's language joins a list, whatever the browser's is.
   it('joins the details as the protocol’s language does', () => {
