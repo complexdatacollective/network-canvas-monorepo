@@ -1568,7 +1568,7 @@ function formFieldsMissingDetails(): ScenarioDefinition {
 
       await member(page, 'Julie').click();
       await expect(
-        panel(page).getByText('Some details are missing: How old are they?.'),
+        panel(page).getByText('Some details are missing: How old are they?'),
       ).toBeVisible();
       await expect(panel(page).getByText('In whole years.')).toBeVisible();
       await panel(page)

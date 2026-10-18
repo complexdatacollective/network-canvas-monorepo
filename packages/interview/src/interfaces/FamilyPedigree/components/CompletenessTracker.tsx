@@ -299,7 +299,13 @@ function CompletenessTracker({
                       <button
                         type="button"
                         className="focusable text-left underline-offset-4 hover:underline"
-                        onClick={() => onItemSelect(item)}
+                        onClick={() => {
+                          // The list is put away for what it leads to, the
+                          // person's panel, which it would otherwise cover.
+                          setSuppressed(true);
+                          onOpenChange(false);
+                          onItemSelect(item);
+                        }}
                       >
                         {resolveMessage(wording.listItem, values).text}
                       </button>

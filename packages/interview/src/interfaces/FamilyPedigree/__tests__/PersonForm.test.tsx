@@ -841,6 +841,16 @@ describe('the missing details notice', () => {
       expect(notice()).toHaveTextContent('Some details are missing: Nickname.'),
     );
   });
+  it('does not follow a question’s own question mark with a full stop', () => {
+    renderPersonForm('bea', {
+      nodes: [person('bea'), person('ego', { isEgo: true })],
+      missing: [{ variable: NICKNAME }],
+      formFields: [{ ...nicknameField, prompt: { en: 'What do they go by?' } }],
+    });
+    expect(screen.getByText(/^Some details are missing/)).toHaveTextContent(
+      /Some details are missing: What do they go by\?$/,
+    );
+  });
   // The notice is the protocol's wording, so the details it lists are joined
   // as that wording's language joins a list, whatever the browser's is.
   it('joins the details as the protocol’s language does', () => {

@@ -781,6 +781,11 @@ const missingFieldWording = (
   return prompt === undefined ? { label: variable } : { prompt };
 };
 
+/** The notice ends with a full stop, which a list ending in a question's own
+ * mark ("Is this person still living?") does not need again. */
+const withoutDoubledFullStop = (notice: string) =>
+  notice.replace(/([?!？！])\s*[.。]$/u, '$1');
+
 function MissingDetailsNotice({
   questions,
 }: {
@@ -801,9 +806,11 @@ function MissingDetailsNotice({
   if (labels.length === 0) return null;
   return (
     <Alert variant="warning">
-      {text(wording.missingDetailsList, {
-        details: contentFormat.formatList(labels),
-      })}
+      {withoutDoubledFullStop(
+        text(wording.missingDetailsList, {
+          details: contentFormat.formatList(labels),
+        }),
+      )}
     </Alert>
   );
 }
