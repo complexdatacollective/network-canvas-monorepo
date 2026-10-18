@@ -242,19 +242,21 @@ async function describe(
   if (details.name !== undefined) {
     await form.getByRole('textbox', { name: /^Name/ }).fill(details.name);
   }
+  // A first answer to any question here moves the panel on by itself;
+  // changing answers already given, on going back, waits for Continue.
+  const unanswered = async (group: Locator) =>
+    (await group.getByRole('radio', { checked: true }).count()) === 0;
+  let firstAnswer = await unanswered(sex);
   if (details.gender !== undefined) {
-    await form
-      .getByRole('radiogroup', { name: /^Gender identity/ })
+    const gender = form.getByRole('radiogroup', { name: /^Gender identity/ });
+    if (await unanswered(gender)) firstAnswer = true;
+    await gender
       .getByRole('radio', { name: details.gender, exact: true })
       .click();
   }
-  // A first answer moves the panel on by itself; changing one on going back
-  // waits for Continue.
-  const answered =
-    (await sex.getByRole('radio', { checked: true }).count()) > 0;
   await sex.getByRole('radio', { name: details.sex, exact: true }).click();
   if (stepped) {
-    if (answered) await nextStep(page);
+    if (!firstAnswer) await nextStep(page);
     await expect(sex).toBeHidden();
   }
 }
