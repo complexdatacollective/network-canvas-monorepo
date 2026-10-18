@@ -102,6 +102,10 @@ describe('the sections of an anonymisation stage', () => {
     });
     await harness.user.clear(explanation);
     await harness.user.click(screen.getByRole('button', { name: 'Heading 1' }));
+    // The editor takes focus back from the toolbar a frame later; typing
+    // before then goes to the button and is lost.
+    await waitFor(() => expect(explanation).toHaveFocus());
+    expect(explanation.querySelector('h1')).not.toBeNull();
     // Typing without clicking keeps the caret in the heading just made: a
     // click into the editor can land below it, in a new paragraph.
     await harness.user.type(explanation, 'Your answers are protected', {
