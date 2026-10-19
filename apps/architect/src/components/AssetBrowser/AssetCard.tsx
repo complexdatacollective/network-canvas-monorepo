@@ -22,7 +22,7 @@ import {
 } from '@codaco/protocol-builder/resources/components/resourceKinds';
 import { assetMetadataMessages } from '~/components/Assets/assetMetadataMessages';
 import { useProtocolReadOnly } from '~/hooks/useProtocolReadOnly';
-import { getBundledAssetUrl } from '~/templates/bundled-asset-url';
+import { bundledProtocols } from '~/templates/bundled-protocols';
 import { getAssetBlobUrl, revokeBlobUrl } from '~/utils/assetUtils';
 import { cx } from '~/utils/cva';
 import { reportError } from '~/utils/reportError';
@@ -144,7 +144,7 @@ const loadAssetPreviewUrl = async (
     reportError(error);
   }
 
-  const bundledUrl = getBundledAssetUrl(source);
+  const bundledUrl = bundledProtocols?.getAssetUrl(source) ?? null;
   return bundledUrl ? { url: bundledUrl, revoke: false } : null;
 };
 

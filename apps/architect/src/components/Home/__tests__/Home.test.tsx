@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const openFileDialogMock = vi.hoisted(() => vi.fn());
 type DropHandler = (
@@ -68,16 +68,36 @@ vi.mock('~/ducks/modules/userActions/userActions', () => ({
   openLocalNetcanvas: vi.fn(),
 }));
 
-vi.mock('~/templates', () => ({
-  BUNDLED_TEMPLATES: [],
+const bundledTemplate = vi.hoisted(() => ({ id: 'template-a' }));
+
+// A sub-path build replaces the bundled-protocols module with
+// `bundledProtocols = null` (vite.config.ts); flip `omitted` to render that.
+const bundledProtocolsMock = vi.hoisted(() => ({
+  omitted: false,
+  value: {
+    templates: [bundledTemplate],
+    sample: { protocol: {}, loadAssets: vi.fn() },
+    getAssetUrl: () => null,
+    warmAssets: vi.fn(),
+  },
 }));
 
-vi.mock('~/templates/sample-protocol', () => ({
-  loadSampleAssets: vi.fn(),
-  sampleProtocol: {},
+vi.mock('~/templates/bundled-protocols', () => ({
+  get bundledProtocols() {
+    return bundledProtocolsMock.omitted ? null : bundledProtocolsMock.value;
+  },
 }));
 
-vi.mock('../LibraryPanel', () => ({ default: () => null }));
+const libraryPanelProps = vi.hoisted(() => ({
+  templates: undefined as unknown,
+}));
+
+vi.mock('../LibraryPanel', () => ({
+  default: ({ templates }: { templates: unknown }) => {
+    libraryPanelProps.templates = templates;
+    return null;
+  },
+}));
 vi.mock('../ProtocolLoadingOverlay', () => ({
   default: ({ open }: { open: boolean }) =>
     open ? <div data-testid="protocol-loading-overlay" /> : null,
@@ -204,5 +224,29 @@ describe('<Home />', () => {
     ).not.toBeInTheDocument();
 
     resolveDialog?.();
+  });
+});
+
+describe('<Home /> bundled protocols', () => {
+  afterEach(() => {
+    bundledProtocolsMock.omitted = false;
+  });
+
+  it('hands the library the templates the build ships', () => {
+    render(<Home />);
+    expect(libraryPanelProps.templates).toEqual([bundledTemplate]);
+  });
+
+  it('hands the library no templates in a build that ships none, and still creates and opens protocols', () => {
+    bundledProtocolsMock.omitted = true;
+    render(<Home />);
+
+    expect(libraryPanelProps.templates).toEqual([]);
+    expect(
+      screen.getByRole('button', { name: 'Create a new protocol' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Open existing protocol' }),
+    ).toBeInTheDocument();
   });
 });

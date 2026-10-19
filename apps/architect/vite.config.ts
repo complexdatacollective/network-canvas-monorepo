@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { defineConfig, loadEnv, normalizePath, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 import { appI18n } from '@codaco/app-i18n/vite';
@@ -71,6 +71,27 @@ const injectCspMeta = (): Plugin => ({
   },
 });
 
+// Architect 8 ships inside Architect 9's deploy as the editor alone: the
+// research templates, the Sample protocol and their media (video, CSV, GeoJSON,
+// audio) stay out of it. Every one of them is reached through
+// src/templates/bundled-protocols.ts, so a sub-path build replaces that module
+// with its "nothing bundled" value before any of its imports are resolved. The
+// replacement has to happen at load time: an eager `import.meta.glob` emits its
+// asset files as the module loads, so a branch that merely stops using them
+// still ships every file. scripts/assert-pwa-build.mjs fails a sub-path build
+// that ships any of them.
+const bundledProtocolsModule = normalizePath(
+  resolve(rootDir, 'src/templates/bundled-protocols.ts'),
+);
+const omitBundledProtocols = (): Plugin => ({
+  name: 'architect-omit-bundled-protocols',
+  enforce: 'pre',
+  load: (id) =>
+    id === bundledProtocolsModule
+      ? 'export const bundledProtocols = null;'
+      : undefined,
+});
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
@@ -118,6 +139,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       ...appI18n(),
+      ...(isSubpath ? [omitBundledProtocols()] : []),
       injectCspMeta(),
       createProtocolSourceAuthoringPlugin({
         repoRoot,

@@ -26,7 +26,7 @@ import { ArchitectI18nRoot } from './i18n/ArchitectI18nRoot';
 import { initializeArchitectDocument } from './i18n/documentMetadata';
 import { loadStartupLocale } from './i18n/imperative';
 import { preloadTimelineImages } from './images/timeline';
-import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
+import { bundledProtocols } from './templates/bundled-protocols';
 import { IS_SUBPATH_BUILD } from './utils/appBase';
 import {
   forwardLaunchFilesToArchitect9,
@@ -94,11 +94,11 @@ void pruneStaleHandoffs().catch((error: unknown) => {
 // timeline or stage editor first renders. When running as an installed PWA, also
 // warm the service-worker cache with the bundled template/Sample assets so those
 // protocols can be installed offline. (A browser tab registers no service worker,
-// so the warm is skipped there.)
+// so the warm is skipped there, and a sub-path build bundles none to warm.)
 const warmCaches = () => {
   preloadTimelineImages();
   if (isRunningAsInstalledPwa()) {
-    void warmBundledTemplateAssets();
+    void bundledProtocols?.warmAssets();
   }
 };
 
