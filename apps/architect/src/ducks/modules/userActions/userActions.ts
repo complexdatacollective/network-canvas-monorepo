@@ -737,10 +737,9 @@ export const exportNetcanvas = createAppAsyncThunk(
 //
 // Schema compatibility is decided by `admitStoredProtocol`, shared with the
 // startup session restore, so a library protocol behaves the same however it is
-// reached. Note that this path has NO migration approval dialog and needs none:
-// unlike `openLocalNetcanvas`, which migrates a file into a new library entry
-// and leaves the researcher's own copy on disk untouched, there is no second
-// copy here to fall back to.
+// reached. This library only ever holds this schema's protocols; one written by
+// Architect 8 lives in Architect 8's library, is upgraded into a new row of this
+// one or opened in Architect 8 itself, and never reaches this thunk.
 export const openLibraryProtocol = createAppAsyncThunk(
   'webUserActions/openLibraryProtocol',
   async ({ id }: { id: string }, { dispatch }): Promise<ProtocolOpenResult> => {
@@ -757,7 +756,7 @@ export const openLibraryProtocol = createAppAsyncThunk(
 
     let admission: Awaited<ReturnType<typeof admitStoredProtocol>>;
     try {
-      admission = await admitStoredProtocol(row, undefined, getArchitectIntl());
+      admission = await admitStoredProtocol(row);
     } catch (error: unknown) {
       // Reported even when `getImportFailureKind` can classify it, unlike the
       // import paths. A library row is Architect's own output, written from a
@@ -792,8 +791,6 @@ export const openLibraryProtocol = createAppAsyncThunk(
     dispatch(setStorageUnavailable(false));
     disarmInMemoryUnloadGuard();
     dispatch(setActiveProtocolId(id));
-    // The admitted document, which is the upgraded one when the row was below
-    // this build's schema — `row.protocol` is stale by then.
     dispatch(setActiveProtocol(admission.protocol));
     navigate('/protocol');
     return openedResult;

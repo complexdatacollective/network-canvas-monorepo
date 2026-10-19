@@ -805,7 +805,6 @@
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": "Non è stato possibile leggere alcune risorse",
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": "Questo protocollo non viene salvato su questo dispositivo: lo spazio di archiviazione locale dell’app non è disponibile, come succede spesso nella navigazione privata. Scarica una copia per conservare il tuo lavoro.",
   "architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease": "Impossibile scaricare il protocollo. Riprova.",
-  "architect.storedProtocol.changed": "«{name}» è stato salvato da un’altra finestra mentre veniva aggiornato. Non è stato modificato nulla. Apri di nuovo il protocollo per continuare.",
   "architect.submission.failed": "Impossibile salvare queste modifiche. Controlla le impostazioni attuali e riprova.",
   "architect.submission.missingAttribute": "Attributo non trovato",
   "architect.submission.rowRemoved": "Questo elemento è stato rimosso mentre venivano salvate le modifiche, quindi non c’è più nulla in cui salvarle. Copia ciò che vuoi conservare, poi annulla e aggiungi un nuovo elemento.",
@@ -972,7 +971,6 @@
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": "Non è stato possibile leggere alcune risorse",
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": "Si è verificato un errore durante la preparazione del file. Riprova.",
   "architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded": "Impossibile scaricare il protocollo",
-  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": "Il protocollo è cambiato durante l’aggiornamento",
   "architect.validation.dateIsNotValidValue1": "La data non è valida ({value1})",
   "architect.validation.dateMustBeMinOr": "La data deve essere {min} o successiva",
   "architect.validation.mustBeAtLeastMin": "Deve essere almeno {min, number}",
@@ -1007,7 +1005,5 @@
   "architect.viewManager.views.app.autosaveFailed": "Salvataggio automatico non riuscito",
   "architect.viewManager.views.app.couldNotOpenFile": "Impossibile aprire il file",
   "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, one {Non è stato possibile leggere il file aperto all’avvio. Potrebbe essere stato spostato, eliminato o essere diventato non disponibile dopo l’apertura.} many {Non è stato possibile leggere # di file aperti all’avvio. Potrebbero essere stati spostati, eliminati o essere diventati non disponibili dopo l’apertura.} other {Non è stato possibile leggere # file aperti all’avvio. Potrebbero essere stati spostati, eliminati o essere diventati non disponibili dopo l’apertura.}}",
-  "architect.viewManager.views.app.oK": "OK",
-  "architect.viewManager.views.app.protocolUpdated": "Protocollo aggiornato",
-  "architect.viewManager.views.app.wasMadeWithAn": "«{name}» è stato creato con una versione precedente di Architect. È stato aggiornato per poter essere aperto qui e la copia nella tua libreria dei protocolli è stata sostituita."
+  "architect.viewManager.views.app.oK": "OK"
 }

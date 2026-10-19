@@ -6,7 +6,6 @@ import {
   DEFAULT_FINISH_SESSION_TEXT,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
-import { messageFields } from '~/test/messageText';
 
 const capture = vi.fn();
 const setImportInProgress = vi.fn();
@@ -15,7 +14,6 @@ const validateProtocol = vi.fn();
 const migrateProtocol = vi.fn();
 const setActiveProtocol = vi.fn();
 const putStoredProtocol = vi.fn();
-const putStoredProtocolIfUnchanged = vi.fn();
 const getStoredProtocol = vi.fn();
 const markStoredProtocolValidated = vi.fn();
 const saveProtocolAssets = vi.fn();
@@ -47,8 +45,6 @@ vi.mock('@codaco/protocol-validation', async (importOriginal) => {
 
 vi.mock('~/utils/protocolLibrary', () => ({
   putStoredProtocol: (...args: unknown[]) => putStoredProtocol(...args),
-  putStoredProtocolIfUnchanged: (...args: unknown[]) =>
-    putStoredProtocolIfUnchanged(...args),
   markStoredProtocolValidated: (...args: unknown[]) =>
     markStoredProtocolValidated(...args),
   deleteStoredProtocol: (...args: unknown[]) => deleteStoredProtocol(...args),
@@ -95,7 +91,6 @@ const {
   openLocalNetcanvas,
 } = await import('../userActions');
 const { APP_SCHEMA_VERSION } = await import('~/config');
-const { takeProtocolUpgrades } = await import('~/utils/protocolUpgradeQueue');
 
 const dispatch = vi.fn((action: unknown) => {
   // `instantiateProtocol` dispatches plain action objects; the thunks under
@@ -132,14 +127,11 @@ describe('userActions', () => {
     migrateProtocol.mockReset();
     setActiveProtocol.mockReset();
     putStoredProtocol.mockReset().mockResolvedValue(undefined);
-    putStoredProtocolIfUnchanged.mockReset().mockResolvedValue(true);
     getStoredProtocol.mockReset();
     markStoredProtocolValidated.mockReset().mockResolvedValue(undefined);
     saveProtocolAssets.mockReset().mockResolvedValue(undefined);
     deleteStoredProtocol.mockReset().mockResolvedValue(undefined);
     dispatch.mockClear();
-    // The upgrade queue is module state shared across the suite.
-    takeProtocolUpgrades();
   });
 
   describe('createNetcanvas', () => {
@@ -536,7 +528,6 @@ describe('userActions', () => {
       expect(migrateProtocol).not.toHaveBeenCalled();
       expect(putStoredProtocol).not.toHaveBeenCalled();
       expect(setActiveProtocol).toHaveBeenCalledWith(protocol);
-      expect(takeProtocolUpgrades()).toEqual([]);
     });
 
     it('hard-blocks an invalid unproven row', async () => {
@@ -565,9 +556,9 @@ describe('userActions', () => {
     });
   });
 
-  // A library protocol has no second copy to fall back on, so an out-of-date
-  // row is upgraded and re-saved rather than refused — with no approval dialog,
-  // unlike the `.netcanvas` import path.
+  // This library holds only this schema's protocols. Architect 8's are
+  // upgraded into a new row, never in place, so an out-of-date row here is
+  // refused rather than migrated.
   describe('stored protocol schema compatibility', () => {
     const olderRow = {
       id: 'older',
@@ -579,80 +570,28 @@ describe('userActions', () => {
         schemaVersion: APP_SCHEMA_VERSION - 1,
       } as CurrentProtocol,
       // Marked valid under the schema of its own day: provenance must not let
-      // it skip the upgrade.
+      // it past the version gate.
       validated: true as const,
       createdAt: 0,
       updatedAt: 0,
     };
 
-    it('upgrades a below-version row in place and opens the upgraded document', async () => {
-      const upgraded = makeProtocol();
+    it('refuses a below-version row as invalid and changes nothing', async () => {
       getStoredProtocol.mockResolvedValue(olderRow);
-      migrateProtocol.mockReturnValue(upgraded);
-      validateProtocol.mockResolvedValue({ success: true, data: upgraded });
-
-      const result = await runThunk(openLibraryProtocol({ id: 'older' }));
-
-      expect(result.payload).toEqual({ status: 'opened' });
-      expect(migrateProtocol).toHaveBeenCalledWith(
-        olderRow.protocol,
-        APP_SCHEMA_VERSION,
-        { name: 'Older study' },
-      );
-      // Saved back over the same row (guarded on the row being unchanged), so
-      // the library no longer holds the old document.
-      expect(putStoredProtocolIfUnchanged).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'older' }),
-        expect.objectContaining({
-          id: 'older',
-          protocol: upgraded,
-          name: 'Older study',
-        }),
-      );
-      // The editor is seeded from the upgraded document, not the stale row.
-      expect(setActiveProtocol).toHaveBeenCalledWith(upgraded);
-      expect(takeProtocolUpgrades()).toEqual([{ name: 'Older study' }]);
-    });
-
-    it('leaves the row untouched and reports a migration that fails', async () => {
-      getStoredProtocol.mockResolvedValue(olderRow);
-      migrateProtocol.mockImplementation(() => {
-        throw new Error('Migration resulted in invalid protocol: nope');
-      });
-
-      const result = await runThunk(openLibraryProtocol({ id: 'older' }));
-
-      expect(messageFields(result.payload)).toEqual({
-        status: 'error',
-        title: 'Failed to Open Protocol',
-        message:
-          'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
-        detail: 'Migration resulted in invalid protocol: nope',
-      });
-      expect(putStoredProtocol).not.toHaveBeenCalled();
-      expect(markStoredProtocolValidated).not.toHaveBeenCalled();
-      expect(setActiveProtocol).not.toHaveBeenCalled();
-      expect(takeProtocolUpgrades()).toEqual([]);
-    });
-
-    it('leaves the row untouched when the upgraded document fails validation', async () => {
-      const upgraded = makeProtocol();
-      const error = new ProtocolValidationError([
-        { code: 'custom', path: [], message: 'Upgraded protocol is invalid' },
-      ]);
-      getStoredProtocol.mockResolvedValue(olderRow);
-      migrateProtocol.mockReturnValue(upgraded);
-      validateProtocol.mockResolvedValue({ success: false, error });
 
       const result = await runThunk(openLibraryProtocol({ id: 'older' }));
 
       expect(result.payload).toEqual({
         status: 'validation-error',
-        message: error.message,
+        message: expect.stringContaining(
+          `schema version ${APP_SCHEMA_VERSION - 1}`,
+        ),
       });
+      expect(migrateProtocol).not.toHaveBeenCalled();
+      expect(validateProtocol).not.toHaveBeenCalled();
       expect(putStoredProtocol).not.toHaveBeenCalled();
+      expect(markStoredProtocolValidated).not.toHaveBeenCalled();
       expect(setActiveProtocol).not.toHaveBeenCalled();
-      expect(takeProtocolUpgrades()).toEqual([]);
     });
 
     it('refuses a row written by a newer Architect', async () => {

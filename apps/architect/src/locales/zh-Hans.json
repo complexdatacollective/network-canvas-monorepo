@@ -805,7 +805,6 @@
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": "部分资源无法读取",
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": "此协议未保存在此设备上：本地应用存储不可用，这在无痕浏览模式下很常见。请下载一份副本以保留您的工作。",
   "architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease": "无法下载您的协议。请重试。",
-  "architect.storedProtocol.changed": "“{name}”在升级过程中已被另一个窗口保存。未做任何更改。请重新打开该协议以继续。",
   "architect.submission.failed": "无法保存这些更改。请检查当前设置后重试。",
   "architect.submission.missingAttribute": "未找到属性",
   "architect.submission.rowRemoved": "在保存更改的过程中，此项已被移除，因此无法再保存到该项。请复制您想保留的内容，然后取消并添加新项。",
@@ -972,7 +971,6 @@
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": "部分资源无法读取",
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": "准备文件时出现问题。请重试。",
   "architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded": "无法下载您的协议",
-  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": "协议在升级过程中发生了更改",
   "architect.validation.dateIsNotValidValue1": "日期无效（{value1}）",
   "architect.validation.dateMustBeMinOr": "日期必须不早于 {min}",
   "architect.validation.mustBeAtLeastMin": "必须至少为 {min, number}",
@@ -1007,7 +1005,5 @@
   "architect.viewManager.views.app.autosaveFailed": "自动保存失败",
   "architect.viewManager.views.app.couldNotOpenFile": "无法打开文件",
   "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, other {无法读取 # 个用于打开应用的文件。文件在打开后可能已被移动、删除或变得不可用。}}",
-  "architect.viewManager.views.app.oK": "确定",
-  "architect.viewManager.views.app.protocolUpdated": "协议已更新",
-  "architect.viewManager.views.app.wasMadeWithAn": "“{name}”是使用旧版 Architect 创建的。它已更新为可在此处打开，协议库中的副本也已被替换。"
+  "architect.viewManager.views.app.oK": "确定"
 }

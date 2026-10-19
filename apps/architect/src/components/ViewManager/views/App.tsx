@@ -4,7 +4,6 @@ import { useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { useToast } from '@codaco/fresco-ui/Toast';
 import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
 import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
@@ -31,10 +30,6 @@ import {
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
 import {
-  subscribeProtocolUpgrades,
-  takeProtocolUpgrades,
-} from '~/utils/protocolUpgradeQueue';
-import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
@@ -60,18 +55,6 @@ const messages = defineMessages({
     id: 'architect.viewManager.views.app.autosaveFailed',
     defaultMessage: 'Autosave failed',
     description: 'The title text in components / ViewManager / views / App.',
-  },
-  protocolUpdated: {
-    id: 'architect.viewManager.views.app.protocolUpdated',
-    defaultMessage: 'Protocol updated',
-    description: 'The title text in components / ViewManager / views / App.',
-  },
-  wasMadeWithAn: {
-    id: 'architect.viewManager.views.app.wasMadeWithAn',
-    defaultMessage:
-      '"{name}" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced.',
-    description:
-      'The description text in components / ViewManager / views / App.',
   },
 });
 const finalMessages = defineMessages({
@@ -169,37 +152,6 @@ const StartupProtocolFailureReporter = () => {
   return null;
 };
 
-/**
- * Announces a protocol that was brought up to date while being opened.
- *
- * A toast, not a dialog: nothing went wrong and there is nothing to decide —
- * the protocol opened, and this only explains why the copy in the library is
- * no longer byte-identical to the one the researcher last saved. The other
- * reporters here interrupt because they describe work that did NOT happen.
- */
-const ProtocolUpgradeToaster = () => {
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const announceUpgrades = () => {
-      for (const { name } of takeProtocolUpgrades()) {
-        toast({
-          variant: 'info',
-          title: <AppMessage message={messages.protocolUpdated} />,
-          description: (
-            <AppMessage message={messages.wasMadeWithAn} values={{ name }} />
-          ),
-        });
-      }
-    };
-
-    announceUpgrades();
-    return subscribeProtocolUpgrades(announceUpgrades);
-  }, [toast]);
-
-  return null;
-};
-
 const LaunchedProtocolOpener = () => {
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
@@ -255,7 +207,6 @@ const AppContents = () => {
       <FileLaunchFailureReporter />
       <AutosaveFailureReporter />
       <StartupProtocolFailureReporter />
-      <ProtocolUpgradeToaster />
       <LaunchedProtocolOpener />
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be

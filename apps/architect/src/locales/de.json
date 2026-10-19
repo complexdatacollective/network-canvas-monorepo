@@ -805,7 +805,6 @@
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": "Einige Ressourcen konnten nicht gelesen werden",
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": "Dieses Protokoll wird auf diesem Gerät nicht gespeichert – der lokale App-Speicher ist nicht verfügbar, was beim privaten Surfen häufig vorkommt. Laden Sie eine Kopie herunter, um Ihre Arbeit zu sichern.",
   "architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease": "Ihr Protokoll konnte nicht heruntergeladen werden. Versuchen Sie es erneut.",
-  "architect.storedProtocol.changed": "„{name}“ wurde während der Aktualisierung in einem anderen Fenster gespeichert. Es wurde nichts geändert. Öffnen Sie das Protokoll erneut, um fortzufahren.",
   "architect.submission.failed": "Diese Änderungen konnten nicht gespeichert werden. Prüfen Sie die aktuellen Einstellungen und versuchen Sie es erneut.",
   "architect.submission.missingAttribute": "Attribut nicht gefunden",
   "architect.submission.rowRemoved": "Dieser Eintrag wurde entfernt, während Ihre Änderungen gespeichert wurden, daher gibt es kein Ziel mehr, in dem sie gespeichert werden können. Kopieren Sie alles, was Sie behalten möchten, brechen Sie dann ab und fügen Sie einen neuen Eintrag hinzu.",
@@ -972,7 +971,6 @@
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": "Einige Ressourcen konnten nicht gelesen werden",
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": "Beim Vorbereiten der Datei ist ein Fehler aufgetreten. Versuchen Sie es erneut.",
   "architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded": "Ihr Protokoll konnte nicht heruntergeladen werden",
-  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": "Protokoll wurde während der Aktualisierung geändert",
   "architect.validation.dateIsNotValidValue1": "Ungültiges Datum ({value1})",
   "architect.validation.dateMustBeMinOr": "Das Datum darf nicht vor {min} liegen",
   "architect.validation.mustBeAtLeastMin": "Muss mindestens {min, number} sein",
@@ -1007,7 +1005,5 @@
   "architect.viewManager.views.app.autosaveFailed": "Automatisches Speichern fehlgeschlagen",
   "architect.viewManager.views.app.couldNotOpenFile": "Datei konnte nicht geöffnet werden",
   "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, one {Die beim Start geöffnete Datei konnte nicht gelesen werden. Möglicherweise wurde sie seitdem verschoben oder gelöscht oder ist nicht mehr verfügbar.} other {# beim Start geöffnete Dateien konnten nicht gelesen werden. Möglicherweise wurden sie seitdem verschoben oder gelöscht oder sind nicht mehr verfügbar.}}",
-  "architect.viewManager.views.app.oK": "OK",
-  "architect.viewManager.views.app.protocolUpdated": "Protokoll aktualisiert",
-  "architect.viewManager.views.app.wasMadeWithAn": "„{name}“ wurde mit einer älteren Version von Architect erstellt. Es wurde aktualisiert, damit es hier geöffnet werden kann, und die Kopie in Ihrer Protokollbibliothek wurde ersetzt."
+  "architect.viewManager.views.app.oK": "OK"
 }

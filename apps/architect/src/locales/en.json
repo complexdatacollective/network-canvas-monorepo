@@ -3223,10 +3223,6 @@
     "defaultMessage": "Your protocol couldn't be downloaded. Please try again.",
     "description": "The description text in components / StorageUnavailableBanner."
   },
-  "architect.storedProtocol.changed": {
-    "defaultMessage": "\"{name}\" was saved by another window while it was being upgraded. Nothing was changed. Open the protocol again to continue.",
-    "description": "Researcher-facing Architect control or feedback."
-  },
   "architect.submission.failed": {
     "defaultMessage": "These changes could not be saved. Check the current settings and try again.",
     "description": "Actionable fallback for an unexpected editor submission failure. Technical exception text is not shown as repair guidance."
@@ -3891,10 +3887,6 @@
     "defaultMessage": "Your protocol could not be downloaded",
     "description": "The title text in utils / downloadActiveProtocol."
   },
-  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": {
-    "defaultMessage": "Protocol changed while upgrading",
-    "description": "The title text in utils / storedProtocolAdmission."
-  },
   "architect.validation.dateIsNotValidValue1": {
     "defaultMessage": "Date is not valid ({value1})",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
@@ -4034,13 +4026,5 @@
   "architect.viewManager.views.app.oK": {
     "defaultMessage": "OK",
     "description": "The label text in components / ViewManager / views / App."
-  },
-  "architect.viewManager.views.app.protocolUpdated": {
-    "defaultMessage": "Protocol updated",
-    "description": "The title text in components / ViewManager / views / App."
-  },
-  "architect.viewManager.views.app.wasMadeWithAn": {
-    "defaultMessage": "\"{name}\" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced.",
-    "description": "The description text in components / ViewManager / views / App."
   }
 }

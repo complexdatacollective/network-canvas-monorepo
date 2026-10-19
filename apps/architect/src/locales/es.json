@@ -805,7 +805,6 @@
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": "No se pudieron leer algunos recursos",
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": "Este protocolo no se está guardando en el dispositivo porque el almacenamiento local de la aplicación no está disponible, algo habitual en la navegación privada. Descarga una copia para conservar tu trabajo.",
   "architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease": "No se pudo descargar el protocolo. Inténtalo de nuevo.",
-  "architect.storedProtocol.changed": "Otra ventana guardó «{name}» mientras se estaba actualizando. No se ha cambiado nada. Vuelve a abrir el protocolo para continuar.",
   "architect.submission.failed": "No se pudieron guardar estos cambios. Comprueba la configuración actual e inténtalo de nuevo.",
   "architect.submission.missingAttribute": "No se encontró el atributo",
   "architect.submission.rowRemoved": "Este elemento se eliminó mientras se guardaban tus cambios, por lo que ya no existe un destino donde guardarlos. Copia lo que quieras conservar, cancela y añade un nuevo elemento.",
@@ -972,7 +971,6 @@
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": "No se pudieron leer algunos recursos",
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": "Se produjo un error al preparar el archivo. Inténtalo de nuevo.",
   "architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded": "No se pudo descargar tu protocolo",
-  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": "El protocolo cambió durante la actualización",
   "architect.validation.dateIsNotValidValue1": "La fecha no es válida ({value1})",
   "architect.validation.dateMustBeMinOr": "La fecha debe ser {min} o posterior",
   "architect.validation.mustBeAtLeastMin": "Debe ser al menos {min, number}",
@@ -1007,7 +1005,5 @@
   "architect.viewManager.views.app.autosaveFailed": "No se pudo guardar automáticamente",
   "architect.viewManager.views.app.couldNotOpenFile": "No se pudo abrir el archivo",
   "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, one {No se pudo leer el archivo abierto. Es posible que se haya movido, eliminado o dejado de estar disponible desde que se abrió.} other {No se pudieron leer # archivos abiertos. Es posible que se hayan movido, eliminado o dejado de estar disponibles desde que se abrieron.}}",
-  "architect.viewManager.views.app.oK": "Aceptar",
-  "architect.viewManager.views.app.protocolUpdated": "Protocolo actualizado",
-  "architect.viewManager.views.app.wasMadeWithAn": "«{name}» se creó con una versión anterior de Architect. Se actualizó para abrirlo aquí y se sustituyó la copia de la biblioteca."
+  "architect.viewManager.views.app.oK": "Aceptar"
 }

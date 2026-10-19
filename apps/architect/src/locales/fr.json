@@ -805,7 +805,6 @@
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": "Certaines ressources n’ont pas pu être lues",
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": "Ce protocole n’est pas enregistré sur cet appareil — le stockage local de l’application est indisponible, ce qui est fréquent en navigation privée. Téléchargez une copie pour conserver votre travail.",
   "architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease": "Votre protocole n’a pas pu être téléchargé. Veuillez réessayer.",
-  "architect.storedProtocol.changed": "« {name} » a été enregistré par une autre fenêtre pendant sa mise à niveau. Rien n’a été modifié. Ouvrez de nouveau le protocole pour continuer.",
   "architect.submission.failed": "Ces modifications n’ont pas pu être enregistrées. Vérifiez les paramètres actuels et réessayez.",
   "architect.submission.missingAttribute": "Attribut introuvable",
   "architect.submission.rowRemoved": "Cet élément a été supprimé pendant l’enregistrement de vos modifications : il n’y a donc plus rien où les enregistrer. Copiez ce que vous souhaitez conserver, puis annulez et ajoutez un nouvel élément.",
@@ -972,7 +971,6 @@
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": "Certaines ressources n’ont pas pu être lues",
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": "Un problème est survenu lors de la préparation du fichier. Veuillez réessayer.",
   "architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded": "Votre protocole n’a pas pu être téléchargé",
-  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": "Protocole modifié pendant la mise à niveau",
   "architect.validation.dateIsNotValidValue1": "Date non valide ({value1})",
   "architect.validation.dateMustBeMinOr": "La date doit être égale ou postérieure à {min}",
   "architect.validation.mustBeAtLeastMin": "La valeur doit être supérieure ou égale à {min, number}",
@@ -1007,7 +1005,5 @@
   "architect.viewManager.views.app.autosaveFailed": "Échec de l’enregistrement automatique",
   "architect.viewManager.views.app.couldNotOpenFile": "Impossible d’ouvrir le fichier",
   "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, one {Le fichier ouvert n’a pas pu être lu. Il a peut-être été déplacé, supprimé ou rendu indisponible depuis son ouverture.} other {# fichiers ouverts n’ont pas pu être lus. Ils ont peut-être été déplacés, supprimés ou rendus indisponibles depuis leur ouverture.}}",
-  "architect.viewManager.views.app.oK": "OK",
-  "architect.viewManager.views.app.protocolUpdated": "Protocole mis à jour",
-  "architect.viewManager.views.app.wasMadeWithAn": "« {name} » a été créé avec une version antérieure d’Architect. Il a été mis à jour pour pouvoir s’ouvrir ici, et la copie de votre bibliothèque a été remplacée."
+  "architect.viewManager.views.app.oK": "OK"
 }

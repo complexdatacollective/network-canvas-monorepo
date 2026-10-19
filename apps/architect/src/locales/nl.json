@@ -805,7 +805,6 @@
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": "Sommige bronnen konden niet worden gelezen",
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": "Dit protocol wordt niet op dit apparaat opgeslagen – de lokale opslag van de app is niet beschikbaar, wat vaak voorkomt in een privévenster. Download een kopie om je werk te bewaren.",
   "architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease": "Je protocol kon niet worden gedownload. Probeer het opnieuw.",
-  "architect.storedProtocol.changed": "“{name}” is door een ander venster opgeslagen terwijl het werd bijgewerkt. Er is niets gewijzigd. Open het protocol opnieuw om verder te gaan.",
   "architect.submission.failed": "Deze wijzigingen konden niet worden opgeslagen. Controleer de huidige instellingen en probeer het opnieuw.",
   "architect.submission.missingAttribute": "Attribuut niet gevonden",
   "architect.submission.rowRemoved": "Dit item is verwijderd terwijl je wijzigingen werden opgeslagen, waardoor er geen plek meer is om ze op te slaan. Kopieer wat je wilt bewaren, annuleer daarna en voeg een nieuw item toe.",
@@ -972,7 +971,6 @@
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": "Sommige bronnen konden niet worden gelezen",
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": "Er is iets misgegaan bij het voorbereiden van het bestand. Probeer het opnieuw.",
   "architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded": "Je protocol kon niet worden gedownload",
-  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": "Protocol gewijzigd tijdens het bijwerken",
   "architect.validation.dateIsNotValidValue1": "Datum is ongeldig ({value1})",
   "architect.validation.dateMustBeMinOr": "Datum moet {min} of later zijn",
   "architect.validation.mustBeAtLeastMin": "Moet minimaal {min, number} zijn",
@@ -1007,7 +1005,5 @@
   "architect.viewManager.views.app.autosaveFailed": "Automatisch opslaan mislukt",
   "architect.viewManager.views.app.couldNotOpenFile": "Kan het bestand niet openen",
   "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, one {Het geopende bestand kon niet worden gelezen. Het is mogelijk verplaatst, verwijderd of niet meer beschikbaar sinds het werd geopend.} other {# geopende bestanden konden niet worden gelezen. Ze zijn mogelijk verplaatst, verwijderd of niet meer beschikbaar sinds ze werden geopend.}}",
-  "architect.viewManager.views.app.oK": "OK",
-  "architect.viewManager.views.app.protocolUpdated": "Protocol bijgewerkt",
-  "architect.viewManager.views.app.wasMadeWithAn": "“{name}” is gemaakt met een oudere versie van Architect. Het is bijgewerkt zodat het hier kan worden geopend, en de kopie in je bibliotheek is vervangen."
+  "architect.viewManager.views.app.oK": "OK"
 }

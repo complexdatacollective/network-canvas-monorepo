@@ -90,8 +90,8 @@ async function startApp(): Promise<void> {
   // redux-remember restores only the active library id. Load its canonical
   // protocol body from IndexedDB before mounting any direct /protocol route.
   const rehydrationResult = await storeRehydrated;
-  // Restoration reports a refused protocol through getArchitectIntl, and the
-  // first render reads the same catalog, so both wait for the language.
+  // The first render reads the researcher's catalog, so it waits for the
+  // language.
   await startupLocaleReady;
   await restoreActiveProtocolAfterStoreRehydration(store, rehydrationResult);
 
@@ -125,8 +125,7 @@ async function startApp(): Promise<void> {
               its viewport layer; the `root` (isolation: isolate) wrapper keeps the
               app's own stacking contexts from competing with that layer. */}
             <PortalContainerProvider>
-              {/* Transient, non-blocking notices (currently: a library protocol
-                  brought up to date as it opened). Inside PortalContainerProvider
+              {/* Transient, non-blocking notices. Inside PortalContainerProvider
                   so the viewport lands in the same overlay layer as dialogs, and
                   outside DialogProvider so a toast is never unmounted with the
                   dialog that happened to be open. */}

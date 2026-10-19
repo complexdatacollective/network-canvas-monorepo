@@ -805,7 +805,6 @@
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": "Some resources could not be read",
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": "This protocol isn't being saved on this device — local app storage is unavailable, which is common in private browsing. Download a copy to keep your work.",
   "architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease": "Your protocol couldn't be downloaded. Please try again.",
-  "architect.storedProtocol.changed": "\"{name}\" was saved by another window while it was being upgraded. Nothing was changed. Open the protocol again to continue.",
   "architect.submission.failed": "These changes could not be saved. Check the current settings and try again.",
   "architect.submission.missingAttribute": "Attribute not found",
   "architect.submission.rowRemoved": "This item was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new item.",
@@ -972,7 +971,6 @@
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": "Some resources could not be read",
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": "Something went wrong while preparing the file. Please try again.",
   "architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded": "Your protocol could not be downloaded",
-  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": "Protocol changed while upgrading",
   "architect.validation.dateIsNotValidValue1": "Date is not valid ({value1})",
   "architect.validation.dateMustBeMinOr": "Date must be {min} or later",
   "architect.validation.mustBeAtLeastMin": "Must be at least {min, number}",
@@ -1007,7 +1005,5 @@
   "architect.viewManager.views.app.autosaveFailed": "Autosave failed",
   "architect.viewManager.views.app.couldNotOpenFile": "Could not open file",
   "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, one {The launched file could not be read. It may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. They may have been moved, deleted, or become unavailable since they were opened.}}",
-  "architect.viewManager.views.app.oK": "OK",
-  "architect.viewManager.views.app.protocolUpdated": "Protocol updated",
-  "architect.viewManager.views.app.wasMadeWithAn": "\"{name}\" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced."
+  "architect.viewManager.views.app.oK": "OK"
 }

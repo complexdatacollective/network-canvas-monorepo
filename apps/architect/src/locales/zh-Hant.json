@@ -805,7 +805,6 @@
   "architect.storageUnavailableBanner.someAssetsCouldNotBeExported": "無法讀取部分資源",
   "architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn": "此協定並未儲存在此裝置上，因為本機應用程式儲存空間無法使用，這在無痕瀏覽模式中很常見。請下載副本以保留您的工作成果。",
   "architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease": "無法下載您的協定。請再試一次。",
-  "architect.storedProtocol.changed": "「{name}」在升級期間已由另一個視窗儲存。系統未進行任何變更。請重新開啟協定以繼續。",
   "architect.submission.failed": "無法儲存這些變更。請檢查目前的設定，然後再試一次。",
   "architect.submission.missingAttribute": "找不到屬性",
   "architect.submission.rowRemoved": "在儲存您的變更時，此項目已遭移除，因此變更已無處可儲存。請複製您想保留的內容，然後取消並新增項目。",
@@ -972,7 +971,6 @@
   "architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported": "無法讀取部分資源",
   "architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe": "準備檔案時發生錯誤。請再試一次。",
   "architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded": "無法下載您的協定",
-  "architect.utility.utils.storedProtocolAdmission.protocolChangedWhileUpgrading": "協定在升級期間已變更",
   "architect.validation.dateIsNotValidValue1": "日期無效（{value1}）",
   "architect.validation.dateMustBeMinOr": "日期不得早於 {min}",
   "architect.validation.mustBeAtLeastMin": "不得小於 {min, number}",
@@ -1007,7 +1005,5 @@
   "architect.viewManager.views.app.autosaveFailed": "自動儲存失敗",
   "architect.viewManager.views.app.couldNotOpenFile": "無法開啟檔案",
   "architect.viewManager.views.app.launchedCouldNotBeRead": "{failedCount, plural, other {無法讀取 # 個啟動時開啟的檔案。檔案可能在開啟後已遭移動、刪除或變得無法存取。}}",
-  "architect.viewManager.views.app.oK": "確定",
-  "architect.viewManager.views.app.protocolUpdated": "協定已更新",
-  "architect.viewManager.views.app.wasMadeWithAn": "「{name}」是使用舊版 Architect 建立的。系統已將其更新以便在此開啟，並已取代您協定庫中的副本。"
+  "architect.viewManager.views.app.oK": "確定"
 }
