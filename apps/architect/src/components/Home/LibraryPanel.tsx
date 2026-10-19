@@ -1,4 +1,5 @@
 import {
+  CircleArrowUp,
   Download,
   Ellipsis,
   FolderOpen,
@@ -57,10 +58,13 @@ import Table from '~/components/Assets/Table';
 import ExternalLink from '~/components/ExternalLink';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
+import { useNavigateToArchitect9 } from '~/hooks/useNavigateToArchitect9';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
 import fileIcon from '~/images/file-icon.svg';
 import type { BundledTemplate } from '~/templates';
 import { sampleProtocol } from '~/templates/sample-protocol';
+import { IS_SUBPATH_BUILD } from '~/utils/appBase';
+import { architect9UpgradeUrl } from '~/utils/architect9Handoff';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import {
@@ -173,6 +177,12 @@ const messages = defineMessages({
     id: 'architect.home.libraryPanel.download',
     defaultMessage: 'Download',
     description: 'Visible text in components / Home / LibraryPanel.',
+  },
+  upgradeToSchema9: {
+    id: 'architect.home.libraryPanel.upgradeToSchema9',
+    defaultMessage: 'Upgrade to schema 9',
+    description:
+      'Protocol row menu item, shown when the previous Architect release runs inside the current one: opens the current Architect to upgrade a copy of this protocol to protocol format version 9.',
   },
   protocolGallery: {
     id: 'architect.home.libraryPanel.protocolGallery',
@@ -433,6 +443,7 @@ type LibraryRowItem = Record<string, unknown> & {
   downloading?: boolean;
   onOpen: () => void;
   onDownload?: (resolveFocus: ResolveMenuFocus) => void;
+  onUpgrade?: () => void;
   onDelete?: (resolveFocus: ResolveMenuFocus) => void;
   onShowInfo?: (resolveFocus: ResolveMenuFocus) => void;
 };
@@ -445,6 +456,7 @@ type PanelRowProps = {
   downloading?: boolean;
   onOpen: () => void;
   onDownload?: (resolveFocus: ResolveMenuFocus) => void;
+  onUpgrade?: () => void;
   onDelete?: (resolveFocus: ResolveMenuFocus) => void;
   onShowInfo?: (resolveFocus: ResolveMenuFocus) => void;
 };
@@ -456,6 +468,7 @@ const PanelRow = ({
   downloading = false,
   onOpen,
   onDownload,
+  onUpgrade,
   onDelete,
   onShowInfo,
 }: PanelRowProps) => {
@@ -508,7 +521,7 @@ const PanelRow = ({
         });
     };
 
-  const hasMenu = Boolean(onDownload || onDelete || onShowInfo);
+  const hasMenu = Boolean(onDownload || onUpgrade || onDelete || onShowInfo);
 
   return (
     <div
@@ -598,6 +611,14 @@ const PanelRow = ({
                   onClick={runMenuAction(onDownload)}
                 >
                   {intl.formatMessage(messages.download)}
+                </DropdownMenuItem>
+              )}
+              {onUpgrade && (
+                <DropdownMenuItem
+                  icon={<CircleArrowUp />}
+                  onClick={runMenuAction(onUpgrade)}
+                >
+                  {intl.formatMessage(messages.upgradeToSchema9)}
                 </DropdownMenuItem>
               )}
               {onDelete && (
@@ -697,6 +718,7 @@ const renderLibraryItem = (item: LibraryPanelItem, itemProps: ItemProps) => {
       downloading={item.downloading}
       onOpen={item.onOpen}
       onDownload={item.onDownload}
+      onUpgrade={item.onUpgrade}
       onDelete={item.onDelete}
       onShowInfo={item.onShowInfo}
     />
@@ -731,6 +753,7 @@ const LibraryPanel = ({
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const { protocols, isLoaded } = useProtocolLibrary();
+  const navigateToArchitect9 = useNavigateToArchitect9();
   // Null until the library has loaded. The opening tab is then chosen once:
   // Templates when there is nothing recent to show, Recent otherwise. Deciding
   // only once means removing the last protocol later does not move the
@@ -1062,6 +1085,12 @@ const LibraryPanel = ({
         onOpen: () => onOpenProtocol(protocol.id),
         onDownload: (resolveFocus) =>
           void handleDownload(protocol, resolveFocus),
+        // Architect 8 served inside Architect 9 only. Architect 9 makes the
+        // upgraded copy; this row stays here, unchanged.
+        onUpgrade:
+          IS_SUBPATH_BUILD && protocol.schemaVersion < 9
+            ? () => void navigateToArchitect9(architect9UpgradeUrl(protocol.id))
+            : undefined,
         onDelete: (resolveFocus) => void handleDelete(protocol, resolveFocus),
         onShowInfo: (resolveFocus) =>
           void handleShowInfo(protocol, resolveFocus),
@@ -1072,6 +1101,7 @@ const LibraryPanel = ({
       downloadingIds,
       onOpenProtocol,
       handleDownload,
+      navigateToArchitect9,
       handleDelete,
       handleShowInfo,
     ],

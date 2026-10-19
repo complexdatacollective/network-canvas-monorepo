@@ -28,7 +28,12 @@ vi.mock('~/utils/bundleProtocol', async (importOriginal) => ({
 
 const openDialogMock = globalThis.__architectDialogMocks.openDialog;
 
-vi.mock('~/ducks/modules/userActions/userActions', () => ({
+vi.mock('~/ducks/modules/userActions/userActions', async (importOriginal) => ({
+  // Partial: the store, reached through the leave-editor guard, registers
+  // listeners on the real thunks.
+  ...(await importOriginal<
+    typeof import('~/ducks/modules/userActions/userActions')
+  >()),
   deleteLibraryProtocol: vi.fn(() => ({
     type: 'webUserActions/deleteLibraryProtocol',
   })),

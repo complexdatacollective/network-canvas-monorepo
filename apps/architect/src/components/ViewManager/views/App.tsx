@@ -6,6 +6,7 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
+import Architect8Banner from '~/components/Architect8Banner';
 import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
 import { JsonPreviewOverlay } from '~/components/JsonPreviewOverlay';
@@ -329,6 +330,9 @@ const AppContents = () => {
         {/* The install banner urges installation when running in a browser tab;
             it self-hides (rendering nothing) when installed or dismissed. */}
         <InstallBanner />
+        {/* Architect 8 served inside Architect 9 only: which Architect this
+            is, and the way to upgrade the open protocol in the newer one. */}
+        <Architect8Banner />
         {/* Sits directly beneath the install banner (both are shrink-0 strips);
             self-hides unless the open protocol is also open in another tab. */}
         <ProtocolLockBanner />
