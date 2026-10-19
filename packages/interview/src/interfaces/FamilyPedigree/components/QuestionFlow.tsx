@@ -17,6 +17,7 @@ import { commonMessages } from '@codaco/app-i18n/common';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { parseObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { useSafeAnimate } from '@codaco/fresco-ui/hooks/useSafeAnimate';
 
 import { messages } from '../messages';
@@ -424,9 +425,15 @@ export default function QuestionFlow({
     if (missing) {
       // Each required question left unanswered says so, as saving would.
       for (const field of requiredWaiting(step, read)) {
-        const path = field.getAttribute('data-field-path');
-        if (path !== null) {
-          void store?.getState().validateField(path, { showErrors: true });
+        // The attribute holds the store's own path, where an opaque name
+        // (an attribute ID with a dot in it) is quoted, not split.
+        const path = parseObjectPath(
+          field.getAttribute('data-field-path') ?? '',
+        );
+        if (path?.length) {
+          void store
+            ?.getState()
+            .pathOperations?.validateField(path, { showErrors: true });
         }
       }
       controlOf(missing)?.focus({ preventScroll: true });

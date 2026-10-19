@@ -195,7 +195,7 @@ describe('QuestionFlow step button', () => {
   });
 });
 
-function RequiredFlow() {
+function RequiredFlow({ opaqueName }: { opaqueName?: string }) {
   const [navigation, setNavigation] = useState<HTMLElement | null>(null);
   return (
     <TestProtocolLocalization>
@@ -204,7 +204,8 @@ function RequiredFlow() {
           <section data-question-step data-testid="first">
             <Field
               component={RadioGroupField}
-              name="colour"
+              name={opaqueName ?? 'colour'}
+              nameMode={opaqueName ? 'opaque' : undefined}
               label="Colour"
               options={[
                 { value: 'red', label: 'Red' },
@@ -236,30 +237,38 @@ describe('QuestionFlow with a required question left unanswered', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('keeps the step open and shows the error saving would, until it is answered', async () => {
-    const user = userEvent.setup();
-    render(<RequiredFlow />);
-    const step = await screen.findByTestId('first');
-    expect(
-      screen.queryByText('You must answer this question before continuing.'),
-    ).not.toBeInTheDocument();
-
-    // The buttons render into the footer only once it has mounted.
-    await user.click(await screen.findByRole('button', { name: 'Continue' }));
-
-    expect(
-      await screen.findByText(
-        'You must answer this question before continuing.',
-      ),
-    ).toBeVisible();
-    expect(step).toBeVisible();
-    expect(screen.getByRole('radio', { name: 'Red' })).toHaveFocus();
-
-    await user.click(screen.getByRole('radio', { name: 'Red' }));
-    await waitFor(() =>
+  it.each([
+    ['a plain name', undefined],
+    ['a name with a dot in it', 'favourite.colour'],
+  ])(
+    'keeps the step open and shows the error saving would, until it is answered, for %s',
+    async (_case, opaqueName) => {
+      const user = userEvent.setup();
+      render(<RequiredFlow opaqueName={opaqueName} />);
+      const step = await screen.findByTestId('first');
       expect(
         screen.queryByText('You must answer this question before continuing.'),
-      ).not.toBeInTheDocument(),
-    );
-  });
+      ).not.toBeInTheDocument();
+
+      // The buttons render into the footer only once it has mounted.
+      await user.click(await screen.findByRole('button', { name: 'Continue' }));
+
+      expect(
+        await screen.findByText(
+          'You must answer this question before continuing.',
+        ),
+      ).toBeVisible();
+      expect(step).toBeVisible();
+      expect(screen.getByRole('radio', { name: 'Red' })).toHaveFocus();
+
+      await user.click(screen.getByRole('radio', { name: 'Red' }));
+      await waitFor(() =>
+        expect(
+          screen.queryByText(
+            'You must answer this question before continuing.',
+          ),
+        ).not.toBeInTheDocument(),
+      );
+    },
+  );
 });
