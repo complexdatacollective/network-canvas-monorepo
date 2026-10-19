@@ -290,16 +290,44 @@ async function tick(
 }
 
 /**
+ * Answers who carried a new child's or sibling's pregnancy with "Someone
+ * else, or I don’t know", the answer that records no carrier. The question
+ * is required, and is asked once a parent who could have carried them is
+ * among those chosen, so call this only where the scenario's family asks it:
+ * it waits for the question to be shown. A sibling's form asks whether they
+ * are a twin first; a twin's question starts on their twins' carrier, which
+ * this replaces.
+ */
+async function answerCarrierUnknown(
+  page: Page,
+  options: { question?: RegExp; answer?: string } = {},
+): Promise<void> {
+  const group = panel(page).getByRole('radiogroup', {
+    name: options.question ?? /^Who carried the pregnancy\?/,
+  });
+  await expect(group).toBeVisible();
+  await group
+    .getByRole('radio', {
+      name: options.answer ?? 'Someone else, or I don’t know',
+      exact: true,
+    })
+    .click();
+}
+
+/**
  * Answers a new sibling's relationship questions: the parents they share
  * with the participant, all of them, and that they are the parents'
- * biological child. Nothing is chosen for the participant.
+ * biological child, then who carried the pregnancy (unknown). Nothing else
+ * is chosen for the participant.
  */
 async function shareParentsAsBiological(
   page: Page,
   parents: readonly string[],
+  options: { leaveCarrierUnanswered?: boolean } = {},
 ): Promise<void> {
   await tick(page, /^Which parents do they share with/, parents);
   await choose(page, /^To the parents they share/, 'A biological child');
+  if (!options.leaveCarrierUnanswered) await answerCarrierUnknown(page);
 }
 
 /** Moves a new person's panel on to its next group of questions. */
@@ -656,7 +684,7 @@ function smokeAddBothParents(): ScenarioDefinition {
         .getByRole('radio', { name: 'Linda', exact: true });
       await expect(lindaAsPartner).not.toBeChecked();
       await lindaAsPartner.click();
-      await choose(page, /^Are they still together/, 'Yes');
+      await choose(page, /^Are they still together with Linda\?/, 'Yes');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Robert')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(3);
@@ -790,12 +818,13 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
         'Rob',
       ]);
       await choose(page, /^To the parents they share/, 'A biological child');
+      await answerCarrierUnknown(page);
       await submitPanel(page, 'Save');
       await expect(member(page, 'Sister')).toBeVisible();
 
       await addRelativeOf(page, 'You', 'partner');
       await describe(page, { sex: 'Male' });
-      await choose(page, /^Are they still together/, 'Yes');
+      await choose(page, /^Are you still together\?/, 'Yes');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Partner')).toBeVisible();
 
@@ -816,6 +845,7 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
         /^Who is the child’s biological parent\?/,
         'Both you and “Partner”',
       );
+      await answerCarrierUnknown(page);
       await submitPanel(page, 'Save');
       await expect(member(page, 'Son')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(6);
@@ -902,6 +932,7 @@ function relationshipToParticipantRecorded(): ScenarioDefinition {
         'Someone not shown yet',
       );
       await choose(page, /^Is this child…/, 'A biological child');
+      await answerCarrierUnknown(page);
       await submitPanel(page, 'Save');
       await expect(member(page, 'Mia')).toBeVisible();
 
@@ -1651,6 +1682,7 @@ function formFieldsMissingDetails(): ScenarioDefinition {
         'Rob',
       ]);
       await choose(page, /^To the parents they share/, 'A biological child');
+      await answerCarrierUnknown(page);
       await nextStep(page);
       await panel(page)
         .getByRole('spinbutton', { name: /^How old are they\?/ })
@@ -1736,7 +1768,11 @@ function dynamicValuesNameRelativesAsDrawn(): ScenarioDefinition {
       await expect(shown).toHaveText(['Sibling']);
       await expect(member(page, 'Sibling')).toBeVisible();
       await describe(page, { name: 'Ann', sex: 'Female' });
-      await shareParentsAsBiological(page, ['Mother', 'Father']);
+      // The form is left open on the unanswered carrier question, which it
+      // requires, and which follows the twin question.
+      await shareParentsAsBiological(page, ['Mother', 'Father'], {
+        leaveCarrierUnanswered: true,
+      });
       await expect(shown).toHaveText(['Ann']);
       await expect(member(page, 'Ann')).toBeVisible();
     },
@@ -3637,11 +3673,11 @@ function wordingSiblingBiologicalParent(): ScenarioDefinition {
     run: async ({ page }) => {
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { sex: 'Female' });
-      await shareParentsAsBiological(page, [
-        'Julie',
-        'Pam',
-        'Biological father',
-      ]);
+      await shareParentsAsBiological(
+        page,
+        ['Julie', 'Pam', 'Biological father'],
+        { leaveCarrierUnanswered: true },
+      );
       const which = panel(page).getByRole('radiogroup', {
         name: /^Genetic parent of the sibling - matrix check/,
       });
@@ -3899,6 +3935,7 @@ function wordingStandIns(): ScenarioDefinition {
         .getByRole('checkbox', { name: 'Biological father', exact: true })
         .check();
       await choose(page, /^To the parents they share/, 'A biological child');
+      await answerCarrierUnknown(page);
       await submitPanel(page, 'Save');
       await expect(member(page, 'Hal')).toBeVisible();
 

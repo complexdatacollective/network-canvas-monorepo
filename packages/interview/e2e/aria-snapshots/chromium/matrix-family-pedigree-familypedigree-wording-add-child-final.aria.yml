@@ -29,7 +29,7 @@
     - radiogroup "Is Pam a genetic parent of the child - matrix check":
       - radio "Yes"
       - radio "No"
-    - text: Carrier of the pregnancy - matrix check
+    - text: Carrier of the pregnancy - matrix check Required
     - radiogroup "Carrier of the pregnancy - matrix check":
       - radio "You"
       - text: You

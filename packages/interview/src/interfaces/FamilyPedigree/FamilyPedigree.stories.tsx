@@ -977,9 +977,14 @@ const chooseFirstParentKind = async (scope: ReturnType<typeof within>) => {
 /** The add-a-sibling form's required questions, answered as a full
  * biological sibling: every parent offered is shared (or, for someone with
  * no parent recorded, both of the parents given them), and they are the
- * biological child of them. Nothing is chosen for the participant. */
+ * biological child of them. Nothing is chosen for the participant. Who
+ * carried the pregnancy is required once any parent could have, so it is
+ * answered "Someone else, or I don’t know" (waiting for the question to be
+ * shown) unless `answerCarrier` is false. Pass false where the family has no
+ * parent who could have carried, or the story answers it itself. */
 const shareParentsAsBiologicalSibling = async (
   scope: ReturnType<typeof within>,
+  { answerCarrier = true }: { answerCarrier?: boolean } = {},
 ) => {
   const shared = await scope
     .findByRole(
@@ -1002,6 +1007,15 @@ const shareParentsAsBiologicalSibling = async (
   }
   await userEvent.click(
     await scope.findByRole('radio', { name: 'A biological child' }),
+  );
+  if (!answerCarrier) return;
+  const carrier = await scope.findByRole('radiogroup', {
+    name: /^Who carried the pregnancy\?/,
+  });
+  await userEvent.click(
+    within(carrier).getByRole('radio', {
+      name: 'Someone else, or I don’t know',
+    }),
   );
 };
 
@@ -1171,7 +1185,7 @@ export const AParentNotYetShownCanHaveCarriedASibling: Story = {
     );
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
-    await shareParentsAsBiologicalSibling(body);
+    await shareParentsAsBiologicalSibling(body, { answerCarrier: false });
     const carrier = within(
       await body.findByRole('radiogroup', {
         name: /^Who carried the pregnancy\?/,
