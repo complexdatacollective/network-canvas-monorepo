@@ -1412,7 +1412,6 @@
   "protocolBuilder.pedigree.wording.genderIdentityHint": "Shown only when the interface asks about gender identity.",
   "protocolBuilder.pedigree.wording.genderIdentityLabel": "Gender identity question",
   "protocolBuilder.pedigree.wording.generatedLabelOf": "Label for a relative",
-  "protocolBuilder.pedigree.wording.missingDetailsList": "Missing details notice",
   "protocolBuilder.pedigree.wording.otherParentBiologicalLabel": "Other parent is biological question",
   "protocolBuilder.pedigree.wording.otherParentLabel": "Other parent question",
   "protocolBuilder.pedigree.wording.otherParentNone": "No other parent option",

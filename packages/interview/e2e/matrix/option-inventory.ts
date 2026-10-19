@@ -532,7 +532,6 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'wording.you',
     'wording.save',
     'wording.dontKnow',
-    'wording.missingDetailsList',
     'wording.connectQuestion',
     'wording.connectParent',
     'wording.connectPartners',

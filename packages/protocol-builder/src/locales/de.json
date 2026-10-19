@@ -1412,7 +1412,6 @@
   "protocolBuilder.pedigree.wording.genderIdentityHint": "Nur angezeigt, wenn die Oberfläche nach der Geschlechtsidentität fragt.",
   "protocolBuilder.pedigree.wording.genderIdentityLabel": "Frage nach der Geschlechtsidentität",
   "protocolBuilder.pedigree.wording.generatedLabelOf": "Bezeichnung eines Angehörigen",
-  "protocolBuilder.pedigree.wording.missingDetailsList": "Hinweis auf fehlende Angaben",
   "protocolBuilder.pedigree.wording.otherParentBiologicalLabel": "Frage, ob der andere Elternteil biologisch ist",
   "protocolBuilder.pedigree.wording.otherParentLabel": "Frage nach dem anderen Elternteil",
   "protocolBuilder.pedigree.wording.otherParentNone": "Option ohne anderen Elternteil",

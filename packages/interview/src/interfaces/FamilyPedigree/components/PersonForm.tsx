@@ -4,7 +4,6 @@ import { useEffect, useEffectEvent, useMemo, useRef } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import BooleanField, {
@@ -60,7 +59,6 @@ import {
   type AddRelativeRequest,
   type Family,
   type FamilyLink,
-  type MissingDetail,
   type PedigreeConfig,
   type Person,
   type PersonDetails,
@@ -73,7 +71,6 @@ import {
   familyWithPlan,
   firmGeneticParentSexes,
   firmGeneticParentsOf,
-  fullSiblingsOf,
   geneticParentBlock,
   geneticParentsPossible,
   hasCarrier,
@@ -131,7 +128,6 @@ export type PersonFormMode =
   | {
       kind: 'edit';
       person: Person;
-      missing: MissingDetail[];
       /** The researcher's questions whose stored answer can never be shown.
        * Each is left as stored unless a new answer is given. */
       unavailable: readonly string[];
@@ -454,20 +450,16 @@ export default function PersonForm({
     ],
   );
 
-  const {
-    fieldComponents,
-    withFormValues,
-    toAttributePatch,
-    passphraseNeeded,
-  } = useProtocolForm({
-    fields: formFields,
-    subject: { entity: 'node', type: config.personType },
-    initialValues: initialResearcherValues,
-    currentEntityId: person?.id,
-    unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
-    precedingVariables: builtInVariables,
-    labelNode,
-  });
+  const { fieldComponents, toAttributePatch, passphraseNeeded } =
+    useProtocolForm({
+      fields: formFields,
+      subject: { entity: 'node', type: config.personType },
+      initialValues: initialResearcherValues,
+      currentEntityId: person?.id,
+      unavailableVariables: mode.kind === 'edit' ? mode.unavailable : undefined,
+      precedingVariables: builtInVariables,
+      labelNode,
+    });
 
   const handleSubmit: FormSubmitHandler = (values) => {
     const set: PersonDetails = readOwnDetails(values, config);
@@ -631,24 +623,6 @@ export default function PersonForm({
     description: reasonsFor(reasonContext, sexReasons, value),
   }));
 
-  // Each missing detail, by the question that asks it and how it is named:
-  // a researcher's question by its prompt, resolved in the form's scope like
-  // the field itself; the attribute's own name stands in without one.
-  const missingQuestions: readonly MissingQuestion[] =
-    mode.kind === 'edit'
-      ? mode.missing.map((detail) =>
-          typeof detail === 'string'
-            ? {
-                name: config.sexAssignedAtBirthAttribute,
-                label: text(wording.sexAssignedAtBirthLabel),
-              }
-            : {
-                name: detail.variable,
-                ...missingFieldWording(formFields, detail.variable),
-              },
-        )
-      : [];
-
   return (
     <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
       <DerivedAnswersScope>
@@ -660,9 +634,6 @@ export default function PersonForm({
             <SubmitButton form={formId}>{text(wording.save)}</SubmitButton>
           }
         >
-          {withFormValues(
-            <MissingDetailsNotice questions={missingQuestions} />,
-          )}
           <section data-question-step className="flex flex-col">
             {asksName && (
               <Field
@@ -752,67 +723,6 @@ export default function PersonForm({
         </QuestionFlow>
       </DerivedAnswersScope>
     </FormWithoutProvider>
-  );
-}
-
-/** An answer that leaves a detail missing. */
-const isUnanswered = (value: FieldValue | undefined) =>
-  value === undefined ||
-  value === null ||
-  (typeof value === 'string' && value.trim() === '') ||
-  (Array.isArray(value) && value.length === 0);
-
-/**
- * The details the panel opened missing that are still unanswered, as the
- * form stands: one answered drops out of the notice, and one cleared again
- * comes back.
- */
-type MissingQuestion = Readonly<
-  | { name: string; label: string }
-  | { name: string; prompt: FormField['prompt'] }
->;
-
-/** How a researcher's field names its detail: its prompt, or its variable. */
-const missingFieldWording = (
-  fields: readonly FormField[],
-  variable: string,
-): { label: string } | { prompt: FormField['prompt'] } => {
-  const prompt = fields.find((field) => field.variable === variable)?.prompt;
-  return prompt === undefined ? { label: variable } : { prompt };
-};
-
-/** The notice ends with a full stop, which a list ending in a question's own
- * mark ("Is this person still living?") does not need again, including when
- * the question closes its Markdown emphasis after the mark. */
-const withoutDoubledFullStop = (notice: string) =>
-  notice.replace(/([?!？！][*_~`]*)\s*[.。]$/u, '$1');
-
-function MissingDetailsNotice({
-  questions,
-}: {
-  questions: readonly MissingQuestion[];
-}) {
-  const { wording, text } = usePedigreeWords();
-  const contentFormat = useContentFormat();
-  const resolve = useResolveLocalizedString();
-  const values = useFormValue(
-    questions.map((question) => question.name),
-    'opaque',
-  );
-  const labels = questions
-    .filter((question) => isUnanswered(values[question.name]))
-    .map((question) =>
-      'label' in question ? question.label : resolve(question.prompt).text,
-    );
-  if (labels.length === 0) return null;
-  return (
-    <Alert variant="warning">
-      {withoutDoubledFullStop(
-        text(wording.missingDetailsList, {
-          details: contentFormat.formatList(labels),
-        }),
-      )}
-    </Alert>
   );
 }
 
@@ -1541,7 +1451,7 @@ function DraftWatcher({
 function childCarrierChoices(
   family: Family,
   anchor: Person,
-  childKind: string,
+  childKind: string | undefined,
   otherParent: string | undefined,
 ): string[] {
   if (childKind === 'surrogate') return [];
@@ -1799,7 +1709,6 @@ function PartnershipCurrentField({
       label={text(wording.stillTogetherLabel, {
         named: 'false',
       })}
-      initialValue={true}
     />
   );
 }
@@ -1864,7 +1773,6 @@ function ParentFields({
       ? canBeGeneticParentOf(anchor.id)
       : kind !== 'surrogate' || canCarry;
   const siblings = siblingsOf(family, anchor.id);
-  const fullSiblings = new Set(fullSiblingsOf(family, anchor.id));
   const partnerChoice = asString(values[ROLE.partnerId]);
   // The new parent is the same kind of parent to the siblings chosen.
   const siblingPossible = (siblingId: string) =>
@@ -1950,13 +1858,12 @@ function ParentFields({
     .join(' ');
 
   // Answers made impossible by a later one — the new parent's sex at birth,
-  // or their kind — are taken back, so the question is asked again, or
-  // takes its default again while the participant has not answered it
-  // (`useDerivedAnswer`).
+  // or their kind — are taken back, so the question is asked again
+  // (`useDerivedAnswer`). Nothing is answered for the participant.
   const setFieldValue = useFormStore((store) => store.setFieldValue);
   const kindAnswer = useDerivedAnswer({
     name: ROLE.parentKind,
-    derived: 'biological',
+    derived: undefined,
     isAvailable: (kind) => kindPossible(String(kind)),
   });
   const keptSiblings = chosenSiblings.filter(siblingPossible);
@@ -2028,49 +1935,18 @@ function ParentFields({
     />
   );
 
-  // The defaults assume the new parent belongs with the anchor's other
-  // parents — as their partner, and as the parent of the anchor's full
-  // siblings — only where they could have raised the anchor together: never
-  // a biological parent alongside an adoptive one, who are rarely partners
-  // and whose other children are rarely each other's. A partnership is
-  // never assumed for a new biological parent (ruling 25: never assume a
-  // partnership between biological parents): the question starts
-  // unanswered, and a partnership is recorded only when chosen. Each
-  // default follows the kind chosen until the participant answers the
-  // question themselves.
-  const kindOfParent = (parentId: string) =>
-    family.links.find(
-      (link) =>
-        link.kind !== 'partner' &&
-        link.source === parentId &&
-        link.target === anchor.id,
-    )?.kind;
-  const belongsWith = (parentId: string) =>
-    !birthAndAdoptive(kindOfParent(parentId), parentKind);
-  const [onlyParent] = existingParents;
+  // Nothing is assumed about the new parent's partner or the siblings they
+  // are a parent of: each question starts unanswered. Only a sibling whose
+  // unknown parent the new parent takes the place of is chosen, as they must
+  // be; a sibling the new parent could not be the same kind of parent of is
+  // never left chosen.
   const partnerAnswer = useDerivedAnswer({
     name: ROLE.partnerId,
-    derived:
-      parentKind === 'biological'
-        ? undefined
-        : raises &&
-            existingParents.length === 1 &&
-            onlyParent !== undefined &&
-            belongsWith(onlyParent)
-          ? onlyParent
-          : NONE,
+    derived: undefined,
   });
-  // A sibling the new parent could not be the same kind of parent of is
-  // never left chosen.
   const siblingsAnswer = useDerivedAnswer({
     name: ROLE.alsoParentOf,
-    derived: siblings.filter(
-      (id) =>
-        takenOver.includes(id) ||
-        (existingParents.every(belongsWith) &&
-          fullSiblings.has(id) &&
-          siblingPossible(id)),
-    ),
+    derived: siblings.filter((id) => takenOver.includes(id)),
     isAvailable: (id) => typeof id === 'string' && siblingPossible(id),
   });
   // Once the participant has answered, the siblings the new parent takes a
@@ -2154,11 +2030,6 @@ function ParentFields({
   );
 }
 
-/** A biological parent and an adoptive parent, in either order. */
-const birthAndAdoptive = (first: string | undefined, second: string) =>
-  (first === 'biological' && second === 'adoptive') ||
-  (first === 'adoptive' && second === 'biological');
-
 function ChildFields({
   anchor,
   family,
@@ -2173,22 +2044,13 @@ function ChildFields({
   const words = usePedigreeWords();
   const { wording, text } = words;
   const values = useFormValue([ROLE.childKind, ROLE.otherParent]);
-  const { choices, preferred } = otherParentChoices(family, anchor.id);
-  const childKind = asString(values[ROLE.childKind]) ?? 'biological';
+  const choices = otherParentChoices(family, anchor.id);
+  const childKind = asString(values[ROLE.childKind]);
   const otherParent = asString(values[ROLE.otherParent]);
-  // The other parent assumed is the anchor's only current partner; with
-  // nobody to choose from, someone not shown yet; and with several who could
-  // be, nobody, so the participant chooses. The other parent of a child
-  // conceived with the anchor's donated egg or sperm, or carried by the
-  // anchor as a surrogate, is assumed to be someone not shown yet, not the
-  // anchor's partner. The default follows the kind of child until the
-  // participant answers.
-  const donatedOrCarried = childKind === 'donor' || childKind === 'surrogate';
+  // Nothing is assumed about the other parent: the participant chooses.
   const otherParentAnswer = useDerivedAnswer({
     name: ROLE.otherParent,
-    derived: donatedOrCarried
-      ? UNKNOWN
-      : (preferred ?? (choices.length === 0 ? UNKNOWN : undefined)),
+    derived: undefined,
   });
   const hasOtherParent = otherParent !== undefined && otherParent !== NONE;
   // With a partner as the other parent of a biological child, either or
@@ -2210,11 +2072,11 @@ function ChildFields({
       anchor.sexAssignedAtBirth,
       family.byId.get(otherPartner)?.sexAssignedAtBirth,
     ]);
-  // Both, until answered, unless it is impossible: the question is then
-  // asked (`useDerivedAnswer`).
+  // Asked with nothing chosen; "Both" is taken back once it is impossible,
+  // so the question is asked again (`useDerivedAnswer`).
   const biologicalAnswer = useDerivedAnswer({
     name: biologicalField || undefined,
-    derived: 'both',
+    derived: undefined,
     isAvailable: (answer) => answer !== 'both' || bothPossible,
   });
   // A step or adopted child's other parent, someone already recorded, may
@@ -2296,7 +2158,6 @@ function ChildFields({
         }))}
         hint={joinReasons(reasonContext, childKindReasons)}
         required
-        initialValue="biological"
       />
       {biologicalField && otherPartner && (
         <Field
@@ -2439,7 +2300,7 @@ function SiblingFields({
   const biologicalUnavailable = !biologicalPossible && sharesEnough;
   const kindAnswer = useDerivedAnswer({
     name: ROLE.siblingKind,
-    derived: 'biological',
+    derived: undefined,
     isAvailable: (kind) => kind !== 'biological' || !biologicalUnavailable,
   });
 
@@ -2585,7 +2446,7 @@ function SiblingFields({
       });
   const twinAnswer = useDerivedAnswer({
     name: ROLE.twin,
-    derived: NONE,
+    derived: undefined,
     isAvailable: (answer) => answer !== 'identical' || identicalPossible,
   });
 
@@ -2644,7 +2505,6 @@ function SiblingFields({
             },
           ]}
           required
-          initialValue="both"
         />
         {surrogates.length > 0 && (
           <Field
@@ -2669,7 +2529,6 @@ function SiblingFields({
           label: parentLabel(id),
         }))}
         required
-        initialValue={parents}
       />
     );
 

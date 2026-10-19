@@ -407,19 +407,6 @@ const GENERATED_LABEL_OF = {
     '{relation, select, partner {{isYou, select, true {{term}（您的伴侶）} other {{term}（{name}的伴侶）}}} formerPartner {{isYou, select, true {{term}（您的前伴侶）} other {{term}（{name}的前伴侶）}}} parent {{isYou, select, true {{term}（您的家長）} other {{term}（{name}的家長）}}} sibling {{isYou, select, true {{term}（您的手足）} other {{term}（{name}的手足）}}} owner {{owner}的{term}} other {{isYou, select, true {{term}（您的子女）} other {{term}（{name}的子女）}}}}',
 } as const satisfies SuppliedWording;
 
-/** The notice listing the questions about a family member not yet answered. */
-const MISSING_DETAILS_LIST = {
-  'en': 'Some details are missing: {details}.',
-  'de': 'Es fehlen einige Angaben: {details}.',
-  'es': 'Faltan algunos datos: {details}.',
-  'fr': 'Des informations manquent : {details}.',
-  'it': 'Mancano alcune informazioni: {details}.',
-  'nl': 'Er ontbreken gegevens: {details}.',
-  'pt-BR': 'Faltam algumas informações: {details}.',
-  'zh-Hans': '缺少一些信息：{details}。',
-  'zh-Hant': '缺少部分資訊：{details}。',
-} as const satisfies SuppliedWording;
-
 /** The question asking who a child's other parent is. */
 const OTHER_PARENT_LABEL = {
   'en': 'Who is the child’s other parent?',
@@ -1326,7 +1313,6 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
     when: asksGenderIdentity,
   },
   { path: ['wording', 'generatedLabelOf'], message: GENERATED_LABEL_OF },
-  { path: ['wording', 'missingDetailsList'], message: MISSING_DETAILS_LIST },
   {
     path: ['wording', 'otherParentBiologicalLabel'],
     message: OTHER_PARENT_BIOLOGICAL_LABEL,

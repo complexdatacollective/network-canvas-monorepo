@@ -1412,7 +1412,6 @@
   "protocolBuilder.pedigree.wording.genderIdentityHint": "Alleen zichtbaar wanneer de interface naar genderidentiteit vraagt.",
   "protocolBuilder.pedigree.wording.genderIdentityLabel": "Vraag naar genderidentiteit",
   "protocolBuilder.pedigree.wording.generatedLabelOf": "Label van een familielid",
-  "protocolBuilder.pedigree.wording.missingDetailsList": "Melding over ontbrekende gegevens",
   "protocolBuilder.pedigree.wording.otherParentBiologicalLabel": "Vraag of de andere ouder biologisch is",
   "protocolBuilder.pedigree.wording.otherParentLabel": "Vraag naar de andere ouder",
   "protocolBuilder.pedigree.wording.otherParentNone": "Optie zonder andere ouder",

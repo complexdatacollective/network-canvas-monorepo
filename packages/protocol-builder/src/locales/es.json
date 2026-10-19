@@ -1412,7 +1412,6 @@
   "protocolBuilder.pedigree.wording.genderIdentityHint": "Solo se muestra cuando la interfaz pregunta por la identidad de género.",
   "protocolBuilder.pedigree.wording.genderIdentityLabel": "Pregunta sobre la identidad de género",
   "protocolBuilder.pedigree.wording.generatedLabelOf": "Etiqueta de un familiar",
-  "protocolBuilder.pedigree.wording.missingDetailsList": "Aviso de datos que faltan",
   "protocolBuilder.pedigree.wording.otherParentBiologicalLabel": "Pregunta sobre si el otro progenitor es biológico",
   "protocolBuilder.pedigree.wording.otherParentLabel": "Pregunta sobre el otro progenitor",
   "protocolBuilder.pedigree.wording.otherParentNone": "Opción sin otro progenitor",

@@ -87,11 +87,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       { key: 'you', label: messages.wordingYou },
       { key: 'save', label: messages.wordingSave },
       { key: 'dontKnow', label: messages.wordingDontKnow },
-      {
-        key: 'missingDetailsList',
-        label: messages.wordingMissingDetailsList,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.missingDetailsList,
-      },
     ],
   },
   {

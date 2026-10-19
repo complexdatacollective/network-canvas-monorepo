@@ -735,10 +735,6 @@
           "en": "{relation, select, partner {{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}} formerPartner {{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}} parent {{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}} sibling {{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}} owner {{owner}’s {term}} other {{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}}}",
           "es": "{relation, select, partner {{isYou, select, true {{term} (tu pareja)} other {{term} (pareja de {name})}}} formerPartner {{isYou, select, true {{term} (tu expareja)} other {{term} (expareja de {name})}}} parent {{isYou, select, true {{term} (tu progenitor)} other {{term} (progenitor de {name})}}} sibling {{isYou, select, true {{term} (tu hermano/a)} other {{term} (hermano/a de {name})}}} owner {{term} de {owner}} other {{isYou, select, true {{term} (tu hijo/a)} other {{term} (hijo/a de {name})}}}}"
         },
-        "missingDetailsList": {
-          "en": "Some details are missing: {details}.",
-          "es": "Faltan algunos datos: {details}."
-        },
         "otherParentBiologicalLabel": {
           "en": "{otherIsYou, select, true {Are you the child’s biological parent?} other {Is “{other}” the child’s biological parent?}}",
           "es": "{otherIsYou, select, true {¿Eres el progenitor biológico del hijo/a?} other {¿Es «{other}» el progenitor biológico del hijo/a?}}"
