@@ -1404,7 +1404,10 @@ function ExistingRelationshipFields({
               geneticBlock,
               kindAnswers(PARENT_KINDS.filter(isGeneticKind)),
             ),
+          // One reason at a time: someone who could not have carried a
+          // pregnancy is told only that.
           anotherCarrier &&
+            canCarry(link) &&
             carrierRecordedReason(
               anotherCarrier.childId,
               anotherCarrier.carrierId,
@@ -2054,7 +2057,11 @@ function ParentFields({
   const kindReasons = [
     !canBeGeneticParentOf(anchor.id) &&
       geneticReason(anchor.id, kindAnswers(PARENT_KINDS.filter(isGeneticKind))),
-    !canCarry && carrierReason(anchor.id, kindAnswers(['surrogate'])),
+    // One reason at a time: a new parent who could not have carried a
+    // pregnancy is told only that.
+    !canCarry &&
+      couldCarryPregnancy(sexAssignedAtBirth) &&
+      carrierReason(anchor.id, kindAnswers(['surrogate'])),
     !canCarry &&
       sexAssignedAtBirth !== undefined &&
       !couldCarryPregnancy(sexAssignedAtBirth) &&

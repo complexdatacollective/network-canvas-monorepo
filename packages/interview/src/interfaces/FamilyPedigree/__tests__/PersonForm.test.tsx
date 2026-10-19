@@ -1237,6 +1237,43 @@ describe('a second carrier', () => {
     expect(within(question).getByRole('radio', { name: 'No' })).toBeChecked();
   });
 
+  it('gives only the sex at birth as the reason a parent who could not have carried cannot be a surrogate', () => {
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      edges: [
+        link('mum', 'ego', 'biological', { carrier: true }),
+        link('dad', 'ego', 'biological'),
+      ],
+    });
+    const dad = screen.getByRole('radiogroup', { name: /^dad is your…/ });
+    const surrogate = within(dad).getByRole('radio', { name: 'Surrogate' });
+    expect(surrogate).toBeDisabled();
+    expect(surrogate).toHaveAccessibleDescription(
+      /^“Surrogate” is unavailable because “dad” is recorded as “Male” at birth, so they cannot have carried a pregnancy\. To choose it, first change their sex at birth\.$/,
+    );
+  });
+
+  it('gives only the sex at birth as the reason a new parent who could not have carried cannot be a surrogate', async () => {
+    const { user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+      ],
+      edges: [link('mum', 'ego', 'biological', { carrier: true })],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Male' }));
+    const surrogate = screen.getByRole('radio', { name: 'Surrogate' });
+    expect(surrogate).toBeDisabled();
+    expect(surrogate).toHaveAccessibleDescription(
+      /^“Surrogate” is unavailable because this person is recorded as “Male” at birth, so they cannot have carried a pregnancy\. To choose it, first change their sex at birth\.$/,
+    );
+  });
+
   it('shows a new parent’s carrying question unavailable while someone carried a twin, naming them and the twin', async () => {
     // Twins come from one pregnancy: Sue carried Sam, so carried the
     // participant too.
