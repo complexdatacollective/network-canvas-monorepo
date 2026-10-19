@@ -269,6 +269,11 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwinNew,
       },
       {
+        key: 'unavailableIdenticalTwinSexNew',
+        label: messages.wordingUnavailableIdenticalTwinSexNew,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwinSexNew,
+      },
+      {
         key: 'carriedSiblingsPregnancyLabel',
         label: messages.wordingCarriedSiblingsPregnancyLabel,
         arguments: PEDIGREE_WORDING_ARGUMENTS.carriedSiblingsPregnancyLabel,
@@ -328,6 +333,11 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         key: 'unavailableIdenticalTwin',
         label: messages.wordingUnavailableIdenticalTwin,
         arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwin,
+      },
+      {
+        key: 'unavailableIdenticalTwinSex',
+        label: messages.wordingUnavailableIdenticalTwinSex,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.unavailableIdenticalTwinSex,
       },
       {
         key: 'unavailableSameSexGeneticParent',

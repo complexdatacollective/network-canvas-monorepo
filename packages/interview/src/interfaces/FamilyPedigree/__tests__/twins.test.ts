@@ -8,6 +8,7 @@ import {
   areConnected,
   areLinked,
   type Family,
+  identicalTwinBlocks,
   identicalTwinsPossible,
   planAddRelative,
   planStandIns,
@@ -118,6 +119,45 @@ describe('identical twins', () => {
       ],
     );
     expect(identicalTwinsPossible(halfSiblings, 'ego', 'sam')).toBe(false);
+  });
+
+  test('have the same sex at birth, where both are recorded female or male', () => {
+    const withSexes = (ego: string, sam: string) =>
+      family(
+        [
+          person('ego', { isEgo: true, sex: [ego] }),
+          person('sam', { name: 'Sam', sex: [sam] }),
+          person('mum', { name: 'Julie', sex: ['female'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+        ],
+        [
+          link('mum', 'ego', 'biological'),
+          link('dad', 'ego', 'biological'),
+          link('mum', 'sam', 'biological'),
+          link('dad', 'sam', 'biological'),
+        ],
+      );
+    expect(
+      identicalTwinBlocks(withSexes('female', 'male'), 'ego', 'sam'),
+    ).toEqual(['sex']);
+    expect(
+      identicalTwinsPossible(withSexes('male', 'female'), 'ego', 'sam'),
+    ).toBe(false);
+    expect(
+      identicalTwinsPossible(withSexes('female', 'female'), 'ego', 'sam'),
+    ).toBe(true);
+    // Intersex, not known and not said rule nothing out.
+    for (const other of ['intersex', 'dontKnow', 'preferNotToSay']) {
+      expect(
+        identicalTwinsPossible(withSexes('female', other), 'ego', 'sam'),
+      ).toBe(true);
+    }
+    // A sex at birth as answered, not yet recorded, counts in its place.
+    expect(
+      identicalTwinBlocks(withSexes('female', 'female'), 'ego', 'sam', (id) =>
+        id === 'sam' ? 'male' : 'female',
+      ),
+    ).toEqual(['sex']);
   });
 });
 
@@ -278,6 +318,32 @@ describe('adding a twin', () => {
       ...siblingRequest('identical'),
       sharedParentIds: ['mum'],
     } as AddRelativeRequest);
+    expect(result.twins).toEqual([
+      { source: 'ego', target: 'added', zygosity: 'unknown' },
+    ]);
+  });
+
+  test('records identical twins as not known to be identical when one is female and the other male', () => {
+    const f = siblings([], []);
+    const female = family(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('sam', { name: 'Sam' }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('dad', { name: 'Rob', sex: ['male'] }),
+      ],
+      f.links.map((each) => link(each.source, each.target, each.kind)),
+    );
+    let counter = 0;
+    const result = planAddRelative({
+      family: female,
+      anchorId: 'ego',
+      newPersonId: 'added',
+      details: { [config.sexAssignedAtBirthAttribute]: ['male'] },
+      request: siblingRequest('identical'),
+      createId: () => `new-${++counter}`,
+      sexAttribute: config.sexAssignedAtBirthAttribute,
+    });
     expect(result.twins).toEqual([
       { source: 'ego', target: 'added', zygosity: 'unknown' },
     ]);

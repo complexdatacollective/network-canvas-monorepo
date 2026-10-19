@@ -1734,6 +1734,130 @@ describe('twins', () => {
   });
 });
 
+// Identical twins come from one egg and one sperm, so have the same sex at
+// birth: one female and one male cannot be identical twins. Any other pair of
+// answers (intersex, not known, not said) rules nothing out.
+describe('identical twins and sex at birth', () => {
+  const sexReason = /identical twins have the same sex at birth/;
+
+  describe('adding a sibling', () => {
+    const renderAddSibling = () =>
+      renderPersonForm('ego', {
+        nodes: [
+          person('ego', { isEgo: true, sex: ['female'] }),
+          person('mum', { name: 'Julie', sex: ['female'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+        ],
+        edges: [
+          link('mum', 'ego', 'biological', { carrier: true }),
+          link('dad', 'ego', 'biological'),
+        ],
+        adding: 'sibling',
+      });
+    const twin = () =>
+      screen.getByRole('radiogroup', { name: /^Are they your twin\?/ });
+    const identical = () =>
+      within(twin()).getByRole('radio', { name: 'Yes, identical twins' });
+    const shareBothParents = async (
+      user: ReturnType<typeof userEvent.setup>,
+    ) => {
+      await user.click(screen.getByRole('checkbox', { name: 'mum' }));
+      await user.click(screen.getByRole('checkbox', { name: 'dad' }));
+    };
+
+    it('shows identical twins unavailable for a sibling answered male beside a female, saying why, and available again once female', async () => {
+      const { user } = renderAddSibling();
+      await shareBothParents(user);
+      await user.click(screen.getByRole('radio', { name: 'Male' }));
+
+      await waitFor(() => expect(identical()).toBeDisabled());
+      expect(twin()).toHaveAccessibleDescription(sexReason);
+      expect(twin()).toHaveAccessibleDescription(
+        /this sibling is recorded with a different one from yours/,
+      );
+
+      await user.click(screen.getByRole('radio', { name: 'Female' }));
+      await waitFor(() => expect(identical()).toBeEnabled());
+      expect(twin()).not.toHaveAccessibleDescription(sexReason);
+    });
+
+    it('leaves identical twins available for an intersex sibling', async () => {
+      const { user } = renderAddSibling();
+      await shareBothParents(user);
+      await user.click(screen.getByRole('radio', { name: 'Intersex' }));
+
+      expect(identical()).toBeEnabled();
+      expect(twin()).not.toHaveAccessibleDescription(sexReason);
+    });
+  });
+
+  describe('editing a person', () => {
+    // Noah and Cody are the biological children of Shannon and Rick.
+    const family = (
+      noahSex: string,
+      codySex: string,
+      zygosity: 'identicalTwin' | 'unknownZygosityTwin',
+    ) => ({
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('shannon', { name: 'Shannon', sex: ['female'] }),
+        person('rick', { name: 'Rick', sex: ['male'] }),
+        person('cody', { name: 'Cody', sex: [codySex] }),
+        person('noah', { name: 'Noah', sex: [noahSex] }),
+      ],
+      edges: [
+        ...['ego', 'cody', 'noah'].flatMap((childId) => [
+          link('shannon', childId, 'biological', { carrier: true }),
+          link('rick', childId, 'biological'),
+        ]),
+        link('noah', 'cody', zygosity),
+      ],
+    });
+    const zygosity = () =>
+      screen.getByRole('radiogroup', {
+        name: /^Are “noah” and “cody” identical twins\?/,
+      });
+
+    it('shows identical twins unavailable for a person recorded female with a twin recorded male, saying why', () => {
+      renderPersonForm('noah', family('female', 'male', 'unknownZygosityTwin'));
+      expect(
+        within(zygosity()).getByRole('radio', { name: 'Yes, identical' }),
+      ).toBeDisabled();
+      expect(zygosity()).toHaveAccessibleDescription(sexReason);
+    });
+
+    it('shows recorded identical twins as not known to be identical once the sex at birth is changed so they differ, and saves them so', async () => {
+      const { onSubmit, user } = renderPersonForm(
+        'noah',
+        family('female', 'female', 'identicalTwin'),
+      );
+      const identical = () =>
+        within(zygosity()).getByRole('radio', { name: 'Yes, identical' });
+      expect(identical()).toBeChecked();
+      expect(identical()).toBeEnabled();
+
+      await user.click(
+        within(
+          screen.getByRole('radiogroup', { name: /^Sex assigned at birth/ }),
+        ).getByRole('radio', { name: 'Male' }),
+      );
+
+      await waitFor(() => expect(identical()).toBeDisabled());
+      expect(identical()).not.toBeChecked();
+      expect(zygosity()).toHaveAccessibleDescription(sexReason);
+      expect(
+        within(zygosity()).getByRole('radio', { name: 'I don’t know' }),
+      ).toBeChecked();
+      await save(user);
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0]?.[0].twinChanges).toMatchObject({
+        changed: [{ linkId: 'noah-cody-identicalTwin', zygosity: 'unknown' }],
+      });
+    });
+  });
+});
+
 // Who carried a new child or sibling is required: the answer naming nobody,
 // "Someone else, or I don't know", can always be given.
 describe('who carried a new child or sibling', () => {

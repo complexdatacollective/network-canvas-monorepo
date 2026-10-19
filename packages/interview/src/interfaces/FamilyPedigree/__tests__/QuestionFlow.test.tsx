@@ -244,7 +244,8 @@ describe('QuestionFlow with a required question left unanswered', () => {
       screen.queryByText('You must answer this question before continuing.'),
     ).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    // The buttons render into the footer only once it has mounted.
+    await user.click(await screen.findByRole('button', { name: 'Continue' }));
 
     expect(
       await screen.findByText(

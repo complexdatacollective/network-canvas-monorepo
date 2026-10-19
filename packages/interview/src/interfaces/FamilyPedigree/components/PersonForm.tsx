@@ -75,7 +75,8 @@ import {
   geneticParentsPossible,
   hasCarrier,
   holdsGeneratedLabel,
-  identicalTwinsPossible,
+  differentSexesAtBirth,
+  identicalTwinBlocks,
   isGeneticKind,
   isStandIn,
   mayHaveCarried,
@@ -993,10 +994,12 @@ function TwinFields({
   person,
   family,
   displayName,
+  sexAttribute,
 }: {
   person: Person;
   family: Family;
   displayName: (personId: string) => string;
+  sexAttribute: string;
 }) {
   const { wording, text } = usePedigreeWords();
   const candidates = twinCandidatesOf(family, person.id);
@@ -1042,6 +1045,7 @@ function TwinFields({
             family={family}
             who={who(twinId)}
             displayName={displayName}
+            sexAttribute={sexAttribute}
           />
         ))}
     </>
@@ -1055,29 +1059,35 @@ function TwinZygosityField({
   family,
   who,
   displayName,
+  sexAttribute,
 }: {
   person: Person;
   twinId: string;
   family: Family;
   who: 'personIsYou' | 'twinIsYou' | 'other';
   displayName: (personId: string) => string;
+  sexAttribute: string;
 }) {
   const { wording, text } = usePedigreeWords();
+  // The person's sex at birth as answered in this form.
+  const answeredSex = asString(
+    useFormValue([sexAttribute], 'opaque')[sexAttribute],
+  );
   const recorded = twinsOf(family, person.id).find(
     (each) => each.twinId === twinId,
   );
-  // Identical twins have the same genetic parents. Twins recorded as
-  // identical whose parents differ (saved before every change kept that, or
-  // as a parent is re-described) are shown as the family records them after
-  // the next change: not known to be identical (`planStandIns`). That answer
-  // is worked out from the parents as the answers stand, so follows them
-  // until the participant answers, and "identical" is never left chosen
-  // while it is unavailable (`useDerivedAnswer`).
-  const identicalUnavailable = !identicalTwinsPossible(
-    family,
-    person.id,
-    twinId,
+  // Identical twins have the same genetic parents and sex at birth. Twins
+  // recorded as identical whose parents differ (saved before every change
+  // kept that, or as a parent is re-described) are shown as the family
+  // records them after the next change: not known to be identical
+  // (`planStandIns`), and so are twins whose sexes at birth, as answered,
+  // differ. That answer is worked out from the answers as they stand, so
+  // follows them until the participant answers, and "identical" is never
+  // left chosen while it is unavailable (`useDerivedAnswer`).
+  const blocks = identicalTwinBlocks(family, person.id, twinId, (id) =>
+    id === person.id ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth,
   );
+  const identicalUnavailable = blocks.length > 0;
   const recordedZygosity =
     recorded?.zygosity === 'identical' && identicalUnavailable
       ? 'unknown'
@@ -1093,11 +1103,18 @@ function TwinZygosityField({
     name: displayName(person.id),
     twin: displayName(twinId),
   };
+  const answer = text(wording.zygosityIdentical);
   const identicalHint = identicalUnavailable
-    ? text(wording.unavailableIdenticalTwin, {
-        ...args,
-        answer: text(wording.zygosityIdentical),
-      })
+    ? blocks
+        .map((block) =>
+          text(
+            block === 'sex'
+              ? wording.unavailableIdenticalTwinSex
+              : wording.unavailableIdenticalTwin,
+            { ...args, answer },
+          ),
+        )
+        .join(' ')
     : undefined;
   return (
     <Field
@@ -1291,7 +1308,12 @@ function ExistingRelationshipFields({
           />
         );
       })}
-      <TwinFields person={person} family={draft} displayName={displayName} />
+      <TwinFields
+        person={person}
+        family={draft}
+        displayName={displayName}
+        sexAttribute={sexAttribute}
+      />
     </section>
   );
 }
@@ -2529,11 +2551,18 @@ function SiblingFields({
       second.asked && typeof id === 'string' && second.candidates.includes(id),
   });
 
-  // Twins (ruling 16): identical twins have the same genetic parents, so a
-  // sibling who would not have all of the anchor's cannot be one. The model
-  // records them as twins not known to be identical; the answer is
-  // unavailable, saying why, and asked again once taken away.
-  const identicalPossible =
+  // Twins (ruling 16): identical twins have the same genetic parents and
+  // sex at birth, so a sibling who would not have all of the anchor's, or is
+  // recorded female where the anchor is male (or the other way round),
+  // cannot be one. The model records them as twins not known to be
+  // identical; the answer is unavailable, saying why, and asked again once
+  // taken away.
+  const siblingSex = asString(
+    useFormValue([config.sexAssignedAtBirthAttribute], 'opaque')[
+      config.sexAssignedAtBirthAttribute
+    ],
+  );
+  const sameGeneticParents =
     planAdditionUnder(ids, {
       family,
       anchorId: anchor.id,
@@ -2541,12 +2570,30 @@ function SiblingFields({
       request: { ...readSiblingRequest(values), twin: 'identical' },
       sexAttribute: config.sexAssignedAtBirthAttribute,
     }).twins?.[0]?.zygosity === 'identical';
+  const sexesDiffer = differentSexesAtBirth(
+    siblingSex,
+    anchor.sexAssignedAtBirth,
+  );
+  const identicalPossible = sameGeneticParents && !sexesDiffer;
+  const identicalAnswer = text(wording.siblingTwinIdentical);
   const identicalHint = identicalPossible
     ? undefined
-    : text(wording.unavailableIdenticalTwinNew, {
-        ...args,
-        answer: text(wording.siblingTwinIdentical),
-      });
+    : [
+        sameGeneticParents
+          ? undefined
+          : text(wording.unavailableIdenticalTwinNew, {
+              ...args,
+              answer: identicalAnswer,
+            }),
+        sexesDiffer
+          ? text(wording.unavailableIdenticalTwinSexNew, {
+              ...args,
+              answer: identicalAnswer,
+            })
+          : undefined,
+      ]
+        .filter((sentence) => sentence !== undefined)
+        .join(' ');
   const twinAnswer = useDerivedAnswer({
     name: ROLE.twin,
     derived: undefined,

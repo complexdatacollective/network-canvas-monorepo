@@ -1458,6 +1458,8 @@
   "protocolBuilder.pedigree.wording.unavailableGeneticParentsFull": "Unavailable answers hint: two genetic parents",
   "protocolBuilder.pedigree.wording.unavailableIdenticalTwin": "Unavailable answers hint: twins’ parents differ",
   "protocolBuilder.pedigree.wording.unavailableIdenticalTwinNew": "Unavailable answers hint: new twin’s parents differ",
+  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSex": "Unavailable answers hint: twins recorded with different sexes at birth",
+  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": "Unavailable answers hint: new twin recorded with a different sex at birth",
   "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": "Unavailable answers hint: other genetic parent has that sex at birth",
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": "Unavailable answers hint: same sex at birth as the other genetic parent",
   "protocolBuilder.pedigree.wording.you": "Participant’s own name",

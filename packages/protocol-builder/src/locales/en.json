@@ -5835,6 +5835,14 @@
     "defaultMessage": "Unavailable answers hint: new twin’s parents differ",
     "description": "Label of the hint explaining that a new sibling cannot be an identical twin because they would not have all the same biological parents and donors."
   },
+  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSex": {
+    "defaultMessage": "Unavailable answers hint: twins recorded with different sexes at birth",
+    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when editing a twin, that the two twins cannot be recorded as identical because one is recorded as female at birth and the other as male."
+  },
+  "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": {
+    "defaultMessage": "Unavailable answers hint: new twin recorded with a different sex at birth",
+    "description": "Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be an identical twin because they are recorded with a different sex at birth (female or male) from the person they are added to."
+  },
   "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": {
     "defaultMessage": "Unavailable answers hint: other genetic parent has that sex at birth",
     "description": "Label of the hint explaining that a sex at birth is unavailable for a genetic parent because the other genetic parent of their children is recorded with that sex at birth."

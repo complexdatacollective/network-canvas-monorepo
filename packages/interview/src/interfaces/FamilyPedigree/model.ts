@@ -1276,16 +1276,47 @@ export function twinCandidatesOf(family: Family, personId: string): string[] {
   return [...own.filter((id) => id !== personId), ...candidates];
 }
 
-/** Whether two people could be identical twins: identical twins come from
- * one egg and one sperm, so they have the same genetic parents. */
+/** What keeps two people from being identical twins. */
+export type IdenticalTwinBlock = 'geneticParents' | 'sex';
+
+/**
+ * Why two people could not be identical twins, if they could not: identical
+ * twins come from one egg and one sperm, so they have the same genetic
+ * parents and the same sex at birth (`differentSexesAtBirth`). `sexOf`
+ * reads a sex at birth as the answers stand, where they differ from what is
+ * recorded.
+ */
+export function identicalTwinBlocks(
+  family: Family,
+  a: string,
+  b: string,
+  sexOf: (personId: string) => string | undefined = (personId) =>
+    family.byId.get(personId)?.sexAssignedAtBirth,
+): IdenticalTwinBlock[] {
+  const blocks: IdenticalTwinBlock[] = [];
+  const first = new Set(geneticParentsOf(family, a));
+  const second = geneticParentsOf(family, b);
+  if (first.size !== second.length || !second.every((id) => first.has(id))) {
+    blocks.push('geneticParents');
+  }
+  if (differentSexesAtBirth(sexOf(a), sexOf(b))) blocks.push('sex');
+  return blocks;
+}
+
+/** Whether two sexes at birth are known to differ: one female and one male.
+ * Any other answer (intersex, not known, not said) rules nothing out. */
+export const differentSexesAtBirth = (
+  a: string | undefined,
+  b: string | undefined,
+) => (a === 'female' && b === 'male') || (a === 'male' && b === 'female');
+
+/** Whether two people could be identical twins (`identicalTwinBlocks`). */
 export function identicalTwinsPossible(
   family: Family,
   a: string,
   b: string,
 ): boolean {
-  const first = new Set(geneticParentsOf(family, a));
-  const second = geneticParentsOf(family, b);
-  return first.size === second.length && second.every((id) => first.has(id));
+  return identicalTwinBlocks(family, a, b).length === 0;
 }
 
 /**
