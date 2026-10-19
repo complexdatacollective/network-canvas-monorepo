@@ -1705,6 +1705,29 @@ test('the Architect maintenance lane releases an older line without deploying it
   assert.equal(create.with.make_latest, 'false');
   assert.equal(create.with.prerelease, false);
   assert.equal(create.with.target_commitish, '${{ needs.verify.outputs.sha }}');
+  // Nothing that can fail runs between the claim and the release, and a claim
+  // left without a release is given up so a re-run is not blocked by its tag.
+  const stepIndex = (name) =>
+    release.steps.findIndex((step) => step.name === name);
+  assert.ok(
+    stepIndex('Release notes') < stepIndex('Claim the release tag'),
+    'release notes are written before the tag is claimed',
+  );
+  assert.equal(
+    stepIndex('Create the release'),
+    stepIndex('Claim the release tag') + 1,
+  );
+  const rollback = release.steps.find(
+    ({ name }) => name === 'Release the claimed tag if no release was created',
+  );
+  assert.match(rollback.if, /always\(\)/);
+  assert.match(rollback.if, /steps\.claim\.outcome == 'success'/);
+  assert.match(rollback.if, /steps\.create\.outcome != 'success'/);
+  assert.match(rollback.run, /gh release view "\$TAG"/);
+  assert.match(
+    rollback.run,
+    /gh api -X DELETE "repos\/\$GITHUB_REPOSITORY\/git\/refs\/tags\/\$TAG"/,
+  );
 
   const dist = maintenance.jobs['subpath-dist'];
   assert.equal(dist.needs, 'release');

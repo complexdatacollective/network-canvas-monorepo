@@ -237,9 +237,11 @@ nothing.
    to it. The `verify` job runs typecheck and tests across Architect's
    workspace dependency closure, then a `/v<major>/` build, because a
    maintenance branch gets no pull-request CI. After approval, the `release`
-   job checks the version again, claims the tag atomically, and creates the
-   release with notes since the line's previous release. This job holds the
-   write token and runs nothing from the branch.
+   job checks the version again, writes the notes since the line's previous
+   release, claims the tag atomically, and creates the release. If the release
+   is not created after the claim, the job deletes the tag again so the run
+   can be repeated. This job holds the write token and runs nothing from the
+   branch.
    `resolve-hotfix-release.mjs` in its line scope (`SCOPE=line`) requires:
    - a version newer than every release on its own major line;
    - a major below the newest release overall;

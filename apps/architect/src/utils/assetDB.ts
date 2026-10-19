@@ -51,7 +51,9 @@ export async function clearAllStorage() {
   try {
     // A sub-path build shares localStorage with Architect 9 on the same origin
     // (its language, analytics and update keys), so only the root app may
-    // clear it wholesale. The library below is Architect 8's alone.
+    // clear it wholesale. The library below is Architect 8's alone: Architect
+    // 9 keeps its own in ArchitectProtocolDB-v9 and only reads this one to
+    // upgrade a protocol.
     if (!IS_SUBPATH_BUILD) localStorage.clear();
     await Promise.all([assetDb.assets.clear(), assetDb.protocols.clear()]);
     window.location.reload();
