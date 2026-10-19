@@ -22,7 +22,7 @@ import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { getArchitectIntl } from '~/i18n/imperative';
 import type { ProtocolSourceRef } from '~/templates';
-import type { LegacyProtocolChoice } from '~/utils/assetDB';
+import type { LegacyProtocolChoice, StoredAsset } from '~/utils/assetDB';
 import {
   saveProtocolAssets,
   saveProtocolAssetsToMemory,
@@ -863,6 +863,22 @@ export const planLegacyProtocolOpen = async (
   }
 };
 
+// The resources a protocol's manifest lists that are not among `assets`, by
+// the name the researcher gave them. Architect 8 opens an archive missing a
+// file the way this app does, so its library can hold a protocol with a gap
+// in it; the copy is made anyway, as a file import would open it, and says
+// what is missing. API keys are values in the manifest, not stored files.
+const unresolvedAssetNames = (
+  protocol: CurrentProtocol,
+  assets: ReadonlyArray<StoredAsset>,
+): string[] => {
+  const stored = new Set(assets.map((asset) => asset.assetId));
+  return Object.entries(protocol.assetManifest ?? {}).flatMap(
+    ([assetId, entry]) =>
+      entry.type === 'apikey' || stored.has(assetId) ? [] : [entry.name],
+  );
+};
+
 // Upgrade a protocol from Architect 8's library into a NEW protocol in this
 // one, then open it.
 //
@@ -937,7 +953,10 @@ export const upgradeLegacyProtocol = createAppAsyncThunk(
       dispatch(setActiveProtocolId(copy.protocolId));
       dispatch(setActiveProtocol(protocol));
       navigate('/protocol');
-      return openedResult;
+      const missing = unresolvedAssetNames(protocol, snapshot.assets);
+      return missing.length > 0
+        ? { status: 'opened', unresolvedAssetNames: missing }
+        : openedResult;
     } catch (error) {
       trackImportFailure('legacy-library', error);
       const { message, detail, localizedMessage } = describeImportFailure(

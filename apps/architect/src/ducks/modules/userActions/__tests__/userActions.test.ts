@@ -776,6 +776,44 @@ describe('userActions', () => {
       expect(setImportInProgress).toHaveBeenLastCalledWith(false);
     });
 
+    it('names the resources Architect 8’s library lists but does not hold', async () => {
+      // Architect 8 opens an archive missing a file and keeps the manifest
+      // entry, so its library can hold that gap. The copy is made anyway, as a
+      // file import opens such an archive, and the open says what is missing.
+      const upgraded: CurrentProtocol = {
+        ...makeProtocol(),
+        assetManifest: {
+          a1: { id: 'a1', type: 'image', name: 'map.png', source: 'a1.png' },
+          a2: {
+            id: 'a2',
+            type: 'video',
+            name: 'intro.mp4',
+            source: 'a2.mp4',
+          },
+          k1: { id: 'k1', type: 'apikey', name: 'Mapbox', value: 'token' },
+        },
+      };
+      readLegacyProtocolSnapshot.mockResolvedValue(snapshot);
+      migrateProtocol.mockReturnValue(upgraded);
+      validateProtocol.mockResolvedValue({ success: true, data: upgraded });
+      writeUpgradedLegacyCopy.mockResolvedValue({
+        protocolId: 'new-copy',
+        created: true,
+      });
+
+      const result = await runThunk(
+        upgradeLegacyProtocol({ legacyId: 'legacy-1' }),
+      );
+
+      expect(result.payload).toEqual({
+        status: 'opened',
+        unresolvedAssetNames: ['intro.mp4'],
+      });
+      expect(writeUpgradedLegacyCopy).toHaveBeenCalledOnce();
+      expect(setActiveProtocolId).toHaveBeenCalledWith('new-copy');
+      expect(navigate).toHaveBeenCalledWith('/protocol');
+    });
+
     it('opens the copy another tab made meanwhile instead of a second one', async () => {
       const upgraded = makeProtocol();
       readLegacyProtocolSnapshot.mockResolvedValue(snapshot);
