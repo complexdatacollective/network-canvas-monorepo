@@ -1888,6 +1888,30 @@ describe('twins', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('offers as a twin a half sibling with nobody recorded as carrying them', () => {
+    // Mum carried the participant; Hal shares only Dad, and nobody is
+    // recorded as carrying him, so nothing records another pregnancy.
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('hal', { name: 'Hal', sex: ['male'] }),
+        person('jo', { name: 'Jo', sex: ['female'] }),
+        ...parents,
+      ],
+      edges: [
+        ...parentLinks('ego'),
+        link('dad', 'hal', 'biological'),
+        link('jo', 'hal', 'biological'),
+      ],
+    });
+    const twins = screen.getByRole('group', {
+      name: /^Which of your siblings, if any, are your twins\?/,
+    });
+    expect(
+      within(twins).getByRole('checkbox', { name: 'hal' }),
+    ).toBeInTheDocument();
+  });
+
   it('offers no sibling someone else carried than whoever carried a twin already chosen, until that twin is not', async () => {
     // Nobody is recorded as carrying the participant, but Sue carried Sam,
     // their twin, as a surrogate, and Mum carried Kim: Kim could not join

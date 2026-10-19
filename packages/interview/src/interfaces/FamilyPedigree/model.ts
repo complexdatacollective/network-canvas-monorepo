@@ -1119,10 +1119,13 @@ export function planAddRelative({
           (id) => id === request.carrier,
         )
       : undefined;
+  // A twin's carrier carried the anchor too, a parent planned for both of
+  // them included.
+  const twinned = (plan.twins ?? []).length > 0;
   const answered = plan.links.map((link) =>
     carrier !== undefined &&
     link.source === carrier &&
-    link.target === newPersonId
+    (link.target === newPersonId || (twinned && link.target === anchorId))
       ? { ...link, isGestationalCarrier: true }
       : link,
   );

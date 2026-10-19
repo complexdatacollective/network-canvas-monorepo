@@ -908,6 +908,27 @@ describe('the carrier twins share', () => {
     ]);
   });
 
+  test('a new twin of someone without parents is carried by the same unnamed parent as them', () => {
+    // Both are given an unnamed egg parent and sperm parent; whoever of
+    // them carried the new twin carried the anchor too.
+    const result = plan(family([person('ego', { isEgo: true })], []), {
+      relation: 'sibling',
+      sharedParentIds: [],
+      parentKind: 'biological',
+      carrier: 'new-1',
+      twin: 'fraternal',
+    } as AddRelativeRequest);
+    for (const target of ['ego', 'added']) {
+      expect(result.links).toContainEqual(
+        expect.objectContaining({
+          source: 'new-1',
+          target,
+          isGestationalCarrier: true,
+        }),
+      );
+    }
+  });
+
   test('a new sibling who is no twin changes nobody’s carrier', () => {
     const result = plan(twins(), {
       ...siblingRequest(undefined),

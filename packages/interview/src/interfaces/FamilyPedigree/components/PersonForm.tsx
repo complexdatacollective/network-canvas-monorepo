@@ -1030,10 +1030,11 @@ function TwinFields({
   const { wording, text } = usePedigreeWords();
   const values = useFormValue([ROLE.twins], 'opaque');
   const chosen = asStringArray(values[ROLE.twins]);
-  // Twins come from one pregnancy, so a sibling whose twin set could not be
-  // recorded as carried by whoever carried the person, as the answers stand,
-  // or by whoever carried any other twin set chosen, is not offered as their
-  // twin (`twinCarrierSync`).
+  // Twins come from one pregnancy, so a sibling is not offered as their twin
+  // while someone in the sibling's twin set is recorded as carried by
+  // someone who could not be recorded instead as whoever carried the person,
+  // as the answers stand, or any other twin set chosen (`twinCarrierSync`).
+  // Someone with nobody recorded is left so.
   const ownSet = twinSetOf(family, person.id);
   const carrierOfSet = (id: string) =>
     twinSetOf(family, id)
@@ -1048,7 +1049,11 @@ function TwinFields({
     ].every(
       (carrier) =>
         carrier === undefined ||
-        set.every((twinId) => couldBeCarrierOf(family, twinId, carrier)),
+        set.every(
+          (twinId) =>
+            carrierOf(family, twinId) === undefined ||
+            couldBeCarrierOf(family, twinId, carrier),
+        ),
     );
   });
   // Twins answered identical to the person are identical to each other too.
