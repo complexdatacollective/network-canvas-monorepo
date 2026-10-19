@@ -1,3 +1,5 @@
+// First: strips this app's entry parameter before analytics can record it.
+import './captureUrlEntryRequests';
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import './styles/globals.css';
@@ -9,6 +11,7 @@ import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBu
 
 import App from './App';
 import { startupLocale } from './i18n/preference';
+import { startHandedOverImport } from './lib/handoff/handedOverImport';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
@@ -47,6 +50,10 @@ if (import.meta.hot) {
 // OS-launched .netcanvas files (installed-PWA file handler) can arrive before
 // React mounts; capture them for Home to import after unlock.
 initFileLaunchCapture();
+
+// A file Interviewer 8 staged for this app (`/?import=<key>`) joins the
+// launched files; hand-offs nobody took are cleaned up.
+startHandedOverImport();
 
 async function startApp(): Promise<void> {
   await Promise.all([
