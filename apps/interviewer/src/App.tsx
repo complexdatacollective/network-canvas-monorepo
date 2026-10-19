@@ -7,8 +7,9 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { ErrorBoundary } from './components/AppErrorBoundary';
 import { AppUpdateProvider } from './components/AppUpdate/AppUpdateProvider';
 import { AuthGate } from './components/AuthGate';
+import { Interviewer9NavigationRequests } from './components/Interviewer9NavigationRequests';
 import { InterviewerI18nProvider } from './i18n/InterviewerI18nProvider';
-import { ROUTER_BASE } from './lib/appBase';
+import { IS_SUBPATH_BUILD, ROUTER_BASE } from './lib/appBase';
 import { AppProviders } from './providers/AppProviders';
 import { HomeRoute } from './routes/Home';
 import { InterviewRoute } from './routes/Interview';
@@ -37,6 +38,7 @@ function pageKeyFor(location: string): string {
 export default function App() {
   return (
     <Router base={ROUTER_BASE}>
+      {IS_SUBPATH_BUILD ? <Interviewer9NavigationRequests /> : null}
       <AppRoutes />
     </Router>
   );

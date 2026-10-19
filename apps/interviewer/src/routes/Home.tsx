@@ -1,5 +1,11 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { createElement, useCallback, useMemo, useState } from 'react';
+import {
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useLocation } from 'wouter';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -22,6 +28,10 @@ import type { StoredSession } from '~/lib/db/types';
 import { useProtocolImport } from '~/lib/protocol/useProtocolImport';
 import { useLaunchedProtocolImport } from '~/lib/pwa/useLaunchedProtocolImport';
 import { useLaunchFailureToast } from '~/lib/pwa/useLaunchFailureToast';
+import {
+  peekUrlStartRequest,
+  takeUrlStartRequest,
+} from '~/lib/urlLaunchRequest';
 
 import { buildDeleteProtocolMessage } from './deleteProtocolMessage';
 import {
@@ -79,6 +89,11 @@ export function HomeRoute() {
   const [pendingProtocolHash, setPendingProtocolHash] = useState<string | null>(
     null,
   );
+  // The protocol a `?start=` link asked to start an interview with (Interviewer
+  // 9 opens schema 8 protocols here that way), once it is known to be stored.
+  const [startProtocolHash, setStartProtocolHash] = useState<string | null>(
+    null,
+  );
   // Bumped when sessions are mutated outside the DataView (synthetic-data
   // generation/deletion in Settings) so the data table re-queries.
   const [dataRefreshKey, setDataRefreshKey] = useState(0);
@@ -101,10 +116,37 @@ export function HomeRoute() {
   const showResumePill =
     view === 'protocols' && !newSessionActive && hasResumableSession;
 
+  // `?start=<protocolHash>`: once the library has loaded, open the new-interview
+  // form for that protocol, exactly as tapping its card does. The request is
+  // read when Home mounts and taken from its module at once, so it is acted
+  // on once; one naming a protocol this device does not have is ignored. The
+  // library arrives asynchronously from IndexedDB, so the request waits in
+  // state and is settled during the render in which the library is there.
+  const [startRequest, setStartRequest] = useState(peekUrlStartRequest);
+  useEffect(() => {
+    takeUrlStartRequest();
+  }, []);
+  const libraryLoaded = settings !== null;
+  if (startRequest !== null && libraryLoaded) {
+    setStartRequest(null);
+    if (protocols.some((p) => p.hash === startRequest)) {
+      setStartProtocolHash(startRequest);
+      setPendingProtocolHash(startRequest);
+    }
+  }
+
   // Default the active card to the user's last-used protocol; fall back to
   // the most-recently-imported one if they've never opened a protocol (or
   // the remembered one has since been deleted).
+  // A `?start=` protocol wins. It is settled above in the same render the
+  // library arrives in, so the deck's very first placement is on that card.
   const initialProtocolHash = useMemo(() => {
+    if (
+      startProtocolHash !== null &&
+      protocols.some((p) => p.hash === startProtocolHash)
+    ) {
+      return startProtocolHash;
+    }
     const lastUsed = settings?.lastActiveProtocolHash;
     if (lastUsed && protocols.some((p) => p.hash === lastUsed)) {
       return lastUsed;
@@ -113,7 +155,7 @@ export function HomeRoute() {
     return [...protocols].toSorted((a, b) =>
       b.importedAt.localeCompare(a.importedAt),
     )[0]?.hash;
-  }, [settings?.lastActiveProtocolHash, protocols]);
+  }, [settings?.lastActiveProtocolHash, protocols, startProtocolHash]);
 
   const handleImportFile = useCallback(
     (file: File) => {

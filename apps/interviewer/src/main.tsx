@@ -1,7 +1,12 @@
+// First, before anything that could start analytics: this strips ?start= and
+// ?import= from the address bar as it is evaluated.
+// oxlint-disable-next-line import/no-duplicates -- this evaluation-order import must stay first; import sorting moves the named import below
+import './lib/urlLaunchRequest';
+import { StrictMode } from 'react';
+
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
 import './styles/globals.css';
-import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
@@ -9,6 +14,12 @@ import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBu
 
 import App from './App';
 import { startupLocale } from './i18n/preference';
+import { IS_SUBPATH_BUILD } from './lib/appBase';
+import { pruneStaleHandoffs } from './lib/handoff/handoffStore';
+import {
+  forwardLaunchFilesToInterviewer9,
+  stageHandoffImport,
+} from './lib/handoff/interviewer9Handoff';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
@@ -26,6 +37,7 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './lib/storage';
+import { takeUrlImportRequest } from './lib/urlLaunchRequest';
 import { interviewerCatalogSource } from './locales/catalogs';
 
 announceLoadingScreen();
@@ -50,7 +62,26 @@ if (import.meta.hot) {
 
 // OS-launched .netcanvas files (installed-PWA file handler) can arrive before
 // React mounts; capture them for Home to import after unlock.
-initFileLaunchCapture();
+//
+// Interviewer 8 served inside Interviewer 9 declares no file handler, but a
+// launch can still reach one of its windows; Interviewer 9 owns .netcanvas
+// launches, so the file is handed on to it.
+initFileLaunchCapture(
+  IS_SUBPATH_BUILD ? { routeFiles: forwardLaunchFilesToInterviewer9 } : {},
+);
+
+// A file Interviewer 9 staged for this app (`?import=`) imports through the
+// same queue, after unlock, and holds the startup update check while it is
+// read.
+const handoffImportKey = takeUrlImportRequest();
+if (handoffImportKey) stageHandoffImport(handoffImportKey);
+
+// Hand-off records are consumed at once; anything older than an hour was
+// abandoned (a closed tab, a failed navigation) and only takes up space.
+void pruneStaleHandoffs().catch((error: unknown) => {
+  // oxlint-disable-next-line no-console -- a failed clean-up has no user-facing consequence; this is its only trace
+  console.error('Could not prune stale hand-offs', error);
+});
 
 async function startApp(): Promise<void> {
   await Promise.all([

@@ -18,15 +18,50 @@ const emit = () => {
   for (const listener of listeners) listener();
 };
 
-export const initFileLaunchCapture = (): void => {
+// Count a read in flight for `hasPendingLaunchFiles`, so the startup update
+// check holds while it runs, then queue whatever files it produced.
+const trackLaunchRead = (
+  read: () => Promise<File[]>,
+  failureLabel: string,
+): void => {
+  pendingLaunchReads += 1;
+  emit();
+  void (async () => {
+    const files = await read();
+    if (files.length === 0) return;
+    pendingFiles = [...pendingFiles, ...files];
+    emit();
+  })()
+    .catch((error: unknown) => {
+      // Unlike the per-file read failures below, nothing surfaces this
+      // outer failure to the user at all — this is the only signal.
+      // oxlint-disable-next-line no-console -- only diagnostic for this outer failure; nothing else reports it, unlike the per-file failures below
+      console.error(failureLabel, error);
+    })
+    .finally(() => {
+      pendingLaunchReads -= 1;
+      emit();
+    });
+};
+
+type LaunchCaptureOptions = {
+  /**
+   * Decide what happens to launched .netcanvas files before they are queued:
+   * resolve with the files this app should still import itself. Interviewer 8
+   * served inside Interviewer 9 hands them on to Interviewer 9 instead.
+   */
+  routeFiles?: (files: File[]) => Promise<File[]>;
+};
+
+export const initFileLaunchCapture = (
+  options: LaunchCaptureOptions = {},
+): void => {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
   const queue = window.launchQueue;
   if (!queue) return;
   queue.setConsumer((params) => {
-    pendingLaunchReads += 1;
-    emit();
-    void (async () => {
+    trackLaunchRead(async () => {
       // allSettled so one unreadable handle (file moved/deleted, volume
       // unmounted between the OS launch and consumption) doesn't drop the
       // whole batch — read what we can and surface the rest as a
@@ -58,22 +93,33 @@ export const initFileLaunchCapture = (): void => {
       );
       if (netcanvas.length === 0) {
         if (failures.length > 0) emit();
-        return;
+        return [];
       }
-      pendingFiles = [...pendingFiles, ...netcanvas];
-      emit();
-    })()
-      .catch((error: unknown) => {
-        // Unlike the per-file read failures above, nothing surfaces this
-        // outer failure to the user at all — this is the only signal.
-        // oxlint-disable-next-line no-console -- only diagnostic for this outer failure; nothing else reports it, unlike the per-file failures above
-        console.error('Failed to handle launched files', error);
-      })
-      .finally(() => {
-        pendingLaunchReads -= 1;
-        emit();
-      });
+      return options.routeFiles ? options.routeFiles(netcanvas) : netcanvas;
+    }, 'Failed to handle launched files');
   });
+};
+
+/**
+ * Queue a file that arrives some other way than the OS launch queue — the
+ * `?import=` hand-off from Interviewer 9 — so it imports exactly as a launched
+ * file does: after unlock, on Home. `read` resolves null when there is nothing
+ * to import, which is reported as an unreadable launched file is.
+ */
+export const enqueueLaunchRead = (read: () => Promise<File | null>): void => {
+  trackLaunchRead(async () => {
+    let file: File | null = null;
+    try {
+      file = await read();
+    } catch (error) {
+      // oxlint-disable-next-line no-console -- only diagnostic for why a staged file could not be read; the user only sees the launch failure count
+      console.error('Failed to read a staged file', error);
+    }
+    if (file) return [file];
+    pendingFailureCount += 1;
+    emit();
+    return [];
+  }, 'Failed to handle a staged file');
 };
 
 export const subscribeLaunchFiles = (listener: () => void): (() => void) => {
