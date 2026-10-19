@@ -1,4 +1,4 @@
-import Dexie, { type DBCore, type Middleware } from 'dexie';
+import Dexie, { type DBCore, type DexieOptions, type Middleware } from 'dexie';
 
 import type { Protocol } from '@codaco/protocol-validation';
 import { APP_SCHEMA_VERSION } from '~/config';
@@ -14,11 +14,13 @@ import { LEGACY_LIBRARIES } from './storageNames';
 //
 // Three things keep it that way, and each matters on its own:
 //
-// - The database is opened only once `indexedDB.databases()` lists it. Opening
-//   a database that does not exist creates it; Dexie then deletes what it
-//   created, and that delete can remove a database Architect 8 is creating at
-//   the same moment. A browser that cannot list its databases is treated as
-//   having none.
+// - The database is opened only once `indexedDB.databases()` lists it, and the
+//   open itself never creates it: Architect 8 can delete its library between
+//   that check and the open. Opening a database that does not exist creates
+//   it, and Dexie then deletes what it created — a delete that can remove the
+//   library Architect 8 is creating at the same moment. So the open aborts its
+//   own upgrade from version 0, which creates nothing and leaves nothing to
+//   delete. A browser that cannot list its databases is treated as having none.
 // - No `version()` is declared. Dexie then opens whatever schema is installed
 //   and never upgrades it, where a declared schema that differs from the
 //   installed one would make Dexie bump the database's version.
@@ -69,6 +71,28 @@ export const legacyReadOnlyMiddleware: Middleware<DBCore> = {
     },
   }),
 };
+
+/**
+ * An `indexedDB` for Dexie whose versionless open fails, without creating
+ * anything, when the database does not exist. A missing database is upgraded
+ * from version 0 inside the open itself, so aborting that upgrade is atomic
+ * with the open; the abort runs before Dexie's own handler, which would delete
+ * the database afterwards, once Architect 8 may have created it for real.
+ */
+const openingExistingOnly = (
+  onMissing: () => void,
+): NonNullable<DexieOptions['indexedDB']> => ({
+  open: (name: string) => {
+    const request = indexedDB.open(name);
+    request.addEventListener('upgradeneeded', (event) => {
+      if (event.oldVersion !== 0) return;
+      event.stopImmediatePropagation();
+      onMissing();
+      request.transaction?.abort();
+    });
+    return request;
+  },
+});
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -173,9 +197,22 @@ export const createLegacyProtocolReader = (
 
     // `autoOpen: false`: Dexie would otherwise reopen a closed connection by
     // itself, without asking whether the database still exists.
-    const next = new Dexie(dbName, { addons: [], autoOpen: false });
+    let missing = false;
+    const next = new Dexie(dbName, {
+      addons: [],
+      autoOpen: false,
+      indexedDB: openingExistingOnly(() => {
+        missing = true;
+      }),
+    });
     next.use(legacyReadOnlyMiddleware);
-    await next.open();
+    try {
+      await next.open();
+    } catch (error) {
+      // Deleted after the check above: there is nothing to read.
+      if (missing) return null;
+      throw error;
+    }
     db = next;
     return next;
   };

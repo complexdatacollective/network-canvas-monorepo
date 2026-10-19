@@ -45,13 +45,12 @@ type SeedAsset = { id: string; protocolId: string } & Record<string, unknown>;
 
 // Architect 8 declares `version(1).stores({ assets: 'id, protocolId',
 // protocols: 'id, updatedAt' })`, which Dexie opens as native version 10.
-const seedArchitect8Library = async (
-  rows: SeedRow[],
-  assets: SeedAsset[] = [],
+const openArchitect8Library = (
+  open: IDBFactory['open'] = (name, version) => indexedDB.open(name, version),
 ) => {
-  const open = indexedDB.open(DB_NAME, 10);
-  open.onupgradeneeded = () => {
-    const db = open.result;
+  const opening = open(DB_NAME, 10);
+  opening.onupgradeneeded = () => {
+    const db = opening.result;
     db.createObjectStore('protocols', { keyPath: 'id' }).createIndex(
       'updatedAt',
       'updatedAt',
@@ -61,7 +60,18 @@ const seedArchitect8Library = async (
       'protocolId',
     );
   };
-  const db = await request(open);
+  return request(opening).then((db) => {
+    // As Architect 8's Dexie does: a version change or delete closes it.
+    db.onversionchange = () => db.close();
+    return db;
+  });
+};
+
+const seedArchitect8Library = async (
+  rows: SeedRow[],
+  assets: SeedAsset[] = [],
+) => {
+  const db = await openArchitect8Library();
   await new Promise<void>((resolve, reject) => {
     const transaction = db.transaction(['protocols', 'assets'], 'readwrite');
     for (const row of rows) transaction.objectStore('protocols').put(row);
@@ -320,6 +330,45 @@ describe('legacy protocol reader', () => {
       await expect(reader.getLegacyProtocol('older')).resolves.toBeUndefined();
       expect(await databaseNames()).not.toContain(DB_NAME);
     });
+  });
+
+  // Architect 8 can delete its library just after `indexedDB.databases()`
+  // lists it, and create it again while this reader is still opening it.
+  it('neither creates nor deletes the library when it goes before the open', async () => {
+    const databases = vi
+      .spyOn(indexedDB, 'databases')
+      .mockResolvedValueOnce([{ name: DB_NAME, version: 10 }]);
+    const deleteDatabaseSpy = vi.spyOn(indexedDB, 'deleteDatabase');
+    const realOpen = indexedDB.open.bind(indexedDB);
+    let architect8: Promise<IDBDatabase> | undefined;
+    const open = vi
+      .spyOn(indexedDB, 'open')
+      .mockImplementation((name, version) => {
+        const opening = realOpen(name, version);
+        // Architect 8's own open, queued right behind this reader's.
+        if (name === DB_NAME && version === undefined) {
+          architect8 ??= openArchitect8Library(realOpen);
+        }
+        return opening;
+      });
+
+    try {
+      await expect(reader.listLegacyProtocols()).resolves.toEqual([]);
+      (await architect8)?.close();
+    } finally {
+      open.mockRestore();
+      deleteDatabaseSpy.mockRestore();
+      databases.mockRestore();
+    }
+
+    expect(architect8).toBeDefined();
+    expect(deleteDatabaseSpy).not.toHaveBeenCalled();
+    expect(await fingerprint()).toMatchObject({
+      exists: true,
+      version: 10,
+      storeNames: ['assets', 'protocols'],
+    });
+    expect(reportError).not.toHaveBeenCalled();
   });
 
   it('lists nothing, and reports why, when the library cannot be read', async () => {
