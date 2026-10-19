@@ -145,7 +145,18 @@ const loadAssetPreviewUrl = async (
   }
 
   const bundledUrl = bundledProtocols?.getAssetUrl(source) ?? null;
-  return bundledUrl ? { url: bundledUrl, revoke: false } : null;
+  if (bundledUrl) return { url: bundledUrl, revoke: false };
+
+  // The dev-only Development protocol's media is bundled only in a dev build;
+  // behind this guard a production build drops the import and the media.
+  if (import.meta.env.DEV) {
+    const { getDevelopmentAssetUrl } =
+      await import('~/templates/development-protocol');
+    const developmentUrl = getDevelopmentAssetUrl(source);
+    if (developmentUrl) return { url: developmentUrl, revoke: false };
+  }
+
+  return null;
 };
 
 const useAssetPreviewUrl = (

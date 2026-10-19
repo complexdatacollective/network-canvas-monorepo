@@ -5,8 +5,8 @@
 // first offline rendering of screen thumbnails. Architect precaches all JS (no
 // `globIgnores`), so any excluded chunk is a real regression. (Sibling of
 // apps/interviewer/scripts/assert-pwa-build.mjs, which instead checks named
-// critical chunks because it intentionally excludes its dev-protocol chunk.)
-import { createHash } from 'node:crypto';
+// critical chunks because it intentionally keeps some chunks out of the
+// initial load.)
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { loadEnv } from 'vite';
 
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
+import { findShippedProtocols } from '../../../scripts/buildtime/find-shipped-protocols.mjs';
 import {
   architectCachePrefix,
   resolveArchitectBasePath,
@@ -247,80 +248,36 @@ if (isSubpath) {
   }
 }
 
-// A sub-path build is the editor alone (vite.config.ts replaces
-// src/templates/bundled-protocols.ts there): none of the research templates,
-// the Sample protocol or the Development protocol, nor any of their media, may
-// reach it. Media is matched by content, so a renamed or re-hashed copy still
-// counts; each protocol by a long literal from its own JSON, which survives
-// bundling verbatim.
-if (isSubpath) {
+// The dev-only Development protocol is opened only from a dev build (its
+// imports are guarded by `import.meta.env.DEV`), so no production build may
+// carry it or its media (a 24 MB video among it). A sub-path build is the
+// editor alone (vite.config.ts replaces src/templates/bundled-protocols.ts
+// there): none of the research templates or the Sample protocol, nor any of
+// their media, may reach it either.
+{
   const protocolsRoot = path.resolve(appRoot, '../../packages/protocols');
-  const templatesRoot = path.join(protocolsRoot, 'templates');
-  const bundledProtocolDirs = [
-    path.join(protocolsRoot, 'sample'),
-    path.join(protocolsRoot, 'development'),
-    ...(await readdir(templatesRoot, { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => path.join(templatesRoot, entry.name)),
-  ];
-  const sha256 = (data) => createHash('sha256').update(data).digest('hex');
-  const mediaByHash = new Map();
-  const protocolMarkers = [];
-  for (const dir of bundledProtocolDirs) {
-    const assetsDir = path.join(dir, 'assets');
-    for (const file of existsSync(assetsDir) ? await readdir(assetsDir) : []) {
-      if (file === '.gitkeep') continue;
-      mediaByHash.set(
-        sha256(readFileSync(path.join(assetsDir, file))),
-        path.relative(protocolsRoot, path.join(assetsDir, file)),
-      );
-    }
-    // The longest string in the protocol that needs no escaping in any JS
-    // string form, so its bundled copy is byte-for-byte the same.
-    const strings = [];
-    const collect = (value) => {
-      if (typeof value === 'string') strings.push(value);
-      else if (value && typeof value === 'object') {
-        Object.values(value).forEach(collect);
-      }
-    };
-    collect(JSON.parse(readFileSync(path.join(dir, 'protocol.json'), 'utf8')));
-    const marker = strings
-      .filter((value) => /^[\x20-\x7e]{40,}$/.test(value))
-      .filter((value) => !/["'`\\]|\$\{/.test(value))
-      .sort((a, b) => b.length - a.length)[0];
-    if (!marker) {
-      fail(`no literal to recognise ${path.relative(appRoot, dir)} by`);
-    }
-    protocolMarkers.push({
-      protocol: path.relative(protocolsRoot, dir),
-      marker,
-    });
-  }
-
-  const distFiles = (
-    await readdir(dist, { recursive: true, withFileTypes: true })
-  )
-    .filter((entry) => entry.isFile())
-    .map((entry) => path.join(entry.parentPath, entry.name));
-  const shippedMedia = distFiles.flatMap((file) => {
-    const source = mediaByHash.get(sha256(readFileSync(file)));
-    return source ? [`${path.relative(dist, file)} (${source})`] : [];
-  });
-  if (shippedMedia.length > 0) {
-    fail(
-      `a ${base} build must ship the editor alone, not bundled protocol media: ${shippedMedia.join(', ')}`,
+  const protocolDirs = ['development'];
+  if (isSubpath) {
+    protocolDirs.push(
+      'sample',
+      ...(
+        await readdir(path.join(protocolsRoot, 'templates'), {
+          withFileTypes: true,
+        })
+      )
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => `templates/${entry.name}`),
     );
   }
-  const scripts = distFiles
-    .filter((file) => file.endsWith('.js'))
-    .map((file) => readFileSync(file, 'utf8'));
-  const shippedProtocols = protocolMarkers
-    .filter(({ marker }) => scripts.some((script) => script.includes(marker)))
-    .map(({ protocol }) => protocol);
-  if (shippedProtocols.length > 0) {
+  let shipped = [];
+  try {
+    shipped = await findShippedProtocols({ dist, protocolsRoot, protocolDirs });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+  if (shipped.length > 0) {
     fail(
-      `a ${base} build must ship the editor alone, not bundled protocols: ${shippedProtocols.join(', ')}`,
+      `a ${base} build must not ship ${isSubpath ? 'bundled protocols or their media' : 'the Development protocol or its media'}: ${shipped.join(', ')}`,
     );
   }
 }
