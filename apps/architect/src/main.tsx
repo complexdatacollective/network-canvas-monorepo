@@ -2,8 +2,9 @@ import { Toast } from '@base-ui/react/toast';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
-// Before ./analytics, whose first page view would otherwise record the
-// protocol id or hand-off key in the URL: this strips them on evaluation.
+// Strips a protocol id or hand-off key from the URL on evaluation. ./analytics
+// imports it too, which is what keeps it ahead of `posthog.init` in a bundle;
+// listing it first here keeps the same order in development.
 import './utils/urlLaunchRequest';
 import './analytics';
 import { createRoot } from 'react-dom/client';
