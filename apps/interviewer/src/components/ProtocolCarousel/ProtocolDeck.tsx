@@ -412,12 +412,16 @@ export function ProtocolDeck({
     const el = sectionRef.current;
     if (!el) return undefined;
     const ro = new ResizeObserver((entries) => {
-      if (newSessionActive) return;
       const entry = entries[0];
       if (!entry) return;
       const box = entry.borderBoxSize?.[0];
       const height = box?.blockSize ?? entry.target.clientHeight;
-      setSectionHeight(height);
+      // The freeze needs a size to keep: when the form is already up as the
+      // deck first lays out (a `?start=` link opens it straight away), the
+      // first measurement still lands, or the deck would never render.
+      setSectionHeight((current) =>
+        newSessionActive && current > 0 ? current : height,
+      );
     });
     ro.observe(el);
     return () => ro.disconnect();
