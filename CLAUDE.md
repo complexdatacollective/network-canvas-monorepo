@@ -207,6 +207,11 @@ either lane. The **Architect Maintenance Release** workflow
 `resolve-hotfix-release.mjs`'s `SCOPE=line` mode, tags the release, creates a
 GitHub release that is never "Latest", and deploys nothing. There is no merge
 back to main. See "Maintenance releases" in `apps/architect/RELEASING.md`.
+An older Interviewer line releases the same way through the app-generic
+**App Maintenance Release** workflow
+(`.github/workflows/app-maintenance-release.yml`, `app: interviewer`,
+`maintenance/interviewer-<version>`); see "Maintenance releases" in
+`apps/interviewer/RELEASING.md`.
 
 #### Architect version archive
 
@@ -238,6 +243,14 @@ GitHub release. It never replaces an attached tarball unless dispatched with
 `workflow_call`. Its run summary prints the pin (URL and sha256) for
 `apps/architect/legacy-architect.json` on the schema-9 line. See "Sub-path dist
 tarball" in `apps/architect/RELEASING.md`.
+
+Interviewer 9 bundles Interviewer 8 at `/v8/` the same way. The app-generic
+**App Sub-path Dist** workflow (`.github/workflows/app-subpath-dist.yml`,
+`app: interviewer`) builds each released 8.x tag with
+`INTERVIEWER_BASE_PATH=/v8/` and attaches `interviewer-v8-dist.tgz`, chained
+from `apps-release-interviewer`, the hotfix lane and the maintenance lane; the
+pin goes in `apps/interviewer/legacy-interviewer.json`. See "Sub-path dist
+tarball" in `apps/interviewer/RELEASING.md`.
 
 #### Apps that release by mirroring
 
