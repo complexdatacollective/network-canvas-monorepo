@@ -881,6 +881,26 @@ describe('a parent of any kind who carried the pregnancy', () => {
       { name: 'Yes' },
     );
 
+  it('asks whether a new parent carried the pregnancy only once their kind is chosen', async () => {
+    const { user } = renderPersonForm('ego', {
+      nodes: [person('ego', { isEgo: true, sex: ['male'] })],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    expect(
+      screen.queryByRole('radiogroup', {
+        name: /^Did this parent carry the pregnancy\?/,
+      }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: 'Biological parent' }));
+    expect(
+      screen.getByRole('radiogroup', {
+        name: /^Did this parent carry the pregnancy\?/,
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('asks whether a new adoptive parent carried the pregnancy', async () => {
     const { onSubmit, user } = renderPersonForm('ego', {
       nodes: [person('ego', { isEgo: true, sex: ['male'] })],

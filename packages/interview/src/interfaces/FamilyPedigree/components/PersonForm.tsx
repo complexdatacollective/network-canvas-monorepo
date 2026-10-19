@@ -2113,7 +2113,10 @@ function ParentFields({
   const siblingsWithoutCarrier = keptSiblings.filter(
     (id) => !hasCarrier(family, id),
   );
+  // Nothing is asked before the kind of parent is chosen, since the kind
+  // decides whether they could have carried it.
   const asksCarried =
+    chosenKind !== undefined &&
     parentKind !== 'surrogate' &&
     mayHaveCarried(parentKind) &&
     couldCarryPregnancy(sexAssignedAtBirth) &&
@@ -2129,6 +2132,7 @@ function ParentFields({
   // them: a child has one carrier at most.
   const carriedUnavailable =
     !asksCarried &&
+    chosenKind !== undefined &&
     parentKind !== 'surrogate' &&
     mayHaveCarried(parentKind) &&
     couldCarryPregnancy(sexAssignedAtBirth) &&
