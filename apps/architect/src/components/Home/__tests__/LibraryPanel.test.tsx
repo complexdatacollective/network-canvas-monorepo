@@ -11,12 +11,14 @@ import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
-import type { StoredProtocolRow } from '~/utils/assetDB';
+import type { LegacyProtocolChoice, StoredProtocolRow } from '~/utils/assetDB';
 import { UnresolvedAssetsError } from '~/utils/bundleProtocol';
+import type { LegacyStoredProtocolRow } from '~/utils/legacyProtocolLibrary';
 
 import LibraryPanel from '../LibraryPanel';
 
 const downloadProtocolAsNetcanvasMock = vi.fn();
+const downloadLegacyProtocolAsNetcanvasMock = vi.fn();
 
 vi.mock('~/utils/bundleProtocol', async (importOriginal) => ({
   // The real error class: the panel narrows on `instanceof`, so a look-alike
@@ -24,6 +26,23 @@ vi.mock('~/utils/bundleProtocol', async (importOriginal) => ({
   ...(await importOriginal<typeof import('~/utils/bundleProtocol')>()),
   downloadProtocolAsNetcanvas: (...args: unknown[]) =>
     downloadProtocolAsNetcanvasMock(...args),
+  downloadLegacyProtocolAsNetcanvas: (...args: unknown[]) =>
+    downloadLegacyProtocolAsNetcanvasMock(...args),
+}));
+
+const bundledLegacyArchitect = vi.hoisted(() => ({
+  current: null as { version: string; path: '/v8/' } | null,
+}));
+
+vi.mock('~/utils/legacyArchitect', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/utils/legacyArchitect')>()),
+  getBundledLegacyArchitect: () => bundledLegacyArchitect.current,
+}));
+
+const countLegacyAssetsMock = vi.hoisted(() => vi.fn());
+
+vi.mock('~/utils/legacyProtocolLibrary', () => ({
+  countLegacyAssets: countLegacyAssetsMock,
 }));
 
 const openDialogMock = globalThis.__architectDialogMocks.openDialog;
@@ -36,8 +55,13 @@ vi.mock('~/ducks/modules/userActions/userActions', () => ({
 
 const useProtocolLibraryMock = vi.fn();
 
+// Architect 8's library is empty unless a test says otherwise.
 vi.mock('~/hooks/useProtocolLibrary', () => ({
-  useProtocolLibrary: () => useProtocolLibraryMock(),
+  useProtocolLibrary: () => ({
+    legacyProtocols: [],
+    legacyChoices: [],
+    ...(useProtocolLibraryMock() as object),
+  }),
 }));
 
 vi.mock('~/utils/reportError', () => ({
@@ -69,6 +93,9 @@ const renderPanel = () =>
   render(
     <LibraryPanel
       onOpenProtocol={vi.fn()}
+      onOpenLegacyProtocol={vi.fn()}
+      onUpgradeLegacyProtocol={vi.fn()}
+      onOpenInLegacyArchitect={vi.fn()}
       onOpenSample={vi.fn()}
       onOpenDevProtocol={vi.fn()}
       templates={[]}
@@ -200,6 +227,9 @@ describe('<LibraryPanel /> row action focus', () => {
     rerender(
       <LibraryPanel
         onOpenProtocol={vi.fn()}
+        onOpenLegacyProtocol={vi.fn()}
+        onUpgradeLegacyProtocol={vi.fn()}
+        onOpenInLegacyArchitect={vi.fn()}
         onOpenSample={vi.fn()}
         onOpenDevProtocol={vi.fn()}
         templates={[]}
@@ -360,6 +390,9 @@ describe('<LibraryPanel /> opening tab', () => {
     rerender(
       <LibraryPanel
         onOpenProtocol={vi.fn()}
+        onOpenLegacyProtocol={vi.fn()}
+        onUpgradeLegacyProtocol={vi.fn()}
+        onOpenInLegacyArchitect={vi.fn()}
         onOpenSample={vi.fn()}
         onOpenDevProtocol={vi.fn()}
         templates={[]}
@@ -420,5 +453,272 @@ describe('<LibraryPanel /> opening tab', () => {
       'aria-selected',
       'true',
     );
+  });
+});
+
+const makeLegacyRow = (
+  overrides: Partial<LegacyStoredProtocolRow> = {},
+): LegacyStoredProtocolRow =>
+  ({
+    id: '0b6c1f8e-6c0e-4d2a-9a51-2f7d3c9e8a10',
+    name: 'Schema 8 Study',
+    schemaVersion: 8,
+    createdAt: 1_000,
+    updatedAt: 2_000,
+    protocol: {
+      schemaVersion: 8,
+      description: 'Kept in Architect 8',
+      stages: [{}, {}],
+      codebook: { node: { person: {} }, edge: {} },
+    },
+    ...overrides,
+  }) as LegacyStoredProtocolRow;
+
+describe('<LibraryPanel /> Architect 8 protocols', () => {
+  const callbacks = {
+    onOpenProtocol: vi.fn(),
+    onOpenLegacyProtocol: vi.fn(),
+    onUpgradeLegacyProtocol: vi.fn(),
+    onOpenInLegacyArchitect: vi.fn(),
+  };
+
+  const renderWithCallbacks = () =>
+    render(
+      <LibraryPanel
+        {...callbacks}
+        onOpenSample={vi.fn()}
+        onOpenDevProtocol={vi.fn()}
+        templates={[]}
+        onOpenTemplate={vi.fn()}
+      />,
+      { wrapper: wrap },
+    );
+
+  const withLibrary = ({
+    protocols = [],
+    legacyProtocols = [makeLegacyRow()],
+    legacyChoices = [],
+  }: {
+    protocols?: StoredProtocolRow[];
+    legacyProtocols?: LegacyStoredProtocolRow[];
+    legacyChoices?: LegacyProtocolChoice[];
+  } = {}) =>
+    useProtocolLibraryMock.mockReturnValue({
+      protocols,
+      legacyProtocols,
+      legacyChoices,
+      isLoaded: true,
+    });
+
+  const openActions = async () => {
+    fireEvent.click(screen.getByRole('button', { name: /actions for/i }));
+    return await screen.findByRole('menu');
+  };
+
+  beforeEach(() => {
+    bundledLegacyArchitect.current = null;
+    openDialogMock.mockClear();
+    downloadLegacyProtocolAsNetcanvasMock.mockReset();
+    countLegacyAssetsMock.mockReset();
+    for (const callback of Object.values(callbacks)) callback.mockReset();
+  });
+
+  it('lists them on the Recent tab, marked with their schema version', () => {
+    withLibrary({
+      legacyProtocols: [makeLegacyRow({ schemaVersion: 7 })],
+    });
+    renderWithCallbacks();
+
+    // Only Architect 8 protocols: still Recent, not Templates.
+    expect(screen.getByRole('tab', { name: 'Recent' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    const row = screen.getByRole('option', { name: /Schema 8 Study/ });
+    expect(within(row).getByText('Schema 7')).toBeInTheDocument();
+    expect(
+      within(row).queryByText('Has an upgraded copy'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('1 protocol')).toBeInTheDocument();
+  });
+
+  it('marks one whose upgraded copy is in this library', () => {
+    const legacy = makeLegacyRow();
+    withLibrary({
+      protocols: [makeProtocolRow({ id: 'copy-1', updatedAt: 1_500 })],
+      legacyProtocols: [legacy],
+      legacyChoices: [
+        {
+          legacyId: legacy.id,
+          choice: 'upgraded',
+          upgradedId: 'copy-1',
+          updatedAt: 1_500,
+        },
+      ],
+    });
+    renderWithCallbacks();
+
+    const row = screen.getByRole('option', { name: /Schema 8 Study/ });
+    expect(within(row).getByText('Has an upgraded copy')).toBeInTheDocument();
+    expect(screen.getByText('2 protocols')).toBeInTheDocument();
+  });
+
+  it('does not claim an upgrade whose copy has since been deleted', () => {
+    const legacy = makeLegacyRow();
+    withLibrary({
+      legacyProtocols: [legacy],
+      legacyChoices: [
+        {
+          legacyId: legacy.id,
+          choice: 'upgraded',
+          upgradedId: 'deleted-copy',
+          updatedAt: 1_500,
+        },
+      ],
+    });
+    renderWithCallbacks();
+
+    expect(screen.queryByText('Has an upgraded copy')).not.toBeInTheDocument();
+  });
+
+  it('merges both libraries, most recently edited first', () => {
+    withLibrary({
+      protocols: [
+        makeProtocolRow({ id: 'newest', name: 'Newest', updatedAt: 3_000 }),
+        makeProtocolRow({ id: 'oldest', name: 'Oldest', updatedAt: 1_000 }),
+      ],
+      legacyProtocols: [makeLegacyRow({ updatedAt: 2_000 })],
+    });
+    renderWithCallbacks();
+
+    expect(
+      screen
+        .getAllByRole('option')
+        .map((option) => option.querySelector('[title]')?.textContent),
+    ).toEqual(['Newest', 'Schema 8 Study', 'Oldest']);
+  });
+
+  it('opens through the choice, with a focus fallback, when the row is clicked', () => {
+    withLibrary();
+    renderWithCallbacks();
+
+    const row = screen.getByRole('option', { name: /Schema 8 Study/ });
+    fireEvent.click(row);
+
+    expect(callbacks.onOpenLegacyProtocol).toHaveBeenCalledExactlyOnceWith(
+      makeLegacyRow().id,
+      expect.any(Function),
+    );
+    const resolveFocus = callbacks.onOpenLegacyProtocol.mock
+      .calls[0]![1] as () => HTMLElement | null;
+    expect(resolveFocus()).toBe(row);
+    expect(callbacks.onOpenProtocol).not.toHaveBeenCalled();
+  });
+
+  it('offers Upgrade, Download and info, but never Delete or Architect 8 when it is not bundled', async () => {
+    withLibrary();
+    renderWithCallbacks();
+
+    const menu = await openActions();
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Upgrade to schema 9', 'See more info', 'Download']);
+  });
+
+  it('offers to open it in Architect 8 when Architect 8 is bundled', async () => {
+    bundledLegacyArchitect.current = { version: '8.5.0', path: '/v8/' };
+    withLibrary();
+    renderWithCallbacks();
+
+    const menu = await openActions();
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'Open in Architect 8',
+      'Upgrade to schema 9',
+      'See more info',
+      'Download',
+    ]);
+
+    fireEvent.click(
+      within(menu).getByRole('menuitem', { name: 'Open in Architect 8' }),
+    );
+    await waitFor(() =>
+      expect(callbacks.onOpenInLegacyArchitect).toHaveBeenCalledWith(
+        makeLegacyRow().id,
+      ),
+    );
+    expect(callbacks.onOpenLegacyProtocol).not.toHaveBeenCalled();
+  });
+
+  it('asks to upgrade from the menu, returning focus to the Actions trigger', async () => {
+    withLibrary();
+    renderWithCallbacks();
+
+    await openMenuItem(/upgrade to schema 9/i);
+
+    await waitFor(() =>
+      expect(callbacks.onUpgradeLegacyProtocol).toHaveBeenCalled(),
+    );
+    const [id, resolveFocus] = callbacks.onUpgradeLegacyProtocol.mock
+      .calls[0] as [string, () => HTMLElement | null];
+    expect(id).toBe(makeLegacyRow().id);
+    expect(resolveFocus()).toBe(
+      screen.getByRole('button', { name: /actions for/i }),
+    );
+  });
+
+  it('downloads it from Architect 8’s library, not this one', async () => {
+    downloadLegacyProtocolAsNetcanvasMock.mockResolvedValueOnce(undefined);
+    const legacy = makeLegacyRow();
+    withLibrary({ legacyProtocols: [legacy] });
+    renderWithCallbacks();
+
+    await openMenuItem(/download/i);
+
+    await waitFor(() =>
+      expect(downloadLegacyProtocolAsNetcanvasMock).toHaveBeenCalledWith(
+        legacy,
+      ),
+    );
+    expect(downloadProtocolAsNetcanvasMock).not.toHaveBeenCalled();
+  });
+
+  it('names the resources it could not read when its download is refused', async () => {
+    downloadLegacyProtocolAsNetcanvasMock.mockRejectedValueOnce(
+      new UnresolvedAssetsError(['old-map.png']),
+    );
+    withLibrary();
+    renderWithCallbacks();
+
+    await openMenuItem(/download/i);
+
+    await waitFor(() =>
+      expect(
+        dialogCallWithTitle('Some resources could not be read'),
+      ).toBeDefined(),
+    );
+  });
+
+  it('counts its resources in Architect 8’s library for the info dialog', async () => {
+    countLegacyAssetsMock.mockResolvedValueOnce(4);
+    withLibrary();
+    renderWithCallbacks();
+
+    await openMenuItem(/see more info/i);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(countLegacyAssetsMock).toHaveBeenCalledWith(makeLegacyRow().id);
+    expect(within(dialog).getByText('Kept in Architect 8')).toBeInTheDocument();
+    const cells = within(dialog)
+      .getAllByRole('row')
+      .map((tableRow) => tableRow.textContent);
+    expect(cells).toContain('Stages2');
+    expect(cells).toContain('Node types1');
+    expect(cells).toContain('Assets4');
   });
 });

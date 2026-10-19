@@ -7,16 +7,24 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
+  bundleLegacyProtocol,
   bundleProtocol,
   downloadProtocolAsNetcanvas,
   MissingFinishStageTextError,
   UnresolvedAssetsError,
 } from '../bundleProtocol';
+import type { LegacyStoredProtocolRow } from '../legacyProtocolLibrary';
 
 const getAssetById = vi.fn();
 
 vi.mock('../assetUtils', () => ({
   getAssetById: (...args: unknown[]) => getAssetById(...args),
+}));
+
+const getLegacyAssets = vi.fn();
+
+vi.mock('../legacyProtocolLibrary', () => ({
+  getLegacyAssets: (...args: unknown[]) => getLegacyAssets(...args),
 }));
 
 const asset = (
@@ -266,5 +274,88 @@ describe('the finish stage text guard', () => {
     await expect(
       downloadProtocolAsNetcanvas(japaneseProtocol(), 'Japanese'),
     ).rejects.toBeInstanceOf(MissingFinishStageTextError);
+  });
+});
+
+describe('bundleLegacyProtocol', () => {
+  const legacyRow = (assetManifest: unknown): LegacyStoredProtocolRow =>
+    ({
+      id: 'legacy-1',
+      name: 'Schema 8 study',
+      schemaVersion: 8,
+      createdAt: 1,
+      updatedAt: 2,
+      // No localization and no finish stage: a schema 8 document has neither.
+      protocol: {
+        schemaVersion: 8,
+        codebook: { node: {} },
+        stages: [{ id: 's1', type: 'Information' }],
+        assetManifest,
+      },
+    }) as unknown as LegacyStoredProtocolRow;
+
+  beforeEach(() => {
+    getAssetById.mockReset();
+    getLegacyAssets.mockReset();
+  });
+
+  it('bundles the document as stored, with resources read from Architect 8’s library', async () => {
+    getLegacyAssets.mockResolvedValue([
+      {
+        id: 'legacy-1::a1',
+        assetId: 'a1',
+        protocolId: 'legacy-1',
+        name: 'map.png',
+        data: new Blob(['map bytes']),
+      },
+    ]);
+    const row = legacyRow({
+      a1: { type: 'image', source: 'map.png', name: 'Map' },
+      key: { type: 'apikey', name: 'Mapbox', value: 'pk.123' },
+    });
+
+    const zip = await JSZip.loadAsync(
+      await (await bundleLegacyProtocol(row)).arrayBuffer(),
+    );
+
+    expect(getLegacyAssets).toHaveBeenCalledWith('legacy-1');
+    expect(getAssetById).not.toHaveBeenCalled();
+    const written = JSON.parse(
+      await zip.file('protocol.json')!.async('string'),
+    ) as { schemaVersion: number; assetManifest: Record<string, unknown> };
+    expect(written.schemaVersion).toBe(8);
+    expect(written.assetManifest).toEqual({
+      a1: { type: 'image', source: 'a1.png', name: 'Map' },
+      key: { type: 'apikey', name: 'Mapbox', value: 'pk.123' },
+    });
+    expect(await zip.file('assets/a1.png')!.async('string')).toBe('map bytes');
+  });
+
+  it('refuses, naming them, when resources are missing from that library', async () => {
+    getLegacyAssets.mockResolvedValue([]);
+
+    await expect(
+      bundleLegacyProtocol(
+        legacyRow({ a1: { type: 'image', source: 'map.png', name: 'Map' } }),
+      ),
+    ).rejects.toEqual(new UnresolvedAssetsError(['Map']));
+  });
+
+  it('refuses a manifest entry it cannot read rather than writing it half-formed', async () => {
+    getLegacyAssets.mockResolvedValue([]);
+
+    await expect(
+      bundleLegacyProtocol(legacyRow({ broken: { name: 'Broken' } })),
+    ).rejects.toBeInstanceOf(UnresolvedAssetsError);
+  });
+
+  it('bundles a protocol with no resources', async () => {
+    getLegacyAssets.mockResolvedValue([]);
+
+    const zip = await JSZip.loadAsync(
+      await (await bundleLegacyProtocol(legacyRow(undefined))).arrayBuffer(),
+    );
+
+    expect(Object.keys(zip.files)).toEqual(['protocol.json']);
   });
 });

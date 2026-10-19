@@ -51,16 +51,8 @@
     "defaultMessage": "Import external data resources to use in your protocol — images, video, audio, or network data. See our <ExternalLink> documentation </ExternalLink> for more information.",
     "description": "Visible text in components / pages / AssetsPage."
   },
-  "architect.additional.protocolOpenDialogs.createUpgradedCopy": {
-    "defaultMessage": "Create upgraded copy",
-    "description": "The label text in components / protocolOpenDialogs."
-  },
   "architect.additional.protocolOpenDialogs.ifTheProblemPersistsReachOut": {
     "defaultMessage": "If the problem persists, reach out on our <ExternalLink> community website. </ExternalLink>",
-    "description": "Visible text in components / protocolOpenDialogs."
-  },
-  "architect.additional.protocolOpenDialogs.ifYouChooseToContinueAn": {
-    "defaultMessage": "If you choose to continue, an upgraded copy of your protocol will be created and then opened. Your original protocol will not be changed, and can still be opened and modified using an older version of Architect. Please see our <ExternalLink> documentation on protocol schemas </ExternalLink> for more information on this topic.",
     "description": "Visible text in components / protocolOpenDialogs."
   },
   "architect.additional.protocolOpenDialogs.ifYouChooseToMigrateThe": {
@@ -1295,6 +1287,10 @@
     "defaultMessage": "Assets",
     "description": "The label text in components / Home / LibraryPanel."
   },
+  "architect.home.libraryPanel.clearAllKeepsSchema8Protocols": {
+    "defaultMessage": "Every protocol and resource saved in this version of Architect will be permanently removed. This cannot be undone. Schema 8 protocols stay in Architect 8 and are not removed.",
+    "description": "Description in the dialog confirming \"Clear all protocols\" on the home screen. Only this version of Architect's own library is removed; protocols that belong to Architect 8 (schema 8) are kept, because they live in Architect 8's separate library on the same device."
+  },
   "architect.home.libraryPanel.clearAllLocallySavedProtocols": {
     "defaultMessage": "Clear all locally saved protocols",
     "description": "The aria-label text in components / Home / LibraryPanel."
@@ -1338,10 +1334,6 @@
   "architect.home.libraryPanel.edited": {
     "defaultMessage": "Edited",
     "description": "The label text in components / Home / LibraryPanel."
-  },
-  "architect.home.libraryPanel.everyProtocolAssetAndSettingStored": {
-    "defaultMessage": "Every protocol, asset, and setting stored locally by Architect will be permanently removed. This cannot be undone.",
-    "description": "The description text in components / Home / LibraryPanel."
   },
   "architect.home.libraryPanel.includesExamplesOfEveryStageType": {
     "defaultMessage": "Includes examples of every stage type",
@@ -1686,6 +1678,34 @@
   "architect.jsonPreviewOverlay.copy": {
     "defaultMessage": "Copy",
     "description": "Visible text in components / JsonPreviewOverlay."
+  },
+  "architect.legacyProtocol.couldNotOpenInArchitect": {
+    "defaultMessage": "Could not open in Architect {version}",
+    "description": "Title of the error dialog shown when a protocol file could not be passed to the previous version of Architect. {version} is that version’s number (for example 8)."
+  },
+  "architect.legacyProtocol.handoffFailed": {
+    "defaultMessage": "Architect could not prepare this file for Architect {version}. This can happen if storage on this device is full or unavailable. Your file has not been changed.",
+    "description": "Error dialog text shown when a protocol file could not be passed to the previous version of Architect, because it could not be saved temporarily on this device. {version} is that version’s number (for example 8)."
+  },
+  "architect.legacyProtocol.keepEditingAsSchema": {
+    "defaultMessage": "Keep editing as schema {version}",
+    "description": "Button in the dialog shown when opening an older protocol. Leaves the protocol unchanged and opens it in the previous version of Architect, which edits that schema. {version} is the older schema version number (for example 8)."
+  },
+  "architect.legacyProtocol.openInArchitect": {
+    "defaultMessage": "Open in Architect {version}",
+    "description": "Menu item on an older protocol in the home screen library. Opens the protocol, unchanged, in the previous version of Architect. {version} is that version’s number (for example 8)."
+  },
+  "architect.legacyProtocol.schemaBadge": {
+    "defaultMessage": "Schema {version}",
+    "description": "Short badge on a protocol in the home screen library, marking a protocol made for an older schema version. {version} is that protocol’s schema version number (for example 8)."
+  },
+  "architect.legacyProtocol.upgradeToSchema": {
+    "defaultMessage": "Upgrade to schema {version}",
+    "description": "Button and menu item that creates an upgraded copy of an older protocol at the current schema version and opens it. {version} is the current schema version number (for example 9)."
+  },
+  "architect.legacyProtocol.upgradedBadge": {
+    "defaultMessage": "Has an upgraded copy",
+    "description": "Short badge on an older protocol in the home screen library, shown when an upgraded copy of it has already been made in the current version of Architect: it says that such a copy exists. The older protocol carrying the badge is itself unchanged; it is not the copy."
   },
   "architect.library.metadata.justNow": {
     "defaultMessage": "< 1 min ago",
@@ -2543,9 +2563,21 @@
     "defaultMessage": "Show Me What to Do",
     "description": "The label text in components / ProtocolLockBanner."
   },
+  "architect.protocolOpenDialogs.chooseHowToOpen": {
+    "defaultMessage": "How do you want to open this protocol?",
+    "description": "Title of the dialog shown when a researcher opens a protocol made for an older schema and Architect offers two ways forward: upgrade a copy to the current schema, or keep editing the protocol unchanged in the previous version of Architect."
+  },
+  "architect.protocolOpenDialogs.keepEditingInLegacyArchitect": {
+    "defaultMessage": "You can also keep editing it as a schema {version} protocol in Architect {version}, which is included with this version of Architect.",
+    "description": "Paragraph in the dialog offering to upgrade an older protocol, shown only when the previous version of Architect is available. {version} is that previous version's number (for example 8): the protocol can stay at schema {version} and be edited in Architect {version}, which is served alongside the current Architect."
+  },
   "architect.protocolOpenDialogs.technicalDetails": {
     "defaultMessage": "Technical details (English)",
     "description": "Visible text in components / protocolOpenDialogs."
+  },
+  "architect.protocolOpenDialogs.upgradeCreatesACopy": {
+    "defaultMessage": "If you upgrade, an upgraded copy of your protocol will be created and then opened. Your original protocol will not be changed. Please see our <ExternalLink>documentation on protocol schemas</ExternalLink> for more information on this topic.",
+    "description": "Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy and leaves the original protocol as it was. <ExternalLink> wraps a link to the documentation page about protocol schemas."
   },
   "architect.protocolSummary.asset.english": {
     "defaultMessage": "English",

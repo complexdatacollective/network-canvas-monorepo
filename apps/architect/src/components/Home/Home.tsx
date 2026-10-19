@@ -12,6 +12,7 @@ import { ErrorCode, type FileRejection, useDropzone } from 'react-dropzone';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
+import type { ChoiceDialog } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -24,13 +25,18 @@ import NewProtocolDialog from '~/components/NewProtocolDialog';
 import NavLink from '~/components/ProjectNav/NavLink';
 import NavShell from '~/components/ProjectNav/NavShell';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
+import {
+  confirmLegacyProtocolUpgrade,
+  openInLegacyArchitect,
+  openLegacyLibraryProtocol,
+  openNetcanvasFile,
+} from '~/components/protocolOpenFlow';
 import { routeFocusTargetProps } from '~/components/RouteFocus';
 import { useAppDispatch } from '~/ducks/hooks';
 import {
   createNetcanvas,
   openBundledTemplate,
   openLibraryProtocol,
-  openLocalNetcanvas,
   type ProtocolOpenResult,
 } from '~/ducks/modules/userActions/userActions';
 import { formatConfig } from '~/i18n/formatConfig';
@@ -179,17 +185,7 @@ const Home = () => {
   );
   const handleOpenLocalFile = useCallback(
     async (file: File) => {
-      const open = async (migrationApproved = false): Promise<void> => {
-        const result = await runAction(() =>
-          dispatch(openLocalNetcanvas({ file, migrationApproved })).unwrap(),
-        );
-        await showProtocolOpenResultDialog({
-          result,
-          openDialog,
-          onApproveMigration: migrationApproved ? undefined : () => open(true),
-        });
-      };
-      await open();
+      await openNetcanvasFile({ file, dispatch, openDialog, runAction });
     },
     [dispatch, openDialog, runAction],
   );
@@ -316,6 +312,38 @@ const Home = () => {
     },
     [dispatch, openDialog, runAction],
   );
+  // Protocols listed from Architect 8's library. Each runs the shared open
+  // flow, which shows its own dialogs outside `runAction`.
+  const handleOpenLegacyProtocol = useCallback(
+    (legacyId: string, finalFocus?: ChoiceDialog['finalFocus']) => {
+      void openLegacyLibraryProtocol({
+        legacyId,
+        dispatch,
+        openDialog,
+        runAction,
+        finalFocus,
+      });
+    },
+    [dispatch, openDialog, runAction],
+  );
+  const handleUpgradeLegacyProtocol = useCallback(
+    (legacyId: string, finalFocus?: ChoiceDialog['finalFocus']) => {
+      void confirmLegacyProtocolUpgrade({
+        legacyId,
+        dispatch,
+        openDialog,
+        runAction,
+        finalFocus,
+      });
+    },
+    [dispatch, openDialog, runAction],
+  );
+  const handleOpenInLegacyArchitect = useCallback(
+    (legacyId: string) => {
+      void openInLegacyArchitect({ legacyId, dispatch, openDialog });
+    },
+    [dispatch, openDialog],
+  );
   return (
     <>
       <ProtocolLoadingOverlay open={isLoading} />
@@ -437,6 +465,9 @@ const Home = () => {
               <LibraryPanel
                 templates={BUNDLED_TEMPLATES}
                 onOpenProtocol={handleOpenLibraryProtocol}
+                onOpenLegacyProtocol={handleOpenLegacyProtocol}
+                onUpgradeLegacyProtocol={handleUpgradeLegacyProtocol}
+                onOpenInLegacyArchitect={handleOpenInLegacyArchitect}
                 onOpenSample={handleOpenSample}
                 onOpenDevProtocol={handleOpenDevProtocol}
                 onOpenTemplate={handleOpenTemplate}

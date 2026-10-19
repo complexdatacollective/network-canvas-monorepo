@@ -71,7 +71,12 @@ vi.mock('~/ducks/modules/userActions/userActions', async () => {
   };
 });
 vi.mock('~/hooks/useProtocolLibrary', () => ({
-  useProtocolLibrary: () => ({ protocols: [fixture.protocol], isLoaded: true }),
+  useProtocolLibrary: () => ({
+    protocols: [fixture.protocol],
+    legacyProtocols: [],
+    legacyChoices: [],
+    isLoaded: true,
+  }),
 }));
 vi.mock('~/utils/bundleProtocol', async (importOriginal) => {
   // The real error class, because LibraryPanel narrows on `instanceof` — a
@@ -135,6 +140,9 @@ const renderSurface = (surface: Surface) => {
           ) : (
             <LibraryPanel
               onOpenProtocol={vi.fn()}
+              onOpenLegacyProtocol={vi.fn()}
+              onUpgradeLegacyProtocol={vi.fn()}
+              onOpenInLegacyArchitect={vi.fn()}
               onOpenSample={vi.fn()}
               onOpenDevProtocol={vi.fn()}
               templates={[]}
