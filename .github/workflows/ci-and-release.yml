@@ -3878,7 +3878,22 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          # Production serves Interviewer 8 at /v8/ beside this release, from
+          # the tarball apps/interviewer/legacy-interviewer.json pins. The build
+          # fails rather than deploy without it (see apps/interviewer/RELEASING.md).
+          INTERVIEWER_REQUIRE_LEGACY_V8: 'true'
         run: pnpm exec turbo run build --filter=@codaco/interviewer
+      # Checked outside the turbo cache too: whatever dist the build step left,
+      # production must not go out without Interviewer 8 in it.
+      - name: Check Interviewer 8 is bundled
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/interviewer/dist/v8/$file" ]]; then
+              echo "::error::apps/interviewer/dist/v8/$file is missing; production must serve Interviewer 8 at /v8/." >&2
+              exit 1
+            fi
+          done
       - name: Deploy interviewer to production
         if: steps.guard.outputs.skip != 'true'
         env:
