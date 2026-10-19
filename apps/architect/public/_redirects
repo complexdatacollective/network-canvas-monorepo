@@ -1,6 +1,8 @@
 # Architect 8 is served at /v8/ from this deploy (dist/v8). Its deep links and
-# reloads get its own shell, so these come before this app's catch-all. Files
+# reloads get its own shell, so this comes before this app's catch-all. Files
 # that exist are served as they are: Netlify does not rewrite over them.
-/v8      /v8/            301
+# There is deliberately no "/v8 /v8/ 301": Netlify ignores a trailing slash
+# when matching, so that rule would redirect /v8/ to itself forever whenever
+# no Architect 8 is bundled. Netlify takes /v8 to dist/v8/index.html itself.
 /v8/*    /v8/index.html  200
 /*       /index.html     200

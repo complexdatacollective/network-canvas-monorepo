@@ -124,35 +124,43 @@ describe('assertLegacyRedirects', () => {
     expect(() => assertLegacyRedirects(committed)).not.toThrow();
   });
 
-  it('refuses rules that come after the catch-all', () => {
+  it('refuses a /v8/ rule that comes after the catch-all', () => {
     expect(() =>
       assertLegacyRedirects(
-        '/*  /index.html  200\n/v8  /v8/  301\n/v8/*  /v8/index.html  200\n',
-      ),
-    ).toThrow(/\/v8 to \/v8\//);
-    expect(() =>
-      assertLegacyRedirects(
-        '/v8  /v8/  301\n/*  /index.html  200\n/v8/*  /v8/index.html  200\n',
+        '/*  /index.html  200\n/v8/*  /v8/index.html  200\n',
       ),
     ).toThrow(/\/v8\/\* to Architect 8/);
   });
 
   it('refuses a missing rule', () => {
     expect(() => assertLegacyRedirects('/*  /index.html  200\n')).toThrow(
-      /\/v8 to \/v8\//,
+      /\/v8\/\* to Architect 8/,
     );
-    expect(() =>
-      assertLegacyRedirects('/v8  /v8/  301\n/v8/*  /v8/index.html  200\n'),
-    ).toThrow(/no "\/\* \/index\.html 200" rule/);
+    expect(() => assertLegacyRedirects('/v8/*  /v8/index.html  200\n')).toThrow(
+      /no "\/\* \/index\.html 200" rule/,
+    );
   });
 
   it('refuses a /v8/ rule that redirects instead of rewriting', () => {
     expect(() =>
       assertLegacyRedirects(
-        '/v8  /v8/  301\n/v8/*  /v8/index.html  302\n/*  /index.html  200\n',
+        '/v8/*  /v8/index.html  302\n/*  /index.html  200\n',
       ),
     ).toThrow(/\/v8\/\* to Architect 8/);
   });
+
+  // Netlify matches `/v8` and `/v8/` alike, so with nothing at /v8/ to shadow
+  // it (no Architect 8 bundled) this rule answers its own target.
+  it.each(['/v8  /v8/  301', '/v8/  /v8  301', '/v8  /v8/  302!'])(
+    'refuses a rule that redirects a path to itself (%s)',
+    (rule) => {
+      expect(() =>
+        assertLegacyRedirects(
+          `${rule}\n/v8/*  /v8/index.html  200\n/*  /index.html  200\n`,
+        ),
+      ).toThrow(/redirects forever/);
+    },
+  );
 });
 
 describe('assertLegacyArchitectOutput', () => {

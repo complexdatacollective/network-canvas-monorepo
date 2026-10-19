@@ -1,7 +1,7 @@
 // The parts of assert-pwa-build.mjs that keep Architect 8, served at /v8/
 // from this deploy, out of this app's way: its worker must never precache,
 // answer or cache anything under /v8/, the hosting rules must hand /v8/ deep
-// links to Architect 8's shell, and dist/v8 must hold exactly what the pin
+// links to Architect 8's shell (without a redirect loop), and dist/v8 must hold exactly what the pin
 // names (or nothing at all). Kept apart from that script, which runs on
 // import, so they can be tested.
 import { existsSync } from 'node:fs';
@@ -82,26 +82,41 @@ const parseRedirects = (text: string): RedirectRule[] =>
       return { from, to, status };
     });
 
+// Netlify drops a trailing slash before matching a rule, so a rule from a
+// path to the same path with (or without) a trailing slash matches its own
+// target and redirects forever.
+const withoutTrailingSlash = (path: string) =>
+  path.length > 1 ? path.replace(/\/+$/, '') : path;
+
 /**
- * `/v8` must redirect to `/v8/`, and `/v8/*` must rewrite to Architect 8's
- * shell before the catch-all hands every path to this app's shell.
+ * `/v8/*` must rewrite to Architect 8's shell before the catch-all hands every
+ * path to this app's shell, and no rule may redirect a path to itself.
+ *
+ * In particular there is no `/v8 /v8/ 301`: Netlify's normalisation makes it
+ * a loop whenever nothing exists at `/v8/` to shadow it (no Architect 8 is
+ * bundled). Where `dist/v8/index.html` exists, Netlify's own directory
+ * handling already takes `/v8` to it.
  */
 export const assertLegacyRedirects = (text: string): void => {
   const rules = parseRedirects(text);
+  const selfRedirect = rules.find(
+    (rule) =>
+      /^3\d\d!?$/.test(rule.status) &&
+      withoutTrailingSlash(rule.from) === withoutTrailingSlash(rule.to),
+  );
+  if (selfRedirect) {
+    throw new Error(
+      `_redirects sends ${selfRedirect.from} to ${selfRedirect.to}, which Netlify treats as the same path, so it redirects forever`,
+    );
+  }
   const indexOf = (from: string, to: string, status: string) =>
     rules.findIndex(
       (rule) => rule.from === from && rule.to === to && rule.status === status,
     );
   const catchAll = indexOf('/*', '/index.html', '200');
-  const bare = indexOf('/v8', '/v8/', '301');
   const deep = indexOf('/v8/*', '/v8/index.html', '200');
   if (catchAll === -1) {
     throw new Error('_redirects has no "/* /index.html 200" rule');
-  }
-  if (bare === -1 || bare > catchAll) {
-    throw new Error(
-      '_redirects does not send /v8 to /v8/ before its catch-all',
-    );
   }
   if (deep === -1 || deep > catchAll) {
     throw new Error(

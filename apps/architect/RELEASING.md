@@ -315,8 +315,11 @@ The dist workflow refuses to replace one unless `replace` is set.
   then downloads and keeps its own precache, so Architect 8 works offline
   even for a researcher who has never opened `/v8/`, without slowing this
   app's start-up or its own offline download.
-- `public/_redirects` sends `/v8` to `/v8/` and every other path under `/v8/`
-  to Architect 8's shell before its own catch-all. `public/_headers` holds
+- `public/_redirects` sends every path under `/v8/` to Architect 8's shell
+  before its own catch-all. It has no `/v8 /v8/ 301`: Netlify ignores a
+  trailing slash when matching, so that rule would loop whenever nothing is
+  bundled at `/v8/`, and Netlify already takes `/v8` to `dist/v8/index.html`
+  when it exists. `public/_headers` holds
   Architect 8's shells, worker, manifest and preview to no-store and
   `/v8/assets/*` to a year's immutable cache, since Netlify reads neither file
   from inside `dist/v8`.
