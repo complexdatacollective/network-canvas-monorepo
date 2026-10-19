@@ -74,17 +74,35 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
 // The rows are another app's data, read without validation, so check the
-// fields this app relies on before trusting the row's type. Rows at this
+// fields this app relies on before trusting the row's type: the library lists
+// each row's stage count and dates while rendering, and Info and Download read
+// its codebook, so one malformed row must not reach them. A row without a
+// creation date is listed as created when it was last updated. Rows at this
 // build's schema or later are not Architect 8's — pre-release builds of this
 // app wrote some into that library — and are ignored.
-const isLegacyRow = (value: unknown): value is LegacyStoredProtocolRow =>
+type UncheckedLegacyRow = Omit<LegacyStoredProtocolRow, 'createdAt'> & {
+  createdAt?: unknown;
+};
+
+const isLegacyRow = (value: unknown): value is UncheckedLegacyRow =>
   isObject(value) &&
   typeof value.id === 'string' &&
   typeof value.name === 'string' &&
   typeof value.schemaVersion === 'number' &&
   value.schemaVersion < APP_SCHEMA_VERSION &&
   typeof value.updatedAt === 'number' &&
-  isObject(value.protocol);
+  isObject(value.protocol) &&
+  Array.isArray(value.protocol.stages) &&
+  isObject(value.protocol.codebook);
+
+const readLegacyRow = (value: unknown): LegacyStoredProtocolRow | undefined => {
+  if (!isLegacyRow(value)) return undefined;
+  const { createdAt, updatedAt } = value;
+  return {
+    ...value,
+    createdAt: typeof createdAt === 'number' ? createdAt : updatedAt,
+  };
+};
 
 const isAssetOf =
   (protocolId: string) =>
@@ -186,7 +204,7 @@ export const createLegacyProtocolReader = (
           .orderBy('updatedAt')
           .toArray();
         // Sorted as an array, as `listProtocols` does: the newest first.
-        return rows.filter(isLegacyRow).toReversed();
+        return rows.flatMap((row) => readLegacyRow(row) ?? []).toReversed();
       } catch (error) {
         reportError(error, { operation: 'legacy-library-list' });
         return [];
@@ -197,7 +215,7 @@ export const createLegacyProtocolReader = (
       const database = await getDb();
       if (!database) return undefined;
       const row: unknown = await database.table('protocols').get(id);
-      return isLegacyRow(row) ? row : undefined;
+      return readLegacyRow(row);
     },
 
     getLegacyAssets: async (protocolId) => {
@@ -225,8 +243,8 @@ export const createLegacyProtocolReader = (
         'r',
         ['protocols', 'assets'],
         async () => {
-          const row: unknown = await database.table('protocols').get(id);
-          if (!isLegacyRow(row)) return undefined;
+          const row = readLegacyRow(await database.table('protocols').get(id));
+          if (!row) return undefined;
           return { row, assets: await readAssets(database, id) };
         },
       );

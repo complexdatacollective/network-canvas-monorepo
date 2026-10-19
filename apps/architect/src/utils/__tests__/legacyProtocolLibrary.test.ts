@@ -221,6 +221,64 @@ describe('legacy protocol reader', () => {
       ).resolves.toBeUndefined();
     });
 
+    // The library renders each row's stage count and dates, and Info and
+    // Download read its codebook: a row missing any of them would break the
+    // whole list, so it is left out, as Architect 8's own reads would fail.
+    it('leaves out a row whose protocol has no stages or codebook', async () => {
+      const valid = protocolRow('valid', 8, 600);
+      const withProtocol = (protocol: Record<string, unknown>) => ({
+        ...valid,
+        protocol: {
+          ...(valid.protocol as Record<string, unknown>),
+          ...protocol,
+        },
+      });
+      await seedArchitect8Library([
+        valid,
+        { ...withProtocol({ stages: undefined }), id: 'no-stages' },
+        { ...withProtocol({ stages: {} }), id: 'stages-not-a-list' },
+        { ...withProtocol({ codebook: undefined }), id: 'no-codebook' },
+        {
+          ...withProtocol({ codebook: 'nodes' }),
+          id: 'codebook-not-an-object',
+        },
+      ]);
+
+      const rows = await reader.listLegacyProtocols();
+
+      expect(rows.map((row) => row.id)).toEqual([
+        'valid',
+        'newer',
+        'schema-7',
+        'older',
+      ]);
+      await expect(
+        reader.getLegacyProtocol('no-stages'),
+      ).resolves.toBeUndefined();
+      await expect(
+        reader.readLegacyProtocolSnapshot('no-codebook'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('dates a row with no creation date by its last update', async () => {
+      const { createdAt: _createdAt, ...undated } = protocolRow(
+        'undated',
+        8,
+        700,
+      );
+      await seedArchitect8Library([undated]);
+
+      await expect(reader.getLegacyProtocol('undated')).resolves.toMatchObject({
+        createdAt: 700,
+        updatedAt: 700,
+      });
+      const [listed] = await reader.listLegacyProtocols();
+      expect(listed).toMatchObject({ id: 'undated', createdAt: 700 });
+      await expect(reader.getLegacyProtocol('older')).resolves.toMatchObject({
+        createdAt: 1,
+      });
+    });
+
     it('leaves the database exactly as it found it', async () => {
       const before = await fingerprint();
 
