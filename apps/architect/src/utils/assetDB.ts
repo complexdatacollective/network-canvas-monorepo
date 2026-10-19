@@ -68,10 +68,27 @@ assetDb.version(1).stores({
   legacyProtocolChoices: 'legacyId',
 });
 
-export async function clearAllStorage() {
-  try {
-    localStorage.clear();
-    await Promise.all([assetDb.assets.clear(), assetDb.protocols.clear()]);
-    window.location.reload();
-  } catch (_error) {}
+/**
+ * Remove every protocol this app stores, then reload.
+ *
+ * Only this app's own library. Architect 8's library on the same origin is not
+ * this app's to delete — its protocols stay listed, and Architect 8's own
+ * Clear all removes them. localStorage is left alone for the same reason: every
+ * key in it (language, analytics, dismissed notices) is shared with Architect 8.
+ *
+ * Throws when the library cannot be cleared, so the caller can say so.
+ */
+export async function clearAllStorage(): Promise<void> {
+  await assetDb.transaction(
+    'rw',
+    [assetDb.assets, assetDb.protocols, assetDb.legacyProtocolChoices],
+    async () => {
+      await Promise.all([
+        assetDb.assets.clear(),
+        assetDb.protocols.clear(),
+        assetDb.legacyProtocolChoices.clear(),
+      ]);
+    },
+  );
+  window.location.reload();
 }
