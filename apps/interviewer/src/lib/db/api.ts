@@ -38,8 +38,9 @@ export async function saveProtocol(
   protocol: CurrentProtocol,
   hash: string,
   assets: { id: string; name: string; data: Blob | string }[],
+  options?: Parameters<typeof dexieProtocols.saveProtocol>[3],
 ): Promise<StoredProtocol> {
-  return dexieProtocols.saveProtocol(protocol, hash, assets);
+  return dexieProtocols.saveProtocol(protocol, hash, assets, options);
 }
 
 export async function deleteProtocol(hash: string): Promise<void> {
