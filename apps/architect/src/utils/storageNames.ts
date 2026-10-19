@@ -33,6 +33,6 @@ type LegacyLibrary = {
 };
 
 /** The protocol libraries of earlier Architect majors on this origin. */
-export const LEGACY_LIBRARIES: readonly LegacyLibrary[] = [
+export const LEGACY_LIBRARIES = [
   { schemaMajor: 8, dbName: 'ArchitectProtocolDB', basePath: '/v8/' },
-];
+] as const satisfies readonly LegacyLibrary[];
