@@ -17,7 +17,6 @@ import {
 
 import { fromBase64 } from '../../vault/crypto';
 import { db, getSettings } from '../db';
-import { migrateStoredProtocols } from '../migrateStoredProtocols';
 import {
   decryptAsset,
   decryptProtocol,
@@ -489,34 +488,6 @@ describe.each([
             'session-complete',
             'session-in-progress',
           ]);
-        });
-
-        it('creates the protocolMigrations store and the launch sweep runs cleanly', async () => {
-          const seeded = await seedLegacyDatabase(fromVersion, encrypted);
-          await db.open();
-
-          // The boot-time sweep must not touch protocols already at the
-          // compatible schema version, whatever Dexie version their rows were
-          // written under.
-          await expect(migrateStoredProtocols()).resolves.toEqual({
-            migrated: [],
-            failed: [],
-          });
-          expect((await db.protocols.toArray()).toSorted(byId)).toEqual(
-            [...seeded.protocolRows].toSorted(byId),
-          );
-
-          // The store added by version(3) exists and holds re-keying records —
-          // if the upgrade had failed to create it, this put would throw.
-          const record = {
-            previousHash: 'superseded-hash',
-            hash: 'live-hash',
-            migratedAt: '2026-02-01T00:00:00.000Z',
-          };
-          await db.protocolMigrations.put(record);
-          expect(await db.protocolMigrations.get('superseded-hash')).toEqual(
-            record,
-          );
         });
       },
     );

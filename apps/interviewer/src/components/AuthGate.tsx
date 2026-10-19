@@ -3,7 +3,6 @@ import { useLocation } from 'wouter';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { useAuth } from '~/lib/auth/AuthContext';
-import { useStoredProtocolMigration } from '~/lib/protocol/useStoredProtocolMigration';
 import { isRunningInstalled } from '~/lib/pwa/isRunningInstalled';
 
 import { LockScreen } from './LockScreen';
@@ -36,17 +35,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
     kind === 'unconfigured' && requireSetup && location !== '/welcome';
   const shouldRedirectToHome = kind === 'unlocked' && location === '/welcome';
 
-  // Protocol documents are encrypted at rest, so a stored protocol can only be
-  // read — and therefore only be migrated to the schema version this build's
-  // interview runtime executes — once the vault is open (or once it is known
-  // there is no vault and rows are plaintext). This gate is the point where
-  // that becomes true and, being the thing that admits every route, is also the
-  // last point before a session could resume against a stale protocol. Hold the
-  // same spinner the redirects use until the sweep settles.
-  const databaseReadable = kind === 'unlocked' || kind === 'unconfigured';
-  const migrationPhase = useStoredProtocolMigration(databaseReadable);
-  const awaitingMigration = databaseReadable && migrationPhase !== 'settled';
-
   useEffect(() => {
     if (shouldRedirectToWelcome) {
       navigate('/welcome', { replace: true });
@@ -57,12 +45,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   // Hold the spinner while a redirect is pending so the old route's content
   // can't paint for a frame before navigation runs in the effect above.
-  if (
-    kind === 'loading' ||
-    shouldRedirectToWelcome ||
-    shouldRedirectToHome ||
-    awaitingMigration
-  ) {
+  if (kind === 'loading' || shouldRedirectToWelcome || shouldRedirectToHome) {
     return (
       <div className="bg-background flex h-full items-center justify-center">
         <Spinner size="lg" />

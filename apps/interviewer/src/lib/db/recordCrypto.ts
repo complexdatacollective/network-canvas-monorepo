@@ -181,8 +181,7 @@ export async function prepareSessionFinish(
 
 /**
  * `row` with a prepared finish recorded on it and nothing else changed, so
- * recording a finish never parses or rewrites the network, which after a
- * protocol migration can be in a schema this build cannot read. `undefined`
+ * recording a finish never parses or rewrites the network. `undefined`
  * when the row is no longer stored the way the finish was prepared for
  * (encrypted or not), so the caller prepares it again.
  */
@@ -277,18 +276,13 @@ export async function encryptSession(
   };
 }
 
-/**
- * A stored session decrypted but not parsed: its network and stage metadata
- * exactly as stored. The stored-protocol migration reads sessions this way,
- * because a session recorded against an older protocol schema can hold stage
- * metadata the current schema no longer accepts until it is migrated.
- */
-export type DecryptedSessionRecord = Omit<
+/** A stored session decrypted but not yet parsed. */
+type DecryptedSessionRecord = Omit<
   StoredSession,
   'network' | 'stageMetadata'
 > & { network: unknown; stageMetadata: unknown };
 
-export async function decryptSessionRecord(
+async function decryptSessionRecord(
   row: StoredSessionRow,
 ): Promise<DecryptedSessionRecord> {
   const {

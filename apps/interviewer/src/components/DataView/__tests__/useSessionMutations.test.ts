@@ -779,9 +779,7 @@ describe('useSessionMutations — mark unfinished', () => {
         title: renderedMessage('Mark unfinished?'),
       }),
     );
-    expect(markSessionUnfinished).toHaveBeenCalledWith('s1', stages, {
-      protocolHash: 'h1',
-    });
+    expect(markSessionUnfinished).toHaveBeenCalledWith('s1', stages);
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({
         title: renderedMessage('Interview marked unfinished'),

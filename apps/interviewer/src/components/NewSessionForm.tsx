@@ -10,15 +10,12 @@ import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { createInitialNetwork } from '@codaco/interview';
+import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import { createSession, getSettings } from '~/lib/db/api';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
 import { useOnline } from '~/lib/net/OnlineStatusProvider';
 import { protocolRequiresInternet } from '~/lib/protocol/protocolRequiresInternet';
-import {
-  canRunStoredProtocol,
-  useStoredProtocolMigrationFailure,
-} from '~/lib/protocol/storedProtocolMigrationFailures';
 
 const messages = defineMessages({
   caseID: {
@@ -42,13 +39,6 @@ const messages = defineMessages({
     defaultMessage:
       'This protocol could not be updated to work with this version of the app, so new interviews cannot be started from it. Responses already collected remain available on the data screen. Repair the protocol in Architect and import it again.',
     description: 'Visible copy in Interviewer New Session Form.',
-  },
-  interviewsCouldNotBeUpdated: {
-    id: 'interviewer.newSessionForm.interviewsCouldNotBeUpdated',
-    defaultMessage:
-      'Some interviews recorded with this protocol could not be updated to work with this version of the app, so new interviews cannot be started from it yet. The protocol and all its interviews have been kept exactly as they were, and the app will try again each time it starts. Responses already collected remain available on the data screen.',
-    description:
-      'Visible copy in Interviewer New Session Form, shown when the interviews recorded with this protocol could not be updated to work with this version of the app, so the protocol was left as it was. A later version of the app may be able to update them.',
   },
   caseIDIsRequired: {
     id: 'interviewer.newSessionForm.caseIDIsRequired',
@@ -179,20 +169,15 @@ export function NewSessionForm({
   const intl = useAppIntl();
   const { requireFreshUnlock, setAuthorizedInterviewId } = useStepUpAuth();
   const isOnline = useOnline();
-  const migrationFailure = useStoredProtocolMigrationFailure(protocol.hash);
 
-  // A protocol the launch-time migration could not bring up to date cannot
-  // run an interview — the interview route would refuse the session it
-  // produced. Explain instead of creating a permanently unusable session.
-  if (!canRunStoredProtocol(protocol, migrationFailure)) {
+  // A protocol at another schema version cannot run an interview here — the
+  // interview route would refuse the session it produced. Explain instead of
+  // creating a permanently unusable session.
+  if (protocol.schemaVersion !== COMPATIBLE_PROTOCOL_SCHEMA_VERSION) {
     return (
       <div className="flex flex-col gap-4">
         <Paragraph>
-          {intl.formatMessage(
-            migrationFailure === 'sessions'
-              ? messages.interviewsCouldNotBeUpdated
-              : messages.thisProtocolCouldNotBeUpdatedTo,
-          )}
+          {intl.formatMessage(messages.thisProtocolCouldNotBeUpdatedTo)}
         </Paragraph>
         <div className="flex justify-end">
           <Button onClick={onCancel}>

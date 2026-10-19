@@ -85,20 +85,16 @@ export async function generateSyntheticSessions(
       // predecessors.
       generated.push({ sessionId: session.id, droppedOut });
 
-      await updateSession(
-        session.id,
-        {
-          currentStep,
-          progress: getInterviewProgress(protocol.protocol.stages, currentStep)
-            .progress,
-          stageMetadata:
-            stageMetadata === null || stageMetadata === undefined
-              ? undefined
-              : StageMetadataSchema.parse(stageMetadata),
-          ...(droppedOut ? { finishedAt: null } : finished(currentStep)),
-        },
-        { protocolHash },
-      );
+      await updateSession(session.id, {
+        currentStep,
+        progress: getInterviewProgress(protocol.protocol.stages, currentStep)
+          .progress,
+        stageMetadata:
+          stageMetadata === null || stageMetadata === undefined
+            ? undefined
+            : StageMetadataSchema.parse(stageMetadata),
+        ...(droppedOut ? { finishedAt: null } : finished(currentStep)),
+      });
 
       if (!droppedOut) completedCount++;
       onProgress?.(i + 1, count);
@@ -117,23 +113,19 @@ export async function generateSyntheticSessions(
             ...genOptions,
             simulateDropOut: false,
           });
-          await updateSession(
-            row.sessionId,
-            {
-              network,
+          await updateSession(row.sessionId, {
+            network,
+            currentStep,
+            progress: getInterviewProgress(
+              protocol.protocol.stages,
               currentStep,
-              progress: getInterviewProgress(
-                protocol.protocol.stages,
-                currentStep,
-              ).progress,
-              stageMetadata:
-                stageMetadata === null || stageMetadata === undefined
-                  ? undefined
-                  : StageMetadataSchema.parse(stageMetadata),
-              ...finished(currentStep),
-            },
-            { protocolHash },
-          );
+            ).progress,
+            stageMetadata:
+              stageMetadata === null || stageMetadata === undefined
+                ? undefined
+                : StageMetadataSchema.parse(stageMetadata),
+            ...finished(currentStep),
+          });
         }
       }
     }

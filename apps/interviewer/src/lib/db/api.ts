@@ -3,8 +3,6 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import * as dexieSettings from './db';
-import { migrateStoredProtocols as dexieMigrateStoredProtocols } from './migrateStoredProtocols';
-import type { StoredProtocolMigrationResult } from './migrateStoredProtocols';
 import * as dexieProtocols from './protocols';
 import { reencryptAllRecords as dexieReencryptAllRecords } from './reencrypt';
 import type { ReencryptProgress, ReencryptResult } from './reencrypt';
@@ -46,10 +44,6 @@ export async function saveProtocol(
 
 export async function deleteProtocol(hash: string): Promise<void> {
   return dexieProtocols.deleteProtocol(hash);
-}
-
-export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationResult> {
-  return dexieMigrateStoredProtocols();
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
@@ -104,9 +98,8 @@ export async function createSession(args: {
 export async function updateSession(
   id: string,
   patch: Partial<StoredSession>,
-  basis: dexieSessions.SessionWriteBasis,
 ): Promise<StoredSession | undefined> {
-  return dexieSessions.updateSession(id, patch, basis);
+  return dexieSessions.updateSession(id, patch);
 }
 
 export async function whenSessionWritesSettle(): Promise<void> {
@@ -124,9 +117,8 @@ export async function markSessionFinished(
 export async function markSessionUnfinished(
   id: string,
   stages: CurrentProtocol['stages'],
-  basis: dexieSessions.SessionWriteBasis,
 ): Promise<void> {
-  return dexieSessions.markSessionUnfinished(id, stages, basis);
+  return dexieSessions.markSessionUnfinished(id, stages);
 }
 
 export async function markSessionsExported(ids: string[]): Promise<void> {
