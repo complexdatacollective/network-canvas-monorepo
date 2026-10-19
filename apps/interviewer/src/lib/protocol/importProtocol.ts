@@ -89,9 +89,35 @@ export type ImportProtocolFailure = {
   issues?: { path: string; message: string }[];
 };
 
+/**
+ * A file below this app's schema, imported without the researcher's say-so.
+ * Nothing was saved: the caller offers the choice (keep it on schema 8 in
+ * Interviewer 8, or upgrade it) and imports again with `allowMigration` only
+ * if the researcher chose to upgrade.
+ */
+export type ImportProtocolMigrationRequired = {
+  success: false;
+  error: 'migration-required';
+  /** The file's schema version, always below this app's. */
+  schemaVersion: SchemaVersion;
+  message: string;
+  localizedMessage: LocalizedMessage;
+  /** No validation ran. */
+  issues?: undefined;
+};
+
+export type ImportProtocolOptions = {
+  /**
+   * The researcher chose to upgrade a file below this app's schema. Without
+   * it, such a file is never migrated: import resolves `migration-required`.
+   */
+  allowMigration?: boolean;
+};
+
 export type ImportProtocolResult =
   | ImportProtocolSuccess
-  | ImportProtocolFailure;
+  | ImportProtocolFailure
+  | ImportProtocolMigrationRequired;
 
 type ValidationIssue = {
   path: PropertyKey[];
@@ -174,6 +200,7 @@ async function importParsedProtocol(
   document: unknown,
   assets: ExtractedAsset[],
   sourceName: string,
+  { allowMigration = false }: ImportProtocolOptions,
   onProgress?: OnImportProgress,
   nameOverride?: string,
 ): Promise<ImportProtocolResult> {
@@ -189,6 +216,26 @@ async function importParsedProtocol(
         descriptor: messages.invalidProtocol,
       },
     );
+  }
+
+  // Import never migrates on its own: an older file keeps working in the app
+  // made for it unless the researcher chooses to upgrade it.
+  if (version < APP_SCHEMA_VERSION && !allowMigration) {
+    // Interim wording, until the choice dialog that consumes this result
+    // brings its own (verified) strings: true, since it was not upgraded.
+    const localizedMessage: LocalizedMessage = {
+      descriptor: messages.cannotUpgrade,
+    };
+    return {
+      success: false,
+      error: 'migration-required',
+      schemaVersion: version,
+      message: messageFailure(
+        localizedMessage.descriptor,
+        localizedMessage.values,
+      ).message,
+      localizedMessage,
+    };
   }
 
   let migratedDocument: unknown = document;
@@ -256,6 +303,7 @@ async function importParsedProtocol(
 async function importFromBuffer(
   buffer: Uint8Array,
   sourceName: string,
+  options: ImportProtocolOptions,
   onProgress?: OnImportProgress,
   nameOverride?: string,
 ): Promise<ImportProtocolResult> {
@@ -279,6 +327,7 @@ async function importFromBuffer(
     extracted.protocol,
     extracted.assets,
     sourceName,
+    options,
     onProgress,
     nameOverride,
   );
@@ -288,9 +337,10 @@ export async function importProtocolFromFile(
   file: File,
   onProgress?: OnImportProgress,
   nameOverride?: string,
+  options: ImportProtocolOptions = {},
 ): Promise<ImportProtocolResult> {
   const buffer = new Uint8Array(await file.arrayBuffer());
-  return importFromBuffer(buffer, file.name, onProgress, nameOverride);
+  return importFromBuffer(buffer, file.name, options, onProgress, nameOverride);
 }
 
 export function importBundledProtocol(
@@ -298,10 +348,12 @@ export function importBundledProtocol(
   onProgress?: OnImportProgress,
 ): Promise<ImportProtocolResult> {
   onProgress?.({ phase: 'extracting' });
+  // This app's own bundled protocols are at its schema; nothing to choose.
   return importParsedProtocol(
     bundled.document,
     bundled.assets,
     bundled.name,
+    { allowMigration: false },
     onProgress,
     bundled.name,
   );

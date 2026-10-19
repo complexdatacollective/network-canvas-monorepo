@@ -54,7 +54,23 @@ const messages = defineMessages({
   },
 });
 
-export type ImportRequest = { source: 'file'; file: File; label: string };
+export type ImportRequest = {
+  source: 'file';
+  file: File;
+  label: string;
+  /**
+   * The researcher chose to upgrade this file to this app's schema. Without
+   * it, a file below the schema is never migrated.
+   */
+  allowMigration?: boolean;
+};
+
+/** A file below this app's schema that needs the researcher's choice. */
+export type MigrationChoiceRequest = {
+  file: File;
+  label: string;
+  schemaVersion: number;
+};
 
 // An in-flight protocol import, tracked by this hook and rendered by
 // ProtocolDeck as a loading-state DeckCard that fills in as the import
@@ -110,9 +126,18 @@ type UseProtocolImportOptions = {
   // Called after a successful install is persisted, before the pending
   // card is removed, so the real protocol card is ready to take its slot.
   onInstalled: () => Promise<void> | void;
+  /**
+   * Offer the choice for a file below this app's schema: keep it on schema 8
+   * (`keepOnInterviewer8`) or upgrade it (`startImport` again with
+   * `allowMigration`). Without it, the import is refused with a message.
+   */
+  onMigrationRequired?: (request: MigrationChoiceRequest) => void;
 };
 
-export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
+export function useProtocolImport({
+  onInstalled,
+  onMigrationRequired,
+}: UseProtocolImportOptions) {
   const toast = useToast();
   const dialog = useDialog();
   const analytics = useAnalytics();
@@ -169,6 +194,7 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             request.file,
             onProgress,
             peekedName ?? undefined,
+            { allowMigration: request.allowMigration === true },
           );
         } else if (request.source === 'development') {
           // Dev-only, like the trigger in Home. The import sits behind
@@ -233,6 +259,18 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             }),
             variant: 'success',
           });
+        } else if (
+          result.error === 'migration-required' &&
+          request.source === 'file' &&
+          onMigrationRequired
+        ) {
+          // Not a failure: nothing was saved, and the researcher decides.
+          setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
+          onMigrationRequired({
+            file: request.file,
+            label: fileLabel,
+            schemaVersion: result.schemaVersion,
+          });
         } else {
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
           analytics.track('protocol_install_failed', {
@@ -282,7 +320,7 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
         });
       }, IMPORT_START_DELAY_MS);
     },
-    [analytics, dialog, onInstalled, toast],
+    [analytics, dialog, onInstalled, onMigrationRequired, toast],
   );
 
   return { pendingImports, startImport };
