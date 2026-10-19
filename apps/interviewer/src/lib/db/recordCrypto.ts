@@ -357,33 +357,49 @@ export async function encryptProtocol(
   return { ...rest, _enc: { protocol: encProtocol, codebook: encCodebook } };
 }
 
-export async function decryptProtocol(
-  row: StoredProtocolRow,
-): Promise<StoredProtocol> {
-  const { _enc, protocol, codebook, ...rest } = row;
+/**
+ * The fields of a stored protocol row that hold its document. Shared by this
+ * app's rows and Interviewer 8's, which are encrypted the same way under the
+ * same key.
+ */
+type ProtocolDocumentRow<TProtocol, TCodebook> = {
+  hash: string;
+  protocol?: TProtocol;
+  codebook?: TCodebook;
+  _enc?: { protocol: EncryptedField; codebook: EncryptedField };
+};
+
+/**
+ * A stored protocol row's document and codebook, decrypted when the row is
+ * encrypted. The caller names the document type the row was written with.
+ */
+export async function decryptProtocolDocument<TProtocol, TCodebook>(
+  row: ProtocolDocumentRow<TProtocol, TCodebook>,
+): Promise<{ protocol: TProtocol; codebook: TCodebook }> {
+  const { _enc, protocol, codebook } = row;
   if (!_enc) {
     if (protocol === undefined || codebook === undefined) {
       throw new Error(
         `Protocol ${row.hash} has neither plaintext protocol/codebook nor _enc`,
       );
     }
-    return { ...rest, protocol, codebook };
+    return { protocol, codebook };
   }
   const dek = getSessionDek();
   if (!dek)
     throw new Error('Cannot decrypt protocol: vault is locked (no key)');
   const aad = protocolAad(row.hash);
-  const decProtocol = await decryptJson<CurrentProtocol>(
-    _enc.protocol,
-    dek,
-    aad,
-  );
-  const decCodebook = await decryptJson<CurrentProtocol['codebook']>(
-    _enc.codebook,
-    dek,
-    aad,
-  );
-  return { ...rest, protocol: decProtocol, codebook: decCodebook };
+  return {
+    protocol: await decryptJson<TProtocol>(_enc.protocol, dek, aad),
+    codebook: await decryptJson<TCodebook>(_enc.codebook, dek, aad),
+  };
+}
+
+export async function decryptProtocol(
+  row: StoredProtocolRow,
+): Promise<StoredProtocol> {
+  const { _enc, protocol: _protocol, codebook: _codebook, ...rest } = row;
+  return { ...rest, ...(await decryptProtocolDocument(row)) };
 }
 
 export async function encryptAsset(a: StoredAsset): Promise<StoredAssetRow> {
