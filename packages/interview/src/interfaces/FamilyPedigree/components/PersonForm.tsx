@@ -1735,7 +1735,12 @@ function RelationshipFields({
         />
       );
     case 'partner':
-      return <PartnershipCurrentField />;
+      return (
+        <PartnershipCurrentField
+          partnerIsYou={anchor.isEgo}
+          partner={displayName(anchor.id)}
+        />
+      );
     case 'child':
       return (
         <ChildFields
@@ -1760,13 +1765,20 @@ function RelationshipFields({
 }
 
 /** Whether a partnership is current: of the new partner, or of a new parent
- * with the parent chosen as their partner (named for them, `aboutPerson`).
- * It must be answered: a partnership is drawn as current or as ended, and
- * nothing is assumed for the participant. */
+ * with the parent chosen as their partner (named for them, `aboutPerson`),
+ * asked naming who they are together with, as the edit form does. It must
+ * be answered: a partnership is drawn as current or as ended, and nothing is
+ * assumed for the participant. */
 function PartnershipCurrentField({
   name = ROLE.partnershipCurrent,
+  partnerIsYou,
+  partner,
 }: {
   name?: string;
+  /** The person being added is together with the participant. */
+  partnerIsYou: boolean;
+  /** Who the person being added is together with. */
+  partner: string;
 }) {
   const { wording, text } = usePedigreeWords();
   return (
@@ -1774,7 +1786,10 @@ function PartnershipCurrentField({
       component={BooleanField}
       name={name}
       label={text(wording.stillTogetherLabel, {
-        named: 'false',
+        named: 'true',
+        personIsYou: 'false',
+        partnerIsYou: partnerIsYou ? 'true' : 'false',
+        partner,
       })}
       required
     />
@@ -2077,6 +2092,8 @@ function ParentFields({
       {raises && partnerChoice !== undefined && partnerChoice !== NONE && (
         <PartnershipCurrentField
           name={aboutPerson(ROLE.partnershipCurrent, partnerChoice)}
+          partnerIsYou={family.byId.get(partnerChoice)?.isEgo === true}
+          partner={displayName(partnerChoice)}
         />
       )}
       {siblings.length > 0 && (
