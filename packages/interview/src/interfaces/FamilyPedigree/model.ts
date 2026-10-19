@@ -2348,7 +2348,7 @@ export function twinCarrierUpdates(
   return twinIds.flatMap((twinId) => {
     const links = parentLinksOf(family, twinId);
     if (links.some((link) => link.kind === 'surrogate')) return [];
-    return links.flatMap((link) => {
+    return links.flatMap((link): CarrierUpdate[] => {
       if (
         !mayHaveCarried(link.kind) ||
         !couldCarryPregnancy(family.byId.get(link.source)?.sexAssignedAtBirth)
