@@ -34,6 +34,16 @@ pnpm --filter @codaco/architect test:e2e:headed          # (add --trace on / --d
 pnpm --filter @codaco/architect test:e2e
 ```
 
+### The /v8/ sub-path suite
+
+Architect 8 also ships inside Architect 9's deploy, built with `ARCHITECT_BASE_PATH=/v8/`. `e2e/playwright.subpath.config.ts` runs `e2e/subpath-specs/` against that build on port 4302 with `baseURL` `http://localhost:4302/v8/`. It covers routes, requests and the preview popup staying under `/v8/`; `?open=` and `?import=` (the `ArchitectHandoffDB` hand-off); and the Architect 8 banner and library action that go to Architect 9's `/?upgrade=`. Run it after changing anything path-, URL- or hand-off-related:
+
+```bash
+pnpm --filter @codaco/architect test:e2e:subpath   # builds with ARCHITECT_BASE_PATH=/v8/, then runs
+```
+
+`dist/` holds one base at a time, so rebuild without `ARCHITECT_BASE_PATH` before running the root suite again (the sub-path suite's global setup refuses a root build; the root suite does not check). Specs and shared fixtures navigate with base-relative URLs (`page.goto('./')`, `page.goto('protocol')`), which resolve under either config's `baseURL`; a root-absolute `page.goto('/…')` leaves `/v8/`.
+
 ## Reading a failure
 
 - **A JSON stage-snapshot diff** (`specs/interfaces/*.spec.ts`, `*-stage.json`) means the **saved stage shape changed**. If the change is intended, regenerate: `… playwright test <spec> --update-snapshots` (JSON snapshots are font-independent, so regenerating locally is fine). If it's _not_ intended, it's a regression — fix the app, don't update the snapshot.

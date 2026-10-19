@@ -26,6 +26,8 @@ dist-ssr
 # Playwright e2e artifacts
 e2e/playwright-report/
 e2e/test-results/
+e2e/playwright-report-subpath/
+e2e/test-results-subpath/
 e2e/visual-snapshots/**/*-actual.png
 e2e/visual-snapshots/**/*-diff.png
 
