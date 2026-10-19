@@ -16,6 +16,11 @@ import {
   matchRetainedPwaAsset,
 } from '../../scripts/buildtime/pwa-cache-reclamation-plugin.ts';
 import { version } from './package.json';
+import {
+  architectCachePrefix,
+  rebaseSwMatcher,
+  resolveArchitectBasePath,
+} from './scripts/app-base-path.mjs';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
@@ -69,6 +74,14 @@ const injectCspMeta = (): Plugin => ({
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, rootDir, '');
+  // `/` everywhere except the Architect 8 build that ships inside Architect 9's
+  // deploy at `/v8/` (see scripts/app-base-path.mjs). Every sub-path difference
+  // below is derived from these two values; a root build is unchanged by them.
+  const appBase = resolveArchitectBasePath(env);
+  const isSubpath = appBase !== '/';
+  const cachePrefix = architectCachePrefix(appBase);
+  // "Architect 8": the major is the schema line a sub-path build is kept for.
+  const subpathAppName = `Architect ${version.split('.')[0]}`;
   // This ID belongs to the generated bundle, not just its package release. Dev
   // deploys can publish several different bundles at the same package version;
   // sharing a precache between them would let the newer worker prune files that
@@ -77,7 +90,7 @@ export default defineConfig(({ mode }) => {
   const pwaBuildId = env.TURBO_HASH
     ? `turbo-${env.TURBO_HASH}`
     : `direct-${randomUUID()}`;
-  const pwaCacheId = `architect-${version}-${pwaBuildId}`;
+  const pwaCacheId = `${cachePrefix}${version}-${pwaBuildId}`;
   const pwaCacheReclamationScript =
     getPwaCacheReclamationScriptFileName(pwaCacheId);
 
@@ -95,6 +108,7 @@ export default defineConfig(({ mode }) => {
   const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 
   return {
+    base: appBase,
     define: {
       __APP_VERSION__: JSON.stringify(version),
       __PWA_BUILD_ID__: JSON.stringify(pwaCacheId),
@@ -113,11 +127,16 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       // Architect 8 is served at /v8/ beside the root app with its own worker
       // and 'architect-v8-' caches, which 'architect-' would otherwise match.
+      // The /v8/ build itself hosts no nested app, so it passes nothing extra.
       createPwaCacheReclamationPlugin({
-        appCachePrefix: 'architect-',
+        appCachePrefix: cachePrefix,
         buildId: pwaCacheId,
-        foreignCachePrefixes: ['architect-v8-'],
-        foreignScopePaths: ['/v8/'],
+        ...(isSubpath
+          ? {}
+          : {
+              foreignCachePrefixes: ['architect-v8-'],
+              foreignScopePaths: ['/v8/'],
+            }),
       }),
       VitePWA({
         registerType: 'prompt',
@@ -126,14 +145,17 @@ export default defineConfig(({ mode }) => {
         devOptions: { enabled: false },
         pwaAssets: { config: true },
         manifest: {
-          name: 'Network Canvas Architect',
-          short_name: 'Architect',
+          // A sub-path build is a second installable app on Architect 9's
+          // origin (its manifest id derives from start_url), so its name has
+          // to tell the two apart wherever the OS lists them.
+          name: isSubpath ? subpathAppName : 'Network Canvas Architect',
+          short_name: isSubpath ? subpathAppName : 'Architect',
           description: 'Design Network Canvas interview protocols.',
           theme_color: '#00b38f',
           background_color: '#edf2f8',
           display: 'standalone',
-          start_url: '/',
-          scope: '/',
+          start_url: appBase,
+          scope: appBase,
           // Listed explicitly so the maskable entry can point at its own
           // artwork: pwa-assets generates the full-bleed `any` icons from
           // public/architect-icon.png, while the maskable icon is committed
@@ -154,14 +176,20 @@ export default defineConfig(({ mode }) => {
           // desktop File Handling API; Safari has no equivalent, and the web
           // manifest has no viewer/editor role field — the role is functional:
           // Architect opens the file for editing). Launched files arrive via
-          // window.launchQueue — see src/utils/fileLaunchQueue.ts.
-          launch_handler: { client_mode: 'focus-existing' },
-          file_handlers: [
-            {
-              action: '/',
-              accept: { 'application/octet-stream': ['.netcanvas'] },
-            },
-          ],
+          // window.launchQueue — see src/utils/fileLaunchQueue.ts. Only the
+          // root app claims .netcanvas files: in a sub-path build Architect 9
+          // owns file launches and decides which app opens each protocol.
+          ...(isSubpath
+            ? {}
+            : {
+                launch_handler: { client_mode: 'focus-existing' as const },
+                file_handlers: [
+                  {
+                    action: '/',
+                    accept: { 'application/octet-stream': ['.netcanvas'] },
+                  },
+                ],
+              }),
         },
         workbox: {
           // App and worker maps are uploaded before Workbox runs. The service
@@ -198,10 +226,13 @@ export default defineConfig(({ mode }) => {
               // Preview is a separate HTML entry. With directoryIndex disabled
               // for fresh root launches, keep /preview/ explicitly mapped to
               // its own precached shell for fully offline preview starts.
-              urlPattern: ({ request, sameOrigin, url }) =>
-                sameOrigin &&
-                request.mode === 'navigate' &&
-                url.pathname.startsWith('/preview/'),
+              urlPattern: rebaseSwMatcher(
+                ({ request, sameOrigin, url }) =>
+                  sameOrigin &&
+                  request.mode === 'navigate' &&
+                  url.pathname.startsWith('/preview/'),
+                appBase,
+              ),
               handler: 'NetworkOnly',
               options: {
                 plugins: [
@@ -244,10 +275,13 @@ export default defineConfig(({ mode }) => {
               // The handler keeps offline launch via the precached fallback
               // while preventing a still-old service worker from caching new
               // HTML whose matching hashed chunks it has not precached.
-              urlPattern: ({ request, sameOrigin, url }) =>
-                sameOrigin &&
-                request.mode === 'navigate' &&
-                !url.pathname.startsWith('/preview/'),
+              urlPattern: rebaseSwMatcher(
+                ({ request, sameOrigin, url }) =>
+                  sameOrigin &&
+                  request.mode === 'navigate' &&
+                  !url.pathname.startsWith('/preview/'),
+                appBase,
+              ),
               handler: 'NetworkOnly',
               options: {
                 plugins: [
@@ -291,30 +325,38 @@ export default defineConfig(({ mode }) => {
               // so an exact global cache lookup is unambiguous and lets that
               // tab keep working offline. Never broaden this to stable HTML or
               // image URLs such as index.html or PWA icons.
-              urlPattern: ({ sameOrigin, url }) =>
-                sameOrigin &&
-                url.pathname.startsWith('/assets/') &&
-                (/\.(?:js|css)$/i.test(url.pathname) ||
-                  /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
+              urlPattern: rebaseSwMatcher(
+                ({ sameOrigin, url }) =>
+                  sameOrigin &&
+                  url.pathname.startsWith('/assets/') &&
+                  (/\.(?:js|css)$/i.test(url.pathname) ||
+                    /\.4x3\.\d+-[^/]+\.webp$/i.test(url.pathname)),
+                appBase,
+              ),
               handler: matchRetainedPwaAsset,
             },
             {
               // Stable PWA icons are replaced in place and must reach the
               // network so their no-store response headers can take effect.
               // Other images keep the existing bounded offline cache.
-              urlPattern: ({ url }) =>
-                /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname) &&
-                ![
-                  '/apple-touch-icon-180x180.png',
-                  '/pwa-64x64.png',
-                  '/pwa-192x192.png',
-                  '/pwa-512x512.png',
-                  '/maskable-icon-512x512.png',
-                  '/architect-icon.png',
-                ].includes(url.pathname),
+              urlPattern: rebaseSwMatcher(
+                ({ url }) =>
+                  /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname) &&
+                  ![
+                    '/apple-touch-icon-180x180.png',
+                    '/pwa-64x64.png',
+                    '/pwa-192x192.png',
+                    '/pwa-512x512.png',
+                    '/maskable-icon-512x512.png',
+                    '/architect-icon.png',
+                  ].includes(url.pathname),
+                appBase,
+              ),
               handler: 'CacheFirst',
               options: {
-                cacheName: 'architect-images',
+                // Runtime cache names carry the build's prefix: two workers on
+                // one origin sharing a name would prune each other's entries.
+                cacheName: `${cachePrefix}images`,
                 expiration: {
                   maxEntries: 400,
                   maxAgeSeconds: 60 * 60 * 24 * 30,
@@ -329,7 +371,7 @@ export default defineConfig(({ mode }) => {
               urlPattern: /\.(?:woff2?|ttf|otf|eot)$/i,
               handler: 'CacheFirst',
               options: {
-                cacheName: 'architect-fonts',
+                cacheName: `${cachePrefix}fonts`,
                 expiration: {
                   maxEntries: 30,
                   maxAgeSeconds: 60 * 60 * 24 * 365,
@@ -342,11 +384,14 @@ export default defineConfig(({ mode }) => {
               // GeoJSON, CSV, etc.). Content-hashed and same-origin; the JS/CSS in
               // /assets are already precached and served from there first, and
               // Architect has no backend, so caching all of /assets is safe.
-              urlPattern: ({ url, sameOrigin }) =>
-                sameOrigin && url.pathname.startsWith('/assets/'),
+              urlPattern: rebaseSwMatcher(
+                ({ url, sameOrigin }) =>
+                  sameOrigin && url.pathname.startsWith('/assets/'),
+                appBase,
+              ),
               handler: 'CacheFirst',
               options: {
-                cacheName: 'architect-bundled-assets',
+                cacheName: `${cachePrefix}bundled-assets`,
                 expiration: {
                   maxEntries: 100,
                   maxAgeSeconds: 60 * 60 * 24 * 30,
