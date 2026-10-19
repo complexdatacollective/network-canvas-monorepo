@@ -92,16 +92,34 @@ export function selectLatestForApp(
 }
 
 // Every package and app in the monorepo shares one release list, about a
-// hundred releases a quarter, so an app's newest release on its newest major
-// can sit pages back behind a run of maintenance releases on an older line.
-// A few full pages cover several months.
+// hundred releases a quarter, so an app's newest release can sit pages back.
+// The list is unauthenticated (60 requests an hour per address, shared by a
+// whole lab behind one NAT), so a further page is read only while nothing read
+// so far is a release of this app at or above its running major. Releases are
+// listed newest first, so the first page almost always answers. What that
+// gives up: a newer major's release more than a page behind a later
+// maintenance release on the running line goes unseen.
 const RELEASES_PER_PAGE = 100;
 const RELEASE_PAGES = 3;
+
+const isCandidate = (
+  app: AppId,
+  release: GitHubRelease,
+  runningMajor: number | undefined,
+): boolean => {
+  const version = versionFromTag(app, release.tag_name);
+  const semver = version ? parseSemVer(version) : null;
+  if (!semver) return false;
+  return runningMajor === undefined || semver.major >= runningMajor;
+};
 
 export async function fetchLatestReleaseNotes(
   app: AppId,
   currentVersion?: string,
 ): Promise<ReleaseNotes | null> {
+  const runningMajor = currentVersion
+    ? parseSemVer(currentVersion)?.major
+    : undefined;
   try {
     const releases: GitHubRelease[] = [];
     for (let page = 1; page <= RELEASE_PAGES; page += 1) {
@@ -115,6 +133,9 @@ export async function fetchLatestReleaseNotes(
       const batch = (await res.json()) as GitHubRelease[];
       releases.push(...batch);
       if (batch.length < RELEASES_PER_PAGE) break;
+      if (batch.some((release) => isCandidate(app, release, runningMajor))) {
+        break;
+      }
     }
     return selectLatestForApp(app, releases, currentVersion);
   } catch {

@@ -167,17 +167,38 @@ describe('fetchLatestReleaseNotes', () => {
     ).resolves.toEqual({ version: '8.5.1', body: 'maintenance' });
   });
 
-  it('reads further pages while they are full, so an older newest release is still found', async () => {
-    const filler = Array.from({ length: 99 }, (_, index) => ({
+  const otherPackages = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
       tag_name: `@codaco/fresco-ui@1.0.${index}`,
       body: '',
     }));
+
+  it('reads one page when it holds a release on or above the running major', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        ...otherPackages(99),
+        { tag_name: '@codaco/architect@9.1.0', body: 'nine one' },
+      ],
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      fetchLatestReleaseNotes('architect', '9.0.0'),
+    ).resolves.toEqual({ version: '9.1.0', body: 'nine one' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('&page=1');
+  });
+
+  it('reads further full pages until one holds a release for the running major', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
         ok: true,
         json: async () => [
-          ...filler,
+          ...otherPackages(99),
+          // An older line is never this app's update, so it does not stop
+          // the search.
           { tag_name: '@codaco/architect@8.5.1', body: 'maintenance' },
         ],
       })
@@ -190,17 +211,14 @@ describe('fetchLatestReleaseNotes', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(
-      fetchLatestReleaseNotes('architect', '8.5.0'),
+      fetchLatestReleaseNotes('architect', '9.0.0'),
     ).resolves.toEqual({ version: '9.0.0', body: 'nine' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain('&page=2');
   });
 
   it('stops after a few pages, and shows no notes when a later page fails', async () => {
-    const full = Array.from({ length: 100 }, (_, index) => ({
-      tag_name: `@codaco/architect@8.0.${index}`,
-      body: `n${index}`,
-    }));
+    const full = otherPackages(100);
     vi.stubGlobal(
       'fetch',
       vi
@@ -214,7 +232,7 @@ describe('fetchLatestReleaseNotes', () => {
       .fn()
       .mockResolvedValue({ ok: true, json: async () => full });
     vi.stubGlobal('fetch', always);
-    await fetchLatestReleaseNotes('architect');
+    await expect(fetchLatestReleaseNotes('architect')).resolves.toBeNull();
     expect(always).toHaveBeenCalledTimes(3);
   });
 
