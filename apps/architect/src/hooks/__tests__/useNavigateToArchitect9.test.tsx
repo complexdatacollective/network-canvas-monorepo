@@ -227,4 +227,31 @@ describe('useNavigateToArchitect9', () => {
     expect(mocks.leave).not.toHaveBeenCalled();
     expect(mocks.storeListeners.size).toBe(0);
   });
+
+  it('refuses if the lock was lost while waiting for an in-flight commit, before the prompt', async () => {
+    mocks.stageDirty = true;
+    const finishCommit = beginProtocolCommit();
+    const result = navigate();
+
+    const navigation = result.current(URL, { requireSavedProtocol: true });
+    mocks.persistence = 'open-elsewhere';
+    notifyStore();
+    finishCommit();
+    mocks.promptLeaveEditor.mockImplementationOnce(
+      async (
+        _dispatch: unknown,
+        _openDialog: unknown,
+        performLeave: () => void | Promise<void>,
+      ) => {
+        mocks.stageDirty = false;
+        mocks.persistence = 'no-protocol';
+        notifyStore();
+        await performLeave();
+      },
+    );
+
+    await expect(navigation).resolves.toBe(false);
+    expect(mocks.leave).not.toHaveBeenCalled();
+    expect(mocks.storeListeners.size).toBe(0);
+  });
 });

@@ -62,21 +62,21 @@ export const useNavigateToArchitect9 = () => {
       };
       if (refused()) return false;
 
-      await whenCriticalOperationsSettle();
+      // The tab can lose its lock at any point while this waits, and a
+      // confirmed leave clears the protocol before the prompt returns, after
+      // which a check can no longer see that loss. So watch for it from here
+      // until the page is about to navigate.
+      let lostOwnership = false;
+      const unsubscribe = store.subscribe(() => {
+        if (refused()) lostOwnership = true;
+      });
+      try {
+        await whenCriticalOperationsSettle();
 
-      if (hasUnsavedEditorWork()) {
-        const persistence = getLeavePersistence(store.getState());
-        if (persistence !== 'no-protocol') {
-          let confirmed = false;
-          // The tab can lose its lock while the prompt is open, and a
-          // confirmed leave clears the protocol before the prompt returns,
-          // after which the check below can no longer see that loss. So
-          // watch for it while the prompt is up.
-          let lostWhilePrompting = false;
-          const unsubscribe = store.subscribe(() => {
-            if (refused()) lostWhilePrompting = true;
-          });
-          try {
+        if (hasUnsavedEditorWork()) {
+          const persistence = getLeavePersistence(store.getState());
+          if (persistence !== 'no-protocol') {
+            let confirmed = false;
             // The same discard confirmation as leaving the editor any other
             // way. A confirmed leave clears the protocol and returns to the
             // start screen, so Back from Architect 9 lands there rather than
@@ -93,17 +93,16 @@ export const useNavigateToArchitect9 = () => {
               true,
               persistence,
             );
-          } finally {
-            unsubscribe();
+            if (!confirmed) return false;
+            await whenCriticalOperationsSettle();
+            await whenEditorsClosed();
           }
-          if (!confirmed || lostWhilePrompting) return false;
-          await whenCriticalOperationsSettle();
-          await whenEditorsClosed();
         }
+      } finally {
+        unsubscribe();
       }
 
-      // The tab can lose its lock while the prompt is open.
-      if (refused()) return false;
+      if (lostOwnership || refused()) return false;
       leaveForArchitect9(url);
       return true;
     },
