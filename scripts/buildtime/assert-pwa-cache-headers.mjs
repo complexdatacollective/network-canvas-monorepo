@@ -96,8 +96,14 @@ const assertDirectiveSet = (path, actualValue, expectedDirectives) => {
  * immutable. Netlify matches `_headers` against the requested URL before an
  * SPA rewrite, so `/*` must cover deep-link HTML requests. Its more-specific
  * `/assets/*` rule replaces Cache-Control for content-hashed assets.
+ * `additionalImmutablePaths` names further content-hashed asset directories,
+ * such as those of an app nested in the deploy under a sub-path.
  */
-export const assertPwaCacheHeaders = ({ additionalStablePaths = [], text }) => {
+export const assertPwaCacheHeaders = ({
+  additionalStablePaths = [],
+  additionalImmutablePaths = [],
+  text,
+}) => {
   const rules = parseHeaderRules(text);
   const rulesByPath = new Map();
 
@@ -125,9 +131,11 @@ export const assertPwaCacheHeaders = ({ additionalStablePaths = [], text }) => {
     );
   }
 
-  assertDirectiveSet(
-    '/assets/*',
-    rulesByPath.get('/assets/*')?.headers.get('cache-control'),
-    IMMUTABLE_ASSET_DIRECTIVES,
-  );
+  for (const immutablePath of ['/assets/*', ...additionalImmutablePaths]) {
+    assertDirectiveSet(
+      immutablePath,
+      rulesByPath.get(immutablePath)?.headers.get('cache-control'),
+      IMMUTABLE_ASSET_DIRECTIVES,
+    );
+  }
 };

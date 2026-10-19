@@ -49,3 +49,22 @@
   Cache-Control: no-store, no-cache, max-age=0, must-revalidate
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Architect 8, served at /v8/ from this deploy (dist/v8; see
+# scripts/legacy-architect.ts), with its own service worker. Its tarball's own
+# _headers is dropped because Netlify reads only this one, so its contract is
+# repeated here: stable entry points never stored, hashed assets immutable.
+/v8/
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/index.html
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/sw.js
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/manifest.webmanifest
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/preview/
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/preview/index.html
+  Cache-Control: no-store, no-cache, max-age=0, must-revalidate
+/v8/assets/*
+  Cache-Control: public, max-age=31536000, immutable

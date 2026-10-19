@@ -109,8 +109,12 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
+        "$TURBO_ROOT$/scripts/buildtime/assert-pwa-cache-headers.mjs",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
+        // The Architect 8 pin: dist/v8 is extracted from the tarball it names,
+        // so a new pin must never replay a cached dist carrying the old one.
+        "legacy-architect.json",
         "src/**",
         "scripts/**",
         "public/**",
@@ -133,8 +137,16 @@
         "VITE_DISABLE_ANALYTICS",
         "VITE_DISABLE_ANIMATIONS",
         "POSTHOG_PERSONAL_API_KEY",
-        "POSTHOG_PROJECT_ID"
+        "POSTHOG_PROJECT_ID",
+        // Whether dist/v8 holds Architect 8 (scripts/legacy-architect.ts).
+        // Hashed, so a release build that requires it can never replay an
+        // entry built without it.
+        "ARCHITECT_REQUIRE_LEGACY_V8",
+        "ARCHITECT_SKIP_LEGACY_V8"
       ],
+      // A local copy of the pinned tarball. Not hashed: whichever copy is used
+      // must match the pin's sha256, so the output depends only on the pin.
+      "passThroughEnv": ["ARCHITECT_LEGACY_V8_TARBALL"],
       "outputs": ["dist/**"]
     },
     "@codaco/studio-web#build": {
@@ -177,6 +189,7 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
+        "$TURBO_ROOT$/scripts/buildtime/assert-pwa-cache-headers.mjs",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",

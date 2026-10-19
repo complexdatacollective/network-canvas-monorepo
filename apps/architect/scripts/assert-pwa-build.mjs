@@ -2,8 +2,9 @@
 // Post-build assertion: a production PWA build must emit the SW + manifest +
 // icons, every emitted JS chunk, and every responsive stage-preview image must
 // be precached. A missing critical asset breaks either the offline boot or the
-// first offline rendering of screen thumbnails. Architect precaches all JS (no
-// `globIgnores`), so any excluded chunk is a real regression. (Sibling of
+// first offline rendering of screen thumbnails. Architect precaches all of its
+// own JS (its `globIgnores` leaves out only the bundled Architect 8 under v8/),
+// so any excluded chunk is a real regression. (Sibling of
 // apps/interviewer/scripts/assert-pwa-build.mjs, which instead checks named
 // critical chunks because it intentionally excludes its dev-protocol chunk.)
 import { readFileSync } from 'node:fs';
@@ -11,7 +12,17 @@ import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { loadEnv } from 'vite';
+
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
+import {
+  assertLegacyArchitectOutput,
+  assertLegacyRedirects,
+  assertLegacyRouteExclusions,
+  findLegacyPrecacheEntries,
+  routeMatcherAt,
+} from './legacy-architect-assertions.ts';
+import { loadLegacyArchitectV8 } from './legacy-architect.ts';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -24,15 +35,26 @@ const fail = (msg) => {
   process.exit(1);
 };
 
+// Architect 8 is served at /v8/ from this deploy (dist/v8, see
+// legacy-architect.ts), so its stable entry points and hashed assets are held
+// to the same contract as this app's, whether or not this build bundles it.
 try {
   assertPwaCacheHeaders({
     additionalStablePaths: [
       '/preview/',
       '/preview/index.html',
       '/architect-icon.png',
+      '/v8/',
+      '/v8/index.html',
+      '/v8/sw.js',
+      '/v8/manifest.webmanifest',
+      '/v8/preview/',
+      '/v8/preview/index.html',
     ],
+    additionalImmutablePaths: ['/v8/assets/*'],
     text: readFileSync(path.join(dist, '_headers'), 'utf8'),
   });
+  assertLegacyRedirects(readFileSync(path.join(dist, '_redirects'), 'utf8'));
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));
 }
@@ -99,6 +121,12 @@ if (
   [...reclamationWorker.matchAll(/readActiveBuild\(\)/g)].length < 2
 ) {
   fail('cache reclaimer does not recheck worker ownership and pending updates');
+}
+const legacyPrecacheEntries = findLegacyPrecacheEntries(sw);
+if (legacyPrecacheEntries.length > 0) {
+  fail(
+    `Architect 8 is in this app's precache: ${legacyPrecacheEntries.join(', ')}`,
+  );
 }
 // The root build shares its origin with Architect 8 at /v8/, whose
 // 'architect-v8-' caches also start with 'architect-'. Its reclaimer must leave
@@ -174,6 +202,23 @@ const strayMaps = (await readdir(dist, { recursive: true })).filter((f) =>
 );
 if (strayMaps.length > 0) {
   fail(`source map(s) left in dist: ${strayMaps.join(', ')}`);
+}
+
+// dist/v8 holds exactly the pinned Architect 8 (or nothing), under the cache
+// prefix the reclaimer was checked above to leave alone. The recursive
+// source-map check above covers it too.
+const legacyArchitectV8 = loadLegacyArchitectV8(
+  appRoot,
+  loadEnv('production', appRoot, ''),
+);
+try {
+  assertLegacyArchitectOutput({
+    dist,
+    resolution: legacyArchitectV8,
+    foreignCachePrefixes: expectedForeignCachePrefixes,
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 
 const html = readFileSync(path.join(dist, 'index.html'), 'utf8');
@@ -259,6 +304,15 @@ for (const stableIconPath of [
     fail(`architect image-cache route includes stable icon ${stableIconPath}`);
   }
 }
+try {
+  assertLegacyRouteExclusions({
+    freshShell: routeMatcherAt(sw, freshShellRoute.index),
+    image: routeMatcherAt(sw, imageRouteIndex),
+    font: routeMatcherAt(sw, imageRouteEnd),
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
 
 const previewRoute = sw.slice(previewRouteIndex, freshShellRoute.index);
 const freshShellRouteSource = sw.slice(
@@ -325,7 +379,7 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
   fail('exact-hash asset handoff must not search retained HTML shells');
 }
 
-// No globIgnores means every emitted chunk should be precached; an excluded one
+// globIgnores covers only v8/, so every chunk in dist/assets should be precached; an excluded one
 // exceeded the size limit and would 404 offline.
 const excluded = jsAssets.filter((u) => !precached.has(u));
 if (excluded.length > 0) {
@@ -335,5 +389,5 @@ if (excluded.length > 0) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached`,
+  `PWA build ok: ${precachePrefix} retained independently; ${legacyArchitectV8.bundled ? `Architect ${legacyArchitectV8.pin.version} bundled at /v8/ outside the precache` : `no Architect 8 bundled (${legacyArchitectV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached`,
 );

@@ -1,1 +1,6 @@
-/*    /index.html   200
+# Architect 8 is served at /v8/ from this deploy (dist/v8). Its deep links and
+# reloads get its own shell, so these come before this app's catch-all. Files
+# that exist are served as they are: Netlify does not rewrite over them.
+/v8      /v8/            301
+/v8/*    /v8/index.html  200
+/*       /index.html     200
