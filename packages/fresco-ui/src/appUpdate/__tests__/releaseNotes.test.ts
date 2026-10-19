@@ -196,7 +196,7 @@ describe('fetchLatestReleaseNotes', () => {
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain('&page=2');
   });
 
-  it('stops after a few pages, and keeps what it read when a later page fails', async () => {
+  it('stops after a few pages, and shows no notes when a later page fails', async () => {
     const full = Array.from({ length: 100 }, (_, index) => ({
       tag_name: `@codaco/architect@8.0.${index}`,
       body: `n${index}`,
@@ -208,10 +208,7 @@ describe('fetchLatestReleaseNotes', () => {
         .mockResolvedValueOnce({ ok: true, json: async () => full })
         .mockResolvedValueOnce({ ok: false, json: async () => [] }),
     );
-    await expect(fetchLatestReleaseNotes('architect')).resolves.toEqual({
-      version: '8.0.99',
-      body: 'n99',
-    });
+    await expect(fetchLatestReleaseNotes('architect')).resolves.toBeNull();
 
     const always = vi
       .fn()

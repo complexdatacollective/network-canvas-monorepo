@@ -109,10 +109,9 @@ export async function fetchLatestReleaseNotes(
         `https://api.github.com/repos/${REPO}/releases?per_page=${RELEASES_PER_PAGE}&page=${page}`,
         { headers: { Accept: 'application/vnd.github+json' } },
       );
-      if (!res.ok) {
-        if (page === 1) return null;
-        break;
-      }
+      // A missing page could hold the newest release, and notes picked from
+      // the rest would describe the wrong version: show none instead.
+      if (!res.ok) return null;
       const batch = (await res.json()) as GitHubRelease[];
       releases.push(...batch);
       if (batch.length < RELEASES_PER_PAGE) break;
