@@ -97,7 +97,7 @@ const NarrativePedigree = ({
       <SectionFrame
         title={interfaceDisplayName('NarrativePedigree', intl) ?? ''}
       >
-        <MiniTable rotated wide rows={rows} />
+        <MiniTable rotated wide narrowLabels rows={rows} />
       </SectionFrame>
       {diseases.length > 0 && (
         <SectionFrame

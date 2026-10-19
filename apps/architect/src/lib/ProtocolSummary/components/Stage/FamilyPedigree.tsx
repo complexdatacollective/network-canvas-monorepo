@@ -710,11 +710,11 @@ const FamilyPedigree = ({
   return (
     <>
       <SectionFrame title={intl.formatMessage(messages.title)}>
-        <MiniTable rotated wide rows={rows} />
+        <MiniTable rotated wide narrowLabels rows={rows} />
       </SectionFrame>
       {wordingRows.length > 0 && (
         <SectionFrame title={intl.formatMessage(builderMessages.wordingTitle)}>
-          <MiniTable rotated wide rows={wordingRows} />
+          <MiniTable rotated wide narrowLabels rows={wordingRows} />
         </SectionFrame>
       )}
       {nominationPrompts !== null && nominationPrompts.length > 0 && (
