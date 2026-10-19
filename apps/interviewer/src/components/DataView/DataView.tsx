@@ -10,7 +10,6 @@ import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import { getInterviewProgress } from '@codaco/interview';
 import type { ProtocolWithCounts } from '~/lib/db/types';
-import type { BundledLegacyInterviewer } from '~/lib/legacyInterviewer';
 
 import { DataViewToolbar } from './DataViewToolbar';
 import { ExportDialog } from './ExportDialog';
@@ -69,10 +68,10 @@ type DataViewProps = {
   // Bumped by the parent when sessions change outside this view (e.g.
   // synthetic-data generation/deletion in Settings) so the table re-queries.
   refreshKey?: number;
-  // Interviews Interviewer 8 keeps (and exports itself), and the Interviewer
-  // 8 to send the researcher to for them.
+  // Interviews Interviewer 8 keeps (and exports itself), and how to send the
+  // researcher to them there (null when this build has no Interviewer 8).
   legacyInterviewCount?: number;
-  legacyInterviewer?: BundledLegacyInterviewer | null;
+  onOpenLegacyData?: (() => void) | null;
 };
 
 // Rich-text chunk formatter for the selection banner's messages, at module
@@ -126,7 +125,7 @@ export function DataView({
   onReload,
   refreshKey,
   legacyInterviewCount = 0,
-  legacyInterviewer = null,
+  onOpenLegacyData = null,
 }: DataViewProps) {
   const intl = useAppIntl();
   // Total interview steps by protocol hash, for the progress column's "step X
@@ -272,10 +271,10 @@ export function DataView({
         onDelete={() => void handleDelete()}
       />
 
-      {legacyInterviewer && legacyInterviewCount > 0 ? (
+      {onOpenLegacyData && legacyInterviewCount > 0 ? (
         <LegacyInterviewsNotice
           count={legacyInterviewCount}
-          interviewer={legacyInterviewer}
+          onOpen={onOpenLegacyData}
         />
       ) : null}
 

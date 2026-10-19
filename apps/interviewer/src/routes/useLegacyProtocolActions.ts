@@ -12,12 +12,14 @@ import {
   showLegacyProtocolInfo,
 } from '~/components/legacyProtocolDialogs';
 import type { LegacyCardActions } from '~/components/ProtocolCarousel/DeckSlotCard';
+import { useSettleLockForInterviewer8 } from '~/components/useSettleLockForInterviewer8';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import type { LegacyProtocolSummary } from '~/lib/db/legacyLibrary';
 import {
   getBundledLegacyInterviewer,
   goToLegacyInterviewer,
   LEGACY_INTERVIEWER_MAJOR,
+  legacyDataUrl,
   legacyStartUrl,
 } from '~/lib/legacyInterviewer';
 import { importFailureMessages } from '~/lib/protocol/importProtocol';
@@ -112,6 +114,7 @@ export function useLegacyProtocolActions({
   // Read once: the define is an object literal, new on every read.
   const [interviewer] = useState(getBundledLegacyInterviewer);
   const offline = useLegacyInterviewerOffline();
+  const { settled, settleLock } = useSettleLockForInterviewer8();
   const [focusRequest, setFocusRequest] = useState<{
     protocolHash: string;
   } | null>(null);
@@ -119,18 +122,29 @@ export function useLegacyProtocolActions({
   // to the same copy.
   const upgrading = useRef(false);
 
+  // Interviewer 8 cannot set the shared lock up, so it is settled here first.
   const onStart = useCallback(
-    (protocol: LegacyProtocolSummary) => {
-      if (!interviewer) return;
+    async (protocol: LegacyProtocolSummary) => {
+      if (!interviewer || !(await settleLock())) return;
       goToLegacyInterviewer(legacyStartUrl(interviewer, protocol.hash));
     },
-    [interviewer],
+    [interviewer, settleLock],
   );
 
-  const onOpenInInterviewer = useCallback(() => {
-    if (!interviewer) return;
+  const onOpenInInterviewer = useCallback(async () => {
+    if (!interviewer || !(await settleLock())) return;
     goToLegacyInterviewer(interviewer.path);
-  }, [interviewer]);
+  }, [interviewer, settleLock]);
+
+  const openLegacyData = useCallback(async () => {
+    if (!interviewer || !(await settleLock())) return;
+    goToLegacyInterviewer(legacyDataUrl(interviewer));
+  }, [interviewer, settleLock]);
+  // Null without an Interviewer 8 to open, so nothing offers it.
+  const onOpenLegacyData = useMemo(
+    () => (interviewer ? () => void openLegacyData() : null),
+    [interviewer, openLegacyData],
+  );
 
   const onShowInfo = useCallback(
     (protocol: LegacyProtocolSummary) => {
@@ -246,6 +260,9 @@ export function useLegacyProtocolActions({
         if (choice === 'upgrade') {
           await upgradeFile();
         } else if (choice === 'keep') {
+          // Before staging: a file staged for an Interviewer 8 that sends the
+          // researcher straight back would be lost.
+          if (!(await settleLock())) return;
           analytics.track('protocol_kept_on_legacy', {
             schema_version: request.schemaVersion,
           });
@@ -259,20 +276,31 @@ export function useLegacyProtocolActions({
         }
       })();
     },
-    [analytics, interviewer, openDialog, startImport],
+    [analytics, interviewer, openDialog, settleLock, startImport],
   );
 
   const legacy = useMemo<LegacyCardActions>(
     () => ({
       interviewer,
       offline,
-      onStart,
-      onOpenInInterviewer,
+      // A plain link cannot settle the lock first, so there is none until a
+      // lock is in place; the count then shows as text.
+      sessionsHref: interviewer && settled ? legacyDataUrl(interviewer) : null,
+      onStart: (protocol) => void onStart(protocol),
+      onOpenInInterviewer: () => void onOpenInInterviewer(),
       onUpgrade: (protocol) => void onUpgrade(protocol),
       onShowInfo,
     }),
-    [interviewer, offline, onStart, onOpenInInterviewer, onUpgrade, onShowInfo],
+    [
+      interviewer,
+      offline,
+      settled,
+      onStart,
+      onOpenInInterviewer,
+      onUpgrade,
+      onShowInfo,
+    ],
   );
 
-  return { legacy, focusRequest, onMigrationRequired };
+  return { legacy, focusRequest, onMigrationRequired, onOpenLegacyData };
 }

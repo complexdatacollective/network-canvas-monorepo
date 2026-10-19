@@ -91,6 +91,7 @@ const legacyActions = (
 ): LegacyCardActions => ({
   interviewer: bundled ? { version: '8.5.0', path: '/v8/' } : null,
   offline: bundled ? offline : 'not-bundled',
+  sessionsHref: bundled ? '/v8/data' : null,
   onStart: () => {},
   onOpenInInterviewer: () => {},
   onUpgrade: () => {},

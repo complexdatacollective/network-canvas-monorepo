@@ -17,7 +17,6 @@ import type { StoredSession } from '~/lib/db/types';
 import {
   type BundledLegacyInterviewer,
   LEGACY_INTERVIEWER_MAJOR,
-  legacyDataUrl,
 } from '~/lib/legacyInterviewer';
 import { DEVELOPMENT_PROTOCOL } from '~/lib/protocol/developmentProtocol';
 import type { ImportPhase } from '~/lib/protocol/importProtocol';
@@ -86,6 +85,8 @@ const PHASE_LABEL: Record<ImportPhase, MessageDescriptor> = {
 export type LegacyCardActions = {
   interviewer: BundledLegacyInterviewer | null;
   offline: LegacyInterviewerOffline;
+  /** Interviewer 8's data view, where these interviews are, when linkable. */
+  sessionsHref: string | null;
   onStart: (protocol: LegacyProtocolSummary) => void;
   onOpenInInterviewer: (protocol: LegacyProtocolSummary) => void;
   onUpgrade: (protocol: LegacyProtocolSummary) => void;
@@ -295,7 +296,7 @@ function legacySlotCardProps(
     onActivate: activate,
     // Interviewer 8 keeps these interviews and exports them; this app's data
     // view has none of them.
-    sessionCountHref: interviewer ? legacyDataUrl(interviewer) : null,
+    sessionCountHref: legacy?.sessionsHref ?? null,
     badges: (
       <>
         <DeckCardBadge tone="info">

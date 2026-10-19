@@ -3,12 +3,7 @@ import { ExternalLink } from 'lucide-react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
-import {
-  type BundledLegacyInterviewer,
-  goToLegacyInterviewer,
-  LEGACY_INTERVIEWER_MAJOR,
-  legacyDataUrl,
-} from '~/lib/legacyInterviewer';
+import { LEGACY_INTERVIEWER_MAJOR } from '~/lib/legacyInterviewer';
 
 const messages = defineMessages({
   interviewsKept: {
@@ -30,10 +25,11 @@ const messages = defineMessages({
 // schema 8 ones are not in this list. This line says they exist and where.
 export function LegacyInterviewsNotice({
   count,
-  interviewer,
+  onOpen,
 }: {
   count: number;
-  interviewer: BundledLegacyInterviewer;
+  /** Leave for Interviewer 8's data view. */
+  onOpen: () => void;
 }) {
   const intl = useAppIntl();
   return (
@@ -47,7 +43,7 @@ export function LegacyInterviewsNotice({
       <Button
         variant="link"
         size="sm"
-        onClick={() => goToLegacyInterviewer(legacyDataUrl(interviewer))}
+        onClick={onOpen}
         className="font-heading text-sea-green gap-1 font-extrabold tracking-wide uppercase"
         iconPosition="right"
         icon={<ExternalLink size={14} aria-hidden />}

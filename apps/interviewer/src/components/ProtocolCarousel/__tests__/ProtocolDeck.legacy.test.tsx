@@ -61,6 +61,7 @@ const makeLegacy = (
 ): LegacyCardActions => ({
   interviewer: { version: '8.5.0', path: '/v8/' },
   offline: 'ready',
+  sessionsHref: '/v8/data',
   onStart: vi.fn(),
   onOpenInInterviewer: vi.fn(),
   onUpgrade: vi.fn(),

@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   captureException: vi.fn(),
   addToast: vi.fn(),
   openDialog: vi.fn(),
+  lockSettled: true,
+  settleLock: vi.fn<() => Promise<boolean>>(),
 }));
 
 vi.mock('~/lib/legacyInterviewer', async (importOriginal) => ({
@@ -47,6 +49,12 @@ vi.mock('@codaco/fresco-ui/Toast', () => ({
 }));
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
   default: () => ({ openDialog: mocks.openDialog }),
+}));
+vi.mock('~/components/useSettleLockForInterviewer8', () => ({
+  useSettleLockForInterviewer8: () => ({
+    settled: mocks.lockSettled,
+    settleLock: mocks.settleLock,
+  }),
 }));
 vi.mock('~/lib/pwa/legacyInterviewerOffline', () => ({
   useLegacyInterviewerOffline: () => 'ready',
@@ -81,21 +89,66 @@ const setup = () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.bundled = INTERVIEWER_8;
+  mocks.lockSettled = true;
+  mocks.settleLock.mockResolvedValue(true);
 });
 
 describe('useLegacyProtocolActions: schema 8 cards', () => {
-  it('starts an interview in Interviewer 8 by full page load', () => {
+  it('starts an interview in Interviewer 8 by full page load', async () => {
     const { result } = setup();
     result.current.legacy.onStart(legacyProtocol);
-    expect(mocks.goToLegacyInterviewer).toHaveBeenCalledWith(
-      '/v8/?start=legacy-hash',
+    await waitFor(() =>
+      expect(mocks.goToLegacyInterviewer).toHaveBeenCalledWith(
+        '/v8/?start=legacy-hash',
+      ),
     );
+    expect(mocks.settleLock).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ['starting an interview', 'onStart'],
+    ['opening Interviewer 8', 'onOpenInInterviewer'],
+  ] as const)(
+    'stays here when %s while the researcher leaves lock set-up',
+    async (_, action) => {
+      // Interviewer 8 cannot set the shared lock up and sends an unconfigured
+      // device straight back, so nothing opens until it is settled here.
+      mocks.settleLock.mockResolvedValue(false);
+      const { result } = setup();
+      result.current.legacy[action](legacyProtocol);
+      await waitFor(() => expect(mocks.settleLock).toHaveBeenCalledOnce());
+      await act(async () => {});
+      expect(mocks.goToLegacyInterviewer).not.toHaveBeenCalled();
+    },
+  );
+
+  it('opens Interviewer 8’s data view once the lock is settled', async () => {
+    const { result } = setup();
+    result.current.onOpenLegacyData?.();
+    await waitFor(() =>
+      expect(mocks.goToLegacyInterviewer).toHaveBeenCalledWith('/v8/data'),
+    );
+
+    vi.clearAllMocks();
+    mocks.settleLock.mockResolvedValue(false);
+    result.current.onOpenLegacyData?.();
+    await waitFor(() => expect(mocks.settleLock).toHaveBeenCalledOnce());
+    await act(async () => {});
+    expect(mocks.goToLegacyInterviewer).not.toHaveBeenCalled();
+  });
+
+  it('links the interview count to Interviewer 8 only once a lock is in place', () => {
+    expect(setup().result.current.legacy.sessionsHref).toBe('/v8/data');
+    mocks.lockSettled = false;
+    expect(setup().result.current.legacy.sessionsHref).toBeNull();
   });
 
   it('goes nowhere without a bundled Interviewer 8', () => {
     mocks.bundled = null;
     const { result } = setup();
     expect(result.current.legacy.interviewer).toBeNull();
+    expect(result.current.onOpenLegacyData).toBeNull();
+    expect(result.current.legacy.sessionsHref).toBeNull();
     result.current.legacy.onStart(legacyProtocol);
     result.current.legacy.onOpenInInterviewer(legacyProtocol);
     expect(mocks.goToLegacyInterviewer).not.toHaveBeenCalled();
@@ -201,6 +254,20 @@ describe('useLegacyProtocolActions: an older file being imported', () => {
     );
     expect(startImport).not.toHaveBeenCalled();
     expect(mocks.showHandoffFailed).not.toHaveBeenCalled();
+  });
+
+  it('stages nothing until the lock is settled', async () => {
+    // A file staged for an Interviewer 8 that sends the researcher straight
+    // back would be lost.
+    mocks.chooseImportRoute.mockResolvedValue('keep');
+    mocks.settleLock.mockResolvedValue(false);
+    const { result } = setup();
+
+    result.current.onMigrationRequired(migrationRequest);
+
+    await waitFor(() => expect(mocks.settleLock).toHaveBeenCalledOnce());
+    await act(async () => {});
+    expect(mocks.keepOnInterviewer8).not.toHaveBeenCalled();
   });
 
   it('shows an error when the file cannot be handed over', async () => {

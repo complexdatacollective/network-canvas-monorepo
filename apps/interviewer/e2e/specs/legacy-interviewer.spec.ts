@@ -69,6 +69,27 @@ const rowCount = (dump: DatabaseDump | null): number =>
     0,
   );
 
+/**
+ * Interviewer 8 only unlocks the shared lock and sends a device that has none
+ * set up straight back, so in a browser tab with no lock (these tests' state)
+ * every way into it opens set-up here first. Choose to use no lock.
+ */
+const setUpWizard = (page: Page) =>
+  page.getByRole('dialog', { name: 'Setting up your device' });
+
+const chooseNoLock = async (page: Page) => {
+  await expect(setUpWizard(page)).toBeVisible();
+  await page.getByTestId('wizard-next').click(); // intro → securing data
+  await page.getByTestId('wizard-next').click(); // → method
+  await page.locator('[data-value="none"]').click();
+  await page
+    .getByRole('dialog', { name: 'Continue without security?' })
+    .getByRole('button', { name: 'Continue without security' })
+    .click();
+  await page.getByTestId('wizard-next').click(); // → analytics
+  await page.getByTestId('wizard-next').click(); // Finish
+};
+
 const expectOnStub = async (page: Page) => {
   await expect(
     page.getByRole('heading', { name: LEGACY_INTERVIEWER_STUB_HEADING }),
@@ -108,6 +129,7 @@ test('starting an interview with a schema 8 protocol opens /v8/?start=', async (
   await clickWhenDeckSettles(
     page.getByRole('button', { name: 'Start new interview' }),
   );
+  await chooseNoLock(page);
 
   await expect(page).toHaveURL(`/v8/?start=${LEGACY_PROTOCOL_HASH}`);
   await expectOnStub(page);
@@ -116,6 +138,30 @@ test('starting an interview with a schema 8 protocol opens /v8/?start=', async (
   expect((await dumpDatabase(page, DB_NAME))?.stores.sessions?.rows).toEqual(
     [],
   );
+});
+
+test('with no lock set up, leaving set-up keeps the researcher here', async ({
+  page,
+}) => {
+  await openBesideLegacyLibrary(page);
+
+  await page.getByRole('button', { name: 'Go to card 1' }).click();
+  await clickWhenDeckSettles(
+    page.getByRole('button', { name: 'Start new interview' }),
+  );
+  await expect(setUpWizard(page)).toBeVisible();
+  await setUpWizard(page).getByRole('button', { name: 'Exit setup' }).click();
+  await page
+    .getByRole('dialog', { name: 'Exit setup?' })
+    .getByRole('button', { name: 'Exit setup' })
+    .click();
+
+  await expect(setUpWizard(page)).toBeHidden();
+  await expect(page).toHaveURL('/');
+  await expect(legacyCard(page)).toBeVisible();
+  expect(
+    await page.evaluate(() => localStorage.getItem('interviewer:vault')),
+  ).toBeNull();
 });
 
 test('keeping a schema 8 file on schema 8 stages it and opens /v8/?import=', async ({
@@ -133,6 +179,7 @@ test('keeping a schema 8 file on schema 8 stages it and opens /v8/?import=', asy
     name: 'This protocol uses schema 8',
   });
   await dialog.getByRole('button', { name: 'Keep on schema 8' }).click();
+  await chooseNoLock(page);
 
   await expect(page).toHaveURL(new RegExp(`/v8/\\?import=(${UUID})$`));
   await expectOnStub(page);

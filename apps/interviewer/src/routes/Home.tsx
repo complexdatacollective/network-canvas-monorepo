@@ -370,7 +370,7 @@ export function HomeRoute() {
             key="data"
             protocols={protocols}
             legacyInterviewCount={legacySessions.length}
-            legacyInterviewer={legacyInterviewer}
+            onOpenLegacyData={legacyActions.onOpenLegacyData}
             onReload={reload}
             refreshKey={dataRefreshKey}
           />

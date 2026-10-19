@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,6 +9,13 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   goToLegacyInterviewer: vi.fn(),
   updateSettings: vi.fn(() => Promise.resolve()),
+  settleLock: vi.fn<() => Promise<boolean>>(() => Promise.resolve(true)),
+}));
+vi.mock('../useSettleLockForInterviewer8', () => ({
+  useSettleLockForInterviewer8: () => ({
+    settled: true,
+    settleLock: mocks.settleLock,
+  }),
 }));
 vi.mock('wouter', () => ({ useLocation: () => ['/', mocks.navigate] }));
 vi.mock('~/lib/db/api', () => ({ updateSettings: mocks.updateSettings }));
@@ -93,11 +100,28 @@ describe('ResumePill', () => {
     );
     expect(screen.getByText('Wave One – case-older-app')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button'));
-    expect(mocks.goToLegacyInterviewer).toHaveBeenCalledWith(
-      '/v8/interview/older-app',
+    await waitFor(() =>
+      expect(mocks.goToLegacyInterviewer).toHaveBeenCalledWith(
+        '/v8/interview/older-app',
+      ),
     );
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(mocks.updateSettings).not.toHaveBeenCalled();
+  });
+
+  it('stays here while the researcher leaves lock set-up', async () => {
+    // Interviewer 8 sends a device with no lock set up straight back here.
+    mocks.settleLock.mockResolvedValueOnce(false);
+    render(
+      <ResumePill
+        sessions={[]}
+        legacySessions={[legacy('older-app', '2026-10-02T00:00:00.000Z')]}
+        legacyInterviewer={INTERVIEWER_8}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button'));
+    await waitFor(() => expect(mocks.settleLock).toHaveBeenCalled());
+    expect(mocks.goToLegacyInterviewer).not.toHaveBeenCalled();
   });
 
   it("resumes this app's own interview through the router", async () => {

@@ -27,6 +27,7 @@ const makeActions = (
 ): LegacyCardActions => ({
   interviewer: { version: '8.5.0', path: '/v8/' },
   offline: 'ready',
+  sessionsHref: '/v8/data',
   onStart: vi.fn(),
   onOpenInInterviewer: vi.fn(),
   onUpgrade: vi.fn(),
@@ -104,13 +105,27 @@ describe('DeckSlotCard for a schema 8 protocol', () => {
     expect(screen.getByText('Has an upgraded copy')).toBeInTheDocument();
   });
 
+  it('shows the interview count as text while there is no link to follow', () => {
+    // No lock is set up yet: a plain link to Interviewer 8 could not settle
+    // it first, and Interviewer 8 would send the researcher straight back.
+    renderCard(makeActions({ sessionsHref: null }));
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByText('3 interviews')).toBeInTheDocument();
+  });
+
   it('says when Interviewer 8 is not ready offline yet', () => {
     renderCard(makeActions({ offline: 'not-ready' }));
     expect(screen.getByText('Not ready offline')).toBeInTheDocument();
   });
 
   it('is unavailable, with only Upgrade and Info, when Interviewer 8 is not bundled', async () => {
-    renderCard(makeActions({ interviewer: null, offline: 'not-bundled' }));
+    renderCard(
+      makeActions({
+        interviewer: null,
+        offline: 'not-bundled',
+        sessionsHref: null,
+      }),
+    );
 
     expect(screen.getByText('Not available')).toBeInTheDocument();
     expect(

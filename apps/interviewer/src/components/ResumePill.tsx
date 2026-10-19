@@ -14,6 +14,8 @@ import {
   legacyResumeUrl,
 } from '~/lib/legacyInterviewer';
 
+import { useSettleLockForInterviewer8 } from './useSettleLockForInterviewer8';
+
 const messages = defineMessages({
   identity: {
     id: 'interviewer.resumePill.identity',
@@ -177,6 +179,7 @@ export function ResumePill({
   legacyInterviewer = null,
 }: ResumePillProps) {
   const [, navigate] = useLocation();
+  const { settleLock } = useSettleLockForInterviewer8();
 
   const inProgress = useMemo(
     () => pickResumable(sessions, legacySessions, legacyInterviewer !== null),
@@ -188,8 +191,9 @@ export function ResumePill({
   const handleResume = async () => {
     if (inProgress.kind === 'legacy') {
       // Interviewer 8 runs its own interviews: a full page load to its
-      // interview route, where it asks to unlock as it always has.
-      if (legacyInterviewer) {
+      // interview route, where it asks to unlock as it always has. It cannot
+      // set the shared lock up, so that is settled here first.
+      if (legacyInterviewer && (await settleLock())) {
         goToLegacyInterviewer(
           legacyResumeUrl(legacyInterviewer, inProgress.session.id),
         );
