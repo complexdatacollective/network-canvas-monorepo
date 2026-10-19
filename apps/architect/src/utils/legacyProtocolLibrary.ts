@@ -185,12 +185,14 @@ export const createLegacyProtocolReader = (
     // Wrapped so the zone a Dexie `liveQuery` runs in survives the await on a
     // promise Dexie did not create.
     const exists = await Promise.resolve(databaseExists(dbName));
-    if (exists !== true) {
+    if (exists === false) {
       // Removed since it was opened (site data cleared): let the old
       // connection go rather than read from a database that is gone.
       close();
       return null;
     }
+    // When the browser cannot list its databases (`undefined`), the open
+    // below answers instead: it fails, creating nothing, if there is none.
     if (db?.isOpen()) return db;
     close();
 
@@ -239,7 +241,9 @@ export const createLegacyProtocolReader = (
     legacyLibraryExists: async () => {
       try {
         // Wrapped for the same reason as in `connect`.
-        return (await Promise.resolve(databaseExists(dbName))) === true;
+        const exists = await Promise.resolve(databaseExists(dbName));
+        if (exists !== undefined) return exists;
+        return (await getDb()) !== null;
       } catch {
         return false;
       }

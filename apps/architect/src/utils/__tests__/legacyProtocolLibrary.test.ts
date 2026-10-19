@@ -385,21 +385,47 @@ describe('legacy protocol reader', () => {
     expect(await fingerprint()).toEqual(before);
   });
 
-  it('treats a browser that cannot list its databases as having none', async () => {
-    await seedTypicalLibrary();
-    // Shadow the prototype's method on this instance, as an older browser
-    // that lacks it would look.
+  // Shadow the prototype's method on this instance, as an older browser that
+  // lacks it would look.
+  const withoutDatabaseListing = async (run: () => Promise<void>) => {
     Object.defineProperty(indexedDB, 'databases', {
       configurable: true,
       value: undefined,
     });
-
     try {
-      await expect(reader.listLegacyProtocols()).resolves.toEqual([]);
+      await run();
     } finally {
       Reflect.deleteProperty(indexedDB, 'databases');
     }
-    await expect(reader.listLegacyProtocols()).resolves.toHaveLength(3);
+  };
+
+  it('reads the library in a browser that cannot list its databases', async () => {
+    await seedTypicalLibrary();
+    const before = await fingerprint();
+
+    await withoutDatabaseListing(async () => {
+      await expect(reader.legacyLibraryExists()).resolves.toBe(true);
+      await expect(reader.listLegacyProtocols()).resolves.toHaveLength(3);
+      await expect(reader.getLegacyProtocol('older')).resolves.toMatchObject({
+        id: 'older',
+      });
+    });
+
+    reader.close();
+    expect(await fingerprint()).toEqual(before);
+  });
+
+  it('creates nothing in a browser that cannot list its databases when there is no library', async () => {
+    const missing = createLegacyProtocolReader('NoArchitect8Library');
+
+    await withoutDatabaseListing(async () => {
+      await expect(missing.legacyLibraryExists()).resolves.toBe(false);
+      await expect(missing.listLegacyProtocols()).resolves.toEqual([]);
+      await expect(missing.getLegacyProtocol('older')).resolves.toBeUndefined();
+    });
+
+    missing.close();
+    expect(await databaseNames()).not.toContain('NoArchitect8Library');
   });
 });
 
