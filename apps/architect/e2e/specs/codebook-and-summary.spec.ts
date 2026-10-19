@@ -358,7 +358,12 @@ test('names each stage once in the printable summary Used In column', async ({
   const { protocol, assets } = loadAllInterfacesFixture();
   await seed(protocol, { name: 'All Interfaces', assets });
   await architectPage.goto('/protocol/summary');
-  await expect(architectPage.getByText('Loading protocol...')).toHaveCount(0);
+  // Wait for the codebook table itself: the page renders after start-up has
+  // loaded the editor, which can finish after the navigation does, and the
+  // evaluate below reads the DOM once, without retrying.
+  await expect(
+    architectPage.locator('tbody tr[id^="variable-"]').first(),
+  ).toBeAttached();
 
   const usage = await architectPage.evaluate(() =>
     [...document.querySelectorAll('tbody tr[id^="variable-"]')].map((row) => {
