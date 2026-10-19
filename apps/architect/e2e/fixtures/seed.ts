@@ -5,6 +5,11 @@ import {
   type CurrentProtocol,
 } from '@codaco/protocol-validation';
 
+import {
+  PROTOCOL_DB_NAME,
+  SESSION_PREFIX,
+} from '../../src/utils/storageNames.js';
+
 export type SeedAsset = {
   assetId: string;
   name: string;
@@ -19,7 +24,7 @@ export type SeedAsset = {
   data: string;
 };
 
-const DB_NAME = 'ArchitectProtocolDB';
+const DB_NAME = PROTOCOL_DB_NAME;
 
 // Deterministic id so create-from-scratch snapshots are stable across runs.
 const FIXED_ID = 'e2e-protocol';
@@ -47,7 +52,7 @@ export async function seedProtocol(
   const seededProtocol: CurrentProtocol =
     opts.name === undefined ? protocol : { ...protocol, name };
 
-  // 1. Navigate once so Dexie creates ArchitectProtocolDB, then write the
+  // 1. Navigate once so Dexie creates the app's library, then write the
   //    durable protocol row + asset rows via raw IndexedDB (Dexie isn't on
   //    `window`, so this talks to the native API directly).
   await page.goto('/');
@@ -131,13 +136,17 @@ export async function seedProtocol(
   //    same canonical IndexedDB restore path as a real tab refresh. Delete the
   //    legacy body key explicitly so a stale test context cannot mask a
   //    regression by rehydrating protocol content from sessionStorage.
-  await page.evaluate((storageId) => {
-    sessionStorage.setItem(
-      '@@remember-app',
-      JSON.stringify({ activeProtocolId: storageId }),
-    );
-    sessionStorage.removeItem('@@remember-activeProtocol');
-  }, id);
+  await page.evaluate(
+    ({ storageId, sessionPrefix }) => {
+      sessionStorage.setItem(
+        `${sessionPrefix}app`,
+        JSON.stringify({ activeProtocolId: storageId }),
+      );
+      sessionStorage.removeItem(`${sessionPrefix}activeProtocol`);
+      sessionStorage.removeItem('@@remember-activeProtocol');
+    },
+    { storageId: id, sessionPrefix: SESSION_PREFIX },
+  );
   await page.reload();
 
   return id;

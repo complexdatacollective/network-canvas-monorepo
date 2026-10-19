@@ -4,6 +4,11 @@ import { expect, type Page } from '@playwright/test';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
+import {
+  PROTOCOL_DB_NAME,
+  SESSION_PREFIX,
+} from '../../src/utils/storageNames.js';
+
 // The Dexie DB the app opens in `apps/architect/src/utils/assetDB.ts`, whose
 // `protocols` store (keyPath `id`) holds `StoredProtocolRow { id, protocol:
 // CurrentProtocol, ... }`. `StoredProtocolRow` itself isn't imported here: it
@@ -11,7 +16,8 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 // typechecks under the app's Vite tsconfig, not this Node-typed e2e project.
 type Row = { protocol: CurrentProtocol };
 
-const DB_NAME = 'ArchitectProtocolDB';
+const DB_NAME = PROTOCOL_DB_NAME;
+const APP_SESSION_KEY = `${SESSION_PREFIX}app`;
 
 // The IDB read is `unknown`; narrow it with a real runtime guard (mirroring
 // Narrow the IndexedDB value at runtime rather than asserting, so a
@@ -22,61 +28,65 @@ const isRow = (value: unknown): value is Row =>
 
 // Read the `protocols` library row for the tab's active protocol. The id is
 // read from the `activeProtocolId` field the app stamps into its
-// `@@remember-app` sessionStorage slice (redux-remember's default
-// `@@remember-<key>` prefix over the `app` duck — see `ducks/store.ts` and
-// `getActiveProtocolId`/`setActiveProtocolId` in `ducks/modules/app.ts`).
+// `@@remember-v9-app` sessionStorage slice (redux-remember's
+// `<prefix><key>` over the `app` duck, with the per-major `SESSION_PREFIX` —
+// see `ducks/store.ts` and `getActiveProtocolId`/`setActiveProtocolId` in
+// `ducks/modules/app.ts`).
 // Falls back to the most-recently-updated row so a read before that key
 // exists still resolves to something.
 async function readActiveRow(page: Page): Promise<Row | null> {
-  const row: unknown = await page.evaluate(async (dbName) => {
-    const activeId = (() => {
-      try {
-        const app = JSON.parse(
-          sessionStorage.getItem('@@remember-app') ?? '{}',
-        ) as Record<string, unknown>;
-        return typeof app.activeProtocolId === 'string'
-          ? app.activeProtocolId
-          : undefined;
-      } catch {
-        return undefined;
-      }
-    })();
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const req = indexedDB.open(dbName);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-    const result = await new Promise<unknown>((resolve, reject) => {
-      const store = db
-        .transaction('protocols', 'readonly')
-        .objectStore('protocols');
-      // Prefer the active id; fall back to the most-recently-updated row.
-      const req = activeId ? store.get(activeId) : store.getAll();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-    db.close();
-    // getAll() returns rows ordered by primary key (id), not recency, so sort
-    // by the stored `updatedAt` (written on every accepted commit) and take the
-    // newest — the genuinely most-recently-updated row. Narrow each element at
-    // runtime (Array.isArray gives `any[]`) instead of trusting `any` access.
-    if (Array.isArray(result)) {
-      const rows: unknown[] = result;
-      const updatedAtOf = (candidate: unknown): number => {
-        if (
-          typeof candidate !== 'object' ||
-          candidate === null ||
-          !('updatedAt' in candidate)
-        ) {
-          return 0;
+  const row: unknown = await page.evaluate(
+    async ({ dbName, sessionKey }) => {
+      const activeId = (() => {
+        try {
+          const app = JSON.parse(
+            sessionStorage.getItem(sessionKey) ?? '{}',
+          ) as Record<string, unknown>;
+          return typeof app.activeProtocolId === 'string'
+            ? app.activeProtocolId
+            : undefined;
+        } catch {
+          return undefined;
         }
-        const { updatedAt } = candidate;
-        return typeof updatedAt === 'number' ? updatedAt : 0;
-      };
-      return rows.toSorted((a, b) => updatedAtOf(b) - updatedAtOf(a))[0];
-    }
-    return result;
-  }, DB_NAME);
+      })();
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open(dbName);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      const result = await new Promise<unknown>((resolve, reject) => {
+        const store = db
+          .transaction('protocols', 'readonly')
+          .objectStore('protocols');
+        // Prefer the active id; fall back to the most-recently-updated row.
+        const req = activeId ? store.get(activeId) : store.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      db.close();
+      // getAll() returns rows ordered by primary key (id), not recency, so sort
+      // by the stored `updatedAt` (written on every accepted commit) and take the
+      // newest — the genuinely most-recently-updated row. Narrow each element at
+      // runtime (Array.isArray gives `any[]`) instead of trusting `any` access.
+      if (Array.isArray(result)) {
+        const rows: unknown[] = result;
+        const updatedAtOf = (candidate: unknown): number => {
+          if (
+            typeof candidate !== 'object' ||
+            candidate === null ||
+            !('updatedAt' in candidate)
+          ) {
+            return 0;
+          }
+          const { updatedAt } = candidate;
+          return typeof updatedAt === 'number' ? updatedAt : 0;
+        };
+        return rows.toSorted((a, b) => updatedAtOf(b) - updatedAtOf(a))[0];
+      }
+      return result;
+    },
+    { dbName: DB_NAME, sessionKey: APP_SESSION_KEY },
+  );
   return isRow(row) ? row : null;
 }
 
@@ -99,7 +109,7 @@ export async function readProtocolJson(
     )
     .toBe('ready');
   if (!protocol) {
-    throw new Error('no canonical protocol row in ArchitectProtocolDB');
+    throw new Error(`no canonical protocol row in ${DB_NAME}`);
   }
   return protocol;
 }

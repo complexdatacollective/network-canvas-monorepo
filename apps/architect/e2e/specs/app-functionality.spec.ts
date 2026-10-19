@@ -1,5 +1,6 @@
 import { validateProtocol } from '@codaco/protocol-validation';
 
+import { SESSION_PREFIX } from '../../src/utils/storageNames.js';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
@@ -288,20 +289,21 @@ test('reload restores the canonical protocol instead of a legacy session body', 
   await seed(protocol, { name: 'Canonical Reload' });
   await gotoProtocol(architectPage);
 
-  await architectPage.evaluate(() => {
-    sessionStorage.setItem(
-      '@@remember-activeProtocol',
-      JSON.stringify({
-        activeProtocolId: 'e2e-protocol',
-        present: {
-          name: 'Invalid Session Copy',
-          schemaVersion: 9,
-          codebook: null,
-          stages: null,
-        },
-      }),
-    );
-  });
+  await architectPage.evaluate((sessionPrefix) => {
+    const legacyBody = JSON.stringify({
+      activeProtocolId: 'e2e-protocol',
+      present: {
+        name: 'Invalid Session Copy',
+        schemaVersion: 9,
+        codebook: null,
+        stages: null,
+      },
+    });
+    // Under this app's own prefix, and under the one Architect 8 uses at
+    // `/v8/` in the same tab: neither may seed the editor.
+    sessionStorage.setItem(`${sessionPrefix}activeProtocol`, legacyBody);
+    sessionStorage.setItem('@@remember-activeProtocol', legacyBody);
+  }, SESSION_PREFIX);
   await architectPage.reload();
 
   await expect(
