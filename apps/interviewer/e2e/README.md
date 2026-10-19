@@ -40,6 +40,25 @@ e2e/
 └── tsconfig.json
 ```
 
+## The /v8/ sub-path suite
+
+Interviewer 9 ships this app inside its own deploy at `/v8/` (see "Sub-path
+dist tarball" in `../RELEASING.md`). `subpath-specs/` covers that build:
+`playwright.subpath.config.ts` serves a dist built with
+`INTERVIEWER_BASE_PATH=/v8/` at `http://localhost:4182/v8/`, and the spec
+checks the hand-off contract with Interviewer 9 — its shared lock, `?start=`,
+resuming at `/v8/interview/<id>`, `?import=` from `InterviewerHandoffDB`, a
+newer-schema file sent on to `/?import=`, and the "Interviewer 8" banner.
+Interviewer 9's root URL is answered by a stub page.
+
+```sh
+# Build under /v8/ and run the suite (functional only, no baselines)
+pnpm --filter @codaco/interviewer test:e2e:subpath
+```
+
+`dist/` holds one base at a time: rebuild without the variable before running
+the root suite again. The suite's global setup refuses a root build.
+
 ## Why the built app, not the dev server
 
 `playwright.config.ts`'s `webServer` runs `vite preview` on port **4180**
