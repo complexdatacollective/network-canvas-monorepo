@@ -17,9 +17,17 @@ import ProtocolValidationDialogReporter from '~/components/ProtocolValidationDia
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openLocalNetcanvas } from '~/ducks/modules/userActions/userActions';
+import {
+  openLibraryProtocol,
+  openLocalNetcanvas,
+} from '~/ducks/modules/userActions/userActions';
+import { useNavigateToArchitect9 } from '~/hooks/useNavigateToArchitect9';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
 import { resetRunOnce } from '~/hooks/useRunOnce';
+import {
+  subscribeArchitect9Navigation,
+  takeArchitect9Navigation,
+} from '~/utils/architect9Handoff';
 import {
   subscribeAutosaveFailures,
   takeAutosaveFailures,
@@ -34,10 +42,12 @@ import {
   subscribeProtocolUpgrades,
   takeProtocolUpgrades,
 } from '~/utils/protocolUpgradeQueue';
+import { reportError } from '~/utils/reportError';
 import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
+import { takeUrlOpenRequest } from '~/utils/urlLaunchRequest';
 const messages = defineMessages({
   couldNotOpenFile: {
     id: 'architect.viewManager.views.app.couldNotOpenFile',
@@ -229,6 +239,52 @@ const LaunchedProtocolOpener = () => {
   return null;
 };
 
+/**
+ * Opens the library protocol named by `?open=` (Architect 9 sending a schema 8
+ * protocol back here), exactly as the library's Open does — including its
+ * dialog when the row is missing or cannot be opened.
+ */
+const UrlProtocolOpener = () => {
+  const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
+
+  useEffect(() => {
+    const protocolId = takeUrlOpenRequest();
+    if (!protocolId) return;
+    void (async () => {
+      const result = await dispatch(
+        openLibraryProtocol({ id: protocolId }),
+      ).unwrap();
+      await showProtocolOpenResultDialog({ result, openDialog });
+    })().catch((error: unknown) => {
+      reportError(error, { operation: 'urlProtocolOpen' });
+    });
+  }, [dispatch, openDialog]);
+
+  return null;
+};
+
+/**
+ * Carries out a navigation to Architect 9 that was requested outside React —
+ * an OS file launch forwarded from an Architect 8 window — once the
+ * leave-editor rule can be applied to it.
+ */
+const Architect9NavigationRunner = () => {
+  const navigateToArchitect9 = useNavigateToArchitect9();
+
+  useEffect(() => {
+    const run = () => {
+      const url = takeArchitect9Navigation();
+      if (url) void navigateToArchitect9(url);
+    };
+
+    run();
+    return subscribeArchitect9Navigation(run);
+  }, [navigateToArchitect9]);
+
+  return null;
+};
+
 const AppContents = () => {
   const [location] = useLocation();
 
@@ -257,6 +313,8 @@ const AppContents = () => {
       <StartupProtocolFailureReporter />
       <ProtocolUpgradeToaster />
       <LaunchedProtocolOpener />
+      <UrlProtocolOpener />
+      <Architect9NavigationRunner />
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be
           open over the Codebook or Resources just as easily, and that is

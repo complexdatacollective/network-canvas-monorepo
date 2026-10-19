@@ -2,6 +2,9 @@ import { Toast } from '@base-ui/react/toast';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+// Before ./analytics, whose first page view would otherwise record the
+// protocol id or hand-off key in the URL: this strips them on evaluation.
+import './utils/urlLaunchRequest';
 import './analytics';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
@@ -23,11 +26,17 @@ import { initializeArchitectDocument } from './i18n/documentMetadata';
 import { loadStartupLocale } from './i18n/imperative';
 import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
+import { IS_SUBPATH_BUILD } from './utils/appBase';
+import {
+  forwardLaunchFilesToArchitect9,
+  stageHandoffImport,
+} from './utils/architect9Handoff';
 import { isCriticalOperationInProgress } from './utils/criticalOperation';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
 } from './utils/fileLaunchQueue';
+import { pruneStaleHandoffs } from './utils/handoffStore';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import {
   getAppServiceWorkerContainer,
@@ -36,6 +45,7 @@ import {
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
 import { reportError } from './utils/reportError';
+import { takeUrlImportRequest } from './utils/urlLaunchRequest';
 
 // The researcher's language is its own chunk. Fetch it now, alongside the
 // service-worker and storage awaits in startApp, rather than after them; the
@@ -59,7 +69,25 @@ initInstallPromptCapture();
 // OS-launched .netcanvas files (installed-PWA file handler, Chromium desktop):
 // capture before React mounts so early launches are queued until App consumes
 // them inside the fresco dialog provider.
-initFileLaunchCapture();
+//
+// Architect 8 served inside Architect 9 declares no file handler, but a launch
+// can still reach one of its windows; Architect 9 owns .netcanvas launches, so
+// the file is handed on to it.
+initFileLaunchCapture(
+  IS_SUBPATH_BUILD ? { routeFiles: forwardLaunchFilesToArchitect9 } : {},
+);
+
+// A file Architect 9 staged for this app (`?import=`) opens through the same
+// queue, so it gets Open file's flow and holds the startup update check while
+// it is read.
+const handoffImportKey = takeUrlImportRequest();
+if (handoffImportKey) stageHandoffImport(handoffImportKey);
+
+// Hand-off records are consumed at once; anything older than an hour was
+// abandoned (a closed tab, a failed navigation) and only takes up space.
+void pruneStaleHandoffs().catch((error: unknown) => {
+  reportError(error, { operation: 'handoffPrune' });
+});
 
 // During idle time, fetch stage thumbnails so they are already cached when the
 // timeline or stage editor first renders. When running as an installed PWA, also
