@@ -1533,6 +1533,13 @@ test('the sub-path dist lane builds a released tag without a write token', () =>
   // An existing tarball is left alone unless replace is asked for.
   assert.match(resolveRun, /if \[\[ "\$REPLACE" == 'true' \]\]; then/);
   assert.match(resolveRun, /echo "skip=true"/);
+  // Skipped only when both assets are there: a run that stopped between the
+  // uploads fails loudly instead of skipping without a checksum or a pin.
+  assert.match(
+    resolveRun,
+    /"\$has_tarball" == 'true' && "\$has_checksum" == 'true'/,
+  );
+  assert.match(resolveRun, /has only part of its sub-path dist/);
 
   // The build runs the tag's code: read-only token, no secret, not turbo
   // (a cached root-mode dist must never be labelled as the sub-path one).

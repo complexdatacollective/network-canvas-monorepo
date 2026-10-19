@@ -58,6 +58,16 @@ export const takeArchitect9Navigation = (): string | null => {
   return url;
 };
 
+/**
+ * Hold a navigation the researcher cancelled at the leave-editor prompt. The
+ * staged file stays in the hand-off store, and the navigation runs again once
+ * the editor is closed rather than dropping the launch. A later launch
+ * replaces it.
+ */
+export const deferArchitect9Navigation = (url: string): void => {
+  pendingNavigation = url;
+};
+
 const requestArchitect9Navigation = (url: string): void => {
   pendingNavigation = url;
   for (const listener of Array.from(navigationListeners)) listener();

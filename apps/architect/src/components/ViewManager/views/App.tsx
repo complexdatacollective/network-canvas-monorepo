@@ -27,6 +27,7 @@ import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
 import { resetRunOnce } from '~/hooks/useRunOnce';
 import {
   subscribeArchitect9Navigation,
+  deferArchitect9Navigation,
   takeArchitect9Navigation,
 } from '~/utils/architect9Handoff';
 import {
@@ -272,16 +273,25 @@ const UrlProtocolOpener = () => {
  */
 const Architect9NavigationRunner = () => {
   const navigateToArchitect9 = useNavigateToArchitect9();
+  const [location] = useLocation();
+  const onStartScreen = location === '/';
 
   useEffect(() => {
     const run = () => {
       const url = takeArchitect9Navigation();
-      if (url) void navigateToArchitect9(url);
+      if (!url) return;
+      void navigateToArchitect9(url).then((navigated) => {
+        // Cancelled at the leave-editor prompt: keep the launch for when the
+        // editor closes.
+        if (!navigated) deferArchitect9Navigation(url);
+      });
     };
 
-    run();
+    // A deferred navigation waits for the start screen, so it never pulls the
+    // researcher out of an editor they have just opened.
+    if (onStartScreen) run();
     return subscribeArchitect9Navigation(run);
-  }, [navigateToArchitect9]);
+  }, [navigateToArchitect9, onStartScreen]);
 
   return null;
 };
