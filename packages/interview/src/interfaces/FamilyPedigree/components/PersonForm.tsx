@@ -1132,15 +1132,28 @@ function TwinZygosityField({
   const blocks = identicalTwinBlocks(family, person.id, twinId, (id) =>
     id === person.id ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth,
   );
-  // Answering this twin identical too would make them identical to those
-  // twins, so a twin recorded with a different sex at birth from one of them
-  // cannot be, whatever the person's own sex at birth.
-  const sexOf = (id: string) => family.byId.get(id)?.sexAssignedAtBirth;
+  // Answering this twin identical makes everyone identical to them identical
+  // to the person and to the twins answered identical, and to everyone
+  // identical to those: so no two of them may be recorded with different
+  // sexes at birth.
+  const sexOf = (id: string) =>
+    id === person.id ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth;
+  const joining = identicalSetOf(family, twinId).filter(
+    (id) => id !== person.id,
+  );
   const clash =
     blocks.length === 0
-      ? identicalWith.find((id) =>
-          differentSexesAtBirth(sexOf(id), sexOf(twinId)),
-        )
+      ? [
+          person.id,
+          ...identicalWith.flatMap((id) => identicalSetOf(family, id)),
+        ]
+          .flatMap((first) => joining.map((second) => ({ first, second })))
+          .find(
+            ({ first, second }) =>
+              first !== second &&
+              !(first === person.id && second === twinId) &&
+              differentSexesAtBirth(sexOf(first), sexOf(second)),
+          )
       : undefined;
   const identicalUnavailable = blocks.length > 0 || clash !== undefined;
   const recordedZygosity =
@@ -1162,13 +1175,13 @@ function TwinZygosityField({
   const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
   const identicalHint = clash
     ? text(wording.unavailableIdenticalTwinSex, {
-        who: isYou(clash)
+        who: isYou(clash.first)
           ? 'personIsYou'
-          : isYou(twinId)
+          : isYou(clash.second)
             ? 'twinIsYou'
             : 'other',
-        name: displayName(clash),
-        twin: displayName(twinId),
+        name: displayName(clash.first),
+        twin: displayName(clash.second),
         answer,
       })
     : identicalUnavailable

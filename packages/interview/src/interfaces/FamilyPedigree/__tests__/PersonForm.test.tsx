@@ -1802,6 +1802,42 @@ describe('twins', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('shows identical twins unavailable for a twin who would bring an identical twin of another sex at birth, naming them', async () => {
+    // Sam's sex at birth is not recorded, but Tom, his identical twin, is
+    // male: answering Sam identical makes the participant, who is female,
+    // identical to Tom too.
+    const { user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('sam', { name: 'Sam' }),
+        person('tom', { name: 'Tom', sex: ['male'] }),
+        ...parents,
+      ],
+      edges: [
+        ...parentLinks('ego'),
+        ...parentLinks('sam'),
+        ...parentLinks('tom'),
+        link('sam', 'tom', 'identicalTwin'),
+      ],
+    });
+    await user.click(
+      within(
+        screen.getByRole('group', {
+          name: /^Which of your siblings, if any, are your twins\?/,
+        }),
+      ).getByRole('checkbox', { name: 'sam' }),
+    );
+    const zygosity = await screen.findByRole('radiogroup', {
+      name: /^Are you and “sam” identical twins\?/,
+    });
+    expect(
+      within(zygosity).getByRole('radio', { name: 'Yes, identical' }),
+    ).toBeDisabled();
+    expect(zygosity).toHaveAccessibleDescription(
+      /identical twins have the same sex at birth, and you and “tom” are recorded with different ones/,
+    );
+  });
+
   it('shows identical twins unavailable for a half sibling, saying why', async () => {
     const { user } = renderPersonForm('ego', {
       nodes: [
