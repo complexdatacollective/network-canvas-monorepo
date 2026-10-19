@@ -499,14 +499,9 @@ function coParentsOf(family: Family, personId: string): string[] {
 /**
  * Who could be the other parent of a child the person has: their current
  * partners, then their former partners, then anyone else they already have
- * a child with (`coParentsOf`). `preferred` is the one to assume until the
- * participant answers: their only current partner, and nobody while the
- * child could as well be another's.
+ * a child with (`coParentsOf`).
  */
-export function otherParentChoices(
-  family: Family,
-  personId: string,
-): { choices: string[]; preferred: string | undefined } {
+export function otherParentChoices(family: Family, personId: string): string[] {
   const partnerships = family.links.filter(
     (link) =>
       link.kind === 'partner' &&
@@ -520,10 +515,7 @@ export function otherParentChoices(
   const former = partnerships
     .filter((link) => !link.isCurrentPartner)
     .map(partnerOf);
-  return {
-    choices: [...current, ...former, ...coParentsOf(family, personId)],
-    preferred: current.length === 1 ? current[0] : undefined,
-  };
+  return [...current, ...former, ...coParentsOf(family, personId)];
 }
 
 /** Everyone who shares at least one primary or genetic parent with the

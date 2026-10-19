@@ -880,9 +880,6 @@
         "generatedLabelOf": {
           "en-US": "{relation, select, partner {{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}} formerPartner {{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}} parent {{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}} sibling {{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}} owner {{owner}’s {term}} other {{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}}}"
         },
-        "missingDetailsList": {
-          "en-US": "Some details are missing: {details}."
-        },
         "otherParentLabel": {
           "en-US": "Who is the child’s other parent?"
         },

@@ -152,3 +152,40 @@ describe('QuestionFlow moving on after a choice', () => {
     );
   });
 });
+
+function TwoChoiceFlow() {
+  const [navigation, setNavigation] = useState<HTMLElement | null>(null);
+  return (
+    <TestProtocolLocalization>
+      <QuestionFlow stepped navigation={navigation} finish={<span />}>
+        <section data-question-step data-testid="first">
+          <Choice />
+          <Choice />
+        </section>
+        <section data-question-step data-testid="second">
+          <label>
+            Second
+            <input data-field-name="second" />
+          </label>
+        </section>
+      </QuestionFlow>
+      <footer ref={setNavigation} />
+    </TestProtocolLocalization>
+  );
+}
+
+describe('QuestionFlow step button', () => {
+  it('reads "Skip" while nothing in the step is answered, and "Continue" once anything is', async () => {
+    const user = userEvent.setup();
+    render(<TwoChoiceFlow />);
+    await screen.findByRole('button', { name: 'Skip' });
+
+    const [firstRed] = screen.getAllByRole('radio', { name: 'Red' });
+    await user.click(firstRed!);
+
+    expect(
+      await screen.findByRole('button', { name: 'Continue' }),
+    ).toBeVisible();
+    expect(screen.getByTestId('first')).toBeVisible();
+  });
+});

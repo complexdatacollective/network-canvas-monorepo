@@ -148,7 +148,7 @@ const STEP_SLIDE = 40;
 
 const slid = (by: number) => `translateX(${by}px)`;
 
-type StepState = 'answered' | 'optional' | 'required';
+type StepState = 'answered' | 'unanswered' | 'required';
 
 /** The first question in `step` whose answer the form refuses. */
 const firstInvalid = (step: Element) =>
@@ -156,17 +156,21 @@ const firstInvalid = (step: Element) =>
   undefined;
 
 /**
- * Whether every question in a step is answered, or what still waits. An
- * answer the form refuses holds the step like a required question left
- * unanswered.
+ * Whether a step can be continued from, or what holds it. A step with no
+ * answer at all is skipped; one holding any answer is continued from, though
+ * optional questions in it are left unanswered. An answer the form refuses
+ * holds the step like a required question left unanswered.
  */
 const stateOf = (step: Element, read?: ReadValue): StepState => {
   if (firstInvalid(step)) return 'required';
-  const waiting = [...step.querySelectorAll(FIELD_SELECTOR)].filter(
-    (field) => !isClosed(field) && isUnanswered(field, read),
+  const open = [...step.querySelectorAll(FIELD_SELECTOR)].filter(
+    (field) => !isClosed(field),
   );
+  const waiting = open.filter((field) => isUnanswered(field, read));
   if (waiting.some(isRequired)) return 'required';
-  return waiting.length > 0 ? 'optional' : 'answered';
+  return waiting.length > 0 && waiting.length === open.length
+    ? 'unanswered'
+    : 'answered';
 };
 
 const firstWaiting = (step: Element, read?: ReadValue) =>
@@ -218,8 +222,8 @@ type QuestionFlowProps = {
  * Stepped, the form shows one group of questions at a time. Answering the
  * last question still waiting in a step with a single choice moves on to the
  * next step by itself, once nothing required is left in it. The step's own
- * button continues, reading "Skip" while optional questions are left
- * unanswered; a required question left unanswered keeps the step open and
+ * button continues, reading "Skip" while nothing in the step is answered;
+ * a required question left unanswered keeps the step open and
  * takes the focus instead. Back returns to the step before. An answer the
  * form refuses on saving opens the step holding it.
  */
@@ -505,7 +509,7 @@ export default function QuestionFlow({
             {showsSteps && !isLast ? (
               <Button type="button" color="primary" onClick={proceed}>
                 {intl.formatMessage(
-                  state === 'optional'
+                  state === 'unanswered'
                     ? messages.skipStep
                     : commonMessages.continue,
                 )}

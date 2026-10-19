@@ -400,7 +400,6 @@ const OWN_WORDS = {
   generatedLabelOf: message(
     '{relation, select, partner {{isYou, select, true {{term} partnered with you - matrix check} other {{term} partnered with {name} - matrix check}}} formerPartner {{isYou, select, true {{term} ex of you - matrix check} other {{term} ex of {name} - matrix check}}} parent {{isYou, select, true {{term} parenting you - matrix check} other {{term} parenting {name} - matrix check}}} sibling {{isYou, select, true {{term} sibling to you - matrix check} other {{term} sibling to {name} - matrix check}}} owner {{owner} owns {term} - matrix check} other {{isYou, select, true {{term} child of you - matrix check} other {{term} child of {name} - matrix check}}}}',
   ),
-  missingDetailsList: message('Details to add ({details}) - matrix check'),
   otherParentBiologicalLabel: message(
     '{otherIsYou, select, true {Are you a genetic parent of the child - matrix check} other {Is {other} a genetic parent of the child - matrix check}}',
   ),
@@ -1199,11 +1198,6 @@ function completenessParentsRequired(): ScenarioDefinition {
       await trackerList(page)
         .getByRole('button', { name: 'Some details are missing about you' })
         .click();
-      await expect(
-        panel(page).getByText(
-          'Some details are missing: Sex assigned at birth.',
-        ),
-      ).toBeVisible();
       await describe(page, { gender: 'Non-binary', sex: 'Intersex' });
       await submitPanel(page, 'Save');
 
@@ -1569,9 +1563,6 @@ function formFieldsMissingDetails(): ScenarioDefinition {
       }
 
       await member(page, 'Julie').click();
-      await expect(
-        panel(page).getByText('Some details are missing: How old are they?'),
-      ).toBeVisible();
       await expect(panel(page).getByText('In whole years.')).toBeVisible();
       await panel(page)
         .getByRole('spinbutton', { name: /^How old are they\?/ })
@@ -2439,7 +2430,7 @@ async function expectAbsent(page: Page, ...supplied: readonly string[]) {
  * leaving), the participant is called by the stage's word for them, each
  * kind of panel is headed by the title written for it, and the panel asks its
  * own questions in the stage's words: gender identity, sex assigned at
- * birth, what is still missing, and a don't know answer about relatives.
+ * birth, and a don't know answer about relatives.
  */
 function wordingPeopleAndPanel(): ScenarioDefinition {
   const words = [
@@ -2449,7 +2440,6 @@ function wordingPeopleAndPanel(): ScenarioDefinition {
     'save',
     'genderIdentityLabel',
     'sexAssignedAtBirthLabel',
-    'missingDetailsList',
     'dontKnow',
   ] as const;
   const { synth, fp, person, relate, parents } = scaffold({
@@ -2564,14 +2554,6 @@ function wordingPeopleAndPanel(): ScenarioDefinition {
       await expect(
         title('Edit Mother term - matrix check - matrix check'),
       ).toBeVisible();
-      await cancel();
-
-      // What is still missing is listed with the stage's own names for the
-      // questions.
-      await member(page, 'Relative term - matrix check').click();
-      await expect(panel(page).getByRole('status')).toContainText(
-        'Details to add (Sex at birth wording - matrix check) - matrix check',
-      );
       await cancel();
 
       // Leaving saves the stage's own kinship words for the unnamed.

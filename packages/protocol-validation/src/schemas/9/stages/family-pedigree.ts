@@ -466,7 +466,6 @@ const WORDING_ARGUMENTS = {
     name: TEXT,
     owner: TEXT,
   },
-  missingDetailsList: { details: TEXT },
   otherParentBiologicalLabel: { otherIsYou: SELECT_TRUE, other: TEXT },
   panelTitle: {
     relation: {
@@ -655,7 +654,6 @@ export const FamilyPedigreeWordingSchema = z.strictObject({
   framingChoiceTitle: plainWording().optional(),
   genderIdentityLabel: plainWording().optional(),
   generatedLabelOf: argumentWording('generatedLabelOf'),
-  missingDetailsList: argumentWording('missingDetailsList'),
   otherParentBiologicalLabel: argumentWording('otherParentBiologicalLabel'),
   otherParentLabel: plainWording(),
   otherParentNone: plainWording(),

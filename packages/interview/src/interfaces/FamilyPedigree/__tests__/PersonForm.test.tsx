@@ -38,7 +38,6 @@ import PersonForm, {
 } from '../components/PersonForm';
 import {
   familyWithPlan,
-  type MissingDetail,
   planAddRelative,
   type Relation,
   readFamily,
@@ -94,8 +93,6 @@ type Setup = {
   edges?: NcEdge[];
   /** Adds a relative of the person, rather than editing them. */
   adding?: Relation;
-  /** The details the panel opened saying are missing (edit only). */
-  missing?: MissingDetail[];
   nameValidation?: Record<string, unknown>;
   /** Overrides the codebook's definition of the nickname variable. */
   nicknameVariable?: Record<string, unknown>;
@@ -122,7 +119,6 @@ function renderPersonForm(
     nodes,
     edges = [],
     adding,
-    missing = [],
     nameValidation,
     nicknameVariable = {},
     formFields = [],
@@ -229,7 +225,7 @@ function renderPersonForm(
                 anchor: edited,
                 ids: ['added', 'new-1', 'new-2'],
               }
-            : { kind: 'edit', person: edited, missing, unavailable: [] }
+            : { kind: 'edit', person: edited, unavailable: [] }
         }
         family={family}
         config={
@@ -816,65 +812,6 @@ describe('an answer that cannot be chosen', () => {
     });
     expect(within(sex).getByRole('radio', { name: 'Male' })).toBeDisabled();
     expect(sex).toHaveAccessibleDescription(/“donor”.*“Male” at birth/);
-  });
-});
-
-describe('the missing details notice', () => {
-  it('drops a detail once it is answered, and lists it again once cleared', async () => {
-    const { user } = renderPersonForm('bea', {
-      nodes: [person('bea'), person('ego', { isEgo: true })],
-      missing: ['sexAssignedAtBirth', { variable: NICKNAME }],
-      formFields: [nicknameField],
-    });
-    const notice = () => screen.queryByText(/^Some details are missing/);
-    expect(notice()).toHaveTextContent(
-      'Some details are missing: Sex assigned at birth and Nickname.',
-    );
-    await user.click(screen.getByRole('radio', { name: 'Female' }));
-    await waitFor(() =>
-      expect(notice()).toHaveTextContent('Some details are missing: Nickname.'),
-    );
-    await user.type(screen.getByRole('textbox', { name: /Nickname/ }), 'Bee');
-    await waitFor(() => expect(notice()).toBeNull());
-    await user.clear(screen.getByRole('textbox', { name: /Nickname/ }));
-    await waitFor(() =>
-      expect(notice()).toHaveTextContent('Some details are missing: Nickname.'),
-    );
-  });
-  it('does not follow a question’s own question mark with a full stop', () => {
-    renderPersonForm('bea', {
-      nodes: [person('bea'), person('ego', { isEgo: true })],
-      missing: [{ variable: NICKNAME }],
-      formFields: [{ ...nicknameField, prompt: { en: 'What do they go by?' } }],
-    });
-    expect(screen.getByText(/^Some details are missing/)).toHaveTextContent(
-      /Some details are missing: What do they go by\?$/,
-    );
-  });
-
-  it('does not add a full stop after a question closing its emphasis', () => {
-    renderPersonForm('bea', {
-      nodes: [person('bea'), person('ego', { isEgo: true })],
-      missing: [{ variable: NICKNAME }],
-      formFields: [
-        { ...nicknameField, prompt: { en: '**What do they go by?**' } },
-      ],
-    });
-    expect(screen.getByText(/^Some details are missing/)).toHaveTextContent(
-      /What do they go by\?\**$/,
-    );
-  });
-  // The notice is the protocol's wording, so the details it lists are joined
-  // as that wording's language joins a list, whatever the browser's is.
-  it('joins the details as the protocol’s language does', () => {
-    renderPersonForm('bea', {
-      nodes: [person('bea'), person('ego', { isEgo: true })],
-      missing: ['sexAssignedAtBirth', { variable: NICKNAME }],
-      formFields: [nicknameField],
-      protocolLocale: 'de',
-    });
-    expect(screen.getByText(/ und Nickname\.$/)).toBeInTheDocument();
-    expect(screen.queryByText(/ and Nickname/)).toBeNull();
   });
 });
 

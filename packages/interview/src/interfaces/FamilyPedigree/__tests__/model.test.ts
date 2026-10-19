@@ -1617,7 +1617,7 @@ describe('fullSiblingsOf', () => {
 });
 
 describe('otherParentChoices', () => {
-  test('offers current partners first and assumes the only one', () => {
+  test('offers current partners first', () => {
     const family = readFamily(
       [
         person('kayla'),
@@ -1634,10 +1634,11 @@ describe('otherParentChoices', () => {
       ],
       config,
     );
-    expect(otherParentChoices(family, 'kayla')).toEqual({
-      choices: ['tyler', 'father', 'theoDad'],
-      preferred: 'tyler',
-    });
+    expect(otherParentChoices(family, 'kayla')).toEqual([
+      'tyler',
+      'father',
+      'theoDad',
+    ]);
   });
 
   // Every parent link but a partnership is evidence of a child, so the
@@ -1650,29 +1651,17 @@ describe('otherParentChoices', () => {
         [link('kayla', 'theo', kind), link('theoMum', 'theo', 'biological')],
         config,
       );
-      expect(otherParentChoices(family, 'kayla').choices).toEqual(['theoMum']);
+      expect(otherParentChoices(family, 'kayla')).toEqual(['theoMum']);
     },
   );
 
-  test('assumes nobody while two current partners could be the parent', () => {
-    const family = readFamily(
-      [person('kayla'), person('ana'), person('tyler')],
-      [link('kayla', 'ana', 'partner'), link('kayla', 'tyler', 'partner')],
-      config,
-    );
-    expect(otherParentChoices(family, 'kayla').preferred).toBeUndefined();
-  });
-
-  test('assumes nobody when the only partner is a former one', () => {
+  test('offers a former partner', () => {
     const family = readFamily(
       [person('kayla'), person('father')],
       [link('kayla', 'father', 'partner', { current: false })],
       config,
     );
-    expect(otherParentChoices(family, 'kayla')).toEqual({
-      choices: ['father'],
-      preferred: undefined,
-    });
+    expect(otherParentChoices(family, 'kayla')).toEqual(['father']);
   });
 });
 
@@ -1727,7 +1716,7 @@ describe('who could be the other parent of a new child', () => {
     );
 
   test('never a step-child’s other parents for their step-parent', () => {
-    expect(otherParentChoices(stepFamily(), 'gary').choices).toEqual(['lorna']);
+    expect(otherParentChoices(stepFamily(), 'gary')).toEqual(['lorna']);
   });
 
   test('never the birth parents of a child the person adopted', () => {
@@ -1745,11 +1734,11 @@ describe('who could be the other parent of a new child', () => {
       ],
       config,
     );
-    expect(otherParentChoices(family, 'ann').choices).toEqual(['bea']);
+    expect(otherParentChoices(family, 'ann')).toEqual(['bea']);
   });
 
   test('the other biological parent of a child they had, a stand-in included', () => {
-    expect(otherParentChoices(stepFamily(), 'lorna').choices).toEqual([
+    expect(otherParentChoices(stepFamily(), 'lorna')).toEqual([
       'gary',
       'standIn',
     ]);
