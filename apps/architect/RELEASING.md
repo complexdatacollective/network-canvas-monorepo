@@ -244,8 +244,9 @@ nothing.
    release, claims the tag atomically, and creates the release. If the release
    is not created after the claim, the job deletes the tag again so the run
    can be repeated. A run that died before that cleanup (a lost runner or a
-   timeout) leaves the tag with no release; re-running it first deletes a tag
-   that sits on the verified commit and has no release, then claims it again.
+   timeout) leaves the tag with no release. Re-running it, or dispatching it
+   again, deletes a tag that sits on the verified commit and has no release,
+   then claims it again.
    This job holds the write token and runs nothing from the branch.
    `resolve-hotfix-release.mjs` in its line scope (`SCOPE=line`) requires:
    - a version newer than every release on its own major line;

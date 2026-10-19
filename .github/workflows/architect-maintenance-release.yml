@@ -154,6 +154,33 @@ jobs:
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
+      # A claim an earlier attempt left without a release (see the release
+      # job's first step) would make the resolver refuse this version as
+      # already released, and the release job that gives the claim up would
+      # never run. Only this checkout's copy of the tag is set aside: the
+      # release job deletes the real one, behind the environment's approval.
+      - name: Set aside a claim an earlier attempt left without a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          set -euo pipefail
+          version="$(jq -r .version apps/architect/package.json)"
+          tag="@codaco/architect@$version"
+          if ! git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+            exit 0
+          fi
+          if [[ "$(git cat-file -t "refs/tags/$tag")" != 'commit' || "$(git rev-parse "refs/tags/$tag")" != "$SHA" ]]; then
+            exit 0
+          fi
+          encoded="$(jq -rn --arg t "$tag" '$t|@uri')"
+          status="$(gh api -i "repos/$GITHUB_REPOSITORY/releases/tags/${encoded}" 2>/dev/null | head -1 || true)"
+          if [[ "$status" != HTTP/*' 404'* ]]; then
+            exit 0
+          fi
+          git tag -d "$tag"
+          echo "::notice::$tag is a claim an earlier attempt left at $SHA without a release. The release job gives it up before claiming the tag again."
+
       - name: Resolve and validate the version
         id: version
         run: node .maintenance-lane/.github/scripts/resolve-hotfix-release.mjs
@@ -256,6 +283,8 @@ jobs:
             exit 0
           fi
           gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG"
+          # The checkout fetched the tag, and a later fetch never prunes it.
+          git tag -d "$TAG" > /dev/null 2>&1 || true
           echo "::notice::Deleted $TAG, which an earlier attempt claimed at $SHA without creating its release, so this attempt can claim it again."
 
       # The verdict in `verify` predates its build and the approval wait; a

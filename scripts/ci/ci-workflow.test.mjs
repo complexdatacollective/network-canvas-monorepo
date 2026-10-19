@@ -1788,6 +1788,33 @@ test('the Architect maintenance lane releases an older line without deploying it
     reclaim.run,
     /gh api -X DELETE "repos\/\$GITHUB_REPOSITORY\/git\/refs\/tags\/\$TAG"/,
   );
+  // The checkout already fetched the tag, and the re-check's fetch would not
+  // prune it.
+  assert.match(reclaim.run, /git tag -d "\$TAG"/);
+
+  // A fresh dispatch meets the same claim in verify, whose resolver would
+  // refuse the version before the release job could give the claim up. It
+  // sets aside only its own checkout's copy, under the same conditions.
+  const verifyStepIndex = (name) =>
+    verify.steps.findIndex((step) => step.name === name);
+  const setAside = verify.steps.find(
+    ({ name }) =>
+      name === 'Set aside a claim an earlier attempt left without a release',
+  );
+  assert.ok(
+    verifyStepIndex(
+      'Set aside a claim an earlier attempt left without a release',
+    ) < verifyStepIndex('Resolve and validate the version'),
+  );
+  assert.equal(setAside.env.SHA, '${{ steps.commit.outputs.sha }}');
+  assert.match(
+    setAside.run,
+    /git cat-file -t "refs\/tags\/\$tag"\)" != 'commit'/,
+  );
+  assert.match(setAside.run, /git rev-parse "refs\/tags\/\$tag"\)" != "\$SHA"/);
+  assert.match(setAside.run, /"\$status" != HTTP\/\*' 404'\*/);
+  assert.match(setAside.run, /git tag -d "\$tag"/);
+  assert.doesNotMatch(setAside.run, /-X DELETE/);
 
   const dist = maintenance.jobs['subpath-dist'];
   assert.deepEqual(dist.needs, ['verify', 'release']);
