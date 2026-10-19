@@ -64,7 +64,9 @@ export const test = base.extend<ArchitectFixtures>({
 export { expect };
 
 export async function gotoProtocol(page: Page): Promise<void> {
-  await page.goto('/protocol');
+  // Relative, so it resolves under the config's baseURL: /protocol at the
+  // root, /v8/protocol in the sub-path suite.
+  await page.goto('protocol');
   // Wait out the inline #boot-loader fade (main.tsx adds boot-loader--hidden
   // ~400ms after React mounts) before the spec starts interacting.
   await page

@@ -46,8 +46,10 @@ export async function seedProtocol(
 
   // 1. Navigate once so Dexie creates ArchitectProtocolDB, then write the
   //    durable protocol row + asset rows via raw IndexedDB (Dexie isn't on
-  //    `window`, so this talks to the native API directly).
-  await page.goto('/');
+  //    `window`, so this talks to the native API directly). `./` is the
+  //    config's baseURL itself: the origin root for the root suite, /v8/ for
+  //    the sub-path suite (playwright.subpath.config.ts).
+  await page.goto('./');
   await page.evaluate(
     async ({ dbName, storageId, protocolName, proto, assets }) => {
       const open = () =>
