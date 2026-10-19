@@ -10,6 +10,15 @@ type PwaCacheReclamationPluginOptions = {
   appCachePrefix: string;
   buildId: string;
   responseTimeoutMs?: number;
+  // Cache prefixes owned by another app's worker whose names still start with
+  // appCachePrefix (Architect 8 at /v8/ uses 'architect-v8-' beside the root
+  // app's 'architect-'). Their precaches are never reclaimed by this worker,
+  // and a build ID carrying one is never accepted as this app's lease.
+  foreignCachePrefixes?: string[];
+  // Path prefixes (starting and ending with '/') served by another app's
+  // nested worker. Windows under them are never asked for leases, so an open
+  // tab of the other app can neither keep nor stall this app's cleanup.
+  foreignScopePaths?: string[];
 };
 
 type CacheStorageMatcher = {
@@ -51,6 +60,8 @@ export function createPwaCacheReclamationWorkerSource({
   appCachePrefix,
   buildId,
   responseTimeoutMs = 750,
+  foreignCachePrefixes = [],
+  foreignScopePaths = [],
 }: PwaCacheReclamationPluginOptions): string {
   if (!appCachePrefix || !buildId.startsWith(appCachePrefix)) {
     throw new Error(
@@ -59,6 +70,27 @@ export function createPwaCacheReclamationWorkerSource({
   }
   if (!Number.isSafeInteger(responseTimeoutMs) || responseTimeoutMs <= 0) {
     throw new Error('PWA lease response timeout must be a positive integer');
+  }
+  for (const prefix of foreignCachePrefixes) {
+    if (!prefix) {
+      throw new Error('Foreign PWA cache prefixes must be non-empty');
+    }
+    if (buildId.startsWith(prefix)) {
+      throw new Error(
+        `PWA build ID ${buildId} must not start with the foreign cache prefix ${prefix}`,
+      );
+    }
+  }
+  for (const scopePath of foreignScopePaths) {
+    if (
+      scopePath === '/' ||
+      !scopePath.startsWith('/') ||
+      !scopePath.endsWith('/')
+    ) {
+      throw new Error(
+        `Foreign PWA scope path ${scopePath} must be a nested path that starts and ends with /`,
+      );
+    }
   }
 
   return `(() => {
@@ -72,7 +104,22 @@ export function createPwaCacheReclamationWorkerSource({
   const leaseResponseType = ${JSON.stringify(PWA_BUILD_LEASE_RESPONSE)};
   const leaseReadyType = ${JSON.stringify(PWA_BUILD_LEASE_READY)};
   const responseTimeoutMs = ${responseTimeoutMs};
+  const foreignCachePrefixes = ${JSON.stringify(foreignCachePrefixes)};
+  const foreignScopePaths = ${JSON.stringify(foreignScopePaths)};
   let reclamationPromise;
+
+  const isForeignCacheName = (name) =>
+    foreignCachePrefixes.some((prefix) => name.startsWith(prefix));
+
+  const isOwnBuildId = (candidateBuildId) =>
+    candidateBuildId.startsWith(appCachePrefix) &&
+    !isForeignCacheName(candidateBuildId);
+
+  const isForeignScopePath = (pathname) =>
+    foreignScopePaths.some(
+      (scopePath) =>
+        pathname === scopePath.slice(0, -1) || pathname.startsWith(scopePath),
+    );
 
   const isBuildPrecache = (cacheName, candidateBuildId) =>
     cacheName === candidateBuildId + '-precache' ||
@@ -95,7 +142,8 @@ export function createPwaCacheReclamationWorkerSource({
       const clientUrl = new URL(client.url);
       return (
         clientUrl.origin === scope.origin &&
-        clientUrl.pathname.startsWith(scope.pathname)
+        clientUrl.pathname.startsWith(scope.pathname) &&
+        !isForeignScopePath(clientUrl.pathname)
       );
     } catch {
       return false;
@@ -130,7 +178,7 @@ export function createPwaCacheReclamationWorkerSource({
           data.type !== leaseResponseType ||
           data.requestId !== requestId ||
           typeof data.buildId !== 'string' ||
-          !data.buildId.startsWith(appCachePrefix) ||
+          !isOwnBuildId(data.buildId) ||
           !sourceId ||
           !clientIds.has(sourceId)
         ) {
@@ -182,6 +230,7 @@ export function createPwaCacheReclamationWorkerSource({
     const stalePrecaches = cacheNames.filter(
       (cacheName) =>
         cacheName.startsWith(appCachePrefix) &&
+        !isForeignCacheName(cacheName) &&
         cacheName.includes('-precache') &&
         ![...retainedBuildIds].some((leasedBuildId) =>
           isBuildPrecache(cacheName, leasedBuildId),
@@ -220,7 +269,7 @@ export function createPwaCacheReclamationWorkerSource({
       data &&
       data.type === leaseReadyType &&
       typeof data.buildId === 'string' &&
-      data.buildId.startsWith(appCachePrefix)
+      isOwnBuildId(data.buildId)
     ) {
       event.waitUntil(scheduleReclamationSafely());
     }

@@ -111,9 +111,13 @@ export default defineConfig(({ mode }) => {
       }),
       react(),
       tailwindcss(),
+      // Architect 8 is served at /v8/ beside the root app with its own worker
+      // and 'architect-v8-' caches, which 'architect-' would otherwise match.
       createPwaCacheReclamationPlugin({
         appCachePrefix: 'architect-',
         buildId: pwaCacheId,
+        foreignCachePrefixes: ['architect-v8-'],
+        foreignScopePaths: ['/v8/'],
       }),
       VitePWA({
         registerType: 'prompt',

@@ -100,6 +100,26 @@ if (
 ) {
   fail('cache reclaimer does not recheck worker ownership and pending updates');
 }
+// The root build shares its origin with Architect 8 at /v8/, whose
+// 'architect-v8-' caches also start with 'architect-'. Its reclaimer must leave
+// those caches and /v8/ windows alone; the /v8/ build itself hosts no nested app.
+const hostsArchitect8 = !precachePrefix.startsWith('architect-v8-');
+const expectedForeignCachePrefixes = hostsArchitect8 ? ['architect-v8-'] : [];
+const expectedForeignScopePaths = hostsArchitect8 ? ['/v8/'] : [];
+if (
+  !reclamationWorker.includes(
+    `const foreignCachePrefixes = ${JSON.stringify(expectedForeignCachePrefixes)};`,
+  ) ||
+  !reclamationWorker.includes(
+    `const foreignScopePaths = ${JSON.stringify(expectedForeignScopePaths)};`,
+  ) ||
+  !reclamationWorker.includes('!isForeignCacheName(cacheName)') ||
+  !reclamationWorker.includes('!isForeignScopePath(clientUrl.pathname)')
+) {
+  fail(
+    'cache reclaimer does not leave the nested Architect 8 caches and windows alone',
+  );
+}
 for (const f of [
   'manifest.webmanifest',
   'pwa-192x192.png',
