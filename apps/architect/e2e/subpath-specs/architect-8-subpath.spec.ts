@@ -422,11 +422,13 @@ test('the banner goes through the leave-editor prompt when a stage has unsaved c
     architectPage.getByRole('textbox', { name: 'Page heading' }),
   ).toHaveValue('Unsaved heading');
 
-  // Confirming the discard is what lets the navigation happen.
+  // Confirming the discard is what lets the navigation happen. The prompt
+  // names where it goes: Architect 9, not this app's start screen.
   await upgrade.click();
   await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('If you open Architect 9 now');
   await dialog
-    .getByRole('button', { name: 'Discard Changes and Return' })
+    .getByRole('button', { name: 'Discard Changes and Open Architect 9' })
     .click();
   await expect(architectPage).toHaveURL(
     new URL(`/?upgrade=${id}`, architect9).href,

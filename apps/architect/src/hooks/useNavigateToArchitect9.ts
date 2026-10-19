@@ -11,6 +11,7 @@ import {
 } from '~/hooks/useProtocolNavGuard';
 import { navigateApp, toBrowserPath } from '~/utils/appBase';
 import { leaveForArchitect9 } from '~/utils/architect9Handoff';
+import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { whenCriticalOperationsSettle } from '~/utils/criticalOperation';
 
 const hasUnsavedEditorWork = (): boolean =>
@@ -41,8 +42,9 @@ type NavigateOptions = {
  * Leave for Architect 9 (a full-page navigation to another app), without
  * losing work:
  *
- * 1. unsaved work in an open editor goes through the leave-editor prompt, and
- *    a cancel stays here;
+ * 1. unsaved work in an open editor, or a protocol that exists only in this
+ *    tab because nothing could be saved, goes through the leave-editor
+ *    prompt, and a cancel stays here;
  * 2. in-flight commits, imports and exports finish first;
  * 3. only then does the page navigate.
  *
@@ -77,30 +79,39 @@ export const useNavigateToArchitect9 = () => {
       try {
         await whenCriticalOperationsSettle();
 
-        if (hasUnsavedEditorWork()) {
-          const persistence = getLeavePersistence(store.getState());
-          if (persistence !== 'no-protocol') {
-            let confirmed = false;
-            // The same discard confirmation as leaving the editor any other
-            // way. A confirmed leave clears the protocol and returns to the
-            // start screen, so Back from Architect 9 lands there rather than
-            // in an editor whose draft was just discarded.
-            await promptLeaveEditor(
-              dispatch,
-              openDialog,
-              () => {
-                confirmed = true;
-                return collapseProtocolHistory(toBrowserPath('/'), () =>
-                  navigateApp('/', { replace: true }),
-                );
-              },
-              true,
-              persistence,
-            );
-            if (!confirmed) return false;
-            await whenCriticalOperationsSettle();
-            await whenEditorsClosed();
-          }
+        const draftDirty = hasUnsavedEditorWork();
+        const persistence = getLeavePersistence(store.getState());
+        // Unsaved editor work is lost by leaving, and so is the whole protocol
+        // when nothing could be saved on this device: it exists only in this
+        // tab. Anything else is safe in the library or in the tab that owns it.
+        if (
+          persistence !== 'no-protocol' &&
+          (draftDirty || persistence === 'storage-unavailable')
+        ) {
+          let confirmed = false;
+          // The same confirmation as leaving the editor any other way, worded
+          // for Architect 9. A confirmed leave clears the protocol and returns
+          // to the start screen, so Back from Architect 9 lands there rather
+          // than in an editor whose work was just discarded.
+          await promptLeaveEditor(
+            dispatch,
+            openDialog,
+            () => {
+              confirmed = true;
+              return collapseProtocolHistory(toBrowserPath('/'), () =>
+                navigateApp('/', { replace: true }),
+              );
+            },
+            draftDirty,
+            persistence,
+            'architect-9',
+          );
+          if (!confirmed) return false;
+          // Answered here already: the browser's own "leave site?" prompt for
+          // an in-memory protocol would only ask a second time.
+          disarmInMemoryUnloadGuard();
+          await whenCriticalOperationsSettle();
+          await whenEditorsClosed();
         }
       } finally {
         unsubscribe();

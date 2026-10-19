@@ -254,6 +254,133 @@ describe('promptLeaveEditor', () => {
     });
   });
 
+  // Leaving for Architect 9 is a full-page navigation to another app, not a
+  // return to the start screen, and the copy must say where it goes.
+  describe('when leaving for Architect 9', () => {
+    it('names Architect 9 in the discard dialog', async () => {
+      const { dispatch, dispatched, openDialog, getCaptured } =
+        setup('discard-and-leave');
+      const performLeave = vi.fn();
+
+      await promptLeaveEditor(
+        dispatch,
+        openDialog,
+        performLeave,
+        true,
+        'saved',
+        'architect-9',
+      );
+
+      const captured = getCaptured();
+      if (captured?.type !== 'choice') {
+        throw new Error('Expected choice dialog');
+      }
+      const description = renderQueuedMessage(captured.description);
+      expect(description).toMatch(/If you open Architect 9 now/);
+      expect(description).toMatch(/last saved version/i);
+      expect(description).not.toMatch(/start screen/i);
+      expect({
+        ...captured.actions.primary,
+        label: renderQueuedMessage(captured.actions.primary.label),
+      }).toEqual({
+        label: 'Discard Changes and Open Architect 9',
+        value: 'discard-and-leave',
+      });
+      expect(dispatched).toContainEqual(clearActiveProtocol());
+      expect(performLeave).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      'open-elsewhere',
+      'reclaim-blocked',
+      'storage-unavailable',
+    ] as const)(
+      'describes a %s tab without mentioning the start screen',
+      async (persistence) => {
+        const { dispatch, openDialog, getCaptured } =
+          setup('discard-and-leave');
+
+        await promptLeaveEditor(
+          dispatch,
+          openDialog,
+          vi.fn(),
+          true,
+          persistence,
+          'architect-9',
+        );
+
+        const captured = getCaptured();
+        if (captured?.type !== 'choice') {
+          throw new Error('Expected choice dialog');
+        }
+        const description = renderQueuedMessage(captured.description);
+        expect(description).toMatch(/Architect 9/);
+        expect(description).not.toMatch(/start screen/i);
+      },
+    );
+
+    it('offers a download first when the protocol exists only in this tab', async () => {
+      const { dispatch, dispatched, openDialog, getCaptured } =
+        setup('download-and-leave');
+      const performLeave = vi.fn();
+
+      await promptLeaveEditor(
+        dispatch,
+        openDialog,
+        performLeave,
+        false,
+        'storage-unavailable',
+        'architect-9',
+      );
+
+      const captured = getCaptured();
+      if (captured?.type !== 'choice') {
+        throw new Error('Expected choice dialog');
+      }
+      expect(captured.intent).toBe('warning');
+      expect(renderQueuedMessage(captured.title)).toBe('Open Architect 9?');
+      expect(renderQueuedMessage(captured.description)).toMatch(
+        /could not be saved on this device.*Architect 9 opens/,
+      );
+      expect({
+        ...captured.actions.primary,
+        label: renderQueuedMessage(captured.actions.primary.label),
+      }).toEqual({
+        label: 'Download now and open Architect 9',
+        value: 'download-and-leave',
+      });
+      expect({
+        ...captured.actions.secondary,
+        label: renderQueuedMessage(captured.actions.secondary?.label),
+      }).toEqual({
+        label: 'Open Architect 9 without downloading',
+        value: 'leave',
+      });
+      expect(
+        dispatched.filter((action) => typeof action === 'function'),
+      ).toHaveLength(1);
+      expect(performLeave).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves a saved pristine editor without asking', async () => {
+      const { dispatch, dispatched, openDialog, getCapturedDialogs } = setup();
+      const performLeave = vi.fn();
+
+      await promptLeaveEditor(
+        dispatch,
+        openDialog,
+        performLeave,
+        false,
+        'saved',
+        'architect-9',
+      );
+
+      expect(getCapturedDialogs()).toHaveLength(0);
+      expect(dispatched).toContainEqual(clearActiveProtocol());
+      expect(performLeave).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('never puts a stack trace in a leave-editor dialog', async () => {
     const { dispatch, openDialog, getCapturedDialogs } = setup(
       'download-and-leave',

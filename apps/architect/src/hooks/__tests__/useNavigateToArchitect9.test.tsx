@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   promptLeaveEditor: vi.fn(),
   navigateApp: vi.fn(),
   dispatch: vi.fn(),
+  disarmUnloadGuard: vi.fn(),
   storeListeners: new Set<() => void>(),
 }));
 
@@ -29,6 +30,10 @@ const notifyStore = () => {
 
 vi.mock('~/utils/architect9Handoff', () => ({
   leaveForArchitect9: mocks.leave,
+}));
+
+vi.mock('~/utils/beforeUnloadGuard', () => ({
+  disarmInMemoryUnloadGuard: mocks.disarmUnloadGuard,
 }));
 
 vi.mock('~/components/StageEditor/stageDraftBeacon', () => ({
@@ -72,6 +77,7 @@ const navigate = () => renderHook(() => useNavigateToArchitect9()).result;
 beforeEach(() => {
   mocks.leave.mockReset();
   mocks.navigateApp.mockReset();
+  mocks.disarmUnloadGuard.mockReset();
   mocks.stageDirty = false;
   mocks.nestedDirty = false;
   mocks.persistence = 'saved';
@@ -154,10 +160,12 @@ describe('useNavigateToArchitect9', () => {
       await expect(result.current(URL)).resolves.toBe(false);
 
       expect(mocks.promptLeaveEditor).toHaveBeenCalledTimes(1);
-      // The discard variant of the prompt, with this tab's persistence copy.
+      // The discard variant of the prompt, with this tab's persistence copy,
+      // worded for Architect 9.
       expect(mocks.promptLeaveEditor.mock.calls[0]?.slice(3)).toEqual([
         true,
         'saved',
+        'architect-9',
       ]);
       expect(mocks.leave).not.toHaveBeenCalled();
     },
@@ -175,6 +183,52 @@ describe('useNavigateToArchitect9', () => {
       mocks.leave.mock.invocationCallOrder[0] ?? 0,
     );
   });
+
+  // A forwarded file launch leaves without requiring a saved protocol. A
+  // protocol that could not be saved exists only in this tab, so it meets the
+  // prompt (which offers a download) even with no editor open.
+  it('asks before leaving a protocol that exists only in this tab, and stays on cancel', async () => {
+    mocks.persistence = 'storage-unavailable';
+    mocks.confirmLeave = false;
+    const result = navigate();
+
+    await expect(result.current(URL)).resolves.toBe(false);
+
+    expect(mocks.promptLeaveEditor).toHaveBeenCalledTimes(1);
+    expect(mocks.promptLeaveEditor.mock.calls[0]?.slice(3)).toEqual([
+      false,
+      'storage-unavailable',
+      'architect-9',
+    ]);
+    expect(mocks.leave).not.toHaveBeenCalled();
+    expect(mocks.disarmUnloadGuard).not.toHaveBeenCalled();
+  });
+
+  it('on a confirmed leave, stops the browser asking again, then navigates', async () => {
+    mocks.persistence = 'storage-unavailable';
+    const result = navigate();
+
+    await expect(result.current(URL)).resolves.toBe(true);
+
+    expect(mocks.disarmUnloadGuard).toHaveBeenCalledTimes(1);
+    expect(mocks.disarmUnloadGuard.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.leave.mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(mocks.leave).toHaveBeenCalledWith(URL);
+  });
+
+  it.each(['open-elsewhere', 'reclaim-blocked'] as const)(
+    'leaves a pristine %s tab without asking: the other tab holds its work',
+    async (persistence) => {
+      mocks.persistence = persistence;
+      const result = navigate();
+
+      await expect(result.current(URL)).resolves.toBe(true);
+
+      expect(mocks.promptLeaveEditor).not.toHaveBeenCalled();
+      expect(mocks.leave).toHaveBeenCalledWith(URL);
+    },
+  );
 
   it.each([
     'open-elsewhere',
