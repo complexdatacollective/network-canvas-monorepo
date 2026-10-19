@@ -2185,8 +2185,9 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }
 
       // The person's links and their twins' carriers are saved together or
-      // not at all: a refusal puts back the links already rewritten, so no
-      // twin is left carried by someone else.
+      // not at all: a refusal, of them or of the twin changes after them,
+      // puts back the links already rewritten, so no twin is left carried by
+      // someone else.
       const relinkedIds: string[] = [];
       for (const update of result.linkUpdates ?? []) {
         const relinked = await writeLinkUpdate(update);
@@ -2206,6 +2207,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             addEdge({ ...twinEdge(twin), currentStep }),
           );
           if (writeFailureMessage(twinned)) {
+            await restoreLinks(relinkedIds);
             return writeSubmissionResult(twinned);
           }
         }
@@ -2222,6 +2224,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
             }),
           );
           if (writeFailureMessage(redescribed)) {
+            await restoreLinks(relinkedIds);
             return writeSubmissionResult(redescribed);
           }
         }

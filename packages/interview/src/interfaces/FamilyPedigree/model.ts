@@ -1796,7 +1796,8 @@ export function planStandIns(
   // carried the pregnancy.
   const links = settleCarriers(family, people, unsettled, sexAttribute);
 
-  // Identical twins whose genetic parents, as the rule leaves them, differ.
+  // Identical twins whose genetic parents, as the rule leaves them, or
+  // whose sexes at birth differ (`identicalTwinBlocks`).
   const geneticParentsAfter = (personId: string) =>
     new Set([
       ...geneticLinksOf(personId)
@@ -1810,10 +1811,14 @@ export function planStandIns(
     .filter(
       (twin) =>
         twin.zygosity === 'identical' &&
-        !sameSet(
+        (!sameSet(
           geneticParentsAfter(twin.source),
           geneticParentsAfter(twin.target),
-        ),
+        ) ||
+          differentSexesAtBirth(
+            family.byId.get(twin.source)?.sexAssignedAtBirth,
+            family.byId.get(twin.target)?.sexAssignedAtBirth,
+          )),
     )
     .map((twin) => ({ linkId: twin.id, zygosity: 'unknown' as const }));
 

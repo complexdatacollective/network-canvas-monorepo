@@ -942,11 +942,15 @@ function twinCarrierSync(
       ? link.isGestationalCarrier === true
       : update.isGestationalCarrier === true;
   })?.source;
+  // The twins as the answers leave them: another set chosen joins whole,
+  // and someone unticked from the person's own set leaves it
+  // (`planTwinChanges`).
+  const current = twinSetOf(family, personId);
   const twinIds = (
     twinChanges === undefined
-      ? twinSetOf(family, personId)
+      ? current
       : asStringArray(values[ROLE.twins]).flatMap((twinId) =>
-          twinSetOf(family, twinId),
+          current.includes(twinId) ? [twinId] : twinSetOf(family, twinId),
         )
   ).filter((id, at, all) => id !== personId && all.indexOf(id) === at);
   const changed = carrier !== carrierOf(family, personId);

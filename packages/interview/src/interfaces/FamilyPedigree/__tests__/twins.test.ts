@@ -232,6 +232,28 @@ describe('identical twins after a change to their parents', () => {
     ]);
   });
 
+  test('identical twins recorded with different sexes at birth are recorded as not known to be identical', () => {
+    // A sex at birth changed elsewhere, after they were recorded identical.
+    const f = family(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('sam', { name: 'Sam', sex: ['male'] }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('dad', { name: 'Rob', sex: ['male'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('dad', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+        link('dad', 'sam', 'biological'),
+        link('ego', 'sam', 'identicalTwin'),
+      ],
+    );
+    expect(standInRule(f).changedTwins).toEqual([
+      { linkId: 'ego-sam-identicalTwin', zygosity: 'unknown' },
+    ]);
+  });
+
   test('identical twins who share their genetic parents are left as they are', () => {
     expect(
       standInRule(siblings([link('ego', 'sam', 'identicalTwin')])).changedTwins,
