@@ -145,6 +145,11 @@ export async function getLegacyUpgrade(
   return db.legacyUpgrades.get(legacyHash);
 }
 
+/** Every schema 8 protocol upgraded into this database. */
+export async function listLegacyUpgrades(): Promise<LegacyUpgradeRecord[]> {
+  return db.legacyUpgrades.toArray();
+}
+
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {
   const rows = await db.assets.where('protocolHash').equals(hash).toArray();
   return Promise.all(rows.map((row) => decryptAsset(row)));

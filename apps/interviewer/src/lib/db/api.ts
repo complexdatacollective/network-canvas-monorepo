@@ -3,6 +3,7 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork } from '@codaco/shared-consts';
 
 import * as dexieSettings from './db';
+import type { LegacyUpgradeRecord } from './db';
 import * as dexieProtocols from './protocols';
 import { reencryptAllRecords as dexieReencryptAllRecords } from './reencrypt';
 import type { ReencryptProgress, ReencryptResult } from './reencrypt';
@@ -45,6 +46,11 @@ export async function saveProtocol(
 
 export async function deleteProtocol(hash: string): Promise<void> {
   return dexieProtocols.deleteProtocol(hash);
+}
+
+/** Which schema 8 protocols have an upgraded copy here, and which copy. */
+export async function listLegacyUpgrades(): Promise<LegacyUpgradeRecord[]> {
+  return dexieProtocols.listLegacyUpgrades();
 }
 
 export async function getProtocolAssets(hash: string): Promise<StoredAsset[]> {

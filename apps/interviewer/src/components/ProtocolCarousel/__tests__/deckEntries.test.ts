@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import type { LegacyProtocolSummary } from '~/lib/db/legacyLibrary';
 import type { ProtocolWithCounts } from '~/lib/db/types';
 import type { PendingImport } from '~/lib/protocol/useProtocolImport';
 
@@ -190,5 +191,105 @@ describe('buildDeck', () => {
     });
     expect(deck).toHaveLength(2);
     expect(deck[0]?.kind).toBe('pending');
+  });
+});
+
+function makeLegacy(
+  name: string,
+  overrides: Partial<LegacyProtocolSummary> = {},
+): LegacyProtocolSummary {
+  return {
+    id: `legacy-${name}`,
+    hash: `legacy-hash-${name}`,
+    name,
+    schemaVersion: 8,
+    importedAt: '2025-05-20T10:00:00.000Z',
+    sessionCount: 0,
+    ...overrides,
+  };
+}
+
+describe('buildDeck with Interviewer 8 protocols', () => {
+  const base = {
+    protocols: [] as ProtocolWithCounts[],
+    showSampleCard: false,
+    showDevelopmentCard: false,
+    pendingImports: [] as PendingImport[],
+  };
+
+  it('merges them into the deck by name, in their own key namespace', () => {
+    const deck = buildDeck({
+      ...base,
+      protocols: [makeProtocol('Bravo')],
+      legacyProtocols: [makeLegacy('Charlie'), makeLegacy('Alpha')],
+    });
+    expect(deck.map(entryKey)).toEqual([
+      'legacy:legacy-hash-Alpha',
+      'hash:hash-Bravo',
+      'legacy:legacy-hash-Charlie',
+      'import',
+    ]);
+  });
+
+  it('puts an upgraded copy before the schema 8 protocol it came from', () => {
+    const deck = buildDeck({
+      ...base,
+      legacyProtocols: [makeLegacy('Study')],
+      protocols: [makeProtocol('Study')],
+    });
+    expect(deck.map((entry) => entry.kind)).toEqual([
+      'protocol',
+      'legacy',
+      'import',
+    ]);
+  });
+
+  it('marks the ones with an upgraded copy', () => {
+    const deck = buildDeck({
+      ...base,
+      legacyProtocols: [makeLegacy('Alpha'), makeLegacy('Bravo')],
+      upgradedLegacyHashes: new Set(['legacy-hash-Bravo']),
+    });
+    expect(
+      deck.flatMap((entry) =>
+        entry.kind === 'legacy' ? [[entry.protocol.name, entry.upgraded]] : [],
+      ),
+    ).toEqual([
+      ['Alpha', false],
+      ['Bravo', true],
+    ]);
+  });
+
+  it("hides Interviewer 8's sample protocol unless it has interviews", () => {
+    const hidden = buildDeck({
+      ...base,
+      legacyProtocols: [makeLegacy('Sample Protocol')],
+    });
+    expect(hidden.map((entry) => entry.kind)).toEqual(['import']);
+
+    const shown = buildDeck({
+      ...base,
+      showSampleCard: true,
+      legacyProtocols: [makeLegacy('Sample Protocol', { sessionCount: 2 })],
+    });
+    // Beside, not instead of, this app's own sample teaser.
+    expect(shown.map(entryKey)).toEqual([
+      'slot:Sample Protocol',
+      'legacy:legacy-hash-Sample Protocol',
+      'import',
+    ]);
+  });
+
+  it('is never hidden by an import of the same name', () => {
+    const deck = buildDeck({
+      ...base,
+      legacyProtocols: [makeLegacy('Study')],
+      pendingImports: [makePending('Study')],
+    });
+    expect(deck.map(entryKey)).toEqual([
+      'slot:Study',
+      'legacy:legacy-hash-Study',
+      'import',
+    ]);
   });
 });

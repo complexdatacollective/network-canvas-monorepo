@@ -519,6 +519,134 @@
     "defaultMessage": "{count, plural, one {# launched file could not be read. The file may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. The files may have been moved, deleted, or become unavailable since they were opened.}}",
     "description": "Administration text in Interviewer useLaunchFailureToast."
   },
+  "interviewer.legacyProtocol.couldNotOpenInInterviewer": {
+    "defaultMessage": "Could not open in Interviewer {version}",
+    "description": "Title of the error shown when a protocol file could not be passed to the previous version of Interviewer. {version} is that version’s number (for example 8)."
+  },
+  "interviewer.legacyProtocol.handoffFailed": {
+    "defaultMessage": "Interviewer could not prepare this file for Interviewer {version}. This can happen if storage on this device is full or unavailable. Your file has not been changed.",
+    "description": "Error text shown when a protocol file could not be passed to the previous version of Interviewer, because it could not be saved temporarily on this device. {version} is that version’s number (for example 8)."
+  },
+  "interviewer.legacyProtocol.keepOnSchema": {
+    "defaultMessage": "Keep on schema {version}",
+    "description": "Button in the dialog shown when importing an older protocol file. Leaves the protocol unchanged and installs it in the previous version of Interviewer, which runs that schema. {version} is the older schema version number (for example 8)."
+  },
+  "interviewer.legacyProtocol.notAvailable": {
+    "defaultMessage": "Not available",
+    "description": "Short badge on an older protocol’s card on the home screen, shown when this version of Interviewer does not include the previous version that runs it, so no interview can be started with it here."
+  },
+  "interviewer.legacyProtocol.notAvailableHelp": {
+    "defaultMessage": "Interviewer {legacyVersion} is not included in this version of Interviewer, so interviews cannot be started with this protocol here. Upgrade it to schema {currentVersion} to use it.",
+    "description": "Text at the bottom of an older protocol’s card on the home screen when this version of Interviewer does not include the previous version that runs it. {legacyVersion} is the previous version’s number (for example 8); {currentVersion} is the current schema version number (for example 9)."
+  },
+  "interviewer.legacyProtocol.notReadyOffline": {
+    "defaultMessage": "Not ready offline",
+    "description": "Short warning badge on an older protocol’s card on the home screen: the previous version of Interviewer, which runs this protocol, has not finished downloading for use without an internet connection, so the protocol cannot be used offline yet."
+  },
+  "interviewer.legacyProtocol.openInInterviewer": {
+    "defaultMessage": "Open in Interviewer {version}",
+    "description": "Menu item on an older protocol’s card on the home screen. Opens the previous version of Interviewer, which runs this protocol unchanged, ready to start a new interview with it. {version} is that version’s number (for example 8)."
+  },
+  "interviewer.legacyProtocol.protocolActions": {
+    "defaultMessage": "Actions for {name}",
+    "description": "Accessible name of the button that opens the menu of actions for an older protocol’s card on the home screen. {name} is the researcher-authored protocol name."
+  },
+  "interviewer.legacyProtocol.protocolInfo": {
+    "defaultMessage": "Info",
+    "description": "Menu item on an older protocol’s card on the home screen. Shows details about the protocol (its schema version, when it was imported and how many interviews it has)."
+  },
+  "interviewer.legacyProtocol.schemaBadge": {
+    "defaultMessage": "Schema {version}",
+    "description": "Short badge on a protocol card on the home screen, marking a protocol made for an older schema version, which runs in the previous version of Interviewer. {version} is that protocol’s schema version number (for example 8)."
+  },
+  "interviewer.legacyProtocol.upgradeToSchema": {
+    "defaultMessage": "Upgrade to schema {version}",
+    "description": "Button and menu item that creates an upgraded copy of an older protocol at the current schema version, for use in this version of Interviewer. {version} is the current schema version number (for example 9)."
+  },
+  "interviewer.legacyProtocol.upgradedBadge": {
+    "defaultMessage": "Has an upgraded copy",
+    "description": "Short badge on an older protocol’s card on the home screen, shown when an upgraded copy of it has already been made for the current version of Interviewer: it says that such a copy exists. The older protocol carrying the badge is itself unchanged; it is not the copy."
+  },
+  "interviewer.legacyProtocolActions.alreadyUpgradedDescription": {
+    "defaultMessage": "This protocol was upgraded before, so the copy made then is shown.",
+    "description": "Notification text when an older protocol already had an upgraded copy: the app brings that existing copy into view instead of making another."
+  },
+  "interviewer.legacyProtocolActions.alreadyUpgradedTitle": {
+    "defaultMessage": "Already upgraded",
+    "description": "Title of the notification shown when a researcher asks to upgrade an older protocol that already has an upgraded copy in this version of Interviewer; no new copy is made."
+  },
+  "interviewer.legacyProtocolActions.couldNotRead": {
+    "defaultMessage": "This protocol could not be read from Interviewer {version}. Please try again.",
+    "description": "Error text when an older protocol could not be read from the previous version of Interviewer, which stores it, so it could not be upgraded. {version} is that version’s number (for example 8)."
+  },
+  "interviewer.legacyProtocolActions.noLongerThere": {
+    "defaultMessage": "This protocol is no longer in Interviewer {version}.",
+    "description": "Error text when an older protocol could not be upgraded because it has been deleted from the previous version of Interviewer in the meantime. {version} is that version’s number (for example 8)."
+  },
+  "interviewer.legacyProtocolActions.upgradeFailedTitle": {
+    "defaultMessage": "Could not upgrade",
+    "description": "Title of the error notification shown when upgrading an older protocol failed. Nothing was changed."
+  },
+  "interviewer.legacyProtocolActions.upgradedDescription": {
+    "defaultMessage": "{name} is ready to use with schema {version}.",
+    "description": "Notification text after an older protocol was upgraded. {name} is the researcher-authored protocol name; {version} is the current schema version number (for example 9)."
+  },
+  "interviewer.legacyProtocolActions.upgradedTitle": {
+    "defaultMessage": "Upgraded copy created",
+    "description": "Title of the notification shown after a researcher upgraded an older protocol: a new copy of it at the current schema version was made in this version of Interviewer."
+  },
+  "interviewer.legacyProtocolDialogs.changesInSchemaVersion": {
+    "defaultMessage": "Changes in schema version {version}:",
+    "description": "Heading above the list of changes for one schema version, in the dialog confirming the upgrade of an older protocol. {version} is the schema version number."
+  },
+  "interviewer.legacyProtocolDialogs.importChoiceKeep": {
+    "defaultMessage": "Keep it on schema {legacyVersion} to run it exactly as it was designed, in Interviewer {legacyVersion}, which is included with this version of Interviewer.",
+    "description": "Paragraph in the dialog shown when importing an older protocol file, describing the first choice: install it unchanged in the previous version of Interviewer, which is included with this one. {legacyVersion} is the older schema and previous Interviewer version number (for example 8)."
+  },
+  "interviewer.legacyProtocolDialogs.importChoiceTitle": {
+    "defaultMessage": "This protocol uses schema {version}",
+    "description": "Title of the dialog shown when a researcher imports a protocol file made for an older schema version. {version} is the file’s schema version number (for example 8)."
+  },
+  "interviewer.legacyProtocolDialogs.importChoiceUpgrade": {
+    "defaultMessage": "Or upgrade it to schema {currentVersion} to use it in this version of Interviewer. Upgrading changes some of the protocol, so you will see what changes before anything is imported.",
+    "description": "Paragraph in the dialog shown when importing an older protocol file, describing the second choice: upgrade it to the current schema. {currentVersion} is the current schema version number (for example 9)."
+  },
+  "interviewer.legacyProtocolDialogs.infoImported": {
+    "defaultMessage": "Imported",
+    "description": "Label in the details dialog of an older protocol, before how long ago it was imported."
+  },
+  "interviewer.legacyProtocolDialogs.infoInterviews": {
+    "defaultMessage": "Interviews",
+    "description": "Label in the details dialog of an older protocol, before the number of interviews collected with it."
+  },
+  "interviewer.legacyProtocolDialogs.infoLastChanged": {
+    "defaultMessage": "Last changed",
+    "description": "Label in the details dialog of an older protocol, before how long ago the protocol itself was last changed by its author."
+  },
+  "interviewer.legacyProtocolDialogs.infoRunsInLegacy": {
+    "defaultMessage": "This protocol runs in Interviewer {version}, which also keeps its interviews and exports them.",
+    "description": "Paragraph in the details dialog of an older protocol. {version} is the previous Interviewer version number (for example 8), which runs this protocol and holds its interviews."
+  },
+  "interviewer.legacyProtocolDialogs.infoSchemaVersion": {
+    "defaultMessage": "Schema version",
+    "description": "Label in the details dialog of an older protocol, before its schema version number."
+  },
+  "interviewer.legacyProtocolDialogs.readTheNotes": {
+    "defaultMessage": "The upgrade changes the protocol, so interviews with the copy can differ from interviews with the original. Read these notes carefully before you continue.",
+    "description": "Paragraph above the list of changes an upgrade makes to an older protocol, in the dialog confirming the upgrade."
+  },
+  "interviewer.legacyProtocolDialogs.upgradeMakesCopyOfFile": {
+    "defaultMessage": "Upgrading imports a schema {version} copy of this protocol into this version of Interviewer. Your file is not changed.",
+    "description": "Paragraph in the dialog confirming the upgrade of an older protocol file the researcher is importing. {version} is the current schema version number (for example 9)."
+  },
+  "interviewer.legacyProtocolDialogs.upgradeMakesCopyOfLegacy": {
+    "defaultMessage": "Upgrading makes a new schema {currentVersion} copy of this protocol for this version of Interviewer. The schema {legacyVersion} protocol and its interviews stay unchanged in Interviewer {legacyVersion}, and no interviews are copied.",
+    "description": "Paragraph in the dialog confirming the upgrade of an older protocol stored in the previous version of Interviewer. {currentVersion} is the current schema version number (for example 9); {legacyVersion} is the older schema and previous Interviewer version number (for example 8)."
+  },
+  "interviewer.legacyProtocolDialogs.upgradeTitle": {
+    "defaultMessage": "Upgrade to schema {version}?",
+    "description": "Title of the dialog that asks a researcher to confirm upgrading an older protocol to the current schema version, after reading what the upgrade changes. {version} is the current schema version number (for example 9)."
+  },
   "interviewer.lockScreen.authenticateToUnlockAndPickUpWhere": {
     "defaultMessage": "Authenticate to unlock and pick up where you left off.",
     "description": "The description label in Interviewer Lock Screen."

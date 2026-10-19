@@ -56,6 +56,12 @@ const messages = defineMessages({
   },
 });
 
+/** Failure copy the upgrade of a schema 8 protocol shares with import. */
+export const importFailureMessages = {
+  cannotUpgrade: messages.cannotUpgrade,
+  cannotSave: messages.cannotSave,
+};
+
 // What this app can run is what the interview engine it embeds can run, so the
 // import pipeline's target version is read from `@codaco/interview` rather than
 // written down here. A release that upgrades the engine moves this with it.
