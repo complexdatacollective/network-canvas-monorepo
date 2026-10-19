@@ -26,6 +26,16 @@ const tableVariants = cva({
       true: '[&>tbody>tr>td:first-child]:text-right [&>tbody>tr>td:first-child]:text-xs [&>tbody>tr>td:first-child]:font-semibold [&>tbody>tr>td:first-child]:tracking-widest [&>tbody>tr>td:first-child]:wrap-break-word [&>tbody>tr>td:first-child]:whitespace-nowrap [&>tbody>tr>td:first-child]:uppercase',
     },
   },
+  compoundVariants: [
+    // A full-width label/value table keeps its labels to a third of the
+    // width, wrapping long ones, so the values beside them have room.
+    {
+      wide: true,
+      rotated: true,
+      class:
+        '[&>tbody>tr>td:first-child]:w-1/3 [&>tbody>tr>td:first-child]:whitespace-normal',
+    },
+  ],
 });
 
 const MiniTable = ({
