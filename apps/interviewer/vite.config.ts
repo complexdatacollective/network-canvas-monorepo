@@ -104,7 +104,11 @@ export default defineConfig(() =>
             'Conduct Network Canvas interviews — offline and installable.',
           theme_color: themeColor,
           background_color: backgroundColor,
-          display: 'standalone',
+          // Display 'browser' is what keeps a sub-path build from being
+          // offered for installation: a browser offers to install only an app
+          // that asks for its own window. Hiding InstallBanner alone would
+          // leave the browser's own install offer in a tab at the base.
+          display: isSubpath ? 'browser' : 'standalone',
           start_url: appBase,
           scope: appBase,
           // The id is otherwise derived from start_url; stated for a sub-path

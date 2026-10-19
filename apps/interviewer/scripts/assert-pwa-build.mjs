@@ -207,11 +207,24 @@ if (isSubpath) {
   if (manifest.id !== base) {
     fail(`a ${base} build's manifest id must be ${base}`);
   }
+  // Browsers offer to install only an app that asks for its own window.
+  if (manifest.display !== 'browser') {
+    fail(
+      `a ${base} build's manifest display must be browser, so it is never offered for installation; found ${manifest.display}`,
+    );
+  }
   if ('file_handlers' in manifest || 'launch_handler' in manifest) {
     fail(`a ${base} build must not register as a .netcanvas file handler`);
   }
-} else if (manifest.file_handlers?.[0]?.action !== '/') {
-  fail('the root build no longer opens launched .netcanvas files');
+} else {
+  if (manifest.display !== 'standalone') {
+    fail(
+      `the root build must stay installable in its own window; manifest display is ${manifest.display}`,
+    );
+  }
+  if (manifest.file_handlers?.[0]?.action !== '/') {
+    fail('the root build no longer opens launched .netcanvas files');
+  }
 }
 
 // generateSW inlines the precache manifest as `self.__WB_MANIFEST` replaced with
