@@ -29,6 +29,16 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// The app's database names (an import-free module, loaded through Node's type
+// stripping), so the walker reads the database the deployed app writes and
+// checks that the earlier majors' databases are gone after a wipe.
+import {
+  DB_NAME,
+  LEGACY_LIBRARIES,
+} from '../../apps/interviewer/src/lib/db/storageNames.ts';
+
+const LEGACY_DB_NAMES = LEGACY_LIBRARIES.map((library) => library.dbName);
+
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -349,28 +359,41 @@ async function checkPhantomStepUp(stepName) {
 
 // Raw store cardinalities, readable regardless of encryption state — used
 // both to seed the pre-enrolment baseline and to prove destructive wipes.
+// Every read lists the databases before opening one: a bare open of a missing
+// name CREATES an empty database, which would make a later count throw on its
+// missing stores and leave a stray database for the app to find. A database
+// that does not exist holds no rows. `legacyPresent` names the earlier majors'
+// databases still on the origin, which a wipe must also have removed.
 const rawStoreCounts = () =>
-  page.evaluate(async () => {
-    const db = await new Promise((res, rej) => {
-      const req = indexedDB.open('interviewer');
-      req.onsuccess = () => res(req.result);
-      req.onerror = () => rej(req.error);
-    });
-    const count = (store) =>
-      new Promise((res, rej) => {
-        const tx = db.transaction(store, 'readonly');
-        const rq = tx.objectStore(store).count();
-        rq.onsuccess = () => res(rq.result);
-        rq.onerror = () => rej(rq.error);
+  page.evaluate(
+    async ({ dbName, legacyDbNames }) => {
+      const names = new Set((await indexedDB.databases()).map((d) => d.name));
+      const legacyPresent = legacyDbNames.filter((name) => names.has(name));
+      if (!names.has(dbName))
+        return { protocols: 0, sessions: 0, assets: 0, legacyPresent };
+      const db = await new Promise((res, rej) => {
+        const req = indexedDB.open(dbName);
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
       });
-    const out = {
-      protocols: await count('protocols'),
-      sessions: await count('sessions'),
-      assets: await count('assets'),
-    };
-    db.close();
-    return out;
-  });
+      const count = (store) =>
+        new Promise((res, rej) => {
+          const tx = db.transaction(store, 'readonly');
+          const rq = tx.objectStore(store).count();
+          rq.onsuccess = () => res(rq.result);
+          rq.onerror = () => rej(rq.error);
+        });
+      const out = {
+        protocols: await count('protocols'),
+        sessions: await count('sessions'),
+        assets: await count('assets'),
+        legacyPresent,
+      };
+      db.close();
+      return out;
+    },
+    { dbName: DB_NAME, legacyDbNames: LEGACY_DB_NAMES },
+  );
 
 // --- the walk -------------------------------------------------------------
 try {
@@ -412,9 +435,13 @@ try {
   await expect
     .poll(
       () =>
-        page.evaluate(async () => {
+        page.evaluate(async (dbName) => {
+          const listed = (await indexedDB.databases()).some(
+            (d) => d.name === dbName,
+          );
+          if (!listed) return '';
           const db = await new Promise((res, rej) => {
-            const rq = indexedDB.open('interviewer');
+            const rq = indexedDB.open(dbName);
             rq.onsuccess = () => res(rq.result);
             rq.onerror = () => rej(rq.error);
           });
@@ -426,7 +453,7 @@ try {
           });
           db.close();
           return JSON.stringify(rows);
-        }),
+        }, DB_NAME),
       { timeout: 20_000 },
     )
     .toContain(SEEDED_RESPONSE);
@@ -534,9 +561,13 @@ try {
   // Raw session count, readable regardless of encryption — the wrong-PIN
   // rejection must not have created a session row.
   const rawSessionCount = () =>
-    page.evaluate(async () => {
+    page.evaluate(async (dbName) => {
+      const listed = (await indexedDB.databases()).some(
+        (d) => d.name === dbName,
+      );
+      if (!listed) return 0;
       const db = await new Promise((res, rej) => {
-        const req = indexedDB.open('interviewer');
+        const req = indexedDB.open(dbName);
         req.onsuccess = () => res(req.result);
         req.onerror = () => rej(req.error);
       });
@@ -548,7 +579,7 @@ try {
       });
       db.close();
       return n;
-    });
+    }, DB_NAME);
   const sessionsBeforeGate = await rawSessionCount();
   await startInterview('vault-probe');
   await expect(
@@ -665,9 +696,11 @@ try {
 
   // Ciphertext at rest: raw IndexedDB rows must carry {iv, ct} envelopes,
   // never plaintext networks or codebooks.
-  const cipher = await page.evaluate(async () => {
+  const cipher = await page.evaluate(async (dbName) => {
+    const listed = (await indexedDB.databases()).some((d) => d.name === dbName);
+    if (!listed) throw new Error(`IndexedDB ${dbName} does not exist`);
     const db = await new Promise((res, rej) => {
-      const req = indexedDB.open('interviewer');
+      const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
       req.onerror = () => rej(req.error);
     });
@@ -777,7 +810,7 @@ try {
       }),
       leaks: JSON.stringify({ sessions, protocols }).includes('"nodes"'),
     };
-  });
+  }, DB_NAME);
   record(
     'ciphertext-at-rest',
     // Exactly 3 sessions here: pre-enrol-probe (written PLAINTEXT before
@@ -1066,12 +1099,13 @@ try {
     noLockAfterRevoke &&
     afterRevoke.protocols === 0 &&
     afterRevoke.sessions === 0 &&
-    afterRevoke.assets === 0;
+    afterRevoke.assets === 0 &&
+    afterRevoke.legacyPresent.length === 0;
   await shot('after-revoke');
   record(
     'revoke-wipe',
     wiped,
-    `0/0 counters, no lock, raw stores protocols=${afterRevoke.protocols} sessions=${afterRevoke.sessions} assets=${afterRevoke.assets}`,
+    `0/0 counters, no lock, raw stores protocols=${afterRevoke.protocols} sessions=${afterRevoke.sessions} assets=${afterRevoke.assets}, earlier majors' databases left: ${JSON.stringify(afterRevoke.legacyPresent)}`,
   );
 
   // 9. Passphrase enrolment: a weak passphrase must refuse to advance; the
@@ -1168,12 +1202,13 @@ try {
     (await page.getByRole('heading', { name: 'Welcome back' }).count()) === 0 &&
     afterReset.protocols === 0 &&
     afterReset.sessions === 0 &&
-    afterReset.assets === 0;
+    afterReset.assets === 0 &&
+    afterReset.legacyPresent.length === 0;
   await shot('after-reset');
   record(
     'reset-path',
     resetClean,
-    `0/0 counters, lock cleared, raw stores protocols=${afterReset.protocols} sessions=${afterReset.sessions} assets=${afterReset.assets}`,
+    `0/0 counters, lock cleared, raw stores protocols=${afterReset.protocols} sessions=${afterReset.sessions} assets=${afterReset.assets}, earlier majors' databases left: ${JSON.stringify(afterReset.legacyPresent)}`,
   );
 
   // Cross-cutting: every non-whitelisted console error collected across the

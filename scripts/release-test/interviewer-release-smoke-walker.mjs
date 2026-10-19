@@ -43,6 +43,9 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// The app's own database name (an import-free module), so the walker reads
+// the database the deployed app writes rather than a stale literal.
+import { DB_NAME } from '../../apps/interviewer/src/lib/db/storageNames.ts';
 // The interview's own encryption format (pure WebCrypto, no imports), loaded
 // from source through Node's type stripping, so the walker decrypts stored
 // answers exactly as the interview does rather than through a copy of it.
@@ -925,9 +928,14 @@ try {
   // raw (this profile is 'none' mode, so fields are plaintext; only the
   // protocol's encrypted attribute is ciphertext) and assert every write
   // path the walk exercised is present.
-  const payload = await page.evaluate(async () => {
+  const payload = await page.evaluate(async (dbName) => {
+    // List before opening: a bare open of a missing name CREATES an empty
+    // database, which would both hide the missing data and leave a stray
+    // database behind for the app to find.
+    const listed = (await indexedDB.databases()).some((d) => d.name === dbName);
+    if (!listed) return { found: false, missingDatabase: dbName };
     const db = await new Promise((res, rej) => {
-      const req = indexedDB.open('interviewer');
+      const req = indexedDB.open(dbName);
       req.onsuccess = () => res(req.result);
       req.onerror = () => rej(req.error);
     });
@@ -998,7 +1006,7 @@ try {
       // Every stored string, to prove no plaintext person name survived.
       serialized: JSON.stringify(s.network),
     };
-  });
+  }, DB_NAME);
   const people = payload.people ?? [];
   const nameOf = Object.fromEntries(
     people.map((p, i) => [p.uid, PEOPLE[i] ?? `?${i}`]),
@@ -1075,7 +1083,7 @@ try {
   record(
     'persisted-payload',
     payloadOk,
-    `people=${JSON.stringify(byName)} personEdges=${JSON.stringify(personEdges)} expectedFriendsPair=${JSON.stringify(friendsPair)} family=${JSON.stringify(family)} familyEdges=${JSON.stringify(familyEdges)} ego=${JSON.stringify(payload.egoName ?? null)} consent=${JSON.stringify(payload.consent ?? null)} contextsExact=${contextsExact} closenessExact=${closenessExact} layoutsDistinct=${layoutsDistinct} edgesExact=${edgesExact} familyExact=${familyExact}`,
+    `${payload.missingDatabase ? `IndexedDB ${payload.missingDatabase} does not exist; ` : ''}people=${JSON.stringify(byName)} personEdges=${JSON.stringify(personEdges)} expectedFriendsPair=${JSON.stringify(friendsPair)} family=${JSON.stringify(family)} familyEdges=${JSON.stringify(familyEdges)} ego=${JSON.stringify(payload.egoName ?? null)} consent=${JSON.stringify(payload.consent ?? null)} contextsExact=${contextsExact} closenessExact=${closenessExact} layoutsDistinct=${layoutsDistinct} edgesExact=${edgesExact} familyExact=${familyExact}`,
   );
   // Encrypted attributes: every person's name is stored as ciphertext (a
   // short name pads to one 32-byte block plus the 16-byte GCM tag) with only
