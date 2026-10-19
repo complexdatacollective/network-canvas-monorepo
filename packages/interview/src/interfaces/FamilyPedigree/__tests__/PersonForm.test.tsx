@@ -1841,6 +1841,43 @@ describe('twins', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('offers no sibling someone else carried than whoever carried a twin already chosen, until that twin is not', async () => {
+    // Nobody is recorded as carrying the participant, but Sue carried Sam,
+    // their twin, as a surrogate, and Mum carried Kim: Kim could not join
+    // them while Sam is their twin.
+    const { user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sam', { name: 'Sam', sex: ['male'] }),
+        person('kim', { name: 'Kim', sex: ['female'] }),
+        person('sue', { name: 'Sue', sex: ['female'] }),
+        ...parents,
+      ],
+      edges: [
+        link('mum', 'ego', 'biological'),
+        link('dad', 'ego', 'biological'),
+        ...parentLinks('kim'),
+        link('mum', 'sam', 'biological'),
+        link('dad', 'sam', 'biological'),
+        link('sue', 'sam', 'surrogate', { carrier: true }),
+        link('ego', 'sam', 'unknownZygosityTwin'),
+      ],
+    });
+    const twins = screen.getByRole('group', {
+      name: /^Which of your siblings, if any, are your twins\?/,
+    });
+    const sam = within(twins).getByRole('checkbox', { name: 'sam' });
+    expect(sam).toBeChecked();
+    expect(
+      within(twins).queryByRole('checkbox', { name: 'kim' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(sam);
+    expect(
+      within(twins).getByRole('checkbox', { name: 'kim' }),
+    ).toBeInTheDocument();
+  });
+
   it('shows identical twins unavailable for a twin who would bring an identical twin of another sex at birth, naming them', async () => {
     // Sam's sex at birth is not recorded, but Tom, his identical twin, is
     // male: answering Sam identical makes the participant, who is female,

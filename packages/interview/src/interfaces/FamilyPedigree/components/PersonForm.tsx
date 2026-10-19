@@ -1027,20 +1027,29 @@ function TwinFields({
   sexAttribute: string;
 }) {
   const { wording, text } = usePedigreeWords();
-  // Twins come from one pregnancy, so a sibling whose twin set could not be
-  // recorded as carried by whoever carried the person, as the answers stand,
-  // is not offered as their twin (`twinCarrierSync`).
-  const ownSet = twinSetOf(family, person.id);
-  const candidates = twinCandidatesOf(family, person.id).filter(
-    (id) =>
-      carrierId === undefined ||
-      ownSet.includes(id) ||
-      twinSetOf(family, id).every((twinId) =>
-        couldBeCarrierOf(family, twinId, carrierId),
-      ),
-  );
   const values = useFormValue([ROLE.twins], 'opaque');
   const chosen = asStringArray(values[ROLE.twins]);
+  // Twins come from one pregnancy, so a sibling whose twin set could not be
+  // recorded as carried by whoever carried the person, as the answers stand,
+  // or by whoever carried any other twin set chosen, is not offered as their
+  // twin (`twinCarrierSync`).
+  const ownSet = twinSetOf(family, person.id);
+  const carrierOfSet = (id: string) =>
+    twinSetOf(family, id)
+      .map((twinId) => carrierOf(family, twinId))
+      .find((carrier) => carrier !== undefined);
+  const candidates = twinCandidatesOf(family, person.id).filter((id) => {
+    if (ownSet.includes(id)) return true;
+    const set = twinSetOf(family, id);
+    return [
+      carrierId,
+      ...chosen.filter((other) => !set.includes(other)).map(carrierOfSet),
+    ].every(
+      (carrier) =>
+        carrier === undefined ||
+        set.every((twinId) => couldBeCarrierOf(family, twinId, carrier)),
+    );
+  });
   // Twins answered identical to the person are identical to each other too.
   const zygosities = useFormValue(chosen.map(twinZygosityField), 'opaque');
   const identicalChosen = chosen.filter(
