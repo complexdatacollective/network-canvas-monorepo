@@ -95,14 +95,17 @@ const requestInterviewer9Navigation = (url: string): void => {
  * Hand the file to Interviewer 9's import flow, which decides which app keeps
  * it.
  *
- * Like an import, a launch hands over one protocol. If staging fails the file
- * imports here instead, so a launch is never dropped.
+ * A hand-off carries one protocol (`/?import=<key>`), and leaving for
+ * Interviewer 9 ends this page, so a launch of several files is not handed
+ * over: all of them import here, through the normal queue, where each one gets
+ * its own progress card and message. If staging fails the file imports here
+ * too, so no launched file is ever dropped.
  */
 export const forwardLaunchFilesToInterviewer9 = async (
   files: File[],
 ): Promise<File[]> => {
   const [file] = files;
-  if (!file) return [];
+  if (!file || files.length > 1) return files;
   try {
     requestInterviewer9Navigation(await stageForInterviewer9(file));
     return [];

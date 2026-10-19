@@ -130,15 +130,12 @@ describe('forwardFileToInterviewer9', () => {
 });
 
 describe('forwardLaunchFilesToInterviewer9', () => {
-  it('stages the first launched file and asks to leave, without leaving itself', async () => {
+  it('stages a launched file and asks to leave, without leaving itself', async () => {
     const listener = vi.fn();
     const unsubscribe = subscribeInterviewer9Navigation(listener);
 
     await expect(
-      forwardLaunchFilesToInterviewer9([
-        netcanvas('a.netcanvas'),
-        netcanvas('b.netcanvas'),
-      ]),
+      forwardLaunchFilesToInterviewer9([netcanvas('a.netcanvas')]),
     ).resolves.toEqual([]);
     unsubscribe();
 
@@ -151,6 +148,19 @@ describe('forwardLaunchFilesToInterviewer9', () => {
     });
     expect(takeInterviewer9Navigation()).toBe(url);
     expect(takeInterviewer9Navigation()).toBeNull();
+  });
+
+  it('keeps every file of a launch of several here, rather than hand over one and drop the rest', async () => {
+    const files = [netcanvas('a.netcanvas'), netcanvas('b.netcanvas')];
+
+    await expect(forwardLaunchFilesToInterviewer9(files)).resolves.toEqual(
+      files,
+    );
+
+    // Nothing staged and no request to leave, which would end this page
+    // before the files could import.
+    expect(writeHandoff).not.toHaveBeenCalled();
+    expect(getInterviewer9Navigation()).toBeNull();
   });
 
   it('hands the file back to import here when it cannot be staged', async () => {
