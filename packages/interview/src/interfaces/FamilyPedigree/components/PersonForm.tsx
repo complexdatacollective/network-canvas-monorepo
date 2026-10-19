@@ -1902,6 +1902,7 @@ function RelationshipFields({
           displayName={displayName}
           config={config}
           framing={framing}
+          reasonContext={reasonContext}
         />
       );
   }
@@ -2469,6 +2470,7 @@ function SiblingFields({
   displayName,
   config,
   framing,
+  reasonContext,
 }: {
   anchor: Person;
   ids: readonly string[];
@@ -2476,6 +2478,7 @@ function SiblingFields({
   displayName: (personId: string) => string;
   config: PedigreeConfig;
   framing: FramingId;
+  reasonContext: ReasonContext;
 }) {
   const words = usePedigreeWords();
   const { wording, text } = words;
@@ -2707,7 +2710,27 @@ function SiblingFields({
     [...parents, ...donors, ...surrogates].includes(anchorCarrier) &&
     sharedChosen !== undefined &&
     !asStringArray(sharedChosen).includes(anchorCarrier);
-  const twinPossible = !carrierLeftOut;
+  // Nor can one whose twins were carried by someone the sibling cannot
+  // have as a parent, such as a surrogate who carried another twin but is
+  // not recorded for the anchor: every "Yes" is unavailable, naming them.
+  const carriedTwin =
+    anchorCarrier === undefined ||
+    [...parents, ...donors, ...surrogates].includes(anchorCarrier)
+      ? undefined
+      : twinSetOf(family, anchor.id).find(
+          (id) => carrierOf(family, id) === anchorCarrier,
+        );
+  const outOfReachHint =
+    carriedTwin === undefined || anchorCarrier === undefined
+      ? undefined
+      : joinReasons(reasonContext, [
+          carrierRecordedReason(carriedTwin, anchorCarrier, [
+            { value: 'identical', label: text(wording.siblingTwinIdentical) },
+            { value: 'fraternal', label: text(wording.siblingTwinFraternal) },
+            { value: 'unknown', label: text(wording.siblingTwinUnknown) },
+          ]),
+        ]);
+  const twinPossible = !carrierLeftOut && outOfReachHint === undefined;
   const carrierHint = carrierLeftOut
     ? text(wording.unavailableTwinCarrierNew, {
         who: anchor.isEgo
@@ -2718,10 +2741,10 @@ function SiblingFields({
         name: args.name,
         carrier: displayName(anchorCarrier),
       })
-    : undefined;
+    : outOfReachHint;
   const identicalAnswer = text(wording.siblingTwinIdentical);
   // One reason at a time: while the carrier is left out, that is the reason.
-  const identicalHint = carrierLeftOut
+  const identicalHint = !twinPossible
     ? carrierHint
     : identicalPossible
       ? undefined

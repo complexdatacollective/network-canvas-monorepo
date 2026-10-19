@@ -1700,6 +1700,45 @@ describe('twins', () => {
     }
   });
 
+  it('shows every twin answer unavailable for a sibling who cannot have the surrogate who carried a twin, naming them', () => {
+    // Sue carried Sam, the participant's twin, as a surrogate, but is not
+    // recorded for the participant, so a new sibling cannot have her as a
+    // parent and cannot come from the same pregnancy.
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sam', { sex: ['male'] }),
+        person('sue', { sex: ['female'] }),
+        ...parents,
+      ],
+      edges: [
+        link('mum', 'ego', 'biological'),
+        link('dad', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+        link('dad', 'sam', 'biological'),
+        link('sue', 'sam', 'surrogate', { carrier: true }),
+        link('ego', 'sam', 'unknownZygosityTwin'),
+      ],
+      adding: 'sibling',
+    });
+    const question = screen.getByRole('radiogroup', {
+      name: /^Are they your twin\?/,
+    });
+    for (const answer of [
+      'Yes, identical twins',
+      'Yes, fraternal (non-identical) twins',
+      'Yes, but I don’t know if they are identical',
+    ]) {
+      expect(
+        within(question).getByRole('radio', { name: answer }),
+      ).toBeDisabled();
+    }
+    expect(within(question).getByRole('radio', { name: 'No' })).toBeEnabled();
+    expect(question).toHaveAccessibleDescription(
+      /“sue” is recorded as having carried “sam”, and only one person carries a pregnancy/,
+    );
+  });
+
   it('records which siblings are someone’s twins, and of what kind', async () => {
     const { onSubmit, user } = renderPersonForm('ego', {
       nodes: [
