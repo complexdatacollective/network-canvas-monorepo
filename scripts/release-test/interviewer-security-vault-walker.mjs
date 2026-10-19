@@ -305,10 +305,13 @@ async function expectStageMounted() {
 async function exitInterview() {
   await page.getByTestId('settings-button').click();
   // The "Exit interview" menu item IS exit-button (a menuitem, not a
-  // button); the confirm dialog then titles "Exit this interview?" with a
-  // confirm labelled "Exit interview" (Navigation.tsx).
+  // button); the confirm dialog is titled "Exit interview" and its confirm
+  // button carries the same label (Navigation.tsx).
   await page.getByTestId('exit-button').click();
-  const dialog = page.getByRole('dialog', { name: 'Exit this interview?' });
+  const dialog = page.getByRole('dialog', {
+    name: 'Exit interview',
+    exact: true,
+  });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Exit interview' }).click();
 }
