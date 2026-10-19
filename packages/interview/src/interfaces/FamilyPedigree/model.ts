@@ -428,11 +428,28 @@ function parentLinksOf(family: Family, personId: string) {
   );
 }
 
-/** Whether someone is recorded as having carried the person's pregnancy. */
+/** Whether someone is recorded as having carried the person's pregnancy,
+ * or a twin's, which was the same pregnancy (`carrierRecordOf`). */
 export function hasCarrier(family: Family, personId: string): boolean {
-  return parentLinksOf(family, personId).some(
-    (link) => link.isGestationalCarrier,
-  );
+  return carrierRecordOf(family, personId) !== undefined;
+}
+
+/**
+ * Who is recorded as having carried the person, or else one of their twins,
+ * and whom they are recorded as carrying. Twins come from one pregnancy, so
+ * whoever carried one carried them all, and nobody else can be recorded as
+ * carrying any of them.
+ */
+export function carrierRecordOf(
+  family: Family,
+  personId: string,
+): { carrierId: string; childId: string } | undefined {
+  const twins = twinSetOf(family, personId).filter((id) => id !== personId);
+  for (const childId of [personId, ...twins]) {
+    const carrierId = carrierOf(family, childId);
+    if (carrierId !== undefined) return { carrierId, childId };
+  }
+  return undefined;
 }
 
 /** Parents who raise or are related to the person — not donors or surrogates. */
@@ -1175,9 +1192,12 @@ function settleCarriers(
     if (link.kind === 'surrogate') {
       return { ...link, isGestationalCarrier: true };
     }
+    const record = family.byId.has(link.target)
+      ? carrierRecordOf(family, link.target)
+      : undefined;
     const someoneElse =
       carried.has(link.target) ||
-      (family.byId.has(link.target) && hasCarrier(family, link.target));
+      (record !== undefined && record.carrierId !== link.source);
     return someoneElse || !couldCarryPregnancy(sexOf(link.source))
       ? { ...link, isGestationalCarrier: false }
       : link;
@@ -2481,7 +2501,7 @@ export function canConnectPartners(
  * (`GeneticParentBlock`).
  */
 export type ParentChoiceBlock =
-  | { rule: 'carrierRecorded'; carrierId: string }
+  | { rule: 'carrierRecorded'; carrierId: string; childId: string }
   | GeneticParentBlock;
 
 /**
@@ -2525,11 +2545,13 @@ export function parentChoiceOptions(
         parentSex,
       );
   const couldCarry = couldCarryPregnancy(parentSex);
-  const carrierId = carrierOf(family, childId);
+  // Someone recorded as carrying the child or a twin, who was carried in
+  // the same pregnancy, rules out another carrier.
+  const carrierRecord = carrierRecordOf(family, childId);
   const carrierBlock: ParentChoiceBlock | undefined =
-    carrierId === undefined
+    carrierRecord === undefined || carrierRecord.carrierId === parentId
       ? undefined
-      : { rule: 'carrierRecorded', carrierId };
+      : { rule: 'carrierRecorded', ...carrierRecord };
   const options: { choice: ParentChoice; unavailable?: ParentChoiceBlock }[] =
     [];
   for (const kind of PEDIGREE_RELATIONSHIP_KINDS) {

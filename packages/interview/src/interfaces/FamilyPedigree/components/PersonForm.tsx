@@ -65,6 +65,7 @@ import {
   type Relation,
   type TwinZygosity,
   carrierOf,
+  carrierRecordOf,
   familyWithLinkKinds,
   type FamilyLinkKind,
   couldCarryPregnancy,
@@ -1301,15 +1302,16 @@ function ExistingRelationshipFields({
   // them was carried by whoever carried their twins as the answers stand,
   // twins newly chosen included, until answered otherwise.
   const twinAnswers = useFormValue([ROLE.twins], 'opaque')[ROLE.twins];
-  const twinsCarrier = hasCarrier(family, person.id)
-    ? undefined
-    : twinAnswers === undefined
-      ? twinCarrierOf(family, person.id)
-      : asStringArray(twinAnswers)
-          .flatMap((twinId) => twinSetOf(family, twinId))
-          .filter((id) => id !== person.id)
-          .map((id) => carrierOf(family, id))
-          .find((id) => id !== undefined);
+  const twinsCarrier =
+    carrierOf(family, person.id) !== undefined
+      ? undefined
+      : twinAnswers === undefined
+        ? twinCarrierOf(family, person.id)
+        : asStringArray(twinAnswers)
+            .flatMap((twinId) => twinSetOf(family, twinId))
+            .filter((id) => id !== person.id)
+            .map((id) => carrierOf(family, id))
+            .find((id) => id !== undefined);
   const recordedCarrying = (link: FamilyLink) =>
     link.isGestationalCarrier ??
     (twinsCarrier === undefined ? undefined : link.source === twinsCarrier);
@@ -2036,10 +2038,11 @@ function ParentFields({
     personId: string,
     answers: readonly UnavailableAnswer[],
   ) => {
-    const carrierId = carrierOf(family, personId);
-    return carrierId === undefined
+    // Whoever carried them or a twin, the same pregnancy.
+    const record = carrierRecordOf(family, personId);
+    return record === undefined
       ? undefined
-      : carrierRecordedReason(personId, carrierId, answers);
+      : carrierRecordedReason(record.childId, record.carrierId, answers);
   };
   const kindAnswers = (kinds: readonly PedigreeParentKind[]) =>
     kinds.map((value) => ({ value, label: parentKindLabels[value] }));
