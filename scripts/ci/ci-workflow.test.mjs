@@ -2466,6 +2466,48 @@ test('Architect native E2E also runs the /v8/ sub-path suite against a /v8/ buil
   );
 });
 
+test('Interviewer native E2E also runs the /v8/ sub-path suite against a /v8/ build', () => {
+  const steps = parsedWorkflow.jobs['interviewer-e2e-native'].steps;
+  const index = (predicate) => steps.findIndex(predicate);
+  const rootRun = index(
+    ({ run }) =>
+      run === 'pnpm --filter @codaco/interviewer run test:e2e:native',
+  );
+  const subpathBuild = index(
+    ({ name }) => name === 'Build the /v8/ sub-path app under test',
+  );
+  const subpathRun = index(
+    ({ run }) =>
+      run === 'pnpm --filter @codaco/interviewer run test:e2e:subpath:native',
+  );
+  // The sub-path build replaces dist/, so it must come after the root specs.
+  assert.ok(
+    rootRun !== -1 && subpathBuild > rootRun,
+    'the /v8/ build follows the root specs',
+  );
+  assert.ok(
+    subpathRun > subpathBuild,
+    'the sub-path specs run against the /v8/ build',
+  );
+  const build = steps[subpathBuild];
+  assert.equal(build.env?.INTERVIEWER_BASE_PATH, '/v8/');
+  assert.equal(
+    build.run,
+    'pnpm exec turbo run build --filter=@codaco/interviewer',
+  );
+  // Even after a root failure.
+  assert.equal(build.if, '${{ !cancelled() }}');
+  assert.equal(steps[subpathRun].if, '${{ !cancelled() }}');
+  const report = steps.find(
+    ({ name }) => name === 'Upload the /v8/ sub-path report',
+  );
+  assert.equal(
+    report?.with.path,
+    'apps/interviewer/e2e/playwright-report-subpath/',
+  );
+  assert.doesNotMatch(report.with.name, /playwright-report/);
+});
+
 test('release job refuses a first publication on the publish path before changesets/action', () => {
   const releaseJob = job('release');
   assert.ok(releaseJob, 'release job exists');

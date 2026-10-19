@@ -2773,12 +2773,35 @@ jobs:
         run: pnpm exec turbo run build --filter=@codaco/interviewer
       - name: Run functional E2E tests
         run: pnpm --filter @codaco/interviewer run test:e2e:native
+      # Interviewer 8 as Interviewer 9 bundles it, served at /v8/: the
+      # sub-path suite (e2e/subpath-specs/) needs its own build, which
+      # replaces dist/, so it runs after the root specs. `!cancelled()` rather
+      # than the default success(), so a root failure does not hide a
+      # sub-path one.
+      - name: Build the /v8/ sub-path app under test
+        if: ${{ !cancelled() }}
+        env:
+          INTERVIEWER_BASE_PATH: /v8/
+        run: pnpm exec turbo run build --filter=@codaco/interviewer
+      - name: Run the /v8/ sub-path E2E tests
+        if: ${{ !cancelled() }}
+        run: pnpm --filter @codaco/interviewer run test:e2e:subpath:native
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: interviewer-playwright-report-native
           path: apps/interviewer/e2e/playwright-report/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload the /v8/ sub-path report
+        # Named outside the `*playwright-report*` pattern the PR report job
+        # merges, whose per-job layout has no place for a second suite.
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: interviewer-subpath-e2e-report
+          path: apps/interviewer/e2e/playwright-report-subpath/
           if-no-files-found: warn
           retention-days: 14
 
