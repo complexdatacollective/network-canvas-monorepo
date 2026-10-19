@@ -117,7 +117,16 @@ const renderApp = () =>
     </Provider>,
   );
 
+// The runner reads wouter's browser location. pushState is what wouter's own
+// navigation uses, and it notifies wouter's subscribers.
+const goTo = (path: string) => {
+  act(() => {
+    window.history.pushState(null, '', path);
+  });
+};
+
 beforeEach(() => {
+  window.history.replaceState(null, '', '/');
   mocks.openRequest = null;
   mocks.pendingNavigation = null;
   mocks.openLibraryProtocol.mockClear();
@@ -196,6 +205,52 @@ describe('<App /> URL entry points', () => {
     await act(async () => {
       answer(true);
     });
+    expect(mocks.pendingNavigation).toBeNull();
+  });
+
+  it('waits for the start screen before carrying out a navigation requested while in the editor', async () => {
+    window.history.replaceState(null, '', '/protocol');
+    mocks.pendingNavigation = '/?import=9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
+
+    renderApp();
+    await act(async () => {});
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.pendingNavigation).toBe(
+      '/?import=9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+    );
+
+    goTo('/');
+
+    await waitFor(() => {
+      expect(mocks.navigate).toHaveBeenCalledTimes(1);
+    });
+    expect(leaveUrl()).toBe('/?import=9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d');
+  });
+
+  it('keeps a launch cancelled in the editor, and replays it only on the start screen', async () => {
+    window.history.replaceState(null, '', '/protocol');
+    mocks.navigate.mockResolvedValueOnce(false);
+    renderApp();
+
+    // A launch arriving in the editor is tried at once; the researcher
+    // cancels the leave-editor prompt.
+    launch('/?import=launched');
+    await waitFor(() => {
+      expect(mocks.pendingNavigation).toBe('/?import=launched');
+    });
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+
+    // Moving around the editor does not replay it.
+    goTo('/protocol/codebook');
+    await act(async () => {});
+    expect(mocks.navigate).toHaveBeenCalledTimes(1);
+
+    goTo('/');
+
+    await waitFor(() => {
+      expect(mocks.navigate).toHaveBeenCalledTimes(2);
+    });
+    expect(leaveUrl(1)).toBe('/?import=launched');
     expect(mocks.pendingNavigation).toBeNull();
   });
 

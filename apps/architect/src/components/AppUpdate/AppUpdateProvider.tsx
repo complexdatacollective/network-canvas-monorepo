@@ -14,6 +14,7 @@ import useAppUpdate, {
 } from '@codaco/fresco-ui/appUpdate/useAppUpdate';
 import { IS_SUBPATH_BUILD } from '~/utils/appBase';
 import { appVersion } from '~/utils/appVersion';
+import { isArchivedLineHost } from '~/utils/archivedLineHost';
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000; // hourly
 
@@ -120,6 +121,7 @@ function AppUpdateStateProvider({
     currentVersion: appVersion,
     needRefresh,
     installUpdate,
+    runningMajorOnly: isArchivedLineHost(window.location.hostname, appVersion),
   });
 
   return (

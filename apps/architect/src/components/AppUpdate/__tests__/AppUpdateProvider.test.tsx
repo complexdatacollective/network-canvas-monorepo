@@ -109,6 +109,7 @@ describe('AppUpdateProvider', () => {
       currentVersion: expect.any(String),
       needRefresh: false,
       installUpdate: expect.any(Function),
+      runningMajorOnly: false,
     });
     expect(screen.getByText('idle')).toBeInTheDocument();
   });

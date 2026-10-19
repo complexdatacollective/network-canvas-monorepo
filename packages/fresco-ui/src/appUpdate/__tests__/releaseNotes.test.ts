@@ -80,6 +80,21 @@ describe('selectLatestForApp', () => {
     });
   });
 
+  // An archived line's host only ever serves that line, so the update waiting
+  // there is the line's own newest release, never a newer major.
+  it('keeps to the running major line when asked to', () => {
+    const releases = [
+      { tag_name: '@codaco/architect@9.0.0', body: 'nine' },
+      { tag_name: '@codaco/architect@8.5.1', body: 'maintenance' },
+      { tag_name: '@codaco/architect@7.9.0', body: 'seven' },
+    ];
+    expect(
+      selectLatestForApp('architect', releases, '8.5.0', {
+        runningMajorOnly: true,
+      }),
+    ).toEqual({ version: '8.5.1', body: 'maintenance' });
+  });
+
   it('orders prereleases by semver precedence', () => {
     const releases = [
       { tag_name: '@codaco/architect@9.0.0-beta.2', body: 'beta 2' },
@@ -215,6 +230,30 @@ describe('fetchLatestReleaseNotes', () => {
     ).resolves.toEqual({ version: '9.0.0', body: 'nine' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain('&page=2');
+  });
+
+  it('keeps reading past a newer major when kept to the running line', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          ...otherPackages(99),
+          { tag_name: '@codaco/architect@9.0.0', body: 'nine' },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { tag_name: '@codaco/architect@8.5.1', body: 'maintenance' },
+        ],
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      fetchLatestReleaseNotes('architect', '8.5.0', { runningMajorOnly: true }),
+    ).resolves.toEqual({ version: '8.5.1', body: 'maintenance' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('stops after a few pages, and shows no notes when a later page fails', async () => {
