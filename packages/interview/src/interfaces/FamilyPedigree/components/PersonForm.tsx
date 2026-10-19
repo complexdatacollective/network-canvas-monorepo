@@ -575,6 +575,7 @@ export default function PersonForm({
             draftFamily(family, mode.person.id, values),
             mode.person.id,
             values,
+            config.sexAssignedAtBirthAttribute,
           )
         : undefined;
     const linkUpdates =
@@ -960,12 +961,14 @@ function twinCarrierSync(
 const twinZygosityField = (twinId: string) => `pedigreeTwin:${twinId}`;
 
 /** The answers about the person's twins, as the changes to make, in
- * `family` as the panel's answers leave it (`draftFamily`): an answer about
- * someone who is no longer the person's sibling there is dropped. */
+ * `family` as the panel's answers leave it (`draftFamily`), with the
+ * person's sex at birth as answered: an answer about someone who is no
+ * longer the person's sibling there is dropped. */
 function readTwinChanges(
   family: Family,
   personId: string,
   values: Record<string, FieldValue>,
+  sexAttribute: string,
 ) {
   const candidates = twinCandidatesOf(family, personId);
   if (candidates.length === 0) return undefined;
@@ -977,7 +980,10 @@ function readTwinChanges(
       asZygosity(values[twinZygosityField(twinId)]) ?? 'unknown',
     );
   }
-  const changes = planTwinChanges(family, personId, answers);
+  const answeredSex = asString(values[sexAttribute]);
+  const changes = planTwinChanges(family, personId, answers, (id) =>
+    id === personId ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth,
+  );
   return changes.added.length > 0 ||
     changes.changed.length > 0 ||
     changes.removedLinkIds.length > 0

@@ -1372,14 +1372,16 @@ function twinsForNewSibling(
  *   is to everyone else what the person is; any other pair keeps what is
  *   recorded, and a pair the change newly forms takes `zygosityThrough` the
  *   person. A worked-out pair is identical only while the two would have the
- *   same genetic parents, and otherwise not known to be: identical twins
- *   always have the same genetic parents (`planStandIns` keeps them so after
- *   every change to anyone's parents).
+ *   same genetic parents and sex at birth, and otherwise not known to be:
+ *   identical twins always have the same genetic parents (`planStandIns`
+ *   keeps them so after every change to anyone's parents). `sexOf` reads a
+ *   sex at birth as the answers stand (`identicalTwinBlocks`).
  */
 export function planTwinChanges(
   family: Family,
   personId: string,
   answers: ReadonlyMap<string, TwinZygosity>,
+  sexOf?: (personId: string) => string | undefined,
 ): {
   added: PlannedTwin[];
   changed: TwinZygosityChange[];
@@ -1389,7 +1391,8 @@ export function planTwinChanges(
   const recorded = (a: string, b: string) =>
     twinLinkBetween(family, a, b)?.zygosity;
   const possible = (a: string, b: string, wanted: TwinZygosity) =>
-    wanted === 'identical' && !identicalTwinsPossible(family, a, b)
+    wanted === 'identical' &&
+    identicalTwinBlocks(family, a, b, sexOf).length > 0
       ? 'unknown'
       : wanted;
 

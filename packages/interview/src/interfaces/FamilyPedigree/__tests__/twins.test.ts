@@ -413,6 +413,42 @@ describe('a twin set', () => {
       [person('kim', { name: 'Kim' })],
     );
 
+  test('a twin brought in is planned with the sex at birth as answered', () => {
+    // Sam and Kim are identical twins, both female; the participant is
+    // recorded male. Changing their own answer to female and joining Sam as
+    // an identical twin makes them Kim's identical twin too, not one not
+    // known to be identical from the sex recorded before.
+    const f = family(
+      [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sam', { name: 'Sam', sex: ['female'] }),
+        person('kim', { name: 'Kim', sex: ['female'] }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('dad', { name: 'Rob', sex: ['male'] }),
+      ],
+      [
+        ...['ego', 'sam', 'kim'].flatMap((child) => [
+          link('mum', child, 'biological'),
+          link('dad', child, 'biological'),
+        ]),
+        link('sam', 'kim', 'identicalTwin'),
+      ],
+    );
+    const answers = new Map([['sam', 'identical' as const]]);
+    expect(planTwinChanges(f, 'ego', answers).added).toEqual([
+      { source: 'ego', target: 'sam', zygosity: 'identical' },
+      { source: 'ego', target: 'kim', zygosity: 'unknown' },
+    ]);
+    expect(
+      planTwinChanges(f, 'ego', answers, (id) =>
+        id === 'ego' ? 'female' : f.byId.get(id)?.sexAssignedAtBirth,
+      ).added,
+    ).toEqual([
+      { source: 'ego', target: 'sam', zygosity: 'identical' },
+      { source: 'ego', target: 'kim', zygosity: 'identical' },
+    ]);
+  });
+
   test('a twin added from the person form joins the whole set of the twin chosen', () => {
     // Kim is already Sam's twin; making the participant Sam's twin makes
     // them Kim's too.
