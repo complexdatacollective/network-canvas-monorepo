@@ -1391,6 +1391,23 @@ test('release-sensitive app builds run before merge', () => {
   assert.match(supportJob, /pnpm --filter=@codaco\/studio-web build/);
 });
 
+// The /v8/ sub-path build is only otherwise made from a released tag, after
+// that release is in production; a broken one must fail at PR time instead.
+test('the Architect /v8/ sub-path build runs before merge', () => {
+  const steps = parsedWorkflow.jobs['quality-support'].steps;
+  const step = steps.find(
+    (candidate) => candidate.id === 'architect_subpath_build',
+  );
+  assert.ok(step, 'quality-support builds Architect under /v8/');
+  assert.equal(step.env?.ARCHITECT_BASE_PATH, '/v8/');
+  // build.mjs runs assert-pwa-build.mjs, which holds the sub-path shape.
+  assert.match(step.run, /^pnpm --filter=@codaco\/architect build$/);
+  assert.equal(step['continue-on-error'], true);
+  // Matches the release-time sub-path build: no upload credentials.
+  assert.equal(step.env?.POSTHOG_PERSONAL_API_KEY, undefined);
+  assert.equal(step.env?.POSTHOG_PROJECT_ID, undefined);
+});
+
 // Every check in quality-support is `continue-on-error`, so the job's own
 // conclusion says nothing about them: the final step is what fails the job.
 // A check added without a line there passes silently forever.

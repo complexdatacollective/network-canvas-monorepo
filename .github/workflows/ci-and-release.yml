@@ -947,6 +947,20 @@ jobs:
           pnpm --filter=@codaco/architect build
           pnpm --filter=@codaco/interviewer build
           pnpm --filter=@codaco/studio-web build
+      # Architect 8 ships inside Architect 9's deploy as a /v8/ sub-path build,
+      # made from a released tag only after that release is already in
+      # production. Build it here too, so a change that breaks the sub-path
+      # build (or its worker, manifest and asset assertions in
+      # apps/architect/scripts/assert-pwa-build.mjs) fails before merge rather
+      # than after the tag exists. No PostHog credentials: the release-time
+      # sub-path build uploads no source maps either. It replaces the root
+      # build's dist, which nothing after this step reads.
+      - name: Build Architect under its /v8/ sub-path
+        id: architect_subpath_build
+        continue-on-error: true
+        env:
+          ARCHITECT_BASE_PATH: /v8/
+        run: pnpm --filter=@codaco/architect build
       # Every other Storybook is built in CI as Chromatic's upload input
       # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
       # Builder has no Chromatic project by design, and the build step above
@@ -978,6 +992,7 @@ jobs:
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          ARCHITECT_SUBPATH_BUILD_OUTCOME: ${{ steps.architect_subpath_build.outcome }}
           PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
@@ -993,6 +1008,7 @@ jobs:
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
+            "architect-subpath-build=$ARCHITECT_SUBPATH_BUILD_OUTCOME" \
             "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
