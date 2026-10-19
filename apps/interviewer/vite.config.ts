@@ -74,9 +74,19 @@ export default defineConfig(() =>
       __PWA_BUILD_ID__: JSON.stringify(pwaCacheId),
     },
     plugins: [
+      // Interviewer 8 is served at /v8/ beside the root app (from Interviewer
+      // 9's deploy) with its own worker and 'interviewer-v8-' caches, which
+      // 'interviewer-' would otherwise match. The /v8/ build itself hosts no
+      // nested app, so it passes nothing extra.
       createPwaCacheReclamationPlugin({
         appCachePrefix: cachePrefix,
         buildId: pwaCacheId,
+        ...(isSubpath
+          ? {}
+          : {
+              foreignCachePrefixes: ['interviewer-v8-'],
+              foreignScopePaths: ['/v8/'],
+            }),
       }),
       VitePWA({
         registerType: 'prompt',

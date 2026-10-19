@@ -1409,6 +1409,27 @@ test('the Architect /v8/ sub-path build runs before merge', () => {
   assert.equal(step.env?.POSTHOG_PROJECT_ID, undefined);
 });
 
+// Interviewer 8 ships inside Interviewer 9 at /v8/ the same way, so its
+// sub-path build is held to the same pre-merge check.
+test('the Interviewer /v8/ sub-path build runs before merge', () => {
+  const steps = parsedWorkflow.jobs['quality-support'].steps;
+  const step = steps.find(
+    (candidate) => candidate.id === 'interviewer_subpath_build',
+  );
+  assert.ok(step, 'quality-support builds Interviewer under /v8/');
+  assert.equal(step.env?.INTERVIEWER_BASE_PATH, '/v8/');
+  // build.mjs drops the hosting rules, writes dist-info.json and runs
+  // assert-pwa-build.mjs, which holds the sub-path shape.
+  assert.match(step.run, /^pnpm --filter=@codaco\/interviewer build$/);
+  assert.equal(step['continue-on-error'], true);
+  assert.equal(step.env?.POSTHOG_PERSONAL_API_KEY, undefined);
+  assert.equal(step.env?.POSTHOG_PROJECT_ID, undefined);
+  // After the root build it replaces, so the root build's own assertions ran
+  // first against a root dist.
+  const rootBuild = steps.findIndex((candidate) => candidate.id === 'build');
+  assert.ok(rootBuild !== -1 && rootBuild < steps.indexOf(step));
+});
+
 // Every check in quality-support is `continue-on-error`, so the job's own
 // conclusion says nothing about them: the final step is what fails the job.
 // A check added without a line there passes silently forever.

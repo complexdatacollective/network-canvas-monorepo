@@ -7,11 +7,20 @@
 // Chunks loaded on demand (each UI language, the bundled sample protocol, the
 // synthetic data generator and its faker dependency) must stay out of the
 // initial load.
-import { readdirSync, readFileSync } from 'node:fs';
+//
+// Base-aware: INTERVIEWER_BASE_PATH (resolved exactly as vite.renderer.config.ts
+// resolves it) selects the root build or the /v8/ build Interviewer 9 serves
+// from its own deploy, and every path and cache name probed below derives
+// from it, so a sub-path build is held to the same worker contract.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  appCachePrefix,
+  resolveAppBasePath,
+} from '../../../scripts/buildtime/app-base-path.mjs';
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
 
 const appRoot = path.resolve(
@@ -25,13 +34,62 @@ const fail = (msg) => {
   process.exit(1);
 };
 
-try {
-  assertPwaCacheHeaders({
-    additionalStablePaths: ['/interviewer-icon.png'],
-    text: readFileSync(path.join(dist, '_headers'), 'utf8'),
-  });
-} catch (error) {
-  fail(error instanceof Error ? error.message : String(error));
+// `/` for the root build; `/v8/` for Interviewer 8 inside Interviewer 9's
+// deploy.
+const base = resolveAppBasePath(process.env, 'INTERVIEWER_BASE_PATH');
+const isSubpath = base !== '/';
+const cachePrefix = appCachePrefix('interviewer', base);
+const atBase = (absolutePath) => `${base}${absolutePath.slice(1)}`;
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
+const packageJson = JSON.parse(
+  readFileSync(path.join(appRoot, 'package.json'), 'utf8'),
+);
+
+if (isSubpath) {
+  // The hosting deploy owns these rules (build.mjs removes the copies):
+  // Netlify reads them only at the publish root.
+  for (const file of ['_headers', '_redirects']) {
+    if (existsSync(path.join(dist, file))) {
+      fail(`a ${base} build must not ship dist/${file}`);
+    }
+  }
+  // What Interviewer 9's bundler validates before it extracts a tarball into
+  // its own dist/v8 (build.mjs writes it; the release packer rewrites the
+  // tag and commit from the release it packs).
+  let distInfo;
+  try {
+    distInfo = JSON.parse(
+      readFileSync(path.join(dist, 'dist-info.json'), 'utf8'),
+    );
+  } catch {
+    fail(`a ${base} build must write a valid dist/dist-info.json`);
+  }
+  if (
+    distInfo.tag !== `@codaco/interviewer@${packageJson.version}` ||
+    distInfo.version !== packageJson.version ||
+    distInfo.base !== base ||
+    distInfo.cachePrefix !== cachePrefix ||
+    !(distInfo.commit === null || /^[0-9a-f]{40}$/.test(distInfo.commit))
+  ) {
+    fail(
+      `dist/dist-info.json does not describe this ${base} build: ${JSON.stringify(distInfo)}`,
+    );
+  }
+} else {
+  try {
+    assertPwaCacheHeaders({
+      additionalStablePaths: ['/interviewer-icon.png'],
+      text: readFileSync(path.join(dist, '_headers'), 'utf8'),
+    });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+  // The root dist is deployed as it stands; a stamp describing a sub-path
+  // build would only mislead whoever reads it.
+  if (existsSync(path.join(dist, 'dist-info.json'))) {
+    fail('the root build must not ship dist/dist-info.json');
+  }
 }
 
 const swPath = path.join(dist, 'sw.js');
@@ -42,10 +100,7 @@ try {
   fail('missing dist/sw.js');
 }
 
-const packageJson = JSON.parse(
-  readFileSync(path.join(appRoot, 'package.json'), 'utf8'),
-);
-const expectedPrecachePrefixStart = `interviewer-${packageJson.version}-`;
+const expectedPrecachePrefixStart = `${cachePrefix}${packageJson.version}-`;
 const precachePrefix = sw.match(
   /setCacheNameDetails\(\{prefix:"([^"]+)"\}\)/,
 )?.[1];
@@ -98,6 +153,24 @@ if (
 ) {
   fail('cache reclaimer does not recheck worker ownership and pending updates');
 }
+// The root build shares its origin with Interviewer 8 at /v8/ once Interviewer
+// 9 hosts it, and 'interviewer-v8-' caches also start with 'interviewer-'. Its
+// reclaimer must leave those caches and /v8/ windows alone; a sub-path build
+// hosts no nested app.
+const expectedForeignCachePrefixes = isSubpath ? [] : ['interviewer-v8-'];
+const expectedForeignScopePaths = isSubpath ? [] : ['/v8/'];
+if (
+  !reclamationWorker.includes(
+    `const foreignCachePrefixes = ${JSON.stringify(expectedForeignCachePrefixes)};`,
+  ) ||
+  !reclamationWorker.includes(
+    `const foreignScopePaths = ${JSON.stringify(expectedForeignScopePaths)};`,
+  )
+) {
+  fail(
+    `cache reclaimer must treat exactly ${JSON.stringify(expectedForeignCachePrefixes)} caches and ${JSON.stringify(expectedForeignScopePaths)} windows as another app's`,
+  );
+}
 for (const f of [
   'manifest.webmanifest',
   'pwa-192x192.png',
@@ -108,6 +181,37 @@ for (const f of [
   } catch {
     fail(`missing dist/${f}`);
   }
+}
+
+let manifest;
+try {
+  manifest = JSON.parse(
+    readFileSync(path.join(dist, 'manifest.webmanifest'), 'utf8'),
+  );
+} catch {
+  fail('dist/manifest.webmanifest is not valid JSON');
+}
+if (manifest.start_url !== base || manifest.scope !== base) {
+  fail(
+    `manifest start_url and scope must be ${base}; found ${manifest.start_url} and ${manifest.scope}`,
+  );
+}
+if (isSubpath) {
+  // Opened inside Interviewer 9's window, never installed on its own: it must
+  // be told apart from Interviewer 9 wherever the OS lists it, and must not
+  // compete with it for .netcanvas launches.
+  const expectedName = `Interviewer ${packageJson.version.split('.')[0]}`;
+  if (manifest.name !== expectedName || manifest.short_name !== expectedName) {
+    fail(`a ${base} build's manifest must be named ${expectedName}`);
+  }
+  if (manifest.id !== base) {
+    fail(`a ${base} build's manifest id must be ${base}`);
+  }
+  if ('file_handlers' in manifest || 'launch_handler' in manifest) {
+    fail(`a ${base} build must not register as a .netcanvas file handler`);
+  }
+} else if (manifest.file_handlers?.[0]?.action !== '/') {
+  fail('the root build no longer opens launched .netcanvas files');
 }
 
 // generateSW inlines the precache manifest as `self.__WB_MANIFEST` replaced with
@@ -174,10 +278,29 @@ if (excluded.length > 0) {
 // The initial load: the scripts index.html loads or preloads, plus every chunk
 // they import statically. Dynamic `import()` targets are not followed.
 const indexHtml = readFileSync(path.join(dist, 'index.html'), 'utf8');
+// index.html must load its bundles from under the base: a root `/assets/`
+// reference in a sub-path build would load the hosting app's files.
+const htmlAssetRefs = [
+  ...indexHtml.matchAll(/(?:src|href)="([^"]*\/assets\/[^"]+)"/g),
+].map((match) => match[1]);
+if (htmlAssetRefs.length === 0) {
+  fail('dist/index.html references no bundled assets');
+}
+const offBaseAssetRefs = htmlAssetRefs.filter(
+  (ref) => !ref.startsWith(atBase('/assets/')),
+);
+if (offBaseAssetRefs.length > 0) {
+  fail(
+    `dist/index.html loads assets from outside ${base}: ${offBaseAssetRefs.join(', ')}`,
+  );
+}
 const initialLoad = new Set(
   [
     ...indexHtml.matchAll(
-      /<(?:script[^>]*\bsrc|link[^>]*\bhref)="\/assets\/([^"]+\.js)"/g,
+      new RegExp(
+        `<(?:script[^>]*\\bsrc|link[^>]*\\bhref)="${escapeRegExp(atBase('/assets/'))}([^"]+\\.js)"`,
+        'g',
+      ),
     ),
   ].map((m) => m[1]),
 );
@@ -324,8 +447,14 @@ if (staticLocaleImporters.length > 0) {
   );
 }
 
+const interviewPath = atBase('/interview/');
 const interviewRouteMatches = [
-  ...sw.matchAll(/!?[$\w]+\.pathname\.startsWith\("\/interview\/"\)/g),
+  ...sw.matchAll(
+    new RegExp(
+      `!?[$\\w]+\\.pathname\\.startsWith\\("${escapeRegExp(interviewPath)}"\\)`,
+      'g',
+    ),
+  ),
 ];
 const interviewCacheRoute = interviewRouteMatches.find(
   (match) => !match[0].startsWith('!'),
@@ -334,10 +463,10 @@ const freshShellRoute = interviewRouteMatches.find((match) =>
   match[0].startsWith('!'),
 );
 if (!interviewCacheRoute) {
-  fail('missing /interview/ precached-shell navigation route');
+  fail(`missing ${interviewPath} precached-shell navigation route`);
 }
 if (!freshShellRoute) {
-  fail('fresh-shell navigation route does not exclude /interview/');
+  fail(`fresh-shell navigation route does not exclude ${interviewPath}`);
 }
 if (
   interviewCacheRoute.index === undefined ||
@@ -363,11 +492,11 @@ const interviewRoute = sw.slice(
   freshShellRoute.index,
 );
 const assetHandoffRouteIndex = sw.indexOf(
-  'pathname.startsWith("/assets/")',
+  `pathname.startsWith("${atBase('/assets/')}")`,
   freshShellRoute.index,
 );
 const imagesRouteIndex = sw.indexOf(
-  'cacheName:"interviewer-images"',
+  `cacheName:"${cachePrefix}images"`,
   freshShellRoute.index,
 );
 if (imagesRouteIndex === -1) {
@@ -380,7 +509,7 @@ if (
   fail('missing exact-hash asset handoff route after navigation routes');
 }
 const imagesRouteEnd = sw.indexOf(
-  'cacheName:"interviewer-fonts"',
+  `cacheName:"${cachePrefix}fonts"`,
   imagesRouteIndex,
 );
 const imagesRouteSource = sw.slice(
@@ -398,7 +527,7 @@ for (const stableIconPath of [
   '/maskable-icon-512x512.png',
   '/interviewer-icon.png',
 ]) {
-  if (!imagesRouteSource.includes(`"${stableIconPath}"`)) {
+  if (!imagesRouteSource.includes(`"${atBase(stableIconPath)}"`)) {
     fail(
       `interviewer image-cache route includes stable icon ${stableIconPath}`,
     );
@@ -415,7 +544,9 @@ const assetHandoffRouteSource = sw.slice(
 if (!/\.CacheOnly\(\{/.test(interviewRoute)) {
   fail('/interview/ navigation does not force the active cached shell');
 }
-if (!interviewRoute.includes('cacheName:"interviewer-interview-navigation"')) {
+if (
+  !interviewRoute.includes(`cacheName:"${cachePrefix}interview-navigation"`)
+) {
   fail('/interview/ cache-only route does not use its shared empty cache');
 }
 if (interviewRoute.includes(`${precachePrefix}-interview-navigation`)) {
@@ -455,7 +586,7 @@ if (
   fail('navigation fallback searches retained precaches globally');
 }
 if (
-  !/\/assets\//.test(assetHandoffRouteSource) ||
+  !assetHandoffRouteSource.includes(`"${atBase('/assets/')}"`) ||
   !/js\|css/.test(assetHandoffRouteSource) ||
   !/4x3/.test(assetHandoffRouteSource) ||
   !/webp/.test(assetHandoffRouteSource) ||
@@ -471,7 +602,20 @@ if (
 if (/index\.html/.test(assetHandoffRouteSource)) {
   fail('exact-hash asset handoff must not search retained HTML shells');
 }
+// The worker of a sub-path build only ever controls pages under its base, so
+// a root path left in its route source is a matcher that can never fire.
+if (isSubpath) {
+  const routeSource = sw.slice(interviewCacheRoute.index);
+  const rootPaths = [...routeSource.matchAll(/"(\/(?!\/)[^"]*)"/g)]
+    .map((match) => match[1])
+    .filter((literal) => !literal.startsWith(base));
+  if (rootPaths.length > 0) {
+    fail(
+      `worker routes still match root paths outside ${base}: ${[...new Set(rootPaths)].join(', ')}`,
+    );
+  }
+}
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
+  `PWA build ok (base ${base}): ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );

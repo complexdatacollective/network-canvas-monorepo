@@ -961,6 +961,19 @@ jobs:
         env:
           ARCHITECT_BASE_PATH: /v8/
         run: pnpm --filter=@codaco/architect build
+      # Interviewer 8 ships the same way, inside Interviewer 9's deploy at /v8/,
+      # built from a released tag by the sub-path dist workflow. Build it here
+      # for the same reason: build.mjs drops the hosting rules and writes
+      # dist-info.json, and apps/interviewer/scripts/assert-pwa-build.mjs then
+      # holds the /v8/ worker, manifest and asset shape. No PostHog
+      # credentials, as above; it replaces the root build's dist, which
+      # nothing after this step reads.
+      - name: Build Interviewer under its /v8/ sub-path
+        id: interviewer_subpath_build
+        continue-on-error: true
+        env:
+          INTERVIEWER_BASE_PATH: /v8/
+        run: pnpm --filter=@codaco/interviewer build
       # Every other Storybook is built in CI as Chromatic's upload input
       # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
       # Builder has no Chromatic project by design, and the build step above
@@ -993,6 +1006,7 @@ jobs:
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           ARCHITECT_SUBPATH_BUILD_OUTCOME: ${{ steps.architect_subpath_build.outcome }}
+          INTERVIEWER_SUBPATH_BUILD_OUTCOME: ${{ steps.interviewer_subpath_build.outcome }}
           PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
@@ -1009,6 +1023,7 @@ jobs:
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
             "architect-subpath-build=$ARCHITECT_SUBPATH_BUILD_OUTCOME" \
+            "interviewer-subpath-build=$INTERVIEWER_SUBPATH_BUILD_OUTCOME" \
             "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
