@@ -19,7 +19,13 @@ const mocks = vi.hoisted(() => ({
   promptLeaveEditor: vi.fn(),
   navigateApp: vi.fn(),
   dispatch: vi.fn(),
+  storeListeners: new Set<() => void>(),
 }));
+
+// A store change, as the lock or the open protocol changing would dispatch.
+const notifyStore = () => {
+  for (const listener of mocks.storeListeners) listener();
+};
 
 vi.mock('~/utils/architect9Handoff', () => ({
   leaveForArchitect9: mocks.leave,
@@ -35,7 +41,15 @@ vi.mock('~/components/DialogForm/nestedDraftRegistry', () => ({
 
 vi.mock('~/ducks/hooks', () => ({
   useAppDispatch: () => mocks.dispatch,
-  useAppStore: () => ({ getState: () => ({}) }),
+  useAppStore: () => ({
+    getState: () => ({}),
+    subscribe: (listener: () => void) => {
+      mocks.storeListeners.add(listener);
+      return () => {
+        mocks.storeListeners.delete(listener);
+      };
+    },
+  }),
 }));
 
 vi.mock('~/utils/appBase', () => ({
@@ -62,6 +76,7 @@ beforeEach(() => {
   mocks.nestedDirty = false;
   mocks.persistence = 'saved';
   mocks.confirmLeave = true;
+  mocks.storeListeners.clear();
   mocks.promptLeaveEditor.mockReset();
   mocks.promptLeaveEditor.mockImplementation(
     async (
@@ -185,5 +200,31 @@ describe('useNavigateToArchitect9', () => {
       result.current(URL, { requireSavedProtocol: true }),
     ).resolves.toBe(false);
     expect(mocks.leave).not.toHaveBeenCalled();
+  });
+
+  it('refuses if the lock was lost during the prompt, even though the confirmed leave then cleared the protocol', async () => {
+    mocks.stageDirty = true;
+    mocks.promptLeaveEditor.mockImplementationOnce(
+      async (
+        _dispatch: unknown,
+        _openDialog: unknown,
+        performLeave: () => void | Promise<void>,
+      ) => {
+        mocks.persistence = 'open-elsewhere';
+        notifyStore();
+        // The real prompt clears the active protocol before it returns.
+        mocks.stageDirty = false;
+        mocks.persistence = 'no-protocol';
+        notifyStore();
+        await performLeave();
+      },
+    );
+    const result = navigate();
+
+    await expect(
+      result.current(URL, { requireSavedProtocol: true }),
+    ).resolves.toBe(false);
+    expect(mocks.leave).not.toHaveBeenCalled();
+    expect(mocks.storeListeners.size).toBe(0);
   });
 });

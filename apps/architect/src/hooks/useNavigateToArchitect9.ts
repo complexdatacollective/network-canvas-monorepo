@@ -68,23 +68,35 @@ export const useNavigateToArchitect9 = () => {
         const persistence = getLeavePersistence(store.getState());
         if (persistence !== 'no-protocol') {
           let confirmed = false;
-          // The same discard confirmation as leaving the editor any other
-          // way. A confirmed leave clears the protocol and returns to the
-          // start screen, so Back from Architect 9 lands there rather than in
-          // an editor whose draft was just discarded.
-          await promptLeaveEditor(
-            dispatch,
-            openDialog,
-            () => {
-              confirmed = true;
-              return collapseProtocolHistory(toBrowserPath('/'), () =>
-                navigateApp('/', { replace: true }),
-              );
-            },
-            true,
-            persistence,
-          );
-          if (!confirmed) return false;
+          // The tab can lose its lock while the prompt is open, and a
+          // confirmed leave clears the protocol before the prompt returns,
+          // after which the check below can no longer see that loss. So
+          // watch for it while the prompt is up.
+          let lostWhilePrompting = false;
+          const unsubscribe = store.subscribe(() => {
+            if (refused()) lostWhilePrompting = true;
+          });
+          try {
+            // The same discard confirmation as leaving the editor any other
+            // way. A confirmed leave clears the protocol and returns to the
+            // start screen, so Back from Architect 9 lands there rather than
+            // in an editor whose draft was just discarded.
+            await promptLeaveEditor(
+              dispatch,
+              openDialog,
+              () => {
+                confirmed = true;
+                return collapseProtocolHistory(toBrowserPath('/'), () =>
+                  navigateApp('/', { replace: true }),
+                );
+              },
+              true,
+              persistence,
+            );
+          } finally {
+            unsubscribe();
+          }
+          if (!confirmed || lostWhilePrompting) return false;
           await whenCriticalOperationsSettle();
           await whenEditorsClosed();
         }
