@@ -6,8 +6,13 @@ import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  countLegacyAssets,
   createLegacyProtocolReader,
+  getLegacyAssets,
+  getLegacyProtocol,
   legacyReadOnlyMiddleware,
+  listLegacyProtocols,
+  readLegacyProtocolSnapshot,
 } from '../legacyProtocolLibrary';
 import { LEGACY_LIBRARIES } from '../storageNames';
 
@@ -289,6 +294,32 @@ describe('legacy protocol reader', () => {
       Reflect.deleteProperty(indexedDB, 'databases');
     }
     await expect(reader.listLegacyProtocols()).resolves.toHaveLength(3);
+  });
+});
+
+// What the app imports: one reader over Architect 8's library.
+describe('the app’s legacy reader', () => {
+  beforeEach(seedTypicalLibrary);
+
+  it('reads Architect 8’s library, ArchitectProtocolDB', async () => {
+    expect(DB_NAME).toBe('ArchitectProtocolDB');
+    const before = await fingerprint();
+
+    expect((await listLegacyProtocols()).map((row) => row.id)).toEqual([
+      'newer',
+      'schema-7',
+      'older',
+    ]);
+    await expect(getLegacyProtocol('older')).resolves.toMatchObject({
+      id: 'older',
+    });
+    await expect(getLegacyAssets('newer')).resolves.toHaveLength(2);
+    await expect(countLegacyAssets('newer')).resolves.toBe(2);
+    await expect(readLegacyProtocolSnapshot('older')).resolves.toMatchObject({
+      row: { id: 'older' },
+    });
+
+    expect(await fingerprint()).toEqual(before);
   });
 });
 
