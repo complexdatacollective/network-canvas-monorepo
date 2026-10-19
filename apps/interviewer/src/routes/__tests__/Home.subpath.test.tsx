@@ -8,7 +8,9 @@ import { DEFAULT_SETTINGS } from '~/lib/db/types';
 
 const mocks = vi.hoisted(() => ({
   isSubpath: true,
+  location: '/',
   deckProps: [] as Array<{ showSampleCard?: boolean }>,
+  bannerProps: [] as Array<{ inert?: boolean }>,
 }));
 
 vi.mock('~/lib/appBase', async (importOriginal) => ({
@@ -28,7 +30,7 @@ vi.mock('../useHomeData', () => ({
 }));
 
 vi.mock('wouter', () => ({
-  useLocation: () => ['/', vi.fn()],
+  useLocation: () => [mocks.location, vi.fn()],
 }));
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
@@ -59,6 +61,14 @@ vi.mock('~/lib/pwa/useLaunchFailureToast', () => ({
 vi.mock('~/components/BrandHeader', () => ({ BrandHeader: () => null }));
 vi.mock('~/components/DataView/DataView', () => ({ DataView: () => null }));
 vi.mock('~/components/InstallBanner', () => ({ InstallBanner: () => null }));
+// The banner decides for itself whether the build shows it; Home decides
+// where it goes.
+vi.mock('~/components/Interviewer8Banner', () => ({
+  Interviewer8Banner: (props: { inert?: boolean }) => {
+    mocks.bannerProps.push(props);
+    return null;
+  },
+}));
 vi.mock('~/components/ResumePill', () => ({ ResumePill: () => null }));
 vi.mock('~/components/SettingsDialog', () => ({ SettingsDialog: () => null }));
 vi.mock('~/components/StatusRow', () => ({ StatusRow: () => null }));
@@ -77,7 +87,9 @@ const lastDeckProps = () => mocks.deckProps.at(-1);
 
 beforeEach(() => {
   mocks.isSubpath = true;
+  mocks.location = '/';
   mocks.deckProps = [];
+  mocks.bannerProps = [];
 });
 
 describe('HomeRoute sample protocol card', () => {
@@ -93,5 +105,14 @@ describe('HomeRoute sample protocol card', () => {
     render(<HomeRoute />);
 
     expect(lastDeckProps()?.showSampleCard).toBe(false);
+  });
+});
+
+describe('HomeRoute Interviewer 8 banner', () => {
+  it.each(['/', '/data'])('is placed on the %s view', (location) => {
+    mocks.location = location;
+    render(<HomeRoute />);
+
+    expect(mocks.bannerProps.at(-1)).toEqual({ inert: false });
   });
 });

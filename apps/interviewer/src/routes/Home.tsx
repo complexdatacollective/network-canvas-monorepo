@@ -16,6 +16,7 @@ import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { InstallBanner } from '~/components/InstallBanner';
+import { Interviewer8Banner } from '~/components/Interviewer8Banner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
 import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
@@ -74,6 +75,13 @@ type View = 'protocols' | 'data';
 function viewFromLocation(location: string): View {
   return location === '/data' ? 'data' : 'protocols';
 }
+
+// The header's top padding measures from the bottom of the device's top safe
+// area (see the header below). Interviewer 8 inside Interviewer 9 (a /v8/
+// build) puts its banner above the header, and the banner takes the inset.
+const HEADER_TOP_INSET = IS_SUBPATH_BUILD
+  ? 'laptop:pt-9 pt-4'
+  : 'laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] pt-[calc(1rem+env(safe-area-inset-top))]';
 
 export function HomeRoute() {
   const { protocols, sessions, settings, reload } = useHomeData();
@@ -277,13 +285,14 @@ export function HomeRoute() {
           z-index so it is visually overlaid, and `inert` keeps its
           controls out of the tab order while the new-session form is up. */}
       <InstallBanner />
+      <Interviewer8Banner inert={newSessionActive} />
       {/* Top padding measures from the bottom of the device's top safe area
           (env() is 0 outside an installed PWA on a notched/status-bar device),
           so the brand mark and action bar clear the clock/battery while the
           gradient backdrop still shows through behind them (#1186). At laptop:
           the design's 2.25rem floor wins unless the inset pushes past it. */}
       <header
-        className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] relative flex items-center justify-between px-6 pt-[calc(1rem+env(safe-area-inset-top))]"
+        className={`laptop:px-11 relative flex items-center justify-between px-6 ${HEADER_TOP_INSET}`}
         inert={newSessionActive}
       >
         <BrandHeader />
@@ -305,7 +314,9 @@ export function HomeRoute() {
             actual ORIENTATION, not a min-width breakpoint: the 13" iPad's
             portrait width (~1024px) would otherwise trip a min-width
             breakpoint and pull the pill up into the header. */}
-        <div className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-[calc(1rem+env(safe-area-inset-top))] landscape:translate-y-0">
+        <div
+          className={`laptop:px-11 pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 landscape:translate-y-0 ${HEADER_TOP_INSET}`}
+        >
           <AnimatePresence>
             {showResumePill ? (
               <ResumePill key="resume-pill" sessions={sessions} />
