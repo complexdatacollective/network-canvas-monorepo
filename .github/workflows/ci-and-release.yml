@@ -3744,6 +3744,12 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
+    # Read by apps-release-architect-subpath-dist below: whether this run
+    # actually released (the guard skips a version already tagged or
+    # overtaken), and the tag it created.
+    outputs:
+      released: ${{ steps.guard.outputs.skip != 'true' }}
+      tag: '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}'
     # No job-level secrets: every credential is scoped to the one step that
     # consumes it, so setup actions, the install, and the release action never
     # see the Netlify token or the build-time values.
@@ -3824,6 +3830,25 @@ jobs:
           body_path: ${{ runner.temp }}/architect-notes.md
           prerelease: false
           make_latest: 'true'
+
+  # Builds the release just tagged under /v8/ and attaches architect-v8-dist.tgz
+  # to it, for Architect 9 to bundle (see apps/architect/RELEASING.md, "Sub-path
+  # dist tarball"). A separate job so a failure here never turns a release
+  # that has already shipped red, and chained by workflow_call because the
+  # release above is created with GITHUB_TOKEN, which fires no tag or release
+  # event. Major 8 only: 9.x is the root app; the next major bundles it once
+  # 10.x exists. A tag that predates sub-path builds (8.4.1) is skipped inside.
+  apps-release-architect-subpath-dist:
+    needs: [apps-release-detect, apps-release-architect]
+    if: needs.apps-release-detect.outputs.architect_released == 'true' && needs.apps-release-architect.outputs.released == 'true' && startsWith(needs.apps-release-detect.outputs.architect_version, '8.')
+    # A called workflow's jobs get no more than this job grants, and the
+    # workflow's top-level permissions are read-only. Only its publish job,
+    # which runs no code from the tag, uses the write.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/architect-subpath-dist.yml
+    with:
+      tag: ${{ needs.apps-release-architect.outputs.tag }}
 
   # Build, deploy to Netlify production, and cut a GitHub release for interviewer
   # when its version changed. Separate job (see apps-release-architect) so a

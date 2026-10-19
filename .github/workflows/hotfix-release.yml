@@ -119,6 +119,9 @@ jobs:
           --health-retries 5
     outputs:
       sha: ${{ steps.commit.outputs.sha }}
+      # For architect-subpath-dist below.
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
     # No credential at job level: every step below that runs code from the
     # hotfix branch (verify, build, stage) would see it. The deploy step
     # names the Netlify token itself, and the Fresco push token never enters
@@ -430,6 +433,24 @@ jobs:
           body_path: ${{ runner.temp }}/hotfix-notes.md
           prerelease: false
           make_latest: 'true'
+
+  # An Architect 8 hotfix is also bundled by Architect 9 at /v8/: build the tag
+  # just released under that sub-path and attach architect-v8-dist.tgz to its
+  # release, exactly as apps-release-architect-subpath-dist does for the normal
+  # lane (see apps/architect/RELEASING.md, "Sub-path dist tarball"). After the
+  # release job, so the tag and release it reads exist; inside this workflow's
+  # concurrency group, so a queued normal release waits for it too. A tag that
+  # predates sub-path builds is skipped inside with a notice.
+  architect-subpath-dist:
+    needs: hotfix-release
+    if: inputs.app == 'architect' && startsWith(needs.hotfix-release.outputs.version, '8.')
+    # Only the called workflow's publish job, which runs no code from the tag,
+    # uses the write.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/architect-subpath-dist.yml
+    with:
+      tag: ${{ needs.hotfix-release.outputs.tag }}
 
   # The push to the Fresco repository, from a job that has never run code from
   # the branch being released. It checks out the released commit for its DATA
