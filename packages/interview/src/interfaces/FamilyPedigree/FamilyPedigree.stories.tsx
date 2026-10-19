@@ -964,6 +964,47 @@ const idInSession = (name: string) =>
 
 const edgesInSession = () => lastSynced?.network.edges ?? [];
 
+/** The add-a-parent form's kind-of-parent question, answered as the first
+ * kind offered (a biological parent): nothing is chosen for the participant,
+ * so a story that goes on to save chooses it. */
+const chooseFirstParentKind = async (scope: ReturnType<typeof within>) => {
+  const kind = await scope.findByRole('radiogroup', {
+    name: /^What kind of parent are they\?/,
+  });
+  await userEvent.click(within(kind).getAllByRole('radio')[0] as HTMLElement);
+};
+
+/** The add-a-sibling form's required questions, answered as a full
+ * biological sibling: every parent offered is shared (or, for someone with
+ * no parent recorded, both of the parents given them), and they are the
+ * biological child of them. Nothing is chosen for the participant. */
+const shareParentsAsBiologicalSibling = async (
+  scope: ReturnType<typeof within>,
+) => {
+  const shared = await scope
+    .findByRole(
+      'group',
+      { name: /^Which parents do they share/ },
+      { timeout: 500 },
+    )
+    .catch(() => undefined);
+  if (shared) {
+    for (const box of within(shared).getAllByRole('checkbox')) {
+      await userEvent.click(box);
+    }
+  } else {
+    const count = await scope.findByRole('radiogroup', {
+      name: /^Which parents do they share/,
+    });
+    await userEvent.click(
+      within(count).getAllByRole('radio')[0] as HTMLElement,
+    );
+  }
+  await userEvent.click(
+    await scope.findByRole('radio', { name: 'A biological child' }),
+  );
+};
+
 /** Whether the session last written records `parentId` as having carried
  * `childId`'s pregnancy: the one yes/no answer on the link between them.
  * Undefined while there is no such link. */
@@ -1024,6 +1065,24 @@ export const AddingASiblingAsksWhoCarriedThePregnancy: Story = {
 
     const carrierQuestion = () =>
       body.queryByRole('radiogroup', { name: /^Who carried the pregnancy\?/ });
+    // Nobody is offered until the parents they share, and the kind of
+    // sibling they are, are chosen.
+    const sharedParents = await body.findByRole('group', {
+      name: /^Which parents do they share with you\?/,
+    });
+    for (const parent of within(sharedParents).getAllByRole('checkbox')) {
+      await expect(parent).not.toBeChecked();
+    }
+    await expect(carrierQuestion()).toBeNull();
+    await userEvent.click(
+      within(sharedParents).getByRole('checkbox', { name: 'Rachel' }),
+    );
+    await userEvent.click(
+      within(sharedParents).getByRole('checkbox', { name: 'Tom' }),
+    );
+    await userEvent.click(
+      await body.findByRole('radio', { name: 'A biological child' }),
+    );
     await waitFor(() => expect(carrierQuestion()).not.toBeNull());
     const carrier = within(carrierQuestion() as HTMLElement);
     await expect(carrier.getAllByRole('radio')).toHaveLength(2);
@@ -1112,6 +1171,7 @@ export const AParentNotYetShownCanHaveCarriedASibling: Story = {
     );
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await shareParentsAsBiologicalSibling(body);
     const carrier = within(
       await body.findByRole('radiogroup', {
         name: /^Who carried the pregnancy\?/,
@@ -1141,11 +1201,11 @@ export const AParentNotYetShownCanHaveCarriedASibling: Story = {
 
 /**
  * Jun was adopted by Clare, as was his sister Lucy. His birth mother, added
- * as a biological parent, is not assumed to be Clare's partner, nor Lucy's
- * mother: the partner question starts unanswered and Lucy is not chosen. Made an
- * adoptive parent instead, she is assumed to have raised them with Clare,
- * until the participant says she was not Clare's partner, which changing
- * the kind of parent again leaves alone. Nothing records a partnership.
+ * as a parent, is not assumed to be a biological or an adoptive parent, nor
+ * Clare's partner, nor Lucy's mother: those questions start unanswered, and
+ * stay so as the kind of parent changes. The participant's own answer that
+ * she was not Clare's partner is kept when the kind changes again. Nothing
+ * records a partnership.
  */
 export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
   args: { requirement: 'none' },
@@ -1201,21 +1261,23 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
     const lucyChosen = () =>
       within(alsoParentOf).getByRole('checkbox', { name: 'Lucy' });
 
-    // A biological parent, by default.
-    await waitFor(() => expect(partnerAnswer()).toBeUndefined());
+    // Nothing is assumed: no kind, no partner, and no sibling is chosen.
+    for (const option of within(kind).getAllByRole('radio')) {
+      await expect(option).not.toBeChecked();
+    }
+    await expect(partnerAnswer()).toBeUndefined();
     await expect(lucyChosen()).not.toBeChecked();
 
     await chooseKind('Adoptive parent');
-    await waitFor(() => expect(partnerAnswer()).toBe('Clare'));
-    await waitFor(() => expect(lucyChosen()).toBeChecked());
+    await expect(partnerAnswer()).toBeUndefined();
+    await expect(lucyChosen()).not.toBeChecked();
 
     await chooseKind('Biological parent');
-    await waitFor(() => expect(partnerAnswer()).toBeUndefined());
-    await waitFor(() => expect(lucyChosen()).not.toBeChecked());
+    await expect(partnerAnswer()).toBeUndefined();
+    await expect(lucyChosen()).not.toBeChecked();
 
     // The participant's own answer is kept.
     await chooseKind('Adoptive parent');
-    await waitFor(() => expect(partnerAnswer()).toBe('Clare'));
     await userEvent.click(within(partner).getByRole('radio', { name: 'No' }));
     await chooseKind('Biological parent');
     await chooseKind('Adoptive parent');
@@ -1234,12 +1296,11 @@ export const ABirthParentIsNotAssumedToBeAnAdoptiveParentsPartner: Story = {
 };
 
 /**
- * Choosing the answer already filled in is an answer too, with the pointer or
- * the keyboard: Jun's new parent, made adoptive, is assumed to be Clare's
- * partner, and the participant clicks Clare; made biological again, she is
- * still Clare's partner. Opened afresh, the partner question starts
- * unanswered, and the participant presses Space on No; made adoptive, it
- * stays No.
+ * An answer chosen with the pointer or the keyboard is kept when the kind of
+ * parent changes: Jun's new parent, made adoptive, has no partner chosen
+ * until the participant clicks Clare; made biological again, she is still
+ * Clare's partner. Opened afresh, the partner question starts unanswered,
+ * and the participant presses Space on No; made adoptive, it stays No.
  */
 export const ChoosingTheAnswerFilledInKeepsIt: Story = {
   args: { requirement: 'none' },
@@ -1280,8 +1341,9 @@ export const ChoosingTheAnswerFilledInKeepsIt: Story = {
 
     const byPointer = await openAddParent();
     await byPointer.chooseKind('Adoptive parent');
-    await waitFor(() => expect(byPointer.option('Clare')).toBeChecked());
+    await expect(byPointer.option('Clare')).not.toBeChecked();
     await userEvent.click(byPointer.option('Clare'));
+    await expect(byPointer.option('Clare')).toBeChecked();
     await byPointer.chooseKind('Biological parent');
     await expect(byPointer.option('Clare')).toBeChecked();
     await userEvent.click(await body.findByRole('button', { name: 'Cancel' }));
@@ -1303,8 +1365,8 @@ export const ChoosingTheAnswerFilledInKeepsIt: Story = {
  * the name ready to type. Each one-choice answer brings the next unanswered
  * question in the group into view without taking focus from the answer, and
  * answering the group's last required question moves on by itself. A group
- * with only optional questions left offers Skip; Back returns with the
- * answers kept, and the last group ends with Save.
+ * with nothing answered in it offers Skip, and Continue once anything is;
+ * Back returns with the answers kept, and the last group ends with Save.
  */
 export const AddingSomeoneMovesThroughTheQuestions: Story = {
   args: { requirement: 'none' },
@@ -1328,22 +1390,33 @@ export const AddingSomeoneMovesThroughTheQuestions: Story = {
 
     // Sex assigned at birth is the group's last required question.
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
-    const carried = await body.findByRole(
+    // The next group asks how they are related, with nothing chosen.
+    const kind = await body.findByRole(
       'radiogroup',
-      { name: /^Did this parent carry the pregnancy\?/ },
+      { name: /^What kind of parent are they\?/ },
       { timeout: 3000 },
     );
     await waitFor(() => expect(name).not.toBeVisible());
+    for (const option of within(kind).getAllByRole('radio')) {
+      await expect(option).not.toBeChecked();
+    }
+    await userEvent.click(within(kind).getAllByRole('radio')[0] as HTMLElement);
+    const carried = await body.findByRole('radiogroup', {
+      name: /^Did this parent carry the pregnancy\?/,
+    });
 
-    // Only an optional question is left, so the group can be skipped.
+    // Something is answered in the group, so it offers Continue, not Skip.
     await expect(carried).toBeVisible();
+    await expect(body.queryByRole('button', { name: 'Skip' })).toBeNull();
     await userEvent.click(await body.findByRole('button', { name: 'Back' }));
     await waitFor(() => expect(name).toBeVisible());
     await expect(name).toHaveValue('Rosa');
     await userEvent.click(
       await body.findByRole('button', { name: 'Continue' }),
     );
-    await userEvent.click(await body.findByRole('button', { name: 'Skip' }));
+    await userEvent.click(
+      await body.findByRole('button', { name: 'Continue' }),
+    );
 
     // The study's own questions come last, with the age ready to type.
     const age = await body.findByRole('spinbutton', { name: /^Age/ });
@@ -1486,12 +1559,12 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
 };
 
 /**
- * Ella's birth mother Rachel is recorded. Her father, added as a biological
- * parent, is not assumed to be Rachel's partner (ruling 25: a partnership
- * between biological parents is never assumed); a stepfather, who raised
- * Ella with her, is.
+ * Ella's birth mother Rachel is recorded. Her father, added as a parent, is
+ * not assumed to be Rachel's partner, whatever the kind of parent chosen
+ * (ruling 25: a partnership is never assumed): not as a biological parent,
+ * nor as a stepfather who raised Ella with her.
  */
-export const AStepParentIsAssumedToBeTheirCoParentsPartner: Story = {
+export const AStepParentIsNotAssumedToBeTheirCoParentsPartner: Story = {
   args: { requirement: 'none' },
   render: (args) => (
     <PedigreeStory
@@ -1531,7 +1604,7 @@ export const AStepParentIsAssumedToBeTheirCoParentsPartner: Story = {
         }),
       ).getByRole('radio', { name: 'Step or social parent' }),
     );
-    await waitFor(() => expect(rachel).toBeChecked());
+    await expect(rachel).not.toBeChecked();
   },
 };
 
@@ -3377,6 +3450,7 @@ export const LabelsAreGivenAfreshAfterAddingARelative: Story = {
     await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await shareParentsAsBiologicalSibling(body);
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() =>
@@ -3468,6 +3542,7 @@ export const RelationshipsAreRecordedOnLeaving: Story = {
     await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await shareParentsAsBiologicalSibling(body);
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await canvas.findByRole('button', { name: /^Sister/ });
@@ -3660,6 +3735,7 @@ export const AddingARelativeIsOneChange: Story = {
     await userEvent.click(await canvas.findByTestId('pedigree-menu-sibling'));
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await shareParentsAsBiologicalSibling(body);
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
     await waitFor(() =>
@@ -3757,6 +3833,7 @@ export const EncryptedNames: Story = {
     );
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await shareParentsAsBiologicalSibling(body);
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
@@ -3841,6 +3918,7 @@ export const NameAttributeNamedProto: Story = {
     );
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+    await chooseFirstParentKind(body);
     await userEvent.click(await body.findByRole('button', { name: 'Save' }));
     await waitFor(() => expect(panelOf(canvasElement)).toBeNull());
 
@@ -3941,8 +4019,9 @@ export const EncryptedFormField: Story = {
     await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
     await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
     // The study's own questions come after her relationship, which shows
-    // once her sex at birth is chosen.
+    // once her sex at birth is chosen, and is answered before they are.
     await body.findByRole('button', { name: 'Back' });
+    await shareParentsAsBiologicalSibling(body);
     await userEvent.click(
       await body.findByRole('button', { name: /^(Continue|Skip)$/ }),
     );
@@ -4223,6 +4302,7 @@ export const RecordingAnswersKeepsTheFamily: Story = {
         }),
       ).getByRole('radio', { name: 'Female' }),
     );
+    await chooseFirstParentKind(panel);
     await userEvent.click(
       within(
         await panel.findByRole('radiogroup', {

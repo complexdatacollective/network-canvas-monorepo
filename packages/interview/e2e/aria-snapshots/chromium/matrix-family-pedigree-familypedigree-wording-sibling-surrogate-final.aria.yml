@@ -31,7 +31,7 @@
       - text: Someone else, or I don’t know
     - text: Are they your twin? Answer yes for triplets and other multiple births too.
     - radiogroup "Are they your twin?":
-      - radio "No" [checked]
+      - radio "No"
       - text: "No"
       - radio "Yes, identical twins"
       - text: Yes, identical twins

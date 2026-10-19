@@ -6,7 +6,6 @@ import type { NcEdge, NcNode } from '@codaco/shared-consts';
 import {
   formatOwnedLabel,
   formatPersonLabel,
-  formatRelativeTerm,
   KIN_TERMS,
   type KinTerm,
   labelFamily,
@@ -453,13 +452,9 @@ describe('labelFamily', () => {
         'Relative',
       );
       // Anyone can be described through a relative by any kinship word.
-      expect(
-        words.text(words.wording.generatedLabelOf, {
-          relation: 'owner',
-          owner: 'Isaac',
-          term: formatRelativeTerm(term, words),
-        }),
-      ).not.toBe('Isaac’s relative');
+      expect(formatOwnedLabel('Isaac', term, words)).not.toBe(
+        'Isaac’s relative',
+      );
     }
   });
 });
@@ -1196,6 +1191,28 @@ describe('a kinship word after its owner', () => {
       },
     };
     expect(formatOwnedLabel('Ana', 'mother', ownerFirst)).toBe('Anas Mutter');
+    expect(
+      formatOwnedLabel('Ana', 'maternalGrandfather', ownerFirst).replace(
+        /\u00AD/g,
+        '',
+      ),
+    ).toBe('Anas Großvater mütterlicherseits');
+  });
+
+  test('lower-cases an adjective it opens with, even where nouns keep capitals', () => {
+    const german = pedigreeWordsIn('de');
+    const ownerFirst = {
+      ...german,
+      wording: {
+        ...german.wording,
+        generatedLabelOf: {
+          de: '{relation, select, owner {{owner}s {term}} other {{term}}}',
+        },
+      },
+    };
+    expect(formatOwnedLabel('Ana', 'biologicalMother', ownerFirst)).toBe(
+      'Anas leibliche Mutter',
+    );
   });
 });
 

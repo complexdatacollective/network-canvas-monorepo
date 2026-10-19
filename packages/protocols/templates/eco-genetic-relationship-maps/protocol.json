@@ -614,7 +614,7 @@
           "en-US": "A biological child"
         },
         "childKindSocial": {
-          "en-US": "A step-child or other child they raise"
+          "en-US": "{isYou, select, true {A step-child or other child you raise} other {A step-child or other child they raise}}"
         },
         "childKindLabel": {
           "en-US": "Is this child…"
@@ -725,10 +725,10 @@
           "en-US": "{count, plural, one {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.} other {This would leave {names} outside your family tree, because it removes their only connection to you. Connect them to someone else in your family first.}}"
         },
         "childKindDonor": {
-          "en-US": "A child conceived with an egg or sperm they donated"
+          "en-US": "{isYou, select, true {A child conceived with an egg or sperm you donated} other {A child conceived with an egg or sperm they donated}}"
         },
         "childKindSurrogate": {
-          "en-US": "A child they carried as a surrogate"
+          "en-US": "{isYou, select, true {A child you carried as a surrogate} other {A child they carried as a surrogate}}"
         },
         "parentKindCarrier": {
           "en-US": "{parentKind} (carried the pregnancy)"

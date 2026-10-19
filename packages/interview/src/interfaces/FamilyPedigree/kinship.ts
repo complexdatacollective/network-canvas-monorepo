@@ -798,7 +798,10 @@ const TERM_MARKER = '\uE000';
  * with a capital ("Parent"), so where the label does not open with it, it is
  * lower-cased in languages that don't capitalise nouns ("Ana’s parent", not
  * "Ana’s Parent"). It keeps its capital where it opens the label ("Parent de
- * Ana"), and in languages such as German that capitalise every noun.
+ * Ana"). In languages such as German that capitalise every noun, only an
+ * adjective it opens with is lower-cased, known by the capitalised noun after
+ * it ("Anas leibliche Mutter", but "Anas Mutter" and "Anas Großvater
+ * mütterlicherseits").
  */
 export function formatOwnedLabel(
   owner: string,
@@ -812,9 +815,10 @@ export function formatOwnedLabel(
       term: termText,
     });
   const kinWord = formatRelativeTerm(term, words);
+  if (label(TERM_MARKER).startsWith(TERM_MARKER)) return label(kinWord);
   if (
-    label(TERM_MARKER).startsWith(TERM_MARKER) ||
-    NOUN_CAPITALISING_LANGUAGES.has(languageOf(words.locale))
+    NOUN_CAPITALISING_LANGUAGES.has(languageOf(words.locale)) &&
+    !/^\S+\s+\p{Lu}/u.test(kinWord)
   ) {
     return label(kinWord);
   }

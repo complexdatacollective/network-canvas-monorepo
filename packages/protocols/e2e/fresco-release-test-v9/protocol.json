@@ -672,20 +672,20 @@
           "es": "Un hijo/a biológico/a"
         },
         "childKindDonor": {
-          "en": "A child conceived with an egg or sperm they donated",
-          "es": "Un hijo o hija concebido con un óvulo o esperma que donaron"
+          "en": "{isYou, select, true {A child conceived with an egg or sperm you donated} other {A child conceived with an egg or sperm they donated}}",
+          "es": "{isYou, select, true {Un hijo o hija concebido con un óvulo o esperma que donaste} other {Un hijo o hija concebido con un óvulo o esperma que donaron}}"
         },
         "childKindLabel": {
           "en": "Is this child…",
           "es": "Este hijo/a es…"
         },
         "childKindSocial": {
-          "en": "A step-child or other child they raise",
-          "es": "Un hijastro/a u otro hijo/a que crían"
+          "en": "{isYou, select, true {A step-child or other child you raise} other {A step-child or other child they raise}}",
+          "es": "{isYou, select, true {Un hijastro/a u otro hijo/a que crías} other {Un hijastro/a u otro hijo/a que crían}}"
         },
         "childKindSurrogate": {
-          "en": "A child they carried as a surrogate",
-          "es": "Un hijo o hija que gestaron como gestante subrogada"
+          "en": "{isYou, select, true {A child you carried as a surrogate} other {A child they carried as a surrogate}}",
+          "es": "{isYou, select, true {Un hijo o hija que gestaste como gestante subrogada} other {Un hijo o hija que gestaron como gestante subrogada}}"
         },
         "connectHint": {
           "en": "Select a person, then select another to connect them.",

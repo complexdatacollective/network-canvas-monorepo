@@ -15,21 +15,13 @@
       - text: Gail
     - text: To the parents they share, are they… Required
     - radiogroup "To the parents they share, are they…":
-      - radio "A biological child" [checked]
+      - radio "A biological child"
       - text: A biological child
       - radio "An adopted child"
       - text: An adopted child
-    - text: Who carried the pregnancy?
-    - radiogroup "Who carried the pregnancy?":
-      - radio "Adoptive parent 1"
-      - text: Adoptive parent 1
-      - radio "Adoptive parent 2"
-      - text: Adoptive parent 2
-      - radio "Someone else, or I don’t know"
-      - text: Someone else, or I don’t know
     - text: Are they your twin? Answer yes for triplets and other multiple births too. “Yes, identical twins” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.
     - radiogroup "Are they your twin?":
-      - radio "No" [checked]
+      - radio "No"
       - text: "No"
       - radio "Yes, identical twins" [disabled]
       - text: Yes, identical twins “Yes, identical twins” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.

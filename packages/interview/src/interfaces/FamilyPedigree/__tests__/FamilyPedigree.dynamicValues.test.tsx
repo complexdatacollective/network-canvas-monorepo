@@ -457,16 +457,12 @@ describe('the node label in a Family Pedigree panel’s questions', () => {
     await waitFor(() => expect(questionValue()).toBe(label));
   });
 
-  it('names a required question in the missing-details notice as it reads', async () => {
+  it('names a required question as it reads, with no notice of missing details', async () => {
     await interview({ required: true });
     await openPanelOf('mum');
 
-    const notice = await within(panel()).findByText(
-      /^Some details are missing/,
-    );
-    await waitFor(() =>
-      expect(notice).toHaveTextContent(/How old is Mother\?/),
-    );
+    await waitFor(() => expect(questionValue()).toBe('Mother'));
+    expect(within(panel()).queryByText(/Some details are missing/)).toBeNull();
   });
 
   it('calls a relative by their encrypted name once it is decrypted', async () => {

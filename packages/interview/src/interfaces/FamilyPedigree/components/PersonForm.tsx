@@ -2088,7 +2088,11 @@ function ChildFields({
     otherParent !== UNKNOWN
       ? otherParent
       : undefined;
-  const carriers = childCarrierChoices(family, anchor, childKind, otherParent);
+  // Who carried the pregnancy is asked once the kind of child is known.
+  const carriers =
+    childKind === undefined
+      ? []
+      : childCarrierChoices(family, anchor, childKind, otherParent);
   // An answer naming someone no longer offered — an other parent since
   // replaced — is taken back, so the question is asked again.
   const carrierAnswer = useDerivedAnswer({
@@ -2099,6 +2103,9 @@ function ChildFields({
       (id === NONE || (typeof id === 'string' && carriers.includes(id))),
   });
 
+  // The kinds of child are named as the participant's own when the anchor
+  // is the participant.
+  const isYou = anchor.isEgo ? 'true' : 'false';
   // Why an answer is unavailable, naming it.
   const childKindReasons = [
     anchor.sexAssignedAtBirth !== undefined &&
@@ -2106,7 +2113,7 @@ function ChildFields({
       cannotCarryReason(anchor.id, anchor.sexAssignedAtBirth, [
         {
           value: 'surrogate',
-          label: text(childKindWording(wording, 'surrogate')),
+          label: text(childKindWording(wording, 'surrogate'), { isYou }),
         },
       ]),
   ];
@@ -2149,7 +2156,7 @@ function ChildFields({
         label={text(wording.childKindLabel)}
         options={CHILD_KINDS.map((value) => ({
           value,
-          label: text(childKindWording(wording, value)),
+          label: text(childKindWording(wording, value), { isYou }),
           // Someone recorded as male at birth carried nobody.
           disabled:
             value === 'surrogate' &&
@@ -2541,7 +2548,8 @@ function SiblingFields({
         label={text(wording.siblingKindLabel)}
         options={SIBLING_KINDS.map((value) => ({
           value,
-          label: text(childKindWording(wording, value)),
+          // The kinds are named as the parents' children, never yours.
+          label: text(childKindWording(wording, value), { isYou: 'false' }),
           disabled: value === 'biological' && biologicalUnavailable,
         }))}
         required
