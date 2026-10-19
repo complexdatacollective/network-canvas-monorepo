@@ -9,7 +9,11 @@ import { APP_SCHEMA_VERSION } from '~/config';
 
 import { assetDb } from '../assetDB';
 import type { LegacyProtocolSnapshot } from '../legacyProtocolLibrary';
-import { writeUpgradedLegacyCopy } from '../protocolLibrary';
+import {
+  listLegacyProtocolChoices,
+  recordLegacyProtocolKept,
+  writeUpgradedLegacyCopy,
+} from '../protocolLibrary';
 
 vi.mock('../reportError', () => ({ reportError: vi.fn() }));
 
@@ -254,5 +258,45 @@ describe('writeUpgradedLegacyCopy', () => {
     expect(protocols).toEqual([]);
     expect(assets.map((asset) => asset.name)).toEqual(['squatter.png']);
     expect(choices).toEqual([]);
+  });
+});
+
+describe('recordLegacyProtocolKept', () => {
+  it('remembers the protocol stays in Architect 8', async () => {
+    await recordLegacyProtocolKept('legacy-1', 500);
+
+    expect(await listLegacyProtocolChoices()).toEqual([
+      {
+        legacyId: 'legacy-1',
+        choice: 'legacy',
+        upgradedId: undefined,
+        updatedAt: 500,
+      },
+    ]);
+  });
+
+  it('keeps the record of a copy upgraded earlier', async () => {
+    await writeUpgradedLegacyCopy({
+      snapshot,
+      protocol: upgraded,
+      upgradedIdBefore: undefined,
+      createId: () => 'copy-1',
+      now: 1000,
+    });
+
+    await recordLegacyProtocolKept('legacy-1', 2000);
+
+    expect(await listLegacyProtocolChoices()).toEqual([
+      {
+        legacyId: 'legacy-1',
+        choice: 'legacy',
+        upgradedId: 'copy-1',
+        updatedAt: 2000,
+      },
+    ]);
+    // Only the choice changed: the copy itself is untouched.
+    expect((await readLibrary()).protocols.map(({ id }) => id)).toEqual([
+      'copy-1',
+    ]);
   });
 });

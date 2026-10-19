@@ -22,6 +22,7 @@ const deleteStoredProtocol = vi.fn();
 const getLegacyProtocolChoice = vi.fn();
 const writeUpgradedLegacyCopy = vi.fn();
 const readLegacyProtocolSnapshot = vi.fn();
+const getLegacyProtocol = vi.fn();
 const reportError = vi.fn((error: unknown) => ({
   message: error instanceof Error ? error.message : String(error),
 }));
@@ -62,6 +63,7 @@ vi.mock('~/utils/protocolLibrary', () => ({
 vi.mock('~/utils/legacyProtocolLibrary', () => ({
   readLegacyProtocolSnapshot: (...args: unknown[]) =>
     readLegacyProtocolSnapshot(...args),
+  getLegacyProtocol: (...args: unknown[]) => getLegacyProtocol(...args),
 }));
 
 vi.mock('~/utils/assetUtils', () => ({
@@ -102,6 +104,7 @@ const {
   openBundledTemplate,
   openLibraryProtocol,
   openLocalNetcanvas,
+  planLegacyProtocolOpen,
   upgradeLegacyProtocol,
 } = await import('../userActions');
 const { APP_SCHEMA_VERSION } = await import('~/config');
@@ -152,6 +155,7 @@ describe('userActions', () => {
     getLegacyProtocolChoice.mockReset().mockResolvedValue(undefined);
     writeUpgradedLegacyCopy.mockReset();
     readLegacyProtocolSnapshot.mockReset();
+    getLegacyProtocol.mockReset();
     vi.mocked(navigate).mockClear();
     vi.mocked(setActiveProtocolId).mockClear();
     vi.mocked(setStorageUnavailable).mockClear();
@@ -640,6 +644,64 @@ describe('userActions', () => {
   // Architect 8's protocol is copied into this library, never changed: the
   // snapshot is read, migrated and validated, and only then written as a new
   // protocol, which is what opens.
+  describe('planLegacyProtocolOpen', () => {
+    const row = {
+      id: 'legacy-1',
+      name: 'Older study',
+      schemaVersion: 7,
+      protocol: { schemaVersion: 7, codebook: {}, stages: [] },
+      createdAt: 0,
+      updatedAt: 5,
+    };
+
+    it('offers the upgrade from the document’s own version, with the earlier decision', async () => {
+      const { getMigrationInfo } = await import('@codaco/protocol-validation');
+      const choice = { legacyId: 'legacy-1', choice: 'legacy', updatedAt: 1 };
+      getLegacyProtocol.mockResolvedValue(row);
+      getLegacyProtocolChoice.mockResolvedValue(choice);
+
+      expect(await planLegacyProtocolOpen('legacy-1')).toEqual({
+        status: 'ready',
+        choice,
+        result: {
+          status: 'migration-required',
+          protocolSchemaVersion: 7,
+          targetSchemaVersion: APP_SCHEMA_VERSION,
+          migrationNotes: getMigrationInfo(7, APP_SCHEMA_VERSION).notes,
+        },
+      });
+      // Reads only: Architect 8's row is never written.
+      expect(writeUpgradedLegacyCopy).not.toHaveBeenCalled();
+    });
+
+    it('refuses a protocol that is no longer in Architect 8’s library', async () => {
+      getLegacyProtocol.mockResolvedValue(undefined);
+
+      const plan = await planLegacyProtocolOpen('legacy-1');
+
+      expect(plan.status).toBe('refused');
+      expect(plan.result).toMatchObject({
+        status: 'error',
+        title: 'Protocol Not Found',
+      });
+    });
+
+    it('describes, and reports, a library it cannot read', async () => {
+      getLegacyProtocol.mockRejectedValue(new Error('UnknownError'));
+
+      const plan = await planLegacyProtocolOpen('legacy-1');
+
+      expect(plan.status).toBe('refused');
+      expect(plan.result).toMatchObject({
+        status: 'error',
+        title: 'Protocol Open Error',
+      });
+      expect(reportError).toHaveBeenCalled();
+      // A failure to read another app's library says nothing about this one.
+      expect(setStorageUnavailable).not.toHaveBeenCalled();
+    });
+  });
+
   describe('upgradeLegacyProtocol', () => {
     const legacyProtocol = {
       schemaVersion: 8,

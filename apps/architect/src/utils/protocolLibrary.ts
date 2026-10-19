@@ -131,6 +131,31 @@ export const getLegacyProtocolChoice = async (
 ): Promise<LegacyProtocolChoice | undefined> =>
   await assetDb.legacyProtocolChoices.get(legacyId);
 
+/**
+ * Remember that the researcher keeps an Architect 8 protocol in Architect 8,
+ * so opening it from the library goes straight there next time. A copy
+ * upgraded earlier stays recorded: the library still marks the row upgraded.
+ */
+export const recordLegacyProtocolKept = async (
+  legacyId: string,
+  now: number = Date.now(),
+): Promise<void> => {
+  await assetDb.transaction('rw', assetDb.legacyProtocolChoices, async () => {
+    const existing = await assetDb.legacyProtocolChoices.get(legacyId);
+    await assetDb.legacyProtocolChoices.put({
+      legacyId,
+      choice: 'legacy',
+      upgradedId: existing?.upgradedId,
+      updatedAt: now,
+    });
+  });
+};
+
+/** Every remembered decision about an Architect 8 protocol. */
+export const listLegacyProtocolChoices = async (): Promise<
+  LegacyProtocolChoice[]
+> => await assetDb.legacyProtocolChoices.toArray();
+
 type UpgradedLegacyCopy = {
   /** The library row the researcher should now be editing. */
   protocolId: string;

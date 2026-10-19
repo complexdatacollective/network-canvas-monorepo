@@ -12,11 +12,14 @@ import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
 import ProtocolLockBanner from '~/components/ProtocolLockBanner';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
+import {
+  confirmLegacyProtocolUpgrade,
+  openNetcanvasFile,
+} from '~/components/protocolOpenFlow';
 import ProtocolValidationDialogReporter from '~/components/ProtocolValidationDialogReporter';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openLocalNetcanvas } from '~/ducks/modules/userActions/userActions';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
 import { resetRunOnce } from '~/hooks/useRunOnce';
 import {
@@ -33,6 +36,7 @@ import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
+import { takeUpgradeRequest } from '~/utils/urlEntryRequests';
 const messages = defineMessages({
   couldNotOpenFile: {
     id: 'architect.viewManager.views.app.couldNotOpenFile',
@@ -160,22 +164,27 @@ const LaunchedProtocolOpener = () => {
     const openLaunchedProtocols = () => {
       const [file] = takeLaunchFiles();
       if (!file) return;
-
-      const open = async (migrationApproved = false): Promise<void> => {
-        const result = await dispatch(
-          openLocalNetcanvas({ file, migrationApproved }),
-        ).unwrap();
-        await showProtocolOpenResultDialog({
-          result,
-          openDialog,
-          onApproveMigration: migrationApproved ? undefined : () => open(true),
-        });
-      };
-      void open();
+      void openNetcanvasFile({ file, dispatch, openDialog });
     };
 
     openLaunchedProtocols();
     return subscribeLaunchFiles(openLaunchedProtocols);
+  }, [dispatch, openDialog]);
+
+  return null;
+};
+
+// Architect 8's "Upgrade to schema 9" arrives as `/?upgrade=<id>`, captured
+// before React mounted (see `urlEntryRequests`). Mounted app-wide rather than
+// in Home: a restored session can put this page anywhere.
+const LegacyUpgradeRequestOpener = () => {
+  const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
+
+  useEffect(() => {
+    const legacyId = takeUpgradeRequest();
+    if (!legacyId) return;
+    void confirmLegacyProtocolUpgrade({ legacyId, dispatch, openDialog });
   }, [dispatch, openDialog]);
 
   return null;
@@ -208,6 +217,7 @@ const AppContents = () => {
       <AutosaveFailureReporter />
       <StartupProtocolFailureReporter />
       <LaunchedProtocolOpener />
+      <LegacyUpgradeRequestOpener />
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be
           open over the Codebook or Resources just as easily, and that is

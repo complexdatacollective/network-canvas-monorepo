@@ -22,6 +22,7 @@ import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { getArchitectIntl } from '~/i18n/imperative';
 import type { ProtocolSourceRef } from '~/templates';
+import type { LegacyProtocolChoice } from '~/utils/assetDB';
 import {
   saveProtocolAssets,
   saveProtocolAssetsToMemory,
@@ -40,7 +41,10 @@ import {
   setImportInProgress,
 } from '~/utils/criticalOperation';
 import { describeMigrationFailure } from '~/utils/describeMigrationFailure';
-import { readLegacyProtocolSnapshot } from '~/utils/legacyProtocolLibrary';
+import {
+  getLegacyProtocol,
+  readLegacyProtocolSnapshot,
+} from '~/utils/legacyProtocolLibrary';
 import {
   assertCompressedSizeWithinLimit,
   loadGuardedNetcanvas,
@@ -801,6 +805,66 @@ export const openLibraryProtocol = createAppAsyncThunk(
     return openedResult;
   },
 );
+
+type LegacyProtocolOpenPlan =
+  | {
+      status: 'refused';
+      result: ProtocolOpenResult;
+    }
+  | {
+      status: 'ready';
+      /** What the researcher decided about it before, if anything. */
+      choice: LegacyProtocolChoice | undefined;
+      /** The offer to upgrade it, for the open dialog. */
+      result: Extract<ProtocolOpenResult, { status: 'migration-required' }>;
+    };
+
+/**
+ * Everything needed to offer a choice about a protocol in Architect 8's
+ * library: the offer to upgrade it (with the migration notes from its actual
+ * schema version, which may be older than 8), and the researcher's earlier
+ * decision. Reads only; the caller asks the researcher.
+ */
+export const planLegacyProtocolOpen = async (
+  legacyId: string,
+): Promise<LegacyProtocolOpenPlan> => {
+  try {
+    const row = await getLegacyProtocol(legacyId);
+    if (!row) return { status: 'refused', result: notFoundResult() };
+    const choice = await getLegacyProtocolChoice(legacyId);
+    // The document's own version, which is what migration starts from.
+    const { schemaVersion } = row.protocol;
+    return {
+      status: 'ready',
+      choice,
+      result: {
+        status: 'migration-required',
+        protocolSchemaVersion: schemaVersion,
+        targetSchemaVersion: APP_SCHEMA_VERSION,
+        migrationNotes: getMigrationInfo(schemaVersion, APP_SCHEMA_VERSION)
+          .notes,
+      },
+    };
+  } catch (error: unknown) {
+    reportError(error, { operation: 'legacy-protocol-open' });
+    const { message, detail, localizedMessage } = describeImportFailure(
+      error,
+      PROTOCOL_OPEN_FAILURE_MESSAGE,
+      getArchitectIntl(),
+    );
+    return {
+      status: 'refused',
+      result: {
+        status: 'error',
+        title: getArchitectIntl().formatMessage(extraMessages.openError),
+        localizedTitle: { message: extraMessages.openError },
+        message,
+        detail,
+        localizedMessage,
+      },
+    };
+  }
+};
 
 // Upgrade a protocol from Architect 8's library into a NEW protocol in this
 // one, then open it.
