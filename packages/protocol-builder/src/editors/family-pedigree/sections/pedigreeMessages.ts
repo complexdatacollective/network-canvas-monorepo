@@ -1649,15 +1649,13 @@ export const familyPedigreeMessages = defineMessages({
   },
   wordingUnavailableIdenticalTwinSex: {
     id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinSex',
-    defaultMessage:
-      'Unavailable answers hint: twins recorded with different sexes at birth',
+    defaultMessage: 'Unavailable answers hint: twins’ sexes at birth differ',
     description:
       'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when editing a twin, that the two twins cannot be recorded as identical because one is recorded as female at birth and the other as male.',
   },
   wordingUnavailableIdenticalTwinSexNew: {
     id: 'protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew',
-    defaultMessage:
-      'Unavailable answers hint: new twin recorded with a different sex at birth',
+    defaultMessage: 'Unavailable answers hint: new twin’s sex at birth differs',
     description:
       'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be an identical twin because they are recorded with a different sex at birth (female or male) from the person they are added to.',
   },
