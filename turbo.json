@@ -191,6 +191,8 @@
         "$TURBO_ROOT$/packages/protocols/sample/**",
         "$TURBO_ROOT$/scripts/buildtime/assert-pwa-cache-headers.mjs",
         "$TURBO_ROOT$/scripts/buildtime/bundle-legacy-app.mjs",
+        "$TURBO_ROOT$/scripts/buildtime/legacy-app-assertions.ts",
+        "$TURBO_ROOT$/scripts/buildtime/legacy-app-preview-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/legacy-app.ts",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",

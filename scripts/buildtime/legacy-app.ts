@@ -404,10 +404,12 @@ export const validateLegacyAppDist = (
 
 /**
  * Map a `vite preview` request under /v8/ the way Netlify serves it with the
- * app's public/_redirects: `/v8` redirects to `/v8/`, an existing file is
- * served as it is, a directory with an index.html (such as Architect 8's
- * /v8/preview/) gets that index, and any other path under /v8/ gets the older
- * major's shell. Returns null for a request the newer app serves itself.
+ * app's public/_redirects: `/v8` redirects to `/v8/` (Netlify's own handling
+ * of a directory with an index.html; the middleware only runs while
+ * dist/v8/index.html exists), an existing file is served as it is, a directory
+ * with an index.html (such as Architect 8's /v8/preview/) gets that index, and
+ * any other path under /v8/ gets the older major's shell. Returns null for a
+ * request the newer app serves itself.
  */
 export const legacyAppPreviewRoute = (
   pathname: string,

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, mergeConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { createLegacyAppPreviewPlugin } from '../../scripts/buildtime/legacy-app-preview-plugin.ts';
 import {
   legacyApp,
   legacyAppDefine,
@@ -78,9 +79,17 @@ export default defineConfig(({ command, mode }) => {
       __INTERVIEWER_V8__: JSON.stringify(legacyInterviewerV8),
     },
     plugins: [
+      // `vite preview` serves /v8/ from dist/v8 as Netlify would (e2e).
+      createLegacyAppPreviewPlugin(legacyInterviewer),
+      // Interviewer 8 is served at /v8/ beside this app with its own worker
+      // and 'interviewer-v8-' caches, which 'interviewer-' would otherwise
+      // match: this worker must neither reclaim them nor ask /v8/ windows for
+      // leases.
       createPwaCacheReclamationPlugin({
         appCachePrefix: 'interviewer-',
         buildId: pwaCacheId,
+        foreignCachePrefixes: [legacyInterviewer.cachePrefix],
+        foreignScopePaths: ['/v8/'],
       }),
       VitePWA({
         registerType: 'prompt',
@@ -144,13 +153,19 @@ export default defineConfig(({ command, mode }) => {
           // freshly installed app can render the menu on its first offline
           // interview, regardless of which width Safari selects from srcset.
           globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
-          // Nothing is left out. The Sample protocol's chunk
+          // Nothing of this app is left out. The Sample protocol's chunk
           // (bundledSampleProtocol.ts) is lazy but must stay precached so the
           // sample installs offline. The Development protocol's (~33 MB) is
           // not in a production build at all — its import is DEV-gated in
           // useProtocolImport.ts — so it needs no exclusion here; were it
           // back, it would exceed MAX_PRECACHE_BYTES and generateSW would fail
           // the build. assert-pwa-build.mjs checks both.
+          //
+          // Interviewer 8 (dist/v8) has its own worker and precache. It is
+          // written after this worker is generated, so its entry only repeats
+          // the build order. Interviewer 8 is made available offline by
+          // registering its own worker in the background instead.
+          globIgnores: ['v8/**'],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
           navigateFallback: undefined,
@@ -195,10 +210,18 @@ export default defineConfig(({ command, mode }) => {
               // HTML whose matching hashed chunks it has not precached. The
               // /interview/ route above is intentionally excluded because it
               // cannot activate an update without interrupting an interview.
+              // Interviewer 8 at /v8/ has its own worker and shell: answering
+              // its navigations here would serve this app's shell at /v8/
+              // when offline. (Literals: Workbox serialises this function
+              // into the worker, so it cannot read a module constant. The
+              // /interview/ route above and the /assets/ route below match
+              // only their own top-level paths, so never /v8/.)
               urlPattern: ({ request, sameOrigin, url }) =>
                 sameOrigin &&
                 request.mode === 'navigate' &&
-                !url.pathname.startsWith('/interview/'),
+                !url.pathname.startsWith('/interview/') &&
+                url.pathname !== '/v8' &&
+                !url.pathname.startsWith('/v8/'),
               handler: 'NetworkOnly',
               options: {
                 plugins: [
@@ -251,8 +274,13 @@ export default defineConfig(({ command, mode }) => {
             {
               // Stable PWA icons are replaced in place and must reach the
               // network so their no-store response headers can take effect.
-              // Other images keep the existing bounded offline cache.
-              urlPattern: ({ url }) =>
+              // Other images of this app keep the existing bounded offline
+              // cache. Interviewer 8's are left to its own worker, and other
+              // origins' (Mapbox's sprites among them, which must never be
+              // cached) to the network.
+              urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                !url.pathname.startsWith('/v8/') &&
                 /\.(?:png|jpg|jpeg|svg|webp|gif)$/i.test(url.pathname) &&
                 ![
                   '/apple-touch-icon-180x180.png',
@@ -273,7 +301,15 @@ export default defineConfig(({ command, mode }) => {
               },
             },
             {
-              urlPattern: /\.(?:woff2?|ttf|otf|eot)$/i,
+              // Self-hosted fonts. A function rather than a RegExp so it can
+              // leave Interviewer 8's fonts to its own worker; `sameOrigin`
+              // keeps what the RegExp matched, since Workbox matches a RegExp
+              // route cross-origin only from the start of the URL, which a
+              // path pattern never is.
+              urlPattern: ({ sameOrigin, url }) =>
+                sameOrigin &&
+                !url.pathname.startsWith('/v8/') &&
+                /\.(?:woff2?|ttf|otf|eot)$/i.test(url.pathname),
               handler: 'CacheFirst',
               options: {
                 cacheName: 'interviewer-fonts',

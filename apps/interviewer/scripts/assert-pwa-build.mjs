@@ -13,8 +13,22 @@ import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { loadEnv } from 'vite';
+
 import { assertNoDevelopmentProtocol } from '../../../scripts/buildtime/assert-no-development-protocol.mjs';
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
+import {
+  assertAnchoredRoute,
+  assertLegacyAppOutput,
+  assertLegacyRedirects,
+  assertLegacyRouteExclusions,
+  findLegacyPrecacheEntries,
+  routeMatcherAt,
+} from '../../../scripts/buildtime/legacy-app-assertions.ts';
+import {
+  legacyApp,
+  loadLegacyAppV8,
+} from '../../../scripts/buildtime/legacy-app.ts';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -27,11 +41,21 @@ const fail = (msg) => {
   process.exit(1);
 };
 
+// Interviewer 8 is served at /v8/ from this deploy (dist/v8, see
+// scripts/buildtime/legacy-app.ts), so its stable entry points and hashed
+// assets are held to the same contract as this app's, whether or not this
+// build bundles it, and its deep links must reach its own shell.
+const legacyInterviewer = legacyApp('interviewer');
 try {
   assertPwaCacheHeaders({
     additionalStablePaths: ['/interviewer-icon.png'],
+    nestedBases: ['/v8/'],
     text: readFileSync(path.join(dist, '_headers'), 'utf8'),
   });
+  assertLegacyRedirects(
+    legacyInterviewer,
+    readFileSync(path.join(dist, '_redirects'), 'utf8'),
+  );
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));
 }
@@ -110,6 +134,30 @@ if (
 ) {
   fail('cache reclaimer does not recheck worker ownership and pending updates');
 }
+// This build shares its origin with Interviewer 8 at /v8/, whose
+// 'interviewer-v8-' caches also start with 'interviewer-'. Its reclaimer must
+// leave those caches and /v8/ windows alone.
+const expectedForeignCachePrefixes = [legacyInterviewer.cachePrefix];
+if (
+  !reclamationWorker.includes(
+    `const foreignCachePrefixes = ${JSON.stringify(expectedForeignCachePrefixes)};`,
+  ) ||
+  !reclamationWorker.includes(
+    `const foreignScopePaths = ${JSON.stringify(['/v8/'])};`,
+  ) ||
+  !reclamationWorker.includes('!isForeignCacheName(cacheName)') ||
+  !reclamationWorker.includes('!isForeignScopePath(clientUrl.pathname)')
+) {
+  fail(
+    'cache reclaimer does not leave the nested Interviewer 8 caches and windows alone',
+  );
+}
+const legacyPrecacheEntries = findLegacyPrecacheEntries(sw);
+if (legacyPrecacheEntries.length > 0) {
+  fail(
+    `Interviewer 8 is in this app's precache: ${legacyPrecacheEntries.join(', ')}`,
+  );
+}
 for (const f of [
   'manifest.webmanifest',
   'pwa-192x192.png',
@@ -164,6 +212,25 @@ const strayMaps = (await readdir(dist, { recursive: true })).filter((f) =>
 );
 if (strayMaps.length > 0) {
   fail(`source map(s) left in dist: ${strayMaps.join(', ')}`);
+}
+
+// dist/v8 holds exactly the pinned Interviewer 8 (or nothing), under the
+// cache prefix the reclaimer was checked above to leave alone. The recursive
+// source-map check above covers it too.
+const legacyInterviewerV8 = loadLegacyAppV8(
+  legacyInterviewer,
+  appRoot,
+  loadEnv('production', appRoot, ''),
+);
+try {
+  assertLegacyAppOutput({
+    app: legacyInterviewer,
+    dist,
+    resolution: legacyInterviewerV8,
+    foreignCachePrefixes: expectedForeignCachePrefixes,
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
 }
 
 const critical = jsAssets.filter(
@@ -410,6 +477,30 @@ for (const stableIconPath of [
     );
   }
 }
+// Interviewer 8 at /v8/ has its own worker: nothing of it may be answered or
+// cached here. The navigation and asset routes that match only /interview/
+// and /assets/ cannot see it; the rest exclude it by name.
+try {
+  assertLegacyRouteExclusions({
+    app: legacyInterviewer,
+    freshShell: routeMatcherAt(sw, freshShellRoute.index),
+    image: routeMatcherAt(sw, imagesRouteIndex),
+    font: routeMatcherAt(sw, imagesRouteEnd),
+    sameOriginRoutes: ['image', 'font'],
+  });
+  assertAnchoredRoute({
+    description: 'the /interview/ precached-shell navigation route',
+    source: routeMatcherAt(sw, interviewCacheRoute.index),
+    prefix: '/interview/',
+  });
+  assertAnchoredRoute({
+    description: 'the exact-hash asset handoff route',
+    source: routeMatcherAt(sw, assetHandoffRouteIndex),
+    prefix: '/assets/',
+  });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
 const freshShellRouteSource = sw.slice(
   freshShellRoute.index,
   assetHandoffRouteIndex,
@@ -479,5 +570,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyInterviewerV8.bundled ? `Interviewer ${legacyInterviewerV8.pin.version} bundled at /v8/ outside the precache` : `no Interviewer 8 bundled (${legacyInterviewerV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );
