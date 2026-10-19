@@ -4,7 +4,7 @@ import { render, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { queueLaunchFileRead } from '~/utils/fileLaunchQueue';
+import { enqueueLaunchRead } from '~/utils/fileLaunchQueue';
 
 import App from '../ViewManager/views/App';
 
@@ -111,7 +111,7 @@ describe('<App />', () => {
   it('opens a launched or handed-over file through the shared open flow', async () => {
     flow.openNetcanvasFile.mockReset();
     const file = new File(['zip'], 'handed-over.netcanvas');
-    queueLaunchFileRead(() => Promise.resolve(file));
+    enqueueLaunchRead(() => Promise.resolve(file));
 
     render(
       <Provider store={mockStore}>

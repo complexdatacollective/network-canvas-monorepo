@@ -43,24 +43,6 @@ export const beginProtocolCommit = (): (() => void) => {
   };
 };
 
-/**
- * Resolves once no accepted protocol commit is still being written. A page
- * that is about to unload this app (to open Architect 8) waits on this, so the
- * last edit reaches the library before the page goes.
- */
-export const waitForProtocolCommits = (): Promise<void> =>
-  new Promise((resolve) => {
-    if (protocolCommitsInProgress === 0) {
-      resolve();
-      return;
-    }
-    const unsubscribe = subscribeCriticalOperation(() => {
-      if (protocolCommitsInProgress > 0) return;
-      unsubscribe();
-      resolve();
-    });
-  });
-
 export const isCriticalOperationInProgress = () =>
   importInProgress || exportInProgress || protocolCommitsInProgress > 0;
 
@@ -70,3 +52,21 @@ export const subscribeCriticalOperation = (listener: () => void) => {
     listeners.delete(listener);
   };
 };
+
+/**
+ * Resolves once no critical operation is in flight — immediately when none
+ * is. For a full-page navigation away from Architect, which would otherwise
+ * abandon a commit half-written to IndexedDB, or an import or export midway.
+ */
+export const whenCriticalOperationsSettle = (): Promise<void> =>
+  new Promise((resolve) => {
+    if (!isCriticalOperationInProgress()) {
+      resolve();
+      return;
+    }
+    const unsubscribe = subscribeCriticalOperation(() => {
+      if (isCriticalOperationInProgress()) return;
+      unsubscribe();
+      resolve();
+    });
+  });

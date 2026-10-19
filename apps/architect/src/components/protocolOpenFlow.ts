@@ -20,7 +20,7 @@ import {
   isProtocolPath,
   promptLeaveEditor,
 } from '~/hooks/useProtocolNavGuard';
-import { waitForProtocolCommits } from '~/utils/criticalOperation';
+import { whenCriticalOperationsSettle } from '~/utils/criticalOperation';
 import { discardHandoff, stageHandoff } from '~/utils/handoffStore';
 import {
   type BundledLegacyArchitect,
@@ -62,14 +62,15 @@ const runDirectly = <T>(action: () => Promise<T>): Promise<T> => action();
  * Leave this app for Architect 8 by a full page load, after the editor's own
  * rules for leaving: an open protocol gets the leave-editor prompt (which also
  * covers an unsaved stage or nested editor), and every commit already accepted
- * finishes writing before the page goes. Resolves to whether it left.
+ * — and any import or export under way — finishes before the page goes.
+ * Resolves to whether it left.
  */
 const leaveForLegacyArchitect = async (
   { dispatch, openDialog }: OpenFlowContext,
   url: string,
 ): Promise<boolean> => {
   const leave = async () => {
-    await waitForProtocolCommits();
+    await whenCriticalOperationsSettle();
     goToLegacyArchitect(url);
   };
   const persistence = getLeavePersistence(store.getState());

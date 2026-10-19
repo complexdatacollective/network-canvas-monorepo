@@ -29,15 +29,47 @@ const reportLaunchReadFailure = (failedCount: number): void => {
   emitReadFailure();
 };
 
-export const initFileLaunchCapture = (): void => {
+// Count a read in flight for `hasPendingLaunchFiles`, so the startup update
+// check holds while it runs, then queue whatever files it produced.
+const trackLaunchRead = (
+  read: () => Promise<File[]>,
+  operation: string,
+): void => {
+  pendingLaunchReads += 1;
+  emit();
+  void read()
+    .then((files) => {
+      if (files.length === 0) return;
+      pendingFiles = [...pendingFiles, ...files];
+      emit();
+    })
+    .catch((error: unknown) => {
+      reportError(error, { operation });
+    })
+    .finally(() => {
+      pendingLaunchReads -= 1;
+      emit();
+    });
+};
+
+type LaunchCaptureOptions = {
+  /**
+   * Decide what happens to launched .netcanvas files before they are queued:
+   * resolve with the files this app should still open itself. Architect 8
+   * served inside Architect 9 hands them on to Architect 9 instead.
+   */
+  routeFiles?: (files: File[]) => Promise<File[]>;
+};
+
+export const initFileLaunchCapture = (
+  options: LaunchCaptureOptions = {},
+): void => {
   if (initialized || typeof window === 'undefined') return;
   initialized = true;
   const queue = window.launchQueue;
   if (!queue) return;
   queue.setConsumer((params) => {
-    pendingLaunchReads += 1;
-    emit();
-    void (async () => {
+    trackLaunchRead(async () => {
       // allSettled so one unreadable handle (file moved/deleted, volume
       // unmounted between the OS launch and consumption) doesn't drop the whole
       // batch — read what we can and report the rest.
@@ -63,52 +95,30 @@ export const initFileLaunchCapture = (): void => {
       const netcanvas = files.filter((file) =>
         file.name.toLowerCase().endsWith('.netcanvas'),
       );
-      if (netcanvas.length === 0) return;
-      pendingFiles = [...pendingFiles, ...netcanvas];
-      emit();
-    })()
-      .catch((error: unknown) => {
-        reportError(error, { operation: 'fileLaunchHandle' });
-      })
-      .finally(() => {
-        pendingLaunchReads -= 1;
-        emit();
-      });
+      if (netcanvas.length === 0) return [];
+      return options.routeFiles ? options.routeFiles(netcanvas) : netcanvas;
+    }, 'fileLaunchHandle');
   });
 };
 
 /**
- * Queue a file that reaches this app some other way than the OS launch queue —
- * one Architect 8 staged for it (`/?import=`) — so it is opened exactly as a
- * launched file is, by the same consumer and through the same dialogs.
- *
- * Counted as a pending launch from this call, synchronously, so the startup
- * service-worker update holds off while the file is still being read. A read
- * that resolves to nothing found nothing to open and is reported as an
- * unreadable launch; one that rejects is reported the same way.
+ * Queue a file that arrives some other way than the OS launch queue — the
+ * `?import=` hand-off from Architect 9 — so it opens exactly as a launched
+ * file does. `read` resolves null when there is nothing to open, which is
+ * reported with the launch read-failure dialog, as an unreadable launch is.
  */
-export const queueLaunchFileRead = (
-  read: () => Promise<File | undefined>,
-): void => {
-  pendingLaunchReads += 1;
-  emit();
-  void (async () => {
+export const enqueueLaunchRead = (read: () => Promise<File | null>): void => {
+  trackLaunchRead(async () => {
+    let file: File | null = null;
     try {
-      const file = await read();
-      if (!file) {
-        reportLaunchReadFailure(1);
-        return;
-      }
-      pendingFiles = [...pendingFiles, file];
-      emit();
-    } catch (error: unknown) {
-      reportError(error, { operation: 'fileLaunchQueuedRead' });
-      reportLaunchReadFailure(1);
+      file = await read();
+    } catch (error) {
+      reportError(error, { operation: 'fileLaunchHandoffRead' });
     }
-  })().finally(() => {
-    pendingLaunchReads -= 1;
-    emit();
-  });
+    if (file) return [file];
+    reportLaunchReadFailure(1);
+    return [];
+  }, 'fileLaunchHandoffRead');
 };
 
 export const subscribeLaunchFiles = (listener: () => void): (() => void) => {

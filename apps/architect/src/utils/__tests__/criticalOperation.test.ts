@@ -6,7 +6,7 @@ import {
   setExportInProgress,
   setImportInProgress,
   subscribeCriticalOperation,
-  waitForProtocolCommits,
+  whenCriticalOperationsSettle,
 } from '../criticalOperation';
 
 afterEach(() => {
@@ -75,25 +75,27 @@ describe('criticalOperation signal', () => {
     finishSecond();
     expect(isCriticalOperationInProgress()).toBe(false);
   });
+});
 
-  it('waits for every in-flight protocol commit before resolving', async () => {
-    const finishFirst = beginProtocolCommit();
-    const finishSecond = beginProtocolCommit();
+describe('whenCriticalOperationsSettle', () => {
+  it('resolves at once when nothing is in flight', async () => {
+    await expect(whenCriticalOperationsSettle()).resolves.toBeUndefined();
+  });
+
+  it('waits for every in-flight commit and operation to finish', async () => {
+    const finishCommit = beginProtocolCommit();
+    setExportInProgress(true);
     let settled = false;
-    const waiting = waitForProtocolCommits().then(() => {
+    const waiting = whenCriticalOperationsSettle().then(() => {
       settled = true;
     });
 
-    finishFirst();
+    finishCommit();
     await Promise.resolve();
     expect(settled).toBe(false);
 
-    finishSecond();
+    setExportInProgress(false);
     await waiting;
     expect(settled).toBe(true);
-  });
-
-  it('resolves at once when nothing is being committed', async () => {
-    await expect(waitForProtocolCommits()).resolves.toBeUndefined();
   });
 });

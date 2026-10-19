@@ -29,9 +29,9 @@ import { isCriticalOperationInProgress } from './utils/criticalOperation';
 import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
-  queueLaunchFileRead,
 } from './utils/fileLaunchQueue';
-import { pruneExpiredHandoffs, takeHandoff } from './utils/handoffStore';
+import { pruneExpiredHandoffs } from './utils/handoffStore';
+import { queueRequestedImport } from './utils/importHandoffRequest';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import {
   isRunningAsInstalledPwa,
@@ -39,7 +39,6 @@ import {
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
 import { reportError } from './utils/reportError';
-import { takeImportRequest } from './utils/urlEntryRequests';
 
 // The researcher's language is its own chunk. Fetch it now, alongside the
 // service-worker and storage awaits in startApp, rather than after them; the
@@ -65,18 +64,9 @@ initInstallPromptCapture();
 // them inside the fresco dialog provider.
 initFileLaunchCapture();
 
-// A file Architect 8 staged for this app (`/?import=<key>`): opened as if the
-// OS had launched it, so it meets the same dialogs. Taking the record deletes
-// it, so a second tab cannot open the same file again.
-const importHandoffKey = takeImportRequest();
-if (importHandoffKey) {
-  queueLaunchFileRead(async () => {
-    const record = await takeHandoff(importHandoffKey);
-    return record
-      ? new File([record.file], record.fileName, { type: record.file.type })
-      : undefined;
-  });
-}
+// A file Architect 8 staged for this app (`/?import=<key>`), queued with the
+// OS-launched ones so it meets the same dialogs.
+queueRequestedImport();
 
 // A file staged for another Architect major that was never taken (the page
 // that should have opened it never loaded) would otherwise stay forever.

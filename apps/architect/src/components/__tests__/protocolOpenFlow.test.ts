@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   stageHandoff: vi.fn(),
   discardHandoff: vi.fn(),
   recordLegacyProtocolKept: vi.fn(),
-  waitForProtocolCommits: vi.fn(),
+  whenCriticalOperationsSettle: vi.fn(),
   getLeavePersistence: vi.fn(),
   promptLeaveEditor: vi.fn(),
   reportError: vi.fn(),
@@ -51,7 +51,7 @@ vi.mock('~/utils/protocolLibrary', () => ({
   recordLegacyProtocolKept: mocks.recordLegacyProtocolKept,
 }));
 vi.mock('~/utils/criticalOperation', () => ({
-  waitForProtocolCommits: mocks.waitForProtocolCommits,
+  whenCriticalOperationsSettle: mocks.whenCriticalOperationsSettle,
 }));
 vi.mock('~/utils/reportError', () => ({ reportError: mocks.reportError }));
 
@@ -105,7 +105,7 @@ beforeEach(() => {
     type: 'upgrade',
     arg,
   }));
-  mocks.waitForProtocolCommits.mockResolvedValue(undefined);
+  mocks.whenCriticalOperationsSettle.mockResolvedValue(undefined);
   mocks.stageHandoff.mockResolvedValue(HANDOFF_KEY);
   mocks.discardHandoff.mockResolvedValue(undefined);
   mocks.recordLegacyProtocolKept.mockResolvedValue(undefined);
@@ -143,11 +143,11 @@ describe('openNetcanvasFile', () => {
     );
   });
 
-  it('stages the file for Architect 8 and navigates there only once commits have landed', async () => {
+  it('stages the file for Architect 8 and navigates there only once commits and transfers have landed', async () => {
     mocks.getBundledLegacyArchitect.mockReturnValue(ARCHITECT_8);
     results['open-file'] = [migrationRequired];
     let commitsLanded: () => void = () => undefined;
-    mocks.waitForProtocolCommits.mockReturnValue(
+    mocks.whenCriticalOperationsSettle.mockReturnValue(
       new Promise<void>((resolve) => {
         commitsLanded = resolve;
       }),
@@ -156,7 +156,7 @@ describe('openNetcanvasFile', () => {
     await openNetcanvasFile({ file, ...context() });
     const keeping = lastDialog().onKeepLegacy!();
     await vi.waitFor(() =>
-      expect(mocks.waitForProtocolCommits).toHaveBeenCalled(),
+      expect(mocks.whenCriticalOperationsSettle).toHaveBeenCalled(),
     );
 
     expect(mocks.stageHandoff).toHaveBeenCalledExactlyOnceWith({
