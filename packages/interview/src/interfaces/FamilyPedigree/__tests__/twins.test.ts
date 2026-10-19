@@ -14,6 +14,8 @@ import {
   planTwinChanges,
   readFamily,
   twinCandidatesOf,
+  twinCarrierOf,
+  twinCarrierUpdates,
   twinsOf,
   type TwinZygosity,
 } from '../model';
@@ -520,5 +522,230 @@ describe('disconnecting', () => {
     const f = siblings([link('ego', 'sam', 'fraternalTwin')]);
     expect(areLinked(f, 'ego', 'sam')).toBe(false);
     expect(areLinked(f, 'mum', 'sam')).toBe(true);
+  });
+});
+
+// Twins come from one pregnancy, so share one carrier.
+describe('the carrier twins share', () => {
+  /** Ego and Sam, twins, children of Julie and Rob, raised by Amy too. */
+  const twins = (carrying: { [linkId: string]: boolean } = {}) => {
+    const parentLink = (from: string, to: string, kind: string) => {
+      const carried = carrying[`${from}-${to}-${kind}`];
+      return link(
+        from,
+        to,
+        kind,
+        carried === undefined ? {} : { carrier: carried },
+      );
+    };
+    return family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam', { name: 'Sam' }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('dad', { name: 'Rob', sex: ['male'] }),
+        person('amy', { name: 'Amy', sex: ['female'] }),
+      ],
+      [
+        parentLink('mum', 'ego', 'biological'),
+        parentLink('dad', 'ego', 'biological'),
+        parentLink('amy', 'ego', 'social'),
+        parentLink('mum', 'sam', 'biological'),
+        parentLink('dad', 'sam', 'biological'),
+        parentLink('amy', 'sam', 'social'),
+        link('ego', 'sam', 'fraternalTwin'),
+      ],
+    );
+  };
+
+  test('is whoever is recorded as having carried one of the person’s twins', () => {
+    const f = twins({ 'amy-sam-social': true });
+    expect(twinCarrierOf(f, 'ego')).toBe('amy');
+  });
+
+  test('is not the person’s own carrier, nor anyone’s while no twin has one recorded', () => {
+    const f = twins({ 'mum-ego-biological': true });
+    expect(twinCarrierOf(f, 'ego')).toBeUndefined();
+    expect(twinCarrierOf(f, 'sam')).toBe('mum');
+  });
+
+  test('is nobody’s for someone with no twins, whoever carried their siblings', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam', { name: 'Sam' }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('mum', 'sam', 'biological', { carrier: true }),
+      ],
+    );
+    expect(twinCarrierOf(f, 'ego')).toBeUndefined();
+  });
+
+  test('is found across a twin set recorded with a pair missing', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam', { name: 'Sam' }),
+        person('kim', { name: 'Kim' }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+        link('mum', 'kim', 'biological', { carrier: true }),
+        link('ego', 'sam', 'fraternalTwin'),
+        link('sam', 'kim', 'fraternalTwin'),
+      ],
+    );
+    expect(twinCarrierOf(f, 'ego')).toBe('mum');
+  });
+
+  test('is recorded for each twin: the carrier as having carried, every other parent who could have as not', () => {
+    expect(twinCarrierUpdates(twins(), ['ego', 'sam'], 'mum')).toEqual([
+      {
+        linkId: 'mum-ego-biological',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      { linkId: 'amy-ego-social', kind: 'social', isGestationalCarrier: false },
+      {
+        linkId: 'mum-sam-biological',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      { linkId: 'amy-sam-social', kind: 'social', isGestationalCarrier: false },
+    ]);
+  });
+
+  test('changes nothing already recorded as the answer leaves it', () => {
+    const f = twins({
+      'mum-sam-biological': false,
+      'amy-sam-social': true,
+    });
+    expect(twinCarrierUpdates(f, ['sam'], 'amy')).toEqual([]);
+    expect(twinCarrierUpdates(f, ['sam'], 'mum')).toEqual([
+      {
+        linkId: 'mum-sam-biological',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      { linkId: 'amy-sam-social', kind: 'social', isGestationalCarrier: false },
+    ]);
+  });
+
+  test('records nothing about carrying for the twins while nobody is known to have carried them', () => {
+    const f = twins({
+      'mum-sam-biological': true,
+      'amy-sam-social': false,
+    });
+    expect(twinCarrierUpdates(f, ['ego', 'sam'], undefined)).toEqual([
+      {
+        linkId: 'mum-sam-biological',
+        kind: 'biological',
+        isGestationalCarrier: undefined,
+      },
+      {
+        linkId: 'amy-sam-social',
+        kind: 'social',
+        isGestationalCarrier: undefined,
+      },
+    ]);
+  });
+
+  test('never records a parent recorded male at birth as having carried them, or not', () => {
+    const f = twins({ 'mum-sam-biological': true });
+    const linkIds = (carrierId: string | undefined) =>
+      twinCarrierUpdates(f, ['ego', 'sam'], carrierId).map(
+        (update) => update.linkId,
+      );
+    for (const carrierId of ['mum', 'amy', 'dad', undefined]) {
+      expect(linkIds(carrierId)).not.toContain('dad-ego-biological');
+      expect(linkIds(carrierId)).not.toContain('dad-sam-biological');
+    }
+  });
+
+  test('leaves a twin a surrogate carried as carried by the surrogate', () => {
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam', { name: 'Sam' }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('gail', { name: 'Gail', sex: ['female'] }),
+      ],
+      [
+        link('mum', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+        link('gail', 'sam', 'surrogate', { carrier: true }),
+        link('ego', 'sam', 'fraternalTwin'),
+      ],
+    );
+    expect(twinCarrierUpdates(f, ['sam'], 'mum')).toEqual([]);
+    expect(twinCarrierUpdates(f, ['sam'], undefined)).toEqual([]);
+    expect(twinCarrierUpdates(f, ['ego', 'sam'], 'mum')).toEqual([
+      {
+        linkId: 'mum-ego-biological',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+    ]);
+  });
+
+  test('a new twin’s carrier is recorded for the anchor and the anchor’s twins', () => {
+    const result = plan(twins(), {
+      ...siblingRequest('fraternal'),
+      carrier: 'mum',
+    } as AddRelativeRequest);
+    expect(result.carrierUpdates).toEqual([
+      {
+        linkId: 'mum-ego-biological',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      { linkId: 'amy-ego-social', kind: 'social', isGestationalCarrier: false },
+      {
+        linkId: 'mum-sam-biological',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      { linkId: 'amy-sam-social', kind: 'social', isGestationalCarrier: false },
+    ]);
+    // The new twin is planned as carried by them too.
+    expect(result.links).toContainEqual(
+      expect.objectContaining({
+        source: 'mum',
+        target: 'added',
+        isGestationalCarrier: true,
+      }),
+    );
+  });
+
+  test('a new twin carried by nobody known leaves nobody recorded as having carried the anchor or their twins', () => {
+    const f = twins({
+      'mum-ego-biological': true,
+      'mum-sam-biological': true,
+    });
+    expect(plan(f, siblingRequest('fraternal')).carrierUpdates).toEqual([
+      {
+        linkId: 'mum-ego-biological',
+        kind: 'biological',
+        isGestationalCarrier: undefined,
+      },
+      {
+        linkId: 'mum-sam-biological',
+        kind: 'biological',
+        isGestationalCarrier: undefined,
+      },
+    ]);
+  });
+
+  test('a new sibling who is no twin changes nobody’s carrier', () => {
+    const result = plan(twins(), {
+      ...siblingRequest(undefined),
+      carrier: 'mum',
+    } as AddRelativeRequest);
+    expect(result.carrierUpdates).toBeUndefined();
   });
 });
