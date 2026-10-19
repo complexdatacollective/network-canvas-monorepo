@@ -27,9 +27,9 @@
 //      tags: its version is what is live, and the normal lane pushes it before
 //      it tags (rule 5 is checked only when the workflow supplies it).
 //
-// SCOPE=line is a maintenance lane (Architect's
-// .github/workflows/architect-maintenance-release.yml, Interviewer's
-// .github/workflows/app-maintenance-release.yml): a patch to an OLDER major
+// SCOPE=line is the maintenance lane
+// (.github/workflows/app-maintenance-release.yml, for Architect and
+// Interviewer): a patch to an OLDER major
 // line, such as 8.5.1 once 9.x is production. Nothing it releases is deployed
 // — Architect 8 and Interviewer 8 reach users as a tarball the next major
 // bundles at /v8/ — so rules 3 and 4 are scoped to the version's own major
@@ -72,7 +72,7 @@ const APPS = {
   architect: {
     label: 'Architect',
     pkg: '@codaco/architect',
-    maintenance: 'Architect Maintenance Release workflow',
+    maintenance: 'App Maintenance Release workflow (app: architect)',
   },
   fresco: { label: 'Fresco', pkg: 'fresco' },
 };

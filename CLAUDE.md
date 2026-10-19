@@ -200,17 +200,13 @@ does not count: the guard checks commit ancestry. Full procedure in
 `apps/architect/RELEASING.md`, `apps/interviewer/RELEASING.md` and
 `apps/fresco/CLAUDE.md`.
 
-An older Architect major line (8.x once 9.x is production) never goes through
-either lane. The **Architect Maintenance Release** workflow
-(`.github/workflows/architect-maintenance-release.yml`) releases a
-`maintenance/architect-<version>` branch. It checks the version with
+An older Architect or Interviewer major line (8.x once 9.x is production)
+never goes through either lane. The **App Maintenance Release** workflow
+(`.github/workflows/app-maintenance-release.yml`, with `app`) releases a
+`maintenance/<app>-<version>` branch. It checks the version with
 `resolve-hotfix-release.mjs`'s `SCOPE=line` mode, tags the release, creates a
 GitHub release that is never "Latest", and deploys nothing. There is no merge
-back to main. See "Maintenance releases" in `apps/architect/RELEASING.md`.
-An older Interviewer line releases the same way through the app-generic
-**App Maintenance Release** workflow
-(`.github/workflows/app-maintenance-release.yml`, `app: interviewer`,
-`maintenance/interviewer-<version>`); see "Maintenance releases" in
+back to main. See "Maintenance releases" in `apps/architect/RELEASING.md` and
 `apps/interviewer/RELEASING.md`.
 
 #### Architect version archive
@@ -235,18 +231,16 @@ is asserted in CI by `scripts/buildtime/assert-pwa-cache-headers.mjs`. Details i
 `apps/architect/RELEASING.md`.
 
 Separately, Architect 9 bundles Architect 8 at `/v8/` from a tarball. The
-**Architect Sub-path Dist** workflow
-(`.github/workflows/architect-subpath-dist.yml`) builds each released 8.x tag
-with `ARCHITECT_BASE_PATH=/v8/` and attaches `architect-v8-dist.tgz` to its
-GitHub release. It never replaces an attached tarball unless dispatched with
-`replace`. The normal, hotfix and maintenance lanes chain it by
-`workflow_call`. Its run summary prints the pin (URL and sha256) for
+**App Sub-path Dist** workflow (`.github/workflows/app-subpath-dist.yml`,
+`app: architect`) builds each released 8.x tag with `ARCHITECT_BASE_PATH=/v8/`
+and attaches `architect-v8-dist.tgz` to its GitHub release. It never replaces
+an attached tarball unless dispatched with `replace`. The normal, hotfix and
+maintenance lanes chain it by `workflow_call`. Its run summary prints the pin (URL and sha256) for
 `apps/architect/legacy-architect.json` on the schema-9 line. See "Sub-path dist
 tarball" in `apps/architect/RELEASING.md`.
 
-Interviewer 9 bundles Interviewer 8 at `/v8/` the same way. The app-generic
-**App Sub-path Dist** workflow (`.github/workflows/app-subpath-dist.yml`,
-`app: interviewer`) builds each released 8.x tag with
+Interviewer 9 bundles Interviewer 8 at `/v8/` the same way: the same workflow
+with `app: interviewer` builds each released 8.x tag with
 `INTERVIEWER_BASE_PATH=/v8/` and attaches `interviewer-v8-dist.tgz`, chained
 from `apps-release-interviewer`, the hotfix lane and the maintenance lane; the
 pin goes in `apps/interviewer/legacy-interviewer.json`. See "Sub-path dist

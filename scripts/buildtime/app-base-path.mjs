@@ -3,9 +3,9 @@
 // app's previous major ships inside the next major's deploy: same origin, its
 // own worker scope, caches and manifest identity.
 //
-// Shared by every app that builds a sub-path variant (Interviewer, and
-// Architect's own copy until it switches over), so the rules for what a base
-// may be, and how it reaches cache names and worker source, cannot drift.
+// Shared by every app that builds a sub-path variant (Architect and
+// Interviewer), so the rules for what a base may be, and how it reaches cache
+// names and worker source, cannot drift.
 //
 // Plain ESM rather than TypeScript because two loaders read it: Vite's config
 // bundler (vite.config.ts) and Node itself (assert-pwa-build.mjs runs after

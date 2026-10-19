@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 import { build, loadEnv } from 'vite';
 
-import { resolveArchitectBasePath } from './app-base-path.mjs';
+import { resolveAppBasePath } from '../../../scripts/buildtime/app-base-path.mjs';
 
 const appRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -15,7 +15,10 @@ await build({ root: appRoot });
 // publish root, so nested copies would be dead files served to anyone who
 // asks; the hosting deploy owns those rules. Resolved the way vite.config.ts
 // resolves it, so a base set in a .env file counts here too.
-const base = resolveArchitectBasePath(loadEnv('production', appRoot, ''));
+const base = resolveAppBasePath(
+  loadEnv('production', appRoot, ''),
+  'ARCHITECT_BASE_PATH',
+);
 if (base !== '/') {
   await Promise.all(
     ['_headers', '_redirects'].map((file) =>

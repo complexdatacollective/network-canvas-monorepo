@@ -448,8 +448,9 @@ jobs:
     # uses the write.
     permissions:
       contents: write
-    uses: ./.github/workflows/architect-subpath-dist.yml
+    uses: ./.github/workflows/app-subpath-dist.yml
     with:
+      app: architect
       tag: ${{ needs.hotfix-release.outputs.tag }}
 
   # The same for an Interviewer 8 hotfix, which Interviewer 9 bundles at /v8/:

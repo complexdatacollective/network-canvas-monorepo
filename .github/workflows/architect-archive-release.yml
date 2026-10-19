@@ -140,9 +140,10 @@ jobs:
       - name: Resolve and guard tag
         id: guard
         env:
+          APP: architect
           TAG: ${{ inputs.tag }}
           FORCE: ${{ inputs.force }}
-        run: bash .github/scripts/architect-archive-guard.sh
+        run: bash .github/scripts/release-line-tag-guard.sh
 
   deploy:
     needs: resolve
@@ -194,9 +195,10 @@ jobs:
       - name: Re-check newest release on the line
         working-directory: .archive-tooling
         env:
+          APP: architect
           TAG: ${{ inputs.tag }}
           FORCE: ${{ inputs.force }}
-        run: bash .github/scripts/architect-archive-guard.sh
+        run: bash .github/scripts/release-line-tag-guard.sh
 
       # Composite action taken from the tooling checkout for the same reason,
       # but its steps still run in the workspace root, so the install and cache

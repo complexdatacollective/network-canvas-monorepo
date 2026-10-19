@@ -226,7 +226,7 @@ test('clears a hotfix re-cut from the newest release', () => {
   assert.equal(output.newest, '8.1.3');
 });
 
-// An older line is released only by the Architect maintenance lane; the
+// An older line is released only by the maintenance lane; the
 // hotfix refusal has to say where to go instead of only what is wrong.
 test('points an older Architect line at the maintenance lane', () => {
   const { ok, stderr } = resolve({
@@ -236,7 +236,7 @@ test('points an older Architect line at the maintenance lane', () => {
   });
   assert.equal(ok, false);
   assert.match(stderr, /older than the released 9\.0\.0/);
-  assert.match(stderr, /Architect Maintenance Release workflow/);
+  assert.match(stderr, /App Maintenance Release workflow \(app: architect\)/);
 });
 
 // SCOPE=line: the Architect maintenance lane for an older major line. The

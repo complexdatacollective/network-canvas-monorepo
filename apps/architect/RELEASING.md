@@ -152,10 +152,11 @@ can keep editing schema 8 protocols beside it. Architect 9 does not build
 Architect 8: it bundles a tarball attached to an 8.x GitHub release, pinned by
 URL and sha256 in `apps/architect/legacy-architect.json` on the schema-9 line.
 
-The **Architect Sub-path Dist** workflow
-(`.github/workflows/architect-subpath-dist.yml`) makes that tarball. It builds a
-released tag with `ARCHITECT_BASE_PATH=/v<major>/` and attaches
-`architect-v<major>-dist.tgz` (and its `.sha256`) to the tag's release:
+The **App Sub-path Dist** workflow (`.github/workflows/app-subpath-dist.yml`,
+`app: architect`) makes that tarball; Interviewer's lane is the same workflow
+with `app: interviewer`. It builds a released tag with
+`ARCHITECT_BASE_PATH=/v<major>/` and attaches `architect-v<major>-dist.tgz`
+(and its `.sha256`) to the tag's release:
 
 ```text
 @codaco/architect@8.5.0  ->  architect-v8-dist.tgz  (base /v8/, caches architect-v8-*)
@@ -167,18 +168,18 @@ released tag with `ARCHITECT_BASE_PATH=/v<major>/` and attaches
   created with `GITHUB_TOKEN` fires no tag or release event. It runs in its
   own job, so a failure never turns a release that has already shipped red.
   Dispatch it by hand from main to retry. Only tags whose tree can build under
-  a sub-path are eligible (8.5.0 onwards, marked by
-  `apps/architect/scripts/app-base-path.mjs`). A release lane skips an older
-  tag with a notice; a dispatch for one fails.
+  a sub-path are eligible (8.5.0 onwards, marked by the tag's build reading
+  `ARCHITECT_BASE_PATH` in `apps/architect/scripts/` or `vite.config.ts`). A
+  release lane skips an older tag with a notice; a dispatch for one fails.
 - **Layout.** The archive root is the dist root (`index.html`, `sw.js`,
   `manifest.webmanifest`, `assets/`, `preview/`, `build-info.json`) plus
   `dist-info.json` (`{ tag, version, commit, base, cachePrefix }`), so the
   bundler extracts it straight into `dist/v8`. It has no `_headers` or
   `_redirects` (Architect 9 owns the `/v8/` hosting rules) and no source maps.
-  `scripts/release/package-architect-subpath-dist.mjs` checks the shape again
-  before packing: assets under the base, manifest `start_url` and `scope`
-  equal to the base, and a precache under the `architect-v<major>-` prefix
-  Architect 9's worker treats as foreign.
+  `scripts/release/package-app-subpath-dist.mjs --app architect` checks the
+  shape again before packing: assets under the base, manifest `start_url` and
+  `scope` equal to the base, and a precache under the `architect-v<major>-`
+  prefix Architect 9's worker treats as foreign.
 - **Deterministic packing, not a reproducible build.** The archive is packed
   with `tar --sort=name --mtime=@0 --owner=0 --group=0 | gzip -n`, so the same
   dist always packs to the same bytes. The build itself is not reproducible:
@@ -218,9 +219,10 @@ would rewrite an existing release's name, body and "Latest" flag.
 
 Once Architect 9 is production, an Architect 8 fix cannot go through the
 normal or hotfix lane, because both deploy to the one production site and
-refuse a version older than the newest release. The **Architect Maintenance
-Release** workflow (`.github/workflows/architect-maintenance-release.yml`)
-releases an older line instead. It tags the release, creates a GitHub release
+refuse a version older than the newest release. The **App Maintenance
+Release** workflow (`.github/workflows/app-maintenance-release.yml`, `app:
+architect`) releases an older line instead; Interviewer's older lines use the
+same workflow. It tags the release, creates a GitHub release
 that is never "Latest", and attaches the line's sub-path tarball. It deploys
 nothing.
 
@@ -233,8 +235,8 @@ nothing.
    git cherry-pick <sha>
    ```
 
-2. Push the branch, then run the workflow **from main** with `source_ref` set
-   to it. The `verify` job runs typecheck and tests across Architect's
+2. Push the branch, then run the workflow **from main** with `app: architect`
+   and `source_ref` set to it. The `verify` job runs typecheck and tests across Architect's
    workspace dependency closure, then a `/v<major>/` build, because a
    maintenance branch gets no pull-request CI. After approval, the `release`
    job checks the version again, claims the tag atomically, and creates the
@@ -267,7 +269,8 @@ The workflow has its own concurrency group. It does not share
 pending run, so a maintenance run waiting for approval could make a normal
 release be dropped.
 
-**Setup (one-time, and load-bearing).** Create the
+**Setup (one-time, and load-bearing).** The workflow's release job runs in the
+`<app>-maintenance-release` environment. Create the
 `architect-maintenance-release` environment with **required reviewers**, and
 restrict its **deployment branches** to `main`. The reason is the same as for
 the hotfix lane: a workflow file cannot enforce its own protection. The

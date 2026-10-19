@@ -3907,8 +3907,9 @@ jobs:
     # which runs no code from the tag, uses the write.
     permissions:
       contents: write
-    uses: ./.github/workflows/architect-subpath-dist.yml
+    uses: ./.github/workflows/app-subpath-dist.yml
     with:
+      app: architect
       tag: ${{ needs.apps-release-architect.outputs.tag }}
 
   # Build, deploy to Netlify production, and cut a GitHub release for interviewer

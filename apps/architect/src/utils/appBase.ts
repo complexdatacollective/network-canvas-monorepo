@@ -2,10 +2,11 @@ import { navigate } from 'wouter/use-browser-location';
 
 // The URL path this build is served under: `/` for the root app, `/v8/` when
 // Architect 8 ships inside Architect 9's deploy (ARCHITECT_BASE_PATH, read in
-// vite.config.ts through scripts/app-base-path.mjs). wouter's <Router base>
-// handles every <Link>, useLocation and setLocation; these helpers cover the
-// paths that bypass it — raw browser-location navigation, window.location
-// reads and history writes. At the root each of them is the identity.
+// vite.config.ts through the repository's scripts/buildtime/app-base-path.mjs).
+// wouter's <Router base> handles every <Link>, useLocation and setLocation;
+// these helpers cover the paths that bypass it — raw browser-location
+// navigation, window.location reads and history writes. At the root each of
+// them is the identity.
 
 type NavigateOptions = Parameters<typeof navigate>[1];
 

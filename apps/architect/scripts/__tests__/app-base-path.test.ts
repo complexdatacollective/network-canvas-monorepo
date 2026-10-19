@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+// Architect's use of the shared helper: its own variable, cache prefix and
+// worker matchers. The helper's general rules are covered beside it in
+// scripts/buildtime/app-base-path.test.mjs.
 import {
-  architectCachePrefix,
+  appCachePrefix,
   rebaseSwMatcher,
-  resolveArchitectBasePath,
-} from '../app-base-path.mjs';
+  resolveAppBasePath,
+} from '../../../../scripts/buildtime/app-base-path.mjs';
 
 type MatchContext = { sameOrigin: boolean; url: URL };
 
@@ -13,7 +16,10 @@ const at = (path: string): MatchContext => ({
   url: new URL(path, 'https://architect.example'),
 });
 
-describe('resolveArchitectBasePath', () => {
+const resolveArchitectBasePath = (env: Record<string, string | undefined>) =>
+  resolveAppBasePath(env, 'ARCHITECT_BASE_PATH');
+
+describe('resolveAppBasePath for ARCHITECT_BASE_PATH', () => {
   it('treats an unset, empty or root value as the root build', () => {
     expect(resolveArchitectBasePath({})).toBe('/');
     expect(resolveArchitectBasePath({ ARCHITECT_BASE_PATH: '' })).toBe('/');
@@ -41,14 +47,14 @@ describe('resolveArchitectBasePath', () => {
   });
 });
 
-describe('architectCachePrefix', () => {
+describe('appCachePrefix for Architect', () => {
   it('keeps the root prefix existing caches already carry', () => {
-    expect(architectCachePrefix('/')).toBe('architect-');
+    expect(appCachePrefix('architect', '/')).toBe('architect-');
   });
 
   it('gives a sub-path build its own prefix', () => {
-    expect(architectCachePrefix('/v8/')).toBe('architect-v8-');
-    expect(architectCachePrefix('/a/b/')).toBe('architect-a-b-');
+    expect(appCachePrefix('architect', '/v8/')).toBe('architect-v8-');
+    expect(appCachePrefix('architect', '/a/b/')).toBe('architect-a-b-');
   });
 });
 

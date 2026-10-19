@@ -13,11 +13,11 @@ import { fileURLToPath } from 'node:url';
 
 import { loadEnv } from 'vite';
 
-import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
 import {
-  architectCachePrefix,
-  resolveArchitectBasePath,
-} from './app-base-path.mjs';
+  appCachePrefix,
+  resolveAppBasePath,
+} from '../../../scripts/buildtime/app-base-path.mjs';
+import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -33,9 +33,12 @@ const fail = (msg) => {
 // `/` for the root build; `/v8/` for Architect 8 inside Architect 9's deploy.
 // Every path and cache name probed below is derived from it, so the same
 // assertions hold a sub-path build to the same worker contract.
-const base = resolveArchitectBasePath(loadEnv('production', appRoot, ''));
+const base = resolveAppBasePath(
+  loadEnv('production', appRoot, ''),
+  'ARCHITECT_BASE_PATH',
+);
 const isSubpath = base !== '/';
-const cachePrefix = architectCachePrefix(base);
+const cachePrefix = appCachePrefix('architect', base);
 const atBase = (absolutePath) => `${base}${absolutePath.slice(1)}`;
 
 if (isSubpath) {

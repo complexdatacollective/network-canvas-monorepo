@@ -32,12 +32,14 @@ name: App Maintenance Release
 # the branch.
 #
 # NOTE(human-setup-required): that separation is a convention this file cannot
-# enforce (see the same note in hotfix-release.yml). Create the
-# `<app>-maintenance-release` environments (`interviewer-maintenance-release`,
-# and `architect-maintenance-release` if Architect's lane has not already)
-# with required reviewers and their deployment branches restricted to main,
-# so a copy of this workflow on another branch cannot reach the job that
-# claims the tag. They hold no secrets: the lane deploys nothing.
+# enforce (see the same note in hotfix-release.yml). Each app needs an
+# `<app>-maintenance-release` environment with required reviewers and its
+# deployment branches restricted to main, so a copy of this workflow on
+# another branch cannot reach the job that claims the tag:
+# `interviewer-maintenance-release` is new, and
+# `architect-maintenance-release` is the one Architect's earlier lane used, so
+# check it rather than create it. They hold no secrets: the lane deploys
+# nothing.
 #
 # Procedure (apps/<app>/RELEASING.md, "Maintenance releases"):
 #   1. `git switch -c maintenance/interviewer-8.5.1 '@codaco/interviewer@8.5.0'`,
