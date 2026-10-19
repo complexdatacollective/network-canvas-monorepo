@@ -290,16 +290,44 @@ async function tick(
 }
 
 /**
+ * Answers who carried a new child's or sibling's pregnancy with "Someone
+ * else, or I don’t know", the answer that records no carrier. The question
+ * is required, and is asked once a parent who could have carried them is
+ * among those chosen, so call this only where the scenario's family asks it:
+ * it waits for the question to be shown. A sibling's form asks whether they
+ * are a twin first; a twin's question starts on their twins' carrier, which
+ * this replaces.
+ */
+async function answerCarrierUnknown(
+  page: Page,
+  options: { question?: RegExp; answer?: string } = {},
+): Promise<void> {
+  const group = panel(page).getByRole('radiogroup', {
+    name: options.question ?? /^Who carried the pregnancy\?/,
+  });
+  await expect(group).toBeVisible();
+  await group
+    .getByRole('radio', {
+      name: options.answer ?? 'Someone else, or I don’t know',
+      exact: true,
+    })
+    .click();
+}
+
+/**
  * Answers a new sibling's relationship questions: the parents they share
  * with the participant, all of them, and that they are the parents'
- * biological child. Nothing is chosen for the participant.
+ * biological child, then who carried the pregnancy (unknown). Nothing else
+ * is chosen for the participant.
  */
 async function shareParentsAsBiological(
   page: Page,
   parents: readonly string[],
+  options: { leaveCarrierUnanswered?: boolean } = {},
 ): Promise<void> {
   await tick(page, /^Which parents do they share with/, parents);
   await choose(page, /^To the parents they share/, 'A biological child');
+  if (!options.leaveCarrierUnanswered) await answerCarrierUnknown(page);
 }
 
 /** Moves a new person's panel on to its next group of questions. */
@@ -535,6 +563,15 @@ const OWN_WORDS = {
   unavailableIdenticalTwinNew: message(
     '{isYou, select, true {New sibling cannot be identical to you, so not {answer} - matrix check} other {New sibling cannot be identical to {name}, so not {answer} - matrix check}}',
   ),
+  unavailableIdenticalTwinSex: message(
+    '{who, select, personIsYou {You and {twin} differ in sex at birth, so not {answer} - matrix check} twinIsYou {{name} and you differ in sex at birth, so not {answer} - matrix check} other {{name} and {twin} differ in sex at birth, so not {answer} - matrix check}}',
+  ),
+  unavailableIdenticalTwinSexNew: message(
+    '{isYou, select, true {New sibling differs from you in sex at birth, so not {answer} - matrix check} other {New sibling differs from {name} in sex at birth, so not {answer} - matrix check}}',
+  ),
+  unavailableTwinCarrierNew: message(
+    '{who, select, childIsYou {{carrier} carried you but is not chosen, so no twin - matrix check} carrierIsYou {You carried {name} but are not chosen, so no twin - matrix check} other {{carrier} carried {name} but is not chosen, so no twin - matrix check}}',
+  ),
   unavailableSameSexAsCoParent: message(
     '{who, select, personIsYou {You and {coParent} parent {children}, both {sex} - matrix check} childIsYou {This person and {coParent} parent you, both {sex} - matrix check} coParentIsYou {You and this person parent {children}, both {sex} - matrix check} other {This person and {coParent} parent {children}, both {sex} - matrix check}}',
   ),
@@ -656,7 +693,7 @@ function smokeAddBothParents(): ScenarioDefinition {
         .getByRole('radio', { name: 'Linda', exact: true });
       await expect(lindaAsPartner).not.toBeChecked();
       await lindaAsPartner.click();
-      await choose(page, /^Are they still together/, 'Yes');
+      await choose(page, /^Are they still together with Linda\?/, 'Yes');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Robert')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(3);
@@ -790,12 +827,13 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
         'Rob',
       ]);
       await choose(page, /^To the parents they share/, 'A biological child');
+      await answerCarrierUnknown(page);
       await submitPanel(page, 'Save');
       await expect(member(page, 'Sister')).toBeVisible();
 
       await addRelativeOf(page, 'You', 'partner');
       await describe(page, { sex: 'Male' });
-      await choose(page, /^Are they still together/, 'Yes');
+      await choose(page, /^Are you still together\?/, 'Yes');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Partner')).toBeVisible();
 
@@ -816,6 +854,7 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
         /^Who is the child’s biological parent\?/,
         'Both you and “Partner”',
       );
+      await answerCarrierUnknown(page);
       await submitPanel(page, 'Save');
       await expect(member(page, 'Son')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(6);
@@ -902,6 +941,7 @@ function relationshipToParticipantRecorded(): ScenarioDefinition {
         'Someone not shown yet',
       );
       await choose(page, /^Is this child…/, 'A biological child');
+      await answerCarrierUnknown(page);
       await submitPanel(page, 'Save');
       await expect(member(page, 'Mia')).toBeVisible();
 
@@ -1651,6 +1691,7 @@ function formFieldsMissingDetails(): ScenarioDefinition {
         'Rob',
       ]);
       await choose(page, /^To the parents they share/, 'A biological child');
+      await answerCarrierUnknown(page);
       await nextStep(page);
       await panel(page)
         .getByRole('spinbutton', { name: /^How old are they\?/ })
@@ -1736,7 +1777,11 @@ function dynamicValuesNameRelativesAsDrawn(): ScenarioDefinition {
       await expect(shown).toHaveText(['Sibling']);
       await expect(member(page, 'Sibling')).toBeVisible();
       await describe(page, { name: 'Ann', sex: 'Female' });
-      await shareParentsAsBiological(page, ['Mother', 'Father']);
+      // The form is left open on the unanswered carrier question, which it
+      // requires, and which follows the twin question.
+      await shareParentsAsBiological(page, ['Mother', 'Father'], {
+        leaveCarrierUnanswered: true,
+      });
       await expect(shown).toHaveText(['Ann']);
       await expect(member(page, 'Ann')).toBeVisible();
     },
@@ -3069,9 +3114,12 @@ function wordingAddParent(): ScenarioDefinition {
           .first(),
       ).toBeVisible();
 
-      // One who could have is asked, but Julie is recorded as having, so the
-      // question is unavailable.
+      // One who could have is asked once their kind is chosen, but Julie is
+      // recorded as having, so the question is unavailable.
       await describe(page, { sex: 'Female' });
+      await kind
+        .getByRole('radio', { name: 'Adoptive parent', exact: true })
+        .click();
       const unavailable = form.getByRole('radiogroup', {
         name: /^Did the new parent carry them - matrix check/,
       });
@@ -3610,6 +3658,176 @@ function wordingAddSibling(): ScenarioDefinition {
 }
 
 /**
+ * Twins recorded with different sexes at birth, one female and one male,
+ * cannot be identical: editing either of them, "identical" is unavailable,
+ * and the reason is given in the stage's own words, for whichever of the two
+ * is the participant. Their parents are the same, so that is the only reason
+ * given.
+ */
+function wordingIdenticalTwinSex(): ScenarioDefinition {
+  const words = ['unavailableIdenticalTwinSex'] as const;
+  const scaffolded = scaffold({ wording: ownWords(...words) });
+  const { synth, fp, person, parents } = scaffolded;
+  seedDescribedParents(scaffolded, { gender: 'woman', sex: 'female' });
+  person('ben', { name: 'Ben', gender: 'man', sex: 'male' });
+  parents('mum', 'dad', 'ben');
+  synth.addManualEdge(fp.edgeType, 'ego-ben-twin', 'ego', 'ben', {
+    [fp.kind]: ['fraternalTwin'],
+  });
+
+  return {
+    id: 'wording-identical-twin-sex',
+    covers: coversWords(...words),
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      const form = panel(page);
+      const identicalWith = (label: RegExp) =>
+        form
+          .getByRole('radiogroup', { name: label })
+          .getByRole('radio', { name: 'Yes, identical', exact: true });
+
+      await member(page, 'You').click();
+      await expect(
+        identicalWith(/^Are you and “Ben” identical twins\?/),
+      ).toBeDisabled();
+      await expect(
+        form
+          .getByText(
+            /You and Ben differ in sex at birth, so not .+ - matrix check/,
+          )
+          .first(),
+      ).toBeVisible();
+      await expect(
+        form.getByText(/identical twins have the same biological parents/),
+      ).toHaveCount(0);
+      await form.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(form).toHaveCount(0);
+
+      await member(page, 'Ben').click();
+      await expect(
+        identicalWith(/^Are “Ben” and you identical twins\?/),
+      ).toBeDisabled();
+      await expect(
+        form
+          .getByText(
+            /Ben and you differ in sex at birth, so not .+ - matrix check/,
+          )
+          .first(),
+      ).toBeVisible();
+      await expectAbsent(
+        page,
+        '“Yes, identical” is unavailable because identical twins have the same sex at birth, and “Ben” and you are recorded with different ones. To choose it, first change the sex at birth of one of you.',
+      );
+    },
+  };
+}
+
+/**
+ * A sibling recorded as male at birth, added to a participant recorded as
+ * female, cannot be their identical twin: the answer is unavailable, and the
+ * reason is given in the stage's own words. They share both of the
+ * participant's parents, so that is the only reason given.
+ */
+function wordingAddSiblingTwinSex(): ScenarioDefinition {
+  const words = ['unavailableIdenticalTwinSexNew'] as const;
+  const scaffolded = scaffold({ wording: ownWords(...words) });
+  const { synth } = scaffolded;
+  seedDescribedParents(scaffolded, { gender: 'woman', sex: 'female' });
+
+  return {
+    id: 'wording-add-sibling-twin-sex',
+    covers: coversWords(...words),
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Male' });
+      await shareParentsAsBiological(page, ['Julie', 'Rob'], {
+        leaveCarrierUnanswered: true,
+      });
+      const form = panel(page);
+      const identical = form
+        .getByRole('radiogroup', { name: /^Are they your twin\?/ })
+        .getByRole('radio', { name: 'Yes, identical twins', exact: true });
+      await expect(identical).toBeDisabled();
+      await expect(
+        form
+          .getByText(
+            /New sibling differs from you in sex at birth, so not .+ - matrix check/,
+          )
+          .first(),
+      ).toBeVisible();
+      await expect(
+        form.getByText(/identical twins have the same biological parents/),
+      ).toHaveCount(0);
+      await expectAbsent(
+        page,
+        '“Yes, identical twins” is unavailable because identical twins have the same sex at birth, and this sibling is recorded with a different one from yours. To choose it, go back and change their sex at birth.',
+      );
+    },
+  };
+}
+
+/**
+ * A sibling who would not share Julie, who carried the participant, cannot be
+ * their twin: every "yes" answer is unavailable, and the reason is given in
+ * the stage's own words, until Julie is chosen too.
+ */
+function wordingAddSiblingTwinCarrier(): ScenarioDefinition {
+  const words = ['unavailableTwinCarrierNew'] as const;
+  const scaffolded = scaffold({ wording: ownWords(...words) });
+  const { synth } = scaffolded;
+  seedDescribedParents(scaffolded);
+
+  return {
+    id: 'wording-add-sibling-twin-carrier',
+    covers: coversWords(...words),
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Male' });
+      await shareParentsAsBiological(page, ['Rob'], {
+        leaveCarrierUnanswered: true,
+      });
+      const form = panel(page);
+      const twin = form.getByRole('radiogroup', {
+        name: /^Are they your twin\?/,
+      });
+      for (const answer of [
+        'Yes, identical twins',
+        'Yes, fraternal (non-identical) twins',
+        'Yes, but I don’t know if they are identical',
+      ]) {
+        await expect(
+          twin.getByRole('radio', { name: answer, exact: true }),
+        ).toBeDisabled();
+      }
+      await expect(
+        form
+          .getByText(
+            /Julie carried you but is not chosen, so no twin - matrix check/,
+          )
+          .first(),
+      ).toBeVisible();
+      await expectAbsent(
+        page,
+        'This sibling cannot be your twin, because twins are carried in the same pregnancy and “Julie”, who carried you, is not chosen above. To answer yes, choose “Julie” above.',
+      );
+
+      await tick(page, /^Which parents do they share with/, ['Julie']);
+      await expect(
+        twin.getByRole('radio', {
+          name: 'Yes, fraternal (non-identical) twins',
+          exact: true,
+        }),
+      ).toBeEnabled();
+    },
+  };
+}
+
+/**
  * Two mothers of the participant, one a biological mother and one a step or
  * social parent. A sibling they share is asked which of them is the
  * sibling's biological parent, in the stage's own words.
@@ -3637,11 +3855,11 @@ function wordingSiblingBiologicalParent(): ScenarioDefinition {
     run: async ({ page }) => {
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { sex: 'Female' });
-      await shareParentsAsBiological(page, [
-        'Julie',
-        'Pam',
-        'Biological father',
-      ]);
+      await shareParentsAsBiological(
+        page,
+        ['Julie', 'Pam', 'Biological father'],
+        { leaveCarrierUnanswered: true },
+      );
       const which = panel(page).getByRole('radiogroup', {
         name: /^Genetic parent of the sibling - matrix check/,
       });
@@ -3899,6 +4117,7 @@ function wordingStandIns(): ScenarioDefinition {
         .getByRole('checkbox', { name: 'Biological father', exact: true })
         .check();
       await choose(page, /^To the parents they share/, 'A biological child');
+      await answerCarrierUnknown(page);
       await submitPanel(page, 'Save');
       await expect(member(page, 'Hal')).toBeVisible();
 
@@ -4057,6 +4276,9 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     wordingAddChild(),
     wordingEditPerson(),
     wordingAddSibling(),
+    wordingIdenticalTwinSex(),
+    wordingAddSiblingTwinSex(),
+    wordingAddSiblingTwinCarrier(),
     wordingSiblingBiologicalParent(),
     wordingSiblingDonors(),
     wordingSiblingSurrogate(),

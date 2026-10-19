@@ -259,7 +259,7 @@ export default function ConnectMenu({
         return joinReasons(reasonContext, [
           unavailable.rule === 'carrierRecorded'
             ? carrierRecordedReason(
-                parentChoice.childId,
+                unavailable.childId,
                 unavailable.carrierId,
                 answers,
               )

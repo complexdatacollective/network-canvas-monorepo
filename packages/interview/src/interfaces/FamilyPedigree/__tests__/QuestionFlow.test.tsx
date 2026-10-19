@@ -1,7 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import Form from '@codaco/fresco-ui/form/Form';
 
 import { TestProtocolLocalization } from '../../__tests__/TestProtocolLocalization';
 import QuestionFlow from '../components/QuestionFlow';
@@ -188,4 +193,82 @@ describe('QuestionFlow step button', () => {
     ).toBeVisible();
     expect(screen.getByTestId('first')).toBeVisible();
   });
+});
+
+function RequiredFlow({ opaqueName }: { opaqueName?: string }) {
+  const [navigation, setNavigation] = useState<HTMLElement | null>(null);
+  return (
+    <TestProtocolLocalization>
+      <Form onSubmit={() => ({ success: true })}>
+        <QuestionFlow stepped navigation={navigation} finish={<span />}>
+          <section data-question-step data-testid="first">
+            <Field
+              component={RadioGroupField}
+              name={opaqueName ?? 'colour'}
+              nameMode={opaqueName ? 'opaque' : undefined}
+              label="Colour"
+              options={[
+                { value: 'red', label: 'Red' },
+                { value: 'blue', label: 'Blue' },
+              ]}
+              required
+            />
+          </section>
+          <section data-question-step data-testid="second">
+            <Field component={InputField} name="second" label="Second" />
+          </section>
+        </QuestionFlow>
+      </Form>
+      <footer ref={setNavigation} />
+    </TestProtocolLocalization>
+  );
+}
+
+describe('QuestionFlow with a required question left unanswered', () => {
+  // jsdom lays nothing out; a question shows unless a hidden step holds it.
+  beforeEach(() => {
+    vi.spyOn(Element.prototype, 'getClientRects').mockImplementation(function (
+      this: Element,
+    ) {
+      return (this.closest('[hidden]')
+        ? []
+        : [new DOMRect()]) as unknown as DOMRectList;
+    });
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each([
+    ['a plain name', undefined],
+    ['a name with a dot in it', 'favourite.colour'],
+  ])(
+    'keeps the step open and shows the error saving would, until it is answered, for %s',
+    async (_case, opaqueName) => {
+      const user = userEvent.setup();
+      render(<RequiredFlow opaqueName={opaqueName} />);
+      const step = await screen.findByTestId('first');
+      expect(
+        screen.queryByText('You must answer this question before continuing.'),
+      ).not.toBeInTheDocument();
+
+      // The buttons render into the footer only once it has mounted.
+      await user.click(await screen.findByRole('button', { name: 'Continue' }));
+
+      expect(
+        await screen.findByText(
+          'You must answer this question before continuing.',
+        ),
+      ).toBeVisible();
+      expect(step).toBeVisible();
+      expect(screen.getByRole('radio', { name: 'Red' })).toHaveFocus();
+
+      await user.click(screen.getByRole('radio', { name: 'Red' }));
+      await waitFor(() =>
+        expect(
+          screen.queryByText(
+            'You must answer this question before continuing.',
+          ),
+        ).not.toBeInTheDocument(),
+      );
+    },
+  );
 });

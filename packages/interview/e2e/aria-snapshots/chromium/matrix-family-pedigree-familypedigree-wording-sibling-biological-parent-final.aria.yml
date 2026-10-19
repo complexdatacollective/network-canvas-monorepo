@@ -27,14 +27,6 @@
       - text: Pam
       - radio "Biological father"
       - text: Biological father
-    - text: Who carried the pregnancy?
-    - radiogroup "Who carried the pregnancy?":
-      - radio "Julie"
-      - text: Julie
-      - radio "Pam"
-      - text: Pam
-      - radio "Someone else, or I don’t know"
-      - text: Someone else, or I don’t know
     - text: Are they your twin? Answer yes for triplets and other multiple births too.
     - radiogroup "Are they your twin?":
       - radio "No"
@@ -45,6 +37,14 @@
       - text: Yes, fraternal (non-identical) twins
       - radio "Yes, but I don’t know if they are identical"
       - text: Yes, but I don’t know if they are identical
+    - text: Who carried the pregnancy? Required
+    - radiogroup "Who carried the pregnancy?":
+      - radio "Julie"
+      - text: Julie
+      - radio "Pam"
+      - text: Pam
+      - radio "Someone else, or I don’t know"
+      - text: Someone else, or I don’t know
     - button "Cancel"
     - button "Back"
     - button "Save"

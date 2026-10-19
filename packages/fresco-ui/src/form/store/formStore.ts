@@ -447,7 +447,12 @@ type FieldOperations<Reference, Config> = {
   setFieldBlurred: (fieldName: Reference) => void;
   getFieldState: (fieldName: Reference) => FieldState | undefined;
   getFieldErrors: (fieldName: Reference) => string[] | null;
-  validateField: (fieldName: Reference) => Promise<void>;
+  /** Validates one field. With `showErrors`, a field that fails shows its
+   * errors at once, as it would after an attempt to submit the form. */
+  validateField: (
+    fieldName: Reference,
+    options?: { showErrors?: boolean },
+  ) => Promise<void>;
   resetField: (fieldName: Reference) => void;
   getValue: (fieldName: Reference) => FieldValue;
   hasValue: (fieldName: Reference) => boolean;
@@ -810,8 +815,8 @@ export const createFormStore = (
           get().getFieldState(encodeObjectPath(fieldName)),
         getFieldErrors: (fieldName) =>
           get().getFieldErrors(encodeObjectPath(fieldName)),
-        validateField: (fieldName) =>
-          get().validateField(encodeObjectPath(fieldName)),
+        validateField: (fieldName, options) =>
+          get().validateField(encodeObjectPath(fieldName), options),
         resetField: (fieldName) =>
           get().resetField(encodeObjectPath(fieldName)),
         getValue: (fieldName) => get().getValue(encodeObjectPath(fieldName)),
@@ -1529,7 +1534,7 @@ export const createFormStore = (
           : undefined;
         return fieldErrors && fieldErrors.length > 0 ? fieldErrors : null;
       },
-      validateField: async (fieldReference) => {
+      validateField: async (fieldReference, options) => {
         const state = get();
         const fieldName = resolveRegisteredFieldName(
           fieldRecords,
@@ -1571,6 +1576,9 @@ export const createFormStore = (
               const draftField = updateFieldMeta(fieldRecords, fieldName, {
                 isValidating: false,
                 isValid: false,
+                ...(options?.showErrors
+                  ? { isTouched: true, isBlurred: true, isDirty: true }
+                  : {}),
               });
               if (draftField) {
                 const prevFormErrors = form.errors ?? {
@@ -1629,6 +1637,9 @@ export const createFormStore = (
             const currentField = updateFieldMeta(fieldRecords, fieldName, {
               isValid: false,
               isValidating: false,
+              ...(options?.showErrors
+                ? { isTouched: true, isBlurred: true, isDirty: true }
+                : {}),
             });
             if (currentField) {
               // Add error to the unified error store

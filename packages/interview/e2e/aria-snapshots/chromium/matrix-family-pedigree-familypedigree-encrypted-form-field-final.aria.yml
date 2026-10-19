@@ -62,8 +62,8 @@
       - text: Egg or sperm donor
       - radio "Surrogate" [disabled]
       - text: Surrogate “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
-    - text: Which of “Bea”’s siblings, if any, are their twins? Include triplets and other multiple births.
-    - group "Which of “Bea”’s siblings, if any, are their twins?":
+    - text: Which siblings of “Bea”, if any, are their twins? Include triplets and other multiple births.
+    - group "Which siblings of “Bea”, if any, are their twins?":
       - checkbox "You"
       - text: You
     - text: Nickname

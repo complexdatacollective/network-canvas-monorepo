@@ -18,12 +18,6 @@
       - text: A biological child
       - radio "An adopted child"
       - text: An adopted child
-    - text: Who carried the pregnancy?
-    - radiogroup "Who carried the pregnancy?":
-      - radio "Mother"
-      - text: Mother
-      - radio "Someone else, or I don’t know"
-      - text: Someone else, or I don’t know
     - text: Are they your twin? Answer yes for triplets and other multiple births too.
     - radiogroup "Are they your twin?":
       - radio "No"
@@ -34,6 +28,12 @@
       - text: Yes, fraternal (non-identical) twins
       - radio "Yes, but I don’t know if they are identical"
       - text: Yes, but I don’t know if they are identical
+    - text: Who carried the pregnancy? Required
+    - radiogroup "Who carried the pregnancy?":
+      - radio "Mother"
+      - text: Mother
+      - radio "Someone else, or I don’t know"
+      - text: Someone else, or I don’t know
     - button "Cancel"
     - button "Back"
     - button "Continue"

@@ -84,15 +84,61 @@ describe('connecting a parent who carried the pregnancy', () => {
       ]),
     ).toEqual([
       ['biological', undefined],
-      ['biological+carried', { rule: 'carrierRecorded', carrierId: 'mum' }],
+      [
+        'biological+carried',
+        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
+      ],
       ['adoptive', undefined],
-      ['adoptive+carried', { rule: 'carrierRecorded', carrierId: 'mum' }],
+      [
+        'adoptive+carried',
+        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
+      ],
       ['social', undefined],
-      ['social+carried', { rule: 'carrierRecorded', carrierId: 'mum' }],
+      [
+        'social+carried',
+        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
+      ],
       ['donor', undefined],
-      ['donor+carried', { rule: 'carrierRecorded', carrierId: 'mum' }],
-      ['surrogate', { rule: 'carrierRecorded', carrierId: 'mum' }],
+      [
+        'donor+carried',
+        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
+      ],
+      [
+        'surrogate',
+        { rule: 'carrierRecorded', carrierId: 'mum', childId: 'ego' },
+      ],
     ]);
+  });
+
+  test('with a twin’s carrier recorded, every choice that carries is unavailable, naming them and the twin, but not for that carrier', () => {
+    // Twins come from one pregnancy: Mum carried Sam, so carried the
+    // participant too, and nobody else can have.
+    const f = family(
+      [
+        person('ego', { isEgo: true }),
+        person('sam'),
+        person('mum'),
+        person('amy'),
+      ],
+      [
+        link('mum', 'sam', 'biological', { carrier: true }),
+        link('ego', 'sam', 'unknownZygosityTwin'),
+      ],
+    );
+    expect(availableParentChoices(f, 'amy', 'ego').map(label)).toEqual([
+      'biological',
+      'adoptive',
+      'social',
+      'donor',
+    ]);
+    expect(
+      parentChoiceOptions(f, 'amy', 'ego').find(
+        (option) => option.choice.parentKind === 'surrogate',
+      )?.unavailable,
+    ).toEqual({ rule: 'carrierRecorded', carrierId: 'mum', childId: 'sam' });
+    expect(availableParentChoices(f, 'mum', 'ego').map(label)).toContain(
+      'biological+carried',
+    );
   });
 
   test('an adoptive parent or a donor who carried is recorded as having carried', () => {

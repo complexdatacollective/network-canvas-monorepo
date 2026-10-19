@@ -428,11 +428,28 @@ function parentLinksOf(family: Family, personId: string) {
   );
 }
 
-/** Whether someone is recorded as having carried the person's pregnancy. */
+/** Whether someone is recorded as having carried the person's pregnancy,
+ * or a twin's, which was the same pregnancy (`carrierRecordOf`). */
 export function hasCarrier(family: Family, personId: string): boolean {
-  return parentLinksOf(family, personId).some(
-    (link) => link.isGestationalCarrier,
-  );
+  return carrierRecordOf(family, personId) !== undefined;
+}
+
+/**
+ * Who is recorded as having carried the person, or else one of their twins,
+ * and whom they are recorded as carrying. Twins come from one pregnancy, so
+ * whoever carried one carried them all, and nobody else can be recorded as
+ * carrying any of them.
+ */
+export function carrierRecordOf(
+  family: Family,
+  personId: string,
+): { carrierId: string; childId: string } | undefined {
+  const twins = twinSetOf(family, personId).filter((id) => id !== personId);
+  for (const childId of [personId, ...twins]) {
+    const carrierId = carrierOf(family, childId);
+    if (carrierId !== undefined) return { carrierId, childId };
+  }
+  return undefined;
 }
 
 /** Parents who raise or are related to the person — not donors or surrogates. */
@@ -750,6 +767,9 @@ export type AdditionPlan = {
   /** Twins recorded as identical whose genetic parents the addition makes
    * differ, recorded as not known to be identical (`planStandIns`). */
   changedTwins?: TwinZygosityChange[];
+  /** The new sibling's twins recorded again as carried by whoever carried
+   * the sibling (`twinCarrierUpdates`). */
+  carrierUpdates?: CarrierUpdate[];
 };
 
 /** Two people to record as twins. */
@@ -1099,16 +1119,34 @@ export function planAddRelative({
           (id) => id === request.carrier,
         )
       : undefined;
+  // A twin's carrier carried the anchor too, a parent planned for both of
+  // them included.
+  const twinned = (plan.twins ?? []).length > 0;
   const answered = plan.links.map((link) =>
     carrier !== undefined &&
     link.source === carrier &&
-    link.target === newPersonId
+    (link.target === newPersonId || (twinned && link.target === anchorId))
       ? { ...link, isGestationalCarrier: true }
       : link,
   );
+  // A twin's carrier, a surrogate they share included, carried the twins
+  // they join too.
+  const carrierUpdates =
+    request.relation === 'sibling' && (plan.twins ?? []).length > 0
+      ? twinCarrierUpdates(
+          family,
+          twinSetOf(family, anchorId),
+          carrier ??
+            plan.links.find(
+              (link) =>
+                link.target === newPersonId && link.kind === 'surrogate',
+            )?.source,
+        )
+      : [];
   return {
     ...plan,
     links: settleCarriers(family, plan.people, answered, sexAttribute),
+    ...(carrierUpdates.length > 0 ? { carrierUpdates } : {}),
   };
 }
 
@@ -1157,9 +1195,12 @@ function settleCarriers(
     if (link.kind === 'surrogate') {
       return { ...link, isGestationalCarrier: true };
     }
+    const record = family.byId.has(link.target)
+      ? carrierRecordOf(family, link.target)
+      : undefined;
     const someoneElse =
       carried.has(link.target) ||
-      (family.byId.has(link.target) && hasCarrier(family, link.target));
+      (record !== undefined && record.carrierId !== link.source);
     return someoneElse || !couldCarryPregnancy(sexOf(link.source))
       ? { ...link, isGestationalCarrier: false }
       : link;
@@ -1192,6 +1233,16 @@ export function twinsOf(
  */
 export function twinSetOf(family: Family, personId: string): string[] {
   return reachedByTwinLinks(family, personId, () => true);
+}
+
+/** The person's identical twins and theirs, however indirectly, them
+ * included: one egg, so one sex at birth. */
+export function identicalSetOf(family: Family, personId: string): string[] {
+  return reachedByTwinLinks(
+    family,
+    personId,
+    (zygosity) => zygosity === 'identical',
+  );
 }
 
 /** Everyone the person's twin links of `zygosity` reach, however
@@ -1258,16 +1309,47 @@ export function twinCandidatesOf(family: Family, personId: string): string[] {
   return [...own.filter((id) => id !== personId), ...candidates];
 }
 
-/** Whether two people could be identical twins: identical twins come from
- * one egg and one sperm, so they have the same genetic parents. */
+/** What keeps two people from being identical twins. */
+export type IdenticalTwinBlock = 'geneticParents' | 'sex';
+
+/**
+ * Why two people could not be identical twins, if they could not: identical
+ * twins come from one egg and one sperm, so they have the same genetic
+ * parents and the same sex at birth (`differentSexesAtBirth`). `sexOf`
+ * reads a sex at birth as the answers stand, where they differ from what is
+ * recorded.
+ */
+export function identicalTwinBlocks(
+  family: Family,
+  a: string,
+  b: string,
+  sexOf: (personId: string) => string | undefined = (personId) =>
+    family.byId.get(personId)?.sexAssignedAtBirth,
+): IdenticalTwinBlock[] {
+  const blocks: IdenticalTwinBlock[] = [];
+  const first = new Set(geneticParentsOf(family, a));
+  const second = geneticParentsOf(family, b);
+  if (first.size !== second.length || !second.every((id) => first.has(id))) {
+    blocks.push('geneticParents');
+  }
+  if (differentSexesAtBirth(sexOf(a), sexOf(b))) blocks.push('sex');
+  return blocks;
+}
+
+/** Whether two sexes at birth are known to differ: one female and one male.
+ * Any other answer (intersex, not known, not said) rules nothing out. */
+export const differentSexesAtBirth = (
+  a: string | undefined,
+  b: string | undefined,
+) => (a === 'female' && b === 'male') || (a === 'male' && b === 'female');
+
+/** Whether two people could be identical twins (`identicalTwinBlocks`). */
 export function identicalTwinsPossible(
   family: Family,
   a: string,
   b: string,
 ): boolean {
-  const first = new Set(geneticParentsOf(family, a));
-  const second = geneticParentsOf(family, b);
-  return first.size === second.length && second.every((id) => first.has(id));
+  return identicalTwinBlocks(family, a, b).length === 0;
 }
 
 /**
@@ -1323,14 +1405,16 @@ function twinsForNewSibling(
  *   is to everyone else what the person is; any other pair keeps what is
  *   recorded, and a pair the change newly forms takes `zygosityThrough` the
  *   person. A worked-out pair is identical only while the two would have the
- *   same genetic parents, and otherwise not known to be: identical twins
- *   always have the same genetic parents (`planStandIns` keeps them so after
- *   every change to anyone's parents).
+ *   same genetic parents and sex at birth, and otherwise not known to be:
+ *   identical twins always have the same genetic parents (`planStandIns`
+ *   keeps them so after every change to anyone's parents). `sexOf` reads a
+ *   sex at birth as the answers stand (`identicalTwinBlocks`).
  */
 export function planTwinChanges(
   family: Family,
   personId: string,
   answers: ReadonlyMap<string, TwinZygosity>,
+  sexOf?: (personId: string) => string | undefined,
 ): {
   added: PlannedTwin[];
   changed: TwinZygosityChange[];
@@ -1340,7 +1424,8 @@ export function planTwinChanges(
   const recorded = (a: string, b: string) =>
     twinLinkBetween(family, a, b)?.zygosity;
   const possible = (a: string, b: string, wanted: TwinZygosity) =>
-    wanted === 'identical' && !identicalTwinsPossible(family, a, b)
+    wanted === 'identical' &&
+    identicalTwinBlocks(family, a, b, sexOf).length > 0
       ? 'unknown'
       : wanted;
 
@@ -1744,7 +1829,19 @@ export function planStandIns(
   // carried the pregnancy.
   const links = settleCarriers(family, people, unsettled, sexAttribute);
 
-  // Identical twins whose genetic parents, as the rule leaves them, differ.
+  // Identical twins whose genetic parents, as the rule leaves them, differ,
+  // or among whose identical twins, however indirectly linked, sexes at
+  // birth differ (`differentSexesAtBirth`): they came from one egg.
+  const identicalSexesDiffer = (personId: string) => {
+    const recorded = new Set(
+      reachedByTwinLinks(
+        family,
+        personId,
+        (zygosity) => zygosity === 'identical',
+      ).map((id) => family.byId.get(id)?.sexAssignedAtBirth),
+    );
+    return recorded.has('female') && recorded.has('male');
+  };
   const geneticParentsAfter = (personId: string) =>
     new Set([
       ...geneticLinksOf(personId)
@@ -1758,10 +1855,11 @@ export function planStandIns(
     .filter(
       (twin) =>
         twin.zygosity === 'identical' &&
-        !sameSet(
+        (!sameSet(
           geneticParentsAfter(twin.source),
           geneticParentsAfter(twin.target),
-        ),
+        ) ||
+          identicalSexesDiffer(twin.source)),
     )
     .map((twin) => ({ linkId: twin.id, zygosity: 'unknown' as const }));
 
@@ -2244,6 +2342,97 @@ export function carrierOf(
   )?.source;
 }
 
+/** The surrogate who carried the person, if one did: a surrogate always
+ * carried the child they are the surrogate of. */
+export function surrogateOf(
+  family: Family,
+  personId: string,
+): string | undefined {
+  return parentLinksOf(family, personId).find(
+    (link) => link.kind === 'surrogate',
+  )?.source;
+}
+
+/**
+ * Whoever is recorded as having carried one of the person's twins. Twins
+ * come from one pregnancy, so one person carried them all.
+ */
+export function twinCarrierOf(
+  family: Family,
+  personId: string,
+): string | undefined {
+  for (const twinId of twinSetOf(family, personId)) {
+    if (twinId === personId) continue;
+    const carrier = carrierOf(family, twinId);
+    if (carrier !== undefined) return carrier;
+  }
+  return undefined;
+}
+
+/** A parent link recorded again as carrying the pregnancy, or not, or with
+ * nothing recorded (undefined) while not known. */
+export type CarrierUpdate = {
+  linkId: string;
+  kind: FamilyLinkKind;
+  isGestationalCarrier: boolean | undefined;
+};
+
+/**
+ * What records `carrierId` as the one who carried each of `twinIds`, or
+ * nobody known while it is undefined: twins come from one pregnancy, so
+ * share one carrier. Only parents who could have carried are changed, and a
+ * twin a surrogate carried keeps them, since a surrogate always carried the
+ * child they are the surrogate of.
+ */
+export function twinCarrierUpdates(
+  family: Family,
+  twinIds: readonly string[],
+  carrierId: string | undefined,
+): CarrierUpdate[] {
+  return twinIds.flatMap((twinId) => {
+    const links = parentLinksOf(family, twinId);
+    if (links.some((link) => link.kind === 'surrogate')) return [];
+    return links.flatMap((link): CarrierUpdate[] => {
+      if (
+        !mayHaveCarried(link.kind) ||
+        !couldCarryPregnancy(family.byId.get(link.source)?.sexAssignedAtBirth)
+      ) {
+        // Someone who could not have carried them is never left recorded as
+        // having done so beside the carrier, as a change made elsewhere can
+        // leave them.
+        return link.isGestationalCarrier === true
+          ? [{ linkId: link.id, kind: link.kind, isGestationalCarrier: false }]
+          : [];
+      }
+      const carries =
+        carrierId === undefined ? undefined : link.source === carrierId;
+      return carries === link.isGestationalCarrier
+        ? []
+        : [{ linkId: link.id, kind: link.kind, isGestationalCarrier: carries }];
+    });
+  });
+}
+
+/**
+ * Whether `carrierId` could be recorded as having carried the person, as
+ * `twinCarrierUpdates` records a twin set's carrier: they are a parent of a
+ * kind who may have carried them, and no surrogate, who always carried the
+ * child they are the surrogate of, carried them instead.
+ */
+export function couldBeCarrierOf(
+  family: Family,
+  personId: string,
+  carrierId: string,
+): boolean {
+  const links = parentLinksOf(family, personId);
+  return (
+    links.every(
+      (link) => link.kind !== 'surrogate' || link.source === carrierId,
+    ) &&
+    links.some((link) => link.source === carrierId && mayHaveCarried(link.kind))
+  );
+}
+
 /** Whether `ancestorId` is the person's parent, a parent's parent, and so on. */
 function isAncestor(family: Family, ancestorId: string, personId: string) {
   const seen = new Set<string>();
@@ -2315,7 +2504,7 @@ export function canConnectPartners(
  * (`GeneticParentBlock`).
  */
 export type ParentChoiceBlock =
-  | { rule: 'carrierRecorded'; carrierId: string }
+  | { rule: 'carrierRecorded'; carrierId: string; childId: string }
   | GeneticParentBlock;
 
 /**
@@ -2359,11 +2548,13 @@ export function parentChoiceOptions(
         parentSex,
       );
   const couldCarry = couldCarryPregnancy(parentSex);
-  const carrierId = carrierOf(family, childId);
+  // Someone recorded as carrying the child or a twin, who was carried in
+  // the same pregnancy, rules out another carrier.
+  const carrierRecord = carrierRecordOf(family, childId);
   const carrierBlock: ParentChoiceBlock | undefined =
-    carrierId === undefined
+    carrierRecord === undefined || carrierRecord.carrierId === parentId
       ? undefined
-      : { rule: 'carrierRecorded', carrierId };
+      : { rule: 'carrierRecorded', ...carrierRecord };
   const options: { choice: ParentChoice; unavailable?: ParentChoiceBlock }[] =
     [];
   for (const kind of PEDIGREE_RELATIONSHIP_KINDS) {

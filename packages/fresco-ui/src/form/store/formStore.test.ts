@@ -444,6 +444,44 @@ describe('FormStore', () => {
       expect(state.isValid).toBe(false);
     });
 
+    it('marks a field that fails as touched, blurred and dirty only when asked to show its errors', async () => {
+      const mockError = new z.core.$ZodError([
+        { code: 'custom', message: 'Required', path: ['email'] },
+      ]);
+      mockValidateFieldValue.mockResolvedValue({
+        success: false,
+        error: mockError,
+      });
+
+      await store.getState().validateField('email');
+      expect(store.getState().getFieldState('email')?.meta).toMatchObject({
+        isTouched: false,
+        isBlurred: false,
+        isDirty: false,
+      });
+
+      await store.getState().validateField('email', { showErrors: true });
+      expect(store.getState().getFieldState('email')?.meta).toMatchObject({
+        isValid: false,
+        isTouched: true,
+        isBlurred: true,
+        isDirty: true,
+      });
+    });
+
+    it('shows the error of a field whose validation throws when asked to', async () => {
+      mockValidateFieldValue.mockRejectedValue(new Error('boom'));
+
+      await store.getState().validateField('email', { showErrors: true });
+      expect(store.getState().getFieldState('email')?.meta).toMatchObject({
+        isValid: false,
+        isTouched: true,
+        isBlurred: true,
+        isDirty: true,
+      });
+      expect(store.getState().getFieldErrors('email')).toHaveLength(1);
+    });
+
     it('should clear field error through successful validation', async () => {
       // First set an error
       const mockError = new z.core.$ZodError([
