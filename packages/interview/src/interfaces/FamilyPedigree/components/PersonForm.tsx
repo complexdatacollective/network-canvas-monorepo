@@ -1695,7 +1695,9 @@ function RelationshipFields({
 }
 
 /** Whether a partnership is current: of the new partner, or of a new parent
- * with the parent chosen as their partner (named for them, `aboutPerson`). */
+ * with the parent chosen as their partner (named for them, `aboutPerson`).
+ * It must be answered: a partnership is drawn as current or as ended, and
+ * nothing is assumed for the participant. */
 function PartnershipCurrentField({
   name = ROLE.partnershipCurrent,
 }: {
@@ -1709,6 +1711,7 @@ function PartnershipCurrentField({
       label={text(wording.stillTogetherLabel, {
         named: 'false',
       })}
+      required
     />
   );
 }

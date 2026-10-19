@@ -2258,6 +2258,45 @@ describe('an answer about a particular person', () => {
       partnershipCurrent: true,
     });
   });
+
+  it('saves no partnership as current until whether they are still together is answered', async () => {
+    const { onSubmit, user } = renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+      ],
+      edges: [
+        link('mum', 'ego', 'biological', { carrier: true }),
+        link('dad', 'ego', 'biological'),
+      ],
+      adding: 'parent',
+    });
+    await user.click(screen.getByRole('radio', { name: 'Female' }));
+    await user.click(
+      screen.getByRole('radio', { name: 'Step or social parent' }),
+    );
+    await choose(
+      user,
+      screen.getByRole('radiogroup', {
+        name: /^Are they the partner of another parent\?/,
+      }),
+      'dad',
+    );
+    await save(user);
+    expect(onSubmit).not.toHaveBeenCalled();
+    await choose(
+      user,
+      screen.getByRole('radiogroup', { name: /^Are they still together\?/ }),
+      'No',
+    );
+    await save(user);
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].request).toMatchObject({
+      partnerId: 'dad',
+      partnershipCurrent: false,
+    });
+  });
 });
 
 // Rule: an answer the form worked out — a default, or one implied by another
