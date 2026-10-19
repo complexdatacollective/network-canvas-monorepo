@@ -234,8 +234,8 @@ const ROOT_ASSET_REFERENCE = /(?:src|href)="\/assets\//;
 
 /**
  * Check that `directory` holds the sub-path build `pin` names, in the layout
- * the 8.x release lane packs (scripts/release/package-architect-subpath-dist.mjs
- * on main): the dist root plus dist-info.json, built for /v8/, precaching
+ * the 8.x release lane packs (the sub-path dist packer on Architect 8's line):
+ * the dist root plus dist-info.json, built for /v8/, precaching
  * under the pinned cache prefix. Throws on the first mismatch.
  */
 export const validateLegacyArchitectDist = (
