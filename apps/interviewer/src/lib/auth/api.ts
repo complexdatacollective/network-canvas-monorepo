@@ -1,4 +1,5 @@
 import type { LocalizedMessage } from '../../i18n/messageResult';
+import { IS_SUBPATH_BUILD } from '../appBase';
 import { reencryptAllRecords } from '../db/api';
 import { db } from '../db/db';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
@@ -39,10 +40,15 @@ async function applyUnlock(result: vault.UnlockResult): Promise<AuthResult> {
 // write, silently and permanently defeating the retry. The security invariant
 // ("secured ⇒ existing data encrypted") is only met once the flag is cleared (a
 // run with zero failed rows).
+//
+// Interviewer 8 inside Interviewer 9 (a /v8/ build) shares this flag with
+// Interviewer 9, whose retry sweeps both apps' databases. This build sweeps
+// only its own, so a clean run here says nothing about Interviewer 9's rows:
+// it may raise the flag, and leaves clearing it to Interviewer 9.
 async function runReencryptionSweep(): Promise<void> {
   try {
     const { failed } = await reencryptAllRecords();
-    setReencryptionPending(failed > 0);
+    if (failed > 0 || !IS_SUBPATH_BUILD) setReencryptionPending(failed > 0);
   } catch (error) {
     // No other reporting exists for this background sweep, and the security
     // invariant depends on knowing why it failed.
