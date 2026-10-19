@@ -10,7 +10,6 @@ import { messageFields } from '~/test/messageText';
 
 const capture = vi.fn();
 const setImportInProgress = vi.fn();
-const setExportInProgress = vi.fn();
 const validateProtocol = vi.fn();
 const migrateProtocol = vi.fn();
 const setActiveProtocol = vi.fn();
@@ -33,7 +32,7 @@ vi.mock('~/analytics', () => ({
 
 vi.mock('~/utils/criticalOperation', () => ({
   setImportInProgress: (value: boolean) => setImportInProgress(value),
-  setExportInProgress: (value: boolean) => setExportInProgress(value),
+  beginExport: () => () => undefined,
 }));
 
 vi.mock('@codaco/protocol-validation', async (importOriginal) => {

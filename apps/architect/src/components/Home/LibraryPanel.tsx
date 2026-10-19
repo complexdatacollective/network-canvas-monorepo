@@ -76,6 +76,7 @@ import {
   MissingFinishStageTextError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
+import { beginExport } from '~/utils/criticalOperation';
 import { documentationLinks } from '~/utils/documentationLinks';
 import {
   getBundledLegacyArchitect,
@@ -878,6 +879,11 @@ const LibraryPanel = ({
       resolveFocus: ResolveMenuFocus,
     ) => {
       setDownloadingIds((prev) => new Set(prev).add(key));
+      // Marked as an export, like the editor's, so leaving for Architect 8 or
+      // a service-worker update reload waits for it rather than ending the
+      // page under a zip still being generated. The row menu stays usable
+      // while it runs, so "Open in Architect 8" can be chosen meanwhile.
+      const finishExport = beginExport();
       try {
         await download();
       } catch (error) {
@@ -953,6 +959,7 @@ const LibraryPanel = ({
           finalFocus: resolveFocus,
         });
       } finally {
+        finishExport();
         setDownloadingIds((prev) => {
           const next = new Set(prev);
           next.delete(key);

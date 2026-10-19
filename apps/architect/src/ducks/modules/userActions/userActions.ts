@@ -36,10 +36,7 @@ import {
   MissingFinishStageTextError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
-import {
-  setExportInProgress,
-  setImportInProgress,
-} from '~/utils/criticalOperation';
+import { beginExport, setImportInProgress } from '~/utils/criticalOperation';
 import { describeMigrationFailure } from '~/utils/describeMigrationFailure';
 import {
   getLegacyProtocol,
@@ -707,7 +704,7 @@ export const exportNetcanvas = createAppAsyncThunk(
 
     // Signal an export is in flight so a service-worker update reload warns/defers
     // rather than interrupting the download.
-    setExportInProgress(true);
+    const finishExport = beginExport();
     try {
       await downloadProtocolAsNetcanvas(
         protocol as CurrentProtocol,
@@ -735,7 +732,7 @@ export const exportNetcanvas = createAppAsyncThunk(
       }
       throw error;
     } finally {
-      setExportInProgress(false);
+      finishExport();
     }
   },
 );

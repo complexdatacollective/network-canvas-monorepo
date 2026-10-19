@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 import type { LegacyProtocolChoice, StoredProtocolRow } from '~/utils/assetDB';
 import { UnresolvedAssetsError } from '~/utils/bundleProtocol';
+import { whenCriticalOperationsSettle } from '~/utils/criticalOperation';
 import type { LegacyStoredProtocolRow } from '~/utils/legacyProtocolLibrary';
 
 import LibraryPanel from '../LibraryPanel';
@@ -686,6 +687,37 @@ describe('<LibraryPanel /> Architect 8 protocols', () => {
       ),
     );
     expect(downloadProtocolAsNetcanvasMock).not.toHaveBeenCalled();
+  });
+
+  it('holds a departure for Architect 8 until its download has been saved', async () => {
+    // The row menu stays usable while a download runs, so "Open in Architect
+    // 8" can be chosen before the zip is ready. That leaves by a full page
+    // load, which waits on `whenCriticalOperationsSettle`; were the download
+    // not counted there, the page would go and take the download with it.
+    let finishZip: () => void = () => undefined;
+    downloadLegacyProtocolAsNetcanvasMock.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishZip = resolve;
+      }),
+    );
+    withLibrary();
+    renderWithCallbacks();
+
+    await openMenuItem(/download/i);
+    await waitFor(() =>
+      expect(downloadLegacyProtocolAsNetcanvasMock).toHaveBeenCalled(),
+    );
+
+    let left = false;
+    const leaving = whenCriticalOperationsSettle().then(() => {
+      left = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(left).toBe(false);
+
+    finishZip();
+    await leaving;
+    expect(left).toBe(true);
   });
 
   it('names the resources it could not read when its download is refused', async () => {
