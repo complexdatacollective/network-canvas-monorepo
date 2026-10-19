@@ -1637,6 +1637,9 @@ export const createFormStore = (
             const currentField = updateFieldMeta(fieldRecords, fieldName, {
               isValid: false,
               isValidating: false,
+              ...(options?.showErrors
+                ? { isTouched: true, isBlurred: true, isDirty: true }
+                : {}),
             });
             if (currentField) {
               // Add error to the unified error store

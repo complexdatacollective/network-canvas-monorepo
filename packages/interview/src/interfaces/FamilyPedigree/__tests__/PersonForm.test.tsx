@@ -2088,6 +2088,38 @@ describe('twins share one carrier', () => {
     );
   });
 
+  it('starts someone newly chosen as a twin at the carrier of the twin they join', async () => {
+    const family = twinFamily({ 'amy-ego-social': true });
+    const { onSubmit, user } = renderPersonForm('sam', {
+      ...family,
+      // Sam and the participant are not yet recorded as twins.
+      edges: family.edges.slice(0, -1),
+    });
+    expect(answer(carried('amy'), 'Yes')).not.toBeChecked();
+    await user.click(
+      within(
+        screen.getByRole('group', { name: /^Which of “sam”’s siblings/ }),
+      ).getByRole('checkbox', { name: 'ego' }),
+    );
+    await waitFor(() => expect(answer(carried('amy'), 'Yes')).toBeChecked());
+    await user.click(
+      within(
+        await screen.findByRole('radiogroup', { name: /identical twins\?/ }),
+      ).getByRole('radio', { name: 'No, fraternal (non-identical)' }),
+    );
+    await save(user);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0].linkUpdates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          linkId: 'amy-sam-social',
+          isGestationalCarrier: true,
+        }),
+      ]),
+    );
+  });
+
   it('records a twin’s changed carrier for their twin too', async () => {
     const { onSubmit, user } = renderPersonForm(
       'sam',

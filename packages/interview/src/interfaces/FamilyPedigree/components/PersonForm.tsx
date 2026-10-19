@@ -1215,11 +1215,18 @@ function ExistingRelationshipFields({
       otherGeneticParents(link).map(sexOf).concat(sexOf(link.source)),
     );
   // Twins come from one pregnancy: someone with nobody recorded as carrying
-  // them was carried by whoever carried their twins, until answered
-  // otherwise.
+  // them was carried by whoever carried their twins as the answers stand,
+  // twins newly chosen included, until answered otherwise.
+  const twinAnswers = useFormValue([ROLE.twins], 'opaque')[ROLE.twins];
   const twinsCarrier = hasCarrier(family, person.id)
     ? undefined
-    : twinCarrierOf(family, person.id);
+    : twinAnswers === undefined
+      ? twinCarrierOf(family, person.id)
+      : asStringArray(twinAnswers)
+          .flatMap((twinId) => twinSetOf(family, twinId))
+          .filter((id) => id !== person.id)
+          .map((id) => carrierOf(family, id))
+          .find((id) => id !== undefined);
   const recordedCarrying = (link: FamilyLink) =>
     link.isGestationalCarrier ??
     (twinsCarrier === undefined ? undefined : link.source === twinsCarrier);
