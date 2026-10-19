@@ -2,9 +2,14 @@ import { randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { defineConfig, mergeConfig } from 'vite';
+import { defineConfig, loadEnv, mergeConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import {
+  legacyApp,
+  legacyAppDefine,
+  loadLegacyAppV8,
+} from '../../scripts/buildtime/legacy-app.ts';
 import { createPostHogSourceMapsPlugin } from '../../scripts/buildtime/posthog-source-maps-plugin.ts';
 import {
   createPwaCacheReclamationPlugin,
@@ -52,14 +57,25 @@ const posthogProjectId = process.env.POSTHOG_PROJECT_ID;
 const posthogCliBinaryPath = process.env.POSTHOG_CLI_BINARY_PATH;
 const uploadSourceMaps = !!posthogPersonalApiKey && !!posthogProjectId;
 
-export default defineConfig(() =>
-  mergeConfig(createRendererConfig({ outDir: 'dist', port: 5180 }), {
+// Interviewer 8, served at /v8/ from this deploy when legacy-interviewer.json
+// pins a build of it (see scripts/buildtime/legacy-app.ts).
+const legacyInterviewer = legacyApp('interviewer');
+
+export default defineConfig(({ command, mode }) => {
+  // Whether this build bundles Interviewer 8 at /v8/: the same decision
+  // scripts/build.mjs acts on after Vite, so the app offers Interviewer 8
+  // exactly when dist/v8 will hold it (see `src/lib/legacyInterviewer.ts`).
+  // The dev server serves no /v8/, so it never does.
+  const legacyInterviewerV8 =
+    command === 'build'
+      ? legacyAppDefine(
+          loadLegacyAppV8(legacyInterviewer, here, loadEnv(mode, here, '')),
+        )
+      : null;
+  return mergeConfig(createRendererConfig({ outDir: 'dist', port: 5180 }), {
     define: {
       __PWA_BUILD_ID__: JSON.stringify(pwaCacheId),
-      // No Interviewer 8 is bundled yet: every Interviewer 8 action is hidden
-      // (see `src/lib/legacyInterviewer.ts`). The bundling step that copies a
-      // pinned Interviewer 8 into `dist/v8/` sets this from the pin.
-      __INTERVIEWER_V8__: 'null',
+      __INTERVIEWER_V8__: JSON.stringify(legacyInterviewerV8),
     },
     plugins: [
       createPwaCacheReclamationPlugin({
@@ -331,5 +347,5 @@ export default defineConfig(() =>
         },
       },
     },
-  }),
-);
+  });
+});
