@@ -31,6 +31,7 @@ function resolve({
   tags = [],
   strandedTags = [],
   mirrorVersion,
+  scope,
 }) {
   const cwd = mkdtempSync(join(tmpdir(), 'rhr-'));
   mkdirSync(join(cwd, 'apps', app), { recursive: true });
@@ -75,6 +76,7 @@ function resolve({
         APP: app,
         GITHUB_OUTPUT: outputPath,
         ...(mirrorVersion ? { MIRROR_VERSION: mirrorVersion } : {}),
+        ...(scope ? { SCOPE: scope } : {}),
       },
     });
   } catch (error) {
@@ -222,4 +224,134 @@ test('clears a hotfix re-cut from the newest release', () => {
   });
   assert.ok(ok);
   assert.equal(output.newest, '8.1.3');
+});
+
+// An older line is released only by the Architect maintenance lane; the
+// hotfix refusal has to say where to go instead of only what is wrong.
+test('points an older Architect line at the maintenance lane', () => {
+  const { ok, stderr } = resolve({
+    app: 'architect',
+    version: '8.5.1',
+    tags: ['@codaco/architect@8.5.0', '@codaco/architect@9.0.0'],
+  });
+  assert.equal(ok, false);
+  assert.match(stderr, /older than the released 9\.0\.0/);
+  assert.match(stderr, /Architect Maintenance Release workflow/);
+});
+
+// SCOPE=line: the Architect maintenance lane for an older major line. The
+// newer line's release lives on a commit the maintenance branch never saw,
+// which is the shape it has in the repository: 9.x is released from main,
+// 8.x from a branch cut from the last 8.x tag.
+test('line scope clears an 8.x patch alongside a released 9.0.0', () => {
+  const { ok, output } = resolve({
+    app: 'architect',
+    scope: 'line',
+    version: '8.5.1',
+    tags: ['@codaco/architect@8.4.0', '@codaco/architect@8.5.0'],
+    strandedTags: ['@codaco/architect@9.0.0', '@codaco/architect@9.1.0'],
+  });
+  assert.ok(ok);
+  assert.equal(output.version, '8.5.1');
+  assert.equal(output.tag, '@codaco/architect@8.5.1');
+  // The previous release on the line, for release-notes.mjs --since.
+  assert.equal(output.newest, '8.5.0');
+  assert.equal(output.newest_tag, '@codaco/architect@8.5.0');
+});
+
+// A maintenance tag that became the newest overall would leave production
+// behind its newest tag, and app-release-guard.sh would skip every later
+// release from main.
+test('line scope refuses a version on the newest major line', () => {
+  for (const [version, tags] of [
+    ['9.0.1', ['@codaco/architect@9.0.0']],
+    // Before 9.0 ships, 8.x is still the newest line.
+    ['8.5.1', ['@codaco/architect@8.5.0']],
+  ]) {
+    const { ok, stderr } = resolve({
+      app: 'architect',
+      scope: 'line',
+      version,
+      tags,
+    });
+    assert.equal(ok, false, version);
+    assert.match(stderr, /is on the newest Architect line/);
+    assert.match(stderr, /normal lane or the Hotfix Release workflow/);
+  }
+});
+
+test('line scope refuses a version not newer than the newest on its line', () => {
+  const { ok, stderr } = resolve({
+    app: 'architect',
+    scope: 'line',
+    version: '8.4.9',
+    tags: ['@codaco/architect@8.5.0'],
+    strandedTags: ['@codaco/architect@9.0.0'],
+  });
+  assert.equal(ok, false);
+  assert.match(
+    stderr,
+    /8\.4\.9 is not newer than 8\.5\.0, the newest 8\.x release/,
+  );
+});
+
+test('line scope still refuses a version that is already released', () => {
+  const { ok, stderr } = resolve({
+    app: 'architect',
+    scope: 'line',
+    version: '8.5.0',
+    tags: ['@codaco/architect@8.5.0'],
+    strandedTags: ['@codaco/architect@9.0.0'],
+  });
+  assert.equal(ok, false);
+  assert.match(stderr, /already released/);
+});
+
+// 8.5.1 shipped from another maintenance branch after this one was cut from
+// 8.5.0: releasing 8.5.2 from here would drop the 8.5.1 fix from the line.
+test('line scope refuses a tree that does not descend from the line newest', () => {
+  const { ok, stderr } = resolve({
+    app: 'architect',
+    scope: 'line',
+    version: '8.5.2',
+    tags: ['@codaco/architect@8.5.0'],
+    strandedTags: ['@codaco/architect@8.5.1', '@codaco/architect@9.0.0'],
+  });
+  assert.equal(ok, false);
+  assert.match(
+    stderr,
+    /does not contain @codaco\/architect@8\.5\.1, the newest 8\.x release/,
+  );
+});
+
+test('line scope refuses a line that has never been released', () => {
+  const { ok, stderr } = resolve({
+    app: 'architect',
+    scope: 'line',
+    version: '7.0.1',
+    strandedTags: ['@codaco/architect@9.0.0'],
+  });
+  assert.equal(ok, false);
+  assert.match(stderr, /has no 7\.x release to maintain/);
+});
+
+test('line scope is Architect only', () => {
+  const { ok, stderr } = resolve({
+    scope: 'line',
+    version: '8.1.3',
+    tags: ['@codaco/interviewer@8.1.2'],
+    strandedTags: ['@codaco/interviewer@9.0.0'],
+  });
+  assert.equal(ok, false);
+  assert.match(stderr, /Interviewer has no older line to maintain/);
+});
+
+test('fails on an unknown scope', () => {
+  const { ok, stderr } = resolve({
+    app: 'architect',
+    scope: 'major',
+    version: '8.5.1',
+  });
+  assert.equal(ok, false);
+  assert.match(stderr, /Unsupported SCOPE 'major'/);
 });
