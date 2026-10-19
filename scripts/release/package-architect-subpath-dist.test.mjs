@@ -112,14 +112,11 @@ test.runIf(gnuTar)(
       sha256,
       createHash('sha256').update(readFileSync(out)).digest('hex'),
     );
+    // sha256sum's own format, which the publish job checks with `-c`.
     assert.equal(
       readFileSync(`${out}.sha256`, 'utf8'),
       `${sha256}  architect-v8-dist.tgz\n`,
     );
-    execFileSync('sha256sum', ['-c', 'architect-v8-dist.tgz.sha256'], {
-      cwd: join(out, '..'),
-      stdio: 'pipe',
-    });
   },
 );
 
