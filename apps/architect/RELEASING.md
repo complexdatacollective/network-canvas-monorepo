@@ -306,6 +306,15 @@ The dist workflow refuses to replace one unless `replace` is set.
 - This app's worker does not answer `/v8` or `/v8/` navigations and does not
   cache images or fonts under `/v8/`. Workbox serialises each route's matcher
   into `sw.js`, so these exclusions are literals in `vite.config.ts`.
+- `dist/v8` is never in this app's precache (`globIgnores`, and the build
+  writes it after the worker is generated). Instead, when a build bundles
+  Architect 8, this app registers `/v8/sw.js` for the `/v8/` scope in the
+  background (`src/utils/registerLegacyArchitectWorker.ts`): once per page
+  load, after it has rendered, after its own worker is ready and when the
+  browser is idle, unless `/v8/` already has that worker. Architect 8's worker
+  then downloads and keeps its own precache, so Architect 8 works offline
+  even for a researcher who has never opened `/v8/`, without slowing this
+  app's start-up or its own offline download.
 - `public/_redirects` sends `/v8` to `/v8/` and every other path under `/v8/`
   to Architect 8's shell before its own catch-all. `public/_headers` holds
   Architect 8's shells, worker, manifest and preview to no-store and

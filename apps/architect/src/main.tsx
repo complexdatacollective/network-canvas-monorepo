@@ -38,6 +38,7 @@ import {
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
+import { registerLegacyArchitectWorker } from './utils/registerLegacyArchitectWorker';
 import { reportError } from './utils/reportError';
 
 // The researcher's language is its own chunk. Fetch it now, alongside the
@@ -164,6 +165,11 @@ async function startApp(): Promise<void> {
   } else {
     setTimeout(warmCaches, 1000);
   }
+
+  // Architect 8 at /v8/ has its own worker, which this app's never answers
+  // for. Install it in the background, once this app is running and its own
+  // worker is ready, so Architect 8 works offline before it is first opened.
+  void registerLegacyArchitectWorker();
 }
 
 void startApp();

@@ -4,8 +4,8 @@
 
 Architect 8 now comes with Architect 9, so you can keep working on a schema 8
 protocol without upgrading it. Architect 8 opens in the same browser tab, at
-`/v8/` on the Architect site, and works offline once you have opened it there
-online.
+`/v8/` on the Architect site, and works offline too: Architect 9 downloads it
+in the background, after it has finished loading itself.
 
 - When you open a protocol made for schema 8 or earlier — from a file, by
   dragging it in, from your computer's file manager, or from the library —
