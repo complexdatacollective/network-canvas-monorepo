@@ -141,4 +141,38 @@ describe('fileLaunchQueue', () => {
     expect(mod.takeLaunchReadFailures()).toEqual([1]);
     expect(mod.takeLaunchReadFailures()).toEqual([]);
   });
+
+  it('queues a file read some other way, holding the startup update meanwhile', async () => {
+    const { mod, settle } = await loadModule();
+    let resolveRead: ((file: File | undefined) => void) | undefined;
+
+    mod.queueLaunchFileRead(
+      () =>
+        new Promise((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+    expect(mod.hasPendingLaunchFiles()).toBe(true);
+    expect(mod.getLaunchFiles()).toEqual([]);
+
+    resolveRead?.(new File(['zip'], 'staged.netcanvas'));
+    await settle();
+
+    expect(mod.takeLaunchFiles().map((f) => f.name)).toEqual([
+      'staged.netcanvas',
+    ]);
+    expect(mod.hasPendingLaunchFiles()).toBe(false);
+  });
+
+  it('reports a queued read that finds nothing, or fails, as unreadable', async () => {
+    const { mod, settle } = await loadModule();
+
+    mod.queueLaunchFileRead(() => Promise.resolve(undefined));
+    mod.queueLaunchFileRead(() => Promise.reject(new Error('blocked')));
+    await settle();
+
+    expect(mod.takeLaunchReadFailures()).toEqual([1, 1]);
+    expect(mod.getLaunchFiles()).toEqual([]);
+    expect(mod.hasPendingLaunchFiles()).toBe(false);
+  });
 });

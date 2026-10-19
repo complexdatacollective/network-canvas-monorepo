@@ -26,6 +26,8 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify('0.0.0-test'),
+    // No Architect 8 is bundled under test; a test that needs one stubs it.
+    __ARCHITECT_V8__: 'null',
   },
   test: {
     globals: true,

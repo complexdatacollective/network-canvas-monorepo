@@ -5,6 +5,7 @@ import { Blob as NodeBlob } from 'node:buffer';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  discardHandoff,
   HANDOFF_DB_NAME,
   HANDOFF_DB_SCHEMA,
   HANDOFF_TTL_MS,
@@ -213,5 +214,26 @@ describe('pruneExpiredHandoffs', () => {
     await pruneExpiredHandoffs();
 
     expect(await databaseNames()).not.toContain(HANDOFF_DB_NAME);
+  });
+});
+
+describe('discardHandoff', () => {
+  it('withdraws a record this app staged and did not navigate for', async () => {
+    const kept = await stageHandoff({
+      targetMajor: 8,
+      file: makeFile('kept'),
+      fileName: 'kept.netcanvas',
+    });
+    const withdrawn = await stageHandoff({
+      targetMajor: 8,
+      file: makeFile('withdrawn'),
+      fileName: 'withdrawn.netcanvas',
+    });
+
+    await discardHandoff(withdrawn);
+
+    expect(
+      (await readAllRaw()).map((record) => (record as { key: string }).key),
+    ).toEqual([kept]);
   });
 });

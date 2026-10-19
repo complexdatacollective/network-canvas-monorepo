@@ -77,6 +77,40 @@ export const initFileLaunchCapture = (): void => {
   });
 };
 
+/**
+ * Queue a file that reaches this app some other way than the OS launch queue —
+ * one Architect 8 staged for it (`/?import=`) — so it is opened exactly as a
+ * launched file is, by the same consumer and through the same dialogs.
+ *
+ * Counted as a pending launch from this call, synchronously, so the startup
+ * service-worker update holds off while the file is still being read. A read
+ * that resolves to nothing found nothing to open and is reported as an
+ * unreadable launch; one that rejects is reported the same way.
+ */
+export const queueLaunchFileRead = (
+  read: () => Promise<File | undefined>,
+): void => {
+  pendingLaunchReads += 1;
+  emit();
+  void (async () => {
+    try {
+      const file = await read();
+      if (!file) {
+        reportLaunchReadFailure(1);
+        return;
+      }
+      pendingFiles = [...pendingFiles, file];
+      emit();
+    } catch (error: unknown) {
+      reportError(error, { operation: 'fileLaunchQueuedRead' });
+      reportLaunchReadFailure(1);
+    }
+  })().finally(() => {
+    pendingLaunchReads -= 1;
+    emit();
+  });
+};
+
 export const subscribeLaunchFiles = (listener: () => void): (() => void) => {
   listeners.add(listener);
   return () => {

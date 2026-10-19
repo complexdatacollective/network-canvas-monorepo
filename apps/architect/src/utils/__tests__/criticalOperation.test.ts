@@ -6,6 +6,7 @@ import {
   setExportInProgress,
   setImportInProgress,
   subscribeCriticalOperation,
+  waitForProtocolCommits,
 } from '../criticalOperation';
 
 afterEach(() => {
@@ -73,5 +74,26 @@ describe('criticalOperation signal', () => {
 
     finishSecond();
     expect(isCriticalOperationInProgress()).toBe(false);
+  });
+
+  it('waits for every in-flight protocol commit before resolving', async () => {
+    const finishFirst = beginProtocolCommit();
+    const finishSecond = beginProtocolCommit();
+    let settled = false;
+    const waiting = waitForProtocolCommits().then(() => {
+      settled = true;
+    });
+
+    finishFirst();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    finishSecond();
+    await waiting;
+    expect(settled).toBe(true);
+  });
+
+  it('resolves at once when nothing is being committed', async () => {
+    await expect(waitForProtocolCommits()).resolves.toBeUndefined();
   });
 });

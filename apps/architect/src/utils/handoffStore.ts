@@ -109,6 +109,14 @@ export const takeHandoff = async (
 };
 
 /**
+ * Withdraw a record this app staged and then did not navigate for (the
+ * researcher cancelled). Best left to the startup prune if it fails.
+ */
+export const discardHandoff = async (key: string): Promise<void> => {
+  await getHandoffDb().handoffs.delete(key);
+};
+
+/**
  * Remove records older than `HANDOFF_TTL_MS`, for either major. Run at startup:
  * a record is only ever left behind when the navigation that should have
  * consumed it never happened.

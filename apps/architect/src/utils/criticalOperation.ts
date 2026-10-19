@@ -43,6 +43,24 @@ export const beginProtocolCommit = (): (() => void) => {
   };
 };
 
+/**
+ * Resolves once no accepted protocol commit is still being written. A page
+ * that is about to unload this app (to open Architect 8) waits on this, so the
+ * last edit reaches the library before the page goes.
+ */
+export const waitForProtocolCommits = (): Promise<void> =>
+  new Promise((resolve) => {
+    if (protocolCommitsInProgress === 0) {
+      resolve();
+      return;
+    }
+    const unsubscribe = subscribeCriticalOperation(() => {
+      if (protocolCommitsInProgress > 0) return;
+      unsubscribe();
+      resolve();
+    });
+  });
+
 export const isCriticalOperationInProgress = () =>
   importInProgress || exportInProgress || protocolCommitsInProgress > 0;
 
