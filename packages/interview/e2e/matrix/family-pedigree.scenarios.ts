@@ -795,6 +795,7 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
 
       await addRelativeOf(page, 'You', 'partner');
       await describe(page, { sex: 'Male' });
+      await choose(page, /^Are they still together/, 'Yes');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Partner')).toBeVisible();
 
