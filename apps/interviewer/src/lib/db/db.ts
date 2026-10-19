@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 
+import { readLegacyDeviceSettings } from './legacySettings';
 import type {
   StoredAssetRow,
   StoredProtocolRow,
@@ -77,13 +78,35 @@ export async function isDatabaseSecured(): Promise<boolean> {
   return (await securedMarkers().get('secured')) !== undefined;
 }
 
+const withDefaults = (row: StoredSettings): StoredSettings => ({
+  ...DEFAULT_SETTINGS,
+  ...row,
+  id: 'device',
+});
+
+/**
+ * This device's settings. The first time this database has none, they start
+ * from Interviewer 8's (see `legacySettings`) over the defaults.
+ */
 export async function getSettings(): Promise<StoredSettings> {
   const existing = await db.settings.get('device');
-  if (existing) {
-    return { ...DEFAULT_SETTINGS, ...existing, id: 'device' };
-  }
-  await db.settings.put(DEFAULT_SETTINGS);
-  return DEFAULT_SETTINGS;
+  if (existing) return withDefaults(existing);
+
+  // Read before the write transaction: it is another database, and the await
+  // would let this one's transaction commit.
+  const initial: StoredSettings = {
+    ...DEFAULT_SETTINGS,
+    ...(await readLegacyDeviceSettings()),
+    id: 'device',
+  };
+  return db.transaction('rw', db.settings, async () => {
+    // Another caller may have written the row meanwhile, perhaps already
+    // changed by the user: theirs stands.
+    const written = await db.settings.get('device');
+    if (written) return withDefaults(written);
+    await db.settings.put(initial);
+    return initial;
+  });
 }
 
 export async function updateSettings(

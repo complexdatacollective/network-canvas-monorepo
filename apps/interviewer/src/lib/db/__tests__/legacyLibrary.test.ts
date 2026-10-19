@@ -17,8 +17,8 @@ import {
   closeLegacyLibrary,
   createLegacyLibraryReader,
   listLegacyProtocols,
-  legacyReadOnlyMiddleware,
 } from '../legacyLibrary';
+import { legacyReadOnlyMiddleware } from '../legacyReadOnly';
 import { setSessionDek } from '../sessionKey';
 
 const plaintextSchema8 = {
@@ -228,14 +228,14 @@ describe('reading Interviewer 8’s database', () => {
     expect(await reader.getLegacyProtocol('pre-release-9')).toBeUndefined();
   });
 
-  it('refuses to read an encrypted protocol while locked, rather than giving nothing', async () => {
+  it('gives nothing for an encrypted protocol while locked, but the copying read refuses', async () => {
     await seedEverything();
-    await expect(reader.getLegacyProtocol('frozen-hash')).rejects.toThrow(
-      /locked/,
-    );
-    await expect(reader.getLegacyAssets('frozen-hash')).rejects.toThrow(
-      /locked/,
-    );
+    expect(await reader.getLegacyProtocol('frozen-hash')).toBeUndefined();
+    expect(await reader.getLegacyAssets('frozen-hash')).toEqual([]);
+    // The upgrade must never mistake "could not read" for "has no assets".
+    await expect(
+      reader.readLegacyProtocolSnapshot('frozen-hash'),
+    ).rejects.toThrow(/locked/);
   });
 
   it('never creates, upgrades or writes anything in Interviewer 8’s database', async () => {

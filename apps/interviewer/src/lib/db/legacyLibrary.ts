@@ -1,9 +1,10 @@
-import Dexie, { type DBCore, type Middleware } from 'dexie';
+import type Dexie from 'dexie';
 
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { Protocol } from '@codaco/protocol-validation';
 
 import { databaseExists } from './databaseExists';
+import { openLegacyReadOnly } from './legacyReadOnly';
 import {
   decryptAsset,
   decryptProtocolDocument,
@@ -17,22 +18,8 @@ import type { StoredAsset, StoredProtocol, StoredSession } from './types';
 // Reads Interviewer 8's database (`interviewer`), which lives on this origin
 // beside this app's own (see `storageNames`). STRICTLY READ-ONLY: that
 // database belongs to Interviewer 8, which may be open in another tab at
-// `/v8/` and running an interview against it. The only writes this app ever
-// makes there are the lock maintenance in `legacyVaultMaintenance`, through a
-// connection of its own.
-//
-// Three things keep this reader read-only, and each matters on its own:
-//
-// - The database is opened only once `indexedDB.databases()` lists it.
-//   Opening a database that does not exist creates it, and Dexie then deletes
-//   what it created, which can remove a database Interviewer 8 is creating at
-//   the same moment. A browser that cannot list its databases is treated as
-//   having none.
-// - No `version()` is declared. Dexie then opens whatever schema is installed
-//   and never upgrades it, where a declared schema that differs from the
-//   installed one would make Dexie bump the database's version.
-// - A middleware refuses every write and every read-write transaction, so a
-//   mistake in this module fails loudly instead of changing someone's data.
+// `/v8/` and running an interview against it. `legacyReadOnly` says how the
+// connection is kept read-only.
 //
 // Rows are another app's data, read without its validation, so the fields this
 // app relies on are checked before a row is trusted. Protocol rows at schema 9
@@ -94,31 +81,6 @@ type LegacyProtocolRow = Omit<StoredProtocolRow, 'protocol' | 'codebook'> & {
 };
 
 const [SCHEMA_8_LIBRARY] = LEGACY_LIBRARIES;
-
-const readOnlyError = () =>
-  new Dexie.ReadOnlyError(
-    'Interviewer 8’s database is read-only to this version of Interviewer.',
-  );
-
-/** Refuses every write that reaches the database through this connection. */
-export const legacyReadOnlyMiddleware: Middleware<DBCore> = {
-  stack: 'dbcore',
-  name: 'interviewerLegacyLibraryReadOnly',
-  create: (down) => ({
-    ...down,
-    transaction: (stores, mode, options) => {
-      if (mode === 'readwrite') throw readOnlyError();
-      return down.transaction(stores, mode, options);
-    },
-    table: (tableName) => {
-      const table = down.table(tableName);
-      return {
-        ...table,
-        mutate: () => Promise.reject(readOnlyError()),
-      };
-    },
-  }),
-};
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -216,13 +178,16 @@ const reportReadFailure = (operation: string, error: unknown) => {
 type LegacyLibraryReader = {
   /** Interviewer 8's protocols, most recently imported first. Never rejects. */
   listLegacyProtocols: () => Promise<LegacyProtocolSummary[]>;
-  /** One protocol, decrypted with the held key. */
+  /** One protocol, decrypted with the held key. Never rejects. */
   getLegacyProtocol: (
     hash: string,
   ) => Promise<LegacyStoredProtocol | undefined>;
-  /** One protocol's assets, decrypted with the held key. */
+  /** One protocol's assets, decrypted with the held key. Never rejects. */
   getLegacyAssets: (hash: string) => Promise<StoredAsset[]>;
-  /** A protocol and all of its assets as of one moment, for making a copy. */
+  /**
+   * A protocol and all of its assets as of one moment, for making a copy.
+   * Rejects when they cannot be read.
+   */
   readLegacyProtocolSnapshot: (
     hash: string,
   ) => Promise<LegacyProtocolSnapshot | undefined>;
@@ -242,10 +207,11 @@ type LegacyLibraryReader = {
  * below; tests make their own.
  *
  * Every read resolves to nothing (`undefined`, `[]`, `0`) when the database
- * does not exist. The listings and the count also resolve to nothing when the
- * database cannot be read. The reads of one protocol reject instead, because
- * a caller that copies a protocol must not mistake "could not read its
- * resources" for "it has none".
+ * does not exist or cannot be read (or, for encrypted rows, while the device
+ * is locked), and never marks this app's storage unavailable: Interviewer 8's
+ * library is something extra to show. The one exception is
+ * `readLegacyProtocolSnapshot`, which rejects, because the upgrade that copies
+ * a protocol must not mistake "could not read its assets" for "it has none".
  */
 export const createLegacyLibraryReader = (
   dbName: string = SCHEMA_8_LIBRARY.dbName,
@@ -270,16 +236,8 @@ export const createLegacyLibraryReader = (
     }
     if (db?.isOpen()) return db;
     close();
-
-    // `autoOpen: false`: Dexie would otherwise reopen a closed connection by
-    // itself, without asking whether the database still exists. Dexie closes
-    // this connection on its own when another connection deletes or upgrades
-    // the database, so it never blocks Interviewer 8 or a device reset.
-    const next = new Dexie(dbName, { addons: [], autoOpen: false });
-    next.use(legacyReadOnlyMiddleware);
-    await next.open();
-    db = next;
-    return next;
+    db = await openLegacyReadOnly(dbName);
+    return db;
   };
 
   const getDb = (): Promise<Dexie | null> => {
@@ -356,17 +314,27 @@ export const createLegacyLibraryReader = (
     },
 
     getLegacyProtocol: async (hash) => {
-      const database = await getDb();
-      if (!database) return undefined;
-      const row = await readProtocolRow(database, hash);
-      return row ? await decryptLegacyProtocol(row) : undefined;
+      try {
+        const database = await getDb();
+        if (!database) return undefined;
+        const row = await readProtocolRow(database, hash);
+        return row ? await decryptLegacyProtocol(row) : undefined;
+      } catch (error) {
+        reportReadFailure('get protocol', error);
+        return undefined;
+      }
     },
 
     getLegacyAssets: async (hash) => {
-      const database = await getDb();
-      if (!database) return [];
-      const rows = await readAssetRows(database, hash);
-      return await Promise.all(rows.map((row) => decryptAsset(row)));
+      try {
+        const database = await getDb();
+        if (!database) return [];
+        const rows = await readAssetRows(database, hash);
+        return await Promise.all(rows.map((row) => decryptAsset(row)));
+      } catch (error) {
+        reportReadFailure('get assets', error);
+        return [];
+      }
     },
 
     readLegacyProtocolSnapshot: async (hash) => {
