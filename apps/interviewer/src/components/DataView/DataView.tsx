@@ -10,9 +10,11 @@ import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { dataTableFeatures } from '@codaco/fresco-ui/DataTable/features';
 import { getInterviewProgress } from '@codaco/interview';
 import type { ProtocolWithCounts } from '~/lib/db/types';
+import type { BundledLegacyInterviewer } from '~/lib/legacyInterviewer';
 
 import { DataViewToolbar } from './DataViewToolbar';
 import { ExportDialog } from './ExportDialog';
+import { LegacyInterviewsNotice } from './LegacyInterviewsNotice';
 import { useDataViewColumns } from './useDataViewColumns';
 import { useDataViewUrlState } from './useDataViewUrlState';
 import { useSessionMutations } from './useSessionMutations';
@@ -67,6 +69,10 @@ type DataViewProps = {
   // Bumped by the parent when sessions change outside this view (e.g.
   // synthetic-data generation/deletion in Settings) so the table re-queries.
   refreshKey?: number;
+  // Interviews Interviewer 8 keeps (and exports itself), and the Interviewer
+  // 8 to send the researcher to for them.
+  legacyInterviewCount?: number;
+  legacyInterviewer?: BundledLegacyInterviewer | null;
 };
 
 // Rich-text chunk formatter for the selection banner's messages, at module
@@ -115,7 +121,13 @@ const bannerVariants = {
   exit: { opacity: 0, height: 0, transition: { duration: 0.15 } },
 } as const;
 
-export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
+export function DataView({
+  protocols,
+  onReload,
+  refreshKey,
+  legacyInterviewCount = 0,
+  legacyInterviewer = null,
+}: DataViewProps) {
   const intl = useAppIntl();
   // Total interview steps by protocol hash, for the progress column's "step X
   // of Y" label. Derived via getInterviewProgress so the host counts steps the
@@ -259,6 +271,13 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
         onExport={() => void handleExport()}
         onDelete={() => void handleDelete()}
       />
+
+      {legacyInterviewer && legacyInterviewCount > 0 ? (
+        <LegacyInterviewsNotice
+          count={legacyInterviewCount}
+          interviewer={legacyInterviewer}
+        />
+      ) : null}
 
       <ExportDialog
         flow={exportFlow}

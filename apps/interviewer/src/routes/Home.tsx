@@ -18,7 +18,7 @@ import { BrandHeader } from '~/components/BrandHeader';
 import { DataView } from '~/components/DataView/DataView';
 import { InstallBanner } from '~/components/InstallBanner';
 import { ProtocolDeck } from '~/components/ProtocolCarousel/ProtocolDeck';
-import { ResumePill } from '~/components/ResumePill';
+import { pickResumable, ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
@@ -81,6 +81,7 @@ export function HomeRoute() {
     sessions,
     settings,
     legacyProtocols,
+    legacySessions,
     upgradedLegacyHashes,
     reload,
   } = useHomeData();
@@ -126,10 +127,14 @@ export function HomeRoute() {
     pendingProtocolHash !== null &&
     protocols.some((p) => p.hash === pendingProtocolHash);
 
-  // Mirrors ResumePill's own render predicate (an in-progress session exists).
-  // When it does, the pill occupies the band just below the header in
-  // portrait, so the protocols column reserves top space to clear it.
-  const hasResumableSession = sessions.some((s) => s.finishedAt === null);
+  const legacyInterviewer = legacyActions.legacy.interviewer;
+  // Mirrors ResumePill's own render predicate (an in-progress session exists,
+  // this app's or, when it is bundled, Interviewer 8's). When it does, the
+  // pill occupies the band just below the header in portrait, so the
+  // protocols column reserves top space to clear it.
+  const hasResumableSession =
+    pickResumable(sessions, legacySessions, legacyInterviewer !== null) !==
+    undefined;
   const showResumePill =
     view === 'protocols' && !newSessionActive && hasResumableSession;
 
@@ -298,7 +303,12 @@ export function HomeRoute() {
         <div className="laptop:px-11 laptop:pt-[max(2.25rem,calc(1rem+env(safe-area-inset-top)))] pointer-events-none absolute inset-0 z-20 flex translate-y-full items-center justify-center px-6 pt-[calc(1rem+env(safe-area-inset-top))] landscape:translate-y-0">
           <AnimatePresence>
             {showResumePill ? (
-              <ResumePill key="resume-pill" sessions={sessions} />
+              <ResumePill
+                key="resume-pill"
+                sessions={sessions}
+                legacySessions={legacySessions}
+                legacyInterviewer={legacyInterviewer}
+              />
             ) : null}
           </AnimatePresence>
         </div>
@@ -359,6 +369,8 @@ export function HomeRoute() {
           <DataView
             key="data"
             protocols={protocols}
+            legacyInterviewCount={legacySessions.length}
+            legacyInterviewer={legacyInterviewer}
             onReload={reload}
             refreshKey={dataRefreshKey}
           />

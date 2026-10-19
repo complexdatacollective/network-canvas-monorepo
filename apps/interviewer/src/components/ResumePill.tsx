@@ -6,7 +6,13 @@ import { useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { updateSettings } from '~/lib/db/api';
+import type { LegacySessionSummary } from '~/lib/db/legacyLibrary';
 import type { StoredSessionLite } from '~/lib/db/types';
+import {
+  type BundledLegacyInterviewer,
+  goToLegacyInterviewer,
+  legacyResumeUrl,
+} from '~/lib/legacyInterviewer';
 
 const messages = defineMessages({
   identity: {
@@ -74,7 +80,7 @@ export function ResumePillView({
   session,
   onResume,
 }: {
-  session: StoredSessionLite;
+  session: Pick<StoredSessionLite, 'protocolName' | 'caseId'>;
   onResume: () => void;
 }) {
   const intl = useAppIntl();
@@ -132,24 +138,65 @@ export function ResumePillView({
 
 type ResumePillProps = {
   sessions: StoredSessionLite[];
+  // Interviewer 8's interviews, resumed there, when it is bundled.
+  legacySessions?: readonly LegacySessionSummary[];
+  legacyInterviewer?: BundledLegacyInterviewer | null;
 };
 
-export function ResumePill({ sessions }: ResumePillProps) {
+type Resumable =
+  | { kind: 'own'; session: StoredSessionLite }
+  | { kind: 'legacy'; session: LegacySessionSummary };
+
+/**
+ * The most recently updated unfinished interview, this app's or (when
+ * `legacyInterviewer` is given) Interviewer 8's, or undefined.
+ */
+export function pickResumable(
+  sessions: readonly StoredSessionLite[],
+  legacySessions: readonly LegacySessionSummary[],
+  includeLegacy: boolean,
+): Resumable | undefined {
+  const candidates: Resumable[] = [
+    ...sessions.map((session) => ({ kind: 'own' as const, session })),
+    ...(includeLegacy
+      ? legacySessions.map((session) => ({ kind: 'legacy' as const, session }))
+      : []),
+  ];
+  return candidates
+    .filter((candidate) => candidate.session.finishedAt === null)
+    .toSorted(
+      (a, b) =>
+        new Date(b.session.lastUpdatedAt).getTime() -
+        new Date(a.session.lastUpdatedAt).getTime(),
+    )[0];
+}
+
+export function ResumePill({
+  sessions,
+  legacySessions = [],
+  legacyInterviewer = null,
+}: ResumePillProps) {
   const [, navigate] = useLocation();
 
-  const inProgress = useMemo(() => {
-    return sessions
-      .filter((s) => s.finishedAt === null)
-      .toSorted(
-        (a, b) =>
-          new Date(b.lastUpdatedAt).getTime() -
-          new Date(a.lastUpdatedAt).getTime(),
-      )[0];
-  }, [sessions]);
+  const inProgress = useMemo(
+    () => pickResumable(sessions, legacySessions, legacyInterviewer !== null),
+    [sessions, legacySessions, legacyInterviewer],
+  );
 
   if (!inProgress) return null;
 
-  const handleResume = async (sessionId: string) => {
+  const handleResume = async () => {
+    if (inProgress.kind === 'legacy') {
+      // Interviewer 8 runs its own interviews: a full page load to its
+      // interview route, where it asks to unlock as it always has.
+      if (legacyInterviewer) {
+        goToLegacyInterviewer(
+          legacyResumeUrl(legacyInterviewer, inProgress.session.id),
+        );
+      }
+      return;
+    }
+    const sessionId = inProgress.session.id;
     try {
       await updateSettings({ lastActiveSessionId: sessionId });
     } catch {
@@ -160,8 +207,8 @@ export function ResumePill({ sessions }: ResumePillProps) {
 
   return (
     <ResumePillView
-      session={inProgress}
-      onResume={() => void handleResume(inProgress.id)}
+      session={inProgress.session}
+      onResume={() => void handleResume()}
     />
   );
 }

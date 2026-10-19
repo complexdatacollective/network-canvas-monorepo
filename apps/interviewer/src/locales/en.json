@@ -519,6 +519,14 @@
     "defaultMessage": "{count, plural, one {# launched file could not be read. The file may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. The files may have been moved, deleted, or become unavailable since they were opened.}}",
     "description": "Administration text in Interviewer useLaunchFailureToast."
   },
+  "interviewer.legacyInterviewsNotice.interviewsKept": {
+    "defaultMessage": "{count, plural, one {# interview from schema {version} protocols is kept in Interviewer {version}.} other {# interviews from schema {version} protocols are kept in Interviewer {version}.}}",
+    "description": "Line at the top of the interviews list. Interviews collected with older (schema {version}) protocols are not listed here: the previous version of Interviewer keeps and exports them. {version} is that version’s number (for example 8)."
+  },
+  "interviewer.legacyInterviewsNotice.open": {
+    "defaultMessage": "Open",
+    "description": "Button beside the line saying how many interviews the previous version of Interviewer keeps. Opens that version’s list of interviews, where they can be exported."
+  },
   "interviewer.legacyProtocol.couldNotOpenInInterviewer": {
     "defaultMessage": "Could not open in Interviewer {version}",
     "description": "Title of the error shown when a protocol file could not be passed to the previous version of Interviewer. {version} is that version’s number (for example 8)."

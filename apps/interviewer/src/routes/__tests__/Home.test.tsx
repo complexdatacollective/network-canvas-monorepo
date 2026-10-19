@@ -80,7 +80,8 @@ vi.mock('~/components/ProtocolCarousel/ProtocolDeck', () => ({
     ),
 }));
 
-vi.mock('~/components/ResumePill', () => ({
+vi.mock('~/components/ResumePill', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/components/ResumePill')>()),
   ResumePill: () => <div>Resume last interview</div>,
 }));
 
@@ -139,6 +140,9 @@ describe('HomeRoute resume notification', () => {
       protocols: [protocol],
       sessions: [resumableSession],
       settings: DEFAULT_SETTINGS,
+      legacyProtocols: [],
+      legacySessions: [],
+      upgradedLegacyHashes: new Set(),
       reload: vi.fn(),
     });
   });
