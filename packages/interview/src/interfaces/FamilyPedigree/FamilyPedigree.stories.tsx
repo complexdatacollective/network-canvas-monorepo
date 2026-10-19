@@ -1534,6 +1534,11 @@ export const ANewParentIsAskedAboutCarryingSiblings: Story = {
     // place of, so is chosen and cannot be unchosen; he is asked about.
     await waitFor(() => expect(sam).toBeChecked());
     await expect(sam).toHaveAttribute('aria-disabled', 'true');
+    // She is asked once her kind of parent is chosen.
+    await expect(carriedSam()).toBeNull();
+    await userEvent.click(
+      await body.findByRole('radio', { name: 'Biological parent' }),
+    );
     await waitFor(() => expect(carriedSam()).not.toBeNull());
     const yes = () =>
       within(carriedSam() as HTMLElement).getByRole('radio', { name: 'Yes' });

@@ -3114,9 +3114,12 @@ function wordingAddParent(): ScenarioDefinition {
           .first(),
       ).toBeVisible();
 
-      // One who could have is asked, but Julie is recorded as having, so the
-      // question is unavailable.
+      // One who could have is asked once their kind is chosen, but Julie is
+      // recorded as having, so the question is unavailable.
       await describe(page, { sex: 'Female' });
+      await kind
+        .getByRole('radio', { name: 'Adoptive parent', exact: true })
+        .click();
       const unavailable = form.getByRole('radiogroup', {
         name: /^Did the new parent carry them - matrix check/,
       });
