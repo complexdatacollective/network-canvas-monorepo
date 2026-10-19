@@ -21,7 +21,10 @@ import { db } from '../../db/db';
 import { closeLegacyLibrary } from '../../db/legacyLibrary';
 import { encryptLegacyProtocolRow } from '../../db/legacyVaultMaintenance';
 import { setSessionDek } from '../../db/sessionKey';
-import { upgradeLegacyProtocol } from '../upgradeLegacyProtocol';
+import {
+  findUpgradedCopy,
+  upgradeLegacyProtocol,
+} from '../upgradeLegacyProtocol';
 
 const LEGACY_HASH = 'legacy-plain-8';
 const UPGRADED_AT = new Date('2026-10-01T12:00:00.000Z');
@@ -157,8 +160,10 @@ describe('upgradeLegacyProtocol', () => {
     const first = await upgradeLegacyProtocol(LEGACY_HASH);
     if (first.status !== 'upgraded') throw new Error('expected an upgrade');
 
+    expect(await findUpgradedCopy(LEGACY_HASH)).toBe(first.hash);
     await deleteProtocol(first.hash);
     expect(await db.legacyUpgrades.count()).toBe(0);
+    expect(await findUpgradedCopy(LEGACY_HASH)).toBeNull();
 
     expect(await upgradeLegacyProtocol(LEGACY_HASH)).toMatchObject({
       status: 'upgraded',

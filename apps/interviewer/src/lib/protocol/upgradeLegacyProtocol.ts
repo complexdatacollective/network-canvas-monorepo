@@ -43,14 +43,27 @@ const failed = (
   extra: { cause?: unknown; issues?: { path: string; message: string }[] } = {},
 ): LegacyUpgradeResult => ({ status: 'failed', reason, ...extra });
 
+/**
+ * The hash of the copy an earlier upgrade of `legacyHash` made, when that copy
+ * is still in this app's library; otherwise null (never upgraded, or the copy
+ * has since been deleted, so upgrading makes a new one).
+ */
+export async function findUpgradedCopy(
+  legacyHash: string,
+): Promise<string | null> {
+  const previous = await getLegacyUpgrade(legacyHash);
+  if (previous && (await getProtocolByHash(previous.upgradedHash))) {
+    return previous.upgradedHash;
+  }
+  return null;
+}
+
 export async function upgradeLegacyProtocol(
   legacyHash: string,
   now: () => Date = () => new Date(),
 ): Promise<LegacyUpgradeResult> {
-  const previous = await getLegacyUpgrade(legacyHash);
-  if (previous && (await getProtocolByHash(previous.upgradedHash))) {
-    return { status: 'existing', hash: previous.upgradedHash };
-  }
+  const existing = await findUpgradedCopy(legacyHash);
+  if (existing) return { status: 'existing', hash: existing };
 
   let snapshot: Awaited<ReturnType<typeof readLegacyProtocolSnapshot>>;
   try {

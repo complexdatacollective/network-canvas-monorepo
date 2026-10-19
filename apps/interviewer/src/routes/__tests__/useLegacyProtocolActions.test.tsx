@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   showHandoffFailed: vi.fn(),
   showLegacyProtocolInfo: vi.fn(),
   upgradeLegacyProtocol: vi.fn(),
+  findUpgradedCopy: vi.fn<() => Promise<string | null>>(),
   keepOnInterviewer8: vi.fn(),
   track: vi.fn(),
   captureException: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock('~/components/legacyProtocolDialogs', () => ({
 }));
 vi.mock('~/lib/protocol/upgradeLegacyProtocol', () => ({
   upgradeLegacyProtocol: mocks.upgradeLegacyProtocol,
+  findUpgradedCopy: mocks.findUpgradedCopy,
 }));
 vi.mock('~/lib/protocol/importRouting', () => ({
   keepOnInterviewer8: mocks.keepOnInterviewer8,
@@ -91,6 +93,7 @@ beforeEach(() => {
   mocks.bundled = INTERVIEWER_8;
   mocks.lockSettled = true;
   mocks.settleLock.mockResolvedValue(true);
+  mocks.findUpgradedCopy.mockResolvedValue(null);
 });
 
 describe('useLegacyProtocolActions: schema 8 cards', () => {
@@ -212,6 +215,48 @@ describe('useLegacyProtocolActions: schema 8 cards', () => {
         protocolHash: 'earlier-hash',
       }),
     );
+  });
+
+  it('shows an upgraded copy that is still here without asking to make one', async () => {
+    // The confirmation promises a new copy; none is made.
+    mocks.findUpgradedCopy.mockResolvedValue('earlier-hash');
+    const { result } = setup();
+
+    await act(async () => {
+      result.current.legacy.onUpgrade(legacyProtocol);
+    });
+
+    await waitFor(() =>
+      expect(result.current.focusRequest).toEqual({
+        protocolHash: 'earlier-hash',
+      }),
+    );
+    expect(mocks.findUpgradedCopy).toHaveBeenCalledWith('legacy-hash');
+    expect(mocks.confirmProtocolUpgrade).not.toHaveBeenCalled();
+    expect(mocks.upgradeLegacyProtocol).not.toHaveBeenCalled();
+    expect(mocks.addToast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'info' }),
+    );
+    expect(mocks.track).toHaveBeenCalledWith('legacy_protocol_upgraded', {
+      from_schema: 8,
+      to_schema: 9,
+      existing: true,
+    });
+  });
+
+  it('asks to confirm when it cannot tell whether a copy exists', async () => {
+    mocks.findUpgradedCopy.mockRejectedValue(new Error('storage'));
+    mocks.confirmProtocolUpgrade.mockResolvedValue(false);
+    const { result } = setup();
+
+    await act(async () => {
+      result.current.legacy.onUpgrade(legacyProtocol);
+    });
+
+    await waitFor(() =>
+      expect(mocks.confirmProtocolUpgrade).toHaveBeenCalledOnce(),
+    );
+    expect(mocks.upgradeLegacyProtocol).not.toHaveBeenCalled();
   });
 
   it('reports a failed upgrade and focuses nothing', async () => {

@@ -25,7 +25,9 @@ import {
 import { importFailureMessages } from '~/lib/protocol/importProtocol';
 import { keepOnInterviewer8 } from '~/lib/protocol/importRouting';
 import {
+  findUpgradedCopy,
   type LegacyUpgradeFailureReason,
+  type LegacyUpgradeResult,
   upgradeLegacyProtocol,
 } from '~/lib/protocol/upgradeLegacyProtocol';
 import type {
@@ -156,14 +158,25 @@ export function useLegacyProtocolActions({
   const onUpgrade = useCallback(
     async (protocol: LegacyProtocolSummary) => {
       if (upgrading.current) return;
-      const confirmed = await confirmProtocolUpgrade(openDialog, {
-        fromVersion: protocol.schemaVersion,
-        source: 'legacy-library',
-      });
-      if (!confirmed) return;
       upgrading.current = true;
       try {
-        const result = await upgradeLegacyProtocol(protocol.hash);
+        // Upgraded before, and the copy is still here: it is shown, and as no
+        // copy is made there is nothing to confirm. (If it cannot be told, the
+        // upgrade below finds the copy itself, after the confirmation.)
+        const existing = await findUpgradedCopy(protocol.hash).catch(
+          () => null,
+        );
+        let result: LegacyUpgradeResult;
+        if (existing) {
+          result = { status: 'existing', hash: existing };
+        } else {
+          const confirmed = await confirmProtocolUpgrade(openDialog, {
+            fromVersion: protocol.schemaVersion,
+            source: 'legacy-library',
+          });
+          if (!confirmed) return;
+          result = await upgradeLegacyProtocol(protocol.hash);
+        }
         if (result.status === 'upgraded' || result.status === 'existing') {
           // Level 1 only: that an upgrade happened, between which schemas.
           analytics.track('legacy_protocol_upgraded', {
