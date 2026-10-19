@@ -172,20 +172,17 @@ const rewriteManifest = <Entry extends BundledManifestEntry>(
   resolved: ResolvedAsset[],
 ): Record<string, Entry> => {
   const entryNamesById = new Map(resolved.map((r) => [r.id, r.entryName]));
-  const rewritten: Record<string, Entry> = {};
 
-  for (const [assetId, asset] of Object.entries(manifest)) {
-    if (asset.type === 'apikey') {
-      rewritten[assetId] = asset;
-      continue;
-    }
-    rewritten[assetId] = {
-      ...asset,
-      source: entryNamesById.get(assetId) ?? asset.source,
-    };
-  }
-
-  return rewritten;
+  // Built with fromEntries so that an ID such as `__proto__` stays an entry
+  // of its own rather than reaching the prototype setter.
+  return Object.fromEntries(
+    Object.entries(manifest).map(([assetId, asset]): [string, Entry] => [
+      assetId,
+      asset.type === 'apikey'
+        ? asset
+        : { ...asset, source: entryNamesById.get(assetId) ?? asset.source },
+    ]),
+  );
 };
 
 // Zip a protocol document and the bytes of every file its manifest lists.
@@ -248,21 +245,26 @@ const readLegacyManifest = (
 ): Record<string, BundledManifestEntry> | undefined => {
   const manifest: unknown = protocol.assetManifest;
   if (!isRecord(manifest)) return undefined;
-  const entries: Record<string, BundledManifestEntry> = {};
-  for (const [assetId, entry] of Object.entries(manifest)) {
-    const name =
-      isRecord(entry) && typeof entry.name === 'string' ? entry.name : assetId;
-    if (!isRecord(entry) || typeof entry.type !== 'string') {
-      throw new UnresolvedAssetsError([name]);
-    }
-    entries[assetId] = {
-      ...entry,
-      type: entry.type,
-      name,
-      source: typeof entry.source === 'string' ? entry.source : undefined,
-    };
-  }
-  return entries;
+  // Built with fromEntries so that an ID such as `__proto__` stays an entry
+  // of its own rather than reaching the prototype setter.
+  return Object.fromEntries(
+    Object.entries(manifest).map(([assetId, entry]) => {
+      const name =
+        isRecord(entry) && typeof entry.name === 'string'
+          ? entry.name
+          : assetId;
+      if (!isRecord(entry) || typeof entry.type !== 'string') {
+        throw new UnresolvedAssetsError([name]);
+      }
+      const bundled: BundledManifestEntry = {
+        ...entry,
+        type: entry.type,
+        name,
+        source: typeof entry.source === 'string' ? entry.source : undefined,
+      };
+      return [assetId, bundled];
+    }),
+  );
 };
 
 /**

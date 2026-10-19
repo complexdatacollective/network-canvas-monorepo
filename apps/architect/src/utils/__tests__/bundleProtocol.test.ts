@@ -341,6 +341,31 @@ describe('bundleLegacyProtocol', () => {
     expect(await zip.file('assets/a1.png')!.async('string')).toBe('map bytes');
   });
 
+  // A stored document is parsed JSON, so `__proto__` can be an asset ID of
+  // its own there.
+  it('keeps a resource whose ID is __proto__', async () => {
+    const row = stored(
+      legacyRow(
+        JSON.parse(
+          '{"__proto__": {"type": "image", "source": "map.png", "name": "Map"}}',
+        ),
+      ),
+      [legacyAsset('__proto__', 'map bytes')],
+    );
+
+    const zip = await JSZip.loadAsync(
+      await (await bundleLegacyProtocol(row)).arrayBuffer(),
+    );
+
+    const written = JSON.parse(
+      await zip.file('protocol.json')!.async('string'),
+    ) as { assetManifest: Record<string, unknown> };
+    expect(Object.keys(written.assetManifest)).toEqual(['__proto__']);
+    expect(await zip.file('assets/__proto__.png')!.async('string')).toBe(
+      'map bytes',
+    );
+  });
+
   // Architect 8, open in another tab, can save the protocol between the
   // library listing it and the researcher choosing Download.
   it('bundles the protocol as stored now, not as it was listed', async () => {
