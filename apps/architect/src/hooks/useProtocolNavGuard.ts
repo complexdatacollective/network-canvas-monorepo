@@ -22,6 +22,7 @@ import type { RootState } from '~/ducks/modules/root';
 import { type AppDispatch, store } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
+import { LEGACY_ARCHITECT_MAJOR } from '~/utils/legacyArchitect';
 const utilityMessages = defineMessages({
   returnToStartScreen: {
     id: 'architect.utility.hooks.useProtocolNavGuard.returnToStartScreen',
@@ -210,14 +211,6 @@ const legacyDiscardDescriptions: Record<
       'Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
   },
 });
-
-/**
- * Where leaving the editor takes the researcher: this app's start screen, or
- * out of this app to the bundled earlier Architect (`version`).
- */
-export type LeaveDestination =
-  | { kind: 'start-screen' }
-  | { kind: 'legacy-architect'; version: number };
 
 export const stageDiscardDescriptions: Record<
   Exclude<LeavePersistence, 'no-protocol'>,
@@ -460,20 +453,21 @@ const NESTED_DRAFT_DISCARD_DESCRIPTION = defineMessages({
 // confirm, and every action this dialog offers would fail.
 //
 // `destination` names where leaving goes, so the copy can say so: the start
-// screen, or the bundled earlier Architect.
+// screen, or the bundled Architect 8 (a full-page navigation away from this
+// app). The same parameter on Architect 8's side names Architect 9.
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
   performLeave: () => void | Promise<void>,
   draftDirty = false,
   persistence: Exclude<LeavePersistence, 'no-protocol'> = 'saved',
-  destination: LeaveDestination = { kind: 'start-screen' },
+  destination: 'start-screen' | 'architect-8' = 'start-screen',
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
-    const legacy = destination.kind === 'legacy-architect';
-    const values = legacy ? { version: destination.version } : undefined;
+    const legacy = destination === 'architect-8';
+    const values = legacy ? { version: LEGACY_ARCHITECT_MAJOR } : undefined;
     const leaveAction = {
       label: createElement(AppMessage, {
         message: legacy

@@ -255,7 +255,7 @@ describe('promptLeaveEditor', () => {
   });
 
   describe('when leaving takes the researcher to Architect 8', () => {
-    const toArchitect8 = { kind: 'legacy-architect', version: 8 } as const;
+    const toArchitect8 = 'architect-8' as const;
 
     it('names Architect 8 as the destination, not the start screen', async () => {
       const { dispatch, openDialog, getCaptured } = setup('leave');

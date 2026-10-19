@@ -91,7 +91,7 @@ const leaveForLegacyArchitect = async (
     },
     readStageDraft().dirty || hasDirtyNestedDraft(),
     persistence,
-    { kind: 'legacy-architect', version: LEGACY_ARCHITECT_MAJOR },
+    'architect-8',
   );
   return left;
 };
