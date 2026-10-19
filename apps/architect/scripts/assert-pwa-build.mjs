@@ -171,17 +171,31 @@ if (manifest.start_url !== base || manifest.scope !== base) {
   );
 }
 if (isSubpath) {
-  // A second installable app on Architect 9's origin: it must be told apart
-  // from Architect 9 and must not compete with it for .netcanvas launches.
+  // A second app on Architect 9's origin, opened inside Architect 9's window
+  // and never installed on its own: it must be told apart from Architect 9
+  // and must not compete with it for .netcanvas launches.
   const expectedName = `Architect ${packageJson.version.split('.')[0]}`;
   if (manifest.name !== expectedName || manifest.short_name !== expectedName) {
     fail(`a ${base} build's manifest must be named ${expectedName}`);
   }
+  // Browsers offer to install only an app that asks for its own window.
+  if (manifest.display !== 'browser') {
+    fail(
+      `a ${base} build's manifest display must be browser, so it is never offered for installation; found ${manifest.display}`,
+    );
+  }
   if ('file_handlers' in manifest || 'launch_handler' in manifest) {
     fail(`a ${base} build must not register as a .netcanvas file handler`);
   }
-} else if (manifest.file_handlers?.[0]?.action !== '/') {
-  fail('the root build no longer opens launched .netcanvas files');
+} else {
+  if (manifest.display !== 'standalone') {
+    fail(
+      `the root build must stay installable in its own window; manifest display is ${manifest.display}`,
+    );
+  }
+  if (manifest.file_handlers?.[0]?.action !== '/') {
+    fail('the root build no longer opens launched .netcanvas files');
+  }
 }
 
 // generateSW inlines the precache manifest as an array of { url, revision }

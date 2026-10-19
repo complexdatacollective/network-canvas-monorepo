@@ -145,15 +145,20 @@ export default defineConfig(({ mode }) => {
         devOptions: { enabled: false },
         pwaAssets: { config: true },
         manifest: {
-          // A sub-path build is a second installable app on Architect 9's
-          // origin (its manifest id derives from start_url), so its name has
-          // to tell the two apart wherever the OS lists them.
+          // A sub-path build is a second app on Architect 9's origin (its
+          // manifest id derives from start_url), so its name has to tell the
+          // two apart wherever the OS lists them. It opens inside Architect
+          // 9's window and is never installed on its own.
           name: isSubpath ? subpathAppName : 'Network Canvas Architect',
           short_name: isSubpath ? subpathAppName : 'Architect',
           description: 'Design Network Canvas interview protocols.',
           theme_color: '#00b38f',
           background_color: '#edf2f8',
-          display: 'standalone',
+          // Display 'browser' is what keeps a sub-path build from being
+          // offered for installation: a browser offers to install only an app
+          // that asks for its own window. Hiding InstallBanner alone would
+          // leave the browser's own install offer in a tab at the base.
+          display: isSubpath ? 'browser' : 'standalone',
           start_url: appBase,
           scope: appBase,
           // Listed explicitly so the maskable entry can point at its own
