@@ -577,6 +577,7 @@ export const OPTION_INVENTORY: Record<string, readonly string[]> = {
     'wording.siblingTwinUnknown',
     'wording.unavailableIdenticalTwinNew',
     'wording.unavailableIdenticalTwinSexNew',
+    'wording.unavailableTwinCarrierNew',
     'wording.carriedSiblingsPregnancyLabel',
     'wording.childKindLabel',
     'wording.childKindBiological',

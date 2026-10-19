@@ -1462,6 +1462,7 @@
   "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": "Dica sobre respostas indisponíveis: o sexo ao nascer do novo gêmeo difere",
   "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": "Dica sobre respostas indisponíveis: o outro progenitor genético tem esse sexo ao nascer",
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": "Dica sobre respostas indisponíveis: mesmo sexo ao nascer que o outro progenitor genético",
+  "protocolBuilder.pedigree.wording.unavailableTwinCarrierNew": "Dica sobre respostas indisponíveis: quem gestou os gêmeos não foi escolhido",
   "protocolBuilder.pedigree.wording.you": "Nome da própria pessoa participante",
   "protocolBuilder.pedigree.wording.zygosityFraternal": "Opção «fraternos»",
   "protocolBuilder.pedigree.wording.zygosityIdentical": "Opção «idênticos»",

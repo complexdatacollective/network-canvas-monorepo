@@ -569,6 +569,9 @@ const OWN_WORDS = {
   unavailableIdenticalTwinSexNew: message(
     '{isYou, select, true {New sibling differs from you in sex at birth, so not {answer} - matrix check} other {New sibling differs from {name} in sex at birth, so not {answer} - matrix check}}',
   ),
+  unavailableTwinCarrierNew: message(
+    '{who, select, childIsYou {{carrier} carried you but is not chosen, so no twin - matrix check} carrierIsYou {You carried {name} but are not chosen, so no twin - matrix check} other {{carrier} carried {name} but is not chosen, so no twin - matrix check}}',
+  ),
   unavailableSameSexAsCoParent: message(
     '{who, select, personIsYou {You and {coParent} parent {children}, both {sex} - matrix check} childIsYou {This person and {coParent} parent you, both {sex} - matrix check} coParentIsYou {You and this person parent {children}, both {sex} - matrix check} other {This person and {coParent} parent {children}, both {sex} - matrix check}}',
   ),
@@ -3764,6 +3767,64 @@ function wordingAddSiblingTwinSex(): ScenarioDefinition {
 }
 
 /**
+ * A sibling who would not share Julie, who carried the participant, cannot be
+ * their twin: every "yes" answer is unavailable, and the reason is given in
+ * the stage's own words, until Julie is chosen too.
+ */
+function wordingAddSiblingTwinCarrier(): ScenarioDefinition {
+  const words = ['unavailableTwinCarrierNew'] as const;
+  const scaffolded = scaffold({ wording: ownWords(...words) });
+  const { synth } = scaffolded;
+  seedDescribedParents(scaffolded);
+
+  return {
+    id: 'wording-add-sibling-twin-carrier',
+    covers: coversWords(...words),
+    seedNetwork: true,
+    build: () => synth,
+    run: async ({ page }) => {
+      await addRelativeOf(page, 'You', 'sibling');
+      await describe(page, { sex: 'Male' });
+      await shareParentsAsBiological(page, ['Rob'], {
+        leaveCarrierUnanswered: true,
+      });
+      const form = panel(page);
+      const twin = form.getByRole('radiogroup', {
+        name: /^Are they your twin\?/,
+      });
+      for (const answer of [
+        'Yes, identical twins',
+        'Yes, fraternal (non-identical) twins',
+        'Yes, but I don’t know if they are identical',
+      ]) {
+        await expect(
+          twin.getByRole('radio', { name: answer, exact: true }),
+        ).toBeDisabled();
+      }
+      await expect(
+        form
+          .getByText(
+            /Julie carried you but is not chosen, so no twin - matrix check/,
+          )
+          .first(),
+      ).toBeVisible();
+      await expectAbsent(
+        page,
+        'This sibling cannot be your twin, because twins are carried in the same pregnancy and “Julie”, who carried you, is not chosen above. To answer yes, choose “Julie” above.',
+      );
+
+      await tick(page, /^Which parents do they share with/, ['Julie']);
+      await expect(
+        twin.getByRole('radio', {
+          name: 'Yes, fraternal (non-identical) twins',
+          exact: true,
+        }),
+      ).toBeEnabled();
+    },
+  };
+}
+
+/**
  * Two mothers of the participant, one a biological mother and one a step or
  * social parent. A sibling they share is asked which of them is the
  * sibling's biological parent, in the stage's own words.
@@ -4214,6 +4275,7 @@ export const familyPedigreeScenarios: InterfaceScenarios = {
     wordingAddSibling(),
     wordingIdenticalTwinSex(),
     wordingAddSiblingTwinSex(),
+    wordingAddSiblingTwinCarrier(),
     wordingSiblingBiologicalParent(),
     wordingSiblingDonors(),
     wordingSiblingSurrogate(),

@@ -1462,6 +1462,7 @@
   "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": "不可選答案提示：新雙胞胎的出生性別不同",
   "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": "不可選答案提示：另一位遺傳父母具有該出生性別",
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": "不可選答案提示：與另一位遺傳父母出生性別相同",
+  "protocolBuilder.pedigree.wording.unavailableTwinCarrierNew": "不可選答案提示：懷雙胞胎的人未被選擇",
   "protocolBuilder.pedigree.wording.you": "參與者本人的名稱",
   "protocolBuilder.pedigree.wording.zygosityFraternal": "異卵選項",
   "protocolBuilder.pedigree.wording.zygosityIdentical": "同卵選項",

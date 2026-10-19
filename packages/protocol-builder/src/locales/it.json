@@ -1462,6 +1462,7 @@
   "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": "Suggerimento sulle risposte non disponibili: il sesso alla nascita del nuovo gemello è diverso",
   "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": "Suggerimento sulle risposte non disponibili: l’altro genitore genetico ha quel sesso alla nascita",
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": "Suggerimento sulle risposte non disponibili: stesso sesso alla nascita dell’altro genitore genetico",
+  "protocolBuilder.pedigree.wording.unavailableTwinCarrierNew": "Suggerimento sulle risposte non disponibili: persona che ha portato in grembo i gemelli non scelta",
   "protocolBuilder.pedigree.wording.you": "Nome della persona partecipante",
   "protocolBuilder.pedigree.wording.zygosityFraternal": "Opzione «non identici»",
   "protocolBuilder.pedigree.wording.zygosityIdentical": "Opzione «identici»",

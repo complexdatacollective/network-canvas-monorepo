@@ -1659,6 +1659,13 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be an identical twin because they are recorded with a different sex at birth (female or male) from the person they are added to.',
   },
+  wordingUnavailableTwinCarrierNew: {
+    id: 'protocolBuilder.pedigree.wording.unavailableTwinCarrierNew',
+    defaultMessage:
+      'Unavailable answers hint: person who carried the twins not chosen',
+    description:
+      'Label, in the participant wording settings of the Family Pedigree stage editor, of a text researchers can customize: the hint telling the participant, when adding a sibling, that the new sibling cannot be a twin of any kind because they would not share the person who carried the one they are added to.',
+  },
   wordingTitle: {
     id: 'protocolBuilder.pedigree.wording.title',
     defaultMessage: 'Participant wording',

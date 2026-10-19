@@ -1015,6 +1015,11 @@ function TwinFields({
   const candidates = twinCandidatesOf(family, person.id);
   const values = useFormValue([ROLE.twins], 'opaque');
   const chosen = asStringArray(values[ROLE.twins]);
+  // Twins answered identical to the person are identical to each other too.
+  const zygosities = useFormValue(chosen.map(twinZygosityField), 'opaque');
+  const identicalChosen = chosen.filter(
+    (twinId) => zygosities[twinZygosityField(twinId)] === 'identical',
+  );
   // Everyone in their twin set, so a set recorded with a pair missing is made
   // whole when saved; someone no longer their sibling as the answers stand is
   // not offered, so is not among them (`useDerivedAnswer`).
@@ -1054,6 +1059,7 @@ function TwinFields({
             twinId={twinId}
             family={family}
             who={who(twinId)}
+            identicalWith={identicalChosen.filter((id) => id !== twinId)}
             displayName={displayName}
             sexAttribute={sexAttribute}
           />
@@ -1068,6 +1074,7 @@ function TwinZygosityField({
   twinId,
   family,
   who,
+  identicalWith,
   displayName,
   sexAttribute,
 }: {
@@ -1075,6 +1082,8 @@ function TwinZygosityField({
   twinId: string;
   family: Family;
   who: 'personIsYou' | 'twinIsYou' | 'other';
+  /** The person's other twins answered as identical to them. */
+  identicalWith: readonly string[];
   displayName: (personId: string) => string;
   sexAttribute: string;
 }) {
@@ -1097,7 +1106,17 @@ function TwinZygosityField({
   const blocks = identicalTwinBlocks(family, person.id, twinId, (id) =>
     id === person.id ? answeredSex : family.byId.get(id)?.sexAssignedAtBirth,
   );
-  const identicalUnavailable = blocks.length > 0;
+  // Answering this twin identical too would make them identical to those
+  // twins, so a twin recorded with a different sex at birth from one of them
+  // cannot be, whatever the person's own sex at birth.
+  const sexOf = (id: string) => family.byId.get(id)?.sexAssignedAtBirth;
+  const clash =
+    blocks.length === 0
+      ? identicalWith.find((id) =>
+          differentSexesAtBirth(sexOf(id), sexOf(twinId)),
+        )
+      : undefined;
+  const identicalUnavailable = blocks.length > 0 || clash !== undefined;
   const recordedZygosity =
     recorded?.zygosity === 'identical' && identicalUnavailable
       ? 'unknown'
@@ -1114,18 +1133,30 @@ function TwinZygosityField({
     twin: displayName(twinId),
   };
   const answer = text(wording.zygosityIdentical);
-  const identicalHint = identicalUnavailable
-    ? blocks
-        .map((block) =>
-          text(
-            block === 'sex'
-              ? wording.unavailableIdenticalTwinSex
-              : wording.unavailableIdenticalTwin,
-            { ...args, answer },
-          ),
-        )
-        .join(' ')
-    : undefined;
+  const isYou = (id: string) => family.byId.get(id)?.isEgo === true;
+  const identicalHint = clash
+    ? text(wording.unavailableIdenticalTwinSex, {
+        who: isYou(clash)
+          ? 'personIsYou'
+          : isYou(twinId)
+            ? 'twinIsYou'
+            : 'other',
+        name: displayName(clash),
+        twin: displayName(twinId),
+        answer,
+      })
+    : identicalUnavailable
+      ? blocks
+          .map((block) =>
+            text(
+              block === 'sex'
+                ? wording.unavailableIdenticalTwinSex
+                : wording.unavailableIdenticalTwin,
+              { ...args, answer },
+            ),
+          )
+          .join(' ')
+      : undefined;
   return (
     <Field
       component={RadioGroupField}
@@ -2470,9 +2501,9 @@ function SiblingFields({
   // it is, is recorded for those twins too (`twinCarrierUpdates`). An answer
   // a later one has taken away is asked again.
   const isTwin = values[ROLE.twin] !== undefined && values[ROLE.twin] !== NONE;
-  const twinsCarrier = isTwin
-    ? (carrierOf(family, anchor.id) ?? twinCarrierOf(family, anchor.id))
-    : undefined;
+  const anchorCarrier =
+    carrierOf(family, anchor.id) ?? twinCarrierOf(family, anchor.id);
+  const twinsCarrier = isTwin ? anchorCarrier : undefined;
   const carrierAnswer = useDerivedAnswer({
     name: ROLE.carrier,
     derived:
@@ -2592,29 +2623,55 @@ function SiblingFields({
     anchor.sexAssignedAtBirth,
   );
   const identicalPossible = sameGeneticParents && !sexesDiffer;
+  // Twins were carried in one pregnancy, so a sibling who would not share
+  // whoever carried the anchor cannot be their twin of any kind: every
+  // "Yes" is unavailable, saying who to choose, until that person is.
+  const sharedChosen = values[ROLE.sharedParents];
+  const carrierLeftOut =
+    anchorCarrier !== undefined &&
+    [...parents, ...donors, ...surrogates].includes(anchorCarrier) &&
+    sharedChosen !== undefined &&
+    !asStringArray(sharedChosen).includes(anchorCarrier);
+  const twinPossible = !carrierLeftOut;
+  const carrierHint = carrierLeftOut
+    ? text(wording.unavailableTwinCarrierNew, {
+        who: anchor.isEgo
+          ? 'childIsYou'
+          : family.byId.get(anchorCarrier)?.isEgo
+            ? 'carrierIsYou'
+            : 'other',
+        name: args.name,
+        carrier: displayName(anchorCarrier),
+      })
+    : undefined;
   const identicalAnswer = text(wording.siblingTwinIdentical);
-  const identicalHint = identicalPossible
-    ? undefined
-    : [
-        sameGeneticParents
-          ? undefined
-          : text(wording.unavailableIdenticalTwinNew, {
-              ...args,
-              answer: identicalAnswer,
-            }),
-        sexesDiffer
-          ? text(wording.unavailableIdenticalTwinSexNew, {
-              ...args,
-              answer: identicalAnswer,
-            })
-          : undefined,
-      ]
-        .filter((sentence) => sentence !== undefined)
-        .join(' ');
+  // One reason at a time: while the carrier is left out, that is the reason.
+  const identicalHint = carrierLeftOut
+    ? carrierHint
+    : identicalPossible
+      ? undefined
+      : [
+          sameGeneticParents
+            ? undefined
+            : text(wording.unavailableIdenticalTwinNew, {
+                ...args,
+                answer: identicalAnswer,
+              }),
+          sexesDiffer
+            ? text(wording.unavailableIdenticalTwinSexNew, {
+                ...args,
+                answer: identicalAnswer,
+              })
+            : undefined,
+        ]
+          .filter((sentence) => sentence !== undefined)
+          .join(' ');
   const twinAnswer = useDerivedAnswer({
     name: ROLE.twin,
     derived: undefined,
-    isAvailable: (answer) => answer !== 'identical' || identicalPossible,
+    isAvailable: (answer) =>
+      answer === NONE ||
+      (twinPossible && (answer !== 'identical' || identicalPossible)),
   });
 
   // Someone with no parents is given an egg parent and a sperm parent,
@@ -2753,16 +2810,20 @@ function SiblingFields({
           {
             value: 'identical',
             label: text(wording.siblingTwinIdentical),
-            disabled: !identicalPossible,
+            disabled: !twinPossible || !identicalPossible,
             description: identicalHint,
           },
           {
             value: 'fraternal',
             label: text(wording.siblingTwinFraternal),
+            disabled: !twinPossible,
+            description: carrierHint,
           },
           {
             value: 'unknown',
             label: text(wording.siblingTwinUnknown),
+            disabled: !twinPossible,
+            description: carrierHint,
           },
         ]}
         {...twinAnswer}

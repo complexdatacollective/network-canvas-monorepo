@@ -1462,6 +1462,7 @@
   "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": "Hinweis zu nicht verfügbaren Antworten: Geschlecht des neuen Zwillings bei der Geburt unterscheidet sich",
   "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": "Hinweis zu nicht verfügbaren Antworten: der andere genetische Elternteil hat dieses Geschlecht bei der Geburt",
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": "Hinweis zu nicht verfügbaren Antworten: gleiches Geschlecht bei der Geburt wie der andere genetische Elternteil",
+  "protocolBuilder.pedigree.wording.unavailableTwinCarrierNew": "Hinweis zu nicht verfügbaren Antworten: austragende Person der Zwillinge nicht ausgewählt",
   "protocolBuilder.pedigree.wording.you": "Name der teilnehmenden Person",
   "protocolBuilder.pedigree.wording.zygosityFraternal": "Option „zweieiig“",
   "protocolBuilder.pedigree.wording.zygosityIdentical": "Option „eineiig“",

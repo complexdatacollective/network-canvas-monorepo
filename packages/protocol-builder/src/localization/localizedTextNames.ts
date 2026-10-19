@@ -1051,6 +1051,12 @@ const STAGE_RULES: Readonly<Record<StageType, readonly Rule[]>> = {
       [2, words(familyPedigreeMessages.wordingUnavailableIdenticalTwinSexNew)],
     ),
     rule(
+      'wording.unavailableTwinCarrierNew',
+      PEDIGREE_WORDING,
+      PEDIGREE_WORDING_ADDING,
+      [2, words(familyPedigreeMessages.wordingUnavailableTwinCarrierNew)],
+    ),
+    rule(
       'wording.carriedSiblingsPregnancyLabel',
       PEDIGREE_WORDING,
       PEDIGREE_WORDING_ADDING,

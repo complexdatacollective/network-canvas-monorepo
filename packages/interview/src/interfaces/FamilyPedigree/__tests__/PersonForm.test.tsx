@@ -1625,7 +1625,7 @@ describe('twins', () => {
       edges: parentLinks('ego'),
       adding: 'sibling',
     });
-    await user.click(screen.getByRole('checkbox', { name: 'dad' }));
+    await user.click(screen.getByRole('checkbox', { name: 'mum' }));
     const question = screen.getByRole('radiogroup', {
       name: /^Are they your twin\?/,
     });
@@ -1635,6 +1635,39 @@ describe('twins', () => {
     expect(question).toHaveAccessibleDescription(
       /identical twins have the same biological parents and donors/,
     );
+  });
+
+  it('shows every twin answer unavailable for a sibling who would not share whoever carried the person, until they do', async () => {
+    const { user } = renderPersonForm('ego', {
+      nodes: [person('ego', { isEgo: true, sex: ['male'] }), ...parents],
+      edges: parentLinks('ego'),
+      adding: 'sibling',
+    });
+    await user.click(screen.getByRole('checkbox', { name: 'dad' }));
+    const question = screen.getByRole('radiogroup', {
+      name: /^Are they your twin\?/,
+    });
+    const yesAnswers = [
+      'Yes, identical twins',
+      'Yes, fraternal (non-identical) twins',
+      'Yes, but I don’t know if they are identical',
+    ];
+    for (const answer of yesAnswers) {
+      expect(
+        within(question).getByRole('radio', { name: answer }),
+      ).toBeDisabled();
+    }
+    expect(within(question).getByRole('radio', { name: 'No' })).toBeEnabled();
+    expect(question).toHaveAccessibleDescription(
+      /twins are carried in the same pregnancy and “mum”, who carried you, is not chosen above\. To answer yes, choose “mum” above\./,
+    );
+
+    await user.click(screen.getByRole('checkbox', { name: 'mum' }));
+    for (const answer of yesAnswers) {
+      expect(
+        within(question).getByRole('radio', { name: answer }),
+      ).toBeEnabled();
+    }
   });
 
   it('records which siblings are someone’s twins, and of what kind', async () => {
@@ -1854,6 +1887,47 @@ describe('identical twins and sex at birth', () => {
       expect(onSubmit.mock.calls[0]?.[0].twinChanges).toMatchObject({
         changed: [{ linkId: 'noah-cody-identicalTwin', zygosity: 'unknown' }],
       });
+    });
+
+    it('shows identical twins unavailable for a twin whose sex at birth differs from another twin answered identical, saying why', async () => {
+      // The participant has no recorded sex at birth, so could be identical
+      // to either twin, but not to both: Sam and Kim would then be identical
+      // too, and they are recorded with different ones.
+      const { user } = renderPersonForm('ego', {
+        nodes: [
+          person('ego', { isEgo: true }),
+          person('sam', { name: 'Sam', sex: ['female'] }),
+          person('kim', { name: 'Kim', sex: ['male'] }),
+          person('shannon', { name: 'Shannon', sex: ['female'] }),
+          person('rick', { name: 'Rick', sex: ['male'] }),
+        ],
+        edges: ['ego', 'sam', 'kim'].flatMap((childId) => [
+          link('shannon', childId, 'biological', { carrier: true }),
+          link('rick', childId, 'biological'),
+        ]),
+      });
+      const twins = screen.getByRole('group', {
+        name: /^Which of your siblings, if any, are your twins\?/,
+      });
+      await user.click(within(twins).getByRole('checkbox', { name: 'sam' }));
+      await user.click(within(twins).getByRole('checkbox', { name: 'kim' }));
+      const zygosityWith = (twin: string) =>
+        screen.getByRole('radiogroup', {
+          name: new RegExp(`^Are you and “${twin}” identical twins\\?`),
+        });
+      const identicalWith = (twin: string) =>
+        within(zygosityWith(twin)).getByRole('radio', {
+          name: 'Yes, identical',
+        });
+      expect(identicalWith('kim')).toBeEnabled();
+
+      await user.click(identicalWith('sam'));
+
+      expect(identicalWith('kim')).toBeDisabled();
+      expect(zygosityWith('kim')).toHaveAccessibleDescription(
+        /identical twins have the same sex at birth, and “sam” and “kim” are recorded with different ones/,
+      );
+      expect(identicalWith('sam')).toBeEnabled();
     });
   });
 });

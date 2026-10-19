@@ -1462,6 +1462,7 @@
   "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": "Hint over niet-beschikbare antwoorden: geslacht bij de geboorte van de nieuwe tweelingbroer of -zus verschilt",
   "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": "Hint over niet-beschikbare antwoorden: de andere genetische ouder heeft dat bij de geboorte toegewezen geslacht",
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": "Hint over niet-beschikbare antwoorden: hetzelfde bij de geboorte toegewezen geslacht als de andere genetische ouder",
+  "protocolBuilder.pedigree.wording.unavailableTwinCarrierNew": "Hint over niet-beschikbare antwoorden: persoon die de tweeling heeft gedragen niet gekozen",
   "protocolBuilder.pedigree.wording.you": "Naam van de deelnemer",
   "protocolBuilder.pedigree.wording.zygosityFraternal": "Optie “twee-eiig”",
   "protocolBuilder.pedigree.wording.zygosityIdentical": "Optie “eeneiig”",

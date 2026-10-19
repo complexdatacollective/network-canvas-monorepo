@@ -1462,6 +1462,7 @@
   "protocolBuilder.pedigree.wording.unavailableIdenticalTwinSexNew": "Pista sobre respuestas no disponibles: el sexo al nacer del nuevo gemelo difiere",
   "protocolBuilder.pedigree.wording.unavailableSameSexAsCoParent": "Pista sobre respuestas no disponibles: el otro progenitor genético tiene ese sexo al nacer",
   "protocolBuilder.pedigree.wording.unavailableSameSexGeneticParent": "Pista sobre respuestas no disponibles: mismo sexo al nacer que el otro progenitor genético",
+  "protocolBuilder.pedigree.wording.unavailableTwinCarrierNew": "Pista sobre respuestas no disponibles: no se eligió a quien gestó a los gemelos",
   "protocolBuilder.pedigree.wording.you": "Nombre del participante",
   "protocolBuilder.pedigree.wording.zygosityFraternal": "Opción de mellizos",
   "protocolBuilder.pedigree.wording.zygosityIdentical": "Opción de idénticos",
