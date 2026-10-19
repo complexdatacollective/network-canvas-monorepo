@@ -3,9 +3,11 @@ import type { Page } from '@playwright/test';
 import {
   createDefaultFinishSessionStage,
   type CurrentProtocol,
+  type Protocol,
 } from '@codaco/protocol-validation';
 
 import {
+  LEGACY_LIBRARIES,
   PROTOCOL_DB_NAME,
   SESSION_PREFIX,
 } from '../../src/utils/storageNames.js';
@@ -150,6 +152,97 @@ export async function seedProtocol(
   await page.reload();
 
   return id;
+}
+
+const [{ dbName: LEGACY_DB_NAME }] = LEGACY_LIBRARIES;
+
+// Architect 8's Dexie declares `version(1).stores({ protocols: 'id, updatedAt',
+// assets: 'id, protocolId' })`; Dexie multiplies a declared version by ten.
+const LEGACY_DB_NATIVE_VERSION = 10;
+
+export type LegacySeed = {
+  /** Architect 8 names its rows with `crypto.randomUUID()`. */
+  id: string;
+  protocol: Protocol<8>;
+  assets?: SeedAsset[];
+  updatedAt?: number;
+};
+
+// Writes protocols into Architect 8's own library, `ArchitectProtocolDB`, which
+// Architect 9 lists beside its own and must never write. The database is
+// created exactly as Architect 8's Dexie creates it — same native version,
+// stores, key paths and indexes — because anything else would make Architect 8
+// bump its schema the next time it opened it, and the "never touched" oracles
+// in `read-store.ts` would then be comparing against a library Architect 8
+// itself would not have made.
+//
+// Architect 9 lists that library once, when the library view mounts, so this
+// reloads afterwards for the rows to appear.
+export async function seedLegacyProtocols(
+  page: Page,
+  rows: LegacySeed[],
+): Promise<void> {
+  await page.goto('/');
+  await page.evaluate(
+    async ({ dbName, version, seeds }) => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const req = indexedDB.open(dbName, version);
+        req.onupgradeneeded = (event) => {
+          if (event.oldVersion !== 0) return;
+          const protocols = req.result.createObjectStore('protocols', {
+            keyPath: 'id',
+          });
+          protocols.createIndex('updatedAt', 'updatedAt');
+          const assets = req.result.createObjectStore('assets', {
+            keyPath: 'id',
+          });
+          assets.createIndex('protocolId', 'protocolId');
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+        req.onblocked = () => reject(new Error(`${dbName} open blocked`));
+      });
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['protocols', 'assets'], 'readwrite');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        for (const { id, protocol, assets, updatedAt } of seeds) {
+          tx.objectStore('protocols').put({
+            id,
+            protocol,
+            name: protocol.name,
+            description: protocol.description,
+            schemaVersion: protocol.schemaVersion,
+            validated: true,
+            createdAt: updatedAt,
+            updatedAt,
+          });
+          for (const asset of assets) {
+            tx.objectStore('assets').put({
+              id: `${id}::${asset.assetId}`,
+              assetId: asset.assetId,
+              protocolId: id,
+              name: asset.name,
+              // Built here, in the browser, for the reason `seedProtocol` gives.
+              data: new Blob([asset.data]),
+            });
+          }
+        }
+      });
+      db.close();
+    },
+    {
+      dbName: LEGACY_DB_NAME,
+      version: LEGACY_DB_NATIVE_VERSION,
+      seeds: rows.map((row) => ({
+        id: row.id,
+        protocol: row.protocol,
+        assets: row.assets ?? [],
+        updatedAt: row.updatedAt ?? Date.now(),
+      })),
+    },
+  );
+  await page.reload();
 }
 
 // A minimal current-schema protocol for create-from-scratch specs: what
