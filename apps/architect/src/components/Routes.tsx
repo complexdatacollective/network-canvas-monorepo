@@ -15,20 +15,22 @@ import RouteFocus from '~/components/RouteFocus';
 // demand. main.tsx preloads it once the start screen is up, so by the time a
 // protocol is opened it is normally already here; until it is, the protocol
 // loading overlay the start screen shows while opening one stays up.
-const LazyProtocolRoutes = lazy(loadProtocolRoutes);
-
 const ProtocolRoutes = () => {
   // Decided once per mount, so a re-render never swaps the component type and
   // remounts the editor. When the editor is already here — the start-up wait
   // or the background preload fetched it — render it directly: even an
   // already-settled lazy component suspends on its first render, which would
   // flash the loading overlay (and, at start-up, dismiss the boot screen over
-  // it instead of over the editor).
-  const [LoadedProtocolRoutes] = useState(getLoadedProtocolRoutes);
-  if (LoadedProtocolRoutes) return <LoadedProtocolRoutes />;
+  // it instead of over the editor). Otherwise each mount gets a lazy component
+  // of its own: React keeps a lazy component's rejection for good, so one made
+  // once for the module would fail every retry after a dropped connection,
+  // where a fresh one fetches the editor again.
+  const [Editor] = useState(
+    () => getLoadedProtocolRoutes() ?? lazy(loadProtocolRoutes),
+  );
   return (
     <Suspense fallback={<ProtocolLoadingOverlay open />}>
-      <LazyProtocolRoutes />
+      <Editor />
     </Suspense>
   );
 };
