@@ -134,11 +134,13 @@ attribute, whose name ends in a number when the type already uses that name.
 An `introScreen` becomes an Information stage titled "Introduction", the
 heading schema 8 showed above it, inserted just before the pedigree. That
 stage takes the pedigree's skip logic, and skips that jumped to the pedigree
-now jump to it. Interviews recorded against a migrated protocol are migrated
-with it: each stage's metadata and the resume position follow their stage, so
-an interview in progress resumes where its participant left it. A schema 8
-pedigree's stage metadata becomes the new shape, keeping the participant's
-framing and "no children" answer, and writing to the network any people and
+now jump to it. Where a host migrates the interviews recorded against a
+migrated protocol, as Fresco does, each stage's metadata and the resume
+position follow their stage, so an interview in progress resumes where its
+participant left it. Interviewer never migrates interviews: schema 8
+interviews stay in Interviewer 8, and upgrading a protocol makes a schema 9
+copy with none. A schema 8 pedigree's stage metadata becomes the new shape,
+keeping the participant's framing and "no children" answer, and writing to the network any people and
 relationships that were only held in it. Parent relationships lose the
 `isActive` flag schema 8 wrote on them, which schema 9 reads as "current
 partner", and carry the gestational carrier flag as true or false, as the
