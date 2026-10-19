@@ -51,6 +51,16 @@ const startupLocaleReady = loadStartupLocale()
   .catch(() => undefined)
   .then(() => initializeArchitectDocument());
 
+// A launch straight into the editor (a restored session, a reload there)
+// needs the editor before its first render, so start fetching it now, beside
+// the language and the startup awaits, rather than after them. If restoring
+// sends the tab home instead, the idle preload would have fetched it anyway.
+const startupProtocolRoutesReady = window.location.pathname.startsWith(
+  '/protocol',
+)
+  ? loadProtocolRoutes().catch(() => undefined)
+  : Promise.resolve(undefined);
+
 // Register before the startup update check: skipWaiting moves every existing
 // tab to the new worker, which must retain the precache for each tab's compiled
 // bundle until that tab closes or reloads.
@@ -111,7 +121,7 @@ async function startApp(): Promise<void> {
   // A restored session that reopens in the editor would otherwise first show
   // the editor's loading overlay; keep the boot screen up until it is here.
   if (window.location.pathname.startsWith('/protocol')) {
-    await loadProtocolRoutes().catch(() => undefined);
+    await startupProtocolRoutesReady;
   }
 
   // Protocols live in IndexedDB even in a browser tab, so request the durability
