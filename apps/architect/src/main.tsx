@@ -30,6 +30,7 @@ import {
 } from './utils/fileLaunchQueue';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import {
+  getAppServiceWorkerContainer,
   isRunningAsInstalledPwa,
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
@@ -75,6 +76,7 @@ const warmCaches = () => {
 async function startApp(): Promise<void> {
   await applyFreshLoadServiceWorkerUpdate({
     reload: false,
+    serviceWorker: getAppServiceWorkerContainer(),
     shouldSkip: () =>
       isCriticalOperationInProgress() || hasPendingLaunchFiles(),
   });
