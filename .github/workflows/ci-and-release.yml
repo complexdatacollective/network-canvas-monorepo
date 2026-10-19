@@ -3905,6 +3905,12 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: write
+    # Read by apps-release-interviewer-subpath-dist below: whether this run
+    # actually released (the guard skips a version already tagged or
+    # overtaken), and the tag it created.
+    outputs:
+      released: ${{ steps.guard.outputs.skip != 'true' }}
+      tag: '@codaco/interviewer@${{ needs.apps-release-detect.outputs.interviewer_version }}'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -3975,6 +3981,26 @@ jobs:
           body_path: ${{ runner.temp }}/interviewer-notes.md
           prerelease: false
           make_latest: 'true'
+
+  # Builds the release just tagged under /v8/ and attaches
+  # interviewer-v8-dist.tgz to it, for Interviewer 9 to bundle (see
+  # apps/interviewer/RELEASING.md, "Sub-path dist tarball"). A separate job so
+  # a failure here never turns a release that has already shipped red, and
+  # chained by workflow_call because the release above is created with
+  # GITHUB_TOKEN, which fires no tag or release event. Major 8 only: 9.x is the
+  # root app. A tag that predates sub-path builds (8.4.x) is skipped inside.
+  apps-release-interviewer-subpath-dist:
+    needs: [apps-release-detect, apps-release-interviewer]
+    if: needs.apps-release-detect.outputs.interviewer_released == 'true' && needs.apps-release-interviewer.outputs.released == 'true' && startsWith(needs.apps-release-detect.outputs.interviewer_version, '8.')
+    # A called workflow's jobs get no more than this job grants, and the
+    # workflow's top-level permissions are read-only. Only its publish job,
+    # which runs no code from the tag, uses the write.
+    permissions:
+      contents: write
+    uses: ./.github/workflows/app-subpath-dist.yml
+    with:
+      app: interviewer
+      tag: ${{ needs.apps-release-interviewer.outputs.tag }}
 
   # Build, deploy to Netlify production, and cut a stable GitHub release for
   # Background Creator when its normal-lane version changes. This remains

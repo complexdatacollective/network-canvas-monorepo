@@ -1,0 +1,307 @@
+name: App Maintenance Release
+
+# Releases a patch to an OLDER major line of an app that ships inside its next
+# major — Interviewer 8.5.1 or Architect 8.5.1 once 9.x is production — from a
+# `maintenance/<app>-<version>` branch cut from that line's newest tag.
+#
+# Neither existing lane can: both deploy to the app's one production site, so
+# both refuse a version older than the newest release (app-release-guard.sh
+# and resolve-hotfix-release.mjs). An older line is not deployed anywhere of
+# its own. Interviewer 8 and Architect 8 reach users inside the 9.x deploy at
+# /v8/, as a tarball the 9.x build bundles. So this lane only tags, creates a
+# GitHub release, and attaches that tarball (app-subpath-dist.yml). Users get
+# the fix when the pin on the newer line is bumped and that line next
+# releases; see "Maintenance releases" in apps/<app>/RELEASING.md.
+#
+# What it never does: deploy (there is no Netlify step and no Netlify
+# credential here), make its release "Latest" (`make_latest: 'false'`, so the
+# repository's latest release stays the newest line's), or release the newest
+# line. resolve-hotfix-release.mjs in its line scope (SCOPE=line) requires a
+# version newer than every release on its own line, on a major below the
+# newest release overall, in a tree that contains the line's newest tag. A
+# maintenance tag that became the newest overall would leave production behind
+# its newest tag, and the normal lane's guard would skip every later release
+# from main until someone reconciled it.
+#
+# No merge back to main afterwards, unlike a hotfix: main is on a newer major,
+# and merging would drag this line's package.json and CHANGELOG into it.
+#
+# Dispatched FROM main with the app and branch as inputs, like the Hotfix
+# Release workflow: the job definitions, guards and tooling are main's
+# reviewed code, and only the tree that gets verified and released comes from
+# the branch.
+#
+# NOTE(human-setup-required): that separation is a convention this file cannot
+# enforce (see the same note in hotfix-release.yml). Create the
+# `<app>-maintenance-release` environments (`interviewer-maintenance-release`,
+# and `architect-maintenance-release` if Architect's lane has not already)
+# with required reviewers and their deployment branches restricted to main,
+# so a copy of this workflow on another branch cannot reach the job that
+# claims the tag. They hold no secrets: the lane deploys nothing.
+#
+# Procedure (apps/<app>/RELEASING.md, "Maintenance releases"):
+#   1. `git switch -c maintenance/interviewer-8.5.1 '@codaco/interviewer@8.5.0'`,
+#      cherry-pick the fix, bump apps/interviewer/package.json and add the
+#      CHANGELOG.md section by hand, push the branch.
+#   2. Run this workflow from main with `app` and `source_ref` set.
+#   3. Bump the pin on the newer line to the tarball the run's summary prints.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: App whose older major line to release
+        required: true
+        type: choice
+        options:
+          - interviewer
+          - architect
+      source_ref:
+        description: Maintenance branch to release (e.g. maintenance/interviewer-8.5.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Not the normal lane's `apps-release-@codaco/<app>`. That group keeps one
+# pending run, and a maintenance run waiting for environment approval would
+# hold it, so a normal release queued behind it could be dropped. Nothing here
+# touches production, so the lanes do not need to exclude each other; two
+# maintenance runs of one app still must not, or both could pass the line
+# check.
+concurrency:
+  group: ${{ inputs.app }}-maintenance-release
+  cancel-in-progress: false
+
+env:
+  # One task at a time on every CI runner; see the `env` block and the `test`
+  # job in ci-and-release.yml for the measurements behind the cap.
+  TURBO_CONCURRENCY: '1'
+
+jobs:
+  # Validates the dispatch and the version, then typechecks, tests and builds
+  # the branch. Runs the branch's code, so it holds a read-only token and no
+  # secret; the tag is claimed by `release`, which runs none of it.
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    # The verify step tests the app's whole workspace dependency closure,
+    # which reaches @codaco/studio-sync; its conformance suites need this
+    # Postgres. Same service as hotfix-release.yml, for the reasons given there.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: spike
+          POSTGRES_DB: studio_dev
+          POSTGRES_INITDB_ARGS: --set=max_prepared_transactions=10
+        ports:
+          - 54318:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+      version: ${{ steps.version.outputs.version }}
+    env:
+      APP: ${{ inputs.app }}
+      SCOPE: line
+      SOURCE_REF: ${{ inputs.source_ref }}
+    steps:
+      # DISPATCH_REF comes through the environment, never interpolated into the
+      # script: `$(...)` is a legal git ref name.
+      - name: Validate the dispatch
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          if [[ "$DISPATCH_REF" != 'refs/heads/main' ]]; then
+            echo "::error::Dispatch this workflow from main and name the branch to release in source_ref. Running it from a branch would take the job definition from that branch too." >&2
+            exit 1
+          fi
+          # The choice input limits a dispatch to these two; checked anyway,
+          # because APP names a directory and a package below.
+          if [[ "$APP" != 'interviewer' && "$APP" != 'architect' ]]; then
+            echo "::error::'$APP' has no maintenance lane." >&2
+            exit 1
+          fi
+          if [[ "$SOURCE_REF" != "maintenance/${APP}-"* ]]; then
+            echo "::error::source_ref '$SOURCE_REF' is not a maintenance/${APP}-<version> branch. The newest line releases through apps-release-${APP} or the Hotfix Release workflow." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-tags: true
+          # Full history: the resolver checks that this tree descends from the
+          # newest release on its line.
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A branch cut from an older tag carries the lane's tooling as it was
+      # then (the line scope did not exist in 8.5.0), so it comes from the
+      # dispatching main commit, the only copy anyone has reviewed. Each
+      # script reads its inputs relative to the working directory, so it
+      # operates on the branch's tree while living outside it.
+      - name: Check out the lane's tooling from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          path: .maintenance-lane
+          sparse-checkout: |
+            .github/scripts
+            scripts
+          persist-credentials: false
+
+      # Compares commits, not strings: any commit main already contains
+      # releases through the normal lane.
+      - name: Resolve the released commit
+        id: commit
+        run: |
+          sha=$(git rev-parse HEAD)
+          if git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::source_ref '$SOURCE_REF' ($sha) is a commit of main. main releases through apps-release-${APP} in ci-and-release.yml." >&2
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve and validate the version
+        id: version
+        run: node .maintenance-lane/.github/scripts/resolve-hotfix-release.mjs
+
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          install: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # A maintenance branch has no pull request CI and no required `quality`
+      # gate behind it, and workspace packages are consumed as source, so the
+      # filter covers the app's whole dependency closure (`...`).
+      - name: Verify the app and its workspace dependencies
+        env:
+          SKIP_ENV_VALIDATION: 'true'
+        run: pnpm exec turbo run typecheck test --filter="@codaco/${APP}..."
+
+      # The sub-path build is the only build this line ships, and the dist
+      # workflow makes it from the tag, after the tag exists. Building it here
+      # first means a branch that cannot build under /v<major>/ fails before
+      # anything is claimed. Not through turbo, as in the dist workflow. The
+      # base reaches the build through the app's own variable
+      # (INTERVIEWER_BASE_PATH, ARCHITECT_BASE_PATH).
+      - name: Verify the sub-path build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: env "${APP^^}_BASE_PATH=/v${VERSION%%.*}/" pnpm --filter "@codaco/${APP}" build
+
+  # Claims the tag and creates the release. Holds the write token, sits behind
+  # the environment's reviewers, and runs nothing from the branch: it checks
+  # out the verified commit for its data only (package.json, the CHANGELOG,
+  # tags and history) and executes main's tooling against it.
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.app }}-maintenance-release
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    env:
+      APP: ${{ inputs.app }}
+      SCOPE: line
+    steps:
+      # The exact commit `verify` checked, not the branch: a push to the
+      # branch while this job waited for approval must not be released under
+      # a tag that names what was verified.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          fetch-tags: true
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the lane's tooling from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          ref: ${{ github.sha }}
+          path: .maintenance-lane
+          sparse-checkout: |
+            .github/scripts
+            scripts
+            .nvmrc
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
+        with:
+          node-version-file: '.maintenance-lane/.nvmrc'
+
+      # The verdict in `verify` predates its build and the approval wait; a
+      # release on this line (or the line becoming the newest) since then must
+      # stop the run with nothing claimed.
+      - name: Re-check the version against the newest releases
+        id: version
+        run: |
+          git fetch --tags --force origin
+          node .maintenance-lane/.github/scripts/resolve-hotfix-release.mjs
+
+      # Creating the ref through the API is atomic, so a duplicate run fails
+      # here rather than racing.
+      - name: Claim the release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          SHA: ${{ needs.verify.outputs.sha }}
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" \
+            -f sha="$SHA"
+
+      # --since is the previous release on this line (the resolver's line
+      # scope reports it as `newest`), so the notes cover only this line.
+      - name: Release notes
+        env:
+          PACKAGE: ${{ steps.version.outputs.package }}
+          VERSION: ${{ steps.version.outputs.version }}
+          SINCE: ${{ steps.version.outputs.newest }}
+        run: >-
+          node .maintenance-lane/scripts/release/release-notes.mjs
+          --app "apps/${APP}"
+          --pkg "${PACKAGE}"
+          --version "$VERSION"
+          --since "$SINCE"
+          --out "${RUNNER_TEMP}/maintenance-notes.md"
+
+      # Never "Latest": that belongs to the newest line, and the app's in-app
+      # update check must not see this as the newest release (it picks the
+      # highest version on the running major regardless).
+      - name: Create the release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ needs.verify.outputs.sha }}
+          name: ${{ steps.version.outputs.label }} ${{ steps.version.outputs.version }}
+          body_path: ${{ runner.temp }}/maintenance-notes.md
+          prerelease: false
+          make_latest: 'false'
+
+  # The tarball the newer line bundles: the only way this release reaches
+  # anyone. Its summary prints the pin to update. Only the called workflow's
+  # publish job, which runs no code from the tag, uses the write.
+  subpath-dist:
+    needs: release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/app-subpath-dist.yml
+    with:
+      app: ${{ inputs.app }}
+      tag: ${{ needs.release.outputs.tag }}
+      # Unlike the release lanes, a tarball is this lane's whole product, so a
+      # tag that cannot be built under a sub-path fails the run.
+      skip_ineligible: false
