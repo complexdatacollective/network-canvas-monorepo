@@ -43,7 +43,10 @@ import {
   buildResolvedAssets,
   makeAssetResolver,
 } from '~/lib/assets/assetResolver';
-import { hasEntryUnlockGrace } from '~/lib/auth/entryUnlockGrace';
+import {
+  endEntryUnlockGrace,
+  takeEntryUnlockGrace,
+} from '~/lib/auth/entryUnlockGrace';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
   getProtocolByHash,
@@ -290,6 +293,9 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       if (!result.ok) return;
     }
     setAuthorizedInterviewId(null);
+    // Leaving ends any unlock-to-enter grace this page still held: whoever
+    // enters next, here or in another interview, unlocks as usual.
+    endEntryUnlockGrace();
     goHome();
   }, [requireFreshUnlock, goHome, setAuthorizedInterviewId]);
 
@@ -300,17 +306,20 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
     let active = true;
     const load = async () => {
       const settings = await getSettings();
+      // A load torn down while it awaited must not use up the grace below on
+      // behalf of the load that replaced it.
+      if (!active) return;
       // Skip the enter gate when this interview's entry was already authorized
       // in the current unlock session — i.e. an idle-lock/unlock cycle remounted
       // the same interview. The user just authenticated at the LockScreen, so a
       // second step-up prompt would be redundant.
       const alreadyAuthorized = getAuthorizedInterviewId() === sessionId;
       // In Interviewer 8 inside Interviewer 9, so does an unlock seconds ago
-      // on the page Interviewer 9 opened for this interview.
+      // on the page Interviewer 9 opened to resume this interview, once.
       if (
         settings.requireUnlockOnEnter &&
         !alreadyAuthorized &&
-        !hasEntryUnlockGrace()
+        !takeEntryUnlockGrace({ sessionId })
       ) {
         const result = await requireFreshUnlock();
         if (!result.ok) {

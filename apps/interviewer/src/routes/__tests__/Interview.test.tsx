@@ -41,9 +41,11 @@ function refreshStepUpContextIdentities() {
 vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
   useStepUpAuth: () => stepUpContext,
 }));
-const hasEntryUnlockGraceMock = vi.fn(() => false);
+const takeEntryUnlockGraceMock = vi.fn((_target: unknown) => false);
+const endEntryUnlockGraceMock = vi.fn();
 vi.mock('~/lib/auth/entryUnlockGrace', () => ({
-  hasEntryUnlockGrace: () => hasEntryUnlockGraceMock(),
+  takeEntryUnlockGrace: (target: unknown) => takeEntryUnlockGraceMock(target),
+  endEntryUnlockGrace: () => endEntryUnlockGraceMock(),
 }));
 
 const getSettingsMock = vi.fn();
@@ -254,7 +256,7 @@ beforeEach(() => {
   getProtocolByHashMock.mockResolvedValue(makeProtocol());
   requireFreshUnlockMock.mockResolvedValue({ ok: true });
   getAuthorizedInterviewIdMock.mockReturnValue(null);
-  hasEntryUnlockGraceMock.mockReturnValue(false);
+  takeEntryUnlockGraceMock.mockReturnValue(false);
   useSearchMock.mockReturnValue('');
   useRouteMock.mockReturnValue([true, { sessionId: 's1' }]);
   refreshStepUpContextIdentities();
@@ -425,12 +427,13 @@ describe('InterviewRoute enter gate', () => {
       requireUnlockOnExit: false,
       requireUnlockOnExport: false,
     });
-    hasEntryUnlockGraceMock.mockReturnValue(true);
+    takeEntryUnlockGraceMock.mockReturnValue(true);
 
     render(<InterviewRoute sessionId="s1" />);
 
     expect(await screen.findByTestId('shell-mounted')).toBeInTheDocument();
     expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    expect(takeEntryUnlockGraceMock).toHaveBeenCalledWith({ sessionId: 's1' });
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith('s1');
   });
 
@@ -494,6 +497,8 @@ describe('InterviewRoute exit gate', () => {
       expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }),
     );
     expect(setAuthorizedInterviewIdMock).toHaveBeenCalledWith(null);
+    // Whoever enters next unlocks as usual.
+    expect(endEntryUnlockGraceMock).toHaveBeenCalledTimes(1);
   });
 });
 

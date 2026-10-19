@@ -91,12 +91,14 @@ export const captureUrlLaunchRequest = (
 let pending: UrlLaunchRequest | null =
   typeof window === 'undefined' ? null : captureUrlLaunchRequest(window);
 
-// Remembered after the request itself is taken: the page's origin decides
-// whether a recent unlock may stand in for the enter gate (entryUnlockGrace).
-const openedByStartRequest = pending?.kind === 'start';
+// Remembered after the request itself is taken: what the page was opened for
+// decides whether a recent unlock may stand in for the enter gate
+// (entryUnlockGrace).
+const openingStartRequest =
+  pending?.kind === 'start' ? pending.protocolHash : null;
 
-/** Whether this page load was opened by a well-formed `?start=`. */
-export const wasOpenedByStartRequest = (): boolean => openedByStartRequest;
+/** The protocol hash of the well-formed `?start=` this page was opened by. */
+export const getOpeningStartRequest = (): string | null => openingStartRequest;
 
 /** The `?start=` request still waiting for its consumer, without taking it. */
 export const peekUrlStartRequest = (): string | null =>

@@ -116,21 +116,21 @@ describe('the request this page was opened with', () => {
     const mod = await loadAt(`/?start=${HASH}`);
 
     expect(window.location.search).toBe('');
-    expect(mod.wasOpenedByStartRequest()).toBe(true);
+    expect(mod.getOpeningStartRequest()).toBe(HASH);
     expect(mod.takeUrlImportRequest()).toBeNull();
     expect(mod.peekUrlStartRequest()).toBe(HASH);
     expect(mod.takeUrlStartRequest()).toBe(HASH);
     expect(mod.takeUrlStartRequest()).toBeNull();
     expect(mod.peekUrlStartRequest()).toBeNull();
     // How the page was opened outlives the request itself.
-    expect(mod.wasOpenedByStartRequest()).toBe(true);
+    expect(mod.getOpeningStartRequest()).toBe(HASH);
   });
 
   it('hands an import key over once', async () => {
     const mod = await loadAt(`/?import=${KEY}`);
 
     expect(window.location.search).toBe('');
-    expect(mod.wasOpenedByStartRequest()).toBe(false);
+    expect(mod.getOpeningStartRequest()).toBeNull();
     expect(mod.takeUrlStartRequest()).toBeNull();
     expect(mod.takeUrlImportRequest()).toBe(KEY);
     expect(mod.takeUrlImportRequest()).toBeNull();
@@ -139,7 +139,7 @@ describe('the request this page was opened with', () => {
   it('is nothing for a page opened without one', async () => {
     const mod = await loadAt('/data');
 
-    expect(mod.wasOpenedByStartRequest()).toBe(false);
+    expect(mod.getOpeningStartRequest()).toBeNull();
     expect(mod.takeUrlStartRequest()).toBeNull();
     expect(mod.takeUrlImportRequest()).toBeNull();
   });

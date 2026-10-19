@@ -424,6 +424,16 @@ test('?start= opens the new-interview form for that protocol, and the interview 
   ).toHaveCount(0);
   // Never during an interview.
   await expect(banner(page)).toHaveCount(0);
+
+  // The unlock stood in for that one entry only. Whoever starts the next
+  // interview from this page, within the same minute, unlocks first.
+  await interviewNav.exitInterview();
+  await page.getByRole('button', { name: 'Start new interview' }).click();
+  await page.getByTestId('new-session-case-id').fill('V8-START-AGAIN');
+  await page.getByTestId('new-session-submit').click();
+  await expect(
+    page.getByRole('heading', { name: 'Confirm your identity' }),
+  ).toBeVisible({ timeout: 15_000 });
 });
 
 test('starting from Home itself still asks to unlock before the interview', async ({

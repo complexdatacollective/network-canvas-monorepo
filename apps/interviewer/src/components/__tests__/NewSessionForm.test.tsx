@@ -14,7 +14,7 @@ const createSession = vi.fn();
 const getSettings = vi.fn();
 const requireFreshUnlock = vi.fn();
 const setAuthorizedInterviewId = vi.fn();
-const hasEntryUnlockGrace = vi.fn(() => false);
+const takeEntryUnlockGrace = vi.fn((_target: unknown) => false);
 let online = true;
 
 vi.mock('@codaco/fresco-ui/dialogs/useDialog', () => ({
@@ -27,7 +27,7 @@ vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
   useStepUpAuth: () => ({ requireFreshUnlock, setAuthorizedInterviewId }),
 }));
 vi.mock('~/lib/auth/entryUnlockGrace', () => ({
-  hasEntryUnlockGrace: () => hasEntryUnlockGrace(),
+  takeEntryUnlockGrace: (target: unknown) => takeEntryUnlockGrace(target),
 }));
 vi.mock('~/lib/db/api', () => ({
   createSession: (...args: unknown[]) => createSession(...args),
@@ -227,7 +227,7 @@ describe('NewSessionForm unlock-to-enter step', () => {
     getSettings.mockResolvedValue({ requireUnlockOnEnter: true });
     createSession.mockResolvedValue(session);
     requireFreshUnlock.mockResolvedValue({ ok: true });
-    hasEntryUnlockGrace.mockReturnValue(false);
+    takeEntryUnlockGrace.mockReturnValue(false);
   });
 
   const start = async () => {
@@ -244,11 +244,12 @@ describe('NewSessionForm unlock-to-enter step', () => {
     expect(requireFreshUnlock).toHaveBeenCalledTimes(1);
   });
 
-  it('is skipped while a recent unlock stands in for it', async () => {
-    hasEntryUnlockGrace.mockReturnValue(true);
+  it('is skipped while a recent unlock stands in for starting this protocol', async () => {
+    takeEntryUnlockGrace.mockReturnValue(true);
 
     await start();
 
     expect(requireFreshUnlock).not.toHaveBeenCalled();
+    expect(takeEntryUnlockGrace).toHaveBeenCalledWith({ protocolHash: 'hash' });
   });
 });

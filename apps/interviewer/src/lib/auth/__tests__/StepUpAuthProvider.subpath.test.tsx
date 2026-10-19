@@ -122,18 +122,16 @@ describe('StepUpAuthProvider and the unlock-to-enter grace', () => {
   it('starts when the lock screen is unlocked', async () => {
     mockAuth = { kind: 'locked', mode: 'pin' };
     const { grace, rerender } = await openInterviewPage();
-    expect(grace.hasEntryUnlockGrace()).toBe(false);
-
     mockAuth = { kind: 'unlocked', mode: 'pin' };
     rerender();
 
-    expect(grace.hasEntryUnlockGrace()).toBe(true);
+    expect(grace.takeEntryUnlockGrace({ sessionId: 's1' })).toBe(true);
   });
 
   it('is not started by a page that was never locked', async () => {
     const { grace, rerender } = await openInterviewPage();
     rerender();
 
-    expect(grace.hasEntryUnlockGrace()).toBe(false);
+    expect(grace.takeEntryUnlockGrace({ sessionId: 's1' })).toBe(false);
   });
 });
