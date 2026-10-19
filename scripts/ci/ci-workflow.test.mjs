@@ -1635,6 +1635,77 @@ test('8.x releases in either lane chain the sub-path dist after the release', ()
   assert.deepEqual(hotfixDist.permissions, { contents: 'write' });
 });
 
+// 8.x patches once 9.x is production: tag, release and tarball, never a
+// deploy, never "Latest", and never holding the normal lane's lock.
+test('the Architect maintenance lane releases an older line without deploying it', () => {
+  const source = readFileSync(
+    new URL('architect-maintenance-release.yml', WORKFLOW_DIR),
+    'utf8',
+  );
+  const maintenance = parse(source);
+  const definition = JSON.stringify(maintenance);
+  assert.deepEqual(Object.keys(maintenance.on), ['workflow_dispatch']);
+  assert.deepEqual(maintenance.permissions, { contents: 'read' });
+  assert.equal(maintenance.concurrency.group, 'architect-maintenance-release');
+  assert.notEqual(
+    maintenance.concurrency.group,
+    'apps-release-@codaco/architect',
+  );
+  // Parsed, so the comments explaining why may name what is absent.
+  assert.doesNotMatch(definition, /netlify/i);
+  assert.doesNotMatch(definition, /secrets\./);
+  assert.match(source, /NOTE\(human-setup-required\)/);
+
+  const { verify, release } = maintenance.jobs;
+  const verifyRun = runText(verify.steps);
+  assert.match(verifyRun, /"\$DISPATCH_REF" != 'refs\/heads\/main'/);
+  assert.match(verifyRun, /"\$SOURCE_REF" != maintenance\/architect-\*/);
+  assert.match(verifyRun, /git merge-base --is-ancestor "\$sha" origin\/main/);
+  assert.deepEqual(verify.permissions, { contents: 'read' });
+  assert.equal(verify.env.SCOPE, 'line');
+  assert.equal(verify.env.APP, 'architect');
+  assert.match(
+    verifyRun,
+    /node \.maintenance-lane\/\.github\/scripts\/resolve-hotfix-release\.mjs/,
+  );
+  assert.match(
+    verifyRun,
+    /pnpm exec turbo run typecheck test --filter="@codaco\/architect\.\.\."/,
+  );
+  assert.match(
+    verifyRun,
+    /ARCHITECT_BASE_PATH="\/v\$\{VERSION%%\.\*\}\/" pnpm --filter @codaco\/architect build/,
+  );
+
+  // The write token and the environment gate sit on a job that runs nothing
+  // from the branch.
+  assert.equal(release.environment, 'architect-maintenance-release');
+  assert.deepEqual(release.permissions, { contents: 'write' });
+  assert.equal(release.env.SCOPE, 'line');
+  assert.doesNotMatch(runText(release.steps), /pnpm/);
+  assert.equal(release.steps[0].with.ref, '${{ needs.verify.outputs.sha }}');
+  const releaseRun = runText(release.steps);
+  assert.match(releaseRun, /git fetch --tags --force origin/);
+  assert.match(
+    releaseRun,
+    /gh api -X POST "repos\/\$GITHUB_REPOSITORY\/git\/refs"/,
+  );
+  assert.match(releaseRun, /--since "\$SINCE"/);
+  const create = release.steps.find(
+    ({ name }) => name === 'Create the release',
+  );
+  assert.match(create.uses, /^softprops\/action-gh-release@[0-9a-f]{40}$/);
+  assert.equal(create.with.make_latest, 'false');
+  assert.equal(create.with.prerelease, false);
+  assert.equal(create.with.target_commitish, '${{ needs.verify.outputs.sha }}');
+
+  const dist = maintenance.jobs['subpath-dist'];
+  assert.equal(dist.needs, 'release');
+  assert.equal(dist.uses, './.github/workflows/architect-subpath-dist.yml');
+  assert.equal(dist.with.tag, '${{ needs.release.outputs.tag }}');
+  assert.equal(dist.with.skip_ineligible, false);
+});
+
 test('Fresco mirrors under the same release guard as the Netlify lanes', () => {
   const detectJob = job('apps-release-detect');
   assert.match(
