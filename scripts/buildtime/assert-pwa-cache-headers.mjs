@@ -90,18 +90,24 @@ const assertDirectiveSet = (path, actualValue, expectedDirectives) => {
   }
 };
 
+const NESTED_BASE_PATTERN = /^\/(?:[a-z0-9-]+\/)+$/;
+
 /**
  * Assert the deploy cache contract for one production PWA `_headers` file.
  * Stable entry points must never be stored; only content-hashed assets are
  * immutable. Netlify matches `_headers` against the requested URL before an
  * SPA rewrite, so `/*` must cover deep-link HTML requests. Its more-specific
  * `/assets/*` rule replaces Cache-Control for content-hashed assets.
- * `additionalImmutablePaths` names further content-hashed asset directories,
- * such as those of an app nested in the deploy under a sub-path.
+ *
+ * `nestedBases` lists sub-paths (such as `/v8/`) where the same deploy serves
+ * another build of the app. Netlify reads `_headers` only at the publish root,
+ * so the root file has to carry the nested app's contract as well: every
+ * stable path rebased under the nested base must be no-store, and the nested
+ * `assets/*` must be immutable.
  */
 export const assertPwaCacheHeaders = ({
   additionalStablePaths = [],
-  additionalImmutablePaths = [],
+  nestedBases = [],
   text,
 }) => {
   const rules = parseHeaderRules(text);
@@ -120,10 +126,22 @@ export const assertPwaCacheHeaders = ({
     NO_STORE_DIRECTIVES,
   );
 
-  for (const stablePath of [
-    ...COMMON_STABLE_PWA_PATHS,
-    ...additionalStablePaths,
-  ]) {
+  const stablePaths = [...COMMON_STABLE_PWA_PATHS, ...additionalStablePaths];
+  const immutablePaths = ['/assets/*'];
+  for (const base of nestedBases) {
+    if (!NESTED_BASE_PATTERN.test(base)) {
+      throw new Error(
+        `nested base must look like "/v8/"; received ${JSON.stringify(base)}`,
+      );
+    }
+    const rebase = (path) => `${base}${path.slice(1)}`;
+    stablePaths.push(
+      ...[...COMMON_STABLE_PWA_PATHS, ...additionalStablePaths].map(rebase),
+    );
+    immutablePaths.push(rebase('/assets/*'));
+  }
+
+  for (const stablePath of stablePaths) {
     assertDirectiveSet(
       stablePath,
       rulesByPath.get(stablePath)?.headers.get('cache-control'),
@@ -131,7 +149,7 @@ export const assertPwaCacheHeaders = ({
     );
   }
 
-  for (const immutablePath of ['/assets/*', ...additionalImmutablePaths]) {
+  for (const immutablePath of immutablePaths) {
     assertDirectiveSet(
       immutablePath,
       rulesByPath.get(immutablePath)?.headers.get('cache-control'),

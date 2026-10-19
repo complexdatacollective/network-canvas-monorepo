@@ -44,14 +44,8 @@ try {
       '/preview/',
       '/preview/index.html',
       '/architect-icon.png',
-      '/v8/',
-      '/v8/index.html',
-      '/v8/sw.js',
-      '/v8/manifest.webmanifest',
-      '/v8/preview/',
-      '/v8/preview/index.html',
     ],
-    additionalImmutablePaths: ['/v8/assets/*'],
+    nestedBases: ['/v8/'],
     text: readFileSync(path.join(dist, '_headers'), 'utf8'),
   });
   assertLegacyRedirects(readFileSync(path.join(dist, '_redirects'), 'utf8'));
