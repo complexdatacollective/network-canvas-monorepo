@@ -206,7 +206,15 @@ export default defineConfig(({ mode }) => {
           // installed app loses its connection. Precache every responsive
           // 4:3 candidate so the chooser and timeline work on first offline
           // use, regardless of which width Safari selects from srcset.
-          globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
+          globPatterns: [
+            '**/*.{js,css,html}',
+            '**/*.4x3.*.webp',
+            // Architect 9 installs a sub-path build's worker in the background,
+            // so its first visit may already be offline and never fills the
+            // runtime font and image caches. Precache the fonts and the hashed
+            // header icon (components/Brand.tsx) every screen renders.
+            ...(isSubpath ? ['**/*.woff2', 'assets/architect-icon-*.png'] : []),
+          ],
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
           navigateFallback: undefined,

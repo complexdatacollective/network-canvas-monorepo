@@ -215,6 +215,37 @@ if (missingStagePreviewAssets.length > 0) {
   );
 }
 
+// Architect 9 installs a sub-path build's worker in the background, so its
+// first visit may be offline: every font and the hashed header icon must be
+// precached there. The root build leaves both to its runtime caches.
+const offlineFirstVisitAssets = assetFiles
+  .filter((f) => f.endsWith('.woff2') || /^architect-icon-.+\.png$/.test(f))
+  .map((f) => `assets/${f}`);
+if (!offlineFirstVisitAssets.some((url) => url.endsWith('.woff2'))) {
+  fail('no .woff2 fonts emitted to dist/assets');
+}
+if (!offlineFirstVisitAssets.some((url) => url.endsWith('.png'))) {
+  fail('no hashed header icon (assets/architect-icon-*.png) emitted');
+}
+const manifestUrls = new Set(
+  [...sw.matchAll(/\{url:"([^"]+)",revision:/g)].map((m) => m[1]),
+);
+if (isSubpath) {
+  const missing = offlineFirstVisitAssets.filter(
+    (url) => !manifestUrls.has(url),
+  );
+  if (missing.length > 0) {
+    fail(
+      `a ${base} build must precache its fonts and header icon; missing: ${missing.join(', ')}`,
+    );
+  }
+} else {
+  const added = offlineFirstVisitAssets.filter((url) => manifestUrls.has(url));
+  if (added.length > 0) {
+    fail(`the root build precaches runtime-cached assets: ${added.join(', ')}`);
+  }
+}
+
 // Source maps are emitted only to be uploaded to PostHog, and the upload
 // deletes them (see vite.config.ts). One surviving here would publish the
 // app's full source with the deploy.
@@ -434,5 +465,5 @@ if (excluded.length > 0) {
 }
 
 console.log(
-  `PWA build ok (base ${base}): ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached`,
+  `PWA build ok (base ${base}): ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached${isSubpath ? `, plus ${offlineFirstVisitAssets.length} font and header-icon files` : ''}`,
 );
