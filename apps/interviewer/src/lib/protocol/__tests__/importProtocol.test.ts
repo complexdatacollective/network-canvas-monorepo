@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { interviewerCatalogSource } from '~/locales/catalogs';
 
-import { importProtocolFromFile } from '../importProtocol';
+import {
+  importProtocolFromFile,
+  isNewerSchemaVersion,
+  peekProtocol,
+} from '../importProtocol';
 
 const saveProtocolMock = vi.fn();
 
@@ -145,5 +149,74 @@ describe('importProtocolFromFile error reporting', () => {
       ).toContain(expectedGuidance);
     }
     expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('a protocol made for a newer schema', () => {
+  const newerProtocol = (schemaVersion: number | string) => ({
+    schemaVersion,
+    name: 'From the future',
+    description: '',
+    stages: [],
+    codebook: { node: {}, edge: {}, ego: {} },
+    assetManifest: {},
+  });
+
+  beforeEach(() => {
+    saveProtocolMock.mockReset();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  it('is refused with the newer-version message, not the generic one', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(newerProtocol(9)),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('newer-version');
+    expect(result.localizedMessage.descriptor.id).toBe(
+      'protocolValidation.file.newerVersion',
+    );
+    expect(result.message).toMatch(/made with a newer version/i);
+    expect(result.message).not.toMatch(IMPLEMENTATION_DETAIL);
+    expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
+
+  it('reads a version written as a string the same way', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(newerProtocol('12')),
+    });
+
+    const result = await importProtocolFromFile(asFile(bytes));
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('newer-version');
+  });
+
+  it('peeks the name and declared version without importing', async () => {
+    const bytes = await buildArchive({
+      'protocol.json': JSON.stringify(newerProtocol(9)),
+    });
+
+    await expect(peekProtocol(bytes)).resolves.toEqual({
+      name: 'From the future',
+      schemaVersion: 9,
+    });
+    await expect(peekProtocol(new Uint8Array([1, 2, 3]))).resolves.toEqual({
+      name: null,
+      schemaVersion: null,
+    });
+    expect(saveProtocolMock).not.toHaveBeenCalled();
+  });
+
+  it('counts only versions above this app’s as newer', () => {
+    expect(isNewerSchemaVersion(9)).toBe(true);
+    expect(isNewerSchemaVersion(8)).toBe(false);
+    expect(isNewerSchemaVersion(7)).toBe(false);
+    expect(isNewerSchemaVersion(null)).toBe(false);
   });
 });

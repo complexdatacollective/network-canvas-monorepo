@@ -14,7 +14,10 @@ import {
   validateProtocol,
   VersionedProtocolSchema,
 } from '@codaco/protocol-validation';
-import { describeProtocolFileErrorMessage } from '@codaco/protocol-validation/messages';
+import {
+  describeProtocolFileErrorMessage,
+  protocolFileErrorMessages,
+} from '@codaco/protocol-validation/messages';
 import { messageFailure, type LocalizedMessage } from '~/i18n/messageResult';
 
 import { saveProtocol } from '../db/api';
@@ -80,6 +83,7 @@ export type ImportProtocolFailure = {
   success: false;
   error:
     | 'extract-failed'
+    | 'newer-version'
     | 'unsupported-version'
     | 'validation-failed'
     | 'save-failed';
@@ -110,24 +114,57 @@ function formatValidationIssues(
   }));
 }
 
-export async function peekProtocolName(
-  buffer: Uint8Array,
-): Promise<string | null> {
+/**
+ * The schema version a protocol document declares, read leniently (schema 1
+ * wrote it as a string), or null when it declares none this code can read.
+ */
+function declaredSchemaVersion(document: unknown): number | null {
+  if (!isRecord(document)) return null;
+  const raw = document.schemaVersion;
+  const version = typeof raw === 'string' ? Number(raw) : raw;
+  return typeof version === 'number' && Number.isInteger(version)
+    ? version
+    : null;
+}
+
+/**
+ * Whether a declared schema version is newer than the one this app runs: such
+ * a protocol was made for a newer Interviewer, and no migration can bring it
+ * back to this one.
+ */
+export function isNewerSchemaVersion(version: number | null): boolean {
+  return version !== null && version > APP_SCHEMA_VERSION;
+}
+
+export type ProtocolPeek = {
+  /** The protocol's own name, when it has a usable one. */
+  name: string | null;
+  /** The schema version it declares, when it declares a readable one. */
+  schemaVersion: number | null;
+};
+
+/**
+ * Read a protocol file's name and declared schema version without importing
+ * it. Never rejects: an unreadable file peeks as nothing, and the import that
+ * follows explains what is wrong with it.
+ */
+export async function peekProtocol(buffer: Uint8Array): Promise<ProtocolPeek> {
   try {
     // Goes through the package's loader and reader rather than JSZip directly,
-    // so naming the pending card costs the same bounded inflation as importing
-    // it: this runs on a researcher-supplied file before any size guard, and
-    // an unbudgeted `.async('string')` here would inflate a deflate-bombed
-    // `protocol.json` in full just to read one field off it.
+    // so peeking costs the same bounded inflation as importing: this runs on a
+    // researcher-supplied file before any size guard.
     const zip = await loadNetcanvasArchive(buffer);
     const parsed: unknown = await createNetcanvasReader(zip).readProtocol();
-    if (!isRecord(parsed)) return null;
-    if (typeof parsed.name === 'string' && parsed.name.trim().length > 0) {
-      return parsed.name;
-    }
-    return null;
+    if (!isRecord(parsed)) return { name: null, schemaVersion: null };
+    return {
+      name:
+        typeof parsed.name === 'string' && parsed.name.trim().length > 0
+          ? parsed.name
+          : null,
+      schemaVersion: declaredSchemaVersion(parsed),
+    };
   } catch {
-    return null;
+    return { name: null, schemaVersion: null };
   }
 }
 
@@ -176,6 +213,14 @@ async function importParsedProtocol(
   onProgress?: OnImportProgress,
   nameOverride?: string,
 ): Promise<ImportProtocolResult> {
+  // A protocol made for a newer Interviewer says so, rather than failing as a
+  // document this version cannot even read the version of.
+  if (isNewerSchemaVersion(declaredSchemaVersion(document))) {
+    return importFailure('newer-version', {
+      descriptor: protocolFileErrorMessages.newerVersion,
+    });
+  }
+
   const version = detectSchemaVersion(document);
 
   let migratedDocument: unknown = document;

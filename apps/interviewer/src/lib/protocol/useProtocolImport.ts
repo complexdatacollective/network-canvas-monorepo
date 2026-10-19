@@ -5,7 +5,9 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
+import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import { updateSettings } from '~/lib/db/api';
+import { forwardFileToInterviewer9 } from '~/lib/handoff/interviewer9Handoff';
 
 import {
   type ImportPhase,
@@ -13,7 +15,8 @@ import {
   type ImportProtocolResult,
   importBundledProtocol,
   importProtocolFromFile,
-  peekProtocolName,
+  isNewerSchemaVersion,
+  peekProtocol,
 } from './importProtocol';
 import { openProtocolValidationDetailsDialog } from './ProtocolValidationDetailsDialog';
 import { SAMPLE_PROTOCOL } from './sampleProtocol';
@@ -140,7 +143,21 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
           return;
         }
       }
-      const peekedName = fileBuffer ? await peekProtocolName(fileBuffer) : null;
+      const peeked = fileBuffer ? await peekProtocol(fileBuffer) : null;
+      // An Interviewer 8 build (/v8/) hands a protocol made for a newer schema
+      // to Interviewer 9, which can run it. When the hand-off cannot be
+      // staged, the import below runs here and explains that the file is
+      // newer than this app.
+      if (
+        IS_SUBPATH_BUILD &&
+        request.source === 'file' &&
+        peeked &&
+        isNewerSchemaVersion(peeked.schemaVersion) &&
+        (await forwardFileToInterviewer9(request.file))
+      ) {
+        return;
+      }
+      const peekedName = peeked?.name ?? null;
       const fileLabel =
         request.source === 'file'
           ? (peekedName ?? request.label.replace(/\.netcanvas$/i, ''))
