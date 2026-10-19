@@ -29,6 +29,7 @@ import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
 } from './utils/fileLaunchQueue';
+import { pruneExpiredHandoffs } from './utils/handoffStore';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import {
   isRunningAsInstalledPwa,
@@ -60,6 +61,12 @@ initInstallPromptCapture();
 // capture before React mounts so early launches are queued until App consumes
 // them inside the fresco dialog provider.
 initFileLaunchCapture();
+
+// A file staged for another Architect major that was never taken (the page
+// that should have opened it never loaded) would otherwise stay forever.
+pruneExpiredHandoffs().catch((error: unknown) => {
+  reportError(error, { operation: 'handoff-prune' });
+});
 
 // During idle time, fetch stage thumbnails so they are already cached when the
 // timeline or stage editor first renders. When running as an installed PWA, also

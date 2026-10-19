@@ -83,6 +83,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "catalog:",
     "oxfmt": "catalog:",
     "playwright": "catalog:",
