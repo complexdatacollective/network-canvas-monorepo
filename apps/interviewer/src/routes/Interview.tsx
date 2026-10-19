@@ -43,6 +43,7 @@ import {
   buildResolvedAssets,
   makeAssetResolver,
 } from '~/lib/assets/assetResolver';
+import { hasEntryUnlockGrace } from '~/lib/auth/entryUnlockGrace';
 import { useStepUpAuth } from '~/lib/auth/StepUpAuthProvider';
 import {
   getProtocolByHash,
@@ -304,7 +305,13 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
       // the same interview. The user just authenticated at the LockScreen, so a
       // second step-up prompt would be redundant.
       const alreadyAuthorized = getAuthorizedInterviewId() === sessionId;
-      if (settings.requireUnlockOnEnter && !alreadyAuthorized) {
+      // In Interviewer 8 inside Interviewer 9, so does an unlock seconds ago
+      // on the page Interviewer 9 opened for this interview.
+      if (
+        settings.requireUnlockOnEnter &&
+        !alreadyAuthorized &&
+        !hasEntryUnlockGrace()
+      ) {
         const result = await requireFreshUnlock();
         if (!result.ok) {
           if (active) goHome();

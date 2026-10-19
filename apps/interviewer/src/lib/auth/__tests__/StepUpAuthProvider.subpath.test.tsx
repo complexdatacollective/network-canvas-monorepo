@@ -94,3 +94,46 @@ describe('StepUpAuthProvider recovery restriction at the root', () => {
     expect(await renderUnder('/', '/')).toBe('true');
   });
 });
+
+describe('StepUpAuthProvider and the unlock-to-enter grace', () => {
+  const openInterviewPage = async () => {
+    vi.stubEnv('BASE_URL', '/v8/');
+    window.history.replaceState({}, '', '/v8/interview/s1');
+    const [{ default: DialogProvider }, { Router }, provider, grace] =
+      await Promise.all([
+        import('@codaco/fresco-ui/dialogs/DialogProvider'),
+        import('wouter'),
+        import('../StepUpAuthProvider'),
+        import('../entryUnlockGrace'),
+      ]);
+    const tree = () => (
+      <Router base="/v8">
+        <DialogProvider>
+          <provider.StepUpAuthProvider>
+            <span />
+          </provider.StepUpAuthProvider>
+        </DialogProvider>
+      </Router>
+    );
+    const { rerender } = render(tree());
+    return { grace, rerender: () => rerender(tree()) };
+  };
+
+  it('starts when the lock screen is unlocked', async () => {
+    mockAuth = { kind: 'locked', mode: 'pin' };
+    const { grace, rerender } = await openInterviewPage();
+    expect(grace.hasEntryUnlockGrace()).toBe(false);
+
+    mockAuth = { kind: 'unlocked', mode: 'pin' };
+    rerender();
+
+    expect(grace.hasEntryUnlockGrace()).toBe(true);
+  });
+
+  it('is not started by a page that was never locked', async () => {
+    const { grace, rerender } = await openInterviewPage();
+    rerender();
+
+    expect(grace.hasEntryUnlockGrace()).toBe(false);
+  });
+});
