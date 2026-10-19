@@ -236,10 +236,11 @@ The app's `build` command runs Vite and then `scripts/assert-pwa-build.mjs`, whi
 fails the build if the service worker, manifest, or icons are missing from
 `dist/`, or if a critical JS chunk (the interview engine, mapbox-gl, the entry
 point) or responsive stage-preview image got silently dropped from the Workbox
-precache manifest. A deploy that passes this assertion is one that will actually
-boot and render the interview menu offline; treat an assertion failure as a hard
-release blocker, not a warning to route around. The assertion
-also validates the emitted `_headers`: the service worker, HTML shell (including
+precache manifest, or if any of the dev-only Development protocol (its JSON or
+media, matched by content) is in `dist/`. A deploy that passes this assertion is
+one that will actually boot and render the interview menu offline; treat an
+assertion failure as a hard release blocker, not a warning to route around.
+The assertion also validates the emitted `_headers`: the service worker, HTML shell (including
 requested SPA deep links), manifest, and stable icons must use
 `no-store, no-cache, max-age=0, must-revalidate`, while only content-hashed
 `/assets/*` may use a one-year immutable cache. The generated worker assertion

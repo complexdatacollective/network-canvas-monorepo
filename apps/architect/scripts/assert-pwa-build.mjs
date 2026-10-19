@@ -4,9 +4,10 @@
 // be precached. A missing critical asset breaks either the offline boot or the
 // first offline rendering of screen thumbnails. Architect precaches all of its
 // own JS (its `globIgnores` leaves out only the bundled Architect 8 under v8/),
-// so any excluded chunk is a real regression. (Sibling of
+// so any excluded chunk is a real regression. Nothing of the dev-only
+// Development protocol may be in the build at all. (Sibling of
 // apps/interviewer/scripts/assert-pwa-build.mjs, which instead checks named
-// critical chunks because it intentionally excludes its dev-protocol chunk.)
+// critical chunks.)
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -14,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { loadEnv } from 'vite';
 
+import { assertNoDevelopmentProtocol } from '../../../scripts/buildtime/assert-no-development-protocol.mjs';
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
 import {
   assertLegacyArchitectOutput,
@@ -49,6 +51,16 @@ try {
     text: readFileSync(path.join(dist, '_headers'), 'utf8'),
   });
   assertLegacyRedirects(readFileSync(path.join(dist, '_redirects'), 'utf8'));
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
+
+// The Development protocol is offered only in `vite dev` (Home.tsx), so none
+// of it — its JSON or its media, a ~24 MB video among them — belongs in a
+// production build. An eager asset glob emits its files even when no code path
+// reaches them, so this is checked against the output, not the source.
+try {
+  assertNoDevelopmentProtocol(dist);
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));
 }
@@ -383,5 +395,5 @@ if (excluded.length > 0) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; ${legacyArchitectV8.bundled ? `Architect ${legacyArchitectV8.pin.version} bundled at /v8/ outside the precache` : `no Architect 8 bundled (${legacyArchitectV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; ${legacyArchitectV8.bundled ? `Architect ${legacyArchitectV8.pin.version} bundled at /v8/ outside the precache` : `no Architect 8 bundled (${legacyArchitectV8.reason})`}, /v8/ left to its own worker; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; entry ${entry} + all ${jsAssets.length} JS chunks and ${stagePreviewAssets.length} stage-preview assets precached`,
 );

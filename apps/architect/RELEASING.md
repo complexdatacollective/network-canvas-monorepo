@@ -348,8 +348,9 @@ Netlify preview builds and the CI release job run `pnpm exec turbo run build
 missing the service worker, manifest, or icons, or if any emitted JS chunk or
 responsive screen-preview image was dropped from the Workbox precache manifest
 (e.g. for exceeding the size limit) — which would 404 offline and break either
-the offline boot or first rendering of screen thumbnails. Treat an assertion
-failure as a hard release blocker. Architect asserts that _every_ chunk in
+the offline boot or first rendering of screen thumbnails. It also fails if
+any of the dev-only Development protocol (its JSON or media, matched by
+content) is in `dist/`. Treat an assertion failure as a hard release blocker. Architect asserts that _every_ chunk in
 `dist/assets` is precached: its `globIgnores` leaves out only the bundled
 Architect 8 under `v8/` (see above). The assertion also validates the
 emitted `_headers`:

@@ -6,7 +6,11 @@ import developmentProtocolJson from '@codaco/protocols/development';
 
 // The Development Protocol, vendored in `@codaco/protocols`, so the dev-mode
 // template opens from the bundled app rather than a remote URL. It exercises
-// every stage type and is only surfaced in development builds.
+// every stage type and is only surfaced in development builds. Import this
+// module only dynamically and behind `import.meta.env.DEV`: a static import, or
+// an unguarded `import()`, puts the protocol and its media (a ~24 MB video
+// among them) into the production build, which scripts/assert-pwa-build.mjs
+// refuses.
 export const developmentProtocol =
   developmentProtocolJson as unknown as CurrentProtocol;
 
@@ -23,6 +27,11 @@ const urlBySource = new Map(
     url,
   ]),
 );
+
+// The bundled URL of one of the Development protocol's assets, for AssetCard's
+// preview fallback (see bundled-asset-url.ts).
+export const getDevelopmentAssetUrl = (source: string): string | null =>
+  urlBySource.get(source) ?? null;
 
 type ManifestEntry = { id: string; name: string; source?: string };
 

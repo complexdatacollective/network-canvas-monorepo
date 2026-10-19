@@ -171,13 +171,21 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             peekedName ?? undefined,
           );
         } else if (request.source === 'development') {
-          // Dynamically imported so its module (and the 23MB dev-only video
-          // it bundles) is split into a chunk production never fetches; the
-          // trigger that reaches this branch is itself DEV-gated in Home.
-          const { loadBundledDevelopmentProtocol } =
-            await import('./bundledDevelopmentProtocol');
-          const bundled = await loadBundledDevelopmentProtocol();
-          result = await importBundledProtocol(bundled, onProgress);
+          // Dev-only, like the trigger in Home. The import sits behind
+          // `import.meta.env.DEV`, which production replaces with `false`, so
+          // the module, the protocol and its media (a 23MB video among them)
+          // are left out of the production build rather than emitted as a
+          // chunk nothing fetches; scripts/assert-pwa-build.mjs checks that.
+          if (!import.meta.env.DEV) {
+            throw new Error(
+              'The Development protocol is only available in development',
+            );
+          } else {
+            const { loadBundledDevelopmentProtocol } =
+              await import('./bundledDevelopmentProtocol');
+            const bundled = await loadBundledDevelopmentProtocol();
+            result = await importBundledProtocol(bundled, onProgress);
+          }
         } else {
           // Dynamically imported so the sample's inlined media stays out of
           // the initial load. The chunk is precached, so this still resolves
