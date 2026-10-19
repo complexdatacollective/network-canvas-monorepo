@@ -15,6 +15,13 @@ vi.mock('../../storage', async () => {
   return { ...actual, requestPersistentStorage: requestPersistentStorageMock };
 });
 
+import {
+  deleteLegacyInterviewerDatabase,
+  fingerprintDatabase,
+  LEGACY_DB_NAME,
+  seedLegacyInterviewerDatabase,
+} from '~/testUtils/legacyInterviewerDatabase';
+
 import { db } from '../../db/db';
 import { getSessionDek, setSessionDek } from '../../db/sessionKey';
 import type { StoredSession } from '../../db/types';
@@ -217,5 +224,19 @@ describe('auth/api — revoke wipes and re-locks', () => {
     expect(getSessionDek()).toBeNull();
     expect((await authApi.status()).configured).toBe(false);
     deleteSpy.mockRestore();
+  });
+
+  it("deletes Interviewer 8's database with this app's: they share the lock", async () => {
+    await authApi.enrolWithPin('12345678');
+    await db.sessions.put(SESSION_ROW);
+    await seedLegacyInterviewerDatabase({ sessions: [SESSION_ROW] });
+    expect(await fingerprintDatabase(LEGACY_DB_NAME)).toBeDefined();
+
+    await authApi.revoke();
+
+    expect(await fingerprintDatabase(LEGACY_DB_NAME)).toBeUndefined();
+    expect(await db.sessions.get('to-wipe')).toBeUndefined();
+    expect((await authApi.status()).configured).toBe(false);
+    await deleteLegacyInterviewerDatabase();
   });
 });

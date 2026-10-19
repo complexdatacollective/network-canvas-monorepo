@@ -1,6 +1,10 @@
 import type { LocalizedMessage } from '../../i18n/messageResult';
 import { reencryptAllRecords } from '../db/api';
 import { db } from '../db/db';
+import {
+  deleteLegacyDatabases,
+  encryptLegacyDatabases,
+} from '../db/legacyVaultMaintenance';
 import { getSessionDek, setSessionDek } from '../db/sessionKey';
 import { requestPersistentStorage } from '../storage';
 import * as vault from '../vault/vault';
@@ -39,10 +43,15 @@ async function applyUnlock(result: vault.UnlockResult): Promise<AuthResult> {
 // write, silently and permanently defeating the retry. The security invariant
 // ("secured ⇒ existing data encrypted") is only met once the flag is cleared (a
 // run with zero failed rows).
+//
+// The lock is shared with Interviewer 8 (served at /v8/ on this origin), so the
+// same sweep encrypts Interviewer 8's plaintext rows too, and the same flag
+// covers both databases: it clears only once neither has a failure left.
 async function runReencryptionSweep(): Promise<void> {
   try {
-    const { failed } = await reencryptAllRecords();
-    setReencryptionPending(failed > 0);
+    const own = await reencryptAllRecords();
+    const legacy = await encryptLegacyDatabases();
+    setReencryptionPending(own.failed + legacy.failed > 0);
   } catch (error) {
     // No other reporting exists for this background sweep, and the security
     // invariant depends on knowing why it failed.
@@ -210,8 +219,12 @@ export async function lock(): Promise<void> {
 export async function revoke(): Promise<void> {
   // Drop the encrypted data DB first, then clear the vault record. If we fail
   // mid-revoke, leaving the vault record keeps a recoverable "configured but
-  // locked" state instead of an orphaned DB without a vault.
+  // locked" state instead of an orphaned DB without a vault. Every reset, mode
+  // switch and recovery-by-resetting comes through here, and the lock is
+  // shared with Interviewer 8, so its database goes too: its rows are
+  // encrypted under the key about to be discarded.
   await db.delete({ disableAutoOpen: false });
+  await deleteLegacyDatabases();
   await vault.revoke(); // clears the localStorage vault record + best-effort passkey delete
   setSessionDek(null);
 }
