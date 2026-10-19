@@ -1,8 +1,14 @@
+import { toAppPath } from '~/lib/appBase';
+
 const INTERVIEW_RECOVERY_RESTRICTION_KEY =
   'interviewer:interview-recovery-restricted';
 
+// Accepts a router path (`/interview/<id>`, from wouter under its base) and a
+// browser path (`window.location.pathname`, which carries the base in a /v8/
+// build) alike. The recovery restriction depends on this: a destructive reset
+// must never be offered over an interview, whichever base the app runs under.
 export function isInterviewRoutePath(path: string): boolean {
-  return /^\/interview\//i.test(path);
+  return /^\/interview\//i.test(toAppPath(path));
 }
 
 export function readInterviewRecoveryRestriction(): boolean {

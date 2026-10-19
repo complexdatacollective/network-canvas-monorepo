@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { Route, Switch, useLocation } from 'wouter';
+import { Route, Router, Switch, useLocation } from 'wouter';
 
 import { BackgroundLights } from '@codaco/art';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
@@ -8,6 +8,7 @@ import { ErrorBoundary } from './components/AppErrorBoundary';
 import { AppUpdateProvider } from './components/AppUpdate/AppUpdateProvider';
 import { AuthGate } from './components/AuthGate';
 import { InterviewerI18nProvider } from './i18n/InterviewerI18nProvider';
+import { ROUTER_BASE } from './lib/appBase';
 import { AppProviders } from './providers/AppProviders';
 import { HomeRoute } from './routes/Home';
 import { InterviewRoute } from './routes/Interview';
@@ -30,7 +31,18 @@ function pageKeyFor(location: string): string {
   return location === '/' || location === '/data' ? 'home' : location;
 }
 
+// '' at the root (wouter's own default), '/v8' when Interviewer 8 runs inside
+// Interviewer 9's deploy: every route, Link and navigate below is then
+// relative to it.
 export default function App() {
+  return (
+    <Router base={ROUTER_BASE}>
+      <AppRoutes />
+    </Router>
+  );
+}
+
+function AppRoutes() {
   const [location] = useLocation();
 
   // The interview route paints its own opaque background across the viewport

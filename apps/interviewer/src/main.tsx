@@ -13,6 +13,10 @@ import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
 } from './lib/pwa/fileLaunchQueue';
+import {
+  getAppServiceWorkerContainer,
+  isInterviewPagePath,
+} from './lib/pwa/freshLoadScope';
 import { initInstallPromptCapture } from './lib/pwa/installPrompt';
 import { announceLoadingScreen } from './lib/pwa/loadingScreen';
 import { LoadingScreenHandoff } from './lib/pwa/LoadingScreenHandoff';
@@ -52,8 +56,12 @@ async function startApp(): Promise<void> {
   await Promise.all([
     applyFreshLoadServiceWorkerUpdate({
       reload: false,
+      // In a sub-path build only this build's own registration is ever acted
+      // on: until /v8/sw.js takes over, Interviewer 9's root worker controls a
+      // /v8/ page, and activating its waiting worker is not this app's call.
+      serviceWorker: getAppServiceWorkerContainer(),
       shouldSkip: () =>
-        window.location.pathname.startsWith('/interview/') ||
+        isInterviewPagePath(window.location.pathname) ||
         hasPendingLaunchFiles(),
     }),
     // Load the startup language before the first render, alongside the update
