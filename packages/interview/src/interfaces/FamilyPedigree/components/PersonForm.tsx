@@ -90,6 +90,8 @@ import {
   siblingsOf,
   standInPlaceTakenFor,
   twinCandidatesOf,
+  twinCarrierOf,
+  twinCarrierUpdates,
   twinSetOf,
   twinsOf,
 } from '../model';
@@ -566,6 +568,28 @@ export default function PersonForm({
       unset.push(...patch.patch.unset);
     }
 
+    const twinChanges =
+      mode.kind === 'edit'
+        ? readTwinChanges(
+            draftFamily(family, mode.person.id, values),
+            mode.person.id,
+            values,
+          )
+        : undefined;
+    const linkUpdates =
+      mode.kind === 'edit'
+        ? readLinkUpdates(
+            family,
+            existingLinksOf(family, mode.person.id),
+            values,
+            standInsGivingWay(
+              family,
+              draftFamily(family, mode.person.id, values),
+              mode.person.id,
+              config.sexAssignedAtBirthAttribute,
+            ),
+          )
+        : undefined;
     return onSubmit({
       set,
       unset,
@@ -574,28 +598,20 @@ export default function PersonForm({
           ? readRequest(mode.relation, values, mode.anchor, family)
           : undefined,
       linkUpdates:
-        mode.kind === 'edit'
-          ? readLinkUpdates(
-              family,
-              existingLinksOf(family, mode.person.id),
-              values,
-              standInsGivingWay(
+        mode.kind === 'edit' && linkUpdates
+          ? [
+              ...linkUpdates,
+              ...twinCarrierSync(
                 family,
-                draftFamily(family, mode.person.id, values),
                 mode.person.id,
-                config.sexAssignedAtBirthAttribute,
+                linkUpdates,
+                twinChanges,
+                values,
               ),
-            )
+            ]
           : undefined,
       relativesAnswers: mode.kind === 'edit' ? relativesAnswers : undefined,
-      twinChanges:
-        mode.kind === 'edit'
-          ? readTwinChanges(
-              draftFamily(family, mode.person.id, values),
-              mode.person.id,
-              values,
-            )
-          : undefined,
+      twinChanges,
     });
   };
 
@@ -904,6 +920,42 @@ function readLinkUpdates(
   return updates;
 }
 
+/**
+ * Twins come from one pregnancy, so share one carrier: a change to who
+ * carried the person, or twins newly recorded for someone with a carrier,
+ * records that carrier for each of their twins as the answers leave them
+ * (`twinCarrierUpdates`).
+ */
+function twinCarrierSync(
+  family: Family,
+  personId: string,
+  linkUpdates: readonly LinkUpdate[],
+  twinChanges: ReturnType<typeof readTwinChanges>,
+  values: Record<string, FieldValue>,
+): LinkUpdate[] {
+  const updated = new Map(linkUpdates.map((update) => [update.linkId, update]));
+  const carrier = existingLinksOf(family, personId).parents.find((link) => {
+    const update = updated.get(link.id);
+    return update === undefined
+      ? link.isGestationalCarrier === true
+      : update.isGestationalCarrier === true;
+  })?.source;
+  const twinIds = (
+    twinChanges === undefined
+      ? twinSetOf(family, personId)
+      : asStringArray(values[ROLE.twins]).flatMap((twinId) =>
+          twinSetOf(family, twinId),
+        )
+  ).filter((id, at, all) => id !== personId && all.indexOf(id) === at);
+  const changed = carrier !== carrierOf(family, personId);
+  const joined = (twinChanges?.added.length ?? 0) > 0 && carrier !== undefined;
+  if (!changed && !joined) return [];
+  return twinCarrierUpdates(family, twinIds, carrier).map((update) => ({
+    ...update,
+    isCurrentPartner: true,
+  }));
+}
+
 const twinZygosityField = (twinId: string) => `pedigreeTwin:${twinId}`;
 
 /** The answers about the person's twins, as the changes to make, in
@@ -1139,13 +1191,22 @@ function ExistingRelationshipFields({
     geneticParentsPossible(
       otherGeneticParents(link).map(sexOf).concat(sexOf(link.source)),
     );
+  // Twins come from one pregnancy: someone with nobody recorded as carrying
+  // them was carried by whoever carried their twins, until answered
+  // otherwise.
+  const twinsCarrier = hasCarrier(family, person.id)
+    ? undefined
+    : twinCarrierOf(family, person.id);
+  const recordedCarrying = (link: FamilyLink) =>
+    link.isGestationalCarrier ??
+    (twinsCarrier === undefined ? undefined : link.source === twinsCarrier);
   const carries = (link: FamilyLink) => {
     const kind = kindOf(link);
     if (kind === 'surrogate') return true;
     if (!mayHaveCarried(kind) || !canCarry(link)) return false;
     const carrier = linkValues[linkField(link, 'carrier')];
     return carrier === undefined
-      ? link.isGestationalCarrier === true
+      ? recordedCarrying(link) === true
       : carrier === true;
   };
   if (
@@ -1221,6 +1282,7 @@ function ExistingRelationshipFields({
             kindReasons={kindReasons}
             reasonContext={reasonContext}
             anotherCarrierId={anotherCarrier?.source}
+            recordedCarrying={recordedCarrying(link)}
             personId={person.id}
             personIsYou={isYou(person.id)}
             parentIsYou={isYou(link.source)}
@@ -1242,6 +1304,7 @@ function ParentLinkFields({
   kindReasons,
   reasonContext,
   anotherCarrierId,
+  recordedCarrying,
   personId,
   personIsYou,
   parentIsYou,
@@ -1262,6 +1325,9 @@ function ParentLinkFields({
   reasonContext: ReasonContext;
   /** Another of the person's parents who carried the pregnancy. */
   anotherCarrierId: string | undefined;
+  /** Whether this parent carried the pregnancy, as recorded, or as recorded
+   * for the person's twins while nothing is recorded for the person. */
+  recordedCarrying: boolean | undefined;
   /** The person the panel describes, this parent's child. */
   personId: string;
   personIsYou: string;
@@ -1299,8 +1365,7 @@ function ParentLinkFields({
     name: linkField(link, 'carrier'),
     nameMode: 'opaque',
     derived:
-      link.isGestationalCarrier ??
-      (anotherCarrierId === undefined ? undefined : false),
+      recordedCarrying ?? (anotherCarrierId === undefined ? undefined : false),
     isAvailable: (value) => value !== true || carriedYesReason === undefined,
   });
 
@@ -2229,6 +2294,7 @@ function ChildFields({
               label: text(wording.carrierUnknown),
             },
           ]}
+          required
           {...carrierAnswer}
         />
       )}
@@ -2343,10 +2409,20 @@ function SiblingFields({
           ids[0] ?? '',
           config.sexAssignedAtBirthAttribute,
         );
-  // An answer a later one has taken away is asked again.
+  // A twin was carried by whoever carried the twins they join, which is
+  // their answer until the participant gives another; the answer, whatever
+  // it is, is recorded for those twins too (`twinCarrierUpdates`). An answer
+  // a later one has taken away is asked again.
+  const isTwin = values[ROLE.twin] !== undefined && values[ROLE.twin] !== NONE;
+  const twinsCarrier = isTwin
+    ? (carrierOf(family, anchor.id) ?? twinCarrierOf(family, anchor.id))
+    : undefined;
   const carrierAnswer = useDerivedAnswer({
     name: ROLE.carrier,
-    derived: undefined,
+    derived:
+      twinsCarrier !== undefined && carriers.includes(twinsCarrier)
+        ? twinsCarrier
+        : undefined,
     isAvailable: (id) =>
       carriers.length > 0 &&
       (id === NONE || (typeof id === 'string' && carriers.includes(id))),
@@ -2584,21 +2660,6 @@ function SiblingFields({
           {...secondAnswerKept}
         />
       )}
-      {carriers.length > 0 && (
-        <Field
-          component={RadioGroupField}
-          name={ROLE.carrier}
-          label={text(wording.carrierLabel)}
-          options={[
-            ...carriers.map((id) => ({ value: id, label: parentLabel(id) })),
-            {
-              value: NONE,
-              label: text(wording.carrierUnknown),
-            },
-          ]}
-          {...carrierAnswer}
-        />
-      )}
       <Field
         component={RadioGroupField}
         name={ROLE.twin}
@@ -2625,6 +2686,22 @@ function SiblingFields({
         ]}
         {...twinAnswer}
       />
+      {carriers.length > 0 && (
+        <Field
+          component={RadioGroupField}
+          name={ROLE.carrier}
+          label={text(wording.carrierLabel)}
+          options={[
+            ...carriers.map((id) => ({ value: id, label: parentLabel(id) })),
+            {
+              value: NONE,
+              label: text(wording.carrierUnknown),
+            },
+          ]}
+          required
+          {...carrierAnswer}
+        />
+      )}
     </>
   );
 }

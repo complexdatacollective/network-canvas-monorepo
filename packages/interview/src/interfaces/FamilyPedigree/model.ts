@@ -750,6 +750,9 @@ export type AdditionPlan = {
   /** Twins recorded as identical whose genetic parents the addition makes
    * differ, recorded as not known to be identical (`planStandIns`). */
   changedTwins?: TwinZygosityChange[];
+  /** The new sibling's twins recorded again as carried by whoever carried
+   * the sibling (`twinCarrierUpdates`). */
+  carrierUpdates?: CarrierUpdate[];
 };
 
 /** Two people to record as twins. */
@@ -1106,9 +1109,24 @@ export function planAddRelative({
       ? { ...link, isGestationalCarrier: true }
       : link,
   );
+  // A twin's carrier, a surrogate they share included, carried the twins
+  // they join too.
+  const carrierUpdates =
+    request.relation === 'sibling' && (plan.twins ?? []).length > 0
+      ? twinCarrierUpdates(
+          family,
+          twinSetOf(family, anchorId),
+          carrier ??
+            plan.links.find(
+              (link) =>
+                link.target === newPersonId && link.kind === 'surrogate',
+            )?.source,
+        )
+      : [];
   return {
     ...plan,
     links: settleCarriers(family, plan.people, answered, sexAttribute),
+    ...(carrierUpdates.length > 0 ? { carrierUpdates } : {}),
   };
 }
 
@@ -2242,6 +2260,61 @@ export function carrierOf(
   return parentLinksOf(family, personId).find(
     (link) => link.isGestationalCarrier,
   )?.source;
+}
+
+/**
+ * Whoever is recorded as having carried one of the person's twins. Twins
+ * come from one pregnancy, so one person carried them all.
+ */
+export function twinCarrierOf(
+  family: Family,
+  personId: string,
+): string | undefined {
+  for (const twinId of twinSetOf(family, personId)) {
+    if (twinId === personId) continue;
+    const carrier = carrierOf(family, twinId);
+    if (carrier !== undefined) return carrier;
+  }
+  return undefined;
+}
+
+/** A parent link recorded again as carrying the pregnancy, or not, or with
+ * nothing recorded (undefined) while not known. */
+export type CarrierUpdate = {
+  linkId: string;
+  kind: FamilyLinkKind;
+  isGestationalCarrier: boolean | undefined;
+};
+
+/**
+ * What records `carrierId` as the one who carried each of `twinIds`, or
+ * nobody known while it is undefined: twins come from one pregnancy, so
+ * share one carrier. Only parents who could have carried are changed, and a
+ * twin a surrogate carried keeps them, since a surrogate always carried the
+ * child they are the surrogate of.
+ */
+export function twinCarrierUpdates(
+  family: Family,
+  twinIds: readonly string[],
+  carrierId: string | undefined,
+): CarrierUpdate[] {
+  return twinIds.flatMap((twinId) => {
+    const links = parentLinksOf(family, twinId);
+    if (links.some((link) => link.kind === 'surrogate')) return [];
+    return links.flatMap((link) => {
+      if (
+        !mayHaveCarried(link.kind) ||
+        !couldCarryPregnancy(family.byId.get(link.source)?.sexAssignedAtBirth)
+      ) {
+        return [];
+      }
+      const carries =
+        carrierId === undefined ? undefined : link.source === carrierId;
+      return carries === link.isGestationalCarrier
+        ? []
+        : [{ linkId: link.id, kind: link.kind, isGestationalCarrier: carries }];
+    });
+  });
 }
 
 /** Whether `ancestorId` is the person's parent, a parent's parent, and so on. */

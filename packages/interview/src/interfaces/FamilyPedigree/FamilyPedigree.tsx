@@ -30,7 +30,10 @@ import {
   ToolbarSeparator,
   ToolbarToggleGroup,
 } from '@codaco/fresco-ui/SegmentedToolbar';
-import type { FramingId } from '@codaco/protocol-validation';
+import type {
+  FramingId,
+  PedigreeRelationshipKind,
+} from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -509,10 +512,35 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     const changedTwins = new Map(
       (plan.changedTwins ?? []).map((twin) => [twin.linkId, twin.zygosity]),
     );
+    // The twins a new sibling joins were carried by whoever carried them.
+    const recarried = new Map(
+      (plan.carrierUpdates ?? []).map((update) => [
+        update.linkId,
+        update.isGestationalCarrier,
+      ]),
+    );
     const keptEdges = edges
       .filter((edge) => !removedLinks.has(edge[entityPrimaryKeyProperty]))
       .map((edge) => {
-        const zygosity = changedTwins.get(edge[entityPrimaryKeyProperty]);
+        const linkId = edge[entityPrimaryKeyProperty];
+        if (recarried.has(linkId)) {
+          const {
+            [config.gestationalCarrierAttribute]: _recorded,
+            ...attributes
+          } = edge[entityAttributesProperty];
+          const carries = recarried.get(linkId);
+          return {
+            ...edge,
+            [entityAttributesProperty]:
+              carries === undefined
+                ? attributes
+                : {
+                    ...attributes,
+                    [config.gestationalCarrierAttribute]: carries,
+                  },
+          };
+        }
+        const zygosity = changedTwins.get(linkId);
         return zygosity
           ? {
               ...edge,
@@ -1824,6 +1852,42 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
     attributeData: twinAttributesFor(config, twin),
   });
 
+  // Records a parent or partner link again: its kind, and whether the parent
+  // carried the pregnancy or the partners are together. A carrier not known
+  // any more leaves nothing recorded.
+  const writeLinkUpdate = (update: {
+    linkId: string;
+    kind: PedigreeRelationshipKind;
+    isGestationalCarrier: boolean | undefined;
+    isCurrentPartner?: boolean;
+  }) =>
+    dispatch(
+      updateEdge({
+        edgeId: update.linkId,
+        attributePatch: {
+          set: {
+            [config.kindAttribute]: [update.kind],
+            ...(update.kind === 'partner'
+              ? {
+                  [config.currentPartnerAttribute]:
+                    update.isCurrentPartner ?? true,
+                }
+              : update.isGestationalCarrier === undefined
+                ? {}
+                : {
+                    [config.gestationalCarrierAttribute]:
+                      update.isGestationalCarrier,
+                  }),
+          },
+          unset:
+            update.kind !== 'partner' &&
+            update.isGestationalCarrier === undefined
+              ? [config.gestationalCarrierAttribute]
+              : [],
+        },
+      }),
+    );
+
   const addLink = (link: PlannedLink) =>
     dispatch(addEdge({ ...linkEdge(link), currentStep })).unwrap();
 
@@ -2106,32 +2170,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }
 
       for (const update of result.linkUpdates ?? []) {
-        const relinked = await dispatch(
-          updateEdge({
-            edgeId: update.linkId,
-            attributePatch: {
-              set: {
-                [config.kindAttribute]: [update.kind],
-                ...(update.kind === 'partner'
-                  ? {
-                      [config.currentPartnerAttribute]: update.isCurrentPartner,
-                    }
-                  : update.isGestationalCarrier === undefined
-                    ? {}
-                    : {
-                        [config.gestationalCarrierAttribute]:
-                          update.isGestationalCarrier,
-                      }),
-              },
-              // Not known any more: nothing recorded.
-              unset:
-                update.kind !== 'partner' &&
-                update.isGestationalCarrier === undefined
-                  ? [config.gestationalCarrierAttribute]
-                  : [],
-            },
-          }),
-        );
+        const relinked = await writeLinkUpdate(update);
         if (writeFailureMessage(relinked)) {
           return writeSubmissionResult(relinked);
         }
@@ -2259,7 +2298,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       removedLinkIds: plan.removedLinkIds,
       removedPersonIds: plan.removedPersonIds,
     });
-    if (refusedGiveWay) {
+    // The new sibling's twins were carried by whoever carried them.
+    let refusedCarrier: Awaited<ReturnType<typeof writeLinkUpdate>> | undefined;
+    for (const update of refusedGiveWay ? [] : (plan.carrierUpdates ?? [])) {
+      const recarried = await writeLinkUpdate(update);
+      if (writeFailureMessage(recarried)) {
+        refusedCarrier = recarried;
+        break;
+      }
+    }
+    const refused = refusedGiveWay ?? refusedCarrier;
+    if (refused) {
       // The addition is taken back with it, so it is still saved as one
       // change or not at all, and saving again adds everyone once. A
       // stand-in whose sex at birth already followed the addition keeps it
@@ -2271,7 +2320,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }
       for (const person of plan.people) dispatch(deleteNode(person.id));
       recordStandIns();
-      return writeSubmissionResult(refusedGiveWay);
+      return writeSubmissionResult(refused);
     }
     closePanel();
     await withdrawContradictedAnswers();
