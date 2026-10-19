@@ -15,6 +15,7 @@ import { ResumePill } from '~/components/ResumePill';
 import { SettingsDialog } from '~/components/SettingsDialog';
 import { StatusRow } from '~/components/StatusRow';
 import { TopActionBar } from '~/components/TopActionBar';
+import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import { revokeProtocolAssetUrls } from '~/lib/assets/assetResolver';
 import { deleteProtocol, updateSettings } from '~/lib/db/api';
 import type { StoredSession } from '~/lib/db/types';
@@ -295,8 +296,12 @@ export function HomeRoute() {
               // researcher's preference, and the dev-only build gate. The deck
               // drops a teaser whose protocol is already installed, and hands
               // its slot to the pending card while an install is in flight.
+              // Interviewer 8 inside Interviewer 9 offers no sample: Interviewer
+              // 9 has its own, made for schema 9.
               showSampleCard={
-                settings ? !settings.sampleProtocolDismissed : false
+                !IS_SUBPATH_BUILD && settings
+                  ? !settings.sampleProtocolDismissed
+                  : false
               }
               showDevelopmentCard={import.meta.env.DEV}
               pendingImports={pendingImports}

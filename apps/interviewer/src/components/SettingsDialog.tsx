@@ -43,6 +43,7 @@ import { SettingsRow } from '~/components/SettingsRow';
 import { useSetupWizard } from '~/components/SetupWizardDialog';
 import { LanguageSettings } from '~/i18n/LanguageSettings';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
+import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import { APP_VERSION } from '~/lib/appVersion';
 import { useAuth } from '~/lib/auth/AuthContext';
 import {
@@ -917,21 +918,23 @@ export function SettingsDialog({
                     </span>
                   }
                 />
-                <UnconnectedField
-                  name="showSampleProtocol"
-                  label={intl.formatMessage(
-                    messages.showSampleProtocolOnHomeScreen,
-                  )}
-                  hint={intl.formatMessage(
-                    messages.reShowsTheOneClickSampleProtocol,
-                  )}
-                  inline
-                  component={ToggleField}
-                  value={!settings.sampleProtocolDismissed}
-                  onChange={(next: boolean | undefined) =>
-                    void persist({ sampleProtocolDismissed: next !== true })
-                  }
-                />
+                {IS_SUBPATH_BUILD ? null : (
+                  <UnconnectedField
+                    name="showSampleProtocol"
+                    label={intl.formatMessage(
+                      messages.showSampleProtocolOnHomeScreen,
+                    )}
+                    hint={intl.formatMessage(
+                      messages.reShowsTheOneClickSampleProtocol,
+                    )}
+                    inline
+                    component={ToggleField}
+                    value={!settings.sampleProtocolDismissed}
+                    onChange={(next: boolean | undefined) =>
+                      void persist({ sampleProtocolDismissed: next !== true })
+                    }
+                  />
+                )}
               </>
             ) : null}
           </TabsPanel>

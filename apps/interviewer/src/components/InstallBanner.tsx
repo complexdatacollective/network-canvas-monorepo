@@ -8,6 +8,7 @@ import {
   getBrowserStorageProfile,
   StorageRiskBanner,
 } from '@codaco/fresco-ui/StorageRiskBanner';
+import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import {
   getDeferredPrompt,
   promptInstall,
@@ -128,7 +129,7 @@ export function InstallBannerView({
 // while installation protects against routine cleanup — so researchers should
 // install before collecting interviews. Dismissal lasts one session; the risk
 // persists, so it returns next launch.
-export function InstallBanner() {
+function InstallBannerPrompt() {
   const deferredPrompt = useSyncExternalStore(
     subscribeInstallPrompt,
     getDeferredPrompt,
@@ -160,4 +161,12 @@ export function InstallBanner() {
       onDismiss={dismiss}
     />
   );
+}
+
+// Interviewer 8 inside Interviewer 9's deploy is never offered for
+// installation: Interviewer 9 is the app to install, and Interviewer 8 opens
+// inside its window, sharing its storage. Installing both would also give
+// Interviewer 8 its own, empty storage on some platforms.
+export function InstallBanner() {
+  return IS_SUBPATH_BUILD ? null : <InstallBannerPrompt />;
 }

@@ -15,6 +15,15 @@ vi.mock('~/lib/pwa/installPrompt', () => ({
   promptInstall: mockPromptInstall,
 }));
 
+const appBase = vi.hoisted(() => ({ isSubpath: false }));
+
+vi.mock('~/lib/appBase', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/lib/appBase')>()),
+  get IS_SUBPATH_BUILD() {
+    return appBase.isSubpath;
+  },
+}));
+
 import { InstallBanner } from '../InstallBanner';
 
 const SESSION_DISMISS_KEY = 'interviewer:install-banner-dismissed';
@@ -61,12 +70,26 @@ const stubEnvironment = ({
 };
 
 afterEach(() => {
+  appBase.isSubpath = false;
   vi.clearAllMocks();
   vi.unstubAllGlobals();
   sessionStorage.clear();
 });
 
 describe('InstallBanner', () => {
+  // Interviewer 9 is the app to install; Interviewer 8 opens inside it.
+  it('is never shown by Interviewer 8 inside Interviewer 9 (a /v8/ build)', () => {
+    appBase.isSubpath = true;
+    stubEnvironment({ chromium: true });
+    mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
+    const { container } = render(<InstallBanner />);
+
+    expect(container).toBeEmptyDOMElement();
+    expect(
+      screen.queryByRole('status', { name: 'Install Interviewer' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('Chrome with a prompt: browser-specific low-risk copy and a one-tap Install', () => {
     stubEnvironment({ chromium: true });
     mockGetDeferredPrompt.mockReturnValue(FAKE_PROMPT);
