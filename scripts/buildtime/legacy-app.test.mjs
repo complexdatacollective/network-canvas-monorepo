@@ -25,7 +25,7 @@ import {
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 // Every app that serves its older major at /v8/.
-const APPS = ['interviewer'];
+const APPS = ['architect', 'interviewer'];
 
 describe('legacyApp', () => {
   it('derives every name Interviewer 8 is known by', () => {
@@ -46,6 +46,27 @@ describe('legacyApp', () => {
       },
       cacheDirName: 'interviewer-legacy',
       releaseTag: '@codaco/interviewer@8.5.0',
+    });
+  });
+
+  it('derives every name Architect 8 is known by', () => {
+    const app = legacyApp('architect');
+    expect({ ...app, releaseTag: app.releaseTag('8.5.0') }).toEqual({
+      name: 'architect',
+      appLabel: 'Architect',
+      label: 'Architect 8',
+      pinFile: 'legacy-architect.json',
+      tarballName: 'architect-v8-dist.tgz',
+      cachePrefix: 'architect-v8-',
+      htmlEntries: ['index.html', 'preview/index.html'],
+      defineName: '__ARCHITECT_V8__',
+      env: {
+        require: 'ARCHITECT_REQUIRE_LEGACY_V8',
+        skip: 'ARCHITECT_SKIP_LEGACY_V8',
+        tarball: 'ARCHITECT_LEGACY_V8_TARBALL',
+      },
+      cacheDirName: 'architect-legacy',
+      releaseTag: '@codaco/architect@8.5.0',
     });
   });
 
@@ -301,6 +322,26 @@ describe.each(APPS)('%s', (name) => {
         message,
       );
     });
+
+    // Every document the older build emits, not only its shell (Architect 8's
+    // stage preview is one of its own).
+    it.each(app.htmlEntries)(
+      'refuses a build whose %s loads an asset from the root',
+      (htmlEntry) => {
+        writeFiles(
+          directory,
+          files({
+            [htmlEntry]:
+              '<script src="/v8/assets/main-abc.js"></script><link href="/assets/x.css">',
+          }),
+        );
+        expect(() => validateLegacyAppDist(app, directory, pin())).toThrow(
+          new RegExp(
+            `${htmlEntry.replaceAll('.', '\\.')} loads assets from /assets/`,
+          ),
+        );
+      },
+    );
   });
 });
 

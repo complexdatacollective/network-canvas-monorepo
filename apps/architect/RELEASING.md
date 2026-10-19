@@ -246,8 +246,9 @@ directory pins one of them:
 Until a release is pinned the file reads `{ "v8": null }`.
 
 **What the build does.** `scripts/build.mjs` reads the pin through
-`scripts/legacy-architect.ts`, runs Vite, then has
-`scripts/bundle-legacy-architect.mjs` fetch the tarball, check its sha256,
+`scripts/buildtime/legacy-app.ts` (at the repository root, shared with
+Interviewer, which bundles Interviewer 8 the same way), runs Vite, then has
+`scripts/buildtime/bundle-legacy-app.mjs` fetch the tarball, check its sha256,
 refuse any entry that is not a plain file or directory or would land outside
 the extraction directory, check `dist-info.json` (`{tag, version, commit,
 base, cachePrefix}`) and the build itself against the pin, drop its

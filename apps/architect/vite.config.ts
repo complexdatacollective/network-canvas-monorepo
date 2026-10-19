@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -10,6 +9,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 import { appI18n } from '@codaco/app-i18n/vite';
 
+import { createLegacyAppPreviewPlugin } from '../../scripts/buildtime/legacy-app-preview-plugin.ts';
+import {
+  legacyApp,
+  legacyAppDefine,
+  loadLegacyAppV8,
+} from '../../scripts/buildtime/legacy-app.ts';
 import { createPostHogSourceMapsPlugin } from '../../scripts/buildtime/posthog-source-maps-plugin.ts';
 import {
   createPwaCacheReclamationPlugin,
@@ -17,16 +22,11 @@ import {
   matchRetainedPwaAsset,
 } from '../../scripts/buildtime/pwa-cache-reclamation-plugin.ts';
 import { version } from './package.json';
-import {
-  legacyArchitectDefine,
-  legacyArchitectPreviewRoute,
-  LEGACY_ARCHITECT_V8_DIST_DIR,
-  loadLegacyArchitectV8,
-} from './scripts/legacy-architect.ts';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(rootDir, '../..');
+const legacyArchitect = legacyApp('architect');
 
 // The Content-Security-Policy directives a <meta http-equiv> can express — i.e.
 // everything except frame-ancestors, which is header-only and stays in
@@ -73,49 +73,6 @@ const injectCspMeta = (): Plugin => ({
   },
 });
 
-// `vite preview` applies no _redirects, so its SPA fallback would answer a
-// /v8/ deep link with this app's shell. Serve Architect 8's from dist/v8
-// instead, whenever a build (or an e2e setup) has put one there.
-const serveBundledLegacyArchitect = (): Plugin => ({
-  name: 'architect-preview-legacy-architect',
-  configurePreviewServer(server) {
-    const legacyRoot = resolve(
-      server.config.root,
-      server.config.build.outDir,
-      LEGACY_ARCHITECT_V8_DIST_DIR,
-    );
-    server.middlewares.use((req, res, next) => {
-      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-      if (!statSync(join(legacyRoot, 'index.html'), { throwIfNoEntry: false }))
-        return next();
-      const url = new URL(req.url ?? '/', 'http://preview.invalid');
-      const route = legacyArchitectPreviewRoute(
-        url.pathname,
-        (relativePath) => {
-          try {
-            return (
-              statSync(join(legacyRoot, decodeURIComponent(relativePath)), {
-                throwIfNoEntry: false,
-              })?.isFile() ?? false
-            );
-          } catch {
-            return false;
-          }
-        },
-      );
-      if (route === null || 'serve' in route) return next();
-      if ('redirect' in route) {
-        res.statusCode = 301;
-        res.setHeader('Location', `${route.redirect}${url.search}`);
-        res.end();
-        return;
-      }
-      req.url = `${route.rewrite}${url.search}`;
-      next();
-    });
-  },
-});
-
 // https://vite.dev/config/
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, rootDir, '');
@@ -124,7 +81,7 @@ export default defineConfig(({ command, mode }) => {
   // dist/v8 will hold it. The dev server serves no /v8/, so it never does.
   const legacyArchitectV8 =
     command === 'build'
-      ? legacyArchitectDefine(loadLegacyArchitectV8(rootDir, env))
+      ? legacyAppDefine(loadLegacyAppV8(legacyArchitect, rootDir, env))
       : null;
   // This ID belongs to the generated bundle, not just its package release. Dev
   // deploys can publish several different bundles at the same package version;
@@ -169,13 +126,16 @@ export default defineConfig(({ command, mode }) => {
       }),
       react(),
       tailwindcss(),
-      serveBundledLegacyArchitect(),
+      // `vite preview` applies no _redirects, so its SPA fallback would
+      // answer a /v8/ deep link with this app's shell; this serves Architect
+      // 8's from dist/v8 whenever a build (or an e2e setup) has put one there.
+      createLegacyAppPreviewPlugin(legacyArchitect),
       // Architect 8 is served at /v8/ beside the root app with its own worker
       // and 'architect-v8-' caches, which 'architect-' would otherwise match.
       createPwaCacheReclamationPlugin({
         appCachePrefix: 'architect-',
         buildId: pwaCacheId,
-        foreignCachePrefixes: ['architect-v8-'],
+        foreignCachePrefixes: [legacyArchitect.cachePrefix],
         foreignScopePaths: ['/v8/'],
       }),
       VitePWA({

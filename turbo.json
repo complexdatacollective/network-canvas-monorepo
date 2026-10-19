@@ -110,6 +110,10 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
         "$TURBO_ROOT$/scripts/buildtime/assert-pwa-cache-headers.mjs",
+        "$TURBO_ROOT$/scripts/buildtime/bundle-legacy-app.mjs",
+        "$TURBO_ROOT$/scripts/buildtime/legacy-app-assertions.ts",
+        "$TURBO_ROOT$/scripts/buildtime/legacy-app-preview-plugin.ts",
+        "$TURBO_ROOT$/scripts/buildtime/legacy-app.ts",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         // The Architect 8 pin: dist/v8 is extracted from the tarball it names,
@@ -138,7 +142,7 @@
         "VITE_DISABLE_ANIMATIONS",
         "POSTHOG_PERSONAL_API_KEY",
         "POSTHOG_PROJECT_ID",
-        // Whether dist/v8 holds Architect 8 (scripts/legacy-architect.ts).
+        // Whether dist/v8 holds Architect 8 (scripts/buildtime/legacy-app.ts).
         // Hashed, so a release build that requires it can never replay an
         // entry built without it.
         "ARCHITECT_REQUIRE_LEGACY_V8",

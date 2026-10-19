@@ -45,6 +45,12 @@ const RELEASE_DOWNLOAD_PREFIX =
  * from under /v8/ (the same list as package-app-subpath-dist.mjs on main).
  */
 const LEGACY_APP_CONFIGS = {
+  architect: {
+    label: 'Architect',
+    envPrefix: 'ARCHITECT',
+    // Architect 8's stage preview is a document of its own.
+    htmlEntries: ['index.html', 'preview/index.html'],
+  },
   interviewer: {
     label: 'Interviewer',
     envPrefix: 'INTERVIEWER',

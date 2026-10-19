@@ -22,62 +22,67 @@ import {
 } from './legacy-app-fixture.mjs';
 import { legacyApp } from './legacy-app.ts';
 
-const app = legacyApp('interviewer');
-const fixturePin = (sha) => appFixturePin(app, sha);
-const legacyDistFiles = (overrides) => appLegacyDistFiles(app, overrides);
+// Every app that serves its older major at /v8/.
+const APPS = ['architect', 'interviewer'];
 
-let root;
-let appRoot;
-let dist;
-let tarball;
-let sha256;
+describe.each(APPS)('bundleLegacyApp for %s', (name) => {
+  const app = legacyApp(name);
+  const fixturePin = (sha) => appFixturePin(app, sha);
+  const legacyDistFiles = (overrides) => appLegacyDistFiles(app, overrides);
+  const tarballEnv = (path) => ({ [app.env.tarball]: path });
+  const tarballVariable = app.env.tarball;
 
-const cacheDir = () =>
-  join(appRoot, 'node_modules', '.cache', 'interviewer-legacy');
+  let root;
+  let appRoot;
+  let dist;
+  let tarball;
+  let sha256;
 
-const packFixture = (files = legacyDistFiles(), extraTarArgs = []) => {
-  const source = mkdtempSync(join(root, 'source-'));
-  writeFiles(source, files);
-  return packTarball(source, tarball, extraTarArgs);
-};
+  const cacheDir = () =>
+    join(appRoot, 'node_modules', '.cache', app.cacheDirName);
 
-const okResponse = (bytes) =>
-  new Response(new Uint8Array(bytes), { status: 200 });
+  const packFixture = (files = legacyDistFiles(), extraTarArgs = []) => {
+    const source = mkdtempSync(join(root, 'source-'));
+    writeFiles(source, files);
+    return packTarball(source, tarball, extraTarArgs);
+  };
 
-const run = (options = {}) =>
-  bundleLegacyApp({
-    app,
-    appRoot,
-    dist,
-    pin: fixturePin(sha256),
-    env: { INTERVIEWER_LEGACY_V8_TARBALL: tarball },
-    fetchImpl: vi.fn(),
-    retryDelayMs: 0,
-    log: () => {},
-    ...options,
+  const okResponse = (bytes) =>
+    new Response(new Uint8Array(bytes), { status: 200 });
+
+  const run = (options = {}) =>
+    bundleLegacyApp({
+      app,
+      appRoot,
+      dist,
+      pin: fixturePin(sha256),
+      env: tarballEnv(tarball),
+      fetchImpl: vi.fn(),
+      retryDelayMs: 0,
+      log: () => {},
+      ...options,
+    });
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'bundle-legacy-app-'));
+    appRoot = join(root, 'app');
+    dist = join(appRoot, 'dist');
+    mkdirSync(dist, { recursive: true });
+    writeFileSync(join(dist, 'index.html'), `${app.appLabel} 9`);
+    tarball = join(root, app.tarballName);
+    sha256 = packFixture({
+      ...legacyDistFiles(),
+      // What the tarball must not bring along into the deploy.
+      '_headers': '/*\n  X-Test: 1\n',
+      '_redirects': '/* /index.html 200\n',
+      'assets/main-abc.js.map': '{}',
+    });
   });
 
-beforeEach(() => {
-  root = mkdtempSync(join(tmpdir(), 'bundle-legacy-app-'));
-  appRoot = join(root, 'app');
-  dist = join(appRoot, 'dist');
-  mkdirSync(dist, { recursive: true });
-  writeFileSync(join(dist, 'index.html'), 'interviewer 9');
-  tarball = join(root, 'interviewer-v8-dist.tgz');
-  sha256 = packFixture({
-    ...legacyDistFiles(),
-    // What the tarball must not bring along into the deploy.
-    '_headers': '/*\n  X-Test: 1\n',
-    '_redirects': '/* /index.html 200\n',
-    'assets/main-abc.js.map': '{}',
+  afterEach(() => {
+    rmSync(root, { recursive: true, force: true });
   });
-});
 
-afterEach(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-describe('bundleLegacyApp', () => {
   it('does nothing when nothing is pinned', async () => {
     await expect(run({ pin: null })).resolves.toBeNull();
     expect(existsSync(join(dist, 'v8'))).toBe(false);
@@ -86,27 +91,26 @@ describe('bundleLegacyApp', () => {
   it('installs a local tarball into dist/v8 without its hosting files or maps', async () => {
     await expect(run()).resolves.toBe(join(dist, 'v8'));
 
+    const byName = (a, b) => a.localeCompare(b);
     const installed = readdirSync(join(dist, 'v8'), { recursive: true })
       .map(String)
-      .toSorted();
-    expect(installed).toEqual(
-      [
-        'assets',
-        join('assets', 'main-abc.js'),
-        'dist-info.json',
-        'index.html',
-        'manifest.webmanifest',
-        'sw.js',
-      ].toSorted(),
+      .toSorted(byName);
+    // Every file the build has, and each directory on the way to one.
+    const expected = new Set(
+      Object.keys(legacyDistFiles()).flatMap((file) => {
+        const parts = file.split('/');
+        return parts.map((_part, index) => join(...parts.slice(0, index + 1)));
+      }),
     );
+    expect(installed).toEqual([...expected].toSorted(byName));
     // This app's own output is untouched, and no extraction directory is left.
     expect(readFileSync(join(dist, 'index.html'), 'utf8')).toBe(
-      'interviewer 9',
+      `${app.appLabel} 9`,
     );
     expect(readdirSync(cacheDir())).toEqual([]);
   });
 
-  it('replaces an Interviewer 8 already in dist', async () => {
+  it(`replaces a ${app.label} already in dist`, async () => {
     writeFiles(join(dist, 'v8'), { 'stale.js': 'old' });
     await run();
     expect(existsSync(join(dist, 'v8', 'stale.js'))).toBe(false);
@@ -115,7 +119,7 @@ describe('bundleLegacyApp', () => {
 
   it('refuses a local tarball that does not match the pin', async () => {
     await expect(run({ pin: fixturePin('b'.repeat(64)) })).rejects.toThrow(
-      /INTERVIEWER_LEGACY_V8_TARBALL .* hashes to/,
+      new RegExp(`${tarballVariable} .* hashes to`),
     );
     expect(existsSync(join(dist, 'v8'))).toBe(false);
   });
@@ -123,7 +127,7 @@ describe('bundleLegacyApp', () => {
   it('refuses a local tarball that does not exist', async () => {
     await expect(
       run({
-        env: { INTERVIEWER_LEGACY_V8_TARBALL: join(root, 'missing.tgz') },
+        env: tarballEnv(join(root, 'missing.tgz')),
       }),
     ).rejects.toThrow(/does not exist/);
   });
@@ -179,7 +183,7 @@ describe('bundleLegacyApp', () => {
   it('gives up after its attempts and says how to build without the network', async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new TypeError('fetch failed'));
     await expect(run({ env: {}, fetchImpl, attempts: 2 })).rejects.toThrow(
-      /after 2 attempts .*INTERVIEWER_LEGACY_V8_TARBALL/,
+      new RegExp(`after 2 attempts .*${tarballVariable}`),
     );
     expect(fetchImpl).toHaveBeenCalledTimes(2);
     expect(existsSync(join(dist, 'v8'))).toBe(false);
@@ -188,11 +192,12 @@ describe('bundleLegacyApp', () => {
   it('refuses a build that is not the pinned one', async () => {
     sha256 = packFixture(
       legacyDistFiles({
-        'sw.js':
-          'self.workbox.core.setCacheNameDetails({prefix:"interviewer-8.5.0-turbo-0123456789abcdef"});',
+        'sw.js': `self.workbox.core.setCacheNameDetails({prefix:"${name}-8.5.0-turbo-0123456789abcdef"});`,
       }),
     );
-    await expect(run()).rejects.toThrow(/precaches under "interviewer-8\.5\.0/);
+    await expect(run()).rejects.toThrow(
+      new RegExp(`precaches under "${name}-8\\.5\\.0`),
+    );
     expect(existsSync(join(dist, 'v8'))).toBe(false);
     expect(readdirSync(cacheDir())).toEqual([]);
   });

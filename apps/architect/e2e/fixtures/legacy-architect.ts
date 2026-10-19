@@ -6,7 +6,7 @@ import { createInterface } from 'node:readline';
 import { test as architectTest } from './architect-test.js';
 
 // A build of this app that offers Architect 8, for the specs that follow a
-// protocol out to it. See e2e/scripts/preview-with-legacy-architect.mjs for why
+// protocol out to it. See scripts/buildtime/preview-with-legacy-app.mjs for why
 // it is a build of its own and what it sets.
 //
 // At /v8/ it serves a stub page: the specs assert on the URL and on what was
@@ -16,9 +16,9 @@ import { test as architectTest } from './architect-test.js';
 // an index.html — so the stub stands where a bundled Architect 8 would.
 
 const APP_ROOT = path.resolve(import.meta.dirname, '../..');
-const SCRIPT = path.join(
-  import.meta.dirname,
-  '../scripts/preview-with-legacy-architect.mjs',
+const SCRIPT = path.resolve(
+  APP_ROOT,
+  '../../scripts/buildtime/preview-with-legacy-app.mjs',
 );
 // Above the default suite's 4301; one port and directory per concurrently
 // running worker.
@@ -59,7 +59,15 @@ export const test = architectTest.extend<
       const port = FIRST_PORT + workerInfo.parallelIndex;
       const child = spawn(
         process.execPath,
-        [SCRIPT, '--out-dir', outDir, '--port', String(port)],
+        [
+          SCRIPT,
+          '--app',
+          'architect',
+          '--out-dir',
+          outDir,
+          '--port',
+          String(port),
+        ],
         {
           cwd: APP_ROOT,
           env: {
