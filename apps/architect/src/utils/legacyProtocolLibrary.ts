@@ -117,6 +117,11 @@ const isAssetOf =
     (typeof value.data === 'string' || isObject(value.data));
 
 type LegacyProtocolReader = {
+  /**
+   * Whether the library exists on this origin yet. False, never a rejection,
+   * when the browser cannot say.
+   */
+  legacyLibraryExists: () => Promise<boolean>;
   /** Architect 8's protocols, most recently updated first. Never rejects. */
   listLegacyProtocols: () => Promise<LegacyStoredProtocolRow[]>;
   getLegacyProtocol: (
@@ -195,6 +200,15 @@ export const createLegacyProtocolReader = (
   };
 
   return {
+    legacyLibraryExists: async () => {
+      try {
+        // Wrapped for the same reason as in `connect`.
+        return (await Promise.resolve(databaseExists(dbName))) === true;
+      } catch {
+        return false;
+      }
+    },
+
     listLegacyProtocols: async () => {
       try {
         const database = await getDb();
@@ -257,6 +271,7 @@ export const createLegacyProtocolReader = (
 const reader = createLegacyProtocolReader();
 
 export const {
+  legacyLibraryExists,
   listLegacyProtocols,
   getLegacyProtocol,
   getLegacyAssets,

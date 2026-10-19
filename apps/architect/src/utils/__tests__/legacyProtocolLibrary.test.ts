@@ -159,6 +159,7 @@ afterEach(async () => {
 describe('legacy protocol reader', () => {
   describe('when Architect 8 has never run here', () => {
     it('reads nothing and never creates its database', async () => {
+      await expect(reader.legacyLibraryExists()).resolves.toBe(false);
       await expect(reader.listLegacyProtocols()).resolves.toEqual([]);
       await expect(reader.getLegacyProtocol('older')).resolves.toBeUndefined();
       await expect(reader.getLegacyAssets('older')).resolves.toEqual([]);
@@ -176,6 +177,7 @@ describe('legacy protocol reader', () => {
     beforeEach(seedTypicalLibrary);
 
     it('lists Architect 8’s protocols, newest first, ignoring anything else', async () => {
+      await expect(reader.legacyLibraryExists()).resolves.toBe(true);
       const rows = await reader.listLegacyProtocols();
 
       expect(rows.map((row) => row.id)).toEqual(['newer', 'schema-7', 'older']);
