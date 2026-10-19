@@ -1870,7 +1870,7 @@ export const FamilyInProgress: Story = {
     await expectPeople(6)(context);
     await expect(
       within(context.canvasElement).getByRole('button', {
-        name: 'Mia’s Biological father',
+        name: 'Mia’s biological father',
         description: /Some details are missing/,
       }),
     ).toBeVisible();
@@ -1930,7 +1930,7 @@ export const EachChildNeedsTheirOtherBiologicalParent: Story = {
     await waitFor(
       () =>
         expect(list()?.textContent?.replaceAll('\u00AD', '')).toContain(
-          'Some details are missing for “Mia’s Biological father”',
+          'Some details are missing for “Mia’s biological father”',
         ),
       { timeout: 5000 },
     );

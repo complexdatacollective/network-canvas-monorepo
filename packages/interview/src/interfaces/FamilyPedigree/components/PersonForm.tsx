@@ -55,7 +55,7 @@ import {
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { readOwnProperty, writeOwnProperty } from '../../../utils/ownProperty';
 import { RELATIVES_NOT_RECORDED } from '../completeness';
-import { formatRelativeTerm, parentTermFrom } from '../kinship';
+import { formatOwnedLabel, parentTermFrom } from '../kinship';
 import {
   type AddRelativeRequest,
   type Family,
@@ -1695,11 +1695,7 @@ function siblingParentLabel(
   const term = parentTermFrom(family, anchor.id, id, framing);
   return term === undefined
     ? displayName(id)
-    : words.text(words.wording.generatedLabelOf, {
-        relation: 'owner',
-        owner: displayName(anchor.id),
-        term: formatRelativeTerm(term, words),
-      });
+    : formatOwnedLabel(displayName(anchor.id), term, words);
 }
 
 /** The answers about a new sibling, as the request to add them. */

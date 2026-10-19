@@ -12,5 +12,6 @@ export const pedigreeWordsIn = (locale = 'en'): PedigreeWords => {
   return {
     wording: familyPedigreeWordingIn([locale]),
     text: (value, values) => format(locale, value[locale] ?? '', values),
+    locale,
   };
 };

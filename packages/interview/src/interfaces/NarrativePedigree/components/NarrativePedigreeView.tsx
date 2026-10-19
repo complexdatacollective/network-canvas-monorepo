@@ -65,6 +65,7 @@ import type { PedigreeLink } from '../../FamilyPedigree/pedigree-layout/types';
 import { pedigreeLinksOf } from '../../FamilyPedigree/pedigreeLinks';
 import {
   type PedigreeWords,
+  useKinshipLocale,
   usePedigreeText,
 } from '../../FamilyPedigree/pedigreeWords';
 import { usePanZoom } from '../../FamilyPedigree/usePanZoom';
@@ -245,10 +246,17 @@ export default function NarrativePedigreeView({
   // passphrase) by how they are related to the participant, in the source
   // stage's words. Soft hyphens let long kinship words break inside a symbol.
   const pedigreeText = usePedigreeText();
+  const kinshipLocale = useKinshipLocale(sourceStage?.wording);
   const sourceWords = useMemo<PedigreeWords | null>(
     () =>
-      sourceStage ? { wording: sourceStage.wording, text: pedigreeText } : null,
-    [sourceStage, pedigreeText],
+      sourceStage
+        ? {
+            wording: sourceStage.wording,
+            text: pedigreeText,
+            locale: kinshipLocale,
+          }
+        : null,
+    [sourceStage, pedigreeText, kinshipLocale],
   );
   const labels = useMemo(
     () =>

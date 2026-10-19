@@ -127,7 +127,7 @@ describe('generateLabels', () => {
     ];
     expect(labelsOf(nodes, edges)).toMatchObject({
       sis1: 'Sister (partner of Tom)',
-      ex: 'Sister’s Former partner',
+      ex: 'Sister’s former partner',
     });
     // Two such people, whose labels then match, are told apart.
     const both = labelsOf(
@@ -198,7 +198,7 @@ describe('generateLabels', () => {
       isaacsDad: 'Great-grandfather (parent of Isaac)',
       // Not through his son's qualified label, but through the nearest
       // relative known by a label of their own.
-      isaacsGrandad: 'Isaac’s Grandfather',
+      isaacsGrandad: 'Isaac’s grandfather',
     });
   });
 
@@ -225,9 +225,9 @@ describe('generateLabels', () => {
       ],
     );
     expect(labels).toMatchObject({
-      cousinsSon: 'Cousin’s Son',
-      cousinsGranddaughter: 'Cousin’s Granddaughter',
-      cousinsSonsPartner: 'Cousin’s Daughter-in-law',
+      cousinsSon: 'Cousin’s son',
+      cousinsGranddaughter: 'Cousin’s granddaughter',
+      cousinsSonsPartner: 'Cousin’s daughter-in-law',
     });
     for (const label of Object.values(labels)) {
       expect(label.split('’s ').length).toBeLessThanOrEqual(2);
@@ -250,7 +250,7 @@ describe('generateLabels', () => {
         link('greatGreatNan', 'greatNan', 'biological'),
       ],
     );
-    expect(labels.greatGreatNan).toBe('Great-grandmother’s Mother');
+    expect(labels.greatGreatNan).toBe('Great-grandmother’s mother');
   });
 
   test('two sisters are told apart by their named children', () => {

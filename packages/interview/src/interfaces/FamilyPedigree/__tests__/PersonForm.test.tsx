@@ -1784,7 +1784,7 @@ describe('questions worked out from the answers as they stand', () => {
     });
     expect(
       within(shared).getByRole('checkbox', {
-        name: /^priya’s Bio\u00ADlogical father$/,
+        name: /^priya’s bio\u00ADlogical father$/,
       }),
     ).toBeChecked();
     // A name is shown as typed.
