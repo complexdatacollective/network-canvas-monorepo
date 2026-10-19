@@ -451,6 +451,7 @@ jobs:
     uses: ./.github/workflows/architect-subpath-dist.yml
     with:
       tag: ${{ needs.hotfix-release.outputs.tag }}
+      expected_sha: ${{ needs.hotfix-release.outputs.sha }}
 
   # The push to the Fresco repository, from a job that has never run code from
   # the branch being released. It checks out the released commit for its DATA

@@ -166,7 +166,10 @@ released tag with `ARCHITECT_BASE_PATH=/v<major>/` and attaches
   maintenance release. It is chained by `workflow_call` because a release
   created with `GITHUB_TOKEN` fires no tag or release event. It runs in its
   own job, so a failure never turns a release that has already shipped red.
-  Dispatch it by hand from main to retry. Only tags whose tree can build under
+  Dispatch it by hand from main to retry. A chained run also receives the
+  commit the lane built and released, and refuses a tag that points anywhere
+  else: the tarball is built from the tag's tree, so it must be the released
+  one. Only tags whose tree can build under
   a sub-path are eligible (8.5.0 onwards, marked by
   `apps/architect/scripts/app-base-path.mjs`). A release lane skips an older
   tag with a notice; a dispatch for one fails.
@@ -240,8 +243,10 @@ nothing.
    job checks the version again, writes the notes since the line's previous
    release, claims the tag atomically, and creates the release. If the release
    is not created after the claim, the job deletes the tag again so the run
-   can be repeated. This job holds the write token and runs nothing from the
-   branch.
+   can be repeated. A run that died before that cleanup (a lost runner or a
+   timeout) leaves the tag with no release; re-running it first deletes a tag
+   that sits on the verified commit and has no release, then claims it again.
+   This job holds the write token and runs nothing from the branch.
    `resolve-hotfix-release.mjs` in its line scope (`SCOPE=line`) requires:
    - a version newer than every release on its own major line;
    - a major below the newest release overall;

@@ -227,6 +227,37 @@ jobs:
         with:
           node-version-file: '.maintenance-lane/.nvmrc'
 
+      # The rollback step below gives up a claim whose release failed, but a
+      # run that died outright (a lost runner, a job timeout) skips it and
+      # leaves the tag behind. The resolver then refuses the version as
+      # already released, and the dist workflow finds no release to attach
+      # to, so neither a re-run nor a dispatch could finish it. A lightweight
+      # tag at exactly the verified commit with no release is such a claim:
+      # nothing was published from it, and this lane's concurrency group
+      # means no other maintenance run is holding it. Anything else, or a
+      # lookup that does not answer plainly, is left for the re-check to
+      # refuse.
+      - name: Give up a claim an earlier attempt left without a release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: '@codaco/architect@${{ needs.verify.outputs.version }}'
+          SHA: ${{ needs.verify.outputs.sha }}
+        run: |
+          set -euo pipefail
+          encoded="$(jq -rn --arg t "$TAG" '$t|@uri')"
+          if ! ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" 2>/dev/null)"; then
+            exit 0
+          fi
+          if [[ "$(jq -r '.object.type' <<<"$ref")" != 'commit' || "$(jq -r '.object.sha' <<<"$ref")" != "$SHA" ]]; then
+            exit 0
+          fi
+          status="$(gh api -i "repos/$GITHUB_REPOSITORY/releases/tags/${encoded}" 2>/dev/null | head -1 || true)"
+          if [[ "$status" != HTTP/*' 404'* ]]; then
+            exit 0
+          fi
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG"
+          echo "::notice::Deleted $TAG, which an earlier attempt claimed at $SHA without creating its release, so this attempt can claim it again."
+
       # The verdict in `verify` predates its build and the approval wait; a
       # release on this line (or the line becoming the newest) since then must
       # stop the run with nothing claimed.
@@ -300,12 +331,13 @@ jobs:
   # anyone. Its summary prints the pin to update. Only the called workflow's
   # publish job, which runs no code from the tag, uses the write.
   subpath-dist:
-    needs: release
+    needs: [verify, release]
     permissions:
       contents: write
     uses: ./.github/workflows/architect-subpath-dist.yml
     with:
       tag: ${{ needs.release.outputs.tag }}
+      expected_sha: ${{ needs.verify.outputs.sha }}
       # Unlike the release lanes, a tarball is this lane's whole product, so a
       # tag that cannot be built under a sub-path fails the run.
       skip_ineligible: false

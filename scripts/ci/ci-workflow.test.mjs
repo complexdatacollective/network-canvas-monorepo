@@ -1510,6 +1510,10 @@ test('the sub-path dist lane builds a released tag without a write token', () =>
   assert.equal(dist.on.workflow_dispatch.inputs.skip_ineligible, undefined);
   assert.equal(dist.on.workflow_call.secrets, undefined);
   assert.deepEqual(dist.permissions, { contents: 'read' });
+  // A chained run names the commit its lane released; the tag must point at
+  // it, or the tarball would ship a later commit's tree under that version.
+  assert.equal(dist.on.workflow_call.inputs.expected_sha.default, '');
+  assert.equal(dist.on.workflow_dispatch.inputs.expected_sha, undefined);
 
   const { resolve, build, publish } = dist.jobs;
   const resolveRun = runText(resolve.steps);
@@ -1540,6 +1544,23 @@ test('the sub-path dist lane builds a released tag without a write token', () =>
     /"\$has_tarball" == 'true' && "\$has_checksum" == 'true'/,
   );
   assert.match(resolveRun, /has only part of its sub-path dist/);
+  const commitCheck = resolve.steps.find(
+    ({ name }) => name === 'Check the tag names the released commit',
+  );
+  assert.equal(commitCheck.if, "inputs.expected_sha != ''");
+  assert.equal(commitCheck.env.TAGGED, '${{ steps.guard.outputs.sha }}');
+  assert.equal(commitCheck.env.EXPECTED, '${{ inputs.expected_sha }}');
+  assert.match(
+    commitCheck.run,
+    /if \[\[ "\$TAGGED" != "\$EXPECTED" \]\]; then/,
+  );
+  assert.match(commitCheck.run, /exit 1/);
+  const resolveStepIndex = (name) =>
+    resolve.steps.findIndex((step) => step.name === name);
+  assert.ok(
+    resolveStepIndex('Resolve and guard tag') <
+      resolveStepIndex('Check the tag names the released commit'),
+  );
 
   // The build runs the tag's code: read-only token, no secret, not turbo
   // (a cached root-mode dist must never be labelled as the sub-path one).
@@ -1597,6 +1618,13 @@ test('8.x releases in either lane chain the sub-path dist after the release', ()
     architect.outputs.tag,
     '@codaco/architect@${{ needs.apps-release-detect.outputs.architect_version }}',
   );
+  // The tag is created at the commit built and deployed, not at whatever
+  // main's tip is when the release is published.
+  assert.equal(architect.outputs.sha, '${{ github.sha }}');
+  const architectRelease = architect.steps.find(({ uses }) =>
+    uses?.startsWith('softprops/action-gh-release@'),
+  );
+  assert.equal(architectRelease.with.target_commitish, '${{ github.sha }}');
 
   const chained = parsedWorkflow.jobs['apps-release-architect-subpath-dist'];
   assert.deepEqual(chained.needs, [
@@ -1616,6 +1644,10 @@ test('8.x releases in either lane chain the sub-path dist after the release', ()
   assert.equal(
     chained.with.tag,
     '${{ needs.apps-release-architect.outputs.tag }}',
+  );
+  assert.equal(
+    chained.with.expected_sha,
+    '${{ needs.apps-release-architect.outputs.sha }}',
   );
   // A dist failure must not fail the release job it follows.
   assert.doesNotMatch(
@@ -1640,6 +1672,10 @@ test('8.x releases in either lane chain the sub-path dist after the release', ()
     './.github/workflows/architect-subpath-dist.yml',
   );
   assert.deepEqual(hotfixDist.permissions, { contents: 'write' });
+  assert.equal(
+    hotfixDist.with.expected_sha,
+    '${{ needs.hotfix-release.outputs.sha }}',
+  );
 });
 
 // 8.x patches once 9.x is production: tag, release and tarball, never a
@@ -1729,10 +1765,35 @@ test('the Architect maintenance lane releases an older line without deploying it
     /gh api -X DELETE "repos\/\$GITHUB_REPOSITORY\/git\/refs\/tags\/\$TAG"/,
   );
 
+  // A re-run after a run that died between the claim and the release (so
+  // the rollback never ran) gives up only a lightweight tag on the verified
+  // commit with no release, before the re-check would refuse the version.
+  const reclaim = release.steps.find(
+    ({ name }) =>
+      name === 'Give up a claim an earlier attempt left without a release',
+  );
+  assert.ok(
+    stepIndex('Give up a claim an earlier attempt left without a release') <
+      stepIndex('Re-check the version against the newest releases'),
+  );
+  assert.equal(reclaim.env.SHA, '${{ needs.verify.outputs.sha }}');
+  assert.equal(
+    reclaim.env.TAG,
+    '@codaco/architect@${{ needs.verify.outputs.version }}',
+  );
+  assert.match(reclaim.run, /'\.object\.type' <<<"\$ref"\)" != 'commit'/);
+  assert.match(reclaim.run, /'\.object\.sha' <<<"\$ref"\)" != "\$SHA"/);
+  assert.match(reclaim.run, /"\$status" != HTTP\/\*' 404'\*/);
+  assert.match(
+    reclaim.run,
+    /gh api -X DELETE "repos\/\$GITHUB_REPOSITORY\/git\/refs\/tags\/\$TAG"/,
+  );
+
   const dist = maintenance.jobs['subpath-dist'];
-  assert.equal(dist.needs, 'release');
+  assert.deepEqual(dist.needs, ['verify', 'release']);
   assert.equal(dist.uses, './.github/workflows/architect-subpath-dist.yml');
   assert.equal(dist.with.tag, '${{ needs.release.outputs.tag }}');
+  assert.equal(dist.with.expected_sha, '${{ needs.verify.outputs.sha }}');
   assert.equal(dist.with.skip_ineligible, false);
 });
 

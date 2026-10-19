@@ -73,6 +73,13 @@ on:
         required: false
         default: ''
         type: string
+      # The commit the calling lane released. The tag is only trusted to
+      # name it: a tag created at a later commit would ship that commit's
+      # tree under this version. A dispatch never sets it (undeclared there).
+      expected_sha:
+        required: false
+        default: ''
+        type: string
       # A release lane calls this after its release has shipped, so a tag that
       # cannot be built under a sub-path is skipped with a notice. A dispatch
       # never sets it (undeclared there), so asking by hand for an ineligible
@@ -136,6 +143,18 @@ jobs:
           TAG: ${{ inputs.tag }}
           FORCE: 'false'
         run: bash .github/scripts/architect-archive-guard.sh
+
+      - name: Check the tag names the released commit
+        if: inputs.expected_sha != ''
+        env:
+          TAG: ${{ inputs.tag }}
+          TAGGED: ${{ steps.guard.outputs.sha }}
+          EXPECTED: ${{ inputs.expected_sha }}
+        run: |
+          if [[ "$TAGGED" != "$EXPECTED" ]]; then
+            echo "::error::$TAG points at $TAGGED, not the released commit $EXPECTED. Its tree is not what was released, so no sub-path dist is built from it. Move the tag to $EXPECTED, then dispatch this workflow." >&2
+            exit 1
+          fi
 
       - name: Check the tag can build under a sub-path
         id: eligible
