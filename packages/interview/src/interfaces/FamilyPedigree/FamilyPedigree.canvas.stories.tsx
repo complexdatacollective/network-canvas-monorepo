@@ -203,6 +203,11 @@ async function addMother(canvasElement: HTMLElement, childId: string) {
   await userEvent.click(await canvas.findByTestId('pedigree-menu-parent'));
   await userEvent.click(await body.findByRole('radio', { name: 'Woman' }));
   await userEvent.click(await body.findByRole('radio', { name: 'Female' }));
+  // The kind of parent is the participant's to choose: the first offered.
+  const kind = await body.findByRole('radiogroup', {
+    name: /^What kind of parent are they\?/,
+  });
+  await userEvent.click(within(kind).getAllByRole('radio')[0] as HTMLElement);
   await userEvent.click(await body.findByRole('button', { name: 'Save' }));
   await waitFor(() =>
     expect(

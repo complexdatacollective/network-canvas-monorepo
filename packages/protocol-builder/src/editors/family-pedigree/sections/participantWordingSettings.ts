@@ -87,11 +87,6 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
       { key: 'you', label: messages.wordingYou },
       { key: 'save', label: messages.wordingSave },
       { key: 'dontKnow', label: messages.wordingDontKnow },
-      {
-        key: 'missingDetailsList',
-        label: messages.wordingMissingDetailsList,
-        arguments: PEDIGREE_WORDING_ARGUMENTS.missingDetailsList,
-      },
     ],
   },
   {
@@ -284,9 +279,21 @@ export const PARTICIPANT_WORDING_GROUPS: readonly WordingGroup[] = [
         label: messages.wordingChildKindBiological,
       },
       { key: 'childKindAdoptive', label: messages.wordingChildKindAdoptive },
-      { key: 'childKindSocial', label: messages.wordingChildKindSocial },
-      { key: 'childKindDonor', label: messages.wordingChildKindDonor },
-      { key: 'childKindSurrogate', label: messages.wordingChildKindSurrogate },
+      {
+        key: 'childKindSocial',
+        label: messages.wordingChildKindSocial,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.childKindSocial,
+      },
+      {
+        key: 'childKindDonor',
+        label: messages.wordingChildKindDonor,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.childKindDonor,
+      },
+      {
+        key: 'childKindSurrogate',
+        label: messages.wordingChildKindSurrogate,
+        arguments: PEDIGREE_WORDING_ARGUMENTS.childKindSurrogate,
+      },
       { key: 'alsoParentOfLabel', label: messages.wordingAlsoParentOfLabel },
       {
         key: 'standInPlaceTaken',

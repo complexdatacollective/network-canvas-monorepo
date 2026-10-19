@@ -261,6 +261,47 @@ async function describe(
   }
 }
 
+/**
+ * Chooses one answer to one of the panel's single-choice questions. Nothing
+ * is chosen for the participant, so every scenario names the answers it
+ * relies on.
+ */
+async function choose(
+  page: Page,
+  question: RegExp,
+  answer: string | RegExp,
+): Promise<void> {
+  await panel(page)
+    .getByRole('radiogroup', { name: question })
+    .getByRole('radio', { name: answer, exact: true })
+    .click();
+}
+
+/** Ticks the named answers to one of the panel's multiple-choice questions. */
+async function tick(
+  page: Page,
+  question: RegExp,
+  answers: readonly (string | RegExp)[],
+): Promise<void> {
+  const group = panel(page).getByRole('group', { name: question });
+  for (const answer of answers) {
+    await group.getByRole('checkbox', { name: answer, exact: true }).check();
+  }
+}
+
+/**
+ * Answers a new sibling's relationship questions: the parents they share
+ * with the participant, all of them, and that they are the parents'
+ * biological child. Nothing is chosen for the participant.
+ */
+async function shareParentsAsBiological(
+  page: Page,
+  parents: readonly string[],
+): Promise<void> {
+  await tick(page, /^Which parents do they share with/, parents);
+  await choose(page, /^To the parents they share/, 'A biological child');
+}
+
 /** Moves a new person's panel on to its next group of questions. */
 async function nextStep(page: Page) {
   await panel(page)
@@ -400,7 +441,6 @@ const OWN_WORDS = {
   generatedLabelOf: message(
     '{relation, select, partner {{isYou, select, true {{term} partnered with you - matrix check} other {{term} partnered with {name} - matrix check}}} formerPartner {{isYou, select, true {{term} ex of you - matrix check} other {{term} ex of {name} - matrix check}}} parent {{isYou, select, true {{term} parenting you - matrix check} other {{term} parenting {name} - matrix check}}} sibling {{isYou, select, true {{term} sibling to you - matrix check} other {{term} sibling to {name} - matrix check}}} owner {{owner} owns {term} - matrix check} other {{isYou, select, true {{term} child of you - matrix check} other {{term} child of {name} - matrix check}}}}',
   ),
-  missingDetailsList: message('Details to add ({details}) - matrix check'),
   otherParentBiologicalLabel: message(
     '{otherIsYou, select, true {Are you a genetic parent of the child - matrix check} other {Is {other} a genetic parent of the child - matrix check}}',
   ),
@@ -594,6 +634,7 @@ function smokeAddBothParents(): ScenarioDefinition {
         panel(page).getByRole('heading', { name: 'Add your parent' }),
       ).toBeVisible();
       await describe(page, { name: 'Linda', gender: 'Woman', sex: 'Female' });
+      await choose(page, /^What kind of parent/, 'Biological parent');
       await panel(page)
         .getByRole('radiogroup', {
           name: /^Did this parent carry the pregnancy\?/,
@@ -605,6 +646,7 @@ function smokeAddBothParents(): ScenarioDefinition {
 
       await addRelativeOf(page, 'You', 'parent');
       await describe(page, { name: 'Robert', gender: 'Man', sex: 'Male' });
+      await choose(page, /^What kind of parent/, 'Biological parent');
       // Linda is offered as Robert's partner, but not chosen for him: a
       // partnership between biological parents is never assumed (ruling 25).
       const lindaAsPartner = panel(page)
@@ -614,6 +656,7 @@ function smokeAddBothParents(): ScenarioDefinition {
         .getByRole('radio', { name: 'Linda', exact: true });
       await expect(lindaAsPartner).not.toBeChecked();
       await lindaAsPartner.click();
+      await choose(page, /^Are they still together/, 'Yes');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Robert')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(3);
@@ -742,24 +785,37 @@ function siblingPartnerChildAndGeneratedLabels(): ScenarioDefinition {
         panel(page).getByRole('radiogroup', { name: /^Gender identity/ }),
       ).toHaveCount(0);
       await describe(page, { sex: 'Female' });
+      await tick(page, /^Which parents do they share with you\?/, [
+        'Mother',
+        'Rob',
+      ]);
+      await choose(page, /^To the parents they share/, 'A biological child');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Sister')).toBeVisible();
 
       await addRelativeOf(page, 'You', 'partner');
       await describe(page, { sex: 'Male' });
+      await choose(page, /^Are they still together/, 'Yes');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Partner')).toBeVisible();
 
       await addRelativeOf(page, 'You', 'child');
       await describe(page, { sex: 'Male' });
-      // The child's other parent is the partner just added.
-      await expect(
-        panel(page)
-          .getByRole('radiogroup', {
-            name: /^Who is the child’s other parent\?/,
-          })
-          .getByRole('radio', { name: 'Partner', exact: true }),
-      ).toBeChecked();
+      // The partner just added is offered as the child's other parent, but
+      // nothing is chosen for the participant.
+      const otherParent = panel(page)
+        .getByRole('radiogroup', {
+          name: /^Who is the child’s other parent\?/,
+        })
+        .getByRole('radio', { name: 'Partner', exact: true });
+      await expect(otherParent).not.toBeChecked();
+      await otherParent.click();
+      await choose(page, /^Is this child…/, 'A biological child');
+      await choose(
+        page,
+        /^Who is the child’s biological parent\?/,
+        'Both you and “Partner”',
+      );
       await submitPanel(page, 'Save');
       await expect(member(page, 'Son')).toBeVisible();
       await expect(page.getByTestId('pedigree-person')).toHaveCount(6);
@@ -840,6 +896,12 @@ function relationshipToParticipantRecorded(): ScenarioDefinition {
 
       await addRelativeOf(page, 'You', 'child');
       await describe(page, { name: 'Mia', gender: 'Woman', sex: 'Female' });
+      await choose(
+        page,
+        /^Who is the child’s other parent\?/,
+        'Someone not shown yet',
+      );
+      await choose(page, /^Is this child…/, 'A biological child');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Mia')).toBeVisible();
 
@@ -920,6 +982,10 @@ function keyboardFirstVisit(): ScenarioDefinition {
       await page.keyboard.press('Space');
       await panel(page)
         .getByRole('radio', { name: 'Female', exact: true })
+        .focus();
+      await page.keyboard.press('Space');
+      await panel(page)
+        .getByRole('radio', { name: 'Biological parent', exact: true })
         .focus();
       await page.keyboard.press('Space');
       await panel(page)
@@ -1175,6 +1241,7 @@ function completenessParentsRequired(): ScenarioDefinition {
         panel(page).getByRole('heading', { name: 'Add your parent' }),
       ).toBeVisible();
       await describe(page, { gender: 'Woman', sex: 'Female' });
+      await choose(page, /^What kind of parent/, 'Biological parent');
       await submitPanel(page, 'Save');
       // Without a framing set, the gendered words describe her.
       await expect(member(page, 'Mother')).toBeVisible();
@@ -1199,11 +1266,6 @@ function completenessParentsRequired(): ScenarioDefinition {
       await trackerList(page)
         .getByRole('button', { name: 'Some details are missing about you' })
         .click();
-      await expect(
-        panel(page).getByText(
-          'Some details are missing: Sex assigned at birth.',
-        ),
-      ).toBeVisible();
       await describe(page, { gender: 'Non-binary', sex: 'Intersex' });
       await submitPanel(page, 'Save');
 
@@ -1569,9 +1631,6 @@ function formFieldsMissingDetails(): ScenarioDefinition {
       }
 
       await member(page, 'Julie').click();
-      await expect(
-        panel(page).getByText('Some details are missing: How old are they?'),
-      ).toBeVisible();
       await expect(panel(page).getByText('In whole years.')).toBeVisible();
       await panel(page)
         .getByRole('spinbutton', { name: /^How old are they\?/ })
@@ -1587,6 +1646,11 @@ function formFieldsMissingDetails(): ScenarioDefinition {
 
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
+      await tick(page, /^Which parents do they share with you\?/, [
+        'Julie',
+        'Rob',
+      ]);
+      await choose(page, /^To the parents they share/, 'A biological child');
       await nextStep(page);
       await panel(page)
         .getByRole('spinbutton', { name: /^How old are they\?/ })
@@ -1672,6 +1736,7 @@ function dynamicValuesNameRelativesAsDrawn(): ScenarioDefinition {
       await expect(shown).toHaveText(['Sibling']);
       await expect(member(page, 'Sibling')).toBeVisible();
       await describe(page, { name: 'Ann', sex: 'Female' });
+      await shareParentsAsBiological(page, ['Mother', 'Father']);
       await expect(shown).toHaveText(['Ann']);
       await expect(member(page, 'Ann')).toBeVisible();
     },
@@ -2049,6 +2114,7 @@ function encryptedNames(): ScenarioDefinition {
       );
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
+      await shareParentsAsBiological(page, ['Mother', 'Father']);
       await submitPanel(page, 'Save');
       await expect(member(page, 'Bea')).toBeVisible();
 
@@ -2135,6 +2201,7 @@ function encryptedFormField(): ScenarioDefinition {
 
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { name: 'Bea', gender: 'Woman', sex: 'Female' });
+      await shareParentsAsBiological(page, ['Julie', 'Rob']);
       await nextStep(page);
       await panel(page).getByRole('textbox', { name: NICKNAME }).fill('Bee');
       await submitPanel(page, 'Save');
@@ -2439,7 +2506,7 @@ async function expectAbsent(page: Page, ...supplied: readonly string[]) {
  * leaving), the participant is called by the stage's word for them, each
  * kind of panel is headed by the title written for it, and the panel asks its
  * own questions in the stage's words: gender identity, sex assigned at
- * birth, what is still missing, and a don't know answer about relatives.
+ * birth, and a don't know answer about relatives.
  */
 function wordingPeopleAndPanel(): ScenarioDefinition {
   const words = [
@@ -2449,7 +2516,6 @@ function wordingPeopleAndPanel(): ScenarioDefinition {
     'save',
     'genderIdentityLabel',
     'sexAssignedAtBirthLabel',
-    'missingDetailsList',
     'dontKnow',
   ] as const;
   const { synth, fp, person, relate, parents } = scaffold({
@@ -2564,14 +2630,6 @@ function wordingPeopleAndPanel(): ScenarioDefinition {
       await expect(
         title('Edit Mother term - matrix check - matrix check'),
       ).toBeVisible();
-      await cancel();
-
-      // What is still missing is listed with the stage's own names for the
-      // questions.
-      await member(page, 'Relative term - matrix check').click();
-      await expect(panel(page).getByRole('status')).toContainText(
-        'Details to add (Sex at birth wording - matrix check) - matrix check',
-      );
       await cancel();
 
       // Leaving saves the stage's own kinship words for the unnamed.
@@ -2702,7 +2760,7 @@ function wordingGeneratedLabelsAncestors(): ScenarioDefinition {
       await expect(
         member(
           page,
-          'Isaac owns Grandfather term - matrix check - matrix check',
+          'Isaac owns grandfather term - matrix check - matrix check',
         ),
       ).toBeVisible();
     },
@@ -2839,12 +2897,13 @@ function wordingFramingChoice(): ScenarioDefinition {
       await expect(
         panel(page).getByText('Gamete placeholders note - matrix check'),
       ).toBeVisible();
+      // Nothing is chosen for the participant.
       await expect(
         sharedParents.getByRole('radio', {
           name: plainWord('sharedParentCountBoth'),
           exact: true,
         }),
-      ).toBeChecked();
+      ).not.toBeChecked();
       await expect(
         sharedParents.getByRole('radio', {
           name: 'Egg side only - matrix check',
@@ -3026,6 +3085,11 @@ function wordingAddParent(): ScenarioDefinition {
       await kind
         .getByRole('radio', { name: 'Step or social parent', exact: true })
         .click();
+      // No sibling is chosen for the participant: until they say the new
+      // parent is also a parent of them, there is nobody to ask about.
+      await expect(unavailable).toBeVisible();
+      await form.getByRole('checkbox', { name: 'Bea', exact: true }).check();
+      await form.getByRole('checkbox', { name: 'Bo', exact: true }).check();
       await expect(unavailable).toHaveCount(0);
       await expect(
         form.getByRole('radiogroup', {
@@ -3116,9 +3180,10 @@ function wordingAddChild(): ScenarioDefinition {
         name: /^The other parent is - matrix check/,
       });
       await expect(otherParent).toBeVisible();
-      await expect(
-        otherParent.getByRole('radio', { name: 'Pam', exact: true }),
-      ).toBeChecked();
+      // Pam is offered, but nobody is chosen for the participant.
+      const pam = otherParent.getByRole('radio', { name: 'Pam', exact: true });
+      await expect(pam).not.toBeChecked();
+      await pam.click();
       for (const word of ['otherParentUnknown', 'otherParentNone'] as const) {
         await expect(
           otherParent.getByRole('radio', {
@@ -3142,6 +3207,13 @@ function wordingAddChild(): ScenarioDefinition {
           kind.getByRole('radio', { name: plainWord(word), exact: true }),
         ).toBeVisible();
       }
+
+      await kind
+        .getByRole('radio', {
+          name: plainWord('childKindBiological'),
+          exact: true,
+        })
+        .click();
 
       // Both of them cannot be the genetic parents, and the form says why.
       const genetic = form.getByRole('radiogroup', {
@@ -3445,9 +3517,14 @@ function wordingAddSibling(): ScenarioDefinition {
         name: /^Parents shared with you - matrix check/,
       });
       await expect(shared).toBeVisible();
+      // No parent is chosen for the participant.
       await expect(
         shared.getByRole('checkbox', { name: 'Rob', exact: true }),
-      ).toBeChecked();
+      ).not.toBeChecked();
+      await shared
+        .getByRole('checkbox', { name: 'Julie', exact: true })
+        .check();
+      await shared.getByRole('checkbox', { name: 'Rob', exact: true }).check();
 
       const kind = form.getByRole('radiogroup', {
         name: /^Kind of sibling - matrix check/,
@@ -3461,6 +3538,12 @@ function wordingAddSibling(): ScenarioDefinition {
           kind.getByRole('radio', { name: plainWord(word), exact: true }),
         ).toBeVisible();
       }
+      await kind
+        .getByRole('radio', {
+          name: plainWord('childKindBiological'),
+          exact: true,
+        })
+        .click();
 
       const carrier = form.getByRole('radiogroup', {
         name: /^Carrier of the pregnancy - matrix check/,
@@ -3554,6 +3637,11 @@ function wordingSiblingBiologicalParent(): ScenarioDefinition {
     run: async ({ page }) => {
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { sex: 'Female' });
+      await shareParentsAsBiological(page, [
+        'Julie',
+        'Pam',
+        'Biological father',
+      ]);
       const which = panel(page).getByRole('radiogroup', {
         name: /^Genetic parent of the sibling - matrix check/,
       });
@@ -3660,6 +3748,12 @@ function wordingSiblingSurrogate(): ScenarioDefinition {
       await expect(
         surrogate.getByRole('checkbox', { name: 'Gail', exact: true }),
       ).not.toBeChecked();
+      await choose(
+        page,
+        /^Which parents do they share with you\?/,
+        'Both parents',
+      );
+      await choose(page, /^To the parents they share/, 'A biological child');
       await expect(
         form.getByRole('group', {
           name: /^Did the surrogate who carried you carry them too\?/,
@@ -3709,6 +3803,7 @@ function wordingSiblingParents(): ScenarioDefinition {
       await addRelativeOf(page, 'You', 'sibling');
       await describe(page, { sex: 'Male' });
       const form = panel(page);
+      await shareParentsAsBiological(page, ['Amy', 'Rob', 'Sam']);
       // Amy, chosen as one biological parent, leaves Rob or Sam as the
       // other.
       await form
@@ -3801,8 +3896,9 @@ function wordingStandIns(): ScenarioDefinition {
       await describe(page, { name: 'Hal', gender: 'Man', sex: 'Male' });
       await panel(page)
         .getByRole('group', { name: /^Which parents do they share with you/ })
-        .getByRole('checkbox', { name: 'Julie', exact: true })
-        .uncheck();
+        .getByRole('checkbox', { name: 'Biological father', exact: true })
+        .check();
+      await choose(page, /^To the parents they share/, 'A biological child');
       await submitPanel(page, 'Save');
       await expect(member(page, 'Hal')).toBeVisible();
 
@@ -3810,6 +3906,7 @@ function wordingStandIns(): ScenarioDefinition {
       // too, so Hal is chosen and cannot be unticked, saying why.
       await addRelativeOf(page, 'You', 'parent');
       await describe(page, { sex: 'Male' });
+      await choose(page, /^What kind of parent/, 'Biological parent');
       const alsoParentOf = panel(page).getByRole('group', {
         name: /^Are they also the parent of/,
       });

@@ -9,7 +9,10 @@ import type {
 } from '@codaco/protocol-validation';
 
 import type { LocalizedMessageValues } from '../../localization/messageFormatter';
-import { useResolveLocalizedMessage } from '../../localization/ProtocolLocalizationProvider';
+import {
+  useContentLocale,
+  useResolveLocalizedMessage,
+} from '../../localization/ProtocolLocalizationProvider';
 
 /** Formats one of the stage's words, with the values its message takes. */
 export type PedigreeText = (
@@ -24,6 +27,9 @@ export type PedigreeText = (
 export type PedigreeWords = Readonly<{
   wording: FamilyPedigreeWording;
   text: PedigreeText;
+  /** The language the stage's kinship words are shown in, which decides how
+   * one is written inside a label ("Ana’s parent"). */
+  locale: string;
 }>;
 
 /** Formats a Family Pedigree word in the protocol's language. */
@@ -40,7 +46,20 @@ export function usePedigreeWordsOf(
   wording: FamilyPedigreeWording,
 ): PedigreeWords {
   const text = usePedigreeText();
-  return useMemo(() => ({ wording, text }), [wording, text]);
+  const locale = useKinshipLocale(wording);
+  return useMemo(() => ({ wording, text, locale }), [wording, text, locale]);
+}
+
+/** The language a stage's kinship words are shown in, which can differ from
+ * the interview's when the stage has no translation for it. */
+export function useKinshipLocale(
+  wording: FamilyPedigreeWording | undefined,
+): string {
+  const resolveMessage = useResolveLocalizedMessage();
+  const contentLocale = useContentLocale();
+  return wording
+    ? resolveMessage(wording.relativeTerm, { term: 'other' }).locale
+    : contentLocale;
 }
 
 const PedigreeWordsContext = createContext<PedigreeWords | null>(null);

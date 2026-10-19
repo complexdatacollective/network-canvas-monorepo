@@ -5651,10 +5651,6 @@
     "defaultMessage": "Label for a relative",
     "description": "Label of a family member, named by how they relate to the participant."
   },
-  "protocolBuilder.pedigree.wording.missingDetailsList": {
-    "defaultMessage": "Missing details notice",
-    "description": "Label of the notice listing what details are still missing for a family member."
-  },
   "protocolBuilder.pedigree.wording.otherParentBiologicalLabel": {
     "defaultMessage": "Other parent is biological question",
     "description": "Label of the yes or no question asking whether the other parent of a new step-child or adopted child is the child’s biological parent."

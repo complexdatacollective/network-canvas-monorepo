@@ -1249,12 +1249,6 @@ export const familyPedigreeMessages = defineMessages({
     description:
       'Label of the option a participant picks when they do not know an answer.',
   },
-  wordingMissingDetailsList: {
-    id: 'protocolBuilder.pedigree.wording.missingDetailsList',
-    defaultMessage: 'Missing details notice',
-    description:
-      'Label of the notice listing what details are still missing for a family member.',
-  },
   wordingConnectQuestion: {
     id: 'protocolBuilder.pedigree.wording.connectQuestion',
     defaultMessage: 'Connect question',

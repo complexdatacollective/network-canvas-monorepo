@@ -711,8 +711,8 @@
           "es": "Un hijo/a biológico/a"
         },
         "childKindSocial": {
-          "en-US": "A step-child or other child they raise",
-          "es": "Un hijastro/a u otro hijo/a que crían"
+          "en-US": "{isYou, select, true {A step-child or other child you raise} other {A step-child or other child they raise}}",
+          "es": "{isYou, select, true {Un hijastro/a u otro hijo/a que crías} other {Un hijastro/a u otro hijo/a que crían}}"
         },
         "childKindLabel": {
           "en-US": "Is this child…",
@@ -765,10 +765,6 @@
         "generatedLabelOf": {
           "en-US": "{relation, select, partner {{isYou, select, true {{term} (your partner)} other {{term} (partner of {name})}}} formerPartner {{isYou, select, true {{term} (your former partner)} other {{term} (former partner of {name})}}} parent {{isYou, select, true {{term} (your parent)} other {{term} (parent of {name})}}} sibling {{isYou, select, true {{term} (your sibling)} other {{term} (sibling of {name})}}} owner {{owner}’s {term}} other {{isYou, select, true {{term} (your child)} other {{term} (child of {name})}}}}",
           "es": "{relation, select, partner {{isYou, select, true {{term} (tu pareja)} other {{term} (pareja de {name})}}} formerPartner {{isYou, select, true {{term} (tu expareja)} other {{term} (expareja de {name})}}} parent {{isYou, select, true {{term} (tu progenitor)} other {{term} (progenitor de {name})}}} sibling {{isYou, select, true {{term} (tu hermano/a)} other {{term} (hermano/a de {name})}}} owner {{term} de {owner}} other {{isYou, select, true {{term} (tu hijo/a)} other {{term} (hijo/a de {name})}}}}"
-        },
-        "missingDetailsList": {
-          "en-US": "Some details are missing: {details}.",
-          "es": "Faltan algunos datos: {details}."
         },
         "otherParentLabel": {
           "en-US": "Who is the child’s other parent?",
@@ -863,12 +859,12 @@
           "es": "{count, plural, one {Esto dejaría a {names} fuera de tu árbol familiar, porque elimina su única conexión contigo. Primero conecta a esa persona con otra persona de tu familia.} other {Esto dejaría a {names} fuera de tu árbol familiar, porque elimina su única conexión contigo. Primero conecta a esas personas con otra persona de tu familia.}}"
         },
         "childKindDonor": {
-          "en-US": "A child conceived with an egg or sperm they donated",
-          "es": "Un hijo o hija concebido con un óvulo o esperma que donaron"
+          "en-US": "{isYou, select, true {A child conceived with an egg or sperm you donated} other {A child conceived with an egg or sperm they donated}}",
+          "es": "{isYou, select, true {Un hijo o hija concebido con un óvulo o esperma que donaste} other {Un hijo o hija concebido con un óvulo o esperma que donaron}}"
         },
         "childKindSurrogate": {
-          "en-US": "A child they carried as a surrogate",
-          "es": "Un hijo o hija que gestaron como gestante subrogada"
+          "en-US": "{isYou, select, true {A child you carried as a surrogate} other {A child they carried as a surrogate}}",
+          "es": "{isYou, select, true {Un hijo o hija que gestaste como gestante subrogada} other {Un hijo o hija que gestaron como gestante subrogada}}"
         },
         "parentKindCarrier": {
           "en-US": "{parentKind} (carried the pregnancy)",

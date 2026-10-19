@@ -1596,7 +1596,6 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       mode: {
         kind: 'edit',
         person,
-        missing: missingDetailsFor(person, requiredFormVariables),
         unavailable,
       },
       ...(then ? { then } : {}),

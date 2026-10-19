@@ -785,6 +785,57 @@ export function formatRelativeTerm(term: string, words: PedigreeWords): string {
   return words.text(words.wording.relativeTerm, { term });
 }
 
+/** Languages that capitalise every noun, kinship words included, wherever
+ * they stand in a sentence. */
+const NOUN_CAPITALISING_LANGUAGES = new Set(['de', 'lb']);
+
+/** Stands in for the kinship word to find where the label puts it. */
+const TERM_MARKER = '\uE000';
+
+/**
+ * Someone described through a relative who has a name or a kinship word of
+ * their own ("Ana’s parent"). The kinship word is written as it stands alone,
+ * with a capital ("Parent"), so where the label does not open with it, it is
+ * lower-cased in languages that don't capitalise nouns ("Ana’s parent", not
+ * "Ana’s Parent"). It keeps its capital where it opens the label ("Parent de
+ * Ana"). In languages such as German that capitalise every noun, only an
+ * adjective it opens with is lower-cased, known by the capitalised noun after
+ * it ("Anas leibliche Mutter", but "Anas Mutter" and "Anas Großvater
+ * mütterlicherseits").
+ */
+export function formatOwnedLabel(
+  owner: string,
+  term: string,
+  words: PedigreeWords,
+): string {
+  const label = (termText: string) =>
+    words.text(words.wording.generatedLabelOf, {
+      relation: 'owner',
+      owner,
+      term: termText,
+    });
+  const kinWord = formatRelativeTerm(term, words);
+  if (label(TERM_MARKER).startsWith(TERM_MARKER)) return label(kinWord);
+  if (
+    NOUN_CAPITALISING_LANGUAGES.has(languageOf(words.locale)) &&
+    !/^\S+\s+\p{Lu}/u.test(kinWord)
+  ) {
+    return label(kinWord);
+  }
+  const [first = ''] = kinWord;
+  return label(
+    first.toLocaleLowerCase(words.locale) + kinWord.slice(first.length),
+  );
+}
+
+const languageOf = (locale: string) => {
+  try {
+    return new Intl.Locale(locale).language;
+  } catch {
+    return locale;
+  }
+};
+
 /**
  * The label as participant-facing text. `ownerText` gives, by person id, the
  * text a relative is known by when it is not their own label, such as the
@@ -820,11 +871,11 @@ export function formatPersonLabel(
       };
       const anchor = label.anchors.find(isPlain) ?? label.anchors[0];
       if (!anchor) return formatRelativeTerm('other', words);
-      return words.text(words.wording.generatedLabelOf, {
-        relation: 'owner',
-        owner: formatPersonLabel(anchor.owner, words, ownerText),
-        term: formatRelativeTerm(anchor.term, words),
-      });
+      return formatOwnedLabel(
+        formatPersonLabel(anchor.owner, words, ownerText),
+        anchor.term,
+        words,
+      );
     }
     case 'unconnected':
       return formatRelativeTerm('other', words);

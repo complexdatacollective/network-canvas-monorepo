@@ -175,17 +175,20 @@ const CHILD_KIND_BIOLOGICAL = {
   'zh-Hant': '親生子女',
 } as const satisfies SuppliedWording;
 
-/** The option for a child who is neither genetically related nor adopted, such as a step-child. */
+/** The option for a child who is neither genetically related nor adopted, such as a step-child. `isYou` is whether the parent is the participant. */
 const CHILD_KIND_SOCIAL = {
-  'en': 'A step-child or other child they raise',
-  'de': 'Ein Stiefkind oder ein anderes Kind, das bei ihnen aufwächst',
-  'es': 'Un hijastro/a u otro hijo/a que crían',
-  'fr': 'Un enfant par alliance ou un autre enfant qu’ils élèvent',
-  'it': 'Un figlio o una figlia acquisiti, o un altro figlio che crescono',
-  'nl': 'Een stiefkind of ander kind dat ze opvoeden',
-  'pt-BR': 'Um enteado(a) ou outro filho(a) que criam',
-  'zh-Hans': '继子女，或由其抚养的其他子女',
-  'zh-Hant': '繼子女，或由其撫養的其他子女',
+  'en': '{isYou, select, true {A step-child or other child you raise} other {A step-child or other child they raise}}',
+  'de': '{isYou, select, true {Ein Stiefkind oder ein anderes Kind, das bei Ihnen aufwächst} other {Ein Stiefkind oder ein anderes Kind, das bei ihnen aufwächst}}',
+  'es': '{isYou, select, true {Un hijastro/a u otro hijo/a que crías} other {Un hijastro/a u otro hijo/a que crían}}',
+  'fr': '{isYou, select, true {Un enfant par alliance ou un autre enfant que vous élevez} other {Un enfant par alliance ou un autre enfant qu’ils élèvent}}',
+  'it': '{isYou, select, true {Un figlio o una figlia acquisiti, o un altro figlio che cresci} other {Un figlio o una figlia acquisiti, o un altro figlio che crescono}}',
+  'nl': '{isYou, select, true {Een stiefkind of ander kind dat je opvoedt} other {Een stiefkind of ander kind dat ze opvoeden}}',
+  'pt-BR':
+    '{isYou, select, true {Um enteado(a) ou outro filho(a) que você cria} other {Um enteado(a) ou outro filho(a) que criam}}',
+  'zh-Hans':
+    '{isYou, select, true {继子女，或由您抚养的其他子女} other {继子女，或由其抚养的其他子女}}',
+  'zh-Hant':
+    '{isYou, select, true {繼子女，或由您撫養的其他子女} other {繼子女，或由其撫養的其他子女}}',
 } as const satisfies SuppliedWording;
 
 /** The question asking how a child is related to their parents. */
@@ -405,19 +408,6 @@ const GENERATED_LABEL_OF = {
     '{relation, select, partner {{isYou, select, true {{term}（您的伴侣）} other {{term}（{name}的伴侣）}}} formerPartner {{isYou, select, true {{term}（您的前伴侣）} other {{term}（{name}的前伴侣）}}} parent {{isYou, select, true {{term}（您的家长）} other {{term}（{name}的家长）}}} sibling {{isYou, select, true {{term}（您的兄弟姐妹）} other {{term}（{name}的兄弟姐妹）}}} owner {{owner}的{term}} other {{isYou, select, true {{term}（您的子女）} other {{term}（{name}的子女）}}}}',
   'zh-Hant':
     '{relation, select, partner {{isYou, select, true {{term}（您的伴侶）} other {{term}（{name}的伴侶）}}} formerPartner {{isYou, select, true {{term}（您的前伴侶）} other {{term}（{name}的前伴侶）}}} parent {{isYou, select, true {{term}（您的家長）} other {{term}（{name}的家長）}}} sibling {{isYou, select, true {{term}（您的手足）} other {{term}（{name}的手足）}}} owner {{owner}的{term}} other {{isYou, select, true {{term}（您的子女）} other {{term}（{name}的子女）}}}}',
-} as const satisfies SuppliedWording;
-
-/** The notice listing the questions about a family member not yet answered. */
-const MISSING_DETAILS_LIST = {
-  'en': 'Some details are missing: {details}.',
-  'de': 'Es fehlen einige Angaben: {details}.',
-  'es': 'Faltan algunos datos: {details}.',
-  'fr': 'Des informations manquent : {details}.',
-  'it': 'Mancano alcune informazioni: {details}.',
-  'nl': 'Er ontbreken gegevens: {details}.',
-  'pt-BR': 'Faltam algumas informações: {details}.',
-  'zh-Hans': '缺少一些信息：{details}。',
-  'zh-Hant': '缺少部分資訊：{details}。',
 } as const satisfies SuppliedWording;
 
 /** The question asking who a child's other parent is. */
@@ -759,30 +749,36 @@ const CHANGE_WOULD_CUT_OFF = {
     '{count, plural, other {這會移除{names}與您之間唯一的連結，使其脫離您的家譜圖。請先將其與您家庭中的其他人連結。}}',
 } as const satisfies SuppliedWording;
 
-/** The option for a child conceived with an egg or sperm the person donated. */
+/** The option for a child conceived with an egg or sperm the person donated. `isYou` is whether that person is the participant. */
 const CHILD_KIND_DONOR = {
-  'en': 'A child conceived with an egg or sperm they donated',
-  'de': 'Ein Kind, das mit einer von ihnen gespendeten Eizelle oder Samenzelle gezeugt wurde',
-  'es': 'Un hijo o hija concebido con un óvulo o esperma que donaron',
-  'fr': 'Un enfant conçu avec un ovule ou du sperme qu’ils ont donné',
-  'it': 'Un figlio o una figlia concepito con un ovulo o uno spermatozoo che hanno donato',
-  'nl': 'Een kind dat is verwekt met een eicel of zaadcel die zij hebben gedoneerd',
-  'pt-BR': 'Um filho(a) concebido(a) com um óvulo ou esperma que doaram',
-  'zh-Hans': '用其捐献的卵子或精子孕育的孩子',
-  'zh-Hant': '用其捐贈的卵子或精子孕育的孩子',
+  'en': '{isYou, select, true {A child conceived with an egg or sperm you donated} other {A child conceived with an egg or sperm they donated}}',
+  'de': '{isYou, select, true {Ein Kind, das mit einer von Ihnen gespendeten Eizelle oder Samenzelle gezeugt wurde} other {Ein Kind, das mit einer von ihnen gespendeten Eizelle oder Samenzelle gezeugt wurde}}',
+  'es': '{isYou, select, true {Un hijo o hija concebido con un óvulo o esperma que donaste} other {Un hijo o hija concebido con un óvulo o esperma que donaron}}',
+  'fr': '{isYou, select, true {Un enfant conçu avec un ovule ou du sperme que vous avez donné} other {Un enfant conçu avec un ovule ou du sperme qu’ils ont donné}}',
+  'it': '{isYou, select, true {Un figlio o una figlia concepito con un ovulo o uno spermatozoo che hai donato} other {Un figlio o una figlia concepito con un ovulo o uno spermatozoo che hanno donato}}',
+  'nl': '{isYou, select, true {Een kind dat is verwekt met een eicel of zaadcel die je hebt gedoneerd} other {Een kind dat is verwekt met een eicel of zaadcel die zij hebben gedoneerd}}',
+  'pt-BR':
+    '{isYou, select, true {Um filho(a) concebido(a) com um óvulo ou esperma que você doou} other {Um filho(a) concebido(a) com um óvulo ou esperma que doaram}}',
+  'zh-Hans':
+    '{isYou, select, true {用您捐献的卵子或精子孕育的孩子} other {用其捐献的卵子或精子孕育的孩子}}',
+  'zh-Hant':
+    '{isYou, select, true {用您捐贈的卵子或精子孕育的孩子} other {用其捐贈的卵子或精子孕育的孩子}}',
 } as const satisfies SuppliedWording;
 
-/** The option for a child the person carried as a surrogate. */
+/** The option for a child the person carried as a surrogate. `isYou` is whether that person is the participant. */
 const CHILD_KIND_SURROGATE = {
-  'en': 'A child they carried as a surrogate',
-  'de': 'Ein Kind, das sie als Leihmutter ausgetragen haben',
-  'es': 'Un hijo o hija que gestaron como gestante subrogada',
-  'fr': 'Un enfant qu’ils ont porté en tant que mère porteuse',
-  'it': 'Un figlio o una figlia che hanno portato in grembo come gestante surrogata',
-  'nl': 'Een kind dat zij als draagmoeder hebben gedragen',
-  'pt-BR': 'Um filho(a) que gestaram como gestante de substituição',
-  'zh-Hans': '其作为代孕者怀过的孩子',
-  'zh-Hant': '其作為代孕者懷過的孩子',
+  'en': '{isYou, select, true {A child you carried as a surrogate} other {A child they carried as a surrogate}}',
+  'de': '{isYou, select, true {Ein Kind, das Sie als Leihmutter ausgetragen haben} other {Ein Kind, das sie als Leihmutter ausgetragen haben}}',
+  'es': '{isYou, select, true {Un hijo o hija que gestaste como gestante subrogada} other {Un hijo o hija que gestaron como gestante subrogada}}',
+  'fr': '{isYou, select, true {Un enfant que vous avez porté en tant que mère porteuse} other {Un enfant qu’ils ont porté en tant que mère porteuse}}',
+  'it': '{isYou, select, true {Un figlio o una figlia che hai portato in grembo come gestante surrogata} other {Un figlio o una figlia che hanno portato in grembo come gestante surrogata}}',
+  'nl': '{isYou, select, true {Een kind dat je als draagmoeder hebt gedragen} other {Een kind dat zij als draagmoeder hebben gedragen}}',
+  'pt-BR':
+    '{isYou, select, true {Um filho(a) que você gestou como gestante de substituição} other {Um filho(a) que gestaram como gestante de substituição}}',
+  'zh-Hans':
+    '{isYou, select, true {您作为代孕者怀过的孩子} other {其作为代孕者怀过的孩子}}',
+  'zh-Hant':
+    '{isYou, select, true {您作為代孕者懷過的孩子} other {其作為代孕者懷過的孩子}}',
 } as const satisfies SuppliedWording;
 
 /** The menu option for a parent of any kind who also carried the pregnancy. The kind of parent is written in before it. */
@@ -1326,7 +1322,6 @@ export const FAMILY_PEDIGREE_SUPPLIED_TEXT: readonly SuppliedStageSetting[] = [
     when: asksGenderIdentity,
   },
   { path: ['wording', 'generatedLabelOf'], message: GENERATED_LABEL_OF },
-  { path: ['wording', 'missingDetailsList'], message: MISSING_DETAILS_LIST },
   {
     path: ['wording', 'otherParentBiologicalLabel'],
     message: OTHER_PARENT_BIOLOGICAL_LABEL,

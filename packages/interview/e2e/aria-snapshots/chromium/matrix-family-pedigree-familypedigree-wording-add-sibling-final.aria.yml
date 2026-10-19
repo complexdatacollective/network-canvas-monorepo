@@ -25,7 +25,7 @@
       - text: Another or unknown carrier - matrix check
     - text: Is this your twin - matrix check Triplets count as twins - matrix check New sibling cannot be identical to you, so not Identical twin option - matrix check - matrix check
     - radiogroup "Is this your twin - matrix check":
-      - radio "Not twins - matrix check" [checked]
+      - radio "Not twins - matrix check"
       - text: Not twins - matrix check
       - radio "Identical twin option - matrix check" [disabled]
       - text: Identical twin option - matrix check New sibling cannot be identical to you, so not Identical twin option - matrix check - matrix check

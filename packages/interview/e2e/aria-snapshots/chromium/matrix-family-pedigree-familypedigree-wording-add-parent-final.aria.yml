@@ -23,7 +23,7 @@
       - text: Julie
       - radio "Rob"
       - text: Rob
-      - radio "No" [checked]
+      - radio "No"
       - text: "No"
     - text: Also parent of these - matrix check
     - group "Also parent of these - matrix check":

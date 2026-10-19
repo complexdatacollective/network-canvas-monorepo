@@ -4,8 +4,8 @@ import type { FramingId } from '@codaco/protocol-validation';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import {
+  formatOwnedLabel,
   formatPersonLabel,
-  formatRelativeTerm,
   KIN_TERMS,
   type KinTerm,
   labelFamily,
@@ -425,7 +425,7 @@ describe('labelFamily', () => {
       [...extendedNodes, man('cousinsSon')],
       [...extendedEdges, link('cousin', 'cousinsSon', 'biological')],
     );
-    expect(labels.cousinsSon).toBe('Cousin’s Son');
+    expect(labels.cousinsSon).toBe('Cousin’s son');
   });
 
   test('unnamed people may share a kinship word, which generateLabels tells apart', () => {
@@ -452,13 +452,9 @@ describe('labelFamily', () => {
         'Relative',
       );
       // Anyone can be described through a relative by any kinship word.
-      expect(
-        words.text(words.wording.generatedLabelOf, {
-          relation: 'owner',
-          owner: 'Isaac',
-          term: formatRelativeTerm(term, words),
-        }),
-      ).not.toBe('Isaac’s Relative');
+      expect(formatOwnedLabel('Isaac', term, words)).not.toBe(
+        'Isaac’s relative',
+      );
     }
   });
 });
@@ -727,7 +723,7 @@ describe('step and in-law relatives', () => {
             link('dad', 'her', 'partner', { current: false }),
           ],
         ).her,
-      ).toEqual(['Father’s Former partner', 'otherRelative']);
+      ).toEqual(['Father’s former partner', 'otherRelative']);
     });
   });
 
@@ -760,7 +756,7 @@ describe('step and in-law relatives', () => {
             link('ex', 'kid', 'biological'),
           ],
         ).kid,
-      ).toEqual(['Former partner’s Son', 'otherRelative']);
+      ).toEqual(['Former partner’s son', 'otherRelative']);
     });
   });
 
@@ -813,7 +809,7 @@ describe('step and in-law relatives', () => {
         ),
       ).toMatchObject({
         martin: ['Father-in-law', 'parentInLaw'],
-        birthDad: ['Daniel’s Biological father', 'otherRelative'],
+        birthDad: ['Daniel’s biological father', 'otherRelative'],
       });
     });
     test('a birth parent whose partner adopted the child still raised them', () => {
@@ -1120,9 +1116,9 @@ describe('step and in-law relatives', () => {
       ),
     ).toMatchObject({
       paul: ['Stepfather', 'stepParent'],
-      dansPartner: ['Sperm donor’s Partner', 'otherRelative'],
-      paulsEx: ['Stepfather’s Former partner', 'otherRelative'],
-      annsEx: ['Mother’s Former partner', 'otherRelative'],
+      dansPartner: ['Sperm donor’s partner', 'otherRelative'],
+      paulsEx: ['Stepfather’s former partner', 'otherRelative'],
+      annsEx: ['Mother’s former partner', 'otherRelative'],
     });
   });
 });
@@ -1163,7 +1159,60 @@ describe('apostrophes', () => {
           link('priyasMum', 'priya', 'biological'),
         ],
       ).priyasMum,
-    ).toBe('Priya\u2019s Mother');
+    ).toBe('Priya\u2019s mother');
+  });
+});
+
+describe('a kinship word after its owner', () => {
+  const owned = (locale: string) =>
+    formatOwnedLabel('Ana', 'mother', pedigreeWordsIn(locale)).replace(
+      /\u00AD/g,
+      '',
+    );
+
+  test('is lower-cased where it follows the owner', () => {
+    expect(owned('en')).toBe('Ana\u2019s mother');
+  });
+
+  test('keeps its capital where it opens the label', () => {
+    expect(owned('fr')).toMatch(/^\p{Lu}.* de Ana$/u);
+    expect(owned('de')).toMatch(/^\p{Lu}.* von Ana$/u);
+  });
+
+  test('keeps its capital in a language that capitalises every noun', () => {
+    const german = pedigreeWordsIn('de');
+    const ownerFirst = {
+      ...german,
+      wording: {
+        ...german.wording,
+        generatedLabelOf: {
+          de: '{relation, select, owner {{owner}s {term}} other {{term}}}',
+        },
+      },
+    };
+    expect(formatOwnedLabel('Ana', 'mother', ownerFirst)).toBe('Anas Mutter');
+    expect(
+      formatOwnedLabel('Ana', 'maternalGrandfather', ownerFirst).replace(
+        /\u00AD/g,
+        '',
+      ),
+    ).toBe('Anas Großvater mütterlicherseits');
+  });
+
+  test('lower-cases an adjective it opens with, even where nouns keep capitals', () => {
+    const german = pedigreeWordsIn('de');
+    const ownerFirst = {
+      ...german,
+      wording: {
+        ...german.wording,
+        generatedLabelOf: {
+          de: '{relation, select, owner {{owner}s {term}} other {{term}}}',
+        },
+      },
+    };
+    expect(formatOwnedLabel('Ana', 'biologicalMother', ownerFirst)).toBe(
+      'Anas leibliche Mutter',
+    );
   });
 });
 
@@ -1210,7 +1259,7 @@ describe('soft hyphens', () => {
         },
         words,
       ),
-    ).toBe('Cousin’s Step\u00ADmother');
+    ).toBe('Cousin’s step\u00ADmother');
   });
 
   test('short words, and words that fit a symbol whole, have none', () => {
