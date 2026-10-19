@@ -2,7 +2,10 @@ import {
   type BundledLegacyInterviewer,
   getBundledLegacyInterviewer,
 } from '../legacyInterviewer';
-import { refreshLegacyInterviewerOffline } from './legacyInterviewerOffline';
+import {
+  hasLegacyInterviewerPrecache,
+  refreshLegacyInterviewerOffline,
+} from './legacyInterviewerOffline';
 
 // Makes the bundled Interviewer 8 available offline without slowing this app.
 //
@@ -13,10 +16,26 @@ import { refreshLegacyInterviewerOffline } from './legacyInterviewerOffline';
 // this app registers that worker itself, in the background: once per page
 // load, only after this app has rendered (the caller is an effect), its own
 // worker is ready (so the two downloads never compete) and the browser is
-// idle. A registration that already has a worker for that script is left
-// alone. Failures are reported and never shown: the status row and Settings
-// say whether Interviewer 8 is ready offline, and that answer is refreshed
-// here as the registration progresses.
+// idle.
+//
+// Only once this page's own build is the active root worker. A device coming
+// from a released 8.x root build can still have that build's worker active
+// (when this app's own worker has not installed yet), and its cache reclaimer
+// knows nothing of `/v8/`: it would delete Interviewer 8's precache as an
+// unleased `interviewer-` cache the next time this page reported ready. This
+// build's reclaimer leaves `interviewer-v8-` alone, so until it is active the
+// registration waits for a later load.
+//
+// A registration that already has a worker for that script is checked for an
+// update instead: the browser looks for one only on a visit to `/v8/`, and a
+// device opened only at `/` would otherwise keep the build it first
+// downloaded after a deploy changed the pin (`sw.js` is never cached, so a
+// changed pin installs the new build in the background; it then waits, and
+// Interviewer 8 applies it when it next loads). A worker of the pinned build
+// whose precache has gone is registered again, since an update finds nothing
+// new to install. Failures are reported and never shown: the status row and
+// Settings say whether Interviewer 8 is ready offline, and that answer is
+// refreshed here as the registration progresses.
 
 /** How long to wait for an idle moment before registering anyway. */
 export const IDLE_TIMEOUT_MS = 10_000;
@@ -30,15 +49,28 @@ export type LegacyInterviewerInstallOutcome =
   | 'unsupported'
   /** Already asked during this page load. */
   | 'already-started'
-  /** A worker for Interviewer 8's script is already active or on its way. */
+  /** This page's own build is not the active root worker yet. */
+  | 'deferred'
+  /**
+   * A worker for Interviewer 8's script is already active or on its way, and
+   * was checked for an update.
+   */
   | 'already-registered'
   | 'registered'
+  /** Registered again: the pinned build's precache had gone. */
+  | 'reinstalled'
   | 'failed';
 
 type InstallDependencies = {
   interviewer: BundledLegacyInterviewer | null;
   container: ServiceWorkerContainer | undefined;
   origin: string;
+  /** This page's build, as its root worker records it (`__PWA_BUILD_ID__`). */
+  buildId: string | undefined;
+  /** The build the active root worker recorded for `scope`, if any. */
+  readActiveRootBuild: (scope: string) => Promise<string | undefined>;
+  /** Whether the pinned build's precache is in cache storage. */
+  hasPrecache: (interviewer: BundledLegacyInterviewer) => Promise<boolean>;
   /** Run `callback` once the browser is idle (or the timeout has passed). */
   whenIdle: (callback: () => void) => void;
   /** Called whenever whether Interviewer 8 is ready offline may have changed. */
@@ -54,11 +86,34 @@ const defaultWhenIdle = (callback: () => void): void => {
   window.setTimeout(callback, IDLE_FALLBACK_DELAY_MS);
 };
 
+// Where the root worker's cache reclaimer records the build that activated
+// (scripts/buildtime/pwa-cache-reclamation-plugin.ts, with vite.config.ts's
+// `appCachePrefix`). A test pins these against the generated worker.
+const ROOT_CACHE_PREFIX = 'interviewer-';
+export const ACTIVE_BUILD_CACHE = `${ROOT_CACHE_PREFIX}pwa-cache-metadata`;
+export const ACTIVE_BUILD_KEY = '__pwa-active-build__';
+
+/** The build the active root worker recorded. `caches.match` never creates. */
+const defaultReadActiveRootBuild = async (
+  scope: string,
+): Promise<string | undefined> => {
+  if (typeof caches === 'undefined') return undefined;
+  const response = await caches.match(new URL(ACTIVE_BUILD_KEY, scope).href, {
+    cacheName: ACTIVE_BUILD_CACHE,
+  });
+  return response?.text();
+};
+
 const defaultDependencies = (): Omit<InstallDependencies, 'report'> => ({
   interviewer: getBundledLegacyInterviewer(),
   container:
     typeof navigator === 'undefined' ? undefined : navigator.serviceWorker,
   origin: window.location.origin,
+  // Read through `typeof`: tests and Storybook do not define it.
+  buildId:
+    typeof __PWA_BUILD_ID__ === 'undefined' ? undefined : __PWA_BUILD_ID__,
+  readActiveRootBuild: defaultReadActiveRootBuild,
+  hasPrecache: (interviewer) => hasLegacyInterviewerPrecache(interviewer),
   whenIdle: defaultWhenIdle,
   refresh: () => void refreshLegacyInterviewerOffline(),
 });
@@ -98,7 +153,16 @@ export async function installLegacyInterviewerInBackground(
 ): Promise<LegacyInterviewerInstallOutcome> {
   if (started) return 'already-started';
   started = true;
-  const { interviewer, container, origin, whenIdle, refresh } = {
+  const {
+    interviewer,
+    container,
+    origin,
+    buildId,
+    readActiveRootBuild,
+    hasPrecache,
+    whenIdle,
+    refresh,
+  } = {
     ...defaultDependencies(),
     ...overrides,
   };
@@ -108,8 +172,14 @@ export async function installLegacyInterviewerInBackground(
   try {
     // This app's own worker first: Interviewer 8's precache must never delay
     // this app's own offline download, or its start-up.
-    await container.ready;
+    const root = await container.ready;
     await new Promise<void>((resolve) => whenIdle(resolve));
+
+    // A root worker of another build may reclaim what is downloaded here.
+    if (!buildId || (await readActiveRootBuild(root.scope)) !== buildId) {
+      refresh();
+      return 'deferred';
+    }
 
     const scope = interviewer.path;
     const scriptURL = new URL(`${scope}sw.js`, origin).href;
@@ -124,6 +194,23 @@ export async function installLegacyInterviewerInBackground(
       )
     ) {
       refreshAsItInstalls(existing, refresh);
+      // Offline, or a server error: keep what is installed.
+      const reachedServer = await existing.update().then(
+        () => true,
+        () => false,
+      );
+      if (
+        reachedServer &&
+        !existing.installing &&
+        !existing.waiting &&
+        !(await hasPrecache(interviewer))
+      ) {
+        await existing.unregister();
+        const registration = await container.register(scriptURL, { scope });
+        refreshAsItInstalls(registration, refresh);
+        refresh();
+        return 'reinstalled';
+      }
       refresh();
       return 'already-registered';
     }

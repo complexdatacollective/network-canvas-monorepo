@@ -20,6 +20,14 @@ export type BundledLegacyInterviewer = {
 export const LEGACY_INTERVIEWER_MAJOR = LEGACY_LIBRARIES[0].schemaMajor;
 
 /**
+ * The prefix of every cache the bundled Interviewer keeps
+ * (`scripts/buildtime/legacy-app.ts`, `legacyApp('interviewer').cachePrefix`;
+ * the bundling step refuses a build that caches under any other). Its
+ * precache is named `<prefix><version>-<build>-precache-…`.
+ */
+export const LEGACY_INTERVIEWER_CACHE_PREFIX = `interviewer-v${LEGACY_INTERVIEWER_MAJOR}-`;
+
+/**
  * The bundled Interviewer 8, or null when this build has none.
  *
  * Read through `typeof` so a build whose config does not define the constant

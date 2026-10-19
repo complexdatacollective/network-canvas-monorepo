@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createPwaCacheReclamationWorkerSource } from '../../../../../../scripts/buildtime/pwa-cache-reclamation-plugin.ts';
 import type { BundledLegacyInterviewer } from '../../legacyInterviewer';
 import {
+  ACTIVE_BUILD_CACHE,
+  ACTIVE_BUILD_KEY,
   IDLE_FALLBACK_DELAY_MS,
   IDLE_TIMEOUT_MS,
   installLegacyInterviewerInBackground,
@@ -14,6 +17,8 @@ const INTERVIEWER: BundledLegacyInterviewer = {
   version: '8.5.0',
   path: '/v8/',
 };
+const BUILD_ID = 'interviewer-9.0.0-turbo-this';
+const ROOT = { scope: `${ORIGIN}/` } as ServiceWorkerRegistration;
 
 type FakeWorker = ServiceWorker & { setState: (state: string) => void };
 
@@ -35,20 +40,28 @@ const fakeRegistration = (
   workers: Partial<
     Record<'active' | 'waiting' | 'installing', ServiceWorker>
   > = {},
-): ServiceWorkerRegistration =>
+): ServiceWorkerRegistration & {
+  update: ReturnType<typeof vi.fn>;
+  unregister: ReturnType<typeof vi.fn>;
+} =>
   Object.assign(new EventTarget(), {
     scope,
     active: null,
     waiting: null,
     installing: null,
+    update: vi.fn(() => Promise.resolve()),
+    unregister: vi.fn(() => Promise.resolve(true)),
     ...workers,
-  }) as unknown as ServiceWorkerRegistration;
+  }) as unknown as ServiceWorkerRegistration & {
+    update: ReturnType<typeof vi.fn>;
+    unregister: ReturnType<typeof vi.fn>;
+  };
 
-/** A promise and the function that settles it. */
+/** A promise and the function that settles it with this app's root worker. */
 const deferred = () => {
   let resolve: () => void = () => {};
-  const promise = new Promise<void>((done) => {
-    resolve = done;
+  const promise = new Promise<ServiceWorkerRegistration>((done) => {
+    resolve = () => done(ROOT);
   });
   return { promise, resolve };
 };
@@ -57,10 +70,14 @@ const flush = () => new Promise((done) => setTimeout(done, 0));
 
 let ready: ReturnType<typeof deferred>;
 let idle: (() => void) | null;
-let existing: ServiceWorkerRegistration | undefined;
+let existing: ReturnType<typeof fakeRegistration> | undefined;
 let registered: ServiceWorkerRegistration;
+let readActiveRootBuild: ReturnType<
+  typeof vi.fn<(scope: string) => Promise<string | undefined>>
+>;
+let hasPrecache: ReturnType<typeof vi.fn<() => Promise<boolean>>>;
 let container: {
-  ready: Promise<void>;
+  ready: Promise<ServiceWorkerRegistration>;
   getRegistration: ReturnType<typeof vi.fn>;
   register: ReturnType<typeof vi.fn>;
 };
@@ -74,6 +91,9 @@ const install = (
     interviewer: INTERVIEWER,
     container: container as unknown as ServiceWorkerContainer,
     origin: ORIGIN,
+    buildId: BUILD_ID,
+    readActiveRootBuild,
+    hasPrecache,
     whenIdle: (callback) => {
       idle = callback;
     },
@@ -105,6 +125,10 @@ beforeEach(() => {
     getRegistration: vi.fn(() => Promise.resolve(existing)),
     register: vi.fn(() => Promise.resolve(registered)),
   };
+  readActiveRootBuild = vi.fn<(scope: string) => Promise<string | undefined>>(
+    () => Promise.resolve(BUILD_ID),
+  );
+  hasPrecache = vi.fn<() => Promise<boolean>>(() => Promise.resolve(true));
   refresh = vi.fn<() => void>();
   report = vi.fn<(error: unknown) => void>();
 });
@@ -179,6 +203,91 @@ describe('installLegacyInterviewerInBackground', () => {
     },
   );
 
+  it('checks an existing registration for a new pin', async () => {
+    // The browser checks /v8/sw.js only on a visit to /v8/; a device opened
+    // only at / would keep the first pin it downloaded.
+    existing = fakeRegistration(`${ORIGIN}/v8/`, {
+      active: fakeWorker(SCRIPT, 'activated'),
+    });
+    await expect(installWhenIdle()).resolves.toBe('already-registered');
+    expect(existing.update).toHaveBeenCalledOnce();
+    expect(existing.unregister).not.toHaveBeenCalled();
+  });
+
+  it('follows the new pin’s worker as the update installs it', async () => {
+    const current = fakeRegistration(`${ORIGIN}/v8/`, {
+      active: fakeWorker(SCRIPT, 'activated'),
+    });
+    const newer = fakeWorker(SCRIPT);
+    current.update.mockImplementationOnce(() => {
+      Object.assign(current, { installing: newer });
+      current.dispatchEvent(new Event('updatefound'));
+      return Promise.resolve();
+    });
+    existing = current;
+    // The new pin's precache is not there until it has installed.
+    hasPrecache.mockResolvedValue(false);
+
+    await expect(installWhenIdle()).resolves.toBe('already-registered');
+    expect(current.unregister).not.toHaveBeenCalled();
+    refresh.mockClear();
+    newer.setState('installed');
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it('keeps what is installed when the update cannot reach the server', async () => {
+    existing = fakeRegistration(`${ORIGIN}/v8/`, {
+      active: fakeWorker(SCRIPT, 'activated'),
+    });
+    existing.update.mockRejectedValueOnce(new TypeError('offline'));
+    hasPrecache.mockResolvedValue(false);
+
+    await expect(installWhenIdle()).resolves.toBe('already-registered');
+    expect(existing.unregister).not.toHaveBeenCalled();
+    expect(container.register).not.toHaveBeenCalled();
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it('registers again when the pinned build’s precache has gone', async () => {
+    existing = fakeRegistration(`${ORIGIN}/v8/`, {
+      active: fakeWorker(SCRIPT, 'activated'),
+    });
+    hasPrecache.mockResolvedValue(false);
+
+    await expect(installWhenIdle()).resolves.toBe('reinstalled');
+    expect(hasPrecache).toHaveBeenCalledWith(INTERVIEWER);
+    expect(existing.unregister).toHaveBeenCalledOnce();
+    expect(container.register).toHaveBeenCalledExactlyOnceWith(SCRIPT, {
+      scope: '/v8/',
+    });
+  });
+
+  it.each([
+    ['another build’s', 'interviewer-8.4.0-turbo-released'],
+    ['no', undefined],
+  ])(
+    'waits for a later load while %s root worker is active',
+    async (_, activeBuild) => {
+      readActiveRootBuild.mockResolvedValue(activeBuild);
+      existing = fakeRegistration(`${ORIGIN}/v8/`, {
+        active: fakeWorker(SCRIPT, 'activated'),
+      });
+
+      await expect(installWhenIdle()).resolves.toBe('deferred');
+      expect(readActiveRootBuild).toHaveBeenCalledWith(`${ORIGIN}/`);
+      expect(container.register).not.toHaveBeenCalled();
+      expect(existing.update).not.toHaveBeenCalled();
+      expect(refresh).toHaveBeenCalled();
+    },
+  );
+
+  it('waits for a later load when this build does not know its own id', async () => {
+    await expect(installWhenIdle({ buildId: undefined })).resolves.toBe(
+      'deferred',
+    );
+    expect(container.register).not.toHaveBeenCalled();
+  });
+
   it('registers when the closest registration is this app’s own', async () => {
     existing = fakeRegistration(`${ORIGIN}/`, {
       active: fakeWorker(`${ORIGIN}/sw.js`, 'activated'),
@@ -237,6 +346,48 @@ describe('installLegacyInterviewerInBackground', () => {
   });
 });
 
+describe('reading the active root build', () => {
+  it('reads the record the root worker keeps, without creating a cache', async () => {
+    const match = vi.fn(() => Promise.resolve(new Response(BUILD_ID)));
+    vi.stubGlobal('caches', { match });
+
+    ready.resolve();
+
+    await expect(
+      installLegacyInterviewerInBackground(report, {
+        interviewer: INTERVIEWER,
+        container: container as unknown as ServiceWorkerContainer,
+        origin: ORIGIN,
+        buildId: BUILD_ID,
+        hasPrecache,
+        whenIdle: (callback) => callback(),
+        refresh,
+      }),
+    ).resolves.toBe('registered');
+    expect(match).toHaveBeenCalledExactlyOnceWith(
+      `${ORIGIN}/__pwa-active-build__`,
+      { cacheName: 'interviewer-pwa-cache-metadata' },
+    );
+  });
+
+  it('names the record the generated root worker writes', () => {
+    const source = createPwaCacheReclamationWorkerSource({
+      appCachePrefix: 'interviewer-',
+      buildId: BUILD_ID,
+      foreignCachePrefixes: ['interviewer-v8-'],
+      foreignScopePaths: ['/v8/'],
+    });
+    expect(ACTIVE_BUILD_CACHE).toBe('interviewer-pwa-cache-metadata');
+    expect(source).toContain(
+      `const metadataCacheName = appCachePrefix + 'pwa-cache-metadata';`,
+    );
+    expect(source).toContain('const appCachePrefix = "interviewer-";');
+    expect(source).toContain(
+      `new URL('${ACTIVE_BUILD_KEY}', self.registration.scope)`,
+    );
+  });
+});
+
 describe('waiting for an idle moment', () => {
   it('asks requestIdleCallback, with a timeout so it always runs', async () => {
     const requestIdleCallback = vi.fn((callback: () => void) => {
@@ -251,6 +402,9 @@ describe('waiting for an idle moment', () => {
         interviewer: INTERVIEWER,
         container: container as unknown as ServiceWorkerContainer,
         origin: ORIGIN,
+        buildId: BUILD_ID,
+        readActiveRootBuild,
+        hasPrecache,
         refresh,
       }),
     ).resolves.toBe('registered');
@@ -268,6 +422,9 @@ describe('waiting for an idle moment', () => {
       interviewer: INTERVIEWER,
       container: container as unknown as ServiceWorkerContainer,
       origin: ORIGIN,
+      buildId: BUILD_ID,
+      readActiveRootBuild,
+      hasPrecache,
       refresh,
     });
     await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_DELAY_MS - 1);

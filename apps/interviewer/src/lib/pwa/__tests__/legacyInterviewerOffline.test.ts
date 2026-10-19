@@ -17,6 +17,11 @@ const {
 } = await import('../legacyInterviewerOffline');
 
 const ORIGIN = 'https://interviewer.test';
+const precacheOf = (version: string) =>
+  `interviewer-v8-${version}-turbo-abc-precache-v2-${ORIGIN}/v8/`;
+
+const stubCaches = (names: string[]) =>
+  vi.stubGlobal('caches', { keys: () => Promise.resolve(names) });
 
 const stubRegistration = (
   registration: Partial<ServiceWorkerRegistration> | undefined,
@@ -32,6 +37,7 @@ const stubRegistration = (
 beforeEach(() => {
   bundled.current = { version: '8.5.0', path: '/v8/' };
   resetLegacyInterviewerOffline();
+  stubCaches([precacheOf('8.5.0'), 'interviewer-v8-images']);
 });
 
 afterEach(() => {
@@ -60,6 +66,50 @@ describe('legacyInterviewerOffline', () => {
     await refreshLegacyInterviewerOffline();
     expect(getLegacyInterviewerOffline()).toBe('ready');
     expect(getRegistration).toHaveBeenCalledWith('/v8/');
+  });
+
+  it('is not ready while a new pin installs beside the active build', async () => {
+    stubRegistration({
+      scope: `${ORIGIN}/v8/`,
+      active: {} as ServiceWorker,
+      installing: {} as ServiceWorker,
+    });
+    await refreshLegacyInterviewerOffline();
+    expect(getLegacyInterviewerOffline()).toBe('not-ready');
+  });
+
+  it('is not ready while only an earlier pin is installed', async () => {
+    stubCaches([precacheOf('8.4.9')]);
+    stubRegistration({ scope: `${ORIGIN}/v8/`, active: {} as ServiceWorker });
+    await refreshLegacyInterviewerOffline();
+    expect(getLegacyInterviewerOffline()).toBe('not-ready');
+  });
+
+  it('is not ready when the precache has been deleted', async () => {
+    stubCaches(['interviewer-v8-images', 'interviewer-9.0.0-x-precache-v2-/']);
+    stubRegistration({ scope: `${ORIGIN}/v8/`, active: {} as ServiceWorker });
+    await refreshLegacyInterviewerOffline();
+    expect(getLegacyInterviewerOffline()).toBe('not-ready');
+  });
+
+  it('is ready when the pinned build has installed and waits to take over', async () => {
+    stubCaches([precacheOf('8.4.9'), precacheOf('8.5.0')]);
+    stubRegistration({
+      scope: `${ORIGIN}/v8/`,
+      active: {} as ServiceWorker,
+      waiting: {} as ServiceWorker,
+    });
+    await refreshLegacyInterviewerOffline();
+    expect(getLegacyInterviewerOffline()).toBe('ready');
+  });
+
+  it('is not ready where cache storage cannot be read', async () => {
+    vi.stubGlobal('caches', {
+      keys: () => Promise.reject(new DOMException('denied', 'SecurityError')),
+    });
+    stubRegistration({ scope: `${ORIGIN}/v8/`, active: {} as ServiceWorker });
+    await refreshLegacyInterviewerOffline();
+    expect(getLegacyInterviewerOffline()).toBe('not-ready');
   });
 
   it('is not ready while the worker is still installing', async () => {

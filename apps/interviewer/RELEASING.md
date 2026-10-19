@@ -253,13 +253,16 @@ bumped. The dist workflow refuses to replace one unless `replace` is set.
   `dist/v8/index.html` there and navigate to `/v8/…`.
 
 **Offline.** Interviewer 8 is never in this app's precache. Once this app has
-rendered, its own worker is ready and the browser is idle, it registers
-`/v8/sw.js` with scope `/v8/` in the background, once per page load and only
-when no worker for that script is already active or installing
-(`src/lib/pwa/legacyInterviewerServiceWorker.ts`). Interviewer 8's worker then
+rendered, its own worker is ready and active (a released 8.x root worker
+would reclaim Interviewer 8's precache) and the browser is idle, it registers
+`/v8/sw.js` with scope `/v8/` in the background, once per page load
+(`src/lib/pwa/legacyInterviewerServiceWorker.ts`). When that worker is already
+registered, it checks it for an update instead, so a deploy that changes the
+pin downloads the new build on devices that never visit `/v8/`; the new build
+waits and Interviewer 8 applies it on its next load. Interviewer 8's worker
 downloads its own precache and keeps it across Interviewer 9 releases; its
 cache name changes only when the pin changes. The status row, Settings and
-each schema 8 card show whether it is ready offline yet.
+each schema 8 card show whether the pinned build's precache is installed.
 
 ## Developer site
 
