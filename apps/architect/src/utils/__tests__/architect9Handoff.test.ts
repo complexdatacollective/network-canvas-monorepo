@@ -159,4 +159,14 @@ describe('deferArchitect9Navigation', () => {
     expect(takeArchitect9Navigation()).toBeNull();
     unsubscribe();
   });
+
+  it('keeps a newer navigation that is already waiting', () => {
+    // A second launch arrives while the first one's prompt is open and is
+    // deferred at once; the first prompt is then cancelled.
+    deferArchitect9Navigation('/?import=newer');
+    deferArchitect9Navigation('/?import=older');
+
+    expect(takeArchitect9Navigation()).toBe('/?import=newer');
+    expect(takeArchitect9Navigation()).toBeNull();
+  });
 });
