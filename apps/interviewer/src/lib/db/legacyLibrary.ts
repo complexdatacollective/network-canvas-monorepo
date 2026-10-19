@@ -390,14 +390,10 @@ export const createLegacyLibraryReader = (
 
 const reader = createLegacyLibraryReader();
 
-export const {
-  listLegacyProtocols,
-  getLegacyProtocol,
-  getLegacyAssets,
-  readLegacyProtocolSnapshot,
-  listLegacySessions,
-  countLegacySessions,
-} = reader;
+// The app's reads. The reader also has `getLegacyProtocol`,
+// `getLegacyAssets`, `listLegacySessions` and `countLegacySessions`; they are
+// exported here once the deck, resume and data view read them.
+export const { listLegacyProtocols, readLegacyProtocolSnapshot } = reader;
 
 /** Let go of this app's connection to Interviewer 8's database. */
 export const closeLegacyLibrary = (): void => {
