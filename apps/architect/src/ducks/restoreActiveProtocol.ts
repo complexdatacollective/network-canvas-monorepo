@@ -1,4 +1,3 @@
-import { getArchitectIntl } from '~/i18n/imperative';
 import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { getStoredProtocol as readStoredProtocol } from '~/utils/protocolLibrary';
 import { reportError } from '~/utils/reportError';
@@ -71,10 +70,10 @@ const clearRestoredSession = (store: RestoreStore): void => {
 
 // Restore only the active protocol identifier from sessionStorage. Protocol
 // content always comes from the canonical IndexedDB row; no session-stored body
-// can overwrite it. `admitStoredProtocol` decides what that row is allowed to
-// become: a row below this build's schema is upgraded in place, one above it is
-// refused, provenance-marked rows open directly, and legacy rows receive a
-// one-time validation before they can seed an editor session.
+// can overwrite it. `admitStoredProtocol` decides whether that row may open: a
+// row at any schema but this build's is refused, provenance-marked rows open
+// directly, and unmarked rows receive a one-time validation before they can
+// seed an editor session.
 export const restoreActiveProtocolFromLibrary = async (
   store: RestoreStore,
   dependencies: RestoreDependencies = {},
@@ -136,7 +135,7 @@ export const restoreActiveProtocolFromLibrary = async (
   try {
     admission = await (
       dependencies.admitStoredProtocol ?? admitCanonicalProtocol
-    )(row, undefined, getArchitectIntl());
+    )(row);
   } catch (error: unknown) {
     if (getActiveProtocolId(store.getState()) !== protocolId) return 'stale';
     clearRestoredSession(store);
@@ -155,9 +154,7 @@ export const restoreActiveProtocolFromLibrary = async (
 
   store.dispatch(setStorageUnavailable(false));
   disarmInMemoryUnloadGuard();
-  // Seed from what admission returned, not from the row that was read: a row
-  // written under an older schema has been upgraded and re-saved by now, and
-  // the editor must hold the upgraded document rather than the stale one.
+  // Seed from what admission returned, the one document it vouched for.
   const { protocol } = admission;
   store.dispatch(
     dependencies.continuingSession

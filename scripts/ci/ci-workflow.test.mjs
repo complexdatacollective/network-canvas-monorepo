@@ -2763,3 +2763,62 @@ test('a Fresco preview on Netlify migrates only its own database', () => {
     /github\.event\.action == 'closed'/,
   );
 });
+
+// Architect 9 serves Architect 8 at /v8/ from its own deploy, extracted at
+// build time from the tarball apps/architect/legacy-architect.json pins. A
+// production deploy without it would strand every researcher who chose to keep
+// a schema 8 protocol in Architect 8, so both lanes that deploy Architect
+// require it in the build (which fails while nothing is pinned) and check the
+// built dist again, outside the turbo cache, before anything goes out.
+test('every Architect production build requires the bundled Architect 8', () => {
+  const hotfixWorkflow = parse(
+    readFileSync(new URL('hotfix-release.yml', WORKFLOW_DIR), 'utf8'),
+  );
+  const lanes = [
+    {
+      name: 'apps-release-architect',
+      steps: parsedWorkflow.jobs['apps-release-architect'].steps,
+      required: 'true',
+      firstOutward: 'Deploy architect to production',
+    },
+    {
+      name: 'hotfix-release',
+      steps: hotfixWorkflow.jobs['hotfix-release'].steps,
+      required:
+        "${{ inputs.app == 'architect' && hashFiles('apps/architect/legacy-architect.json') != '' && 'true' || '' }}",
+      // The tag is claimed before the deploy; neither may happen first.
+      firstOutward: 'Claim the release tag',
+    },
+  ];
+
+  for (const { name, steps, required, firstOutward } of lanes) {
+    const buildIndex = steps.findIndex((step) =>
+      /turbo run build --filter="?@codaco\/(?:architect|\$APP)"?$/.test(
+        step.run?.trim() ?? '',
+      ),
+    );
+    assert.notEqual(buildIndex, -1, `${name} builds Architect`);
+    assert.equal(
+      steps[buildIndex].env?.ARCHITECT_REQUIRE_LEGACY_V8,
+      required,
+      `${name}'s build requires Architect 8`,
+    );
+
+    const checkIndex = steps.findIndex(
+      (step) => step.name === 'Check Architect 8 is bundled',
+    );
+    const outwardIndex = steps.findIndex((step) => step.name === firstOutward);
+    assert.ok(
+      buildIndex < checkIndex && checkIndex < outwardIndex,
+      `${name} checks dist/v8 after building and before "${firstOutward}"`,
+    );
+    assert.match(
+      steps[checkIndex].run,
+      /for file in index\.html sw\.js dist-info\.json; do/,
+    );
+    assert.match(
+      steps[checkIndex].run,
+      /-f "apps\/architect\/dist\/v8\/\$file"/,
+    );
+  }
+});

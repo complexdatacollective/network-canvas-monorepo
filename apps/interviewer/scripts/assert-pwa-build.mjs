@@ -6,12 +6,14 @@
 // offline language switch, or the first offline opening of the menu.
 // Chunks loaded on demand (each UI language, the bundled sample protocol, the
 // synthetic data generator and its faker dependency) must stay out of the
-// initial load.
+// initial load. The Development protocol, offered only in `vite dev`, must not
+// be in the build at all.
 import { readdirSync, readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { assertNoDevelopmentProtocol } from '../../../scripts/buildtime/assert-no-development-protocol.mjs';
 import { assertPwaCacheHeaders } from '../../../scripts/buildtime/assert-pwa-cache-headers.mjs';
 
 const appRoot = path.resolve(
@@ -30,6 +32,16 @@ try {
     additionalStablePaths: ['/interviewer-icon.png'],
     text: readFileSync(path.join(dist, '_headers'), 'utf8'),
   });
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
+
+// The Development protocol is installable only in `vite dev` (Home.tsx and
+// useProtocolImport.ts), so none of it — its JSON or its media, a 23MB video
+// among them — belongs in a production build, not even as a chunk nothing
+// fetches: everything in dist is deployed.
+try {
+  assertNoDevelopmentProtocol(dist);
 } catch (error) {
   fail(error instanceof Error ? error.message : String(error));
 }
@@ -205,8 +217,7 @@ if (
 // Modules the app loads on demand to keep them out of the initial load. Each
 // must stay its own chunk (a static import anywhere folds it into the entry,
 // and the chunk disappears) outside the initial load, and must be precached
-// exactly when the feature it serves has to work offline. The Development
-// protocol's ~33 MB chunk is dev-only, so it must never be precached.
+// exactly when the feature it serves has to work offline.
 const deferredChunks = [
   {
     prefix: 'bundledSampleProtocol-',
@@ -217,11 +228,6 @@ const deferredChunks = [
     prefix: 'generate-',
     purpose: 'generating synthetic interviews',
     precache: true,
-  },
-  {
-    prefix: 'bundledDevelopmentProtocol-',
-    purpose: 'installing the development protocol',
-    precache: false,
   },
 ];
 for (const { prefix, purpose, precache } of deferredChunks) {
@@ -473,5 +479,5 @@ if (/index\.html/.test(assetHandoffRouteSource)) {
 }
 
 console.log(
-  `PWA build ok: ${precachePrefix} retained independently; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
+  `PWA build ok: ${precachePrefix} retained independently; no Development protocol; active-precache navigation fallbacks + exact-hash old-bundle JS/CSS and stage-preview handoff; no client claim; lease-gated old-precache cleanup; ${critical.length} critical chunk(s), ${localeChunks.length} lazily loaded locale chunk(s) and ${stagePreviewAssets.length} stage-preview asset(s) precached; ${deferredChunks.length} on-demand chunk(s) and faker outside the ${initialLoad.size}-chunk initial load`,
 );

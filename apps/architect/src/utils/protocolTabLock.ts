@@ -7,8 +7,14 @@
 // and goes read-only: it can still be browsed, but nothing in it can be changed
 // and autosave is off.
 //
-// This is a leaf module (no app imports) so it can't create import cycles. A
-// redux listener middleware bridges it to the store.
+// Architect 8 at `/v8/` coordinates its own tabs on its own channel. Its
+// protocols live in another library, so a claim on the same id there says
+// nothing about this library, and the two must never hear each other.
+//
+// This module imports only the leaf `storageNames`, so it can't create import
+// cycles. A redux listener middleware bridges it to the store.
+
+import { TAB_LOCK_CHANNEL } from './storageNames';
 
 type ClaimMessage = {
   type: 'claim';
@@ -23,8 +29,6 @@ type ClaimMessage = {
 type HeldMessage = { type: 'held'; id: string; from: string };
 type ReleaseMessage = { type: 'release'; id: string; from: string };
 type LockMessage = ClaimMessage | HeldMessage | ReleaseMessage;
-
-const CHANNEL_NAME = 'architect-protocol-lock';
 
 type ChannelFactory = (name: string) => BroadcastChannel | null;
 
@@ -74,7 +78,7 @@ export const createProtocolTabLock = (
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2);
 
-  const channel = channelFactory(CHANNEL_NAME);
+  const channel = channelFactory(TAB_LOCK_CHANNEL);
 
   let claimedId: string | null = null;
   // The protocol this tab intends to hold, tracked separately from the transient

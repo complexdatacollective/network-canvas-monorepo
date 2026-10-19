@@ -10,6 +10,7 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
+import { legacyProtocolMessages } from '~/components/legacyProtocolMessages';
 import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
@@ -21,6 +22,7 @@ import type { RootState } from '~/ducks/modules/root';
 import { type AppDispatch, store } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
+import { LEGACY_ARCHITECT_MAJOR } from '~/utils/legacyArchitect';
 const utilityMessages = defineMessages({
   returnToStartScreen: {
     id: 'architect.utility.hooks.useProtocolNavGuard.returnToStartScreen',
@@ -124,6 +126,92 @@ const discardDescriptions: Record<
       'Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts.',
   },
 });
+// The same prompt, when leaving takes the researcher out of this app to the
+// bundled Architect 8 (a protocol or file they chose to keep editing there)
+// rather than to the start screen. Every string names where they are going,
+// since the start-screen wording would describe a destination they never
+// reach. `{version}` is that Architect's version number.
+const legacyLeaveMessages = defineMessages({
+  leaveForArchitect: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.leaveForArchitect',
+    defaultMessage: 'Leave for Architect {version}?',
+    description:
+      'Title of the dialog shown before leaving the protocol editor to open a protocol in the previous version of Architect, in the same tab. {version} is that version’s number (for example 8).',
+  },
+  downloadAndOpenInArchitect: {
+    id: 'architect.utility.hooks.useProtocolNavGuard.downloadAndOpenInArchitect',
+    defaultMessage: 'Download and open in Architect {version}',
+    description:
+      'Button in the dialog shown before leaving the protocol editor for the previous version of Architect: downloads the protocol currently being edited, then leaves. {version} is that version’s number (for example 8).',
+  },
+});
+const legacyLeaveDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  MessageDescriptor
+> = defineMessages({
+  'saved': {
+    id: 'architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.saved',
+    defaultMessage:
+      'This protocol is saved automatically on this device, so you can come back to it at any time. Architect {version} will open in this tab.',
+    description:
+      'Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+  },
+  'open-elsewhere': {
+    id: 'architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.openElsewhere',
+    defaultMessage:
+      'This protocol is open in another tab, which holds the saved copy. You have been viewing it here in read-only mode, so leaving for Architect {version} will not change your protocol.',
+    description:
+      'Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+  },
+  'reclaim-blocked': {
+    id: 'architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.reclaimBlocked',
+    defaultMessage:
+      'Nothing has been saved in this tab since the protocol was opened in another one. Leaving for Architect {version} now will leave your protocol exactly as that tab saved it.',
+    description:
+      'Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+  },
+  'storage-unavailable': {
+    id: 'architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.storageUnavailable',
+    defaultMessage:
+      'This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you leave for Architect {version}.',
+    description:
+      'Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+  },
+});
+const legacyDiscardDescriptions: Record<
+  Exclude<LeavePersistence, 'no-protocol'>,
+  MessageDescriptor
+> = defineMessages({
+  'saved': {
+    id: 'architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.saved',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you leave for Architect {version} now, those changes will be discarded and the last saved version of the protocol will remain available.',
+    description:
+      'Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+  },
+  'open-elsewhere': {
+    id: 'architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.openElsewhere',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you leave for Architect {version} now, those changes will be discarded.',
+    description:
+      'Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+  },
+  'reclaim-blocked': {
+    id: 'architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.reclaimBlocked',
+    defaultMessage:
+      'Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you leave for Architect {version} now, those changes will be discarded and that saved version will remain available.',
+    description:
+      'Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+  },
+  'storage-unavailable': {
+    id: 'architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.storageUnavailable',
+    defaultMessage:
+      'This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Leaving for Architect {version} now discards all of it.',
+    description:
+      'Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts.',
+  },
+});
+
 export const stageDiscardDescriptions: Record<
   Exclude<LeavePersistence, 'no-protocol'>,
   MessageDescriptor
@@ -363,25 +451,38 @@ const NESTED_DRAFT_DISCARD_DESCRIPTION = defineMessages({
 // protocol open in another tab) gets a description of its own situation
 // instead. Callers must resolve `no-protocol` themselves: there is nothing to
 // confirm, and every action this dialog offers would fail.
+//
+// `destination` names where leaving goes, so the copy can say so: the start
+// screen, or the bundled Architect 8 (a full-page navigation away from this
+// app). The same parameter on Architect 8's side names Architect 9.
 export const promptLeaveEditor = async (
   dispatch: AppDispatch,
   openDialog: DialogContextType['openDialog'],
   performLeave: () => void | Promise<void>,
   draftDirty = false,
   persistence: Exclude<LeavePersistence, 'no-protocol'> = 'saved',
+  destination: 'start-screen' | 'architect-8' = 'start-screen',
 ) => {
   if (guardState.prompting) return;
   guardState.prompting = true;
   try {
+    const legacy = destination === 'architect-8';
+    const values = legacy ? { version: LEGACY_ARCHITECT_MAJOR } : undefined;
     const leaveAction = {
       label: createElement(AppMessage, {
-        message: utilityMessages.returnToStartScreen,
+        message: legacy
+          ? legacyProtocolMessages.openInArchitect
+          : utilityMessages.returnToStartScreen,
+        values,
       }),
       value: 'leave' as const,
     };
     const downloadAction = {
       label: createElement(AppMessage, {
-        message: utilityMessages.returnAndDownloadNow,
+        message: legacy
+          ? legacyLeaveMessages.downloadAndOpenInArchitect
+          : utilityMessages.returnAndDownloadNow,
+        values,
       }),
       value: 'download-and-leave' as const,
     };
@@ -396,14 +497,19 @@ export const promptLeaveEditor = async (
             message: utilityMessages.discardUnsavedChanges,
           }),
           description: createElement(AppMessage, {
-            message: discardDescriptions[persistence],
+            message: (legacy ? legacyDiscardDescriptions : discardDescriptions)[
+              persistence
+            ],
+            values,
           }),
           intent: 'warning',
           size: 'readable',
           actions: {
             primary: {
               label: createElement(AppMessage, {
-                message: utilityMessages.discardChangesAndReturn,
+                message: legacy
+                  ? utilityMessages.discardChangesAndLeave
+                  : utilityMessages.discardChangesAndReturn,
               }),
               value: 'discard-and-leave' as const,
             },
@@ -418,10 +524,16 @@ export const promptLeaveEditor = async (
       : await openDialog({
           type: 'choice',
           title: createElement(AppMessage, {
-            message: utilityMessages.returnToStartScreenb2364,
+            message: legacy
+              ? legacyLeaveMessages.leaveForArchitect
+              : utilityMessages.returnToStartScreenb2364,
+            values,
           }),
           description: createElement(AppMessage, {
-            message: leaveDescriptions[persistence],
+            message: (legacy ? legacyLeaveDescriptions : leaveDescriptions)[
+              persistence
+            ],
+            values,
           }),
           intent: unsaved ? 'warning' : 'default',
           size: 'readable',

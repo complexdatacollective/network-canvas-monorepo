@@ -3770,7 +3770,22 @@ jobs:
           POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
           VITE_FRESCO_PREVIEW_URL: ${{ secrets.VITE_FRESCO_PREVIEW_URL }}
           VITE_FRESCO_PREVIEW_API_TOKEN: ${{ secrets.VITE_FRESCO_PREVIEW_API_TOKEN }}
+          # Production serves Architect 8 at /v8/ beside this release, from the
+          # tarball apps/architect/legacy-architect.json pins. The build fails
+          # rather than deploy without it (see apps/architect/RELEASING.md).
+          ARCHITECT_REQUIRE_LEGACY_V8: 'true'
         run: pnpm exec turbo run build --filter=@codaco/architect
+      # Checked outside the turbo cache too: whatever dist the build step left,
+      # production must not go out without Architect 8 in it.
+      - name: Check Architect 8 is bundled
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          for file in index.html sw.js dist-info.json; do
+            if [[ ! -f "apps/architect/dist/v8/$file" ]]; then
+              echo "::error::apps/architect/dist/v8/$file is missing; production must serve Architect 8 at /v8/." >&2
+              exit 1
+            fi
+          done
       # After the turbo-cached build so a cache-restored dist still gets THIS
       # deployment's commit (GITHUB_SHA), matching netlify.toml's dev lane.
       - name: Stamp deployed commit

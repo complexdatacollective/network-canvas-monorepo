@@ -4,6 +4,7 @@ import {
   clearRememberedAppSession,
   createSessionStorageDriver,
 } from '../sessionStorageDriver';
+import { SESSION_PREFIX } from '../storageNames';
 
 afterEach(() => {
   window.sessionStorage.clear();
@@ -29,13 +30,28 @@ describe('sessionStorageDriver', () => {
 
   it('clears the remembered app session after startup recovery', () => {
     window.sessionStorage.setItem(
-      '@@remember-app',
+      `${SESSION_PREFIX}app`,
       '{"activeProtocolId":"stale"}',
     );
 
     clearRememberedAppSession();
 
-    expect(window.sessionStorage.getItem('@@remember-app')).toBeNull();
+    expect(window.sessionStorage.getItem(`${SESSION_PREFIX}app`)).toBeNull();
+  });
+
+  // Architect 8 at `/v8/` keeps redux-remember's default prefix, and a tab
+  // that moves between the two apps shares one sessionStorage.
+  it('leaves Architect 8’s session in the same tab alone', () => {
+    window.sessionStorage.setItem(
+      '@@remember-app',
+      '{"activeProtocolId":"architect-8-row"}',
+    );
+
+    clearRememberedAppSession();
+
+    expect(window.sessionStorage.getItem('@@remember-app')).toBe(
+      '{"activeProtocolId":"architect-8-row"}',
+    );
   });
 
   it('falls back to an in-memory store when sessionStorage.setItem throws', () => {

@@ -1,6 +1,8 @@
 import {
+  CircleArrowUp,
   Download,
   Ellipsis,
+  ExternalLink as ExternalLinkIcon,
   FolderOpen,
   Info,
   Loader2,
@@ -59,6 +61,7 @@ import {
   FinishStageTextRefusal,
   FinishStageTextRefusalTitle,
 } from '~/components/FinishStageTextAlert';
+import { APP_SCHEMA_VERSION } from '~/config';
 import { useAppDispatch } from '~/ducks/hooks';
 import { deleteLibraryProtocol } from '~/ducks/modules/userActions/userActions';
 import { useProtocolLibrary } from '~/hooks/useProtocolLibrary';
@@ -68,12 +71,24 @@ import { sampleProtocol } from '~/templates/sample-protocol';
 import { clearAllStorage, type StoredProtocolRow } from '~/utils/assetDB';
 import { getProtocolAssetCount } from '~/utils/assetUtils';
 import {
+  downloadLegacyProtocolAsNetcanvas,
   downloadProtocolAsNetcanvas,
   MissingFinishStageTextError,
   UnresolvedAssetsError,
 } from '~/utils/bundleProtocol';
+import { beginExport } from '~/utils/criticalOperation';
 import { documentationLinks } from '~/utils/documentationLinks';
+import {
+  getBundledLegacyArchitect,
+  LEGACY_ARCHITECT_MAJOR,
+} from '~/utils/legacyArchitect';
+import {
+  countLegacyAssets,
+  type LegacyStoredProtocolRow,
+} from '~/utils/legacyProtocolLibrary';
 import { reportError } from '~/utils/reportError';
+
+import { legacyProtocolMessages } from '../legacyProtocolMessages';
 
 // Rich-text tag renderers live at module scope so they keep one identity across
 // renders (an inline arrow returning JSX is a component defined during render).
@@ -287,11 +302,12 @@ const messages = defineMessages({
     defaultMessage: 'Remove all data?',
     description: 'The title text in components / Home / LibraryPanel.',
   },
-  everyProtocolAssetAndSettingStored: {
-    id: 'architect.home.libraryPanel.everyProtocolAssetAndSettingStored',
+  clearAllKeepsSchema8Protocols: {
+    id: 'architect.home.libraryPanel.clearAllKeepsSchema8Protocols',
     defaultMessage:
-      'Every protocol, asset, and setting stored locally by Architect will be permanently removed. This cannot be undone.',
-    description: 'The description text in components / Home / LibraryPanel.',
+      'Every protocol and resource saved in this version of Architect will be permanently removed. This cannot be undone. Schema 8 protocols stay in Architect 8 and are not removed.',
+    description:
+      'Description in the dialog confirming "Clear all protocols" on the home screen. Only this version of Architect\'s own library is removed; protocols that belong to Architect 8 (schema 8) are kept, because they live in Architect 8\'s separate library on the same device.',
   },
   removeAll: {
     id: 'architect.home.libraryPanel.removeAll',
@@ -393,13 +409,41 @@ const formatTimestamp = (millis: number, intl: IntlShape): string => {
   }
   return absolute;
 };
+/** What a protocol's info dialog shows, from either library. */
+type ProtocolInfoSource = {
+  name: string;
+  description?: string;
+  stageCount: number;
+  nodeTypeCount: number;
+  edgeTypeCount: number;
+  countAssets: () => Promise<number>;
+  createdAt: number;
+  updatedAt: number;
+};
+type DownloadRequest = {
+  /** The row's key in the list, which marks it as downloading. */
+  key: string;
+  name: string;
+  download: () => Promise<void>;
+};
+// An Architect 8 document is read without validation, so its codebook is
+// whatever that library holds.
+const countCodebookTypes = (
+  codebook: Record<string, unknown>,
+  entity: 'node' | 'edge',
+): number => {
+  const types = codebook[entity];
+  return typeof types === 'object' && types !== null
+    ? Object.keys(types).length
+    : 0;
+};
 type MetaStat = {
   label: MessageDescriptor;
   value: number;
   kind?: 'date';
 };
 const formatProtocolMeta = (
-  protocol: StoredProtocolRow,
+  protocol: StoredProtocolRow | LegacyStoredProtocolRow,
   intl: IntlShape,
 ): string =>
   intl.formatMessage(extraMessages.protocolMeta, {
@@ -428,38 +472,51 @@ const formatTemplateMeta = (
  * were working in rather than at the top of the page.
  */
 type ResolveMenuFocus = () => HTMLElement | null;
-type LibraryRowItem = Record<string, unknown> & {
-  kind: 'row';
-  id: string;
-  textValue: string;
+type RowMenuAction = {
+  label: string;
+  onSelect: (resolveFocus: ResolveMenuFocus) => void;
+};
+type RowFields = {
   name: string;
   description?: string;
   meta?: string;
+  /** Short labels shown beside the name, such as a protocol's schema. */
+  badges?: string[];
   downloading?: boolean;
-  onOpen: () => void;
+  /** Clicking or pressing Enter on the row. */
+  onOpen: (resolveFocus: ResolveMenuFocus) => void;
+  /**
+   * The menu's first item. Left out, it is "Open", doing what the row does;
+   * null leaves the menu without one.
+   */
+  openItem?: RowMenuAction | null;
+  upgradeItem?: RowMenuAction;
   onDownload?: (resolveFocus: ResolveMenuFocus) => void;
   onDelete?: (resolveFocus: ResolveMenuFocus) => void;
   onShowInfo?: (resolveFocus: ResolveMenuFocus) => void;
 };
+type LibraryRowItem = Record<string, unknown> &
+  RowFields & {
+    kind: 'row';
+    id: string;
+    textValue: string;
+    /** Sorts the Recent list; templates have none. */
+    updatedAt?: number;
+  };
 type LibraryPanelItem = LibraryRowItem;
-type PanelRowProps = {
+type PanelRowProps = RowFields & {
   itemProps: ItemProps;
-  name: string;
-  description?: string;
-  meta?: string;
-  downloading?: boolean;
-  onOpen: () => void;
-  onDownload?: (resolveFocus: ResolveMenuFocus) => void;
-  onDelete?: (resolveFocus: ResolveMenuFocus) => void;
-  onShowInfo?: (resolveFocus: ResolveMenuFocus) => void;
 };
 const PanelRow = ({
   itemProps,
   name,
   description,
   meta,
+  badges,
   downloading = false,
   onOpen,
+  openItem,
+  upgradeItem,
   onDownload,
   onDelete,
   onShowInfo,
@@ -476,7 +533,7 @@ const PanelRow = ({
     // researcher actually chose. The menu items stop propagation too; this is
     // the guard that does not depend on every future one remembering to.
     if (!event.currentTarget.contains(event.target as Node)) return;
-    onOpen();
+    onOpen(captureRowFocus(event.currentTarget));
   };
   const handleKeyDown = (event: React.KeyboardEvent) => {
     itemProps.onKeyDown?.(event);
@@ -485,8 +542,19 @@ const PanelRow = ({
     if (event.target !== event.currentTarget) return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      onOpen();
+      onOpen(captureRowFocus(event.currentTarget));
     }
+  };
+  // The row itself, then its list, for a dialog the row opened: by the time it
+  // closes, the row may have been re-rendered away.
+  const captureRowFocus = (row: Element): ResolveMenuFocus => {
+    const element = row instanceof HTMLElement ? row : null;
+    const listbox = row.closest<HTMLElement>('[role="listbox"]');
+    return () => {
+      if (element?.isConnected) return element;
+      if (listbox?.isConnected) return listbox;
+      return null;
+    };
   };
   // Read while the row is still mounted — after a confirmed delete neither the
   // trigger nor the row is in the document, and `closest` would have nothing to
@@ -513,7 +581,11 @@ const PanelRow = ({
         });
     };
 
-  const hasMenu = Boolean(onDownload || onDelete || onShowInfo);
+  const hasMenu = Boolean(onDownload || onDelete || onShowInfo || upgradeItem);
+  const firstItem: RowMenuAction | null =
+    openItem === undefined
+      ? { label: intl.formatMessage(messages.open), onSelect: onOpen }
+      : openItem;
 
   return (
     <div
@@ -544,6 +616,15 @@ const PanelRow = ({
         >
           {name}
         </Heading>
+        {badges && badges.length > 0 && (
+          <span className="flex flex-wrap gap-1">
+            {badges.map((badge) => (
+              <Badge key={badge} size="sm" tone="neutral" appearance="outline">
+                {badge}
+              </Badge>
+            ))}
+          </span>
+        )}
         {meta && <span className="text-sm text-current/70">{meta}</span>}
 
         {description && (
@@ -582,12 +663,22 @@ const PanelRow = ({
               }
             />
             <DropdownMenuContent side="bottom" align="end">
-              <DropdownMenuItem
-                icon={<FolderOpen />}
-                onClick={runMenuAction(onOpen)}
-              >
-                {intl.formatMessage(messages.open)}
-              </DropdownMenuItem>
+              {firstItem && (
+                <DropdownMenuItem
+                  icon={openItem ? <ExternalLinkIcon /> : <FolderOpen />}
+                  onClick={runMenuAction(firstItem.onSelect)}
+                >
+                  {firstItem.label}
+                </DropdownMenuItem>
+              )}
+              {upgradeItem && (
+                <DropdownMenuItem
+                  icon={<CircleArrowUp />}
+                  onClick={runMenuAction(upgradeItem.onSelect)}
+                >
+                  {upgradeItem.label}
+                </DropdownMenuItem>
+              )}
               {onShowInfo && (
                 <DropdownMenuItem
                   icon={<Info />}
@@ -699,8 +790,11 @@ const renderLibraryItem = (item: LibraryPanelItem, itemProps: ItemProps) => {
       name={item.name}
       description={item.description}
       meta={item.meta}
+      badges={item.badges}
       downloading={item.downloading}
       onOpen={item.onOpen}
+      openItem={item.openItem}
+      upgradeItem={item.upgradeItem}
       onDownload={item.onDownload}
       onDelete={item.onDelete}
       onShowInfo={item.onShowInfo}
@@ -710,6 +804,13 @@ const renderLibraryItem = (item: LibraryPanelItem, itemProps: ItemProps) => {
 type LibraryPanelProps = {
   // Open a saved protocol from the library.
   onOpenProtocol: (id: string) => void;
+  // Open a protocol from Architect 8's library: the choice dialog, unless the
+  // researcher already chose to keep it in Architect 8.
+  onOpenLegacyProtocol: (id: string, finalFocus?: ResolveMenuFocus) => void;
+  // Offer to upgrade a protocol from Architect 8's library.
+  onUpgradeLegacyProtocol: (id: string, finalFocus?: ResolveMenuFocus) => void;
+  // Open a protocol from Architect 8's library in Architect 8.
+  onOpenInLegacyArchitect: (id: string) => void;
   // Open the bundled sample protocol.
   onOpenSample: () => void;
   // Open the development protocol (shown as a template in dev mode only).
@@ -727,6 +828,9 @@ const PANEL_CLASSES = 'flex min-h-0 flex-col overflow-x-hidden overflow-y-auto';
 
 const LibraryPanel = ({
   onOpenProtocol,
+  onOpenLegacyProtocol,
+  onUpgradeLegacyProtocol,
+  onOpenInLegacyArchitect,
   onOpenSample,
   onOpenDevProtocol,
   templates,
@@ -735,14 +839,18 @@ const LibraryPanel = ({
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
-  const { protocols, isLoaded } = useProtocolLibrary();
+  const { protocols, legacyProtocols, legacyChoices, isLoaded } =
+    useProtocolLibrary();
+  // Architect 8's protocols are listed with this app's own, so every count and
+  // the opening tab include them.
+  const protocolCount = protocols.length + legacyProtocols.length;
   // Null until the library has loaded. The opening tab is then chosen once:
   // Templates when there is nothing recent to show, Recent otherwise. Deciding
   // only once means removing the last protocol later does not move the
   // researcher off the tab they are on.
   const [tab, setTab] = useState<Tab | null>(null);
   if (tab === null && isLoaded) {
-    setTab(protocols.length === 0 ? 'templates' : 'recent');
+    setTab(protocolCount === 0 ? 'templates' : 'recent');
   }
   const recentLayout = useMemo(
     () => new ListLayout<LibraryPanelItem>({ gap: 0 }),
@@ -766,14 +874,18 @@ const LibraryPanel = ({
   const infoFocusRef = useRef<ResolveMenuFocus | null>(null);
   const activeTab = tab ?? 'recent';
   const handleDownload = useCallback(
-    async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
-      setDownloadingIds((prev) => new Set(prev).add(protocol.id));
+    async (
+      { key, name, download }: DownloadRequest,
+      resolveFocus: ResolveMenuFocus,
+    ) => {
+      setDownloadingIds((prev) => new Set(prev).add(key));
+      // Marked as an export, like the editor's, so leaving for Architect 8 or
+      // a service-worker update reload waits for it rather than ending the
+      // page under a zip still being generated. The row menu stays usable
+      // while it runs, so "Open in Architect 8" can be chosen meanwhile.
+      const finishExport = beginExport();
       try {
-        await downloadProtocolAsNetcanvas(
-          protocol.protocol,
-          protocol.name,
-          protocol.id,
-        );
+        await download();
       } catch (error) {
         // Nor one whose finish stage has no heading or text in its default
         // language: no host would import it.
@@ -808,7 +920,7 @@ const LibraryPanel = ({
             }),
             description: createElement(AppErrorMessage, {
               error: createMessageError(messages.wasDownloadedButThese, {
-                value1: protocol.name,
+                value1: name,
                 assetList: { list: error.assetNames },
               }),
             }),
@@ -835,7 +947,7 @@ const LibraryPanel = ({
           description: createElement(AppMessage, {
             message: messages.couldNotBeDownloaded,
             values: {
-              value1: protocol.name,
+              value1: name,
             },
           }),
           actions: {
@@ -847,9 +959,10 @@ const LibraryPanel = ({
           finalFocus: resolveFocus,
         });
       } finally {
+        finishExport();
         setDownloadingIds((prev) => {
           const next = new Set(prev);
-          next.delete(protocol.id);
+          next.delete(key);
           return next;
         });
       }
@@ -919,22 +1032,21 @@ const LibraryPanel = ({
     [dispatch, openDialog],
   );
   const handleShowInfo = useCallback(
-    async (protocol: StoredProtocolRow, resolveFocus: ResolveMenuFocus) => {
+    async (protocol: ProtocolInfoSource, resolveFocus: ResolveMenuFocus) => {
       infoFocusRef.current = resolveFocus;
-      const { codebook } = protocol.protocol;
-      const assetCount = await getProtocolAssetCount(protocol.id);
+      const assetCount = await protocol.countAssets();
       const stats: MetaStat[] = [
         {
           label: messages.stages,
-          value: protocol.protocol.stages.length,
+          value: protocol.stageCount,
         },
         {
           label: messages.nodeTypes,
-          value: Object.keys(codebook.node ?? {}).length,
+          value: protocol.nodeTypeCount,
         },
         {
           label: messages.edgeTypes,
-          value: Object.keys(codebook.edge ?? {}).length,
+          value: protocol.edgeTypeCount,
         },
         {
           label: messages.assets,
@@ -953,7 +1065,7 @@ const LibraryPanel = ({
       ];
       setInfo({
         title: protocol.name,
-        description: protocol.protocol.description,
+        description: protocol.description,
         stats,
       });
       setInfoOpen(true);
@@ -1036,7 +1148,7 @@ const LibraryPanel = ({
       intent: 'destructive',
       title: createElement(AppMessage, { message: messages.removeAllData }),
       description: createElement(AppMessage, {
-        message: messages.everyProtocolAssetAndSettingStored,
+        message: messages.clearAllKeepsSchema8Protocols,
       }),
       actions: {
         primary: {
@@ -1074,33 +1186,148 @@ const LibraryPanel = ({
       });
     }
   }, [openDialog]);
-  const recentItems = useMemo<LibraryPanelItem[]>(
-    () =>
-      protocols.map((protocol) => ({
+  const recentItems = useMemo<LibraryPanelItem[]>(() => {
+    const ownItems: LibraryPanelItem[] = protocols.map((protocol) => ({
+      kind: 'row' as const,
+      id: protocol.id,
+      textValue: protocol.name,
+      name: protocol.name,
+      description: protocol.protocol.description,
+      meta: formatProtocolMeta(protocol, intl),
+      updatedAt: protocol.updatedAt,
+      downloading: downloadingIds.has(protocol.id),
+      onOpen: () => onOpenProtocol(protocol.id),
+      onDownload: (resolveFocus) =>
+        void handleDownload(
+          {
+            key: protocol.id,
+            name: protocol.name,
+            download: () =>
+              downloadProtocolAsNetcanvas(
+                protocol.protocol,
+                protocol.name,
+                protocol.id,
+              ),
+          },
+          resolveFocus,
+        ),
+      onDelete: (resolveFocus) => void handleDelete(protocol, resolveFocus),
+      onShowInfo: (resolveFocus) =>
+        void handleShowInfo(
+          {
+            name: protocol.name,
+            description: protocol.protocol.description,
+            stageCount: protocol.protocol.stages.length,
+            nodeTypeCount: Object.keys(protocol.protocol.codebook.node ?? {})
+              .length,
+            edgeTypeCount: Object.keys(protocol.protocol.codebook.edge ?? {})
+              .length,
+            countAssets: () => getProtocolAssetCount(protocol.id),
+            createdAt: protocol.createdAt,
+            updatedAt: protocol.updatedAt,
+          },
+          resolveFocus,
+        ),
+    }));
+
+    // Architect 8's protocols. This app never writes that library, so they
+    // have no Delete; opening one offers the choice, and the menu holds both
+    // ways out of it directly.
+    const upgradedIds = new Set(
+      legacyChoices.flatMap((choice) =>
+        choice.upgradedId !== undefined &&
+        protocols.some((protocol) => protocol.id === choice.upgradedId)
+          ? [choice.legacyId]
+          : [],
+      ),
+    );
+    const legacyArchitect = getBundledLegacyArchitect();
+    const legacyItems: LibraryPanelItem[] = legacyProtocols.map((row) => {
+      const key = `legacy:${row.id}`;
+      const description =
+        typeof row.protocol.description === 'string'
+          ? row.protocol.description
+          : undefined;
+      return {
         kind: 'row' as const,
-        id: protocol.id,
-        textValue: protocol.name,
-        name: protocol.name,
-        description: protocol.protocol.description,
-        meta: formatProtocolMeta(protocol, intl),
-        downloading: downloadingIds.has(protocol.id),
-        onOpen: () => onOpenProtocol(protocol.id),
+        id: key,
+        textValue: row.name,
+        name: row.name,
+        description,
+        meta: formatProtocolMeta(row, intl),
+        badges: [
+          intl.formatMessage(legacyProtocolMessages.schemaBadge, {
+            version: row.schemaVersion,
+          }),
+          ...(upgradedIds.has(row.id)
+            ? [intl.formatMessage(legacyProtocolMessages.upgradedBadge)]
+            : []),
+        ],
+        updatedAt: row.updatedAt,
+        downloading: downloadingIds.has(key),
+        onOpen: (resolveFocus) => onOpenLegacyProtocol(row.id, resolveFocus),
+        openItem: legacyArchitect
+          ? {
+              label: intl.formatMessage(
+                legacyProtocolMessages.openInArchitect,
+                {
+                  version: LEGACY_ARCHITECT_MAJOR,
+                },
+              ),
+              onSelect: () => onOpenInLegacyArchitect(row.id),
+            }
+          : null,
+        upgradeItem: {
+          label: intl.formatMessage(legacyProtocolMessages.upgradeToSchema, {
+            version: APP_SCHEMA_VERSION,
+          }),
+          onSelect: (resolveFocus) =>
+            onUpgradeLegacyProtocol(row.id, resolveFocus),
+        },
         onDownload: (resolveFocus) =>
-          void handleDownload(protocol, resolveFocus),
-        onDelete: (resolveFocus) => void handleDelete(protocol, resolveFocus),
+          void handleDownload(
+            {
+              key,
+              name: row.name,
+              download: () => downloadLegacyProtocolAsNetcanvas(row),
+            },
+            resolveFocus,
+          ),
         onShowInfo: (resolveFocus) =>
-          void handleShowInfo(protocol, resolveFocus),
-      })),
-    [
-      intl,
-      protocols,
-      downloadingIds,
-      onOpenProtocol,
-      handleDownload,
-      handleDelete,
-      handleShowInfo,
-    ],
-  );
+          void handleShowInfo(
+            {
+              name: row.name,
+              description,
+              stageCount: row.protocol.stages.length,
+              nodeTypeCount: countCodebookTypes(row.protocol.codebook, 'node'),
+              edgeTypeCount: countCodebookTypes(row.protocol.codebook, 'edge'),
+              countAssets: () => countLegacyAssets(row.id),
+              createdAt: row.createdAt,
+              updatedAt: row.updatedAt,
+            },
+            resolveFocus,
+          ),
+      };
+    });
+
+    // One list, most recently edited first, whichever library a row is in.
+    return [...ownItems, ...legacyItems].toSorted(
+      (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0),
+    );
+  }, [
+    intl,
+    protocols,
+    legacyProtocols,
+    legacyChoices,
+    downloadingIds,
+    onOpenProtocol,
+    onOpenLegacyProtocol,
+    onOpenInLegacyArchitect,
+    onUpgradeLegacyProtocol,
+    handleDownload,
+    handleDelete,
+    handleShowInfo,
+  ]);
   const templateItems = useMemo<LibraryPanelItem[]>(() => {
     const items: LibraryPanelItem[] = [
       {
@@ -1153,7 +1380,6 @@ const LibraryPanel = ({
   const templateLabel = intl.formatMessage(chromeMessages.templateCount, {
     count: templateCount,
   });
-  const protocolCount = protocols.length;
   const storageTooltip = intl.formatMessage(
     chromeMessages.yourProtocolsAreSavedOnlyOn,
     { protocolCount },

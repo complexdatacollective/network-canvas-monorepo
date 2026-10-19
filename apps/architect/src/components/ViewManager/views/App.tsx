@@ -4,7 +4,6 @@ import { useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { useToast } from '@codaco/fresco-ui/Toast';
 import { AppUpdateProvider } from '~/components/AppUpdate/AppUpdateProvider';
 import BackgroundLights from '~/components/BackgroundLights';
 import InstallBanner from '~/components/InstallBanner';
@@ -13,11 +12,14 @@ import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
 import ProtocolGuardedRouter from '~/components/ProtocolGuardedRouter';
 import ProtocolLockBanner from '~/components/ProtocolLockBanner';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
+import {
+  confirmLegacyProtocolUpgrade,
+  openNetcanvasFile,
+} from '~/components/protocolOpenFlow';
 import ProtocolValidationDialogReporter from '~/components/ProtocolValidationDialogReporter';
 import Routes from '~/components/Routes';
 import ScrollToTop from '~/components/ScrollToTop';
 import { useAppDispatch } from '~/ducks/hooks';
-import { openLocalNetcanvas } from '~/ducks/modules/userActions/userActions';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
 import { resetRunOnce } from '~/hooks/useRunOnce';
 import {
@@ -31,13 +33,10 @@ import {
   takeLaunchReadFailures,
 } from '~/utils/fileLaunchQueue';
 import {
-  subscribeProtocolUpgrades,
-  takeProtocolUpgrades,
-} from '~/utils/protocolUpgradeQueue';
-import {
   subscribeStartupProtocolFailures,
   takeStartupProtocolFailures,
 } from '~/utils/startupProtocolFailureQueue';
+import { takeUpgradeRequest } from '~/utils/urlEntryRequests';
 const messages = defineMessages({
   couldNotOpenFile: {
     id: 'architect.viewManager.views.app.couldNotOpenFile',
@@ -60,18 +59,6 @@ const messages = defineMessages({
     id: 'architect.viewManager.views.app.autosaveFailed',
     defaultMessage: 'Autosave failed',
     description: 'The title text in components / ViewManager / views / App.',
-  },
-  protocolUpdated: {
-    id: 'architect.viewManager.views.app.protocolUpdated',
-    defaultMessage: 'Protocol updated',
-    description: 'The title text in components / ViewManager / views / App.',
-  },
-  wasMadeWithAn: {
-    id: 'architect.viewManager.views.app.wasMadeWithAn',
-    defaultMessage:
-      '"{name}" was made with an older version of Architect. It has been updated to open here, and the copy in your library has been replaced.',
-    description:
-      'The description text in components / ViewManager / views / App.',
   },
 });
 const finalMessages = defineMessages({
@@ -169,37 +156,6 @@ const StartupProtocolFailureReporter = () => {
   return null;
 };
 
-/**
- * Announces a protocol that was brought up to date while being opened.
- *
- * A toast, not a dialog: nothing went wrong and there is nothing to decide —
- * the protocol opened, and this only explains why the copy in the library is
- * no longer byte-identical to the one the researcher last saved. The other
- * reporters here interrupt because they describe work that did NOT happen.
- */
-const ProtocolUpgradeToaster = () => {
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const announceUpgrades = () => {
-      for (const { name } of takeProtocolUpgrades()) {
-        toast({
-          variant: 'info',
-          title: <AppMessage message={messages.protocolUpdated} />,
-          description: (
-            <AppMessage message={messages.wasMadeWithAn} values={{ name }} />
-          ),
-        });
-      }
-    };
-
-    announceUpgrades();
-    return subscribeProtocolUpgrades(announceUpgrades);
-  }, [toast]);
-
-  return null;
-};
-
 const LaunchedProtocolOpener = () => {
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
@@ -208,22 +164,27 @@ const LaunchedProtocolOpener = () => {
     const openLaunchedProtocols = () => {
       const [file] = takeLaunchFiles();
       if (!file) return;
-
-      const open = async (migrationApproved = false): Promise<void> => {
-        const result = await dispatch(
-          openLocalNetcanvas({ file, migrationApproved }),
-        ).unwrap();
-        await showProtocolOpenResultDialog({
-          result,
-          openDialog,
-          onApproveMigration: migrationApproved ? undefined : () => open(true),
-        });
-      };
-      void open();
+      void openNetcanvasFile({ file, dispatch, openDialog });
     };
 
     openLaunchedProtocols();
     return subscribeLaunchFiles(openLaunchedProtocols);
+  }, [dispatch, openDialog]);
+
+  return null;
+};
+
+// Architect 8's "Upgrade to schema 9" arrives as `/?upgrade=<id>`, captured
+// before React mounted (see `urlEntryRequests`). Mounted app-wide rather than
+// in Home: a restored session can put this page anywhere.
+const LegacyUpgradeRequestOpener = () => {
+  const dispatch = useAppDispatch();
+  const { openDialog } = useDialog();
+
+  useEffect(() => {
+    const legacyId = takeUpgradeRequest();
+    if (!legacyId) return;
+    void confirmLegacyProtocolUpgrade({ legacyId, dispatch, openDialog });
   }, [dispatch, openDialog]);
 
   return null;
@@ -255,8 +216,8 @@ const AppContents = () => {
       <FileLaunchFailureReporter />
       <AutosaveFailureReporter />
       <StartupProtocolFailureReporter />
-      <ProtocolUpgradeToaster />
       <LaunchedProtocolOpener />
+      <LegacyUpgradeRequestOpener />
       <ProtocolValidationDialogReporter />
       {/* Mounted app-wide, not inside the stage editor: a nested editor can be
           open over the Codebook or Resources just as easily, and that is

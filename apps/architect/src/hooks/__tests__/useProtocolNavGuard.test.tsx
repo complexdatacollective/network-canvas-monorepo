@@ -254,6 +254,104 @@ describe('promptLeaveEditor', () => {
     });
   });
 
+  describe('when leaving takes the researcher to Architect 8', () => {
+    const toArchitect8 = 'architect-8' as const;
+
+    it('names Architect 8 as the destination, not the start screen', async () => {
+      const { dispatch, openDialog, getCaptured } = setup('leave');
+      const performLeave = vi.fn();
+
+      await promptLeaveEditor(
+        dispatch,
+        openDialog,
+        performLeave,
+        false,
+        'saved',
+        toArchitect8,
+      );
+
+      const captured = getCaptured();
+      if (captured?.type !== 'choice')
+        throw new Error('Expected choice dialog');
+      expect(renderQueuedMessage(captured.title)).toBe(
+        'Leave for Architect 8?',
+      );
+      expect(renderQueuedMessage(captured.description)).toMatch(
+        /saved automatically on this device/,
+      );
+      expect(renderQueuedMessage(captured.description)).toMatch(
+        /Architect 8 will open in this tab/,
+      );
+      expect(renderQueuedMessage(captured.actions.primary.label)).toBe(
+        'Open in Architect 8',
+      );
+      expect(renderQueuedMessage(captured.actions.secondary?.label)).toBe(
+        'Download and open in Architect 8',
+      );
+      expect(performLeave).toHaveBeenCalledTimes(1);
+    });
+
+    it('says which work is discarded on the way to Architect 8', async () => {
+      const { dispatch, openDialog, getCaptured } = setup('discard-and-leave');
+
+      await promptLeaveEditor(
+        dispatch,
+        openDialog,
+        vi.fn(),
+        true,
+        'saved',
+        toArchitect8,
+      );
+
+      const captured = getCaptured();
+      if (captured?.type !== 'choice')
+        throw new Error('Expected choice dialog');
+      expect(renderQueuedMessage(captured.title)).toBe(
+        'Discard unsaved changes?',
+      );
+      expect(renderQueuedMessage(captured.description)).toMatch(
+        /If you leave for Architect 8 now/,
+      );
+      expect(renderQueuedMessage(captured.actions.primary.label)).toBe(
+        'Discard Changes and Leave',
+      );
+    });
+
+    it.each([
+      'saved',
+      'open-elsewhere',
+      'reclaim-blocked',
+      'storage-unavailable',
+    ] as const)('never mentions the start screen (%s)', async (persistence) => {
+      for (const dirty of [false, true]) {
+        guardState.prompting = false;
+        const { dispatch, openDialog, getCaptured } = setup(null);
+        await promptLeaveEditor(
+          dispatch,
+          openDialog,
+          vi.fn(),
+          dirty,
+          persistence,
+          toArchitect8,
+        );
+        const captured = getCaptured();
+        if (captured?.type !== 'choice') {
+          throw new Error('Expected choice dialog');
+        }
+        const copy = [
+          captured.title,
+          captured.description,
+          captured.actions.primary.label,
+          captured.actions.secondary?.label,
+        ]
+          .map((part) => renderQueuedMessage(part))
+          .join(' ');
+        expect(copy).not.toMatch(/start screen|return/i);
+        expect(copy).toMatch(/Architect 8/);
+      }
+    });
+  });
+
   it('never puts a stack trace in a leave-editor dialog', async () => {
     const { dispatch, openDialog, getCapturedDialogs } = setup(
       'download-and-leave',

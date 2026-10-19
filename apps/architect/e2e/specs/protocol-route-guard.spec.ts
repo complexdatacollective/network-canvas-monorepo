@@ -1,5 +1,9 @@
 import type { BrowserContext, Page } from '@playwright/test';
 
+import {
+  PROTOCOL_DB_NAME,
+  SESSION_PREFIX,
+} from '../../src/utils/storageNames.js';
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
@@ -28,9 +32,9 @@ async function settle(page: Page) {
 // `readProtocolJson` (which requires a row to exist). A phantom protocol must
 // leave this empty.
 async function readProtocolIds(page: Page): Promise<string[]> {
-  const ids: unknown = await page.evaluate(async () => {
+  const ids: unknown = await page.evaluate(async (dbName) => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const req = indexedDB.open('ArchitectProtocolDB');
+      const req = indexedDB.open(dbName);
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
@@ -48,7 +52,7 @@ async function readProtocolIds(page: Page): Promise<string[]> {
     });
     db.close();
     return keys.map(String);
-  });
+  }, PROTOCOL_DB_NAME);
   return Array.isArray(ids) ? ids.map(String) : [];
 }
 
@@ -223,12 +227,15 @@ async function openInSecondTab(
   // protocol id the library would have set had the user opened it there.
   const secondTab = await context.newPage();
   await secondTab.goto('/');
-  await secondTab.evaluate((storageId) => {
-    sessionStorage.setItem(
-      '@@remember-app',
-      JSON.stringify({ activeProtocolId: storageId }),
-    );
-  }, protocolId);
+  await secondTab.evaluate(
+    ({ storageId, sessionPrefix }) => {
+      sessionStorage.setItem(
+        `${sessionPrefix}app`,
+        JSON.stringify({ activeProtocolId: storageId }),
+      );
+    },
+    { storageId: protocolId, sessionPrefix: SESSION_PREFIX },
+  );
   await secondTab.goto(route);
   await settle(secondTab);
   return secondTab;

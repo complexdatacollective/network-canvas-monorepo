@@ -222,6 +222,111 @@ Required reviewers are worth considering but are not the load-bearing part
 here: unlike the hotfix lane this one cannot change what production serves, so
 the branch restriction and the environment-scoped secret are what matter.
 
+## Bundled Architect 8 (`/v8/`)
+
+Architect 9 serves Architect 8 at `/v8/` from its own deploy, so a researcher
+can keep editing a schema 8 protocol in Architect 8 (and hand it back for an
+upgrade) without leaving the site. Architect 9 does not build Architect 8.
+Each 8.x release attaches a build of itself made for `/v8/`,
+`architect-v8-dist.tgz`, to its GitHub release (the **Architect Sub-path
+Dist** workflow on the 8.x line), and `legacy-architect.json` in this
+directory pins one of them:
+
+```json
+{
+  "v8": {
+    "version": "8.5.0",
+    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/releases/download/%40codaco%2Farchitect%408.5.0/architect-v8-dist.tgz",
+    "sha256": "<64 lowercase hex characters>",
+    "cachePrefix": "architect-v8-"
+  }
+}
+```
+
+Until a release is pinned the file reads `{ "v8": null }`.
+
+**What the build does.** `scripts/build.mjs` reads the pin through
+`scripts/legacy-architect.ts`, runs Vite, then has
+`scripts/bundle-legacy-architect.mjs` fetch the tarball, check its sha256,
+refuse any entry that is not a plain file or directory or would land outside
+the extraction directory, check `dist-info.json` (`{tag, version, commit,
+base, cachePrefix}`) and the build itself against the pin, drop its
+`_headers`, `_redirects` and source maps, and move it to `dist/v8`. It runs
+after Vite has generated the service worker, so none of it enters this app's
+precache (`globIgnores` repeats that). The same decision sets the
+`__ARCHITECT_V8__` define, so the app offers "Keep editing as schema 8" and
+"Open in Architect 8" exactly when `dist/v8` holds Architect 8. With an empty
+pin the build bundles nothing, leaves no `dist/v8`, and the app offers only
+the upgrade.
+
+The tarball comes from `ARCHITECT_LEGACY_V8_TARBALL` when that names a local
+copy, then from `node_modules/.cache/architect-legacy/<sha256>.tgz`, then from
+the pinned URL (with retries; the download is cached). Whichever it is must
+match the pin's sha256. Node's `fetch` ignores `HTTPS_PROXY` unless
+`NODE_USE_ENV_PROXY=1`, so in a proxied sandbox download the asset yourself
+and point `ARCHITECT_LEGACY_V8_TARBALL` at it, or set
+`ARCHITECT_SKIP_LEGACY_V8=true` to build without Architect 8.
+
+**The release guard.** The production builds in `apps-release-architect` and
+the hotfix lane set `ARCHITECT_REQUIRE_LEGACY_V8=true`, which fails the build
+while nothing is pinned (and refuses `ARCHITECT_SKIP_LEGACY_V8`), and both
+lanes check `dist/v8` again before anything is tagged or deployed. **Architect
+9 cannot release until an Architect 8 build is pinned.** Both variables are in
+the turbo cache key for `build`, so a required build never replays one that
+bundled nothing; the pin file is a build input, so a new pin never replays a
+cached `dist/v8`.
+
+**Updating the pin** — after any 8.x release whose fix should reach `/v8/`:
+
+1. Wait for the Architect Sub-path Dist run that the 8.x release lane chains
+   (or dispatch it from main with the released tag). Its step summary prints
+   the pin, ready to paste.
+2. On the Architect 9 line, replace `legacy-architect.json` with that JSON and
+   add a `patch` changeset for `@codaco/architect` saying which Architect 8 is
+   now served at `/v8/`.
+3. Build once locally (`pnpm --filter @codaco/architect build`): it downloads
+   the tarball, verifies it against the pin, and `assert-pwa-build.mjs` checks
+   `dist/v8`.
+4. Merge, and release Architect 9 as usual. `/v8/` changes only when Architect
+   9 is redeployed.
+
+Never replace an uploaded tarball without updating the pin: the sub-path build
+is not bit-for-bit reproducible, so a rebuilt asset no longer matches the
+pinned sha256 and every later Architect 9 build fails until the pin is bumped.
+The dist workflow refuses to replace one unless `replace` is set.
+
+**The contract between the two builds**, checked by `assert-pwa-build.mjs`:
+
+- Architect 8's worker precaches under `architect-v8-`. This app's cache
+  reclaimer keeps `appCachePrefix: 'architect-'` (so it still reclaims older
+  root 8.x caches) and is told that `architect-v8-` caches and `/v8/` windows
+  belong to another worker (`foreignCachePrefixes`, `foreignScopePaths` in
+  `vite.config.ts`). The pin's `cachePrefix`, the prefix in `dist/v8/sw.js`
+  and the reclaimer's foreign prefixes must all agree.
+- This app's worker does not answer `/v8` or `/v8/` navigations and does not
+  cache images or fonts under `/v8/`. Workbox serialises each route's matcher
+  into `sw.js`, so these exclusions are literals in `vite.config.ts`.
+- `dist/v8` is never in this app's precache (`globIgnores`, and the build
+  writes it after the worker is generated). Instead, when a build bundles
+  Architect 8, this app registers `/v8/sw.js` for the `/v8/` scope in the
+  background (`src/utils/registerLegacyArchitectWorker.ts`): once per page
+  load, after it has rendered, after its own worker is ready and when the
+  browser is idle, unless `/v8/` already has that worker. Architect 8's worker
+  then downloads and keeps its own precache, so Architect 8 works offline
+  even for a researcher who has never opened `/v8/`, without slowing this
+  app's start-up or its own offline download.
+- `public/_redirects` sends every path under `/v8/` to Architect 8's shell
+  before its own catch-all. It has no `/v8 /v8/ 301`: Netlify ignores a
+  trailing slash when matching, so that rule would loop whenever nothing is
+  bundled at `/v8/`, and Netlify already takes `/v8` to `dist/v8/index.html`
+  when it exists. `public/_headers` holds
+  Architect 8's shells, worker, manifest and preview to no-store and
+  `/v8/assets/*` to a year's immutable cache, since Netlify reads neither file
+  from inside `dist/v8`.
+- `vite preview` applies no `_redirects`, so `vite.config.ts` adds a preview
+  middleware that does the same for `dist/v8`, whenever it exists. An e2e spec
+  can put a stub `dist/v8/index.html` there and navigate to `/v8/…`.
+
 ## Developer site
 
 The separate `.dev` Netlify site is intentionally linked to this repository and
@@ -243,9 +348,11 @@ Netlify preview builds and the CI release job run `pnpm exec turbo run build
 missing the service worker, manifest, or icons, or if any emitted JS chunk or
 responsive screen-preview image was dropped from the Workbox precache manifest
 (e.g. for exceeding the size limit) — which would 404 offline and break either
-the offline boot or first rendering of screen thumbnails. Treat an assertion
-failure as a hard release blocker. Architect asserts that _every_ chunk is
-precached because it uses no `globIgnores`. The assertion also validates the
+the offline boot or first rendering of screen thumbnails. It also fails if
+any of the dev-only Development protocol (its JSON or media, matched by
+content) is in `dist/`. Treat an assertion failure as a hard release blocker. Architect asserts that _every_ chunk in
+`dist/assets` is precached: its `globIgnores` leaves out only the bundled
+Architect 8 under `v8/` (see above). The assertion also validates the
 emitted `_headers`:
 the service worker, HTML shells (including requested SPA deep links), manifest,
 and stable icons must use `no-store, no-cache, max-age=0, must-revalidate`, while

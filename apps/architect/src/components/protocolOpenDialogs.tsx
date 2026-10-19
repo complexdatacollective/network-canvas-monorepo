@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, type ReactNode } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -14,7 +14,10 @@ import {
   AccordionPanel,
   AccordionTrigger,
 } from '@codaco/fresco-ui/Accordion';
-import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
+import type {
+  ChoiceDialog,
+  DialogContextType,
+} from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { formatMigrationNotes } from '@codaco/protocol-validation/messages';
@@ -22,6 +25,13 @@ import ExternalLink from '~/components/ExternalLink';
 import Markdown from '~/components/Markdown';
 import type { ProtocolOpenResult } from '~/ducks/modules/userActions/userActions';
 import { documentationLinks } from '~/utils/documentationLinks';
+import {
+  getBundledLegacyArchitect,
+  LEGACY_ARCHITECT_MAJOR,
+} from '~/utils/legacyArchitect';
+
+import { legacyProtocolMessages } from './legacyProtocolMessages';
+
 const additionalMessages = defineMessages({
   resourcesMissingTitle: {
     id: 'architect.additional.protocolOpenDialogs.resourcesMissingTitle',
@@ -63,16 +73,25 @@ const additionalMessages = defineMessages({
     description:
       'Heading above the list of changes for one schema version, in the dialog shown to researchers when Architect offers to upgrade an older protocol. {version} is the schema version number.',
   },
-  ifYouChooseToContinueAn: {
-    id: 'architect.additional.protocolOpenDialogs.ifYouChooseToContinueAn',
-    defaultMessage:
-      'If you choose to continue, an upgraded copy of your protocol will be created and then opened. Your original protocol will not be changed, and can still be opened and modified using an older version of Architect. Please see our <ExternalLink> documentation on protocol schemas </ExternalLink> for more information on this topic.',
-    description: 'Visible text in components / protocolOpenDialogs.',
+  chooseHowToOpen: {
+    id: 'architect.protocolOpenDialogs.chooseHowToOpen',
+    defaultMessage: 'How do you want to open this protocol?',
+    description:
+      'Title of the dialog shown when a researcher opens a protocol made for an older schema and Architect offers two ways forward: upgrade a copy to the current schema, or keep editing the protocol unchanged in the previous version of Architect.',
   },
-  createUpgradedCopy: {
-    id: 'architect.additional.protocolOpenDialogs.createUpgradedCopy',
-    defaultMessage: 'Create upgraded copy',
-    description: 'The label text in components / protocolOpenDialogs.',
+  upgradeCreatesACopy: {
+    id: 'architect.protocolOpenDialogs.upgradeCreatesACopy',
+    defaultMessage:
+      'If you upgrade, an upgraded copy of your protocol will be created and then opened. Your original protocol will not be changed. Please see our <ExternalLink>documentation on protocol schemas</ExternalLink> for more information on this topic.',
+    description:
+      'Paragraph in the dialog offering to upgrade an older protocol to the current schema. Explains that upgrading makes a new copy and leaves the original protocol as it was. <ExternalLink> wraps a link to the documentation page about protocol schemas.',
+  },
+  keepEditingInLegacyArchitect: {
+    id: 'architect.protocolOpenDialogs.keepEditingInLegacyArchitect',
+    defaultMessage:
+      'You can also keep editing it as a schema {version} protocol in Architect {version}, which is included with this version of Architect.',
+    description:
+      "Paragraph in the dialog offering to upgrade an older protocol, shown only when the previous version of Architect is available. {version} is that previous version's number (for example 8): the protocol can stay at schema {version} and be edited in Architect {version}, which is served alongside the current Architect.",
   },
   protocolNotCompatibleWithCurrentVersion: {
     id: 'architect.additional.protocolOpenDialogs.protocolNotCompatibleWithCurrentVersion',
@@ -136,7 +155,15 @@ const messages = defineMessages({
 type ShowProtocolOpenResultDialogArgs = {
   result: ProtocolOpenResult | undefined;
   openDialog: DialogContextType['openDialog'];
+  /** Upgrade the protocol. The dialog's primary action. */
   onApproveMigration?: () => Promise<void>;
+  /**
+   * Hand the protocol, unchanged, to the bundled Architect 8 instead. Offered
+   * only when given and when this build bundles Architect 8.
+   */
+  onKeepLegacy?: () => Promise<void>;
+  /** Where focus goes when the dialog closes and its opener has gone. */
+  finalFocus?: ChoiceDialog['finalFocus'];
 };
 
 const MigrationNotes = ({
@@ -154,6 +181,8 @@ export const showProtocolOpenResultDialog = async ({
   result,
   openDialog,
   onApproveMigration,
+  onKeepLegacy,
+  finalFocus,
 }: ShowProtocolOpenResultDialogArgs): Promise<void> => {
   if (!result) {
     return;
@@ -165,6 +194,7 @@ export const showProtocolOpenResultDialog = async ({
       await openDialog({
         type: 'acknowledge',
         intent: 'warning',
+        finalFocus,
         title: createElement(AppMessage, {
           message: additionalMessages.resourcesMissingTitle,
         }),
@@ -187,13 +217,27 @@ export const showProtocolOpenResultDialog = async ({
     return;
   }
   if (result.status === 'migration-required') {
-    const confirmed = await openDialog({
+    // Schema 7 and older count as schema 8 here: Architect 8 upgrades them to
+    // schema 8 itself when it opens them.
+    const offerKeep =
+      onKeepLegacy !== undefined && getBundledLegacyArchitect() !== null;
+    const renderDocumentationLink = (chunks: ReactNode[]) => (
+      <ExternalLink href={documentationLinks.protocolSchema}>
+        {chunks}
+      </ExternalLink>
+    );
+    const choice = await openDialog({
       type: 'choice',
-      intent: 'warning',
+      // Not a warning: upgrading makes a copy and changes nothing, so the
+      // dialog leads with it rather than with Cancel.
+      intent: 'info',
       title: createElement(AppMessage, {
-        message: additionalMessages.upgradeToContinue,
+        message: offerKeep
+          ? additionalMessages.chooseHowToOpen
+          : additionalMessages.upgradeToContinue,
       }),
       size: 'editor',
+      finalFocus,
       children: (
         <>
           <Paragraph>
@@ -233,33 +277,49 @@ export const showProtocolOpenResultDialog = async ({
           )}
           <Paragraph>
             {createElement(AppMessage, {
-              message: additionalMessages.ifYouChooseToContinueAn,
-              values: {
-                ExternalLink: (chunks) => (
-                  <ExternalLink href={documentationLinks.protocolSchema}>
-                    {chunks}
-                  </ExternalLink>
-                ),
-              },
+              message: additionalMessages.upgradeCreatesACopy,
+              values: { ExternalLink: renderDocumentationLink },
             })}
           </Paragraph>
+          {offerKeep && (
+            <Paragraph>
+              {createElement(AppMessage, {
+                message: additionalMessages.keepEditingInLegacyArchitect,
+                values: { version: LEGACY_ARCHITECT_MAJOR },
+              })}
+            </Paragraph>
+          )}
         </>
       ),
+      // Not booleans: the test suite's dialog mock answers `true`, which must
+      // read as "no choice" rather than as approval of an upgrade.
       actions: {
         primary: {
           label: createElement(AppMessage, {
-            message: additionalMessages.createUpgradedCopy,
+            message: legacyProtocolMessages.upgradeToSchema,
+            values: { version: result.targetSchemaVersion },
           }),
-          value: true,
+          value: 'upgrade' as const,
         },
+        ...(offerKeep && {
+          secondary: {
+            label: createElement(AppMessage, {
+              message: legacyProtocolMessages.keepEditingAsSchema,
+              values: { version: LEGACY_ARCHITECT_MAJOR },
+            }),
+            value: 'legacy' as const,
+          },
+        }),
         cancel: {
           label: createElement(AppMessage, { message: commonMessages.cancel }),
-          value: false,
+          value: null,
         },
       },
     });
-    if (confirmed === true) {
+    if (choice === 'upgrade') {
       await onApproveMigration?.();
+    } else if (choice === 'legacy' && offerKeep) {
+      await onKeepLegacy();
     }
     return;
   }
@@ -267,6 +327,7 @@ export const showProtocolOpenResultDialog = async ({
     void openDialog({
       type: 'acknowledge',
       intent: 'destructive',
+      finalFocus,
       title: createElement(AppMessage, {
         message: additionalMessages.protocolNotCompatibleWithCurrentVersion,
       }),
@@ -312,6 +373,7 @@ export const showProtocolOpenResultDialog = async ({
     void openDialog({
       type: 'acknowledge',
       intent: 'destructive',
+      finalFocus,
       title: createElement(AppMessage, {
         message: additionalMessages.protocolValidationFailed,
       }),
@@ -349,6 +411,7 @@ export const showProtocolOpenResultDialog = async ({
   void openDialog({
     type: 'acknowledge',
     intent: 'destructive',
+    finalFocus,
     title: result.localizedTitle ? (
       <AppMessage {...result.localizedTitle} />
     ) : (

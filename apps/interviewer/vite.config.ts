@@ -124,16 +124,13 @@ export default defineConfig(() =>
           // freshly installed app can render the menu on its first offline
           // interview, regardless of which width Safari selects from srcset.
           globPatterns: ['**/*.{js,css,html}', '**/*.4x3.*.webp'],
-          // The Development protocol's bundled asset chunk (~33 MB, embeds a
-          // 23 MB dev-only video — see bundledDevelopmentProtocol.ts) is only
-          // ever fetched via a DEV-gated dynamic import(); production users
-          // never load it. It also exceeds MAX_PRECACHE_BYTES, which makes
-          // generateSW hard-fail the build (not just skip the file) unless
-          // it's excluded from the precache glob outright. The Sample
-          // protocol's chunk (bundledSampleProtocol.ts) is the opposite: it
-          // is also lazy, but must stay precached so the sample installs
-          // offline. assert-pwa-build.mjs checks both properties.
-          globIgnores: ['**/assets/bundledDevelopmentProtocol-*.js'],
+          // Nothing is left out. The Sample protocol's chunk
+          // (bundledSampleProtocol.ts) is lazy but must stay precached so the
+          // sample installs offline. The Development protocol's (~33 MB) is
+          // not in a production build at all — its import is DEV-gated in
+          // useProtocolImport.ts — so it needs no exclusion here; were it
+          // back, it would exceed MAX_PRECACHE_BYTES and generateSW would fail
+          // the build. assert-pwa-build.mjs checks both.
           // vite-plugin-pwa defaults this to index.html; disable it so it
           // cannot shadow the runtime navigation route below.
           navigateFallback: undefined,

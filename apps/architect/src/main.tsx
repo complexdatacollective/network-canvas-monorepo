@@ -2,6 +2,7 @@ import { Toast } from '@base-ui/react/toast';
 
 import '@codaco/tailwind-config/fonts/inclusive-sans.css';
 import '@codaco/tailwind-config/fonts/nunito.css';
+import './captureUrlEntryRequests';
 import './analytics';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
@@ -29,12 +30,15 @@ import {
   hasPendingLaunchFiles,
   initFileLaunchCapture,
 } from './utils/fileLaunchQueue';
+import { pruneExpiredHandoffs } from './utils/handoffStore';
+import { queueRequestedImport } from './utils/importHandoffRequest';
 import { initInstallPromptCapture } from './utils/installPrompt';
 import {
   isRunningAsInstalledPwa,
   requestPersistentStorage,
   requestPersistentStorageOnFirstInteraction,
 } from './utils/pwa';
+import { registerLegacyArchitectWorker } from './utils/registerLegacyArchitectWorker';
 import { reportError } from './utils/reportError';
 
 // The researcher's language is its own chunk. Fetch it now, alongside the
@@ -61,6 +65,16 @@ initInstallPromptCapture();
 // them inside the fresco dialog provider.
 initFileLaunchCapture();
 
+// A file Architect 8 staged for this app (`/?import=<key>`), queued with the
+// OS-launched ones so it meets the same dialogs.
+queueRequestedImport();
+
+// A file staged for another Architect major that was never taken (the page
+// that should have opened it never loaded) would otherwise stay forever.
+pruneExpiredHandoffs().catch((error: unknown) => {
+  reportError(error, { operation: 'handoff-prune' });
+});
+
 // During idle time, fetch stage thumbnails so they are already cached when the
 // timeline or stage editor first renders. When running as an installed PWA, also
 // warm the service-worker cache with the bundled template/Sample assets so those
@@ -83,8 +97,8 @@ async function startApp(): Promise<void> {
   // redux-remember restores only the active library id. Load its canonical
   // protocol body from IndexedDB before mounting any direct /protocol route.
   const rehydrationResult = await storeRehydrated;
-  // Restoration reports a refused protocol through getArchitectIntl, and the
-  // first render reads the same catalog, so both wait for the language.
+  // The first render reads the researcher's catalog, so it waits for the
+  // language.
   await startupLocaleReady;
   await restoreActiveProtocolAfterStoreRehydration(store, rehydrationResult);
 
@@ -118,8 +132,7 @@ async function startApp(): Promise<void> {
               its viewport layer; the `root` (isolation: isolate) wrapper keeps the
               app's own stacking contexts from competing with that layer. */}
             <PortalContainerProvider>
-              {/* Transient, non-blocking notices (currently: a library protocol
-                  brought up to date as it opened). Inside PortalContainerProvider
+              {/* Transient, non-blocking notices. Inside PortalContainerProvider
                   so the viewport lands in the same overlay layer as dialogs, and
                   outside DialogProvider so a toast is never unmounted with the
                   dialog that happened to be open. */}
@@ -152,6 +165,11 @@ async function startApp(): Promise<void> {
   } else {
     setTimeout(warmCaches, 1000);
   }
+
+  // Architect 8 at /v8/ has its own worker, which this app's never answers
+  // for. Install it in the background, once this app is running and its own
+  // worker is ready, so Architect 8 works offline before it is first opened.
+  void registerLegacyArchitectWorker();
 }
 
 void startApp();
