@@ -582,6 +582,7 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
+        "$TURBO_ROOT$/scripts/buildtime/app-base-path.mjs",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
