@@ -5,42 +5,51 @@ import type {
   StoredProtocolRow,
   StoredSessionRow,
 } from './recordCrypto';
+import { DB_NAME } from './storageNames';
 import { DEFAULT_SETTINGS, type StoredSettings } from './types';
 
-class InterviewerV8DB extends Dexie {
+/**
+ * That a schema 8 protocol in Interviewer 8's database was upgraded into this
+ * one, under a new hash. Written with the upgraded copy, so the deck can say
+ * so and a second upgrade opens the existing copy instead of making another.
+ */
+export type LegacyUpgradeRecord = {
+  /** The hash of the schema 8 protocol in Interviewer 8's database. */
+  legacyHash: string;
+  /** The hash of the schema 9 copy in this database. */
+  upgradedHash: string;
+  /** ISO timestamp, like every other timestamp this app stores. */
+  upgradedAt: string;
+};
+
+/**
+ * The stores of `DB_NAME`. Its own database, separate from Interviewer 8's
+ * (`interviewer`), and so a fresh `version(1)`: none of Interviewer 8's version
+ * history applies to it. The indexes are those Interviewer 8's tables have.
+ */
+const DB_SCHEMA = {
+  protocols: 'id, hash, name, importedAt',
+  sessions:
+    'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt, isSynthetic',
+  assets: 'id, protocolHash, assetId',
+  settings: 'id',
+  legacyUpgrades: 'legacyHash',
+} as const;
+
+class InterviewerDB extends Dexie {
   protocols!: Table<StoredProtocolRow, string>;
   sessions!: Table<StoredSessionRow, string>;
   assets!: Table<StoredAssetRow, string>;
   settings!: Table<StoredSettings, 'device'>;
+  legacyUpgrades!: Table<LegacyUpgradeRecord, string>;
 
   constructor() {
-    super('interviewer');
-    this.version(1).stores({
-      protocols: 'id, hash, name, importedAt',
-      sessions:
-        'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt',
-      assets: 'id, protocolHash, assetId',
-      settings: 'id',
-    });
-    // v2 adds the isSynthetic index so synthetic-data count/bulk-delete can
-    // hit the index instead of scanning. Existing rows have no value for the
-    // field; Dexie treats them as undefined which sorts/filters as non-true.
-    this.version(2).stores({
-      sessions:
-        'id, protocolHash, caseId, startedAt, lastUpdatedAt, finishedAt, exportedAt, isSynthetic',
-    });
-    // v3 adds the durable record of every schema-migration re-keying
-    // (previous hash → new hash). The launch sweep uses it to heal sessions a
-    // legacy writer — a tab still running the pre-update bundle, whose
-    // updateSession predates the commit-time hash guard — pointed back at a
-    // superseded hash after the migration ran.
-    this.version(3).stores({
-      protocolMigrations: 'previousHash',
-    });
+    super(DB_NAME);
+    this.version(1).stores(DB_SCHEMA);
   }
 }
 
-export const db = new InterviewerV8DB();
+export const db = new InterviewerDB();
 
 /**
  * The settings-table row recording that this device's vault has been

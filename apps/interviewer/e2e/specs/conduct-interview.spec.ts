@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { DB_NAME } from '../../src/lib/db/storageNames.js';
 import { expect, test } from '../fixtures/test.js';
 import {
   LEAN_E2E_PROTOCOL_NAME,
@@ -91,9 +92,9 @@ function readStoredNodeCount(
   sessionId: string,
 ): Promise<number | null> {
   return page.evaluate(
-    (id) =>
+    ({ id, dbName }) =>
       new Promise<number | null>((resolve, reject) => {
-        const req = indexedDB.open('interviewer');
+        const req = indexedDB.open(dbName);
         req.onerror = () => reject(new Error('indexedDB.open failed'));
         req.onsuccess = () => {
           const get = req.result
@@ -114,7 +115,7 @@ function readStoredNodeCount(
           };
         };
       }),
-    sessionId,
+    { id: sessionId, dbName: DB_NAME },
   );
 }
 
@@ -132,9 +133,9 @@ function readStoredFinish(
   sessionId: string,
 ): Promise<StoredFinish | null> {
   return page.evaluate(
-    (id) =>
+    ({ id, dbName }) =>
       new Promise<StoredFinish | null>((resolve, reject) => {
-        const req = indexedDB.open('interviewer');
+        const req = indexedDB.open(dbName);
         req.onerror = () => reject(new Error('indexedDB.open failed'));
         req.onsuccess = () => {
           const get = req.result
@@ -159,7 +160,7 @@ function readStoredFinish(
           };
         };
       }),
-    sessionId,
+    { id: sessionId, dbName: DB_NAME },
   );
 }
 
@@ -288,9 +289,9 @@ test.describe('conducting an interview', () => {
       .poll(
         () =>
           page.evaluate(
-            (id) =>
+            ({ id, dbName }) =>
               new Promise<number | null>((resolve) => {
-                const req = indexedDB.open('interviewer');
+                const req = indexedDB.open(dbName);
                 req.onsuccess = () => {
                   const get = req.result
                     .transaction('sessions', 'readonly')
@@ -305,7 +306,7 @@ test.describe('conducting an interview', () => {
                 };
                 req.onerror = () => resolve(null);
               }),
-            sessionId,
+            { id: sessionId, dbName: DB_NAME },
           ),
         { timeout: 10_000 },
       )
