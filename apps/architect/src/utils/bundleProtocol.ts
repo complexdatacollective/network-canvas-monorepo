@@ -8,9 +8,9 @@ import {
 
 import { getAssetById } from './assetUtils';
 import {
-  getLegacyAssets,
   type LegacyProtocol,
   type LegacyStoredProtocolRow,
+  readLegacyProtocolSnapshot,
 } from './legacyProtocolLibrary';
 
 /**
@@ -270,18 +270,26 @@ const readLegacyManifest = (
  * with its resources read from that library, into a `.netcanvas` Architect 8
  * (or this app, which offers to upgrade it) can open.
  *
+ * The row and its resources are read again, together: Architect 8 may have
+ * saved this protocol since the library listed `row`, and a document from one
+ * moment with resources from another is not a protocol anyone saved.
+ *
  * No finish-stage text check: that requirement belongs to schema 9, and a
  * schema 8 document has no localization for it to read.
  */
 export const bundleLegacyProtocol = async (
   row: LegacyStoredProtocolRow,
 ): Promise<Blob> => {
-  const assets = await getLegacyAssets(row.id);
-  const byAssetId = new Map(assets.map((asset) => [asset.assetId, asset]));
-  return zipProtocol(
-    row.protocol,
-    readLegacyManifest(row.protocol),
-    (assetId) => Promise.resolve(byAssetId.get(assetId)),
+  const snapshot = await readLegacyProtocolSnapshot(row.id);
+  if (!snapshot) {
+    throw new Error('The protocol is no longer in Architect 8’s library.');
+  }
+  const { protocol } = snapshot.row;
+  const byAssetId = new Map(
+    snapshot.assets.map((asset) => [asset.assetId, asset]),
+  );
+  return zipProtocol(protocol, readLegacyManifest(protocol), (assetId) =>
+    Promise.resolve(byAssetId.get(assetId)),
   );
 };
 

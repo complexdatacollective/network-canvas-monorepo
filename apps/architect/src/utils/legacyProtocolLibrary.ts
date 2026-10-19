@@ -151,9 +151,8 @@ type LegacyProtocolReader = {
   getLegacyProtocol: (
     id: string,
   ) => Promise<LegacyStoredProtocolRow | undefined>;
-  getLegacyAssets: (protocolId: string) => Promise<StoredAsset[]>;
   countLegacyAssets: (protocolId: string) => Promise<number>;
-  /** A row and all of its assets as of one moment, for making a copy. */
+  /** A row and all of its assets as of one moment, for a copy or download. */
   readLegacyProtocolSnapshot: (
     id: string,
   ) => Promise<LegacyProtocolSnapshot | undefined>;
@@ -269,12 +268,6 @@ export const createLegacyProtocolReader = (
       return readLegacyRow(row);
     },
 
-    getLegacyAssets: async (protocolId) => {
-      const database = await getDb();
-      if (!database) return [];
-      return await readAssets(database, protocolId);
-    },
-
     countLegacyAssets: async (protocolId) => {
       const database = await getDb();
       if (!database) return 0;
@@ -311,7 +304,6 @@ export const {
   legacyLibraryExists,
   listLegacyProtocols,
   getLegacyProtocol,
-  getLegacyAssets,
   countLegacyAssets,
   readLegacyProtocolSnapshot,
 } = reader;

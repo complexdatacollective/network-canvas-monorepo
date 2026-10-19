@@ -8,7 +8,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   countLegacyAssets,
   createLegacyProtocolReader,
-  getLegacyAssets,
   getLegacyProtocol,
   legacyReadOnlyMiddleware,
   listLegacyProtocols,
@@ -172,7 +171,6 @@ describe('legacy protocol reader', () => {
       await expect(reader.legacyLibraryExists()).resolves.toBe(false);
       await expect(reader.listLegacyProtocols()).resolves.toEqual([]);
       await expect(reader.getLegacyProtocol('older')).resolves.toBeUndefined();
-      await expect(reader.getLegacyAssets('older')).resolves.toEqual([]);
       await expect(reader.countLegacyAssets('older')).resolves.toBe(0);
       await expect(
         reader.readLegacyProtocolSnapshot('older'),
@@ -212,13 +210,13 @@ describe('legacy protocol reader', () => {
     });
 
     it('reads and counts a protocol’s assets', async () => {
-      const assets = await reader.getLegacyAssets('newer');
+      const assets = (await reader.readLegacyProtocolSnapshot('newer'))?.assets;
 
-      expect(assets.map((asset) => asset.assetId).toSorted()).toEqual([
+      expect(assets?.map((asset) => asset.assetId).toSorted()).toEqual([
         'a1',
         'a2',
       ]);
-      expect(await assets[0]?.data).toBeTruthy();
+      expect(await assets?.[0]?.data).toBeTruthy();
       await expect(reader.countLegacyAssets('newer')).resolves.toBe(2);
       await expect(reader.countLegacyAssets('schema-7')).resolves.toBe(0);
     });
@@ -296,7 +294,6 @@ describe('legacy protocol reader', () => {
 
       await reader.listLegacyProtocols();
       await reader.getLegacyProtocol('newer');
-      await reader.getLegacyAssets('newer');
       await reader.countLegacyAssets('newer');
       await reader.readLegacyProtocolSnapshot('newer');
       reader.close();
@@ -422,7 +419,6 @@ describe('the app’s legacy reader', () => {
     await expect(getLegacyProtocol('older')).resolves.toMatchObject({
       id: 'older',
     });
-    await expect(getLegacyAssets('newer')).resolves.toHaveLength(2);
     await expect(countLegacyAssets('newer')).resolves.toBe(2);
     await expect(readLegacyProtocolSnapshot('older')).resolves.toMatchObject({
       row: { id: 'older' },
