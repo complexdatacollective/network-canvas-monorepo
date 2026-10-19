@@ -1888,6 +1888,21 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }),
     );
 
+  // Links rewritten before a refused write, put back as the family recorded
+  // them.
+  const restoreLinks = async (linkIds: readonly string[]) => {
+    for (const linkId of linkIds) {
+      const recorded = family.links.find((link) => link.id === linkId);
+      if (!recorded) continue;
+      await writeLinkUpdate({
+        linkId,
+        kind: recorded.kind,
+        isGestationalCarrier: recorded.isGestationalCarrier,
+        isCurrentPartner: recorded.isCurrentPartner,
+      });
+    }
+  };
+
   const addLink = (link: PlannedLink) =>
     dispatch(addEdge({ ...linkEdge(link), currentStep })).unwrap();
 
@@ -2169,11 +2184,17 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
         });
       }
 
+      // The person's links and their twins' carriers are saved together or
+      // not at all: a refusal puts back the links already rewritten, so no
+      // twin is left carried by someone else.
+      const relinkedIds: string[] = [];
       for (const update of result.linkUpdates ?? []) {
         const relinked = await writeLinkUpdate(update);
         if (writeFailureMessage(relinked)) {
+          await restoreLinks(relinkedIds);
           return writeSubmissionResult(relinked);
         }
+        relinkedIds.push(update.linkId);
       }
       // Twins answered, re-described or no longer twins. Saving again after a
       // refusal writes only what is left: the form reads the twins from the
@@ -2311,17 +2332,7 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       }
       recarriedLinkIds.push(update.linkId);
     }
-    if (refusedCarrier) {
-      for (const linkId of recarriedLinkIds) {
-        const recorded = family.links.find((link) => link.id === linkId);
-        if (!recorded) continue;
-        await writeLinkUpdate({
-          linkId,
-          kind: recorded.kind,
-          isGestationalCarrier: recorded.isGestationalCarrier,
-        });
-      }
-    }
+    if (refusedCarrier) await restoreLinks(recarriedLinkIds);
     const refused = refusedGiveWay ?? refusedCarrier;
     if (refused) {
       // The addition is taken back with it, so it is still saved as one
