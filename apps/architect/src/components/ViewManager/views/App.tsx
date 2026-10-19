@@ -1,4 +1,4 @@
-import { createElement, useEffect } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -275,16 +275,32 @@ const Architect9NavigationRunner = () => {
   const navigateToArchitect9 = useNavigateToArchitect9();
   const [location] = useLocation();
   const onStartScreen = location === '/';
+  // One navigation at a time. A launch that arrives while one waits at the
+  // leave-editor prompt stays pending, and the waiting navigation leaves for
+  // the newest launch once confirmed, so a later file is never left behind by
+  // an earlier one.
+  const inFlight = useRef(false);
 
   useEffect(() => {
     const run = () => {
-      const url = takeArchitect9Navigation();
-      if (!url) return;
-      void navigateToArchitect9(url).then((navigated) => {
-        // Cancelled at the leave-editor prompt: keep the launch for when the
-        // editor closes.
-        if (!navigated) deferArchitect9Navigation(url);
-      });
+      if (inFlight.current) return;
+      const requested = takeArchitect9Navigation();
+      if (!requested) return;
+      let url = requested;
+      inFlight.current = true;
+      void navigateToArchitect9(() => {
+        url = takeArchitect9Navigation() ?? url;
+        return url;
+      })
+        .then((navigated) => {
+          // Cancelled at the leave-editor prompt: keep the launch for when
+          // the editor closes. A launch that arrived meanwhile is still
+          // pending, and is newer, so it is the one kept.
+          if (!navigated) deferArchitect9Navigation(url);
+        })
+        .finally(() => {
+          inFlight.current = false;
+        });
     };
 
     // A deferred navigation waits for the start screen, so it never pulls the

@@ -117,6 +117,30 @@ describe('useNavigateToArchitect9', () => {
     expect(mocks.leave).toHaveBeenCalledWith(URL);
   });
 
+  it('reads a URL function only at the moment of leaving', async () => {
+    mocks.stageDirty = true;
+    let latest = URL;
+    const resolveUrl = vi.fn(() => latest);
+    mocks.promptLeaveEditor.mockImplementationOnce(
+      async (
+        _dispatch: unknown,
+        _openDialog: unknown,
+        performLeave: () => void | Promise<void>,
+      ) => {
+        // A newer launch arrives while the prompt is open.
+        latest = '/?import=newer';
+        mocks.stageDirty = false;
+        await performLeave();
+      },
+    );
+    const result = navigate();
+
+    await expect(result.current(resolveUrl)).resolves.toBe(true);
+
+    expect(resolveUrl).toHaveBeenCalledTimes(1);
+    expect(mocks.leave).toHaveBeenCalledWith('/?import=newer');
+  });
+
   it.each([
     ['the stage editor', 'stageDirty'],
     ['a nested editor', 'nestedDirty'],

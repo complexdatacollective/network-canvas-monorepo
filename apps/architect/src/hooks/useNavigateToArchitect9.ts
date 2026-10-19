@@ -46,7 +46,8 @@ type NavigateOptions = {
  * 2. in-flight commits, imports and exports finish first;
  * 3. only then does the page navigate.
  *
- * Resolves whether it navigated.
+ * `url` may be a function, read only at the moment of leaving, so a caller
+ * can leave for whatever is newest by then. Resolves whether it navigated.
  */
 export const useNavigateToArchitect9 = () => {
   const dispatch = useAppDispatch();
@@ -54,7 +55,10 @@ export const useNavigateToArchitect9 = () => {
   const { openDialog } = useDialog();
 
   return useCallback(
-    async (url: string, options: NavigateOptions = {}): Promise<boolean> => {
+    async (
+      url: string | (() => string),
+      options: NavigateOptions = {},
+    ): Promise<boolean> => {
       const refused = () => {
         if (!options.requireSavedProtocol) return false;
         const persistence = getLeavePersistence(store.getState());
@@ -103,7 +107,7 @@ export const useNavigateToArchitect9 = () => {
       }
 
       if (lostOwnership || refused()) return false;
-      leaveForArchitect9(url);
+      leaveForArchitect9(typeof url === 'function' ? url() : url);
       return true;
     },
     [dispatch, store, openDialog],
