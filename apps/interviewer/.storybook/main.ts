@@ -24,6 +24,8 @@ export default defineMain({
   viteFinal: (config) =>
     mergeConfig(config, {
       plugins: [tailwindcss()],
+      // Stories run without a bundled Interviewer 8 (see `legacyInterviewer`).
+      define: { __INTERVIEWER_V8__: 'null' },
       resolve: {
         // Resolve the app's `~/*` path alias (tsconfig.app.json) so stories can
         // import from `~/lib/...` exactly like the renderer does.

@@ -56,6 +56,10 @@ export default defineConfig(() =>
   mergeConfig(createRendererConfig({ outDir: 'dist', port: 5180 }), {
     define: {
       __PWA_BUILD_ID__: JSON.stringify(pwaCacheId),
+      // No Interviewer 8 is bundled yet: every Interviewer 8 action is hidden
+      // (see `src/lib/legacyInterviewer.ts`). The bundling step that copies a
+      // pinned Interviewer 8 into `dist/v8/` sets this from the pin.
+      __INTERVIEWER_V8__: 'null',
     },
     plugins: [
       createPwaCacheReclamationPlugin({

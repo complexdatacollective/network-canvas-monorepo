@@ -8,7 +8,9 @@ import {
   pruneExpiredHandoffs,
   type HandoffRecord,
 } from '../../handoff/handoffStore';
-import { interviewer8ImportUrl, keepOnInterviewer8 } from '../importRouting';
+import { keepOnInterviewer8 } from '../importRouting';
+
+const INTERVIEWER_8 = { version: '8.5.0', path: '/v8/' } as const;
 
 const { stageHandoffSpy } = vi.hoisted(() => ({
   stageHandoffSpy: vi.fn<(input: unknown) => Promise<string> | undefined>(),
@@ -59,7 +61,9 @@ describe('keepOnInterviewer8', () => {
     }) as unknown as File;
     const navigate = vi.fn();
 
-    expect(await keepOnInterviewer8(file, navigate)).toEqual({ ok: true });
+    expect(await keepOnInterviewer8(file, INTERVIEWER_8, navigate)).toEqual({
+      ok: true,
+    });
 
     expect(navigate).toHaveBeenCalledTimes(1);
     const url = new URL(String(navigate.mock.calls[0]?.[0]), 'https://x.test');
@@ -79,16 +83,12 @@ describe('keepOnInterviewer8', () => {
     const navigate = vi.fn();
 
     expect(
-      await keepOnInterviewer8(new File(['zip'], 'older.netcanvas'), navigate),
+      await keepOnInterviewer8(
+        new File(['zip'], 'older.netcanvas'),
+        INTERVIEWER_8,
+        navigate,
+      ),
     ).toEqual({ ok: false, error: failure });
     expect(navigate).not.toHaveBeenCalled();
-  });
-});
-
-describe('interviewer8ImportUrl', () => {
-  it('addresses Interviewer 8 under its base path', () => {
-    expect(interviewer8ImportUrl('5f0e1f8e-6c0e-4d2a-9a51-2f7d3c9e8a11')).toBe(
-      '/v8/?import=5f0e1f8e-6c0e-4d2a-9a51-2f7d3c9e8a11',
-    );
   });
 });
