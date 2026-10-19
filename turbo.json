@@ -182,6 +182,7 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
+        "$TURBO_ROOT$/scripts/buildtime/app-base-path.mjs",
         "$TURBO_ROOT$/scripts/buildtime/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/scripts/buildtime/pwa-cache-reclamation-plugin.ts",
         "src/**",
@@ -197,7 +198,11 @@
       ],
       // See the note on @codaco/architect#build: a package-specific `env`
       // replaces the generic list, it does not extend it.
+      // INTERVIEWER_BASE_PATH selects the /v8/ sub-path build Interviewer 9
+      // bundles; undeclared, strict mode would hide it and a "sub-path" build
+      // would come out (or be replayed from cache) as the root build.
       "env": [
+        "INTERVIEWER_BASE_PATH",
         "NODE_ENV",
         "VITE_DISABLE_ANALYTICS",
         "POSTHOG_PERSONAL_API_KEY",
