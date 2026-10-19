@@ -12,7 +12,15 @@ type Registration = {
   scope: string;
   active: { scriptURL: string } | null;
   installing: { scriptURL: string } | null;
+  update: () => Promise<unknown>;
 };
+
+const registration = (
+  fields: Omit<Registration, 'update'>,
+): Registration & { update: ReturnType<typeof vi.fn> } => ({
+  ...fields,
+  update: vi.fn(() => Promise.resolve(undefined)),
+});
 
 // The module registers at most once per page load, so each test loads a
 // fresh copy.
@@ -71,11 +79,13 @@ afterEach(() => {
 describe('registerLegacyArchitectWorker', () => {
   it('registers /v8/sw.js for /v8/ only after this app’s worker is ready and the browser is idle', async () => {
     const { registerLegacyArchitectWorker } = await load();
-    const { ready, container } = makeContainer({
-      scope: `${ORIGIN}/`,
-      active: { scriptURL: `${ORIGIN}/sw.js` },
-      installing: null,
-    });
+    const { ready, container } = makeContainer(
+      registration({
+        scope: `${ORIGIN}/`,
+        active: { scriptURL: `${ORIGIN}/sw.js` },
+        installing: null,
+      }),
+    );
     const idle = makeIdle();
 
     const done = registerLegacyArchitectWorker({
@@ -141,14 +151,22 @@ describe('registerLegacyArchitectWorker', () => {
   it.each([
     [
       'active',
-      { scope: V8_SCOPE, active: { scriptURL: V8_SCRIPT }, installing: null },
+      registration({
+        scope: V8_SCOPE,
+        active: { scriptURL: V8_SCRIPT },
+        installing: null,
+      }),
     ],
     [
       'installing',
-      { scope: V8_SCOPE, active: null, installing: { scriptURL: V8_SCRIPT } },
+      registration({
+        scope: V8_SCOPE,
+        active: null,
+        installing: { scriptURL: V8_SCRIPT },
+      }),
     ],
   ])(
-    'skips registering when /v8/ already has an %s worker for the same script',
+    'checks for an update instead of registering when /v8/ already has an %s worker for the same script',
     async (_state, existing) => {
       const { registerLegacyArchitectWorker } = await load();
       const { ready, container } = makeContainer(existing);
@@ -162,16 +180,21 @@ describe('registerLegacyArchitectWorker', () => {
       });
 
       expect(container.register).not.toHaveBeenCalled();
+      // A newer pinned Architect 8 keeps the same script URL, so only an
+      // update check fetches it.
+      expect(existing.update).toHaveBeenCalledTimes(1);
     },
   );
 
   it('registers when /v8/ has a worker for some other script', async () => {
     const { registerLegacyArchitectWorker } = await load();
-    const { ready, container } = makeContainer({
-      scope: V8_SCOPE,
-      active: { scriptURL: `${ORIGIN}/v8/old-sw.js` },
-      installing: null,
-    });
+    const { ready, container } = makeContainer(
+      registration({
+        scope: V8_SCOPE,
+        active: { scriptURL: `${ORIGIN}/v8/old-sw.js` },
+        installing: null,
+      }),
+    );
     ready.resolve({});
 
     await registerLegacyArchitectWorker({

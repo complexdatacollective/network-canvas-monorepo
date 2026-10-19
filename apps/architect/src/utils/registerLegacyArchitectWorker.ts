@@ -22,6 +22,7 @@ type RegistrationLike = {
   scope: string;
   active: WorkerLike;
   installing: WorkerLike;
+  update: () => Promise<unknown>;
 };
 
 /** The parts of `navigator.serviceWorker` this uses. */
@@ -70,8 +71,9 @@ let started = false;
 /**
  * Register the bundled Architect 8's worker for `/v8/`, once per page load.
  * Does nothing when this build bundles no Architect 8 or the browser has no
- * service workers, and skips the registration when `/v8/` already has a
- * worker for the same script, active or installing. Never rejects: a failure
+ * service workers. When `/v8/` already has a worker for the same script,
+ * active or installing, it checks that worker for an update instead, so a
+ * newer pinned Architect 8 is fetched and precached too. Never rejects: a failure
  * is reported and leaves Architect 8 to install its worker on its first visit,
  * as it would anyway.
  */
@@ -102,6 +104,10 @@ export const registerLegacyArchitectWorker = async (
       existing?.scope === scope &&
       (isThisScript(existing.active) || isThisScript(existing.installing))
     ) {
+      // `register()` with the script a registration already has returns it
+      // without fetching the script, so a newer pinned Architect 8 (served at
+      // the same URL) is only picked up by asking for an update.
+      await existing.update();
       return;
     }
     await serviceWorker.register(scriptPath, { scope: architect.path });
