@@ -6,6 +6,7 @@ import {
   DEFAULT_FINISH_SESSION_TEXT,
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
+import { messageFields } from '~/test/messageText';
 
 const capture = vi.fn();
 const setImportInProgress = vi.fn();
@@ -18,6 +19,9 @@ const getStoredProtocol = vi.fn();
 const markStoredProtocolValidated = vi.fn();
 const saveProtocolAssets = vi.fn();
 const deleteStoredProtocol = vi.fn();
+const getLegacyProtocolChoice = vi.fn();
+const writeUpgradedLegacyCopy = vi.fn();
+const readLegacyProtocolSnapshot = vi.fn();
 const reportError = vi.fn((error: unknown) => ({
   message: error instanceof Error ? error.message : String(error),
 }));
@@ -49,6 +53,15 @@ vi.mock('~/utils/protocolLibrary', () => ({
     markStoredProtocolValidated(...args),
   deleteStoredProtocol: (...args: unknown[]) => deleteStoredProtocol(...args),
   getStoredProtocol: (...args: unknown[]) => getStoredProtocol(...args),
+  getLegacyProtocolChoice: (...args: unknown[]) =>
+    getLegacyProtocolChoice(...args),
+  writeUpgradedLegacyCopy: (...args: unknown[]) =>
+    writeUpgradedLegacyCopy(...args),
+}));
+
+vi.mock('~/utils/legacyProtocolLibrary', () => ({
+  readLegacyProtocolSnapshot: (...args: unknown[]) =>
+    readLegacyProtocolSnapshot(...args),
 }));
 
 vi.mock('~/utils/assetUtils', () => ({
@@ -89,8 +102,12 @@ const {
   openBundledTemplate,
   openLibraryProtocol,
   openLocalNetcanvas,
+  upgradeLegacyProtocol,
 } = await import('../userActions');
 const { APP_SCHEMA_VERSION } = await import('~/config');
+const { navigate } = await import('wouter/use-browser-location');
+const { setActiveProtocolId, setStorageUnavailable } =
+  await import('../../app');
 
 const dispatch = vi.fn((action: unknown) => {
   // `instantiateProtocol` dispatches plain action objects; the thunks under
@@ -105,7 +122,8 @@ const runThunk = (
   thunk:
     | ReturnType<typeof createNetcanvas>
     | ReturnType<typeof openBundledTemplate>
-    | ReturnType<typeof openLibraryProtocol>,
+    | ReturnType<typeof openLibraryProtocol>
+    | ReturnType<typeof upgradeLegacyProtocol>,
 ) => thunk(dispatch, () => ({}) as never, undefined);
 
 const makeProtocol = (): CurrentProtocol => ({
@@ -131,6 +149,12 @@ describe('userActions', () => {
     markStoredProtocolValidated.mockReset().mockResolvedValue(undefined);
     saveProtocolAssets.mockReset().mockResolvedValue(undefined);
     deleteStoredProtocol.mockReset().mockResolvedValue(undefined);
+    getLegacyProtocolChoice.mockReset().mockResolvedValue(undefined);
+    writeUpgradedLegacyCopy.mockReset();
+    readLegacyProtocolSnapshot.mockReset();
+    vi.mocked(navigate).mockClear();
+    vi.mocked(setActiveProtocolId).mockClear();
+    vi.mocked(setStorageUnavailable).mockClear();
     dispatch.mockClear();
   });
 
@@ -610,6 +634,204 @@ describe('userActions', () => {
       expect(migrateProtocol).not.toHaveBeenCalled();
       expect(putStoredProtocol).not.toHaveBeenCalled();
       expect(setActiveProtocol).not.toHaveBeenCalled();
+    });
+  });
+
+  // Architect 8's protocol is copied into this library, never changed: the
+  // snapshot is read, migrated and validated, and only then written as a new
+  // protocol, which is what opens.
+  describe('upgradeLegacyProtocol', () => {
+    const legacyProtocol = {
+      schemaVersion: 8,
+      codebook: {},
+      stages: [],
+      assetManifest: { a1: { id: 'a1', type: 'image', name: 'map.png' } },
+    };
+    const snapshot = {
+      row: {
+        id: 'legacy-1',
+        name: 'Older study',
+        schemaVersion: 8,
+        protocol: legacyProtocol,
+        createdAt: 0,
+        updatedAt: 5,
+      },
+      assets: [
+        {
+          id: 'legacy-1::a1',
+          assetId: 'a1',
+          protocolId: 'legacy-1',
+          name: 'map.png',
+          data: 'blob',
+        },
+      ],
+    };
+
+    it('writes the migrated copy as a new protocol and opens it', async () => {
+      const upgraded = { ...makeProtocol(), name: 'Older study' };
+      readLegacyProtocolSnapshot.mockResolvedValue(snapshot);
+      getLegacyProtocolChoice.mockResolvedValue({
+        legacyId: 'legacy-1',
+        choice: 'upgraded',
+        upgradedId: 'earlier-copy',
+        updatedAt: 1,
+      });
+      migrateProtocol.mockReturnValue(upgraded);
+      validateProtocol.mockResolvedValue({ success: true, data: upgraded });
+      writeUpgradedLegacyCopy.mockResolvedValue({
+        protocolId: 'new-copy',
+        created: true,
+      });
+
+      const result = await runThunk(
+        upgradeLegacyProtocol({ legacyId: 'legacy-1' }),
+      );
+
+      expect(result.payload).toEqual({ status: 'opened' });
+      expect(readLegacyProtocolSnapshot).toHaveBeenCalledWith('legacy-1');
+      expect(migrateProtocol).toHaveBeenCalledWith(
+        legacyProtocol,
+        APP_SCHEMA_VERSION,
+        { name: 'Older study' },
+      );
+      expect(validateProtocol).toHaveBeenCalledWith(upgraded, { draft: true });
+      expect(writeUpgradedLegacyCopy).toHaveBeenCalledWith({
+        snapshot,
+        protocol: upgraded,
+        upgradedIdBefore: 'earlier-copy',
+      });
+      // Written only after it was migrated and validated.
+      expect(
+        writeUpgradedLegacyCopy.mock.invocationCallOrder[0]!,
+      ).toBeGreaterThan(validateProtocol.mock.invocationCallOrder[0]!);
+      // Nothing goes through the ordinary save path, which would also
+      // garbage-collect assets.
+      expect(putStoredProtocol).not.toHaveBeenCalled();
+      expect(saveProtocolAssets).not.toHaveBeenCalled();
+      expect(setActiveProtocolId).toHaveBeenCalledWith('new-copy');
+      expect(setActiveProtocol).toHaveBeenCalledWith(upgraded);
+      expect(navigate).toHaveBeenCalledWith('/protocol');
+      expect(setImportInProgress).toHaveBeenCalledWith(true);
+      expect(setImportInProgress).toHaveBeenLastCalledWith(false);
+    });
+
+    it('opens the copy another tab made meanwhile instead of a second one', async () => {
+      const upgraded = makeProtocol();
+      readLegacyProtocolSnapshot.mockResolvedValue(snapshot);
+      migrateProtocol.mockReturnValue(upgraded);
+      validateProtocol.mockResolvedValue({ success: true, data: upgraded });
+      writeUpgradedLegacyCopy.mockResolvedValue({
+        protocolId: 'other-tab-copy',
+        created: false,
+      });
+
+      await runThunk(upgradeLegacyProtocol({ legacyId: 'legacy-1' }));
+
+      // Handed to the library open, which admits and opens that row.
+      expect(dispatch).toHaveBeenCalledWith(expect.any(Function));
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('reports a protocol that is no longer in Architect 8’s library', async () => {
+      readLegacyProtocolSnapshot.mockResolvedValue(undefined);
+
+      const result = await runThunk(
+        upgradeLegacyProtocol({ legacyId: 'gone' }),
+      );
+
+      expect(messageFields(result.payload)).toMatchObject({
+        status: 'error',
+        title: 'Protocol Not Found',
+        message: 'This protocol could not be found in your library.',
+      });
+      expect(migrateProtocol).not.toHaveBeenCalled();
+      expect(writeUpgradedLegacyCopy).not.toHaveBeenCalled();
+    });
+
+    it('writes nothing and explains a migration that fails', async () => {
+      readLegacyProtocolSnapshot.mockResolvedValue(snapshot);
+      migrateProtocol.mockImplementation(() => {
+        throw new Error('Migration resulted in invalid protocol: nope');
+      });
+
+      const result = await runThunk(
+        upgradeLegacyProtocol({ legacyId: 'legacy-1' }),
+      );
+
+      expect(messageFields(result.payload)).toEqual({
+        status: 'error',
+        title: 'Failed to Open Protocol',
+        message:
+          'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
+        detail: 'Migration resulted in invalid protocol: nope',
+      });
+      expect(writeUpgradedLegacyCopy).not.toHaveBeenCalled();
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+    });
+
+    it('writes nothing when the upgraded protocol fails validation', async () => {
+      const error = new ProtocolValidationError([
+        { code: 'custom', path: [], message: 'Upgraded protocol is invalid' },
+      ]);
+      readLegacyProtocolSnapshot.mockResolvedValue(snapshot);
+      migrateProtocol.mockReturnValue(makeProtocol());
+      validateProtocol.mockResolvedValue({ success: false, error });
+
+      const result = await runThunk(
+        upgradeLegacyProtocol({ legacyId: 'legacy-1' }),
+      );
+
+      expect(result.payload).toEqual({
+        status: 'validation-error',
+        message: error.message,
+      });
+      expect(writeUpgradedLegacyCopy).not.toHaveBeenCalled();
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+    });
+
+    // There is no in-memory fallback: a copy that cannot be saved is not
+    // opened, and this library's own autosave is not switched off for it.
+    it('refuses, without opening anything, when the copy cannot be saved', async () => {
+      readLegacyProtocolSnapshot.mockResolvedValue(snapshot);
+      migrateProtocol.mockReturnValue(makeProtocol());
+      validateProtocol.mockResolvedValue({
+        success: true,
+        data: makeProtocol(),
+      });
+      writeUpgradedLegacyCopy.mockRejectedValue(
+        new DOMException('Quota exceeded', 'QuotaExceededError'),
+      );
+
+      const result = await runThunk(
+        upgradeLegacyProtocol({ legacyId: 'legacy-1' }),
+      );
+
+      expect(messageFields(result.payload)).toMatchObject({
+        status: 'error',
+        title: 'Protocol Open Error',
+        message: expect.stringContaining(
+          'Architect could not save this protocol on this device.',
+        ),
+      });
+      expect(setStorageUnavailable).not.toHaveBeenCalledWith(true);
+      expect(setActiveProtocol).not.toHaveBeenCalled();
+      expect(navigate).not.toHaveBeenCalled();
+      expect(setImportInProgress).toHaveBeenLastCalledWith(false);
+    });
+
+    it('refuses, without touching this library, when Architect 8’s cannot be read', async () => {
+      readLegacyProtocolSnapshot.mockRejectedValue(
+        new Error('UnknownError: backing store'),
+      );
+
+      const result = await runThunk(
+        upgradeLegacyProtocol({ legacyId: 'legacy-1' }),
+      );
+
+      expect(result.payload).toMatchObject({ status: 'error' });
+      expect(writeUpgradedLegacyCopy).not.toHaveBeenCalled();
+      expect(setStorageUnavailable).not.toHaveBeenCalled();
     });
   });
 });

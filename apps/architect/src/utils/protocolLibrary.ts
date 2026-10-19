@@ -3,8 +3,14 @@ import { isEqual } from 'es-toolkit/compat';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolSourceRef } from '~/templates';
 
-import { assetDb, type StoredProtocolRow } from './assetDB';
+import {
+  assetDb,
+  assetKey,
+  type LegacyProtocolChoice,
+  type StoredProtocolRow,
+} from './assetDB';
 import { deleteOrphanedAssets, deleteProtocolAssets } from './assetUtils';
+import type { LegacyProtocolSnapshot } from './legacyProtocolLibrary';
 import { reportError } from './reportError';
 
 // Most-recently-updated first. Sort the materialised array (rather than the
@@ -118,3 +124,96 @@ export const deleteStoredProtocol = async (id: string): Promise<void> => {
     },
   );
 };
+
+/** What the researcher last decided about an Architect 8 protocol, if anything. */
+export const getLegacyProtocolChoice = async (
+  legacyId: string,
+): Promise<LegacyProtocolChoice | undefined> =>
+  await assetDb.legacyProtocolChoices.get(legacyId);
+
+type UpgradedLegacyCopy = {
+  /** The library row the researcher should now be editing. */
+  protocolId: string;
+  /**
+   * False when another tab finished upgrading the same Architect 8 protocol
+   * while this one was migrating it, so its copy was kept and nothing was
+   * written here.
+   */
+  created: boolean;
+};
+
+/**
+ * Save an upgraded Architect 8 protocol as a NEW protocol in this library.
+ *
+ * One read-write transaction writes the row under a new id, every asset of the
+ * snapshot re-keyed to that id, and the choice `upgraded` pointing at it, so
+ * the library can never hold the copy without its resources or without the
+ * record that it exists. Architect 8's own library is not touched.
+ *
+ * The caller migrated and validated `protocol` outside any transaction (both
+ * are asynchronous), reading the choice first; `upgradedIdBefore` is the copy
+ * that choice named then. If the choice names a different copy now, another tab
+ * upgraded this protocol in the meantime, and that copy is kept rather than a
+ * duplicate made. A choice that already named a copy before this upgrade began
+ * does not stop it: the researcher asked for a fresh copy of what Architect 8
+ * holds now.
+ */
+export const writeUpgradedLegacyCopy = async ({
+  snapshot,
+  protocol,
+  upgradedIdBefore,
+  createId = () => crypto.randomUUID(),
+  now = Date.now(),
+}: {
+  snapshot: LegacyProtocolSnapshot;
+  protocol: CurrentProtocol;
+  upgradedIdBefore: string | undefined;
+  createId?: () => string;
+  now?: number;
+}): Promise<UpgradedLegacyCopy> =>
+  await assetDb.transaction(
+    'rw',
+    [assetDb.protocols, assetDb.assets, assetDb.legacyProtocolChoices],
+    async () => {
+      const { row, assets } = snapshot;
+      const choice = await assetDb.legacyProtocolChoices.get(row.id);
+      if (
+        choice?.choice === 'upgraded' &&
+        choice.upgradedId !== undefined &&
+        choice.upgradedId !== upgradedIdBefore &&
+        (await assetDb.protocols.get(choice.upgradedId))
+      ) {
+        return { protocolId: choice.upgradedId, created: false };
+      }
+
+      const protocolId = createId();
+      await assetDb.protocols.add({
+        id: protocolId,
+        // The row mirrors the document, as every autosave keeps it.
+        name: protocol.name,
+        description: protocol.description,
+        schemaVersion: protocol.schemaVersion,
+        protocol,
+        validated: true,
+        sourceRef: row.sourceRef,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await assetDb.assets.bulkAdd(
+        assets.map((asset) => ({
+          id: assetKey(protocolId, asset.assetId),
+          assetId: asset.assetId,
+          protocolId,
+          name: asset.name,
+          data: asset.data,
+        })),
+      );
+      await assetDb.legacyProtocolChoices.put({
+        legacyId: row.id,
+        choice: 'upgraded',
+        upgradedId: protocolId,
+        updatedAt: now,
+      });
+      return { protocolId, created: true };
+    },
+  );
