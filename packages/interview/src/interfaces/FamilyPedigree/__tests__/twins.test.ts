@@ -254,6 +254,31 @@ describe('identical twins after a change to their parents', () => {
     ]);
   });
 
+  test('identical triplets with a link missing are checked across all three', () => {
+    // Ego is female and Kim male; Sam, between them, has no sex recorded.
+    const f = family(
+      [
+        person('ego', { isEgo: true, sex: ['female'] }),
+        person('sam', { name: 'Sam' }),
+        person('kim', { name: 'Kim', sex: ['male'] }),
+        person('mum', { name: 'Julie', sex: ['female'] }),
+        person('dad', { name: 'Rob', sex: ['male'] }),
+      ],
+      [
+        ...['ego', 'sam', 'kim'].flatMap((child) => [
+          link('mum', child, 'biological'),
+          link('dad', child, 'biological'),
+        ]),
+        link('ego', 'sam', 'identicalTwin'),
+        link('sam', 'kim', 'identicalTwin'),
+      ],
+    );
+    expect(standInRule(f).changedTwins).toEqual([
+      { linkId: 'ego-sam-identicalTwin', zygosity: 'unknown' },
+      { linkId: 'sam-kim-identicalTwin', zygosity: 'unknown' },
+    ]);
+  });
+
   test('identical twins who share their genetic parents are left as they are', () => {
     expect(
       standInRule(siblings([link('ego', 'sam', 'identicalTwin')])).changedTwins,
@@ -739,6 +764,24 @@ describe('the carrier twins share', () => {
         linkId: 'mum-sam-biological',
         kind: 'biological',
         isGestationalCarrier: true,
+      },
+      { linkId: 'amy-sam-social', kind: 'social', isGestationalCarrier: false },
+    ]);
+  });
+
+  test('clears someone recorded as having carried a twin who could not have', () => {
+    // Rob, recorded male, was left recorded as having carried Sam.
+    const f = twins({ 'dad-sam-biological': true });
+    expect(twinCarrierUpdates(f, ['sam'], 'mum')).toEqual([
+      {
+        linkId: 'mum-sam-biological',
+        kind: 'biological',
+        isGestationalCarrier: true,
+      },
+      {
+        linkId: 'dad-sam-biological',
+        kind: 'biological',
+        isGestationalCarrier: false,
       },
       { linkId: 'amy-sam-social', kind: 'social', isGestationalCarrier: false },
     ]);

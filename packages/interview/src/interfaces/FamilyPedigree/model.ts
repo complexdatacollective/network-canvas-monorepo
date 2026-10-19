@@ -1796,8 +1796,19 @@ export function planStandIns(
   // carried the pregnancy.
   const links = settleCarriers(family, people, unsettled, sexAttribute);
 
-  // Identical twins whose genetic parents, as the rule leaves them, or
-  // whose sexes at birth differ (`identicalTwinBlocks`).
+  // Identical twins whose genetic parents, as the rule leaves them, differ,
+  // or among whose identical twins, however indirectly linked, sexes at
+  // birth differ (`differentSexesAtBirth`): they came from one egg.
+  const identicalSexesDiffer = (personId: string) => {
+    const recorded = new Set(
+      reachedByTwinLinks(
+        family,
+        personId,
+        (zygosity) => zygosity === 'identical',
+      ).map((id) => family.byId.get(id)?.sexAssignedAtBirth),
+    );
+    return recorded.has('female') && recorded.has('male');
+  };
   const geneticParentsAfter = (personId: string) =>
     new Set([
       ...geneticLinksOf(personId)
@@ -1815,10 +1826,7 @@ export function planStandIns(
           geneticParentsAfter(twin.source),
           geneticParentsAfter(twin.target),
         ) ||
-          differentSexesAtBirth(
-            family.byId.get(twin.source)?.sexAssignedAtBirth,
-            family.byId.get(twin.target)?.sexAssignedAtBirth,
-          )),
+          identicalSexesDiffer(twin.source)),
     )
     .map((twin) => ({ linkId: twin.id, zygosity: 'unknown' as const }));
 
@@ -2345,7 +2353,12 @@ export function twinCarrierUpdates(
         !mayHaveCarried(link.kind) ||
         !couldCarryPregnancy(family.byId.get(link.source)?.sexAssignedAtBirth)
       ) {
-        return [];
+        // Someone who could not have carried them is never left recorded as
+        // having done so beside the carrier, as a change made elsewhere can
+        // leave them.
+        return link.isGestationalCarrier === true
+          ? [{ linkId: link.id, kind: link.kind, isGestationalCarrier: false }]
+          : [];
       }
       const carries =
         carrierId === undefined ? undefined : link.source === carrierId;
