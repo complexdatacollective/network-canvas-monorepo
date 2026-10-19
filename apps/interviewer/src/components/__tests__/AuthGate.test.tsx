@@ -87,17 +87,43 @@ afterEach(() => {
 });
 
 // Interviewer 8 inside Interviewer 9's deploy shares Interviewer 9's lock and
-// never sets one up: an unconfigured device belongs in Interviewer 9.
+// never sets one up: where set-up is required, the device belongs in
+// Interviewer 9, which forces set-up under the same rule.
 describe('AuthGate — Interviewer 8 inside Interviewer 9 (a /v8/ build)', () => {
-  it.each([false, true])(
-    'hands an unconfigured device to Interviewer 9 (installed: %s)',
-    (installed) => {
-      subpath.isSubpath = true;
-      setup({ kind: 'unconfigured', installed });
+  it('hands an unconfigured installed app to Interviewer 9 to set up the lock', () => {
+    subpath.isSubpath = true;
+    setup({ kind: 'unconfigured', installed: true });
 
-      expect(subpath.replaceWithInterviewer9).toHaveBeenCalledTimes(1);
+    expect(subpath.replaceWithInterviewer9).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+  });
+
+  it('hands over the moment the app is installed while unconfigured', () => {
+    subpath.isSubpath = true;
+    setup({ kind: 'unconfigured', installed: false });
+    expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
+
+    act(() => {
+      window.dispatchEvent(new Event('appinstalled'));
+    });
+
+    expect(subpath.replaceWithInterviewer9).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  // Interviewer 9 runs without a lock in a browser tab, so every way into
+  // Interviewer 8 it offers (?start=, resume, data, ?import=) must open here
+  // too, rather than bounce back to Interviewer 9.
+  it.each(['/', '/interview/s1', '/data'])(
+    'runs an unconfigured browser tab without a lock, as Interviewer 9 does (%s)',
+    (location) => {
+      subpath.isSubpath = true;
+      setup({ kind: 'unconfigured', installed: false, location });
+
+      expect(screen.getByTestId('app-child')).toBeInTheDocument();
+      expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
       expect(mockNavigate).not.toHaveBeenCalled();
-      expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
     },
   );
 

@@ -35,12 +35,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, []);
 
   // Interviewer 8 inside Interviewer 9 (a /v8/ build) shares Interviewer 9's
-  // lock and never sets one up itself: with no lock configured yet, the
-  // researcher belongs in Interviewer 9, which owns set-up.
+  // lock and never sets one up itself. Where set-up is required, the
+  // researcher belongs in Interviewer 9, which owns it and forces it under
+  // the same rule. In a plain browser tab Interviewer 9 runs without a lock,
+  // and so does this build: handing over there would send every way into
+  // Interviewer 8 straight back to Interviewer 9.
   const shouldHandOverToInterviewer9 =
-    IS_SUBPATH_BUILD && kind === 'unconfigured';
+    IS_SUBPATH_BUILD && kind === 'unconfigured' && requireSetup;
   const shouldRedirectToWelcome =
-    !shouldHandOverToInterviewer9 &&
+    !IS_SUBPATH_BUILD &&
     kind === 'unconfigured' &&
     requireSetup &&
     location !== '/welcome';

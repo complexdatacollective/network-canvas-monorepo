@@ -18,7 +18,9 @@ import {
  * the origin root:
  *
  * - it unlocks with Interviewer 9's lock (the shared `interviewer:vault`
- *   record) and never sets one up itself;
+ *   record) and never sets one up itself: where Interviewer 9 would force
+ *   set-up it hands the page over, and in a browser tab it runs without a
+ *   lock, as Interviewer 9 does;
  * - `?start=<hash>` opens the new-interview form for that protocol,
  *   `/v8/interview/<id>` resumes an interview, and `?import=<key>` imports
  *   the file Interviewer 9 staged in the shared `InterviewerHandoffDB`;
@@ -141,6 +143,11 @@ async function unlock(page: Page): Promise<void> {
 async function openWithProtocol(page: Page): Promise<string> {
   await page.goto('');
   await unlock(page);
+  return importLeanProtocol(page);
+}
+
+/** Import the lean e2e protocol from Home, and return its hash. */
+async function importLeanProtocol(page: Page): Promise<string> {
   await page
     .getByTestId('protocol-import-input')
     .setInputFiles(LEAN_E2E_PROTOCOL_PATH);
@@ -334,13 +341,18 @@ test('boots under /v8/ with Interviewer 9’s lock, keeps every request under it
   ).toBeVisible();
 });
 
-test('with no lock set up, hands the page to Interviewer 9, which owns set-up', async ({
+test('installed with no lock set up, hands the page to Interviewer 9, which owns set-up', async ({
   browser,
 }) => {
-  // A context without the shared lock: nothing configured yet.
+  // A context without the shared lock: nothing configured yet. The page
+  // reports itself as an installed app (iOS's flag, which isRunningInstalled
+  // reads alongside the display-mode query), where Interviewer 9 forces set-up.
   const context = await browser.newContext({
     baseURL: subpathBase().href,
     serviceWorkers: 'block',
+  });
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'standalone', { value: true });
   });
   const page = await context.newPage();
   const interviewer9 = await stubInterviewer9(page);
@@ -350,6 +362,35 @@ test('with no lock set up, hands the page to Interviewer 9, which owns set-up', 
   // researcher on again, but to where they were before it.
   await page.goBack();
   await expect(page).toHaveURL('about:blank');
+  await context.close();
+});
+
+test('in a browser tab with no lock set up, runs without one as Interviewer 9 does, so ?start= reaches the form', async ({
+  browser,
+}) => {
+  // Interviewer 9 runs without a lock in a browser tab and offers its schema
+  // 8 protocols from there: each of its ways in must open here, not bounce
+  // back to it.
+  const base = subpathBase();
+  const context = await browser.newContext({
+    baseURL: base.href,
+    serviceWorkers: 'block',
+  });
+  const page = await context.newPage();
+  const outside = recordRequestsOutsideBase(context, base);
+  await page.goto('');
+  await expect(banner(page)).toBeVisible({ timeout: 15_000 });
+  const hash = await importLeanProtocol(page);
+
+  await page.goto(`?start=${encodeURIComponent(hash)}`);
+  await expect(page.getByTestId('new-session-case-id')).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page).toHaveURL(base.href);
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toHaveCount(
+    0,
+  );
+  expect(outside).toEqual([]);
   await context.close();
 });
 
