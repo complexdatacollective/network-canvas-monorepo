@@ -74,6 +74,7 @@ import {
   geneticParentBlock,
   geneticParentsPossible,
   hasCarrier,
+  surrogateOf,
   holdsGeneratedLabel,
   differentSexesAtBirth,
   couldBeCarrierOf,
@@ -1290,6 +1291,25 @@ function ExistingRelationshipFields({
   const recordedCarrying = (link: FamilyLink) =>
     link.isGestationalCarrier ??
     (twinsCarrier === undefined ? undefined : link.source === twinsCarrier);
+  // A surrogate who carried one of their twins, as the answers stand, and is
+  // not one of their own parents carried them too, so none of their parents
+  // can have: one pregnancy has one carrier (`twinCarrierUpdates` keeps a
+  // surrogate's twin as recorded).
+  const parentSources = new Set(parents.map((link) => link.source));
+  const twinSurrogate = (
+    twinAnswers === undefined
+      ? twinSetOf(family, person.id)
+      : asStringArray(twinAnswers).flatMap((twinId) =>
+          twinSetOf(family, twinId),
+        )
+  )
+    .filter((id) => id !== person.id)
+    .flatMap((twinId) => {
+      const surrogateId = surrogateOf(family, twinId);
+      return surrogateId === undefined || parentSources.has(surrogateId)
+        ? []
+        : [{ carrierId: surrogateId, childId: twinId }];
+    })[0];
   const carries = (link: FamilyLink) => {
     const kind = kindOf(link);
     if (kind === 'surrogate') return true;
@@ -1331,9 +1351,12 @@ function ExistingRelationshipFields({
         );
       })}
       {parents.map((link) => {
-        const anotherCarrier = parents.find(
+        const otherParentCarrying = parents.find(
           (other) => other.id !== link.id && carries(other),
         );
+        const anotherCarrier = otherParentCarrying
+          ? { carrierId: otherParentCarrying.source, childId: person.id }
+          : twinSurrogate;
         // Why a kind of parent is unavailable, for each that is.
         const geneticBlock = canBeGenetic(link)
           ? undefined
@@ -1354,8 +1377,8 @@ function ExistingRelationshipFields({
             ),
           anotherCarrier &&
             carrierRecordedReason(
-              person.id,
-              anotherCarrier.source,
+              anotherCarrier.childId,
+              anotherCarrier.carrierId,
               kindAnswers(['surrogate']),
             ),
           !canCarry(link) &&
@@ -1371,9 +1394,8 @@ function ExistingRelationshipFields({
             carries={carries(link)}
             kindReasons={kindReasons}
             reasonContext={reasonContext}
-            anotherCarrierId={anotherCarrier?.source}
+            anotherCarrier={anotherCarrier}
             recordedCarrying={recordedCarrying(link)}
-            personId={person.id}
             personIsYou={isYou(person.id)}
             parentIsYou={isYou(link.source)}
             parentName={displayName(link.source)}
@@ -1408,9 +1430,8 @@ function ParentLinkFields({
   carries,
   kindReasons,
   reasonContext,
-  anotherCarrierId,
+  anotherCarrier,
   recordedCarrying,
-  personId,
   personIsYou,
   parentIsYou,
   parentName,
@@ -1428,13 +1449,13 @@ function ParentLinkFields({
   /** Why the kinds of parent that are unavailable are, each naming them. */
   kindReasons: readonly (Reason | undefined | false)[];
   reasonContext: ReasonContext;
-  /** Another of the person's parents who carried the pregnancy. */
-  anotherCarrierId: string | undefined;
+  /** Someone else who carried the pregnancy: another of the person's
+   * parents, or a surrogate who carried one of their twins, recorded as
+   * having carried `childId`. */
+  anotherCarrier: { carrierId: string; childId: string } | undefined;
   /** Whether this parent carried the pregnancy, as recorded, or as recorded
    * for the person's twins while nothing is recorded for the person. */
   recordedCarrying: boolean | undefined;
-  /** The person the panel describes, this parent's child. */
-  personId: string;
   personIsYou: string;
   parentIsYou: string;
   parentName: string;
@@ -1446,7 +1467,7 @@ function ParentLinkFields({
   const kind = asString(values[kindField]) ?? link.kind;
   const kindUnavailable = (value: string) =>
     (isGeneticKind(value) && !canBeGenetic) ||
-    (value === 'surrogate' && (anotherCarrierId !== undefined || !canCarry));
+    (value === 'surrogate' && (anotherCarrier !== undefined || !canCarry));
   // The kind recorded, until it is unavailable (`useDerivedAnswer`): it is
   // then shown unchosen, and left as stored unless another is chosen.
   const kindAnswer = useDerivedAnswer({
@@ -1458,9 +1479,13 @@ function ParentLinkFields({
   // While another parent carried the pregnancy, only "Yes" would record a
   // second carrier: it is unavailable, naming them, and "No" stays.
   const carriedYesReason =
-    !carries && anotherCarrierId !== undefined
+    !carries && anotherCarrier !== undefined
       ? joinReasons(reasonContext, [
-          carrierRecordedReason(personId, anotherCarrierId, [yesAnswer(intl)]),
+          carrierRecordedReason(
+            anotherCarrier.childId,
+            anotherCarrier.carrierId,
+            [yesAnswer(intl)],
+          ),
         ])
       : undefined;
   // Not known shows neither answer chosen, except that while someone else
@@ -1470,7 +1495,7 @@ function ParentLinkFields({
     name: linkField(link, 'carrier'),
     nameMode: 'opaque',
     derived:
-      recordedCarrying ?? (anotherCarrierId === undefined ? undefined : false),
+      recordedCarrying ?? (anotherCarrier === undefined ? undefined : false),
     isAvailable: (value) => value !== true || carriedYesReason === undefined,
   });
 

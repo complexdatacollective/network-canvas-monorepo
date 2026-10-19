@@ -1187,6 +1187,36 @@ describe('a second carrier', () => {
     expect(no).toBeChecked();
   });
 
+  it('shows a parent’s carrying question unavailable while a surrogate who is not their parent carried a twin, naming them', () => {
+    // Sue carried Sam, the participant's twin, as a surrogate: twins come
+    // from one pregnancy, so Mum cannot have carried the participant.
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sam', { sex: ['male'] }),
+        person('mum', { sex: ['female'] }),
+        person('dad', { sex: ['male'] }),
+        person('sue', { sex: ['female'] }),
+      ],
+      edges: [
+        link('mum', 'ego', 'biological'),
+        link('dad', 'ego', 'biological'),
+        link('mum', 'sam', 'biological'),
+        link('dad', 'sam', 'biological'),
+        link('sue', 'sam', 'surrogate', { carrier: true }),
+        link('ego', 'sam', 'unknownZygosityTwin'),
+      ],
+    });
+    const question = screen.getByRole('radiogroup', {
+      name: /^Did mum carry the pregnancy\?/,
+    });
+    expect(within(question).getByRole('radio', { name: 'Yes' })).toBeDisabled();
+    expect(question).toHaveAccessibleDescription(
+      /“sue” is recorded as having carried “sam”/,
+    );
+    expect(within(question).getByRole('radio', { name: 'No' })).toBeChecked();
+  });
+
   it('shows a new parent’s carrying question unavailable, naming who carried them', async () => {
     const { user } = renderPersonForm('ego', {
       nodes: [

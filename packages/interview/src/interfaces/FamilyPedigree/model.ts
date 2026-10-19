@@ -2319,6 +2319,17 @@ export function carrierOf(
   )?.source;
 }
 
+/** The surrogate who carried the person, if one did: a surrogate always
+ * carried the child they are the surrogate of. */
+export function surrogateOf(
+  family: Family,
+  personId: string,
+): string | undefined {
+  return parentLinksOf(family, personId).find(
+    (link) => link.kind === 'surrogate',
+  )?.source;
+}
+
 /**
  * Whoever is recorded as having carried one of the person's twins. Twins
  * come from one pregnancy, so one person carried them all.
