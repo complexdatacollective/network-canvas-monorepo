@@ -2053,7 +2053,7 @@
           "es": "{parentKind} (llevó el embarazo)"
         },
         "sharedDonorsLabel": {
-          "en-US": "{isYou, select, true {{hasSurrogate, select, true {Do they share any of your donors, or the surrogate who carried you?} other {Do they share any of your donors?}}} other {{hasSurrogate, select, true {Do they share any of “{name}”’s donors, or the surrogate who carried them?} other {Do they share any of “{name}”’s donors?}}}}",
+          "en-US": "{isYou, select, true {{hasSurrogate, select, true {Do they share any of your donors, or the surrogate who carried you?} other {Do they share any of your donors?}}} other {{hasSurrogate, select, true {Do they share any donors with “{name}”, or the surrogate who carried “{name}”?} other {Do they share any donors with “{name}”?}}}}",
           "es": "{isYou, select, true {{hasSurrogate, select, true {¿Comparte alguno de tus donantes, o la gestante subrogada que llevó tu embarazo?} other {¿Comparte alguno de tus donantes?}}} other {{hasSurrogate, select, true {¿Comparte alguno de los donantes de «{name}», o la gestante subrogada que llevó su embarazo?} other {¿Comparte alguno de los donantes de «{name}»?}}}}"
         },
         "siblingBiologicalParentLabel": {
@@ -2073,7 +2073,7 @@
           "es": "Sí, gemelos idénticos"
         },
         "siblingTwinLabel": {
-          "en-US": "{isYou, select, true {Are they your twin?} other {Are they “{name}”’s twin?}}",
+          "en-US": "{isYou, select, true {Are they your twin?} other {Are they a twin of “{name}”?}}",
           "es": "{isYou, select, true {¿Es tu gemelo o gemela?} other {¿Es gemelo o gemela de «{name}»?}}"
         },
         "siblingTwinNo": {
@@ -2089,7 +2089,7 @@
           "es": "Incluye también trillizos y otros partos múltiples."
         },
         "twinsLabel": {
-          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}",
+          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which siblings of “{name}”, if any, are their twins?}}",
           "es": "{isYou, select, true {¿Cuáles de tus hermanos, si alguno, son tus gemelos o mellizos?} other {¿Cuáles de los hermanos de «{name}», si alguno, son sus gemelos o mellizos?}}"
         },
         "twinZygosityLabel": {
@@ -2125,7 +2125,7 @@
           "es": "{who, select, personIsYou {«{answer}» no está disponible porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y tú y «{twin}» no los tienen. Para elegirla, primero registra los mismos progenitores biológicos y donantes para ambos.} twinIsYou {«{answer}» no está disponible porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y «{name}» y tú no los tienen. Para elegirla, primero registra los mismos progenitores biológicos y donantes para ambos.} other {«{answer}» no está disponible porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y «{name}» y «{twin}» no los tienen. Para elegirla, primero registra los mismos progenitores biológicos y donantes para ambos.}}"
         },
         "unavailableIdenticalTwinNew": {
-          "en-US": "{isYou, select, true {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.} other {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose it, choose all of their biological parents and donors above.}}",
+          "en-US": "{isYou, select, true {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.} other {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all the same ones as “{name}”. To choose it, choose all the biological parents and donors of “{name}” above.}}",
           "es": "{isYou, select, true {«{answer}» no está disponible porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y este hermano o hermana no tendría todos los tuyos. Para elegirla, elige arriba a todos tus progenitores biológicos y donantes.} other {«{answer}» no está disponible porque los gemelos idénticos tienen los mismos progenitores biológicos y donantes, y este hermano o hermana no tendría todos los de «{name}». Para elegirla, elige arriba a todos sus progenitores biológicos y donantes.}}"
         },
         "unavailableIdenticalTwinSex": {

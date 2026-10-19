@@ -2098,7 +2098,7 @@ describe('twins share one carrier', () => {
     expect(answer(carried('amy'), 'Yes')).not.toBeChecked();
     await user.click(
       within(
-        screen.getByRole('group', { name: /^Which of “sam”’s siblings/ }),
+        screen.getByRole('group', { name: /^Which siblings of “sam”/ }),
       ).getByRole('checkbox', { name: 'ego' }),
     );
     await waitFor(() => expect(answer(carried('amy'), 'Yes')).toBeChecked());
@@ -2189,7 +2189,7 @@ describe('questions worked out from the answers as they stand', () => {
     });
     const twins = () =>
       screen.queryByRole('group', {
-        name: /^Which of “noah”’s siblings, if any, are their twins\?/,
+        name: /^Which siblings of “noah”, if any, are their twins\?/,
       });
     await user.click(
       within(twins() as HTMLElement).getByRole('checkbox', { name: 'cody' }),

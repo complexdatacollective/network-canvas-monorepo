@@ -959,7 +959,7 @@
           "en-US": "{parentKind} (carried the pregnancy)"
         },
         "sharedDonorsLabel": {
-          "en-US": "{isYou, select, true {{hasSurrogate, select, true {Do they share any of your donors, or the surrogate who carried you?} other {Do they share any of your donors?}}} other {{hasSurrogate, select, true {Do they share any of “{name}”’s donors, or the surrogate who carried them?} other {Do they share any of “{name}”’s donors?}}}}"
+          "en-US": "{isYou, select, true {{hasSurrogate, select, true {Do they share any of your donors, or the surrogate who carried you?} other {Do they share any of your donors?}}} other {{hasSurrogate, select, true {Do they share any donors with “{name}”, or the surrogate who carried “{name}”?} other {Do they share any donors with “{name}”?}}}}"
         },
         "siblingBiologicalParentLabel": {
           "en-US": "Which of them is the sibling’s biological parent?"
@@ -974,7 +974,7 @@
           "en-US": "Yes, identical twins"
         },
         "siblingTwinLabel": {
-          "en-US": "{isYou, select, true {Are they your twin?} other {Are they “{name}”’s twin?}}"
+          "en-US": "{isYou, select, true {Are they your twin?} other {Are they a twin of “{name}”?}}"
         },
         "siblingTwinNo": {
           "en-US": "No"
@@ -986,7 +986,7 @@
           "en-US": "Include triplets and other multiple births."
         },
         "twinsLabel": {
-          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which of “{name}”’s siblings, if any, are their twins?}}"
+          "en-US": "{isYou, select, true {Which of your siblings, if any, are your twins?} other {Which siblings of “{name}”, if any, are their twins?}}"
         },
         "twinZygosityLabel": {
           "en-US": "{who, select, personIsYou {Are you and “{twin}” identical twins?} twinIsYou {Are “{name}” and you identical twins?} other {Are “{name}” and “{twin}” identical twins?}}"
@@ -1013,7 +1013,7 @@
           "en-US": "{who, select, personIsYou {“{answer}” is unavailable because identical twins have the same biological parents and donors, and you and “{twin}” do not. To choose it, first record the same biological parents and donors for both of you.} twinIsYou {“{answer}” is unavailable because identical twins have the same biological parents and donors, and “{name}” and you do not. To choose it, first record the same biological parents and donors for both of you.} other {“{answer}” is unavailable because identical twins have the same biological parents and donors, and “{name}” and “{twin}” do not. To choose it, first record the same biological parents and donors for both of them.}}"
         },
         "unavailableIdenticalTwinNew": {
-          "en-US": "{isYou, select, true {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.} other {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of “{name}”’s. To choose it, choose all of their biological parents and donors above.}}"
+          "en-US": "{isYou, select, true {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all of yours. To choose it, choose all of your biological parents and donors above.} other {“{answer}” is unavailable because identical twins have the same biological parents and donors, and this sibling would not have all the same ones as “{name}”. To choose it, choose all the biological parents and donors of “{name}” above.}}"
         },
         "unavailableIdenticalTwinSex": {
           "en-US": "{who, select, personIsYou {“{answer}” is unavailable because identical twins have the same sex at birth, and you and “{twin}” are recorded with different ones. To choose it, first change the sex at birth of one of you.} twinIsYou {“{answer}” is unavailable because identical twins have the same sex at birth, and “{name}” and you are recorded with different ones. To choose it, first change the sex at birth of one of you.} other {“{answer}” is unavailable because identical twins have the same sex at birth, and “{name}” and “{twin}” are recorded with different ones. To choose it, first change the sex at birth of one of them.}}"

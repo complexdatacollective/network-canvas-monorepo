@@ -61,8 +61,8 @@
       - text: Egg or sperm donor
       - radio "Surrogate" [disabled]
       - text: Surrogate “Surrogate” is unavailable because “Julie” is recorded as having carried “Ben”, and only one person carries a pregnancy. To choose it, first change how “Julie” is connected to “Ben”. “Surrogate” is unavailable because “Rob” is recorded as “Male” at birth, so they cannot have carried a pregnancy. To choose it, first change their sex at birth.
-    - text: Which of “Ben”’s siblings, if any, are their twins? Include triplets and other multiple births.
-    - group "Which of “Ben”’s siblings, if any, are their twins?":
+    - text: Which siblings of “Ben”, if any, are their twins? Include triplets and other multiple births.
+    - group "Which siblings of “Ben”, if any, are their twins?":
       - checkbox "You" [checked]
       - text: You
     - text: Are “Ben” and you identical twins? Required Ben and you differ in sex at birth, so not Yes, identical - matrix check
