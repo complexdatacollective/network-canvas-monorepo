@@ -2298,13 +2298,28 @@ const FamilyPedigree = ({ stage }: StageProps<'FamilyPedigree'>) => {
       removedLinkIds: plan.removedLinkIds,
       removedPersonIds: plan.removedPersonIds,
     });
-    // The new sibling's twins were carried by whoever carried them.
+    // The new sibling's twins were carried by whoever carried them. A
+    // refusal puts back the twins' carriers already recorded again, with the
+    // addition taken back below.
     let refusedCarrier: Awaited<ReturnType<typeof writeLinkUpdate>> | undefined;
+    const recarriedLinkIds: string[] = [];
     for (const update of refusedGiveWay ? [] : (plan.carrierUpdates ?? [])) {
       const recarried = await writeLinkUpdate(update);
       if (writeFailureMessage(recarried)) {
         refusedCarrier = recarried;
         break;
+      }
+      recarriedLinkIds.push(update.linkId);
+    }
+    if (refusedCarrier) {
+      for (const linkId of recarriedLinkIds) {
+        const recorded = family.links.find((link) => link.id === linkId);
+        if (!recorded) continue;
+        await writeLinkUpdate({
+          linkId,
+          kind: recorded.kind,
+          isGestationalCarrier: recorded.isGestationalCarrier,
+        });
       }
     }
     const refused = refusedGiveWay ?? refusedCarrier;
