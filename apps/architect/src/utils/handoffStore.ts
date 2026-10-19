@@ -18,7 +18,7 @@ export const HANDOFF_STORES = { handoffs: 'key, createdAt' } as const;
 export const HANDOFF_TTL_MS = 60 * 60 * 1000;
 
 /** The major version of the app this build is, as a hand-off target. */
-export const THIS_ARCHITECT_MAJOR = 8;
+const THIS_ARCHITECT_MAJOR = 8;
 
 export type HandoffTargetMajor = 8 | 9;
 
