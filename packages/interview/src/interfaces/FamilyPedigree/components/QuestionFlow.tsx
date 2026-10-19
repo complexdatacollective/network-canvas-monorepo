@@ -178,14 +178,17 @@ const firstWaiting = (step: Element, read?: ReadValue) =>
     (field) => isShown(field) && !isClosed(field) && isUnanswered(field, read),
   );
 
-const firstRequiredWaiting = (step: Element, read?: ReadValue) =>
-  [...step.querySelectorAll(FIELD_SELECTOR)].find(
+const requiredWaiting = (step: Element, read?: ReadValue) =>
+  [...step.querySelectorAll(FIELD_SELECTOR)].filter(
     (field) =>
       isShown(field) &&
       isRequired(field) &&
       !isClosed(field) &&
       isUnanswered(field, read),
   );
+
+const firstRequiredWaiting = (step: Element, read?: ReadValue) =>
+  requiredWaiting(step, read)[0];
 
 /** The steps holding at least one question, in the order they show. */
 const stepsIn = (root: Element) =>
@@ -223,9 +226,10 @@ type QuestionFlowProps = {
  * last question still waiting in a step with a single choice moves on to the
  * next step by itself, once nothing required is left in it. The step's own
  * button continues, reading "Skip" while nothing in the step is answered;
- * a required question left unanswered keeps the step open and
- * takes the focus instead. Back returns to the step before. An answer the
- * form refuses on saving opens the step holding it.
+ * a required question left unanswered keeps the step open and takes the
+ * focus instead, and every one left unanswered shows the error saving
+ * would. Back returns to the step before. An answer the form refuses on
+ * saving opens the step holding it.
  */
 export default function QuestionFlow({
   className,
@@ -418,12 +422,19 @@ export default function QuestionFlow({
     if (!step) return;
     const missing = firstRequiredWaiting(step, read) ?? firstInvalid(step);
     if (missing) {
+      // Each required question left unanswered says so, as saving would.
+      for (const field of requiredWaiting(step, read)) {
+        const path = field.getAttribute('data-field-path');
+        if (path !== null) {
+          void store?.getState().validateField(path, { showErrors: true });
+        }
+      }
       controlOf(missing)?.focus({ preventScroll: true });
       bringIntoView(missing);
       return;
     }
     if (!isLast) goTo(index + 1);
-  }, [step, isLast, index, goTo, read]);
+  }, [step, isLast, index, goTo, read, store]);
 
   // A chosen option moves the form on, once the answer has rendered along
   // with any question it brings in.
