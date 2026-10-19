@@ -19,6 +19,22 @@ const {
 
 vi.mock('~/lib/auth/AuthContext', () => ({ useAuth: () => mockUseAuth() }));
 
+const subpath = vi.hoisted(() => ({
+  isSubpath: false,
+  replaceWithInterviewer9: vi.fn(),
+}));
+
+vi.mock('~/lib/appBase', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('~/lib/appBase')>()),
+  get IS_SUBPATH_BUILD() {
+    return subpath.isSubpath;
+  },
+}));
+
+vi.mock('~/lib/handoff/interviewer9Navigation', () => ({
+  replaceWithInterviewer9: subpath.replaceWithInterviewer9,
+}));
+
 // The real hook reaches into Dexie. What the gate is responsible for is when it
 // runs the sweep and what it does while the sweep is pending.
 vi.mock('~/lib/protocol/useStoredProtocolMigration', () => ({
@@ -67,6 +83,45 @@ function setup({
 
 afterEach(() => {
   vi.clearAllMocks();
+  subpath.isSubpath = false;
+});
+
+// Interviewer 8 inside Interviewer 9's deploy shares Interviewer 9's lock and
+// never sets one up: an unconfigured device belongs in Interviewer 9.
+describe('AuthGate — Interviewer 8 inside Interviewer 9 (a /v8/ build)', () => {
+  it.each([false, true])(
+    'hands an unconfigured device to Interviewer 9 (installed: %s)',
+    (installed) => {
+      subpath.isSubpath = true;
+      setup({ kind: 'unconfigured', installed });
+
+      expect(subpath.replaceWithInterviewer9).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+    },
+  );
+
+  it('unlocks with the shared lock as usual', () => {
+    subpath.isSubpath = true;
+    setup({ kind: 'locked' });
+
+    expect(screen.getByTestId('lock-screen')).toBeInTheDocument();
+    expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
+  });
+
+  it('runs the app once unlocked', () => {
+    subpath.isSubpath = true;
+    setup({ kind: 'unlocked' });
+
+    expect(screen.getByTestId('app-child')).toBeInTheDocument();
+    expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
+  });
+
+  it('never hands the root app over', () => {
+    setup({ kind: 'unconfigured', installed: true });
+
+    expect(subpath.replaceWithInterviewer9).not.toHaveBeenCalled();
+  });
 });
 
 describe('AuthGate — unconfigured', () => {

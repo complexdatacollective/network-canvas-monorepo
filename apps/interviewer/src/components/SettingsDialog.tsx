@@ -36,6 +36,10 @@ import {
   ManageAuthenticator,
   ResetDeviceRow,
 } from '~/components/ManageAuthenticator';
+import {
+  ManageLockInInterviewerButton,
+  manageLockMessages,
+} from '~/components/ManageLockInInterviewer';
 import SecurityBehaviorControls, {
   type Behavior,
 } from '~/components/SecurityBehaviorControls';
@@ -1084,7 +1088,21 @@ export function SettingsDialog({
           </TabsPanel>
 
           <TabsPanel value="security">
-            {settings ? (
+            {/* Interviewer 8 inside Interviewer 9 (a /v8/ build) shares
+                Interviewer 9's lock and the rules for it, and only unlocks
+                it: setting it up, changing it, its behaviour and resetting
+                the device all belong to Interviewer 9. */}
+            {IS_SUBPATH_BUILD ? (
+              <SettingsRow
+                title={intl.formatMessage(
+                  manageLockMessages.manageTheLockInInterviewer,
+                )}
+                desc={intl.formatMessage(
+                  manageLockMessages.lockIsManagedInInterviewer,
+                )}
+                control={<ManageLockInInterviewerButton />}
+              />
+            ) : settings ? (
               <>
                 <ManageAuthenticator />
                 {hasNoDeviceLock ? (

@@ -699,6 +699,14 @@
     "defaultMessage": "Your new passphrase must be at least 12 characters and combine uppercase, lowercase, numbers, and symbols.",
     "description": "User-facing message in Interviewer Manage Authenticator."
   },
+  "interviewer.manageLock.lockIsManagedInInterviewer": {
+    "defaultMessage": "Interviewer 8 uses the same lock as Interviewer. Set it up, change it or reset this device in Interviewer.",
+    "description": "Settings text shown by Interviewer 8 when it runs inside the current Interviewer, in place of the lock controls. \"Interviewer 8\" and \"Interviewer\" are app names."
+  },
+  "interviewer.manageLock.manageTheLockInInterviewer": {
+    "defaultMessage": "Manage the lock in Interviewer",
+    "description": "Button shown by Interviewer 8 when it runs inside the current Interviewer. It opens the current Interviewer, which is where the shared device lock (PIN, passphrase or biometrics) is set up, changed or reset. \"Interviewer\" is the app name."
+  },
   "interviewer.newSessionForm.caseID": {
     "defaultMessage": "Case ID",
     "description": "The label label in Interviewer New Session Form."

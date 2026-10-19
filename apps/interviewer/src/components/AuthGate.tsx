@@ -2,7 +2,9 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
+import { IS_SUBPATH_BUILD } from '~/lib/appBase';
 import { useAuth } from '~/lib/auth/AuthContext';
+import { replaceWithInterviewer9 } from '~/lib/handoff/interviewer9Navigation';
 import { useStoredProtocolMigration } from '~/lib/protocol/useStoredProtocolMigration';
 import { isRunningInstalled } from '~/lib/pwa/isRunningInstalled';
 
@@ -32,8 +34,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('appinstalled', onAppInstalled);
   }, []);
 
+  // Interviewer 8 inside Interviewer 9 (a /v8/ build) shares Interviewer 9's
+  // lock and never sets one up itself: with no lock configured yet, the
+  // researcher belongs in Interviewer 9, which owns set-up.
+  const shouldHandOverToInterviewer9 =
+    IS_SUBPATH_BUILD && kind === 'unconfigured';
   const shouldRedirectToWelcome =
-    kind === 'unconfigured' && requireSetup && location !== '/welcome';
+    !shouldHandOverToInterviewer9 &&
+    kind === 'unconfigured' &&
+    requireSetup &&
+    location !== '/welcome';
   const shouldRedirectToHome = kind === 'unlocked' && location === '/welcome';
 
   // Protocol documents are encrypted at rest, so a stored protocol can only be
@@ -49,17 +59,25 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const awaitingMigration = databaseReadable && migrationPhase !== 'settled';
 
   useEffect(() => {
-    if (shouldRedirectToWelcome) {
+    if (shouldHandOverToInterviewer9) {
+      replaceWithInterviewer9();
+    } else if (shouldRedirectToWelcome) {
       navigate('/welcome', { replace: true });
     } else if (shouldRedirectToHome) {
       navigate('/', { replace: true });
     }
-  }, [navigate, shouldRedirectToWelcome, shouldRedirectToHome]);
+  }, [
+    navigate,
+    shouldHandOverToInterviewer9,
+    shouldRedirectToWelcome,
+    shouldRedirectToHome,
+  ]);
 
   // Hold the spinner while a redirect is pending so the old route's content
   // can't paint for a frame before navigation runs in the effect above.
   if (
     kind === 'loading' ||
+    shouldHandOverToInterviewer9 ||
     shouldRedirectToWelcome ||
     shouldRedirectToHome ||
     awaitingMigration
