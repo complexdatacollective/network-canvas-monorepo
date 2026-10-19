@@ -3,9 +3,9 @@
 //
 // The newer major does not build the older one. The 8.x release lane attaches
 // a sub-path build of each release (`<app>-v8-dist.tgz`, built with
-// <APP>_BASE_PATH=/v8/ and packed by scripts/release/package-app-subpath-dist.mjs
-// on main) to its GitHub release, and `apps/<app>/legacy-<app>.json` pins one
-// of them by URL and sha256. After Vite has built the app,
+// <APP>_BASE_PATH=/v8/ and packed by the sub-path dist packaging script on
+// main) to its GitHub release, and `apps/<app>/legacy-<app>.json` pins one of
+// them by URL and sha256. After Vite has built the app,
 // bundle-legacy-app.mjs verifies that tarball and extracts it into dist/v8 —
 // after the service worker is generated, so none of it enters the newer app's
 // precache. See "Bundled <App> 8" in apps/<app>/RELEASING.md.
