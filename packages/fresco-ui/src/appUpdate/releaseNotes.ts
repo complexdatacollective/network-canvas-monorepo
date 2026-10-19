@@ -91,17 +91,32 @@ export function selectLatestForApp(
   return latest?.notes ?? null;
 }
 
+// Every package and app in the monorepo shares one release list, about a
+// hundred releases a quarter, so an app's newest release on its newest major
+// can sit pages back behind a run of maintenance releases on an older line.
+// A few full pages cover several months.
+const RELEASES_PER_PAGE = 100;
+const RELEASE_PAGES = 3;
+
 export async function fetchLatestReleaseNotes(
   app: AppId,
   currentVersion?: string,
 ): Promise<ReleaseNotes | null> {
   try {
-    const res = await fetch(
-      `https://api.github.com/repos/${REPO}/releases?per_page=30`,
-      { headers: { Accept: 'application/vnd.github+json' } },
-    );
-    if (!res.ok) return null;
-    const releases = (await res.json()) as GitHubRelease[];
+    const releases: GitHubRelease[] = [];
+    for (let page = 1; page <= RELEASE_PAGES; page += 1) {
+      const res = await fetch(
+        `https://api.github.com/repos/${REPO}/releases?per_page=${RELEASES_PER_PAGE}&page=${page}`,
+        { headers: { Accept: 'application/vnd.github+json' } },
+      );
+      if (!res.ok) {
+        if (page === 1) return null;
+        break;
+      }
+      const batch = (await res.json()) as GitHubRelease[];
+      releases.push(...batch);
+      if (batch.length < RELEASES_PER_PAGE) break;
+    }
     return selectLatestForApp(app, releases, currentVersion);
   } catch {
     return null;

@@ -167,6 +167,60 @@ describe('fetchLatestReleaseNotes', () => {
     ).resolves.toEqual({ version: '8.5.1', body: 'maintenance' });
   });
 
+  it('reads further pages while they are full, so an older newest release is still found', async () => {
+    const filler = Array.from({ length: 99 }, (_, index) => ({
+      tag_name: `@codaco/fresco-ui@1.0.${index}`,
+      body: '',
+    }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          ...filler,
+          { tag_name: '@codaco/architect@8.5.1', body: 'maintenance' },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { tag_name: '@codaco/architect@9.0.0', body: 'nine' },
+        ],
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      fetchLatestReleaseNotes('architect', '8.5.0'),
+    ).resolves.toEqual({ version: '9.0.0', body: 'nine' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('&page=2');
+  });
+
+  it('stops after a few pages, and keeps what it read when a later page fails', async () => {
+    const full = Array.from({ length: 100 }, (_, index) => ({
+      tag_name: `@codaco/architect@8.0.${index}`,
+      body: `n${index}`,
+    }));
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => full })
+        .mockResolvedValueOnce({ ok: false, json: async () => [] }),
+    );
+    await expect(fetchLatestReleaseNotes('architect')).resolves.toEqual({
+      version: '8.0.99',
+      body: 'n99',
+    });
+
+    const always = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => full });
+    vi.stubGlobal('fetch', always);
+    await fetchLatestReleaseNotes('architect');
+    expect(always).toHaveBeenCalledTimes(3);
+  });
+
   it('resolves null on a non-ok response', async () => {
     vi.stubGlobal(
       'fetch',
