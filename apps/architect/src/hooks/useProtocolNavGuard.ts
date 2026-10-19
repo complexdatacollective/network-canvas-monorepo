@@ -20,6 +20,7 @@ import {
 import type { RootState } from '~/ducks/modules/root';
 import { type AppDispatch, store } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
+import { toAppPath, toBrowserPath } from '~/utils/appBase';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 const utilityMessages = defineMessages({
   returnToStartScreen: {
@@ -174,8 +175,11 @@ const getFullPath = () =>
   window.location.pathname + window.location.search + window.location.hash;
 
 // path may include a search/hash suffix; pathname always comes first, so a
-// prefix check still correctly identifies protocol routes.
-export const isProtocolPath = (path: string) => path.startsWith('/protocol');
+// prefix check still correctly identifies protocol routes. Browser paths
+// (window.location, wouter's aroundNav `to`) carry a sub-path build's base and
+// router paths do not, so both forms are accepted.
+export const isProtocolPath = (path: string) =>
+  toAppPath(path).startsWith('/protocol');
 
 const PROTOCOL_HISTORY_KEY = '__architectProtocolHistory';
 
@@ -292,7 +296,7 @@ export const collapseProtocolHistory = (
 // The stage editor lives under /protocol/stage/, so leaving it can be intra-
 // /protocol nav (e.g. Back to the overview) that isProtocolPath() alone misses.
 export const isStageEditorPath = (path: string) =>
-  path.startsWith('/protocol/stage/');
+  toAppPath(path).startsWith('/protocol/stage/');
 
 // How much of what the user sees is actually persisted. This decides both the
 // leave-editor copy and whether leaving needs confirming at all, so it is
@@ -664,7 +668,7 @@ export const useProtocolNavGuard = () => {
           dispatch,
           openDialog,
           () =>
-            collapseProtocolHistory('/', () =>
+            collapseProtocolHistory(toBrowserPath('/'), () =>
               setLocation('/', { replace: true }),
             ),
           draftDirty,
@@ -675,7 +679,8 @@ export const useProtocolNavGuard = () => {
 
       void promptDiscardDraft(
         openDialog,
-        () => setLocation(newPath),
+        // newPath is a browser path; setLocation would prefix the base again.
+        () => setLocation(toAppPath(newPath)),
         leavingDirtyStageEditor,
       );
     };

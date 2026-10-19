@@ -1,5 +1,4 @@
 import { type Dispatch } from '@reduxjs/toolkit';
-import { navigate } from 'wouter/use-browser-location';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import {
@@ -20,6 +19,7 @@ import { createAppAsyncThunk } from '~/ducks/createAppAsyncThunk';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { getArchitectIntl } from '~/i18n/imperative';
 import type { ProtocolSourceRef } from '~/templates';
+import { navigateApp } from '~/utils/appBase';
 import {
   saveProtocolAssets,
   saveProtocolAssetsToMemory,
@@ -258,7 +258,7 @@ const instantiateProtocol = async (
     // Nothing is persisted in this mode, so warn before the tab closes to avoid
     // silently losing the in-memory protocol.
     armInMemoryUnloadGuard();
-    navigate('/protocol');
+    navigateApp('/protocol');
     return;
   }
 
@@ -270,7 +270,7 @@ const instantiateProtocol = async (
   dispatch(setActiveProtocolId(protocolId));
   dispatch(setActiveProtocol(protocol));
 
-  navigate('/protocol');
+  navigateApp('/protocol');
 };
 
 type OpenLocalNetcanvasParams = {
@@ -771,7 +771,7 @@ export const openLibraryProtocol = createAppAsyncThunk(
     // The admitted document, which is the upgraded one when the row was below
     // this build's schema — `row.protocol` is stale by then.
     dispatch(setActiveProtocol(admission.protocol));
-    navigate('/protocol');
+    navigateApp('/protocol');
     return openedResult;
   },
 );
