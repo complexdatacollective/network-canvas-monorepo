@@ -1,23 +1,23 @@
+import { lazy, Suspense } from 'react';
 import { Route, Switch } from 'wouter';
 
 import Home from '~/components/Home/Home';
-import {
-  AssetsPage,
-  CodebookPage,
-  StageEditorPage,
-  SummaryPage,
-} from '~/components/pages';
-import LocalizationPage from '~/components/pages/LocalizationPage';
+import ProtocolLoadingOverlay from '~/components/Home/ProtocolLoadingOverlay';
 import { ActionToolbarProvider } from '~/components/ProjectNav/ActionToolbar';
-import ProjectLayout from '~/components/ProjectNav/ProjectLayout';
-import Protocol from '~/components/Protocol';
 import ProtocolRouteGuard from '~/components/ProtocolRouteGuard';
+import { loadProtocolRoutes } from '~/components/protocolRoutesLoader';
 import RouteFocus from '~/components/RouteFocus';
+
+// The start screen is all a first visit needs, so the protocol editor loads on
+// demand. main.tsx preloads it once the start screen is up, so by the time a
+// protocol is opened it is normally already here; until it is, the protocol
+// loading overlay the start screen shows while opening one stays up.
+const ProtocolRoutes = lazy(loadProtocolRoutes);
 
 // Every `/protocol` route is wrapped by ProtocolRouteGuard, which sends a tab
 // with no protocol home and tells every page whether this tab may edit the
 // protocol. It wraps the whole Switch rather than each route so a route added
-// below is covered without having to remember to opt in.
+// below (or in ProtocolRoutes) is covered without having to remember to opt in.
 //
 // Every route below owns a `data-route-focus-target` heading for RouteFocus to
 // land on.
@@ -27,34 +27,12 @@ const Routes = () => {
       <RouteFocus />
       <ProtocolRouteGuard>
         <Switch>
-          <Route path="/protocol">
-            <ProjectLayout>
-              <Protocol />
-            </ProjectLayout>
-          </Route>
-          <Route path="/protocol/assets">
-            <ProjectLayout>
-              <AssetsPage />
-            </ProjectLayout>
-          </Route>
-          <Route path="/protocol/codebook">
-            <ProjectLayout>
-              <CodebookPage />
-            </ProjectLayout>
-          </Route>
-          <Route path="/protocol/localization">
-            <ProjectLayout>
-              <LocalizationPage />
-            </ProjectLayout>
-          </Route>
-          <Route path="/protocol/summary">
-            <ProjectLayout>
-              <SummaryPage />
-            </ProjectLayout>
-          </Route>
-          <Route path="/protocol/stage/:stageId" component={StageEditorPage} />
-
           <Route path="/" component={Home} />
+          <Route path="/protocol/*?">
+            <Suspense fallback={<ProtocolLoadingOverlay open />}>
+              <ProtocolRoutes />
+            </Suspense>
+          </Route>
         </Switch>
       </ProtocolRouteGuard>
     </ActionToolbarProvider>

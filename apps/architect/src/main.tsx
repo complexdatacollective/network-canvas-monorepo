@@ -17,13 +17,13 @@ import { Toaster } from '@codaco/fresco-ui/Toast';
 
 import BootLoaderHandoff from './components/BootLoaderHandoff';
 import { ArchitectLanguageNaming } from './components/Localization/ArchitectLanguageNaming';
+import { loadProtocolRoutes } from './components/protocolRoutesLoader';
 import AppView from './components/ViewManager/views/App';
 import { restoreActiveProtocolAfterStoreRehydration } from './ducks/restoreActiveProtocol';
 import { store, storeRehydrated } from './ducks/store';
 import { ArchitectI18nRoot } from './i18n/ArchitectI18nRoot';
 import { initializeArchitectDocument } from './i18n/documentMetadata';
 import { loadStartupLocale } from './i18n/imperative';
-import { preloadTimelineImages } from './images/timeline';
 import { warmBundledTemplateAssets } from './templates/warmBundledAssets';
 import { isCriticalOperationInProgress } from './utils/criticalOperation';
 import {
@@ -75,13 +75,20 @@ pruneExpiredHandoffs().catch((error: unknown) => {
   reportError(error, { operation: 'handoff-prune' });
 });
 
-// During idle time, fetch stage thumbnails so they are already cached when the
-// timeline or stage editor first renders. When running as an installed PWA, also
-// warm the service-worker cache with the bundled template/Sample assets so those
-// protocols can be installed offline. (A browser tab registers no service worker,
-// so the warm is skipped there.)
+// During idle time, once the start screen is up, fetch what opening a protocol
+// needs: the protocol editor, which is loaded apart from the start screen (see
+// Routes) so the start screen need not wait for it, and the stage thumbnails
+// the timeline and stage editor render. Offline use does not depend on this —
+// the service worker precaches every chunk — and a failed fetch is tried again
+// when the editor is opened. When running as an installed PWA, also warm the
+// service-worker cache with the bundled template/Sample assets so those
+// protocols can be installed offline. (A browser tab registers no service
+// worker, so the warm is skipped there.)
 const warmCaches = () => {
-  preloadTimelineImages();
+  loadProtocolRoutes().catch(() => undefined);
+  import('./images/timeline')
+    .then(({ preloadTimelineImages }) => preloadTimelineImages())
+    .catch(() => undefined);
   if (isRunningAsInstalledPwa()) {
     void warmBundledTemplateAssets();
   }
@@ -101,6 +108,11 @@ async function startApp(): Promise<void> {
   // language.
   await startupLocaleReady;
   await restoreActiveProtocolAfterStoreRehydration(store, rehydrationResult);
+  // A restored session that reopens in the editor would otherwise first show
+  // the editor's loading overlay; keep the boot screen up until it is here.
+  if (window.location.pathname.startsWith('/protocol')) {
+    await loadProtocolRoutes().catch(() => undefined);
+  }
 
   // Protocols live in IndexedDB even in a browser tab, so request the durability
   // upgrade there as well as in installed sessions. Do not request at startup:
