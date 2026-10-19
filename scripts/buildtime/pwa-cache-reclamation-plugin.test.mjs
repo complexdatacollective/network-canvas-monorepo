@@ -99,13 +99,14 @@ function createWorkerHarness({
   clients,
   metadataWriteFails = false,
   options = { appCachePrefix: APP_PREFIX, buildId: CURRENT_BUILD },
+  scope = 'https://architect.example/',
   waiting = null,
 }) {
   const listeners = new Map();
   const caches = createCacheStorage(cacheNames, { metadataWriteFails });
   const self = {
     registration: {
-      scope: 'https://architect.example/',
+      scope,
       installing: null,
       waiting,
     },
@@ -502,6 +503,35 @@ describe('PWA cache reclamation beside a nested app', () => {
       buildId: ROOT_BUILD,
     });
     assert.deepEqual(harness.caches.deleted, [cacheName(ROOT_8_BUILD)]);
+  });
+
+  it('keeps the nested app precache when it activates with no window of its own', async () => {
+    // Architect 9 registers /v8/sw.js in the background, so the nested worker
+    // installs and activates while only root windows are open. It must neither
+    // wait for a /v8/ window nor treat the missing lease as a reason to drop
+    // its own precache; only an older nested build's precache goes.
+    const OLD_NESTED_8_PRECACHE =
+      'architect-v8-8.4.0-turbo-old-precache-v2-https://architect.example/v8/';
+    const rootTab = modernClient('architect-9-tab', ROOT_BUILD);
+    const harness = createWorkerHarness({
+      cacheNames: [
+        cacheName(ROOT_BUILD),
+        NESTED_8_PRECACHE,
+        OLD_NESTED_8_PRECACHE,
+      ],
+      clients: [rootTab],
+      options: { appCachePrefix: 'architect-v8-', buildId: NESTED_8_BUILD },
+      scope: 'https://architect.example/v8/',
+    });
+
+    await harness.dispatchExtendable('activate');
+
+    assert.deepEqual(harness.caches.deleted, [OLD_NESTED_8_PRECACHE]);
+    assert.equal(rootTab.leaseRequested, false);
+    const marker = harness.caches.entries.get(
+      'architect-v8-pwa-cache-metadata:https://architect.example/v8/__pwa-active-build__',
+    );
+    assert.equal(await marker?.text(), NESTED_8_BUILD);
   });
 
   it('rejects foreign options that would capture this app', () => {
