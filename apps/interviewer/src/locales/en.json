@@ -527,6 +527,34 @@
     "defaultMessage": "Open",
     "description": "Button beside the line saying how many interviews the previous version of Interviewer keeps. Opens that version’s list of interviews, where they can be exported."
   },
+  "interviewer.legacyOffline.notReady": {
+    "defaultMessage": "Not ready",
+    "description": "Short warning status in Settings: the previous version of Interviewer cannot be used offline on this device yet."
+  },
+  "interviewer.legacyOffline.notReadyChip": {
+    "defaultMessage": "Interviewer {version} not ready offline",
+    "description": "Short warning status at the bottom of the home screen: the previous version of Interviewer, included with this one to run older protocols, has not finished downloading for use without an internet connection. {version} is that version’s number (for example 8)."
+  },
+  "interviewer.legacyOffline.notReadyHelp": {
+    "defaultMessage": "Interviewer {version}, which runs schema {version} protocols, has not finished downloading for use without an internet connection. Keep Interviewer open while you are online until it is ready.",
+    "description": "Explanation of the warning that the previous version of Interviewer cannot be used offline yet, shown in the home screen status bar and in Settings, with what to do about it. {version} is that version’s number and the older schema version it runs (for example 8)."
+  },
+  "interviewer.legacyOffline.ready": {
+    "defaultMessage": "Ready",
+    "description": "Short status in Settings: the previous version of Interviewer can be used offline on this device."
+  },
+  "interviewer.legacyOffline.readyChip": {
+    "defaultMessage": "Interviewer {version} ready offline",
+    "description": "Short status at the bottom of the home screen: the previous version of Interviewer, included with this one to run older protocols, is saved on this device and works without an internet connection. {version} is that version’s number (for example 8)."
+  },
+  "interviewer.legacyOffline.readyHelp": {
+    "defaultMessage": "Interviewer {version}, which runs schema {version} protocols, is saved on this device and works without an internet connection.",
+    "description": "Explanation of the status of the previous version of Interviewer, shown in the home screen status bar and in Settings. {version} is that version’s number and the older schema version it runs (for example 8)."
+  },
+  "interviewer.legacyOffline.settingTitle": {
+    "defaultMessage": "Interviewer {version} offline",
+    "description": "Title of the row in Settings that says whether the previous version of Interviewer, which runs older protocols, can be used without an internet connection on this device. {version} is that version’s number (for example 8)."
+  },
   "interviewer.legacyProtocol.couldNotOpenInInterviewer": {
     "defaultMessage": "Could not open in Interviewer {version}",
     "description": "Title of the error shown when a protocol file could not be passed to the previous version of Interviewer. {version} is that version’s number (for example 8)."

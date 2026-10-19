@@ -468,3 +468,48 @@ describe('StatusRow', () => {
     );
   });
 });
+
+describe('StatusRowView: Interviewer 8 offline', () => {
+  const view = (
+    legacyOffline?: 'not-bundled' | 'checking' | 'ready' | 'not-ready',
+  ) =>
+    render(
+      <StatusRowView
+        protocolCount={0}
+        interviewCount={0}
+        mode="pin"
+        durability={null}
+        installed={false}
+        legacyOffline={legacyOffline}
+      />,
+    );
+
+  it('says when Interviewer 8 is ready offline', () => {
+    view('ready');
+    expect(
+      screen.getByTestId('legacy-offline-status-trigger'),
+    ).toHaveTextContent('Interviewer 8 ready offline');
+  });
+
+  it('warns while Interviewer 8 is not ready offline, and says what to do', async () => {
+    const user = userEvent.setup();
+    view('not-ready');
+    const trigger = screen.getByTestId('legacy-offline-status-trigger');
+    expect(trigger).toHaveTextContent('Interviewer 8 not ready offline');
+    expect(trigger).toHaveClass('text-warning');
+    await user.hover(trigger);
+    expect(
+      await screen.findByText(/Keep Interviewer open while you are online/),
+    ).toBeInTheDocument();
+  });
+
+  it('says nothing without Interviewer 8, or before it is known', () => {
+    for (const state of [undefined, 'not-bundled', 'checking'] as const) {
+      const { unmount } = view(state);
+      expect(
+        screen.queryByTestId('legacy-offline-status-trigger'),
+      ).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+});
