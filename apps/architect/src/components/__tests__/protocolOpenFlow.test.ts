@@ -229,6 +229,12 @@ describe('openNetcanvasFile', () => {
       `/v8/?import=${HANDOFF_KEY}`,
     );
     expect(mocks.discardHandoff).not.toHaveBeenCalled();
+    // The prompt names Architect 8 as where leaving goes, not the start
+    // screen.
+    expect(mocks.promptLeaveEditor.mock.calls[0]?.[5]).toEqual({
+      kind: 'legacy-architect',
+      version: 8,
+    });
   });
 });
 

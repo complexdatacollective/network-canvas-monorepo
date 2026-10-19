@@ -855,6 +855,38 @@
     "defaultMessage": "This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you return to the start screen.",
     "description": "Whole message describing a protocol save/lock state at hooks/useProtocolNavGuard.ts."
   },
+  "architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.openElsewhere": {
+    "defaultMessage": "Changes you have made — including anything in an editor you still have open — cannot be saved here, because the protocol is open in another tab which holds the saved copy. If you leave for Architect {version} now, those changes will be discarded.",
+    "description": "Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.reclaimBlocked": {
+    "defaultMessage": "Changes you have made — including anything in an editor you still have open — cannot be saved over the version the other tab saved. If you leave for Architect {version} now, those changes will be discarded and that saved version will remain available.",
+    "description": "Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.saved": {
+    "defaultMessage": "Changes you have made — including anything in an editor you still have open — have not been saved to the protocol. If you leave for Architect {version} now, those changes will be discarded and the last saved version of the protocol will remain available.",
+    "description": "Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.legacydiscarddescriptions.storageUnavailable": {
+    "defaultMessage": "This protocol could not be saved on this device, so nothing you have done here has been kept — including anything in an editor you still have open. Leaving for Architect {version} now discards all of it.",
+    "description": "Whole message describing a protocol save/lock state, shown before leaving the editor with unsaved changes for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.openElsewhere": {
+    "defaultMessage": "This protocol is open in another tab, which holds the saved copy. You have been viewing it here in read-only mode, so leaving for Architect {version} will not change your protocol.",
+    "description": "Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.reclaimBlocked": {
+    "defaultMessage": "Nothing has been saved in this tab since the protocol was opened in another one. Leaving for Architect {version} now will leave your protocol exactly as that tab saved it.",
+    "description": "Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.saved": {
+    "defaultMessage": "This protocol is saved automatically on this device, so you can come back to it at any time. Architect {version} will open in this tab.",
+    "description": "Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts."
+  },
+  "architect.constants.hooks.useprotocolnavguard.legacyleavedescriptions.storageUnavailable": {
+    "defaultMessage": "This protocol could not be saved on this device, so it only exists in this tab. Download it now, or your work will be lost when you leave for Architect {version}.",
+    "description": "Whole message describing a protocol save/lock state, shown before leaving the editor for the previous version of Architect. {version} is that version’s number (for example 8). At hooks/useProtocolNavGuard.ts."
+  },
   "architect.constants.hooks.useprotocolnavguard.nestedDraftDiscardDescription": {
     "defaultMessage": "You have unsaved changes in an editor that is still open. If you leave now, those changes will be discarded and the rest of your protocol will be left as it is.",
     "description": "Researcher-facing status or validation message. Context: hooks/useProtocolNavGuard.ts."
@@ -3782,6 +3814,14 @@
   "architect.utility.hooks.useProtocolNavGuard.discardUnsavedStageChanges": {
     "defaultMessage": "Discard unsaved stage changes?",
     "description": "The title text in hooks / useProtocolNavGuard."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.downloadAndOpenInArchitect": {
+    "defaultMessage": "Download and open in Architect {version}",
+    "description": "Button in the dialog shown before leaving the protocol editor for the previous version of Architect: downloads the protocol currently being edited, then leaves. {version} is that version’s number (for example 8)."
+  },
+  "architect.utility.hooks.useProtocolNavGuard.leaveForArchitect": {
+    "defaultMessage": "Leave for Architect {version}?",
+    "description": "Title of the dialog shown before leaving the protocol editor to open a protocol in the previous version of Architect, in the same tab. {version} is that version’s number (for example 8)."
   },
   "architect.utility.hooks.useProtocolNavGuard.returnAndDownloadNow": {
     "defaultMessage": "Return and download now",
