@@ -1212,6 +1212,16 @@ export function twinSetOf(family: Family, personId: string): string[] {
   return reachedByTwinLinks(family, personId, () => true);
 }
 
+/** The person's identical twins and theirs, however indirectly, them
+ * included: one egg, so one sex at birth. */
+export function identicalSetOf(family: Family, personId: string): string[] {
+  return reachedByTwinLinks(
+    family,
+    personId,
+    (zygosity) => zygosity === 'identical',
+  );
+}
+
 /** Everyone the person's twin links of `zygosity` reach, however
  * indirectly, them included. */
 function reachedByTwinLinks(
@@ -2367,6 +2377,26 @@ export function twinCarrierUpdates(
         : [{ linkId: link.id, kind: link.kind, isGestationalCarrier: carries }];
     });
   });
+}
+
+/**
+ * Whether `carrierId` could be recorded as having carried the person, as
+ * `twinCarrierUpdates` records a twin set's carrier: they are a parent of a
+ * kind who may have carried them, and no surrogate, who always carried the
+ * child they are the surrogate of, carried them instead.
+ */
+export function couldBeCarrierOf(
+  family: Family,
+  personId: string,
+  carrierId: string,
+): boolean {
+  const links = parentLinksOf(family, personId);
+  return (
+    links.every(
+      (link) => link.kind !== 'surrogate' || link.source === carrierId,
+    ) &&
+    links.some((link) => link.source === carrierId && mayHaveCarried(link.kind))
+  );
 }
 
 /** Whether `ancestorId` is the person's parent, a parent's parent, and so on. */

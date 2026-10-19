@@ -76,6 +76,8 @@ import {
   hasCarrier,
   holdsGeneratedLabel,
   differentSexesAtBirth,
+  couldBeCarrierOf,
+  identicalSetOf,
   identicalTwinBlocks,
   isGeneticKind,
   isStandIn,
@@ -922,6 +924,21 @@ function readLinkUpdates(
   return updates;
 }
 
+/** Who carried the person, as the answers about their parents leave it. */
+function answeredCarrier(
+  family: Family,
+  personId: string,
+  linkUpdates: readonly LinkUpdate[],
+): string | undefined {
+  const updated = new Map(linkUpdates.map((update) => [update.linkId, update]));
+  return existingLinksOf(family, personId).parents.find((link) => {
+    const update = updated.get(link.id);
+    return update === undefined
+      ? link.isGestationalCarrier === true
+      : update.isGestationalCarrier === true;
+  })?.source;
+}
+
 /**
  * Twins come from one pregnancy, so share one carrier: a change to who
  * carried the person, or twins newly recorded for someone with a carrier,
@@ -935,13 +952,7 @@ function twinCarrierSync(
   twinChanges: ReturnType<typeof readTwinChanges>,
   values: Record<string, FieldValue>,
 ): LinkUpdate[] {
-  const updated = new Map(linkUpdates.map((update) => [update.linkId, update]));
-  const carrier = existingLinksOf(family, personId).parents.find((link) => {
-    const update = updated.get(link.id);
-    return update === undefined
-      ? link.isGestationalCarrier === true
-      : update.isGestationalCarrier === true;
-  })?.source;
+  const carrier = answeredCarrier(family, personId, linkUpdates);
   // The twins as the answers leave them: another set chosen joins whole,
   // and someone unticked from the person's own set leaves it
   // (`planTwinChanges`).
@@ -1003,16 +1014,30 @@ function readTwinChanges(
 function TwinFields({
   person,
   family,
+  carrierId,
   displayName,
   sexAttribute,
 }: {
   person: Person;
   family: Family;
+  /** Who carried the person, as the answers stand. */
+  carrierId: string | undefined;
   displayName: (personId: string) => string;
   sexAttribute: string;
 }) {
   const { wording, text } = usePedigreeWords();
-  const candidates = twinCandidatesOf(family, person.id);
+  // Twins come from one pregnancy, so a sibling whose twin set could not be
+  // recorded as carried by whoever carried the person, as the answers stand,
+  // is not offered as their twin (`twinCarrierSync`).
+  const ownSet = twinSetOf(family, person.id);
+  const candidates = twinCandidatesOf(family, person.id).filter(
+    (id) =>
+      carrierId === undefined ||
+      ownSet.includes(id) ||
+      twinSetOf(family, id).every((twinId) =>
+        couldBeCarrierOf(family, twinId, carrierId),
+      ),
+  );
   const values = useFormValue([ROLE.twins], 'opaque');
   const chosen = asStringArray(values[ROLE.twins]);
   // Twins answered identical to the person are identical to each other too.
@@ -1359,6 +1384,16 @@ function ExistingRelationshipFields({
       <TwinFields
         person={person}
         family={draft}
+        carrierId={answeredCarrier(
+          family,
+          person.id,
+          readLinkUpdates(
+            family,
+            existingLinksOf(family, person.id),
+            linkValues,
+            givingWay,
+          ),
+        )}
         displayName={displayName}
         sexAttribute={sexAttribute}
       />
@@ -2618,10 +2653,12 @@ function SiblingFields({
       request: { ...readSiblingRequest(values), twin: 'identical' },
       sexAttribute: config.sexAssignedAtBirthAttribute,
     }).twins?.[0]?.zygosity === 'identical';
-  const sexesDiffer = differentSexesAtBirth(
-    siblingSex,
-    anchor.sexAssignedAtBirth,
+  // The new twin would be identical to everyone identical to the anchor, so
+  // checks their sexes at birth too, the anchor's first.
+  const sexClash = identicalSetOf(family, anchor.id).find((id) =>
+    differentSexesAtBirth(siblingSex, family.byId.get(id)?.sexAssignedAtBirth),
   );
+  const sexesDiffer = sexClash !== undefined;
   const identicalPossible = sameGeneticParents && !sexesDiffer;
   // Twins were carried in one pregnancy, so a sibling who would not share
   // whoever carried the anchor cannot be their twin of any kind: every
@@ -2657,12 +2694,13 @@ function SiblingFields({
                 ...args,
                 answer: identicalAnswer,
               }),
-          sexesDiffer
-            ? text(wording.unavailableIdenticalTwinSexNew, {
-                ...args,
+          sexClash === undefined
+            ? undefined
+            : text(wording.unavailableIdenticalTwinSexNew, {
+                isYou: family.byId.get(sexClash)?.isEgo ? 'true' : 'false',
+                name: displayName(sexClash),
                 answer: identicalAnswer,
-              })
-            : undefined,
+              }),
         ]
           .filter((sentence) => sentence !== undefined)
           .join(' ');

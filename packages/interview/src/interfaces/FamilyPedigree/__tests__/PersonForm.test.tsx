@@ -1742,6 +1742,36 @@ describe('twins', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('offers no sibling someone else carried as a twin, since twins share one pregnancy', async () => {
+    // Mum carried the participant, and Sue carried Sam as a surrogate, so
+    // Sam could not be their twin; Kim, whom Mum carried too, could.
+    renderPersonForm('ego', {
+      nodes: [
+        person('ego', { isEgo: true, sex: ['male'] }),
+        person('sam', { name: 'Sam', sex: ['male'] }),
+        person('kim', { name: 'Kim', sex: ['female'] }),
+        person('sue', { name: 'Sue', sex: ['female'] }),
+        ...parents,
+      ],
+      edges: [
+        ...parentLinks('ego'),
+        ...parentLinks('kim'),
+        link('mum', 'sam', 'biological'),
+        link('dad', 'sam', 'biological'),
+        link('sue', 'sam', 'surrogate', { carrier: true }),
+      ],
+    });
+    const twins = screen.getByRole('group', {
+      name: /^Which of your siblings, if any, are your twins\?/,
+    });
+    expect(
+      within(twins).getByRole('checkbox', { name: 'kim' }),
+    ).toBeInTheDocument();
+    expect(
+      within(twins).queryByRole('checkbox', { name: 'sam' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows identical twins unavailable for a half sibling, saying why', async () => {
     const { user } = renderPersonForm('ego', {
       nodes: [
@@ -1812,6 +1842,37 @@ describe('identical twins and sex at birth', () => {
       await user.click(screen.getByRole('radio', { name: 'Female' }));
       await waitFor(() => expect(identical()).toBeEnabled());
       expect(twin()).not.toHaveAccessibleDescription(sexReason);
+    });
+
+    it('shows identical twins unavailable for a sibling whose sex at birth differs from a twin identical to the person, naming that twin', async () => {
+      // The participant has no recorded sex at birth, and Ben is their
+      // identical twin: a new identical twin would be identical to Ben too.
+      const { user } = renderPersonForm('ego', {
+        nodes: [
+          person('ego', { isEgo: true }),
+          person('ben', { name: 'Ben', sex: ['male'] }),
+          person('mum', { name: 'Julie', sex: ['female'] }),
+          person('dad', { name: 'Rob', sex: ['male'] }),
+        ],
+        edges: [
+          ...['ego', 'ben'].flatMap((childId) => [
+            link('mum', childId, 'biological', { carrier: true }),
+            link('dad', childId, 'biological'),
+          ]),
+          link('ego', 'ben', 'identicalTwin'),
+        ],
+        adding: 'sibling',
+      });
+      await shareBothParents(user);
+      await user.click(screen.getByRole('radio', { name: 'Female' }));
+
+      await waitFor(() => expect(identical()).toBeDisabled());
+      expect(twin()).toHaveAccessibleDescription(
+        /this sibling is recorded with a different one from that of “ben”/,
+      );
+
+      await user.click(screen.getByRole('radio', { name: 'Male' }));
+      await waitFor(() => expect(identical()).toBeEnabled());
     });
 
     it('leaves identical twins available for an intersex sibling', async () => {
