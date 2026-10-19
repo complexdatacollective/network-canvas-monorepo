@@ -12,14 +12,14 @@ export const LEGACY_PROTOCOL_NAME = 'Legacy Study';
 // Interviewer stores a protocol under the sha256 of its content; any
 // 64-hex-character value passes the hash checks on both sides.
 export const LEGACY_PROTOCOL_HASH = 'c0ffee'.padEnd(64, '0');
-export const LEGACY_SESSION_ID = '5f0e3c1a-9d2b-4e8f-a6c7-1b2d3e4f5a6b';
+const LEGACY_SESSION_ID = '5f0e3c1a-9d2b-4e8f-a6c7-1b2d3e4f5a6b';
 
 const IMAGE_ASSET_ID = 'map';
 const IMAGE_FILE_NAME = 'map.png';
 // A PNG signature: enough for a Blob that must survive byte for byte.
 const PNG_BYTES = [137, 80, 78, 71, 13, 10, 26, 10];
 
-export function legacyProtocol(name = LEGACY_PROTOCOL_NAME): Protocol<8> {
+function legacyProtocol(name = LEGACY_PROTOCOL_NAME): Protocol<8> {
   return {
     schemaVersion: 8,
     name,

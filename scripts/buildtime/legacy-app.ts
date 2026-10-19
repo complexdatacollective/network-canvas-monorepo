@@ -31,7 +31,7 @@ import { join, relative } from 'node:path';
 const LEGACY_MAJOR = 8;
 
 /** The sub-path the older major is served under, on the newer app's origin. */
-export const LEGACY_APP_PATH = '/v8/';
+const LEGACY_APP_PATH = '/v8/';
 
 /** Where the bundled build lands inside the newer app's dist. */
 export const LEGACY_APP_DIST_DIR = 'v8';
