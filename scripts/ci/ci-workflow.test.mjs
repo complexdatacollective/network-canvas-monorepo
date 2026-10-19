@@ -2163,6 +2163,35 @@ test('Architect E2E builds disable both animation systems', () => {
   );
 });
 
+test('Architect native E2E also runs the /v8/ sub-path suite against a /v8/ build', () => {
+  const nativeJob = job('architect-e2e-native');
+  assert.ok(nativeJob, 'architect-e2e-native job exists');
+
+  const rootRun = nativeJob.indexOf(
+    'run: pnpm --filter @codaco/architect run test:e2e:native',
+  );
+  const subpathBuild = nativeJob.indexOf(
+    '- name: Build the /v8/ sub-path app under test',
+  );
+  const subpathRun = nativeJob.indexOf(
+    'run: pnpm --filter @codaco/architect run test:e2e:subpath:native',
+  );
+  // The sub-path build replaces dist/, so it must come after the root specs.
+  assert.ok(
+    rootRun !== -1 && subpathBuild > rootRun,
+    'the /v8/ build follows the root specs',
+  );
+  assert.ok(
+    subpathRun > subpathBuild,
+    'the sub-path specs run against the /v8/ build',
+  );
+  assert.match(
+    nativeJob,
+    /- name: Build the \/v8\/ sub-path app under test\n\s+if: \$\{\{ !cancelled\(\) && matrix\.shard == '2\/2' \}\}\n\s+env:\n\s+ARCHITECT_BASE_PATH: \/v8\/\n/,
+    'the sub-path build sets the base, on one shard, even after a root failure',
+  );
+});
+
 test('release job refuses a first publication on the publish path before changesets/action', () => {
   const releaseJob = job('release');
   assert.ok(releaseJob, 'release job exists');
