@@ -170,7 +170,7 @@ The validator does **not** cross-check asset references, and a malformed `assetM
 - For `Geospatial`, embed a working `assetManifest` so the map renders out of the box:
   - A `type:"apikey"` asset holding the **shared Mapbox testing token** as its `value` (the
     same literal as `TESTING_MAPBOX_TOKEN` in
-    `apps/architect/src/templates/testingMapboxToken.ts`), referenced by `tokenAssetId`.
+    `packages/shared-consts/src/mapbox.ts`), referenced by `tokenAssetId`.
     The token is rate-limited and for evaluation only; its presence is detected by value and
     surfaces a "replace before deploying" warning on the protocol timeline in Architect. Tell
     the researcher to swap in their own token in the stage's `interviewScript` and in the

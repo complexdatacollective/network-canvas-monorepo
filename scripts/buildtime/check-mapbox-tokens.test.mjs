@@ -154,10 +154,7 @@ test('ignores untracked files: only what the commit holds is scanned', async () 
 test('passes against this repository with the real allowlist', () => {
   const result = run(REPO_ROOT, {});
   assert.equal(result.status, 0, result.stderr);
-  assert.match(
-    result.stdout,
-    /apps\/architect\/src\/templates\/testingMapboxToken\.ts/,
-  );
+  assert.match(result.stdout, /packages\/shared-consts\/src\/mapbox\.ts/);
   assert.match(
     result.stdout,
     /packages\/protocols\/templates\/transnational-networks\/protocol\.json/,

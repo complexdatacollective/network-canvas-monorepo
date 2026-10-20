@@ -1,0 +1,111 @@
+{
+  "summary": "A messy study of support.",
+  "stages": [
+    {
+      "stageKey": "consent",
+      "kind": "consent",
+      "purpose": "Consent to take part",
+      "title": "introduction title",
+      "text": "introduction text: what taking part involves",
+      "draft": "Do you consent?"
+    },
+    {
+      "stageKey": "welcome",
+      "kind": "information",
+      "purpose": "Purpose of welcome.",
+      "title": "screen title",
+      "text": "screen body (Markdown)",
+      "draft": "Hi"
+    },
+    {
+      "stageKey": "about",
+      "kind": "egoForm",
+      "purpose": "Purpose of about.",
+      "title": "introduction title",
+      "text": "introduction text",
+      "draft": ""
+    },
+    {
+      "stageKey": "names",
+      "kind": "nameGenerator",
+      "purpose": "Purpose of names.",
+      "title": "form title, e.g. \"Add a friend\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "bins",
+      "kind": "bins",
+      "purpose": "Purpose of bins.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "map",
+      "kind": "sociogram",
+      "purpose": "Purpose of map.",
+      "title": "none: return \"\"",
+      "text": "none: return \"\"",
+      "draft": ""
+    },
+    {
+      "stageKey": "mood_form",
+      "kind": "egoForm",
+      "purpose": "Purpose of mood_form.",
+      "title": "introduction title",
+      "text": "introduction text",
+      "draft": ""
+    }
+  ],
+  "prompts": [
+    {
+      "promptKey": "names/p1",
+      "draft": "Who?",
+      "kind": "nameGenerator",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "bins/p1",
+      "draft": "Closeness",
+      "kind": "bins",
+      "needsNegativeLabel": false
+    },
+    {
+      "promptKey": "map/p1",
+      "draft": "Mark helpers",
+      "kind": "sociogram",
+      "needsNegativeLabel": false
+    }
+  ],
+  "questions": [
+    {
+      "questionKey": "consent",
+      "draft": "Do you agree to take part in this study?"
+    },
+    {
+      "questionKey": "ego/age",
+      "draft": "Age?"
+    },
+    {
+      "questionKey": "ego/smokes",
+      "draft": "Do you smoke?"
+    },
+    {
+      "questionKey": "node:person/name",
+      "draft": "What is the name of this person?"
+    },
+    {
+      "questionKey": "node:person/person_first_name",
+      "draft": "Name?"
+    },
+    {
+      "questionKey": "ego/mood",
+      "draft": "Mood?"
+    },
+    {
+      "questionKey": "ego/scale",
+      "draft": "Scale?"
+    }
+  ]
+}

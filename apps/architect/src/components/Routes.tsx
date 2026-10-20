@@ -13,6 +13,7 @@ import ProjectLayout from '~/components/ProjectNav/ProjectLayout';
 import Protocol from '~/components/Protocol';
 import ProtocolRouteGuard from '~/components/ProtocolRouteGuard';
 import RouteFocus from '~/components/RouteFocus';
+import SketchImport from '~/components/SketchImport/SketchImport';
 
 // Every `/protocol` route is wrapped by ProtocolRouteGuard, which sends a tab
 // with no protocol home and tells every page whether this tab may edit the
@@ -49,6 +50,8 @@ const Routes = () => {
           </Route>
           <Route path="/protocol/stage/:stageId" component={StageEditorPage} />
           <Route path="/protocol/experiments" component={ExperimentsPage} />
+
+          <Route path="/import-from-sketch" component={SketchImport} />
 
           <Route path="/" component={Home} />
         </Switch>

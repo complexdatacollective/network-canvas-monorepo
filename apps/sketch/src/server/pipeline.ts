@@ -1,0 +1,619 @@
+// The five user-visible steps of a Sketch job (SPEC §0):
+//   read     screening model, refuses only when the text is not a study
+//   design   design model, then the deterministic preflight; at most one retry
+//   wording  cheap model polishes the drafts; failure is not fatal
+//   compile  compile the design with the wording
+//   validate schema 8 validation; falls back to the preflight protocol
+//
+// Pure apart from the injected adapters and onProgress, so it is tested with
+// fake providers.
+
+import type {
+  DesignTier,
+  JobResult,
+  JobStatusValue,
+  JobStep,
+  JobUsage,
+  Provider,
+  StepId,
+  StepState,
+} from '../shared/api.ts';
+import { STEP_IDS } from '../shared/api.ts';
+import {
+  buildProtocol,
+  preflight,
+  retryFeedback,
+  validationIssues,
+  type BuildOptions,
+  type BuildResult,
+} from './design/build.ts';
+import { buildWordingRequest } from './design/feedback.ts';
+import { toProviderJsonSchema } from './design/json-schema.ts';
+import {
+  ScreeningSchema,
+  StudyDesignSchema,
+  WordingSchema,
+  type StudyDesign,
+  type Wording,
+} from './design/schema.ts';
+import { costUsd, getStepModels, type StepModels } from './models.ts';
+import {
+  buildDesignMessages,
+  DESIGN_SYSTEM,
+  UNPARSEABLE_FEEDBACK,
+} from './prompts/design.ts';
+import {
+  buildScreeningMessages,
+  SCREENING_SYSTEM,
+} from './prompts/screening.ts';
+import { buildWordingMessages, WORDING_SYSTEM } from './prompts/wording.ts';
+import type {
+  ChatMessage,
+  ProviderAdapter,
+  ProviderAdapters,
+  StopReason,
+  StructuredRequest,
+  StructuredResponse,
+  TokenUsage,
+} from './providers/types.ts';
+
+// Built once per process: byte-stable, so the provider's grammar and prompt
+// caches keep hitting.
+const SCHEMAS = {
+  screening: toProviderJsonSchema(ScreeningSchema),
+  design: toProviderJsonSchema(StudyDesignSchema),
+  wording: toProviderJsonSchema(WordingSchema),
+};
+
+const LIMITS = {
+  screening: { maxTokens: 1_000, timeoutMs: 60_000 },
+  design: { maxTokens: 16_000, timeoutMs: 6 * 60_000 },
+  wording: { maxTokens: 8_000, timeoutMs: 2 * 60_000 },
+} as const;
+
+type PipelineInput = {
+  description: string;
+  provider: Provider;
+  tier: DesignTier;
+};
+
+export type PipelineDeps = {
+  adapters: ProviderAdapters;
+  onProgress?: (steps: JobStep[]) => void | Promise<void>;
+  buildOptions?: BuildOptions;
+  // For tests: a fixed clock.
+  now?: () => number;
+};
+
+type CallRole = 'screening' | 'design' | 'wording';
+
+type CallRecord = {
+  role: CallRole;
+  attempt: number;
+  model: string;
+  stopReason: StopReason | 'error';
+  usage: TokenUsage;
+  costUsd: number;
+  durationMs: number;
+  error?: string;
+};
+
+type AttemptLog = {
+  attempt: number;
+  stopReason: StopReason | 'error';
+  rawText: string;
+  parsed: boolean;
+  design: StudyDesign | null;
+  issues: BuildResult['issues'];
+  validationIssues: ReturnType<typeof validationIssues>;
+  fatal: string | null;
+  retry: boolean;
+  feedback: string | null;
+};
+
+type PipelineTag =
+  | 'compilerBug'
+  | 'wordingBug'
+  | 'wordingFailed'
+  | 'salvaged'
+  | 'firstAttemptShipped'
+  | 'screeningFailed';
+
+type PipelineLog = {
+  models: StepModels;
+  screening: { isStudy: boolean; summary: string; refusalHint: string } | null;
+  attempts: AttemptLog[];
+  wording: Wording | null;
+  protocolValid: boolean;
+  shippedIssues: string[];
+  tags: PipelineTag[];
+  calls: CallRecord[];
+  durationsMs: Partial<Record<StepId, number>>;
+};
+
+type PipelineOutcome = {
+  status: Extract<JobStatusValue, 'succeeded' | 'failed' | 'refused'>;
+  steps: JobStep[];
+  usage: JobUsage;
+  result: JobResult | null;
+  error: string | null;
+  refusalHint: string | null;
+  log: PipelineLog;
+};
+
+const ACTIVE_DETAIL: Record<StepId, string> = {
+  read: 'Picking out who, which relationships and what to measure…',
+  design: 'Choosing stages and building the codebook…',
+  wording: 'Writing the prompts and screen text…',
+  compile: 'Turning the design into stages, variables and skip logic…',
+  validate: 'Validating every stage and variable…',
+};
+
+const DEFAULT_REFUSAL_HINT =
+  'Describe who you want to interview and which people or relationships in their lives you want to map.';
+
+const DESIGN_FAILED =
+  'Sketch could not turn this description into a working protocol. Try adding who you will interview and what you want to learn about their relationships.';
+
+const DESIGN_UNREACHABLE =
+  'The design model could not be reached. Please try again in a few minutes.';
+
+const plural = (n: number, one: string, many = `${one}s`) =>
+  `${n} ${n === 1 ? one : many}`;
+
+const listJoin = (parts: string[]) =>
+  parts.length <= 1
+    ? (parts[0] ?? '')
+    : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+
+const truncate = (text: string, max: number) =>
+  text.length <= max ? text : `${text.slice(0, max - 1).trimEnd()}…`;
+
+const designDetail = (b: BuildResult) =>
+  `${plural(b.design.nodeTypes.length, 'node type')}, ${plural(b.design.relationships.length, 'relationship')}, ${plural(b.design.stages.length, 'stage')}`;
+
+const wordingDetail = (request: ReturnType<typeof buildWordingRequest>) => {
+  const screens = request.stages.filter((s) => s.kind === 'information').length;
+  const intros = request.stages.filter((s) =>
+    s.title.startsWith('introduction title'),
+  ).length;
+  const parts = [plural(request.prompts.length, 'prompt')];
+  if (request.questions.length)
+    parts.push(plural(request.questions.length, 'question'));
+  if (intros) parts.push(plural(intros, 'intro screen'));
+  if (screens) parts.push(plural(screens, 'information screen'));
+  return listJoin(parts);
+};
+
+const compileDetail = (b: BuildResult) => {
+  const parts = ['Codebook', 'stages'];
+  if (
+    b.design.stages.some(
+      (s) =>
+        s.skipLogic.mode !== 'always_show' && s.skipLogic.conditions.length,
+    )
+  )
+    parts.push('skip logic');
+  const rosters = b.assets.filter((a) => a.mimeType === 'text/csv').length;
+  if (rosters === 1) parts.push('a placeholder roster');
+  if (rosters > 1) parts.push(`${rosters} placeholder rosters`);
+  if (b.assets.some((a) => a.mimeType === 'application/geo+json'))
+    parts.push('a world map');
+  return listJoin(parts);
+};
+
+const issueMessages = (b: BuildResult) => [
+  ...b.issues.filter((i) => i.severity === 'degraded').map((i) => i.message),
+  ...validationIssues(b).map((i) => `${i.path.join('.')}: ${i.message}`),
+  ...(b.fatal ? [b.fatal] : []),
+];
+
+export const runPipeline = async (
+  input: PipelineInput,
+  deps: PipelineDeps,
+): Promise<PipelineOutcome> => {
+  const clock = deps.now ?? Date.now;
+  const adapter: ProviderAdapter = deps.adapters[input.provider];
+  const models = getStepModels(input.provider, input.tier);
+  const buildOptions = deps.buildOptions ?? {};
+
+  const steps: JobStep[] = STEP_IDS.map((id) => ({
+    id,
+    state: 'pending',
+    detail: 'Waiting',
+  }));
+  const log: PipelineLog = {
+    models,
+    screening: null,
+    attempts: [],
+    wording: null,
+    protocolValid: false,
+    shippedIssues: [],
+    tags: [],
+    calls: [],
+    durationsMs: {},
+  };
+  const stepStarted: Partial<Record<StepId, number>> = {};
+
+  const setStep = async (id: StepId, state: StepState, detail: string) => {
+    const step = steps.find((s) => s.id === id);
+    if (!step) return;
+    step.state = state;
+    step.detail = detail;
+    if (state === 'active') stepStarted[id] ??= clock();
+    if (state === 'done' || state === 'failed') {
+      const start = stepStarted[id];
+      if (start !== undefined) log.durationsMs[id] = clock() - start;
+    }
+    await deps.onProgress?.(steps.map((s) => ({ ...s })));
+  };
+
+  const totals = (): JobUsage => {
+    const sum = log.calls.reduce(
+      (acc, c) => ({
+        inputTokens: acc.inputTokens + c.usage.inputTokens,
+        outputTokens: acc.outputTokens + c.usage.outputTokens,
+        cacheReadTokens: acc.cacheReadTokens + c.usage.cacheReadTokens,
+        cacheWriteTokens: acc.cacheWriteTokens + c.usage.cacheWriteTokens,
+        costUsd: acc.costUsd + c.costUsd,
+      }),
+      {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 0,
+      },
+    );
+    return { ...sum, costUsd: Math.round(sum.costUsd * 1e6) / 1e6 };
+  };
+
+  // Calls the provider and records usage. Returns null when the call threw.
+  const call = async (
+    role: CallRole,
+    attempt: number,
+    request: Omit<StructuredRequest, 'maxTokens' | 'timeoutMs'>,
+  ): Promise<StructuredResponse | null> => {
+    const start = clock();
+    try {
+      const response = await adapter.generateStructured({
+        ...request,
+        ...LIMITS[role],
+      });
+      log.calls.push({
+        role,
+        attempt,
+        model: request.model,
+        stopReason: response.stopReason,
+        usage: response.usage,
+        costUsd: costUsd(response.usage, request.model),
+        durationMs: clock() - start,
+      });
+      return response;
+    } catch (error) {
+      log.calls.push({
+        role,
+        attempt,
+        model: request.model,
+        stopReason: 'error',
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+        },
+        costUsd: 0,
+        durationMs: clock() - start,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+  };
+
+  const finish = (
+    status: PipelineOutcome['status'],
+    extra: Partial<Pick<PipelineOutcome, 'result' | 'error' | 'refusalHint'>>,
+  ): PipelineOutcome => ({
+    status,
+    steps: steps.map((s) => ({ ...s })),
+    usage: totals(),
+    result: extra.result ?? null,
+    error: extra.error ?? null,
+    refusalHint: extra.refusalHint ?? null,
+    log,
+  });
+
+  const failActive = async (error: string) => {
+    const active = steps.find((s) => s.state === 'active');
+    if (active) await setStep(active.id, 'failed', truncate(error, 140));
+    return finish('failed', { error });
+  };
+
+  // ---- Step 1: read ---------------------------------------------------------
+  await setStep('read', 'active', ACTIVE_DETAIL.read);
+  const screeningResponse = await call('screening', 1, {
+    model: models.screening,
+    system: SCREENING_SYSTEM,
+    messages: buildScreeningMessages(input.description),
+    schema: SCHEMAS.screening,
+    schemaName: 'screening',
+    effort: 'low',
+  });
+  const screening =
+    screeningResponse?.stopReason === 'complete'
+      ? ScreeningSchema.safeParse(screeningResponse.json)
+      : null;
+  if (screening?.success) {
+    log.screening = screening.data;
+    if (!screening.data.isStudy) {
+      const refusalHint = screening.data.refusalHint || DEFAULT_REFUSAL_HINT;
+      await setStep('read', 'done', 'This does not describe a study yet');
+      return finish('refused', { refusalHint });
+    }
+  } else {
+    // The gate is a courtesy; when it fails, carry on as if it had passed.
+    log.tags.push('screeningFailed');
+  }
+  await setStep(
+    'read',
+    'done',
+    truncate(
+      (screening?.success && screening.data.summary) || 'Read your description',
+      140,
+    ),
+  );
+
+  // ---- Step 2: design -------------------------------------------------------
+  await setStep('design', 'active', ACTIVE_DETAIL.design);
+
+  type Attempt =
+    | { ok: true; raw: StudyDesign; build: BuildResult; rawText: string }
+    | {
+        ok: false;
+        rawText: string;
+        feedback: string;
+        reason: 'unparseable' | 'unreachable';
+      };
+
+  const runAttempt = async (
+    attempt: number,
+    messages: ChatMessage[],
+  ): Promise<Attempt> => {
+    const response = await call('design', attempt, {
+      model: models.design,
+      system: DESIGN_SYSTEM,
+      messages,
+      schema: SCHEMAS.design,
+      schemaName: 'study_design',
+      effort: 'medium',
+    });
+    const entry: AttemptLog = {
+      attempt,
+      stopReason: response?.stopReason ?? 'error',
+      rawText: response?.rawText ?? '',
+      parsed: false,
+      design: null,
+      issues: [],
+      validationIssues: [],
+      fatal: null,
+      retry: true,
+      feedback: null,
+    };
+    log.attempts.push(entry);
+    if (!response) {
+      entry.feedback = UNPARSEABLE_FEEDBACK;
+      return {
+        ok: false,
+        rawText: '',
+        feedback: UNPARSEABLE_FEEDBACK,
+        reason: 'unreachable',
+      };
+    }
+    const parsed =
+      response.stopReason === 'complete'
+        ? StudyDesignSchema.safeParse(response.json)
+        : null;
+    if (!parsed?.success) {
+      entry.feedback = UNPARSEABLE_FEEDBACK;
+      return {
+        ok: false,
+        rawText: response.rawText,
+        feedback: UNPARSEABLE_FEEDBACK,
+        reason: 'unparseable',
+      };
+    }
+    entry.parsed = true;
+    entry.design = parsed.data;
+    let build: BuildResult;
+    try {
+      build = await preflight(parsed.data, buildOptions);
+    } catch (error) {
+      // compile() is meant to be total on analyse() output; a throw is ours.
+      log.tags.push('compilerBug');
+      entry.feedback = UNPARSEABLE_FEEDBACK;
+      entry.fatal = error instanceof Error ? error.message : String(error);
+      return {
+        ok: false,
+        rawText: response.rawText,
+        feedback: UNPARSEABLE_FEEDBACK,
+        reason: 'unparseable',
+      };
+    }
+    entry.issues = build.issues;
+    entry.validationIssues = validationIssues(build);
+    entry.fatal = build.fatal;
+    entry.retry = build.retry;
+    if (build.retry) entry.feedback = retryFeedback(build);
+    return { ok: true, raw: parsed.data, build, rawText: response.rawText };
+  };
+
+  const problemCount = (a: Attempt) =>
+    a.ok
+      ? a.build.issues.filter((i) => i.severity === 'degraded').length +
+        validationIssues(a.build).length +
+        (a.build.fatal ? 1 : 0)
+      : 1;
+
+  const firstMessages = buildDesignMessages(input.description);
+  const first = await runAttempt(1, firstMessages);
+
+  let chosen: { raw: StudyDesign; build: BuildResult } | null = null;
+  let attempts = 1;
+  let fixedIssues: string[] = [];
+
+  if (first.ok && !first.build.retry) {
+    chosen = { raw: first.raw, build: first.build };
+  } else {
+    const count = problemCount(first);
+    await setStep(
+      'design',
+      'active',
+      `Revising the design (${plural(count, 'problem')})`,
+    );
+    const feedback = first.ok ? retryFeedback(first.build) : first.feedback;
+    // A multi-turn continuation when there is an answer to continue from.
+    // A call that threw is simply asked again.
+    let retryMessages: ChatMessage[] = firstMessages;
+    if (first.rawText.trim()) {
+      retryMessages = [
+        ...firstMessages,
+        { role: 'assistant', content: first.rawText },
+        { role: 'user', content: feedback },
+      ];
+    } else if (first.ok || first.reason === 'unparseable') {
+      retryMessages = [
+        {
+          role: 'user',
+          content: `${firstMessages[0]?.content ?? ''}\n\n${feedback}`,
+        },
+      ];
+    }
+    const second = await runAttempt(2, retryMessages);
+    attempts = 2;
+
+    if (second.ok && !second.build.fatal) {
+      chosen = { raw: second.raw, build: second.build };
+      const before = first.ok
+        ? issueMessages(first.build)
+        : [UNPARSEABLE_FEEDBACK];
+      const after = new Set(issueMessages(second.build));
+      fixedIssues = before.filter((m) => !after.has(m));
+    } else if (
+      first.ok &&
+      !first.build.fatal &&
+      first.build.validation.success
+    ) {
+      // The revision was worse than the original. The original builds, with
+      // its degraded repairs, so ship it rather than fail.
+      chosen = { raw: first.raw, build: first.build };
+      log.tags.push('firstAttemptShipped');
+    } else if (!second.ok && second.reason === 'unreachable') {
+      return failActive(DESIGN_UNREACHABLE);
+    } else {
+      return failActive(
+        second.ok && second.build.fatal ? second.build.fatal : DESIGN_FAILED,
+      );
+    }
+
+    // Salvage: drop the design stages that schema validation names, twice at
+    // most. compile() should never need this; the fuzzer says it is rare.
+    for (
+      let round = 0;
+      round < 2 && !chosen.build.validation.success;
+      round++
+    ) {
+      const current = chosen;
+      const named = new Set(
+        validationIssues(current.build).flatMap((issue) => {
+          if (issue.path[0] !== 'stages' || typeof issue.path[1] !== 'number')
+            return [];
+          const src = current.build.stageMap[issue.path[1]];
+          return src && 'designIndex' in src ? [src.designIndex] : [];
+        }),
+      );
+      if (!named.size) break;
+      const raw: StudyDesign = {
+        ...current.raw,
+        stages: current.raw.stages.filter((_, i) => !named.has(i)),
+      };
+      chosen = { raw, build: await preflight(raw, buildOptions) };
+      log.tags.push('salvaged');
+    }
+    if (!chosen.build.validation.success) {
+      log.tags.push('compilerBug');
+      return failActive(DESIGN_FAILED);
+    }
+  }
+  const pre = chosen.build;
+  log.shippedIssues = pre.issues
+    .filter((i) => i.severity === 'degraded')
+    .map((i) => i.message);
+  await setStep('design', 'done', designDetail(pre));
+
+  // ---- Step 3: wording (not fatal) -----------------------------------------
+  await setStep('wording', 'active', ACTIVE_DETAIL.wording);
+  const wordingRequest = buildWordingRequest(pre.design);
+  const wordingResponse = await call('wording', 1, {
+    model: models.wording,
+    system: WORDING_SYSTEM,
+    messages: buildWordingMessages(wordingRequest),
+    schema: SCHEMAS.wording,
+    schemaName: 'wording',
+    effort: 'low',
+  });
+  const wordingParsed =
+    wordingResponse?.stopReason === 'complete'
+      ? WordingSchema.safeParse(wordingResponse.json)
+      : null;
+  const wording = wordingParsed?.success ? wordingParsed.data : null;
+  log.wording = wording;
+  if (wording) {
+    await setStep('wording', 'done', wordingDetail(wordingRequest));
+  } else {
+    log.tags.push('wordingFailed');
+    await setStep('wording', 'done', 'Kept the draft wording from the design');
+  }
+
+  // ---- Step 4: compile -----------------------------------------------------
+  await setStep('compile', 'active', ACTIVE_DETAIL.compile);
+  let final: BuildResult = pre;
+  if (wording) {
+    try {
+      final = await buildProtocol(chosen.raw, wording, buildOptions);
+    } catch {
+      final = pre;
+      log.tags.push('wordingBug');
+    }
+  }
+  await setStep('compile', 'done', compileDetail(final));
+
+  // ---- Step 5: validate ----------------------------------------------------
+  await setStep('validate', 'active', ACTIVE_DETAIL.validate);
+  if (!final.validation.success) {
+    // Wording only overlays strings, so this should not happen; the
+    // preflight protocol is valid and ships instead.
+    log.tags.push('wordingBug');
+    final = pre;
+  }
+  log.protocolValid = final.validation.success;
+  await setStep(
+    'validate',
+    'done',
+    attempts === 1
+      ? 'Passed on the first try'
+      : log.tags.includes('firstAttemptShipped')
+        ? 'Passed with the first design'
+        : 'Passed after one revision',
+  );
+
+  return finish('succeeded', {
+    result: {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the compiled input shape, already validated
+      protocol: final.protocol as Record<string, unknown>,
+      assets: final.assets,
+      summary: final.summary,
+      attempts,
+      fixedIssues,
+    },
+  });
+};

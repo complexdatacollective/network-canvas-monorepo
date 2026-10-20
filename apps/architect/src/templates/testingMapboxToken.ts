@@ -1,22 +1,8 @@
-// Shared Mapbox public token embedded in templates that use the Geospatial
-// interface (currently `transnational-networks`) so the map renders out of the
-// box, and carried by the e2e protocol fixtures so Architect's timeline
-// warning (`TestingMapboxTokenAlert`, driven by `getUsesTestingMapboxToken` in
-// `selectors/issues.ts`) has something to detect in those runs. It is a
-// sandbox token: URL-restricted to networkcanvas.com, networkcanvas.dev and
-// localhost, and scoped to styles:tiles, styles:read and fonts:read only. It
-// will not render maps on any other domain — including Fresco interview
-// pages, which live on the researcher's own host — and it is for evaluation
-// only: researchers must add their own Mapbox token before fielding a study.
-//
-// This literal MUST stay identical to the `value` of the token asset in the
-// templates' `assetManifest`; `__tests__/testing-token.test.ts` guards drift.
-// It is also the ONLY Mapbox token allowed anywhere in the repository:
-// `scripts/buildtime/check-mapbox-tokens.mjs` (run as `pnpm check:mapbox-tokens` in CI's
-// quality-support job, on every change) scans every tracked file and every
-// text entry inside every tracked archive and fails on any other.
-export const TESTING_MAPBOX_TOKEN =
-  'pk.eyJ1IjoibmV0d29ya2NhbnZhcyIsImEiOiJjbXRqdnd4dnowY2M5MnlzZWNqYjNlZG5rIn0.KH3OS_O2Hk6gAbDjKGPAJg';
+// The sandbox Mapbox token now lives in `@codaco/shared-consts` (see
+// `packages/shared-consts/src/mapbox.ts` for what it is and the rules around
+// it) so Sketch can embed it too. Re-exported here so Architect's imports, its
+// tests and the e2e specs keep reading it from one place.
+export { TESTING_MAPBOX_TOKEN } from '@codaco/shared-consts';
 
 /**
  * The stable id of a Mapbox access token, or null when `value` is not shaped

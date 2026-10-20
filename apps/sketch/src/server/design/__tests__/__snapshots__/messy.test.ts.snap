@@ -1,0 +1,29 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the messy design > formats the retry message the model receives 1`] = `
+"Sketch could not build your design exactly as written. Return the COMPLETE corrected StudyDesign.
+Fix only the problems listed. Keep every id, stage, prompt and attribute that is not mentioned exactly as it was, in the same order.
+Ids are references: if you rename one, rename every reference to it. Do not invent attributes a stage does not need.
+
+Design problems (paths refer to your design JSON):
+- [DUPLICATE_TYPE_ID] relationships[0].id: Two node types / relationships use id "person"; the second became "person_2". Give each its own id.
+- [DUPLICATE_ATTRIBUTE_ID] egoAttributes[2]: Two different attributes use id "age"; the second became "age_2" and every reference to "age" points at the first. Give each attribute its own id.
+- [TOO_FEW_OPTIONS] egoAttributes[4].options: ordered attribute "mood" needs at least 2 options; it was turned into free text.
+- [BAD_SCORES] egoAttributes[5].optionScores: optionScores of "scale" must be one distinct whole number per option (3); they were dropped and options scored 1..n.
+- [STAGE_BEFORE_NAMES] stages[2]: Stage "early" uses "person" nodes before any earlier nameGenerator creates them. The stage was removed.
+- [CONDITION_BEFORE_COLLECTED] stages[3].skipLogic.conditions[0]: Skip condition tests "smokes" on egoAttributes, which no EARLIER stage collects.
+- [EMPTY_SKIP] stages[3].skipLogic: mode skip_if has no usable conditions; the stage is always shown.
+- [UNKNOWN_ATTRIBUTE] stages[3].attributeIds[2]: Form attribute "undefined_attr" is not an attribute of egoAttributes. Matching attributes there: age (number), age_2 (text), smokes (yes_no), mood (text), scale (ordered).
+- [UNKNOWN_ATTRIBUTE] stages[3].attributeIds[3]: Form attribute "closeness" is not an attribute of egoAttributes. Matching attributes there: age (number), age_2 (text), smokes (yes_no), mood (text), scale (ordered).
+- [EMPTY_PROMPT] stages[4].prompts[1]: Prompt without text removed.
+- [BAD_CONDITION] stages[5].filter.conditions[0]: a yes_no value must be "yes" or "no" (got "maybe"). Condition removed.
+- [WRONG_KIND] stages[5].prompts[0].attributeId: Bin attribute "close" on node type "person" is yes_no, but this needs ordered or single_choice or multi_choice. Matching attributes there: person_closeness (ordered).
+- [NARRATIVE_WITHOUT_MAP] stages[6]: narrative "story" needs an EARLIER sociogram of node type "person" (it reuses that map's positions). Add one, or remove the narrative. The stage was removed.
+- [UNKNOWN_TYPE] stages[7].prompts[0].relationshipId: relationship "knows" is not declared. Declared: person_2.
+- [WRONG_KIND] stages[7].prompts[1].attributeId: Highlight "person_closeness" is ordered; highlights must be yes_no. Prompt removed.
+- [UNKNOWN_TYPE] stages[8].relationshipId: relationship "person" is not declared. Declared: person_2.
+- [UNKNOWN_TYPE] stages[8]: relationshipForm "edge_form" has no valid relationship. The stage was removed.
+- [EMPTY_SKIP] stages[9].skipLogic: mode show_only_if has no usable conditions; the stage is always shown.
+
+(11 smaller issues were corrected automatically; you do not need to address them.)"
+`;

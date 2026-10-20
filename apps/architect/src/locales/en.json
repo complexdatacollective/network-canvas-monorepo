@@ -2435,6 +2435,34 @@
     "defaultMessage": "Select an Interface Type",
     "description": "The title text in components / Screens / NewStageScreen / NewStageScreen."
   },
+  "architect.sketchImport.errorTitle": {
+    "defaultMessage": "Your protocol couldn't be opened",
+    "description": "Heading shown when a protocol sent from Sketch, a separate study-design website, arrived but could not be opened in Architect."
+  },
+  "architect.sketchImport.noOpenerBody": {
+    "defaultMessage": "This page receives protocols sent from Sketch. Go back to Sketch and send your protocol to Architect from there.",
+    "description": "Explains that the Sketch import page only works when Sketch, a separate study-design website, opens it. Keep \"Sketch\" untranslated: it is a product name."
+  },
+  "architect.sketchImport.noOpenerTitle": {
+    "defaultMessage": "Open this page from Sketch",
+    "description": "Heading shown when the Sketch import page was opened directly rather than by Sketch, a separate study-design website. Keep \"Sketch\" untranslated: it is a product name."
+  },
+  "architect.sketchImport.receiving": {
+    "defaultMessage": "Receiving your protocol from Sketch…",
+    "description": "Heading shown while Architect waits for Sketch, a separate study-design website, to send it a protocol. Keep \"Sketch\" untranslated: it is a product name."
+  },
+  "architect.sketchImport.returnToStartScreen": {
+    "defaultMessage": "Return to start screen",
+    "description": "Button that leaves the Sketch import page for Architect's start screen."
+  },
+  "architect.sketchImport.timeoutTitle": {
+    "defaultMessage": "Your protocol didn't arrive",
+    "description": "Heading shown when Sketch, a separate study-design website, opened Architect but never sent the protocol."
+  },
+  "architect.sketchImport.tryAgainBody": {
+    "defaultMessage": "Go back to Sketch and try again, or download the protocol there and open the file in Architect.",
+    "description": "Next steps after a protocol from Sketch, a separate study-design website, did not arrive or could not be opened. \"Download\" means saving it as a .netcanvas file. Keep \"Sketch\" untranslated: it is a product name."
+  },
   "architect.skipDestination.finish": {
     "defaultMessage": "End interview",
     "description": "Display of a skip-logic destination, preserving the authored stage label."

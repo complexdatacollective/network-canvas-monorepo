@@ -102,7 +102,7 @@ const extraMessages = defineMessages({
   },
 });
 
-type ImportSource = 'local' | 'bundled';
+type ImportSource = 'local' | 'bundled' | 'sketch';
 
 export type ProtocolOpenResult =
   | {
@@ -589,74 +589,125 @@ export const createNetcanvas = createAppAsyncThunk(
   },
 );
 
-// Open one of the app's bundled research templates. The protocol object is
-// already at the current schema version, so we skip the fetch/extract and
-// migration steps and validate it directly. Like the remote-template flow, a
-// fresh library entry (new id) is created so a template can be opened
+type InMemoryProtocolInput = {
+  protocol: CurrentProtocol;
+  name?: string;
+  assets?: ExtractedAsset[];
+  sourceRef?: ProtocolSourceRef;
+};
+
+// Shared by every open whose protocol is already an in-memory object at the
+// current schema version (a bundled template, a protocol sent from Sketch): no
+// archive to extract and no migration, so it is validated directly. Each open
+// creates a fresh library entry (new id), so the same protocol can be opened
 // repeatedly without overwriting earlier copies.
+//
+// `source` tags analytics and `fallbackMessage` is what the researcher reads
+// when the failure has no more specific description.
+const openInMemoryProtocol = async (
+  { protocol, name, assets, sourceRef }: InMemoryProtocolInput,
+  {
+    source,
+    fallbackMessage,
+  }: { source: ImportSource; fallbackMessage: string },
+  dispatch: Dispatch,
+): Promise<ProtocolOpenResult> => {
+  // Signal an import is in flight so a fresh-load service-worker update won't
+  // silently reload mid-import (which could leave a library row whose bundled
+  // assets were never written). Mirrors openLocalNetcanvas.
+  setImportInProgress(true);
+  try {
+    const finalProtocol = name ? { ...protocol, name } : protocol;
+    const validationResult = await validateProtocol(finalProtocol);
+
+    if (!validationResult.success) {
+      trackImportValidationFailure(source, validationResult.error);
+      const errorMessage = ensureError(validationResult.error).message;
+      return { status: 'validation-error', message: errorMessage };
+    }
+
+    const finalName = name ?? protocol.name;
+    await instantiateProtocol(
+      {
+        protocol: finalProtocol,
+        assets,
+        name: finalName,
+        description: protocol.description,
+        sourceRef,
+      },
+      dispatch,
+    );
+
+    return openedResult;
+  } catch (error) {
+    trackImportFailure(source, error);
+    // An in-memory protocol never opens an archive, so the file-shaped reasons
+    // are unreachable here — but storage failures are not, and the default
+    // must never talk about a damaged file.
+    const { message, detail, localizedMessage } = describeImportFailure(
+      error,
+      fallbackMessage,
+      getArchitectIntl(),
+    );
+    return {
+      status: 'error',
+      title: getArchitectIntl().formatMessage(extraMessages.importError),
+      localizedTitle: { message: extraMessages.importError },
+      message,
+      detail,
+      localizedMessage,
+    };
+  } finally {
+    setImportInProgress(false);
+  }
+};
+
+// Open one of the app's bundled research templates.
 export const openBundledTemplate = createAppAsyncThunk(
   'webUserActions/openBundledTemplate',
+  async (
+    input: InMemoryProtocolInput,
+    { dispatch },
+  ): Promise<ProtocolOpenResult> =>
+    openInMemoryProtocol(
+      input,
+      { source: 'bundled', fallbackMessage: TEMPLATE_OPEN_FAILURE_MESSAGE },
+      dispatch,
+    ),
+);
+
+// Open a protocol sent from Sketch (see components/SketchImport). Sketch emits
+// the current schema version, so this is the bundled-template path under its
+// own analytics source and protocol wording. It takes no `sourceRef`: a Sketch
+// protocol has no canonical source file to save back to.
+export const openSketchProtocol = createAppAsyncThunk(
+  'webUserActions/openSketchProtocol',
   async (
     {
       protocol,
       name,
       assets,
-      sourceRef,
-    }: {
-      protocol: CurrentProtocol;
-      name?: string;
-      assets?: ExtractedAsset[];
-      sourceRef?: ProtocolSourceRef;
-    },
+    }: { protocol: CurrentProtocol; name: string; assets: ExtractedAsset[] },
     { dispatch },
   ): Promise<ProtocolOpenResult> => {
-    // Signal an import is in flight so a fresh-load service-worker update won't
-    // silently reload mid-import (which could leave a library row whose bundled
-    // assets were never written). Mirrors openLocalNetcanvas.
-    setImportInProgress(true);
-    try {
-      const finalProtocol = name ? { ...protocol, name } : protocol;
-      const validationResult = await validateProtocol(finalProtocol);
-
-      if (!validationResult.success) {
-        trackImportValidationFailure('bundled', validationResult.error);
-        const errorMessage = ensureError(validationResult.error).message;
-        return { status: 'validation-error', message: errorMessage };
-      }
-
-      const finalName = name ?? protocol.name;
-      await instantiateProtocol(
-        {
-          protocol: finalProtocol,
-          assets,
-          name: finalName,
-          description: protocol.description,
-          sourceRef,
-        },
-        dispatch,
-      );
-      return openedResult;
-    } catch (error) {
-      trackImportFailure('bundled', error);
-      // A bundled template never opens an archive, so the file-shaped reasons
-      // are unreachable here — but storage failures are not, and the default
-      // must talk about the template, never about a damaged file.
-      const { message, detail, localizedMessage } = describeImportFailure(
-        error,
-        TEMPLATE_OPEN_FAILURE_MESSAGE,
-        getArchitectIntl(),
-      );
-      return {
-        status: 'error',
-        title: getArchitectIntl().formatMessage(extraMessages.importError),
-        localizedTitle: { message: extraMessages.importError },
-        message,
-        detail,
-        localizedMessage,
-      };
-    } finally {
-      setImportInProgress(false);
-    }
+    const result = await openInMemoryProtocol(
+      { protocol, name, assets },
+      { source: 'sketch', fallbackMessage: PROTOCOL_OPEN_FAILURE_MESSAGE },
+      dispatch,
+    );
+    if (result.status !== 'opened') return result;
+    // Like a .netcanvas missing an archive entry, a manifest file Sketch did
+    // not send opens anyway, and the result names it.
+    const delivered = new Set(assets.map((asset) => asset.id));
+    const unresolvedAssetNames = Object.entries(protocol.assetManifest ?? {})
+      .filter(
+        ([assetId, definition]) =>
+          definition.type !== 'apikey' && !delivered.has(assetId),
+      )
+      .map(([, definition]) => definition.name);
+    return unresolvedAssetNames.length > 0
+      ? { status: 'opened', unresolvedAssetNames }
+      : result;
   },
 );
 

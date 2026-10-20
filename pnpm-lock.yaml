@@ -1927,9 +1927,6 @@ importers:
       '@anthropic-ai/sdk':
         specifier: 0.135.0
         version: 0.135.0(zod@4.6.5)
-      '@codaco/fresco-ui':
-        specifier: workspace:^
-        version: link:../../packages/fresco-ui
       '@codaco/protocol-validation':
         specifier: workspace:^
         version: link:../../packages/protocol-validation
